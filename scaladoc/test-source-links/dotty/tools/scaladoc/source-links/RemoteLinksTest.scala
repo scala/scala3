@@ -30,6 +30,10 @@ class RemoteLinksTest:
     assertTrue(mtslAll.find((k, _) => k == "PolyFunction").isDefined) // source link to Scala3 stdlib class
 
   @Test
+  def tastySourceLink =
+    assertTrue(mtslAll.find((k, _) => k == "TastyBuffer").isDefined) // source link to Scala3 tasty class
+
+  @Test
   def runTest =
     assertTrue(mtslAll.nonEmpty)
     val mtsl = randomGenerator.shuffle(mtslAll).take(20) // take 20 random entries

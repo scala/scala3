@@ -1651,6 +1651,24 @@ object Types {
       case _ => resultType
     }
 
+    /** Find the function type in union.
+     *  If there are multiple function types, NoType is returned.
+     */
+    def findFunctionTypeInUnion(using Context): Type = this match {
+      case t: OrType =>
+        val t1 = t.tp1.findFunctionTypeInUnion
+        if t1 == NoType then t.tp2.findFunctionTypeInUnion else
+          val t2 = t.tp2.findFunctionTypeInUnion
+          // Returen NoType if the union contains multiple function types
+          if t2 == NoType then t1 else NoType
+      case t if defn.isNonRefinedFunction(t) =>
+        t
+      case t @ SAMType(_) =>
+        t
+      case _ =>
+        NoType
+    }
+
     /** This type seen as a TypeBounds */
     final def bounds(using Context): TypeBounds = this match {
       case tp: TypeBounds => tp
@@ -2833,7 +2851,9 @@ object Types {
         if myRef == null then
           // if errors were reported previously handle this by throwing a CyclicReference
           // instead of crashing immediately. A test case is neg/i6057.scala.
-          assert(ctx.mode.is(Mode.CheckCyclic) || ctx.reporter.errorsReported)
+          assert(ctx.mode.is(Mode.CheckCyclic)
+              || ctx.mode.is(Mode.Printing)
+              || ctx.reporter.errorsReported)
           throw CyclicReference(NoDenotation)
       else
         computed = true

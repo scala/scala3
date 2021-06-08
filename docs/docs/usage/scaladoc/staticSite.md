@@ -92,14 +92,13 @@ Layouts must be placed in a `_layouts` directory in the site root:
 └── index.html
 ```
 
-Sidebar
-=======
+## Sidebar
+
 Scaladoc by default uses layout of files in `docs` directory to create table of content. There is also ability to override it by providing a `sidebar.yml` file in the site root:
 
 ```yaml
 sidebar:
     - title: Blog
-      url: blog/index.html
     - title: Docs
       url: docs/index.html
     - title: Usage
@@ -114,12 +113,43 @@ The `sidebar` key is mandatory, as well as `title` for each element. The
 default table of contents allows you to have subsections - albeit the current
 depth limit is 2 however it accepts both files and directories and latter can be used to provide deeper structures.
 
-The items which have on the `subsection` level does not accepts `url`.
+The items must provide either `subsection` or `url` but not both at once!
+The only exception is `Blog` which is only a `title` and behaves differently.
+You can read more about blog [here](blog.md).
 
 ```
 ├── blog
-│   └── _posts
-│       └── 2016-12-05-implicit-function-types.md
+│   ├── _posts
+│   │   └── 2016-12-05-implicit-function-types.md
+│   └── index.html
 ├── index.html
 └── sidebar.yml
+```
+
+## Static resources
+
+You can attach static resources (pdf, images) to your documentation by using two dedicated directories:
+`resources` and `images`. When you upload your assests under any of these directories you can reference them in markdown
+as if they were relatively at the same level.
+
+For example, consider the following situation:
+
+```
+├── blog
+│   ├── _posts
+│   │   └── 2016-12-05-implicit-function-types.md
+│   └── index.html
+├── index.html
+├── resources
+│   └── my_file.pdf
+├── images
+│   └── my_image.png
+└── sidebar.yml
+
+```
+
+You can refer to the assets from within any of the files using markdown links:
+
+```
+This is my blogpost. Here is the image ![](my_image.png) and here is my [pdf](my_file.pdf)
 ```

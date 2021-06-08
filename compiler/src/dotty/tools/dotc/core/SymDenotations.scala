@@ -1614,6 +1614,66 @@ object SymDenotations {
 
       annotations.collect { case Annotation.Child(child) => child }.reverse
     end children
+
+    /** Recursively assemble all children of this symbol, Preserves order of insertion.
+     */
+    final def sealedStrictDescendants(using Context): List[Symbol] =
+
+      @tailrec
+      def findLvlN(
+        explore: mutable.ArrayDeque[Symbol],
+        seen: util.HashSet[Symbol],
+        acc: mutable.ListBuffer[Symbol]
+      ): List[Symbol] =
+        if explore.isEmpty then
+          acc.toList
+        else
+          val sym      = explore.head
+          val explore1 = explore.dropInPlace(1)
+          val lvlN     = sym.children
+          val notSeen  = lvlN.filterConserve(!seen.contains(_))
+          if notSeen.isEmpty then
+            findLvlN(explore1, seen, acc)
+          else
+            findLvlN(explore1 ++= notSeen, {seen ++= notSeen; seen}, acc ++= notSeen)
+      end findLvlN
+
+      /** Scans through `explore` to see if there are recursive children.
+       *  If a symbol in `explore` has children that are not contained in
+       *  `lvl1`, fallback to `findLvlN`, or else return `lvl1`.
+       */
+      @tailrec
+      def findLvl2(
+        lvl1: List[Symbol], explore: List[Symbol], seenOrNull: util.HashSet[Symbol] | Null
+      ): List[Symbol] = explore match
+        case sym :: explore1 =>
+          val lvl2 = sym.children
+          if lvl2.isEmpty then // no children, scan rest of explore1
+            findLvl2(lvl1, explore1, seenOrNull)
+          else // check if we have seen the children before
+            val seen = // initialise the seen set if not already
+              if seenOrNull != null then seenOrNull
+              else util.HashSet.from(lvl1)
+            val notSeen = lvl2.filterConserve(!seen.contains(_))
+            if notSeen.isEmpty then // we found children, but we had already seen them, scan the rest of explore1
+              findLvl2(lvl1, explore1, seen)
+            else // found unseen recursive children, we should fallback to the loop
+              findLvlN(
+                explore = mutable.ArrayDeque.from(explore1).appendAll(notSeen),
+                seen = {seen ++= notSeen; seen},
+                acc = mutable.ListBuffer.from(lvl1).appendAll(notSeen)
+              )
+        case nil =>
+          lvl1
+      end findLvl2
+
+      val lvl1 = children
+      findLvl2(lvl1, lvl1, seenOrNull = null)
+    end sealedStrictDescendants
+
+    /** Same as `sealedStrictDescendants` but prepends this symbol as well.
+     */
+    final def sealedDescendants(using Context): List[Symbol] = this.symbol :: sealedStrictDescendants
   }
 
   /** The contents of a class definition during a period

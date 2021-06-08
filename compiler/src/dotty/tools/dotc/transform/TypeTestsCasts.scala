@@ -28,7 +28,7 @@ import config.Printers.{ transforms => debug }
 object TypeTestsCasts {
   import ast.tpd._
   import typer.Inferencing.maximizeType
-  import typer.ProtoTypes.{ constrained, newTypeVar }
+  import typer.ProtoTypes.constrained
 
   /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
    *
@@ -98,8 +98,10 @@ object TypeTestsCasts {
         //
         // If we perform widening, we will get X = Nothing, and we don't have
         // Ident[X] <:< Ident[Int] any more.
-        TypeComparer.constrainPatternType(P1, X, widenParams = false)
-        debug.println(TypeComparer.explained(_.constrainPatternType(P1, X, widenParams = false)))
+        TypeComparer.constrainPatternType(P1, X, forceInvariantRefinement = true)
+        debug.println(
+          TypeComparer.explained(_.constrainPatternType(P1, X, forceInvariantRefinement = true))
+        )
       }
 
       // Maximization of the type means we try to cover all possible values
@@ -295,7 +297,7 @@ object TypeTestsCasts {
             derivedTree(expr, defn.Any_asInstanceOf, testType)
         }
 
-        /** Transform isInstanceOf OrType
+        /** Transform isInstanceOf
          *
          *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
          *    expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]

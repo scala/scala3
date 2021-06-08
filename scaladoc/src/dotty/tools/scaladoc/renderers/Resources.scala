@@ -94,21 +94,22 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case s: String => s
       }.mkString
 
-    def mkEntry(dri: DRI, name: String, text: String, descr: String) = jsonObject(
+    def mkEntry(dri: DRI, name: String, text: String, descr: String, kind: String) = jsonObject(
         "l" -> jsonString(absolutePath(dri)),
         "n" -> jsonString(name),
         "t" -> jsonString(text),
-        "d" -> jsonString(descr)
+        "d" -> jsonString(descr),
+        "k" -> jsonString(kind)
       )
 
     def processPage(page: Page): Seq[JSON] =
       val res =  page.content match
-        case m: Member =>
+        case m: Member if m.kind != Kind.RootPackage =>
           val descr = m.dri.asFileLocation
           def processMember(member: Member): Seq[JSON] =
             val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
             val sig = Signature(member.kind.name, " ") ++ Seq(Link(member.name, member.dri)) ++ signatureBuilder.names.reverse
-            val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr)
+            val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr, member.kind.name)
             val children = member
                 .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])
                 .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty)
@@ -116,7 +117,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
           processMember(m)
         case _ =>
-          Seq(mkEntry(page.link.dri, page.link.name, page.link.name, ""))
+          Seq(mkEntry(page.link.dri, page.link.name, page.link.name, "", "static"))
 
       res ++ page.children.flatMap(processPage)
 
@@ -138,6 +139,11 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     dottyRes("images/enum.svg"),
     dottyRes("images/enum_comp.svg"),
     dottyRes("images/given.svg"),
+    dottyRes("images/method.svg"),
+    dottyRes("images/type.svg"),
+    dottyRes("images/val.svg"),
+    dottyRes("images/package.svg"),
+    dottyRes("images/static.svg"),
     dottyRes("images/github-icon-black.png"),
     dottyRes("images/github-icon-white.png"),
     dottyRes("images/discord-icon-black.png"),

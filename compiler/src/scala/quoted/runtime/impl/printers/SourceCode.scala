@@ -1218,13 +1218,6 @@ object SourceCode {
         this += "]"
         printType(tpe.resType)
 
-      case tpe: TypeLambda =>
-        this += "["
-        printList(tpe.paramNames.zip(tpe.paramBounds), ", ",
-          (x: (String, TypeBounds)) => (this += x._1 += " ").printType(x._2))
-        this += "] => "
-        printType(tpe.resType)
-
       case tpe@TypeBounds(lo, hi) =>
         this += "_ >: "
         printType(lo)

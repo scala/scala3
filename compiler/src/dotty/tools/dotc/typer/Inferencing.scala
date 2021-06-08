@@ -33,7 +33,10 @@ object Inferencing {
    */
   def isFullyDefined(tp: Type, force: ForceDegree.Value)(using Context): Boolean = {
     val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
+    val result =
+      try new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
+      catch case ex: StackOverflowError =>
+        false // can happen for programs with illegal recusions, e.g. neg/recursive-lower-constraint.scala
     if (result) nestedCtx.typerState.commit()
     result
   }
@@ -43,7 +46,7 @@ object Inferencing {
    */
   def canDefineFurther(tp: Type)(using Context): Boolean =
     val prevConstraint = ctx.typerState.constraint
-    isFullyDefined(tp, force = ForceDegree.all)
+    isFullyDefined(tp, force = ForceDegree.failBottom)
     && (ctx.typerState.constraint ne prevConstraint)
 
   /** The fully defined type, where all type variables are forced.
@@ -599,6 +602,8 @@ trait Inferencing { this: Typer =>
         val toInstantiate = new InstantiateQueue
         for (tvar <- qualifying)
           if (!tvar.isInstantiated && constraint.contains(tvar)) {
+            constrainIfDependentParamRef(tvar, tree)
+
             // Needs to be checked again, since previous interpolations could already have
             // instantiated `tvar` through unification.
             val v = vs(tvar)
@@ -663,6 +668,33 @@ trait Inferencing { this: Typer =>
     }
     tree
   }
+
+  /** If `tvar` represents a parameter of a dependent method type in the current `call`
+   *  approximate it from below with the type of the actual argument. Skolemize that
+   *  type if necessary to make it a Singleton.
+   */
+  private def constrainIfDependentParamRef(tvar: TypeVar, call: Tree)(using Context): Unit =
+    representedParamRef(tvar) match
+      case ref: TermParamRef =>
+
+        def findArg(tree: Tree)(using Context): Tree = tree match
+          case Apply(fn, args) =>
+            if fn.tpe.widen eq ref.binder then
+              if ref.paramNum < args.length then args(ref.paramNum)
+              else EmptyTree
+            else findArg(fn)
+          case TypeApply(fn, _) => findArg(fn)
+          case Block(_, expr) => findArg(expr)
+          case Inlined(_, _, expr) => findArg(expr)
+          case _ => EmptyTree
+
+        val arg = findArg(call)
+        if !arg.isEmpty then
+          var argType = arg.tpe.widenExpr.widenTermRefExpr
+          if !argType.isSingleton then argType = SkolemType(argType)
+          argType <:< tvar
+      case _ =>
+  end constrainIfDependentParamRef
 }
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */

@@ -5,7 +5,9 @@
   --border-light: #DADFE6;
   --border-medium: #abc;
 
+  --body-bg: #f0f3f6;
   --code-bg: #F4F5FA;
+  --documentable-bg: #FFFFFF;
   --symbol-fg: #333;
   --link-fg: #00607D;
   --link-hover-fg: #00A0D0;
@@ -45,6 +47,7 @@ body {
   padding: 0;
   font-family: "Lato", sans-serif;
   font-size: 16px;
+  background-color: var(--body-bg);
 }
 
 /* Page layout */
@@ -75,7 +78,12 @@ h1, h2, h3 {
   font-family: var(--title-font);
   color: var(--title-fg);
 }
-pre, code, .monospace, .hljs {
+.monospace {
+  font-family: var(--mono-font);
+  background: var(--documentable-bg);
+  font-variant-ligatures: none;
+}
+pre, code, .hljs {
   font-family: var(--mono-font);
   background: var(--code-bg);
   font-variant-ligatures: none;
@@ -84,14 +92,58 @@ code {
   font-size: .8em;
   padding: 0 .3em;
 }
+pre {
+  overflow: visible;
+  scrollbar-width: thin;
+  margin: 0px;
+}
 pre code, pre code.hljs {
   font-size: 1em;
   padding: 0;
 }
+.snippet {
+  padding: 12px 8px 10px 12px;
+  background: var(--code-bg);
+  margin: 1em 0px;
+  border-radius: 2px;
+  box-shadow: 0 0 2px #888;
+}
+.snippet-error {
+  border-bottom: 2px dotted red;
+}
+.snippet-warn {
+  border-bottom: 2px dotted orange;
+}
+.snippet-info {
+  border-bottom: 2px dotted teal;
+}
+.snippet-debug {
+  border-bottom: 2px dotted pink;
+}
+.tooltip {
+  position: relative;
+}
+.tooltip:hover:after {
+  content: attr(label);
+  padding: 4px 8px;
+  color: white;
+  background-color:black;
+  position: absolute;
+  left: 0;
+  z-index:10;
+  box-shadow:0 0 3px #444;
+  opacity: 0.8;
+}
 pre, .symbol.monospace {
-  padding: 10px 8px 10px 12px;
   font-weight: 500;
   font-size: 12px;
+}
+pre .hljs-comment {
+  /* Fold comments in snippets */
+  white-space: normal;
+}
+.symbol.monospace {
+  padding: 12px 8px 10px 12px;
 }
 a, a:visited, span[data-unresolved-link] {
   text-decoration: none;
@@ -468,10 +520,16 @@ footer .pull-right {
   padding-right: 0.5em;
   min-width: 10em;
   max-width: 10em;
+  width: 10em;
   overflow: hidden;
   direction: rtl;
   white-space: nowrap;
   text-indent: 0em;
+}
+
+.documentableElement .docs {
+  width: 100%;
+  table-layout: fixed;
 }
 
 .documentableElement .modifiers .other-modifiers {
@@ -514,8 +572,8 @@ footer .pull-right {
   padding: 5px 4px 5px 4px;
   font-weight: 500;
   font-size: 12px;
-  background: var(--code-bg);
-  border: 0.25em solid white;
+  background: var(--documentable-bg);
+  border: 0.25em solid var(--body-bg);
 }
 
 .documentableElement>div {
@@ -524,12 +582,11 @@ footer .pull-right {
 
 .expand.documentableElement>div {
   display: block;
-  padding-left: 3em;
 }
 
 .expand.documentableElement>div.header {
   display: block;
-  padding-left: 7.5em;
+  padding-left: 4.5em;
   text-indent: -4.5em;
 }
 
@@ -632,40 +689,60 @@ footer .pull-right {
   color:transparent;
 }
 
-.micon.c {
+.micon.cl {
   content: url("../images/class.svg")
 }
 
-.micon.c-wc {
+.micon.cl-wc {
   content: url("../images/class_comp.svg")
 }
 
-.micon.o {
+.micon.ob {
   content: url("../images/object.svg")
 }
 
-.micon.o-wc {
+.micon.ob-wc {
   content: url("../images/object_comp.svg")
 }
 
-.micon.t {
+.micon.tr {
   content: url("../images/trait.svg")
 }
 
-.micon.t-wc {
+.micon.tr-wc {
   content: url("../images/trait_comp.svg")
 }
 
-.micon.e {
+.micon.en {
   content: url("../images/enum.svg")
 }
 
-.micon.e-wc {
+.micon.en-wc {
   content: url("../images/enum_comp.svg")
 }
 
-.micon.g {
+.micon.gi {
   content: url("../images/given.svg")
+}
+
+.micon.va {
+  content: url("../images/val.svg")
+}
+
+.micon.ty {
+  content: url("../images/type.svg")
+}
+
+.micon.st {
+  content: url("../images/static.svg")
+}
+
+.micon.pa {
+  content: url("../images/package.svg")
+}
+
+.micon.de {
+  content: url("../images/method.svg")
 }
 
 #leftColumn .socials {

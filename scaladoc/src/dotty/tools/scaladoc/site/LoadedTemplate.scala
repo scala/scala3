@@ -51,4 +51,4 @@ case class LoadedTemplate(
       ("site" -> (getMap("site") + ("posts" -> posts))) + ("urls" -> sourceLinks.toMap) +
       ("page" -> (getMap("page") + ("title" -> templateFile.title)))
 
-    templateFile.resolveInner(RenderingContext(updatedSettings, ctx.layouts))
+    templateFile.resolveInner(RenderingContext(updatedSettings, ctx.layouts))(using ctx)

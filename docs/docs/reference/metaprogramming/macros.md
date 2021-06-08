@@ -414,7 +414,7 @@ Inlining the `assert` function would give the following program:
 ```scala
 @main def program =
   val x = 1
-  ${ Macros.assertImpl('{ x != 0) } }
+  ${ Macros.assertImpl('{ x != 0}) }
 ```
 
 The example is only phase correct because `Macros` is a global value and

@@ -466,7 +466,8 @@ class TypeApplications(val self: Type) extends AnyVal {
   def translateJavaArrayElementType(using Context): Type =
     // A type parameter upper-bounded solely by `FromJavaObject` has `ObjectClass` as its classSymbol
     if self.typeSymbol.isAbstractOrParamType && (self.classSymbol eq defn.ObjectClass) then
-      AndType(self, defn.ObjectType)
+      // The order is important here since Java intersections erase to their first operand
+      AndType(defn.ObjectType, self)
     else
       self
 

@@ -495,7 +495,27 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         sym.setFlag(Scala2x)
       if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || sym.is(Scala2Existential))) {
         val owner = sym.owner
-        if (owner.isClass)
+        val canEnter =
+          owner.isClass &&
+          (!sym.is(TypeParam) ||
+            owner.infoOrCompleter.match
+              case completer: ClassUnpickler =>
+                // Type parameters seen after class initialization are not
+                // actually type parameters of the current class but of some
+                // external class because of the bizarre way in which Scala 2
+                // pickles them (see
+                // https://github.com/scala/scala/blob/aa31e3e6bb945f5d69740d379ede1cd514904109/src/compiler/scala/tools/nsc/symtab/classfile/Pickler.scala#L181-L197).
+                // Make sure we don't enter them in the class otherwise the
+                // compiler will get very confused (testcase in sbt-test/scala2-compat/i12641).
+                // Note: I don't actually know if these stray type parameters
+                // can also show up before initialization, if that's the case
+                // we'll need to study more closely how Scala 2 handles type
+                // parameter unpickling and try to emulate it.
+                !completer.isInitialized
+              case _ =>
+                true)
+
+        if (canEnter)
           owner.asClass.enter(sym, symScope(owner))
       }
       sym
@@ -625,23 +645,30 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   object localMemberUnpickler extends LocalUnpickler
 
   class ClassUnpickler(infoRef: Int) extends LocalUnpickler with TypeParamsCompleter {
-    private def readTypeParams()(using Context): List[TypeSymbol] = {
+    private var myTypeParams: List[TypeSymbol] = null
+
+    private def readTypeParams()(using Context): Unit = {
       val tag = readByte()
       val end = readNat() + readIndex
-      if (tag == POLYtpe) {
-        val unusedRestpeRef = readNat()
-        until(end, () => readSymbolRef()(using ctx)).asInstanceOf[List[TypeSymbol]]
-      }
-      else Nil
+      myTypeParams =
+        if (tag == POLYtpe) {
+          val unusedRestpeRef = readNat()
+          until(end, () => readSymbolRef()(using ctx)).asInstanceOf[List[TypeSymbol]]
+        } else Nil
     }
-    private def loadTypeParams(using Context) =
+    private def loadTypeParams()(using Context) =
       atReadPos(index(infoRef), () => readTypeParams()(using ctx))
 
+    /** Have the type params of this class already been unpickled? */
+    def isInitialized: Boolean = myTypeParams ne null
+
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
-    def init()(using Context): List[TypeSymbol] = loadTypeParams
+    def init()(using Context): List[TypeSymbol] =
+      if !isInitialized then loadTypeParams()
+      myTypeParams
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      loadTypeParams
+      init()
   }
 
   def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol, infoRef: Int): ClassUnpickler =

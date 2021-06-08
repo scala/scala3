@@ -34,7 +34,7 @@ class BaseHtmlTest:
             tastyFiles = pcks.flatMap(tastyFiles(_)),
             output = dest.toFile,
             docsRoot = docsRoot,
-            projectVersion = Some(projectVersion),
+            projectVersion = Some(projectVersion)
           )
         Scaladoc.run(args)(using testContext)
         op(using ProjectContext(dest))

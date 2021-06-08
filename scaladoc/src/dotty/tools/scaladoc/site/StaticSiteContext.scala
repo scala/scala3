@@ -13,7 +13,9 @@ import collection.JavaConverters._
 class StaticSiteContext(
   val root: File,
   val args: Scaladoc.Args,
-  val sourceLinks: SourceLinks)(using val outerCtx: CompilerContext):
+  val sourceLinks: SourceLinks,
+  val snippetCompilerArgs: snippets.SnippetCompilerArgs,
+  val snippetChecker: snippets.SnippetChecker)(using val outerCtx: CompilerContext):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 

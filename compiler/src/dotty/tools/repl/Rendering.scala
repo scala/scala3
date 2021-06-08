@@ -118,8 +118,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       None
     else
       string.map { s =>
-        if (s.startsWith(str.REPL_SESSION_LINE))
-          s.drop(str.REPL_SESSION_LINE.length).dropWhile(c => c.isDigit || c == '$')
+        if (s.startsWith(REPL_WRAPPER_NAME_PREFIX))
+          s.drop(REPL_WRAPPER_NAME_PREFIX.length).dropWhile(c => c.isDigit || c == '$')
         else
           s
       }
@@ -180,6 +180,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 }
 
 object Rendering {
+  final val REPL_WRAPPER_NAME_PREFIX = s"${nme.REPL_PACKAGE}.${str.REPL_SESSION_LINE}"
 
   extension (s: Symbol)
     def showUser(using Context): String = {

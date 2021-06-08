@@ -91,7 +91,7 @@ class TreeChecker extends Phase with SymTransformer {
     // until erasure, see the comment above `Compiler#phases`.
     if (ctx.phaseId <= erasurePhase.id) {
       val initial = symd.initial
-      assert(symd.signature == initial.signature,
+      assert(symd == initial || symd.signature == initial.signature,
         i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
            |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
@@ -421,6 +421,30 @@ class TreeChecker extends Phase with SymTransformer {
     override def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree =
       assert(tree.qual.tpe.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
+
+    override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
+      val tpt1 = checkSimpleKinded(typedType(tree.tpt))
+      val expr1 = tree.expr match
+        case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
+          tree.expr.withType(tpt1.tpe)
+        case _ =>
+          var pt1 = tpt1.tpe
+          if pt1.isRepeatedParam then
+            pt1 = pt1.translateFromRepeated(toArray = tree.expr.typeOpt.derivesFrom(defn.ArrayClass))
+          val isAfterInlining =
+            val inliningPhase = ctx.base.inliningPhase
+            inliningPhase.exists && ctx.phase.id > inliningPhase.id
+          if isAfterInlining then
+            // The staging phase destroys in PCPCheckAndHeal the property that
+            // tree.expr.tpe <:< pt1. A test case where this arises is run-macros/enum-nat-macro.
+            // We should follow up why this happens. If the problem is fixed, we can
+            // drop the isAfterInlining special case. To reproduce the problem, just
+            // change the condition from `isAfterInlining` to `false`.
+            typed(tree.expr)
+          else
+            //println(i"typing $tree, ${tree.expr.typeOpt}, $pt1, ${ctx.mode is Mode.Pattern}")
+            typed(tree.expr, pt1)
+      untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
 
     private def checkOwner(tree: untpd.Tree)(using Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =

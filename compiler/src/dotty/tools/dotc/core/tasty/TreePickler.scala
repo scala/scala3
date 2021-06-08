@@ -332,6 +332,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickleDef(tag: Int, mdef: MemberDef, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(using Context): Unit = {
     val sym = mdef.symbol
+
     assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)

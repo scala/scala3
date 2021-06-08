@@ -73,9 +73,15 @@
 
 .scaladoc-searchbar-result {
     background: white;
-    line-height: 32px;
-    padding-left: 10px;
-    padding-right: 10px;
+    line-height: 24px;
+    display: flex;
+    padding: 4px 10px 4px 10px;
+}
+
+.scaladoc-searchbar-result .micon {
+    height: 16px;
+    width: 16px;
+    margin: 4px 8px 0px 0px;
 }
 
 .scaladoc-searchbar-result:first-of-type {
@@ -96,6 +102,8 @@
      */
     display: inline-block;
     width: 100%;
+    text-indent: -20px;
+    padding-left: 20px;
 }
 
 .scaladoc-searchbar-result .scaladoc-searchbar-location {
@@ -108,5 +116,37 @@
 
 .pull-right {
     float: right;
-    margin-left: auto
+    margin-left: auto;
+}
+
+.snippet-comment-button {
+    position: absolute;
+    display: inline-block;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    background:
+        linear-gradient(#fff, #fff),
+        linear-gradient(#fff, #fff),
+        #aaa;
+    background-position: center;
+    background-size: 50% 2px, 2px 50%;
+    background-repeat: no-repeat;
+    border-radius: 12px;
+    box-shadow: 0 0 2px black;
+}
+
+.snippet-comment-button:hover {
+    background:
+        linear-gradient(#444, #444),
+        linear-gradient(#444, #444),
+        #ddd;
+    background-position: center;
+    background-size: 50% 2px, 2px 50%;
+    background-repeat: no-repeat;
+}
+
+.hide-snippet-comments-button {
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
 }

@@ -182,6 +182,7 @@ object desugar {
         tpt     = TypeTree(defn.UnitType),
         rhs     = setterRhs
       ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
+       .dropEndMarker() // the end marker should only appear on the getter definition
       Thicket(vdef1, setter)
     }
     else vdef1
@@ -883,6 +884,7 @@ object desugar {
       val clsTmpl = cpy.Template(impl)(self = clsSelf, body = impl.body)
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
+        .withEndMarker(copyFrom = mdef) // copy over the end marker position to the module class def
       Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
   }
@@ -1091,6 +1093,16 @@ object desugar {
     case IdPattern(named, tpt) =>
       derivedValDef(original, named, tpt, rhs, mods)
     case _ =>
+
+      def filterWildcardGivenBinding(givenPat: Bind): Boolean =
+        givenPat.name != nme.WILDCARD
+
+      def errorOnGivenBinding(bind: Bind)(using Context): Boolean =
+        report.error(
+          em"""${hl("given")} patterns are not allowed in a ${hl("val")} definition,
+              |please bind to an identifier and use an alias given.""".stripMargin, bind)
+        false
+
       def isTuplePattern(arity: Int): Boolean = pat match {
         case Tuple(pats) if pats.size == arity =>
           pats.forall(isVarPattern)
@@ -1106,13 +1118,23 @@ object desugar {
       // - `pat` is a tuple of N variables or wildcard patterns like `(x1, x2, ..., xN)`
       val tupleOptimizable = forallResults(rhs, isMatchingTuple)
 
+      val inAliasGenerator = original match
+        case _: GenAlias => true
+        case _ => false
+
       val vars =
         if (tupleOptimizable) // include `_`
-          pat match {
-            case Tuple(pats) =>
-              pats.map { case id: Ident => id -> TypeTree() }
-          }
-        else getVariables(pat)  // no `_`
+          pat match
+            case Tuple(pats) => pats.map { case id: Ident => id -> TypeTree() }
+        else
+          getVariables(
+            tree = pat,
+            shouldAddGiven =
+              if inAliasGenerator then
+                filterWildcardGivenBinding
+              else
+                errorOnGivenBinding
+          ) // no `_`
 
       val ids = for ((named, _) <- vars) yield Ident(named.name)
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
@@ -1299,7 +1321,9 @@ object desugar {
     if (nestedStats.isEmpty) pdef
     else {
       val name = packageObjectName(ctx.source)
-      val grouped = ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+      val grouped =
+        ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+          .withMods(Modifiers(Synthetic))
       cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)
     }
   }
@@ -1796,16 +1820,21 @@ object desugar {
   /** Returns list of all pattern variables, possibly with their types,
    *  without duplicates
    */
-  private def getVariables(tree: Tree)(using Context): List[VarInfo] = {
+  private def getVariables(tree: Tree, shouldAddGiven: Context ?=> Bind => Boolean)(using Context): List[VarInfo] = {
     val buf = ListBuffer[VarInfo]()
     def seenName(name: Name) = buf exists (_._1.name == name)
     def add(named: NameTree, t: Tree): Unit =
       if (!seenName(named.name) && named.name.isTermName) buf += ((named, t))
     def collect(tree: Tree): Unit = tree match {
-      case Bind(nme.WILDCARD, tree1) =>
+      case tree @ Bind(nme.WILDCARD, tree1) =>
+        if tree.mods.is(Given) then
+          val Typed(_, tpt) = tree1: @unchecked
+          if shouldAddGiven(tree) then
+            add(tree, tpt)
         collect(tree1)
       case tree @ Bind(_, Typed(tree1, tpt)) =>
-        add(tree, tpt)
+        if !(tree.mods.is(Given) && !shouldAddGiven(tree)) then
+          add(tree, tpt)
         collect(tree1)
       case tree @ Bind(_, tree1) =>
         add(tree, TypeTree())
@@ -1823,7 +1852,7 @@ object desugar {
       case SeqLiteral(elems, _) =>
         elems foreach collect
       case Alternative(trees) =>
-        for (tree <- trees; (vble, _) <- getVariables(tree))
+        for (tree <- trees; (vble, _) <- getVariables(tree, shouldAddGiven))
           report.error(IllegalVariableInPatternAlternative(), vble.srcPos)
       case Annotated(arg, _) =>
         collect(arg)

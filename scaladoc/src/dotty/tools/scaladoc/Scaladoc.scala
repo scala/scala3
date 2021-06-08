@@ -31,6 +31,7 @@ object Scaladoc:
     tastyDirs: Seq[File] = Nil,
     tastyFiles: Seq[File] = Nil,
     classpath: String = "",
+    bootclasspath: String = "",
     output: File,
     docsRoot: Option[String] = None,
     projectVersion: Option[String] = None,
@@ -49,6 +50,8 @@ object Scaladoc:
     includePrivateAPI: Boolean = false,
     docCanonicalBaseUrl: String = "",
     documentSyntheticTypes: Boolean = false,
+    snippetCompiler: List[String] = Nil,
+    snippetCompilerDebug: Boolean = false
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -65,7 +68,7 @@ object Scaladoc:
       val tastyFiles = parsedArgs.tastyFiles ++ parsedArgs.tastyDirs.flatMap(listTastyFiles)
 
       if !ctx.reporter.hasErrors then
-        val updatedArgs = parsedArgs.copy(tastyDirs = Nil, tastyFiles = tastyFiles)
+        val updatedArgs = parsedArgs.copy(tastyDirs = parsedArgs.tastyDirs, tastyFiles = tastyFiles)
 
         if (parsedArgs.output.exists()) util.IO.delete(parsedArgs.output)
 
@@ -172,6 +175,7 @@ object Scaladoc:
         dirs,
         validFiles,
         classpath.get,
+        bootclasspath.get,
         destFile,
         siteRoot.nonDefault,
         projectVersion.nonDefault,
@@ -189,7 +193,9 @@ object Scaladoc:
         groups.get,
         visibilityPrivate.get,
         docCanonicalBaseUrl.get,
-        YdocumentSyntheticTypes.get
+        YdocumentSyntheticTypes.get,
+        snippetCompiler.get,
+        snippetCompilerDebug.get
       )
       (Some(docArgs), newContext)
     }

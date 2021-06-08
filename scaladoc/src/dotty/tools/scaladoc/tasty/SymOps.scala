@@ -38,6 +38,11 @@ object SymOps:
         Some(s"${sym.name}-$hash")
       }
       else None
+
+    def source =
+      val path = sym.pos.map(_.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath)
+      path.map(TastyMemberSource(_, sym.pos.get.startLine))
+
     //TODO: Retrieve string that will match scaladoc anchors
 
 

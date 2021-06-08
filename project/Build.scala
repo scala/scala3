@@ -65,7 +65,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   val referenceVersion = "3.0.0"
 
-  val baseVersion = "3.0.1-RC1"
+  val baseVersion = "3.0.2-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -123,7 +123,11 @@ object Build {
     else
       baseVersion + "-bin-SNAPSHOT"
   }
-  val dottyNonBootstrappedVersion = dottyVersion + "-nonbootstrapped"
+  val dottyNonBootstrappedVersion = {
+    // Make sure sbt always computes the scalaBinaryVersion correctly
+    val bin = if (!dottyVersion.contains("-bin")) "-bin" else ""
+    dottyVersion + bin + "-nonbootstrapped"
+  }
 
   val sbtCommunityBuildVersion = "0.1.0-SNAPSHOT"
 
@@ -1174,9 +1178,7 @@ object Build {
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             )).get
 
-          ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
-            -- "JSOptionalTest212FunParamInference.scala" // TODO: #11694
-            )).get
+          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
@@ -1239,16 +1241,19 @@ object Build {
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
     )
 
-  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil) =
+  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil, usingScript: Boolean = true) =
     Def.taskDyn {
       val distLocation = (dist / pack).value
       val projectVersion = version.value
       IO.createDirectory(file(outDir))
       val stdLibVersion = stdlibVersion(Bootstrapped)
+      val scalaLib = findArtifactPath(externalCompilerClasspathTask.value, "scala-library")
+      val dottyLib = (`scala3-library` / Compile / classDirectory).value
       // TODO add versions etc.
       def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
       def scalaSrcLink(v: String, s: String) = s"-source-links:$s=github://scala/scala/v$v#src/library"
       def dottySrcLink(v: String, s: String) = s"-source-links:$s=github://lampepfl/dotty/$v#library/src"
+
       val revision = Seq("-revision", ref, "-project-version", projectVersion)
       val cmd = Seq(
         "-d",
@@ -1256,10 +1261,24 @@ object Build {
         "-project",
         name,
         scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala")),
-        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty"))
+        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty")),
+        s"-source-links:github://lampepfl/dotty/$referenceVersion",
       ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
       import _root_.scala.sys.process._
-      Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
+      if (usingScript)
+        Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
+      else {
+        val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
+        Def.task {
+          try {
+            (Compile / run).toTask(escapedCmd.mkString(" ", " ", "")).value
+            0
+          } catch {
+            case _ : Throwable => 1
+          }
+        }
+      }
+
     }
 
   val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
@@ -1306,7 +1325,7 @@ object Build {
       generateSelfDocumentation := Def.taskDyn {
         generateDocumentation(
           (Compile / classDirectory).value.getAbsolutePath :: Nil,
-          "scaladoc", "scaladoc/output/self", VersionUtil.gitHash,
+          "scaladoc", "scaladoc/output/self", VersionUtil.gitHash
         )
       }.value,
       generateScalaDocumentation := Def.inputTaskDyn {
@@ -1345,8 +1364,9 @@ object Build {
             "-comment-syntax", "wiki",
             "-siteroot", "docs",
             s"-source-links:docs=github://lampepfl/dotty/master#docs",
-            "-doc-root-content", docRootFile.toString
-          )
+            "-doc-root-content", docRootFile.toString,
+            "-Ydocument-synthetic-types"
+          ), usingScript = false
         ))
       }.evaluated,
 
@@ -1355,7 +1375,8 @@ object Build {
           (Test / Build.testcasesOutputDir).value,
           "scaladoc testcases",
           "scaladoc/output/testcases",
-          "master")
+          "master"
+        )
       }.value,
 
       Test / buildInfoKeys := Seq[BuildInfoKey](

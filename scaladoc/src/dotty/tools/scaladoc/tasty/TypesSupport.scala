@@ -27,14 +27,8 @@ trait TypesSupport:
       case ThisType(tpe) => inner(tpe)
       case AnnotatedType(tpe, _) => inner(tpe)
       case AppliedType(tpe, _) => inner(tpe)
-      case tp @ TermRef(qual, typeName) =>
-        qual match
-        case _: TypeRepr | _: NoPrefix => Some(tp.termSymbol)
-        case other => None
-      case tp @ TypeRef(qual, typeName) =>
-        qual match
-        case _: TypeRepr | _: NoPrefix => Some(tp.typeSymbol)
-        case other => None
+      case tp @ TermRef(qual, typeName) => Some(tp.termSymbol)
+      case tp @ TypeRef(qual, typeName) => Some(tp.typeSymbol)
 
     val typeSymbol = extractTypeSymbol(method.returnTpt)
 
@@ -204,8 +198,7 @@ trait TypesSupport:
       case tp @ TypeRef(qual, typeName) =>
         qual match {
           case r: RecursiveThis => texts(s"this.$typeName")
-          case _: TypeRepr | _: NoPrefix => link(tp.typeSymbol)
-          case other => noSupported(s"TypeRepr: $tp")
+          case _: TypeRepr => link(tp.typeSymbol)
         }
         // convertTypeOrBoundsToReference(reflect)(qual) match {
         //     case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true)
@@ -271,6 +264,20 @@ trait TypesSupport:
       case ParamRef(m: MethodType, i) => texts(m.paramNames(i))
 
       case RecursiveType(tp) => inner(tp)
+
+      case MatchCase(pattern, rhs) =>
+        texts("case ") ++ inner(pattern) ++ texts(" => ") ++ inner(rhs)
+
+      case t: dotty.tools.dotc.core.Types.LazyRef => try {
+        inner(t.ref(using ctx.compilerContext).asInstanceOf[TypeRepr])
+      } catch {
+        case e: AssertionError => texts("LazyRef(...)")
+      }
+
+      case tpe =>
+        val msg = s"Encountered unsupported type. Report this problem to https://github.com/lampepfl/dotty/.\n" +
+          s"${tpe.show(using Printer.TypeReprStructure)}"
+        throw MatchError(msg)
 
   private def typeBound(using Quotes)(t: reflect.TypeRepr, low: Boolean) =
     import reflect._

@@ -42,7 +42,6 @@ object Test {
   }
   // fails for: (Bar2, Bar2)
   def fail4[T <: AnyRef](xx: (Foo[T], Foo[T])) = xx match {
-    case (Bar1, Bar1) => ()
     case (Bar2, Bar3) => ()
     case (Bar3, _) => ()
   }

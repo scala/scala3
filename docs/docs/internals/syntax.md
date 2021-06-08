@@ -116,7 +116,7 @@ given     if        implicit  import    lazy      match     new
 null      object    override  package   private   protected return
 sealed    super     then      throw     trait     true      try
 type      val       var       while     with      yield
-:         =         <-        =>        <:        :>        #
+:         =         <-        =>        <:        >:        #
 @         =>>       ?=>
 ```
 
@@ -126,7 +126,7 @@ type      val       var       while     with      yield
 as  derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
 ```
 
-See the [separate section on soft keywords](./soft-modifier.md) for additional
+See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
 details on where a soft keyword is recognized.
 
 ## Context-free Syntax

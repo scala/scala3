@@ -11,7 +11,7 @@ trait Z/*<-givens::Z#*/[T/*<-givens::Z#[T]*/]:
 
 
 
-/*<-givens::InventedNames$package.*/given intValue/*<-givens::InventedNames$package.intValue.*/: Int/*->scala::Int#*/ = 4
+given intValue/*<-givens::InventedNames$package.intValue.*/: Int/*->scala::Int#*/ = 4
 given /*<-givens::InventedNames$package.given_String.*/String/*->scala::Predef.String#*/ = "str"
 given /*<-givens::InventedNames$package.given_Double().*/(using Int/*->scala::Int#*/): Double/*->scala::Double#*/ = 4.0
 given /*<-givens::InventedNames$package.given_List_T().*/[T/*<-givens::InventedNames$package.given_List_T().[T]*/]: List/*->scala::package.List#*/[T/*->givens::InventedNames$package.given_List_T().[T]*/] = Nil/*->scala::package.Nil.*/

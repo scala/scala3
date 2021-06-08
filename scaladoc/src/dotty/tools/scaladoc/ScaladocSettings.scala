@@ -19,12 +19,13 @@ import dotty.tools.dotc.core.Contexts._
 class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val unsupportedSettings = Seq(
     // Options that we like to support
-    bootclasspath, extdirs, javabootclasspath, encoding, usejavacp,
+    extdirs, javabootclasspath, encoding,
     // Needed for plugin architecture
     plugin,disable,require, pluginsDir, pluginOptions,
     // we need support for sourcepath and sourceroot
     sourcepath, sourceroot
   )
+
 
   val projectName: Setting[String] =
     StringSetting("-project", "project title", "The name of the project.", "", aliases = List("-doc-title"))
@@ -94,3 +95,12 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
 
   val YdocumentSyntheticTypes: Setting[Boolean] =
     BooleanSetting("-Ydocument-synthetic-types", "Documents intrinsic types e. g. Any, Nothing. Setting is useful only for stdlib", false)
+
+  val snippetCompiler: Setting[List[String]] =
+    MultiStringSetting("-snippet-compiler", "snippet-compiler", snippets.SnippetCompilerArgs.usage)
+
+  val snippetCompilerDebug: Setting[Boolean] =
+    BooleanSetting("-Ysnippet-compiler-debug", snippets.SnippetCompilerArgs.debugUsage, false)
+
+  def scaladocSpecificSettings: Set[Setting[_]] =
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug)

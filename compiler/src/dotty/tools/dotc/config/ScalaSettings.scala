@@ -214,9 +214,6 @@ trait AllScalaSettings extends CommonScalaSettings { self: Settings.SettingGroup
 
   val YforceInlineWhileTyping: Setting[Boolean] = BooleanSetting("-Yforce-inline-while-typing", "Make non-transparent inline methods inline when typing. Emulates the old inlining behavior of 3.0.0-M3.")
 
-  /** Dottydoc specific settings that are not used in scaladoc */
-  val docSnapshot: Setting[Boolean] = BooleanSetting("-doc-snapshot", "Generate a documentation snapshot for the current Dotty version")
-
   val projectUrl: Setting[String] = StringSetting (
     "-project-url",
     "project repository homepage",

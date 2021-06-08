@@ -4,17 +4,18 @@ package tasty.comments
 import scala.collection.immutable.SortedMap
 import scala.util.Try
 
-import com.vladsch.flexmark.util.{ast => mdu}
+import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
 import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.util.options.MutableDataSet
 
 import scala.quoted._
+import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 import dotty.tools.scaladoc.tasty.comments.wiki.Paragraph
 import dotty.tools.scaladoc.DocPart
-import dotty.tools.scaladoc.tasty.SymOpsWithLinkCache
+import dotty.tools.scaladoc.tasty.{ SymOpsWithLinkCache, SymOps }
 import collection.JavaConverters._
-import collection.JavaConverters._
+import dotty.tools.scaladoc.snippets._
 
 class Repr(val qctx: Quotes)(val sym: qctx.reflect.Symbol)
 
@@ -70,13 +71,16 @@ case class PreparsedComment(
 
 case class DokkaCommentBody(summary: Option[DocPart], body: DocPart)
 
-abstract class MarkupConversion[T](val repr: Repr)(using DocContext) {
+abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
   protected def stringToMarkup(str: String): T
   protected def markupToDokka(t: T): DocPart
   protected def markupToString(t: T): String
   protected def markupToDokkaCommentBody(t: T): DokkaCommentBody
   protected def filterEmpty(xs: List[String]): List[T]
   protected def filterEmpty(xs: SortedMap[String, String]): SortedMap[String, T]
+  protected def processSnippets(t: T): T
+
+  lazy val snippetChecker = dctx.snippetChecker
 
   val qctx: repr.qctx.type = if repr == null then null else repr.qctx // TODO why we do need null?
   val owner: qctx.reflect.Symbol =
@@ -84,8 +88,8 @@ abstract class MarkupConversion[T](val repr: Repr)(using DocContext) {
   private given qctx.type = qctx
 
   object SymOpsWithLinkCache extends SymOpsWithLinkCache
-  export SymOpsWithLinkCache.dri
-  export SymOpsWithLinkCache.driInContextOfInheritingParent
+  export SymOpsWithLinkCache._
+  import SymOps._
 
   def resolveLink(queryStr: String): DocLink =
     if SchemeUri.matches(queryStr) then DocLink.ToURL(queryStr)
@@ -122,8 +126,27 @@ abstract class MarkupConversion[T](val repr: Repr)(using DocContext) {
       case _ => None
     }
 
+  def snippetCheckingFunc: qctx.reflect.Symbol => SnippetChecker.SnippetCheckingFunc =
+    (s: qctx.reflect.Symbol) => {
+      val path = s.source.map(_.path)
+      val pathBasedArg = dctx.snippetCompilerArgs.get(path)
+      val data = SnippetCompilerDataCollector[qctx.type](qctx).getSnippetCompilerData(s, s)
+      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
+          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
+
+          snippetChecker.checkSnippet(str, Some(data), arg, lineOffset).collect {
+              case r: SnippetCompilationResult if !r.isSuccessful =>
+                val msg = s"In member ${s.name} (${s.dri.location}):\n${r.getSummary}"
+                report.error(msg)(using dctx.compilerContext)
+                r
+              case r => r
+          }
+      }
+    }
+
   final def parse(preparsed: PreparsedComment): Comment =
-    val body = markupToDokkaCommentBody(stringToMarkup(preparsed.body))
+    val markup = stringToMarkup(preparsed.body)
+    val body = markupToDokkaCommentBody(processSnippets(markup))
     Comment(
       body                    = body.body,
       short                   = body.summary,
@@ -148,7 +171,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using DocContext) {
     )
 }
 
-class MarkdownCommentParser(repr: Repr)(using DocContext)
+class MarkdownCommentParser(repr: Repr)(using dctx: DocContext)
     extends MarkupConversion[mdu.Node](repr) {
 
   def stringToMarkup(str: String) =
@@ -174,6 +197,9 @@ class MarkdownCommentParser(repr: Repr)(using DocContext)
     xs.view.mapValues(_.trim)
       .filterNot { case (_, v) => v.isEmpty }
       .mapValues(stringToMarkup).to(SortedMap)
+
+  def processSnippets(root: mdu.Node): mdu.Node =
+    FlexmarkSnippetProcessor.processSnippets(root, dctx.snippetCompilerArgs.debug, snippetCheckingFunc(owner))
 }
 
 class WikiCommentParser(repr: Repr)(using DocContext)
@@ -227,3 +253,7 @@ class WikiCommentParser(repr: Repr)(using DocContext)
   def filterEmpty(xs: SortedMap[String,String]) =
     xs.view.mapValues(stringToMarkup).to(SortedMap)
       .filterNot { case (_, v) => v.blocks.isEmpty }
+
+  def processSnippets(root: wiki.Body): wiki.Body =
+    // Currently not supported
+    root

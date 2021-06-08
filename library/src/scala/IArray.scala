@@ -249,9 +249,11 @@ object IArray:
   extension [T](arr: IArray[T]) def takeWhile(p: T => Boolean): IArray[T] =
     genericArrayOps(arr).takeWhile(p)
 
-  /** Returns a mutable copy of this immutable array. */
-  extension [T](arr: IArray[T]) def toArray: Array[T] =
-    arr.clone.asInstanceOf[Array[T]]
+  extension [T](arr: IArray[T])
+    /** Returns a mutable copy of this immutable array. */
+    @deprecated("This method implementation is incorrect and calling it can crash your program, please use `IArray.genericWrapArray(myIArray).toArray` instead.", "3.0.1")
+    def toArray: Array[T] =
+      arr.clone.asInstanceOf[Array[T]]
 
   extension [T](arr: IArray[T])
     def ++[U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr) ++ suffix.toSeq

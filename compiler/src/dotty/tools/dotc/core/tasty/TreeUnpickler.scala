@@ -831,7 +831,11 @@ class TreeUnpickler(reader: TastyReader,
           val tpt = readTpt()(using localCtx)
           val paramss = normalizeIfConstructor(
               paramDefss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
-          val resType = effectiveResultType(sym, paramss, tpt.tpe)
+          val resType =
+            if name == nme.CONSTRUCTOR then
+              effectiveResultType(sym, paramss)
+            else
+              tpt.tpe
           sym.info = methodType(paramss, resType)
           DefDef(paramDefss, tpt)
         case VALDEF =>
