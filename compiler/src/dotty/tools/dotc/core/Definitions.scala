@@ -443,7 +443,7 @@ class Definitions {
 
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
-  @tu lazy val captureRootType: TypeSymbol = enterType(tpnme.CAPTURE_ROOT, TypeBounds.empty)
+  @tu lazy val captureRootType: TypeSymbol = enterType(tpnme.CAPTURE_ROOT, TypeBounds.empty, Deferred)
 
   /** Marker method to indicate an argument to a call-by-name parameter.
    *  Created by byNameClosures and elimByName, eliminated by Erasure,

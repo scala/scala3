@@ -2384,14 +2384,15 @@ object Types {
     }
 
     /** A reference can be tracked if it is
-     *   (1) local,
+     *   (1) a local term ref
      *   (2) a type parameter,
      *   (3) a method term parameter
      *  References to term parameters of classes cannot be tracked individually.
      *  They are subsumed in the capture sets of the enclosing class.
      */
     def canBeTracked(using Context) =
-      (prefix eq NoPrefix) || symbol.is(TypeParam) || isRootCapability
+      if isTerm then prefix eq NoPrefix
+      else symbol.is(TypeParam) || isRootCapability
 
     override def isRootCapability(using Context): Boolean =
       name == tpnme.CAPTURE_ROOT && symbol == defn.captureRootType

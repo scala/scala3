@@ -15,6 +15,7 @@ def h2(x: C holds *): Any =
 
 class A
 type Cap = C holds *
+type Top = Any holds *
 
 def h3(x: Cap): A =
   class F(y: Int) extends A:
@@ -24,3 +25,10 @@ def h3(x: Cap): A =
 def h4(x: Cap, y: Int): A =
   new A:
     def m() = if x == null then y else y  // error
+
+def foo() =
+  val x: C holds * = ???
+  def h[X <:Top](a: X)(b: X) = a
+  val z2 = h[() => Cap](() => x)(() => C())  // error
+  val z3 = h(() => x)(() => C())  // error
+
