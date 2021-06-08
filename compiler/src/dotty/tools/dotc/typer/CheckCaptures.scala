@@ -50,7 +50,7 @@ import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 class CheckCaptures extends RefineTypes:
   import ast.tpd.*
 
-  def phaseName: String = "checkCaptures"
+  def phaseName: String = "cc"
   override def isEnabled(using Context) = ctx.settings.Ycc.value
 
   def newRefiner() = CaptureChecker()
@@ -78,6 +78,7 @@ class CheckCaptures extends RefineTypes:
     override def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree =
       super.typedClosure(tree, pt) match
         case tree1: Closure =>
+          println(i"typing closure ${tree1.meth.symbol} with fvs ${capturedVars(tree1.meth.symbol)}")
           tree1.withType(tree1.tpe.capturing(capturedVars(tree1.meth.symbol)))
         case tree1 => tree1
 
