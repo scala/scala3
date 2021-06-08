@@ -141,26 +141,37 @@ abstract class Reporter extends interfaces.ReporterResult {
   var unreportedWarnings: Map[String, Int] = Map.empty
 
   def report(dia: Diagnostic)(using Context): Unit =
-    val isSummarized = dia match
-      case dia: ConditionalWarning => !dia.enablingOption.value
-      case _ => false
-    if isSummarized  // avoid isHidden test for summarized warnings so that message is not forced
-       || !isHidden(dia)
-    then
-      withMode(Mode.Printing)(doReport(dia))
-      dia match
-        case dia: ConditionalWarning if !dia.enablingOption.value =>
-          val key = dia.enablingOption.name
-          unreportedWarnings =
-            unreportedWarnings.updated(key, unreportedWarnings.getOrElse(key, 0) + 1)
-        case dia: Warning => _warningCount += 1
-        case dia: Error =>
-          errors = dia :: errors
-          _errorCount += 1
-          if ctx.typerState.isGlobalCommittable then
-            ctx.base.errorsToBeReported = true
-        case dia: Info => // nothing to do here
-        // match error if d is something else
+    import Action._
+    val toReport = dia match {
+      case w: Warning => WConf.parsed.action(dia) match {
+        case Silent  => None
+        case Info    => Some(w.toInfo)
+        case Warning => Some(w)
+        case Error   => Some(w.toError)
+      }
+      case _ => Some(dia)
+    }
+    for (d <- toReport) {
+      val isSummarized = d match
+        case cw: ConditionalWarning => !cw.enablingOption.value
+        case _ => false
+      // avoid isHidden test for summarized warnings so that message is not forced
+      if isSummarized || !isHidden(d) then
+        withMode(Mode.Printing)(doReport(d))
+        d match
+          case cw: ConditionalWarning if !cw.enablingOption.value =>
+            val key = cw.enablingOption.name
+            unreportedWarnings =
+              unreportedWarnings.updated(key, unreportedWarnings.getOrElse(key, 0) + 1)
+          case _: Warning => _warningCount += 1
+          case e: Error =>
+            errors = e :: errors
+            _errorCount += 1
+            if ctx.typerState.isGlobalCommittable then
+              ctx.base.errorsToBeReported = true
+          case dia: Info => // nothing to do here
+          // match error if d is something else
+    }
 
   def incomplete(dia: Diagnostic)(using Context): Unit =
     incompleteHandler(dia, ctx)

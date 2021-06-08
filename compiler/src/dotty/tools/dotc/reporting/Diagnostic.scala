@@ -36,6 +36,7 @@ object Diagnostic:
     pos: SourcePosition
   ) extends Diagnostic(msg, pos, WARNING) {
     def toError: Error = new Error(msg, pos)
+    def toInfo: Info = new Info(msg, pos)
   }
 
   class Info(

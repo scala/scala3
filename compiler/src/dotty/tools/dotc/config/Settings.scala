@@ -257,8 +257,8 @@ object Settings:
     def IntChoiceSetting(name: String, descr: String, choices: Seq[Int], default: Int): Setting[Int] =
       publish(Setting(name, descr, default, choices = Some(choices)))
 
-    def MultiStringSetting(name: String, helpArg: String, descr: String, aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(name, descr, Nil, helpArg, aliases = aliases))
+    def MultiStringSetting(name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, default, helpArg, aliases = aliases))
 
     def OutputSetting(name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
       publish(Setting(name, descr, default, helpArg))
