@@ -137,6 +137,8 @@ object TypeOps:
             tp2
           case tp1 => tp1
         }
+      case defn.MatchCase(pat, body) =>
+        defn.MatchCase(simplify(pat, theMap), body)
       case tp: AppliedType =>
         tp.tycon match
           case tycon: TypeRef if tycon.info.isInstanceOf[MatchAlias] =>
@@ -485,7 +487,7 @@ object TypeOps:
           tp
         else tryWiden(tp, tp.prefix).orElse {
           if (tp.isTerm && variance > 0 && !pre.isSingleton)
-          	apply(tp.info.widenExpr)
+            apply(tp.info.widenExpr)
           else if (upper(pre).member(tp.name).exists)
             super.derivedSelect(tp, pre)
           else
