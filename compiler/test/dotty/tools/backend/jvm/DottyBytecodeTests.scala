@@ -1083,6 +1083,85 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  @Test def finalVals = {
+    val source = """class Test:
+                   |  final val a: 1 = 1
+                   |  final val b: Int = 2
+                   |  final val c: Any = new Object
+                   |  val d: Int = 2
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val instructionsA = instructionsFromMethod(getMethod(clsNode, "a"))
+      val expectedA = List(Op(ICONST_1), Op(IRETURN))
+      assert(instructionsA == expectedA,
+        "`a` should return 1\n" + diffInstructions(instructionsA, expectedA))
+
+      val instructionsB = instructionsFromMethod(getMethod(clsNode, "b"))
+      val expectedB = List(Op(ICONST_2), Op(IRETURN))
+      assert(instructionsB == expectedB,
+        "`b` should return 2\n" + diffInstructions(instructionsB, expectedB))
+
+      val fields = clsNode.fields.asScala.toList.map(_.name)
+      assert(fields == List("c", "d"), clsNode.fields.asScala.toList.map(_.name))
+    }
+  }
+
+  @Test def finalClassVals = {
+    val source = """final class Test:
+                   |  val a: 1 = 1
+                   |  val b: Int = 2
+                   |  val c: Any = new Object
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val instructionsA = instructionsFromMethod(getMethod(clsNode, "a"))
+      val expectedA = List(Op(ICONST_1), Op(IRETURN))
+      assert(instructionsA == expectedA,
+        "`a` should return 1\n" + diffInstructions(instructionsA, expectedA))
+
+      val instructionsB = instructionsFromMethod(getMethod(clsNode, "b"))
+      val expectedB = List(Op(ICONST_2), Op(IRETURN))
+      assert(instructionsB == expectedB,
+        "`b` should return 2\n" + diffInstructions(instructionsB, expectedB))
+
+      val fields = clsNode.fields.asScala.toList.map(_.name)
+      assert(fields == List("c"), clsNode.fields.asScala.toList.map(_.name))
+    }
+  }
+
+  @Test def objectVals = {
+    val source = """object Test:
+                   |  val a: 1 = 1
+                   |  val b: Int = 2
+                   |  val c: Any = new Object
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test$.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val instructionsA = instructionsFromMethod(getMethod(clsNode, "a"))
+      val expectedA = List(Op(ICONST_1), Op(IRETURN))
+      assert(instructionsA == expectedA,
+        "`a` should return 1\n" + diffInstructions(instructionsA, expectedA))
+
+      val instructionsB = instructionsFromMethod(getMethod(clsNode, "b"))
+      val expectedB = List(Op(ICONST_2), Op(IRETURN))
+      assert(instructionsB == expectedB,
+        "`b` should return 2\n" + diffInstructions(instructionsB, expectedB))
+
+      val fields = clsNode.fields.asScala.toList.map(_.name)
+      assert(fields == List("c", "MODULE$"), clsNode.fields.asScala.toList.map(_.name))
+    }
+  }
+
   @Test def vcElideAllocations = {
     val source =
       s"""class ApproxState(val bits: Int) extends AnyVal

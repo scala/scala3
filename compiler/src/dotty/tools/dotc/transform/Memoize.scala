@@ -148,7 +148,8 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         !field.isVolatile && ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass))
 
       if sym.isGetter then
-        val constantFinalVal = sym.isAllOf(Accessor | Final, butNot = Mutable) && tree.rhs.isInstanceOf[Literal]
+        val constantFinalVal =
+          sym.is(Accessor, butNot = Mutable) && sym.isEffectivelyFinal && tree.rhs.isInstanceOf[Literal]
         if constantFinalVal then
           // constant final vals do not need to be transformed at all, and do not need a field
           tree
