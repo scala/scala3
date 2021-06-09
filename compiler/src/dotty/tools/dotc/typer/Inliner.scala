@@ -1487,7 +1487,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     override def hasInliningErrors(using Context) = ctx.reporter.errorCount > initialErrorCount
 
     private def inlineIfNeeded(tree: Tree)(using Context): Tree =
-      if Inliner.needsInlining(tree) then Inliner.inlineCall(tree)
+      val meth = tree.symbol
+      if meth.isAllOf(DeferredInline) then
+        errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
+      else if Inliner.needsInlining(tree) then Inliner.inlineCall(tree)
       else tree
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
