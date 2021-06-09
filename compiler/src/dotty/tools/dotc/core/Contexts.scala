@@ -526,6 +526,10 @@ object Contexts {
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
+    final def withUncommittedTyperState: Context =
+      val ts = typerState.uncommittedAncestor
+      if ts ne typerState then fresh.setTyperState(ts) else this
+
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
       else value match {
