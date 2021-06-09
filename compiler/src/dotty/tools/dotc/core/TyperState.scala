@@ -138,9 +138,11 @@ class TyperState() {
    */
   def commit()(using Context): Unit = {
     Stats.record("typerState.commit")
-    assert(isCommittable)
+    assert(isCommittable, s"$this is not committable")
+    assert(!isCommitted, s"$this is already committed")
     setCommittable(false)
     val targetState = ctx.typerState
+    assert(!targetState.isCommitted, s"Attempt to commit $this into already committed $targetState")
     if constraint ne targetState.constraint then
       Stats.record("typerState.commit.new constraint")
       constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
