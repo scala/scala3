@@ -1,5 +1,5 @@
 class C(c: C) {
-  println(c.n)
-  val c2 = new C(this)  // error
+  println(c.n)          // error
+  val c2 = new C(this)
   val n = 10
 }

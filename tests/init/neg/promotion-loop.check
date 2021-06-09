@@ -5,5 +5,5 @@
    |
    |The unsafe promotion may cause the following problem(s):
    |
-   |1. Promote the value under initialization to fully-initialized. May only use initialized value as arguments Calling trace:
+   |1. Promote the value under initialization to fully-initialized. May only use initialized value as arguments. Calling trace:
    | -> val outer = test	[ promotion-loop.scala:12 ]
