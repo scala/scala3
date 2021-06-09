@@ -386,15 +386,14 @@ object Build {
       val scala3Compiler = (`scala3-compiler` / Compile / packageBin).value
 
       val libraryJars = Array(scala3Library) ++ externalLibraryDeps
-      val compilerJars = Array(tastyCore, scala3Interfaces, scala3Compiler) ++ (externalCompilerDeps -- externalLibraryDeps)
+      val compilerJars = Seq(tastyCore, scala3Interfaces, scala3Compiler) ++ (externalCompilerDeps -- externalLibraryDeps)
 
-      // should be replaced by sbt.Defaults.makeScalaInstance when released
-      // See https://github.com/sbt/sbt/pull/6480
-      Bootstrap.makeScalaInstance(
-        state.value,
+      Defaults.makeScalaInstance(
         scalaVersion.value,
         libraryJars = libraryJars,
-        compilerJars = compilerJars,
+        allCompilerJars = compilerJars,
+        allDocJars = Seq.empty,
+        state.value,
         scalaInstanceTopLoader.value
       )
     },
@@ -404,16 +403,22 @@ object Build {
     // in the `scalaInstance` of the `doc` task which allows us to run
     // `scala3-library-bootstrapped/doc` for example.
     doc / scalaInstance := {
-      val externalCompilerDeps = (`scala3-compiler` / Compile / externalDependencyClasspath).value.map(_.data).toSet
-      val externalScaladocDeps = (LocalProject("scaladoc") / Compile / externalDependencyClasspath).value.map(_.data).toSet
+      val externalDeps = (LocalProject("scaladoc") / Compile / externalDependencyClasspath).value.map(_.data)
       val scalaDoc = (LocalProject("scaladoc") / Compile / packageBin).value
-      val docJars = Array(scalaDoc) ++ (externalScaladocDeps -- externalCompilerDeps)
+      val docJars = Array(scalaDoc) ++ externalDeps
 
-      Bootstrap.makeDocScalaInstance(
+      val base = scalaInstance.value
+      val docScalaInstance = Defaults.makeScalaInstance(
+        version = base.version,
+        libraryJars = base.libraryJars,
+        allCompilerJars = base.compilerJars,
+        allDocJars = docJars,
         state.value,
-        scalaInstance.value,
-        docJars
+        scalaInstanceTopLoader.value
       )
+      // assert that sbt reuses the same compiler class loader
+      assert(docScalaInstance.loaderCompilerOnly == base.loaderCompilerOnly)
+      docScalaInstance
     },
     Compile / doc / scalacOptions ++= scalacOptionsDocSettings
   )
