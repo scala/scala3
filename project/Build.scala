@@ -1182,18 +1182,6 @@ object Build {
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
       },
-
-      // A second blacklist for tests that compile and link, but do not pass at run-time.
-      // Putting them here instead of above makes sure that we do not regress on compilation+linking.
-      Test / testOptions += Tests.Filter { name =>
-        !Set[String](
-          // Not investigated so far
-          "org.scalajs.testsuite.junit.JUnitAbstractClassTestCheck",
-          "org.scalajs.testsuite.junit.JUnitNamesTestCheck",
-          "org.scalajs.testsuite.junit.JUnitSubClassTestCheck",
-          "org.scalajs.testsuite.junit.MultiCompilationSecondUnitTestCheck",
-        ).contains(name)
-      }
     )
 
   lazy val sjsCompilerTests = project.in(file("sjs-compiler-tests")).
