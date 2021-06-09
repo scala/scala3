@@ -35,7 +35,7 @@ object HTML:
       sb.append(s"</$name>")
       sb
 
-  extension (s: String) private def escapeReservedTokens: String =
+  extension (s: String) def escapeReservedTokens: String =
     s.replace("&", "&amp;")
       .replace("<", "&lt;")
       .replace(">", "&gt;")

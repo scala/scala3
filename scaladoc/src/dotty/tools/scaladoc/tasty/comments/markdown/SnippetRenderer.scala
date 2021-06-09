@@ -3,12 +3,12 @@ package dotty.tools.scaladoc.tasty.comments.markdown
 import com.vladsch.flexmark.html._
 
 import dotty.tools.scaladoc.snippets._
+import dotty.tools.scaladoc.util.HTML._
 
 case class SnippetLine(content: String, lineNo: Int, classes: Set[String] = Set.empty, messages: Seq[String] = Seq.empty):
   def withClass(cls: String) = this.copy(classes = classes + cls)
-  private def escapeQuotes(msg: String): String = msg.replace("\"", "&quot;")
   def toHTML =
-    val label = if messages.nonEmpty then s"""label="${messages.map(escapeQuotes).mkString("\n")}"""" else ""
+    val label = if messages.nonEmpty then s"""label="${messages.map(_.escapeReservedTokens).mkString("\n")}"""" else ""
     s"""<span id="$lineNo" class="${classes.mkString(" ")}" $label>$content</span>"""
 
 object SnippetRenderer:
@@ -89,14 +89,14 @@ object SnippetRenderer:
 
   private def wrapCodeLines(codeLines: Seq[String]): Seq[SnippetLine] =
     val snippetLines = codeLines.zipWithIndex.map {
-      case (content, idx) => SnippetLine(content, idx)
+      case (content, idx) => SnippetLine(content.escapeReservedTokens, idx)
     }
     wrapHiddenSymbols
       .andThen(wrapSingleLineComments)
       .andThen(wrapMultiLineComments)
       .apply(snippetLines)
 
-  private def addCompileMessages(messages: Seq[SnippetCompilerMessage])(codeLines: Seq[SnippetLine]): Seq[SnippetLine] = //TODO add tooltips and stuff
+  private def addCompileMessages(messages: Seq[SnippetCompilerMessage])(codeLines: Seq[SnippetLine]): Seq[SnippetLine] =
     val messagesDict = messages.filter(_.position.nonEmpty).groupBy(_.position.get.relativeLine).toMap[Int, Seq[SnippetCompilerMessage]]
     codeLines.map { line =>
       messagesDict.get(line.lineNo) match
