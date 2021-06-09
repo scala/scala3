@@ -40,7 +40,7 @@ def assertImpl(expr: Expr[Boolean])(using Quotes) = '{
 }
 
 def showExpr(expr: Expr[Boolean])(using Quotes): Expr[String] =
-  '{ "<some source code>" } // Better implementation later in this document
+  '{ [actual implementation later in this document] }
 ```
 
 If `e` is an expression, then `'{e}` represents the typed
