@@ -1056,13 +1056,14 @@ class Typer extends Namer
         cpy.Block(block)(stats, expr1) withType expr1.tpe // no assignType here because avoid is redundant
       case _ =>
         val target = pt.simplified
-        if tree.tpe <:< target then Typed(tree, TypeTree(pt.simplified))
+        val targetTpt = InferredTypeTree().withType(target)
+        if tree.tpe <:< target then Typed(tree, targetTpt)
         else
           // This case should not normally arise. It currently does arise in test cases
           // pos/t4080b.scala and pos/i7067.scala. In that case, a type ascription is wrong
           // and would not pass Ycheck. We have to use a cast instead. TODO: follow-up why
           // the cases arise and eliminate them, if possible.
-          tree.cast(target)
+          tree.cast(targetTpt)
     }
     def noLeaks(t: Tree): Boolean = escapingRefs(t, localSyms).isEmpty
     if (noLeaks(tree)) tree
