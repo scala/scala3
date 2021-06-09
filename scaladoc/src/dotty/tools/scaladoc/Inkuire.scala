@@ -1,10 +1,29 @@
 package dotty.tools.scaladoc
 
 import dotty.tools.scaladoc.util._
+import scala.collection.mutable.{ Map => MMap}
 
 object Inkuire {
 
   var db = InkuireDb(Seq.empty, Map.empty)
+
+  var postTransformations: MMap[String, Option[Inkuire.Contravariance]] = MMap.empty
+
+  def postTransform(): Unit = //TODO doesn't append. Dunno why
+    postTransformations.foreach {
+      case (name, t) =>
+        if(name == "RichByte") {
+          println(t)
+        }
+    }
+    val newFunctions = Inkuire.db.functions.flatMap { eSgn =>
+      postTransformations.get(eSgn.signature.receiver.map(_.typ.name.name).getOrElse("")) match
+        case Some(receiver) =>
+          List(eSgn.copy(signature = eSgn.signature.copy(receiver = receiver)))
+        case _ =>
+          List.empty
+    }
+    Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions ++ newFunctions)
 
   case class InkuireDb(
     functions: Seq[ExternalSignature],

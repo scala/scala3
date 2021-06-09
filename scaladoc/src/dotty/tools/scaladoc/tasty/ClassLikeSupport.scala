@@ -114,15 +114,25 @@ trait ClassLikeSupport:
 
       if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
 
-      val methods = classDef.symbol.declaredMethods.collect {
+      classDef.symbol.declaredMethods.foreach {
+        case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit) || implicitConversion.isGiven =>
+          val defdef = implicitConversion.tree.asInstanceOf[DefDef]
+          val name = defdef.returnTpt.tpe.typeSymbol.name
+          val receiver = defdef.paramss.flatMap(_.params).collectFirst {
+            case v: ValDef => Inkuire.Contravariance(v.tpt.asInkuire(variableNames, false))
+          }
+          Inkuire.postTransformations.addOne(name -> receiver)
         case methodSymbol: Symbol =>
-        val defdef = methodSymbol.tree.asInstanceOf[DefDef]
-        val methodVars = defdef.paramss.flatMap(_.params).collect {
+          val defdef = methodSymbol.tree.asInstanceOf[DefDef]
+          val methodVars = defdef.paramss.flatMap(_.params).collect {
             case TypeDef(name, _) => name
           }
           val vars = variableNames ++ methodVars
-          val receiver: Option[Inkuire.Type] = Some(classType).filter(_ => !isModule).orElse(methodSymbol.extendedSymbol.map(_.asInkuire(vars, false)))
-          Inkuire.ExternalSignature(
+          val receiver: Option[Inkuire.Type] =
+            Some(classType)
+              .filter(_ => !isModule)
+              .orElse(methodSymbol.extendedSymbol.flatMap(partialAsInkuire(vars, false).lift(_)))
+          val sgn = Inkuire.ExternalSignature(
             signature = Inkuire.Signature(
               receiver = receiver,
               arguments = methodSymbol.nonExtensionParamLists.flatMap(_.params).collect {
@@ -138,9 +148,10 @@ trait ClassLikeSupport:
             packageName = methodSymbol.dri.location,
             uri = methodSymbol.dri.externalLink.getOrElse("")
           )
+          Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
+        case s =>
+          println(s"Inkuire skipping symbol $s")
       }
-
-      Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions ++ methods)
 
     }
 

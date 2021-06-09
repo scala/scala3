@@ -23,15 +23,19 @@ trait InkuireSupport:
   given TreeSyntaxInkuire: AnyRef with
     extension (tpeTree: Tree)
       def asInkuire(vars: Set[String], isVariable: Boolean): Inkuire.Type =
-        tpeTree match
-          case TypeBoundsTree(low, high) => inner(low.tpe, vars) //TODO
-          case tpeTree: Applied =>
-            inner(tpeTree.tpe, vars).copy(
-              params = tpeTree.args.map(p => Inkuire.Invariance(p.asInkuire(vars, isVariable))) //TODO check variance
-            )
-          case tpeTree: TypeTree => inner(tpeTree.tpe, vars)
-          case term:  Term => inner(term.tpe, vars)
-          case classDef: ClassDef => mkTypeFromClassDef(classDef, vars, isVariable)
+        partialAsInkuire(vars, isVariable)(tpeTree)
+
+  def partialAsInkuire(vars: Set[String], isVariable: Boolean): PartialFunction[Tree, Inkuire.Type] = {
+    case TypeBoundsTree(low, high) => inner(low.tpe, vars) //TODO
+    case tpeTree: Applied =>
+      inner(tpeTree.tpe, vars).copy(
+        params = tpeTree.args.map(p => Inkuire.Invariance(p.asInkuire(vars, isVariable))) //TODO check variance
+      )
+    case tpeTree: TypeTree =>
+      inner(tpeTree.tpe, vars)
+    case term:  Term => inner(term.tpe, vars)
+    case classDef: ClassDef => mkTypeFromClassDef(classDef, vars, isVariable)
+  }
 
   def mkTypeFromClassDef(classDef: ClassDef, vars: Set[String], isVariable: Boolean): Inkuire.Type = {
     Inkuire.Type(
@@ -81,7 +85,11 @@ trait InkuireSupport:
     case AndType(left, right) => inner(left, vars) //TODO for future
     case ByNameType(tpe) => inner(tpe, vars)
     case ConstantType(constant) =>
-      ??? //TODO for future, kinda
+      Inkuire.Type(
+        name = Inkuire.TypeName(constant.toString),
+        params = Seq.empty,
+        itid = Some(Inkuire.ITID(constant.toString, isParsed = false))
+      )
     case ThisType(tpe) => inner(tpe, vars)
     case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedAnnotation(annotation) =>
       inner(tpe, vars) //TODO for future
@@ -135,7 +143,11 @@ trait InkuireSupport:
     case TypeBounds(low, hi) =>
       inner(low, vars) //TODO for future
     case NoPrefix() =>
-      ??? //TODO not possible right?
+      Inkuire.Type( //TODO check <- should be handled by Singleton case, but doesn't work
+        name = Inkuire.TypeName("_"),
+        itid = Some(Inkuire.ITID("_", isParsed = false)),
+        isStarProjection = true
+      )
     case MatchType(bond, sc, cases) =>
       inner(sc, vars)
     case ParamRef(TypeLambda(names, _, resType), i) =>
@@ -148,3 +160,5 @@ trait InkuireSupport:
       inner(m.paramTypes(i), vars)
     case RecursiveType(tp) =>
       inner(tp, vars)
+    case MethodType(_, params, resType) =>
+      inner(resType, vars) //TODO for future

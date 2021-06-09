@@ -89,6 +89,7 @@ object Scaladoc:
     ctx.reporter
 
   def dumpInkuireDB(output: String) = {
+    Inkuire.postTransform()
     val path = Paths.get(output, "inkuire-db.json")
     println("InkuireDB created successfully!")
     println(s"Types: ${Inkuire.db.types.size}")
