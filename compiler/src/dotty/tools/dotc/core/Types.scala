@@ -439,7 +439,7 @@ object Types {
 
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
-      existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true)
+      existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true, forceLazy = false)
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -5053,6 +5053,11 @@ object Types {
 
   /** Wildcard type, possibly with bounds */
   abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
+
+    def effectiveBounds(using Context): TypeBounds = optBounds match
+      case bounds: TypeBounds => bounds
+      case _ => TypeBounds.empty
+
     def derivedWildcardType(optBounds: Type)(using Context): WildcardType =
       if (optBounds eq this.optBounds) this
       else if (!optBounds.exists) WildcardType
@@ -5695,6 +5700,15 @@ object Types {
     override def toText(printer: Printer): Text =
       lo.toText(printer) ~ ".." ~ hi.toText(printer)
   }
+
+  /** Approximate wildcards by their bounds */
+  class AvoidWildcardsMap(using Context) extends ApproximatingTypeMap:
+    protected def mapWild(t: WildcardType) =
+      val bounds = t.effectiveBounds
+      range(atVariance(-variance)(apply(bounds.lo)), apply(bounds.hi))
+    def apply(t: Type): Type = t match
+      case t: WildcardType => mapWild(t)
+      case _ => mapOver(t)
 
   // ----- TypeAccumulators ----------------------------------------------------
 

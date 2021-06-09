@@ -707,8 +707,10 @@ object ProtoTypes {
         if wildcardOnly
            || ctx.mode.is(Mode.TypevarsMissContext)
            || !ref.underlying.widenExpr.isValueTypeOrWildcard
-        then WildcardType
-        else newDepTypeVar(ref)
+        then
+          WildcardType(ref.underlying.substParams(mt, mt.paramRefs.map(_ => WildcardType)).toBounds)
+        else
+          newDepTypeVar(ref)
       mt.resultType.substParams(mt, mt.paramRefs.map(replacement))
     else mt.resultType
 
