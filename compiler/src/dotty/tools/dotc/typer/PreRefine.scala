@@ -14,6 +14,8 @@ class PreRefine extends Phase, IdentityDenotTransformer:
 
   override def isEnabled(using Context) = ctx.settings.YrefineTypes.value
 
+  override def changesBaseTypes: Boolean = true
+
   def run(using Context): Unit =
     assert(next.isInstanceOf[RefineTypes],
       s"misconfigured phases: phase PreRefine must be followed by phase RefineTypes")
