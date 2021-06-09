@@ -185,13 +185,13 @@ With the established principles and design goals, following rules are imposed:
    initialization in order to enforce different rules. Scala
    has different syntax for them, it thus is not an issue.
 
-2. References to objects under initialization may not be passed as arguments to method calls or constructors.
+2. Objects under initialization may not be passed as arguments to method calls.
 
-   Escape of `this` in the constructor is commonly regarded as an
-   anti-pattern, and it's rarely used in practice. This rule is simple
-   for the programmer to reason about initialization and it simplifies
-   implementation. The theory supports safe escape of `this` with the help of
-   annotations, we delay the extension until there is a strong need.
+   Escape of `this` in the constructor is commonly regarded as an anti-pattern.
+   However, escape of `this` as constructor arguments are allowed, to support
+   creation of cyclic data structures. The checker will ensure that the escaped
+   non-initialized object is not used, i.e. calling methods or accessing fields
+   on the escaped object is not allowed.
 
 3. Local definitions may only refer to transitively initialized objects.
 
