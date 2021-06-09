@@ -140,6 +140,7 @@ class TyperState() {
     Stats.record("typerState.commit")
     assert(isCommittable, s"$this is not committable")
     assert(!isCommitted, s"$this is already committed")
+    reporter.flush()
     setCommittable(false)
     val targetState = ctx.typerState
     assert(!targetState.isCommitted, s"Attempt to commit $this into already committed $targetState")
@@ -152,7 +153,6 @@ class TyperState() {
       else
         targetState.mergeConstraintWith(this)
     targetState.gc()
-    reporter.flush()
     isCommitted = true
   }
 
