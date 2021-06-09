@@ -586,7 +586,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         val m = if (m0.is(Bridge)) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
           report.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
-        else if (m.isType || m.is(Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
+        else if (m.isType || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
           report.debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
           report.log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
@@ -607,7 +607,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       val names = tp.memberNames(takeAllFilter).toSeq.sorted
       val buffer = mutable.ListBuffer[Symbol]()
       names.foreach { name =>
-        buffer ++= tp.memberBasedOnFlags(name, required, excluded)
+        // lookup members at erasure: lampepfl/dotty#12753
+        buffer ++= atPhase(erasurePhase)(tp.memberBasedOnFlags(name, required, excluded))
           .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
       }
       buffer.toList
