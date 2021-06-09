@@ -182,16 +182,21 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
      *  Compare with `typedTyped` in TreeChecker that does essentially the same thing
      */
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
-      val tpt1 = checkSimpleKinded(typedType(tree.tpt))
-      val expr1 = tree.expr match
-        case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
-          tree.expr.withType(tpt1.tpe)
+      tree.tpt match
+        case _: untpd.InferredTypeTree =>
+          // type tree was introduced by ensureNoLocalRefs, drop the ascription and reinfer
+          typed(tree.expr, pt)
         case _ =>
-          var pt1 = tpt1.tpe
-          if pt1.isRepeatedParam then
-            pt1 = pt1.translateFromRepeated(toArray = tree.expr.typeOpt.derivesFrom(defn.ArrayClass))
-          typed(tree.expr, pt1)
-      untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+          val tpt1 = checkSimpleKinded(typedType(tree.tpt))
+          val expr1 = tree.expr match
+            case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
+              tree.expr.withType(tpt1.tpe)
+            case _ =>
+              var pt1 = tpt1.tpe
+              if pt1.isRepeatedParam then
+                pt1 = pt1.translateFromRepeated(toArray = tree.expr.typeOpt.derivesFrom(defn.ArrayClass))
+              typed(tree.expr, pt1)
+          untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
 
     /** Replace all type variables in a (possibly embedded) type application
      *  by fresh, uninstantiated type variables that are pairwise linked with

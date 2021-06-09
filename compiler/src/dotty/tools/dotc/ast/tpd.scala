@@ -979,11 +979,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     /** cast tree to `tp`, assuming no exception is raised, i.e the operation is pure */
-    def cast(tp: Type)(using Context): Tree = {
-      assert(tp.isValueType, i"bad cast: $tree.asInstanceOf[$tp]")
+    def cast(tp: Type)(using Context): Tree = cast(TypeTree(tp))
+
+    /** cast tree to `tp`, assuming no exception is raised, i.e the operation is pure */
+    def cast(tpt: TypeTree)(using Context): Tree =
+      assert(tpt.tpe.isValueType, i"bad cast: $tree.asInstanceOf[$tpt]")
       tree.select(if (ctx.erasedTypes) defn.Any_asInstanceOf else defn.Any_typeCast)
-        .appliedToType(tp)
-    }
+        .appliedToTypeTree(tpt)
 
     /** cast `tree` to `tp` (or its box/unbox/cast equivalent when after
      *  erasure and value and non-value types are mixed),
