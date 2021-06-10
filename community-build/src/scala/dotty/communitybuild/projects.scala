@@ -691,6 +691,13 @@ object projects:
     dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
   )
 
+  lazy val libretto = SbtCommunityProject(
+    project = "libretto",
+    sbtTestCommand = "core/test; examples/compile",
+    sbtPublishCommand = "core/publishLocal; examples/publishLocal",
+    dependencies = List(scalatest)
+  )
+
 end projects
 
 def allProjects = List(
@@ -765,6 +772,7 @@ def allProjects = List(
   projects.munitCatsEffect,
   projects.scalacheckEffect,
   projects.fs2,
+  projects.libretto,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
