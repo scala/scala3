@@ -470,7 +470,7 @@ class ExtractSemanticDB extends Phase:
       registerSymbol(sym, symbolName(sym), Set.empty)
 
     private def registerOccurrence(symbol: String, span: Span, role: SymbolOccurrence.Role, treeSource: SourceFile)(using Context): Unit =
-      val occ = SymbolOccurrence(symbol, range(span, treeSource), role)
+      val occ = SymbolOccurrence(range(span, treeSource), symbol, role)
       if !generated.contains(occ) && occ.symbol.nonEmpty then
         occurrences += occ
         generated += occ
