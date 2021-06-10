@@ -106,7 +106,7 @@ trait ClassLikeSupport:
       if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
 
       classDef.symbol.declaredTypes.foreach {
-        case typeSymbol: Symbol => //TODO this works or it doesn't? Who am I to know?
+        case typeSymbol: Symbol =>
           val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
           if typeDef.rhs.symbol.fullName.contains("java") then
             val t = typeSymbol.tree.asInkuire(variableNames, false)
