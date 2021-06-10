@@ -4,11 +4,17 @@ set -e
 shopt -s extglob # needed for rm everything but x
 echo "Working directory: $PWD"
 
-GENDOC_EXTRA_ARGS=$@
 GIT_HEAD=$(git rev-parse HEAD) # save current head for commit message in gh-pages
 PREVIOUS_SNAPSHOTS_DIR="$PWD/../prev_snapshots"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)"
 SITE_OUT_DIR="$PWD/docs/_site"
+
+# Load the csv data into memory
+
+INPUT=./project/scripts/docs/docs.csv
+[ ! -f $INPUT ] && { echo "$INPUT file not found"; exit 99; }
+CSV_FILE=$(<"$INPUT")
+
 
 ### Obtain the previous versions of the website ###
 if [ -d "$PREVIOUS_SNAPSHOTS_DIR" ]; then
@@ -16,22 +22,56 @@ if [ -d "$PREVIOUS_SNAPSHOTS_DIR" ]; then
 fi
 
 mkdir -pv "$PREVIOUS_SNAPSHOTS_DIR"
-git remote add doc-remote "https://github.com/lampepfl/dotty-website.git"
+# git remote add doc-remote "https://github.com/lampepfl/dotty-website.git"
 git fetch doc-remote gh-pages
 git checkout gh-pages
 (cp -vr [03].*/ "$PREVIOUS_SNAPSHOTS_DIR"; true)  # Don't fail if no `3.*` found to copy
+
+
+### Gather tasty files for new scaladoc different versions
+
+SBT="$SCRIPT_DIR/sbt"
+
+# We iterate over csv to checkout for different versions and generate their jars respectively.
+
+OLDIFS=$IFS
+IFS=','
+
+OUTPUT_DIR="output" # output for cumulutative tasty files for previous versions for
+
+
+# Firstly iterate over each version and generato sources
+while read label ref
+do
+  git checkout "$ref"
+  "$SBT" "scaladoc/copyTheScaladocInputs $OUTPUT_DIR $ref"
+done <<< $CSV_FILE
+
 git checkout "$GIT_HEAD"
 
-### Generate the current snapshot of the website ###
-# this command will generate docs in $PWD/docs/_site
-SBT="$SCRIPT_DIR/sbt"
+# Let's start with generating latest docs for nightly
 "$SBT" "scaladoc/generateScalaDocumentation docs/_site"
 
-# make sure that the previous command actually succeeded
+# make sure that sbt command actually succeeded
 if [ ! -d "$SITE_OUT_DIR" ]; then
   echo "Output directory did not exist: $SITE_OUT_DIR" 1>&2
   exit 1
 fi
+
+# Iterate once again and generate scaladoc for additional older versions
+while read label ref
+do
+  # Generate the website
+  # this command will generate docs in $PWD/docs/_site/$ref
+  "$SBT" "scaladoc/generateScalaDocumentation docs/_site/$ref $OUTPUT_DIR $ref"
+done <<< $CSV_FILE
+
+IFS=$OLDIFS
+
+# Generate json file
+
+touch "docs/_site/versions.json"
+sh ./project/scripts/docs/docs.sh > "docs/_site/versions.json"
 
 ### Move previous versions' snapshots to _site ###
 mv -v "$PREVIOUS_SNAPSHOTS_DIR"/* "$SITE_OUT_DIR"

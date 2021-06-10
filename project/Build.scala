@@ -1219,6 +1219,9 @@ object Build {
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
+  val getJarsForScaladoc = taskKey[Seq[String]]("Get jars for scaladoc")
+  val getDocRootForScaladoc = taskKey[Path]("Get doc root content file for scaladol")
+  val copyTheScaladocInputs = inputKey[Unit]("Copy sources to be provided to the scaladoc")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
@@ -1320,36 +1323,22 @@ object Build {
           "scaladoc", "scaladoc/output/self", VersionUtil.gitHash
         )
       }.value,
+
       generateScalaDocumentation := Def.inputTaskDyn {
         val extraArgs = spaceDelimited("[output]").parsed
         val dest = file(extraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
+        val roots = extraArgs.lift(1).map(Seq(_)).getOrElse(getJarsForScaladoc.value)
+        val docRootFile = extraArgs.lift(2).getOrElse(getDocRootForScaladoc.value)
         val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
+        val isDefined = extraArgs.isDefinedAt(2)
+        if (roots.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
+        else Def.task {
+          if (!isDefined) {
+            IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
 
-        val dottyJars: Seq[java.io.File] = Seq(
-          (`stdlib-bootstrapped`/Compile/products).value,
-          (`scala3-interfaces`/Compile/products).value,
-          (`tasty-core-bootstrapped`/Compile/products).value,
-        ).flatten
-
-        val roots = dottyJars.map(_.getAbsolutePath)
-
-        val managedSources =
-          (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
-        val projectRoot = (ThisBuild/baseDirectory).value.toPath
-        val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
-        val docRootFile = stdLibRoot.resolve("rootdoc.txt")
-
-        val dottyManagesSources =
-          (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
-
-        val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
-
-        if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-        else Def.task{
-          IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
-
-          // This file is used by GitHub Pages when the page is available in a custom domain
-          IO.write(dest / "CNAME", "dotty.epfl.ch")
+            // This file is used by GitHub Pages when the page is available in a custom domain
+            IO.write(dest / "CNAME", "dotty.epfl.ch")
+          }
         }.dependsOn(generateDocumentation(
           roots, "Scala 3", dest.getAbsolutePath, "master",
           Seq(
@@ -1357,9 +1346,42 @@ object Build {
             "-siteroot", "docs",
             s"-source-links:docs=github://lampepfl/dotty/master#docs",
             "-doc-root-content", docRootFile.toString,
-            "-Ydocument-synthetic-types"
+            "-Ydocument-synthetic-types",
+            "-versions-dictionary-url", "http://127.0.0.1:5500/docs/_site/versions.json"
           ), usingScript = false
         ))
+      }.evaluated,
+
+      getJarsForScaladoc := Def.task {
+        val dottyJars: Seq[java.io.File] = Seq(
+          (`stdlib-bootstrapped`/Compile/products).value,
+          (`scala3-interfaces`/Compile/products).value,
+          (`tasty-core-bootstrapped`/Compile/products).value,
+        ).flatten
+        dottyJars.map(_.getAbsolutePath)
+      }.value,
+
+      getDocRootForScaladoc := Def.task {
+        val managedSources =
+          (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
+        val projectRoot = (ThisBuild/baseDirectory).value.toPath
+        val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
+        stdLibRoot.resolve("rootdoc.txt")
+      }.value,
+
+      copyTheScaladocInputs := Def.inputTask {
+        val extraArgs = spaceDelimited("[output]").parsed
+        val dest = extraArgs.lift(0).getOrElse("output")
+        val ref = extraArgs.lift(1).getOrElse("0.0.0")
+        val jars = getJarsForScaladoc.value.foreach { jar =>
+          val file = new File(jar)
+          val d = new File(s"$dest/$ref")
+          sbt.IO.copyDirectory(file, d)
+        }
+
+        val path = getDocRootForScaladoc.value
+        val d = new File(s"$dest/$ref.txt")
+        sbt.IO.copyFile(path.toFile, d)
       }.evaluated,
 
       generateTestcasesDocumentation := Def.taskDyn {

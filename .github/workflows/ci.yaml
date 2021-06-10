@@ -492,7 +492,7 @@ jobs:
 
       - name: Generate Website
         run: |
-          ./project/scripts/genDocs -doc-snapshot
+          ./project/scripts/genDocs
 
       - name: Deploy Website
         uses: peaceiris/actions-gh-pages@v3
