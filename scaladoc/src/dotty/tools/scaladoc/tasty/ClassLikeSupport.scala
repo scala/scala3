@@ -105,17 +105,25 @@ trait ClassLikeSupport:
 
       if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
 
+      classDef.symbol.declaredTypes.foreach {
+        case typeSymbol: Symbol => //TODO this works or it doesn't? Who am I to know?
+          val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
+          if typeDef.rhs.symbol.fullName.contains("java") then
+            val t = typeSymbol.tree.asInkuire(variableNames, false)
+            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
+      }
+
       classDef.symbol.declaredMethods.foreach {
         case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
                                         && !implicitConversion.flags.is(Flags.Private)
                                         && classDef.symbol.flags.is(Flags.Module) =>
           val defdef = implicitConversion.tree.asInstanceOf[DefDef]
-          val from = defdef.returnTpt.asInkuire(variableNames, false)
-          val to = defdef.paramss.flatMap(_.params).collectFirst {
+          val to = defdef.returnTpt.asInkuire(variableNames, false)
+          val from = defdef.paramss.flatMap(_.params).collectFirst {
             case v: ValDef => v.tpt.asInkuire(variableNames, false)
           }
-          to match
-            case Some(to) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
+          from match
+            case Some(from) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
             case None =>
         case methodSymbol: Symbol =>
           val defdef = methodSymbol.tree.asInstanceOf[DefDef]
