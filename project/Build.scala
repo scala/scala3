@@ -1241,7 +1241,7 @@ object Build {
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
     )
 
-  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil, usingScript: Boolean = true) =
+  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil) =
     Def.taskDyn {
       val distLocation = (dist / pack).value
       val projectVersion = version.value
@@ -1265,20 +1265,10 @@ object Build {
         s"-source-links:github://lampepfl/dotty/$referenceVersion",
       ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
       import _root_.scala.sys.process._
-      if (usingScript)
-        Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
-      else {
-        val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
-        Def.task {
-          try {
-            (Compile / run).toTask(escapedCmd.mkString(" ", " ", "")).value
-            0
-          } catch {
-            case _ : Throwable => 1
-          }
-        }
+      val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
+      Def.task {
+        (Compile / run).toTask(escapedCmd.mkString(" ", " ", "")).value
       }
-
     }
 
   val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
@@ -1325,7 +1315,7 @@ object Build {
       generateSelfDocumentation := Def.taskDyn {
         generateDocumentation(
           (Compile / classDirectory).value.getAbsolutePath :: Nil,
-          "scaladoc", "scaladoc/output/self", VersionUtil.gitHash
+          "scaladoc", "scaladoc/output/self", VersionUtil.gitHash, Seq("-usejavacp")
         )
       }.value,
       generateScalaDocumentation := Def.inputTaskDyn {
@@ -1366,8 +1356,7 @@ object Build {
             s"-source-links:docs=github://lampepfl/dotty/master#docs",
             "-doc-root-content", docRootFile.toString,
             "-Ydocument-synthetic-types"
-          ), usingScript = false
-        ))
+          )))
       }.evaluated,
 
       generateTestcasesDocumentation := Def.taskDyn {
@@ -1375,7 +1364,8 @@ object Build {
           (Test / Build.testcasesOutputDir).value,
           "scaladoc testcases",
           "scaladoc/output/testcases",
-          "master"
+          "master",
+          Seq("-usejavacp")
         )
       }.value,
 

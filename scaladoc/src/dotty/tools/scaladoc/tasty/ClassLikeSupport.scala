@@ -94,7 +94,7 @@ trait ClassLikeSupport:
     )
 
     if signatureOnly then baseMember else baseMember.copy(
-        members = classDef.extractPatchedMembers,
+        members = classDef.extractPatchedMembers.sortBy(m => (m.name, m.kind.name)),
         directParents = classDef.getParentsAsLinkToTypes,
         parents = supertypes,
         companion = classDef.getCompanion

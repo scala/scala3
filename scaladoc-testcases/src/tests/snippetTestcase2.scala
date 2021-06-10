@@ -9,7 +9,7 @@ trait Quotes2[A] {
       /**
         * SNIPPET(OUTERLINEOFFSET:13,OUTERCOLUMNOFFSET:10,INNERLINEOFFSET:6,INNERCOLUMNOFFSET:6)
         * ERROR(LINE:13,COLUMN:12)
-        * ```scala sc:compile
+        * ```scala sc:fail
         * 2 + List()
         * ```
         *
@@ -21,7 +21,7 @@ trait Quotes2[A] {
       /**
         * SNIPPET(OUTERLINEOFFSET:25,OUTERCOLUMNOFFSET:10,INNERLINEOFFSET:7,INNERCOLUMNOFFSET:6)
         * ERROR(LINE:25,COLUMN:12)
-        * ```scala sc:compile
+        * ```scala sc:fail
         * 2 + List()
         * ```
         *
@@ -35,7 +35,7 @@ trait Quotes2[A] {
       /**
         * SNIPPET(OUTERLINEOFFSET:39,OUTERCOLUMNOFFSET:10,INNERLINEOFFSET:5,INNERCOLUMNOFFSET:6)
         * ERROR(LINE:39,COLUMN:12)
-        * ```scala sc:compile
+        * ```scala sc:fail
         * 2 + List()
         * ```
         *
@@ -47,7 +47,7 @@ trait Quotes2[A] {
       /**
         * SNIPPET(OUTERLINEOFFSET:51,OUTERCOLUMNOFFSET:10,INNERLINEOFFSET:6,INNERCOLUMNOFFSET:6)
         * ERROR(LINE:51,COLUMN:12)
-        * ```scala sc:compile
+        * ```scala sc:fail
         * 2 + List()
         * ```
         *
