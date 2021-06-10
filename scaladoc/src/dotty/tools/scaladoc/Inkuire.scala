@@ -5,29 +5,12 @@ import scala.collection.mutable.{ Map => MMap}
 
 object Inkuire {
 
-  var db = InkuireDb(Seq.empty, Map.empty)
-
-  var postTransformations: MMap[String, Option[Inkuire.Contravariance]] = MMap.empty
-
-  def postTransform(): Unit = //TODO doesn't append. Dunno why
-    postTransformations.foreach {
-      case (name, t) =>
-        if(name == "RichByte") {
-          println(t)
-        }
-    }
-    val newFunctions = Inkuire.db.functions.flatMap { eSgn =>
-      postTransformations.get(eSgn.signature.receiver.map(_.typ.name.name).getOrElse("")) match
-        case Some(receiver) =>
-          List(eSgn.copy(signature = eSgn.signature.copy(receiver = receiver)))
-        case _ =>
-          List.empty
-    }
-    Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions ++ newFunctions)
+  var db = InkuireDb(Seq.empty, Map.empty, Seq.empty)
 
   case class InkuireDb(
-    functions: Seq[ExternalSignature],
-    types:     Map[ITID, (Type, Seq[Type])]
+    functions:           Seq[ExternalSignature],
+    types:               Map[ITID, (Type, Seq[Type])],
+    implicitConversions: Seq[(ITID, Type)]
   )
 
   case class ITID(uuid: String, isParsed: Boolean)
@@ -107,7 +90,17 @@ object Inkuire {
     def serialize(db: InkuireDb): JSON = {
       jsonObject(
         ("types", serialize(db.types)),
-        ("functions", jsonList(db.functions.map(serialize)))
+        ("functions", jsonList(db.functions.map(serialize))),
+        ("implicitConversions", jsonList(db.implicitConversions.map(serializeConversion)))
+      )
+    }
+
+    private def serializeConversion(conversion: (ITID, Type)): JSON = {
+      jsonList(
+        Seq(
+          serialize(conversion._1),
+          serialize(conversion._2)
+        )
       )
     }
 

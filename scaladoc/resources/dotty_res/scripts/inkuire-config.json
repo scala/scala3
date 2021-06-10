@@ -1,5 +1,5 @@
 {
   "inkuirePaths": [
-    {"path" : "../inkuire-db.json"}
+    "../inkuire-db.json"
   ]
 }

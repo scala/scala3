@@ -35,6 +35,11 @@ trait InkuireSupport:
       inner(tpeTree.tpe, vars)
     case term:  Term => inner(term.tpe, vars)
     case classDef: ClassDef => mkTypeFromClassDef(classDef, vars, isVariable)
+    case typeDef: TypeDef =>
+      Inkuire.Type(
+        name = Inkuire.TypeName(typeDef.name),
+        itid = typeDef.symbol.itid
+      )
   }
 
   def mkTypeFromClassDef(classDef: ClassDef, vars: Set[String], isVariable: Boolean): Inkuire.Type = {

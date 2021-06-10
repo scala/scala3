@@ -96,15 +96,6 @@ trait ClassLikeSupport:
 
     if summon[DocContext].args.generateInkuire then {
 
-      /**
-       * Stuff the doesn't work yet:
-       * - Type parameters work in types but don't work in parents and in types that are arguments or results of functions
-       * - Extension functions
-       * - Inheritance of special types (Any, AnyVal, AnyRef, Nothing, ...)
-       * - SYNTAX!!! <- that's in Inkuire e.g. tuples, different arrows, different parentheses with type params, different constraint syntax
-       * - Type param constraints
-       */
-
       val classType = classDef.asInkuire(Set.empty, true)
       val variableNames = classType.params.map(_.typ.name.name).toSet
 
@@ -115,13 +106,17 @@ trait ClassLikeSupport:
       if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
 
       classDef.symbol.declaredMethods.foreach {
-        case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit) || implicitConversion.isGiven =>
+        case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
+                                        && !implicitConversion.flags.is(Flags.Private)
+                                        && classDef.symbol.flags.is(Flags.Module) =>
           val defdef = implicitConversion.tree.asInstanceOf[DefDef]
-          val name = defdef.returnTpt.tpe.typeSymbol.name
-          val receiver = defdef.paramss.flatMap(_.params).collectFirst {
-            case v: ValDef => Inkuire.Contravariance(v.tpt.asInkuire(variableNames, false))
+          val from = defdef.returnTpt.asInkuire(variableNames, false)
+          val to = defdef.paramss.flatMap(_.params).collectFirst {
+            case v: ValDef => v.tpt.asInkuire(variableNames, false)
           }
-          Inkuire.postTransformations.addOne(name -> receiver)
+          to match
+            case Some(to) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
+            case None =>
         case methodSymbol: Symbol =>
           val defdef = methodSymbol.tree.asInstanceOf[DefDef]
           val methodVars = defdef.paramss.flatMap(_.params).collect {
