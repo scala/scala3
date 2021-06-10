@@ -293,8 +293,10 @@ object Interactive {
             // in subsequent parameter sections
           localCtx
         case tree: MemberDef =>
-          assert(tree.symbol.exists)
-          outer.localContext(tree, tree.symbol)
+          if (tree.symbol.exists)
+            outer.localContext(tree, tree.symbol)
+          else
+            outer
         case tree @ Block(stats, expr) =>
           val localCtx = outer.fresh.setNewScope
           stats.foreach {
@@ -310,7 +312,7 @@ object Interactive {
           }
           localCtx
         case tree @ Template(constr, parents, self, _) =>
-          if ((constr :: self :: parents).contains(nested)) ctx
+          if ((constr :: self :: parents).contains(nested)) outer
           else contextOfStat(tree.body, nested, tree.symbol, outer.inClassContext(self.symbol))
         case _ =>
           outer
