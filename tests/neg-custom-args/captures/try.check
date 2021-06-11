@@ -5,18 +5,25 @@
    |                                Required: () => Nothing
 
 longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:49:2 -------------------------------------------
-44 |val global = handle {
-45 |  (x: CanThrow[Exception]) =>
-46 |    () =>
-47 |      raise(new Exception)(using x)
-48 |      22
-49 |} {  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:43:2 -------------------------------------------
+43 |  yy  // error
+   |  ^^
+   |  Found:    (yy : List[(xx : (() => Int) holds *)])
+   |  Required: List[() => Int]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:50:2 -------------------------------------------
+45 |val global = handle {
+46 |  (x: CanThrow[Exception]) =>
+47 |    () =>
+48 |      raise(new Exception)(using x)
+49 |      22
+50 |} {  // error
    |             ^
    |             Found:    (() => Int) holds *
    |             Required: () => Int
-50 |  (ex: Exception) => () => 22
-51 |}
+51 |  (ex: Exception) => () => 22
+52 |}
 
 longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/try.scala:22:28 ---------------------------------------------------------------
@@ -24,7 +31,7 @@ longer explanation available when compiling with `-explain`
    |                            ^^^^^^^^^^^^^^^^^^^
    |                            type argument is not allowed to capture the root capability *
 -- Error: tests/neg-custom-args/captures/try.scala:34:11 ---------------------------------------------------------------
-34 |  val xx = handle {  // error
+34 |  val xx = handle { // error
    |           ^^^^^^
    |           inferred type argument ((() => Int) holds *) is not allowed to capture the root capability *
    |
