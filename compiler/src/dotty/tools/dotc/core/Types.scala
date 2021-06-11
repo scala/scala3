@@ -2852,6 +2852,10 @@ object Types {
 
     override def canBeTracked(using Context) = cls.owner.isTerm
 
+    override def captureSetOfInfo(using Context): CaptureSet =
+      super.captureSetOfInfo
+      ++ CaptureSet.ofClass(cls.classInfo, cls.paramAccessors.map(_.info))
+
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
 
     override def eql(that: Type): Boolean = that match {
