@@ -133,7 +133,7 @@ class VarianceChecker(using Context) {
     def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = trace(s"variance checking $tp of $base at $variance", variances) {
       try
         if (status.isDefined) status
-        else tp.normalized match {
+        else tp match {
           case tp: TypeRef =>
             val sym = tp.symbol
             if (sym.isOneOf(VarianceFlags) && base.isContainedIn(sym.owner)) checkVarianceOfSymbol(sym)
