@@ -2391,7 +2391,7 @@ object Types {
      *  They are subsumed in the capture sets of the enclosing class.
      */
     def canBeTracked(using Context) =
-      if isTerm then prefix eq NoPrefix
+      if isTerm then (prefix eq NoPrefix) || symbol.hasAnnotation(defn.AbilityAnnot)
       else symbol.is(TypeParam) || isRootCapability
 
     override def isRootCapability(using Context): Boolean =
