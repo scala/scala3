@@ -49,5 +49,6 @@ object Predef:
     scala.runtime.Scala3RunTime.nn(x)
 
   /** type `A` with capture set `B` */
-  infix type holds[A, B]
+  infix type retains[A, B]
+
 end Predef

@@ -1,4 +1,4 @@
 object Test:
 
-  def f[A <: Any holds *](x: A): Any = x // error
+  def f[A <: Any retains *](x: A): Any = x // error
 
