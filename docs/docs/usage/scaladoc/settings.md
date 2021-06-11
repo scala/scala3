@@ -117,3 +117,19 @@ A base URL to use as prefix and add `canonical` URLs to all pages. The canonical
 ##### -siteroot
 
 A directory containing static files from which to generate documentation. Default directory is `./docs`
+
+##### -versions-dictionary-url
+
+A URL pointing to a JSON document containing a dictionary version -> documentation location.
+The JSON file has single property "versions" that holds dictionary of labels of specific docs and URL pointing to their index.html top-level file.
+Useful for libraries that maintain different releases docs.
+
+Example JSON file:
+```
+{
+  "versions": {
+    "3.0.X": "https://dotty.epfl.ch/3.0.X/docs/index.html",
+    "Nightly": "https://dotty.epfl.ch/docs/index.html"
+  }
+}
+```
