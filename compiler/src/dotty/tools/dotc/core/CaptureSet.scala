@@ -34,6 +34,9 @@ case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
       myClosure = cl
     myClosure
 
+  def ++ (that: CaptureSet): CaptureSet =
+    CaptureSet(elems ++ that.elems)
+
   /** {x} <:< this   where <:< is subcapturing */
   def accountsFor(x: CaptureRef)(using Context) =
     elems.contains(x) || !x.isRootCapability && x.captureSetOfInfo <:< this
@@ -58,6 +61,25 @@ object CaptureSet:
   def apply(elems: CaptureRef*)(using Context): CaptureSet =
     if elems.isEmpty then empty
     else CaptureSet(SimpleIdentitySet(elems.map(_.normalizedRef)*))
+
+  def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
+    def captureSetOf(tp: Type): CaptureSet = tp match
+      case tp: TypeRef if tp.symbol.is(ParamAccessor) =>
+        def mapArg(accs: List[Symbol], tps: List[Type]): CaptureSet = accs match
+          case acc :: accs1 if tps.nonEmpty =>
+            if acc == tp.symbol then tps.head.captureSet
+            else mapArg(accs1, tps.tail)
+          case _ =>
+            empty
+        mapArg(cinfo.cls.paramAccessors, argTypes)
+      case _ =>
+        tp.captureSet
+    val css =
+      for
+        parent <- cinfo.parents if parent.classSymbol == defn.RetainsClass
+        arg <- parent.argInfos
+      yield captureSetOf(arg)
+    css.foldLeft(empty)(_ ++ _)
 
   def ofType(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[Refs]:
@@ -84,6 +106,8 @@ object CaptureSet:
             if variance >= 0 then elems1 + ref else elems1
           case TypeBounds(_, hi) =>
             apply(elems, hi)
+          case tp: ClassInfo =>
+            elems ++ ofClass(tp, Nil).elems
           case tp: LazyRef =>
             if seenLazyRefs.contains(tp)
               || tp.evaluating  // shapeless gets an assertion error without this test
