@@ -510,6 +510,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec(OrTypePrec) { toText(args(0)) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(args(1)) } }
         else if (tpt.symbol == defn.andType && args.length == 2)
           changePrec(AndTypePrec) { toText(args(0)) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(args(1)) } }
+        else if defn.isFunctionClass(tpt.symbol)
+            && tpt.isInstanceOf[TypeTree] && tree.hasType && !printDebug
+        then changePrec(GlobalPrec) { toText(tree.typeOpt) }
         else args match
           case arg :: _ if arg.isTerm =>
             toTextLocal(tpt) ~ "(" ~ Text(args.map(argText), ", ") ~ ")"
