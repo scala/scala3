@@ -1,14 +1,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:32 ------------------------------------------
 29 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)  // error
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                Found:    (() => Nothing) holds x
+   |                                Found:    (() => Nothing) retains x
    |                                Required: () => Nothing
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:43:2 -------------------------------------------
 43 |  yy  // error
    |  ^^
-   |  Found:    (yy : List[(xx : (() => Int) holds *)])
+   |  Found:    (yy : List[(xx : (() => Int) retains *)])
    |  Required: List[() => Int]
 
 longer explanation available when compiling with `-explain`
@@ -20,7 +20,7 @@ longer explanation available when compiling with `-explain`
 49 |      22
 50 |} {  // error
    |             ^
-   |             Found:    (() => Int) holds *
+   |             Found:    (() => Int) retains *
    |             Required: () => Int
 51 |  (ex: Exception) => () => 22
 52 |}
@@ -33,6 +33,6 @@ longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/try.scala:34:11 ---------------------------------------------------------------
 34 |  val xx = handle { // error
    |           ^^^^^^
-   |           inferred type argument ((() => Int) holds *) is not allowed to capture the root capability *
+   |           inferred type argument ((() => Int) retains *) is not allowed to capture the root capability *
    |
-   |           The inferred arguments are: [Exception, ((() => Int) holds *)]
+   |           The inferred arguments are: [Exception, ((() => Int) retains *)]

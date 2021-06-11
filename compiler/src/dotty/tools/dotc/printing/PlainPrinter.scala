@@ -188,7 +188,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
       case CapturingType(parent, ref) =>
-        changePrec(InfixPrec)(toText(parent) ~ " holds " ~ toTextCaptureRef(ref))
+        changePrec(InfixPrec)(toText(parent) ~ " retains " ~ toTextCaptureRef(ref))
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>

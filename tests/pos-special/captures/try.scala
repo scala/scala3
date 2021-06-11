@@ -1,7 +1,7 @@
 import language.experimental.erasedDefinitions
 
 class CT[E <: Exception]
-type CanThrow[E <: Exception] = CT[E] holds *
+type CanThrow[E <: Exception] = CT[E] retains *
 
 infix type throws[R, E <: Exception] = (erased CanThrow[E]) ?=> R
 

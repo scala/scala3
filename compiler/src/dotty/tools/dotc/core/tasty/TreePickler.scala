@@ -291,7 +291,7 @@ class TreePickler(pickler: TastyPickler) {
     case tp: CapturingType =>
       writeByte(APPLIEDtype)
       withLength {
-        pickleType(defn.Predef_holdsType.typeRef)
+        pickleType(defn.Predef_retainsType.typeRef)
         pickleType(tp.parent)
         pickleType(tp.ref)
       }

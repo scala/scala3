@@ -1,21 +1,21 @@
 class C
-def f(x: C holds *, y: C): () => C =
+def f(x: C retains *, y: C): () => C =
   () => if x == null then y else y  // error
 
-def g(x: C holds *, y: C): Any =
+def g(x: C retains *, y: C): Any =
   () => if x == null then y else y  // error
 
-def h1(x: C holds *, y: C): Any holds x.type =
+def h1(x: C retains *, y: C): Any retains x.type =
   def f() = if x == null then y else y
   () => f()  // ok
 
-def h2(x: C holds *): Any =
+def h2(x: C retains *): Any =
   def f(y: Int) = if x == null then y else y
   f  // error
 
 class A
-type Cap = C holds *
-type Top = Any holds *
+type Cap = C retains *
+type Top = Any retains *
 
 def h3(x: Cap): A =
   class F(y: Int) extends A:
@@ -27,7 +27,7 @@ def h4(x: Cap, y: Int): A =
     def m() = if x == null then y else y  // error
 
 def foo() =
-  val x: C holds * = ???
+  val x: C retains * = ???
   def h[X <:Top](a: X)(b: X) = a
   val z2 = h[() => Cap](() => x)(() => C())  // error
   val z3 = h(() => x)(() => C())  // error

@@ -1,13 +1,24 @@
 class C
-type Cap = C holds *
-type Top = Any holds *
-def f1(c: Cap): () => C holds c.type = () => c // ok
+type Cap = C retains *
+type Top = Any retains *
+def f1(c: Cap): () => C retains c.type = () => c // ok
+
+def f2: Int =
+  val g: (Boolean => Int) retains * = ???
+  val x = g(true)
+  x
+
+def f3: Int =
+  def g: (Boolean => Int) retains * = ???
+  def h = g
+  val x = g.apply(true)
+  x
 
 def foo() =
-  val x: C holds * = ???
-  val y: C holds x.type = x
-  val x2: (() => C) holds x.type = ???
-  val y2: () => C holds x.type = x2
+  val x: C retains * = ???
+  val y: C retains x.type = x
+  val x2: (() => C) retains x.type = ???
+  val y2: () => C retains x.type = x2
 
   val z1: () => Cap = f1(x)
   def h[X <:Top](a: X)(b: X) = a

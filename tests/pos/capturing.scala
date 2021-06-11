@@ -1,8 +1,8 @@
 object Test:
 
-  extension [A <: Any holds *] (xs: LazyList[A])
-    def lazyMap[B <: Any holds *] (f: A => B holds *): LazyList[B] holds f.type | A | B =
-      val x: Int holds f.type | A = ???
+  extension [A <: Any retains *] (xs: LazyList[A])
+    def lazyMap[B <: Any retains *] (f: A => B retains *): LazyList[B] retains f.type | A | B =
+      val x: Int retains f.type | A = ???
       val y = x
-      val z: Int holds A holds f.type = y
+      val z: Int retains A retains f.type = y
       ???
