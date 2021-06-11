@@ -311,10 +311,10 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
         if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
-          if fntpe.isResultDependent then
-            safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
-          else if fntpe.isCaptureDependent then
+          if fntpe.isCaptureDependent then
             fntpe.resultType.substParams(fntpe, args.tpes)
+          else if fntpe.isResultDependent then
+            safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
           else
             fntpe.resultType
         else
