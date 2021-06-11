@@ -12,8 +12,8 @@ def raise[E <: Exception](ex: E)(using CanThrow[E]): Nothing =
   throw ex
 
 @main def Test: Int =
-  def f(a: Boolean) = // error
-    handle {
+  def f(a: Boolean) =
+    handle { // error
       if !a then raise(IOException())
       (b: Boolean) =>
         if !b then raise(IOException())

@@ -94,7 +94,7 @@ class CheckCaptures extends RefineTypes:
 
   end CaptureChecker
 
-  inline val disallowUniversal = true
+  inline val disallowGlobal = true
 
   object PostRefinerCheck extends TreeTraverser:
     def traverse(tree: Tree)(using Context) =
@@ -102,19 +102,24 @@ class CheckCaptures extends RefineTypes:
         case tree1 @ TypeApply(fn, args) =>
           for arg <- args do
             //println(i"checking $arg in $tree: ${arg.tpe.captureSet}")
-            if arg.tpe.captureSet.accountsFor(defn.captureRootType.typeRef) then
-              val notAllowed = " is not allowed to capture the root capability *"
-              def msg = arg match
-                case arg: InferredTypeTree =>
-                  i"""inferred type argument ${arg.tpe}$notAllowed
-                     |
-                     |The inferred arguments are: [$args%, %]"""
-                case _ => s"type argument$notAllowed"
-              report.error(msg, arg.srcPos)
+            for ref <- arg.tpe.captureSet.elems do
+              val isGlobal = ref match
+                case ref: TypeRef => ref.isRootCapability
+                case ref: TermRef => ref.prefix != NoPrefix && ref.symbol.hasAnnotation(defn.AbilityAnnot)
+              val what = if ref.isRootCapability then "universal" else "global"
+              if isGlobal then
+                val notAllowed = i" is not allowed to capture the $what capability $ref"
+                def msg = arg match
+                  case arg: InferredTypeTree =>
+                    i"""inferred type argument ${arg.tpe}$notAllowed
+                       |
+                       |The inferred arguments are: [$args%, %]"""
+                  case _ => s"type argument$notAllowed"
+                report.error(msg, arg.srcPos)
         case _ =>
       traverseChildren(tree)
 
   def postRefinerCheck(tree: tpd.Tree)(using Context): Unit =
-    if disallowUniversal then PostRefinerCheck.traverse(tree)
+    if disallowGlobal then PostRefinerCheck.traverse(tree)
 
 end CheckCaptures

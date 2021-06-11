@@ -29,10 +29,10 @@ longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/try.scala:22:28 ---------------------------------------------------------------
 22 |  val a = handle[Exception, CanThrow[Exception]] { // error
    |                            ^^^^^^^^^^^^^^^^^^^
-   |                            type argument is not allowed to capture the root capability *
+   |                            type argument is not allowed to capture the universal capability *
 -- Error: tests/neg-custom-args/captures/try.scala:34:11 ---------------------------------------------------------------
 34 |  val xx = handle { // error
    |           ^^^^^^
-   |           inferred type argument ((() => Int) retains *) is not allowed to capture the root capability *
+   |           inferred type argument ((() => Int) retains *) is not allowed to capture the universal capability *
    |
    |           The inferred arguments are: [Exception, ((() => Int) retains *)]

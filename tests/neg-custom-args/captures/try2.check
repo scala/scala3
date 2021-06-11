@@ -26,3 +26,13 @@ longer explanation available when compiling with `-explain`
 54 |}
 
 longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/try2.scala:24:28 --------------------------------------------------------------
+24 |  val a = handle[Exception, CanThrow[Exception]] { // error
+   |                            ^^^^^^^^^^^^^^^^^^^
+   |                            type argument is not allowed to capture the global capability (canThrow : List[*])
+-- Error: tests/neg-custom-args/captures/try2.scala:36:11 --------------------------------------------------------------
+36 |  val xx = handle { // error
+   |           ^^^^^^
+   |inferred type argument ((() => Int) retains canThrow) is not allowed to capture the global capability (canThrow : List[*])
+   |
+   |The inferred arguments are: [Exception, ((() => Int) retains canThrow)]
