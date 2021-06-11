@@ -805,18 +805,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ => false
         comparePaths || {
           val tp2n = tp1 match
-            case tp1: CaptureRef if tp1.isTracked && tp2.captureSet.accountsFor(tp1) =>
+            case tp1: CaptureRef if tp1.isTracked =>
               // New rule dealing with singleton types on the left:
               //
-              //   E |- x: S   {x} <: cv(T)   E |- S <: {*} T
-              //   ------------------------------------------
-              //              E |- x.type <:< T
+              //   E |- x: S   E |- S <: {*} T
+              //   ---------------------------
+              //         E |- x.type <:< T
               //
               // Note: This would map to the following (Var) rule in deep capture calculus:
               //
-              //   E |- x: S   {x} <: cv(T)   E |- S <: {*} T
-              //   ------------------------------------------
-              //              E |- x: {x} T
+              //   E |- x: S   E |- S <: {*} T
+              //   ---------------------------
+              //      E |- x: {x} T
               //
               CapturingType(tp2, defn.captureRootType.typeRef)
             case _ => tp2
