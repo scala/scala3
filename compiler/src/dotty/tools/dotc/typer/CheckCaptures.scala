@@ -18,7 +18,7 @@ import Trees._
 import scala.util.control.NonFatal
 import typer.ErrorReporting._
 import util.Spans.Span
-import util.SimpleIdentitySet
+import util.{SimpleIdentitySet, SrcPos}
 import util.Chars.*
 import Nullables._
 import transform.*
@@ -96,6 +96,24 @@ class CheckCaptures extends RefineTypes:
 
   inline val disallowGlobal = true
 
+  def checkWellFormed(whole: Type, pos: SrcPos)(using Context): Unit =
+    def checkRelativeVariance(mt: MethodType) = new TypeTraverser:
+      def traverse(tp: Type): Unit = tp match
+        case CapturingType(parent, ref @ TermParamRef(`mt`, _)) =>
+          if variance <= 0 then
+            val direction = if variance < 0 then "contra" else "in"
+            report.error(em"captured reference $ref appears ${direction}variantly in type $whole", pos)
+          traverse(parent)
+        case _ =>
+          traverseChildren(tp)
+    val checkVariance = new TypeTraverser:
+      def traverse(tp: Type): Unit = tp match
+        case mt: MethodType if mt.isResultDependent =>
+          checkRelativeVariance(mt).traverse(mt)
+        case _ =>
+          traverseChildren(tp)
+    checkVariance.traverse(whole)
+
   object PostRefinerCheck extends TreeTraverser:
     def traverse(tree: Tree)(using Context) =
       tree match
@@ -116,6 +134,10 @@ class CheckCaptures extends RefineTypes:
                        |The inferred arguments are: [$args%, %]"""
                   case _ => s"type argument$notAllowed"
                 report.error(msg, arg.srcPos)
+        case tree: TypeTree =>
+          // it's inferred, no need to check
+        case tree: TypTree =>
+          checkWellFormed(tree.tpe, tree.srcPos)
         case _ =>
       traverseChildren(tree)
 

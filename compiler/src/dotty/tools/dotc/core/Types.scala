@@ -3661,7 +3661,8 @@ object Types {
     /** Does result type contain references to parameters of this method type,
      *  which cannot be eliminated by de-aliasing?
      */
-    def isResultDependent(using Context): Boolean = dependencyStatus == TrueDeps
+    def isResultDependent(using Context): Boolean =
+      dependencyStatus == TrueDeps || dependencyStatus == CaptureDeps
 
     /** Does one of the parameter types contain references to earlier parameters
      *  of this method type which cannot be eliminated by de-aliasing?
@@ -3671,13 +3672,13 @@ object Types {
     /** Is there either a true or false type dependency, or does the result
      *  type capture a parameter?
      */
-    def isCaptureDependent(using Context) = dependencyStatus >= CaptureDeps
+    def isCaptureDependent(using Context) = dependencyStatus == CaptureDeps
 
     def newParamRef(n: Int): TermParamRef = new TermParamRefImpl(this, n)
 
     /** The least supertype of `resultType` that does not contain parameter dependencies */
     def nonDependentResultApprox(using Context): Type =
-      if (isResultDependent) {
+      if isResultDependent then
         val dropDependencies = new ApproximatingTypeMap {
           def apply(tp: Type) = tp match {
             case tp @ TermParamRef(thisLambdaType, _) =>
@@ -3686,7 +3687,6 @@ object Types {
           }
         }
         dropDependencies(resultType)
-      }
       else resultType
   }
 
@@ -4054,8 +4054,8 @@ object Types {
     type DependencyStatus = Byte
     final val Unknown: DependencyStatus = 0   // not yet computed
     final val NoDeps: DependencyStatus = 1    // no dependent parameters found
-    final val CaptureDeps: DependencyStatus = 2
-    final val FalseDeps: DependencyStatus = 3 // all dependent parameters are prefixes of non-depended alias types
+    final val FalseDeps: DependencyStatus = 2 // all dependent parameters are prefixes of non-depended alias types
+    final val CaptureDeps: DependencyStatus = 3
     final val TrueDeps: DependencyStatus = 4  // some truly dependent parameters exist
     final val StatusMask: DependencyStatus = 7 // the bits indicating actual dependency status
     final val Provisional: DependencyStatus = 8  // set if dependency status can still change due to type variable instantiations
