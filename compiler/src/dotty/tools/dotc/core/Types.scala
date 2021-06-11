@@ -2497,7 +2497,7 @@ object Types {
       val tparam = symbol
       val cls = tparam.owner
       val base = pre.baseType(cls)
-      base match {
+      base.stripped match {
         case AppliedType(_, allArgs) =>
           var tparams = cls.typeParams
           var args = allArgs
