@@ -2497,9 +2497,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"provable disjoint $tp1, $tp2", matchTypes) {
     // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
 
-    def isEnumValueOrModule(ref: TermRef): Boolean =
+    def isEnumValue(ref: TermRef): Boolean =
       val sym = ref.termSymbol
-      sym.isAllOf(EnumCase, butNot=JavaDefined) || sym.is(Module)
+      sym.isAllOf(EnumCase, butNot=JavaDefined)
+
+    def isEnumValueOrModule(ref: TermRef): Boolean =
+      isEnumValue(ref) || ref.termSymbol.is(Module) || (ref.info match {
+        case tp: TermRef => isEnumValueOrModule(tp)
+        case _ => false
+      })
 
     /** Can we enumerate all instantiations of this type? */
     def isClosedSum(tp: Symbol): Boolean =
@@ -2608,11 +2614,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         provablyDisjoint(tp1, gadtBounds(tp2.symbol).hi) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
         tp1.termSymbol != tp2.termSymbol
-      case (tp1: TermRef, tp2: TypeRef) if isEnumValueOrModule(tp1) && !tp1.classSymbols.exists(_.derivesFrom(tp2.classSymbol)) =>
-        // Note: enum values may have multiple parents
-        true
-      case (tp1: TypeRef, tp2: TermRef) if isEnumValueOrModule(tp2) && !tp2.classSymbols.exists(_.derivesFrom(tp1.classSymbol)) =>
-        true
+      case (tp1: TermRef, _) if isEnumValue(tp1) =>
+        false
+      case (_, tp2: TermRef) if isEnumValue(tp2) =>
+        false
       case (tp1: Type, tp2: Type) if defn.isTupleType(tp1) =>
         provablyDisjoint(tp1.toNestedPairs, tp2)
       case (tp1: Type, tp2: Type) if defn.isTupleType(tp2) =>
