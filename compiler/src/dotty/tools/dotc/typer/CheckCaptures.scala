@@ -94,6 +94,8 @@ class CheckCaptures extends RefineTypes:
 
   end CaptureChecker
 
+  inline val disallowUniversal = true
+
   object PostRefinerCheck extends TreeTraverser:
     def traverse(tree: Tree)(using Context) =
       tree match
@@ -112,6 +114,7 @@ class CheckCaptures extends RefineTypes:
         case _ =>
       traverseChildren(tree)
 
-  def postRefinerCheck(tree: tpd.Tree)(using Context): Unit = PostRefinerCheck.traverse(tree)
+  def postRefinerCheck(tree: tpd.Tree)(using Context): Unit =
+    if disallowUniversal then PostRefinerCheck.traverse(tree)
 
 end CheckCaptures
