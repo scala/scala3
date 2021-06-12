@@ -2090,8 +2090,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
-    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp1
-    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp2
+    else if tp1.isAny && !tp2.isLambdaSub && tp2.noCaptures || tp1.isAnyKind || isBottom(tp2) then tp1
+    else if tp2.isAny && !tp1.isLambdaSub && tp1.noCaptures || tp2.isAnyKind || isBottom(tp1) then tp2
     else
       def mergedLub(tp1: Type, tp2: Type): Type = {
         tp1.atoms match
