@@ -72,8 +72,9 @@ object Parsers {
     if source.isSelfContained then new ScriptParser(source)
     else new Parser(source)
 
-  private val InCase: Region => Region = Scanners.InCase.apply
-  private val InCond: Region => Region = Scanners.InBraces.apply
+  private val InCase: Region => Region = Scanners.InCase(_)
+  private val InCond: Region => Region = Scanners.InParens(LPAREN, _)
+  private val InFor : Region => Region = Scanners.InBraces(_)
 
   abstract class ParserCommon(val source: SourceFile)(using Context) {
 
@@ -167,7 +168,7 @@ object Parsers {
   class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source)
-    // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
+    //in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
      *  Overridden by ScriptParser
@@ -2553,7 +2554,7 @@ object Parsers {
             if (in.token == INDENT)
               inBracesOrIndented(enumerators())
             else {
-              val ts = inSepRegion(InCond)(enumerators())
+              val ts = inSepRegion(InFor)(enumerators())
               if (rewriteToOldSyntax(Span(start)) && ts.nonEmpty)
                 if (ts.head.sourcePos.startLine != ts.last.sourcePos.startLine) {
                   patch(source, Span(forEnd), " {")
