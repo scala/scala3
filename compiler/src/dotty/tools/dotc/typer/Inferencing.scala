@@ -503,7 +503,7 @@ object Inferencing {
     *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
     *  type member. See the documentation of `TypeBox` for a rationale why we do this.
     */
-  def captureWildcards(tp: Type)(using Context): Type = tp match {
+  def captureWildcards(tp: Type)(using Context): Type = tp.dealias match {
     case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
       tycon.typeParams match {
         case tparams @ ((_: Symbol) :: _) =>
