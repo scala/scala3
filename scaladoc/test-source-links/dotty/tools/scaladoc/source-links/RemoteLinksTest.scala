@@ -49,12 +49,12 @@ class RemoteLinksTest:
         }
       catch
         case e: java.lang.IllegalArgumentException =>
-          report.error(s"Could not open link for $link - invalid URL")(using testContext)
+          report.error(s"Could not open link for $link needed for ${members.toSeq} at - invalid URL")(using testContext)
         case e: TimeoutException =>
-          report.error(s"Tried to open link $link 16 times but with no avail")(using testContext)
+          report.error(s"Tried to open link $link needed for ${members.toSeq} 16 times but with no avail")(using testContext)
         case e: org.jsoup.HttpStatusException => e.getStatusCode match
-          case 404 => throw AssertionError(s"Page $link does not exists")
-          case n   => report.warning(s"Could not open link for $link, return code $n")(using testContext)
+          case 404 => throw AssertionError(s"Page $link does not exists needed for ${members.toSeq}")
+          case n   => report.warning(s"Could not open link for $link, return code $n needed for ${members.toSeq}")(using testContext)
     }
     assertNoErrors(testContext.reportedDiagnostics)
 
