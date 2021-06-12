@@ -96,20 +96,21 @@ class CheckCaptures extends RefineTypes:
 
   inline val disallowGlobal = true
 
+  def checkRelativeVariance(mt: MethodType, whole: Type, pos: SrcPos)(using Context) = new TypeTraverser:
+    def traverse(tp: Type): Unit = tp match
+      case CapturingType(parent, ref @ TermParamRef(`mt`, _)) =>
+        if variance <= 0 then
+          val direction = if variance < 0 then "contra" else "in"
+          report.error(em"captured reference $ref appears ${direction}variantly in type $whole", pos)
+        traverse(parent)
+      case _ =>
+        traverseChildren(tp)
+
   def checkWellFormed(whole: Type, pos: SrcPos)(using Context): Unit =
-    def checkRelativeVariance(mt: MethodType) = new TypeTraverser:
-      def traverse(tp: Type): Unit = tp match
-        case CapturingType(parent, ref @ TermParamRef(`mt`, _)) =>
-          if variance <= 0 then
-            val direction = if variance < 0 then "contra" else "in"
-            report.error(em"captured reference $ref appears ${direction}variantly in type $whole", pos)
-          traverse(parent)
-        case _ =>
-          traverseChildren(tp)
     val checkVariance = new TypeTraverser:
       def traverse(tp: Type): Unit = tp match
         case mt: MethodType if mt.isResultDependent =>
-          checkRelativeVariance(mt).traverse(mt)
+          checkRelativeVariance(mt, whole, pos).traverse(mt)
         case _ =>
           traverseChildren(tp)
     checkVariance.traverse(whole)
@@ -138,6 +139,16 @@ class CheckCaptures extends RefineTypes:
           // it's inferred, no need to check
         case tree: TypTree =>
           checkWellFormed(tree.tpe, tree.srcPos)
+        case tree: DefDef =>
+          def check(tp: Type): Unit = tp match
+            case tp: PolyType =>
+              check(tp.resType)
+            case mt: MethodType =>
+              if mt.isResultDependent then
+                checkRelativeVariance(mt, tree.symbol.info, ctx.source.atSpan(tree.nameSpan)).traverse(mt)
+              check(mt.resType)
+            case _ =>
+          check(tree.symbol.info)
         case _ =>
       traverseChildren(tree)
 
