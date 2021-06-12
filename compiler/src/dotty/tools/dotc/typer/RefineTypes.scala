@@ -130,11 +130,17 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
     override def index(trees: List[untpd.Tree])(using Context): Context =
       for case tree: ValOrDefDef <- trees.asInstanceOf[List[Tree]] do
         val sym = tree.symbol
+        def isLocalOnly =
+          val transOwner = sym.owner.ownersIterator
+            .dropWhile(owner => owner.isClass && !owner.isStatic && !owner.is(Private))
+            .next
+          sym.is(Private) || transOwner.is(Private) || transOwner.isTerm
         if tree.tpt.isInstanceOf[untpd.InferredTypeTree]
-          && (sym.is(Private) || sym.owner.isTerm)
+          && isLocalOnly
           && !sym.isOneOf(Param | JavaDefined)
           && !sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
           && !sym.name.is(DefaultGetterName)
+          && !sym.isConstructor
         then
           updateInfo(sym, RefineCompleter(tree))
       ctx
@@ -341,6 +347,11 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
       sym.ensureCompleted()
       super.typedValDef(vdef, sym)
+
+    override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
+      val (impl: untpd.Template) = cdef.rhs: @unchecked
+      index(impl.body)
+      super.typedClassDef(cdef, cls)
 
     override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
       if tree.symbol == defn.StdLibPatchesPackage then
