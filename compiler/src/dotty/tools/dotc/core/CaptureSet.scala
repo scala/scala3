@@ -85,7 +85,7 @@ object CaptureSet:
     val collect = new TypeAccumulator[Refs]:
       var localBinders: SimpleIdentitySet[BindingType] = SimpleIdentitySet.empty
       var seenLazyRefs: SimpleIdentitySet[LazyRef] = SimpleIdentitySet.empty
-      def apply(elems: Refs, tp: Type): Refs = trace(i"capt $elems, $tp", show = true) {
+      def apply(elems: Refs, tp: Type): Refs = trace(i"capt $elems, $tp", capt, show = true) {
         tp match
           case tp: NamedType =>
             if variance < 0 then elems
