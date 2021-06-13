@@ -96,7 +96,7 @@ erased    extends   false     final     finally   for       given     if
 implied   import    lazy      match     new       null      object    package
 private   protected override  return    super     sealed    then      throw
 trait     true      try       type      val       var       while     yield
-:         =         <-        =>        <:        :>        #         @
+:         =         <-        =>        <:        >:        #         @
 ```
 
 ### Soft keywords
