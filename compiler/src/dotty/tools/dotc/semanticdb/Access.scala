@@ -44,11 +44,11 @@ object Access {
     })
   }
 }
-
+@SerialVersionUID(0L)
 final case class AccessMessage(
     sealedValue: dotty.tools.dotc.semanticdb.AccessMessage.SealedValue = dotty.tools.dotc.semanticdb.AccessMessage.SealedValue.Empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
-    @sharable
+    @transient @sharable
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0
@@ -216,7 +216,7 @@ object AccessMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
     def publicAccess: _root_.scala.Option[dotty.tools.dotc.semanticdb.PublicAccess] = _root_.scala.None
   }
   object SealedValue {
-    
+    @SerialVersionUID(0L)
     case object Empty extends dotty.tools.dotc.semanticdb.AccessMessage.SealedValue {
       type ValueType = _root_.scala.Nothing
       override def isEmpty: _root_.scala.Boolean = true
@@ -225,49 +225,49 @@ object AccessMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
       override def value: _root_.scala.Nothing = throw new java.util.NoSuchElementException("Empty.value")
     }
   
-    
+    @SerialVersionUID(0L)
     final case class PrivateAccess(value: dotty.tools.dotc.semanticdb.PrivateAccess) extends dotty.tools.dotc.semanticdb.AccessMessage.SealedValue  derives CanEqual {
       type ValueType = dotty.tools.dotc.semanticdb.PrivateAccess
       override def isPrivateAccess: _root_.scala.Boolean = true
       override def privateAccess: _root_.scala.Option[dotty.tools.dotc.semanticdb.PrivateAccess] = Some(value)
       override def number: _root_.scala.Int = 1
     }
-    
+    @SerialVersionUID(0L)
     final case class PrivateThisAccess(value: dotty.tools.dotc.semanticdb.PrivateThisAccess) extends dotty.tools.dotc.semanticdb.AccessMessage.SealedValue  derives CanEqual {
       type ValueType = dotty.tools.dotc.semanticdb.PrivateThisAccess
       override def isPrivateThisAccess: _root_.scala.Boolean = true
       override def privateThisAccess: _root_.scala.Option[dotty.tools.dotc.semanticdb.PrivateThisAccess] = Some(value)
       override def number: _root_.scala.Int = 2
     }
-    
+    @SerialVersionUID(0L)
     final case class PrivateWithinAccess(value: dotty.tools.dotc.semanticdb.PrivateWithinAccess) extends dotty.tools.dotc.semanticdb.AccessMessage.SealedValue  derives CanEqual {
       type ValueType = dotty.tools.dotc.semanticdb.PrivateWithinAccess
       override def isPrivateWithinAccess: _root_.scala.Boolean = true
       override def privateWithinAccess: _root_.scala.Option[dotty.tools.dotc.semanticdb.PrivateWithinAccess] = Some(value)
       override def number: _root_.scala.Int = 3
     }
-    
+    @SerialVersionUID(0L)
     final case class ProtectedAccess(value: dotty.tools.dotc.semanticdb.ProtectedAccess) extends dotty.tools.dotc.semanticdb.AccessMessage.SealedValue  derives CanEqual {
       type ValueType = dotty.tools.dotc.semanticdb.ProtectedAccess
       override def isProtectedAccess: _root_.scala.Boolean = true
       override def protectedAccess: _root_.scala.Option[dotty.tools.dotc.semanticdb.ProtectedAccess] = Some(value)
       override def number: _root_.scala.Int = 4
     }
-    
+    @SerialVersionUID(0L)
     final case class ProtectedThisAccess(value: dotty.tools.dotc.semanticdb.ProtectedThisAccess) extends dotty.tools.dotc.semanticdb.AccessMessage.SealedValue  derives CanEqual {
       type ValueType = dotty.tools.dotc.semanticdb.ProtectedThisAccess
       override def isProtectedThisAccess: _root_.scala.Boolean = true
       override def protectedThisAccess: _root_.scala.Option[dotty.tools.dotc.semanticdb.ProtectedThisAccess] = Some(value)
       override def number: _root_.scala.Int = 5
     }
-    
+    @SerialVersionUID(0L)
     final case class ProtectedWithinAccess(value: dotty.tools.dotc.semanticdb.ProtectedWithinAccess) extends dotty.tools.dotc.semanticdb.AccessMessage.SealedValue  derives CanEqual {
       type ValueType = dotty.tools.dotc.semanticdb.ProtectedWithinAccess
       override def isProtectedWithinAccess: _root_.scala.Boolean = true
       override def protectedWithinAccess: _root_.scala.Option[dotty.tools.dotc.semanticdb.ProtectedWithinAccess] = Some(value)
       override def number: _root_.scala.Int = 6
     }
-    
+    @SerialVersionUID(0L)
     final case class PublicAccess(value: dotty.tools.dotc.semanticdb.PublicAccess) extends dotty.tools.dotc.semanticdb.AccessMessage.SealedValue  derives CanEqual {
       type ValueType = dotty.tools.dotc.semanticdb.PublicAccess
       override def isPublicAccess: _root_.scala.Boolean = true
@@ -290,7 +290,7 @@ object AccessMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.Access])
 }
 
-
+@SerialVersionUID(0L)
 final case class PrivateAccess(
     )  extends dotty.tools.dotc.semanticdb.Access.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     final override def serializedSize: _root_.scala.Int = 0
@@ -331,7 +331,7 @@ object PrivateAccess  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.PrivateAccess])
 }
 
-
+@SerialVersionUID(0L)
 final case class PrivateThisAccess(
     )  extends dotty.tools.dotc.semanticdb.Access.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     final override def serializedSize: _root_.scala.Int = 0
@@ -372,11 +372,11 @@ object PrivateThisAccess  extends SemanticdbGeneratedMessageCompanion[dotty.tool
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.PrivateThisAccess])
 }
 
-
+@SerialVersionUID(0L)
 final case class PrivateWithinAccess(
     symbol: _root_.scala.Predef.String = ""
     )  extends dotty.tools.dotc.semanticdb.Access.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
-    @sharable
+    @transient @sharable
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0
@@ -449,7 +449,7 @@ object PrivateWithinAccess  extends SemanticdbGeneratedMessageCompanion[dotty.to
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.PrivateWithinAccess])
 }
 
-
+@SerialVersionUID(0L)
 final case class ProtectedAccess(
     )  extends dotty.tools.dotc.semanticdb.Access.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     final override def serializedSize: _root_.scala.Int = 0
@@ -490,7 +490,7 @@ object ProtectedAccess  extends SemanticdbGeneratedMessageCompanion[dotty.tools.
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ProtectedAccess])
 }
 
-
+@SerialVersionUID(0L)
 final case class ProtectedThisAccess(
     )  extends dotty.tools.dotc.semanticdb.Access.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     final override def serializedSize: _root_.scala.Int = 0
@@ -531,11 +531,11 @@ object ProtectedThisAccess  extends SemanticdbGeneratedMessageCompanion[dotty.to
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ProtectedThisAccess])
 }
 
-
+@SerialVersionUID(0L)
 final case class ProtectedWithinAccess(
     symbol: _root_.scala.Predef.String = ""
     )  extends dotty.tools.dotc.semanticdb.Access.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
-    @sharable
+    @transient @sharable
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0
@@ -608,7 +608,7 @@ object ProtectedWithinAccess  extends SemanticdbGeneratedMessageCompanion[dotty.
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ProtectedWithinAccess])
 }
 
-
+@SerialVersionUID(0L)
 final case class PublicAccess(
     )  extends dotty.tools.dotc.semanticdb.Access.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     final override def serializedSize: _root_.scala.Int = 0

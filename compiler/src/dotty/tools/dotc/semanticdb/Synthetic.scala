@@ -7,12 +7,12 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.internal._
 import scala.annotation.internal.sharable
 
-
+@SerialVersionUID(0L)
 final case class Synthetic(
     range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range] = _root_.scala.None,
     tree: dotty.tools.dotc.semanticdb.Tree = dotty.tools.dotc.semanticdb.Synthetic._typemapper_tree.toCustom(dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance)
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
-    @sharable
+    @transient @sharable
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0
@@ -98,7 +98,7 @@ object Synthetic  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
   )
   final val RANGE_FIELD_NUMBER = 1
   final val TREE_FIELD_NUMBER = 2
-  @sharable
+  @transient @sharable
   private[semanticdb] val _typemapper_tree: SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.TreeMessage, dotty.tools.dotc.semanticdb.Tree] = implicitly[SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.TreeMessage, dotty.tools.dotc.semanticdb.Tree]]
   def of(
     range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range],

@@ -7,7 +7,7 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.internal._
 import scala.annotation.internal.sharable
 
-
+@SerialVersionUID(0L)
 final case class TextDocument(
     schema: dotty.tools.dotc.semanticdb.Schema = dotty.tools.dotc.semanticdb.Schema.LEGACY,
     uri: _root_.scala.Predef.String = "",
@@ -19,7 +19,7 @@ final case class TextDocument(
     diagnostics: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Diagnostic] = _root_.scala.Seq.empty,
     synthetics: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Synthetic] = _root_.scala.Seq.empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
-    @sharable
+    @transient @sharable
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0

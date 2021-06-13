@@ -7,13 +7,13 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.internal._
 import scala.annotation.internal.sharable
 
-
+@SerialVersionUID(0L)
 final case class SymbolOccurrence(
     range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range] = _root_.scala.None,
     symbol: _root_.scala.Predef.String = "",
     role: dotty.tools.dotc.semanticdb.SymbolOccurrence.Role = dotty.tools.dotc.semanticdb.SymbolOccurrence.Role.UNKNOWN_ROLE
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
-    @sharable
+    @transient @sharable
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0
@@ -126,28 +126,28 @@ object SymbolOccurrence  extends SemanticdbGeneratedMessageCompanion[dotty.tools
   object Role  {
     sealed trait Recognized extends Role
     
-    
+    @SerialVersionUID(0L)
     case object UNKNOWN_ROLE extends Role(0) with Role.Recognized {
       val index = 0
       val name = "UNKNOWN_ROLE"
       override def isUnknownRole: _root_.scala.Boolean = true
     }
     
-    
+    @SerialVersionUID(0L)
     case object REFERENCE extends Role(1) with Role.Recognized {
       val index = 1
       val name = "REFERENCE"
       override def isReference: _root_.scala.Boolean = true
     }
     
-    
+    @SerialVersionUID(0L)
     case object DEFINITION extends Role(2) with Role.Recognized {
       val index = 2
       val name = "DEFINITION"
       override def isDefinition: _root_.scala.Boolean = true
     }
     
-    
+    @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Role(unrecognizedValue) with SemanticdbUnrecognizedEnum
     
     lazy val values = scala.collection.immutable.Seq(UNKNOWN_ROLE, REFERENCE, DEFINITION)

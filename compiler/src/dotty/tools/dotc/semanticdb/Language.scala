@@ -19,28 +19,28 @@ sealed abstract class Language(val value: _root_.scala.Int)  extends SemanticdbG
 object Language  {
   sealed trait Recognized extends Language
   
-  
+  @SerialVersionUID(0L)
   case object UNKNOWN_LANGUAGE extends Language(0) with Language.Recognized {
     val index = 0
     val name = "UNKNOWN_LANGUAGE"
     override def isUnknownLanguage: _root_.scala.Boolean = true
   }
   
-  
+  @SerialVersionUID(0L)
   case object SCALA extends Language(1) with Language.Recognized {
     val index = 1
     val name = "SCALA"
     override def isScala: _root_.scala.Boolean = true
   }
   
-  
+  @SerialVersionUID(0L)
   case object JAVA extends Language(2) with Language.Recognized {
     val index = 2
     val name = "JAVA"
     override def isJava: _root_.scala.Boolean = true
   }
   
-  
+  @SerialVersionUID(0L)
   final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Language(unrecognizedValue) with SemanticdbUnrecognizedEnum
   
   lazy val values = scala.collection.immutable.Seq(UNKNOWN_LANGUAGE, SCALA, JAVA)

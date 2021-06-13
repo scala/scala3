@@ -7,12 +7,12 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.internal._
 import scala.annotation.internal.sharable
 
-
+@SerialVersionUID(0L)
 final case class Scope(
     symlinks: _root_.scala.Seq[_root_.scala.Predef.String] = _root_.scala.Seq.empty,
     hardlinks: _root_.scala.Seq[dotty.tools.dotc.semanticdb.SymbolInformation] = _root_.scala.Seq.empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
-    @sharable
+    @transient @sharable
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0

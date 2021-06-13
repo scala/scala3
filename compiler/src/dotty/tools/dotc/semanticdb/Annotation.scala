@@ -7,11 +7,11 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.internal._
 import scala.annotation.internal.sharable
 
-
+@SerialVersionUID(0L)
 final case class Annotation(
     tpe: dotty.tools.dotc.semanticdb.Type = dotty.tools.dotc.semanticdb.Annotation._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
-    @sharable
+    @transient @sharable
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0
@@ -78,7 +78,7 @@ object Annotation  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.
     tpe = dotty.tools.dotc.semanticdb.Annotation._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
   )
   final val TPE_FIELD_NUMBER = 1
-  @sharable
+  @transient @sharable
   private[semanticdb] val _typemapper_tpe: SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.TypeMessage, dotty.tools.dotc.semanticdb.Type] = implicitly[SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.TypeMessage, dotty.tools.dotc.semanticdb.Type]]
   def of(
     tpe: dotty.tools.dotc.semanticdb.Type

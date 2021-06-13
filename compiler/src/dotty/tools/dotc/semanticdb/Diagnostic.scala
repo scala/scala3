@@ -7,13 +7,13 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.internal._
 import scala.annotation.internal.sharable
 
-
+@SerialVersionUID(0L)
 final case class Diagnostic(
     range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range] = _root_.scala.None,
     severity: dotty.tools.dotc.semanticdb.Diagnostic.Severity = dotty.tools.dotc.semanticdb.Diagnostic.Severity.UNKNOWN_SEVERITY,
     message: _root_.scala.Predef.String = ""
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
-    @sharable
+    @transient @sharable
     private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
     private[this] def __computeSerializedValue(): _root_.scala.Int = {
       var __size = 0
@@ -128,42 +128,42 @@ object Diagnostic  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.
   object Severity  {
     sealed trait Recognized extends Severity
     
-    
+    @SerialVersionUID(0L)
     case object UNKNOWN_SEVERITY extends Severity(0) with Severity.Recognized {
       val index = 0
       val name = "UNKNOWN_SEVERITY"
       override def isUnknownSeverity: _root_.scala.Boolean = true
     }
     
-    
+    @SerialVersionUID(0L)
     case object ERROR extends Severity(1) with Severity.Recognized {
       val index = 1
       val name = "ERROR"
       override def isError: _root_.scala.Boolean = true
     }
     
-    
+    @SerialVersionUID(0L)
     case object WARNING extends Severity(2) with Severity.Recognized {
       val index = 2
       val name = "WARNING"
       override def isWarning: _root_.scala.Boolean = true
     }
     
-    
+    @SerialVersionUID(0L)
     case object INFORMATION extends Severity(3) with Severity.Recognized {
       val index = 3
       val name = "INFORMATION"
       override def isInformation: _root_.scala.Boolean = true
     }
     
-    
+    @SerialVersionUID(0L)
     case object HINT extends Severity(4) with Severity.Recognized {
       val index = 4
       val name = "HINT"
       override def isHint: _root_.scala.Boolean = true
     }
     
-    
+    @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Severity(unrecognizedValue) with SemanticdbUnrecognizedEnum
     
     lazy val values = scala.collection.immutable.Seq(UNKNOWN_SEVERITY, ERROR, WARNING, INFORMATION, HINT)
