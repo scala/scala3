@@ -977,7 +977,7 @@ trait Implicits:
 
       val result0 =
         // If we are searching implicits when resolving an import symbol, start the search
-        // in the first enclosing context that does not have the same scope as the current
+        // in the first enclosing context that does not have the same scope and owner as the current
         // context. Without that precaution, an eligible implicit in the current scope
         // would cause a cyclic reference error (if the import is named) or cause a
         // spurious import skip (if the import is a wildcard import). See i12802 for a test case.
