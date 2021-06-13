@@ -464,7 +464,7 @@ class SemanticdbInputStream private (buffer: Array[Byte], input: InputStream) {
       bytes = readRawBytesSlowPath(size);
       pos = 0;
     }
-    // TODO: should validate Utf8
+    // TODO(martinrb): We could save a pass by validating while decoding.
     // if (!Utf8.isValidUtf8(bytes, pos, pos + size)) {
     //   throw InvalidProtocolBufferException.invalidUtf8();
     // }
