@@ -72,7 +72,7 @@ to mock classes in tests, or to apply temporary patches that add features or fix
 
 ### Relationship with `sealed`
 
-A class that is neither `abstract` nor `open` is similar to a `sealed` class: it can still be extended, but only in the same compilation unit. The difference is what happens if an extension of the class is attempted in another compilation unit. For a `sealed` class, this is an error, whereas for a simple non-open class, this is still permitted provided the `adhocExtensions` feature is enabled, and it gives a warning otherwise.
+A class that is neither `abstract` nor `open` is similar to a `sealed` class: it can still be extended, but only in the same source file. The difference is what happens if an extension of the class is attempted in another source file. For a `sealed` class, this is an error, whereas for a simple non-open class, this is still permitted provided the `adhocExtensions` feature is enabled, and it gives a warning otherwise.
 
 ### Migration
 
