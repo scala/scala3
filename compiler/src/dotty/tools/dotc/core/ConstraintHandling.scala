@@ -99,7 +99,7 @@ trait ConstraintHandling {
       val bound = dropWildcards(rawBound)
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
       val equalBounds = (if isUpper then lo else hi) eq bound
-      if equalBounds && !bound.existsPart(_ eq param, stopAtStatic = true) then
+      if equalBounds && !bound.existsPart(_ eq param, StopAt.Static) then
         // The narrowed bounds are equal and not recursive,
         // so we can remove `param` from the constraint.
         constraint = constraint.replace(param, bound)

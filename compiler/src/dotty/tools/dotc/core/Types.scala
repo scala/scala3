@@ -439,14 +439,14 @@ object Types {
 
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
-      existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true, forceLazy = false)
+      existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false)
 
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
      */
-    final def existsPart(p: Type => Boolean, stopAtStatic: Boolean = false, forceLazy: Boolean = true)(using Context): Boolean =
-      new ExistsAccumulator(p, stopAtStatic, forceLazy).apply(false, this)
+    final def existsPart(p: Type => Boolean, stopAt: StopAt = StopAt.None, forceLazy: Boolean = true)(using Context): Boolean =
+      new ExistsAccumulator(p, stopAt, forceLazy).apply(false, this)
 
     /** Returns true if all parts of this type satisfy predicate `p`.
      */
@@ -454,8 +454,8 @@ object Types {
       !existsPart(!p(_))
 
     /** Performs operation on all parts of this type */
-    final def foreachPart(p: Type => Unit, stopAtStatic: Boolean = false)(using Context): Unit =
-      new ForeachAccumulator(p, stopAtStatic).apply((), this)
+    final def foreachPart(p: Type => Unit, stopAt: StopAt = StopAt.None)(using Context): Unit =
+      new ForeachAccumulator(p, stopAt).apply((), this)
 
     /** The parts of this type which are type or term refs and which
      *  satisfy predicate `p`.
@@ -5199,6 +5199,12 @@ object Types {
 
   // ----- TypeMaps --------------------------------------------------------------------
 
+  /** Where a traversal should stop */
+  enum StopAt:
+    case None    // traverse everything
+    case Package // stop at package references
+    case Static  // stop at static references
+
   /** Common base class of TypeMap and TypeAccumulator */
   abstract class VariantTraversal:
     protected[core] var variance: Int = 1
@@ -5211,7 +5217,7 @@ object Types {
       res
     }
 
-    protected def stopAtStatic: Boolean = true
+    protected def stopAt: StopAt = StopAt.Static
 
     /** Can the prefix of this static reference be omitted if the reference
      *  itself can be omitted? Overridden in TypeOps#avoid.
@@ -5220,7 +5226,11 @@ object Types {
 
     protected def stopBecauseStaticOrLocal(tp: NamedType)(using Context): Boolean =
       (tp.prefix eq NoPrefix)
-      || stopAtStatic && tp.currentSymbol.isStatic && isStaticPrefix(tp.prefix)
+      || {
+        val stop = stopAt
+        stop == StopAt.Static && tp.currentSymbol.isStatic && isStaticPrefix(tp.prefix)
+        || stop == StopAt.Package && tp.currentSymbol.is(Package)
+      }
   end VariantTraversal
 
   abstract class TypeMap(implicit protected var mapCtx: Context)
@@ -5409,7 +5419,7 @@ object Types {
       derivedClassInfo(tp, this(tp.prefix))
 
     def andThen(f: Type => Type): TypeMap = new TypeMap {
-      override def stopAtStatic = thisMap.stopAtStatic
+      override def stopAt = thisMap.stopAt
       def apply(tp: Type) = f(thisMap(tp))
     }
   }
@@ -5831,12 +5841,12 @@ object Types {
 
   class ExistsAccumulator(
       p: Type => Boolean,
-      override val stopAtStatic: Boolean,
+      override val stopAt: StopAt,
       forceLazy: Boolean)(using Context) extends TypeAccumulator[Boolean]:
     def apply(x: Boolean, tp: Type): Boolean =
       x || p(tp) || (forceLazy || !tp.isInstanceOf[LazyRef]) && foldOver(x, tp)
 
-  class ForeachAccumulator(p: Type => Unit, override val stopAtStatic: Boolean)(using Context) extends TypeAccumulator[Unit] {
+  class ForeachAccumulator(p: Type => Unit, override val stopAt: StopAt)(using Context) extends TypeAccumulator[Unit] {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 

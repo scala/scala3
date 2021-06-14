@@ -669,7 +669,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   /** Register type of leaf node */
   private def registerLeaf(tree: Tree): Unit = tree match {
     case _: This | _: Ident | _: TypeTree =>
-      tree.typeOpt.foreachPart(registerType, stopAtStatic = true)
+      tree.typeOpt.foreachPart(registerType, StopAt.Static)
     case _ =>
   }
 
