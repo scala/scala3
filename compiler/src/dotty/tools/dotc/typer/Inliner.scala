@@ -556,7 +556,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
           else
             inlineCallPrefix
-      val binding = ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span)
+      val binding = accountForOpaques(
+        ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span))
       bindingsBuf += binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
       lastSelf = selfSym
@@ -564,10 +565,83 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
   }
 
+  /** A list of pairs between TermRefs appearing in thisProxy bindings that
+   *  refer to objects with opaque type aliases and local proxy symbols
+   *  that contain refined versions of these TermRefs where the aliases
+   *  are exposed.
+   */
+  private val opaqueProxies = new mutable.ListBuffer[(TermRef, TermRef)]
+
+  /** Map first halfs of opaqueProxies pairs to second halfs, using =:= as equality */
+  def mapRef(ref: TermRef): Option[TermRef] =
+    opaqueProxies
+      .find((from, to) => from.symbol == ref.symbol && from =:= ref)
+      .map(_._2)
+
+  /** If `binding` contains TermRefs that refer to objects with opaque
+   *  type aliases, add proxy definitions that expose these aliases
+   *  and substitute such TermRefs with theproxies. Example from pos/opaque-inline1.scala:
+   *
+   *  object refined:
+   *    opaque type Positive = Int
+   *    inline def Positive(value: Int): Positive = f(value)
+   *    def f(x: Positive): Positive = x
+   *  def run: Unit = { val x = 9; val nine = refined.Positive(x) }
+   *
+   *  This generates the following proxies:
+   *
+   *    val $proxy1: refined.type{type Positive = Int} =
+   *      refined.$asInstanceOf$[refined.type{type Positive = Int}]
+   *    val refined$_this: ($proxy1 : refined.type{Positive = Int}) =
+   *      $proxy1
+   *
+   *  and every reference to `refined` in the inlined expression is replaced by
+   *  `refined_$this`.
+   */
+  def accountForOpaques(binding: ValDef)(using Context): ValDef =
+    binding.symbol.info.foreachPart {
+      case ref: TermRef =>
+        for cls <- ref.widen.classSymbols do
+          if cls.containsOpaques && mapRef(ref).isEmpty then
+            def openOpaqueAliases(selfType: Type): List[(Name, Type)] = selfType match
+              case RefinedType(parent, rname, TypeAlias(alias)) =>
+                val opaq = cls.info.member(rname).symbol
+                if opaq.isOpaqueAlias then
+                  (rname, alias.stripLazyRef.asSeenFrom(ref, cls))
+                  :: openOpaqueAliases(parent)
+                else Nil
+              case _ =>
+                Nil
+            val refinements = openOpaqueAliases(cls.givenSelfType)
+            val refinedType = refinements.foldLeft(ref: Type) ((parent, refinement) =>
+              RefinedType(parent, refinement._1, TypeAlias(refinement._2))
+            )
+            val refiningSym = newSym(InlineBinderName.fresh(), Synthetic, refinedType).asTerm
+            val refiningDef = ValDef(refiningSym, tpd.ref(ref).cast(refinedType)).withSpan(binding.span)
+            inlining.println(i"add opaque alias proxy $refiningDef")
+            bindingsBuf += refiningDef
+            opaqueProxies += ((ref, refiningSym.termRef))
+      case _ =>
+    }
+    if opaqueProxies.isEmpty then binding
+    else
+      val mapType = new TypeMap:
+        override def stopAt = StopAt.Package
+        def apply(t: Type) = mapOver {
+          t match
+            case ref: TermRef => mapRef(ref).getOrElse(ref)
+            case _ => t
+        }
+      binding.symbol.info = mapType(binding.symbol.info)
+      val mapTree = TreeTypeMap(typeMap = mapType)
+      mapTree.transform(binding).asInstanceOf[ValDef]
+        .showing(i"transformed this binding exposing opaque aliases: $result", inlining)
+  end accountForOpaques
+
   private def canElideThis(tpe: ThisType): Boolean =
-    inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls) ||
-    tpe.cls.isContainedIn(inlinedMethod) ||
-    tpe.cls.is(Package)
+    inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls)
+    || tpe.cls.isContainedIn(inlinedMethod)
+    || tpe.cls.is(Package)
 
   /** Very similar to TreeInfo.isPureExpr, but with the following inliner-only exceptions:
    *  - synthetic case class apply methods, when the case class constructor is empty, are
@@ -666,12 +740,25 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     case _ =>
   }
 
+  private val registerTypes = new TypeTraverser:
+    override def stopAt = StopAt.Package
+    // Only register ThisType prefixes that see opaques. No need to register the others
+    // since they are static prefixes.
+    def registerStaticPrefix(t: Type): Unit = t match
+      case t: ThisType if t.cls.seesOpaques => registerType(t)
+      case t: NamedType => registerStaticPrefix(t.prefix)
+      case _ =>
+    override def traverse(t: Type) = t match
+      case t: NamedType if t.currentSymbol.isStatic =>
+        registerStaticPrefix(t.prefix)
+      case t =>
+        registerType(t)
+        traverseChildren(t)
+
   /** Register type of leaf node */
-  private def registerLeaf(tree: Tree): Unit = tree match {
-    case _: This | _: Ident | _: TypeTree =>
-      tree.typeOpt.foreachPart(registerType, StopAt.Static)
+  private def registerLeaf(tree: Tree): Unit = tree match
+    case _: This | _: Ident | _: TypeTree => registerTypes.traverse(tree.typeOpt)
     case _ =>
-  }
 
   /** Make `tree` part of inlined expansion. This means its owner has to be changed
    *  from its `originalOwner`, and, if it comes from outside the inlined method
@@ -797,6 +884,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     val inliner = new InlinerMap(
       typeMap =
         new DeepTypeMap {
+          override def stopAt =
+            if opaqueProxies.isEmpty then StopAt.Static else StopAt.Package
           def apply(t: Type) = t match {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
             case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
@@ -843,7 +932,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
-    val expansion = inliner.transform(rhsToInline)
+    val expansion0 = inliner.transform(rhsToInline)
+    val expansion =
+      if opaqueProxies.nonEmpty && !inlinedMethod.is(Transparent) then
+        expansion0.cast(call.tpe)(using ctx.withSource(expansion0.source))
+          // the cast makes sure that the sealing with the declared type
+          // is type correct. Without it we might get problems since the
+          // expression's type is the opaque alias but the call's type is
+          // the opaque type itself. An example is in pos/opaque-inline1.scala.
+      else
+        expansion0
 
     def issueError() = callValueArgss match {
       case (msgArg :: Nil) :: Nil =>
