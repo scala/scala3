@@ -448,6 +448,29 @@ class SemanticdbInputStream private (buffer: Array[Byte], input: InputStream) {
     }
   }
 
+  def readStringRequireUtf8(): String = {
+    val size: Int = readRawVarint32()
+    var bytes: Array[Byte] = Array()
+    var pos = bufferPos;
+    if (size <= (bufferSize - pos) && size > 0) {
+      // Fast path:  We already have the bytes in a contiguous buffer, so
+      //   just copy directly from it.
+      bytes = buffer;
+      bufferPos = pos + size;
+    } else if (size == 0) {
+      return "";
+    } else {
+      // Slow path:  Build a byte array first then copy it.
+      bytes = readRawBytesSlowPath(size);
+      pos = 0;
+    }
+    // TODO(martinrb): We could save a pass by validating while decoding.
+    // if (!Utf8.isValidUtf8(bytes, pos, pos + size)) {
+    //   throw InvalidProtocolBufferException.invalidUtf8();
+    // }
+    return new String(bytes, pos, size, "UTF-8");
+  }
+
   def checkLastTagWas(value: Int): Unit = {
     if (lastTag != value) {
       throw InvalidProtocolBufferException.invalidEndTag();
