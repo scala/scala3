@@ -1,0 +1,20 @@
+-- Error: tests/init/neg/enum-desugared.scala:17:15 --------------------------------------------------------------------
+17 |    Array(this.LazyErrorId, this.NoExplanationID) // error // error
+   |          ^^^^^^^^^^^^^^^^
+   |          Promoting the value to fully-initialized is unsafe. May only use initialized value as method arguments
+   |
+   |          The unsafe promotion may cause the following problem(s):
+   |
+   |          1. Calling the external method method name may cause initialization errors. Calling trace:
+   |           -> override def productPrefix: String = this.name()	[ enum-desugared.scala:29 ]
+   |            -> Array(this.LazyErrorId, this.NoExplanationID) // error // error	[ enum-desugared.scala:17 ]
+-- Error: tests/init/neg/enum-desugared.scala:17:33 --------------------------------------------------------------------
+17 |    Array(this.LazyErrorId, this.NoExplanationID) // error // error
+   |                            ^^^^^^^^^^^^^^^^^^^^
+   |          Promoting the value to fully-initialized is unsafe. May only use initialized value as method arguments
+   |
+   |          The unsafe promotion may cause the following problem(s):
+   |
+   |          1. Calling the external method method ordinal may cause initialization errors. Calling trace:
+   |           -> def errorNumber: Int = this.ordinal() - 2	[ enum-desugared.scala:8 ]
+   |            -> Array(this.LazyErrorId, this.NoExplanationID) // error // error	[ enum-desugared.scala:17 ]
