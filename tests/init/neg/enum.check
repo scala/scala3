@@ -1,9 +1,0 @@
--- Error: tests/init/neg/enum.scala:4:8 --------------------------------------------------------------------------------
-4 |        NoExplanationID // error
-  |        ^
-  |        Promoting the value to fully-initialized is unsafe. May only use initialized value as method arguments
-  |
-  |        The unsafe promotion may cause the following problem(s):
-  |
-  |        1. Calling the external method method name may cause initialization errors. Calling trace:
-  |         -> NoExplanationID // error	[ enum.scala:4 ]
