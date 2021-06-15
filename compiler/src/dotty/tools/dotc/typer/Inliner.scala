@@ -642,6 +642,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls)
     || tpe.cls.isContainedIn(inlinedMethod)
     || tpe.cls.is(Package)
+    || tpe.cls.isStaticOwner && !(tpe.cls.seesOpaques && ctx.owner.isContainedIn(tpe.cls))
 
   /** Very similar to TreeInfo.isPureExpr, but with the following inliner-only exceptions:
    *  - synthetic case class apply methods, when the case class constructor is empty, are
@@ -742,18 +743,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
   private val registerTypes = new TypeTraverser:
     override def stopAt = StopAt.Package
-    // Only register ThisType prefixes that see opaques. No need to register the others
-    // since they are static prefixes.
-    def registerStaticPrefix(t: Type): Unit = t match
-      case t: ThisType if t.cls.seesOpaques => registerType(t)
-      case t: NamedType => registerStaticPrefix(t.prefix)
-      case _ =>
-    override def traverse(t: Type) = t match
-      case t: NamedType if t.currentSymbol.isStatic =>
-        registerStaticPrefix(t.prefix)
-      case t =>
-        registerType(t)
-        traverseChildren(t)
+    override def traverse(t: Type) = 
+      registerType(t)
+      traverseChildren(t)
 
   /** Register type of leaf node */
   private def registerLeaf(tree: Tree): Unit = tree match

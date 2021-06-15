@@ -2546,7 +2546,7 @@ object SymDenotations {
     }
 
   private[SymDenotations] def stillValidInOwner(denot: SymDenotation)(using Context): Boolean = try
-    val owner = denot.owner.denot
+    val owner = denot.maybeOwner.denot
     stillValid(owner)
     && (
       !owner.isClass
