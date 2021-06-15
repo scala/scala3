@@ -13,6 +13,17 @@ import NameKinds.SuperAccessorName
 
 object ElimErasedValueType {
   val name: String = "elimErasedValueType"
+
+  def elimEVT(tp: Type)(using Context): Type = tp match {
+    case ErasedValueType(_, underlying) =>
+      elimEVT(underlying)
+    case tp: MethodType =>
+      val paramTypes = tp.paramInfos.mapConserve(elimEVT)
+      val retType = elimEVT(tp.resultType)
+      tp.derivedLambdaType(tp.paramNames, paramTypes, retType)
+    case _ =>
+      tp
+  }
 }
 
 /** This phase erases ErasedValueType to their underlying type.
@@ -25,6 +36,7 @@ object ElimErasedValueType {
 class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
 
   import tpd._
+  import ElimErasedValueType.elimEVT
 
   override def phaseName: String = ElimErasedValueType.name
 
@@ -46,17 +58,6 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       }
     case _ =>
       elimEVT(tp)
-  }
-
-  def elimEVT(tp: Type)(using Context): Type = tp match {
-    case ErasedValueType(_, underlying) =>
-      elimEVT(underlying)
-    case tp: MethodType =>
-      val paramTypes = tp.paramInfos.mapConserve(elimEVT)
-      val retType = elimEVT(tp.resultType)
-      tp.derivedLambdaType(tp.paramNames, paramTypes, retType)
-    case _ =>
-      tp
   }
 
   def transformTypeOfTree(tree: Tree)(using Context): Tree =
