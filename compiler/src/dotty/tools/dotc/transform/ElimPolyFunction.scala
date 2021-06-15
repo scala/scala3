@@ -14,7 +14,7 @@ import TypeErasure.ErasedValueType, ValueClasses._
  *          def apply(x_1: P_1, ..., x_N: P_N): R = rhs
  *      }
  *   becomes:
- *      class Foo extends FunctionN {
+ *      class Foo extends scala.runtime.AbstractFunctionN {
  *          def apply(x_1: P_1, ..., x_N: P_N): R = rhs
  *      }
  */
@@ -32,13 +32,12 @@ class ElimPolyFunction extends MiniPhase with DenotTransformer {
     case ref: ClassDenotation if ref.symbol != defn.PolyFunctionClass && ref.derivesFrom(defn.PolyFunctionClass) =>
       val cinfo = ref.classInfo
       val newParent = functionTypeOfPoly(cinfo)
-      val newParents = cinfo.declaredParents.map(parent =>
-        if (parent.typeSymbol == defn.PolyFunctionClass)
-          newParent
-        else
-          parent
-      )
-      ref.copySymDenotation(info = cinfo.derivedClassInfo(declaredParents = newParents))
+      val newParents = cinfo.declaredParents.filter(_.typeSymbol != defn.PolyFunctionClass)
+      if (newParents.lengthCompare(cinfo.declaredParents) == 0) {
+        ref
+      } else {
+        ref.copySymDenotation(info = cinfo.derivedClassInfo(declaredParents = newParent :: newParents))
+      }
     case _ =>
       ref
   }
@@ -46,7 +45,7 @@ class ElimPolyFunction extends MiniPhase with DenotTransformer {
   def functionTypeOfPoly(cinfo: ClassInfo)(using Context): Type = {
     val applyMeth = cinfo.decls.lookup(nme.apply).info
     val arity = applyMeth.paramNamess.head.length
-    defn.FunctionType(arity)
+    defn.AbstractFunctionType(arity)
   }
 
   override def transformTemplate(tree: Template)(using Context): Tree = {

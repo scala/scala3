@@ -10,16 +10,19 @@ object Test extends App {
   val t0 = [T] => (ts: List[T]) => ts.headOption
   val t0a: F0 = t0
   assert(t0(List(1, 2, 3)) == Some(1))
+  assert(t0.getClass.getSuperclass == classOf[scala.runtime.AbstractFunction1[?, ?]])
 
   val t1 = [F[_], G[_], T] => (ft: F[T], f: F[T] => G[T]) => f(ft)
   val t1a: F1 = t1
   assert(t1(List(1, 2, 3), (ts: List[Int]) => ts.headOption) == Some(1))
+  assert(t1.getClass.getSuperclass == classOf[scala.runtime.AbstractFunction2[?, ?, ?]])
 
   val t11 = [F[_[_]], G[_[_]], T[_]] => (fl: F[T], f: [U[_]] => F[U] => G[U]) => f(fl)
   val t11a: F11 = t11
   case class C11[F[_]](is: F[Int])
   case class D11[F[_]](is: F[Int])
   assert(t11[F = C11](C11(List(1, 2, 3)), [U[_]] => (c: C11[U]) => D11(c.is)) == D11(List(1, 2, 3)))
+  assert(t11.getClass.getSuperclass == classOf[scala.runtime.AbstractFunction2[?, ?, ?]])
 
   val t2 = [T, U] => (t: T, u: U) => Left(t)
   val t2a: F2 = t2
