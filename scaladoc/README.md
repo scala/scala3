@@ -23,10 +23,10 @@ sbt scaladoc/generateSelfDocumentation
 sbt scaladoc/generateScalaDocumentation
 ```
 
-To actually view the documentation, the easiest way is to run the following in project root:
+To actually view the documentation, the easiest way is to run the following in the project root:
 
 ```
-cd output
+cd scaladoc/output
 python3 -m http.server 8080
 ```
 
