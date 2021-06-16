@@ -5,4 +5,5 @@ object Main extends App {
   SocialLinks()
   CodeSnippets()
   DropdownHandler()
+  Ux()
 }

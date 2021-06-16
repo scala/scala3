@@ -248,6 +248,20 @@ aside.success {
   }
 }
 
+.gitter-open-chat-button {
+  writing-mode: vertical-lr;
+  text-orientation: upright;
+  right: 0px;
+  bottom: 100px;
+  padding: 0.5em 0.25em 0.5em 0.25em;
+  border-bottom-left-radius: .5em;
+  border-top-right-radius: 0em;
+}
+
+.gitter-open-chat-button.is-collapsed {
+  transform: translateX(120%);
+}
+
 header {
   position: static !important;
   width: 100% !important;

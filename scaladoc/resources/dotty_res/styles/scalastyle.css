@@ -265,10 +265,10 @@ th {
 #sideMenu2 {
   overflow: auto;
   overflow-x: hidden;
-  overflow-y: scroll;
   scrollbar-width: thin;
   height: 100%;
   font-size: var(--leftbar-font-size);
+  margin-top: 5%;
 }
 
 /* divs in sidebar represent entry and its children */
@@ -307,19 +307,25 @@ th {
   display: flex;
   align-items: center;
   flex: 1;
-  overflow-x: hidden;
   overflow-wrap: anywhere;
   color: var(--leftbar-fg);
   margin-right: .5rem;
-  padding-top: 3px;
-  padding-bottom: 3px;
-  margin-top: 1px;
-  margin-bottom: 1px;
-  width: 100%;
-  /* This trick adds selected background stretching to the left side of screen */
-  margin-left: calc(0px - var(--side-width));
-  padding-left: var(--side-width);
-  width: calc(2 * var(--side-width));
+  padding-top: 2%;
+  padding-bottom: 2%;
+  width: calc(var(--side-width));
+  padding-left: calc(0.05 * var(--side-width));
+  padding-right: calc(0.3 * var(--side-width));
+  box-sizing: border-box;
+}
+
+#sideMenu2 a span:not(.micon) {
+  margin-right: 0.75ex;
+  text-indent: -1.5em;
+  padding-left: 1.5em;
+}
+
+#sideMenu2 a.selected span:not(.micon) {
+  margin-right: 0.5ex;
 }
 
 #sideMenu2 a.selected {
@@ -340,14 +346,12 @@ span.ar {
   position: absolute;
   right: 1em;
   top: 0px;
-  padding: 4px;
 }
 
 span.ar::before {
   content: "\e903"; /* arrow down */
   font-family: "dotty-icons" !important;
   font-size: 20px;
-  line-height: var(--leftbar-font-size);
   color: var(--leftbar-fg);
   display: flex;
   flex-direction: row;
@@ -543,6 +547,8 @@ footer {
   background: var(--footer-bg);
   color: var(--footer-fg);
   display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
   bottom: 0px;
   align-items: center;
   position: fixed;
@@ -559,17 +565,7 @@ footer {
    */
   filter: invert(100%) hue-rotate(180deg);
 }
-footer > span:first-child {
-  margin-left: 24px;
-  padding-left: 0;
-}
-footer > span:last-child {
-  margin-right: 24px;
-  padding-right: 0;
-}
-footer > span {
-  padding: 0 16px;
-}
+
 footer .padded-icon {
   padding-left: 0.5em;
 }
@@ -878,8 +874,6 @@ footer .pull-right {
 }
 
 footer .socials {
-  margin-left: 10px;
-  margin-right: 10px;
   display: flex;
   align-items: center;
 }
@@ -895,7 +889,6 @@ footer .socials {
 }
 
 #generated-by {
-  margin-right: 20px;
   display: flex;
   align-items: center;
 }
@@ -930,11 +923,19 @@ footer .socials {
   footer > span:last-child {
     margin-right: 12px;
   }
+
+  footer {
+    position: unset;
+  }
+
+  .footer-text {
+    display: none;
+  }
 }
 /* Portrait phones */
 @media(max-width: 576px) {
   :root {
-    --side-width: 0;
+    --side-width: 0px;
     --content-padding: 48px 12px;
   }
 
@@ -960,8 +961,10 @@ footer .socials {
     font-size: 30px;
   }
   #leftColumn.open ~ #main #leftToggler {
+    position: fixed;
     left: unset;
-    right: 5vw;
+    right: 16vw;
+    color: var(--leftbar-fg);
   }
   .icon-toggler::before {
     content: "\e90a"; /* menu icon */
@@ -1045,4 +1048,10 @@ footer .socials {
 /* Filtered entries in dropdown menu */
 .dropdown-content a.filtered {
   display: none;
+}
+
+@media(max-height:640px) {
+  footer {
+    position: unset;
+  }
 }
