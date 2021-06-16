@@ -642,7 +642,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls)
     || tpe.cls.isContainedIn(inlinedMethod)
     || tpe.cls.is(Package)
-    || tpe.cls.isStaticOwner && !(tpe.cls.seesOpaques && ctx.owner.isContainedIn(tpe.cls))
+    || tpe.cls.isStaticOwner && !(tpe.cls.seesOpaques && inlinedMethod.isContainedIn(tpe.cls))
 
   /** Very similar to TreeInfo.isPureExpr, but with the following inliner-only exceptions:
    *  - synthetic case class apply methods, when the case class constructor is empty, are
@@ -743,7 +743,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
   private val registerTypes = new TypeTraverser:
     override def stopAt = StopAt.Package
-    override def traverse(t: Type) = 
+    override def traverse(t: Type) =
       registerType(t)
       traverseChildren(t)
 
