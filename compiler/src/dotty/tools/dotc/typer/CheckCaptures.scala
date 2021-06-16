@@ -96,21 +96,20 @@ class CheckCaptures extends RefineTypes:
 
   inline val disallowGlobal = true
 
-  def checkRelativeVariance(mt: MethodType, whole: Type, pos: SrcPos)(using Context) = new TypeTraverser:
-    def traverse(tp: Type): Unit = tp match
-      case CapturingType(parent, ref @ TermParamRef(`mt`, _)) =>
-        if variance <= 0 then
-          val direction = if variance < 0 then "contra" else "in"
-          report.error(em"captured reference $ref appears ${direction}variantly in type $whole", pos)
-        traverse(parent)
-      case _ =>
-        traverseChildren(tp)
-
   def checkWellFormed(whole: Type, pos: SrcPos)(using Context): Unit =
+    def checkRelativeVariance(mt: MethodType) = new TypeTraverser:
+      def traverse(tp: Type): Unit = tp match
+        case CapturingType(parent, ref @ TermParamRef(`mt`, _)) =>
+          if variance <= 0 then
+            val direction = if variance < 0 then "contra" else "in"
+            report.error(em"captured reference $ref appears ${direction}variantly in type $whole", pos)
+          traverse(parent)
+        case _ =>
+          traverseChildren(tp)
     val checkVariance = new TypeTraverser:
       def traverse(tp: Type): Unit = tp match
         case mt: MethodType if mt.isResultDependent =>
-          checkRelativeVariance(mt, whole, pos).traverse(mt)
+          checkRelativeVariance(mt).traverse(mt)
         case _ =>
           traverseChildren(tp)
     checkVariance.traverse(whole)
@@ -118,7 +117,7 @@ class CheckCaptures extends RefineTypes:
   object PostRefinerCheck extends TreeTraverser:
     def traverse(tree: Tree)(using Context) =
       tree match
-        case tree1 @ TypeApply(fn, args) =>
+        case tree1 @ TypeApply(fn, args) if disallowGlobal =>
           for arg <- args do
             //println(i"checking $arg in $tree: ${arg.tpe.captureSet}")
             for ref <- arg.tpe.captureSet.elems do
@@ -137,22 +136,17 @@ class CheckCaptures extends RefineTypes:
                 report.error(msg, arg.srcPos)
         case tree: TypeTree =>
           // it's inferred, no need to check
-        case tree: TypTree =>
+        case _: TypTree | _: Closure =>
           checkWellFormed(tree.tpe, tree.srcPos)
         case tree: DefDef =>
           def check(tp: Type): Unit = tp match
-            case tp: PolyType =>
-              check(tp.resType)
-            case mt: MethodType =>
-              if mt.isResultDependent then
-                checkRelativeVariance(mt, tree.symbol.info, ctx.source.atSpan(tree.nameSpan)).traverse(mt)
-              check(mt.resType)
+            case tp: MethodOrPoly => check(tp.resType)
             case _ =>
           check(tree.symbol.info)
         case _ =>
       traverseChildren(tree)
 
   def postRefinerCheck(tree: tpd.Tree)(using Context): Unit =
-    if disallowGlobal then PostRefinerCheck.traverse(tree)
+    PostRefinerCheck.traverse(tree)
 
 end CheckCaptures
