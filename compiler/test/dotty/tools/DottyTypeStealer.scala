@@ -7,6 +7,12 @@ import dotc.core.Contexts.Context
 import dotc.core.Decorators._
 import dotc.core.Types.Type
 
+@main def steal() = {
+  val s = DottyTypeStealer.stealType("class O { type X }", "O#X")
+  val t = s._2(0)
+  println(t)
+}
+
 object DottyTypeStealer extends DottyTest {
   def stealType(source: String, typeStrings: String*): (Context, List[Type]) = {
     val dummyName = "x_x_x"

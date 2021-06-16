@@ -39,25 +39,23 @@ can be enabled through the `dotty.tools.dotc.config.Printers` object. Change any
 
 ## Inspecting Trees with Type Stealer ##
 
-There is no power mode for the REPL yet, but you can inspect types with the
-type stealer:
+You can inspect types with the type stealer, open `compiler/test/dotty/tools/DottyTypeStealer.scala` and you'll see:
+
+```scala
+@main def steal() = {
+  val s = DottyTypeStealer.stealType("class O { type X }", "O#X")
+  val t = s._2(0)
+  println(t)
+}
+```
 
 ```bash
 $ sbt
-> repl
-scala> import dotty.tools.DottyTypeStealer.*; import dotty.tools.dotc.core.*; import Contexts.*,Types.*
+> scala3-compiler-bootstrapped/Test/runMain dotty.tools.steal
+TypeRef(TypeRef(ThisType(TypeRef(NoPrefix,module class <empty>)),class O),type X)
 ```
 
-Now, you can define types and access their representation. For example:
-
-```scala
-scala> val s = stealType("class O { type X }", "O#X")
-scala> implicit val ctx: Context = s._1
-scala> val t = s._2(0)
-t: dotty.tools.dotc.core.Types.Type = TypeRef(TypeRef(ThisType(TypeRef(NoPrefix,<empty>)),O),X)
-scala> val u = t.asInstanceOf[TypeRef].underlying
-u: dotty.tools.dotc.core.Types.Type = TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix,scala)),Nothing), TypeRef(ThisType(TypeRef(NoPrefix,scala)),Any))
-```
+You can inspect other value types by editing the arguments of `stealType`.
 
 ## Pretty-printing ##
 Many objects in the scalac compiler implement a `Showable` trait (e.g. `Tree`,
