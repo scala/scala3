@@ -68,7 +68,7 @@ object ListOps2 extends ListOps:
 
   def fst[T](v: ListView[T]): T = v(hd => tl => hd)(() => ???)
   def snd[T](v: ListView[T]): List[T] = v(hd => tl => tl)(() => ???)
-  def isPair[T](v: ListView[T]): Boolean = v(hd => tl => false)(() => true)
+  def isPair[T](v: ListView[T]): Boolean = v(hd => tl => true)(() => false)
 
 @main def Test() =
   ListOps1.test()
