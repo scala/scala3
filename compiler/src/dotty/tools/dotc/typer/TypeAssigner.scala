@@ -190,7 +190,7 @@ trait TypeAssigner {
       case ref: NamedType =>
         if ref.isTracked then
           if tp.captureSet.accountsFor(ref) then
-            report.warning(em"redundant capture: $tp already contains $ref with cs ${ref.captureSet} in its capture set ${tp.captureSet}", tree.srcPos)
+            report.warning(em"redundant capture: $tp already contains $ref with capture set ${ref.captureSet} in its capture set ${tp.captureSet}", tree.srcPos)
           CapturingType(tp, ref)
         else
           val reason =
