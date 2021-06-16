@@ -506,7 +506,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      *
      * must-single-thread
      */
-    private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol): Unit = {
+    private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, synthetic: Boolean, skip: Set[(String, String)]): Option[(String, String)] = {
       val moduleName     = internalName(module)
       val methodInfo     = module.thisType.memberInfo(m)
       val paramJavaTypes: List[BType] = methodInfo.firstParamTypes map toTypeKind
@@ -516,10 +516,10 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
        *  as the JVM will not allow redefinition of a final static method,
        *  and we don't know what classes might be subclassing the companion class.  See SI-4827.
        */
-      // TODO: evaluate the other flags we might be dropping on the floor here.
-      // TODO: ACC_SYNTHETIC ?
       val flags = GenBCodeOps.PublicStatic | (
         if (m.is(JavaVarargs)) asm.Opcodes.ACC_VARARGS else 0
+      ) | (
+        if (synthetic) asm.Opcodes.ACC_SYNTHETIC else 0
       )
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
@@ -530,39 +530,42 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       val jReturnType = toTypeKind(methodInfo.resultType)
       val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
       val mirrorMethodName = m.javaSimpleName
-      val mirrorMethod: asm.MethodVisitor = jclass.visitMethod(
-        flags,
-        mirrorMethodName,
-        mdesc,
-        jgensig,
-        mkArrayS(thrownExceptions)
-      )
+      val nameDesc = (mirrorMethodName, mdesc)
+      if skip(nameDesc) then None
+      else
+        val mirrorMethod: asm.MethodVisitor = jclass.visitMethod(
+          flags,
+          mirrorMethodName,
+          mdesc,
+          jgensig,
+          mkArrayS(thrownExceptions)
+        )
 
-      emitAnnotations(mirrorMethod, others)
-      val params: List[Symbol] = Nil // backend uses this to emit annotations on parameter lists of forwarders
-      // to static methods of companion class
-      // Old assumption: in Dotty this link does not exists: there is no way to get from method type
-      // to inner symbols of DefDef
-      // TODO: now we have paramSymss and could use it here.
-      emitParamAnnotations(mirrorMethod, params.map(_.annotations))
+        emitAnnotations(mirrorMethod, others)
+        val params: List[Symbol] = Nil // backend uses this to emit annotations on parameter lists of forwarders
+        // to static methods of companion class
+        // Old assumption: in Dotty this link does not exists: there is no way to get from method type
+        // to inner symbols of DefDef
+        // TODO: now we have paramSymss and could use it here.
+        emitParamAnnotations(mirrorMethod, params.map(_.annotations))
 
-      mirrorMethod.visitCode()
+        mirrorMethod.visitCode()
 
-      mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, str.MODULE_INSTANCE_FIELD, symDescriptor(module))
+        mirrorMethod.visitFieldInsn(asm.Opcodes.GETSTATIC, moduleName, str.MODULE_INSTANCE_FIELD, symDescriptor(module))
 
-      var index = 0
-      for(jparamType <- paramJavaTypes) {
-        mirrorMethod.visitVarInsn(jparamType.typedOpcode(asm.Opcodes.ILOAD), index)
-        assert(!jparamType.isInstanceOf[MethodBType], jparamType)
-        index += jparamType.size
-      }
+        var index = 0
+        for(jparamType <- paramJavaTypes) {
+          mirrorMethod.visitVarInsn(jparamType.typedOpcode(asm.Opcodes.ILOAD), index)
+          assert(!jparamType.isInstanceOf[MethodBType], jparamType)
+          index += jparamType.size
+        }
 
-      mirrorMethod.visitMethodInsn(asm.Opcodes.INVOKEVIRTUAL, moduleName, mirrorMethodName, asmMethodType(m).descriptor, false)
-      mirrorMethod.visitInsn(jReturnType.typedOpcode(asm.Opcodes.IRETURN))
+        mirrorMethod.visitMethodInsn(asm.Opcodes.INVOKEVIRTUAL, moduleName, mirrorMethodName, asmMethodType(m).descriptor, false)
+        mirrorMethod.visitInsn(jReturnType.typedOpcode(asm.Opcodes.IRETURN))
 
-      mirrorMethod.visitMaxs(0, 0) // just to follow protocol, dummy arguments
-      mirrorMethod.visitEnd()
-
+        mirrorMethod.visitMaxs(0, 0) // just to follow protocol, dummy arguments
+        mirrorMethod.visitEnd()
+        Some(nameDesc)
     }
 
     /* Add forwarders for all methods defined in `module` that don't conflict
@@ -574,44 +577,54 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     def addForwarders(jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol): Unit = {
       assert(moduleClass.is(ModuleClass), moduleClass)
-      report.debuglog(s"Dumping mirror class for object: $moduleClass")
 
       val linkedClass  = moduleClass.companionClass
-      lazy val conflictingNames: Set[Name] = {
+      lazy val conflictingNames: Set[Name] =
         (linkedClass.info.allMembers.collect { case d if d.name.isTermName => d.name }).toSet
-      }
-      report.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
-      for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Method, excluded = ExcludedForwarder)) {
-        val m = if (m0.is(Bridge)) m0.nextOverriddenSymbol else m0
-        if (m == NoSymbol)
-          report.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
-        else if (m.isType || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
-          report.debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
-        else if (conflictingNames(m.name))
-          report.log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
-        else if (m.accessBoundary(defn.RootClass) ne defn.RootClass)
-          report.log(s"No forwarder for non-public member $m")
-        else {
-          report.log(s"Adding static forwarder for '$m' from $jclassName to '$moduleClass'")
-          addForwarder(jclass, moduleClass, m)
-        }
-      }
+      // There's a bit of a dance to fix lampepfl/dotty#12753 in a binary compatible way (see lampepfl/dotty#12767).
+      // The binary-incompatible solution would be to look up members at erasure phase, but we want to continue
+      // emitting the excess forwarders and mark them `synthetic`.
+      // Because additional members are generated after erasure (mixin) it's difficult to compare lists of symbols
+      // at different phases and know which ones to mark synthetic.
+      // So we first get the forwarders we want (at erasure) and remember the emitted (name, signature) pairs. Then we
+      // get the forwarders as they were done in 3.0.0 and emit only new ones, as synthetic.
+      // In the member search at erasure phase we keep `deferred` members. This is needed for
+      //   trait T { val x: Int = 1 }; object O extends T
+      // the accessor `T.x` is abstract, only mixin adds a concrete one to `O`.
+
+      def exclude(m: Symbol, keepDeferred: Boolean) =
+        m == NoSymbol ||
+          m.isType || m.is(Deferred) && !keepDeferred || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName) ||
+          conflictingNames(m.name) ||
+          (m.accessBoundary(defn.RootClass) ne defn.RootClass)
+
+      val members =
+        sortedMembersBasedOnFlags(moduleClass.info, required = Method, excluded = ExcludedForwarder, erasurePhase)
+          .filterNot(m => exclude(m, keepDeferred = true))
+
+      val addedSignatures = members.flatMap(m => addForwarder(jclass, moduleClass, m, synthetic = false, skip = Set.empty))
+
+      val binCompatMembers =
+        sortedMembersBasedOnFlags(moduleClass.info, required = Method, excluded = ExcludedForwarder, ctx.phase)
+          .map(m => if (m.is(Bridge)) m.nextOverriddenSymbol else m)
+          .filterNot(m => exclude(m, keepDeferred = false))
+
+      binCompatMembers.foreach(m => addForwarder(jclass, moduleClass, m, synthetic = true, skip = addedSignatures.toSet))
     }
 
     /** The members of this type that have all of `required` flags but none of `excluded` flags set.
      *  The members are sorted by name and signature to guarantee a stable ordering.
      */
-    private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet): List[Symbol] = {
+    private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet, phase: Phase): List[Symbol] = {
       // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
       val names = tp.memberNames(takeAllFilter).toSeq.sorted
-      val buffer = mutable.ListBuffer[Symbol]()
+      val members = mutable.ListBuffer[Symbol]()
       names.foreach { name =>
-        // lookup members at erasure: lampepfl/dotty#12753
-        buffer ++= atPhase(erasurePhase)(tp.memberBasedOnFlags(name, required, excluded))
+        members ++= atPhase(phase)(tp.memberBasedOnFlags(name, required, excluded))
           .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
       }
-      buffer.toList
+      members.toList
     }
 
     /*
