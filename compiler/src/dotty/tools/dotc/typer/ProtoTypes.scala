@@ -388,8 +388,8 @@ object ProtoTypes {
       if state.typedArgs.size == args.length then state.typedArgs
       else
         val passedTyperState = ctx.typerState
-        inContext(protoCtx) {
-          val protoTyperState = protoCtx.typerState
+        inContext(protoCtx.withUncommittedTyperState) {
+          val protoTyperState = ctx.typerState
           val oldConstraint = protoTyperState.constraint
           val args1 = args.mapWithIndexConserve((arg, idx) =>
             cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
