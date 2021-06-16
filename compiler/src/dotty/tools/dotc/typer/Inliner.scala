@@ -546,7 +546,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     for ((level, selfSym) <- sortedProxies) {
       lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
       val rhs = selfSym.info.dealias match
-        case info: TermRef if info.isStable =>
+        case info: TermRef
+        if info.isStable && (lastSelf.exists || isPureExpr(inlineCallPrefix)) =>
+          // If this is the first proxy, optimize to `ref(info)` only if call prefix is pure.
+          // Otherwise we might forget side effects. See run/i12829.scala.
           ref(info)
         case info =>
           val rhsClsSym = info.widenDealias.classSymbol
