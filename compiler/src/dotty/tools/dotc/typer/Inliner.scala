@@ -574,9 +574,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
   /** Map first halfs of opaqueProxies pairs to second halfs, using =:= as equality */
   def mapRef(ref: TermRef): Option[TermRef] =
-    opaqueProxies
-      .find((from, to) => from.symbol == ref.symbol && from =:= ref)
-      .map(_._2)
+    opaqueProxies.collectFirst {
+      case (from, to) if from.symbol == ref.symbol && from =:= ref => to
+    }
 
   /** If `binding` contains TermRefs that refer to objects with opaque
    *  type aliases, add proxy definitions that expose these aliases
