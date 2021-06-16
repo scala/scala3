@@ -1,10 +1,9 @@
-[31m-- [E007] Type Mismatch Error: boxmap.scala:15:2 -------------------------------[0m
-[31m15 |[0m  () => b[[35mBox[B][0m](([36mx[0m: [35mA[0m) => box(f(x)))
-   |  [31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
-   |  Found:    ([1m[31m([0m) => Box[B][1m[31m)[0m[1m[31m [0m[1m[31mretains[0m[1m[31m [0m[1m[31mb[0m[1m[31m [0m[1m[31mretains[0m[1m[31m [0m[1m[31mf[0m
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boxmap.scala:15:2 ----------------------------------------
+15 |  () => b[Box[B]]((x: A) => box(f(x)))  // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Found:    (() => Box[B]) retains b retains f
    |  Required: () => Box[B]
    |
-   |  where:    B is a type in [33mmethod[0m [35mlazymap[0m with bounds <: Top
+   |  where:    B is a type in method lazymap with bounds <: Top
 
 longer explanation available when compiling with `-explain`
-1 error found
