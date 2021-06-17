@@ -90,7 +90,7 @@ trait TraceSyntax:
           finalize(trailing(ex.value))
           throw ex
         case ex: Throwable =>
-          // val msg = s"<== $q = <missing> (with exception $ex)"
-          // finalize(msg)
+          val msg = s"<== $q = <missing> (with exception $ex)"
+          finalize(msg)
           throw ex
 end TraceSyntax
