@@ -1519,7 +1519,7 @@ class Namer { typer: Typer =>
         approxTp.stripPoly match
           case atp @ defn.ContextFunctionType(_, resType, _)
           if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
-              || resType.existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true, forceLazy = false) =>
+              || resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
             originalTp
           case _ =>
             approxTp

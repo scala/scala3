@@ -1088,7 +1088,7 @@ trait Checking {
         }
       case _ =>
     }
-    tp.foreachPart(check, stopAtStatic = true)
+    tp.foreachPart(check, StopAt.Static)
     if (ok) tp else UnspecifiedErrorType
   }
 

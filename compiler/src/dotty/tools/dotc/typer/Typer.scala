@@ -2803,7 +2803,7 @@ class Typer extends Namer
     // see tests/pos/i7778b.scala
 
     val paramTypes = {
-      val hasWildcard = formals.exists(_.existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true))
+      val hasWildcard = formals.exists(_.existsPart(_.isInstanceOf[WildcardType], StopAt.Static))
       if hasWildcard then formals.map(_ => untpd.TypeTree())
       else formals.map(untpd.TypeTree)
     }

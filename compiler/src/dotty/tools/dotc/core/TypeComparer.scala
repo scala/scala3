@@ -1391,7 +1391,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      */
     def canCompare(ts: Set[Type]) =
       ctx.phase.isTyper
-      || !ts.exists(_.existsPart(_.isInstanceOf[SkolemType], stopAtStatic = true))
+      || !ts.exists(_.existsPart(_.isInstanceOf[SkolemType], StopAt.Static))
 
     def verified(result: Boolean): Boolean =
       if Config.checkAtomsComparisons then
