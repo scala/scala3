@@ -16,7 +16,8 @@ import io.{AbstractFile, PlainFile, VirtualFile}
 import Phases.unfusedPhases
 
 import util._
-import reporting.Reporter
+import reporting.{Reporter, Suppression}
+import reporting.Diagnostic.Warning
 import rewrites.Rewrites
 
 import profile.Profiler
@@ -95,6 +96,37 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var myUnits: List[CompilationUnit] = _
   private var myUnitsCached: List[CompilationUnit] = _
   private var myFiles: Set[AbstractFile] = _
+
+  // `@nowarn` annotations by source file, populated during typer
+  private val mySuppressions: mutable.LinkedHashMap[SourceFile, mutable.ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
+  // source files whose `@nowarn` annotations are processed
+  private val mySuppressionsComplete: mutable.Set[SourceFile] = mutable.Set.empty
+  // warnings issued before a source file's `@nowarn` annotations are processed, suspended so that `@nowarn` can filter them
+  private val mySuspendedMessages: mutable.LinkedHashMap[SourceFile, mutable.LinkedHashSet[Warning]] = mutable.LinkedHashMap.empty
+
+  object suppressions:
+    def suppressionsComplete(source: SourceFile) = source == NoSource || mySuppressionsComplete(source)
+
+    def addSuspendedMessage(warning: Warning) =
+      mySuspendedMessages.getOrElseUpdate(warning.pos.source, mutable.LinkedHashSet.empty) += warning
+
+    def isSuppressed(warning: Warning): Boolean =
+      mySuppressions.getOrElse(warning.pos.source, Nil).find(_.matches(warning)) match {
+        case Some(s) => s.markUsed(); true
+        case _ => false
+      }
+
+    def addSuppression(sup: Suppression): Unit =
+      val source = sup.annotPos.source
+      mySuppressions.getOrElseUpdate(source, mutable.ListBuffer.empty) += sup
+
+    def reportSuspendedMessages(unit: CompilationUnit)(using Context): Unit = {
+      // sort suppressions. they are not added in any particular order because of lazy type completion
+      for (sups <- mySuppressions.get(unit.source))
+        mySuppressions(unit.source) = sups.sortBy(sup => 0 - sup.start)
+      mySuppressionsComplete += unit.source
+      mySuspendedMessages.remove(unit.source).foreach(_.foreach(ctx.reporter.issueIfNotSuppressed))
+    }
 
   /** The compilation units currently being compiled, this may return different
    *  results over time.

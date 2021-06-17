@@ -140,23 +140,19 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   var unreportedWarnings: Map[String, Int] = Map.empty
 
-  def report(dia: Diagnostic)(using Context): Unit =
-    import Action._
-    val toReport = dia match {
-      case w: Warning => WConf.parsed.action(dia) match {
-        case Silent  => None
-        case Info    => Some(w.toInfo)
-        case Warning => Some(w)
-        case Error   => Some(w.toError)
+  def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
+    def go() =
+      import Action._
+      val toReport = dia match {
+        case w: Warning => WConf.parsed.action(dia) match {
+          case Silent  => None
+          case Info    => Some(w.toInfo)
+          case Warning => Some(w)
+          case Error   => Some(w.toError)
+        }
+        case _ => Some(dia)
       }
-      case _ => Some(dia)
-    }
-    for (d <- toReport) {
-      val isSummarized = d match
-        case cw: ConditionalWarning => !cw.enablingOption.value
-        case _ => false
-      // avoid isHidden test for summarized warnings so that message is not forced
-      if isSummarized || !isHidden(d) then
+      for (d <- toReport) {
         withMode(Mode.Printing)(doReport(d))
         d match
           case cw: ConditionalWarning if !cw.enablingOption.value =>
@@ -169,9 +165,27 @@ abstract class Reporter extends interfaces.ReporterResult {
             _errorCount += 1
             if ctx.typerState.isGlobalCommittable then
               ctx.base.errorsToBeReported = true
-          case dia: Info => // nothing to do here
-          // match error if d is something else
+          case _: Info => // nothing to do here
+        // match error if d is something else
+      }
+
+    dia match {
+      case w: Warning if ctx.run != null =>
+        val sup = ctx.run.suppressions
+        if sup.suppressionsComplete(w.pos.source) then
+          if !sup.isSuppressed(w) then go()
+        else
+          sup.addSuspendedMessage(w)
+      case _ => go()
     }
+
+  def report(dia: Diagnostic)(using Context): Unit =
+    val isSummarized = dia match
+      case cw: ConditionalWarning => !cw.enablingOption.value
+      case _ => false
+    // avoid isHidden test for summarized warnings so that message is not forced
+    if isSummarized || !isHidden(dia) then
+      issueIfNotSuppressed(dia)
 
   def incomplete(dia: Diagnostic)(using Context): Unit =
     incompleteHandler(dia, ctx)
