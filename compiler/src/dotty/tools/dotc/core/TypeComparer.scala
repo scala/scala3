@@ -1003,7 +1003,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       /** True if `tp1` and `tp2` have compatible type constructors and their
        *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
        */
-      def isMatchingApply(tp1: Type): Boolean = tp1 match {
+      def isMatchingApply(tp1: Type): Boolean = tp1.widen match {
         case tp1 @ AppliedType(tycon1, args1) =>
           // We intentionally do not automatically dealias `tycon1` or `tycon2` here.
           // `TypeApplications#appliedTo` already takes care of dealiasing type
