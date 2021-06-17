@@ -690,7 +690,8 @@ class Semantic {
     case h :: t => h match {
       case v: ValDef => {
         val res = eval(h, thisV, klass)
-        val newEnv = Env(Map(v.symbol -> res.value))
+        val newEnv = 
+          if res.value.promote("Try early promotion", h).isEmpty then Env(Map(v.symbol -> Hot)) else Env(Map(v.symbol -> res.value))
         withEnv(env.union(newEnv)) {
           val (res2, env2) = eval(t, thisV, klass)
           (res :: res2, env2)
