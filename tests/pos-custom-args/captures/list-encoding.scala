@@ -20,3 +20,14 @@ def foo(c: Cap) =
     cons(x, cons(y, nil))
   def h(x: String, y: Any retains c.type) =
     cons(x, cons(y, nil))
+
+def toScalaList[T](l: List[T]) = l[scala.List[T]](hd => (tl: scala.List[T]) => hd :: tl)(Nil)
+
+def map[A, B](l: List[A])(f: (A => B) retains *): List[B] =
+  l[List[B]](hd => (tl: List[B]) => cons(f(hd), tl))(nil)
+
+@main def Test() =
+  val l = cons(1, cons(2, nil))
+  val l2 = map(l)((_: Int) + 1)
+  println(toScalaList(l))
+  println(toScalaList(l2))
