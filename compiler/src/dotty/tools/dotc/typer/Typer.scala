@@ -2077,11 +2077,37 @@ class Typer extends Namer
     lazy val annotCtx = annotContext(mdef, sym)
     // necessary in order to mark the typed ahead annotations as definitely typed:
     for (annot <- mdef.mods.annotations)
-      checkAnnotApplicable(typedAnnotation(annot)(using annotCtx), sym)
+      val annot1 = typedAnnotation(annot)(using annotCtx)
+      checkAnnotApplicable(annot1, sym)
+      if (Annotations.annotClass(annot1) == defn.NowarnAnnot)
+        registerNowarn(annot1, mdef)
   }
 
   def typedAnnotation(annot: untpd.Tree)(using Context): Tree =
     checkAnnotArgs(typed(annot, defn.AnnotationClass.typeRef))
+
+  def registerNowarn(tree: Tree, mdef: untpd.Tree)(using Context): Unit =
+    val annot = Annotations.Annotation(tree)
+    def argPos = annot.argument(0).getOrElse(tree).sourcePos
+    val filters =
+      if annot.arguments.isEmpty then List(MessageFilter.Any)
+      else annot.argumentConstantString(0) match {
+        case None => annot.argument(0) match {
+          case Some(t: Select) if t.name.toString == "$lessinit$greater$default$1" => List(MessageFilter.Any)
+          case _ =>
+            report.warning(s"filter needs to be a compile-time constant string", argPos)
+            Nil
+        }
+        case Some(s) =>
+          if s.isEmpty then Nil
+          else
+            val (ms, fs) = s.split('&').map(WConf.parseFilter).toList.partitionMap(identity)
+            if (ms.nonEmpty)
+              report.warning(s"Invalid message filter\n${ms.mkString("\n")}", argPos)
+            fs
+      }
+    val range = mdef.sourcePos
+    ctx.run.suppressions.addSuppression(Suppression(tree.sourcePos, filters, range.start, range.end))
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef
@@ -2490,6 +2516,8 @@ class Typer extends Namer
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree = {
     val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
+    if Annotations.annotClass(annot1) == defn.NowarnAnnot then
+      registerNowarn(annot1, tree)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
       if arg1.isType then

@@ -3,6 +3,7 @@ package dotc
 package reporting
 
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.util.SourcePosition
 
 import java.util.regex.PatternSyntaxException
 import scala.annotation.internal.sharable
@@ -92,3 +93,13 @@ final case class WConf(confs: List[(List[MessageFilter], Action)]):
       if (ms.nonEmpty) Left(ms.flatten)
       else Right(WConf(fs))
     }
+
+case class Suppression(annotPos: SourcePosition, filters: List[MessageFilter], start: Int, end: Int):
+  private[this] var _used = false
+  def used: Boolean = _used
+  def markUsed(): Unit = { _used = true }
+
+  def matches(dia: Diagnostic): Boolean = {
+    val pos = dia.pos
+    pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))
+  }

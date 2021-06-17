@@ -57,6 +57,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         typr.println("typed: " + unit.source)
         record("retained untyped trees", unit.untpdTree.treeSize)
         record("retained typed trees after typer", unit.tpdTree.treeSize)
+        ctx.run.suppressions.reportSuspendedMessages(unit)
     catch
       case ex: CompilationUnit.SuspendException =>
   }
