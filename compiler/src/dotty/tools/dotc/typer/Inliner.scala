@@ -924,16 +924,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
-    val expansion0 = inliner.transform(rhsToInline)
-    val expansion =
-      if opaqueProxies.nonEmpty && !inlinedMethod.is(Transparent) then
-        expansion0.cast(call.tpe)(using ctx.withSource(expansion0.source))
-          // the cast makes sure that the sealing with the declared type
-          // is type correct. Without it we might get problems since the
-          // expression's type is the opaque alias but the call's type is
-          // the opaque type itself. An example is in pos/opaque-inline1.scala.
-      else
-        expansion0
+    val expansion = inliner.transform(rhsToInline)
 
     def issueError() = callValueArgss match {
       case (msgArg :: Nil) :: Nil =>
@@ -1005,7 +996,17 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
-      tpd.Inlined(call, finalBindings, finalExpansion)
+      val res = tpd.Inlined(call, finalBindings, finalExpansion)
+      if opaqueProxies.isEmpty then res
+      else
+        val target =
+          if inlinedMethod.is(Transparent) then call.tpe & res.tpe
+          else call.tpe
+        res.ensureConforms(target)
+          // Make sure that the sealing with the declared type
+          // is type correct. Without it we might get problems since the
+          // expression's type is the opaque alias but the call's type is
+          // the opaque type itself. An example is in pos/opaque-inline1.scala.
     }
   }
 
