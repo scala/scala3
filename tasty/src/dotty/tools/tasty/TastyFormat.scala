@@ -70,7 +70,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BOUNDED               type_Term                                  -- type bound
 
   TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*                -- modifiers name bounds
-  TermParam     = PARAM          Length NameRef type_Term rhs_Term? Modifier*      -- modifiers name : type (= rhs_Term)?. `rhsTerm` is present in the case of an aliased class parameter
+  TermParam     = PARAM          Length NameRef type_Term Modifier*                -- modifiers name : type.
                   EMPTYCLAUSE                                                      -- an empty parameter clause ()
                   SPLITCLAUSE                                                      -- splits two non-empty parameter clauses of the same kind
   Param         = TypeParam

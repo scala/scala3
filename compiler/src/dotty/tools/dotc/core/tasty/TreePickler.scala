@@ -356,8 +356,7 @@ class TreePickler(pickler: TastyPickler) {
   def pickleParam(tree: Tree)(using Context): Unit = {
     registerTreeAddr(tree)
     tree match {
-      case tree: ValDef => pickleDef(PARAM, tree, tree.tpt)
-      case tree: DefDef => pickleDef(PARAM, tree, tree.tpt, tree.rhs)
+      case tree: ValDef  => pickleDef(PARAM, tree, tree.tpt)
       case tree: TypeDef => pickleDef(TYPEPARAM, tree, tree.rhs)
     }
   }
