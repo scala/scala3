@@ -88,7 +88,7 @@ new Mirror.Sum:
   type MirroredType = Tree
   type MirroredElemTypes[T] = (Branch[T], Leaf[T])
   type MirroredMonoType = Tree[_]
-  type MirroredLabels = "Tree"
+  type MirroredLabel = "Tree"
   type MirroredElemLabels = ("Branch", "Leaf")
 
   def ordinal(x: MirroredMonoType): Int = x match
@@ -100,7 +100,7 @@ new Mirror.Product:
   type MirroredType = Branch
   type MirroredElemTypes[T] = (Tree[T], Tree[T])
   type MirroredMonoType = Branch[_]
-  type MirroredLabels = "Branch"
+  type MirroredLabel = "Branch"
   type MirroredElemLabels = ("left", "right")
 
   def fromProduct(p: Product): MirroredMonoType =
@@ -111,7 +111,7 @@ new Mirror.Product:
   type MirroredType = Leaf
   type MirroredElemTypes[T] = Tuple1[T]
   type MirroredMonoType = Leaf[_]
-  type MirroredLabels = "Leaf"
+  type MirroredLabel = "Leaf"
   type MirroredElemLabels = Tuple1["elem"]
 
   def fromProduct(p: Product): MirroredMonoType =
