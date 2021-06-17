@@ -194,6 +194,7 @@ class Semantic {
     class PromotionInfo {
       var isCurrentObjectPromoted: Boolean = false
       val values = mutable.Set.empty[Value]
+      override def toString(): String = values.toString()
     }
     /** Values that have been safely promoted */
     opaque type Promoted = PromotionInfo
@@ -405,6 +406,7 @@ class Semantic {
               given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
+              // try early promotion here; if returns error, returns cold
               val env2 = Env(ddef, args.map(_.value).widenArgs)
               if target.isPrimaryConstructor then
                 given Env = env2
@@ -692,8 +694,26 @@ class Semantic {
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Addr, klass: ClassSymbol): Contextual[List[Result]] =
-    exprs.map { expr => eval(expr, thisV, klass) }
+  def eval(exprs: List[Tree], thisV: Addr, klass: ClassSymbol): Contextual[(List[Result], Env)] = exprs match {
+    case Nil => (Nil, env)
+    case h :: t => h match {
+      case v: ValDef => {
+        val res = eval(h, thisV, klass)
+        val newEnv = Env(Map(v.symbol -> res.value))
+        withEnv(env.union(newEnv)) {
+          val (res2, env2) = eval(t, thisV, klass)
+          (res :: res2, env2)
+        }
+      }
+      case _ => {
+        val res = eval(h, thisV, klass)
+        withEnv(env) {
+          val (res2, env2) = eval(t, thisV, klass)
+          (res :: res2, env2)
+        }
+      }
+    }
+  }
 
   /** Evaluate arguments of methods */
   def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[(List[Error], List[ArgInfo])] =
@@ -797,11 +817,13 @@ class Semantic {
         Result(value, Nil)
 
       case Block(stats, expr) =>
-        val ress = eval(stats, thisV, klass)
-        eval(expr, thisV, klass) ++ ress.flatMap(_.errors)
+        val (ress, env2) = eval(stats, thisV, klass)
+        withEnv(env2) {
+          eval(expr, thisV, klass) ++ ress.flatMap(_.errors)
+        }
 
       case If(cond, thenp, elsep) =>
-        val ress = eval(cond :: thenp :: elsep :: Nil, thisV, klass)
+        val (ress, env2) = eval(cond :: thenp :: elsep :: Nil, thisV, klass)
         val value = ress.map(_.value).join
         val errors = ress.flatMap(_.errors)
         Result(value, errors)
@@ -812,7 +834,7 @@ class Semantic {
 
       case Match(selector, cases) =>
         val res1 = eval(selector, thisV, klass).ensureHot("The value to be matched needs to be fully initialized", selector)
-        val ress = eval(cases.map(_.body), thisV, klass)
+        val (ress, env) = eval(cases.map(_.body), thisV, klass)
         val value = ress.map(_.value).join
         val errors = res1.errors ++ ress.flatMap(_.errors)
         Result(value, errors)
@@ -821,7 +843,7 @@ class Semantic {
         eval(expr, thisV, klass).ensureHot("return expression may only be initialized value", expr)
 
       case WhileDo(cond, body) =>
-        val ress = eval(cond :: body :: Nil, thisV, klass)
+        val (ress, env2) = eval(cond :: body :: Nil, thisV, klass)
         Result(Hot, ress.flatMap(_.errors))
 
       case Labeled(_, expr) =>
@@ -829,7 +851,7 @@ class Semantic {
 
       case Try(block, cases, finalizer) =>
         val res1 = eval(block, thisV, klass)
-        val ress = eval(cases.map(_.body), thisV, klass)
+        val (ress, env2) = eval(cases.map(_.body), thisV, klass)
         val errors = ress.flatMap(_.errors)
         val resValue = ress.map(_.value).join
         if finalizer.isEmpty then
@@ -845,7 +867,7 @@ class Semantic {
         Result(Hot, ress.flatMap(_.errors))
 
       case Inlined(call, bindings, expansion) =>
-        val ress = eval(bindings, thisV, klass)
+        val (ress, env2) = eval(bindings, thisV, klass)
         eval(expansion, thisV, klass) ++ ress.flatMap(_.errors)
 
       case Thicket(List()) =>
@@ -855,7 +877,8 @@ class Semantic {
       case vdef : ValDef =>
         // local val definition
         // TODO: support explicit @cold annotation for local definitions
-        eval(vdef.rhs, thisV, klass).ensureHot("Local definitions may only hold initialized values", vdef)
+        eval(vdef.rhs, thisV, klass)
+        // .ensureHot("Local definitions may only hold initialized values", vdef)
 
       case ddef : DefDef =>
         // local method
@@ -900,7 +923,7 @@ class Semantic {
             // It's always safe to approximate them with `Cold`.
             Result(Cold, Nil)
         else
-          default()
+          Result(env.getOrElse(sym, Hot), Nil)
 
       case tmref: TermRef =>
         cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
@@ -996,7 +1019,7 @@ class Semantic {
     // parents
     def initParent(parent: Tree, tasks: Tasks)(using Env) = parent match {
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
-        eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
+        eval(stats, thisV, klass)._1.foreach { res => errorBuffer ++= res.errors }
         val (errors, args) = evalArgs(argss.flatten, thisV, klass)
         errorBuffer ++= errors
         superCall(tref, ctor, args, tree, tasks)
