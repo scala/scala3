@@ -601,8 +601,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       assert(refinedInfo.isInstanceOf[PolyType])
       val res = refinedInfo.resultType
       val paramss = res.paramNamess
+      assert(paramss.length <= 1)
       val arity = if paramss.isEmpty then 0 else paramss.head.length
-      assert(arity <= 1)
       this(defn.FunctionType(arity, isContextual = res.isImplicitMethod, isErased = res.isErasedMethod))
     case tp: TypeProxy =>
       this(tp.underlying)
