@@ -4,7 +4,7 @@ package typer
 
 import transform._
 import core._
-import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._
+import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._, NameKinds._
 import StdNames._, Denotations._, SymUtils._, Phases._, SymDenotations._
 import NameKinds.DefaultGetterName
 import Annotations._
@@ -1047,6 +1047,47 @@ object RefChecks {
           report.error(i"private $sym cannot override ${other.showLocated}", sym.srcPos)
   end checkNoPrivateOverrides
 
+  /** Check that unary method definition do not receive parameters.
+   *  They can only receive inferred parameters such as type parameters and implicit parameters.
+   */
+  def checkUnaryMethods(sym: Symbol)(using Context): Unit =
+    /** Check that the only term parameters are contextual or implicit */
+    def checkParameters(tpe: Type): Unit =
+      tpe match
+        case tpe: MethodType =>
+          if tpe.isImplicitMethod || tpe.isContextualMethod then
+            checkParameters(tpe.resType)
+          else
+            val what =
+              if tpe.paramNames.isEmpty then "empty parameter list.\n\nPossible fix: remove the `()` arguments."
+              else "parameters"
+            report.warning(s"Unary method cannot take $what", sym.sourcePos)
+        case tpe: PolyType =>
+          checkParameters(tpe.resType)
+        case _ =>
+          // ok
+
+    /** Skip leading type and contextual parameters, then skip the
+     *  self parameter, and finally check the parameter
+     */
+    def checkExtensionParameters(tpe: Type): Unit =
+      tpe match
+        case tpe: MethodType =>
+          assert(tpe.paramNames.length == 1)
+          if tpe.isContextualMethod then checkExtensionParameters(tpe.resType)
+          else checkParameters(tpe.resType)
+        case tpe: PolyType =>
+          checkExtensionParameters(tpe.resType)
+
+    if sym.name.startsWith(nme.UNARY_PREFIX.toString) then
+      if sym.is(Extension) || sym.name.is(ExtMethName) then
+        // if is method from `extension` or value class
+        checkExtensionParameters(sym.info)
+      else
+        checkParameters(sym.info)
+
+  end checkUnaryMethods
+
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
   class OptLevelInfo {
@@ -1254,6 +1295,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
     checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
+    checkUnaryMethods(tree.symbol)
     tree
   }
 
