@@ -192,7 +192,7 @@ object Config {
   inline val flattenContextFunctionResults = true
 
   /** If set, enables tracing */
-  inline val tracingEnabled = false
+  inline val tracingEnabled = true
 
   /** Initial capacity of the uniques HashMap.
    *  Note: This should be a power of two to work with util.HashSet

@@ -1,0 +1,11 @@
+-- Error: tests/init/neg/local-warm4.scala:18:20 -----------------------------------------------------------------------
+18 |                a = newA // error
+   |                    ^^^^
+   |Promote the value under initialization to fully-initialized. May only assign fully initialized value. Calling trace:
+   | -> val a = new A(5)	[ local-warm4.scala:26 ]
+   |    -> class A(x: Int) extends Foo(x) {	[ local-warm4.scala:6 ]
+   |     -> val b = new B(y)	[ local-warm4.scala:10 ]
+   |        -> class B(x: Int) extends A(x) {	[ local-warm4.scala:13 ]
+   |          -> class A(x: Int) extends Foo(x) {	[ local-warm4.scala:6 ]
+   |           -> increment()	[ local-warm4.scala:9 ]
+   |            -> updateA()	[ local-warm4.scala:21 ]

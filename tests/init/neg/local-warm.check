@@ -1,5 +1,0 @@
--- Error: tests/init/neg/local-warm.scala:12:12 ------------------------------------------------------------------------
-12 |        val t = m1() // error
-   |        ^^^^^^^^^^^^
-   |Promote the value under initialization to fully-initialized. Local definitions may only hold initialized values. Calling trace:
-   | -> val x = g()	[ local-warm.scala:15 ]
