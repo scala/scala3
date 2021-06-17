@@ -28,7 +28,7 @@ object Printers {
   val implicits = noPrinter
   val implicitsDetailed = noPrinter
   val lexical = noPrinter
-  val init = noPrinter
+  val init = new Printer
   val inlining = noPrinter
   val interactiv = noPrinter
   val matchTypes = noPrinter
