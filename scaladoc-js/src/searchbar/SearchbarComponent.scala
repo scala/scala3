@@ -26,6 +26,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       location.classList.add("scaladoc-searchbar-location")
       location.textContent = p.description
 
+      wrapper.appendChild(icon)
       wrapper.appendChild(resultA)
       wrapper.appendChild(location)
       wrapper.addEventListener("mouseover", {

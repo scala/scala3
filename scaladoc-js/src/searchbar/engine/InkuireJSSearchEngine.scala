@@ -35,6 +35,7 @@ class InkuireJSSearchEngine {
         case "engine_ready" =>
         case "new_query" =>
         case q =>
+          println(q)
           val matches = JSON.parse(q).matches
           val actualMatches = matches.asInstanceOf[js.Array[Dynamic]].map(dynamicToPageEntry)
           actualMatches.foreach(callback)
