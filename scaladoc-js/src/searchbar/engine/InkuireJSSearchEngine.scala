@@ -13,8 +13,8 @@ import scala.scalajs.js.URIUtils
 
 class InkuireJSSearchEngine {
 
-  val scriptPath = Globals.pathToRoot + "scripts/"
-  val worker     = new Worker(s"${scriptPath}inkuire-worker.js")
+  val scriptPath     = Globals.pathToRoot + "scripts/"
+  val worker: Worker = new Worker(scriptPath + "inkuire-worker.js")
 
   def dynamicToPageEntry(d: Dynamic): PageEntry = {
     PageEntry(
@@ -22,6 +22,7 @@ class InkuireJSSearchEngine {
       d.prettifiedSignature.asInstanceOf[String],
       d.pageLocation.asInstanceOf[String],
       d.functionName.asInstanceOf[String],
+      "def",
       List.empty
     )
   }

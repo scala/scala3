@@ -38,6 +38,10 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       wrapper.classList.add("scaladoc-searchbar-result")
       wrapper.classList.add("monospace")
 
+      val icon = document.createElement("span").asInstanceOf[html.Span]
+      icon.classList.add("micon")
+      icon.classList.add(p.kind.take(2))
+
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
       resultA.href = p.location
       resultA.text = s"${p.fullName}"
@@ -97,12 +101,17 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
+    println(s"Searching query: $query")
     parser.parse(query) match {
       case EngineMatchersQuery(matchers) =>
+        println(s"Searching normal query: $query")
         handleNewFluffQuery(matchers)
       case BySignature(signature) =>
+        println(s"Searching inkuire query: $query")
         timeoutHandle = setTimeout(1.second) {
+          println("Timeout activated")
           inkuireEngine.query(query) { (p: PageEntry) =>
+            println(s"Found ${p.fullName}")
             resultsDiv.appendChild(p.toHTMLInkuireHack)
           } { (s: String) =>
             resultsDiv.appendChild(s.toHTMLError)

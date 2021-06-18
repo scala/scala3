@@ -152,8 +152,6 @@ trait ClassLikeSupport:
             uri = methodSymbol.dri.externalLink.getOrElse("")
           )
           Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
-        case s =>
-          println(s"Inkuire skipping symbol $s")
       }
 
     }

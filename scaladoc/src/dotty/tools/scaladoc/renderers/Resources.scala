@@ -80,8 +80,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/searchbar.js",
       "scripts/inkuire.js",
       "scripts/inkuire-worker.js",
-      "scripts/inkuire-config.json",
-      "scripts/db.json"
+      "scripts/inkuire-config.json"
     ).map(dottyRes)
 
     val urls = List(

@@ -117,8 +117,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val snippetCompilerDebug: Setting[Boolean] =
     BooleanSetting("-Ysnippet-compiler-debug", snippets.SnippetCompilerArgs.debugUsage, false)
 
-  def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug)
-
   val generateInkuire: Setting[Boolean] =
     BooleanSetting("-generate-inkuire", "Generates InkuireDB", false)
+
+  def scaladocSpecificSettings: Set[Setting[_]] =
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug, generateInkuire)

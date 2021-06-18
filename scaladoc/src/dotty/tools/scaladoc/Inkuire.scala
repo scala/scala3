@@ -46,6 +46,19 @@ object Inkuire {
     isUnresolved: Boolean = false
   )
 
+  object Type {
+    def unresolved: Type =
+      Type(
+        name = TypeName("<unresolved>"),
+        itid = Some(
+          ITID(
+            uuid = "<unresolved>",
+            isParsed = false
+          )
+        )
+      )
+  }
+
   case class TypeName(name: String) {
     override def hashCode(): Int = name.toLowerCase.hashCode
 

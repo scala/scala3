@@ -148,11 +148,7 @@ trait InkuireSupport:
     case TypeBounds(low, hi) =>
       inner(low, vars) //TODO for future
     case NoPrefix() =>
-      Inkuire.Type( //TODO check <- should be handled by Singleton case, but doesn't work
-        name = Inkuire.TypeName("_"),
-        itid = Some(Inkuire.ITID("_", isParsed = false)),
-        isStarProjection = true
-      )
+      Inkuire.Type.unresolved //TODO check <- should be handled by Singleton case, but doesn't work
     case MatchType(bond, sc, cases) =>
       inner(sc, vars)
     case ParamRef(TypeLambda(names, _, resType), i) =>
