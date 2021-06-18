@@ -96,9 +96,9 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val versionsDictionaryUrl: Setting[String] = StringSetting(
     "-versions-dictionary-url",
     "versions dictionary url",
-    "A URL pointing to a JSON document containing a dictionary version -> documentation location. " +
+    "A URL pointing to a JSON document containing a dictionary `version label -> documentation location`. " +
       "The JSON file has single property \"versions\" that holds dictionary of labels of specific docs and URL pointing to their index.html top-level file. " +
-      "Useful for libraries that maintain different releases docs.",
+      "Useful for libraries that maintain different versions of their documentation.",
     ""
   )
 

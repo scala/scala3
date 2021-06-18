@@ -120,16 +120,17 @@ A directory containing static files from which to generate documentation. Defaul
 
 ##### -versions-dictionary-url
 
-A URL pointing to a JSON document containing a dictionary version -> documentation location.
-The JSON file has single property "versions" that holds dictionary of labels of specific docs and URL pointing to their index.html top-level file.
-Useful for libraries that maintain different releases docs.
+A URL pointing to a JSON document containing a dictionary: `version label -> documentation location`.
+The JSON file has single property `versions` that holds the dictionary associating the labels of specific versions of the documentation to the URLs pointing to their index.html
+Useful for libraries that maintain different versions of their documentation.
 
 Example JSON file:
 ```
 {
   "versions": {
-    "3.0.X": "https://dotty.epfl.ch/3.0.X/docs/index.html",
+    "3.0.x": "https://dotty.epfl.ch/3.0.x/docs/index.html",
     "Nightly": "https://dotty.epfl.ch/docs/index.html"
   }
 }
 ```
+
