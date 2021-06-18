@@ -102,17 +102,12 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
-    println(s"Searching query: $query")
     parser.parse(query) match {
       case EngineMatchersQuery(matchers) =>
-        println(s"Searching normal query: $query")
         handleNewFluffQuery(matchers)
       case BySignature(signature) =>
-        println(s"Searching inkuire query: $query")
         timeoutHandle = setTimeout(1.second) {
-          println("Timeout activated")
           inkuireEngine.query(query) { (p: PageEntry) =>
-            println(s"Found ${p.fullName}")
             resultsDiv.appendChild(p.toHTMLInkuireHack)
           } { (s: String) =>
             resultsDiv.appendChild(s.toHTMLError)
