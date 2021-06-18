@@ -10,9 +10,9 @@ type Query[-I, +O] = Traverser[Path[I], Path[O]]
 def nodesQ(using g: Graph): Query[Nothing, g.Node] = ???
 def outsQ(using g: Graph): Query[g.Node, g.Node] = ???
 
-object graph extends Graph
-import graph._
-given graph.type = graph
+object graphObj extends Graph
+import graphObj._
+given graphObj.type = graphObj
 
 object Issue11556:
   val q1: Query[Nothing, Node] = nodesQ ~> outsQ
