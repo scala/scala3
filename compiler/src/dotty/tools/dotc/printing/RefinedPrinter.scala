@@ -160,21 +160,25 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def toTextMethodAsFunction(info: Type): Text = info match
       case info: MethodType =>
-        "("
-        ~ keywordText("erased ").provided(info.isErasedMethod)
-        ~ ( if info.isParamDependent || info.isResultDependent
-            then paramsText(info)
-            else argsText(info.paramInfos)
-          )
-        ~ ") "
-        ~ arrow(info.isImplicitMethod)
-        ~ " "
-        ~ toTextMethodAsFunction(info.resultType)
+        changePrec(GlobalPrec) {
+          "("
+          ~ keywordText("erased ").provided(info.isErasedMethod)
+          ~ ( if info.isParamDependent || info.isResultDependent
+              then paramsText(info)
+              else argsText(info.paramInfos)
+            )
+          ~ ") "
+          ~ arrow(info.isImplicitMethod)
+          ~ " "
+          ~ toTextMethodAsFunction(info.resultType)
+        }
       case info: PolyType =>
-        "["
-        ~ paramsText(info)
-        ~ "] => "
-        ~ toTextMethodAsFunction(info.resultType)
+        changePrec(GlobalPrec) {
+          "["
+          ~ paramsText(info)
+          ~ "] => "
+          ~ toTextMethodAsFunction(info.resultType)
+        }
       case _ =>
         toText(info)
 
