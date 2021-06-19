@@ -33,6 +33,7 @@ object Extractors {
     if (flags.is(Flags.ExtensionMethod)) flagList += "Flags.ExtensionMethod"
     if (flags.is(Flags.FieldAccessor)) flagList += "Flags.FieldAccessor"
     if (flags.is(Flags.Final)) flagList += "Flags.Final"
+    if (flags.is(Flags.Given)) flagList += "Flags.Given"
     if (flags.is(Flags.HasDefault)) flagList += "Flags.HasDefault"
     if (flags.is(Flags.Implicit)) flagList += "Flags.Implicit"
     if (flags.is(Flags.Infix)) flagList += "Flags.Infix"
