@@ -35,7 +35,16 @@ case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
     myClosure
 
   def ++ (that: CaptureSet): CaptureSet =
-    CaptureSet(elems ++ that.elems)
+    if this.isEmpty then that
+    else if that.isEmpty then this
+    else CaptureSet(elems ++ that.elems)
+
+  def + (ref: CaptureRef) =
+    if elems.contains(ref) then this
+    else CaptureSet(elems + ref)
+
+  def intersect (that: CaptureSet): CaptureSet =
+    CaptureSet(this.elems.intersect(that.elems))
 
   /** {x} <:< this   where <:< is subcapturing */
   def accountsFor(x: CaptureRef)(using Context) =
@@ -82,46 +91,23 @@ object CaptureSet:
     css.foldLeft(empty)(_ ++ _)
 
   def ofType(tp: Type)(using Context): CaptureSet =
-    val collect = new TypeAccumulator[Refs]:
-      var localBinders: SimpleIdentitySet[BindingType] = SimpleIdentitySet.empty
-      var seenLazyRefs: SimpleIdentitySet[LazyRef] = SimpleIdentitySet.empty
-      def apply(elems: Refs, tp: Type): Refs = trace(i"capt $elems, $tp", capt, show = true) {
-        tp match
-          case tp: NamedType =>
-            if variance < 0 then elems
-            else elems ++ tp.captureSet.elems
-          case tp: ParamRef =>
-            if variance < 0 || localBinders.contains(tp.binder) then elems
-            else elems ++ tp.captureSet.elems
-          case tp: LambdaType =>
-            localBinders += tp
-            try apply(elems, tp.resultType)
-            finally localBinders -= tp
-          case AndType(tp1, tp2) =>
-            val elems1 = apply(SimpleIdentitySet.empty, tp1)
-            val elems2 = apply(SimpleIdentitySet.empty, tp2)
-            elems ++ elems1.intersect(elems2)
-          case CapturingType(parent, ref) =>
-            val elems1 = apply(elems, parent)
-            if variance >= 0 then elems1 + ref else elems1
-          case TypeBounds(_, hi) =>
-            apply(elems, hi)
-          case tp: ClassInfo =>
-            elems ++ ofClass(tp, Nil).elems
-          case tp: LazyRef =>
-            if seenLazyRefs.contains(tp)
-              || tp.evaluating  // shapeless gets an assertion error without this test
-            then elems
-            else
-              seenLazyRefs += tp
-              foldOver(elems, tp)
-//          case tp: MatchType =>
-//            val normed = tp.tryNormalize
-//            if normed.exists then apply(elems, normed) else foldOver(elems, tp)
-          case _ =>
-            foldOver(elems, tp)
-      }
-
-    CaptureSet(collect(empty.elems, tp))
+    def recur(tp: Type): CaptureSet = tp match
+      case tp: NamedType =>
+        tp.captureSet
+      case tp: ParamRef =>
+        tp.captureSet
+      case CapturingType(parent, ref) =>
+        recur(parent) + ref
+      case tp: TypeProxy =>
+        recur(tp.underlying)
+      case AndType(tp1, tp2) =>
+        recur(tp1).intersect(recur(tp2))
+      case OrType(tp1, tp2) =>
+        recur(tp1) ++ recur(tp2)
+      case tp: ClassInfo =>
+        ofClass(tp, Nil)
+      case _ =>
+        empty
+    recur(tp)
       .showing(i"capture set of $tp = $result", capt)
 
