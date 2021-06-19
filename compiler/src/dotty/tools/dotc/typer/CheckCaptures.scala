@@ -124,6 +124,7 @@ class CheckCaptures extends RefineTypes:
               val isGlobal = ref match
                 case ref: TypeRef => ref.isRootCapability
                 case ref: TermRef => ref.prefix != NoPrefix && ref.symbol.hasAnnotation(defn.AbilityAnnot)
+                case _ => false
               val what = if ref.isRootCapability then "universal" else "global"
               if isGlobal then
                 val notAllowed = i" is not allowed to capture the $what capability $ref"
