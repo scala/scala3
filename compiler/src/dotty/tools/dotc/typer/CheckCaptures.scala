@@ -11,7 +11,7 @@ import StdNames._
 import Decorators._
 import ProtoTypes._
 import Inferencing.isFullyDefined
-import config.Printers.refinr
+import config.Printers.capt
 import ast.{tpd, untpd, Trees}
 import NameKinds.{DocArtifactName, OuterSelectName, DefaultGetterName}
 import Trees._
@@ -78,7 +78,7 @@ class CheckCaptures extends RefineTypes:
     override def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree =
       super.typedClosure(tree, pt) match
         case tree1: Closure =>
-          refinr.println(i"typing closure ${tree1.meth.symbol} with fvs ${capturedVars(tree1.meth.symbol)}")
+          capt.println(i"typing closure ${tree1.meth.symbol} with fvs ${capturedVars(tree1.meth.symbol)}")
           tree1.withType(tree1.tpe.capturing(capturedVars(tree1.meth.symbol)))
         case tree1 => tree1
 
