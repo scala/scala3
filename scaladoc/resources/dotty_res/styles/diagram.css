@@ -19,6 +19,11 @@
   height: 400px;
 }
 
+.diagram-class {
+  background-color: var(--code-bg);
+  margin-bottom: 16px;
+}
+
 .diagram-class a {
   text-decoration: underline;
   color: #FFF;

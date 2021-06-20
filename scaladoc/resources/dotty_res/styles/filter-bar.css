@@ -1,5 +1,5 @@
 .documentableFilter {
-  padding: 24px 12px;
+  padding: 24px 24px 24px 12px;
   background-color: var(--code-bg);
 }
 
@@ -26,22 +26,28 @@
 }
 
 .filterToggleButton svg {
-  fill: var(--body-fg);
+  fill: var(--icon-color);
   transition: fill 0.1s ease-in, transform 0.1s ease-in-out;
 }
 
 .filterToggleButton:hover svg,
 .filterToggleButton:focus svg {
-  fill: var(--active-fg);
+  fill: var(--icon-color);
 }
 
 .filterableInput {
-  padding: 6px 4px;
   flex: 1;
   outline: 0;
-  border: 0;
+  border: 1px solid var(--border-medium);
   border-radius: 3px;
   background-color: var(--body-bg);
+  font-family: "Lato", sans-serif;
+  padding: 8px;
+  margin-left: 8px;
+}
+
+.filterableInput:focus {
+  border: 1px solid var(--active-bg-shadow);
 }
 
 .filterLowerContainer {
