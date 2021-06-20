@@ -1,7 +1,7 @@
 import language.experimental.erasedDefinitions
 import annotation.ability
 
-@ability erased val canThrow: List[*] = ???
+@ability erased val canThrow: * = ???
 
 class CanThrow[E <: Exception] extends Retains[canThrow.type]
 type Top  = Any retains *

@@ -1,0 +1,42 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:3:2 ------------------------------------------
+3 |  () => if x == null then y else y  // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    (() => C) retains x
+  |  Required: () => C
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:6:2 ------------------------------------------
+6 |  () => if x == null then y else y  // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Found:    (() => C) retains x
+  |  Required: Any
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:14:2 -----------------------------------------
+14 |  f  // error
+   |  ^
+   |  Found:    (Int => Int) retains x
+   |  Required: Any
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:23:3 -----------------------------------------
+23 |  F(22)  // error
+   |  ^^^^^
+   |  Found:    F retains x
+   |  Required: A
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:27:40 ----------------------------------------
+27 |    def m() = if x == null then y else y  // error
+   |                                        ^
+   |                                        Found:    A {...} retains x
+   |                                        Required: A
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:32:24 ----------------------------------------
+32 |  val z2 = h[() => Cap](() => x)(() => C())  // error
+   |                        ^^^^^^^
+   |                        Found:    (() => Cap) retains x
+   |                        Required: () => Cap
+
+longer explanation available when compiling with `-explain`
