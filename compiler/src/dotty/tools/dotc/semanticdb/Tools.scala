@@ -140,7 +140,7 @@ object Tools:
       case TRAIT => sb.append("trait ")
       case INTERFACE => sb.append("interface ")
       case UNKNOWN_KIND | Unrecognized(_) => sb.append("unknown ")
-    sb.append(info.displayName).nl
+    sb.append(s"${info.displayName} ${info.signature}").nl
   end processSymbol
 
   private def processOccurrence(occ: SymbolOccurrence)(using sb: StringBuilder, sourceFile: SourceFile): Unit =
