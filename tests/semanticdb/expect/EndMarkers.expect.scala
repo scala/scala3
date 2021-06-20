@@ -21,11 +21,11 @@ package endmarkers:
   class Container/*<-endmarkers::Container#*/:
 
     def foo/*<-endmarkers::Container#foo().*/ =
-      (/*->scala::Tuple3.apply().*/1,2,3)
+      (1,2,3)
     end foo/*->endmarkers::Container#foo().*/
 
     val bar/*<-endmarkers::Container#bar.*/ =
-      (/*->scala::Tuple3.apply().*/4,5,6)
+      (4,5,6)
     end bar/*->endmarkers::Container#bar.*/
 
     var baz/*<-endmarkers::Container#baz().*/ =

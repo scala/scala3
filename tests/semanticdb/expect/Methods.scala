@@ -24,6 +24,7 @@ class Methods[T] {
   def m11(x: Example.type) = ???
   def m12a(x: {}) = ???
   def m12b(x: { val x: Int }) = ???
+  def m12c(x: { val x: Int; def y: Int }) = ???
   def m13(x: Int @unchecked) = ???
   def m15(x: => Int) = ???
   def m16(x: Int*) = ???

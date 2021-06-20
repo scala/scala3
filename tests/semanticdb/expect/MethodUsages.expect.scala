@@ -1,7 +1,7 @@
 package example
 
 class MethodUsages/*<-example::MethodUsages#*/ {
-  val m/*<-example::MethodUsages#m.*/ = new Methods/*->example::Methods#*/[Int/*->scala::Int#*/]/*->example::Methods#`<init>`().*/
+  val m/*<-example::MethodUsages#m.*/ = new Methods/*->example::Methods#*/[Int/*->scala::Int#*/]
   m/*->example::MethodUsages#m.*/.m1/*->example::Methods#m1().*/
   m/*->example::MethodUsages#m.*/.m2/*->example::Methods#m2().*/()
   m/*->example::MethodUsages#m.*/.m3/*->example::Methods#m3().*/(0)
@@ -9,9 +9,9 @@ class MethodUsages/*<-example::MethodUsages#*/ {
   m/*->example::MethodUsages#m.*/.m5/*->example::Methods#m5().*/("")
   m/*->example::MethodUsages#m.*/.m5/*->example::Methods#m5(+1).*/(0)
   m/*->example::MethodUsages#m.*/.m6/*->example::Methods#m6().*/(0)
-  m/*->example::MethodUsages#m.*/.m6/*->example::Methods#m6(+1).*/(new m/*->example::MethodUsages#m.*/.List/*->example::Methods#List#*/[Int/*->scala::Int#*/]/*->example::Methods#List#`<init>`().*/)
+  m/*->example::MethodUsages#m.*/.m6/*->example::Methods#m6(+1).*/(new m/*->example::MethodUsages#m.*/.List/*->example::Methods#List#*/[Int/*->scala::Int#*/])
   m/*->example::MethodUsages#m.*/.m6/*->example::Methods#m6(+2).*/(Nil/*->scala::package.Nil.*/)
-  m/*->example::MethodUsages#m.*/.m7/*->example::Methods#m7().*/(m/*->example::MethodUsages#m.*/, new m/*->example::MethodUsages#m.*/.List/*->example::Methods#List#*/[Int/*->scala::Int#*/]/*->example::Methods#List#`<init>`().*/)/*->scala::math::Ordering.Int.*/
+  m/*->example::MethodUsages#m.*/.m7/*->example::Methods#m7().*/(m/*->example::MethodUsages#m.*/, new m/*->example::MethodUsages#m.*/.List/*->example::Methods#List#*/[Int/*->scala::Int#*/])
   m/*->example::MethodUsages#m.*/.`m8().`/*->example::Methods#`m8().`().*/()
   m/*->example::MethodUsages#m.*/.m9/*->example::Methods#m9().*/(null)
   m/*->example::MethodUsages#m.*/.m10/*->example::Methods#m10().*/(null)
