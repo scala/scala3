@@ -54,6 +54,15 @@ case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
   def <:< (that: CaptureSet)(using Context): Boolean =
     elems.isEmpty || elems.forall(that.accountsFor)
 
+  def flatMap(f: CaptureRef => CaptureSet)(using Context): CaptureSet =
+    (empty /: elems)((cs, ref) => cs ++ f(ref))
+
+  def substParams(tl: BindingType, to: List[Type])(using Context) =
+    flatMap {
+      case ref: ParamRef if ref.binder eq tl => to(ref.paramNum).captureSet
+      case ref => ref.singletonCaptureSet
+    }
+
   override def toString = elems.toString
 
   override def toText(printer: Printer): Text =
@@ -98,6 +107,11 @@ object CaptureSet:
         tp.captureSet
       case CapturingType(parent, ref) =>
         recur(parent) + ref
+      case AppliedType(tycon, args) =>
+        val cs = recur(tycon)
+        tycon.typeParams match
+          case tparams @ (LambdaParam(tl, _) :: _) => cs.substParams(tl, args)
+          case _ => cs
       case tp: TypeProxy =>
         recur(tp.underlying)
       case AndType(tp1, tp2) =>
