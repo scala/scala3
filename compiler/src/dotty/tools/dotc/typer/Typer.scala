@@ -367,7 +367,9 @@ class Typer extends Namer
             if (qualifies(defDenot)) {
               val found =
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
-                else {
+                else if(ctx.isJava && defDenot.symbol.isStatic) {
+                  defDenot.symbol.namedType
+                } else {
                   val effectiveOwner =
                     if (curOwner.isTerm && defDenot.symbol.maybeOwner.isType)
                       // Don't mix NoPrefix and thisType prefixes, since type comparer

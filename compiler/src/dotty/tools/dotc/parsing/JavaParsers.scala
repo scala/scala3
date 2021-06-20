@@ -901,16 +901,7 @@ object JavaParsers {
             members) ++= decls
         }
       }
-      def forwarders(sdef: Tree): List[Tree] = sdef match {
-        case TypeDef(name, _) if (parentToken == INTERFACE) =>
-          var rhs: Tree = Select(Ident(parentName.toTermName), name)
-          List(TypeDef(name, rhs).withMods(Modifiers(Flags.Protected)))
-        case _ =>
-          List()
-      }
-      val sdefs = statics.toList
-      val idefs = members.toList ::: (sdefs flatMap forwarders)
-      (sdefs, idefs)
+      (statics.toList, members.toList)
     }
     def annotationParents: List[Select] = List(
       scalaAnnotationDot(tpnme.Annotation),
