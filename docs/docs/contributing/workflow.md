@@ -37,25 +37,43 @@ Here are some useful debugging `<OPTIONS>`:
 can be enabled through the `dotty.tools.dotc.config.Printers` object. Change any of the desired printer from `noPrinter` to
 `default` and this will give you the full logging capability of the compiler.
 
-## Inspecting Trees with Type Stealer ##
+## Inspecting Types with Type Stealer ##
 
-You can inspect types with the type stealer, open `compiler/test/dotty/tools/DottyTypeStealer.scala` and you'll see:
+You can inspect types with the main method `dotty.tools.printTypes` from the sbt shell,
+passing at least two arguments. The first argument is a string that introduces some
+Scala definitions, the following arguments are type signatures, (i.e. the return type
+of a definition) that are allowed to reference definitions from the first argument.
 
-```scala
-@main def steal() = {
-  val s = DottyTypeStealer.stealType("class O { type X }", "O#X")
-  val t = s._2(0)
-  println(t)
-}
-```
+The type signatures will then be printed, displaying their internal structure, using
+the same representation that can later be used in pattern matching to decompose the type.
 
+Here, we inspect a refinement of a class `Box`:
 ```bash
 $ sbt
-> scala3-compiler-bootstrapped/Test/runMain dotty.tools.steal
-TypeRef(TypeRef(ThisType(TypeRef(NoPrefix,module class <empty>)),class O),type X)
+> scala3-compiler-bootstrapped/Test/runMain dotty.tools.printTypes "class Box { def x: Any }" "Box { def x: Int }"
+RefinedType(TypeRef(ThisType(TypeRef(NoPrefix,module class <empty>)),class Box),x,ExprType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),class Int)))
 ```
 
-You can inspect other value types by editing the arguments of `stealType`.
+You can also pass the empty string as the first
+argument, e.g. to inspect a standard library type:
+```bash
+$ sbt
+> scala3-compiler-bootstrapped/Test/runMain dotty.tools.printTypes "" "1 *: EmptyTuple"
+AppliedType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),class *:),List(ConstantType(Constant(1)), TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class scala)),object Tuple$package),type EmptyTuple)))
+```
+
+If you want to further inspect the types, and not just print them, the object `dotty.tools.DottyTypeStealer` has a
+method `stealType`. It takes the same arguments as `printTypes`, but returns both a `Context` containing the
+definitions passed, along with the list of types:
+```scala
+// compiler/test/dotty/tools/DottyTypeStealer.scala
+object DottyTypeStealer extends DottyTest {
+  def stealType(source: String, typeStrings: String*): (Context, List[Type]) = {
+    ...
+  }
+}
+```
+Any test source within `compiler/test` can then call `stealType` for custom purposes.
 
 ## Pretty-printing ##
 Many objects in the scalac compiler implement a `Showable` trait (e.g. `Tree`,
