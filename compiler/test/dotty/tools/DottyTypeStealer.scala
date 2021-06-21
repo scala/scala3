@@ -7,10 +7,20 @@ import dotc.core.Contexts.Context
 import dotc.core.Decorators._
 import dotc.core.Types.Type
 
-@main def steal() = {
-  val s = DottyTypeStealer.stealType("class O { type X }", "O#X")
-  val t = s._2(0)
-  println(t)
+/**Pass a string representing a Scala source file,
+ * and then some type signatures referencing prior definitions.
+ *
+ * The type signatures will then be printed (singleton types
+ * are widened.)
+ *
+ * @param source top level Scala definitions, e.g. `"class O { type X }"`
+ * @param typeStrings Scala type signatures, e.g. `"O#X"`
+ *
+ * @syntax markdown
+ */
+@main def printTypes(source: String, typeStrings: String*) = {
+  val (_, tpes) = DottyTypeStealer.stealType(source, typeStrings*)
+  tpes.foreach(println)
 }
 
 object DottyTypeStealer extends DottyTest {
