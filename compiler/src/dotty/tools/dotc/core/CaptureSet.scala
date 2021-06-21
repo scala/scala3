@@ -11,22 +11,36 @@ import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
 
-case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
+case class CaptureSet private (elems0: CaptureSet.Refs) extends Showable:
   import CaptureSet.*
 
-  def isEmpty: Boolean = elems.isEmpty
-  def nonEmpty: Boolean = !isEmpty
+  def isEmpty(using Context): Boolean = elems.isEmpty
+  def nonEmpty(using Context): Boolean = !isEmpty
 
-  def ++ (that: CaptureSet): CaptureSet =
+  private var isProvisional = true
+  private var myElems: CaptureSet.Refs = elems0
+
+  def elems(using Context): CaptureSet.Refs =
+    if isProvisional then
+      isProvisional = false
+      myElems.foreach {
+        case tv: TypeVar =>
+          if tv.isInstantiated then myElems = myElems - tv ++ tv.inst.captureSet.elems
+          else isProvisional = true
+        case _ =>
+      }
+    myElems
+
+  def ++ (that: CaptureSet)(using Context): CaptureSet =
     if this.isEmpty then that
     else if that.isEmpty then this
-    else CaptureSet(elems ++ that.elems)
+    else CaptureSet(myElems ++ that.elems)
 
-  def + (ref: CaptureRef) =
+  def + (ref: CaptureRef)(using Context) =
     if elems.contains(ref) then this
     else CaptureSet(elems + ref)
 
-  def intersect (that: CaptureSet): CaptureSet =
+  def intersect (that: CaptureSet)(using Context): CaptureSet =
     CaptureSet(this.elems.intersect(that.elems))
 
   /** {x} <:< this   where <:< is subcapturing */
@@ -46,10 +60,10 @@ case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
       case ref => ref.singletonCaptureSet
     }
 
-  override def toString = elems.toString
+  override def toString = myElems.toString
 
   override def toText(printer: Printer): Text =
-    Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}")
+    Str("{") ~ Text(myElems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}")
 
 object CaptureSet:
   type Refs = SimpleIdentitySet[CaptureRef]

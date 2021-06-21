@@ -4706,7 +4706,11 @@ object Types {
 
     override def captureSetOfInfo(using Context): CaptureSet = instanceOpt match
       case ref: CaptureRef => ref.captureSetOfInfo
-      case tp => tp.captureSet
+      case _ => underlying.captureSet
+
+    override def captureSet(using Context): CaptureSet =
+      if isInstantiated then inst.captureSet
+      else super.captureSet
 
     // Object members
 
