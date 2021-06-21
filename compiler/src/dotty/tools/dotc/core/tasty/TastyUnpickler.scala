@@ -3,7 +3,7 @@ package core
 package tasty
 
 import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader, TastyHeaderUnpickler}
-import TastyFormat.NameTags._
+import TastyFormat.NameTags._, TastyFormat.nameTagToString
 import TastyBuffer.NameRef
 
 import scala.collection.mutable
@@ -79,8 +79,10 @@ class TastyUnpickler(reader: TastyReader) {
         val original = readName()
         val target = readName()
         readSignedRest(original, target)
-      case _ =>
+      case SUPERACCESSOR | INLINEACCESSOR | BODYRETAINER | OBJECTCLASS =>
         simpleNameKindOfTag(tag)(readName())
+      case _ =>
+        throw MatchError(s"unknown name tag ${nameTagToString(tag)}")
     }
     assert(currentAddr == end, s"bad name $result $start $currentAddr $end")
     result

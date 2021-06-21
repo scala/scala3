@@ -873,15 +873,9 @@ class TreeUnpickler(reader: TastyReader,
           }
         case PARAM =>
           val tpt = readTpt()(using localCtx)
-          if (nothingButMods(end)) {
-            sym.info = tpt.tpe
-            ValDef(tpt)
-          }
-          else {
-            sym.info = ExprType(tpt.tpe)
-            pickling.println(i"reading param alias $name -> $currentAddr")
-            DefDef(Nil, tpt)
-          }
+          assert(nothingButMods(end))
+          sym.info = tpt.tpe
+          ValDef(tpt)
       }
       goto(end)
       setSpan(start, tree)
