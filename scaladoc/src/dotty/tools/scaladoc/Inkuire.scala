@@ -7,6 +7,11 @@ object Inkuire {
 
   var db = InkuireDb(Seq.empty, Map.empty, Seq.empty)
 
+  def generateInkuireConfig(externalMappings: Seq[String]): String = {
+    val paths = ("../inkuire-db.json" +: externalMappings.map(_ + "../inkuire-db.json")).map(p => "\"" + p + "\"")
+    s"""{"inkuirePaths": [${paths.mkString(",")}]}"""
+  }
+
   case class InkuireDb(
     functions:           Seq[ExternalSignature],
     types:               Map[ITID, (Type, Seq[Type])],

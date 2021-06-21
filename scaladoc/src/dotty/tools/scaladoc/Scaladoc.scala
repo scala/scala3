@@ -83,22 +83,29 @@ object Scaladoc:
         report.inform("Done")
       else report.error("Failure")
 
-      if parsedArgs.generateInkuire then dumpInkuireDB(parsedArgs.output.getAbsolutePath)
+      if parsedArgs.generateInkuire then dumpInkuireDB(parsedArgs.output.getAbsolutePath, parsedArgs)
     }
 
     ctx.reporter
 
-  def dumpInkuireDB(output: String) = {
-    val path = Paths.get(output, "inkuire-db.json")
+  def dumpInkuireDB(output: String, parsedArgs: Args) = {
+    val dbPath = Paths.get(output, "inkuire-db.json")
     println("InkuireDB created successfully!")
     println(s"Types: ${Inkuire.db.types.size}")
     println(s"Functions: ${Inkuire.db.functions.size}")
-    val file = path.toFile()
-    file.createNewFile()
-    val myWriter = new FileWriter(file, false)
-    myWriter.write(s"${EngineModelSerializers.serialize(Inkuire.db)}")
-    myWriter.close()
-    println(s"Saved InkuireDB in file: ${path.toString}")
+    val dbFile = dbPath.toFile()
+    dbFile.createNewFile()
+    val dbWriter = new FileWriter(dbFile, false)
+    dbWriter.write(s"${EngineModelSerializers.serialize(Inkuire.db)}")
+    dbWriter.close()
+    println(s"Saved InkuireDB in file: ${dbPath.toString}")
+
+    val configPath = Paths.get(output, "scripts/inkuire-config.json")
+    val configFile = configPath.toFile()
+    configFile.createNewFile()
+    val configWriter = new FileWriter(configFile, false)
+    configWriter.write(Inkuire.generateInkuireConfig(parsedArgs.externalMappings.map(_.documentationUrl.toString)))
+    configWriter.close()
   }
 
   def extract(args: Array[String], rootCtx: CompilerContext): (Option[Scaladoc.Args], CompilerContext) =
