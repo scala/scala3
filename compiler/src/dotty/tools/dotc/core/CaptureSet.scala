@@ -17,23 +17,6 @@ case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
   def isEmpty: Boolean = elems.isEmpty
   def nonEmpty: Boolean = !isEmpty
 
-  private var myClosure: Refs | Null = null
-
-  def closure(using Context): Refs =
-    if myClosure == null then
-      var cl = elems
-      var seen: Refs = SimpleIdentitySet.empty
-      while
-        val prev = cl
-        for ref <- cl do
-          if !seen.contains(ref) then
-            seen += ref
-            cl = cl ++ ref.captureSetOfInfo.elems
-        prev ne cl
-      do ()
-      myClosure = cl
-    myClosure
-
   def ++ (that: CaptureSet): CaptureSet =
     if this.isEmpty then that
     else if that.isEmpty then this
@@ -101,9 +84,7 @@ object CaptureSet:
 
   def ofType(tp: Type)(using Context): CaptureSet =
     def recur(tp: Type): CaptureSet = tp match
-      case tp: NamedType =>
-        tp.captureSet
-      case tp: ParamRef =>
+      case tp: CaptureRef =>
         tp.captureSet
       case CapturingType(parent, ref) =>
         recur(parent) + ref
