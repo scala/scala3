@@ -33,10 +33,7 @@ longer explanation available when compiling with `-explain`
    |                                        Required: A
 
 longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:32:24 ----------------------------------------
+-- Error: tests/neg-custom-args/captures/capt1.scala:32:13 -------------------------------------------------------------
 32 |  val z2 = h[() => Cap](() => x)(() => C())  // error
-   |                        ^^^^^^^
-   |                        Found:    (() => Cap) retains x
-   |                        Required: () => Cap
-
-longer explanation available when compiling with `-explain`
+   |             ^^^^^^^^^
+   |             type argument is not allowed to capture the universal capability *

@@ -30,6 +30,6 @@ def foo() =
   val x: C retains * = ???
   def h[X <:Top](a: X)(b: X) = a
   val z2 = h[() => Cap](() => x)(() => C())  // error
-  val z3 = h[(() => Cap) retains x.type](() => x)(() => C())  // ok
+  val z3 = h(() => x)(() => C())  // ok
   val z4 = h[(() => Cap) retains x.type](() => x)(() => C())  // what was inferred for z3
 
