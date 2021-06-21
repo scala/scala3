@@ -527,13 +527,16 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case RefinedTypeTree(tpt, refines) =>
         toTextLocal(tpt) ~ " " ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>
-        if (tpt.symbol == defn.orType && args.length == 2)
+        if tpt.symbol == defn.orType && args.length == 2 then
           changePrec(OrTypePrec) { toText(args(0)) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(args(1)) } }
-        else if (tpt.symbol == defn.andType && args.length == 2)
+        else if tpt.symbol == defn.andType && args.length == 2 then
           changePrec(AndTypePrec) { toText(args(0)) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(args(1)) } }
+        else if tpt.symbol == defn.Predef_retainsType && args.length == 2 then
+          changePrec(InfixPrec) { toText(args(0)) ~ " retains " ~ toText(args(1)) }
         else if defn.isFunctionClass(tpt.symbol)
             && tpt.isInstanceOf[TypeTree] && tree.hasType && !printDebug
-        then changePrec(GlobalPrec) { toText(tree.typeOpt) }
+        then
+          changePrec(GlobalPrec) { toText(tree.typeOpt) }
         else args match
           case arg :: _ if arg.isTerm =>
             toTextLocal(tpt) ~ "(" ~ Text(args.map(argText), ", ") ~ ")"
