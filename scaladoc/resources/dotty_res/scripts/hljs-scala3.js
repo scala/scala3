@@ -229,7 +229,7 @@ function highlightDotty(hljs) {
       {
         className: 'emphasis',
         variants: [
-          {begin: /\*(?![\*\s/])/, end: /\*/},
+          {begin: /\*(?!([\*\s/])|([^\*]*\*[\*/]))/, end: /\*/},
           {begin: /_/, end: /_/}
         ],
       },
