@@ -978,6 +978,10 @@ object Parsers {
     def ident(): TermName =
       if (isIdent) {
         val name = in.name
+        if name == nme.CONSTRUCTOR || name == nme.STATIC_CONSTRUCTOR then
+          report.error(
+            i"""Illegal backquoted identifier: `<init>` and `<clinit>` are forbidden""",
+            in.sourcePos())
         in.nextToken()
         name
       }
