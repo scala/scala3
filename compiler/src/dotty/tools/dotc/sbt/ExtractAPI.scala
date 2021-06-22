@@ -599,7 +599,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       // an inline def in every class that extends its owner. To avoid this we
       // could store the hash as an annotation when pickling an inline def
       // and retrieve it here instead of computing it on the fly.
-      val inlineBodyHash = treeHash(inlineBody)
+      val inlineBodyHash = treeHash(inlineBody, inlineSym = s)
       annots += marker(inlineBodyHash.toString)
     }
 
@@ -620,14 +620,110 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
    *  it should stay the same across compiler runs, compiler instances,
    *  JVMs, etc.
    */
-  def treeHash(tree: Tree): Int =
+  def treeHash(tree: Tree, inlineSym: Symbol): Int =
     import scala.util.hashing.MurmurHash3
+    import core.Constants.*
+
+    val seenInlines = mutable.HashSet.empty[Symbol]
+
+    if inlineSym ne NoSymbol then
+      seenInlines += inlineSym // do not hash twice a recursive def
+
+    def nameHash(n: Name, initHash: Int): Int =
+      val h =
+        if n.isTermName then
+          MurmurHash3.mix(initHash, TermNameHash)
+        else
+          MurmurHash3.mix(initHash, TypeNameHash)
+
+      // The hashCode of the name itself is not stable across compiler instances
+      MurmurHash3.mix(h, n.toString.hashCode)
+    end nameHash
+
+    def typeHash(tp: Type, initHash: Int): Int =
+      // Go through `apiType` to get a value with a stable hash, it'd
+      // be better to use Murmur here too instead of relying on
+      // `hashCode`, but that would essentially mean duplicating
+      // https://github.com/sbt/zinc/blob/develop/internal/zinc-apiinfo/src/main/scala/xsbt/api/HashAPI.scala
+      // and at that point we might as well do type hashing on our own
+      // representation.
+      var h = initHash
+      tp match
+        case ConstantType(c) =>
+          h = constantHash(c, h)
+        case TypeBounds(lo, hi) =>
+          h = MurmurHash3.mix(h, apiType(lo).hashCode)
+          h = MurmurHash3.mix(h, apiType(hi).hashCode)
+        case tp =>
+          h = MurmurHash3.mix(h, apiType(tp).hashCode)
+      h
+    end typeHash
+
+    def constantHash(c: Constant, initHash: Int): Int =
+      var h = MurmurHash3.mix(initHash, c.tag)
+      c.tag match
+        case NullTag =>
+          // No value to hash, the tag is enough.
+        case ClazzTag =>
+          h = typeHash(c.typeValue, h)
+        case _ =>
+          h = MurmurHash3.mix(h, c.value.hashCode)
+      h
+    end constantHash
+
+    /**An inline method that calls another inline method will eventually inline the call
+     * at a non-inline callsite, in this case if the implementation of the nested call
+     * changes, then the callsite will have a different API, we should hash the definition
+     */
+    def inlineReferenceHash(ref: Symbol, rhs: Tree, initHash: Int): Int =
+      var h = initHash
+
+      def paramssHash(paramss: List[List[Symbol]], initHash: Int): Int = paramss match
+        case Nil :: paramss1 =>
+          paramssHash(paramss1, MurmurHash3.mix(initHash, EmptyParamHash))
+        case params :: paramss1 =>
+          var h = initHash
+          val paramsIt = params.iterator
+          while paramsIt.hasNext do
+            val param = paramsIt.next
+            h = nameHash(param.name, h)
+            h = typeHash(param.info, h)
+            if param.is(Inline) then
+              h = MurmurHash3.mix(h, InlineParamHash) // inline would change the generated code
+          paramssHash(paramss1, h)
+        case Nil =>
+          initHash
+      end paramssHash
+
+      h = paramssHash(ref.paramSymss, h)
+      h = typeHash(ref.info.finalResultType, h)
+      positionedHash(rhs, h)
+    end inlineReferenceHash
+
+    def err(what: String, elem: Any, pos: Positioned, initHash: Int): Int =
+      internalError(i"Don't know how to produce a stable hash for $what", pos.sourcePos)
+      MurmurHash3.mix(initHash, elem.toString.hashCode)
 
     def positionedHash(p: ast.Positioned, initHash: Int): Int =
+      var h = initHash
+
       p match
         case p: WithLazyField[?] =>
           p.forceIfLazy
         case _ =>
+
+      p match
+        case ref: RefTree @unchecked =>
+          val sym = ref.symbol
+          if sym.is(Inline, butNot = Param) && !seenInlines.contains(sym) then
+            seenInlines += sym // dont re-enter hashing this ref
+            sym.defTree match
+              case defTree: ValOrDefDef =>
+                h = inlineReferenceHash(sym, defTree.rhs, h)
+              case _ =>
+                h = err(i"inline method reference `${ref.name}`", ref.name, ref, h)
+        case _ =>
+
       // FIXME: If `p` is a tree we should probably take its type into account
       // when hashing it, but producing a stable hash for a type is not trivial
       // since the same type might have multiple representations, for method
@@ -635,12 +731,11 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       // in Zinc that generates hashes from that, if we can reliably produce
       // stable hashes for types ourselves then we could bypass all that and
       // send Zinc hashes directly.
-      val h = MurmurHash3.mix(initHash, p.productPrefix.hashCode)
+      h = MurmurHash3.mix(h, p.productPrefix.hashCode)
       iteratorHash(p.productIterator, h)
     end positionedHash
 
     def iteratorHash(it: Iterator[Any], initHash: Int): Int =
-      import core.Constants._
       var h = initHash
       while it.hasNext do
         it.next() match
@@ -649,30 +744,11 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
           case xs: List[?] =>
             h = iteratorHash(xs.iterator, h)
           case c: Constant =>
-            h = MurmurHash3.mix(h, c.tag)
-            c.tag match
-              case NullTag =>
-                // No value to hash, the tag is enough.
-              case ClazzTag =>
-                // Go through `apiType` to get a value with a stable hash, it'd
-                // be better to use Murmur here too instead of relying on
-                // `hashCode`, but that would essentially mean duplicating
-                // https://github.com/sbt/zinc/blob/develop/internal/zinc-apiinfo/src/main/scala/xsbt/api/HashAPI.scala
-                // and at that point we might as well do type hashing on our own
-                // representation.
-                val apiValue = apiType(c.typeValue)
-                h = MurmurHash3.mix(h, apiValue.hashCode)
-              case _ =>
-                h = MurmurHash3.mix(h, c.value.hashCode)
+            h = constantHash(c, h)
           case n: Name =>
-            // The hashCode of the name itself is not stable across compiler instances
-            h = MurmurHash3.mix(h, n.toString.hashCode)
+            h = nameHash(n, h)
           case elem =>
-            internalError(
-              i"Don't know how to produce a stable hash for `$elem` of unknown class ${elem.getClass}",
-              tree.sourcePos)
-
-            h = MurmurHash3.mix(h, elem.toString.hashCode)
+            h = err(i"`$elem` of unknown class ${elem.getClass}", elem, tree, h)
       h
     end iteratorHash
 
@@ -691,6 +767,6 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     // annotated @org.junit.Test).
     api.Annotation.of(
       apiType(annot.tree.tpe), // Used by sbt to find tests to run
-      Array(api.AnnotationArgument.of("TREE_HASH", treeHash(annot.tree).toString)))
+      Array(api.AnnotationArgument.of("TREE_HASH", treeHash(annot.tree, inlineSym = NoSymbol).toString)))
   }
 }
