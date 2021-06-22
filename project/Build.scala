@@ -1252,7 +1252,13 @@ object Build {
       // TODO add versions etc.
       def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
       def scalaSrcLink(v: String, s: String) = s"-source-links:$s=github://scala/scala/v$v#src/library"
-      def dottySrcLink(v: String, s: String) = s"-source-links:$s=github://lampepfl/dotty/$v#library/src"
+      def dottySrcLink(v: String, s: String) =
+        sys.env.get("GITHUB_SHA") match {
+          case Some(sha) =>
+            s"-source-links:$s=github://${sys.env("GITHUB_REPOSITORY")}/$sha#library/src"
+          case None => s"-source-links:$s=github://lampepfl/dotty/$v#library/src"
+        }
+
       val revision = Seq("-revision", ref, "-project-version", projectVersion)
       val cmd = Seq(
         "-d",

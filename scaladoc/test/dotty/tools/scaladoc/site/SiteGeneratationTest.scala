@@ -97,3 +97,17 @@ class SiteGeneratationTest extends BaseHtmlTest:
   def noExistingDocs() = withGeneratedSite(testDocPath.resolve("noExisting")){
     testApiPages(mainTitle = projectName, parents = Nil)
   }
+
+  @Test
+  def staticLinking() = withGeneratedSite(testDocPath.resolve("static-links")){
+
+    withHtmlFile("docs/Adoc.html"){ content  =>
+        content.assertAttr("p a","href",
+        "dir/html.html",
+        "dir/name...with..dots..html",
+        "dir/name.with.md.and.html.html",
+        "dir/nested.html",
+        "dir/nested.svg"
+        )
+    }
+  }
