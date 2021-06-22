@@ -236,14 +236,16 @@ object TypeTestsCasts {
 
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
-            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
+            val isUntestable = defn.untestableClasses.contains(testCls)
+            val isIllegalPrimitiveTest = foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass
+            if isIllegalPrimitiveTest || isUntestable then
               report.error(i"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
               false
             else foundClasses.exists(check)
           end checkSensical
 
           if (expr.tpe <:< testType)
-            if (expr.tpe.isNotNull) {
+            if (expr.tpe.isNotNull || testType.widen.isRef(defn.NullClass)) {
               if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.srcPos)
               constant(expr, Literal(Constant(true)))
             }
