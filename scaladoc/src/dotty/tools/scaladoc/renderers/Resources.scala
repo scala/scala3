@@ -60,6 +60,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     val fromResources = List(
       "styles/nord-light.css",
       "styles/scalastyle.css",
+      "styles/colors.css",
       "styles/dotty-icons.css",
       "styles/diagram.css",
       "styles/filter-bar.css",
