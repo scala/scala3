@@ -61,6 +61,28 @@ echo "testing -Ythrough-tasty"
 clear_out "$OUT"
 "$SBT" ";scalac -Ythrough-tasty $SOURCE"
 
+echo "testing scaladoc script"
+clear_out "$OUT"
+clear_out "$OUT1"
+"$SBT" "scaladoc/generateTestcasesDocumentation" > "$tmp" 2>&1 || echo "generated testcases project with sbt"
+dist/target/pack/bin/scaladoc \
+  -d "$OUT1" \
+  -project "scaladoc testcases" \
+  -source-links:out/bootstrap/stdlib-bootstrapped/scala-3.0.2-RC1-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src=github://scala/scala/v2.13.6#src/library \
+  -source-links:out/bootstrap/stdlib-bootstrapped/scala-3.0.2-RC1-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src=github://lampepfl/dotty/3.0.0#library/src \
+  -source-links:github://lampepfl/dotty/3.0.0 \
+  "-external-mappings:.*scala.*::scaladoc3::http://dotty.epfl.ch/api/,.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/" \
+  "-skip-by-regex:.+\.internal($|\..+)" \
+  "-skip-by-regex:.+\.impl($|\..+)" \
+  -project-logo docs/logo.svg \
+  -social-links:github::https://github.com/lampepfl/dotty,gitter::https://gitter.im/scala/scala,twitter::https://twitter.com/scala_lang \
+  "-skip-by-id:scala.runtime.stdLibPatches" \
+  "-skip-by-id:scala.runtime.MatchCase" \
+  -project-footer "Copyright (c) 2002-2021, LAMP/EPFL" \
+  -author -groups -revision master -project-version 3.0.2-RC1-bin-SNAPSHOT \
+  out/bootstrap/scaladoc-testcases/scala-3.0.2-RC1-bin-SNAPSHOT-nonbootstrapped/classes > "$tmp" 2>&1 || echo "generated testcases project with scripts"
+diff -rq "$OUT1" "scaladoc/output/testcases"
+
 ## Disabled because of flakeyness, should be changed to not depend on sbt
 # echo "running Vulpix meta test"
 # tmp=$(mktemp)

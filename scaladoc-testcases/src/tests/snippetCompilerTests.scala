@@ -2,7 +2,7 @@ package tests
 package snippetCompilerTests
 
 /**
-  * ```scala sc:compile
+  * ```scala sc:fail
   * //{
   * import scala.collection.Seq
   * //}
@@ -34,7 +34,7 @@ package snippetCompilerTests
   * a
   * ```
   *
-  * ```scala sc:fail
+  * ```scala sc:compile
   * def a = 2
   * ```
   *
@@ -48,7 +48,7 @@ class A {
 }
 
 /**
- * ```scala sc:compile
+ * ```scala sc:fail
  * val c: Int = 4.5
  * ```
  */
@@ -58,7 +58,7 @@ trait Quotes {
   val reflect: reflectModule = ???
   trait reflectModule { self: reflect.type =>
     /**
-      * ```scala sc:compile
+      * ```scala sc:fail
       * 2 + List()
       * ```
       *
