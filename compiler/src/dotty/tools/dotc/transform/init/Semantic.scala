@@ -685,27 +685,8 @@ class Semantic {
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Addr, klass: ClassSymbol): Contextual[(List[Result], Env)] = exprs match {
-    case Nil => (Nil, env)
-    case h :: t => h match {
-      case v: ValDef => {
-        val res = eval(h, thisV, klass)
-        val newEnv = 
-          if res.value.promote("Try early promotion", h).isEmpty then Env(Map(v.symbol -> Hot)) else Env(Map(v.symbol -> res.value))
-        withEnv(env.union(newEnv)) {
-          val (res2, env2) = eval(t, thisV, klass)
-          (res :: res2, env2)
-        }
-      }
-      case _ => {
-        val res = eval(h, thisV, klass)
-        withEnv(env) {
-          val (res2, env2) = eval(t, thisV, klass)
-          (res :: res2, env2)
-        }
-      }
-    }
-  }
+  def eval(exprs: List[Tree], thisV: Addr, klass: ClassSymbol): Contextual[List[Result]] = 
+    exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
   def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[(List[Error], List[ArgInfo])] =
@@ -869,7 +850,7 @@ class Semantic {
       case vdef : ValDef =>
         // local val definition
         // TODO: support explicit @cold annotation for local definitions
-        eval(vdef.rhs, thisV, klass)
+        eval(vdef.rhs, thisV, klass, true)
         // .ensureHot("Local definitions may only hold initialized values", vdef)
 
       case ddef : DefDef =>
@@ -915,7 +896,9 @@ class Semantic {
             // It's always safe to approximate them with `Cold`.
             Result(Cold, Nil)
         else
-          Result(env.getOrElse(sym, Hot), Nil)
+          // resolve this for local variable
+          val enclosingClass = sym.owner.enclosingClass.asClass
+          val thisValue2 = resolveThis(enclosingClass, thisV, klass, source)
 
       case tmref: TermRef =>
         cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
