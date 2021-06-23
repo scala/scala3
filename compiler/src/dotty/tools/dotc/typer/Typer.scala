@@ -2294,10 +2294,19 @@ class Typer extends Namer
           result = maybeCall(result, psym)
       }
       else checkParentCall(result, cls)
-      checkTraitInheritance(psym, cls, tree.srcPos)
       if (cls is Case) checkCaseInheritance(psym, cls, tree.srcPos)
       result
     }
+
+    def ensureCorrectSuperClass(): Unit =
+      val parents0 = cls.classInfo.declaredParents
+      parents0 match
+        case AnnotatedType(sc, ann) :: rest if ann.symbol == defn.ProvisionalSuperClassAnnot =>
+          val parents1 = ensureFirstIsClass(cls, rest)
+          if parents1.head ne sc then
+            typr.println(i"improved provisional superclass $sc to ${parents1.head}")
+          cls.info = cls.classInfo.derivedClassInfo(declaredParents = parents1)
+        case _ =>
 
     /** Augment `ptrees` to have the same class symbols as `parents`. Generate TypeTrees
      *  or New trees to fill in any parents for which no tree exists yet.
@@ -2338,6 +2347,7 @@ class Typer extends Namer
       }
     }
 
+    ensureCorrectSuperClass()
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents0 = parentTrees(

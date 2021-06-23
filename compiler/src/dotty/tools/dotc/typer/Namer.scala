@@ -412,6 +412,58 @@ class Namer { typer: Typer =>
   def isEnumConstant(vd: ValDef)(using Context): Boolean =
     vd.mods.isAllOf(JavaEnumValue)
 
+  /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
+   *  If that's not already the case, add one. The added class type CT is determined as follows.
+   *  First, let C be the unique class such that
+   *  - there is a parent P_i such that P_i derives from C, and
+   *  - for every class D: If some parent P_j, j <= i derives from D, then C derives from D.
+   *  Then, let CT be the smallest type which
+   *  - has C as its class symbol, and
+   *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
+   *
+   * Tweak: It could be that at the point where the method is called, some superclass
+   * is still missing its parents. Parents are set to Nil when completion starts and are
+   * set to the actual parents later. If a superclass completes a subclass in one
+   * of its parents, the parents of the superclass or some intervening class might
+   * not yet be set. This situation can be detected by asking for the baseType of Any - 
+   * if that type does not exist, one of the base classes of this class misses its parents.
+   * If this situation arises, the computation of the superclass might be imprecise.
+   * For instance, in i12722.scala, the superclass of `IPersonalCoinOps` is computed
+   * as `Object`, where `JsObject` would be correct. The problem cannot be solved locally,
+   * but we detect the situaton and mark the superclass with a `@ProvisionalSuperClass`
+   * annotation in this case. When typechecking the class, we then run ensureFirstIsClass
+   * again and possibly improve the computed super class.
+   * An alternatiev fix would compute superclasses at typer instead at completion. But
+   * that breaks too many invariants. For instance, we rely on correct @Child annotations
+   * after completion, and these in turn need the superclass.
+   */
+  def ensureFirstIsClass(cls: ClassSymbol, parents: List[Type])(using Context): List[Type] =
+
+    def realClassParent(sym: Symbol): ClassSymbol =
+      if !sym.isClass then defn.ObjectClass
+      else if !sym.is(Trait) then sym.asClass
+      else sym.info.parents match
+        case parentRef :: _ => realClassParent(parentRef.typeSymbol)
+        case nil => defn.ObjectClass
+
+    def improve(candidate: ClassSymbol, parent: Type): ClassSymbol =
+      val pcls = realClassParent(parent.classSymbol)
+      if (pcls derivesFrom candidate) pcls else candidate
+
+    parents match
+      case p :: _ if p.classSymbol.isRealClass => parents
+      case _ =>
+        val pcls = parents.foldLeft(defn.ObjectClass)(improve)
+        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
+        val bases = parents.map(_.baseType(pcls))
+        var first = TypeComparer.glb(defn.ObjectType :: bases)
+        val isProvisional = parents.exists(!_.baseType(defn.AnyClass).exists)
+        if isProvisional then
+          typr.println(i"provisional superclass $first for $cls")
+          first = AnnotatedType(first, Annotation(defn.ProvisionalSuperClassAnnot))
+        checkFeasibleParent(first, cls.srcPos, em" in inferred superclass $first") :: parents
+  end ensureFirstIsClass
+
   /** Add child annotation for `child` to annotations of `cls`. The annotation
    *  is added at the correct insertion point, so that Child annotations appear
    *  in reverse order of their start positions.
@@ -1251,37 +1303,6 @@ class Namer { typer: Typer =>
         }
       }
 
-      /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
-       *  If that's not already the case, add one. The added class type CT is determined as follows.
-       *  First, let C be the unique class such that
-       *  - there is a parent P_i such that P_i derives from C, and
-       *  - for every class D: If some parent P_j, j <= i derives from D, then C derives from D.
-       *  Then, let CT be the smallest type which
-       *  - has C as its class symbol, and
-       *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
-       */
-      def ensureFirstIsClass(parents: List[Type]): List[Type] =
-
-        def realClassParent(sym: Symbol): ClassSymbol =
-          if !sym.isClass then defn.ObjectClass
-          else if !sym.is(Trait) then sym.asClass
-          else sym.info.parents match
-            case parentRef :: _ => realClassParent(parentRef.typeSymbol)
-            case nil => defn.ObjectClass
-
-        def improve(candidate: ClassSymbol, parent: Type): ClassSymbol =
-          val pcls = realClassParent(parent.classSymbol)
-          if (pcls derivesFrom candidate) pcls else candidate
-
-        parents match
-          case p :: _ if p.classSymbol.isRealClass => parents
-          case _ =>
-            val pcls = parents.foldLeft(defn.ObjectClass)(improve)
-            typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
-            val first = TypeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
-            checkFeasibleParent(first, cls.srcPos, em" in inferred superclass $first") :: parents
-      end ensureFirstIsClass
-
       /** If `parents` contains references to traits that have supertraits with implicit parameters
        *  add those supertraits in linearization order unless they are already covered by other
        *  parent types. For instance, in
@@ -1324,7 +1345,7 @@ class Namer { typer: Typer =>
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         defn.adjustForBoxedUnit(cls,
           addUsingTraits(
-            ensureFirstIsClass(parents.map(checkedParentType(_)))
+            ensureFirstIsClass(cls, parents.map(checkedParentType(_)))
           )
         )
       )
