@@ -64,19 +64,8 @@ object ProtoTypes {
                 i"""normalizedCompatible for $poly, $pt = $result
                    |constraint was: ${ctx.typerState.constraint}
                    |constraint now: ${newctx.typerState.constraint}""")
-            if result
-                && (ctx.typerState.constraint ne newctx.typerState.constraint)
-                && {
-                  val existingVars = ctx.typerState.uninstVars.toSet
-                  newctx.typerState.uninstVars.forall(existingVars.contains)
-                }
-            then newctx.typerState.commit()
-              // If the new constrait contains fresh type variables we cannot keep it,
-              // since those type variables are not instantiated anywhere in the source.
-              // See pos/i6682a.scala for a test case. See pos/11243.scala and pos/i5773b.scala
-              // for tests where it matters that we keep the constraint otherwise.
-              // TODO: A better solution would clean the new constraint, so that it "avoids"
-              // the problematic type variables. But we have not implemented such an algorithm yet.
+            if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
+              newctx.typerState.commit()
             result
           case _ => testCompat
       else explore(testCompat)
