@@ -133,11 +133,11 @@ object Parsers {
      *  and update lastErrorOffset.
      */
     def syntaxError(msg: Message, offset: Int = in.offset): Unit =
-      if (offset > lastErrorOffset) {
-        val length = if (offset == in.offset && in.name != null) in.name.show.length else 0
+      if offset > lastErrorOffset then
+        val length = if offset == in.offset && in.name != null then in.name.show.length else 0
         syntaxError(msg, Span(offset, offset + length))
         lastErrorOffset = in.offset
-      }
+      end if
 
     /** Unconditionally issue an error at given span, without
      *  updating lastErrorOffset.

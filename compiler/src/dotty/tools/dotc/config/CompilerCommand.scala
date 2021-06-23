@@ -14,6 +14,8 @@ abstract class CompilerCommand extends CliCommand:
 
   final def helpMsg(using settings: ScalaSettings)(using SettingsState, Context): String =
     if (settings.help.value) usageMessage
+    else if (settings.Vhelp.value) vusageMessage
+    else if (settings.Whelp.value) wusageMessage
     else if (settings.Xhelp.value) xusageMessage
     else if (settings.Yhelp.value) yusageMessage
     else if (settings.showPlugins.value) ctx.base.pluginDescriptions
@@ -21,4 +23,6 @@ abstract class CompilerCommand extends CliCommand:
     else ""
 
   final def isHelpFlag(using settings: ScalaSettings)(using SettingsState): Boolean =
-    Set(settings.help, settings.Xhelp, settings.Yhelp, settings.showPlugins, settings.XshowPhases) exists (_.value)
+    import settings._
+    val flags = Set(help, Vhelp,  Whelp, Xhelp, Yhelp, showPlugins, XshowPhases)
+    flags.exists(_.value) || allSettings.exists(isHelping)

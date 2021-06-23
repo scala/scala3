@@ -11,7 +11,7 @@ import language.existentials
 import reflect.ClassTag
 import scala.util.{Success, Failure}
 
-object Settings {
+object Settings:
 
   val BooleanTag: ClassTag[Boolean]      = ClassTag.Boolean
   val IntTag: ClassTag[Int]              = ClassTag.Int
@@ -166,13 +166,11 @@ object Settings {
     }
   }
 
-  object Setting {
-    extension [T](setting: Setting[T]) {
+  object Setting:
+    extension [T](setting: Setting[T])
       def value(using Context): T = setting.valueIn(ctx.settingsState)
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
-    }
-  }
 
   class SettingGroup {
 
@@ -279,4 +277,4 @@ object Settings {
     def OptionSetting[T: ClassTag](name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
       publish(Setting(name, descr, None, propertyClass = Some(implicitly[ClassTag[T]].runtimeClass), aliases = aliases))
   }
-}
+end Settings
