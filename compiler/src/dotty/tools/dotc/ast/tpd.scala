@@ -963,8 +963,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(using Context): Tree = tp.dealias match {
+      case ConstantType(c) if c.tag == StringTag =>
+        singleton(tp).equal(tree)
       case tp: SingletonType =>
-        if (tp.widen.derivesFrom(defn.ObjectClass))
+        if tp.widen.derivesFrom(defn.ObjectClass) then
           tree.ensureConforms(defn.ObjectType).select(defn.Object_eq).appliedTo(singleton(tp))
         else
           singleton(tp).equal(tree)
