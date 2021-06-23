@@ -38,6 +38,9 @@
   --red800: hsl(1 , 72% , 24%);
   --red900: hsl(1 , 75% , 12%);
 
+  /* Diagram central node aureole */
+
+  --aureole: hsl(40, 100%, 75%);
 
   /* Light Mode */
   --border-light: var(--grey200);
