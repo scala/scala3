@@ -269,6 +269,13 @@ object Build {
     // If someone puts a source file at the root (e.g., for manual testing),
     // don't pick it up as part of any project.
     sourcesInBase := false,
+
+    // For compatibility with Java 9+ module system;
+    // without Automatic-Module-Name, the module name is derived from the jar file which is invalid because of the _3 suffix.
+    Compile / packageBin / packageOptions +=
+      Package.ManifestAttributes(
+        "Automatic-Module-Name" -> s"${dottyOrganization.replaceAll("-",".")}.${moduleName.value.replaceAll("-",".")}"
+      )
   )
 
   // Settings used for projects compiled only with Java
@@ -751,18 +758,9 @@ object Build {
   def dottyCompilerSettings(implicit mode: Mode): sbt.Def.SettingsDefinition =
     if (mode == NonBootstrapped) nonBootstrapedDottyCompilerSettings else bootstrapedDottyCompilerSettings
 
-  lazy val `scala3-compiler` = project.in(file("compiler")).
-    asDottyCompiler(NonBootstrapped).
-    settings(
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}")
-    )
-  lazy val `scala3-compiler-bootstrapped` = project.in(file("compiler")).
-    asDottyCompiler(Bootstrapped).
-    settings(
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}")
-    )
+  lazy val `scala3-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
+  lazy val `scala3-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped)
+
   def dottyCompiler(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-compiler`
     case Bootstrapped => `scala3-compiler-bootstrapped`
@@ -776,18 +774,8 @@ object Build {
     ),
   )
 
-  lazy val `scala3-library` = project.in(file("library")).
-    asDottyLibrary(NonBootstrapped).
-    settings(
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}")
-    )
-  lazy val `scala3-library-bootstrapped`: Project = project.in(file("library")).
-    asDottyLibrary(Bootstrapped).
-    settings(
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}")
-    )
+  lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
+  lazy val `scala3-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
@@ -811,8 +799,6 @@ object Build {
         ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
       Compile / unmanagedSourceDirectories ++=
         (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}"),
 
       // Configure the source maps to point to GitHub for releases
       scalacOptions ++= {
@@ -834,24 +820,9 @@ object Build {
     scalacOptions += "-source:3.0-migration"
   )
 
-  lazy val `tasty-core` = project.in(file("tasty")).
-    asTastyCore(NonBootstrapped).
-    settings(
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}")
-    )
-  lazy val `tasty-core-bootstrapped`: Project = project.in(file("tasty")).
-    asTastyCore(Bootstrapped).
-    settings(
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}")
-    )
-  lazy val `tasty-core-scala2`: Project = project.in(file("tasty")).
-    asTastyCoreScala2.
-    settings(
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}")
-    )
+  lazy val `tasty-core` = project.in(file("tasty")).asTastyCore(NonBootstrapped)
+  lazy val `tasty-core-bootstrapped`: Project = project.in(file("tasty")).asTastyCore(Bootstrapped)
+  lazy val `tasty-core-scala2`: Project = project.in(file("tasty")).asTastyCoreScala2
 
   def tastyCore(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `tasty-core`
@@ -865,9 +836,7 @@ object Build {
     // but we always need it to be present on the JVM classpath at runtime.
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
     settings(
-      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}")
+      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
     )
 
   lazy val `scala3-tasty-inspector` = project.in(file("tasty-inspector")).
@@ -877,9 +846,7 @@ object Build {
     // but we always need it to be present on the JVM classpath at runtime.
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
     settings(
-      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}")
+      javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
     )
 
   /** Scala library compiled by dotty using the latest published sources of the library */
@@ -1039,8 +1006,6 @@ object Build {
       // Work around https://github.com/eclipse/lsp4j/issues/295
       dependencyOverrides += "org.eclipse.xtend" % "org.eclipse.xtend.lib" % "2.16.0",
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}"),
 
       run := Def.inputTaskDyn {
         val inputArgs = spaceDelimited("<arg>").parsed
@@ -1344,8 +1309,6 @@ object Build {
       Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
       Compile / buildInfoKeys := Seq[BuildInfoKey](version),
       Compile / buildInfoPackage := "dotty.tools.scaladoc",
-      Compile / packageBin / packageOptions +=
-        Package.ManifestAttributes("Automatic-Module-Name" -> s"$dottyOrganization-${name.value}"),
       BuildInfoPlugin.buildInfoScopedSettings(Compile),
       BuildInfoPlugin.buildInfoDefaultSettings,
 
