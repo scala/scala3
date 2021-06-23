@@ -236,16 +236,14 @@ object TypeTestsCasts {
 
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
-            val isUntestable = defn.untestableClasses.contains(testCls)
-            val isIllegalPrimitiveTest = foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass
-            if isIllegalPrimitiveTest || isUntestable then
+            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
               report.error(i"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
               false
             else foundClasses.exists(check)
           end checkSensical
 
           if (expr.tpe <:< testType)
-            if (expr.tpe.isNotNull || testType.widen.isRef(defn.NullClass)) {
+            if (expr.tpe.isNotNull) {
               if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.srcPos)
               constant(expr, Literal(Constant(true)))
             }
@@ -341,8 +339,14 @@ object TypeTestsCasts {
           case AppliedType(tref: TypeRef, _) if tref.symbol == defn.PairClass =>
             ref(defn.RuntimeTuples_isInstanceOfNonEmptyTuple).appliedTo(expr)
           case _ =>
-            val erasedTestType = erasure(testType)
-            transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
+            val testWidened = testType.widen
+            defn.untestableClasses.find(testWidened.isRef(_)) match
+              case Some(untestable) =>
+                report.error(i"$untestable cannot be used in runtime type tests", tree.srcPos)
+                constant(expr, Literal(Constant(false)))
+              case _ =>
+                val erasedTestType = erasure(testType)
+                transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
         }
 
         if (sym.isTypeTest) {
