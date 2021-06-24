@@ -5,7 +5,6 @@ package semanticdb
 import dotty.tools.dotc.{semanticdb => s}
 import SymbolInformation.{Kind => k}
 import dotty.tools.dotc.semanticdb.Scala3.SymbolKind
-import SemanticSymbolBuilder._
 import Scala3.Symbols
 
 import core.NameKinds
@@ -19,13 +18,13 @@ import scala.collection.mutable
 
 object SymbolInformationOps:
   extension (sym: Symbol)
-    def toSymbolInformation(using LinkMode, Context): s.SymbolInformation =
+    def toSymbolInformation(using LinkMode, Context, SemanticSymbolBuilder): s.SymbolInformation =
       // val symkinds = sym.defTree.symbolKinds
       sym.symbolInfo(Set.empty)
 
-    def symbolInfo(symkinds: Set[SymbolKind])(using LinkMode, Context): SymbolInformation =
+    def symbolInfo(symkinds: Set[SymbolKind])(using LinkMode, Context, SemanticSymbolBuilder): SymbolInformation =
       import s.SymbolOps._
-      val sname = symbolName(sym)
+      val sname = sym.symbolName
       val signature = sym.sig
       val kind = symbolKind(symkinds)
       SymbolInformation(

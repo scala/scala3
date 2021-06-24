@@ -23,7 +23,7 @@ class Methods/*<-example::Methods#*/[T/*<-example::Methods#[T]*/] {
   def m11/*<-example::Methods#m11().*/(x/*<-example::Methods#m11().(x)*/: Predef/*->scala::Predef.*/.type) = ???/*->scala::Predef.`???`().*/
   def m11/*<-example::Methods#m11(+1).*/(x/*<-example::Methods#m11(+1).(x)*/: Example/*->example::Example.*/.type) = ???/*->scala::Predef.`???`().*/
   def m12a/*<-example::Methods#m12a().*/(x/*<-example::Methods#m12a().(x)*/: {}) = ???/*->scala::Predef.`???`().*/
-  def m12b/*<-example::Methods#m12b().*/(x/*<-example::Methods#m12b().(x)*/: { val x/*<-local0*/: Int/*->scala::Int#*/ }) = ???/*->scala::Predef.`???`().*/
+  def m12b/*<-example::Methods#m12b().*/(x/*<-example::Methods#m12b().(x)*/: { val x/*<-local1*/: Int/*->scala::Int#*/ }) = ???/*->scala::Predef.`???`().*/
   def m13/*<-example::Methods#m13().*/(x/*<-example::Methods#m13().(x)*/: Int/*->scala::Int#*/ @unchecked/*->scala::unchecked#*/) = ???/*->scala::Predef.`???`().*/
   def m15/*<-example::Methods#m15().*/(x/*<-example::Methods#m15().(x)*/: => Int/*->scala::Int#*/) = ???/*->scala::Predef.`???`().*/
   def m16/*<-example::Methods#m16().*/(x/*<-example::Methods#m16().(x)*/: Int/*->scala::Int#*/*) = ???/*->scala::Predef.`???`().*/
