@@ -164,6 +164,10 @@ object Scala3:
       def isTypeParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ']'
       def isParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ')'
 
+      def desc: Descriptor =
+        if isGlobal then DescriptorParser(symbol)._1
+        else Descriptor.None
+
       def unescapeUnicode =
         unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
 

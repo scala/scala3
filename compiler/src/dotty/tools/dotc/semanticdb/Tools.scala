@@ -47,6 +47,8 @@ object Tools:
     TextDocuments.parseFrom(bytes)
 
   def metac(doc: TextDocument, realPath: Path)(using sb: StringBuilder): StringBuilder =
+    val symtab = PrinterSymtab.fromTextDocument(doc)
+    val symPrinter = SymbolInfomationPrinter(symtab)
     val realURI = realPath.toString
     given SourceFile = SourceFile.virtual(doc.uri, doc.text)
     sb.append(realURI).nl
@@ -61,7 +63,7 @@ object Tools:
     sb.append("Occurrences => ").append(doc.occurrences.length).append(" entries").nl
     sb.nl
     sb.append("Symbols:").nl
-    doc.symbols.sorted.foreach(processSymbol)
+    doc.symbols.sorted.foreach(s => processSymbol(s, symPrinter))
     sb.nl
     sb.append("Occurrences:").nl
     doc.occurrences.sorted.foreach(processOccurrence)
@@ -85,63 +87,8 @@ object Tools:
     case UNKNOWN_LANGUAGE | Unrecognized(_) => "unknown"
   end languageString
 
-  private def accessString(access: Access): String =
-    access match
-      case Access.Empty => ""
-      case _: PublicAccess => ""
-      case _: PrivateAccess => "private "
-      case _: ProtectedAccess => "protected "
-      case _: PrivateThisAccess => "private[this] "
-      case _: ProtectedThisAccess => "protected[this] "
-      case PrivateWithinAccess(ssym) =>
-        s"private[${ssym}] "
-      case ProtectedWithinAccess(ssym) =>
-        s"protected[${ssym}] "
-
-
-  private def processSymbol(info: SymbolInformation)(using sb: StringBuilder): Unit =
-    import SymbolInformation.Kind._
-    sb.append(info.symbol).append(" => ")
-    sb.append(accessString(info.access))
-    if info.isAbstract then sb.append("abstract ")
-    if info.isFinal then sb.append("final ")
-    if info.isSealed then sb.append("sealed ")
-    if info.isImplicit then sb.append("implicit ")
-    if info.isLazy then sb.append("lazy ")
-    if info.isCase then sb.append("case ")
-    if info.isCovariant then sb.append("covariant ")
-    if info.isContravariant then sb.append("contravariant ")
-    if info.isVal then sb.append("val ")
-    if info.isVar then sb.append("var ")
-    if info.isStatic then sb.append("static ")
-    if info.isPrimary then sb.append("primary ")
-    if info.isEnum then sb.append("enum ")
-    if info.isDefault then sb.append("default ")
-    if info.isGiven then sb.append("given ")
-    if info.isInline then sb.append("inline ")
-    if info.isOpen then sb.append("open ")
-    if info.isTransparent then sb.append("transparent ")
-    if info.isInfix then sb.append("infix ")
-    if info.isOpaque then sb.append("opaque ")
-    info.kind match
-      case LOCAL => sb.append("local ")
-      case FIELD => sb.append("field ")
-      case METHOD => sb.append("method ")
-      case CONSTRUCTOR => sb.append("ctor ")
-      case MACRO => sb.append("macro ")
-      case TYPE => sb.append("type ")
-      case PARAMETER => sb.append("param ")
-      case SELF_PARAMETER => sb.append("selfparam ")
-      case TYPE_PARAMETER => sb.append("typeparam ")
-      case OBJECT => sb.append("object ")
-      case PACKAGE => sb.append("package ")
-      case PACKAGE_OBJECT => sb.append("package object ")
-      case CLASS => sb.append("class ")
-      case TRAIT => sb.append("trait ")
-      case INTERFACE => sb.append("interface ")
-      case UNKNOWN_KIND | Unrecognized(_) => sb.append("unknown ")
-    sb.append(s"${info.displayName} ${info.signature}").nl
-  end processSymbol
+  private def processSymbol(info: SymbolInformation, printer: SymbolInfomationPrinter)(using sb: StringBuilder): Unit =
+    sb.append(printer.pprintSymbolInformation(info)).nl
 
   private def processOccurrence(occ: SymbolOccurrence)(using sb: StringBuilder, sourceFile: SourceFile): Unit =
     occ.range match
