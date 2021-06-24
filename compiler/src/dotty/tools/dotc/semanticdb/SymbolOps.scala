@@ -11,11 +11,9 @@ import ast.tpd._
 
 import dotty.tools.dotc.{semanticdb => s}
 
-import SemanticSymbolBuilder._
-
 object SymbolOps:
   extension (sym: Symbol)
-    def sig(using LinkMode, Context): s.Signature =
+    def sig(using LinkMode, Context, SemanticSymbolBuilder): s.Signature =
       import TypeOps._
       // println("")
       val sig = sym.info.toSemanticSig(sym)
@@ -29,7 +27,7 @@ object SymbolOps:
 object TypeOps:
   import SymbolScopeOps._
   extension (tpe: Type)
-    def toSemanticSig(using LinkMode, Context)(sym: Symbol): s.Signature =
+    def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
       def loop(tpe: Type): s.Signature = tpe match {
         case mt: MethodType =>
           val stparams = Some(s.Scope())
@@ -94,7 +92,7 @@ object TypeOps:
       }
       loop(tpe)
 
-    private def toSemanticType(using LinkMode)(using ctx: Context)(sym: Symbol): s.Type =
+    private def toSemanticType(using LinkMode, SemanticSymbolBuilder, Context)(sym: Symbol): s.Type =
       import ConstantOps._
       def loop(tpe: Type): s.Type = tpe match {
         case ExprType(tpe) =>
@@ -103,12 +101,12 @@ object TypeOps:
 
         case TypeRef(pre, desig) if desig.isInstanceOf[Symbol] =>
           val spre = if(tpe.hasTrivialPrefix) s.Type.Empty else loop(pre)
-          val ssym = symbolName(desig.asInstanceOf[Symbol])
+          val ssym = desig.asInstanceOf[Symbol].symbolName
           s.TypeRef(spre, ssym, Seq.empty)
 
         case TermRef(pre, desig) if desig.isInstanceOf[Symbol] =>
           val spre = if(tpe.hasTrivialPrefix) s.Type.Empty else loop(pre)
-          val ssym = symbolName(desig.asInstanceOf[Symbol])
+          val ssym = desig.asInstanceOf[Symbol].symbolName
           s.SingleType(spre, ssym)
 
         case tref: ParamRef =>
@@ -118,7 +116,7 @@ object TypeOps:
           }.find(p => p.name == tref.paramName)
           paramref match {
             case Some(ref) =>
-              val ssym = symbolName(ref)
+              val ssym = ref.symbolName
               tref match {
                 case _: TypeParamRef => s.TypeRef(s.Type.Empty, ssym, Seq.empty)
                 case _: TermParamRef => s.SingleType(s.Type.Empty, ssym)
@@ -128,12 +126,12 @@ object TypeOps:
           }
 
         case ThisType(TypeRef(_, desig)) if desig.isInstanceOf[Symbol] =>
-          val ssym = symbolName(desig.asInstanceOf[Symbol])
+          val ssym = desig.asInstanceOf[Symbol].symbolName
           s.ThisType(ssym)
 
         case SuperType(thistpe, supertpe) =>
           val spre = loop(thistpe.typeSymbol.info)
-          val ssym = symbolName(supertpe.typeSymbol)
+          val ssym = supertpe.typeSymbol.symbolName
           s.SuperType(spre, ssym)
 
         // val clazzOf = classOf[...]
@@ -248,10 +246,10 @@ object TypeOps:
 object SymbolScopeOps:
   import SymbolInformationOps._
   extension (syms: List[Symbol])
-    def sscope(using linkMode: LinkMode)(using Context): s.Scope =
+    def sscope(using linkMode: LinkMode)(using SemanticSymbolBuilder, Context): s.Scope =
       linkMode match {
         case LinkMode.SymlinkChildren =>
-          s.Scope(symlinks = syms.map(symbolName))
+          s.Scope(symlinks = syms.map(_.symbolName))
         case LinkMode.HardlinkChildren =>
           s.Scope(hardlinks = syms.map(_.toSymbolInformation))
       }

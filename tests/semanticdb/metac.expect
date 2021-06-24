@@ -76,17 +76,17 @@ advanced/Test.s3x. => val method s3x
 advanced/Wildcards# => class Wildcards
 advanced/Wildcards#`<init>`(). => primary ctor <init>
 advanced/Wildcards#e1(). => method e1
-local0 => abstract val method x
 local1 => abstract val method x
-local2 => final class $anon
-local3 => val method x
-local4 => abstract method m
-local5 => param x
-local6 => final class $anon
-local7 => method m
-local8 => param x
-local9 => val local e3
-local10 => val local e3x
+local3 => abstract val method x
+local4 => final class $anon
+local6 => val method x
+local9 => abstract method m
+local10 => param x
+local11 => final class $anon
+local13 => method m
+local14 => param x
+local19 => val local e3
+local21 => val local e3x
 
 Occurrences:
 [0:8..0:16): advanced <- advanced/
@@ -109,22 +109,22 @@ Occurrences:
 [11:6..11:16): Structural <- advanced/Structural#
 [12:2..12:2): <- advanced/Structural#`<init>`().
 [12:6..12:8): s1 <- advanced/Structural#s1().
-[12:16..12:17): x <- local0
+[12:16..12:17): x <- local1
 [12:19..12:22): Int -> scala/Int#
 [12:27..12:30): ??? -> scala/Predef.`???`().
 [13:6..13:8): s2 <- advanced/Structural#s2().
-[13:16..13:17): x <- local1
+[13:16..13:17): x <- local3
 [13:19..13:22): Int -> scala/Int#
-[13:37..13:38): x <- local3
+[13:37..13:38): x <- local6
 [13:40..13:43): Int -> scala/Int#
 [13:46..13:49): ??? -> scala/Predef.`???`().
 [14:6..14:8): s3 <- advanced/Structural#s3().
-[14:16..14:17): m <- local4
-[14:18..14:19): x <- local5
+[14:16..14:17): m <- local9
+[14:18..14:19): x <- local10
 [14:21..14:24): Int -> scala/Int#
 [14:27..14:30): Int -> scala/Int#
-[14:45..14:46): m <- local7
-[14:47..14:48): x <- local8
+[14:45..14:46): m <- local13
+[14:47..14:48): x <- local14
 [14:50..14:53): Int -> scala/Int#
 [14:56..14:59): Int -> scala/Int#
 [14:62..14:65): ??? -> scala/Predef.`???`().
@@ -174,10 +174,10 @@ Occurrences:
 [32:17..32:21): head -> scala/collection/IterableOps#head().
 [35:5..35:8): ??? -> scala/Predef.`???`().
 [35:11..35:14): Any -> scala/Any#
-[36:11..36:13): e3 <- local9
+[36:11..36:13): e3 <- local19
 [36:15..36:19): List -> scala/package.List#
-[37:12..37:15): e3x <- local10
-[37:18..37:20): e3 -> local9
+[37:12..37:15): e3x <- local21
+[37:18..37:20): e3 -> local19
 [37:21..37:25): head -> scala/collection/IterableOps#head().
 
 expect/Annotations.scala
@@ -472,9 +472,9 @@ classes/N. => final object N
 classes/N.anonClass. => val method anonClass
 classes/N.anonFun. => val method anonFun
 local0 => final class $anon
-local1 => val method local
-local2 => param i
-local3 => val local local
+local2 => val method local
+local3 => param i
+local4 => val local local
 
 Occurrences:
 [0:8..0:15): classes <- classes/
@@ -597,15 +597,15 @@ Occurrences:
 [48:6..48:15): anonClass <- classes/N.anonClass.
 [48:22..48:24): C7 -> classes/C7#
 [48:24..48:24): -> classes/C7#`<init>`().
-[49:8..49:13): local <- local1
+[49:8..49:13): local <- local2
 [49:16..49:19): ??? -> scala/Predef.`???`().
 [51:6..51:13): anonFun <- classes/N.anonFun.
 [51:16..51:20): List -> scala/package.List.
 [51:20..51:20): -> scala/collection/IterableFactory#apply().
 [51:24..51:27): map -> scala/collection/immutable/List#map().
-[51:30..51:31): i <- local2
-[52:8..52:13): local <- local3
-[53:4..53:9): local -> local3
+[51:30..51:31): i <- local3
+[52:8..52:13): local <- local4
+[53:4..53:9): local -> local4
 [53:10..53:11): + -> scala/Int#`+`(+4).
 
 expect/Empty.scala
@@ -2264,7 +2264,7 @@ example/Methods#m20().(a) => param a
 example/Methods#m20(+1). => method m20
 example/Methods#m20(+1).(b) => param b
 example/Methods#m20(+2). => var method m20
-local0 => abstract val method x
+local1 => abstract val method x
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -2359,7 +2359,7 @@ Occurrences:
 [24:20..24:23): ??? -> scala/Predef.`???`().
 [25:6..25:10): m12b <- example/Methods#m12b().
 [25:11..25:12): x <- example/Methods#m12b().(x)
-[25:20..25:21): x <- local0
+[25:20..25:21): x <- local1
 [25:23..25:26): Int -> scala/Int#
 [25:32..25:35): ??? -> scala/Predef.`???`().
 [26:6..26:9): m13 <- example/Methods#m13().
@@ -2751,6 +2751,32 @@ Occurrences:
 [5:4..5:5): b <- ext/RightAssociativeExtension$package.b.
 [5:14..5:17): :*: -> ext/RightAssociativeExtension$package.`:*:`().
 
+expect/Scala3Types.scala
+------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Scala3Types.scala
+Text => empty
+Language => Scala
+Symbols => 4 entries
+Occurrences => 7 entries
+
+Symbols:
+scala3types/Scala3Types$package. => final package object scala3types
+scala3types/Scala3Types$package.A# => type A
+scala3types/Scala3Types$package.X# => type X
+scala3types/Scala3Types$package.X#[T] => typeparam T
+
+Occurrences:
+[0:8..0:19): scala3types <- scala3types/
+[2:5..2:6): X <- scala3types/Scala3Types$package.X#
+[2:7..2:8): T <- scala3types/Scala3Types$package.X#[T]
+[2:12..2:16): List -> scala/package.List#
+[2:17..2:18): T -> scala3types/Scala3Types$package.X#[T]
+[3:5..3:6): A <- scala3types/Scala3Types$package.A#
+[3:9..3:12): Int -> scala/Int#
+
 expect/Selfs.scala
 ------------------
 
@@ -3033,7 +3059,7 @@ Occurrences => 16 entries
 
 Symbols:
 local0 => final class $anon
-local1 => selfparam self
+local2 => selfparam self
 traits/C# => class C
 traits/C#`<init>`(). => primary ctor <init>
 traits/T# => trait T
@@ -3061,7 +3087,7 @@ Occurrences:
 [11:6..11:7): C <- traits/C#
 [12:6..12:7): V <- traits/V#
 [12:10..12:10): <- traits/V#`<init>`().
-[12:10..12:14): self <- local1
+[12:10..12:14): self <- local2
 [12:16..12:17): C -> traits/C#
 
 expect/ValPattern.scala
@@ -3916,15 +3942,15 @@ Symbols => 142 entries
 Occurrences => 250 entries
 
 Symbols:
-local0 => abstract method k
 local1 => abstract method k
-local2 => final class $anon
-local3 => method k
+local3 => abstract method k
 local4 => final class $anon
-local5 => final class $anon
 local6 => method k
-local7 => type L
-local8 => typeparam T
+local7 => final class $anon
+local9 => final class $anon
+local11 => method k
+local12 => type L
+local14 => typeparam T
 types/B# => class B
 types/B#`<init>`(). => primary ctor <init>
 types/C# => class C
@@ -4173,7 +4199,7 @@ Occurrences:
 [59:8..59:18): superType3 <- types/Test.C#superType3.
 [59:32..59:33): m -> types/Test.M#m().
 [61:8..61:21): compoundType1 <- types/Test.C#compoundType1.
-[61:29..61:30): k <- local0
+[61:29..61:30): k <- local1
 [61:32..61:35): Int -> scala/Int#
 [61:40..61:43): ??? -> scala/Predef.`???`().
 [62:8..62:21): compoundType2 <- types/Test.C#compoundType2.
@@ -4183,11 +4209,11 @@ Occurrences:
 [63:8..63:21): compoundType3 <- types/Test.C#compoundType3.
 [63:23..63:24): M -> types/Test.M#
 [63:30..63:31): N -> types/Test.N#
-[63:38..63:39): k <- local1
+[63:38..63:39): k <- local3
 [63:41..63:44): Int -> scala/Int#
 [63:49..63:52): ??? -> scala/Predef.`???`().
 [64:8..64:21): compoundType4 <- types/Test.C#compoundType4.
-[64:34..64:35): k <- local3
+[64:34..64:35): k <- local6
 [64:37..64:40): Int -> scala/Int#
 [64:43..64:46): ??? -> scala/Predef.`???`().
 [65:8..65:21): compoundType5 <- types/Test.C#compoundType5.
@@ -4198,7 +4224,7 @@ Occurrences:
 [66:28..66:29): M -> types/Test.M#
 [66:29..66:29): -> types/Test.M#`<init>`().
 [66:35..66:36): N -> types/Test.N#
-[66:43..66:44): k <- local6
+[66:43..66:44): k <- local11
 [66:46..66:49): Int -> scala/Int#
 [66:52..66:55): ??? -> scala/Predef.`???`().
 [68:8..68:16): annType1 <- types/Test.C#annType1.
@@ -4222,10 +4248,10 @@ Occurrences:
 [75:20..75:21): M <- types/Test.C#typeLambda1().[M]
 [75:28..75:31): ??? -> scala/Predef.`???`().
 [76:4..76:15): typeLambda1 -> types/Test.C#typeLambda1().
-[76:24..76:25): L <- local7
-[76:26..76:27): T <- local8
+[76:24..76:25): L <- local12
+[76:26..76:27): T <- local14
 [76:31..76:35): List -> scala/package.List#
-[76:36..76:37): T -> local8
+[76:36..76:37): T -> local14
 [78:11..78:25): ClassInfoType1 <- types/Test.C#ClassInfoType1.
 [79:10..79:24): ClassInfoType2 <- types/Test.C#ClassInfoType2#
 [79:33..79:33): <- types/Test.C#ClassInfoType2#`<init>`().

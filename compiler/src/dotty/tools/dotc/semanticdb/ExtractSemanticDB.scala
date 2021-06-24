@@ -23,8 +23,8 @@ import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
 import scala.PartialFunction.condOpt
 
-import SemanticSymbolBuilder._
 import SymbolInformationOps._
+import dotty.tools.dotc.semanticdb.SemanticSymbolBuilder
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
@@ -51,6 +51,7 @@ class ExtractSemanticDB extends Phase:
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:
+    given builder: SemanticSymbolBuilder = SemanticSymbolBuilder()
 
     /** The bodies of synthetic locals */
     private val localBodies = mutable.HashMap[Symbol, Tree]()
@@ -189,7 +190,7 @@ class ExtractSemanticDB extends Phase:
           else
             tree.body.foreach(traverse)
         case tree: Apply =>
-          @tu lazy val genParamSymbol: Name => String = funParamSymbol(tree.fun.symbol)
+          @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
           for arg <- tree.args do
             arg match
@@ -284,7 +285,7 @@ class ExtractSemanticDB extends Phase:
 
 
     private def registerSymbol(sym: Symbol, symkinds: Set[SymbolKind])(using Context): Unit =
-      val sname = symbolName(sym)
+      val sname = sym.symbolName
       val isLocal = sname.isLocal
       if !isLocal || !localNames.contains(sname) then
         if isLocal then
@@ -305,13 +306,13 @@ class ExtractSemanticDB extends Phase:
         registerUse(sym, span, treeSource)
 
     private def registerUse(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Unit =
-      registerUse(symbolName(sym), span, treeSource)
+      registerUse(sym.symbolName, span, treeSource)
 
     private def registerUse(symbol: String, span: Span, treeSource: SourceFile)(using Context): Unit =
       registerOccurrence(symbol, span, SymbolOccurrence.Role.REFERENCE, treeSource)
 
     private def registerDefinition(sym: Symbol, span: Span, symkinds: Set[SymbolKind], treeSource: SourceFile)(using Context) =
-      val sname = symbolName(sym)
+      val sname = sym.symbolName
       val finalSpan = if !span.hasLength || !sym.is(Given) || namePresentInSource(sym, span, treeSource) then
         span
       else

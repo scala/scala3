@@ -11,7 +11,7 @@ import Names.Name
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-object SemanticSymbolBuilder:
+class SemanticSymbolBuilder:
   import Scala3.{_, given}
 
   private var nextLocalIdx: Int = 0
@@ -23,19 +23,20 @@ object SemanticSymbolBuilder:
   private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]():
     override def default(key: Int) = Set[Symbol]()
 
-  /** The semanticdb name of the given symbol */
-  def symbolName(sym: Symbol)(using Context): String =
-    val b = StringBuilder(20)
-    addSymName(b, sym)
-    b.toString
+  extension (sym: Symbol)
+    /** The semanticdb name of the given symbol */
+    def symbolName(using Context): String =
+      val b = StringBuilder(20)
+      addSymName(b, sym)
+      b.toString
 
-  def funParamSymbol(funSym: Symbol)(using Context): Name => String =
-    if funSym.isGlobal then
-      val funSymbol = symbolName(funSym)
-      name => s"$funSymbol($name)"
-    else
-      name => locals.keys.find(local => local.isTerm && local.owner == funSym && local.name == name)
-                    .fold("<?>")(Symbols.LocalPrefix + _)
+    def funParamSymbol(using Context): Name => String =
+      if sym.isGlobal then
+        val funSymbol = sym.symbolName
+        name => s"$funSymbol($name)"
+      else
+        name => locals.keys.find(local => local.isTerm && local.owner == sym && local.name == name)
+                      .fold("<?>")(Symbols.LocalPrefix + _)
 
   /** Add semanticdb name of the given symbol to string builder */
   private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
