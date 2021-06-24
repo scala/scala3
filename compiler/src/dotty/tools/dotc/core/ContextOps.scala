@@ -49,10 +49,10 @@ object ContextOps:
 
         val preSym = pre.typeSymbol
 
-        // 1. Try to search in current type and parents
+        // 1. Try to search in current type and parents.
         val directSearch = pre.findMember(name, pre, required, excluded)
 
-        // 2. Try to search in companion class if current is an object
+        // 2. Try to search in companion class if current is an object.
         def searchCompanionClass = if preSym.is(Flags.Module) then
           preSym.companionClass.thisType.findMember(name, pre, required, excluded)
           else NoDenotation
@@ -69,7 +69,7 @@ object ContextOps:
             preSym.asClass.baseClasses
 
           toSearch.iterator.map { bc =>
-            val pre1 = bc.thisType.typeSymbol.companionClass.thisType
+            val pre1 = bc.companionModule.namedType
             pre1.findMember(name, pre1, required, excluded)
           }.find(_.exists).getOrElse(NoDenotation)
 
