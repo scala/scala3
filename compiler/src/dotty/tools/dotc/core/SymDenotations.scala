@@ -2049,7 +2049,10 @@ object SymDenotations {
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
-      raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
+      val pre1 = pre match
+        case pre: OrType => pre.widenUnion
+        case _ => pre
+      raw.filterWithFlags(required, excluded).asSeenFrom(pre1).toDenot(pre1)
 
     final def findMemberNoShadowingBasedOnFlags(name: Name, pre: Type,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): Denotation =
