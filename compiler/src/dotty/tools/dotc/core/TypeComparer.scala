@@ -1571,6 +1571,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @see [[sufficientEither]] for the normal case
    */
   protected def either(op1: => Boolean, op2: => Boolean): Boolean =
+    Stats.record("TypeComparer.either")
     if ctx.mode.is(Mode.GadtConstraintInference) || useNecessaryEither then
       necessaryEither(op1, op2)
     else
@@ -2238,7 +2239,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  opportunistically merged.
    */
   final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
-    andTypeGen(tp1, tp2, AndType(_, _), isErased = isErased)
+    andTypeGen(tp1, tp2, AndType.balanced(_, _), isErased = isErased)
 
   final def simplifyAndTypeWithFallback(tp1: Type, tp2: Type, fallback: Type): Type =
     andTypeGen(tp1, tp2, (_, _) => fallback)
@@ -2260,7 +2261,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val t2 = distributeOr(tp2, tp1, isSoft)
       if (t2.exists) t2
       else if (isErased) erasedLub(tp1, tp2)
-      else liftIfHK(tp1, tp2, OrType(_, _, soft = isSoft), _ | _, _ & _)
+      else liftIfHK(tp1, tp2, OrType.balanced(_, _, soft = isSoft), _ | _, _ & _)
     }
   }
 
