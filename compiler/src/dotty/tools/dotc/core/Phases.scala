@@ -290,7 +290,7 @@ object Phases {
     /** If set, implicit search is enabled */
     def allowsImplicitSearch: Boolean = false
 
-     /** List of names of phases that should precede this phase */
+    /** List of names of phases that should precede this phase */
     def runsAfter: Set[String] = Set.empty
 
     /** @pre `isRunnable` returns true */
