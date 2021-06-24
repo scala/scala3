@@ -12,11 +12,11 @@ def pathToString(p: Path) =
 
 trait SourceLink:
   val path: Option[Path] = None
-  def render(memberName: String, path: Path, operation: String, line: Option[Int]): String
+  def render(memberName: String, path: Path, operation: String, line: Option[Int], optionalRevision: Option[String]): String
 
 case class TemplateSourceLink(val urlTemplate: String) extends SourceLink:
   override val path: Option[Path] = None
-  override def render(memberName: String, path: Path, operation: String, line: Option[Int]): String =
+  override def render(memberName: String, path: Path, operation: String, line: Option[Int], optionalRevision: Option[String]): String =
     val pathString = "/" + pathToString(path)
     val mapping = Map(
       "\\{\\{ path \\}\\}".r -> pathString,
@@ -36,10 +36,11 @@ case class TemplateSourceLink(val urlTemplate: String) extends SourceLink:
 
 case class WebBasedSourceLink(prefix: String, revision: String, subPath: String) extends SourceLink:
   override val path: Option[Path] = None
-  override def render(memberName: String, path: Path, operation: String, line: Option[Int]): String =
+  override def render(memberName: String, path: Path, operation: String, line: Option[Int], optionalRevision: Option[String] = None): String =
     val action = if operation == "view" then "blob" else operation
+    val finalRevision = optionalRevision.getOrElse(revision)
     val linePart = line.fold("")(l => s"#L$l")
-    s"$prefix/$action/$revision$subPath/${pathToString(path)}$linePart"
+    s"$prefix/$action/$finalRevision$subPath/${pathToString(path)}$linePart"
 
 class SourceLinkParser(revision: Option[String]) extends ArgParser[SourceLink]:
   val KnownProvider = raw"(\w+):\/\/([^\/#]+)\/([^\/#]+)(\/[^\/#]+)?(#.+)?".r
@@ -97,8 +98,8 @@ class SourceLinkParser(revision: Option[String]) extends ArgParser[SourceLink]:
 type Operation = "view" | "edit"
 
 class SourceLinks(val sourceLinks: PathBased[SourceLink]):
-  def pathTo(rawPath: Path, memberName: String = "", line: Option[Int] = None, operation: Operation = "view"): Option[String] =
-    sourceLinks.get(rawPath).map(res => res.elem.render(memberName, res.path, operation, line))
+  def pathTo(rawPath: Path, memberName: String = "", line: Option[Int] = None, operation: Operation = "view", optionalRevision: Option[String] = None): Option[String] =
+    sourceLinks.get(rawPath).map(res => res.elem.render(memberName, res.path, operation, line, optionalRevision))
 
   def pathTo(member: Member): Option[String] =
     member.sources.flatMap(s => pathTo(s.path, member.name, Option(s.lineNumber).map(_ + 1)))
