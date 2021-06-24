@@ -66,3 +66,4 @@ i2797a
 # GADT cast applied to singleton type difference
 i4176-gadt.scala
 
+java-inherited-type1

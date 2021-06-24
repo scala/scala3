@@ -4,7 +4,7 @@ package typer
 
 import core._
 import ast._
-import Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
+import Contexts._, ContextOps._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
 import util.Spans._
 import util.SrcPos
@@ -145,7 +145,12 @@ trait TypeAssigner {
       // this is exactly what Erasure will do.
       case _ =>
         val pre = maybeSkolemizePrefix(qualType, name)
-        val mbr = qualType.findMember(name, pre)
+        val mbr =
+          if ctx.isJava then
+            ctx.javaFindMember(name, pre)
+          else
+            qualType.findMember(name, pre)
+
         if reallyExists(mbr) then qualType.select(name, mbr)
         else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType
         else NoType
