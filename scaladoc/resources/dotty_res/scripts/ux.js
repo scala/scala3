@@ -20,7 +20,7 @@ window.addEventListener("DOMContentLoaded", () => {
     $(this).parent().toggleClass("expanded")
   });
 
-  $('.names .tab').on('click', function(){
+  $('.names .tab').on('click', function() {
     parent = $(this).parents(".tabs").first()
     shown = $(this).hasClass('selected')
     single = parent.hasClass("single")
@@ -32,7 +32,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!shown) { myTab.addClass('selected') }
     if (shown && !single) myTab.removeClass('selected')
 
-    if(!shown && $(this).find(".showGraph")){
+    if(!shown && $(this).filter(".showGraph").length > 0) {
       showGraph()
       $(this).find(".showGraph").removeClass("showGraph")
     }
@@ -84,8 +84,8 @@ function showGraph() {
     if (dotNode){
       var svg = d3.select("#graph");
       var radialGradient = svg.append("defs").append("radialGradient").attr("id", "Gradient");
-      radialGradient.append("stop").attr("stop-color", "#ffd47f").attr("offset", "20%");
-      radialGradient.append("stop").attr("stop-color", "white").attr("offset", "100%");
+      radialGradient.append("stop").attr("stop-color", "var(--aureole)").attr("offset", "20%");
+      radialGradient.append("stop").attr("stop-color", "var(--code-bg)").attr("offset", "100%");
 
       var inner = svg.append("g");
 
