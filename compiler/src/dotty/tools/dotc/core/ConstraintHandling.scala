@@ -300,8 +300,15 @@ trait ConstraintHandling {
         dropped = dropped.tail
         recur(tp)
 
+    val saved = ctx.typerState.snapshot()
     val tpw = recur(tp)
-    if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
+    if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then
+      // Rollback any constraint change that would lead to `tp` no longer
+      // being a valid solution.
+      ctx.typerState.resetTo(saved)
+      tp
+    else
+      tpw
   end dropTransparentTraits
 
   /** If `tp` is an applied match type alias which is also an unreducible application
