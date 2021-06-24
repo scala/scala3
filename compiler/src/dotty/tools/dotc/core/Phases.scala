@@ -105,6 +105,10 @@ object Phases {
               prevPhases += phase.phaseName
               phase
             }
+
+          // synchronize symbol.defTree if necessary
+          if phaseToAdd.synchronizeDefTree then
+            fusedPhases += new SyncDefTree
           fusedPhases += phaseToAdd
           val shouldAddYCheck = YCheckAfter.containsPhase(phaseToAdd) || YCheckAll
           if (shouldAddYCheck) {
@@ -290,8 +294,15 @@ object Phases {
     /** If set, implicit search is enabled */
     def allowsImplicitSearch: Boolean = false
 
-     /** List of names of phases that should precede this phase */
+    /** List of names of phases that should precede this phase */
     def runsAfter: Set[String] = Set.empty
+
+    /** Whether this phase require synchronization of symbol.defTree?
+     *
+     *  The phase `DefTreeSync` will be inserted immediately before this phase
+     *  if `synchronizeDefTree == true`.
+     */
+    def synchronizeDefTree: Boolean = false
 
     /** @pre `isRunnable` returns true */
     def run(using Context): Unit

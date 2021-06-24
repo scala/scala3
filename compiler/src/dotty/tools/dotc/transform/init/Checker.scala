@@ -30,6 +30,8 @@ class Checker extends MiniPhase {
   override def isEnabled(using Context): Boolean =
     super.isEnabled && ctx.settings.YcheckInit.value
 
+  override def synchronizeDefTree: Boolean = true
+
   override def transformTypeDef(tree: TypeDef)(using Context): tpd.Tree = {
     if (!tree.isClassDef) return tree
 

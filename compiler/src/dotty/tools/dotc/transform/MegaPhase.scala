@@ -144,6 +144,8 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private var relaxedTypingCache: Boolean = _
   private var relaxedTypingKnown = false
 
+  override val synchronizeDefTree: Boolean = miniPhases.exists(_.synchronizeDefTree)
+
   override final def relaxedTyping: Boolean = {
     if (!relaxedTypingKnown) {
       relaxedTypingCache = miniPhases.exists(_.relaxedTypingInGroup)
