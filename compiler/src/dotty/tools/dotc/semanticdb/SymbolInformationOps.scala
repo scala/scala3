@@ -119,7 +119,7 @@ object SymbolInformationOps:
         props |= SymbolInformation.Property.OPAQUE.value
       props
 
-    private def symbolAccess(kind: SymbolInformation.Kind)(using Context): Access =
+    private def symbolAccess(kind: SymbolInformation.Kind)(using Context, SemanticSymbolBuilder): Access =
       kind match
         case k.LOCAL | k.PARAMETER | k.SELF_PARAMETER | k.TYPE_PARAMETER | k.PACKAGE | k.PACKAGE_OBJECT =>
           Access.Empty
@@ -131,7 +131,7 @@ object SymbolInformationOps:
             else if (sym.is(Protected)) ProtectedAccess()
             else PublicAccess()
           else
-            val ssym = symbolName(sym.privateWithin)
+            val ssym = sym.privateWithin.symbolName
             if (sym.is(Protected)) ProtectedWithinAccess(ssym)
             else PrivateWithinAccess(ssym)
 

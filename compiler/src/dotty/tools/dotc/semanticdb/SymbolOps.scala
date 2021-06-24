@@ -15,8 +15,8 @@ object SymbolOps:
   extension (sym: Symbol)
     def sig(using LinkMode, Context, SemanticSymbolBuilder): s.Signature =
       import TypeOps._
-      // println("")
       val sig = sym.info.toSemanticSig(sym)
+      // println("")
       // println(sym.toString)
       // println(s"=========sym.info================")
       // pprint.pprintln(sym.info)
