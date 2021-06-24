@@ -45,7 +45,7 @@ case class LoadedTemplate(
       // toRealPath is used to turn symlinks into proper paths
       val actualPath = Paths.get("").toAbsolutePath.relativize(file.toPath.toRealPath())
       ctx.sourceLinks.pathTo(actualPath).map("viewSource" -> _ ) ++
-        ctx.sourceLinks.pathTo(actualPath, operation = "edit").map("editSource" -> _ )
+        ctx.sourceLinks.pathTo(actualPath, operation = "edit", optionalRevision = Some("master")).map("editSource" -> _ )
 
     val updatedSettings = templateFile.settings ++ ctx.projectWideProperties +
       ("site" -> (getMap("site") + ("posts" -> posts))) + ("urls" -> sourceLinks.toMap) +

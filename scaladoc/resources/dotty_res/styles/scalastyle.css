@@ -163,7 +163,7 @@ th {
 #logo>span>img {
   max-height: 40px;
   max-width: 40px;
-  padding: 16px 8px 8px 16px;
+  margin: 16px 8px 8px 16px;
   cursor: pointer;
 }
 

@@ -33,4 +33,4 @@ doc / scalacOptions ++= Seq("-versions-dictionary-url", "https://dotty.epfl.ch/v
 
 Providing a JSON file via `-versions-dictionary-url` enables scaladoc to link between versions. It is also convenient to be able to change the revision label in the drop-down menu. Everything will change automatically.
 
-![](../../../images/scaladoc/nightly.gif)
+![](images/scaladoc/nightly.gif)

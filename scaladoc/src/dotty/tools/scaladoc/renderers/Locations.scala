@@ -26,15 +26,14 @@ trait Locations(using ctx: DocContext):
     cache.get(dri) match
       case null =>
         val path = dri match
-          case `docsDRI` => List("docs", "index")
-          case `docsRootDRI` => List("index")
+          case `docsRootDRI` => List("docs", "index")
           case `apiPageDRI` => List("api", "index")
           case dri if dri.isStaticFile =>
             Paths.get(dri.location).iterator.asScala.map(_.toString).toList
           case dri =>
             val loc = dri.location
             val fqn = loc.split(Array('.')).toList match
-              case "<empty>" :: Nil  => "_empty_"   :: Nil
+              case "<empty>" :: Nil  => "_empty_" :: Nil
               case "<empty>" :: tail => "_empty_" :: tail
               case other => other
 
