@@ -269,6 +269,13 @@ object Build {
     // If someone puts a source file at the root (e.g., for manual testing),
     // don't pick it up as part of any project.
     sourcesInBase := false,
+
+    // For compatibility with Java 9+ module system;
+    // without Automatic-Module-Name, the module name is derived from the jar file which is invalid because of the _3 suffix.
+    Compile / packageBin / packageOptions +=
+      Package.ManifestAttributes(
+        "Automatic-Module-Name" -> s"${dottyOrganization.replaceAll("-",".")}.${moduleName.value.replaceAll("-",".")}"
+      )
   )
 
   // Settings used for projects compiled only with Java
