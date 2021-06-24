@@ -194,7 +194,7 @@ Occurrences => 52 entries
 Symbols:
 annot/Alias. => final object Alias extends Object { self: <?>.Alias.type => +2 decls }
 annot/Alias.A# => type A  = ClassAnnotation @param
-annot/Annotations# => class Annotations [typeparam T ] extends Object { self: AnyRef & Annotations[T] => +6 decls }
+annot/Annotations# => class Annotations [typeparam T ] extends Object { self: AnyRef with Annotations[T] => +6 decls }
 annot/Annotations#S# => type S 
 annot/Annotations#[T] => typeparam T 
 annot/Annotations#`<init>`(). => primary ctor <init> [unknown T: <?>](unknown T: <?>)(param x: T): Annotations[T]
@@ -281,7 +281,7 @@ Symbols => 13 entries
 Occurrences => 32 entries
 
 Symbols:
-example/Anonymous# => class Anonymous extends Object { self: Anonymous & Anonymous => +6 decls }
+example/Anonymous# => class Anonymous extends Object { self: Anonymous with Anonymous => +6 decls }
 example/Anonymous#Foo# => trait Foo extends Object { self: Foo => +1 decls }
 example/Anonymous#Foo#`<init>`(). => primary ctor <init> (): Foo
 example/Anonymous#`<init>`(). => primary ctor <init> (): Anonymous
@@ -781,7 +781,7 @@ enumVal/Color#rgb. => val method rgb Int
 enumVal/Color. => final object Color extends Object { self: <?>.Color.type => +8 decls }
 enumVal/Color.$values. => private[this] val method $values Array[Color]
 enumVal/Color.Blue. => case val static enum method Blue Color
-enumVal/Color.Green. => case val static enum method Green Color & A
+enumVal/Color.Green. => case val static enum method Green Color with A
 enumVal/Color.Red. => case val static enum method Red Color
 enumVal/Color.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Color
 enumVal/Color.fromOrdinal().(ordinal) => param ordinal: Int
@@ -1669,7 +1669,7 @@ Symbols => 8 entries
 Occurrences => 55 entries
 
 Symbols:
-example/InstrumentTyper# => class InstrumentTyper extends Object { self: AnyRef & InstrumentTyper => +5 decls }
+example/InstrumentTyper# => class InstrumentTyper extends Object { self: AnyRef with InstrumentTyper => +5 decls }
 example/InstrumentTyper#AnnotatedType# => type AnnotatedType  = Int @param
 example/InstrumentTyper#`<init>`(). => primary ctor <init> (): InstrumentTyper
 example/InstrumentTyper#all(). => method all => List[Matchable]
@@ -2765,16 +2765,16 @@ Occurrences => 26 entries
 Symbols:
 local0 => selfparam self: C1
 local1 => selfparam self: B
-local2 => selfparam self: B & C1
+local2 => selfparam self: B with C1
 selfs/B# => class B extends Object { self: B => +1 decls }
 selfs/B#`<init>`(). => primary ctor <init> (): B
-selfs/C1# => class C1 extends B { self: C1 & C1 => +1 decls }
+selfs/C1# => class C1 extends B { self: C1 with C1 => +1 decls }
 selfs/C1#`<init>`(). => primary ctor <init> (): C1
-selfs/C2# => class C2 extends B { self: B & C2 => +1 decls }
+selfs/C2# => class C2 extends B { self: B with C2 => +1 decls }
 selfs/C2#`<init>`(). => primary ctor <init> (): C2
-selfs/C3# => class C3 extends B { self: B & C1 & C3 => +1 decls }
+selfs/C3# => class C3 extends B { self: B with C1 with C3 => +1 decls }
 selfs/C3#`<init>`(). => primary ctor <init> (): C3
-selfs/C6# => class C6 extends B { self: B & C6 => +1 decls }
+selfs/C6# => class C6 extends B { self: B with C6 => +1 decls }
 selfs/C6#`<init>`(). => primary ctor <init> (): C6
 
 Occurrences:
@@ -3043,7 +3043,7 @@ traits/U# => sealed trait U extends Object { self: U => +1 decls }
 traits/U#`<init>`(). => primary ctor <init> (): U
 traits/U. => final object U extends Object { self: <?>.U.type => +2 decls }
 traits/U.u(). => method u => U
-traits/V# => trait V extends Object { self: C & V => +1 decls }
+traits/V# => trait V extends Object { self: C with V => +1 decls }
 traits/V#`<init>`(). => primary ctor <init> (): V
 
 Occurrences:
@@ -4008,11 +4008,11 @@ types/Test.C#`<init>`(). => primary ctor <init> (): C
 types/Test.C#annType1. => val method annType1 T @ann[T]
 types/Test.C#annType2. => val method annType2 T @ann1 @ann2
 types/Test.C#compoundType1. => val method compoundType1 Object { local k: => Int }
-types/Test.C#compoundType2. => val method compoundType2 M & N
+types/Test.C#compoundType2. => val method compoundType2 M with N
 types/Test.C#compoundType3. => val method compoundType3 M with N { local k: => Int }
 types/Test.C#compoundType4. => val method compoundType4 Object
-types/Test.C#compoundType5. => val method compoundType5 M & N
-types/Test.C#compoundType6. => val method compoundType6 M & N
+types/Test.C#compoundType5. => val method compoundType5 M with N
+types/Test.C#compoundType6. => val method compoundType6 M with N
 types/Test.C#existentialType2. => val method existentialType2 List[<?>]
 types/Test.C#existentialType3. => val method existentialType3 Class[<?>]
 types/Test.C#existentialType4. => val method existentialType4 Class[<?>]

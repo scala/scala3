@@ -202,7 +202,7 @@ object TypeOps:
             case AndType(ct1, ct2) => flatten(ct1) ++ flatten(ct2)
             case other => List(other)
           val stpes = flatten(and).map(loop)
-          s.IntersectionType(stpes)
+          s.WithType(stpes)
 
         case or: OrType =>
           def flatten(child: Type): List[Type] = child match
