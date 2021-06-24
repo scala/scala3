@@ -11,19 +11,6 @@ import ast.tpd._
 
 import dotty.tools.dotc.{semanticdb => s}
 
-object SymbolOps:
-  extension (sym: Symbol)
-    def sig(using LinkMode, Context, SemanticSymbolBuilder): s.Signature =
-      import TypeOps._
-      val sig = sym.info.toSemanticSig(sym)
-      // println("")
-      // println(sym.toString)
-      // println(s"=========sym.info================")
-      // pprint.pprintln(sym.info)
-      // println(s"=========sig================")
-      // pprint.pprintln(sig)
-      sig
-
 object TypeOps:
   import SymbolScopeOps._
   extension (tpe: Type)
@@ -244,12 +231,12 @@ object TypeOps:
       }
 
 object SymbolScopeOps:
-  import SymbolInformationOps._
+  import Scala3.given
   extension (syms: List[Symbol])
     def sscope(using linkMode: LinkMode)(using SemanticSymbolBuilder, Context): s.Scope =
       linkMode match {
         case LinkMode.SymlinkChildren =>
           s.Scope(symlinks = syms.map(_.symbolName))
         case LinkMode.HardlinkChildren =>
-          s.Scope(hardlinks = syms.map(_.toSymbolInformation))
+          s.Scope(hardlinks = syms.map(_.symbolInfo(Set.empty)))
       }

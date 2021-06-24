@@ -23,7 +23,6 @@ import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
 import scala.PartialFunction.condOpt
 
-import SymbolInformationOps._
 import dotty.tools.dotc.semanticdb.SemanticSymbolBuilder
 
 /** Extract symbol references and uses to semanticdb files.
@@ -137,12 +136,12 @@ class ExtractSemanticDB extends Phase:
           if !tree.symbol.isAllOf(ModuleValCreationFlags) then
             if !excludeDef(tree.symbol)
             && tree.span.hasLength then
-              registerDefinition(tree.symbol, tree.nameSpan, tree.symbolKinds, tree.source)
+              registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree), tree.source)
               val privateWithin = tree.symbol.privateWithin
               if privateWithin.exists then
                 registerUseGuarded(None, privateWithin, spanOfSymbol(privateWithin, tree.span, tree.source), tree.source)
             else if !excludeSymbol(tree.symbol) then
-              registerSymbol(tree.symbol, tree.symbolKinds)
+              registerSymbol(tree.symbol, symbolKinds(tree))
             tree match
             case tree: ValDef
             if tree.symbol.isAllOf(EnumValue) =>
@@ -333,6 +332,15 @@ class ExtractSemanticDB extends Phase:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
+    extension (list: List[List[ValDef]])
+      private  inline def isSingleArg = list match
+        case (_::Nil)::Nil => true
+        case _             => false
+
+    extension (tree: DefDef)
+      private def isSetterDef(using Context): Boolean =
+        tree.name.isSetterName && tree.mods.is(Accessor) && tree.termParamss.isSingleArg
+
     private def findGetters(ctorParams: Set[Names.TermName], body: List[Tree])(using Context): Map[Names.TermName, ValDef] =
       if ctorParams.isEmpty || body.isEmpty then
         Map.empty
@@ -379,6 +387,28 @@ class ExtractSemanticDB extends Phase:
     private inline def matchingMemberType(ctorTypeParam: Symbol, classSym: Symbol)(using Context) =
       classSym.info.member(ctorTypeParam.name).symbol
 
+    /**Necessary because not all of the eventual flags are propagated from the Tree to the symbol yet.
+     */
+    private def symbolKinds(tree: NamedDefTree)(using Context): Set[SymbolKind] =
+      if tree.symbol.isSelfSym then
+        Set.empty
+      else
+        val symkinds = mutable.HashSet.empty[SymbolKind]
+        tree match
+        case tree: ValDef =>
+          if !tree.symbol.is(Param) then
+            symkinds += (if tree.mods is Mutable then SymbolKind.Var else SymbolKind.Val)
+          if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor) then
+            symkinds += SymbolKind.Abstract
+        case tree: DefDef =>
+          if tree.isSetterDef then
+            symkinds += SymbolKind.Setter
+          else if tree.rhs.isEmpty then
+            symkinds += SymbolKind.Abstract
+        case tree: Bind =>
+          symkinds += SymbolKind.Val
+        case _ =>
+        symkinds.toSet
 
     private def ctorParams(
       vparamss: List[List[ValDef]], body: List[Tree])(using Context): Unit =
