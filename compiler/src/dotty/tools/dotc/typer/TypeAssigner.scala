@@ -146,7 +146,7 @@ trait TypeAssigner {
       case _ =>
         val pre = maybeSkolemizePrefix(qualType, name)
         val mbr =
-          if ctx.isJava && pre.typeSymbol.isClass then
+          if ctx.isJava then
             ctx.javaFindMember(name, pre)
           else
             qualType.findMember(name, pre)
