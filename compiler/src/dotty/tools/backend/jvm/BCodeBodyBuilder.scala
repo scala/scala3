@@ -1063,30 +1063,109 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
+    /* Generate string concatenation
+     *
+     * On JDK 8: create and append using `StringBuilder`
+     * On JDK 9+: use `invokedynamic` with `StringConcatFactory`
+     */
     def genStringConcat(tree: Tree): BType = {
       lineNumber(tree)
       liftStringConcat(tree) match {
-        // Optimization for expressions of the form "" + x.  We can avoid the StringBuilder.
+        // Optimization for expressions of the form "" + x
         case List(Literal(Constant("")), arg) =>
           genLoad(arg, ObjectReference)
           genCallMethod(defn.String_valueOf_Object, InvokeStyle.Static)
 
         case concatenations =>
-          bc.genStartConcat
-          for (elem <- concatenations) {
-            val loadedElem = elem match {
+          val concatArguments = concatenations.view
+            .filter {
+              case Literal(Constant("")) => false // empty strings are no-ops in concatenation
+              case _ => true
+            }
+            .map {
               case Apply(boxOp, value :: Nil) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
-
-              case _ => elem
+              case other => other
             }
-            val elemType = tpeTK(loadedElem)
-            genLoad(loadedElem, elemType)
-            bc.genConcat(elemType)
+            .toList
+
+          // `StringConcatFactory` only got added in JDK 9, so use `StringBuilder` for lower
+          if (classfileVersion < asm.Opcodes.V9) {
+
+            // Estimate capacity needed for the string builder
+            val approxBuilderSize = concatArguments.view.map {
+              case Literal(Constant(s: String)) => s.length
+              case Literal(c @ Constant(_)) if c.isNonUnitAnyVal => String.valueOf(c).length
+              case _ => 0
+            }.sum
+            bc.genNewStringBuilder(approxBuilderSize)
+
+            for (elem <- concatArguments) {
+              val elemType = tpeTK(elem)
+              genLoad(elem, elemType)
+              bc.genStringBuilderAppend(elemType)
+            }
+            bc.genStringBuilderEnd
+          } else {
+
+            /* `StringConcatFactory#makeConcatWithConstants` accepts max 200 argument slots. If
+             * the string concatenation is longer (unlikely), we spill into multiple calls
+             */
+            val MaxIndySlots = 200
+            val TagArg = '\u0001'    // indicates a hole (in the recipe string) for an argument
+            val TagConst = '\u0002'  // indicates a hole (in the recipe string) for a constant
+
+            val recipe = new StringBuilder()
+            val argTypes = Seq.newBuilder[asm.Type]
+            val constVals = Seq.newBuilder[String]
+            var totalArgSlots = 0
+            var countConcats = 1     // ie. 1 + how many times we spilled
+
+            for (elem <- concatArguments) {
+              val tpe = tpeTK(elem)
+              val elemSlots = tpe.size
+
+              // Unlikely spill case
+              if (totalArgSlots + elemSlots >= MaxIndySlots) {
+                bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
+                countConcats += 1
+                totalArgSlots = 0
+                recipe.setLength(0)
+                argTypes.clear()
+                constVals.clear()
+              }
+
+              elem match {
+                case Literal(Constant(s: String)) =>
+                  if (s.contains(TagArg) || s.contains(TagConst)) {
+                    totalArgSlots += elemSlots
+                    recipe.append(TagConst)
+                    constVals += s
+                  } else {
+                    recipe.append(s)
+                  }
+
+                case other =>
+                  totalArgSlots += elemSlots
+                  recipe.append(TagArg)
+                  val tpe = tpeTK(elem)
+                  argTypes += tpe.toASMType
+                  genLoad(elem, tpe)
+              }
+            }
+            bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
+
+            // If we spilled, generate one final concat
+            if (countConcats > 1) {
+              bc.genIndyStringConcat(
+                TagArg.toString * countConcats,
+                Seq.fill(countConcats)(StringRef.toASMType),
+                Seq.empty
+              )
+            }
           }
-          bc.genEndConcat
       }
       StringRef
     }
