@@ -32,8 +32,11 @@ def strictMap2[A <: Top, B <: Top](f: (A => B) retains *): (List[A] => List[B]) 
 def pureMap[A <: Top, B <: Top](xs: List[A])(f: A => B): List[B] =
   xs[List[B]](hd => (tl: List[B]) => cons(f(hd), tl))(nil)
 
-def consForLazyMap[T <: Top](hd: T, tl: List[T] retains *): List[T] =
-  [C <: Top] => (op: Op[T, C]) => (s: C) => op(hd)(tl(op)(s))
+def consForLazyMap[T <: Top](hd: T, tl: List[T] retains *): List[T] retains hd.type retains tl.type =
+  [C <: Top] => (op: Op[T, C]) => (s: C) => op(hd)(tl.apply(op)(s))
+
+class Unit
+object unit extends Unit
 
 def lazyMap
   [A <: Top, B <: Top]
@@ -44,13 +47,22 @@ def lazyMap
     xs[List[(Unit => B) retains A retains B retains f.type] retains A retains B retains f.type]
       (hd =>
         (tl: List[(Unit => B) retains A retains B retains f.type] retains A retains B retains f.type) =>
-          consForLazyMap((u: Unit) => f(hd(())), tl))(nil)
+          consForLazyMap((u: Unit) => f(hd(unit)), tl))(nil)
+
+def force[A](thunk: Unit=>A): A = thunk(unit)
+def forceList[A](lazyList: List[Unit=>A]): List[A] = strictMap(lazyList)(force[A])
 
 @main def Test() =
-  val l = cons(1, cons(2, nil))
-  val l2 = strictMap(l)((_: Int) + 1)
-  val l3 = strictMap2((_: Int) + 2)(l)
-  val l4 = pureMap(l)((_: Int) + 3)
-  println(toScalaList(l))
-  println(toScalaList(l2))
-  println(toScalaList(l3))
+  val list12 = cons(1, cons(2, nil))
+  val list23 = strictMap(list12)((_: Int) + 1)
+  val list34 = strictMap2((_: Int) + 2)(list12)
+  val list45 = pureMap(list12)((_: Int) + 3)
+  println(toScalaList(list12))
+  println(toScalaList(list23))
+  println(toScalaList(list34))
+  println(toScalaList(list45))
+
+  val lazylist12: List[Unit=>Int] = cons(unit=>1, cons(unit=>2, nil))
+  val lazylist56 = lazyMap[Int, Int](lazylist12)((_: Int) + 4)
+  println(toScalaList(forceList(lazylist12)))
+  println(toScalaList(forceList(lazylist56)))
