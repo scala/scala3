@@ -1802,8 +1802,15 @@ class Typer extends Namer
         bindings1, expansion1)
   }
 
+  def completeTypeTree(tree: untpd.TypeTree, pt: Type, original: untpd.Tree)(using Context): TypeTree =
+    tree.withSpan(original.span).withAttachmentsFrom(original)
+      .withType(
+        if isFullyDefined(pt, ForceDegree.flipBottom) then pt
+        else if ctx.reporter.errorsReported then UnspecifiedErrorType
+        else errorType(i"cannot infer type; expected type $pt is not fully defined", tree.srcPos))
+
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): Tree =
-    tree match {
+    tree match
       case tree: untpd.DerivedTypeTree =>
         tree.ensureCompletions
         tree.getAttachment(untpd.OriginalSymbol) match {
@@ -1817,11 +1824,7 @@ class Typer extends Namer
             errorTree(tree, "Something's wrong: missing original symbol for type tree")
         }
       case _ =>
-        tree.withType(
-          if (isFullyDefined(pt, ForceDegree.flipBottom)) pt
-          else if (ctx.reporter.errorsReported) UnspecifiedErrorType
-          else errorType(i"cannot infer type; expected type $pt is not fully defined", tree.srcPos))
-    }
+        completeTypeTree(InferredTypeTree(), pt, tree)
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): SingletonTypeTree = {
     val ref1 = typedExpr(tree.ref)
@@ -2736,7 +2739,7 @@ class Typer extends Namer
           case tree: untpd.TypedSplice => typedTypedSplice(tree)
           case tree: untpd.UnApply => typedUnApply(tree, pt)
           case tree: untpd.Tuple => typedTuple(tree, pt)
-          case tree: untpd.DependentTypeTree => typed(untpd.TypeTree().withSpan(tree.span), pt)
+          case tree: untpd.DependentTypeTree => completeTypeTree(untpd.TypeTree(), pt, tree)
           case tree: untpd.InfixOp => typedInfixOp(tree, pt)
           case tree: untpd.ParsedTry => typedTry(tree, pt)
           case tree @ untpd.PostfixOp(qual, Ident(nme.WILDCARD)) => typedAsFunction(tree, pt)
