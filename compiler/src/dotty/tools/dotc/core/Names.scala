@@ -342,8 +342,7 @@ object Names {
 
     override def encode: SimpleName = {
       val dontEncode =
-        length >= 3 &&
-        head == '<' && last == '>' && isIdentifierStart(apply(1))
+        this == StdNames.nme.CONSTRUCTOR || this == StdNames.nme.STATIC_CONSTRUCTOR
       if (dontEncode) this else NameTransformer.encode(this)
     }
 
