@@ -93,6 +93,7 @@ object Scaladoc:
     println("InkuireDB created successfully!")
     println(s"Types: ${Inkuire.db.types.size}")
     println(s"Functions: ${Inkuire.db.functions.size}")
+    println(s"ImplicitConversions: ${Inkuire.db.implicitConversions.size}")
     val dbFile = dbPath.toFile()
     dbFile.createNewFile()
     val dbWriter = new FileWriter(dbFile, false)

@@ -113,45 +113,53 @@ trait ClassLikeSupport:
             Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
       }
 
-      classDef.symbol.declaredMethods.foreach {
-        case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
-                                        && !implicitConversion.flags.is(Flags.Private)
-                                        && classDef.symbol.flags.is(Flags.Module) =>
-          val defdef = implicitConversion.tree.asInstanceOf[DefDef]
-          val to = defdef.returnTpt.asInkuire(variableNames, false)
-          val from = defdef.paramss.flatMap(_.params).collectFirst {
-            case v: ValDef => v.tpt.asInkuire(variableNames, false)
-          }
-          from match
-            case Some(from) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
-            case None =>
-        case methodSymbol: Symbol =>
-          val defdef = methodSymbol.tree.asInstanceOf[DefDef]
-          val methodVars = defdef.paramss.flatMap(_.params).collect {
-            case TypeDef(name, _) => name
-          }
-          val vars = variableNames ++ methodVars
-          val receiver: Option[Inkuire.Type] =
-            Some(classType)
-              .filter(_ => !isModule)
-              .orElse(methodSymbol.extendedSymbol.flatMap(partialAsInkuire(vars, false).lift(_)))
-          val sgn = Inkuire.ExternalSignature(
-            signature = Inkuire.Signature(
-              receiver = receiver,
-              arguments = methodSymbol.nonExtensionParamLists.flatMap(_.params).collect {
-                case ValDef(_, tpe, _) => tpe.asInkuire(vars, false)
-              },
-              result = defdef.returnTpt.asInkuire(vars, false),
-              context = Inkuire.SignatureContext(
-                vars = vars.toSet,
-                constraints = Map.empty //TODO for future
-              )
-            ),
-            name = methodSymbol.name,
-            packageName = methodSymbol.dri.location,
-            uri = methodSymbol.dri.externalLink.getOrElse("")
-          )
-          Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
+      classDef
+        .symbol
+        .declaredMethods
+        .filter { (s: Symbol) =>
+          !s.flags.is(Flags.Private) &&
+            !s.flags.is(Flags.Protected) &&
+            !s.flags.is(Flags.Override)
+        }
+        .foreach {
+          case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
+                                          && classDef.symbol.flags.is(Flags.Module)
+                                          && implicitConversion.owner.fullName == ("scala.Predef$") =>
+            val defdef = implicitConversion.tree.asInstanceOf[DefDef]
+            val to = defdef.returnTpt.asInkuire(variableNames, false)
+            val from = defdef.paramss.flatMap(_.params).collectFirst {
+              case v: ValDef => v.tpt.asInkuire(variableNames, false)
+            }
+            from match
+              case Some(from) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
+              case None =>
+          case methodSymbol: Symbol =>
+            val defdef = methodSymbol.tree.asInstanceOf[DefDef]
+            val methodVars = defdef.paramss.flatMap(_.params).collect {
+              case TypeDef(name, _) => name
+            }
+            val vars = variableNames ++ methodVars
+            val receiver: Option[Inkuire.Type] =
+              Some(classType)
+                .filter(_ => !isModule)
+                .orElse(methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars, false).lift(s.tpt)))
+            val sgn = Inkuire.ExternalSignature(
+              signature = Inkuire.Signature(
+                receiver = receiver,
+                arguments = methodSymbol.nonExtensionParamLists.flatMap(_.params).collect {
+                  case ValDef(_, tpe, _) => tpe.asInkuire(vars, false)
+                },
+                result = defdef.returnTpt.asInkuire(vars, false),
+                context = Inkuire.SignatureContext(
+                  vars = vars.toSet,
+                  constraints = Map.empty //TODO for future
+                )
+              ),
+              name = methodSymbol.name,
+              packageName = methodSymbol.dri.location,
+              uri = methodSymbol.dri.externalLink.getOrElse("")
+            )
+            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
       }
 
     }

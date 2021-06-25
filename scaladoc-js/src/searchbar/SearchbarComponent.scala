@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val resultsChunkSize = 100
   extension (p: PageEntry)
-    def toHTML =
+    def toHTML(inkuire: Boolean = false) =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
       wrapper.classList.add("scaladoc-searchbar-result")
       wrapper.classList.add("monospace")
@@ -18,33 +18,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       icon.classList.add(p.kind.take(2))
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href = Globals.pathToRoot + p.location
-      resultA.text = s"${p.fullName}"
-
-      val location = document.createElement("span")
-      location.classList.add("pull-right")
-      location.classList.add("scaladoc-searchbar-location")
-      location.textContent = p.description
-
-      wrapper.appendChild(icon)
-      wrapper.appendChild(resultA)
-      wrapper.appendChild(location)
-      wrapper.addEventListener("mouseover", {
-        case e: MouseEvent => handleHover(wrapper)
-      })
-      wrapper
-
-    def toHTMLInkuireHack =
-      val wrapper = document.createElement("div").asInstanceOf[html.Div]
-      wrapper.classList.add("scaladoc-searchbar-result")
-      wrapper.classList.add("monospace")
-
-      val icon = document.createElement("span").asInstanceOf[html.Span]
-      icon.classList.add("micon")
-      icon.classList.add(p.kind.take(2))
-
-      val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href = p.location
+      resultA.href = if inkuire then p.location else Globals.pathToRoot + p.location
       resultA.text = s"${p.fullName}"
 
       val location = document.createElement("span")
@@ -61,7 +35,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       wrapper
 
   def handleNewFluffQuery(matchers: List[Matchers]) =
-    val result = engine.query(matchers).map(_.toHTML)
+    val result = engine.query(matchers).map(_.toHTML(inkuire = false))
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
@@ -85,21 +59,18 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       wrapper.classList.add("scaladoc-searchbar-result")
       wrapper.classList.add("monospace")
 
-      val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.text = s
+      val errorSpan = document.createElement("span").asInstanceOf[html.Span]
+      errorSpan.classList.add("search-error")
+      errorSpan.textContent = s
 
-      val location = document.createElement("span")
-      location.classList.add("pull-right")
-      location.classList.add("scaladoc-searchbar-location")
-
-      wrapper.appendChild(resultA)
-      wrapper.appendChild(location)
+      wrapper.appendChild(errorSpan)
       wrapper
 
   var timeoutHandle: SetTimeoutHandle = null
   def handleNewQuery(query: String) =
     clearTimeout(timeoutHandle)
     resultsDiv.scrollTop = 0
+    resultsDiv.onscroll = (event: Event) => { }
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
     parser.parse(query) match {
@@ -107,9 +78,16 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         handleNewFluffQuery(matchers)
       case BySignature(signature) =>
         timeoutHandle = setTimeout(1.second) {
+          val loading = document.createElement("div").asInstanceOf[html.Div]
+          loading.classList.add("loading-wrapper")
+          val animation = document.createElement("div").asInstanceOf[html.Div]
+          animation.classList.add("loading")
+          loading.appendChild(animation)
+          resultsDiv.appendChild(loading)
           inkuireEngine.query(query) { (p: PageEntry) =>
-            resultsDiv.appendChild(p.toHTMLInkuireHack)
+            resultsDiv.appendChild(p.toHTML(inkuire = true))
           } { (s: String) =>
+            animation.classList.remove("loading")
             resultsDiv.appendChild(s.toHTMLError)
           }
         }

@@ -108,30 +108,20 @@ trait InkuireSupport:
       inner(r.info, vars) //TODO for future
     case t @ AppliedType(tpe, typeList) =>
       import dotty.tools.dotc.util.Chars._
-      if !t.typeSymbol.name.forall(isIdentifierPart) && typeList.size == 2 then
-        inner(typeList.head, vars)
-      else if t.isFunctionType then
-        typeList match
-          case Nil =>
-            ??? //Not possible right?
-          case args =>
-            val name = s"Function${args.size-1}"
-            Inkuire.Type(
-              name = Inkuire.TypeName(name),
-              params = args.init.map(p => Inkuire.Contravariance(inner(p, vars))) :+ Inkuire.Covariance(inner(args.last, vars)),
-              itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
-            )
+      if t.isFunctionType then
+        val name = s"Function${typeList.size-1}"
+        Inkuire.Type(
+          name = Inkuire.TypeName(name),
+          params = typeList.init.map(p => Inkuire.Contravariance(inner(p, vars))) :+ Inkuire.Covariance(inner(typeList.last, vars)),
+          itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
+        )
       else if t.isTupleType then
-        typeList match
-          case Nil =>
-            ??? //TODO Not possible right?
-          case args =>
-            val name = s"Tuple${args.size}"
-            Inkuire.Type(
-              name = Inkuire.TypeName(name),
-              params = args.map(p => Inkuire.Covariance(inner(p, vars))),
-              itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
-            )
+        val name = s"Tuple${typeList.size}"
+        Inkuire.Type(
+          name = Inkuire.TypeName(name),
+          params = typeList.map(p => Inkuire.Covariance(inner(p, vars))),
+          itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
+        )
       else
         inner(tpe, vars).copy(
           params = typeList.map(p => Inkuire.Invariance(inner(p, vars)))

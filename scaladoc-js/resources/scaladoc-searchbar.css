@@ -58,6 +58,7 @@
     border: none;
     border-bottom: 1px solid #bbb;
     padding: 10px;
+    color: black;
 }
 
 #scaladoc-searchbar-input:focus {

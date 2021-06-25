@@ -27,13 +27,15 @@ class InkuireJSSearchEngine {
     )
   }
 
-  def query(s: String)(callback: PageEntry => Node)(errorCallback: String => Node): List[PageEntry] = {
+  def query(s: String)(callback: PageEntry => Node)(endCallback: String => Node): List[PageEntry] = {
     worker.onmessage = _ => ()
     val res = ListBuffer[PageEntry]()
     val func = (msg: MessageEvent) => {
       msg.data.asInstanceOf[String] match {
         case "engine_ready" =>
         case "new_query" =>
+        case endMsg if endMsg.startsWith("query_ended") =>
+          endCallback(endMsg.drop("query_ended".length))
         case q =>
           val matches = JSON.parse(q).matches
           val actualMatches = matches.asInstanceOf[js.Array[Dynamic]].map(dynamicToPageEntry)
