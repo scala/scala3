@@ -20,13 +20,16 @@ object Rewrites {
     private[Rewrites] val pbuf = new mutable.ListBuffer[Patch]()
 
     def addPatch(span: Span, replacement: String): Unit =
-      pbuf += Patch(span, replacement)
+      pbuf.indexWhere(p => p.span.start == span.start && p.span.end == span.end) match {
+        case i if i >= 0 => pbuf.update(i, Patch(span, replacement))
+        case _           => pbuf += Patch(span, replacement)
+      }
 
     def apply(cs: Array[Char]): Array[Char] = {
       val delta = pbuf.map(_.delta).sum
       val patches = pbuf.toList.sortBy(_.span.start)
       if (patches.nonEmpty)
-        patches reduceLeft {(p1, p2) =>
+        patches.reduceLeft {(p1, p2) =>
           assert(p1.span.end <= p2.span.start, s"overlapping patches in $source: $p1 and $p2")
           p2
         }
@@ -64,11 +67,11 @@ object Rewrites {
    *  given by `span` in `source` by `replacement`
    */
   def patch(source: SourceFile, span: Span, replacement: String)(using Context): Unit =
-    if (ctx.reporter != Reporter.NoReporter) // NoReporter is used for syntax highlighting
-      for (rewrites <- ctx.settings.rewrite.value)
-        rewrites.patched
-          .getOrElseUpdate(source, new Patches(source))
-          .addPatch(span, replacement)
+    if ctx.reporter != Reporter.NoReporter // NoReporter is used for syntax highlighting
+    then ctx.settings.rewrite.value.foreach(_.patched
+         .getOrElseUpdate(source, new Patches(source))
+         .addPatch(span, replacement)
+    )
 
   /** Patch position in `ctx.compilationUnit.source`. */
   def patch(span: Span, replacement: String)(using Context): Unit =
@@ -96,6 +99,3 @@ class Rewrites {
   import Rewrites._
   private val patched = new PatchedFiles
 }
-
-
-

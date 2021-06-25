@@ -978,7 +978,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           target.copy(dir = copyToDir(outDir, dir))
       }
 
-      val test = new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
+      new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
       this
     }
 

@@ -330,7 +330,7 @@ object Parsers {
         else if in.token == END then
           if endSeen then syntaxError("duplicate end marker")
           checkEndMarker(stats)
-          recur(sepSeen, true)
+          recur(sepSeen, endSeen = true)
         else if isStatSeqEnd || in.token == altEnd then
           false
         else if sepSeen || endSeen then
@@ -663,7 +663,6 @@ object Parsers {
       def closingOffset(lineStart: Offset): Offset =
         if in.lineOffset >= 0 && lineStart >= in.lineOffset then in.lineOffset
         else
-          val candidate = source.nextLine(lineStart)   // unused
           val commentStart = skipBlanks(lineStart)
           if testChar(commentStart, '/') && indentWidth < in.indentWidth(commentStart)
           then closingOffset(source.nextLine(lineStart))
@@ -1297,6 +1296,8 @@ object Parsers {
         case _: (ForYield | ForDo) => in.token == FOR
         case _ => false
 
+      def endName = if in.token == IDENTIFIER then in.name.toString else tokenString(in.token)
+
       def matchesAndSetEnd(last: T): Boolean =
         val didMatch = matches(last)
         if didMatch then
@@ -1307,6 +1308,9 @@ object Parsers {
         val start = in.skipToken()
         if stats.isEmpty || !matchesAndSetEnd(stats.last) then
           syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
+        else if overlapsPatch(source, Span(start, start)) then
+          patch(source, Span(start, start), "")
+          patch(source, Span(start, in.lastCharOffset), s"} // end $endName")
         in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
         in.nextToken()
     end checkEndMarker
@@ -3846,9 +3850,9 @@ object Parsers {
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
       var self: ValDef = EmptyValDef
       val stats = new ListBuffer[Tree]
-      if (isExprIntro && !isDefIntro(modifierTokens)) {
+      if isExprIntro && !isDefIntro(modifierTokens) then
         val first = expr1()
-        if (in.token == ARROW) {
+        if in.token == ARROW then
           first match {
             case Typed(tree @ This(EmptyTypeIdent), tpt) =>
               self = makeSelfDef(nme.WILDCARD, tpt).withSpan(first.span)
@@ -3859,11 +3863,10 @@ object Parsers {
           }
           in.token = SELFARROW // suppresses INDENT insertion after `=>`
           in.nextToken()
-        }
         else
           stats += first
           statSepOrEnd(stats)
-      }
+      end if
       while
         var empty = false
         if (in.token == IMPORT)
@@ -3880,7 +3883,7 @@ object Parsers {
           empty = true
         statSepOrEnd(stats, empty)
       do ()
-      (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
+      (self, if stats.isEmpty then List(EmptyTree) else stats.toList)
     }
 
     /** RefineStatSeq    ::=  RefineStat {semi RefineStat}
