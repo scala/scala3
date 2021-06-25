@@ -113,9 +113,7 @@ trait ClassLikeSupport:
             Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
       }
 
-      classDef
-        .symbol
-        .declaredMethods
+      classDef.symbol.declaredMethods
         .filter { (s: Symbol) =>
           !s.flags.is(Flags.Private) &&
             !s.flags.is(Flags.Protected) &&
@@ -133,6 +131,7 @@ trait ClassLikeSupport:
             from match
               case Some(from) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
               case None =>
+
           case methodSymbol: Symbol =>
             val defdef = methodSymbol.tree.asInstanceOf[DefDef]
             val methodVars = defdef.paramss.flatMap(_.params).collect {
@@ -152,7 +151,7 @@ trait ClassLikeSupport:
                 result = defdef.returnTpt.asInkuire(vars, false),
                 context = Inkuire.SignatureContext(
                   vars = vars.toSet,
-                  constraints = Map.empty //TODO for future
+                  constraints = Map.empty //TODO [Inkuire] Type bounds
                 )
               ),
               name = methodSymbol.name,

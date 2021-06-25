@@ -26,10 +26,10 @@ trait InkuireSupport:
         partialAsInkuire(vars, isVariable)(tpeTree)
 
   def partialAsInkuire(vars: Set[String], isVariable: Boolean): PartialFunction[Tree, Inkuire.Type] = {
-    case TypeBoundsTree(low, high) => inner(low.tpe, vars) //TODO
+    case TypeBoundsTree(low, high) => inner(low.tpe, vars) //TODO [Inkuire] Type bounds
     case tpeTree: Applied =>
       inner(tpeTree.tpe, vars).copy(
-        params = tpeTree.args.map(p => Inkuire.Invariance(p.asInkuire(vars, isVariable))) //TODO check variance
+        params = tpeTree.args.map(p => Inkuire.Invariance(p.asInkuire(vars, isVariable)))
       )
     case tpeTree: TypeTree =>
       inner(tpeTree.tpe, vars)
@@ -65,7 +65,7 @@ trait InkuireSupport:
       name = Inkuire.TypeName(normalizedName),
       itid = argument.symbol.itid,
       isVariable = vars.contains(normalizedName) || isVariable,
-      params = Seq.empty //TODO in future arities of params will be needed
+      params = Seq.empty //TODO [Inkuire] Type Lambdas
     )
     if argument.symbol.flags.is(Flags.Covariant) then Inkuire.Covariance(t)
     else if argument.symbol.flags.is(Flags.Contravariant) then Inkuire.Contravariance(t)
@@ -86,8 +86,8 @@ trait InkuireSupport:
       case _ => false
 
   private def inner(tp: TypeRepr, vars: Set[String]): Inkuire.Type = tp match
-    case OrType(left, right) => inner(left, vars) //TODO for future
-    case AndType(left, right) => inner(left, vars) //TODO for future
+    case OrType(left, right) => inner(left, vars)  //TODO [Inkuire] Or/AndTypes
+    case AndType(left, right) => inner(left, vars)  //TODO [Inkuire] Or/AndTypes
     case ByNameType(tpe) => inner(tpe, vars)
     case ConstantType(constant) =>
       Inkuire.Type(
@@ -97,15 +97,15 @@ trait InkuireSupport:
       )
     case ThisType(tpe) => inner(tpe, vars)
     case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedAnnotation(annotation) =>
-      inner(tpe, vars) //TODO for future
+      inner(tpe, vars) //TODO [Inkuire] Repeated types
     case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
-      inner(tpe, vars) //TODO for future
+      inner(tpe, vars) //TODO [Inkuire] Repeated types
     case AnnotatedType(tpe, _) =>
       inner(tpe, vars)
     case tl @ TypeLambda(params, paramBounds, resType) =>
-      inner(resType, vars) //TODO for future
+      inner(resType, vars) //TODO [Inkuire] Type lambdas
     case r: Refinement =>
-      inner(r.info, vars) //TODO for future
+      inner(r.info, vars) //TODO [Inkuire] Refinements
     case t @ AppliedType(tpe, typeList) =>
       import dotty.tools.dotc.util.Chars._
       if t.isFunctionType then
@@ -125,7 +125,7 @@ trait InkuireSupport:
       else
         inner(tpe, vars).copy(
           params = typeList.map(p => Inkuire.Invariance(inner(p, vars)))
-        ) //TODO check if it's ok (Having resolver should mean that variance here isn't meaningful)
+        )
     case tp: TypeRef =>
       Inkuire.Type(
         name = Inkuire.TypeName(tp.name),
@@ -136,15 +136,15 @@ trait InkuireSupport:
     case tr @ TermRef(qual, typeName) =>
       inner(qual, vars)
     case TypeBounds(low, hi) =>
-      inner(low, vars) //TODO for future
+      inner(low, vars) //TODO [Inkuire] Type bounds
     case NoPrefix() =>
-      Inkuire.Type.unresolved //TODO check <- should be handled by Singleton case, but doesn't work
+      Inkuire.Type.unresolved //TODO [Inkuire] <- should be handled by Singleton case, but didn't work
     case MatchType(bond, sc, cases) =>
       inner(sc, vars)
     case ParamRef(TypeLambda(names, _, resType), i) =>
       Inkuire.Type(
         name = Inkuire.TypeName(names(i)),
-        itid = Some(Inkuire.ITID(s"external-itid-${names(i)}", isParsed = false)), //TODO check if it's possible to get the actual ITID(DRI)
+        itid = Some(Inkuire.ITID(s"external-itid-${names(i)}", isParsed = false)),
         isVariable = true
       )
     case ParamRef(m: MethodType, i) =>
@@ -152,4 +152,4 @@ trait InkuireSupport:
     case RecursiveType(tp) =>
       inner(tp, vars)
     case MethodType(_, params, resType) =>
-      inner(resType, vars) //TODO for future
+      inner(resType, vars) //TODO [Inkuire] Method type
