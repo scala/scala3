@@ -52,6 +52,7 @@ object Scaladoc:
     documentSyntheticTypes: Boolean = false,
     snippetCompiler: List[String] = Nil,
     snippetCompilerDebug: Boolean = false,
+    noLinkWarnings: Boolean = false,
     versionsDictionaryUrl: Option[String] = None
   )
 
@@ -196,6 +197,7 @@ object Scaladoc:
         docCanonicalBaseUrl.get,
         YdocumentSyntheticTypes.get,
         snippetCompiler.get,
+        noLinkWarnings.get,
         snippetCompilerDebug.get,
         versionsDictionaryUrl.nonDefault
       )

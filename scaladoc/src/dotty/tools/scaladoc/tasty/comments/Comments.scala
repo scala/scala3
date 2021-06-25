@@ -109,12 +109,10 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
           case None =>
             val txt = s"No DRI found for query"
             val msg = s"$txt: $queryStr"
-            // TODO change to the commented-out version when we'll get rid of the warnings in stdlib
-            // report.warning(
-            //   msg,
-            //   owner.pos.get.asInstanceOf[dotty.tools.dotc.util.SrcPos],
-            // )
-            report.inform(msg)
+
+            if (!summon[DocContext].args.noLinkWarnings) then
+              report.warning(msg, owner.pos.get.asInstanceOf[dotty.tools.dotc.util.SrcPos])
+
             DocLink.UnresolvedDRI(queryStr, txt)
 
   private val SchemeUri = """[a-z]+:.*""".r
