@@ -501,7 +501,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "<derived typetree watching " ~ tpt.watched.showSummary() ~ ">"
       case TypeTree() =>
         typeText(toText(tree.typeOpt))
-        ~ Str("(inf)").provided(tree.isInstanceOf[InferredTypeTree[_]] && printDebug)
+        ~ Str("(inf)").provided(tree.isInstanceOf[InferredTypeTree] && printDebug)
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ "." ~ keywordStr("type")
       case RefinedTypeTree(tpt, refines) =>
