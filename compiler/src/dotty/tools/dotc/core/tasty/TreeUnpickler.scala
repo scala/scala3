@@ -357,7 +357,13 @@ class TreeUnpickler(reader: TastyReader,
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
-              readType().appliedTo(until(end)(readType()))
+              val tycon = readType()
+              val args = until(end)(readType())
+              tycon match
+                case tycon: TypeRef if tycon.symbol == defn.Predef_retainsType =>
+                  CapturingType.checked(args(0), args(1))
+                case _ =>
+                  tycon.appliedTo(args)
             case TYPEBOUNDS =>
               val lo = readType()
               if nothingButMods(end) then
@@ -821,7 +827,7 @@ class TreeUnpickler(reader: TastyReader,
       def TypeDef(rhs: Tree) =
         ta.assignType(untpd.TypeDef(sym.name.asTypeName, rhs), sym)
 
-      def ta =  ctx.typeAssigner
+      def ta = ctx.typeAssigner
 
       val name = readName()
       pickling.println(s"reading def of $name at $start")
@@ -1265,11 +1271,9 @@ class TreeUnpickler(reader: TastyReader,
               // types. This came up in #137 of collection strawman.
               val tycon = readTpt()
               val args = until(end)(readTpt())
-              val ownType =
-                if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
-                else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe, soft = false)
-                else tycon.tpe.safeAppliedTo(args.tpes)
-              untpd.AppliedTypeTree(tycon, args).withType(ownType)
+              val tree = untpd.AppliedTypeTree(tycon, args)
+              val ownType = ctx.typeAssigner.processAppliedType(tree, tycon.tpe.safeAppliedTo(args.tpes))
+              tree.withType(ownType)
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTerm())
             case LAMBDAtpt =>

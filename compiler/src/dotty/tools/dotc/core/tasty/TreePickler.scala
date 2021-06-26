@@ -277,6 +277,13 @@ class TreePickler(pickler: TastyPickler) {
         pickleType(tpe.scrutinee)
         tpe.cases.foreach(pickleType(_))
       }
+    case tp: CapturingType =>
+      writeByte(APPLIEDtype)
+      withLength {
+        pickleType(defn.Predef_retainsType.typeRef)
+        pickleType(tp.parent)
+        pickleType(tp.ref)
+      }
     case tpe: PolyType if richTypes =>
       pickleMethodic(POLYtype, tpe, EmptyFlags)
     case tpe: MethodType if richTypes =>

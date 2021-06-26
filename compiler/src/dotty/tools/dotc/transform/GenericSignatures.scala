@@ -347,8 +347,8 @@ object GenericSignatures {
           if (toplevel) polyParamSig(tParams)
           superSig(ci.typeSymbol, ci.parents)
 
-        case AnnotatedType(atp, _) =>
-          jsig(atp, toplevel, primitiveOK)
+        case tp: AnnotOrCaptType =>
+          jsig(tp.parent, toplevel, primitiveOK)
 
         case hktl: HKTypeLambda =>
           jsig(hktl.finalResultType, toplevel, primitiveOK)
@@ -469,10 +469,8 @@ object GenericSignatures {
             true
           case ClassInfo(_, _, parents, _, _) =>
             foldOver(tp.typeParams.nonEmpty, parents)
-          case AnnotatedType(tpe, _) =>
-            foldOver(x, tpe)
-          case proxy: TypeProxy =>
-            foldOver(x, proxy)
+          case tp: AnnotOrCaptType =>
+            foldOver(x, tp.parent)
           case _ =>
             foldOver(x, tp)
         }

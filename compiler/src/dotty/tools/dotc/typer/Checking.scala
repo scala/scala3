@@ -70,11 +70,13 @@ object Checking {
         errorTree(arg,
           showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
     }
-    for (arg, which, bound) <- TypeOps.boundsViolations(args, boundss, instantiate, app) do
-      report.error(
-          showInferred(DoesNotConformToBound(arg.tpe, which, bound),
-              app, tpt),
-          arg.srcPos.focus)
+    withMode(Mode.RelaxedCapturing) {
+      for (arg, which, bound) <- TypeOps.boundsViolations(args, boundss, instantiate, app) do
+        report.error(
+            showInferred(DoesNotConformToBound(arg.tpe, which, bound),
+                app, tpt),
+            arg.srcPos.focus)
+    }
 
   /** Check that type arguments `args` conform to corresponding bounds in `tl`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
@@ -308,6 +310,7 @@ object Checking {
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
             case _: RefinedOrRecType | _: AppliedType => true
+            case tp: AnnotOrCaptType => isInteresting(tp.parent)
             case _ => false
           }
 

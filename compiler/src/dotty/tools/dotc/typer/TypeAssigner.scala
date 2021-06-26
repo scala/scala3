@@ -191,6 +191,36 @@ trait TypeAssigner {
     if tpe.isError then tpe
     else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
 
+  def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type =
+    def captType(tp: Type, refs: Type): Type = refs match
+      case ref: NamedType =>
+        if ref.isTracked then
+          if tp.captureSet.accountsFor(ref) then
+            report.warning(em"redundant capture: $tp already contains $ref with capture set ${ref.captureSet} in its capture set ${tp.captureSet}", tree.srcPos)
+          CapturingType(tp, ref)
+        else
+          val reason =
+            if ref.canBeTracked then "its capture set is empty"
+            else "it is not a parameter or a local variable"
+          report.error(em"$ref cannot be tracked since $reason", tree.srcPos)
+          tp
+      case OrType(refs1, refs2) =>
+        captType(captType(tp, refs1), refs2)
+      case _ =>
+        report.error(em"$refs is not a legal type for a capture set", tree.srcPos)
+        tp
+    tp match
+      case AppliedType(tycon, args) =>
+        val constr = tycon.typeSymbol
+        if constr == defn.andType then AndType(args(0), args(1))
+        else if constr == defn.orType then OrType(args(0), args(1), soft = false)
+        else if constr == defn.Predef_retainsType then
+          if ctx.settings.Ycc.value then captType(args(0), args(1))
+          else args(0)
+        else tp
+      case _ => tp
+  end processAppliedType
+
   /** Type assignment method. Each method takes as parameters
    *   - an untpd.Tree to which it assigns a type,
    *   - typed child trees it needs to access to cpmpute that type,
@@ -288,8 +318,12 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
         if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
-          if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
-          else fntpe.resultType
+          if fntpe.isCaptureDependent then
+            fntpe.resultType.substParams(fntpe, args.tpes)
+          else if fntpe.isResultDependent then
+            safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
+          else
+            fntpe.resultType
         else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
       case t =>
@@ -461,11 +495,10 @@ trait TypeAssigner {
     assert(!hasNamedArg(args) || ctx.reporter.errorsReported, tree)
     val tparams = tycon.tpe.typeParams
     val ownType =
-      if (sameLength(tparams, args))
-        if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
-        else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe, soft = false)
-        else tycon.tpe.appliedTo(args.tpes)
-      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
+      if !sameLength(tparams, args) then
+        wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
+      else
+        processAppliedType(tree, tycon.tpe.appliedTo(args.tpes))
     tree.withType(ownType)
   }
 

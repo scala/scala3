@@ -489,7 +489,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // and then need to check that they are indeed supertypes of the original types
             // under -Ycheck. Test case is i7965.scala.
 
-     case tp1: MatchType =>
+      case tp1: CapturingType =>
+        if tp2.captureSet.accountsFor(tp1.ref) then recur(tp1.parent, tp2)
+        else thirdTry
+      case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry
       case _: FlexType =>
@@ -527,8 +530,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
               // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
-            if (cls2 eq AnyClass) return true
-            if (cls2 == defn.SingletonClass && tp1.isStable) return true
+            if (cls2 eq AnyClass) && tp1.noCaptures then return true
+            if cls2 == defn.SingletonClass && tp1.isStable then return true
             return tryBaseType(cls2)
           }
           else if (cls2.is(JavaDefined)) {
@@ -727,7 +730,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareTypeBounds = tp1 match {
           case tp1 @ TypeBounds(lo1, hi1) =>
             ((lo2 eq NothingType) || isSubType(lo2, lo1)) &&
-            ((hi2 eq AnyType) && !hi1.isLambdaSub || (hi2 eq AnyKindType) || isSubType(hi1, hi2))
+            ((hi2 eq AnyType) && !hi1.isLambdaSub && hi1.noCaptures
+             || (hi2 eq AnyKindType) || isSubType(hi1, hi2))
           case tp1: ClassInfo =>
             tp2 contains tp1
           case _ =>
@@ -737,6 +741,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
+      case tp2: CapturingType =>
+        recur(tp1, tp2.parent) || fourthTry
       case ClassInfo(pre2, cls2, _, _, _) =>
         def compareClassInfo = tp1 match {
           case ClassInfo(pre1, cls1, _, _, _) =>
@@ -770,7 +776,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               tp1.symbol.onGadtBounds(gbounds1 =>
                 isSubTypeWhenFrozen(gbounds1.hi, tp2)
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
-              && (tp2.isAny || GADTusage(tp1.symbol))
+              && (tp2.isAny && tp1.noCaptures || GADTusage(tp1.symbol))
 
             isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
@@ -780,6 +786,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
+              case CapturingType(tp1, _) => isNullable(tp1)
               case _ => false
             }
             val sym1 = tp1.symbol
@@ -798,7 +805,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ => false
             }
           case _ => false
-        comparePaths || isSubType(tp1.underlying.widenExpr, tp2, approx.addLow)
+        comparePaths || {
+          val tp2n = tp1 match
+            case tp1: CaptureRef if tp1.isTracked =>
+              // New rule dealing with singleton types on the left:
+              //
+              //   E |- x: S   E |- S <: {*} T
+              //   ---------------------------
+              //         E |- x.type <:< T
+              //
+              // Note: This would map to the following (Var) rule in deep capture calculus:
+              //
+              //   E |- x: S   E |- S <: {*} T
+              //   ---------------------------
+              //      E |- x: {x} T
+              //
+              CapturingType(tp2, defn.captureRootType.typeRef)
+            case _ => tp2
+          isSubType(tp1.underlying.widenExpr, tp2n, approx.addLow)
+        }
       case tp1: RefinedType =>
         isNewSubType(tp1.parent)
       case tp1: RecType =>
@@ -2022,8 +2047,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
-    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp2
-    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp1
+    else if tp1.isAny && !tp2.isLambdaSub && tp2.noCaptures || tp1.isAnyKind || isBottom(tp2) then tp2
+    else if tp2.isAny && !tp1.isLambdaSub && tp1.noCaptures || tp2.isAnyKind || isBottom(tp1) then tp1
     else tp2 match
       case tp2: LazyRef =>
         glb(tp1, tp2.ref)
@@ -2072,8 +2097,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
-    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp1
-    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp2
+    else if tp1.isAny && !tp2.isLambdaSub && tp2.noCaptures || tp1.isAnyKind || isBottom(tp2) then tp1
+    else if tp2.isAny && !tp1.isLambdaSub && tp1.noCaptures || tp2.isAnyKind || isBottom(tp1) then tp2
     else
       def mergedLub(tp1: Type, tp2: Type): Type = {
         tp1.atoms match
@@ -2343,6 +2368,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       tp1.underlying & tp2
     case tp1: AnnotatedType if !tp1.isRefining =>
       tp1.underlying & tp2
+    case tp1: CapturingType if !tp2.captureSet.accountsFor(tp1.ref) =>
+      tp1.parent & tp2
     case _ =>
       NoType
   }
@@ -2750,7 +2777,7 @@ object TypeComparer {
 
   /** The greatest lower bound of a list types */
   def glb(tps: List[Type])(using Context): Type =
-    tps.foldLeft(defn.AnyType: Type)(glb)
+    tps.foldLeft(defn.TopType: Type)(glb)
 
   def orType(using Context)(tp1: Type, tp2: Type, isSoft: Boolean = true, isErased: Boolean = ctx.erasedTypes): Type =
     comparing(_.orType(tp1, tp2, isSoft = isSoft, isErased = isErased))

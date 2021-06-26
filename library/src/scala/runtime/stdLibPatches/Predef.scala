@@ -47,4 +47,8 @@ object Predef:
    */
   extension [T](x: T | Null) inline def nn: x.type & T =
     scala.runtime.Scala3RunTime.nn(x)
+
+  /** type `A` with capture set `B` */
+  infix type retains[A, B]
+
 end Predef

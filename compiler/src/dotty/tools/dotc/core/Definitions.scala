@@ -143,11 +143,13 @@ class Definitions {
   private def enterMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
     newMethod(cls, name, info, flags).entered
 
-  private def enterAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol = {
-    val sym = newPermanentSymbol(ScalaPackageClass, name, flags, TypeAlias(tpe))
+  private def enterType(name: TypeName, info: Type, flags: FlagSet = EmptyFlags): TypeSymbol =
+    val sym = newPermanentSymbol(ScalaPackageClass, name, flags, info)
     ScalaPackageClass.currentPackageDecls.enter(sym)
     sym
-  }
+
+  private def enterAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol =
+    enterType(name, TypeAlias(tpe), flags)
 
   private def enterBinaryAlias(name: TypeName, op: (Type, Type) => Type): TypeSymbol =
     enterAliasType(name,
@@ -262,6 +264,7 @@ class Definitions {
    */
   @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
+  @tu lazy val TopType: Type = CapturingType(AnyType, captureRootType.typeRef)
   @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait, AnyType :: Nil), ensureCtor = false)
   def MatchableType: TypeRef = MatchableClass.typeRef
   @tu lazy val AnyValClass: ClassSymbol =
@@ -440,6 +443,7 @@ class Definitions {
 
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
+  @tu lazy val captureRootType: TypeSymbol = enterType(tpnme.CAPTURE_ROOT, TypeBounds.empty, Deferred)
 
   /** Marker method to indicate an argument to a call-by-name parameter.
    *  Created by byNameClosures and elimByName, eliminated by Erasure,
@@ -470,6 +474,7 @@ class Definitions {
     @tu lazy val Predef_classOf  : Symbol = ScalaPredefModule.requiredMethod(nme.classOf)
     @tu lazy val Predef_identity : Symbol = ScalaPredefModule.requiredMethod(nme.identity)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
+    @tu lazy val Predef_retainsType: Symbol = ScalaPredefModule.requiredType(tpnme.retains)
   @tu lazy val ScalaPredefModuleClass: ClassSymbol = ScalaPredefModule.moduleClass.asClass
 
   @tu lazy val SubTypeClass: ClassSymbol = requiredClass("scala.<:<")
@@ -881,6 +886,8 @@ class Definitions {
     lazy val RuntimeTuples_isInstanceOfEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfEmptyTuple")
     lazy val RuntimeTuples_isInstanceOfNonEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfNonEmptyTuple")
 
+  @tu lazy val RetainsClass: ClassSymbol = requiredClass("scala.Retains")
+
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
   @tu lazy val ClassfileAnnotationClass: ClassSymbol = requiredClass("scala.annotation.ClassfileAnnotation")
@@ -934,6 +941,7 @@ class Definitions {
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
+  @tu lazy val AbilityAnnot: ClassSymbol = requiredClass("scala.annotation.ability")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
@@ -1759,6 +1767,7 @@ class Definitions {
       AnyKindClass,
       andType,
       orType,
+      captureRootType,
       RepeatedParamClass,
       ByNameParamClass2x,
       AnyValClass,

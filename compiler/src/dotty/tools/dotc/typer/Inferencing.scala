@@ -126,8 +126,8 @@ object Inferencing {
       couldInstantiateTypeVar(parent)
     case tp: AndOrType =>
       couldInstantiateTypeVar(tp.tp1) || couldInstantiateTypeVar(tp.tp2)
-    case AnnotatedType(tp, _) =>
-      couldInstantiateTypeVar(tp)
+    case tp: AnnotOrCaptType =>
+      couldInstantiateTypeVar(tp.parent)
     case _ =>
       false
 
@@ -526,6 +526,7 @@ object Inferencing {
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
+    case tp: CapturingType => tp.derivedCapturingType(captureWildcards(tp.parent), tp.ref)
     case _ => tp
   }
 }
