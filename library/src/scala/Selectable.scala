@@ -1,5 +1,7 @@
 package scala
 
+import scala.annotation.experimental
+
 /** A marker trait for objects that support structural selection via
  *  `selectDynamic` and `applyDynamic`
  *
@@ -34,3 +36,19 @@ object Selectable:
   implicit def reflectiveSelectableFromLangReflectiveCalls(x: Any)(
       using scala.languageFeature.reflectiveCalls): scala.reflect.Selectable =
     scala.reflect.Selectable.reflectiveSelectable(x)
+
+  /** A marker trait for subclasses of `Selectable` indicating
+   *  that precise parameter types are not needed for method dispatch. That is,
+   *  a class inheriting from this trait and implementing
+   *
+   *     def applyDynamic(name: String, paramTypes: Class[_]*)(args: Any*)
+   *
+   *  should dispatch to a method with the given `name` without having to rely
+   *  on the precise `paramTypes`. Subtypes of `WithoutPreciseParameterTypes`
+   *  can have more relaxed subtyping rules for refinements. They do not need
+   *  the additional restriction that the signatures of the refinement and
+   *  the definition that implements the refinment must match.
+   */
+  @experimental
+  trait WithoutPreciseParameterTypes extends Selectable
+end Selectable

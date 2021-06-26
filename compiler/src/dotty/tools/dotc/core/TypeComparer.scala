@@ -1778,10 +1778,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // then the symbol referred to in the subtype must have a signature that coincides
         // in its parameters with the refinement's signature. The reason for the check
         // is that if the refinement does not refer to a member symbol, we will have to
-        // resort to reflection to invoke the member. And reflection needs to know exact
-        // erased parameter types. See neg/i12211.scala.
+        // resort to reflection to invoke the member. And Java reflection needs to know exact
+        // erased parameter types. See neg/i12211.scala. Other reflection algorithms could
+        // conceivably dispatch without knowning precise parameter signatures. One can signal
+        // this by inheriting from the `scala.reflect.SignatureCanBeImprecise` marker trait,
+        // in which case the signature test is elided.
         def sigsOK(symInfo: Type, info2: Type) =
           tp2.underlyingClassRef(refinementOK = true).member(name).exists
+          || tp2.derivesFrom(defn.WithoutPreciseParameterTypesClass)
           || symInfo.isInstanceOf[MethodType]
               && symInfo.signature.consistentParams(info2.signature)
 
