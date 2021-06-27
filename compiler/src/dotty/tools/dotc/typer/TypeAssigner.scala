@@ -235,19 +235,18 @@ trait TypeAssigner {
         else errorType("not a legal qualifying class for this", tree.srcPos))
   }
 
-  def assignType(tree: untpd.Super, qual: Tree, mixinClass: Symbol = NoSymbol)(using Context): Super = {
-    val mix = tree.mix
-    qual.tpe match {
-      case err: ErrorType => untpd.cpy.Super(tree)(qual, mix).withType(err)
+  def superType(qualType: Type, mix: untpd.Ident, mixinClass: Symbol, pos: SrcPos)(using Context) =
+    qualType match
+      case err: ErrorType => err
       case qtype @ ThisType(_) =>
         val cls = qtype.cls
         def findMixinSuper(site: Type): Type = site.parents filter (_.typeSymbol.name == mix.name) match {
           case p :: Nil =>
             p.typeConstructor
           case Nil =>
-            errorType(SuperQualMustBeParent(mix, cls), tree.srcPos)
+            errorType(SuperQualMustBeParent(mix, cls), pos)
           case p :: q :: _ =>
-            errorType("ambiguous parent class qualifier", tree.srcPos)
+            errorType("ambiguous parent class qualifier", pos)
         }
         val owntype =
           if (mixinClass.exists) mixinClass.appliedRef
@@ -257,9 +256,11 @@ trait TypeAssigner {
             val ps = cls.classInfo.parents
             if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
           }
-        tree.withType(SuperType(cls.thisType, owntype))
-    }
-  }
+        SuperType(cls.thisType, owntype)
+
+  def assignType(tree: untpd.Super, qual: Tree, mixinClass: Symbol = NoSymbol)(using Context): Super =
+    untpd.cpy.Super(tree)(qual, tree.mix)
+      .withType(superType(qual.tpe, tree.mix, mixinClass, tree.srcPos))
 
   /** Substitute argument type `argType` for parameter `pref` in type `tp`,
    *  skolemizing the argument type if it is not stable and `pref` occurs in `tp`.

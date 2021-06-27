@@ -1669,66 +1669,25 @@ class Typer extends Namer
     caseRest(using ctx.fresh.setFreshGADTBounds.setNewScope)
   }
 
-  def typedReturn(tree: untpd.Return)(using Context): Return = {
+  def typedReturn(tree: untpd.Return)(using Context): Return =
 
-    /** If `pt` is a context function type, its return type. If the CFT
-     * is dependent, instantiate with the parameters of the associated
-     * anonymous function.
-     * @param  paramss  the parameters of the anonymous functions
-     *                  enclosing the return expression
-     */
-    def instantiateCFT(pt: Type, paramss: => List[List[Symbol]]): Type =
-      val ift = defn.asContextFunctionType(pt)
-      if ift.exists then
-        ift.nonPrivateMember(nme.apply).info match
-          case appType: MethodType =>
-            instantiateCFT(appType.instantiate(paramss.head.map(_.termRef)), paramss.tail)
-      else pt
-
-    def returnProto(owner: Symbol): Type =
-      if (owner.isConstructor) defn.UnitType
-      else
-        // We need to get the return type of the enclosing function, with all parameters replaced
-        // by the local type and value parameters. It would be nice if we could look up that
-        // type simply in the tpt field of the enclosing function. But the tree argument in
-        // a context is an untyped tree, so we cannot extract its type.
-        def instantiateRT(info: Type, psymss: List[List[Symbol]]): Type = info match
-          case info: PolyType =>
-            instantiateRT(info.instantiate(psymss.head.map(_.typeRef)), psymss.tail)
-          case info: MethodType =>
-            instantiateRT(info.instantiate(psymss.head.map(_.termRef)), psymss.tail)
-          case info =>
-            info.widenExpr
-        val rt = instantiateRT(owner.info, owner.paramSymss)
-        def iftParamss = ctx.owner.ownersIterator
-          .filter(_.is(Method, butNot = Accessor))
-          .takeWhile(_.isAnonymousFunction)
-          .toList
-          .reverse
-          .map(_.paramSymss.head)
-        instantiateCFT(rt, iftParamss)
-
-    def enclMethInfo(cx: Context): (Tree, Type) = {
+    def enclMethInfo(cx: Context): (Tree, Type) =
       val owner = cx.owner
-      if (owner.isType) {
+      if owner.isType then
         report.error(ReturnOutsideMethodDefinition(owner), tree.srcPos)
         (EmptyTree, WildcardType)
-      }
-      else if (owner != cx.outer.owner && owner.isRealMethod)
-        if (owner.isInlineMethod)
+      else if owner != cx.outer.owner && owner.isRealMethod then
+        if owner.isInlineMethod then
           (EmptyTree, errorType(NoReturnFromInlineable(owner), tree.srcPos))
-        else if (!owner.isCompleted)
+        else if !owner.isCompleted then
           (EmptyTree, errorType(MissingReturnTypeWithReturnStatement(owner), tree.srcPos))
-        else {
-          val from = Ident(TermRef(NoPrefix, owner.asTerm))
-          val proto = returnProto(owner)
-          (from, proto)
-        }
+        else
+          (Ident(TermRef(NoPrefix, owner.asTerm)), owner.returnProto)
       else enclMethInfo(cx.outer)
-    }
+
     val (from, proto) =
-      if (tree.from.isEmpty) enclMethInfo(ctx)
-      else {
+      if tree.from.isEmpty then enclMethInfo(ctx)
+      else
         val from = tree.from.asInstanceOf[tpd.Tree]
         val proto =
           if (ctx.erasedTypes) from.symbol.info.finalResultType
@@ -1736,10 +1695,9 @@ class Typer extends Namer
                             // because we do not know the internal type params and method params.
                             // Hence no adaptation is possible, and we assume WildcardType as prototype.
         (from, proto)
-      }
     val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral.withSpan(tree.span), proto)
     assignType(cpy.Return(tree)(expr1, from))
-  }
+  end typedReturn
 
   def typedWhileDo(tree: untpd.WhileDo)(using Context): Tree =
     inContext(Nullables.whileContext(tree.span)) {
