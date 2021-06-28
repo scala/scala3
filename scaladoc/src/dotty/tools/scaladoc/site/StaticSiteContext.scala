@@ -130,7 +130,7 @@ class StaticSiteContext(
 
       val file = root.toPath.resolve(path).toFile
       val LoadedTemplate(template, children, _) = loadTemplate(file, isBlog).get // Add proper logging if file does not exisits
-      LoadedTemplate(template.copy(settings = template.settings + ("title" -> title), file = file), children, file)
+      LoadedTemplate(template.copy(settings = template.settings + ("title" -> title), file = file, title = title), children, file)
 
     case Sidebar.Category(title, nested) =>
       // Add support for index.html/index.md files!
