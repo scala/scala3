@@ -109,8 +109,10 @@ trait ClassLikeSupport:
         case typeSymbol: Symbol =>
           val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
           if typeDef.rhs.symbol.fullName.contains("java") then
-            val t = typeSymbol.tree.asInkuire(variableNames, false)
-            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
+            val t = typeSymbol.tree.asInkuire(variableNames, false) // TODO [Inkuire] Hack until type aliases are supported
+            val tJava = typeDef.rhs.symbol.tree.asInkuire(variableNames, false)
+            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))) // TODO [Inkuire] Hack until type aliases are supported
+            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
       }
 
       classDef.symbol.declaredMethods
