@@ -16,6 +16,7 @@ import NameOps._
 import util.Spans.Span
 import util.{SourceFile, SourcePosition}
 import transform.SymUtils._
+import SymbolInformation.{Kind => k}
 
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable
@@ -450,13 +451,31 @@ class ExtractSemanticDB extends Phase:
         props |= SymbolInformation.Property.ENUM.value
       props
 
+    private def symbolAccess(sym: Symbol, kind: SymbolInformation.Kind)(using Context): Access =
+      kind match
+        case k.LOCAL | k.PARAMETER | k.SELF_PARAMETER | k.TYPE_PARAMETER | k.PACKAGE | k.PACKAGE_OBJECT =>
+          Access.Empty
+        case _ =>
+          if (sym.privateWithin == NoSymbol)
+            if (sym.isAllOf(PrivateLocal)) PrivateThisAccess()
+            else if (sym.is(Private)) PrivateAccess()
+            else if (sym.isAllOf(ProtectedLocal)) ProtectedThisAccess()
+            else if (sym.is(Protected)) ProtectedAccess()
+            else PublicAccess()
+          else
+            val ssym = symbolName(sym.privateWithin)
+            if (sym.isPrivate) PrivateWithinAccess(ssym)
+            else ProtectedWithinAccess(ssym)
+
     private def symbolInfo(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(using Context): SymbolInformation =
+      val kind = symbolKind(sym, symkinds)
       SymbolInformation(
         symbol = symbolName,
         language = Language.SCALA,
-        kind = symbolKind(sym, symkinds),
+        kind = kind,
         properties = symbolProps(sym, symkinds),
-        displayName = Symbols.displaySymbol(sym)
+        displayName = Symbols.displaySymbol(sym),
+        access = symbolAccess(sym, kind),
       )
 
     private def registerSymbol(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(using Context): Unit =
