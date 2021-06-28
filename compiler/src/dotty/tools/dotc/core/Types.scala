@@ -1713,6 +1713,14 @@ object Types {
     /** If this is a proto type, WildcardType, otherwise the type itself */
     def dropIfProto: Type = this
 
+    /** If this is an AndType, the number of factors, 1 for all other types */
+    def andFactorCount: Int = 1
+
+    /** If this is a OrType, the number of factors if that match `soft`,
+     *  1 for all other types.
+     */
+    def orFactorCount(soft: Boolean): Int = 1
+
 // ----- Substitutions -----------------------------------------------------
 
     /** Substitute all types that refer in their symbol attribute to
@@ -3107,6 +3115,12 @@ object Types {
       myBaseClasses
     }
 
+    private var myFactorCount = 0
+    override def andFactorCount =
+      if myFactorCount == 0 then
+      	myFactorCount = tp1.andFactorCount + tp2.andFactorCount
+      myFactorCount
+
     def derivedAndType(tp1: Type, tp2: Type)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else AndType.make(tp1, tp2, checkValid = true)
@@ -3131,6 +3145,23 @@ object Types {
              tp2.isValueTypeOrWildcard, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       unchecked(tp1, tp2)
     }
+
+    def balanced(tp1: Type, tp2: Type)(using Context): AndType =
+      tp1 match
+        case AndType(tp11, tp12) if tp1.andFactorCount > tp2.andFactorCount * 2 =>
+          if tp11.andFactorCount < tp12.andFactorCount then
+            return apply(tp12, balanced(tp11, tp2))
+          else
+            return apply(tp11, balanced(tp12, tp2))
+        case _ =>
+      tp2 match
+        case AndType(tp21, tp22) if tp2.andFactorCount > tp1.andFactorCount * 2 =>
+          if tp22.andFactorCount < tp21.andFactorCount then
+            return apply(balanced(tp1, tp22), tp21)
+          else
+            return apply(balanced(tp1, tp21), tp22)
+        case _ =>
+      apply(tp1, tp2)
 
     def unchecked(tp1: Type, tp2: Type)(using Context): AndType = {
       assertUnerased()
@@ -3177,6 +3208,14 @@ object Types {
       }
       myBaseClasses
     }
+
+    private var myFactorCount = 0
+    override def orFactorCount(soft: Boolean) =
+      if this.isSoft == soft then
+        if myFactorCount == 0 then
+          myFactorCount = tp1.orFactorCount(soft) + tp2.orFactorCount(soft)
+        myFactorCount
+      else 1
 
     assert(tp1.isValueTypeOrWildcard &&
            tp2.isValueTypeOrWildcard, s"$tp1 $tp2")
@@ -3249,10 +3288,29 @@ object Types {
   final class CachedOrType(tp1: Type, tp2: Type, override val isSoft: Boolean) extends OrType(tp1, tp2)
 
   object OrType {
+
     def apply(tp1: Type, tp2: Type, soft: Boolean)(using Context): OrType = {
       assertUnerased()
       unique(new CachedOrType(tp1, tp2, soft))
     }
+
+    def balanced(tp1: Type, tp2: Type, soft: Boolean)(using Context): OrType =
+      tp1 match
+        case OrType(tp11, tp12) if tp1.orFactorCount(soft) > tp2.orFactorCount(soft) * 2 =>
+          if tp11.orFactorCount(soft) < tp12.orFactorCount(soft) then
+            return apply(tp12, balanced(tp11, tp2, soft), soft)
+          else
+            return apply(tp11, balanced(tp12, tp2, soft), soft)
+        case _ =>
+      tp2 match
+        case OrType(tp21, tp22) if tp2.orFactorCount(soft) > tp1.orFactorCount(soft) * 2 =>
+          if tp22.orFactorCount(soft) < tp21.orFactorCount(soft) then
+            return apply(balanced(tp1, tp22, soft), tp21, soft)
+          else
+            return apply(balanced(tp1, tp21, soft), tp22, soft)
+        case _ =>
+      apply(tp1, tp2, soft)
+
     def make(tp1: Type, tp2: Type, soft: Boolean)(using Context): Type =
       if (tp1 eq tp2) tp1
       else apply(tp1, tp2, soft)
