@@ -3,7 +3,7 @@ import java.io.IOException
 class CanThrow[E] extends Retains[*]
 type Top  = Any retains *
 
-def handle[E <: Exception, T <: Top](op: (CanThrow[E] ?=> T) retains T)(handler: (E => T) retains T): T =
+def handle[E <: Exception, T <: Top](op: CanThrow[E] ?=> T)(handler: E => T): T =
   val x: CanThrow[E] = ???
   try op(using x)
   catch case ex: E => handler(ex)

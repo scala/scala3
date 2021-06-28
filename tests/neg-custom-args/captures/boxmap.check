@@ -2,7 +2,7 @@
 15 |  () => b[Box[B]]((x: A) => box(f(x)))  // error
    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |  Found:    (() => Box[B]) retains b retains f
-   |  Required: () => Box[B]
+   |  Required: (() => Box[B]) retains B
    |
    |  where:    B is a type in method lazymap with bounds <: Top
 

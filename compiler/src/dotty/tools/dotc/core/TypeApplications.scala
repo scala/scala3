@@ -310,7 +310,6 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def appliedTo(args: List[Type])(using Context): Type = {
     record("appliedTo")
-    val typParams = self.typeParams
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
     if (args.isEmpty || ctx.erasedTypes) self

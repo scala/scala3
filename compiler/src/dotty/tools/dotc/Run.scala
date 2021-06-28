@@ -9,7 +9,7 @@ import Types._
 import Scopes._
 import Names.Name
 import Denotations.Denotation
-import typer.Typer
+import typer.{Typer, RefineTypes}
 import typer.ImportInfo._
 import Decorators._
 import io.{AbstractFile, PlainFile, VirtualFile}
@@ -204,7 +204,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             val profileBefore = profiler.beforePhase(phase)
             units = phase.runOn(units)
             profiler.afterPhase(phase, profileBefore)
-            if (ctx.settings.Xprint.value.containsPhase(phase))
+            if ctx.settings.Xprint.value.containsPhase(phase) && !phase.isInstanceOf[RefineTypes] then
               for (unit <- units)
                 lastPrintedTree =
                   printTree(lastPrintedTree)(using ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))

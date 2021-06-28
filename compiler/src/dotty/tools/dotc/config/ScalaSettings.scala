@@ -203,6 +203,7 @@ trait AllScalaSettings extends CommonScalaSettings { self: Settings.SettingGroup
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
   val YrefineTypes: Setting[Boolean] = BooleanSetting("-Yrefine-types", "Run experimental type refiner (test only)")
   val Ycc: Setting[Boolean] = BooleanSetting("-Ycc", "Check captured references")
+  val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with -Ycc, suppress type abbreviations")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

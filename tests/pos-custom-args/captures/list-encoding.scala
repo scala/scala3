@@ -5,7 +5,7 @@ type Op[T <: Top, C <: Top] =
   ((v: T) => ((s: C) => C) retains *) retains *
 
 type List[T <: Top] =
-  [C <: Top] => (op: Op[T, C]) => ((s: C) => C) retains op.type
+  ([C <: Top] => (op: Op[T, C]) => ((s: C) => C) retains op.type) retains T
 
 def nil[T <: Top]: List[T] =
   [C <: Top] => (op: Op[T, C]) => (s: C) => s

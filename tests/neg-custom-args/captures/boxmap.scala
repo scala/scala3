@@ -3,7 +3,7 @@ class Cap extends Retains[*]
 
 infix type ==> [A, B] = (A => B) retains *
 
-type Box[+T <: Top] = [K <: Top] => (T ==> K) => K
+type Box[+T <: Top] = ([K <: Top] => (T ==> K) => K) retains T
 
 def box[T <: Top](x: T): Box[T] =
   [K <: Top] => (k: T ==> K) => k(x)

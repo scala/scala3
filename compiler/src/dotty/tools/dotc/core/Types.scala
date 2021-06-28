@@ -3620,7 +3620,7 @@ object Types {
           case tp: TermParamRef if tp.binder eq thisLambdaType => TrueDeps
           case tp: CapturingType =>
             val status1 = compute(status, tp.parent, theAcc)
-            tp.ref match
+            tp.ref.stripTypeVar match
               case tp: TermParamRef if tp.binder eq thisLambdaType => combine(status1, CaptureDeps)
               case _ => status1
           case _: ThisType | _: BoundType | NoPrefix => status
@@ -4505,9 +4505,10 @@ object Types {
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
    */
-  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, nestingLevel: Int) extends CachedProxyType with ValueType {
+  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, nestingLevel: Int)
+  extends CachedProxyType, CaptureRef {
 
-    private var currentOrigin = initOrigin
+   private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
 
@@ -4688,6 +4689,26 @@ object Types {
       val inst = instanceOpt
       if (inst.exists) inst else origin
     }
+
+    // Capture ref methods
+
+    def canBeTracked(using Context): Boolean = underlying match
+      case ref: CaptureRef => ref.canBeTracked
+      case _ => false
+
+    override def normalizedRef(using Context): CaptureRef = instanceOpt match
+      case ref: CaptureRef => ref
+      case _ => this
+
+    override def singletonCaptureSet(using Context) = instanceOpt match
+      case ref: CaptureRef => ref.singletonCaptureSet
+      case _ => super.singletonCaptureSet
+
+    override def captureSetOfInfo(using Context): CaptureSet = instanceOpt match
+      case ref: CaptureRef => ref.captureSetOfInfo
+      case tp => tp.captureSet
+
+    // Object members
 
     override def computeHash(bs: Binders): Int = identityHash(bs)
     override def equals(that: Any): Boolean = this.eq(that.asInstanceOf[AnyRef])

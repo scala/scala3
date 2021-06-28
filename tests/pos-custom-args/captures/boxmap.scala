@@ -3,7 +3,7 @@ class Cap extends Retains[*]
 
 infix type ==> [A, B] = (A => B) retains *
 
-type Box[+T <: Top] = [K <: Top] => (T ==> K) => K
+type Box[+T <: Top] = ([K <: Top] => (T ==> K) => K) retains T
 
 def box[T <: Top](x: T): Box[T] =
   [K <: Top] => (k: T ==> K) => k(x)
@@ -17,5 +17,5 @@ def lazymap[A <: Top, B <: Top](b: Box[A])(f: A ==> B): (() => Box[B]) retains b
 def test[A <: Top, B <: Top] =
   def lazymap[A <: Top, B <: Top](b: Box[A])(f: A ==> B) =
     () => b[Box[B]]((x: A) => box(f(x)))
-  val x: (b: Box[A]) => (f: A ==> B) => (() => Box[B]) retains b.type | f.type = lazymap[A, B]
+  val x: (b: Box[A]) => ((f: A ==> B) => (() => Box[B]) retains b.type | f.type) retains b.type = lazymap[A, B]
   ()

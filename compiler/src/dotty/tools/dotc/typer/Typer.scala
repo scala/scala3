@@ -28,6 +28,7 @@ import Checking._
 import Inferencing._
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
+import CheckCaptures.addResultCaptures
 import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
@@ -1127,7 +1128,7 @@ class Typer extends Namer
         case _ => mapOver(t)
     }
 
-    val pt1 = pt.stripTypeVar.dealias
+    val pt1 = pt.stripped.dealias
     if (pt1 ne pt1.dropDependentRefinement)
        && defn.isContextFunctionType(pt1.nonPrivateMember(nme.apply).info.finalResultType)
     then
@@ -1249,13 +1250,14 @@ class Typer extends Namer
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     end typedDependent
 
-    args match {
-      case ValDef(_, _, _) :: _ =>
-        typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
-          using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
-      case _ =>
-        propagateErased(
-          typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt))
+    addResultCaptures {
+      args match
+        case ValDef(_, _, _) :: _ =>
+          typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
+            using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
+        case _ =>
+          propagateErased(
+            typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt))
     }
   }
 

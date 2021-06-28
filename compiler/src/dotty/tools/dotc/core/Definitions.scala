@@ -1565,7 +1565,7 @@ class Definitions {
    *   - the upper bound of a TypeParamRef in the current constraint
    */
   def asContextFunctionType(tp: Type)(using Context): Type =
-    tp.stripTypeVar.dealias match
+    tp.stripped.dealias match
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 =>
