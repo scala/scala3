@@ -12,15 +12,15 @@ trait Z/*<-givens::Z#*/[T/*<-givens::Z#[T]*/]:
 
 
 given intValue/*<-givens::InventedNames$package.intValue.*/: Int/*->scala::Int#*/ = 4
-given /*<-givens::InventedNames$package.given_String.*/String/*->scala::Predef.String#*/ = "str"
+given String/*->scala::Predef.String#*//*<-givens::InventedNames$package.given_String.*/ = "str"
 given /*<-givens::InventedNames$package.given_Double().*/(using Int/*->scala::Int#*/): Double/*->scala::Double#*/ = 4.0
 given /*<-givens::InventedNames$package.given_List_T().*/[T/*<-givens::InventedNames$package.given_List_T().[T]*/]: List/*->scala::package.List#*/[T/*->givens::InventedNames$package.given_List_T().[T]*/] = Nil/*->scala::package.Nil.*/
 given given_Char/*<-givens::InventedNames$package.given_Char.*/: Char/*->scala::Char#*/ = '?'
 given `given_Float/*<-givens::InventedNames$package.given_Float.*/`: Float/*->scala::Float#*/ = 3.0
 given `* */*<-givens::InventedNames$package.`* *`.*/`: Long/*->scala::Long#*/ = 5
 
-given X with
-/*<-givens::InventedNames$package.given_X.*//*->givens::X#*/  def doX/*<-givens::InventedNames$package.given_X.doX().*/ = 7
+given X/*->givens::X#*/ with
+/*<-givens::InventedNames$package.given_X.*/  def doX/*<-givens::InventedNames$package.given_X.doX().*/ = 7
 
 given (using X/*->givens::X#*/): Y/*->givens::Y#*/ with
   def doY/*<-givens::InventedNames$package.given_Y#doY().*/ = "7"

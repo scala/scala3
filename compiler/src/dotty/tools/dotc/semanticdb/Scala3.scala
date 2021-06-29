@@ -127,8 +127,7 @@ object Scala3:
       def isSyntheticWithIdent(using Context): Boolean =
         sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
 
-      def symbolInfo(symkinds: Set[SymbolKind])(using LinkMode, Context, SemanticSymbolBuilder): SymbolInformation =
-        import TypeOps._
+      def symbolInfo(symkinds: Set[SymbolKind])(using LinkMode, Context, SemanticSymbolBuilder, TypeOps): SymbolInformation =
         val sname = sym.symbolName
         val signature = sym.info.toSemanticSig(sym)
         val kind = symbolKind(symkinds)
