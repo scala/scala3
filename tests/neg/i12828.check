@@ -1,0 +1,7 @@
+-- [E163] Declaration Error: tests/neg/i12828.scala:7:7 ----------------------------------------------------------------
+7 |object Baz extends Bar[Int] // error overriding foo: incompatible type
+  |       ^
+  |       error overriding method foo in trait Foo of type (x: Int): Unit;
+  |         method foo in trait Bar of type (x: Int & String): Unit has incompatible type
+
+longer explanation available when compiling with `-explain`

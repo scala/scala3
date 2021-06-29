@@ -370,10 +370,13 @@ object RefChecks {
           //Console.println(infoString(member) + " shadows1 " + infoString(other) " in " + clazz);//DEBUG
           return
         val parentSymbols = clazz.info.parents.map(_.typeSymbol)
-        if (parentSymbols exists (p => subOther(p) && subMember(p) && deferredCheck))
+        def matchIn(parent: Symbol): Boolean = considerMatching(member, other, parent.thisType)
+        if parentSymbols.exists(p =>
+          subOther(p) && subMember(p) && deferredCheck && matchIn(p))
+        then
           //Console.println(infoString(member) + " shadows2 " + infoString(other) + " in " + clazz);//DEBUG
           return
-        if (parentSymbols forall (p => subOther(p) == subMember(p)))
+        if parentSymbols.forall(p => subOther(p) == subMember(p) && matchIn(p)) then
           //Console.println(infoString(member) + " shadows " + infoString(other) + " in " + clazz);//DEBUG
           return
       }
@@ -496,26 +499,30 @@ object RefChecks {
           }*/
     }
 
-    val opc = new OverridingPairs.Cursor(clazz):
-
-      /** We declare a match if either we have a full match including matching names
-       *  or we have a loose match with different target name but the types are the same.
-       *  This leaves two possible sorts of discrepancies to be reported as errors
-       *  in `checkOveride`:
-       *
-       *    - matching names, target names, and signatures but different types
-       *    - matching names and types, but different target names
-       */
-      override def matches(sym1: Symbol, sym2: Symbol): Boolean =
-        !(sym1.owner.is(JavaDefined, butNot = Trait) && sym2.owner.is(JavaDefined, butNot = Trait)) && // javac already handles these checks
+    /** We declare a match if either we have a full match including matching names
+     *  or we have a loose match with different target name but the types are the same.
+     *  This leaves two possible sorts of discrepancies to be reported as errors
+     *  in `checkOveride`:
+     *
+     *    - matching names, target names, and signatures but different types
+     *    - matching names and types, but different target names
+     */
+    def considerMatching(sym1: Symbol, sym2: Symbol, self: Type): Boolean =
+      !(sym1.owner.is(JavaDefined, butNot = Trait) && sym2.owner.is(JavaDefined, butNot = Trait)) && // javac already handles these checks
         (sym1.isType || {
-          val sd1 = sym1.asSeenFrom(clazz.thisType)
-          val sd2 = sym2.asSeenFrom(clazz.thisType)
+          val sd1 = sym1.asSeenFrom(self)
+          val sd2 = sym2.asSeenFrom(self)
           sd1.matchesLoosely(sd2)
           && (sym1.hasTargetName(sym2.targetName)
              || compatibleTypes(sym1, sd1.info, sym2, sd2.info))
         })
-    end opc
+
+    val opc = new OverridingPairs.Cursor(clazz):
+      override def matches(sym1: Symbol, sym2: Symbol): Boolean =
+        considerMatching(sym1, sym2, self)
+      override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parentType: Type): Boolean =
+        considerMatching(sym1, sym2, parentType)
+         .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parentType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parentType).signature} = $result", refcheck)
 
     while opc.hasNext do
       checkOverride(opc.overriding, opc.overridden)
