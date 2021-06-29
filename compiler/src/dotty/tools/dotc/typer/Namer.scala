@@ -700,7 +700,7 @@ class Namer { typer: Typer =>
       case original: DefDef =>
         val typer1 = ctx.typer.newLikeThis
         nestedTyper(sym) = typer1
-        typer1.defDefSig(original, sym)(using localContext(sym).setTyper(typer1))
+        typer1.defDefSig(original, sym, this)(using localContext(sym).setTyper(typer1))
       case imp: Import =>
         try
           val expr1 = typedImportQualifier(imp, typedAheadExpr(_, _)(using ctx.withOwner(sym)))
@@ -732,6 +732,15 @@ class Namer { typer: Typer =>
             denot.info = completer
             completer.complete(denot)
     }
+
+    private var completedTypeParamSyms: List[TypeSymbol] = null
+
+    def setCompletedTypeParams(tparams: List[TypeSymbol]) =
+      completedTypeParamSyms = tparams
+
+    override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
+      if completedTypeParamSyms != null then completedTypeParamSyms
+      else Nil
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
       case original: untpd.MemberDef =>
@@ -1639,7 +1648,7 @@ class Namer { typer: Typer =>
   }
 
   /** The type signature of a DefDef with given symbol */
-  def defDefSig(ddef: DefDef, sym: Symbol)(using Context): Type = {
+  def defDefSig(ddef: DefDef, sym: Symbol, completer: Namer#Completer)(using Context): Type = {
     // Beware: ddef.name need not match sym.name if sym was freshened!
     val isConstructor = sym.name == nme.CONSTRUCTOR
 
@@ -1668,8 +1677,8 @@ class Namer { typer: Typer =>
     //   5. Info of CP is copied to DP and DP is completed.
     index(ddef.leadingTypeParams)
     if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
-    for (tparam <- ddef.leadingTypeParams) typedAheadExpr(tparam)
-
+    completer.setCompletedTypeParams(
+      for tparam <- ddef.leadingTypeParams yield typedAheadExpr(tparam).symbol.asType)
     ddef.trailingParamss.foreach(completeParams)
     val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
     sym.setParamss(paramSymss)

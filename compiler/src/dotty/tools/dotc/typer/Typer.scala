@@ -2081,10 +2081,21 @@ class Typer extends Namer
   def annotContext(mdef: untpd.Tree, sym: Symbol)(using Context): Context = {
     def isInner(owner: Symbol) = owner == sym || sym.is(Param) && owner == sym.owner
     val outer = ctx.outersIterator.dropWhile(c => isInner(c.owner)).next()
-    outer.property(ExprOwner) match {
+    var adjusted = outer.property(ExprOwner) match {
       case Some(exprOwner) if outer.owner.isClass => outer.exprContext(mdef, exprOwner)
       case _ => outer
     }
+    sym.owner.infoOrCompleter match
+      case completer: Namer#Completer if sym.is(Param) =>
+        val tparams = completer.completerTypeParams(sym)
+        if tparams.nonEmpty then
+          // Create a new local context with a dummy owner and a scope containing the
+          // type parameters of the enclosing method or class. This annotations can see
+          // these type parameters. See i12953.scala for a test case.
+          val dummyOwner = newLocalDummy(sym.owner)
+          adjusted = adjusted.fresh.setOwner(dummyOwner).setScope(newScopeWith(tparams*))
+      case _ =>
+    adjusted
   }
 
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = {
