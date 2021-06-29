@@ -1677,8 +1677,10 @@ class Namer { typer: Typer =>
     //   5. Info of CP is copied to DP and DP is completed.
     index(ddef.leadingTypeParams)
     if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
-    completer.setCompletedTypeParams(
-      for tparam <- ddef.leadingTypeParams yield typedAheadExpr(tparam).symbol.asType)
+    val completedTypeParams =
+      for tparam <- ddef.leadingTypeParams yield typedAheadExpr(tparam).symbol
+    if completedTypeParams.forall(_.isType) then
+      completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[List[TypeSymbol]])
     ddef.trailingParamss.foreach(completeParams)
     val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
     sym.setParamss(paramSymss)
