@@ -44,7 +44,7 @@ class Synthetic/*<-example::Synthetic#*/ {
   for {
     a/*<-local8*/ <- scala.concurrent.Future/*->scala::concurrent::Future.*/.successful/*->scala::concurrent::Future.successful().*/(1)/*->scala::concurrent::Future#flatMap().*/
     b/*<-local9*/ <- scala.concurrent.Future/*->scala::concurrent::Future.*/.successful/*->scala::concurrent::Future.successful().*/(2)/*->scala::concurrent::Future#withFilter().*/
-    if a/*->local8*/ </*->scala::Int#`<`(+3).*/ b/*->local9*//*->scala::concurrent::Future#map().*//*->scala::concurrent::ExecutionContext.Implicits.global().*/
+    if a/*->local8*/ </*->scala::Int#`<`(+3).*/ b/*->local9*//*->scala::concurrent::ExecutionContext.Implicits.global().*//*->scala::concurrent::Future#map().*/
   } yield a/*->local8*//*->scala::concurrent::ExecutionContext.Implicits.global().*/
 
 }

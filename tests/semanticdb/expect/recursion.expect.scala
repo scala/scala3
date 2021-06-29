@@ -21,5 +21,5 @@ object Nats/*<-recursion::Nats.*/ {
       case Succ/*->recursion::Nats.Succ.*//*->recursion::Nats.Succ.unapply().*//*->local2*/(p/*<-local3*/) => toIntg/*->recursion::Nats.toIntg().*/(p/*->local3*/) +/*->scala::Int#`+`(+4).*/ 1
     }
 
-  val j31/*<-recursion::Nats.j31.*/ = toIntg/*->recursion::Nats.toIntg().*/(Zero/*->recursion::Nats.Zero.*/.++.++.++/*<-local4*//*->recursion::Nats.Zero.*//*->recursion::Nats.Nat#`++`().*/ + /*<-local5*//*->recursion::Nats.Nat#`++`().*/Zer/*<-local6*//*->recursion::Nats.Nat#`++`().*//*->recursion::Nats.Nat#`+`().*/o/*->recursion::Nats.Zero.*/.++/*->recursion::Nats.Nat#`++`().*/)
+  val j31/*<-recursion::Nats.j31.*/ = toIntg/*->recursion::Nats.toIntg().*/(Zero/*->recursion::Nats.Zero.*/./*->recursion::Nats.Zero.*/++.++.++/*<-local4*//*->recursion::Nats.Nat#`++`().*/ + /*<-local5*//*->recursion::Nats.Nat#`++`().*/Zer/*<-local6*//*->recursion::Nats.Nat#`++`().*//*->recursion::Nats.Nat#`+`().*/o/*->recursion::Nats.Zero.*/.++/*->recursion::Nats.Nat#`++`().*/)
 }

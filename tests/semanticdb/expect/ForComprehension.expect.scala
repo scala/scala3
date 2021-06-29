@@ -17,7 +17,7 @@ class ForComprehension/*<-example::ForComprehension#*/ {
     /*->local6*//*->scala::Tuple2.unapply().*/(
       /*->scala::Tuple2.unapply().*/c/*<-local7*/,
       d/*<-local8*/
-    ) <- List/*->scala::package.List.*//*->scala::collection::IterableFactory#apply().*/((/*->scala::Tuple2.apply().*/a/*->local4*/, b/*->local5*/))/*->scala::collection::WithFilter#withFilter().*//*->scala::collection::IterableOps#withFilter().*/
+    ) <- List/*->scala::package.List.*//*->scala::collection::IterableFactory#apply().*/((/*->scala::Tuple2.apply().*/a/*->local4*/, b/*->local5*/))/*->scala::collection::IterableOps#withFilter().*//*->scala::collection::WithFilter#withFilter().*/
     if (
       /*->scala::Tuple4.apply().*/a/*->local4*/,
       b/*->local5*/,

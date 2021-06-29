@@ -7,14 +7,39 @@ import core.Contexts.Context
 import core.Types._
 import core.Annotations.Annotation
 import core.Flags
+import core.Names.Name
 import ast.tpd._
+
+import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
 
-object TypeOps:
+class TypeOps:
   import SymbolScopeOps._
+  private val symtab = mutable.Map[(LambdaType, Name), Symbol]()
+  given typeOps: TypeOps = this
   extension (tpe: Type)
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
+
+      def enter(keyTpe: Type): Unit =
+        keyTpe match {
+          case lam: LambdaType =>
+            symtab((lam, sym.name)) = sym
+
+          // for class constructor
+          case cls: ClassInfo if sym.info.isInstanceOf[LambdaType] =>
+            val lam = sym.info.asInstanceOf[LambdaType]
+            cls.cls.typeParams.foreach { param =>
+              symtab((lam, param.name)) = param
+            }
+
+          case tb: TypeBounds =>
+            enter(tb.lo)
+            enter(tb.hi)
+          case _ => ()
+        }
+      enter(sym.owner.info)
+
       def loop(tpe: Type): s.Signature = tpe match {
         case mt: MethodType =>
           val stparams = Some(s.Scope())
@@ -41,8 +66,9 @@ object TypeOps:
           // for `type X[T] = T` is equivalent to `[T] =>> T`
           def tparams(tpe: Type): (Type, List[Symbol]) = tpe match {
             case lambda: HKTypeLambda =>
-              val paramSyms = lambda.paramNames.zip(lambda.paramInfos).map { (nme, info) =>
-                newSymbol(sym, nme, Flags.TypeParam, info)
+              val paramSyms = lambda.paramNames.flatMap { paramName =>
+                val key = (lambda, paramName)
+                symtab.get(key)
               }
               (lambda.resType, paramSyms)
             case _ => (tpe, Nil)
@@ -97,11 +123,8 @@ object TypeOps:
           s.SingleType(spre, ssym)
 
         case tref: ParamRef =>
-          val paramref = sym.rawParamss.flatMap { params =>
-            if (params.length > tref.paramNum) Some(params(tref.paramNum))
-            else None
-          }.find(p => p.name == tref.paramName)
-          paramref match {
+          val key = (tref.binder, tref.paramName)
+          symtab.get(key) match {
             case Some(ref) =>
               val ssym = ref.symbolName
               tref match {
@@ -233,7 +256,7 @@ object TypeOps:
 object SymbolScopeOps:
   import Scala3.given
   extension (syms: List[Symbol])
-    def sscope(using linkMode: LinkMode)(using SemanticSymbolBuilder, Context): s.Scope =
+    def sscope(using linkMode: LinkMode)(using SemanticSymbolBuilder, TypeOps, Context): s.Scope =
       linkMode match {
         case LinkMode.SymlinkChildren =>
           s.Scope(symlinks = syms.map(_.symbolName))

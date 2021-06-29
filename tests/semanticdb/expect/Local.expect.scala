@@ -2,7 +2,7 @@ package example
 
 class Local/*<-example::Local#*/ {
   def a/*<-example::Local#a().*/() = {
-    def id/*<-local0*/[A/*<-local1*/](a/*<-local2*/: A/*->local1*/): A/*->local1*/ = a/*->local2*/
-    id/*->local0*/(1)
+    def id/*<-local2*/[A/*<-local0*/](a/*<-local1*/: A/*->local0*/): A/*->local0*/ = a/*->local1*/
+    id/*->local2*/(1)
   }
 }
