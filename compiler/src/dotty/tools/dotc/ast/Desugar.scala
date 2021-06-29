@@ -783,7 +783,7 @@ object desugar {
         DefDef(
           className.toTermName, joinParams(constrTparams, defParamss),
           classTypeRef, creatorExpr)
-          .withMods(companionMods | mods.flags.toTermFlags & GivenOrImplicit | Synthetic | Final)
+          .withMods(companionMods | mods.flags.toTermFlags & GivenOrImplicit | Final)
           .withSpan(cdef.span) :: Nil
       }
 
