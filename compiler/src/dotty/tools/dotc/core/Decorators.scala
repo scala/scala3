@@ -162,16 +162,29 @@ object Decorators {
      *  `xs` to themselves.
      */
     def mapWithIndexConserve[U <: T](f: (T, Int) => U): List[U] =
-      def recur(xs: List[T], idx: Int): List[U] =
-        if xs.isEmpty then Nil
-        else
-          val x1 = f(xs.head, idx)
-          val xs1 = recur(xs.tail, idx + 1)
-          if (x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef])
-             && (xs1 eq xs.tail)
-          then xs.asInstanceOf[List[U]]
-          else x1 :: xs1
-      recur(xs, 0)
+
+      @tailrec
+      def addAll(buf: ListBuffer[T], from: List[T], until: List[T]): ListBuffer[T] =
+        if from eq until then buf else addAll(buf += from.head, from.tail, until)
+
+      @tailrec
+      def loopWithBuffer(buf: ListBuffer[U], explore: List[T], idx: Int): List[U] = explore match
+        case Nil       => buf.toList
+        case t :: rest => loopWithBuffer(buf += f(t, idx), rest, idx + 1)
+
+      @tailrec
+      def loop(keep: List[T], explore: List[T], idx: Int): List[U] = explore match
+        case Nil => keep.asInstanceOf[List[U]]
+        case t :: rest =>
+          val u = f(t, idx)
+          if u.asInstanceOf[AnyRef] eq t.asInstanceOf[AnyRef] then
+            loop(keep, rest, idx + 1)
+          else
+            val buf = addAll(new ListBuffer[T], keep, explore).asInstanceOf[ListBuffer[U]]
+            loopWithBuffer(buf += u, rest, idx + 1)
+
+      loop(xs, xs, 0)
+    end mapWithIndexConserve
 
     final def hasSameLengthAs[U](ys: List[U]): Boolean = {
       @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
@@ -278,4 +291,3 @@ object Decorators {
     def binarySearch(x: T): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object]], x)
 
 }
-
