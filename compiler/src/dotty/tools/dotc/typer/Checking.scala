@@ -871,7 +871,8 @@ trait Checking {
 
     sym.info.stripPoly match {
       case mt @ MethodType(_ :: Nil)
-      if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's an old-styleconversion
+      if !mt.isImplicitMethod && !sym.isCoDefinedGiven(mt.finalResultType.typeSymbol) =>
+        // it's an old-style conversion
         check()
       case _ =>
     }

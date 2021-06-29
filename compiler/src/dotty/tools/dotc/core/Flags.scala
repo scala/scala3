@@ -314,8 +314,8 @@ object Flags {
   /** A Scala 2x super accessor / an unpickled Scala 2.x class */
   val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")
 
-  /** A parameter with a default value */
-  val (_, HasDefault @ _, _) = newFlags(27, "<hasdefault>")
+  /** A parameter with a default value / A structural given class or an implicit class */
+  val (_, HasDefault @ _, GivenClass @ _) = newFlags(27, "<hasdefault/given-class>")
 
   /** An extension method, or a collective extension instance */
   val (Extension @ _, ExtensionMethod @ _, _) = newFlags(28, "<extension>")
@@ -568,6 +568,7 @@ object Flags {
   val FinalOrSealed: FlagSet                 = Final | Sealed
   val GivenOrImplicit: FlagSet               = Given | Implicit
   val GivenOrImplicitVal: FlagSet            = GivenOrImplicit.toTermFlags
+  val GivenMethod: FlagSet                   = Given | Method
   val InlineOrProxy: FlagSet                 = Inline | InlineProxy                           // An inline method or inline argument proxy */
   val InlineMethod: FlagSet                  = Inline | Method
   val InlineParam: FlagSet                   = Inline | Param
@@ -600,7 +601,6 @@ object Flags {
   val Scala2Trait: FlagSet                   = Scala2x | Trait
   val SyntheticArtifact: FlagSet             = Synthetic | Artifact
   val SyntheticCase: FlagSet                 = Synthetic | Case
-  val SyntheticGivenMethod: FlagSet          = Synthetic | Given | Method
   val SyntheticModule: FlagSet               = Synthetic | Module
   val SyntheticOpaque: FlagSet               = Synthetic | Opaque
   val SyntheticParam: FlagSet                = Synthetic | Param
