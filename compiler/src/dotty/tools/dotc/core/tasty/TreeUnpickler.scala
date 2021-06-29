@@ -563,7 +563,7 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags, annotFns, privateWithin) = readModifiers(end)
+      val (givenFlags, annotFns, privateWithin) = readModifiers(end, name.isTypeName)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
@@ -623,7 +623,7 @@ class TreeUnpickler(reader: TastyReader,
     /** Read modifier list into triplet of flags, annotations and a privateWithin
      *  boundary symbol.
      */
-    def readModifiers(end: Addr)(using Context): (FlagSet, List[Symbol => Annotation], Symbol) = {
+    def readModifiers(end: Addr, isType: Boolean)(using Context): (FlagSet, List[Symbol => Annotation], Symbol) = {
       var flags: FlagSet = EmptyFlags
       var annotFns: List[Symbol => Annotation] = Nil
       var privateWithin: Symbol = NoSymbol
@@ -667,7 +667,7 @@ class TreeUnpickler(reader: TastyReader,
           case HASDEFAULT => addFlag(HasDefault)
           case STABLE => addFlag(StableRealizable)
           case EXTENSION => addFlag(Extension)
-          case GIVEN => addFlag(Given)
+          case GIVEN => addFlag(if isType then GivenClass else Given)
           case PARAMsetter => addFlag(ParamAccessor)
           case PARAMalias => addFlag(SuperParamAlias)
           case EXPORTED => addFlag(Exported)
@@ -1236,7 +1236,7 @@ class TreeUnpickler(reader: TastyReader,
               readName()
               readType()
               val body = readTerm()
-              val (givenFlags, _, _) = readModifiers(end)
+              val (givenFlags, _, _) = readModifiers(end, sym.isType)
               sym.setFlag(givenFlags)
               Bind(sym, body)
             case ALTERNATIVE =>
