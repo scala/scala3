@@ -13,6 +13,7 @@ class Structural {
   def s1: { val x: Int } = ???
   def s2: { val x: Int } = new { val x: Int = ??? }
   def s3: { def m(x: Int): Int } = new { def m(x: Int): Int = ??? }
+  def s4(a: Int): { val x: Int } = ???
 }
 
 class Wildcards {
