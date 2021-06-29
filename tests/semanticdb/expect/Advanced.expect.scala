@@ -11,8 +11,9 @@ class C/*<-advanced::C#*/[T/*<-advanced::C#[T]*/] {
 
 class Structural/*<-advanced::Structural#*/ {
   def s1/*<-advanced::Structural#s1().*/: { val x/*<-local0*/: Int/*->scala::Int#*/ } = ???/*->scala::Predef.`???`().*/
-  def s2/*<-advanced::Structural#s2().*/: { val x/*<-local2*/: Int/*->scala::Int#*/ } = new { val x/*<-local3*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
-  def s3/*<-advanced::Structural#s3().*/: { def m/*<-local8*/(x/*<-local7*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ } = new { def m/*<-local10*/(x/*<-local9*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
+  def s2/*<-advanced::Structural#s2().*/: { val x/*<-local1*/: Int/*->scala::Int#*/ } = new { val x/*<-local2*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
+  def s3/*<-advanced::Structural#s3().*/: { def m/*<-local6*/(x/*<-local5*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ } = new { def m/*<-local8*/(x/*<-local7*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
+  def s4/*<-advanced::Structural#s4().*/(a/*<-advanced::Structural#s4().(a)*/: Int/*->scala::Int#*/): { val x/*<-local11*/: Int/*->scala::Int#*/ } = ???/*->scala::Predef.`???`().*/
 }
 
 class Wildcards/*<-advanced::Wildcards#*/ {
@@ -34,8 +35,8 @@ object Test/*<-advanced::Test.*/ {
 
   {
     (???/*->scala::Predef.`???`().*/ : Any/*->scala::Any#*/) match {
-      case e3/*<-local19*/: List/*->scala::package.List#*/[_] =>
-        val e3x/*<-local21*/ = e3/*->local19*/.head/*->scala::collection::IterableOps#head().*/
+      case e3/*<-local12*/: List/*->scala::package.List#*/[_] =>
+        val e3x/*<-local14*/ = e3/*->local12*/.head/*->scala::collection::IterableOps#head().*/
         ()
     }
   }

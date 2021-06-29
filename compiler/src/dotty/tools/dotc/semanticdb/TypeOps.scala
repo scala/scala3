@@ -8,6 +8,7 @@ import core.Types._
 import core.Annotations.Annotation
 import core.Flags
 import core.Names.Name
+import core.StdNames.tpnme
 import ast.tpd._
 
 import collection.mutable
@@ -16,29 +17,69 @@ import dotty.tools.dotc.{semanticdb => s}
 
 class TypeOps:
   import SymbolScopeOps._
-  private val symtab = mutable.Map[(LambdaType, Name), Symbol]()
+  private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
+  private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
   given typeOps: TypeOps = this
   extension (tpe: Type)
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
-
-      def enter(keyTpe: Type): Unit =
-        keyTpe match {
+      def enterParamRef(tpe: Type): Unit =
+        tpe match {
           case lam: LambdaType =>
-            symtab((lam, sym.name)) = sym
+            paramRefSymtab((lam, sym.name)) = sym
 
           // for class constructor
+          // class C[T] { ... }
           case cls: ClassInfo if sym.info.isInstanceOf[LambdaType] =>
             val lam = sym.info.asInstanceOf[LambdaType]
             cls.cls.typeParams.foreach { param =>
-              symtab((lam, param.name)) = param
+              paramRefSymtab((lam, param.name)) = param
             }
 
+          // type X[T] = ...
           case tb: TypeBounds =>
-            enter(tb.lo)
-            enter(tb.hi)
+            enterParamRef(tb.lo)
+            enterParamRef(tb.hi)
+
           case _ => ()
         }
-      enter(sym.owner.info)
+
+      def enterRefined(tpe: Type): Unit =
+        tpe match {
+          case refined: RefinedType =>
+            val key = (refined, sym.name)
+            refinementSymtab(key) = sym
+
+          case rec: RecType =>
+            enterRefined(rec.parent)
+
+          case cls: ClassInfo
+            if (cls.cls.name == tpnme.REFINE_CLASS) =>
+            sym.owner.owner.info match {
+              // def foo(x: Parent { refinement }) = ...
+              case refined: RefinedType =>
+                val key = (refined, sym.name)
+                refinementSymtab(key) = sym
+
+              // type x = Person { refinement }
+              case tb: TypeBounds =>
+                // tb = TypeBounds(
+                //   lo = RefinedType(...)
+                //   hi = RefinedType(...)
+                // )
+                enterRefined(tb.lo)
+                enterRefined(tb.hi)
+
+              // def s(x: Int): { refinement } = ...
+              case expr: ExprType =>
+                enterRefined(expr.resType)
+              case m: MethodType =>
+                enterRefined(m.resType)
+              case _ => ()
+            }
+          case _ => ()
+        }
+      enterParamRef(sym.owner.info)
+      enterRefined(sym.owner.info)
 
       def loop(tpe: Type): s.Signature = tpe match {
         case mt: MethodType =>
@@ -67,8 +108,7 @@ class TypeOps:
           def tparams(tpe: Type): (Type, List[Symbol]) = tpe match {
             case lambda: HKTypeLambda =>
               val paramSyms = lambda.paramNames.flatMap { paramName =>
-                val key = (lambda, paramName)
-                symtab.get(key)
+                paramRefSymtab.get((lambda, paramName))
               }
               (lambda.resType, paramSyms)
             case _ => (tpe, Nil)
@@ -124,7 +164,7 @@ class TypeOps:
 
         case tref: ParamRef =>
           val key = (tref.binder, tref.paramName)
-          symtab.get(key) match {
+          paramRefSymtab.get(key) match {
             case Some(ref) =>
               val ssym = ref.symbolName
               tref match {
@@ -182,10 +222,9 @@ class TypeOps:
           val (parent, refinedInfos) = flatten(rt, List.empty)
           val stpe = s.WithType(flattenParent(parent))
 
-          // Create dummy symbols for refinements
-          // since there's no way to retrieve symbols of refinements from RefinedType at this moment.
-          val decls = for (name, info) <- refinedInfos
-            yield newSymbol(sym, name, Flags.EmptyFlags, info)
+          val decls = refinedInfos.flatMap { (name, _) =>
+            refinementSymtab.get((rt, name))
+          }
           val sdecls = decls.sscope(using LinkMode.HardlinkChildren)
           s.StructuralType(stpe, Some(sdecls))
 
