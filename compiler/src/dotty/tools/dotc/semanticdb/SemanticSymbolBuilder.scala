@@ -94,22 +94,18 @@ class SemanticSymbolBuilder:
      */
     def localIdx(sym: Symbol)(using Context): Int =
       val startPos =
-        if sym.span.exists then Some(sym.span.start) else None
-        // assert(sym.span.exists, s"$sym should have a span")
+        assert(sym.span.exists, s"$sym should have a span")
+        sym.span.start
       @tailrec
       def computeLocalIdx(sym: Symbol): Int = locals get sym match
         case Some(idx) => idx
-        case None      => (for {
-          pos <- startPos
-          samePosSyms <- symsAtOffset.get(pos)
-          sameName <- samePosSyms.find(_.name == sym.name)
-        } yield sameName) match
+        case None => symsAtOffset(startPos).find(_.name == sym.name) match
           case Some(other) => computeLocalIdx(other)
           case None =>
             val idx = nextLocalIdx
             nextLocalIdx += 1
             locals(sym) = idx
-            startPos.foreach(pos => symsAtOffset(pos) += sym)
+            symsAtOffset(startPos) += sym
             idx
       end computeLocalIdx
       computeLocalIdx(sym)
