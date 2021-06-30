@@ -33,7 +33,7 @@ case class LoadedTemplate(
       val site = templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]]
       site.asJava.entrySet() ++ JSet(
         LazyEntry("url", () => ctx.relativePath(LoadedTemplate.this).toString),
-        LazyEntry("title", () => templateFile.title),
+        LazyEntry("title", () => templateFile.title.name),
         LazyEntry("excerpt", () => brief(ctx))
       )
 
