@@ -98,16 +98,7 @@ object OverridingPairs {
      *  of both symbol's owners? Assumed to be true by default, but overridden in RefChecks.
      */
     protected def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
-      val owner1 = sym1.owner
-      val owner2 = sym2.owner
-      def precedesIn(bcs: List[ClassSymbol]): Boolean = (bcs: @unchecked) match
-        case bc :: bcs1 =>
-          if owner1 eq bc then true
-          else if owner2 eq bc then false
-          else precedesIn(bcs1)
-        case _ =>
-          false
-      precedesIn(parent.asClass.baseClasses)
+      true
 
     /** The scope entries that have already been visited as overridden
      *  (maybe excluded because of already handled by a parent).

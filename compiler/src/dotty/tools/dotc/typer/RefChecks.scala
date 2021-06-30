@@ -512,12 +512,27 @@ object RefChecks {
       override def matches(sym1: Symbol, sym2: Symbol): Boolean =
         considerMatching(sym1, sym2, self)
 
-      // We can exclude pairs safely from checking only of they also matched in
-      // the parent class. See neg/i12828.scala for an example where this matters.
+      private def inLinearizationOrder(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
+        val owner1 = sym1.owner
+        val owner2 = sym2.owner
+        def precedesIn(bcs: List[ClassSymbol]): Boolean = (bcs: @unchecked) match
+          case bc :: bcs1 =>
+            if owner1 eq bc then true
+            else if owner2 eq bc then false
+            else precedesIn(bcs1)
+          case _ =>
+            false
+        precedesIn(parent.asClass.baseClasses)
+
+      // We can exclude pairs safely from checking only under two additional conditions
+      //   - their signatures also match in the parent class.
+      //     See neg/i12828.scala for an example where this matters.
+      //   - They overriding/overridden appear in linearization order.
+      //     See neg/i5094.scala for an example where this matters.
       override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
         considerMatching(sym1, sym2, parent.thisType)
          .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parent.thisType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parent.thisType).signature} = $result", refcheck)
-        && super.canBeHandledByParent(sym1, sym2, parent)
+        && inLinearizationOrder(sym1, sym2, parent)
     end opc
 
     while opc.hasNext do
