@@ -78,7 +78,6 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/components/FilterGroup.js",
       "scripts/components/Filter.js",
       "scripts/searchbar.js",
-      "scripts/inkuire.js",
       "scripts/inkuire-worker.js"
     ).map(dottyRes)
 
@@ -87,6 +86,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "https://d3js.org/d3.v6.min.js",
       "https://cdn.jsdelivr.net/npm/graphlib-dot@0.6.2/dist/graphlib-dot.min.js",
       "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
+      "https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M1/inkuire.js",
     ).map(Resource.URL.apply)
 
     fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
