@@ -36,47 +36,46 @@ class BashScriptsTests:
 
   val showArgsScript = testFiles.find(_.getName == "showArgs.sc").get.absPath
 
-  val scalacPath = which("scalac")
-  val scalaPath = which("scala")
+  val scalacPath = "dist/target/pack/bin/scalac" // which("scalac")
+  val scalaPath = "dist/target/pack/bin/scala"   // which("scala")
 
   /* verify `dist/bin/scalac` */
   @Test def verifyScalacArgs =
-    if scalacPath.nonEmpty then
-      printf("scalacPath[%s]\n",scalacPath)
-      val commandline = (Seq(scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
-      if bashPath.toFile.exists then
-        var cmd = Array(bashExe, "-c", commandline)
-        val output = for {
-          line <- Process(cmd).lazyLines_!
-        } yield line
-        var fail = false
-        printf("\n")
-        for (line, expect) <- output zip expectedOutput do
-          printf("expected: %-17s\nactual  : %s\n", expect, line)
-          if line != expect then
-            fail = true
+    printf("scalacPath[%s]\n",scalacPath)
+    val commandline = (Seq(scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
+    if bashPath.toFile.exists then
+      var cmd = Array(bashExe, "-c", commandline)
+      val output = for {
+        line <- Process(cmd).lazyLines_!
+      } yield line
+      var fail = false
+      printf("\n")
+      for (line, expect) <- output zip expectedOutput do
+        printf("expected: %-17s\nactual  : %s\n", expect, line)
+        if line != expect then
+          fail = true
 
-        if fail then
-          assert(output == expectedOutput)
+      if fail then
+        assert(output == expectedOutput)
 
   /* verify `dist/bin/scala` */
   @Test def verifyScalaArgs =
-    if scalaPath.nonEmpty then
-      val commandline = (Seq(scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
-      if bashPath.toFile.exists then
-        var cmd = Array(bashExe, "-c", commandline)
-        val output = for {
-          line <- Process(cmd).lazyLines_!
-        } yield line
-        var fail = false
-        printf("\n")
-        for (line, expect) <- output zip expectedOutput do
-          printf("expected: %-17s\nactual  : %s\n", expect, line)
-          if line != expect then
-            fail = true
+    val commandline = (Seq(scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
+    if bashPath.toFile.exists then
+      var cmd = Array(bashExe, "-c", commandline)
+      val output = for {
+        line <- Process(cmd).lazyLines_!
+      } yield line
+      var fail = false
+      printf("\n")
+      var mismatches = List.empty[(String,String)]
+      for (line, expect) <- output zip expectedOutput do
+        printf("expected: %-17s\nactual  : %s\n", expect, line)
+        if line != expect then
+          fail = true
 
-        if fail then
-          assert(output == expectedOutput)
+      if fail then
+        assert(output == expectedOutput)
 
   extension (str: String) def dropExtension =
     str.reverse.dropWhile(_ != '.').drop(1).reverse
