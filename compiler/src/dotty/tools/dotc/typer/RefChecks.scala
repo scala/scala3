@@ -367,18 +367,22 @@ object RefChecks {
         def subMember(s: Symbol) = s derivesFrom member.owner
 
         if (subOther(member.owner) && deferredCheck)
+          //println(i"skip 1 ${member.showLocated}, ${other.showLocated}")
           //Console.println(infoString(member) + " shadows1 " + infoString(other) " in " + clazz);//DEBUG
           return
+        /*
         val parentSymbols = clazz.info.parents.map(_.typeSymbol)
         def matchIn(parent: Symbol): Boolean = considerMatching(member, other, parent.thisType)
         if parentSymbols.exists(p =>
           subOther(p) && subMember(p) && deferredCheck && matchIn(p))
         then
+          println(i"skip 2 ${member.showLocated}, ${other.showLocated}")
           //Console.println(infoString(member) + " shadows2 " + infoString(other) + " in " + clazz);//DEBUG
           return
         if parentSymbols.forall(p => subOther(p) == subMember(p) && matchIn(p)) then
+          println(i"skip 3 ${member.showLocated}, ${other.showLocated}")
           //Console.println(infoString(member) + " shadows " + infoString(other) + " in " + clazz);//DEBUG
-          return
+          return*/
       }
 
       /* Is the intersection between given two lists of overridden symbols empty? */
@@ -508,21 +512,27 @@ object RefChecks {
      *    - matching names and types, but different target names
      */
     def considerMatching(sym1: Symbol, sym2: Symbol, self: Type): Boolean =
-      !(sym1.owner.is(JavaDefined, butNot = Trait) && sym2.owner.is(JavaDefined, butNot = Trait)) && // javac already handles these checks
-        (sym1.isType || {
-          val sd1 = sym1.asSeenFrom(self)
-          val sd2 = sym2.asSeenFrom(self)
-          sd1.matchesLoosely(sd2)
+      if     sym1.owner.is(JavaDefined, butNot = Trait)
+          && sym2.owner.is(JavaDefined, butNot = Trait)
+      then false // javac already handles these checks
+      else if sym1.isType then true
+      else
+        val sd1 = sym1.asSeenFrom(self)
+        val sd2 = sym2.asSeenFrom(self)
+        sd1.matchesLoosely(sd2)
           && (sym1.hasTargetName(sym2.targetName)
              || compatibleTypes(sym1, sd1.info, sym2, sd2.info))
-        })
 
     val opc = new OverridingPairs.Cursor(clazz):
       override def matches(sym1: Symbol, sym2: Symbol): Boolean =
         considerMatching(sym1, sym2, self)
+
+      // We can exclude pairs safely from checking only of they also matched in
+      // the parent class. See neg/i12828.scala for an example where this matters.
       override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parentType: Type): Boolean =
         considerMatching(sym1, sym2, parentType)
          .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parentType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parentType).signature} = $result", refcheck)
+    end opc
 
     while opc.hasNext do
       checkOverride(opc.overriding, opc.overridden)
@@ -535,13 +545,11 @@ object RefChecks {
     //
     //   class A { type T = B }
     //   class B extends A { override type T }
-    for
-      dcl <- clazz.info.decls.iterator
-      if dcl.is(Deferred)
-      other <- dcl.allOverriddenSymbols
-      if !other.is(Deferred)
-    do
-      checkOverride(dcl, other)
+    for dcl <- clazz.info.decls.iterator do
+      if dcl.is(Deferred) then
+        for other <- dcl.allOverriddenSymbols do
+          if !other.is(Deferred) then
+            checkOverride(dcl, other)
 
     printMixinOverrideErrors()
 
