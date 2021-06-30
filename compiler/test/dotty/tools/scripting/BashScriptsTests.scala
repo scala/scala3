@@ -41,39 +41,42 @@ class BashScriptsTests:
 
   /* verify `dist/bin/scalac` */
   @Test def verifyScalacArgs =
-    val commandline = (Seq(scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
-    if bashPath.toFile.exists then
-      var cmd = Array(bashExe, "-c", commandline)
-      val output = for {
-        line <- Process(cmd).lazyLines_!
-      } yield line
-      var fail = false
-      printf("\n")
-      for (line, expect) <- output zip expectedOutput do
-        printf("expected: %-17s| actual: %s\n", line, expect)
-        if line != expect then
-          fail = true
+    if scalacPath.nonEmpty then
+      printf("scalacPath[%s]\n",scalacPath)
+      val commandline = (Seq(scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
+      if bashPath.toFile.exists then
+        var cmd = Array(bashExe, "-c", commandline)
+        val output = for {
+          line <- Process(cmd).lazyLines_!
+        } yield line
+        var fail = false
+        printf("\n")
+        for (line, expect) <- output zip expectedOutput do
+          printf("expected: %-17s\nactual  : %s\n", expect, line)
+          if line != expect then
+            fail = true
 
-      if fail then
-        assert(output == expectedOutput)
+        if fail then
+          assert(output == expectedOutput)
 
   /* verify `dist/bin/scala` */
   @Test def verifyScalaArgs =
-    val commandline = (Seq(scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
-    if bashPath.toFile.exists then
-      var cmd = Array(bashExe, "-c", commandline)
-      val output = for {
-        line <- Process(cmd).lazyLines_!
-      } yield line
-      var fail = false
-      printf("\n")
-      for (line, expect) <- output zip expectedOutput do
-        printf("expected: %-17s| actual: %s\n", line, expect)
-        if line != expect then
-          fail = true
+    if scalaPath.nonEmpty then
+      val commandline = (Seq(scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
+      if bashPath.toFile.exists then
+        var cmd = Array(bashExe, "-c", commandline)
+        val output = for {
+          line <- Process(cmd).lazyLines_!
+        } yield line
+        var fail = false
+        printf("\n")
+        for (line, expect) <- output zip expectedOutput do
+          printf("expected: %-17s\nactual  : %s\n", expect, line)
+          if line != expect then
+            fail = true
 
-      if fail then
-        assert(output == expectedOutput)
+        if fail then
+          assert(output == expectedOutput)
 
   extension (str: String) def dropExtension =
     str.reverse.dropWhile(_ != '.').drop(1).reverse
