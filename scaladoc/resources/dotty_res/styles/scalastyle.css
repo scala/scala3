@@ -187,6 +187,20 @@ th {
   margin-left: -16px;
 }
 
+.theme-dark .scaladoc_logo {
+  display: none;
+}
+
+.scaladoc_logo_dark {
+  display: none;
+}
+
+.theme-dark .scaladoc_logo_dark {
+  width: 116px;
+  margin-left: -16px;
+  display: block;
+}
+
 /* Navigation */
 #sideMenu2 {
   overflow: auto;
@@ -491,7 +505,7 @@ footer {
   border-top: 1px solid var(--border-light);
   font-size: 14px;
 }
-.theme-dark footer img {
+.theme-dark footer .social-icon {
   /* "Poor man's dark mode" for images.
    * This works great with black images,
    * and just-okay with colored images.
