@@ -514,9 +514,10 @@ object RefChecks {
 
       // We can exclude pairs safely from checking only of they also matched in
       // the parent class. See neg/i12828.scala for an example where this matters.
-      override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parentType: Type): Boolean =
-        considerMatching(sym1, sym2, parentType)
-         .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parentType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parentType).signature} = $result", refcheck)
+      override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
+        considerMatching(sym1, sym2, parent.thisType)
+         .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parent.thisType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parent.thisType).signature} = $result", refcheck)
+        && super.canBeHandledByParent(sym1, sym2, parent)
     end opc
 
     while opc.hasNext do

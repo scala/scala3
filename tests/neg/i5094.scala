@@ -9,7 +9,7 @@ trait SOIO extends IO {
 }
 trait SOSO extends SOIO with SO
 abstract class AS extends SO
-class L extends AS with SOSO
+class L extends AS with SOSO // error: cannot override final member
 object Test {
   def main(args: Array[String]): Unit = {
     new L

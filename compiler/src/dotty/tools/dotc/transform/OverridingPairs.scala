@@ -34,7 +34,7 @@ object OverridingPairs {
      *  pair has already been treated in a parent class.
      *  This may be refined in subclasses. @see Bridges for a use case.
      */
-    protected def parents: Array[Symbol] = base.info.parents.toArray.map(_.typeSymbol)
+    protected def parents: Array[Symbol] = base.info.parents.toArray.map(_.classSymbol)
 
     /** Does `sym1` match `sym2` so that it qualifies as overriding when both symbols are
      *  seen as members of `self`? Types always match. Term symbols match if their membertypes
@@ -92,13 +92,22 @@ object OverridingPairs {
     private def isHandledByParent(sym1: Symbol, sym2: Symbol): Boolean =
       val commonParents = subParents(sym1.owner).intersect(subParents(sym2.owner))
       commonParents.nonEmpty
-      && commonParents.exists(i => canBeHandledByParent(sym1, sym2, parents(i).thisType))
+      && commonParents.exists(i => canBeHandledByParent(sym1, sym2, parents(i)))
 
     /** Can pair `sym1`/`sym2` be handled by parent `parentType` which is a common subtype
      *  of both symbol's owners? Assumed to be true by default, but overridden in RefChecks.
      */
-    protected def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parentType: Type): Boolean =
-      true
+    protected def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
+      val owner1 = sym1.owner
+      val owner2 = sym2.owner
+      def precedesIn(bcs: List[ClassSymbol]): Boolean = (bcs: @unchecked) match
+        case bc :: bcs1 =>
+          if owner1 eq bc then true
+          else if owner2 eq bc then false
+          else precedesIn(bcs1)
+        case _ =>
+          false
+      precedesIn(parent.asClass.baseClasses)
 
     /** The scope entries that have already been visited as overridden
      *  (maybe excluded because of already handled by a parent).
