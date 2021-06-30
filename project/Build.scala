@@ -1250,12 +1250,12 @@ object Build {
       val dottyLib = (`scala3-library` / Compile / classDirectory).value
       // TODO add versions etc.
       def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
-      def scalaSrcLink(v: String, s: String) = s"-source-links:$s=github://scala/scala/v$v#src/library"
-      def dottySrcLink(v: String, s: String) =
+      def scalaSrcLink(v: String, s: String) = s"-source-links:${s}github://scala/scala/v$v#src/library"
+      def dottySrcLink(v: String, sourcesPrefix: String = "", outputPrefix: String = "") =
         sys.env.get("GITHUB_SHA") match {
           case Some(sha) =>
-            s"-source-links:$s=github://${sys.env("GITHUB_REPOSITORY")}/$sha#library/src"
-          case None => s"-source-links:$s=github://lampepfl/dotty/$v#library/src"
+            s"-source-links:${sourcesPrefix}github://${sys.env("GITHUB_REPOSITORY")}/$sha$outputPrefix"
+          case None => s"-source-links:${sourcesPrefix}github://lampepfl/dotty/$v$outputPrefix"
         }
 
       val revision = Seq("-revision", ref, "-project-version", projectVersion)
@@ -1264,9 +1264,9 @@ object Build {
         outDir,
         "-project",
         name,
-        scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala")),
-        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty")),
-        s"-source-links:github://lampepfl/dotty/$referenceVersion",
+        scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
+        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
+        dottySrcLink(referenceVersion),
       ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
       import _root_.scala.sys.process._
       val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
