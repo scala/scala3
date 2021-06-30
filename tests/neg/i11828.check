@@ -1,5 +1,5 @@
 -- Error: tests/neg/i12828.scala:7:7 -----------------------------------------------------------------------------------
-7 |object Baz extends Bar[Int] // error: not implemented
+7 |object Baz extends Bar[Int] // error overriding foo: incompatible type
   |       ^
   |       object creation impossible, since def foo(x: A): Unit in trait Foo is not defined 
   |       (Note that
