@@ -323,6 +323,13 @@ object RefChecks {
             overrideErrorMsg("no longer has compatible type"),
             (if (member.owner == clazz) member else clazz).srcPos))
 
+      /** Do types of `member` and `other` as seen from `self` match?
+       *  If not we treat them as not a real override and don't issue certain
+       *  error messages. Also, bridges are not generated in this case.
+       */
+      def trueMatch: Boolean =
+        memberTp(self).matches(otherTp(self))
+
       def emitOverrideError(fullmsg: Message) =
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
           // suppress errors relating toi synthetic companion objects if other override
@@ -360,31 +367,6 @@ object RefChecks {
 
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
 
-      // return if we already checked this combination elsewhere
-      if (member.owner != clazz) {
-        def deferredCheck = member.is(Deferred) || !other.is(Deferred)
-        def subOther(s: Symbol) = s derivesFrom other.owner
-        def subMember(s: Symbol) = s derivesFrom member.owner
-
-        if (subOther(member.owner) && deferredCheck)
-          //println(i"skip 1 ${member.showLocated}, ${other.showLocated}")
-          //Console.println(infoString(member) + " shadows1 " + infoString(other) " in " + clazz);//DEBUG
-          return
-        /*
-        val parentSymbols = clazz.info.parents.map(_.typeSymbol)
-        def matchIn(parent: Symbol): Boolean = considerMatching(member, other, parent.thisType)
-        if parentSymbols.exists(p =>
-          subOther(p) && subMember(p) && deferredCheck && matchIn(p))
-        then
-          println(i"skip 2 ${member.showLocated}, ${other.showLocated}")
-          //Console.println(infoString(member) + " shadows2 " + infoString(other) + " in " + clazz);//DEBUG
-          return
-        if parentSymbols.forall(p => subOther(p) == subMember(p) && matchIn(p)) then
-          println(i"skip 3 ${member.showLocated}, ${other.showLocated}")
-          //Console.println(infoString(member) + " shadows " + infoString(other) + " in " + clazz);//DEBUG
-          return*/
-      }
-
       /* Is the intersection between given two lists of overridden symbols empty? */
       def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) = {
         val set2 = syms2.toSet
@@ -419,7 +401,7 @@ object RefChecks {
         overrideError("cannot be used here - class definitions cannot be overridden")
       else if (!other.is(Deferred) && member.isClass)
         overrideError("cannot be used here - classes can only override abstract types")
-      else if (other.isEffectivelyFinal) // (1.2)
+      else if other.isEffectivelyFinal && trueMatch then // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
       else if (member.is(ExtensionMethod) && !other.is(ExtensionMethod)) // (1.3)
         overrideError("is an extension method, cannot override a normal method")
@@ -440,15 +422,18 @@ object RefChecks {
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
           () // OK, don't complain about type aliases which are equal
-        else if (member.owner != clazz && other.owner != clazz &&
-                 !(other.owner derivesFrom member.owner))
+        else if member.owner != clazz
+             && other.owner != clazz
+             && !other.owner.derivesFrom(member.owner)
+             && trueMatch
+        then
           emitOverrideError(
             s"$clazz inherits conflicting members:\n  "
               + infoStringWithLocation(other) + "  and\n  " + infoStringWithLocation(member)
               + "\n(Note: this can be resolved by declaring an override in " + clazz + ".)")
         else if member.is(Exported) then
           overrideError("cannot override since it comes from an export")
-        else
+        else if trueMatch then
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
