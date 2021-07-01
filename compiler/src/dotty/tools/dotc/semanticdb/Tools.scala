@@ -102,6 +102,7 @@ object Tools:
   private def processSymbol(info: SymbolInformation)(using sb: StringBuilder): Unit =
     import SymbolInformation.Kind._
     sb.append(info.symbol).append(" => ")
+    sb.append(accessString(info.access))
     if info.isAbstract then sb.append("abstract ")
     if info.isFinal then sb.append("final ")
     if info.isSealed then sb.append("sealed ")
@@ -133,7 +134,7 @@ object Tools:
       case TRAIT => sb.append("trait ")
       case INTERFACE => sb.append("interface ")
       case UNKNOWN_KIND | Unrecognized(_) => sb.append("unknown ")
-    sb.append(s"${accessString(info.access)}${info.displayName}").nl
+    sb.append(info.displayName).nl
   end processSymbol
 
   private def processOccurrence(occ: SymbolOccurrence)(using sb: StringBuilder, sourceFile: SourceFile): Unit =
