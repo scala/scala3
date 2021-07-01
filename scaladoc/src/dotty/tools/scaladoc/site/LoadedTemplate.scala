@@ -49,6 +49,6 @@ case class LoadedTemplate(
 
     val updatedSettings = templateFile.settings ++ ctx.projectWideProperties +
       ("site" -> (getMap("site") + ("posts" -> posts))) + ("urls" -> sourceLinks.toMap) +
-      ("page" -> (getMap("page") + ("title" -> templateFile.title)))
+      ("page" -> (getMap("page") + ("title" -> templateFile.title.name)))
 
     templateFile.resolveInner(RenderingContext(updatedSettings, ctx.layouts))(using ctx)

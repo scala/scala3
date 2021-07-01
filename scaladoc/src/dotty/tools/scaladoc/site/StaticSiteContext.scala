@@ -139,7 +139,7 @@ class StaticSiteContext(
             case t: TemplateName.YamlDefined => t
             case _: TemplateName.FilenameDefined => TemplateName.SidebarDefined(title)
             case t: TemplateName.SidebarDefined => t // should never reach this path
-          LoadedTemplate(template.copy(settings = template.settings + ("title" -> title), file = file, title = newTitle), children, file)
+          LoadedTemplate(template.copy(settings = template.settings + ("title" -> newTitle.name), file = file, title = newTitle), children, file)
         case None =>
           LoadedTemplate(template.copy(settings = template.settings, file = file), children, file)
 
