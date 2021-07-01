@@ -464,8 +464,8 @@ class ExtractSemanticDB extends Phase:
             else PublicAccess()
           else
             val ssym = symbolName(sym.privateWithin)
-            if (sym.isPrivate) PrivateWithinAccess(ssym)
-            else ProtectedWithinAccess(ssym)
+            if (sym.is(Protected)) ProtectedWithinAccess(ssym)
+            else PrivateWithinAccess(ssym)
 
     private def symbolInfo(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(using Context): SymbolInformation =
       val kind = symbolKind(sym, symkinds)

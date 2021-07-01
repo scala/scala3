@@ -14,7 +14,7 @@ example/Access# => class Access
 example/Access#`<init>`(). => primary ctor <init>
 example/Access#m1(). => private[this] method m1
 example/Access#m2(). => private[this] method m2
-example/Access#m3(). => protected[example/Access#] method m3
+example/Access#m3(). => private[example/Access#] method m3
 example/Access#m4(). => protected method m4
 example/Access#m5(). => protected[this] method m5
 example/Access#m6(). => protected[example/] method m6
@@ -3812,7 +3812,7 @@ flags/p/package.`y_=`(). => protected var method y_=
 flags/p/package.`y_=`().(x$1) => param x$1
 flags/p/package.m(). => macro m
 flags/p/package.m().[TT] => typeparam TT
-flags/p/package.x. => protected[flags/p/] lazy val method x
+flags/p/package.x. => private[flags/p/] lazy val method x
 flags/p/package.xs1. => val method xs1
 flags/p/package.y(). => protected implicit var method y
 flags/p/package.z(). => method z
