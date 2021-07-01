@@ -1267,7 +1267,7 @@ object Build {
         scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
         dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
         dottySrcLink(referenceVersion),
-      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets ++ Seq("-generate-inkuire")
+      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets ++ Seq("-Ygenerate-inkuire")
       import _root_.scala.sys.process._
       val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
       Def.task {

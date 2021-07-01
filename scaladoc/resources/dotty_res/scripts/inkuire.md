@@ -4,13 +4,13 @@ Inkuire is a Hoogle-like search engine for Scala 3 (and Kotlin).
 
 # Usage
 
-To include Inkuire in scaladoc one should add `-generate-inkuire` flag. This will allow the usage of Inkuire for generated Scaladoc with project sources and available sources from external-mappings.
+To include Inkuire in scaladoc one should add `-Ygenerate-inkuire` flag. This will allow the usage of Inkuire for generated Scaladoc with project sources and available sources from external-mappings.
 
 The Inkuire worker works in Scaladoc searchbar. It is triggered once an input containing `=>` is detected in searchbar. There is 1s debounce on searches with Inkuire.
 
 ## Generated Files
 
-When including `-generate-inkuire` flag database for project sources and a config should be generated. Which are namely files: `inkuire-db.json` and `scripts/inkuire-config.json`. Config file includes addresses of possible inkuire-db files. There always is at least one - generated one. But also links for external mappings are addes on relative path `../inkuire-db.json`.
+When including `-Ygenerate-inkuire` flag database for project sources and a config should be generated. Which are namely files: `inkuire-db.json` and `scripts/inkuire-config.json`. Config file includes addresses of possible inkuire-db files. There always is at least one - generated one. But also links for external mappings are addes on relative path `../inkuire-db.json`.
 
 `inkuire-db.json` contains a json with Inkuire engine's representation of:
 - types (or rather classes and objects for now)

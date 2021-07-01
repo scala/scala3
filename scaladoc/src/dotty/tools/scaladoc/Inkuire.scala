@@ -8,8 +8,8 @@ object Inkuire {
   var db = InkuireDb(Seq.empty, Map.empty, Seq.empty)
 
   def generateInkuireConfig(externalMappings: Seq[String]): String = {
-    val paths = ("../inkuire-db.json" +: externalMappings.map(_ + "../inkuire-db.json")).map(p => "\"" + p + "\"")
-    s"""{"inkuirePaths": [${paths.mkString(",")}]}"""
+    val paths = ("../inkuire-db.json" +: externalMappings.map(_ + "../inkuire-db.json")).map(jsonString)
+    jsonObject(("inkuirePaths", jsonList(paths))).toString
   }
 
   case class InkuireDb(
