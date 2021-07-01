@@ -21,6 +21,7 @@ enum Resource(val path: String):
   case Classpath(override val path: String, name: String) extends Resource(path)
   case File(override val path: String, file: Path) extends Resource(path)
   case URL(url: String) extends Resource(url)
+  case URLToCopy(url: String, dest: String) extends Resource(url)
 
 trait Resources(using ctx: DocContext) extends Locations, Writer:
   private def dynamicJsData =
@@ -86,10 +87,15 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "https://d3js.org/d3.v6.min.js",
       "https://cdn.jsdelivr.net/npm/graphlib-dot@0.6.2/dist/graphlib-dot.min.js",
       "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
-      "https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M1/inkuire.js",
     ).map(Resource.URL.apply)
 
-    fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
+    val urlToPathMappings = List(
+      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M1/inkuire.js", "scripts/inkuire.js"),
+    ).map { case (url, path) =>
+      Resource.URLToCopy(url, path)
+    }
+
+    fromResources ++ urls ++ urlToPathMappings ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
 
   val searchDataPath = "scripts/searchData.js"
   val memberResourcesPaths = Seq(searchDataPath) ++ memberResources.map(_.path)
@@ -179,3 +185,5 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         Seq(copy(file, path))
       case Resource.URL(url) =>
         Nil
+      case Resource.URLToCopy(url, dest) =>
+        Seq(copy(new URL(url).openStream(), dest))
