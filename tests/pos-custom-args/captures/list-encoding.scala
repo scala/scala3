@@ -32,7 +32,7 @@ def strictMap2[A <: Top, B <: Top](f: (A => B) retains *): (List[A] => List[B]) 
 def pureMap[A <: Top, B <: Top](xs: List[A])(f: A => B): List[B] =
   xs[List[B]]((hd: A) => (tl: List[B]) => cons(f(hd), tl))(nil)
 
-def consForLazyMap[T <: Top](hd: T, tl: List[T] retains *): List[T] retains hd.type retains tl.type =
+def consForLazyMap[T <: Top](hd: T, tl: List[T] retains *): List[T] retains hd.type|tl.type =
   [C <: Top] => (op: Op[T, C]) => (s: C) => op(hd)(tl.apply(op)(s))
 
 class Unit
@@ -42,11 +42,11 @@ def lazyMap
   [A <: Top, B <: Top]
   (xs: List[(Unit => A) retains A] retains A)
   (f: (A => B) retains *):
-  List[(Unit => B) retains A retains B retains f.type] retains A retains B retains f.type =
+  List[(Unit => B) retains A|B|f.type] retains A|B|f.type =
 
-    xs[List[(Unit => B) retains A retains B retains f.type] retains A retains B retains f.type]
+    xs[List[(Unit => B) retains A|B|f.type] retains A|B|f.type]
       ((hd: (Unit => A) retains A) =>
-        (tl: List[(Unit => B) retains A retains B retains f.type] retains A retains B retains f.type) =>
+        (tl: List[(Unit => B) retains A|B|f.type] retains A|B|f.type) =>
           consForLazyMap((u: Unit) => f(hd(unit)), tl))(nil)
 
 def force[A](thunk: Unit=>A): A = thunk(unit)
