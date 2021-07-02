@@ -49,6 +49,17 @@ def lazyMap
         (tl: List[(Unit => B) retains A|f.type]) =>
           consForLazyMap((u: Unit) => f(hd(unit)), tl))(nil)
 
+def lazyPureMap
+  [A <: Top, B <: Top]
+  (xs: List[(Unit => A) retains A])
+  (f: A => B):
+  List[(Unit => B) retains A] =
+
+    xs[List[(Unit => B) retains A]]
+      ((hd: (Unit => A) retains A) =>
+        (tl: List[(Unit => B) retains A]) =>
+          consForLazyMap((u: Unit) => f(hd(unit)), tl))(nil)
+
 def force[A](thunk: Unit=>A): A = thunk(unit)
 def forceList[A](lazyList: List[Unit=>A]): List[A] = strictMap(lazyList)(force[A])
 
@@ -64,5 +75,7 @@ def forceList[A](lazyList: List[Unit=>A]): List[A] = strictMap(lazyList)(force[A
 
   val lazylist12: List[Unit=>Int] = cons(unit=>1, cons(unit=>2, nil))
   val lazylist56 = lazyMap[Int, Int](lazylist12)((_: Int) + 4)
+  val lazylist67 = lazyPureMap[Int, Int](lazylist12)((_: Int) + 5)
   println(toScalaList(forceList(lazylist12)))
   println(toScalaList(forceList(lazylist56)))
+  println(toScalaList(forceList(lazylist67)))
