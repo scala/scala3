@@ -1627,7 +1627,7 @@ trait Applications extends Compatibility {
     /** Widen the result type of synthetic given methods from the implementation class to the
      *  type that's implemented. Example
      *
-     *      given I[X] as T { ... }
+     *      given I[X]: T with { ... }
      *
      *  This desugars to
      *
@@ -1648,8 +1648,8 @@ trait Applications extends Compatibility {
         mt.derivedLambdaType(mt.paramNames, mt.paramInfos, widenGiven(mt.resultType, alt))
       case pt: PolyType =>
         pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenGiven(pt.resultType, alt))
-      case _ =>
-        if (alt.symbol.isAllOf(SyntheticGivenMethod)) tp.widenToParents
+      case rt =>
+        if alt.symbol.isCoDefinedGiven(rt.typeSymbol) then tp.widenToParents
         else tp
     }
 

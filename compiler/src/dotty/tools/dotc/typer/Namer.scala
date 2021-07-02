@@ -1101,17 +1101,25 @@ class Namer { typer: Typer =>
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
         val nonContextual = mutable.HashSet(seen: _*)
-        for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
-          if !mbr.symbol.isSuperAccessor then
-            // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
-            // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
-            val alias = mbr.name.toTermName
-            if mbr.symbol.is(Given) then
-              if !seen.contains(alias) && mbr.matchesImportBound(givenBound) then
-                addForwarder(alias, mbr, span)
-            else if !nonContextual.contains(alias) && mbr.matchesImportBound(wildcardBound) then
-              nonContextual += alias
-              addWildcardForwardersNamed(alias, span)
+        for
+          mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = Artifact|Private)
+          if !mbr.symbol.isSuperAccessor
+        do
+          val alias = mbr.name.toTermName
+          val isSynthetic = mbr.filterWithFlags(required = Synthetic, excluded = EmptyFlags).exists
+          // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
+          // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
+          if mbr.symbol.is(Given) then
+            val eligable = !seen.contains(alias) && mbr.matchesImportBound(givenBound)
+            if
+              eligable && (!isSynthetic || mbr.symbol.exists
+                && mbr.symbol.isCoDefinedGiven(mbr.info.finalResultType.typeSymbol)
+              )
+            then
+              addForwarder(alias, mbr, span)
+          else if !isSynthetic && !nonContextual.contains(alias) && mbr.matchesImportBound(wildcardBound) then
+            nonContextual += alias
+            addWildcardForwardersNamed(alias, span)
 
       def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
         case sel :: sels1 =>
