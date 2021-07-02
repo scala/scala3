@@ -1,7 +1,7 @@
-def replTestDir = "../compiler/test-resources/repl"
+def replTestDir = "../compiler/test-resources"
 
 def list(dir: String = "."): Vector[String] =
-    Option(new java.io.File(dir).list).map(_.toVector).getOrElse(Vector())
+    Option(java.io.File(dir).list).map(_.toVector).getOrElse(Vector())
 
 def loadLines(fileName: String, enc: String = "UTF-8"): Vector[String] = 
   var result = Vector.empty[String]
@@ -10,30 +10,43 @@ def loadLines(fileName: String, enc: String = "UTF-8"): Vector[String] =
   result
 
 def saveString(text: String, fileName: String, enc: String = "UTF-8"): Unit = 
-  val f = new java.io.File(fileName)
-  val pw = new java.io.PrintWriter(f, enc)
+  val f = java.io.File(fileName)
+  val pw = java.io.PrintWriter(f, enc)
   try pw.write(text) finally pw.close()
 
+extension (s: String) def isDir: Boolean = java.io.File(s).isDirectory
+
+
+def visitFile(path: String, isModify: Boolean): Unit =
+  print(s"\nprocessing: $path")
+  val lines = loadLines(path)
+  var result = Vector[String]() 
+  for i <- lines.indices do
+    result :+= lines(i)
+    if lines(i).startsWith("scala>") && 
+      lines.lift(i + 1).map(_.startsWith("1 | ")).getOrElse(false) 
+    then
+      result :+= "-- Error:"
+
+  val msg = 
+  if lines == result then Console.GREEN + " unmodified" + Console.RESET
+  else Console.RED + " *** MODIFIED" + Console.RESET
+  println(msg)
+  if lines != result then 
+    println("\nbefore ==========>\n" + lines.mkString("\n"))
+    println("\nafter  ==========>\n" + result.mkString("\n"))
+    if isModify then 
+      println(s"Writing: $path")
+      saveString(result.mkString("\n"), path)
+
+def visitDirRecursively(dirName: String, isModify: Boolean): Unit =
+  println(s"Enter directory: $dirName")
+  list(dirName).foreach( f =>
+    val path = s"$dirName/$f"
+    if path.isDir then visitDirRecursively(path, isModify)
+    else visitFile(path, isModify)
+  )
 
 @main 
-def run_insert_error(): Unit = 
-  for f <- list(replTestDir) do
-    val fileName = s"$replTestDir/$f"
-    print(s"\nprocessing: $fileName")
-    val lines = loadLines(fileName)
-    var result = Vector[String]() 
-    for i <- lines.indices do
-      result :+= lines(i)
-      if lines(i).startsWith("scala>") && 
-         lines.lift(i + 1).map(_.startsWith("1 | ")).getOrElse(false) 
-      then
-        result :+= "-- Error:"
-
-    val msg = 
-     if lines == result then Console.GREEN + " unmodified" + Console.RESET
-     else Console.RED + " *** MODIFIED" + Console.RESET
-    println(msg)
-    if lines != result then 
-      println("\nbefore ==========>\n" + lines.mkString("\n"))
-      println("\nafter  ==========>\n" + result.mkString("\n"))
-      saveString(result.mkString("\n"), fileName)
+def run_insert_error(isModify: Boolean): Unit = 
+  visitDirRecursively(replTestDir, isModify)
