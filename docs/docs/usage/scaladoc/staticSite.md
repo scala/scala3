@@ -40,6 +40,13 @@ documentation.
 In Scaladoc, all templates can contain YAML front-matter. The front-matter
 is parsed and put into the `page` variable available in templates via Liquid.
 
+Example front-matter
+```
+---
+title: My custom title
+---
+```
+
 Scaladoc uses some predefined properties to controls some aspect of page.
 
 Predefined properties:
@@ -99,23 +106,44 @@ Scaladoc by default uses layout of files in `docs` directory to create table of 
 ```yaml
 sidebar:
     - title: Blog
-    - title: Docs
-      url: docs/index.html
-    - title: Usage
+    - title: My title
+      page: my-page1.md
+    - page: my-page2.md
+    - page: my-page3/subsection
+    - title: Reference
       subsection:
-        - title: Dottydoc
-          url: docs/usage/dottydoc.html
-        - title: sbt-projects
-          url: docs/usage/sbt-projects.html
+        - page: my-page3.md
+    - index: my-page4/index.md
+      subsection:
+        - page: my-page4/my-page4.md
+    - title: My subsection
+      index: my-page5/index.md
+      subsection:
+        - page: my-page5/my-page5.md
+    - index: my-page6/index.md
+      subsection:
+        - index: my-page6/my-page6/index.md
+          subsection:
+            - page: my-page6/my-page6/my-page6.md
 ```
 
-The `sidebar` key is mandatory, as well as `title` for each element. The
-default table of contents allows you to have subsections - albeit the current
-depth limit is 2 however it accepts both files and directories and latter can be used to provide deeper structures.
+The `sidebar` key is mandatory.
+On each level you can have three different types of entries: `page`, `blog` or `subsection`.
 
-The items must provide either `subsection` or `url` but not both at once!
-The only exception is `Blog` which is only a `title` and behaves differently.
-You can read more about blog [here](blog.md).
+`Page` is a leaf of the structure and accepts following attributes:
+- `title` \[optional\] - title of the page
+- `page` \[mandatory\] - path to the file that will represent the page, it can be either html of markdown file to be rendered, there is also possibility to pass the `directory` path. If so, the scaladoc will render the directory and all its content as if there were no `sidebar.yml` basing of its tree structure and index files.
+
+The `page` property
+
+`Subsection` accepts nested nodes, these can be either pages or subsection, which allow you to create tree-like navigation. The attributes are:
+- `title` \[optional\] - title of the page
+- `index` \[optional\] - path to the file that will represent the index file of the subsection, it can be either html of markdown file to be rendered
+- `subsection` \[mandatory\] - nested nodes, can be either pages or subsections
+
+The `Subsection` can omit `title` or `index`, however not specifying any of these properties disables you from giving the title of the section.
+
+The `Blog` is a special node represented by simple entry `- title: Blog` with no other attirbutes. All your blogposts will be automatically linked under this section. You can read more about blog [here](blog.md).
 
 ```
 ├── blog
@@ -125,6 +153,25 @@ You can read more about blog [here](blog.md).
 ├── index.html
 └── sidebar.yml
 ```
+
+## Hierarchy of title
+
+There is a possibility to give custom title using `sidebar.yml`. The default strategy when choosing title for:
+
+#### Page
+
+1. `title` from the `front-matter` of the markdown/html file
+2. `title` property from the `sidebar.yml` property
+3. filename
+
+#### Subsection
+
+1. `title` from the `front-matter` of the markdown/html index file
+2. `title` property from the `sidebar.yml` property
+3. filename
+
+Note that if you skip `index` file in your tree structure of you don't specify the `title` in the frontmatter, there will be given generic name `index`. The same applies when using `sidebar.yml` but not specifying `title` nor `index`, just a subsection. Again, generic `index` name will appear.
+
 
 ## Static resources
 

@@ -13,8 +13,12 @@ If you want to know what is current state of compatibility with scaladoc old fla
 
 ## Providing settings
 
-Supply scaladoc settings as command-line arguments, e.g., `scaladoc -d output -project my-project target/scala-3.0.0-RC2/classes`. If called from sbt,
-update the value of `Compile / doc / scalacOptions`, e. g. `Compile / doc / scalacOptions ++= Seq("-d", "output", "-project", "my-project")`
+Supply scaladoc settings as command-line arguments, e.g., `scaladoc -d output -project my-project target/scala-3.0.0-RC2/classes`. If called from sbt, update the value of `Compile / doc / scalacOptions` and `Compile / doc / target` respectively, e. g.
+
+```
+Compile / doc / target ++= Seq("-d", "output")
+Compile / doc / scalacOptions ++= Seq("-project", "my-project")
+```
 
 ## Overview of all available settings
 
@@ -118,6 +122,10 @@ A base URL to use as prefix and add `canonical` URLs to all pages. The canonical
 
 A directory containing static files from which to generate documentation. Default directory is `./docs`
 
+##### -no-link-warnings
+
+Avoid warnings for ambiguous and incorrect links in members look up. Doesn't affect warnings for incorrect links of assets etc.
+
 ##### -versions-dictionary-url
 
 A URL pointing to a JSON document containing a dictionary: `version label -> documentation location`.
@@ -134,3 +142,28 @@ Example JSON file:
 }
 ```
 
+##### -snippet-compiler
+
+Snippet compiler arguments provide a way to configure snippet checking.
+
+This setting accept list of arguments in format:
+args := arg{,arg}
+arg := [path=]flag
+where path is a prefix of source paths to members to which argument should be set.
+
+If path is not present, argument will be used as default.
+
+Available flags:
+compile - Enables snippet checking.
+nocompile - Disables snippet checking.
+fail - Enables snippet checking, asserts that snippet doesn't compile.
+
+You can read more about snippet compiler [here](snippetCompiler.md)
+
+##### -Ysnippet-compiler-debug
+
+Setting this option causes snippet compiler to print snippet as it is compiled (after wrapping).
+
+##### -Ydocument-synthetic-types
+
+Documents intrinsic types e. g. Any, Nothing. Setting is useful only for stdlib
