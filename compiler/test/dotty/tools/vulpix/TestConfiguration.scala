@@ -56,7 +56,8 @@ object TestConfiguration {
       file.getAbsolutePath
     }).mkString(File.pathSeparator)
 
-  val yCheckOptions = Array("-Ycheck:all")
+  // val yCheckOptions = Array("-Ycheck:all")
+  val yCheckOptions = Array[String]()
 
   val commonOptions = Array("-indent", "-language:postfixOps") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
