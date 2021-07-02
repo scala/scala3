@@ -14,6 +14,6 @@ class LinkWarningsTest extends ScaladocTest("noLinkWarnings"):
 
   override def runTest = afterRendering {
     val diagnostics = summon[DocContext].compilerContext.reportedDiagnostics
-    assertEquals("There should be exaclyt one warning", 1, diagnostics.warningMsgs.size)
+    assertEquals("There should be exactly one warning", 1, diagnostics.warningMsgs.size)
     assertNoErrors(diagnostics)
   }
