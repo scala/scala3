@@ -35,6 +35,12 @@ case class RenderingContext(
     )
 
 case class ResolvedPage(code: String, resources: List[String] = Nil)
+
+enum TemplateName(val name: String):
+  case YamlDefined(override val name: String) extends TemplateName(name)
+  case SidebarDefined(override val name: String) extends TemplateName(name)
+  case FilenameDefined(override val name: String) extends TemplateName(name)
+
 /**
  * case class for the template files.
  * Template file is a file `.md` or `.html` handling settings.
@@ -49,7 +55,7 @@ case class TemplateFile(
   rawCode: String,
   settings: Map[String, Object],
   name: String,
-  title: String,
+  title: TemplateName,
   hasFrame: Boolean,
   resources: List[String],
   layout: Option[String],

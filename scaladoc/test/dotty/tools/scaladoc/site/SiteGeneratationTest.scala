@@ -41,7 +41,7 @@ class SiteGeneratationTest extends BaseHtmlTest:
     checkFile("docs/index.html")(title = projectName, header = s"$projectName in header")
 
   def testMainIndexPage()(using ProjectContext) =
-    checkFile("index.html")(title = "Basic test", header = "Header", parents = Seq(projectName), indexLinks)
+    checkFile("index.html")(title = "Basic test", header = "Header", parents = Seq(), indexLinks)
 
   def testApiPages(
     mainTitle: String = "API",

@@ -33,7 +33,7 @@ case class LoadedTemplate(
       val site = templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]]
       site.asJava.entrySet() ++ JSet(
         LazyEntry("url", () => ctx.relativePath(LoadedTemplate.this).toString),
-        LazyEntry("title", () => templateFile.title),
+        LazyEntry("title", () => templateFile.title.name),
         LazyEntry("excerpt", () => brief(ctx))
       )
 
@@ -49,6 +49,6 @@ case class LoadedTemplate(
 
     val updatedSettings = templateFile.settings ++ ctx.projectWideProperties +
       ("site" -> (getMap("site") + ("posts" -> posts))) + ("urls" -> sourceLinks.toMap) +
-      ("page" -> (getMap("page") + ("title" -> templateFile.title)))
+      ("page" -> (getMap("page") + ("title" -> templateFile.title.name)))
 
     templateFile.resolveInner(RenderingContext(updatedSettings, ctx.layouts))(using ctx)
