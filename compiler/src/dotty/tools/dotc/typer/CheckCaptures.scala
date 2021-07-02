@@ -189,9 +189,10 @@ object CheckCaptures:
       .showing(i"add inferred capturing $result", capt)
 
   /**  Under -Ycc but not -Ycc-no-abbrev, if `tree` represents a function type
-   *   `(ARGS) => T` where T is tracked and all ARGS are pure, expand it to
-   *   `(ARGS) => T retains CS` where CS is the capture set of `T`. These synthesized
-   *   additions will be removed again if the function type is wrapped in an
+   *   `(ARGS) => T` where `T` has capture set CS1, expand it to
+   *   `(ARGS) => T retains CS2` where CS2 consists of those elements in CS1
+   *   that are not accounted for by the capture set of any argument in ARGS.
+   *   The additions will be removed again if the function type is wrapped in an
    *   explicit `retains` type.
    */
   def addResultCaptures(tree: Tree)(using Context): Tree =
@@ -199,9 +200,10 @@ object CheckCaptures:
       tree match
         case FunctionTypeTree(argTypes, resType) =>
           val cs = resType.captureSet
-          if cs.nonEmpty && argTypes.forall(_.captureSet.isEmpty)
-          then (tree /: cs.elems)(addRetains)
-          else tree
+          (tree /: cs.elems)((t, ref) =>
+            if argTypes.exists(_.captureSet.accountsFor(ref)) then t
+            else addRetains(t, ref)
+          )
         case _ =>
           tree
     else tree
