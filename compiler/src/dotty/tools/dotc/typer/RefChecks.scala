@@ -324,7 +324,7 @@ object RefChecks {
             (if (member.owner == clazz) member else clazz).srcPos))
 
       /** Do types of term members `member` and `other` as seen from `self` match?
-       *  If not we treat them as not a real override and don't issue certain
+       *  If not we treat them as not a real override and don't issue override
        *  error messages. Also, bridges are not generated in this case.
        *  Type members are always assumed to match.
        */
@@ -595,7 +595,7 @@ object RefChecks {
         clazz.nonPrivateMembersNamed(mbr.name)
           .filterWithPredicate(
             impl => isConcrete(impl.symbol)
-              && mbrDenot.matchesLoosely(impl, alwaysCompareParams = true))
+              && mbrDenot.matchesLoosely(impl, alwaysCompareTypes = true))
           .exists
 
       /** The term symbols in this class and its baseclasses that are

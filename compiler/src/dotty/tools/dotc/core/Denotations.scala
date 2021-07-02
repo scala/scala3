@@ -1021,7 +1021,7 @@ object Denotations {
      *  erasure (see i8615b, i9109b), Erasure takes care of adding any necessary
      *  bridge to make this work at runtime.
      */
-    def matchesLoosely(other: SingleDenotation, alwaysCompareParams: Boolean = false)(using Context): Boolean =
+    def matchesLoosely(other: SingleDenotation, alwaysCompareTypes: Boolean = false)(using Context): Boolean =
       if isType then true
       else
         val thisLanguage = SourceLanguage(symbol)
@@ -1031,7 +1031,7 @@ object Denotations {
         val otherSig = other.signature(commonLanguage)
         sig.matchDegree(otherSig) match
           case FullMatch =>
-            !alwaysCompareParams || info.matches(other.info)
+            !alwaysCompareTypes || info.matches(other.info)
           case MethodNotAMethodMatch =>
             !ctx.erasedTypes && {
               // A Scala zero-parameter method and a Scala non-method always match.
