@@ -28,11 +28,11 @@ def visitFile(path: String, isModify: Boolean): Unit =
     then
       result :+= "-- Error:"
 
-  val msg = 
-  if lines == result then Console.GREEN + " unmodified" + Console.RESET
-  else Console.RED + " *** MODIFIED" + Console.RESET
+  val (msg, isDiff) = 
+    if lines == result then (Console.GREEN + " unmodified" + Console.RESET, false)
+    else (Console.RED + " *** MODIFIED" + Console.RESET, true)
   println(msg)
-  if lines != result then 
+  if isDiff then 
     println("\nbefore ==========>\n" + lines.mkString("\n"))
     println("\nafter  ==========>\n" + result.mkString("\n"))
     if isModify then 
