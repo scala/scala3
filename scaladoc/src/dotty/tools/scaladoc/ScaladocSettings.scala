@@ -93,6 +93,12 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     "./docs"
   )
 
+  val noLinkWarnings: Setting[Boolean] = BooleanSetting(
+    "-no-link-warnings",
+    "Avoid warnings for ambiguous and incorrect links in members look up. Doesn't affect warnings for incorrect links of assets etc.",
+    false
+  )
+
   val versionsDictionaryUrl: Setting[String] = StringSetting(
     "-versions-dictionary-url",
     "versions dictionary url",
