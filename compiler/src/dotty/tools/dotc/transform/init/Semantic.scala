@@ -574,7 +574,7 @@ class Semantic {
           val res = withEnv(env) { eval(body, thisV, klass) }
           val errors2 = res.value.promote(msg, source)
           if (res.errors.nonEmpty || errors2.nonEmpty)
-            UnsafePromotion(msg, source, trace.toVector, (res.errors ++ errors2).head) :: Nil
+            UnsafePromotion(msg, source, trace.toVector, res.errors ++ errors2) :: Nil
           else
             promoted.add(fun)
             Nil
@@ -611,8 +611,8 @@ class Semantic {
 
       warm.klass.baseClasses.exists { klass =>
         klass.hasSource && klass.info.decls.exists { member =>
-          if member.isOneOf(Flags.Method | Flags.Lazy | Flags.Deferred) then {
-            if !member.isConstructor && member.hasSource then
+          if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
+            if member.isOneOf(Flags.Method | Flags.Lazy) then
               val trace2 = trace.add(member.defTree)
               locally {
                 given Trace = trace2
@@ -620,21 +620,19 @@ class Semantic {
                 val res = warm.call(member, args, superType = NoType, source = source)
                 buffer ++= res.ensureHot(msg, source).errors
               }
-          } else if !member.isType then {
-            if !member.isOneOf(Flags.Deferred | Flags.Private | Flags.Protected) && member.hasSource then
+            else
               val trace2 = trace.add(member.defTree)
               val res = warm.select(member, source)
               locally {
                 given Trace = trace2
                 buffer ++= res.ensureHot(msg, source).errors
               }
-          }
           buffer.nonEmpty
         }
       }
 
       if buffer.isEmpty then Nil
-      else UnsafePromotion(msg, source, trace.toVector, buffer(0)) :: Nil
+      else UnsafePromotion(msg, source, trace.toVector, buffer.toList) :: Nil
     }
 
   end extension

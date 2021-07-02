@@ -48,9 +48,9 @@ object Errors {
       }
       sb.toString
     }
-
+    
     /** Flatten UnsafePromotion errors
-     */
+      */
     def flatten: Errors = this match {
       case unsafe: UnsafePromotion => unsafe.errors.flatMap(_.flatten)
       case _ => this :: Nil
@@ -90,19 +90,15 @@ object Errors {
 
   /** Promote a value under initialization to fully-initialized */
   case class UnsafePromotion(msg: String, source: Tree, trace: Seq[Tree], errors: Errors) extends Error {
-    assert(errors.nonEmpty)
 
     override def issue(using Context): Unit =
       report.warning(show, source.srcPos)
 
     def show(using Context): String = {
       var index = 0
-      "Promoting the value to fully-initialized is unsafe. " + msg + "\n" + stacktrace +
-        "\nThe unsafe promotion may cause the following problem(s):\n" +
-        (errors.flatMap(_.flatten).map { error =>
-          index += 1
-          s"\n$index. " + error.show + error.stacktrace
-        }.mkString)
+      "Cannot prove that the value is fully-initialized. " + msg + "\n" + stacktrace +
+        "\nThe unsafe promotion may cause the following problem:\n" +
+        errors.head.show + errors.head.stacktrace
     }
   }
 }
