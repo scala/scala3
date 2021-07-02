@@ -40,13 +40,13 @@ object unit extends Unit
 
 def lazyMap
   [A <: Top, B <: Top]
-  (xs: List[(Unit => A) retains A] retains A)
+  (xs: List[(Unit => A) retains A])
   (f: (A => B) retains *):
-  List[(Unit => B) retains A|B|f.type] retains A|B|f.type =
+  List[(Unit => B) retains A|f.type] =
 
-    xs[List[(Unit => B) retains A|B|f.type] retains A|B|f.type]
+    xs[List[(Unit => B) retains A|f.type]]
       ((hd: (Unit => A) retains A) =>
-        (tl: List[(Unit => B) retains A|B|f.type] retains A|B|f.type) =>
+        (tl: List[(Unit => B) retains A|f.type]) =>
           consForLazyMap((u: Unit) => f(hd(unit)), tl))(nil)
 
 def force[A](thunk: Unit=>A): A = thunk(unit)
