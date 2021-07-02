@@ -33,7 +33,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   /** A `MessageRenderer` for the REPL without file positions */
   private val messageRenderer = new MessageRendering {
-    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String = s"-- $diagnosticLevel: "
+    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String =
+      s"-- $diagnosticLevel: "
   }
 
   private var myClassLoader: ClassLoader = _
