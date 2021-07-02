@@ -38,7 +38,7 @@ sealed abstract class CaptureSet extends Showable:
    *  in all their supersets.
    *  @return true iff elements were added
    */
-  protected def addNewElems(newElems: Refs)(using Context): Boolean
+  protected def addNewElems(newElems: Refs)(using Context, VarState): Boolean
 
   /** If this is a variable, add `cs` as a super set */
   protected def addSuper(cs: CaptureSet): this.type
@@ -52,17 +52,25 @@ sealed abstract class CaptureSet extends Showable:
    *  capture set. Inclusion is via `addElems`.
    *  @return true iff elements were added
    */
-  protected def tryInclude(elems: Refs)(using Context): Boolean =
+  protected def tryInclude(elems: Refs)(using Context, VarState): Boolean =
     val unaccounted = elems.filter(!accountsFor(_))
     unaccounted.isEmpty || addNewElems(unaccounted)
 
-  /** {x} <:< this   where <:< is subcapturing */
+  /** {x} <:< this   where <:< is subcapturing, but treating all variables
+   *                 as frozen.
+   */
   def accountsFor(x: CaptureRef)(using Context) =
     elems.contains(x) || !x.isRootCapability && x.captureSetOfInfo <:< this
 
   /** The subcapturing test */
   def <:< (that: CaptureSet)(using Context): Boolean =
-    that.tryInclude(elems) && { addSuper(that); true }
+    given VarState = new VarState
+    val result = that.tryInclude(elems)
+    if result then addSuper(that) else abort()
+    result
+
+  private def abort()(using state: VarState): Unit =
+    state.keysIterator.foreach(_.reset())
 
   /** The smallest capture set (via <:<) that is a superset of both
    *  `this` and `that`
@@ -134,7 +142,7 @@ object CaptureSet:
     def isConst = true
     def isEmpty: Boolean = elems.isEmpty
 
-    def addNewElems(elems: Refs)(using Context): Boolean = false
+    def addNewElems(elems: Refs)(using Context, VarState): Boolean = false
     def addSuper(cs: CaptureSet) = this
 
     override def toString = elems.toString
@@ -150,8 +158,20 @@ object CaptureSet:
     def isConst = false
     def isEmpty = false
 
-    def addNewElems(newElems: Refs)(using Context): Boolean =
-      deps.forall(_.tryInclude(newElems)) && { elems ++= newElems; true }
+    private def recordState()(using VarState) = varState.get(this) match
+      case None => varState(this) = elems
+      case _ =>
+
+    def reset()(using state: VarState): Unit =
+      elems = state(this)
+
+    def addNewElems(newElems: Refs)(using Context, VarState): Boolean =
+      deps.forall(_.tryInclude(newElems))
+      && {
+        recordState()
+        elems ++= newElems
+        true
+      }
 
     def addSuper(cs: CaptureSet) = { deps += cs; this }
 
@@ -164,11 +184,15 @@ object CaptureSet:
     override def accountsFor(x: CaptureRef)(using Context): Boolean =
       f(x).elems.forall(super.accountsFor)
 
-    override def addNewElems(newElems: Refs)(using Context): Boolean =
+    override def addNewElems(newElems: Refs)(using Context, VarState): Boolean =
       super.addNewElems(mapRefs(newElems, f).elems)
 
     override def toString = s"Mapped$id$elems"
   end Mapped
+
+  type VarState = util.EqHashMap[Var, Refs]
+
+  def varState(using state: VarState): VarState = state
 
   def mapRefs(xs: Refs, f: CaptureRef => CaptureSet)(using Context): CaptureSet =
     (empty /: xs)((cs, x) => cs ++ f(x))
