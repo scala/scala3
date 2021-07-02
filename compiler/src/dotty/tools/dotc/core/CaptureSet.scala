@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package core
 
-import util.*
 import Types.*, Symbols.*, Flags.*, Contexts.*, Decorators.*
 import config.Printers.capt
 import annotation.threadUnsafe
@@ -10,8 +9,20 @@ import annotation.internal.sharable
 import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
+import util.SimpleIdentitySet
+import util.common.alwaysTrue
 
 /** A class for capture sets. Capture sets can be constants or variables.
+ *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
+ *  They also allow mapping with arbitrary functions from elements to capture sets,
+ *  by supporting a monadic flatMap operation. That is, constraints can be
+ *  of one of the following forms
+ *
+ *    cs1 <:< cs2
+ *    cs1 = ∪ {f(x) | x ∈ cs2}
+ *
+ *  where the `f`s are arbitrary functions from capture references to capture sets.
+ *  We call the resulting constraint system "monadic set constraints".
  */
 sealed abstract class CaptureSet extends Showable:
   import CaptureSet.*
@@ -148,7 +159,7 @@ object CaptureSet:
     override def toString = elems.toString
   end Const
 
-  class Var private[CaptureSet] (initialElems: Refs) extends CaptureSet:
+  class Var private[CaptureSet] (initialElems: Refs, validate: Refs => Boolean = alwaysTrue) extends CaptureSet:
     val id =
       varId += 1
       varId
@@ -158,6 +169,8 @@ object CaptureSet:
     def isConst = false
     def isEmpty = false
 
+    assert(validate(elems))
+
     private def recordState()(using VarState) = varState.get(this) match
       case None => varState(this) = elems
       case _ =>
@@ -166,7 +179,8 @@ object CaptureSet:
       elems = state(this)
 
     def addNewElems(newElems: Refs)(using Context, VarState): Boolean =
-      deps.forall(_.tryInclude(newElems))
+      validate(newElems)
+      && deps.forall(_.tryInclude(newElems))
       && {
         recordState()
         elems ++= newElems
@@ -190,12 +204,12 @@ object CaptureSet:
     override def toString = s"Mapped$id$elems"
   end Mapped
 
+  def mapRefs(xs: Refs, f: CaptureRef => CaptureSet)(using Context): CaptureSet =
+    (empty /: xs)((cs, x) => cs ++ f(x))
+
   type VarState = util.EqHashMap[Var, Refs]
 
   def varState(using state: VarState): VarState = state
-
-  def mapRefs(xs: Refs, f: CaptureRef => CaptureSet)(using Context): CaptureSet =
-    (empty /: xs)((cs, x) => cs ++ f(x))
 
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
     def captureSetOf(tp: Type): CaptureSet = tp match
