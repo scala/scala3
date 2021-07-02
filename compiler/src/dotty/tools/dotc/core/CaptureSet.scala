@@ -159,7 +159,7 @@ object CaptureSet:
     override def toString = elems.toString
   end Const
 
-  class Var private[CaptureSet] (initialElems: Refs, validate: Refs => Boolean = alwaysTrue) extends CaptureSet:
+  class Var private[CaptureSet] (initialElems: Refs = emptySet, validate: Refs => Boolean = alwaysTrue) extends CaptureSet:
     val id =
       varId += 1
       varId

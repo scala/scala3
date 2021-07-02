@@ -27,19 +27,15 @@ import reporting._
 import ProtoTypes._
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
-class CheckCaptures extends Phase:
+class CheckCaptures extends Recheck:
   import ast.tpd.*
 
   def phaseName: String = "cc"
   override def isEnabled(using Context) = ctx.settings.Ycc.value
 
-  def newRefiner() = CaptureChecker()
+  def newRechecker()(using Context) = CaptureChecker(ctx)
 
-  def run(using Context): Unit =
-    val unit = ctx.compilationUnit
-    CaptureChecker().check(unit.tpdTree)
-
-  class CaptureChecker:
+  class CaptureChecker(ictx: Context) extends Rechecker(ictx):
     import ast.tpd.*
 
     private var myDeps: Dependencies = null
@@ -54,8 +50,6 @@ class CheckCaptures extends Phase:
               if isExpr(owner) || !owner.exists then owner else recur(owner.owner)
             recur(ctx.owner)
       myDeps
-
-    def check(tree: Tree)(using Context): Type = NoType
 
     private def capturedVars(sym: Symbol)(using Context): CaptureSet =
       CaptureSet(deps.freeVars(sym).toList.map(_.termRef).filter(_.isTracked)*)
