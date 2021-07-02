@@ -1,254 +1,142 @@
 sidebar:
-    - title: Blog
-    - title: Usage
-      subsection:
-        - title: Getting Started
-          url: docs/usage/getting-started.html
-        - title: sbt-projects
-          url: docs/usage/sbt-projects.html
-        - title: IDE support for Dotty
-          url: docs/usage/ide-support.html
-        - title: Worksheet mode in Dotty IDE
-          url: docs/usage/worksheet-mode.html
-        - title: Language Versions
-          url: docs/usage/language-versions.html
-        - title: cbt-projects
-          url: docs/usage/cbt-projects.html
-        - title: Scaladoc
-          url: docs/usage/scaladoc
-    - title: Reference
-      subsection:
-        - title: Overview
-          url: docs/reference/overview.html
-        - title: New Types
-          subsection:
-            - title: Intersection types
-              url: docs/reference/new-types/intersection-types.html
-            - title: Union types
-              url: docs/reference/new-types/union-types.html
-            - title: Type lambdas
-              url: docs/reference/new-types/type-lambdas.html
-            - title: Match types
-              url: docs/reference/new-types/match-types.html
-            - title: Dependent Function Types
-              url: docs/reference/new-types/dependent-function-types.html
-            - title: Polymorphic Function Types
-              url: docs/reference/new-types/polymorphic-function-types.html
-        - title: Enums
-          subsection:
-            - title: Enumerations
-              url: docs/reference/enums/enums.html
-            - title: Algebraic Data Types
-              url: docs/reference/enums/adts.html
-            - title: Translation
-              url: docs/reference/enums/desugarEnums.html
-        - title: Contextual Abstractions
-          subsection:
-            - title: Overview
-              url: docs/reference/contextual/motivation.html
-            - title: Given Instances
-              url: docs/reference/contextual/givens.html
-            - title: Using Clauses
-              url: docs/reference/contextual/using-clauses.html
-            - title: Context Bounds
-              url: docs/reference/contextual/context-bounds.html
-            - title: Given Imports
-              url: docs/reference/contextual/given-imports.html
-            - title: Extension Methods
-              url: docs/reference/contextual/extension-methods.html
-            - title: Implementing Type classes
-              url: docs/reference/contextual/type-classes.html
-            - title: Type Class Derivation
-              url: docs/reference/contextual/derivation.html
-            - title: Multiversal Equality
-              url: docs/reference/contextual/multiversal-equality.html
-            - title: Context Functions
-              url: docs/reference/contextual/context-functions.html
-            - title: Implicit Conversions
-              url: docs/reference/contextual/conversions.html
-            - title: By-Name Context Parameters
-              url: docs/reference/contextual/by-name-context-parameters.html
-            - title: Relationship with Scala 2 Implicits
-              url: docs/reference/contextual/relationship-implicits.html
-        - title: Metaprogramming
-          subsection:
-            - title: Overview
-              url: docs/reference/metaprogramming/toc.html
-            - title: Inline
-              url: docs/reference/metaprogramming/inline.html
-            - title: Compile-time ops
-              url: docs/reference/metaprogramming/compiletime-ops.html
-            - title: Macros
-              url: docs/reference/metaprogramming/macros.html
-            - title: Runtime Staging
-              url: docs/reference/metaprogramming/staging.html
-            - title: Reflection
-              url: docs/reference/metaprogramming/reflection.html
-            - title: TASTy Inspection
-              url: docs/reference/metaprogramming/tasty-inspect.html
-        - title: Other New Features
-          subsection:
-            - title: Trait Parameters
-              url: docs/reference/other-new-features/trait-parameters.html
-            - title: Transparent Traits
-              url: docs/reference/other-new-features/transparent-traits.html
-            - title: Universal Applies
-              url: docs/reference/other-new-features/creator-applications.html
-            - title: Export Clauses
-              url: docs/reference/other-new-features/export.html
-            - title: Opaque Type Aliases
-              url: docs/reference/other-new-features/opaques.html
-            - title: Open Classes
-              url: docs/reference/other-new-features/open-classes.html
-            - title: Parameter Untupling
-              url: docs/reference/other-new-features/parameter-untupling.html
-            - title: Kind Polymorphism
-              url: docs/reference/other-new-features/kind-polymorphism.html
-            - title: Matchable Trait
-              url: docs/reference/other-new-features/matchable.html
-            - title: threadUnsafe Annotation
-              url: docs/reference/other-new-features/threadUnsafe-annotation.html
-            - title: targetName Annotation
-              url: docs/reference/other-new-features/targetName.html
-            - title: New Control Syntax
-              url: docs/reference/other-new-features/control-syntax.html
-            - title: Optional Braces
-              url: docs/reference/other-new-features/indentation.html
-            - title: Explicit Nulls
-              url: docs/reference/other-new-features/explicit-nulls.html
-            - title: Safe Initialization
-              url: docs/reference/other-new-features/safe-initialization.html
-            - title: TypeTest
-              url: docs/reference/other-new-features/type-test.html
-        - title: Other Changed Features
-          subsection:
-            - title: Numeric Literals
-              url: docs/reference/changed-features/numeric-literals.html
-            - title: Structural Types
-              url: docs/reference/changed-features/structural-types.html
-            - title: Operators
-              url: docs/reference/changed-features/operators.html
-            - title: Wildcard Types
-              url: docs/reference/changed-features/wildcards.html
-            - title: Imports
-              url: docs/reference/changed-features/imports.html
-            - title: Type Checking
-              url: docs/reference/changed-features/type-checking.html
-            - title: Type Inference
-              url: docs/reference/changed-features/type-inference.html
-            - title: Implicit Resolution
-              url: docs/reference/changed-features/implicit-resolution.html
-            - title: Implicit Conversions
-              url: docs/reference/changed-features/implicit-conversions.html
-            - title: Overload Resolution
-              url: docs/reference/changed-features/overload-resolution.html
-            - title: Match Expressions
-              url: docs/reference/changed-features/match-syntax.html
-            - title: Vararg Splices
-              url: docs/reference/changed-features/vararg-splices.html
-            - title: Pattern Bindings
-              url: docs/reference/changed-features/pattern-bindings.html
-            - title: Pattern Matching
-              url: docs/reference/changed-features/pattern-matching.html
-            - title: Eta Expansion
-              url: docs/reference/changed-features/eta-expansion.html
-            - title: Compiler Plugins
-              url: docs/reference/changed-features/compiler-plugins.html
-            - title: Lazy Vals initialization
-              url: docs/reference/changed-features/lazy-vals-init.html
-            - title: Main Functions
-              url: docs/reference/changed-features/main-functions.html
-        - title: Dropped Features
-          subsection:
-            - title: DelayedInit
-              url: docs/reference/dropped-features/delayed-init.html
-            - title: Macros
-              url: docs/reference/dropped-features/macros.html
-            - title: Existential Types
-              url: docs/reference/dropped-features/existential-types.html
-            - title: Type Projection
-              url: docs/reference/dropped-features/type-projection.html
-            - title: Do-While
-              url: docs/reference/dropped-features/do-while.html
-            - title: Procedure Syntax
-              url: docs/reference/dropped-features/procedure-syntax.html
-            - title: Package Objects
-              url: docs/reference/dropped-features/package-objects.html
-            - title: Early Initializers
-              url: docs/reference/dropped-features/early-initializers.html
-            - title: Class Shadowing
-              url: docs/reference/dropped-features/class-shadowing.html
-            - title: Limit 22
-              url: docs/reference/dropped-features/limit22.html
-            - title: XML literals
-              url: docs/reference/dropped-features/xml.html
-            - title: Symbol Literals
-              url: docs/reference/dropped-features/symlits.html
-            - title: Auto-Application
-              url: docs/reference/dropped-features/auto-apply.html
-            - title: Weak Conformance
-              url: docs/reference/dropped-features/weak-conformance.html
-            - title: Nonlocal Returns
-              url: docs/reference/dropped-features/nonlocal-returns.html
-            - title: "[this] Qualifier"
-              url: docs/reference/dropped-features/this-qualifier.html
-            - title: Wildcard initializers
-              url: docs/reference/dropped-features/wildcard-init.html
-        - title: Syntax Summary
-          url: docs/reference/syntax.html
-    - title: Contributing
-      subsection:
-        - title: Contribute Knowledge
-          url: docs/contributing/contribute-knowledge.html
-        - title: Getting Started
-          url: docs/contributing/getting-started.html
-        - title: Workflow
-          url: docs/contributing/workflow.html
-        - title: Testing
-          url: docs/contributing/testing.html
-        - title: Debugging
-          url: docs/contributing/debugging.html
-        - title: IDEs and Tools
-          subsection:
-            - title: IDEs
-              url: docs/contributing/tools/ide.html
-            - title: Mill
-              url: docs/contributing/tools/mill.html
-            - title: Scalafix
-              url: docs/contributing/tools/scalafix.html
-        - title: Procedures
-          subsection:
-            - title: Release Model
-              url: docs/contributing/procedures/release.html
-            - title: Modifying the Test Framework
-              url: docs/contributing/procedures/vulpix.html
-    - title: Internals
-      subsection:
-        - title: Backend
-          url: docs/internals/backend.html
-        - title: Classpaths
-          url: docs/internals/classpaths.html
-        - title: Core Data Structrues
-          url: docs/internals/core-data-structures.html
-        - title: Contexts
-          url: docs/internals/contexts.html
-        - title: Dotc vs Scalac
-          url: docs/internals/dotc-scalac.html
-        - title: Higher-Kinded Types
-          url: docs/internals/higher-kinded-v2.html
-        - title: Overall Structure
-          url: docs/internals/overall-structure.html
-        - title: Periods
-          url: docs/internals/periods.html
-        - title: Syntax
-          url: docs/internals/syntax.html
-        - title: Type System
-          url: docs/internals/type-system.html
-        - title: "Dotty Internals 1: Trees & Symbols (Meeting Notes)"
-          url: docs/internals/dotty-internals-1-notes.html
-        - title: Debug Macros
-          url: docs/internals/debug-macros.html
-    - title: Resources
-      subsection:
-        - title: Talks
-          url: docs/resources/talks.html
+  - title: Blog
+  - title: Usage
+    subsection:
+      - page: docs/usage/getting-started.md
+      - page: docs/usage/sbt-projects.md
+      - page: docs/usage/ide-support.md
+      - page: docs/usage/worksheet-mode.md
+      - page: docs/usage/language-versions.md
+      - page: docs/usage/cbt-projects.md
+      - page: docs/usage/scaladoc
+  - title: Reference
+    subsection:
+      - page: docs/reference/overview.md
+      - title: New Types
+        subsection:
+          - page: docs/reference/new-types/intersection-types.md
+          - page: docs/reference/new-types/union-types.md
+          - page: docs/reference/new-types/type-lambdas.md
+          - page: docs/reference/new-types/match-types.md
+          - page: docs/reference/new-types/dependent-function-types.md
+          - page: docs/reference/new-types/polymorphic-function-types.md
+      - title: Enums
+        subsection:
+          - page: docs/reference/enums/enums.md
+          - page: docs/reference/enums/adts.md
+          - page: docs/reference/enums/desugarEnums.md
+      - title: Contextual Abstractions
+        subsection:
+          - page: docs/reference/contextual/motivation.md
+          - page: docs/reference/contextual/givens.md
+          - page: docs/reference/contextual/using-clauses.md
+          - page: docs/reference/contextual/context-bounds.md
+          - page: docs/reference/contextual/given-imports.md
+          - page: docs/reference/contextual/extension-methods.md
+          - page: docs/reference/contextual/type-classes.md
+          - page: docs/reference/contextual/derivation.md
+          - page: docs/reference/contextual/multiversal-equality.md
+          - page: docs/reference/contextual/context-functions.md
+          - page: docs/reference/contextual/conversions.md
+          - page: docs/reference/contextual/by-name-context-parameters.md
+          - page: docs/reference/contextual/relationship-implicits.md
+      - title: Metaprogramming
+        subsection:
+          - page: docs/reference/metaprogramming/toc.md
+          - page: docs/reference/metaprogramming/inline.md
+          - page: docs/reference/metaprogramming/compiletime-ops.md
+          - page: docs/reference/metaprogramming/macros.md
+          - page: docs/reference/metaprogramming/staging.md
+          - page: docs/reference/metaprogramming/reflection.md
+          - page: docs/reference/metaprogramming/tasty-inspect.md
+      - title: Other New Features
+        subsection:
+          - page: docs/reference/other-new-features/trait-parameters.md
+          - page: docs/reference/other-new-features/transparent-traits.md
+          - page: docs/reference/other-new-features/creator-applications.md
+          - page: docs/reference/other-new-features/export.md
+          - page: docs/reference/other-new-features/opaques.md
+          - page: docs/reference/other-new-features/open-classes.md
+          - page: docs/reference/other-new-features/parameter-untupling.md
+          - page: docs/reference/other-new-features/kind-polymorphism.md
+          - page: docs/reference/other-new-features/matchable.md
+          - page: docs/reference/other-new-features/threadUnsafe-annotation.md
+          - page: docs/reference/other-new-features/targetName.md
+          - page: docs/reference/other-new-features/control-syntax.md
+          - page: docs/reference/other-new-features/indentation.md
+          - page: docs/reference/other-new-features/explicit-nulls.md
+          - page: docs/reference/other-new-features/safe-initialization.md
+          - page: docs/reference/other-new-features/type-test.md
+      - title: Other Changed Features
+        subsection:
+          - page: docs/reference/changed-features/numeric-literals.md
+          - page: docs/reference/changed-features/structural-types.md
+          - page: docs/reference/changed-features/operators.md
+          - page: docs/reference/changed-features/wildcards.md
+          - page: docs/reference/changed-features/imports.md
+          - page: docs/reference/changed-features/type-checking.md
+          - page: docs/reference/changed-features/type-inference.md
+          - page: docs/reference/changed-features/implicit-resolution.md
+          - page: docs/reference/changed-features/implicit-conversions.md
+          - page: docs/reference/changed-features/overload-resolution.md
+          - page: docs/reference/changed-features/match-syntax.md
+          - page: docs/reference/changed-features/vararg-splices.md
+          - page: docs/reference/changed-features/pattern-bindings.md
+          - page: docs/reference/changed-features/pattern-matching.md
+          - page: docs/reference/changed-features/eta-expansion.md
+          - page: docs/reference/changed-features/compiler-plugins.md
+          - page: docs/reference/changed-features/lazy-vals-init.md
+          - page: docs/reference/changed-features/main-functions.md
+      - title: Dropped Features
+        subsection:
+          - page: docs/reference/dropped-features/delayed-init.md
+          - page: docs/reference/dropped-features/macros.md
+          - page: docs/reference/dropped-features/existential-types.md
+          - page: docs/reference/dropped-features/type-projection.md
+          - page: docs/reference/dropped-features/do-while.md
+          - page: docs/reference/dropped-features/procedure-syntax.md
+          - page: docs/reference/dropped-features/package-objects.md
+          - page: docs/reference/dropped-features/early-initializers.md
+          - page: docs/reference/dropped-features/class-shadowing.md
+          - page: docs/reference/dropped-features/limit22.md
+          - page: docs/reference/dropped-features/xml.md
+          - page: docs/reference/dropped-features/symlits.md
+          - page: docs/reference/dropped-features/auto-apply.md
+          - page: docs/reference/dropped-features/weak-conformance.md
+          - page: docs/reference/dropped-features/nonlocal-returns.md
+          - page: docs/reference/dropped-features/this-qualifier.md
+          - page: docs/reference/dropped-features/wildcard-init.md
+      - page: docs/reference/syntax.md
+  - title: Contributing
+    subsection:
+      - page: docs/contributing/contribute-knowledge.md
+      - page: docs/contributing/getting-started.md
+      - page: docs/contributing/workflow.md
+      - page: docs/contributing/testing.md
+      - page: docs/contributing/debugging.md
+      - title: IDEs and Tools
+        subsection:
+          - page: docs/contributing/tools/ide.md
+          - page: docs/contributing/tools/mill.md
+          - page: docs/contributing/tools/scalafix.md
+      - title: Procedures
+        subsection:
+          - page: docs/contributing/procedures/release.md
+          - page: docs/contributing/procedures/vulpix.md
+  - title: Internals
+    subsection:
+      - page: docs/internals/backend.md
+      - page: docs/internals/classpaths.md
+      - page: docs/internals/core-data-structures.md
+      - page: docs/internals/contexts.md
+      - page: docs/internals/dotc-scalac.md
+      - page: docs/internals/higher-kinded-v2.md
+      - page: docs/internals/overall-structure.md
+      - page: docs/internals/periods.md
+      - page: docs/internals/syntax.md
+      - page: docs/internals/type-system.md
+      - page: docs/internals/dotty-internals-1-notes.md
+      - page: docs/internals/debug-macros.md
+  - title: Resources
+    subsection:
+      - page: docs/resources/talks.md
