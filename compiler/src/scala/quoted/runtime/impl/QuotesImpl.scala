@@ -2483,15 +2483,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def declaredFields: List[Symbol] = self.unforcedDecls.filter(isField)
 
+        /** The prefix on which a member lookup should be performed. */
+        private def lookupPrefix: TypeRepr =
+          if self.isClass then
+            self.thisType // Needed to handle self-types (as in tests/run-macros/self)
+          else
+            self.namedType
+
         def memberField(name: String): Symbol = fieldMember(name)
         def fieldMember(name: String): Symbol =
-          appliedTypeRef(self).allMembers.iterator.map(_.symbol).find {
+          lookupPrefix.allMembers.iterator.map(_.symbol).find {
             sym => isField(sym) && sym.name.toString == name
           }.getOrElse(dotc.core.Symbols.NoSymbol)
 
         def memberFields: List[Symbol] = fieldMembers
         def fieldMembers: List[Symbol] =
-          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
+          lookupPrefix.allMembers.iterator.map(_.symbol).collect {
             case sym if isField(sym) => sym.asTerm
           }.toList
 
@@ -2507,13 +2514,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def memberMethod(name: String): List[Symbol] = methodMember(name)
         def methodMember(name: String): List[Symbol] =
-          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
+          lookupPrefix.allMembers.iterator.map(_.symbol).collect {
             case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
           }.toList
 
         def memberMethods: List[Symbol] = methodMembers
         def methodMembers: List[Symbol] =
-          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
+          lookupPrefix.allMembers.iterator.map(_.symbol).collect {
             case sym if isMethod(sym) => sym.asTerm
           }.toList
 
