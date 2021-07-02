@@ -90,16 +90,11 @@ object Scaladoc:
 
   def dumpInkuireDB(output: String, parsedArgs: Args) = {
     val dbPath = Paths.get(output, "inkuire-db.json")
-    println("InkuireDB created successfully!")
-    println(s"Types: ${Inkuire.db.types.size}")
-    println(s"Functions: ${Inkuire.db.functions.size}")
-    println(s"ImplicitConversions: ${Inkuire.db.implicitConversions.size}")
     val dbFile = dbPath.toFile()
     dbFile.createNewFile()
     val dbWriter = new FileWriter(dbFile, false)
     dbWriter.write(s"${EngineModelSerializers.serialize(Inkuire.db)}")
     dbWriter.close()
-    println(s"Saved InkuireDB in file: ${dbPath.toString}")
 
     val configPath = Paths.get(output, "scripts/inkuire-config.json")
     val configFile = configPath.toFile()

@@ -78,17 +78,19 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         handleNewFluffQuery(matchers)
       case BySignature(signature) =>
         timeoutHandle = setTimeout(1.second) {
+          val properResultsDiv = document.createElement("div").asInstanceOf[html.Div]
+          resultsDiv.appendChild(properResultsDiv)
           val loading = document.createElement("div").asInstanceOf[html.Div]
           loading.classList.add("loading-wrapper")
           val animation = document.createElement("div").asInstanceOf[html.Div]
           animation.classList.add("loading")
           loading.appendChild(animation)
-          resultsDiv.appendChild(loading)
+          properResultsDiv.appendChild(loading)
           inkuireEngine.query(query) { (p: PageEntry) =>
-            resultsDiv.appendChild(p.toHTML(inkuire = true))
+            properResultsDiv.appendChild(p.toHTML(inkuire = true))
           } { (s: String) =>
             animation.classList.remove("loading")
-            resultsDiv.appendChild(s.toHTMLError)
+            properResultsDiv.appendChild(s.toHTMLError)
           }
         }
     }
