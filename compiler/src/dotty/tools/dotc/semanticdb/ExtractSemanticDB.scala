@@ -23,8 +23,7 @@ import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
 import scala.PartialFunction.condOpt
 
-import dotty.tools.dotc.semanticdb.SemanticSymbolBuilder
-import dotty.tools.dotc.semanticdb.{TypeOps => TOps}
+import dotty.tools.dotc.{semanticdb => s}
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
@@ -51,8 +50,8 @@ class ExtractSemanticDB extends Phase:
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:
-    given builder: SemanticSymbolBuilder = SemanticSymbolBuilder()
-    given typeOps: TOps = TOps()
+    given builder: s.SemanticSymbolBuilder = s.SemanticSymbolBuilder()
+    val converter = s.TypeOps()
 
     /** The bodies of synthetic locals */
     private val localBodies = mutable.HashMap[Symbol, Tree]()
@@ -286,7 +285,7 @@ class ExtractSemanticDB extends Phase:
       if !isLocal || !localNames.contains(sname) then
         if isLocal then
           localNames += sname
-        symbolInfos += sym.symbolInfo(symkinds)(using LinkMode.SymlinkChildren)
+        symbolInfos += sym.symbolInfo(symkinds)(using LinkMode.SymlinkChildren, converter)
 
     private def registerSymbolSimple(sym: Symbol)(using Context): Unit =
       registerSymbol(sym, Set.empty)
