@@ -1389,14 +1389,10 @@ class Namer { typer: Typer =>
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
-    inMode(ctx.mode &~ Mode.PatternOrTypeBits | Mode.Type) {
-      typedAhead(tree, typer.typed(_, pt))
-    }
+    typedAhead(tree, typer.typedType(_, pt))
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
-    withoutMode(Mode.PatternOrTypeBits) {
-      typedAhead(tree, typer.typed(_, pt))
-    }
+    typedAhead(tree, typer.typedExpr(_, pt))
 
   def typedAheadAnnotation(tree: Tree)(using Context): tpd.Tree =
     typedAheadExpr(tree, defn.AnnotationClass.typeRef)
