@@ -17,6 +17,7 @@ import dotty.tools.dotc.{semanticdb => s}
 
 class TypeOps:
   import SymbolScopeOps._
+  import Scala3.given
   private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
   private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
   given typeOps: TypeOps = this

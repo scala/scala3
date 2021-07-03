@@ -23,20 +23,18 @@ class SemanticSymbolBuilder:
   private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]():
     override def default(key: Int) = Set[Symbol]()
 
-  extension (sym: Symbol)
-    /** The semanticdb name of the given symbol */
-    def symbolName(using Context): String =
-      val b = StringBuilder(20)
-      addSymName(b, sym)
-      b.toString
+  def symbolName(sym: Symbol)(using Context): String =
+    val b = StringBuilder(20)
+    addSymName(b, sym)
+    b.toString
 
-    def funParamSymbol(using Context): Name => String =
-      if sym.isGlobal then
-        val funSymbol = sym.symbolName
-        name => s"$funSymbol($name)"
-      else
-        name => locals.keys.find(local => local.isTerm && local.owner == sym && local.name == name)
-                      .fold("<?>")(Symbols.LocalPrefix + _)
+  def funParamSymbol(sym: Symbol)(using Context): Name => String =
+    if sym.isGlobal then
+      val funSymbol = symbolName(sym)
+      name => s"$funSymbol($name)"
+    else
+      name => locals.keys.find(local => local.isTerm && local.owner == sym && local.name == name)
+                    .fold("<?>")(Symbols.LocalPrefix + _)
 
   /** Add semanticdb name of the given symbol to string builder */
   private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
