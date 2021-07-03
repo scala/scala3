@@ -84,9 +84,9 @@ object Symbols {
      */
     def retainsDefTree(using Context): Boolean =
       ctx.settings.YretainTrees.value ||
+      ctx.settings.YcheckInit.value ||     // initialization check
       denot.owner.isTerm ||                // no risk of leaking memory after a run for these
-      denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
-      ctx.settings.YcheckInit.value        // initialization check
+      denot.isOneOf(InlineOrProxy)         // need to keep inline info
 
     /** The last denotation of this symbol */
     private var lastDenot: SymDenotation = _

@@ -4,12 +4,13 @@ package transform
 
 import dotty.tools.dotc._
 import ast.tpd
-  import tpd._
+import tpd._
 
 import dotty.tools.dotc.core._
 import Contexts._
 import Types._
 import Symbols._
+import StdNames._
 
 import dotty.tools.dotc.transform._
 import MegaPhase._
@@ -31,7 +32,7 @@ class SyncDefTree extends MiniPhase {
   }
 
   override def transformValDef(tree: ValDef)(using Context): Tree = {
-    tree.symbol.defTree = tree
+    if tree.name != nme.WILDCARD then tree.symbol.defTree = tree
     tree
   }
 
