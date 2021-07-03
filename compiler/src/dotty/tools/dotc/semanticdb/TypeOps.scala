@@ -86,7 +86,8 @@ class TypeOps:
           val stparams = Some(s.Scope())
           val paramss =
             if (sym.rawParamss.nonEmpty) sym.rawParamss else sym.paramSymss
-          val sparamss = paramss.map(_.sscope)
+          val termParamss = paramss.filter(ps => ps.forall(!_.isTypeParam))
+          val sparamss = termParamss.map(_.sscope)
           s.MethodSignature(
             stparams,
             sparamss,
