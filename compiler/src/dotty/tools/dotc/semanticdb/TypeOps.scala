@@ -57,8 +57,7 @@ class TypeOps:
             sym.owner.owner.info match {
               // def foo(x: Parent { refinement }) = ...
               case refined: RefinedType =>
-                val key = (refined, sym.name)
-                refinementSymtab(key) = sym
+                enterRefined(refined)
 
               // type x = Person { refinement }
               case tb: TypeBounds =>
