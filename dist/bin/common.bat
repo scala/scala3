@@ -52,6 +52,3 @@ for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*jline-reader-3*"')         do set "_JLI
 for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*jline-terminal-3*"')       do set "_JLINE_TERMINAL=%_LIB_DIR%\%%f"
 for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*jline-terminal-jna-3*"')   do set "_JLINE_TERMINAL_JNA=%_LIB_DIR%\%%f"
 for /f %%f in ('dir /a-d /b "%_LIB_DIR%\*jna-5*"')                  do set "_JNA=%_LIB_DIR%\%%f"
-
-@rem debug
-set _DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005

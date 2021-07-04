@@ -50,7 +50,7 @@ if %_EXECUTE_SCRIPT%==1 (
     if %_WITH_COMPILER%==1 (
         set "_CP_ARG=!_CP_ARG!%_PSEP%%_SCALA3_COMP%%_PSEP%%_TASTY_CORE%%_PSEP%%_SCALA3_INTF%%_PSEP%%_SCALA_ASM%%_PSEP%%_SCALA3_STAGING%%_PSEP%%_SCALA3_TASTY_INSPECTOR%"
     )
-    set _JAVA_ARGS=%_JAVA_DEBUG% -classpath "!_CP_ARG!" %_JVM_OPTS% %_RESIDUAL_ARGS%
+    set _JAVA_ARGS=-classpath "!_CP_ARG!" %_JVM_OPTS% %_RESIDUAL_ARGS%
     call "%_JAVACMD%" !_JAVA_ARGS!
     if not !ERRORLEVEL!==0 ( set _EXITCODE=1& goto end )
 ) else (
@@ -70,7 +70,6 @@ set _EXECUTE_RUN=0
 set _EXECUTE_SCRIPT=0
 set _TARGET_SCRIPT=
 set _WITH_COMPILER=0
-set _JAVA_DEBUG=
 set _CLASS_PATH_COUNT=0
 set _CLASS_PATH=
 set _JVM_OPTS=
@@ -94,8 +93,6 @@ if "%__ARG%"=="-repl" (
     shift
 ) else if "%__ARG%"=="-with-compiler" (
     set _WITH_COMPILER=1
-) else if "%__ARG%"=="-d" (
-    set "_JAVA_DEBUG=%_DEBUG_STR%"
 ) else if "%__ARG:~0,2%"=="-J" (
     set _JVM_OPTS=!_JVM_OPTS! %__ARG:~2%
     set _JAVA_OPTS=!_JAVA_OPTS! %__ARG%
