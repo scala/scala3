@@ -1,14 +1,14 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:32 ------------------------------------------
 29 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)  // error
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                Found:    (() => Nothing) retains x
+   |                                Found:    {x} () => Nothing
    |                                Required: () => Nothing
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:36:6 -------------------------------------------
 36 |      () => // error
    |      ^
-   |      Found:    (() => Int) retains x
+   |      Found:    {x} () => Int
    |      Required: () => Int
 37 |        raise(new Exception)(using x)
 38 |        22
@@ -17,7 +17,7 @@ longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:47:4 -------------------------------------------
 47 |    () => // error
    |    ^
-   |    Found:    (() => Int) retains x
+   |    Found:    {x} () => Int
    |    Required: () => Int
 48 |      raise(new Exception)(using x)
 49 |      22
