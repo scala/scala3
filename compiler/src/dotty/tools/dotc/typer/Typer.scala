@@ -49,6 +49,7 @@ import reporting._
 import Nullables._
 import NullOpsDecorator._
 import config.Config
+import dotty.tools.dotc.ast.untpd.DependentTypeTree
 
 object Typer {
 
@@ -2968,11 +2969,13 @@ class Typer extends Namer
       && !ctx.typer.isInstanceOf[ReTyper]
       && !isTypedAhead(tree)
       && !tree.isInstanceOf[untpd.TypeTree]
+      && !tree.isInstanceOf[DependentTypeTree]
     val tree1 = withMode(Mode.Type) { typed(tree, pt) }
     if needsCaptureExpansion then
       val expanded = ExpandCaptures(tree1.tpe, tree.srcPos)
       if expanded ne tree1.tpe then
-        report.echo(i"Expand ${tree1.tpe} to $expanded", tree.srcPos)
+        report.echo(i"""Expand ${tree1.tpe}
+                       |    to $expanded""", tree.srcPos)
       SimplifiedTypeTree().withType(expanded).withSpan(tree.span)
     else tree1
 

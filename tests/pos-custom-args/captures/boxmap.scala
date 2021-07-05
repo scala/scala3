@@ -17,7 +17,6 @@ def lazymap[A <: Top, B <: Top](b: Box[A])(f: A ==> B): {b, f} () => Box[B] =
 def test[A <: Top, B <: Top] =
   def lazymap[A <: Top, B <: Top](b: Box[A])(f: A ==> B) =
     () => b[Box[B]]((x: A) => box(f(x)))
-  val x: (b: Box[A]) => {b} ((f: A ==> B) => {b, f} () => Box[B]) = lazymap[A, B]
-  // Does not work yet:
-  // val x_red: (b: Box[A]) => ((f: A ==> B) => {b, f} () => Box[B]) = lazymap[A, B] 
+  val x: (b: Box[A]) => {b} (f: A ==> B) => {b, f} () => Box[B] = lazymap[A, B]
+  val x_red: (b: Box[A]) => ((f: A ==> B) => () => Box[B]) = lazymap[A, B]
   ()

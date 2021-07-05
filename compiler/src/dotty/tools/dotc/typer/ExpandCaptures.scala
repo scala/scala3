@@ -61,7 +61,12 @@ object ExpandCaptures:
     /** A copy of `tpe` (which must be a FunctionType) with a new `result` */
     def copy(tpe: Type)(result: Type)(using Context): Type = tpe match
       case rt @ RefinedType(parent, app, rinfo: MethodType) =>
-        rt.derivedRefinedType(parent, app, rinfo.derivedLambdaType(resType = result))
+        val rinfo1 = rinfo.derivedLambdaType(resType = result).asInstanceOf[MethodType]
+        if rinfo1 eq rinfo then rt
+        else
+          val defn.FunctionOf(argTypes, resType, isContextual, isErased) = parent
+          val parent1 = defn.FunctionOf(argTypes, rinfo1.nonDependentResultApprox, isContextual, isErased)
+          RefinedType(parent1, app, rinfo1)
       case rt @ RefinedType(parent, app, rinfo: PolyType) =>
         rt.derivedRefinedType(parent, app,
           rinfo.derivedLambdaType(
@@ -108,17 +113,15 @@ object ExpandCaptures:
         (tpe /: (outerCaptures ++ nestedCaptures(tpe)).elems)(CapturingType(_, _))
       else tpe
 
-    def reportOverlap(declared: CaptureSet, implied: CaptureSet, direction: String): Unit =
-      val redundant = declared.intersect(implied)
-      if redundant.nonEmpty then
+    def reportOverlap(declared: CaptureSet, implied: CaptureSet): Unit =
+      if declared <:< implied && implied <:< declared then
         report.echo(
-          i"declared captures $redundant in $tpe are redundant since they are already implied by the capture sets coming from the $direction",
+          i"declared captures $declared in $tpe are redundant since they are already implied by the capture sets coming from the context",
           pos)
 
     tpe match
       case tpe @ CapturingType(parent, ref) =>
-        reportOverlap(ref.singletonCaptureSet, outerCaptures, "left")
-        reportOverlap(ref.singletonCaptureSet, nestedCaptures(parent), "right")
+        reportOverlap(tpe.captureSet, outerCaptures ++ nestedCaptures(parent))
         val parent1 = addImplied(parent, bound, outerCaptures + ref, canAdd = false, pos)
         tpe.derivedCapturingType(parent1, ref)
       case FunctionType(tparams, params, body) =>
