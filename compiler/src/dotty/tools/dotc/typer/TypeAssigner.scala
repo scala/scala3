@@ -12,7 +12,6 @@ import config.Printers.typr
 import ast.Trees._
 import NameOps._
 import ProtoTypes._
-import CheckCaptures.refineNestedCaptures
 import collection.mutable
 import reporting._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
@@ -190,6 +189,8 @@ trait TypeAssigner {
     def captType(tp: Type, refs: Type): Type = refs match
       case ref: NamedType =>
         if ref.isTracked then
+          if tp.captureSet.accountsFor(ref) then
+            report.warning(em"redundant capture: $tp with capture set ${tp.captureSet} already contains $ref with capture set ${ref.captureSet}", tree.srcPos)
           CapturingType(tp, ref)
         else
           val reason =
@@ -486,9 +487,7 @@ trait TypeAssigner {
         wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
       else
         processAppliedType(tree, tycon.tpe.appliedTo(args.tpes))
-    val tree1 = tree.withType(ownType)
-    if ctx.settings.Ycc.value then refineNestedCaptures(tree1)
-    else tree1
+    tree.withType(ownType)
 
   def assignType(tree: untpd.LambdaTypeTree, tparamDefs: List[TypeDef], body: Tree)(using Context): LambdaTypeTree =
     tree.withType(HKTypeLambda.fromParams(tparamDefs.map(_.symbol.asType), body.tpe))

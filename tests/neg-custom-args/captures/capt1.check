@@ -33,7 +33,7 @@ longer explanation available when compiling with `-explain`
    |                                        Required: A
 
 longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/capt1.scala:32:13 -------------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/capt1.scala:32:16 -------------------------------------------------------------
 32 |  val z2 = h[() => Cap](() => x)(() => C())  // error
    |             ^^^^^^^^^
    |             type argument is not allowed to capture the universal capability *

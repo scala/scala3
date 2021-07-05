@@ -11,7 +11,7 @@ import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
 
-case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
+case class CaptureSet(elems: CaptureSet.Refs) extends Showable:
   import CaptureSet.*
 
   def isEmpty: Boolean = elems.isEmpty
@@ -25,6 +25,9 @@ case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
   def + (ref: CaptureRef) =
     if elems.contains(ref) then this
     else CaptureSet(elems + ref)
+
+  def -- (that: CaptureSet)(using Context) =
+    CaptureSet(elems.filter(!that.accountsFor(_)))
 
   def intersect (that: CaptureSet): CaptureSet =
     CaptureSet(this.elems.intersect(that.elems))
@@ -45,6 +48,10 @@ case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
       case ref: ParamRef if ref.binder eq tl => to(ref.paramNum).captureSet
       case ref => ref.singletonCaptureSet
     }
+
+  def toRetainsTypeArg(using Context): Type =
+    ((NoType: Type) /: elems) ((tp, ref) =>
+      if tp.exists then OrType(tp, ref, soft = false) else ref)
 
   override def toString = elems.toString
 
@@ -106,3 +113,7 @@ object CaptureSet:
     recur(tp)
       .showing(i"capture set of $tp = $result", capt)
 
+  def fromRetainsTypeArg(tp: Type)(using Context): CaptureSet = tp match
+    case tp: CaptureRef if tp.isTracked => tp.singletonCaptureSet
+    case OrType(tp1, tp2) => fromRetainsTypeArg(tp1) ++ fromRetainsTypeArg(tp2)
+    case _ => empty

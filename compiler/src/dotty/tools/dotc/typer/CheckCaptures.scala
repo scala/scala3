@@ -137,6 +137,8 @@ class CheckCaptures extends RefineTypes:
                        |The inferred arguments are: [$args%, %]"""
                   case _ => s"type argument$notAllowed"
                 report.error(msg, arg.srcPos)
+        case tree: SimplifiedTypeTree[_] =>
+          checkWellFormed(tree.typeOpt, tree.srcPos)
         case tree: TypeTree =>
           // it's inferred, no need to check
         case _: TypTree | _: Closure =>
@@ -151,108 +153,4 @@ class CheckCaptures extends RefineTypes:
 
   def postRefinerCheck(tree: tpd.Tree)(using Context): Unit =
     PostRefinerCheck.traverse(tree)
-
-
-object CheckCaptures:
-  import ast.tpd.*
-
-  def expandFunctionTypes(using Context) =
-    ctx.settings.Ycc.value && !ctx.settings.YccNoAbbrev.value && !ctx.isAfterTyper
-
-  object FunctionTypeTree:
-    def unapply(tree: Tree)(using Context): Option[(List[Type], Type)] =
-      if defn.isFunctionType(tree.tpe) then
-        tree match
-          case AppliedTypeTree(tycon: TypeTree, args) =>
-            Some((args.init.tpes, args.last.tpe))
-          case RefinedTypeTree(_, (appDef: DefDef) :: Nil) if appDef.span == tree.span =>
-            appDef.symbol.info match
-              case mt: MethodType => Some((mt.paramInfos, mt.resultType))
-              case _ => None
-          case _ =>
-            None
-      else None
-
-  object CapturingTypeTree:
-    def unapply(tree: Tree)(using Context): Option[(Tree, Tree, CaptureRef)] = tree match
-      case AppliedTypeTree(tycon, parent :: _ :: Nil)
-      if tycon.symbol == defn.Predef_retainsType =>
-        tree.tpe match
-          case CapturingType(_, ref) => Some((tycon, parent, ref))
-          case _ => None
-      case _ => None
-
-  def addRetains(tree: Tree, ref: CaptureRef)(using Context): Tree =
-    untpd.AppliedTypeTree(
-        TypeTree(defn.Predef_retainsType.typeRef), List(tree, TypeTree(ref)))
-      .withType(CapturingType(tree.tpe, ref))
-      .showing(i"add inferred capturing $result", capt)
-
-  /**  Under -Ycc but not -Ycc-no-abbrev, if `tree` represents a function type
-   *   `(ARGS) => T` where `T` has capture set CS1, expand it to
-   *   `(ARGS) => T retains CS2` where CS2 consists of those elements in CS1
-   *   that are not accounted for by the capture set of any argument in ARGS.
-   *   The additions will be removed again if the function type is wrapped in an
-   *   explicit `retains` type.
-   */
-  def addResultCaptures(tree: Tree)(using Context): Tree =
-    if expandFunctionTypes then
-      tree match
-        case FunctionTypeTree(argTypes, resType) =>
-          val cs = resType.captureSet
-          (tree /: cs.elems)((t, ref) =>
-            if argTypes.exists(_.captureSet.accountsFor(ref)) then t
-            else addRetains(t, ref)
-          )
-        case _ =>
-          tree
-    else tree
-
-  private def addCaptures(tp: Type, refs: Type)(using Context): Type = refs match
-    case ref: CaptureRef => CapturingType(tp, ref)
-    case OrType(refs1, refs2) => addCaptures(addCaptures(tp, refs1), refs2)
-    case _ => tp
-
-  /** @pre: `tree is a tree of the form `T retains REFS`.
-   *  Return the same tree with `parent1` instead of `T` with its type
-   *  recomputed accordingly.
-   */
-  private def derivedCapturingTree(tree: AppliedTypeTree, parent1: Tree)(using Context): AppliedTypeTree =
-    tree match
-      case AppliedTypeTree(tycon, parent :: (rest @ (refs :: Nil))) if parent ne parent1 =>
-        cpy.AppliedTypeTree(tree)(tycon, parent1 :: rest)
-          .withType(addCaptures(parent1.tpe, refs.tpe))
-      case _ =>
-        tree
-
-  private def stripCaptures(tree: Tree, ref: CaptureRef)(using Context): Tree = tree match
-    case tree @ AppliedTypeTree(tycon, parent :: refs :: Nil) if tycon.symbol == defn.Predef_retainsType =>
-      val parent1 = stripCaptures(parent, ref)
-      val isSynthetic = tycon.isInstanceOf[TypeTree]
-      if isSynthetic then
-        parent1.showing(i"drop inferred capturing $tree => $result", capt)
-      else
-        if parent1.tpe.captureSet.accountsFor(ref) then
-          report.warning(
-            em"redundant capture: $parent1 already contains $ref with capture set ${ref.captureSet} in its capture set ${parent1.tpe.captureSet}",
-            tree.srcPos)
-        derivedCapturingTree(tree, parent1)
-    case _ => tree
-
-  private def stripCaptures(tree: Tree, refs: Type)(using Context): Tree = refs match
-    case ref: CaptureRef => stripCaptures(tree, ref)
-    case OrType(refs1, refs2) => stripCaptures(stripCaptures(tree, refs1), refs2)
-    case _ => tree
-
-  /** If this is a tree of the form `T retains REFS`,
-   *   - strip any synthesized captures directly in T;
-   *   - warn if a reference in REFS is accounted for by the capture set of the remaining type
-   */
-  def refineNestedCaptures(tree: AppliedTypeTree)(using Context): AppliedTypeTree = tree match
-    case AppliedTypeTree(tycon, parent :: (rest @ (refs :: Nil))) if tycon.symbol == defn.Predef_retainsType =>
-      derivedCapturingTree(tree, stripCaptures(parent, refs.tpe))
-    case _ =>
-      tree
-
 end CheckCaptures
-

@@ -1376,6 +1376,9 @@ class Namer { typer: Typer =>
       ctx.compilationUnit.suspend()
   }
 
+  def isTypedAhead(tree: Tree)(using Context): Boolean =
+    expanded(tree).hasAttachment(TypedAhead)
+
   /** Typecheck `tree` during completion using `typed`, and remember result in TypedAhead map */
   def typedAhead(tree: Tree, typed: untpd.Tree => tpd.Tree)(using Context): tpd.Tree = {
     val xtree = expanded(tree)

@@ -33,22 +33,22 @@ def test: List[() => Int] =
     (ex: Exception) => ???
   }
 
-  val xx = handle { // error
+  val xx = handle {
     (x: CanThrow[Exception]) =>
-      () =>
+      () => // error
         raise(new Exception)(using x)
         22
   } {
     (ex: Exception) => () => 22
   }
   val yy = xx :: Nil
-  yy  // error
+  yy
 
 val global = handle {
   (x: CanThrow[Exception]) =>
-    () =>
+    () => // error
       raise(new Exception)(using x)
       22
-} {  // error
+} {
   (ex: Exception) => () => 22
 }
