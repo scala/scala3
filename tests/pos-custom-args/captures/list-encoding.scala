@@ -10,8 +10,8 @@ type List[T <: Top] =
 def nil[T <: Top]: List[T] =
   [C <: Top] => (op: Op[T, C]) => (s: C) => s
 
-def cons[T <: Top](hd: T, tl: List[T]): List[T] =
-  [C <: Top] => (op: Op[T, C]) => (s: C) => op(hd)(tl(op)(s))
+def cons[T <: Top](hd: T, tl: List[T]): {hd, tl} List[T] =
+  [C <: Top] => (op: Op[T, C]) => (s: C) => op(hd)(tl.apply(op)(s))
 
 def foo(c: Cap) =
   def f(x: {c} String, y: {c} String) =
@@ -32,9 +32,6 @@ def strictMap2[A <: Top, B <: Top](f: {*} A => B): {f} List[A] => List[B] =
 def pureMap[A <: Top, B <: Top](xs: List[A])(f: A => B): List[B] =
   xs[List[B]]((hd: A) => (tl: List[B]) => cons(f(hd), tl))(nil)
 
-def consForLazyMap[T <: Top](hd: T, tl: {*} List[T]): {hd, tl} List[T] =
-  [C <: Top] => (op: Op[T, C]) => (s: C) => op(hd)(tl.apply(op)(s))
-
 class Unit
 object unit extends Unit
 
@@ -47,7 +44,7 @@ def lazyMap
     xs[List[{A, f} Unit => B]]
       ((hd: Unit => A) =>
         (tl: List[{A, f} Unit => B]) =>
-          consForLazyMap((u: Unit) => f(hd(unit)), tl))(nil)
+          cons((u: Unit) => f(hd(unit)), tl))(nil)
 
 def lazyPureMap
   [A <: Top, B <: Top]
@@ -58,7 +55,7 @@ def lazyPureMap
     xs[List[{A, B} Unit => B]]
       ((hd: Unit => A) =>
         (tl: List[{A, B} Unit => B]) =>
-          consForLazyMap((u: Unit) => f(hd(unit)), tl))(nil)
+          cons((u: Unit) => f(hd(unit)), tl))(nil)
 
 def force[A](thunk: Unit=>A): A = thunk(unit)
 def forceList[A](lazyList: List[Unit=>A]): List[A] = strictMap(lazyList)(force[A])
@@ -75,7 +72,7 @@ def forceList[A](lazyList: List[Unit=>A]): List[A] = strictMap(lazyList)(force[A
 
   val lazylist12: List[Unit=>Int] = cons(unit=>1, cons(unit=>2, nil))
   val lazylist56 = lazyMap[Int, Int](lazylist12)((_: Int) + 4)
-  // val lazylist67 = lazyPureMap[Int, Int](lazylist12)((_: Int) + 5)
+  val lazylist67 = lazyPureMap[Int, Int](lazylist12)((_: Int) + 5)
   println(toScalaList(forceList(lazylist12)))
   println(toScalaList(forceList(lazylist56)))
-  // println(toScalaList(forceList(lazylist67)))
+  println(toScalaList(forceList(lazylist67)))
