@@ -1436,168 +1436,7 @@ class Namer { typer: Typer =>
    */
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
-    def inferredType = {
-      /** A type for this definition that might be inherited from elsewhere:
-       *  If this is a setter parameter, the corresponding getter type.
-       *  If this is a class member, the conjunction of all result types
-       *  of overridden methods.
-       *  NoType if neither case holds.
-       */
-      val inherited =
-        if (sym.owner.isTerm) NoType
-        else
-          // TODO: Look only at member of supertype instead?
-          lazy val schema = paramFn(WildcardType)
-          val site = sym.owner.thisType
-          val bcs = sym.owner.info.baseClasses
-          if bcs.isEmpty then
-            assert(ctx.reporter.errorsReported)
-            NoType
-          else bcs.tail.foldLeft(NoType: Type) { (tp, cls) =>
-            def instantiatedResType(info: Type, paramss: List[List[Symbol]]): Type = info match
-              case info: PolyType =>
-                paramss match
-                  case TypeSymbols(tparams) :: paramss1 if info.paramNames.length == tparams.length =>
-                    instantiatedResType(info.instantiate(tparams.map(_.typeRef)), paramss1)
-                  case _ =>
-                    NoType
-              case info: MethodType =>
-                paramss match
-                  case TermSymbols(vparams) :: paramss1 if info.paramNames.length == vparams.length =>
-                    instantiatedResType(info.instantiate(vparams.map(_.termRef)), paramss1)
-                  case _ =>
-                    NoType
-              case _ =>
-                if paramss.isEmpty then info.widenExpr
-                else NoType
-
-            val iRawInfo =
-              cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema, sym.targetName).info
-            val iResType = instantiatedResType(iRawInfo, paramss).asSeenFrom(site, cls)
-            if (iResType.exists)
-              typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inherited: $iResType")
-            tp & iResType
-          }
-      end inherited
-
-      /** If this is a default getter, the type of the corresponding method parameter,
-       *  otherwise NoType.
-       */
-      def defaultParamType = sym.name match
-        case DefaultGetterName(original, idx) =>
-          val meth: Denotation =
-            if (original.isConstructorName && (sym.owner.is(ModuleClass)))
-              sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
-            else
-              ctx.defContext(sym).denotNamed(original)
-          def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
-            case params :: paramss1 =>
-              if (idx < params.length) params(idx)
-              else paramProto(paramss1, idx - params.length)
-            case nil =>
-              NoType
-          }
-          val defaultAlts = meth.altsWith(_.hasDefaultParams)
-          if (defaultAlts.length == 1)
-            paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
-          else
-            NoType
-        case _ =>
-          NoType
-
-      /** The expected type for a default argument. This is normally the `defaultParamType`
-       *  with references to internal parameters replaced by wildcards. This replacement
-       *  makes it possible that the default argument can have a more specific type than the
-       *  parameter. For instance, we allow
-       *
-       *      class C[A](a: A) { def copy[B](x: B = a): C[B] = C(x) }
-       *
-       *  However, if the default parameter type is a context function type, we
-       *  have to make sure that wildcard types do not leak into the implicitly
-       *  generated closure's result type. Test case is pos/i12019.scala. If there
-       *  would be a leakage with the wildcard approximation, we pick the original
-       *  default parameter type as expected type.
-       */
-      def expectedDefaultArgType =
-        val originalTp = defaultParamType
-        val approxTp = wildApprox(originalTp)
-        approxTp.stripPoly match
-          case atp @ defn.ContextFunctionType(_, resType, _)
-          if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
-              || resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
-            originalTp
-          case _ =>
-            approxTp
-
-      // println(s"final inherited for $sym: ${inherited.toString}") !!!
-      // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      // TODO Scala 3.1: only check for inline vals (no final ones)
-      def isInlineVal = sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
-
-      var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
-      if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
-      if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
-      val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
-      if (typeParams.nonEmpty) {
-        // we'll be typing an expression from a polymorphic definition's body,
-        // so we must allow constraining its type parameters
-        // compare with typedDefDef, see tests/pos/gadt-inference.scala
-        rhsCtx.setFreshGADTBounds
-        rhsCtx.gadt.addToConstraint(typeParams)
-      }
-
-      def typedAheadRhs(pt: Type) =
-        PrepareInlineable.dropInlineIfError(sym,
-          typedAheadExpr(mdef.rhs, pt)(using rhsCtx))
-
-      def rhsType =
-        // For default getters, we use the corresponding parameter type as an
-        // expected type but we run it through `wildApprox` to allow default
-        // parameters like in `def mkList[T](value: T = 1): List[T]`.
-        val defaultTp = defaultParamType
-        val pt = inherited.orElse(expectedDefaultArgType).orElse(WildcardType).widenExpr
-        val tp = typedAheadRhs(pt).tpe
-        if (defaultTp eq pt) && (tp frozen_<:< defaultTp) then
-          // When possible, widen to the default getter parameter type to permit a
-          // larger choice of overrides (see `default-getter.scala`).
-          // For justification on the use of `@uncheckedVariance`, see
-          // `default-getter-variance.scala`.
-          AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot))
-        else
-          // don't strip @uncheckedVariance annot for default getters
-          TypeOps.simplify(tp.widenTermRefExpr,
-              if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null) match
-            case ctp: ConstantType if isInlineVal => ctp
-            case tp => TypeComparer.widenInferred(tp, pt)
-
-      // Replace aliases to Unit by Unit itself. If we leave the alias in
-      // it would be erased to BoxedUnit.
-      def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
-
-      // Approximate a type `tp` with a type that does not contain skolem types.
-      val deskolemize = new ApproximatingTypeMap {
-        def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
-          tp match {
-            case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
-            case _ => mapOver(tp)
-          }
-      }
-
-      def cookedRhsType = deskolemize(dealiasIfUnit(rhsType))
-      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
-      //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
-      if (inherited.exists)
-        if (isInlineVal) lhsType else inherited
-      else {
-        if (sym.is(Implicit))
-          mdef match {
-            case _: DefDef => missingType(sym, "result ")
-            case _: ValDef if sym.owner.isType => missingType(sym, "")
-            case _ =>
-          }
-        lhsType orElse WildcardType
-      }
-    }
+    def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
     lazy val termParamss = paramss.collect { case TermSymbols(vparams) => vparams }
 
     val tptProto = mdef.tpt match {
@@ -1680,15 +1519,184 @@ class Namer { typer: Typer =>
     ddef.trailingParamss.foreach(completeParams)
     val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
     sym.setParamss(paramSymss)
-    def wrapMethType(restpe: Type): Type = {
+    def wrapMethType(restpe: Type): Type =
       instantiateDependent(restpe, paramSymss)
-      methodType(paramSymss, restpe, isJava = ddef.mods.is(JavaDefined))
-    }
-    if (isConstructor) {
+      methodType(paramSymss, restpe, ddef.mods.is(JavaDefined))
+    if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
       wrapMethType(effectiveResultType(sym, paramSymss))
-    }
-    else valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
+    else
+      valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
   }
+
+  def inferredResultType(
+      mdef: ValOrDefDef,
+      sym: Symbol,
+      paramss: List[List[Symbol]],
+      paramFn: Type => Type,
+      fallbackProto: Type
+    )(using Context): Type =
+
+    /** A type for this definition that might be inherited from elsewhere:
+     *  If this is a setter parameter, the corresponding getter type.
+     *  If this is a class member, the conjunction of all result types
+     *  of overridden methods.
+     *  NoType if neither case holds.
+     */
+    val inherited =
+      if (sym.owner.isTerm) NoType
+      else
+        // TODO: Look only at member of supertype instead?
+        lazy val schema = paramFn(WildcardType)
+        val site = sym.owner.thisType
+        val bcs = sym.owner.info.baseClasses
+        if bcs.isEmpty then
+          assert(ctx.reporter.errorsReported)
+          NoType
+        else bcs.tail.foldLeft(NoType: Type) { (tp, cls) =>
+          def instantiatedResType(info: Type, paramss: List[List[Symbol]]): Type = info match
+            case info: PolyType =>
+              paramss match
+                case TypeSymbols(tparams) :: paramss1 if info.paramNames.length == tparams.length =>
+                  instantiatedResType(info.instantiate(tparams.map(_.typeRef)), paramss1)
+                case _ =>
+                  NoType
+            case info: MethodType =>
+              paramss match
+                case TermSymbols(vparams) :: paramss1 if info.paramNames.length == vparams.length =>
+                  instantiatedResType(info.instantiate(vparams.map(_.termRef)), paramss1)
+                case _ =>
+                  NoType
+            case _ =>
+              if paramss.isEmpty then info.widenExpr
+              else NoType
+
+          val iRawInfo =
+            cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema, sym.targetName).info
+          val iResType = instantiatedResType(iRawInfo, paramss).asSeenFrom(site, cls)
+          if (iResType.exists)
+            typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inherited: $iResType")
+          tp & iResType
+        }
+    end inherited
+
+    /** If this is a default getter, the type of the corresponding method parameter,
+     *  otherwise NoType.
+     */
+    def defaultParamType = sym.name match
+      case DefaultGetterName(original, idx) =>
+        val meth: Denotation =
+          if (original.isConstructorName && (sym.owner.is(ModuleClass)))
+            sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
+          else
+            ctx.defContext(sym).denotNamed(original)
+        def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
+          case params :: paramss1 =>
+            if (idx < params.length) params(idx)
+            else paramProto(paramss1, idx - params.length)
+          case nil =>
+            NoType
+        }
+        val defaultAlts = meth.altsWith(_.hasDefaultParams)
+        if (defaultAlts.length == 1)
+          paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
+        else
+          NoType
+      case _ =>
+        NoType
+
+    /** The expected type for a default argument. This is normally the `defaultParamType`
+     *  with references to internal parameters replaced by wildcards. This replacement
+     *  makes it possible that the default argument can have a more specific type than the
+     *  parameter. For instance, we allow
+     *
+     *      class C[A](a: A) { def copy[B](x: B = a): C[B] = C(x) }
+     *
+     *  However, if the default parameter type is a context function type, we
+     *  have to make sure that wildcard types do not leak into the implicitly
+     *  generated closure's result type. Test case is pos/i12019.scala. If there
+     *  would be a leakage with the wildcard approximation, we pick the original
+     *  default parameter type as expected type.
+     */
+    def expectedDefaultArgType =
+      val originalTp = defaultParamType
+      val approxTp = wildApprox(originalTp)
+      approxTp.stripPoly match
+        case atp @ defn.ContextFunctionType(_, resType, _)
+        if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
+            || resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
+          originalTp
+        case _ =>
+          approxTp
+
+    // println(s"final inherited for $sym: ${inherited.toString}") !!!
+    // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
+    // TODO Scala 3.1: only check for inline vals (no final ones)
+    def isInlineVal = sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
+
+    var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
+    if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+    if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
+    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
+    if (typeParams.nonEmpty) {
+      // we'll be typing an expression from a polymorphic definition's body,
+      // so we must allow constraining its type parameters
+      // compare with typedDefDef, see tests/pos/gadt-inference.scala
+      rhsCtx.setFreshGADTBounds
+      rhsCtx.gadt.addToConstraint(typeParams)
+    }
+
+    def typedAheadRhs(pt: Type) =
+      PrepareInlineable.dropInlineIfError(sym,
+        typedAheadExpr(mdef.rhs, pt)(using rhsCtx))
+
+    def rhsType =
+      // For default getters, we use the corresponding parameter type as an
+      // expected type but we run it through `wildApprox` to allow default
+      // parameters like in `def mkList[T](value: T = 1): List[T]`.
+      val defaultTp = defaultParamType
+      val pt = inherited.orElse(expectedDefaultArgType).orElse(fallbackProto).widenExpr
+      val tp = typedAheadRhs(pt).tpe
+      if (defaultTp eq pt) && (tp frozen_<:< defaultTp) then
+        // When possible, widen to the default getter parameter type to permit a
+        // larger choice of overrides (see `default-getter.scala`).
+        // For justification on the use of `@uncheckedVariance`, see
+        // `default-getter-variance.scala`.
+        AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot))
+      else
+        // don't strip @uncheckedVariance annot for default getters
+        TypeOps.simplify(tp.widenTermRefExpr,
+            if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null) match
+          case ctp: ConstantType if isInlineVal => ctp
+          case tp => TypeComparer.widenInferred(tp, pt)
+
+    // Replace aliases to Unit by Unit itself. If we leave the alias in
+    // it would be erased to BoxedUnit.
+    def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
+
+    // Approximate a type `tp` with a type that does not contain skolem types.
+    val deskolemize = new ApproximatingTypeMap {
+      def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
+        tp match {
+          case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
+          case _ => mapOver(tp)
+        }
+    }
+
+    def cookedRhsType = deskolemize(dealiasIfUnit(rhsType))
+    def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
+    //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
+    if (inherited.exists)
+      if (isInlineVal) lhsType else inherited
+    else {
+      if (sym.is(Implicit))
+        mdef match {
+          case _: DefDef => missingType(sym, "result ")
+          case _: ValDef if sym.owner.isType => missingType(sym, "")
+          case _ =>
+        }
+      lhsType orElse WildcardType
+    }
+  end inferredResultType
 }

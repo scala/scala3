@@ -159,14 +159,29 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         argStr ~ " " ~ arrow(isGiven) ~ " " ~ argText(args.last)
       }
 
-    def toTextDependentFunction(appType: MethodType): Text =
-      "("
-      ~ keywordText("erased ").provided(appType.isErasedMethod)
-      ~ paramsText(appType)
-      ~ ") "
-      ~ arrow(appType.isImplicitMethod)
-      ~ " "
-      ~ toText(appType.resultType)
+    def toTextMethodAsFunction(info: Type): Text = info match
+      case info: MethodType =>
+        changePrec(GlobalPrec) {
+          "("
+          ~ keywordText("erased ").provided(info.isErasedMethod)
+          ~ ( if info.isParamDependent || info.isResultDependent
+              then paramsText(info)
+              else argsText(info.paramInfos)
+            )
+          ~ ") "
+          ~ arrow(info.isImplicitMethod)
+          ~ " "
+          ~ toTextMethodAsFunction(info.resultType)
+        }
+      case info: PolyType =>
+        changePrec(GlobalPrec) {
+          "["
+          ~ paramsText(info)
+          ~ "] => "
+          ~ toTextMethodAsFunction(info.resultType)
+        }
+      case _ =>
+        toText(info)
 
     def isInfixType(tp: Type): Boolean = tp match
       case AppliedType(tycon, args) =>
@@ -230,8 +245,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if !printDebug && appliedText(tp.asInstanceOf[HKLambda].resType).isEmpty =>
         // don't eta contract if the application would be printed specially
         toText(tycon)
-      case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
-        toTextDependentFunction(tp.refinedInfo.asInstanceOf[MethodType])
+      case tp: RefinedType
+      if (defn.isFunctionType(tp) || (tp.parent.typeSymbol eq defn.PolyFunctionClass))
+          && !printDebug =>
+        toTextMethodAsFunction(tp.refinedInfo)
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !showUniqueIds)
           toText(tp.info)
@@ -245,6 +262,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case ErasedValueType(tycon, underlying) =>
         "ErasedValueType(" ~ toText(tycon) ~ ", " ~ toText(underlying) ~ ")"
       case tp: ClassInfo =>
+        if tp.cls.derivesFrom(defn.PolyFunctionClass) then
+          tp.member(nme.apply).info match
+            case info: PolyType => return toTextMethodAsFunction(info)
+            case _ =>
         toTextParents(tp.parents) ~~ "{...}"
       case JavaArrayType(elemtp) =>
         toText(elemtp) ~ "[]"
@@ -501,6 +522,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "<derived typetree watching " ~ tpt.watched.showSummary() ~ ">"
       case TypeTree() =>
         typeText(toText(tree.typeOpt))
+        ~ Str("(inf)").provided(tree.isInstanceOf[InferredTypeTree] && printDebug)
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ "." ~ keywordStr("type")
       case RefinedTypeTree(tpt, refines) =>
@@ -510,6 +532,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec(OrTypePrec) { toText(args(0)) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(args(1)) } }
         else if (tpt.symbol == defn.andType && args.length == 2)
           changePrec(AndTypePrec) { toText(args(0)) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(args(1)) } }
+        else if defn.isFunctionClass(tpt.symbol)
+            && tpt.isInstanceOf[TypeTree] && tree.hasType && !printDebug
+        then changePrec(GlobalPrec) { toText(tree.typeOpt) }
         else args match
           case arg :: _ if arg.isTerm =>
             toTextLocal(tpt) ~ "(" ~ Text(args.map(argText), ", ") ~ ")"

@@ -699,10 +699,12 @@ object Trees {
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
   }
 
-  /** A type tree that defines a new type variable. Its type is always a TypeVar.
-   *  Every TypeVar is created as the type of one TypeVarBinder.
+  /** A type tree whose type is inferred. These trees appear in two contexts
+   *    - as an argument of a TypeApply. In that case its type is always a TypeVar
+   *    - as a (result-)type of an inferred ValDef or DefDef.
+   *  Every TypeVar is created as the type of one InferredTypeTree.
    */
-  class TypeVarBinder[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]
+  class InferredTypeTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]
 
   /** ref.type */
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])(implicit @constructorOnly src: SourceFile)
@@ -1079,6 +1081,7 @@ object Trees {
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
     type Inlined = Trees.Inlined[T]
     type TypeTree = Trees.TypeTree[T]
+    type InferredTypeTree = Trees.InferredTypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
     type AppliedTypeTree = Trees.AppliedTypeTree[T]
