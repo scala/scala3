@@ -8,6 +8,8 @@ object Test:
 
   def test(ct: CT, dt: CT) =
 
+    def x0: A => {ct} B = ???
+
     def x1: A => B retains ct.type = ???
     def x2: A => B => C retains ct.type = ???
     def x3: A => () => B => C retains ct.type = ???

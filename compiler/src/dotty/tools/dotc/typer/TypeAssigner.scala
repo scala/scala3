@@ -211,6 +211,9 @@ trait TypeAssigner {
         else if constr == defn.Predef_retainsType then
           if ctx.settings.Ycc.value then captType(args(0), args(1))
           else args(0)
+        else if constr == defn.Predef_capturing then
+          if ctx.settings.Ycc.value then captType(args(1), args(0))
+          else args(1)
         else tp
       case _ => tp
   end processAppliedType
