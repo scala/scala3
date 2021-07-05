@@ -50,6 +50,9 @@
     box-shadow: 0 2px 16px 0 rgba(0, 42, 76, 0.15);
     font-size: 13px;
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
+    background-color: var(--leftbar-bg);
+    color: var(--leftbar-fg);
+    box-shadow: 0 0 2px var(--shadow);
 }
 
 #scaladoc-searchbar-input {
@@ -58,6 +61,8 @@
     border: none;
     border-bottom: 1px solid #bbb;
     padding: 10px;
+    background-color: var(--leftbar-bg);
+    color: var(--leftbar-fg);
 }
 
 #scaladoc-searchbar-input:focus {
@@ -65,7 +70,6 @@
 }
 
 #scaladoc-searchbar-results {
-    background: var(--white);
     display: flex;
     flex-direction: column;
     max-height: 500px;
@@ -73,7 +77,8 @@
 }
 
 .scaladoc-searchbar-result {
-    background: var(--white);
+    background-color: var(--leftbar-bg);
+    color: var(--leftbar-fg);
     line-height: 24px;
     display: flex;
     padding: 4px 10px 4px 10px;
@@ -90,11 +95,11 @@
 }
 
 .scaladoc-searchbar-result[selected] {
-    background-color: var(--blue100);
+    background-color: var(--leftbar-hover-bg);
+    color: var(--leftbar-hover-fg);
 }
 
 .scaladoc-searchbar-result a {
-    color: var(--grey900);
     /* for some reason, with display:block if there's a wrap between the
      * search result text and the location span, the dead space to the
      * left of the location span doesn't get treated as part of the block,
@@ -105,10 +110,6 @@
     width: 100%;
     text-indent: -20px;
     padding-left: 20px;
-}
-
-.scaladoc-searchbar-result .scaladoc-searchbar-location {
-    color: gray;
 }
 
 #searchBar {

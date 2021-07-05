@@ -289,6 +289,11 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
                 src := resolveRoot(link.dri, "images/scaladoc_logo.svg"),
                 alt := "scaladoc",
                 cls := "scaladoc_logo"
+              ),
+              img(
+                src := resolveRoot(link.dri, "images/scaladoc_logo_dark.svg"),
+                alt := "scaladoc",
+                cls := "scaladoc_logo_dark"
               )
             )
           ),

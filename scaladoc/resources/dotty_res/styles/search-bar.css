@@ -63,3 +63,47 @@
     width: auto !important;
   }
 }
+
+/* Loading */
+.loading-wrapper {
+  align-self: center;
+  padding: 4px;
+}
+
+.loading, .loading::before, .loading::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: white;
+  color: white;
+  animation: dotFlashing 1s infinite alternate;
+  display: inline-block;
+  position: absolute;
+  top: 0;
+}
+
+.loading {
+  left: 50%;
+  position: relative;
+  animation-delay: .5s;
+}
+
+.loading::before {
+  left: -15px;
+  animation-delay: 0s;
+}
+
+.loading::after {
+  left: 15px;
+  animation-delay: 1s;
+}
+
+@keyframes dotFlashing {
+  0% {
+    background-color: var(--leftbar-bg);
+  }
+  100% {
+    background-color: white;
+  }
+}

@@ -3,6 +3,7 @@ package dotty.tools.scaladoc.tasty
 import collection.JavaConverters._
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
+import dotty.tools.scaladoc.Inkuire
 
 import scala.quoted._
 
@@ -92,6 +93,77 @@ trait ClassLikeSupport:
       graph = graph,
       deprecated = classDef.symbol.isDeprecated()
     )
+
+    if summon[DocContext].args.generateInkuire then {
+
+      val classType = classDef.asInkuire(Set.empty, true)
+      val variableNames = classType.params.map(_.typ.name.name).toSet
+
+      val parents = classDef.parents.map(_.asInkuire(variableNames, false))
+
+      val isModule = classDef.symbol.flags.is(Flags.Module)
+
+      if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
+
+      classDef.symbol.declaredTypes.foreach {
+        case typeSymbol: Symbol =>
+          val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
+          if typeDef.rhs.symbol.fullName.contains("java") then
+            val t = typeSymbol.tree.asInkuire(variableNames, false) // TODO [Inkuire] Hack until type aliases are supported
+            val tJava = typeDef.rhs.symbol.tree.asInkuire(variableNames, false)
+            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))) // TODO [Inkuire] Hack until type aliases are supported
+            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
+      }
+
+      classDef.symbol.declaredMethods
+        .filter { (s: Symbol) =>
+          !s.flags.is(Flags.Private) &&
+            !s.flags.is(Flags.Protected) &&
+            !s.flags.is(Flags.Override)
+        }
+        .foreach {
+          case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
+                                          && classDef.symbol.flags.is(Flags.Module)
+                                          && implicitConversion.owner.fullName == ("scala.Predef$") =>
+            val defdef = implicitConversion.tree.asInstanceOf[DefDef]
+            val to = defdef.returnTpt.asInkuire(variableNames, false)
+            val from = defdef.paramss.flatMap(_.params).collectFirst {
+              case v: ValDef => v.tpt.asInkuire(variableNames, false)
+            }
+            from match
+              case Some(from) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
+              case None =>
+
+          case methodSymbol: Symbol =>
+            val defdef = methodSymbol.tree.asInstanceOf[DefDef]
+            val methodVars = defdef.paramss.flatMap(_.params).collect {
+              case TypeDef(name, _) => name
+            }
+            val vars = variableNames ++ methodVars
+            val receiver: Option[Inkuire.Type] =
+              Some(classType)
+                .filter(_ => !isModule)
+                .orElse(methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars, false).lift(s.tpt)))
+            val sgn = Inkuire.ExternalSignature(
+              signature = Inkuire.Signature(
+                receiver = receiver,
+                arguments = methodSymbol.nonExtensionParamLists.flatMap(_.params).collect {
+                  case ValDef(_, tpe, _) => tpe.asInkuire(vars, false)
+                },
+                result = defdef.returnTpt.asInkuire(vars, false),
+                context = Inkuire.SignatureContext(
+                  vars = vars.toSet,
+                  constraints = Map.empty //TODO [Inkuire] Type bounds
+                )
+              ),
+              name = methodSymbol.name,
+              packageName = methodSymbol.dri.location,
+              uri = methodSymbol.dri.externalLink.getOrElse("")
+            )
+            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
+      }
+
+    }
 
     if signatureOnly then baseMember else baseMember.copy(
         members = classDef.extractPatchedMembers.sortBy(m => (m.name, m.kind.name)),
@@ -341,13 +413,7 @@ trait ClassLikeSupport:
       specificKind: (Kind.Def => Kind) = identity
     ): Member =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
-    val paramLists: List[TermParamClause] =
-      if emptyParamsList then Nil
-      else if methodSymbol.isExtensionMethod then
-        val params = method.termParamss
-        if methodSymbol.isLeftAssoc || params.size == 1 then params.tail
-        else params.head :: params.tail.drop(1)
-      else method.termParamss
+    val paramLists: List[TermParamClause] = methodSymbol.nonExtensionParamLists
     val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.leadingTypeParams
 
     val memberInfo = unwrapMemberInfo(c, methodSymbol)

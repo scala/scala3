@@ -2,11 +2,13 @@ package dotty.tools.scaladoc
 
 import org.scalajs.dom._
 import org.scalajs.dom.html.Input
+import scala.scalajs.js.timers._
+import scala.concurrent.duration._
 
-class SearchbarComponent(val callback: (String) => List[PageEntry]):
+class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val resultsChunkSize = 100
   extension (p: PageEntry)
-    def toHTML =
+    def toHTML(inkuire: Boolean = false) =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
       wrapper.classList.add("scaladoc-searchbar-result")
       wrapper.classList.add("monospace")
@@ -16,7 +18,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       icon.classList.add(p.kind.take(2))
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href = Globals.pathToRoot + p.location
+      resultA.href = if inkuire then p.location else Globals.pathToRoot + p.location
       resultA.text = s"${p.fullName}"
 
       val location = document.createElement("span")
@@ -32,8 +34,8 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       })
       wrapper
 
-  def handleNewQuery(query: String) =
-    val result = callback(query).map(_.toHTML)
+  def handleNewFluffQuery(matchers: List[Matchers]) =
+    val result = engine.query(matchers).map(_.toHTML(inkuire = false))
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
@@ -41,16 +43,57 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
     resultsDiv.appendChild(fragment)
     def loadMoreResults(result: List[raw.HTMLElement]): Unit = {
       resultsDiv.onscroll = (event: Event) => {
-          if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight)
-          {
-              val fragment = document.createDocumentFragment()
-              result.take(resultsChunkSize).foreach(fragment.appendChild)
-              resultsDiv.appendChild(fragment)
-              loadMoreResults(result.drop(resultsChunkSize))
-          }
+        if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight) {
+          val fragment = document.createDocumentFragment()
+          result.take(resultsChunkSize).foreach(fragment.appendChild)
+          resultsDiv.appendChild(fragment)
+          loadMoreResults(result.drop(resultsChunkSize))
+        }
       }
     }
     loadMoreResults(result.drop(resultsChunkSize))
+
+  extension (s: String)
+    def toHTMLError =
+      val wrapper = document.createElement("div").asInstanceOf[html.Div]
+      wrapper.classList.add("scaladoc-searchbar-result")
+      wrapper.classList.add("monospace")
+
+      val errorSpan = document.createElement("span").asInstanceOf[html.Span]
+      errorSpan.classList.add("search-error")
+      errorSpan.textContent = s
+
+      wrapper.appendChild(errorSpan)
+      wrapper
+
+  var timeoutHandle: SetTimeoutHandle = null
+  def handleNewQuery(query: String) =
+    clearTimeout(timeoutHandle)
+    resultsDiv.scrollTop = 0
+    resultsDiv.onscroll = (event: Event) => { }
+    while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
+    val fragment = document.createDocumentFragment()
+    parser.parse(query) match {
+      case EngineMatchersQuery(matchers) =>
+        handleNewFluffQuery(matchers)
+      case BySignature(signature) =>
+        timeoutHandle = setTimeout(1.second) {
+          val properResultsDiv = document.createElement("div").asInstanceOf[html.Div]
+          resultsDiv.appendChild(properResultsDiv)
+          val loading = document.createElement("div").asInstanceOf[html.Div]
+          loading.classList.add("loading-wrapper")
+          val animation = document.createElement("div").asInstanceOf[html.Div]
+          animation.classList.add("loading")
+          loading.appendChild(animation)
+          properResultsDiv.appendChild(loading)
+          inkuireEngine.query(query) { (p: PageEntry) =>
+            properResultsDiv.appendChild(p.toHTML(inkuire = true))
+          } { (s: String) =>
+            animation.classList.remove("loading")
+            properResultsDiv.appendChild(s.toHTMLError)
+          }
+        }
+    }
 
   private val searchIcon: html.Div =
     val span = document.createElement("span").asInstanceOf[html.Span]

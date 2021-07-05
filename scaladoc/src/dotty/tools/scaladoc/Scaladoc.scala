@@ -2,16 +2,20 @@ package dotty.tools.scaladoc
 
 import java.util.ServiceLoader
 import java.io.File
+import java.io.FileWriter
 import java.util.jar._
 import collection.JavaConverters._
 import collection.immutable.ArraySeq
 
-import java.nio.file.Files
+import java.nio.file.{ Files, Paths }
 
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.{ CommonScalaSettings, AllScalaSettings }
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.core.Contexts._
+
+import dotty.tools.scaladoc.Inkuire
+import dotty.tools.scaladoc.Inkuire._
 
 object Scaladoc:
   enum CommentSyntax:
@@ -53,7 +57,8 @@ object Scaladoc:
     snippetCompiler: List[String] = Nil,
     snippetCompilerDebug: Boolean = false,
     noLinkWarnings: Boolean = false,
-    versionsDictionaryUrl: Option[String] = None
+    versionsDictionaryUrl: Option[String] = None,
+    generateInkuire : Boolean = false
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -78,9 +83,26 @@ object Scaladoc:
         report.inform("Done")
       else report.error("Failure")
 
+      if parsedArgs.generateInkuire then dumpInkuireDB(parsedArgs.output.getAbsolutePath, parsedArgs)
     }
+
     ctx.reporter
 
+  def dumpInkuireDB(output: String, parsedArgs: Args) = {
+    val dbPath = Paths.get(output, "inkuire-db.json")
+    val dbFile = dbPath.toFile()
+    dbFile.createNewFile()
+    val dbWriter = new FileWriter(dbFile, false)
+    dbWriter.write(s"${EngineModelSerializers.serialize(Inkuire.db)}")
+    dbWriter.close()
+
+    val configPath = Paths.get(output, "scripts/inkuire-config.json")
+    val configFile = configPath.toFile()
+    configFile.createNewFile()
+    val configWriter = new FileWriter(configFile, false)
+    configWriter.write(Inkuire.generateInkuireConfig(parsedArgs.externalMappings.map(_.documentationUrl.toString)))
+    configWriter.close()
+  }
 
   def extract(args: Array[String], rootCtx: CompilerContext): (Option[Scaladoc.Args], CompilerContext) =
     val newContext = rootCtx.fresh
@@ -199,7 +221,8 @@ object Scaladoc:
         snippetCompiler.get,
         noLinkWarnings.get,
         snippetCompilerDebug.get,
-        versionsDictionaryUrl.nonDefault
+        versionsDictionaryUrl.nonDefault,
+        generateInkuire.get
       )
       (Some(docArgs), newContext)
     }
