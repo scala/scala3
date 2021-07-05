@@ -695,6 +695,7 @@ trait Inferencing { this: Typer =>
           if !argType.isSingleton then argType = SkolemType(argType)
           argType <:< tvar
       case _ =>
+        ()
   end constrainIfDependentParamRef
 }
 
