@@ -65,7 +65,7 @@ object Inkuire {
   }
 
   case class TypeName(name: String) {
-    override def hashCode(): Int = name.toLowerCase.hashCode
+    override def hashCode: Int = name.toLowerCase.hashCode
 
     override def equals(obj: Any): Boolean = {
       obj match {
@@ -81,6 +81,8 @@ object Inkuire {
     vars:        Set[String],
     constraints: Map[String, Seq[Type]]
   ) {
+    override def hashCode: Int = vars.size.hashCode
+
     override def equals(obj: Any): Boolean =
       obj match {
         case other: SignatureContext if this.vars.size == other.vars.size => true
