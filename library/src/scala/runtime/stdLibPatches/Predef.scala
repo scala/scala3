@@ -51,4 +51,5 @@ object Predef:
   /** type `A` with capture set `B` */
   infix type retains[A, B]
 
+  infix type |> [A, B]
 end Predef

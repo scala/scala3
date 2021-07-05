@@ -224,4 +224,6 @@ object Config {
    *  reduces the number of allocated denotations by ~50%.
    */
   inline val reuseSymDenotations = true
+
+  inline val printCaptureSetsAsPrefix = true
 }

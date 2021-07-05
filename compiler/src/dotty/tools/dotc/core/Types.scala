@@ -4639,9 +4639,7 @@ object Types {
               && !linkedVar.inst.isExactlyNothing
               && linkedVar.inst <:< this
             else
-              inst.isExactlyAny
-              && !linkedVar.inst.isExactlyAny
-              && this <:< linkedVar.inst
+              inst.isExactlyAny && !linkedVar.inst.isExactlyAny && this <:< linkedVar.inst
           if needsOldInstance then
             inst = linkedVar.inst
               .showing(i"avoid extremal instance for $this be instantiating with old $inst", refinr)

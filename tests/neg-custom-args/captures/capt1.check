@@ -1,39 +1,39 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:3:2 ------------------------------------------
 3 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    (() => C) retains x
+  |  Found:    {x} () => C
   |  Required: () => C
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:6:2 ------------------------------------------
 6 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    (() => C) retains x
+  |  Found:    {x} () => C
   |  Required: Any
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:14:2 -----------------------------------------
 14 |  f  // error
    |  ^
-   |  Found:    (Int => Int) retains x
+   |  Found:    {x} Int => Int
    |  Required: Any
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:23:3 -----------------------------------------
 23 |  F(22)  // error
    |  ^^^^^
-   |  Found:    F retains x
+   |  Found:    {x} F
    |  Required: A
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:27:40 ----------------------------------------
 27 |    def m() = if x == null then y else y  // error
    |                                        ^
-   |                                        Found:    A {...} retains x
+   |                                        Found:    {x} A {...}
    |                                        Required: A
 
 longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/capt1.scala:32:13 -------------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/capt1.scala:32:16 -------------------------------------------------------------
 32 |  val z2 = h[() => Cap](() => x)(() => C())  // error
    |             ^^^^^^^^^
    |             type argument is not allowed to capture the universal capability *

@@ -700,6 +700,8 @@ object Trees {
    */
   class InferredTypeTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]
 
+  class SimplifiedTypeTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]
+
   /** ref.type */
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] with TypTree[T] {

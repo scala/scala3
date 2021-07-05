@@ -28,7 +28,6 @@ import Checking._
 import Inferencing._
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
-import CheckCaptures.addResultCaptures
 import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
@@ -50,6 +49,7 @@ import reporting._
 import Nullables._
 import NullOpsDecorator._
 import config.Config
+import dotty.tools.dotc.ast.untpd.DependentTypeTree
 
 object Typer {
 
@@ -1250,15 +1250,13 @@ class Typer extends Namer
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     end typedDependent
 
-    addResultCaptures {
-      args match
-        case ValDef(_, _, _) :: _ =>
-          typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
-            using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
-        case _ =>
-          propagateErased(
-            typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt))
-    }
+    args match
+      case ValDef(_, _, _) :: _ =>
+        typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
+          using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
+      case _ =>
+        propagateErased(
+          typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt))
   }
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(using Context): Tree = {
@@ -2961,8 +2959,26 @@ class Typer extends Namer
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     withoutMode(Mode.PatternOrTypeBits)(typed(tree, pt))
+
   def typedType(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = // todo: retract mode between Type and Pattern?
-    withMode(Mode.Type)(typed(tree, pt))
+    val needsCaptureExpansion =
+      ctx.settings.Ycc.value
+      && !ctx.settings.YccNoAbbrev.value
+      && !ctx.mode.is(Mode.Type)  // it's a toplevel type
+      && !ctx.isAfterTyper
+      && !ctx.typer.isInstanceOf[ReTyper]
+      && !isTypedAhead(tree)
+      && !tree.isInstanceOf[untpd.TypeTree]
+      && !tree.isInstanceOf[DependentTypeTree]
+    val tree1 = withMode(Mode.Type) { typed(tree, pt) }
+    if needsCaptureExpansion then
+      val expanded = ExpandCaptures(tree1.tpe, tree.srcPos)
+      if expanded ne tree1.tpe then
+        report.echo(i"""Expand ${tree1.tpe}
+                       |    to $expanded""", tree.srcPos)
+      SimplifiedTypeTree().withType(expanded).withSpan(tree.span)
+    else tree1
+
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(using Context): Tree =
     withMode(Mode.Pattern)(typed(tree, selType))
 
@@ -3270,7 +3286,7 @@ class Typer extends Namer
         else if (tree.symbol.isPrimaryConstructor && tree.symbol.info.firstParamTypes.isEmpty)
           readapt(tree.appliedToNone) // insert () to primary constructors
         else
-          errorTree(tree, em"Missing arguments for $methodStr")
+          errorTree(tree, em"Missing arguments for $methodStr in $tree: ${tree.tpe.widen}")
       case _ => tryInsertApplyOrImplicit(tree, pt, locked) {
         errorTree(tree, MethodDoesNotTakeParameters(tree))
       }

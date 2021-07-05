@@ -1376,6 +1376,9 @@ class Namer { typer: Typer =>
       ctx.compilationUnit.suspend()
   }
 
+  def isTypedAhead(tree: Tree)(using Context): Boolean =
+    expanded(tree).hasAttachment(TypedAhead)
+
   /** Typecheck `tree` during completion using `typed`, and remember result in TypedAhead map */
   def typedAhead(tree: Tree, typed: untpd.Tree => tpd.Tree)(using Context): tpd.Tree = {
     val xtree = expanded(tree)
@@ -1389,14 +1392,10 @@ class Namer { typer: Typer =>
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
-    inMode(ctx.mode &~ Mode.PatternOrTypeBits | Mode.Type) {
-      typedAhead(tree, typer.typed(_, pt))
-    }
+    typedAhead(tree, typer.typedType(_, pt))
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
-    withoutMode(Mode.PatternOrTypeBits) {
-      typedAhead(tree, typer.typed(_, pt))
-    }
+    typedAhead(tree, typer.typedExpr(_, pt))
 
   def typedAheadAnnotation(tree: Tree)(using Context): tpd.Tree =
     typedAheadExpr(tree, defn.AnnotationClass.typeRef)
