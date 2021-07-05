@@ -1,8 +1,9 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
-import Flags._, Symbols._, Contexts._, Scopes._, Decorators._
+import Flags._, Symbols._, Contexts._, Scopes._, Decorators._, Types.Type
 import collection.mutable
 import collection.immutable.BitSet
 import scala.annotation.tailrec
@@ -33,11 +34,11 @@ object OverridingPairs {
      *  pair has already been treated in a parent class.
      *  This may be refined in subclasses. @see Bridges for a use case.
      */
-    protected def parents: Array[Symbol] = base.info.parents.toArray.map(_.typeSymbol)
+    protected def parents: Array[Symbol] = base.info.parents.toArray.map(_.classSymbol)
 
-    /** Does `sym1` match `sym2` so that it qualifies as overriding.
-     *  Types always match. Term symbols match if their membertypes
-     *  relative to <base>.this do
+    /** Does `sym1` match `sym2` so that it qualifies as overriding when both symbols are
+     *  seen as members of `self`? Types always match. Term symbols match if their membertypes
+     *  relative to `self` do.
      */
     protected def matches(sym1: Symbol, sym2: Symbol): Boolean =
       sym1.isType || sym1.asSeenFrom(self).matches(sym2.asSeenFrom(self))
@@ -85,11 +86,22 @@ object OverridingPairs {
         then bits += i
       subParents(bc) = bits
 
-    private def hasCommonParentAsSubclass(cls1: Symbol, cls2: Symbol): Boolean =
-      (subParents(cls1) intersect subParents(cls2)).nonEmpty
+    /** Is the override of `sym1` and `sym2` already handled when checking
+     *  a parent of `self`?
+     */
+    private def isHandledByParent(sym1: Symbol, sym2: Symbol): Boolean =
+      val commonParents = subParents(sym1.owner).intersect(subParents(sym2.owner))
+      commonParents.nonEmpty
+      && commonParents.exists(i => canBeHandledByParent(sym1, sym2, parents(i)))
+
+    /** Can pair `sym1`/`sym2` be handled by parent `parentType` which is a common subtype
+     *  of both symbol's owners? Assumed to be true by default, but overridden in RefChecks.
+     */
+    protected def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
+      true
 
     /** The scope entries that have already been visited as overridden
-     *  (maybe excluded because of hasCommonParentAsSubclass).
+     *  (maybe excluded because of already handled by a parent).
      *  These will not appear as overriding
      */
     private val visited = util.HashSet[Symbol]()
@@ -134,28 +146,22 @@ object OverridingPairs {
      *    overridden = overridden member of the pair, provided hasNext is true
      */
     @tailrec final def next(): Unit =
-      if (nextEntry ne null) {
+      if nextEntry != null then
         nextEntry = decls.lookupNextEntry(nextEntry)
-        if (nextEntry ne null)
-          try {
+        if nextEntry != null then
+          try
             overridden = nextEntry.sym
-            if (overriding.owner != overridden.owner && matches(overriding, overridden)) {
+            if overriding.owner != overridden.owner && matches(overriding, overridden) then
               visited += overridden
-              if (!hasCommonParentAsSubclass(overriding.owner, overridden.owner)) return
-            }
-          }
-          catch {
-            case ex: TypeError =>
-              // See neg/i1750a for an example where a cyclic error can arise.
-              // The root cause in this example is an illegal "override" of an inner trait
-              report.error(ex, base.srcPos)
-          }
-        else {
+              if !isHandledByParent(overriding, overridden) then return
+          catch case ex: TypeError =>
+            // See neg/i1750a for an example where a cyclic error can arise.
+            // The root cause in this example is an illegal "override" of an inner trait
+            report.error(ex, base.srcPos)
+        else
           curEntry = curEntry.prev
           nextOverriding()
-        }
         next()
-      }
 
     nextOverriding()
     next()
