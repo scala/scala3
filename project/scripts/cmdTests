@@ -69,8 +69,8 @@ dist/target/pack/bin/scaladoc \
   -d "$OUT1" \
   -project "scaladoc testcases" \
   -source-links:out/bootstrap/stdlib-bootstrapped/scala-3.0.2-RC1-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src=github://scala/scala/v2.13.6#src/library \
-  -source-links:out/bootstrap/stdlib-bootstrapped/scala-3.0.2-RC1-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src=github://lampepfl/dotty/3.0.0#library/src \
-  -source-links:github://lampepfl/dotty/3.0.0 \
+  -source-links:out/bootstrap/stdlib-bootstrapped/scala-3.0.2-RC1-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src=github://"${GITHUB_REPOSITORY}"/"${GITHUB_SHA}"\#library/src \
+  -source-links:github://"${GITHUB_REPOSITORY}"/"${GITHUB_SHA}" \
   "-external-mappings:.*scala.*::scaladoc3::http://dotty.epfl.ch/api/,.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/" \
   "-skip-by-regex:.+\.internal($|\..+)" \
   "-skip-by-regex:.+\.impl($|\..+)" \
