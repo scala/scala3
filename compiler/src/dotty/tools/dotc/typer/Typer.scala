@@ -1163,7 +1163,7 @@ class Typer extends Namer
 
   /** The parameter type for a parameter in a lambda that does
    *  not have an explicit type given, and where the type is not known from the context.
-   *  In this case the paranmeter type needs to be inferred the "target type" T known
+   *  In this case the parameter type needs to be inferred the "target type" T known
    *  from the callee `f` if the lambda is of a form like `x => f(x)`.
    *  If `T` exists, we know that `S <: I <: T`.
    *
@@ -1175,7 +1175,7 @@ class Typer extends Namer
    *    2. Otherwise, if the target type `T` can be fully defined under ForceDegree.flipBottom,
    *       pick this one.
    *
-   *  If both attempts fail, issue a "missing parameter type" error.
+   *  If both attempts fail, return `NoType`.
    */
   def inferredFromTarget(
       param: untpd.ValDef, formal: Type, calleeType: Type, paramIndex: Name => Int)(using Context): Type =
