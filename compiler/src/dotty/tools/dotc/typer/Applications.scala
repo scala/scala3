@@ -210,6 +210,7 @@ object Applications {
         case Select(receiver, _) => receiver
         case mr => mr.tpe.normalizedPrefix match {
           case mr: TermRef => ref(mr)
+          case mr: ThisType => singleton(mr)
           case mr =>
             if testOnly then
               // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
