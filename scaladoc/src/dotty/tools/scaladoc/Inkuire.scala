@@ -7,6 +7,14 @@ object Inkuire {
 
   var db = InkuireDb(Seq.empty, Map.empty, Seq.empty)
 
+  def beforeSave(): Unit = {
+    db = db.copy(
+      functions = db.functions.sortBy(_.hashCode),
+      types = db.types.toSeq.sortBy(_._1.uuid).toMap,
+      implicitConversions = db.implicitConversions.sortBy(_._1.uuid)
+    )
+  }
+
   def generateInkuireConfig(externalMappings: Seq[String]): String = {
     val paths = ("../inkuire-db.json" +: externalMappings.map(_ + "../inkuire-db.json")).map(jsonString)
     jsonObject(("inkuirePaths", jsonList(paths))).toString
