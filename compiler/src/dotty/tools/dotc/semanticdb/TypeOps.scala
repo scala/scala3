@@ -253,11 +253,36 @@ class TypeOps:
           s.AnnotatedType(sannots, sparent)
 
         case app @ AppliedType(tycon, args) =>
-          val sargs = args.map(loop)
-          loop(tycon) match
+          val targs = args.map { arg =>
+            arg match
+              // For wildcard type C[_ <: T], it's internal type representation will be
+              // `AppliedType(TypeBounds(lo = <Nothing>, hi = <T>))`.
+              //
+              // As scalameta for Scala2 does, we'll convert the wildcard type to
+              // `ExistentialType(TypeRef(NoPrefix, C, <local0>), Scope(hardlinks = List(<local0>)))`
+              // where `<local0>` has
+              // display_name: "_" and,
+              // signature: type_signature(..., lo = <Nothing>, hi = <T>)
+              case bounds: TypeBounds =>
+                val wildcardSym = newSymbol(NoSymbol, tpnme.WILDCARD, Flags.EmptyFlags, bounds)
+                val ssym = wildcardSym.symbolName
+                (Some(wildcardSym), s.TypeRef(s.Type.Empty, ssym, Seq.empty))
+              case other =>
+                val sarg = loop(other)
+                (None, sarg)
+          }
+          val wildcardSyms = targs.flatMap(_._1)
+          val sargs = targs.map(_._2)
+
+          val applied = loop(tycon) match
             case ref: s.TypeRef => ref.copy(typeArguments = sargs)
-            // is there any other cases?
             case _ => s.Type.Empty
+
+          if (wildcardSyms.isEmpty) applied
+          else s.ExistentialType(
+            applied,
+            Some(wildcardSyms.sscope(using LinkMode.HardlinkChildren))
+          )
 
         case and: AndType =>
           def flatten(child: Type): List[Type] = child match

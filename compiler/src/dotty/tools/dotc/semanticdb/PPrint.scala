@@ -168,7 +168,10 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
           s"${normal(utpe)} ${declsStr}"
         case AnnotatedType(anns, utpe) =>
           s"${normal(utpe)} ${anns.map(pprint).mkString(" ")}"
-        // case ExistentialType(utpe, decls) => // Scala3 shouldn't emit ExistentialType
+        case ExistentialType(utpe, decls) =>
+          val sdecls = decls.infos.map(_.displayName).mkString("; ")
+          val sutpe = normal(utpe)
+          s"${sutpe} forSome { ${sdecls} }"
         case UniversalType(tparams, utpe) =>
           val params = tparams.infos.map(_.displayName).mkString("[", ", ", "]")
           val resType = normal(utpe)

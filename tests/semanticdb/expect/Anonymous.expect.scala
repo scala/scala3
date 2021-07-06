@@ -12,7 +12,7 @@ class Anonymous/*<-example::Anonymous#*/ {
     ???/*->scala::Predef.`???`().*/ match { case _: List/*->scala::package.List#*/[_] => }
   }
   locally/*->example::Anonymous#locally().*/ {
-    val x/*<-local0*/: Int/*->scala::Int#*/ => Int/*->scala::Int#*/ = _ => ???/*->scala::Predef.`???`().*/
+    val x/*<-local2*/: Int/*->scala::Int#*/ => Int/*->scala::Int#*/ = _ => ???/*->scala::Predef.`???`().*/
   }
 
   trait Foo/*<-example::Anonymous#Foo#*/

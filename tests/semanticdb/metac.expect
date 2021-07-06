@@ -49,8 +49,8 @@ Schema => SemanticDB v4
 Uri => Advanced.scala
 Text => empty
 Language => Scala
-Symbols => 37 entries
-Occurrences => 96 entries
+Symbols => 38 entries
+Occurrences => 100 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
@@ -66,7 +66,7 @@ advanced/Structural#s4(). => method s4 (param a: Int): Object { abstract val met
 advanced/Structural#s4().(a) => param a: Int
 advanced/Test. => final object Test extends Object { self: <?>.Test.type => +11 decls }
 advanced/Test.e. => val method e Wildcards
-advanced/Test.e1. => val method e1 List[<?>]
+advanced/Test.e1. => val method e1 List[local14] forSome { _ }
 advanced/Test.e1x. => val method e1x Any
 advanced/Test.s. => val method s Structural
 advanced/Test.s1. => val method s1 Object { abstract val method x Int }
@@ -75,9 +75,10 @@ advanced/Test.s2. => val method s2 Object { abstract val method x Int }
 advanced/Test.s2x. => val method s2x Int
 advanced/Test.s3. => val method s3 Object { abstract method m (param x: Int): Int }
 advanced/Test.s3x. => val method s3x Int
-advanced/Wildcards# => class Wildcards extends Object { self: Wildcards => +2 decls }
+advanced/Wildcards# => class Wildcards extends Object { self: Wildcards => +3 decls }
 advanced/Wildcards#`<init>`(). => primary ctor <init> (): Wildcards
-advanced/Wildcards#e1(). => method e1 => List[<?>]
+advanced/Wildcards#e1(). => method e1 => List[local12] forSome { _ }
+advanced/Wildcards#e2(). => method e2 => List[local13] forSome { _ }
 local0 => abstract val method x Int
 local1 => abstract val method x Int
 local2 => val method x Int
@@ -88,8 +89,8 @@ local7 => param x: Int
 local8 => method m (param x: Int): Int
 local9 => final class $anon extends Object { self: $anon => +2 decls }
 local11 => abstract val method x Int
-local12 => val local e3: List[local13]
-local14 => val local e3x: local13
+local15 => val local e3: List[local16]
+local17 => val local e3x: local16
 
 Occurrences:
 [0:8..0:16): advanced <- advanced/
@@ -142,52 +143,56 @@ Occurrences:
 [19:6..19:8): e1 <- advanced/Wildcards#e1().
 [19:10..19:14): List -> scala/package.List#
 [19:20..19:23): ??? -> scala/Predef.`???`().
-[22:7..22:11): Test <- advanced/Test.
-[23:6..23:7): s <- advanced/Test.s.
-[23:14..23:24): Structural -> advanced/Structural#
-[23:24..23:24): -> advanced/Structural#`<init>`().
-[24:6..24:8): s1 <- advanced/Test.s1.
-[24:11..24:12): s -> advanced/Test.s.
-[24:13..24:15): s1 -> advanced/Structural#s1().
-[25:6..25:9): s1x <- advanced/Test.s1x.
-[25:12..25:12): -> scala/reflect/Selectable.reflectiveSelectable().
-[25:12..25:13): s -> advanced/Test.s.
-[25:14..25:16): s1 -> advanced/Structural#s1().
-[25:16..25:16): -> scala/reflect/Selectable#selectDynamic().
-[26:6..26:8): s2 <- advanced/Test.s2.
-[26:11..26:12): s -> advanced/Test.s.
-[26:13..26:15): s2 -> advanced/Structural#s2().
-[27:6..27:9): s2x <- advanced/Test.s2x.
-[27:12..27:12): -> scala/reflect/Selectable.reflectiveSelectable().
-[27:12..27:13): s -> advanced/Test.s.
-[27:14..27:16): s2 -> advanced/Structural#s2().
-[27:16..27:16): -> scala/reflect/Selectable#selectDynamic().
-[28:6..28:8): s3 <- advanced/Test.s3.
-[28:11..28:12): s -> advanced/Test.s.
-[28:13..28:15): s3 -> advanced/Structural#s3().
-[29:6..29:9): s3x <- advanced/Test.s3x.
-[29:12..29:12): -> scala/reflect/Selectable.reflectiveSelectable().
-[29:12..29:13): s -> advanced/Test.s.
-[29:14..29:16): s3 -> advanced/Structural#s3().
-[29:16..29:16): -> scala/reflect/Selectable#applyDynamic().
-[29:19..29:22): ??? -> scala/Predef.`???`().
-[31:6..31:7): e <- advanced/Test.e.
-[31:14..31:23): Wildcards -> advanced/Wildcards#
-[31:23..31:23): -> advanced/Wildcards#`<init>`().
-[32:6..32:8): e1 <- advanced/Test.e1.
-[32:11..32:12): e -> advanced/Test.e.
-[32:13..32:15): e1 -> advanced/Wildcards#e1().
-[33:6..33:9): e1x <- advanced/Test.e1x.
-[33:12..33:13): e -> advanced/Test.e.
-[33:14..33:16): e1 -> advanced/Wildcards#e1().
-[33:17..33:21): head -> scala/collection/IterableOps#head().
-[36:5..36:8): ??? -> scala/Predef.`???`().
-[36:11..36:14): Any -> scala/Any#
-[37:11..37:13): e3 <- local12
-[37:15..37:19): List -> scala/package.List#
-[38:12..38:15): e3x <- local14
-[38:18..38:20): e3 -> local12
-[38:21..38:25): head -> scala/collection/IterableOps#head().
+[20:6..20:8): e2 <- advanced/Wildcards#e2().
+[20:10..20:14): List -> scala/package.List#
+[20:20..20:23): Int -> scala/Int#
+[20:27..20:30): ??? -> scala/Predef.`???`().
+[23:7..23:11): Test <- advanced/Test.
+[24:6..24:7): s <- advanced/Test.s.
+[24:14..24:24): Structural -> advanced/Structural#
+[24:24..24:24): -> advanced/Structural#`<init>`().
+[25:6..25:8): s1 <- advanced/Test.s1.
+[25:11..25:12): s -> advanced/Test.s.
+[25:13..25:15): s1 -> advanced/Structural#s1().
+[26:6..26:9): s1x <- advanced/Test.s1x.
+[26:12..26:12): -> scala/reflect/Selectable.reflectiveSelectable().
+[26:12..26:13): s -> advanced/Test.s.
+[26:14..26:16): s1 -> advanced/Structural#s1().
+[26:16..26:16): -> scala/reflect/Selectable#selectDynamic().
+[27:6..27:8): s2 <- advanced/Test.s2.
+[27:11..27:12): s -> advanced/Test.s.
+[27:13..27:15): s2 -> advanced/Structural#s2().
+[28:6..28:9): s2x <- advanced/Test.s2x.
+[28:12..28:12): -> scala/reflect/Selectable.reflectiveSelectable().
+[28:12..28:13): s -> advanced/Test.s.
+[28:14..28:16): s2 -> advanced/Structural#s2().
+[28:16..28:16): -> scala/reflect/Selectable#selectDynamic().
+[29:6..29:8): s3 <- advanced/Test.s3.
+[29:11..29:12): s -> advanced/Test.s.
+[29:13..29:15): s3 -> advanced/Structural#s3().
+[30:6..30:9): s3x <- advanced/Test.s3x.
+[30:12..30:12): -> scala/reflect/Selectable.reflectiveSelectable().
+[30:12..30:13): s -> advanced/Test.s.
+[30:14..30:16): s3 -> advanced/Structural#s3().
+[30:16..30:16): -> scala/reflect/Selectable#applyDynamic().
+[30:19..30:22): ??? -> scala/Predef.`???`().
+[32:6..32:7): e <- advanced/Test.e.
+[32:14..32:23): Wildcards -> advanced/Wildcards#
+[32:23..32:23): -> advanced/Wildcards#`<init>`().
+[33:6..33:8): e1 <- advanced/Test.e1.
+[33:11..33:12): e -> advanced/Test.e.
+[33:13..33:15): e1 -> advanced/Wildcards#e1().
+[34:6..34:9): e1x <- advanced/Test.e1x.
+[34:12..34:13): e -> advanced/Test.e.
+[34:14..34:16): e1 -> advanced/Wildcards#e1().
+[34:17..34:21): head -> scala/collection/IterableOps#head().
+[37:5..37:8): ??? -> scala/Predef.`???`().
+[37:11..37:14): Any -> scala/Any#
+[38:11..38:13): e3 <- local15
+[38:15..38:19): List -> scala/package.List#
+[39:12..39:15): e3x <- local17
+[39:18..39:20): e3 -> local15
+[39:21..39:25): head -> scala/collection/IterableOps#head().
 
 expect/Annotations.scala
 ------------------------
@@ -300,9 +305,9 @@ example/Anonymous#locally().(x) => param x: A
 example/Anonymous#locally().[A] => typeparam A 
 example/Anonymous#m1(). => method m1 [] => Nothing
 example/Anonymous#m1().[T] => typeparam T 
-example/Anonymous#m2(). => method m2 => Map[<?>, List[<?>]]
-local0 => val local x: Function1[Int, Int]
-local1 => final class $anon extends Object with Foo { self: $anon => +1 decls }
+example/Anonymous#m2(). => method m2 => Map[local0, List[local1] forSome { _ }] forSome { _ }
+local2 => val local x: Function1[Int, Int]
+local3 => final class $anon extends Object with Foo { self: $anon => +1 decls }
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -329,7 +334,7 @@ Occurrences:
 [11:4..11:7): ??? -> scala/Predef.`???`().
 [11:24..11:28): List -> scala/package.List#
 [13:2..13:9): locally -> example/Anonymous#locally().
-[14:8..14:9): x <- local0
+[14:8..14:9): x <- local2
 [14:11..14:14): Int -> scala/Int#
 [14:18..14:21): Int -> scala/Int#
 [14:29..14:32): ??? -> scala/Predef.`???`().
@@ -906,7 +911,7 @@ _empty_/Enums.Maybe.Just.unapply(). => method unapply [typeparam A ](param x$1: 
 _empty_/Enums.Maybe.Just.unapply().(x$1) => param x$1: Just[A]
 _empty_/Enums.Maybe.Just.unapply().[A] => typeparam A 
 _empty_/Enums.Maybe.None. => case val static enum method None Maybe[Nothing]
-_empty_/Enums.Maybe.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Maybe[<?>]
+_empty_/Enums.Maybe.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Maybe[local0] forSome { _ }
 _empty_/Enums.Maybe.fromOrdinal().(ordinal) => param ordinal: Int
 _empty_/Enums.Planet# => abstract sealed enum class Planet extends Enum[Planet] with Enum { self: Planet => +6 decls }
 _empty_/Enums.Planet#G. => private[this] final val method G 6.673E-11
@@ -958,14 +963,14 @@ _empty_/Enums.Tag# => abstract sealed enum class Tag [typeparam A ] extends Obje
 _empty_/Enums.Tag#[A] => typeparam A 
 _empty_/Enums.Tag#`<init>`(). => primary ctor <init> [unknown A: <?>]: Tag[A]
 _empty_/Enums.Tag. => final object Tag extends Object { self: <?>.Tag.type => +7 decls }
-_empty_/Enums.Tag.$values. => private[this] val method $values Array[Tag[<?>]]
+_empty_/Enums.Tag.$values. => private[this] val method $values Array[Tag[local1] forSome { _ }]
 _empty_/Enums.Tag.BooleanTag. => case val static enum method BooleanTag Tag[Boolean]
 _empty_/Enums.Tag.IntTag. => case val static enum method IntTag Tag[Int]
-_empty_/Enums.Tag.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Tag[<?>]
+_empty_/Enums.Tag.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Tag[local4] forSome { _ }
 _empty_/Enums.Tag.fromOrdinal().(ordinal) => param ordinal: Int
-_empty_/Enums.Tag.valueOf(). => method valueOf (param $name: String): Tag[<?>]
+_empty_/Enums.Tag.valueOf(). => method valueOf (param $name: String): Tag[local3] forSome { _ }
 _empty_/Enums.Tag.valueOf().($name) => param $name: String
-_empty_/Enums.Tag.values(). => method values => Array[Tag[<?>]]
+_empty_/Enums.Tag.values(). => method values => Array[Tag[local2] forSome { _ }]
 _empty_/Enums.WeekDays# => abstract sealed enum class WeekDays extends Object with Enum { self: WeekDays => +1 decls }
 _empty_/Enums.WeekDays#`<init>`(). => primary ctor <init> (): WeekDays
 _empty_/Enums.WeekDays. => final object WeekDays extends Object { self: <?>.WeekDays.type => +13 decls }
@@ -1005,7 +1010,7 @@ _empty_/Enums.`<:<`.Refl.unapply().(x$1) => param x$1: Refl[C]
 _empty_/Enums.`<:<`.Refl.unapply().[C] => typeparam C 
 _empty_/Enums.`<:<`.`given_<:<_T_T`(). => final implicit given method given_<:<_T_T [] => <:<[T, T]
 _empty_/Enums.`<:<`.`given_<:<_T_T`().[T] => typeparam T 
-_empty_/Enums.`<:<`.fromOrdinal(). => method fromOrdinal (param ordinal: Int): <:<[<?>, <?>]
+_empty_/Enums.`<:<`.fromOrdinal(). => method fromOrdinal (param ordinal: Int): <:<[local5, local6] forSome { _; _ }
 _empty_/Enums.`<:<`.fromOrdinal().(ordinal) => param ordinal: Int
 _empty_/Enums.some1. => val method some1 Option[Int]
 _empty_/Enums.unwrap(). => method unwrap [typeparam A , typeparam B ](param opt: Option[A])(implicit given param ev: <:<[A, Option[B]]): <?>
@@ -1013,7 +1018,7 @@ _empty_/Enums.unwrap().(ev) => implicit given param ev: <:<[A, Option[B]]
 _empty_/Enums.unwrap().(opt) => param opt: Option[A]
 _empty_/Enums.unwrap().[A] => typeparam A 
 _empty_/Enums.unwrap().[B] => typeparam B 
-local0 => param x: Option[B]
+local7 => param x: Option[B]
 
 Occurrences:
 [0:7..0:12): Enums <- _empty_/Enums.
@@ -1142,7 +1147,7 @@ Occurrences:
 [52:19..52:22): opt -> _empty_/Enums.unwrap().(opt)
 [52:23..52:30): flatMap -> scala/Option#flatMap().
 [52:31..52:39): identity -> scala/Predef.identity().
-[52:31..52:31): -> local0
+[52:31..52:31): -> local7
 [52:40..52:46): Option -> scala/Option#
 [52:47..52:48): B -> _empty_/Enums.unwrap().[B]
 [54:6..54:11): some1 <- _empty_/Enums.some1.
@@ -3753,7 +3758,7 @@ local2 => case val method N$2
 local3 => val local p: N$2
 local4 => val local Nat_this: <?>.Zero.type
 local5 => val local Nat_this: Succ[<?>.Zero.type]
-local6 => val local Nat_this: Succ[<?>]
+local6 => val local Nat_this: Succ[local7] forSome { _ }
 recursion/Nats. => final object Nats extends Object { self: <?>.Nats.type => +9 decls }
 recursion/Nats.Nat# => sealed trait Nat extends Object { self: Nat => +3 decls }
 recursion/Nats.Nat#`++`(). => inline transparent macro ++ => Succ[Nat.this.type]
@@ -4042,8 +4047,8 @@ local3 => final class $anon extends Object { self: $anon => +2 decls }
 local5 => final class $anon extends M with N { self: $anon => +1 decls }
 local7 => method k => Int
 local8 => final class $anon extends M with N { self: $anon => +2 decls }
-local10 => typeparam T 
-local11 => type L [typeparam T ] = List[T]
+local13 => typeparam T 
+local14 => type L [typeparam T ] = List[T]
 types/B# => class B extends Object { self: B => +1 decls }
 types/B#`<init>`(). => primary ctor <init> (): B
 types/C# => class C extends Object { self: C => +1 decls }
@@ -4128,13 +4133,13 @@ types/Test.C#annType1. => val method annType1 T @ann[T]
 types/Test.C#annType2. => val method annType2 T @ann1 @ann2
 types/Test.C#compoundType1. => val method compoundType1 Object { abstract method k => Int }
 types/Test.C#compoundType2. => val method compoundType2 M & N
-types/Test.C#compoundType3. => val method compoundType3 M with N { abstract method k => Int }
+types/Test.C#compoundType3. => val method compoundType3 M & N { abstract method k => Int }
 types/Test.C#compoundType4. => val method compoundType4 Object
 types/Test.C#compoundType5. => val method compoundType5 M & N
 types/Test.C#compoundType6. => val method compoundType6 M & N
-types/Test.C#existentialType2. => val method existentialType2 List[<?>]
-types/Test.C#existentialType3. => val method existentialType3 Class[<?>]
-types/Test.C#existentialType4. => val method existentialType4 Class[<?>]
+types/Test.C#existentialType2. => val method existentialType2 List[local10] forSome { _ }
+types/Test.C#existentialType3. => val method existentialType3 Class[local11] forSome { _ }
+types/Test.C#existentialType4. => val method existentialType4 Class[local12] forSome { _ }
 types/Test.C#p. => val method p P
 types/Test.C#singleType1. => val method singleType1 <?>.x.type
 types/Test.C#singleType2. => val method singleType2 <?>.p.x.type
@@ -4341,10 +4346,10 @@ Occurrences:
 [75:20..75:21): M <- types/Test.C#typeLambda1().[M]
 [75:28..75:31): ??? -> scala/Predef.`???`().
 [76:4..76:15): typeLambda1 -> types/Test.C#typeLambda1().
-[76:24..76:25): L <- local11
-[76:26..76:27): T <- local10
+[76:24..76:25): L <- local14
+[76:26..76:27): T <- local13
 [76:31..76:35): List -> scala/package.List#
-[76:36..76:37): T -> local10
+[76:36..76:37): T -> local13
 [78:11..78:25): ClassInfoType1 <- types/Test.C#ClassInfoType1.
 [79:10..79:24): ClassInfoType2 <- types/Test.C#ClassInfoType2#
 [79:33..79:34): B -> types/B#
