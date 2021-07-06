@@ -559,7 +559,7 @@ object Contexts {
     def platform: Platform                 = base.platform
     def pendingUnderlying: util.HashSet[Type]      = base.pendingUnderlying
     def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
-    def uniques: util.HashSet[Type]                = base.uniques
+    def uniques: util.WeakHashSet[Type]            = base.uniques
 
     def initialize()(using Context): Unit = base.initialize()
   }
