@@ -153,14 +153,14 @@ class TypeOps:
           val stpe = loop(tpe)
           s.ByNameType(stpe)
 
-        case TypeRef(pre, desig) if desig.isInstanceOf[Symbol] =>
+        case TypeRef(pre, sym: Symbol) =>
           val spre = if(tpe.hasTrivialPrefix) s.Type.Empty else loop(pre)
-          val ssym = desig.asInstanceOf[Symbol].symbolName
+          val ssym = sym.symbolName
           s.TypeRef(spre, ssym, Seq.empty)
 
-        case TermRef(pre, desig) if desig.isInstanceOf[Symbol] =>
+        case TermRef(pre, sym: Symbol) =>
           val spre = if(tpe.hasTrivialPrefix) s.Type.Empty else loop(pre)
-          val ssym = desig.asInstanceOf[Symbol].symbolName
+          val ssym = sym.symbolName
           s.SingleType(spre, ssym)
 
         case tref: ParamRef =>
@@ -176,9 +176,8 @@ class TypeOps:
               s.Type.Empty
           }
 
-        case ThisType(TypeRef(_, desig)) if desig.isInstanceOf[Symbol] =>
-          val ssym = desig.asInstanceOf[Symbol].symbolName
-          s.ThisType(ssym)
+        case ThisType(TypeRef(_, sym: Symbol)) =>
+          s.ThisType(sym.symbolName)
 
         case SuperType(thistpe, supertpe) =>
           val spre = loop(thistpe.typeSymbol.info)
@@ -286,10 +285,10 @@ class TypeOps:
       def checkTrivialPrefix(pre: Type, sym: Symbol)(using Context): Boolean =
         pre =:= sym.owner.thisType
       tpe match {
-        case TypeRef(pre, desig) if desig.isInstanceOf[Symbol] =>
-          checkTrivialPrefix(pre, desig.asInstanceOf[Symbol])
-        case TermRef(pre, desig) if desig.isInstanceOf[Symbol] =>
-          checkTrivialPrefix(pre, desig.asInstanceOf[Symbol])
+        case TypeRef(pre, sym: Symbol) =>
+          checkTrivialPrefix(pre, sym)
+        case TermRef(pre, sym: Symbol) =>
+          checkTrivialPrefix(pre, sym)
         case _ => false
       }
 
