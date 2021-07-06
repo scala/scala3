@@ -50,7 +50,7 @@ object Enums/*<-_empty_::Enums.*/:
     given /*<-_empty_::Enums.`<:<`.`given_<:<_T_T`().*/[T/*<-_empty_::Enums.`<:<`.`given_<:<_T_T`().[T]*/]: (T/*->_empty_::Enums.`<:<`.`given_<:<_T_T`().[T]*/ <:</*->_empty_::Enums.`<:<`#*/ T/*->_empty_::Enums.`<:<`.`given_<:<_T_T`().[T]*/) = Refl/*->_empty_::Enums.`<:<`.Refl.*//*->_empty_::Enums.`<:<`.Refl.apply().*/()
 
   extension [A/*<-_empty_::Enums.unwrap().[A]*/, B/*<-_empty_::Enums.unwrap().[B]*/](opt/*<-_empty_::Enums.unwrap().(opt)*/: Option/*->scala::Option#*/[A/*->_empty_::Enums.unwrap().[A]*/]) def unwrap/*<-_empty_::Enums.unwrap().*/(using ev/*<-_empty_::Enums.unwrap().(ev)*/: A/*->_empty_::Enums.unwrap().[A]*/ <:</*->_empty_::Enums.`<:<`#*/ Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]): Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/] = ev/*->_empty_::Enums.unwrap().(ev)*/ match
-    case Refl/*->_empty_::Enums.`<:<`.Refl.*//*->_empty_::Enums.`<:<`.Refl.unapply().*/() => opt/*->_empty_::Enums.unwrap().(opt)*/.flatMap/*->scala::Option#flatMap().*/(identity/*->scala::Predef.identity().*//*->local0*/[Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]])
+    case Refl/*->_empty_::Enums.`<:<`.Refl.*//*->_empty_::Enums.`<:<`.Refl.unapply().*/() => opt/*->_empty_::Enums.unwrap().(opt)*/.flatMap/*->scala::Option#flatMap().*/(identity/*->scala::Predef.identity().*//*->local7*/[Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]])
 
   val some1/*<-_empty_::Enums.some1.*/ = Some/*->scala::Some.*//*->scala::Some.apply().*/(Some/*->scala::Some.*//*->scala::Some.apply().*/(1)).unwrap/*->_empty_::Enums.unwrap().*//*->_empty_::Enums.`<:<`.`given_<:<_T_T`().*/
 

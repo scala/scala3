@@ -18,6 +18,7 @@ class Structural {
 
 class Wildcards {
   def e1: List[_] = ???
+  def e2: List[_ <: Int] = ???
 }
 
 object Test {
