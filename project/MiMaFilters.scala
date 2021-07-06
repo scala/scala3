@@ -18,6 +18,7 @@ object MiMaFilters {
     exclude[MissingClassProblem]("scala.annotation.experimental"),
     exclude[MissingClassProblem]("scala.annotation.internal.ErasedParam"),
     exclude[MissingClassProblem]("scala.annotation.internal.ErasedParam"),
+    exclude[MissingClassProblem]("scala.annotation.internal.ProvisionalSuperClass"),
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes.valueOrAbort"),
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#reportModule.errorAndAbort"),
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.fieldMember"),
