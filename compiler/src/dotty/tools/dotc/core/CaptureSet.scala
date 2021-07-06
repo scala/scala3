@@ -40,6 +40,9 @@ case class CaptureSet(elems: CaptureSet.Refs) extends Showable:
   def <:< (that: CaptureSet)(using Context): Boolean =
     elems.isEmpty || elems.forall(that.accountsFor)
 
+  def map(f: CaptureRef => CaptureRef)(using Context): CaptureSet =
+    (empty /: elems)((cs, ref) => cs + f(ref))
+
   def flatMap(f: CaptureRef => CaptureSet)(using Context): CaptureSet =
     (empty /: elems)((cs, ref) => cs ++ f(ref))
 
@@ -53,6 +56,14 @@ case class CaptureSet(elems: CaptureSet.Refs) extends Showable:
     ((NoType: Type) /: elems) ((tp, ref) =>
       if tp.exists then OrType(tp, ref, soft = false) else ref)
 
+  override def hashCode: Int = (0 /: elems) ((x, ref) => x + ref.hashCode)
+
+  override def equals(other: Any) = other match
+    case that: CaptureSet =>
+      this.elems.size == that.elems.size && this.elems.forall(that.elems.contains)
+    case _ =>
+      false
+
   override def toString = elems.toString
 
   override def toText(printer: Printer): Text =
@@ -65,6 +76,8 @@ object CaptureSet:
 
   /** Used as a recursion brake */
   @sharable private[core] val Pending = CaptureSet(SimpleIdentitySet.empty)
+
+  def universal(using Context) = defn.captureRootType.typeRef.singletonCaptureSet
 
   def apply(elems: CaptureRef*)(using Context): CaptureSet =
     if elems.isEmpty then empty
@@ -93,8 +106,8 @@ object CaptureSet:
     def recur(tp: Type): CaptureSet = tp match
       case tp: CaptureRef =>
         tp.captureSet
-      case CapturingType(parent, ref) =>
-        recur(parent) + ref
+      case CapturingType(parent, refs) =>
+        recur(parent) ++ refs
       case AppliedType(tycon, args) =>
         val cs = recur(tycon)
         tycon.typeParams match

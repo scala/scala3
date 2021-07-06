@@ -525,7 +525,7 @@ object Inferencing {
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
-    case tp: CapturingType => tp.derivedCapturingType(captureWildcards(tp.parent), tp.ref)
+    case tp: CapturingType => tp.derivedCapturingType(captureWildcards(tp.parent), tp.refs)
     case _ => tp
   }
 }

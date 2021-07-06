@@ -2151,7 +2151,7 @@ object SymDenotations {
             recur(TypeComparer.bounds(tp).hi)
 
           case tp: CapturingType =>
-            tp.derivedCapturingType(recur(tp.parent), tp.ref)
+            tp.derivedCapturingType(recur(tp.parent), tp.refs)
 
           case tp: TypeProxy =>
             def computeTypeProxy = {

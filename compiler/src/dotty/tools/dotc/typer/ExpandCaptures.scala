@@ -109,8 +109,7 @@ object ExpandCaptures:
         CaptureSet.empty
 
     def wrapImplied(tpe: Type) =
-      if canAdd then
-        (tpe /: (outerCaptures ++ nestedCaptures(tpe)).elems)(CapturingType(_, _))
+      if canAdd then tpe.capturing(outerCaptures ++ nestedCaptures(tpe))
       else tpe
 
     def reportOverlap(declared: CaptureSet, implied: CaptureSet): Unit =
@@ -120,10 +119,10 @@ object ExpandCaptures:
           pos)
 
     tpe match
-      case tpe @ CapturingType(parent, ref) =>
-        reportOverlap(tpe.captureSet, outerCaptures ++ nestedCaptures(parent))
-        val parent1 = addImplied(parent, bound, outerCaptures + ref, canAdd = false, pos)
-        tpe.derivedCapturingType(parent1, ref)
+      case tpe @ CapturingType(parent, refs) =>
+        reportOverlap(refs, outerCaptures ++ nestedCaptures(parent))
+        val parent1 = addImplied(parent, bound, outerCaptures ++ refs, canAdd = false, pos)
+        tpe.derivedCapturingType(parent1, refs)
       case FunctionType(tparams, params, body) =>
         val newParamCaptures = paramCaptures(params) -- bound -- outerCaptures
         if newParamCaptures.nonEmpty && !tpe.isInstanceOf[RefinedType] then
