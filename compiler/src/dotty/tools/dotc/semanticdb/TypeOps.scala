@@ -220,7 +220,7 @@ class TypeOps:
           }
 
           val (parent, refinedInfos) = flatten(rt, List.empty)
-          val stpe = s.WithType(flattenParent(parent))
+          val stpe = s.IntersectionType(flattenParent(parent))
 
           val decls = refinedInfos.flatMap { (name, _) =>
             refinementSymtab.get((rt, name))
