@@ -2,7 +2,7 @@ type Top = {*} Any
 class Cap extends Retains[*]
 
 type Op[T <: Top, C <: Top] =
-  {*} (v: T) => {*} (s: C) => C
+  (v: T) => {*} (s: C) => C
 
 type List[T <: Top] =
   {T} [C <: Top] => (op: Op[T, C]) => {op} (s: C) => C
@@ -29,7 +29,7 @@ def strictMap[A <: Top, B <: Top](xs: List[A])(f: {*} A => B): List[B] =
 def strictMap2[A <: Top, B <: Top](f: {*} A => B): {f} List[A] => List[B] =
   (xs: List[A]) => xs[List[B]]((hd: A) => (tl: List[B]) => cons(f(hd), tl))(nil)
 
-def pureMap[A <: Top, B <: Top](xs: List[A])(f: A => B): List[B] =
+def pureMap[A <: Top, B <: Top](xs: List[A])(f: {} A => B): List[B] =
   xs[List[B]]((hd: A) => (tl: List[B]) => cons(f(hd), tl))(nil)
 
 class Unit
@@ -49,12 +49,12 @@ def lazyMap
 def lazyPureMap
   [A <: Top, B <: Top]
   (xs: List[Unit => A])
-  (f: A => B):
-  List[{A, B} Unit => B] =
+  (f: {} A => B):
+  List[{A} Unit => B] =
 
-    xs[List[{A, B} Unit => B]]
+    xs[List[{A} Unit => B]]
       ((hd: Unit => A) =>
-        (tl: List[{A, B} Unit => B]) =>
+        (tl: List[{A} Unit => B]) =>
           cons((u: Unit) => f(hd(unit)), tl))(nil)
 
 def force[A](thunk: Unit=>A): A = thunk(unit)
