@@ -76,6 +76,7 @@ dist/target/pack/bin/scaladoc \
   "-skip-by-regex:.+\.impl($|\..+)" \
   -project-logo docs/logo.svg \
   -social-links:github::https://github.com/lampepfl/dotty,gitter::https://gitter.im/scala/scala,twitter::https://twitter.com/scala_lang \
+  -Ygenerate-inkuire \
   "-skip-by-id:scala.runtime.stdLibPatches" \
   "-skip-by-id:scala.runtime.MatchCase" \
   -project-footer "Copyright (c) 2002-2021, LAMP/EPFL" \
