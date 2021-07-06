@@ -93,6 +93,7 @@ object Scaladoc:
     val dbFile = dbPath.toFile()
     dbFile.createNewFile()
     val dbWriter = new FileWriter(dbFile, false)
+    Inkuire.beforeSave()
     dbWriter.write(s"${EngineModelSerializers.serialize(Inkuire.db)}")
     dbWriter.close()
 
