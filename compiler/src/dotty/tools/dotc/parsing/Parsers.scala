@@ -900,21 +900,18 @@ object Parsers {
 
     def followingIsCaptureSet(): Boolean =
       val lookahead = in.LookaheadScanner()
-      def recur(): Boolean =
-        lookahead.isIdent && {
+      def skipElems(): Unit =
+        lookahead.nextToken()
+        if lookahead.isIdent then
           lookahead.nextToken()
-          if lookahead.token == COMMA then
-            lookahead.nextToken()
-            recur()
-          else
-            lookahead.token == RBRACE && {
-              lookahead.nextToken()
-              canStartInfixTypeTokens.contains(lookahead.token)
-              || lookahead.token == LBRACKET
-            }
-        }
-      lookahead.nextToken()
-      recur()
+          if lookahead.token == COMMA then skipElems()
+      skipElems()
+      lookahead.token == RBRACE
+      && {
+        lookahead.nextToken()
+        canStartInfixTypeTokens.contains(lookahead.token)
+        || lookahead.token == LBRACKET
+      }
 
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -1366,7 +1363,7 @@ object Parsers {
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
-     *  CaptureSet     ::=  `{` CaptureRef {`,` CaptureRef} `}`
+     *  CaptureSet     ::=  `{` [CaptureRef {`,` CaptureRef}] `}`
      *  CaptureRef     ::=  Ident
      */
     def typ(): Tree = {
@@ -1467,10 +1464,12 @@ object Parsers {
           else { accept(TLARROW); typ() }
         }
         else if in.token == LBRACE && followingIsCaptureSet() then
-          val refs = inBraces { commaSeparated(captureRef) }
-          val t = typ()
-          val captured = refs.reduce(InfixOp(_, Ident(tpnme.raw.BAR), _))
-          AppliedTypeTree(TypeTree(defn.Predef_capturing.typeRef), captured :: t :: Nil)
+          in.nextToken()
+          val captured =
+            if in.token == RBRACE then TypeTree(defn.NothingType)
+            else commaSeparated(captureRef).reduce(InfixOp(_, Ident(tpnme.raw.BAR), _))
+          accept(RBRACE)
+          AppliedTypeTree(TypeTree(defn.Predef_capturing.typeRef), captured :: typ() :: Nil)
         else if (in.token == INDENT) enclosed(INDENT, typ())
         else infixType()
 

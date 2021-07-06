@@ -6,7 +6,7 @@ object Test:
   class CTC
   type CT = CTC retains *
 
-  def test(ct: CT, dt: CT) =
+  def test[X <: {*} Any, Y <: {*} Any](ct: CT, dt: CT) =
 
     def x0: A => {ct} B = ???
 
@@ -19,3 +19,6 @@ object Test:
     def x5: A => (x: B retains ct.type) => () => C retains dt.type = ???
     def x6: A => (x: B retains ct.type) => (() => C retains dt.type) retains x.type | dt.type = ???
     def x7: A => (x: B retains ct.type) => (() => C retains dt.type) retains x.type = ???
+
+    def x8: X => Y = ???
+    def x9: {} X => Y = ???

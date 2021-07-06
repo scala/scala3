@@ -188,7 +188,8 @@ trait TypeAssigner {
   def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type =
     def include(cs: CaptureSet, tp: Type): CaptureSet = tp match
       case ref: CaptureRef =>
-        if ref.isTracked then
+        if ref.isExactlyNothing then cs
+        else if ref.isTracked then
           if cs.accountsFor(ref) then
             report.warning(em"redundant capture: $cs already accounts for $ref", tree.srcPos)
           cs + ref
