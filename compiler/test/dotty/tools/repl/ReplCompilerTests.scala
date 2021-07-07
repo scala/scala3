@@ -219,6 +219,17 @@ class ReplCompilerTests extends ReplTest {
     run("val (x: 1) = 2")
     assertEquals("scala.MatchError: 2 (of class java.lang.Integer)", storedOutput().linesIterator.next())
   }
+  @Test def `i12920 must truncate stack trace to user code` = fromInitialState { implicit state =>
+    run("???")
+    val all = lines()
+    assertEquals(3, all.length)
+    assertEquals("scala.NotImplementedError: an implementation is missing", all.head)
+    /* avoid asserting much about line number or elided count
+    scala.NotImplementedError: an implementation is missing
+      at scala.Predef$.$qmark$qmark$qmark(Predef.scala:344)
+      ... 28 elided
+     */
+  }
 }
 
 object ReplCompilerTests {
