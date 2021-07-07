@@ -123,7 +123,7 @@ class TypeOps:
           s.MethodSignature(
             stparams,
             sparamss,
-            resType.toSemanticType(sym)
+            resType.toSemanticType
           )
 
         case cls: ClassInfo =>
@@ -131,8 +131,8 @@ class TypeOps:
             if (cls.cls.typeParams.nonEmpty)
               Some(cls.cls.typeParams.sscope)
             else None
-          val sparents = cls.parents.map(_.toSemanticType(sym))
-          val sself = cls.selfType.toSemanticType(sym)
+          val sparents = cls.parents.map(_.toSemanticType)
+          val sself = cls.selfType.toSemanticType
           val decls = cls.decls.toList.sscope
           s.ClassSignature(stparams, sparents, sself, Some(decls))
 
@@ -149,19 +149,19 @@ class TypeOps:
           val (loRes, loParams) = tparams(lo)
           val (hiRes, hiParams) = tparams(hi)
           val params = (loParams ++ hiParams).distinctBy(_.name)
-          val slo = loRes.toSemanticType(sym)
-          val shi = hiRes.toSemanticType(sym)
+          val slo = loRes.toSemanticType
+          val shi = hiRes.toSemanticType
           val stparams = params.sscope
           s.TypeSignature(Some(stparams), slo, shi)
 
         case other =>
           s.ValueSignature(
-            other.toSemanticType(sym)
+            other.toSemanticType
           )
       }
       loop(tpe)
 
-    private def toSemanticType(using LinkMode, SemanticSymbolBuilder, Context)(sym: Symbol): s.Type =
+    private def toSemanticType(using LinkMode, SemanticSymbolBuilder, Context): s.Type =
       import ConstantOps._
       def loop(tpe: Type): s.Type = tpe match {
         case ExprType(tpe) =>
