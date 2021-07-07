@@ -5,6 +5,7 @@ scala> object o { val xs = List(1, 2, 3) }
 // defined object o
 scala> import o._
 scala> buf += xs
+-- Error:
 1 | buf += xs
   |        ^^
   |        Found:    (o.xs : List[Int])
@@ -12,10 +13,12 @@ scala> buf += xs
 scala> buf ++= xs
 val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
 scala> import util.foobar
+-- Error:
 1 | import util.foobar
   |             ^^^^^^
   |             value foobar is not a member of util
 scala> import util.foobar.bar
+-- Error:
 1 | import util.foobar.bar
   |        ^^^^^^^^^^^
   |        value foobar is not a member of util

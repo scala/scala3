@@ -1,4 +1,5 @@
 scala> val xs = scala.collection.mutable.ListBuffer[Int]
+-- Error:
 1 | val xs = scala.collection.mutable.ListBuffer[Int]
   |          ^
   |          Missing parameter type
