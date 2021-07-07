@@ -26,7 +26,19 @@ class TypeOps:
       def enterParamRef(tpe: Type): Unit =
         tpe match {
           case lam: LambdaType =>
-            paramRefSymtab((lam, sym.name)) = sym
+            // Find the "actual" binder type for nested LambdaType
+            // For example, `def foo(x: T)(y: T): T` and for `<y>.owner.info` would be like
+            // `MethodType(...<x>, resType = MethodType(...<y>, resType = <T>))`.
+            // (Let's say the outer `MethodType` "outer", and `MethodType` who is
+            // `resType` of outer "inner")
+            //
+            // We try to find the "actual" binder of <y>: `inner`,
+            // and register them to the symbol table with `(<y>, inner) -> <y>`
+            // instead of `("y", outer) -> <y>`
+            if lam.paramNames.contains(sym.name) then
+              paramRefSymtab((lam, sym.name)) = sym
+            else
+              enterParamRef(lam.resType)
 
           // for class constructor
           // class C[T] { ... }
@@ -82,16 +94,36 @@ class TypeOps:
       enterRefined(sym.owner.info)
 
       def loop(tpe: Type): s.Signature = tpe match {
-        case mt: MethodType =>
-          val stparams = Some(s.Scope())
-          val paramss =
-            if (sym.rawParamss.nonEmpty) sym.rawParamss else sym.paramSymss
-          val termParamss = paramss.filter(ps => ps.forall(!_.isTypeParam))
-          val sparamss = termParamss.map(_.sscope)
+        case mp: MethodOrPoly =>
+          def flatten(
+            t: Type,
+            paramss: List[List[Symbol]],
+            tparams: List[Symbol]
+          ): (Type, List[List[Symbol]], List[Symbol]) = t match {
+            case mt: MethodType =>
+              val syms = mt.paramNames.flatMap { paramName =>
+                val key = (mt, paramName)
+                paramRefSymtab.get(key)
+              }
+              flatten(mt.resType, paramss :+ syms, tparams)
+            case pt: PolyType =>
+              val syms = pt.paramNames.flatMap { paramName =>
+                val key = (pt, paramName)
+                paramRefSymtab.get(key)
+              }
+              // there shouldn't multiple type params
+              flatten(pt.resType, paramss, syms)
+            case other =>
+              (other, paramss, tparams)
+          }
+          val (resType, paramss, tparams) = flatten(mp, Nil, Nil)
+
+          val sparamss = paramss.map(_.sscope)
+          val stparams = Some(tparams.sscope)
           s.MethodSignature(
             stparams,
             sparamss,
-            mt.finalResultType.toSemanticType(sym)
+            resType.toSemanticType(sym)
           )
 
         case cls: ClassInfo =>
@@ -121,23 +153,6 @@ class TypeOps:
           val shi = hiRes.toSemanticType(sym)
           val stparams = params.sscope
           s.TypeSignature(Some(stparams), slo, shi)
-
-        case pt: PolyType =>
-          loop(pt.resType) match {
-            case m: s.MethodSignature =>
-              val paramss =
-                if (sym.rawParamss.nonEmpty) sym.rawParamss else sym.paramSymss
-              val tparamss = paramss.filter(ps => ps.forall(_.isTypeParam))
-              val stparams = tparamss.flatten.sscope
-              m.copy(typeParameters = Some(stparams))
-            case v: s.ValueSignature =>
-              val paramss =
-                if (sym.rawParamss.nonEmpty) sym.rawParamss else sym.paramSymss
-              val tparamss = paramss.filter(ps => ps.forall(_.isTypeParam))
-              val stparams = tparamss.flatten.sscope
-              s.ValueSignature(s.UniversalType(Some(stparams), v.tpe))
-            case _ => s.Signature.Empty
-          }
 
         case other =>
           s.ValueSignature(
