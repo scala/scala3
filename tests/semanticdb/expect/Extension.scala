@@ -7,3 +7,9 @@ extension (s: String)
 val a = "asd".foo
 
 val c = "foo" #*# 23
+
+trait Read[+T]:
+  def fromString(s: String): Option[T]
+
+extension (s: String)
+  def readInto[T](using Read[T]): Option[T] = summon[Read[T]].fromString(s)
