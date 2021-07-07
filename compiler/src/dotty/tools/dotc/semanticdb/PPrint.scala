@@ -147,7 +147,11 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
           val argsStr = if (args.nonEmpty) args.map(normal).mkString("[", ", ", "]") else ""
           s"${preStr}${pprintRef(sym)}${argsStr}"
         case SingleType(pre, sym) =>
-          s"${prefix(pre)}.${pprintRef(sym)}"
+          pre match {
+            case Type.Empty => pprintRef(sym)
+            case _ =>
+              s"${prefix(pre)}.${pprintRef(sym)}"
+          }
         case ThisType(sym) =>
           s"${pprintRef(sym)}.this"
         case SuperType(pre, sym) =>
