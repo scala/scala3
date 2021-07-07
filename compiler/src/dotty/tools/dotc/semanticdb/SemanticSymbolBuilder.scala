@@ -34,7 +34,7 @@ class SemanticSymbolBuilder:
       name => s"$funSymbol($name)"
     else
       name => locals.keys.find(local => local.isTerm && local.owner == sym && local.name == name)
-                    .fold("<?>")(Symbols.LocalPrefix + _)
+                    .fold("<?>")(Symbols.LocalPrefix + locals(_))
 
   /** Add semanticdb name of the given symbol to string builder */
   private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
