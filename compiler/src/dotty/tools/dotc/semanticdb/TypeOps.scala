@@ -91,7 +91,7 @@ class TypeOps:
           s.MethodSignature(
             stparams,
             sparamss,
-            mt.resType.toSemanticType(sym)
+            mt.finalResultType.toSemanticType(sym)
           )
 
         case cls: ClassInfo =>
