@@ -39,8 +39,12 @@ class BashScriptsTests:
   val scalacPath = "dist/target/pack/bin/scalac" // which("scalac")
   val scalaPath = "dist/target/pack/bin/scala"   // which("scala")
 
+  def isFile(path: String): Boolean =
+    Files.isRegularFile(Paths.get(path)) 
+
   /* verify `dist/bin/scalac` */
   @Test def verifyScalacArgs =
+    assert(isFile(scalacPath))
     printf("scalacPath[%s]\n",scalacPath)
     val commandline = (Seq(scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
     if bashPath.toFile.exists then
@@ -60,6 +64,7 @@ class BashScriptsTests:
 
   /* verify `dist/bin/scala` */
   @Test def verifyScalaArgs =
+    assert(isFile(scalaPath))
     val commandline = (Seq(scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
     if bashPath.toFile.exists then
       var cmd = Array(bashExe, "-c", commandline)
