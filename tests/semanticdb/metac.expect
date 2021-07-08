@@ -2229,8 +2229,8 @@ Schema => SemanticDB v4
 Uri => Methods.scala
 Text => empty
 Language => Scala
-Symbols => 81 entries
-Occurrences => 156 entries
+Symbols => 82 entries
+Occurrences => 157 entries
 
 Symbols:
 example/Methods# => class Methods [typeparam T ] extends Object { self: Methods[T] => +44 decls }
@@ -2263,8 +2263,9 @@ example/Methods#m6(+1). => method m6 (param x: List[T]): Nothing
 example/Methods#m6(+1).(x) => param x: List[T]
 example/Methods#m6(+2). => method m6 (param x: List[T]): Nothing
 example/Methods#m6(+2).(x) => param x: List[T]
-example/Methods#m7(). => method m7 [typeparam U ](param c: Methods[T], param l: List[U])(): Nothing
+example/Methods#m7(). => method m7 [typeparam U ](param c: Methods[T], param l: List[U])(implicit param evidence$1: Ordering[U]): Nothing
 example/Methods#m7().(c) => param c: Methods[T]
+example/Methods#m7().(evidence$1) => implicit param evidence$1: Ordering[U]
 example/Methods#m7().(l) => param l: List[U]
 example/Methods#m7().[U] => typeparam U 
 example/Methods#m9(). => method m9 (param x: m9().): Nothing
@@ -2373,6 +2374,7 @@ Occurrences:
 [16:29..16:32): ??? -> scala/Predef.`???`().
 [17:6..17:8): m7 <- example/Methods#m7().
 [17:9..17:10): U <- example/Methods#m7().[U]
+[17:10..17:10): <- example/Methods#m7().(evidence$1)
 [17:12..17:20): Ordering -> scala/math/Ordering#
 [17:20..17:20): -> example/Methods#m7().[U]
 [17:22..17:23): c <- example/Methods#m7().(c)
@@ -2968,8 +2970,8 @@ Schema => SemanticDB v4
 Uri => Synthetic.scala
 Text => empty
 Language => Scala
-Symbols => 38 entries
-Occurrences => 162 entries
+Symbols => 40 entries
+Occurrences => 164 entries
 
 Symbols:
 example/Synthetic# => class Synthetic extends Object { self: Synthetic => +21 decls }
@@ -2977,8 +2979,10 @@ example/Synthetic#F# => class F extends Object { self: F => +1 decls }
 example/Synthetic#F#`<init>`(). => primary ctor <init> (): F
 example/Synthetic#J# => class J [typeparam T ] extends Object { self: J[T] => +4 decls }
 example/Synthetic#J#[T] => typeparam T 
-example/Synthetic#J#`<init>`(). => primary ctor <init> [typeparam T ]()(): J[T]
+example/Synthetic#J#`<init>`(). => primary ctor <init> [typeparam T ]()(implicit param evidence$1: Manifest[T]): J[T]
+example/Synthetic#J#`<init>`().(evidence$1) => implicit param evidence$1: Manifest[T]
 example/Synthetic#J#arr. => val method arr Array[T]
+example/Synthetic#J#evidence$1. => private[this] implicit val method evidence$1 Manifest[T]
 example/Synthetic#Name. => val method Name Regex
 example/Synthetic#`<init>`(). => primary ctor <init> (): Synthetic
 example/Synthetic#a1. => val method a1 Int
@@ -3116,12 +3120,14 @@ Occurrences:
 [32:8..32:9): J <- example/Synthetic#J#
 [32:9..32:9): <- example/Synthetic#J#`<init>`().
 [32:10..32:11): T <- example/Synthetic#J#[T]
+[32:11..32:11): <- example/Synthetic#J#evidence$1.
 [32:13..32:21): Manifest -> scala/Predef.Manifest#
 [32:21..32:21): -> example/Synthetic#J#[T]
 [32:29..32:32): arr <- example/Synthetic#J#arr.
 [32:35..32:40): Array -> scala/Array.
 [32:41..32:46): empty -> scala/Array.empty().
 [32:47..32:48): T -> example/Synthetic#J#[T]
+[32:49..32:49): -> example/Synthetic#J#evidence$1.
 [34:2..34:2): <- example/Synthetic#F#`<init>`().
 [34:8..34:9): F <- example/Synthetic#F#
 [35:15..35:23): ordering <- example/Synthetic#ordering.
