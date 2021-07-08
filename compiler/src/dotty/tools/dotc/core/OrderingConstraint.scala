@@ -355,8 +355,15 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     else {
       assert(contains(param1), i"$param1")
       assert(contains(param2), i"$param2")
-      val newUpper = param2 :: exclusiveUpper(param2, param1)
-      val newLower = param1 :: exclusiveLower(param1, param2)
+      // Is `order` called during parameter unification?
+      val unifying = isLess(param2, param1)
+      val newUpper = param2 :: exclusiveUpper(param2, param1).filterNot(_ eq param1)
+      val newLower =
+        if unifying then
+          // Do not add bounds for param1 since it will be unified to param2 soon.
+          exclusiveLower(param1, param2).filterNot(_ eq param2)
+        else
+          param1 :: exclusiveLower(param1, param2).filterNot(_ eq param2)
       val current1 = newLower.foldLeft(current)(upperLens.map(this, _, _, newUpper ::: _))
       val current2 = newUpper.foldLeft(current1)(lowerLens.map(this, _, _, newLower ::: _))
       current2
