@@ -186,33 +186,34 @@ trait TypeAssigner {
     else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
 
   def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type =
-    def captType(tp: Type, refs: Type): Type = refs match
-      case ref: NamedType =>
-        if ref.isTracked then
-          if tp.captureSet.accountsFor(ref) then
-            report.warning(em"redundant capture: $tp with capture set ${tp.captureSet} already contains $ref with capture set ${ref.captureSet}", tree.srcPos)
-          CapturingType(tp, ref)
+    def include(cs: CaptureSet, tp: Type): CaptureSet = tp match
+      case ref: CaptureRef =>
+        if ref.isExactlyNothing then cs
+        else if ref.isTracked then
+          if cs.accountsFor(ref) then
+            report.warning(em"redundant capture: $cs already accounts for $ref", tree.srcPos)
+          cs + ref
         else
           val reason =
             if ref.canBeTracked then "its capture set is empty"
             else "it is not a parameter or a local variable"
           report.error(em"$ref cannot be tracked since $reason", tree.srcPos)
-          tp
-      case OrType(refs1, refs2) =>
-        captType(captType(tp, refs1), refs2)
+          cs
+      case OrType(tp1, tp2) =>
+        include(include(cs, tp1), tp2)
       case _ =>
-        report.error(em"$refs is not a legal type for a capture set", tree.srcPos)
-        tp
+        report.error(em"$tp is not a legal type for a capture set", tree.srcPos)
+        cs
     tp match
       case AppliedType(tycon, args) =>
         val constr = tycon.typeSymbol
         if constr == defn.andType then AndType(args(0), args(1))
         else if constr == defn.orType then OrType(args(0), args(1), soft = false)
         else if constr == defn.Predef_retainsType then
-          if ctx.settings.Ycc.value then captType(args(0), args(1))
+          if ctx.settings.Ycc.value then CapturingType(args(0), include(CaptureSet.empty, args(1)))
           else args(0)
         else if constr == defn.Predef_capturing then
-          if ctx.settings.Ycc.value then captType(args(1), args(0))
+          if ctx.settings.Ycc.value then CapturingType(args(1), include(CaptureSet.empty, args(0)))
           else args(1)
         else tp
       case _ => tp

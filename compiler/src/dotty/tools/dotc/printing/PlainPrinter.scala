@@ -188,11 +188,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
-      case CapturingType(parent, ref) =>
+      case CapturingType(parent, refs) =>
         if Config.printCaptureSetsAsPrefix then
-          changePrec(GlobalPrec)("{" ~ toTextCaptureRef(ref) ~ "} " ~ toText(parent))
+          changePrec(GlobalPrec)(toTextCaptureSet(refs) ~ " " ~ toText(parent))
         else
-          changePrec(InfixPrec)(toText(parent) ~ " retains " ~ toTextCaptureRef(ref))
+          changePrec(InfixPrec)(toText(parent) ~ " retains " ~ toText(refs.toRetainsTypeArg))
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
@@ -345,6 +345,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match
       case tp: SingletonType => toTextRef(tp)
       case _ => toText(tp)
+
+  def toTextCaptureSet(cs: CaptureSet): Text =
+    "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
     defn.unqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)

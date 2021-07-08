@@ -99,12 +99,13 @@ class CheckCaptures extends RefineTypes:
   def checkWellFormed(whole: Type, pos: SrcPos)(using Context): Unit =
     def checkRelativeVariance(mt: MethodType) = new TypeTraverser:
       def traverse(tp: Type): Unit = tp match
-        case CapturingType(parent, ref) =>
-          ref.stripTypeVar match
-            case ref @ TermParamRef(`mt`, _) if variance <= 0 =>
-              val direction = if variance < 0 then "contra" else "in"
-              report.error(em"captured reference $ref appears ${direction}variantly in type $whole", pos)
-            case _ =>
+        case CapturingType(parent, refs) =>
+          for ref <- refs.elems do
+            ref.stripTypeVar match
+              case ref @ TermParamRef(`mt`, _) if variance <= 0 =>
+                val direction = if variance < 0 then "contra" else "in"
+                report.error(em"captured reference $ref appears ${direction}variantly in type $whole", pos)
+              case _ =>
           traverse(parent)
         case _ =>
           traverseChildren(tp)
