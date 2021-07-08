@@ -2509,9 +2509,9 @@ object Parsers {
         GenFrom(pat, subExpr(), checkMode)
       }
 
-    /** ForExpr  ::= `for' (`(' Enumerators `)' | `{' Enumerators `}')
-     *                {nl} [`yield'] Expr
-     *            |  `for' Enumerators (`do' Expr | `yield' Expr)
+    /** ForExpr  ::=  ‘for’ ‘(’ Enumerators ‘)’ {nl} [‘do‘ | ‘yield’] Expr
+     *             |  ‘for’ ‘{’ Enumerators ‘}’ {nl} [‘do‘ | ‘yield’] Expr
+     *             |  ‘for’     Enumerators          (‘do‘ | ‘yield’) Expr
      */
     def forExpr(): Tree =
       atSpan(in.skipToken()) {
