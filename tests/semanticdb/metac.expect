@@ -3783,9 +3783,9 @@ Symbols => 36 entries
 Occurrences => 56 entries
 
 Symbols:
-local0 => case val method N$1 
+local0 => case val method N$1  <: Nat
 local1 => val local p: N$1
-local2 => case val method N$2 
+local2 => case val method N$2  <: Nat
 local3 => val local p: N$2
 local4 => val local Nat_this: Zero.type
 local5 => val local Nat_this: Succ[Zero.type]
@@ -3796,25 +3796,25 @@ recursion/Nats.Nat#`++`(). => inline transparent macro ++ => Succ[Nat.this.type]
 recursion/Nats.Nat#`+`(). => inline transparent macro + (inline param that: Nat): Nat
 recursion/Nats.Nat#`+`().(that) => inline param that: Nat
 recursion/Nats.Nat#`<init>`(). => primary ctor <init> (): Nat
-recursion/Nats.Succ# => case class Succ [typeparam N ] extends Object with Nat with Product with Serializable { self: Succ[N] => +6 decls }
-recursion/Nats.Succ#[N] => typeparam N 
+recursion/Nats.Succ# => case class Succ [typeparam N  <: Nat] extends Object with Nat with Product with Serializable { self: Succ[N] => +6 decls }
+recursion/Nats.Succ#[N] => typeparam N  <: Nat
 recursion/Nats.Succ#_1(). => method _1 => N
-recursion/Nats.Succ#`<init>`(). => primary ctor <init> [typeparam N ](val param p: N): Succ[N]
+recursion/Nats.Succ#`<init>`(). => primary ctor <init> [typeparam N  <: Nat](val param p: N): Succ[N]
 recursion/Nats.Succ#`<init>`().(p) => val param p: N
-recursion/Nats.Succ#copy$default$1(). => method copy$default$1 [typeparam N ]: N
-recursion/Nats.Succ#copy$default$1().[N] => typeparam N 
-recursion/Nats.Succ#copy(). => method copy [typeparam N ](param p: N): Succ[N]
+recursion/Nats.Succ#copy$default$1(). => method copy$default$1 [typeparam N  <: Nat]: N
+recursion/Nats.Succ#copy$default$1().[N] => typeparam N  <: Nat
+recursion/Nats.Succ#copy(). => method copy [typeparam N  <: Nat](param p: N): Succ[N]
 recursion/Nats.Succ#copy().(p) => param p: N
-recursion/Nats.Succ#copy().[N] => typeparam N 
+recursion/Nats.Succ#copy().[N] => typeparam N  <: Nat
 recursion/Nats.Succ#p. => val method p N
 recursion/Nats.Succ. => final object Succ extends Object { self: Succ.type => +4 decls }
-recursion/Nats.Succ.apply(). => method apply [typeparam N ](param p: N): Succ[N]
+recursion/Nats.Succ.apply(). => method apply [typeparam N  <: Nat](param p: N): Succ[N]
 recursion/Nats.Succ.apply().(p) => param p: N
-recursion/Nats.Succ.apply().[N] => typeparam N 
+recursion/Nats.Succ.apply().[N] => typeparam N  <: Nat
 recursion/Nats.Succ.toString(). => method toString => String
-recursion/Nats.Succ.unapply(). => method unapply [typeparam N ](param x$1: Succ[N]): Succ[N]
+recursion/Nats.Succ.unapply(). => method unapply [typeparam N  <: Nat](param x$1: Succ[N]): Succ[N]
 recursion/Nats.Succ.unapply().(x$1) => param x$1: Succ[N]
-recursion/Nats.Succ.unapply().[N] => typeparam N 
+recursion/Nats.Succ.unapply().[N] => typeparam N  <: Nat
 recursion/Nats.Zero. => final case object Zero extends Object with Nat with Product with Serializable { self: Zero.type => +1 decls }
 recursion/Nats.j31. => val method j31 Int
 recursion/Nats.toIntg(). => inline transparent macro toIntg (inline param n: Nat): Int
@@ -3956,7 +3956,7 @@ flags/p/package.S#`<init>`(). => primary ctor <init> [typeparam T ](): S[T]
 flags/p/package.T1# => type T1  = Int
 flags/p/package.T2# => type T2 [typeparam T ] = S[T]
 flags/p/package.T2#[T] => typeparam T 
-flags/p/package.U# => type U 
+flags/p/package.U# => type U  <: Int
 flags/p/package.V# => type V  >: Int
 flags/p/package.X. => final case object X extends Object with Product with Serializable { self: X.type => +1 decls }
 flags/p/package.Y# => final class Y extends Object { self: Y => +1 decls }

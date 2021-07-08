@@ -126,7 +126,7 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
             hi match
               case TypeRef(Type.Empty, "scala/Any#", Nil) => ()
               case TypeRef(Type.Empty, "java/lang/Object#", Nil) => ()
-              case hi => s" <: ${pprint(hi)}"
+              case hi => sb.append(s" <: ${pprint(hi)}")
           }
           sb.toString
         case ValueSignature(tpe) =>
