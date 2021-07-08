@@ -169,7 +169,7 @@ class TypeOps:
           s.ByNameType(stpe)
 
         case TypeRef(pre, sym: Symbol) =>
-          val spre = if(tpe.hasTrivialPrefix) s.Type.Empty else loop(pre)
+          val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
           val ssym = sym.symbolName
           s.TypeRef(spre, ssym, Seq.empty)
 
