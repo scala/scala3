@@ -85,6 +85,11 @@ class ReplCompilerTests extends ReplTest {
       assertEquals("x: Int = 10", storedOutput().trim)
     }
 
+  @Test def defaultParamter = fromInitialState { implicit state =>
+    run("def foo(a: Int = 1): 1 = 1")
+    assertEquals("def foo(a: Int): 1", storedOutput().trim)
+  }
+
   @Test def i8677 = fromInitialState { implicit state =>
     run {
       """|sealed trait T1
