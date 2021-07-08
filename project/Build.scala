@@ -51,8 +51,7 @@ object DottyJSPlugin extends AutoPlugin {
       _.filter(!_.name.startsWith("junit-interface"))
     },
     libraryDependencies +=
-      ("org.scala-js" % "scalajs-junit-test-runtime_2.13" % scalaJSVersion  % "test"),
-
+      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").cross(CrossVersion.for3Use2_13),
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
 
@@ -292,6 +291,7 @@ object Build {
         .withAutoBoot(false)      // no library on the compiler bootclasspath - we may need a more recent version
         .withFilterLibrary(false) // ...instead, we put it on the compiler classpath
     ),
+    scalaBinaryVersion := "3"
   )
 
   lazy val commonScala2Settings = commonSettings ++ Seq(
@@ -665,7 +665,7 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
-        ("org.scala-js" % "scalajs-ir_2.13" % scalaJSVersion % "sourcedeps"),
+        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
       (Compile / sourceGenerators) += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -784,7 +784,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     settings(
       libraryDependencies +=
-        ("org.scala-js" % "scalajs-library_2.13" % scalaJSVersion),
+        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
       Compile / unmanagedSourceDirectories ++=
         (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
 
@@ -1101,7 +1101,7 @@ object Build {
 
       // We need JUnit in the Compile configuration
       libraryDependencies +=
-        ("org.scala-js" % "scalajs-junit-test-runtime_2.13" % scalaJSVersion),
+        ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
       (Compile / sourceGenerators) += Def.task {
         import org.scalajs.linker.interface.CheckedBehavior
 
@@ -1239,7 +1239,7 @@ object Build {
     settings(
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,
-      libraryDependencies += ("org.scala-js" % "scalajs-dom_sjs1_2.13" % "1.1.0")
+      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
     )
 
   def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil) =
