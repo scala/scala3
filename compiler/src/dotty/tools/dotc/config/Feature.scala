@@ -97,7 +97,7 @@ object Feature:
     else
       false
 
-  private val assumeExperimentalIn = Set("dotty.tools.vulpix.ParallelTesting")
+  private val assumeExperimentalIn = Set("dotty.tools.vulpix.ParallelTesting", "dotty.tools.dotc.BootstrappedStdLibTASYyTest")
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos)(using Context) =
     if !isExperimentalEnabled then
