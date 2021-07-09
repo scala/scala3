@@ -69,7 +69,7 @@ class TypeOps:
           // opaque type alias will be stored into the refinement of
           // the self type of the enclosing class.
           // Key: the tuple of
-          //   - symbol of enclosing class
+          //   - self-type of enclosing class
           //   - name of the opaque type
           // Value: the symbol of the opaque type
           // See: SymDenotation.opaqueToBounds
