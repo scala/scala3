@@ -3,6 +3,14 @@ package example
 def m1(a: Int { val x: Int }) = ???
 def m2(x: { val x: Int; def y: Int }) = ???
 def m3(x: { val x: Int; def y: Int; type z }) = ???
+trait PolyHolder {
+  def foo[T](t: T): Any
+}
+
+def m4(x: PolyHolder { def foo[T](t: T): T }) = ???
+def m5[Z](x: Int): PolyHolder { def foo[T](t: T): T } = ???
+
+type m6 = [X] =>> PolyHolder { def foo[T](t: T): T }
 
 class Record(elems: (String, Any)*) extends Selectable:
   private val fields = elems.toMap

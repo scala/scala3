@@ -79,29 +79,23 @@ class TypeOps:
                 refinementSymtab((rt, sym.name)) = sym
               case _ => ()
 
-          case cls: ClassInfo
-            if (cls.cls.name == tpnme.REFINE_CLASS) =>
-            sym.owner.owner.info match {
-              // def foo(x: Parent { refinement }) = ...
-              case refined: RefinedType =>
-                enterRefined(refined)
+          case cls: ClassInfo if (cls.cls.name == tpnme.REFINE_CLASS) =>
+            enterRefined(sym.owner.owner.info)
 
-              // type x = Person { refinement }
-              case tb: TypeBounds =>
-                // tb = TypeBounds(
-                //   lo = RefinedType(...)
-                //   hi = RefinedType(...)
-                // )
-                enterRefined(tb.lo)
-                enterRefined(tb.hi)
+          // type x = Person { refinement }
+          case tb: TypeBounds =>
+            // tb = TypeBounds(
+            //   lo = RefinedType(...)
+            //   hi = RefinedType(...)
+            // )
+            enterRefined(tb.lo)
+            enterRefined(tb.hi)
 
-              // def s(x: Int): { refinement } = ...
-              case expr: ExprType =>
-                enterRefined(expr.resType)
-              case m: MethodType =>
-                enterRefined(m.resType)
-              case _ => ()
-            }
+          // def s(x: Int): { refinement } = ...
+          case expr: ExprType =>
+            enterRefined(expr.resType)
+          case m: LambdaType =>
+            enterRefined(m.resType)
           case _ => ()
         }
       enterParamRef(sym.owner.info)
