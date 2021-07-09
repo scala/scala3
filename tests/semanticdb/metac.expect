@@ -2628,19 +2628,44 @@ Schema => SemanticDB v4
 Uri => NewModifiers.scala
 Text => empty
 Language => Scala
-Symbols => 3 entries
-Occurrences => 4 entries
+Symbols => 14 entries
+Occurrences => 18 entries
 
 Symbols:
-_empty_/NewModifiers. => final object NewModifiers extends Object { self: NewModifiers.type {} => +3 decls }
+_empty_/NewModifiers$package. => final package object _empty_ extends Object { self: _empty_.type { opaque type OpaqueB  } => +2 decls }
+_empty_/NewModifiers$package.OpaqueB# => opaque type OpaqueB 
+_empty_/NewModifiers. => final object NewModifiers extends Object { self: NewModifiers.type { opaque type A  } => +3 decls }
 _empty_/NewModifiers.A# => opaque type A 
 _empty_/NewModifiers.foo. => val inline method foo "foo"
+_empty_/NewModifiersClass# => opaque class NewModifiersClass extends Object { self: Any { opaque type C  } & NewModifiersClass => +5 decls }
+_empty_/NewModifiersClass#C# => opaque type C 
+_empty_/NewModifiersClass#Nested# => opaque class Nested extends Object { self: Any { opaque type NestedOpaque  } & Nested => +2 decls }
+_empty_/NewModifiersClass#Nested#NestedOpaque# => opaque type NestedOpaque 
+_empty_/NewModifiersClass#Nested#`<init>`(). => primary ctor <init> (): Nested
+_empty_/NewModifiersClass#`<init>`(). => primary ctor <init> (): NewModifiersClass
+_empty_/NewModifiersTrait# => opaque trait NewModifiersTrait extends Object { self: Any { opaque type D  } & NewModifiersTrait => +2 decls }
+_empty_/NewModifiersTrait#D# => opaque type D 
+_empty_/NewModifiersTrait#`<init>`(). => primary ctor <init> (): NewModifiersTrait
 
 Occurrences:
 [0:7..0:19): NewModifiers <- _empty_/NewModifiers.
 [1:13..1:16): foo <- _empty_/NewModifiers.foo.
 [2:14..2:15): A <- _empty_/NewModifiers.A#
 [2:18..2:21): Int -> scala/Int#
+[5:12..5:19): OpaqueB <- _empty_/NewModifiers$package.OpaqueB#
+[5:22..5:25): Int -> scala/Int#
+[7:6..7:23): NewModifiersClass <- _empty_/NewModifiersClass#
+[8:2..8:2): <- _empty_/NewModifiersClass#`<init>`().
+[8:14..8:15): C <- _empty_/NewModifiersClass#C#
+[8:18..8:21): Int -> scala/Int#
+[9:8..9:14): Nested <- _empty_/NewModifiersClass#Nested#
+[10:4..10:4): <- _empty_/NewModifiersClass#Nested#`<init>`().
+[10:16..10:28): NestedOpaque <- _empty_/NewModifiersClass#Nested#NestedOpaque#
+[10:31..10:34): Int -> scala/Int#
+[14:6..14:23): NewModifiersTrait <- _empty_/NewModifiersTrait#
+[15:2..15:2): <- _empty_/NewModifiersTrait#`<init>`().
+[15:14..15:15): D <- _empty_/NewModifiersTrait#D#
+[15:18..15:21): Int -> scala/Int#
 
 expect/Objects.scala
 --------------------
