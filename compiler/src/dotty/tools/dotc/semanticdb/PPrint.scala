@@ -173,7 +173,7 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
         case AnnotatedType(anns, utpe) =>
           s"${normal(utpe)} ${anns.map(pprint).mkString(" ")}"
         case ExistentialType(utpe, decls) =>
-          val sdecls = decls.infos.map(_.displayName).mkString("; ")
+          val sdecls = decls.infos.map(pprintDef).mkString("; ")
           val sutpe = normal(utpe)
           s"${sutpe} forSome { ${sdecls} }"
         case UniversalType(tparams, utpe) =>

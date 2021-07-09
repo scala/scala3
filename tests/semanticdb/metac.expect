@@ -66,7 +66,7 @@ advanced/Structural#s4(). => method s4 (param a: Int): Object { abstract val met
 advanced/Structural#s4().(a) => param a: Int
 advanced/Test. => final object Test extends Object { self: Test.type => +11 decls }
 advanced/Test.e. => val method e Wildcards
-advanced/Test.e1. => val method e1 List[local14] forSome { _ }
+advanced/Test.e1. => val method e1 List[_] forSome { type _  }
 advanced/Test.e1x. => val method e1x Any
 advanced/Test.s. => val method s Structural
 advanced/Test.s1. => val method s1 Object { abstract val method x Int }
@@ -77,8 +77,8 @@ advanced/Test.s3. => val method s3 Object { abstract method m (param x: Int): In
 advanced/Test.s3x. => val method s3x Int
 advanced/Wildcards# => class Wildcards extends Object { self: Wildcards => +3 decls }
 advanced/Wildcards#`<init>`(). => primary ctor <init> (): Wildcards
-advanced/Wildcards#e1(). => method e1 => List[local12] forSome { _ }
-advanced/Wildcards#e2(). => method e2 => List[local13] forSome { _ }
+advanced/Wildcards#e1(). => method e1 => List[_] forSome { type _  }
+advanced/Wildcards#e2(). => method e2 => List[_] forSome { type _  <: Int }
 local0 => abstract val method x Int
 local1 => abstract val method x Int
 local2 => val method x Int
@@ -305,7 +305,7 @@ example/Anonymous#locally().(x) => param x: A
 example/Anonymous#locally().[A] => typeparam A 
 example/Anonymous#m1(). => method m1 [typeparam T ]: Nothing
 example/Anonymous#m1().[T] => typeparam T 
-example/Anonymous#m2(). => method m2 => Map[local0, List[local1] forSome { _ }] forSome { _ }
+example/Anonymous#m2(). => method m2 => Map[_, List[_] forSome { type _  }] forSome { type _  }
 local2 => val local x: Function1[Int, Int]
 local3 => final class $anon extends Object with Foo { self: $anon => +1 decls }
 
@@ -911,7 +911,7 @@ _empty_/Enums.Maybe.Just.unapply(). => method unapply [typeparam A ](param x$1: 
 _empty_/Enums.Maybe.Just.unapply().(x$1) => param x$1: Just[A]
 _empty_/Enums.Maybe.Just.unapply().[A] => typeparam A 
 _empty_/Enums.Maybe.None. => case val static enum method None Maybe[Nothing]
-_empty_/Enums.Maybe.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Maybe[local0] forSome { _ }
+_empty_/Enums.Maybe.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Maybe[_] forSome { type _  }
 _empty_/Enums.Maybe.fromOrdinal().(ordinal) => param ordinal: Int
 _empty_/Enums.Planet# => abstract sealed enum class Planet extends Enum[Planet] with Enum { self: Planet => +6 decls }
 _empty_/Enums.Planet#G. => private[this] final val method G 6.673E-11
@@ -963,14 +963,14 @@ _empty_/Enums.Tag# => abstract sealed enum class Tag [typeparam A ] extends Obje
 _empty_/Enums.Tag#[A] => typeparam A 
 _empty_/Enums.Tag#`<init>`(). => primary ctor <init> [typeparam A ](): Tag[A]
 _empty_/Enums.Tag. => final object Tag extends Object { self: Tag.type => +7 decls }
-_empty_/Enums.Tag.$values. => private[this] val method $values Array[Tag[local1] forSome { _ }]
+_empty_/Enums.Tag.$values. => private[this] val method $values Array[Tag[_] forSome { type _  }]
 _empty_/Enums.Tag.BooleanTag. => case val static enum method BooleanTag Tag[Boolean]
 _empty_/Enums.Tag.IntTag. => case val static enum method IntTag Tag[Int]
-_empty_/Enums.Tag.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Tag[local4] forSome { _ }
+_empty_/Enums.Tag.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Tag[_] forSome { type _  }
 _empty_/Enums.Tag.fromOrdinal().(ordinal) => param ordinal: Int
-_empty_/Enums.Tag.valueOf(). => method valueOf (param $name: String): Tag[local3] forSome { _ }
+_empty_/Enums.Tag.valueOf(). => method valueOf (param $name: String): Tag[_] forSome { type _  >: Int & Boolean <: Int | Boolean }
 _empty_/Enums.Tag.valueOf().($name) => param $name: String
-_empty_/Enums.Tag.values(). => method values => Array[Tag[local2] forSome { _ }]
+_empty_/Enums.Tag.values(). => method values => Array[Tag[_] forSome { type _  }]
 _empty_/Enums.WeekDays# => abstract sealed enum class WeekDays extends Object with Enum { self: WeekDays => +1 decls }
 _empty_/Enums.WeekDays#`<init>`(). => primary ctor <init> (): WeekDays
 _empty_/Enums.WeekDays. => final object WeekDays extends Object { self: WeekDays.type => +13 decls }
@@ -1010,7 +1010,7 @@ _empty_/Enums.`<:<`.Refl.unapply().(x$1) => param x$1: Refl[C]
 _empty_/Enums.`<:<`.Refl.unapply().[C] => typeparam C 
 _empty_/Enums.`<:<`.`given_<:<_T_T`(). => final implicit given method given_<:<_T_T [typeparam T ]: <:<[T, T]
 _empty_/Enums.`<:<`.`given_<:<_T_T`().[T] => typeparam T 
-_empty_/Enums.`<:<`.fromOrdinal(). => method fromOrdinal (param ordinal: Int): <:<[local5, local6] forSome { _; _ }
+_empty_/Enums.`<:<`.fromOrdinal(). => method fromOrdinal (param ordinal: Int): <:<[_, _] forSome { type _ ; type _  }
 _empty_/Enums.`<:<`.fromOrdinal().(ordinal) => param ordinal: Int
 _empty_/Enums.some1. => val method some1 Option[Int]
 _empty_/Enums.unwrap(). => method unwrap [typeparam A , typeparam B ](param opt: Option[A])(implicit given param ev: <:<[A, Option[B]]): Option[B]
@@ -3876,7 +3876,7 @@ local2 => case val method N$2  <: Nat
 local3 => val local p: N$2
 local4 => val local Nat_this: Zero.type
 local5 => val local Nat_this: Succ[Zero.type]
-local6 => val local Nat_this: Succ[local7] forSome { _ }
+local6 => val local Nat_this: Succ[_] forSome { type _  <: Succ[Zero.type] }
 recursion/Nats. => final object Nats extends Object { self: Nats.type => +9 decls }
 recursion/Nats.Nat# => sealed trait Nat extends Object { self: Nat => +3 decls }
 recursion/Nats.Nat#`++`(). => inline transparent macro ++ => Succ[Nat.this.type]
@@ -4255,9 +4255,9 @@ types/Test.C#compoundType3. => val method compoundType3 M & N { abstract method 
 types/Test.C#compoundType4. => val method compoundType4 Object
 types/Test.C#compoundType5. => val method compoundType5 M & N
 types/Test.C#compoundType6. => val method compoundType6 M & N
-types/Test.C#existentialType2. => val method existentialType2 List[local10] forSome { _ }
-types/Test.C#existentialType3. => val method existentialType3 Class[local11] forSome { _ }
-types/Test.C#existentialType4. => val method existentialType4 Class[local12] forSome { _ }
+types/Test.C#existentialType2. => val method existentialType2 List[_] forSome { type _  }
+types/Test.C#existentialType3. => val method existentialType3 Class[_] forSome { type _  <: <FromJavaObject> }
+types/Test.C#existentialType4. => val method existentialType4 Class[_] forSome { type _  <: <FromJavaObject> }
 types/Test.C#p. => val method p P
 types/Test.C#singleType1. => val method singleType1 x.type
 types/Test.C#singleType2. => val method singleType2 p.x.type
