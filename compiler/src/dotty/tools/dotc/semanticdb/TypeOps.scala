@@ -65,6 +65,20 @@ class TypeOps:
           case rec: RecType =>
             enterRefined(rec.parent)
 
+          // Register symbol for opaque type,
+          // opaque type alias will be stored into the refinement of
+          // the self type of the enclosing class.
+          // Key: the tuple of
+          //   - symbol of enclosing class
+          //   - name of the opaque type
+          // Value: the symbol of the opaque type
+          // See: SymDenotation.opaqueToBounds
+          case cls: ClassInfo if sym.is(Flags.Opaque) =>
+            cls.classSymbol.asClass.givenSelfType match
+              case rt: RefinedType =>
+                refinementSymtab((rt, sym.name)) = sym
+              case _ => ()
+
           case cls: ClassInfo
             if (cls.cls.name == tpnme.REFINE_CLASS) =>
             sym.owner.owner.info match {
