@@ -127,7 +127,7 @@ class TypeOps:
           val (resType, paramss, tparams) = flatten(mp, Nil, Nil)
 
           val sparamss = paramss.map(_.sscope)
-          val stparams = Some(tparams.sscope)
+          val stparams = tparams.sscopeOpt
           s.MethodSignature(
             stparams,
             sparamss,
@@ -135,14 +135,11 @@ class TypeOps:
           )
 
         case cls: ClassInfo =>
-          val stparams =
-            if (cls.cls.typeParams.nonEmpty)
-              Some(cls.cls.typeParams.sscope)
-            else None
+          val stparams = cls.cls.typeParams.sscopeOpt
           val sparents = cls.parents.map(_.toSemanticType)
           val sself = cls.selfType.toSemanticType
-          val decls = cls.decls.toList.sscope
-          s.ClassSignature(stparams, sparents, sself, Some(decls))
+          val decls = cls.decls.toList.sscopeOpt
+          s.ClassSignature(stparams, sparents, sself, decls)
 
         case TypeBounds(lo, hi) =>
           // for `type X[T] = T` is equivalent to `[T] =>> T`
@@ -159,8 +156,8 @@ class TypeOps:
           val params = (loParams ++ hiParams).distinctBy(_.name)
           val slo = loRes.toSemanticType
           val shi = hiRes.toSemanticType
-          val stparams = params.sscope
-          s.TypeSignature(Some(stparams), slo, shi)
+          val stparams = params.sscopeOpt
+          s.TypeSignature(stparams, slo, shi)
 
         case other =>
           s.ValueSignature(
@@ -248,8 +245,8 @@ class TypeOps:
           val decls = refinedInfos.flatMap { (name, _) =>
             refinementSymtab.get((rt, name))
           }
-          val sdecls = decls.sscope(using LinkMode.HardlinkChildren)
-          s.StructuralType(stpe, Some(sdecls))
+          val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
+          s.StructuralType(stpe, sdecls)
 
         case rec: RecType =>
           loop(rec.parent) // should be handled as RefinedType
@@ -304,7 +301,7 @@ class TypeOps:
           if (wildcardSyms.isEmpty) applied
           else s.ExistentialType(
             applied,
-            Some(wildcardSyms.sscope(using LinkMode.HardlinkChildren))
+            wildcardSyms.sscopeOpt(using LinkMode.HardlinkChildren)
           )
 
         case and: AndType =>
@@ -350,3 +347,6 @@ object SymbolScopeOps:
         case LinkMode.HardlinkChildren =>
           s.Scope(hardlinks = syms.map(_.symbolInfo(Set.empty)))
       }
+
+    def sscopeOpt(using linkMode: LinkMode)(using SemanticSymbolBuilder, TypeOps, Context): Option[s.Scope] =
+      if syms.nonEmpty then Some(syms.sscope) else None
