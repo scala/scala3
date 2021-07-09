@@ -2809,15 +2809,20 @@ Schema => SemanticDB v4
 Uri => RecOrRefined.scala
 Text => empty
 Language => Scala
-Symbols => 30 entries
-Occurrences => 54 entries
+Symbols => 51 entries
+Occurrences => 89 entries
 
 Symbols:
 example/C# => class C extends Object { self: C => +3 decls }
 example/C#T1# => type T1 
 example/C#T2# => type T2 
 example/C#`<init>`(). => primary ctor <init> (): C
-example/RecOrRefined$package. => final package object example extends Object { self: example.type => +6 decls }
+example/PolyHolder# => trait PolyHolder extends Object { self: PolyHolder => +2 decls }
+example/PolyHolder#`<init>`(). => primary ctor <init> (): PolyHolder
+example/PolyHolder#foo(). => abstract method foo [typeparam T ](param t: T): Any
+example/PolyHolder#foo().(t) => param t: T
+example/PolyHolder#foo().[T] => typeparam T 
+example/RecOrRefined$package. => final package object example extends Object { self: example.type => +9 decls }
 example/RecOrRefined$package.C2# => type C2  = C { type T2  = T1; type T1  }
 example/RecOrRefined$package.Person# => type Person  = Record { abstract val method age Int; abstract val method name String }
 example/RecOrRefined$package.m1(). => method m1 (param a: Int { abstract val method x Int }): Nothing
@@ -2826,6 +2831,13 @@ example/RecOrRefined$package.m2(). => method m2 (param x: Object { abstract meth
 example/RecOrRefined$package.m2().(x) => param x: Object { abstract method y => Int; abstract val method x Int }
 example/RecOrRefined$package.m3(). => method m3 (param x: Object { type z ; abstract method y => Int; abstract val method x Int }): Nothing
 example/RecOrRefined$package.m3().(x) => param x: Object { type z ; abstract method y => Int; abstract val method x Int }
+example/RecOrRefined$package.m4(). => method m4 (param x: PolyHolder { abstract method foo [typeparam T ](param t: T): T }): Nothing
+example/RecOrRefined$package.m4().(x) => param x: PolyHolder { abstract method foo [typeparam T ](param t: T): T }
+example/RecOrRefined$package.m5(). => method m5 [typeparam Z ](param x: Int): PolyHolder { abstract method foo [typeparam T ](param t: T): T }
+example/RecOrRefined$package.m5().(x) => param x: Int
+example/RecOrRefined$package.m5().[Z] => typeparam Z 
+example/RecOrRefined$package.m6# => type m6 [typeparam X ] = PolyHolder { abstract method foo [typeparam T ](param t: T): T }
+example/RecOrRefined$package.m6#[X] => typeparam X 
 example/Record# => class Record extends Object with Selectable { self: Record => +4 decls }
 example/Record#`<init>`(). => primary ctor <init> (param elems: Tuple2[String, Any]*): Record
 example/Record#`<init>`().(elems) => param elems: Tuple2[String, Any]*
@@ -2839,10 +2851,19 @@ local2 => abstract method y => Int
 local3 => abstract val method x Int
 local4 => abstract method y => Int
 local5 => type z 
-local6 => abstract val method name String
-local7 => abstract val method age Int
-local8 => type T1 
-local9 => type T2  = T1
+local6 => typeparam T 
+local7 => param t: T
+local8 => abstract method foo [typeparam T ](param t: T): T
+local9 => typeparam T 
+local10 => param t: T
+local11 => abstract method foo [typeparam T ](param t: T): T
+local12 => typeparam T 
+local13 => param t: T
+local14 => abstract method foo [typeparam T ](param t: T): T
+local15 => abstract val method name String
+local16 => abstract val method age Int
+local17 => type T1 
+local18 => type T2  = T1
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -2867,38 +2888,73 @@ Occurrences:
 [4:31..4:34): Int -> scala/Int#
 [4:41..4:42): z <- local5
 [4:48..4:51): ??? -> scala/Predef.`???`().
-[6:6..6:12): Record <- example/Record#
-[6:12..6:12): <- example/Record#`<init>`().
-[6:13..6:18): elems <- example/Record#elems.
-[6:21..6:27): String -> scala/Predef.String#
-[6:29..6:32): Any -> scala/Any#
-[6:44..6:54): Selectable -> scala/Selectable#
-[7:14..7:20): fields <- example/Record#fields.
-[7:23..7:28): elems -> example/Record#elems.
-[7:29..7:34): toMap -> scala/collection/IterableOnceOps#toMap().
-[7:34..7:34): -> scala/`<:<`.refl().
-[8:6..8:19): selectDynamic <- example/Record#selectDynamic().
-[8:20..8:24): name <- example/Record#selectDynamic().(name)
-[8:26..8:32): String -> scala/Predef.String#
-[8:35..8:38): Any -> scala/Any#
-[8:41..8:47): fields -> example/Record#fields.
-[8:47..8:47): -> scala/collection/MapOps#apply().
-[8:48..8:52): name -> example/Record#selectDynamic().(name)
-[10:5..10:11): Person <- example/RecOrRefined$package.Person#
-[10:14..10:20): Record -> example/Record#
-[11:6..11:10): name <- local6
-[11:12..11:18): String -> scala/Predef.String#
-[12:6..12:9): age <- local7
-[12:11..12:14): Int -> scala/Int#
-[16:6..16:7): C <- example/C#
-[16:10..16:10): <- example/C#`<init>`().
-[16:15..16:17): T1 <- example/C#T1#
-[16:24..16:26): T2 <- example/C#T2#
-[17:5..17:7): C2 <- example/RecOrRefined$package.C2#
-[17:10..17:11): C -> example/C#
-[17:19..17:21): T1 <- local8
-[17:28..17:30): T2 <- local9
-[17:33..17:35): T1 -> local8
+[5:6..5:16): PolyHolder <- example/PolyHolder#
+[6:2..6:2): <- example/PolyHolder#`<init>`().
+[6:6..6:9): foo <- example/PolyHolder#foo().
+[6:10..6:11): T <- example/PolyHolder#foo().[T]
+[6:13..6:14): t <- example/PolyHolder#foo().(t)
+[6:16..6:17): T -> example/PolyHolder#foo().[T]
+[6:20..6:23): Any -> scala/Any#
+[9:4..9:6): m4 <- example/RecOrRefined$package.m4().
+[9:7..9:8): x <- example/RecOrRefined$package.m4().(x)
+[9:10..9:20): PolyHolder -> example/PolyHolder#
+[9:27..9:30): foo <- local8
+[9:31..9:32): T <- local6
+[9:34..9:35): t <- local7
+[9:37..9:38): T -> local6
+[9:41..9:42): T -> local6
+[9:48..9:51): ??? -> scala/Predef.`???`().
+[10:4..10:6): m5 <- example/RecOrRefined$package.m5().
+[10:7..10:8): Z <- example/RecOrRefined$package.m5().[Z]
+[10:10..10:11): x <- example/RecOrRefined$package.m5().(x)
+[10:13..10:16): Int -> scala/Int#
+[10:19..10:29): PolyHolder -> example/PolyHolder#
+[10:36..10:39): foo <- local11
+[10:40..10:41): T <- local9
+[10:43..10:44): t <- local10
+[10:46..10:47): T -> local9
+[10:50..10:51): T -> local9
+[10:56..10:59): ??? -> scala/Predef.`???`().
+[12:5..12:7): m6 <- example/RecOrRefined$package.m6#
+[12:11..12:12): X <- example/RecOrRefined$package.m6#[X]
+[12:18..12:28): PolyHolder -> example/PolyHolder#
+[12:35..12:38): foo <- local14
+[12:39..12:40): T <- local12
+[12:42..12:43): t <- local13
+[12:45..12:46): T -> local12
+[12:49..12:50): T -> local12
+[14:6..14:12): Record <- example/Record#
+[14:12..14:12): <- example/Record#`<init>`().
+[14:13..14:18): elems <- example/Record#elems.
+[14:21..14:27): String -> scala/Predef.String#
+[14:29..14:32): Any -> scala/Any#
+[14:44..14:54): Selectable -> scala/Selectable#
+[15:14..15:20): fields <- example/Record#fields.
+[15:23..15:28): elems -> example/Record#elems.
+[15:29..15:34): toMap -> scala/collection/IterableOnceOps#toMap().
+[15:34..15:34): -> scala/`<:<`.refl().
+[16:6..16:19): selectDynamic <- example/Record#selectDynamic().
+[16:20..16:24): name <- example/Record#selectDynamic().(name)
+[16:26..16:32): String -> scala/Predef.String#
+[16:35..16:38): Any -> scala/Any#
+[16:41..16:47): fields -> example/Record#fields.
+[16:47..16:47): -> scala/collection/MapOps#apply().
+[16:48..16:52): name -> example/Record#selectDynamic().(name)
+[18:5..18:11): Person <- example/RecOrRefined$package.Person#
+[18:14..18:20): Record -> example/Record#
+[19:6..19:10): name <- local15
+[19:12..19:18): String -> scala/Predef.String#
+[20:6..20:9): age <- local16
+[20:11..20:14): Int -> scala/Int#
+[24:6..24:7): C <- example/C#
+[24:10..24:10): <- example/C#`<init>`().
+[24:15..24:17): T1 <- example/C#T1#
+[24:24..24:26): T2 <- example/C#T2#
+[25:5..25:7): C2 <- example/RecOrRefined$package.C2#
+[25:10..25:11): C -> example/C#
+[25:19..25:21): T1 <- local17
+[25:28..25:30): T2 <- local18
+[25:33..25:35): T1 -> local17
 
 expect/RightAssociativeExtension.scala
 --------------------------------------
