@@ -10,7 +10,7 @@ object JavaTokens extends TokensCommon {
 
   final val javaOnlyKeywords: TokenSet = tokenRange(INSTANCEOF, ASSERT)
   final val sharedKeywords: BitSet = BitSet( IF, FOR, ELSE, THIS, NULL, NEW, SUPER, ABSTRACT, FINAL, PRIVATE, PROTECTED,
-    OVERRIDE, EXTENDS, TRUE, FALSE, CLASS, IMPORT, PACKAGE, DO, THROW, TRY, CATCH, FINALLY, WHILE, RETURN )
+    EXTENDS, TRUE, FALSE, CLASS, IMPORT, PACKAGE, DO, THROW, TRY, CATCH, FINALLY, WHILE, RETURN )
   final val primTypes: TokenSet = tokenRange(VOID, DOUBLE)
   final val keywords: BitSet = sharedKeywords | javaOnlyKeywords | primTypes
 
