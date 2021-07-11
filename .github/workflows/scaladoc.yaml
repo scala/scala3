@@ -94,16 +94,10 @@ jobs:
         run: ./project/scripts/sbt scaladoc/sourceLinksIntegrationTest:test
 
   community-docs:
-    env:
-      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
     runs-on: ubuntu-latest
     if: "(    github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip docs]')
-         )
-         || contains(github.event.ref, 'scaladoc')
-         || contains(github.event.ref, 'scala3doc')
-         || contains(github.event.ref, 'master')"
+         )"
 
     steps:
       - name: Git Checkout
@@ -119,15 +113,3 @@ jobs:
 
       - name: Generate docs
         run: ./project/scripts/sbt "community-build/run doc all docsOutput"
-
-      - name: Upload documentation to server
-        uses: azure/CLI@v1
-        if: env.AZURE_STORAGE_SAS_TOKEN
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        with:
-          inlineScript: |
-            DOC_DEST=pr-${PR_NUMBER:-${GITHUB_REF##*/}}-docs
-            echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
-            az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
-            az storage blob upload-batch -s community-build/docsOutput -d  $DOC_DEST --account-name scala3docstorage
