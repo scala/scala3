@@ -23,16 +23,37 @@ class TypeOps:
   given typeOps: TypeOps = this
 
   extension [T <: Type](symtab: mutable.Map[(T, Name), Symbol])
-    private def getOrErr(key: (T, Name))(using Context): Option[Symbol] =
+    private def getOrErr(key: (T, Name), parent: Symbol)(using Context): Option[Symbol] =
       val sym = symtab.get(key)
       if sym.isEmpty then
-        symbolNotFound(key._1, key._2)
+        symbolNotFound(key._1, key._2, parent)
       sym
 
-  private def symbolNotFound(binder: Type, name: Name)(using ctx: Context): Unit =
-    report.warning(
-      s"""Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: Ignoring ${name} of type ${binder}"""
-    )
+  private def symbolNotFound(binder: Type, name: Name, parent: Symbol)(using ctx: Context): Unit =
+    // Known issue: for exports
+    // ```
+    // // in Codec.scala
+    // trait Encoder[T] ...
+    //
+    // // in ExportCodec.scala
+    // export Encoder
+    // ```
+    // There's type argument TypeParamRef("T") for Codec in `ExportCodec.scala` whose binder is
+    //
+    // HKTypeLambda(
+    //   List(T),
+    //   List(TypeBounds(...)),
+    //   AppliedType(
+    //     TypeRef(... trait Decoder),
+    //     List(TypeParamRef(T))
+    //   )
+    // )
+    // where this HKTypeLambda never appears in the source code of `ExportCodec.scala`
+    val suppress = parent.is(Flags.Exported)
+    if !suppress then
+      report.warning(
+        s"""Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: Ignoring ${name} of type ${binder}"""
+      )
 
   extension (tpe: Type)
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
@@ -123,12 +144,12 @@ class TypeOps:
           ): (Type, List[List[Symbol]], List[Symbol]) = t match {
             case mt: MethodType =>
               val syms = mt.paramNames.flatMap { paramName =>
-                paramRefSymtab.getOrErr((mt, paramName))
+                paramRefSymtab.getOrErr((mt, paramName), sym)
               }
               flatten(mt.resType, paramss :+ syms, tparams)
             case pt: PolyType =>
               val syms = pt.paramNames.flatMap { paramName =>
-                paramRefSymtab.getOrErr((pt, paramName))
+                paramRefSymtab.getOrErr((pt, paramName), sym)
               }
               // there shouldn't multiple type params
               flatten(pt.resType, paramss, syms)
@@ -142,13 +163,13 @@ class TypeOps:
           s.MethodSignature(
             stparams,
             sparamss,
-            resType.toSemanticType
+            resType.toSemanticType(sym)
           )
 
         case cls: ClassInfo =>
           val stparams = cls.cls.typeParams.sscopeOpt
-          val sparents = cls.parents.map(_.toSemanticType)
-          val sself = cls.selfType.toSemanticType
+          val sparents = cls.parents.map(_.toSemanticType(sym))
+          val sself = cls.selfType.toSemanticType(sym)
           val decls = cls.decls.toList.sscopeOpt
           s.ClassSignature(stparams, sparents, sself, decls)
 
@@ -162,7 +183,7 @@ class TypeOps:
                   val wildcardSym = newSymbol(NoSymbol, tpnme.WILDCARD, Flags.EmptyFlags, bounds)
                   Some(wildcardSym)
                 else
-                  paramRefSymtab.getOrErr((lambda, paramName))
+                  paramRefSymtab.getOrErr((lambda, paramName), sym)
               }
               (lambda.resType, paramSyms)
             case _ => (tpe, Nil)
@@ -170,19 +191,19 @@ class TypeOps:
           val (loRes, loParams) = tparams(lo)
           val (hiRes, hiParams) = tparams(hi)
           val params = (loParams ++ hiParams).distinctBy(_.name)
-          val slo = loRes.toSemanticType
-          val shi = hiRes.toSemanticType
+          val slo = loRes.toSemanticType(sym)
+          val shi = hiRes.toSemanticType(sym)
           val stparams = params.sscopeOpt
           s.TypeSignature(stparams, slo, shi)
 
         case other =>
           s.ValueSignature(
-            other.toSemanticType
+            other.toSemanticType(sym)
           )
       }
       loop(tpe)
 
-    private def toSemanticType(using LinkMode, SemanticSymbolBuilder, Context): s.Type =
+    private def toSemanticType(sym: Symbol)(using LinkMode, SemanticSymbolBuilder, Context): s.Type =
       import ConstantOps._
       def loop(tpe: Type): s.Type = tpe match {
         case ExprType(tpe) =>
@@ -201,7 +222,7 @@ class TypeOps:
 
         case tref: ParamRef =>
           val key = (tref.binder, tref.paramName)
-          paramRefSymtab.getOrErr(key) match {
+          paramRefSymtab.getOrErr(key, sym) match {
             case Some(ref) =>
               val ssym = ref.symbolName
               tref match {
@@ -259,7 +280,7 @@ class TypeOps:
           val stpe = s.IntersectionType(flattenParent(parent))
 
           val decls = refinedInfos.flatMap { (name, _) =>
-            refinementSymtab.getOrErr((rt, name))
+            refinementSymtab.getOrErr((rt, name), sym)
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
           s.StructuralType(stpe, sdecls)
