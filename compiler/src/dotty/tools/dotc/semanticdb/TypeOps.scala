@@ -156,8 +156,13 @@ class TypeOps:
           // for `type X[T] = T` is equivalent to `[T] =>> T`
           def tparams(tpe: Type): (Type, List[Symbol]) = tpe match {
             case lambda: HKTypeLambda =>
-              val paramSyms = lambda.paramNames.flatMap { paramName =>
-                paramRefSymtab.get((lambda, paramName))
+              val paramSyms = lambda.paramNames.zip(lambda.paramInfos).flatMap { (paramName, bounds) =>
+                // def x[T[_]] = ???
+                if paramName.isWildcard then
+                  val wildcardSym = newSymbol(NoSymbol, tpnme.WILDCARD, Flags.EmptyFlags, bounds)
+                  Some(wildcardSym)
+                else
+                  paramRefSymtab.getOrErr((lambda, paramName))
               }
               (lambda.resType, paramSyms)
             case _ => (tpe, Nil)

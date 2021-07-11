@@ -303,11 +303,11 @@ example/Anonymous#foo. => val method foo Foo
 example/Anonymous#locally(). => method locally [typeparam A ](param x: A): A
 example/Anonymous#locally().(x) => param x: A
 example/Anonymous#locally().[A] => typeparam A 
-example/Anonymous#m1(). => method m1 [typeparam T ]: Nothing
-example/Anonymous#m1().[T] => typeparam T 
+example/Anonymous#m1(). => method m1 [typeparam T [unknown local0: <?>]]: Nothing
+example/Anonymous#m1().[T] => typeparam T [unknown local0: <?>]
 example/Anonymous#m2(). => method m2 => Map[_, List[_] forSome { type _  }] forSome { type _  }
-local2 => val local x: Function1[Int, Int]
-local3 => final class $anon extends Object with Foo { self: $anon => +1 decls }
+local3 => val local x: Function1[Int, Int]
+local4 => final class $anon extends Object with Foo { self: $anon => +1 decls }
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -334,7 +334,7 @@ Occurrences:
 [11:4..11:7): ??? -> scala/Predef.`???`().
 [11:24..11:28): List -> scala/package.List#
 [13:2..13:9): locally -> example/Anonymous#locally().
-[14:8..14:9): x <- local2
+[14:8..14:9): x <- local3
 [14:11..14:14): Int -> scala/Int#
 [14:18..14:21): Int -> scala/Int#
 [14:29..14:32): ??? -> scala/Predef.`???`().
@@ -4165,8 +4165,8 @@ local3 => final class $anon extends Object { self: $anon => +2 decls }
 local5 => final class $anon extends M with N { self: $anon => +1 decls }
 local7 => method k => Int
 local8 => final class $anon extends M with N { self: $anon => +2 decls }
-local13 => typeparam T 
-local14 => type L [typeparam T ] = List[T]
+local14 => typeparam T 
+local15 => type L [typeparam T ] = List[T]
 types/B# => class B extends Object { self: B => +1 decls }
 types/B#`<init>`(). => primary ctor <init> (): B
 types/C# => class C extends Object { self: C => +1 decls }
@@ -4244,8 +4244,8 @@ types/Test.C#TypeType.T5# => type T5 [typeparam U ] = U
 types/Test.C#TypeType.T5#[U] => typeparam U 
 types/Test.C#TypeType.m2(). => method m2 [typeparam T2  = C]: Nothing
 types/Test.C#TypeType.m2().[T2] => typeparam T2  = C
-types/Test.C#TypeType.m3(). => method m3 [typeparam M3 ]: Nothing
-types/Test.C#TypeType.m3().[M3] => typeparam M3 
+types/Test.C#TypeType.m3(). => method m3 [typeparam M3 [unknown local16: <?>]]: Nothing
+types/Test.C#TypeType.m3().[M3] => typeparam M3 [unknown local16: <?>]
 types/Test.C#`<init>`(). => primary ctor <init> (): C
 types/Test.C#annType1. => val method annType1 T @ann[T]
 types/Test.C#annType2. => val method annType2 T @ann1 @ann2
@@ -4266,8 +4266,8 @@ types/Test.C#superType2. => val method superType2 Int
 types/Test.C#superType3. => val method superType3 Int
 types/Test.C#thisType1. => val method thisType1 C.this.type
 types/Test.C#thisType2. => val method thisType2 C.this.type
-types/Test.C#typeLambda1(). => method typeLambda1 [typeparam M ]: Nothing
-types/Test.C#typeLambda1().[M] => typeparam M 
+types/Test.C#typeLambda1(). => method typeLambda1 [typeparam M [unknown local13: <?>]]: Nothing
+types/Test.C#typeLambda1().[M] => typeparam M [unknown local13: <?>]
 types/Test.C#typeRef1. => val method typeRef1 C
 types/Test.C#typeRef2. => val method typeRef2 p.C
 types/Test.C#typeRef3. => val method typeRef3 T#C
@@ -4464,10 +4464,10 @@ Occurrences:
 [75:20..75:21): M <- types/Test.C#typeLambda1().[M]
 [75:28..75:31): ??? -> scala/Predef.`???`().
 [76:4..76:15): typeLambda1 -> types/Test.C#typeLambda1().
-[76:24..76:25): L <- local14
-[76:26..76:27): T <- local13
+[76:24..76:25): L <- local15
+[76:26..76:27): T <- local14
 [76:31..76:35): List -> scala/package.List#
-[76:36..76:37): T -> local13
+[76:36..76:37): T -> local14
 [78:11..78:25): ClassInfoType1 <- types/Test.C#ClassInfoType1.
 [79:10..79:24): ClassInfoType2 <- types/Test.C#ClassInfoType2#
 [79:33..79:34): B -> types/B#
