@@ -21,6 +21,19 @@ class TypeOps:
   private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
   private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
   given typeOps: TypeOps = this
+
+  extension [T <: Type](symtab: mutable.Map[(T, Name), Symbol])
+    private def getOrErr(key: (T, Name))(using Context): Option[Symbol] =
+      val sym = symtab.get(key)
+      if sym.isEmpty then
+        symbolNotFound(key._1, key._2)
+      sym
+
+  private def symbolNotFound(binder: Type, name: Name)(using ctx: Context): Unit =
+    report.warning(
+      s"""Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: Ignoring ${name} of type ${binder}"""
+    )
+
   extension (tpe: Type)
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
       def enterParamRef(tpe: Type): Unit =
@@ -110,14 +123,12 @@ class TypeOps:
           ): (Type, List[List[Symbol]], List[Symbol]) = t match {
             case mt: MethodType =>
               val syms = mt.paramNames.flatMap { paramName =>
-                val key = (mt, paramName)
-                paramRefSymtab.get(key)
+                paramRefSymtab.getOrErr((mt, paramName))
               }
               flatten(mt.resType, paramss :+ syms, tparams)
             case pt: PolyType =>
               val syms = pt.paramNames.flatMap { paramName =>
-                val key = (pt, paramName)
-                paramRefSymtab.get(key)
+                paramRefSymtab.getOrErr((pt, paramName))
               }
               // there shouldn't multiple type params
               flatten(pt.resType, paramss, syms)
@@ -185,7 +196,7 @@ class TypeOps:
 
         case tref: ParamRef =>
           val key = (tref.binder, tref.paramName)
-          paramRefSymtab.get(key) match {
+          paramRefSymtab.getOrErr(key) match {
             case Some(ref) =>
               val ssym = ref.symbolName
               tref match {
@@ -243,7 +254,7 @@ class TypeOps:
           val stpe = s.IntersectionType(flattenParent(parent))
 
           val decls = refinedInfos.flatMap { (name, _) =>
-            refinementSymtab.get((rt, name))
+            refinementSymtab.getOrErr((rt, name))
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
           s.StructuralType(stpe, sdecls)
@@ -336,6 +347,7 @@ class TypeOps:
           checkTrivialPrefix(pre, sym)
         case _ => false
       }
+
 
 object SymbolScopeOps:
   import Scala3.given
