@@ -804,6 +804,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
   }
 
   private def exhaustivityCheckable(sel: Tree): Boolean = {
+    val seen = collection.mutable.Set.empty[Type]
+
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean =
       val tpw = tp.widen.dealias
@@ -815,16 +817,15 @@ class SpaceEngine(using Context) extends SpaceLogic {
         isCheckable(and.tp1) || isCheckable(and.tp2)
       }) ||
       tpw.isRef(defn.BooleanClass) ||
-      classSym.isAllOf(JavaEnumTrait)
+      classSym.isAllOf(JavaEnumTrait) ||
+      classSym.is(Case) && {
+        if seen.add(tpw) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
+        else true // recursive case class: return true and other members can still fail the check
+      }
 
     val res = !sel.tpe.hasAnnotation(defn.UncheckedAnnot) && {
       ctx.settings.YcheckAllPatmat.value
       || isCheckable(sel.tpe)
-      || {
-        val tpw = sel.tpe.widen.dealias
-        val classSym = tpw.classSymbol
-        classSym.is(Case) && productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
-      }
     }
 
     debug.println(s"exhaustivity checkable: ${sel.show} = $res")
