@@ -75,8 +75,8 @@
   width: 10px;
   height: 10px;
   border-radius: 5px;
-  background-color: white;
-  color: white;
+  background-color: var(--shadow);
+  color: var(--shadow);
   animation: dotFlashing 1s infinite alternate;
   display: inline-block;
   position: absolute;
@@ -104,6 +104,6 @@
     background-color: var(--leftbar-bg);
   }
   100% {
-    background-color: white;
+    background-color: var(--shadow);
   }
 }
