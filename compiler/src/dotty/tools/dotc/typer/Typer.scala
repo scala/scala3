@@ -2079,7 +2079,7 @@ class Typer extends Namer
     for (annot <- mdef.mods.annotations)
       val annot1 = typedAnnotation(annot)(using annotCtx)
       checkAnnotApplicable(annot1, sym)
-      if (Annotations.annotClass(annot1) == defn.NowarnAnnot)
+      if Annotations.annotClass(annot1) == defn.NowarnAnnot then
         registerNowarn(annot1, mdef)
   }
 
@@ -2091,21 +2091,21 @@ class Typer extends Namer
     def argPos = annot.argument(0).getOrElse(tree).sourcePos
     val filters =
       if annot.arguments.isEmpty then List(MessageFilter.Any)
-      else annot.argumentConstantString(0) match {
-        case None => annot.argument(0) match {
-          case Some(t: Select) if t.name.toString == "$lessinit$greater$default$1" => List(MessageFilter.Any)
+      else annot.argumentConstantString(0) match
+        case None => annot.argument(0) match
+          case Some(t: Select) if t.name.is(DefaultGetterName) => List(MessageFilter.Any)
           case _ =>
             report.warning(s"filter needs to be a compile-time constant string", argPos)
             Nil
-        }
         case Some(s) =>
           if s.isEmpty then Nil
           else
             val (ms, fs) = s.split('&').map(WConf.parseFilter).toList.partitionMap(identity)
-            if (ms.nonEmpty)
+            if ms.nonEmpty then
               report.warning(s"Invalid message filter\n${ms.mkString("\n")}", argPos)
-            fs
-      }
+              List(MessageFilter.None)
+            else
+              fs
     val range = mdef.sourcePos
     ctx.run.suppressions.addSuppression(Suppression(tree.sourcePos, filters, range.start, range.end))
 

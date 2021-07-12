@@ -21,11 +21,7 @@ object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
   def fromSimpleReporter(simple: interfaces.SimpleReporter): Reporter =
     new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
-      override def doReport(dia: Diagnostic)(using Context): Unit = dia match {
-        case dia: ConditionalWarning if !dia.enablingOption.value =>
-        case _ =>
-          simple.report(dia)
-      }
+      override def doReport(dia: Diagnostic)(using Context): Unit = simple.report(dia)
     }
 
   /** A reporter that ignores reports, and doesn't record errors */
@@ -143,33 +139,40 @@ abstract class Reporter extends interfaces.ReporterResult {
   def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
     def go() =
       import Action._
-      val toReport = dia match {
-        case w: Warning => WConf.parsed.action(dia) match {
-          case Silent  => None
-          case Info    => Some(w.toInfo)
-          case Warning => Some(w)
-          case Error   => Some(w.toError)
-        }
-        case _ => Some(dia)
-      }
-      for (d <- toReport) {
-        withMode(Mode.Printing)(doReport(d))
-        d match
-          case cw: ConditionalWarning if !cw.enablingOption.value =>
-            val key = cw.enablingOption.name
-            unreportedWarnings =
-              unreportedWarnings.updated(key, unreportedWarnings.getOrElse(key, 0) + 1)
-          case _: Warning => _warningCount += 1
-          case e: Error =>
-            errors = e :: errors
-            _errorCount += 1
-            if ctx.typerState.isGlobalCommittable then
-              ctx.base.errorsToBeReported = true
-          case _: Info => // nothing to do here
-        // match error if d is something else
-      }
 
-    dia match {
+      val toReport = dia match
+        case w: Warning =>
+          if ctx.settings.silentWarnings.value then None
+          else if ctx.settings.XfatalWarnings.value && !w.isSummarizedConditional then Some(w.toError)
+          else WConf.parsed.action(dia) match
+            case Silent  => None
+            case Info    => Some(w.toInfo)
+            case Warning => Some(w)
+            case Error   => Some(w.toError)
+        case _ => Some(dia)
+
+      toReport foreach {
+        case cw: ConditionalWarning if cw.isSummarizedConditional =>
+          val key = cw.enablingOption.name
+          unreportedWarnings =
+            unreportedWarnings.updated(key, unreportedWarnings.getOrElse(key, 0) + 1)
+        case d if !isHidden(d) =>
+          withMode(Mode.Printing)(doReport(d))
+          d match {
+            case _: Warning => _warningCount += 1
+            case e: Error =>
+              errors = e :: errors
+              _errorCount += 1
+              if ctx.typerState.isGlobalCommittable then
+                ctx.base.errorsToBeReported = true
+            case _: Info => // nothing to do here
+            // match error if d is something else
+          }
+        case _ => // hidden
+      }
+    end go
+
+    dia match
       case w: Warning if ctx.run != null =>
         val sup = ctx.run.suppressions
         if sup.suppressionsComplete(w.pos.source) then
@@ -177,15 +180,9 @@ abstract class Reporter extends interfaces.ReporterResult {
         else
           sup.addSuspendedMessage(w)
       case _ => go()
-    }
+  end issueIfNotSuppressed
 
-  def report(dia: Diagnostic)(using Context): Unit =
-    val isSummarized = dia match
-      case cw: ConditionalWarning => !cw.enablingOption.value
-      case _ => false
-    // avoid isHidden test for summarized warnings so that message is not forced
-    if isSummarized || !isHidden(dia) then
-      issueIfNotSuppressed(dia)
+  def report(dia: Diagnostic)(using Context): Unit = issueIfNotSuppressed(dia)
 
   def incomplete(dia: Diagnostic)(using Context): Unit =
     incompleteHandler(dia, ctx)

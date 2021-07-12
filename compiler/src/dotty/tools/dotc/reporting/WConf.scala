@@ -15,9 +15,12 @@ enum MessageFilter:
     case Any => true
     case Deprecated => message.isInstanceOf[Diagnostic.DeprecationWarning]
     case Feature => message.isInstanceOf[Diagnostic.FeatureWarning]
-    case MessagePattern(pattern) => pattern.findFirstIn(message.msg.rawMessage).nonEmpty
+    case MessagePattern(pattern) =>
+      val noHighlight = message.msg.rawMessage.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
+      pattern.findFirstIn(noHighlight).nonEmpty
+    case None => false
   }
-  case Any, Deprecated, Feature
+  case Any, Deprecated, Feature, None
   case MessagePattern(pattern: Regex)
 
 enum Action:

@@ -21,21 +21,16 @@ class ConsoleReporter(
 
   /** Prints the message with the given position indication. */
   def doReport(dia: Diagnostic)(using Context): Unit = {
-    val didPrint = dia match {
+    dia match
       case dia: Error =>
         printMessage(messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia)))
         if (ctx.settings.Xprompt.value) Reporter.displayPrompt(reader, writer)
-        true
-      case dia: ConditionalWarning if !dia.enablingOption.value =>
-        false
       case dia =>
         printMessage(messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia)))
-        true
-    }
 
-    if (didPrint && shouldExplain(dia))
+    if shouldExplain(dia) then
       printMessage(explanation(dia.msg))
-    else if (didPrint && dia.msg.canExplain)
+    else if dia.msg.canExplain then
       printMessage("\nlonger explanation available when compiling with `-explain`")
   }
 
