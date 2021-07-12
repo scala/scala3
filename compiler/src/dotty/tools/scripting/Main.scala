@@ -2,7 +2,7 @@ package dotty.tools.scripting
 
 import java.io.File
 import java.nio.file.{Path, Paths}
-import dotty.tools.dotc.config.Properties.isWin 
+import dotty.tools.dotc.config.Properties.isWin
 
 /** Main entry point to the Scripting execution engine */
 object Main:
@@ -87,7 +87,7 @@ object Main:
         case s if s.startsWith("./") => s.drop(2)
         case s => s
       }
-   
+
     // convert to absolute path relative to cwd.
     def absPath: String = norm match
       case str if str.isAbsolute => norm
