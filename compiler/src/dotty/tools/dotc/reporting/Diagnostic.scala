@@ -37,6 +37,7 @@ object Diagnostic:
   ) extends Diagnostic(msg, pos, WARNING) {
     def toError: Error = new Error(msg, pos)
     def toInfo: Info = new Info(msg, pos)
+    def isSummarizedConditional(using Context): Boolean = false
   }
 
   class Info(
@@ -49,6 +50,7 @@ object Diagnostic:
     pos: SourcePosition
   ) extends Warning(msg, pos) {
     def enablingOption(using Context): Setting[Boolean]
+    override def isSummarizedConditional(using Context): Boolean = !enablingOption.value
   }
 
   class FeatureWarning(
