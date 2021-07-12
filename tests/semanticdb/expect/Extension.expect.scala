@@ -13,3 +13,6 @@ trait Read/*<-ext::Read#*/[+T/*<-ext::Read#[T]*/]:
 
 extension (s/*<-ext::Extension$package.readInto().(s)*/: String/*->scala::Predef.String#*/)
   def readInto/*<-ext::Extension$package.readInto().*/[T/*<-ext::Extension$package.readInto().[T]*/](using Read/*->ext::Read#*/[T/*->ext::Extension$package.readInto().[T]*/]): Option/*->scala::Option#*/[T/*->ext::Extension$package.readInto().[T]*/] = summon/*->scala::Predef.summon().*/[Read/*->ext::Read#*/[T/*->ext::Extension$package.readInto().[T]*/]]/*->ext::Extension$package.readInto().(x$2)*/.fromString/*->ext::Read#fromString().*/(s/*->ext::Extension$package.readInto().(s)*/)
+
+trait Functor/*<-ext::Functor#*/[F/*<-ext::Functor#[F]*/[_]]:
+  extension [T/*<-ext::Functor#map().[T]*/](t/*<-ext::Functor#map().(t)*/: F/*->ext::Functor#[F]*/[T/*->ext::Functor#map().[T]*/]) def map/*<-ext::Functor#map().*/[U/*<-ext::Functor#map().[U]*/](f/*<-ext::Functor#map().(f)*/: T/*->ext::Functor#map().[T]*/ => U/*->ext::Functor#map().[U]*/): F/*->ext::Functor#[F]*/[U/*->ext::Functor#map().[U]*/]

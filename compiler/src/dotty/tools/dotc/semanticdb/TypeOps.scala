@@ -152,7 +152,7 @@ class TypeOps:
                 paramRefSymtab.getOrErr((pt, paramName), sym)
               }
               // there shouldn't multiple type params
-              flatten(pt.resType, paramss, syms)
+              flatten(pt.resType, paramss, tparams ++ syms)
             case other =>
               (other, paramss, tparams)
           }

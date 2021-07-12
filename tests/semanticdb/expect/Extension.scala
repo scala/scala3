@@ -13,3 +13,6 @@ trait Read[+T]:
 
 extension (s: String)
   def readInto[T](using Read[T]): Option[T] = summon[Read[T]].fromString(s)
+
+trait Functor[F[_]]:
+  extension [T](t: F[T]) def map[U](f: T => U): F[U]
