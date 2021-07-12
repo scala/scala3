@@ -138,7 +138,7 @@ object Preparser {
             bodyTags.keys.toSeq flatMap {
               case stk: SymbolTagKey if (stk.name == key.name) => Some(stk)
               case stk: SimpleTagKey if (stk.name == key.name) =>
-                // dottydoc.println(s"$span: tag '@${stk.name}' must be followed by a symbol name")
+                // scaladoc.println(s"$span: tag '@${stk.name}' must be followed by a symbol name")
                 None
               case _ => None
             }
@@ -146,7 +146,7 @@ object Preparser {
             for (key <- keys) yield {
               val bs = (bodyTags remove key).get
               // if (bs.length > 1)
-                // dottydoc.println(s"$span: only one '@${key.name}' tag for symbol ${key.symbol} is allowed")
+                // scaladoc.println(s"$span: only one '@${key.name}' tag for symbol ${key.symbol} is allowed")
               (key.symbol, bs.head)
             }
           SortedMap.empty[String, String] ++ pairs

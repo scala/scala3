@@ -28,7 +28,7 @@ def next(): T
 ```
 
 Given a simple reference to `next` does not auto-convert to a function.
-One has to write explicitly `() => next()` to achieve that
+One has to write explicitly `() => next()` to achieve that.
 Once again since the `_` is going to be deprecated it's better to write it this way
 rather than `next _`.
 

@@ -1,6 +1,6 @@
 class I1(i2: Int) {
   def apply(i3: Int) = 1
-  new I1(1)(2) {} // error: too many arguments in parent constructor
+  new I1(1)(2) {} // error: too many arguments in parent constructor // error
 }
 
 class I0(i1: Int) {

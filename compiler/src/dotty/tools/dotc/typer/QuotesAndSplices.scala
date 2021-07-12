@@ -159,7 +159,7 @@ trait QuotesAndSplices {
 
     if ctx.mode.is(Mode.QuotedPattern) && level == 1 then
       report.error(
-            """`$` for quote pattern varable is not supported anymore.
+            """`$` for quote pattern variable is not supported anymore.
                |Use lower cased variable name without the `$` instead.""".stripMargin,
             tree.srcPos)
       ref(defn.NothingType)
@@ -461,7 +461,7 @@ trait QuotesAndSplices {
     val quoteClass = if (tree.quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
     val quotedPattern =
       if (tree.quoted.isTerm) ref(defn.QuotedRuntime_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx)
-      else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).select(nme.apply).appliedTo(qctx)
+      else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).appliedTo(qctx)
 
     val matchModule = if tree.quoted.isTerm then defn.QuoteMatching_ExprMatch else defn.QuoteMatching_TypeMatch
     val unapplyFun = qctx.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(nme.unapply)

@@ -85,9 +85,24 @@ object Tools:
     case UNKNOWN_LANGUAGE | Unrecognized(_) => "unknown"
   end languageString
 
+  private def accessString(access: Access): String =
+    access match
+      case Access.Empty => ""
+      case _: PublicAccess => ""
+      case _: PrivateAccess => "private "
+      case _: ProtectedAccess => "protected "
+      case _: PrivateThisAccess => "private[this] "
+      case _: ProtectedThisAccess => "protected[this] "
+      case PrivateWithinAccess(ssym) =>
+        s"private[${ssym}] "
+      case ProtectedWithinAccess(ssym) =>
+        s"protected[${ssym}] "
+
+
   private def processSymbol(info: SymbolInformation)(using sb: StringBuilder): Unit =
     import SymbolInformation.Kind._
     sb.append(info.symbol).append(" => ")
+    sb.append(accessString(info.access))
     if info.isAbstract then sb.append("abstract ")
     if info.isFinal then sb.append("final ")
     if info.isSealed then sb.append("sealed ")

@@ -4,6 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation._
 
 class RegressionTestScala3 {
   import RegressionTestScala3.*
@@ -21,6 +22,23 @@ class RegressionTestScala3 {
     assertEquals(-1, obj2.y)
     assertEquals(4, obj2.foo(5))
   }
+
+  @Test def testJSNativeDefaultCtorParamIssue11592(): Unit = {
+    assertEquals("foo", new RangeErrorIssue11592("foo").message)
+    assertEquals("", new RangeErrorIssue11592().message)
+  }
+
+  @Test def testNonJVMCharsInClosureParametersIssue12507(): Unit = {
+    def foo(`[-3, 3]`: Int): Int => Int = { x =>
+      `[-3, 3]`
+    }
+
+    assertEquals(5, foo(5)(4))
+  }
+
+  @Test def defaultAccessorBridgesIssue12572(): Unit = {
+    new MyPromiseIssue12572[Int](5)
+  }
 }
 
 object RegressionTestScala3 {
@@ -32,6 +50,31 @@ object RegressionTestScala3 {
     private class ChildClass extends ParentTrait // must be class *and* private
 
     def foo(x: Int): Int = new ChildClass().concreteMethod(x)
+  }
+
+  @js.native
+  @JSGlobal("RangeError")
+  class RangeErrorIssue11592(msg: String = js.native) extends js.Object {
+    val message: String = js.native
+  }
+
+  class MyPromiseIssue12572[T](t: T) extends js.Promise[T]((resolve, reject) => resolve(t)) {
+    override def `then`[S](
+        onFulfilled: js.Function1[T, S | js.Thenable[S]],
+        onRejected: js.UndefOr[js.Function1[scala.Any, S | js.Thenable[S]]] = js.undefined): js.Promise[S] = {
+      ???
+    }
+
+    override def `then`[S >: T](
+        onFulfilled: Unit,
+        onRejected: js.UndefOr[js.Function1[scala.Any, S | js.Thenable[S]]]): js.Promise[S] = {
+      ???
+    }
+
+    override def `catch`[S >: T](
+        onRejected: js.UndefOr[js.Function1[scala.Any, S | js.Thenable[S]]] = js.undefined): js.Promise[S] = {
+      ???
+    }
   }
 }
 

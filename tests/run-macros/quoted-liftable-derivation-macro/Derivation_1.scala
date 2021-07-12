@@ -52,7 +52,7 @@ object Lft {
   private def elemTypesLfts[X: Type](using Quotes): List[Expr[Lft[_]]] =
     Type.of[X] match
       case '[ head *: tail ] =>
-        Expr.summon[Lft[head]].getOrElse(quotes.reflect.report.throwError(s"Could not find given Lft[${Type.show[head]}]")) :: elemTypesLfts[tail]
+        Expr.summon[Lft[head]].getOrElse(quotes.reflect.report.errorAndAbort(s"Could not find given Lft[${Type.show[head]}]")) :: elemTypesLfts[tail]
       case '[ EmptyTuple ] => Nil
 
   private def elemType[X: Type](ordinal: Int)(using Quotes): Type[_] =

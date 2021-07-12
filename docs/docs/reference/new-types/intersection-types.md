@@ -11,14 +11,14 @@ The type `S & T` represents values that are of the type `S` and `T` at the same 
 
 ```scala
 trait Resettable:
-   def reset(): Unit
+  def reset(): Unit
 
 trait Growable[T]:
-   def add(t: T): Unit
+  def add(t: T): Unit
 
 def f(x: Resettable & Growable[String]) =
-   x.reset()
-   x.add("first")
+  x.reset()
+  x.add("first")
 ```
 
 The parameter `x` is required to be _both_ a `Resettable` and a
@@ -35,10 +35,10 @@ of its type in `A` and its type in `B`. For instance, assume the definitions:
 
 ```scala
 trait A:
-   def children: List[A]
+  def children: List[A]
 
 trait B:
-   def children: List[B]
+  def children: List[B]
 
 val x: A & B = new C
 val ys: List[A & B] = x.children
@@ -60,7 +60,7 @@ to give at that point a definition of a `children` method with the required type
 
 ```scala
 class C extends A, B:
-   def children: List[A & B] = ???
+  def children: List[A & B] = ???
 ```
 
 

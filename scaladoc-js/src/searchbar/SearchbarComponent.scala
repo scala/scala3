@@ -2,17 +2,23 @@ package dotty.tools.scaladoc
 
 import org.scalajs.dom._
 import org.scalajs.dom.html.Input
+import scala.scalajs.js.timers._
+import scala.concurrent.duration._
 
-class SearchbarComponent(val callback: (String) => List[PageEntry]):
+class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val resultsChunkSize = 100
   extension (p: PageEntry)
-    def toHTML =
+    def toHTML(inkuire: Boolean = false) =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
       wrapper.classList.add("scaladoc-searchbar-result")
       wrapper.classList.add("monospace")
 
+      val icon = document.createElement("span").asInstanceOf[html.Span]
+      icon.classList.add("micon")
+      icon.classList.add(p.kind.take(2))
+
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href = Globals.pathToRoot + p.location
+      resultA.href = if inkuire then p.location else Globals.pathToRoot + p.location
       resultA.text = s"${p.fullName}"
 
       val location = document.createElement("span")
@@ -20,15 +26,16 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       location.classList.add("scaladoc-searchbar-location")
       location.textContent = p.description
 
+      wrapper.appendChild(icon)
       wrapper.appendChild(resultA)
-      wrapper.appendChild(location)
+      resultA.appendChild(location)
       wrapper.addEventListener("mouseover", {
         case e: MouseEvent => handleHover(wrapper)
       })
       wrapper
 
-  def handleNewQuery(query: String) =
-    val result = callback(query).map(_.toHTML)
+  def handleNewFluffQuery(matchers: List[Matchers]) =
+    val result = engine.query(matchers).map(_.toHTML(inkuire = false))
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
@@ -36,16 +43,57 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
     resultsDiv.appendChild(fragment)
     def loadMoreResults(result: List[raw.HTMLElement]): Unit = {
       resultsDiv.onscroll = (event: Event) => {
-          if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight)
-          {
-              val fragment = document.createDocumentFragment()
-              result.take(resultsChunkSize).foreach(fragment.appendChild)
-              resultsDiv.appendChild(fragment)
-              loadMoreResults(result.drop(resultsChunkSize))
-          }
+        if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight) {
+          val fragment = document.createDocumentFragment()
+          result.take(resultsChunkSize).foreach(fragment.appendChild)
+          resultsDiv.appendChild(fragment)
+          loadMoreResults(result.drop(resultsChunkSize))
+        }
       }
     }
     loadMoreResults(result.drop(resultsChunkSize))
+
+  extension (s: String)
+    def toHTMLError =
+      val wrapper = document.createElement("div").asInstanceOf[html.Div]
+      wrapper.classList.add("scaladoc-searchbar-result")
+      wrapper.classList.add("monospace")
+
+      val errorSpan = document.createElement("span").asInstanceOf[html.Span]
+      errorSpan.classList.add("search-error")
+      errorSpan.textContent = s
+
+      wrapper.appendChild(errorSpan)
+      wrapper
+
+  var timeoutHandle: SetTimeoutHandle = null
+  def handleNewQuery(query: String) =
+    clearTimeout(timeoutHandle)
+    resultsDiv.scrollTop = 0
+    resultsDiv.onscroll = (event: Event) => { }
+    while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
+    val fragment = document.createDocumentFragment()
+    parser.parse(query) match {
+      case EngineMatchersQuery(matchers) =>
+        handleNewFluffQuery(matchers)
+      case BySignature(signature) =>
+        timeoutHandle = setTimeout(1.second) {
+          val properResultsDiv = document.createElement("div").asInstanceOf[html.Div]
+          resultsDiv.appendChild(properResultsDiv)
+          val loading = document.createElement("div").asInstanceOf[html.Div]
+          loading.classList.add("loading-wrapper")
+          val animation = document.createElement("div").asInstanceOf[html.Div]
+          animation.classList.add("loading")
+          loading.appendChild(animation)
+          properResultsDiv.appendChild(loading)
+          inkuireEngine.query(query) { (p: PageEntry) =>
+            properResultsDiv.appendChild(p.toHTML(inkuire = true))
+          } { (s: String) =>
+            animation.classList.remove("loading")
+            properResultsDiv.appendChild(s.toHTMLError)
+          }
+        }
+    }
 
   private val searchIcon: html.Div =
     val span = document.createElement("span").asInstanceOf[html.Span]
@@ -59,6 +107,8 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
         document.body.appendChild(rootDiv)
         input.focus()
       }
+    // open the search if the user hits the `s` key when not focused on a text input
+    document.body.addEventListener("keydown", (e: KeyboardEvent) => handleGlobalKeyDown(e))
 
     val element = createNestingDiv("search-content")(
       createNestingDiv("search-container")(
@@ -69,7 +119,6 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
     )
     document.getElementById("scaladoc-searchBar").appendChild(element)
     element
-
 
   private val input: html.Input =
     val element = document.createElement("input").asInstanceOf[html.Input]
@@ -106,6 +155,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
         if e.keyCode == 40 then handleArrowDown()
         else if e.keyCode == 38 then handleArrowUp()
         else if e.keyCode == 13 then handleEnter()
+        else if e.keyCode == 27 then handleEscape()
     })
     element.id = "scaladoc-searchbar"
     element.appendChild(input)
@@ -146,6 +196,12 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       selectedElement.click()
     }
   }
+  private def handleEscape() = {
+    // clear the search input and close the search
+    input.value = ""
+    handleNewQuery("")
+    document.body.removeChild(rootDiv)
+  }
 
   private def handleHover(elem: html.Element) = {
     val selectedElement = resultsDiv.querySelector("[selected]")
@@ -153,6 +209,23 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       selectedElement.removeAttribute("selected")
     }
     elem.setAttribute("selected","")
+  }
+
+  private def handleGlobalKeyDown(e: KeyboardEvent) = {
+    // if the user presses the "S" key while not focused on an input, open the search
+    if (e.key == "s" || e.key == "/") {
+      val tag = e.target.asInstanceOf[html.Element].tagName
+      if (tag != "INPUT" && tag != "TEXTAREA") {
+        if (!document.body.contains(rootDiv)) {
+          // Firefox's "quick find" uses "/" as a trigger; prevent that.
+          e.preventDefault()
+
+          document.body.appendChild(rootDiv)
+          // if we focus during the event handler, the `s` gets typed into the input
+          window.setTimeout(() => input.focus(), 1.0)
+        }
+      }
+    }
   }
 
   handleNewQuery("")

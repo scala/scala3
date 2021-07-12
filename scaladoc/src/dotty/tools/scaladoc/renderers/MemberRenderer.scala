@@ -19,7 +19,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def defintionClasses(m: Member) = m.origin match
     case Origin.Overrides(defs) =>
-      def renderDef(d: Overriden): Seq[TagArg] =
+      def renderDef(d: Overridden): Seq[TagArg] =
         Seq(" -> ", signatureRenderer.renderLink(d.name, d.dri))
       val headNode = m.inheritedFrom.map(form => signatureRenderer.renderLink(form.name, form.dri))
       val tailNodes = defs.flatMap(renderDef)
@@ -46,13 +46,15 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     def opt(name: String, on: Option[DocPart]): Seq[AppliedTag] =
       if on.isEmpty then Nil else tableRow(name, renderDocPart(on.get))
 
+    def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors", authors) else Nil
+
     m.docs.fold(Nil)(d =>
       nested("Type Params", d.typeParams) ++
       nested("Value Params", d.valueParams) ++
       opt("Returns", d.result) ++
       nested("Throws", d.throws) ++
       opt("Constructor", d.constructor) ++
-      list("Authors", d.authors) ++
+      authors(d.authors) ++
       list("See also", d.see) ++
       opt("Version", d.version) ++
       opt("Since", d.since) ++
@@ -92,23 +94,26 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     Seq(dt("Deprecated"), dd(content:_*))
   }
 
-  def memberInfo(m: Member): Seq[AppliedTag] =
+  def memberInfo(m: Member, withBrief: Boolean = false): Seq[AppliedTag] =
+    val comment = m.docs
     val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
     Seq(
-      div(cls := "documentableBrief doc")(bodyContents.take(1)),
-      div(cls := "cover")(
-        div(cls := "doc")(bodyContents.drop(1)),
-        dl(cls := "attributes")(
-          docAttributes(m),
-          companion(m),
-          deprecation(m),
-          defintionClasses(m),
-          inheritedFrom(m),
-          source(m),
+      Option.when(withBrief)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
+      Some(
+        div(cls := "cover")(
+          div(cls := "doc")(bodyContents),
+          dl(cls := "attributes")(
+            docAttributes(m),
+            companion(m),
+            deprecation(m),
+            defintionClasses(m),
+            inheritedFrom(m),
+            source(m),
+          )
         )
       )
-    )
+    ).flatten
 
   private def originInfo(m: Member): Seq[TagArg] = m.origin match {
     case Origin.ImplicitlyAddedBy(name, dri) =>
@@ -142,10 +147,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     )
 
   def memberIcon(member: Member) = member.kind match {
-    case Kind.Package => Nil
     case _ =>
       val withCompanion = member.companion.fold("")(_ => "-wc")
-      val iconSpan = span(cls := s"micon ${member.kind.name.head}$withCompanion")()
+      val iconSpan = span(cls := s"micon ${member.kind.name.take(2)}$withCompanion")()
       Seq(member.companion.flatMap(link(_)).fold(iconSpan)(link => a(href := link)(iconSpan)))
   }
 
@@ -169,7 +173,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         span(cls := "modifiers"), // just to have padding on left
         div(
           div(cls := "originInfo")(originInfo(member):_*),
-          div(cls := "documentableBrief")(memberInfo(member)),
+          div(cls := "memberDocumentation")(memberInfo(member, withBrief = true)),
         )
       )
     )
@@ -262,7 +266,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Tab("Grouped members", "custom_groups", content, "selected")
 
   def buildMembers(s: Member): AppliedTag =
-    val (membersInGroups, rest) = s.members.partition(_.docs.exists(_.group.nonEmpty))
+    def partitionIntoGroups(members: Seq[Member]) =
+      if summon[DocContext].args.includeGroups then
+        members.partition(_.docs.exists(_.group.nonEmpty))
+      else
+        (Nil, members)
+
+    val (membersInGroups, rest) = partitionIntoGroups(s.members)
 
     val extensions =
       rest.groupBy{ _.kind match
@@ -381,7 +391,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     div(
       intro,
-      memberInfo(m),
+      memberInfo(m, withBrief = false),
       classLikeParts(m),
       buildDocumentableFilter, // TODO Need to make it work in JS :(
-      buildMembers(m))
+      buildMembers(m)
+    )

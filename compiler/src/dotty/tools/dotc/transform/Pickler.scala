@@ -110,12 +110,12 @@ class Pickler extends Phase {
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     val result = super.runOn(units)
     if ctx.settings.YtestPickler.value then
+      val ctx2 = ctx.fresh.setSetting(ctx.settings.YreadComments, true)
       testUnpickler(
-        using ctx.fresh
+        using ctx2
             .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
             .setReporter(new ThrowingReporter(ctx.reporter))
             .addMode(Mode.ReadPositions)
-            .addMode(Mode.ReadComments)
             .addMode(Mode.PrintShowExceptions))
     result
   }

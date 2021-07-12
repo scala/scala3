@@ -1,6 +1,6 @@
-// Similar code resides in scripted tests, which only runs on nightly:
+// Similar code resides in scripted tests:
 //
-// sbt-dotty/sbt-test/sbt-dotty/analyzer-plugin/plugin
+// sbt-test/analyzer-plugin/plugin
 //
 // You may want to change the code there too
 

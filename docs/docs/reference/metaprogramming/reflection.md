@@ -28,8 +28,8 @@ import scala.quoted.*
 inline def natConst(inline x: Int): Int = ${natConstImpl('{x})}
 
 def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
-   import quotes.reflect.*
-   ...
+  import quotes.reflect.*
+  ...
 ```
 
 ### Extractors
@@ -39,18 +39,18 @@ For example the `Literal(_)` extractor used below.
 
 ```scala
 def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
-   import quotes.reflect.*
-   val tree: Term = x.asTerm
-   tree match
-      case Inlined(_, _, Literal(IntConstant(n))) =>
-         if n <= 0 then
-            report.error("Parameter must be natural number")
-            '{0}
-         else
-            tree.asExprOf[Int]
-      case _ =>
-         report.error("Parameter must be a known constant")
-         '{0}
+  import quotes.reflect.*
+  val tree: Term = x.asTerm
+  tree match
+    case Inlined(_, _, Literal(IntConstant(n))) =>
+      if n <= 0 then
+        report.error("Parameter must be natural number")
+        '{0}
+      else
+        tree.asExprOf[Int]
+    case _ =>
+      report.error("Parameter must be a known constant")
+      '{0}
 ```
 
 We can easily know which extractors are needed using `Printer.TreeStructure.show`,
@@ -78,18 +78,18 @@ expansion point.
 
 ```scala
 def macroImpl()(quotes: Quotes): Expr[Unit] =
-   import quotes.reflect.*
-   val pos = Position.ofMacroExpansion
+  import quotes.reflect.*
+  val pos = Position.ofMacroExpansion
 
-   val path = pos.sourceFile.jpath.toString
-   val start = pos.start
-   val end = pos.end
-   val startLine = pos.startLine
-   val endLine = pos.endLine
-   val startColumn = pos.startColumn
-   val endColumn = pos.endColumn
-   val sourceCode = pos.sourceCode
-   ...
+  val path = pos.sourceFile.jpath.toString
+  val start = pos.start
+  val end = pos.end
+  val startLine = pos.startLine
+  val endLine = pos.endLine
+  val startColumn = pos.startColumn
+  val endColumn = pos.endColumn
+  val sourceCode = pos.sourceCode
+  ...
 ```
 
 ### Tree Utilities
@@ -104,14 +104,14 @@ example, collects the `val` definitions in the tree.
 
 ```scala
 def collectPatternVariables(tree: Tree)(using ctx: Context): List[Symbol] =
-   val acc = new TreeAccumulator[List[Symbol]]:
-      def foldTree(syms: List[Symbol], tree: Tree)(owner: Symbol): List[Symbol] = tree match
-         case ValDef(_, _, rhs) =>
-            val newSyms = tree.symbol :: syms
-            foldTree(newSyms, body)(tree.symbol)
-         case _ =>
-            foldOverTree(syms, tree)(owner)
-   acc(Nil, tree)
+  val acc = new TreeAccumulator[List[Symbol]]:
+    def foldTree(syms: List[Symbol], tree: Tree)(owner: Symbol): List[Symbol] = tree match
+      case ValDef(_, _, rhs) =>
+        val newSyms = tree.symbol :: syms
+        foldTree(newSyms, body)(tree.symbol)
+      case _ =>
+        foldOverTree(syms, tree)(owner)
+  acc(Nil, tree)
 ```
 
 A `TreeTraverser` extends a `TreeAccumulator` and performs the same traversal

@@ -21,6 +21,9 @@ object TypeUtils {
     def isPrimitiveValueType(using Context): Boolean =
       self.classSymbol.isPrimitiveValueClass
 
+    def isErasedClass(using Context): Boolean =
+      self.underlyingClassRef(refinementOK = true).typeSymbol.is(Flags.Erased)
+
     def isByName: Boolean =
       self.isInstanceOf[ExprType]
 
@@ -77,5 +80,10 @@ object TypeUtils {
       case self: TypeProxy =>
         self.underlying.companionRef
     }
+
+    /** Is this type a methodic type that takes implicit parameters (both old and new) at some point? */
+    def takesImplicitParams(using Context): Boolean = self.stripPoly match
+      case mt: MethodType => mt.isImplicitMethod || mt.resType.takesImplicitParams
+      case _ => false
   }
 }

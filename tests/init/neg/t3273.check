@@ -1,9 +1,7 @@
 -- Error: tests/init/neg/t3273.scala:4:42 ------------------------------------------------------------------------------
 4 |  val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error
   |                                  ^^^^^^^^^^^^^^^
-  |             Promoting the value to fully-initialized is unsafe.
-  |              Calling trace:
-  |              -> val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
+  |             Promoting the value to fully-initialized is unsafe. May only use initialized value as arguments
   |
   |             The unsafe promotion may cause the following problem(s):
   |
@@ -12,9 +10,7 @@
 -- Error: tests/init/neg/t3273.scala:5:61 ------------------------------------------------------------------------------
 5 |  val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error
   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |             Promoting the value to fully-initialized is unsafe.
-  |              Calling trace:
-  |              -> val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
+  |             Promoting the value to fully-initialized is unsafe. May only use initialized value as arguments
   |
   |             The unsafe promotion may cause the following problem(s):
   |

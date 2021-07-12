@@ -259,8 +259,6 @@ object PrepareInlineable {
     }
 
   private def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
-    if (inlined.owner.isClass && inlined.owner.seesOpaques)
-      report.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.srcPos)
     if Inliner.inInlineMethod(using ctx.outer) then
       report.error(ex"Implementation restriction: nested inline methods are not supported", inlined.srcPos)
 
@@ -287,10 +285,10 @@ object PrepareInlineable {
             """Malformed macro.
               |
               |Expected the splice ${...} to be at the top of the RHS:
-              |  inline def foo(inline x: X, ..., y: Y): Int = ${impl(x, ... '{y}})
+              |  inline def foo(inline x: X, ..., y: Y): Int = ${ impl('x, ... 'y) }
               |
               | * The contents of the splice must call a static method
-              | * All arguments must be quoted or inline
+              | * All arguments must be quoted
             """.stripMargin, inlined.srcPos)
       }
       checkMacro(body)

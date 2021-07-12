@@ -82,9 +82,9 @@ major authors were omitted by oversight.
     modifications. They were originally authored by Lex Spoon, Som Snytt,
     Adriaan Moors, Paul Phillips and others.
 
-  * dotty.tools.dottydoc: The Dottydoc documentation utility ships some
+  * dotty.tools.scaladoc: The Scaladoc documentation utility ships some
     third-party JavaScript and CSS libraries which are located under
-    dotty-doc/resources/css/, dotty-doc/resources/js/, docs/css/ and
+    scaladoc/resources/dotty_res/styles/, scaladoc/resources/dotty_res/scripts/, docs/css/ and
     docs/js/. Please refer to the license header of the concerned files for
     details.
 

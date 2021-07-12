@@ -10,9 +10,11 @@ def doSomething(body: M ?=> Unit) = body(using new M{})
 
 def Test1 =
   given M = new M{}
-  import m.*
-  val x: X = X.foo()
-  println(x)
+  locally {
+    import m.*
+    val x: X = X.foo()
+    println(x)
+  }
 
 def Test2 =
 

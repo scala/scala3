@@ -70,7 +70,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   BOUNDED               type_Term                                  -- type bound
 
   TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*                -- modifiers name bounds
-  TermParam     = PARAM          Length NameRef type_Term rhs_Term? Modifier*      -- modifiers name : type (= rhs_Term)?. `rhsTerm` is present in the case of an aliased class parameter
+  TermParam     = PARAM          Length NameRef type_Term Modifier*                -- modifiers name : type.
                   EMPTYCLAUSE                                                      -- an empty parameter clause ()
                   SPLITCLAUSE                                                      -- splits two non-empty parameter clauses of the same kind
   Param         = TypeParam
@@ -176,7 +176,6 @@ Standard-Section: "ASTs" TopLevelStat*
   TypeName      = typeOrBounds_ASTRef paramName_NameRef                            -- (`termName`: `type`)  or  (`typeName` `bounds`)
 
   Modifier      = PRIVATE                                                          -- private
-                  INTERNAL                                                         -- package private (not yet used)
                   PROTECTED                                                        -- protected
                   PRIVATEqualified     qualifier_Type                              -- private[qualifier]    (to be dropped(?)
                   PROTECTEDqualified   qualifier_Type                              -- protecred[qualifier]  (to be dropped(?)
@@ -212,6 +211,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   PARAMalias                                                       -- Parameter is alias of a superclass parameter
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
+                  INVISIBLE                                                        -- invisible during typechecking
                   Annotation
 
   Variance      = STABLE                                                           -- invariant
@@ -284,7 +284,7 @@ object TastyFormat {
    * compatibility, but remains backwards compatible, with all
    * preceeding `MinorVersion`.
    */
-  final val MinorVersion: Int = 0
+  final val MinorVersion: Int = 1
 
   /**Natural Number. The `ExperimentalVersion` allows for
    * experimentation with changes to TASTy without committing
@@ -303,11 +303,28 @@ object TastyFormat {
   final val ExperimentalVersion: Int = 1
 
   /**This method implements a binary relation (`<:<`) between two TASTy versions.
+   *
    * We label the lhs `file` and rhs `compiler`.
    * if `file <:< compiler` then the TASTy file is valid to be read.
    *
-   * TASTy versions have a partial order,
-   * for example `a <:< b` and `b <:< a` are both false if `a` and `b` have different major versions.
+   * A TASTy version, e.g. `v := 28.0-3` is composed of three fields:
+   *   - v.major == 28
+   *   - v.minor == 0
+   *   - v.experimental == 3
+   *
+   * TASTy versions have a partial order, for example,
+   * `a <:< b` and `b <:< a` are both false if
+   *   - `a` and `b` have different `major` fields.
+   *   - `a` and `b` have the same `major` & `minor` fields,
+   *     but different `experimental` fields, both non-zero.
+   *
+   * A TASTy version with a zero value for its `experimental` field
+   * is considered to be stable. Files with a stable TASTy version
+   * can be read by a compiler with an unstable TASTy version,
+   * (where the compiler's TASTy version has a higher `minor` field).
+   *
+   * A compiler with a stable TASTy version can never read a file
+   * with an unstable TASTy version.
    *
    * We follow the given algorithm:
    * ```
@@ -432,12 +449,13 @@ object TastyFormat {
   // Cat. 1:    tag
 
   final val firstSimpleTreeTag = UNITconst
+  // final val ??? = 1
   final val UNITconst = 2
   final val FALSEconst = 3
   final val TRUEconst = 4
   final val NULLconst = 5
   final val PRIVATE = 6
-  final val INTERNAL = 7
+  // final val ??? = 7
   final val PROTECTED = 8
   final val ABSTRACT = 9
   final val FINAL = 10
@@ -460,6 +478,7 @@ object TastyFormat {
   final val CASEaccessor = 27
   final val COVARIANT = 28
   final val CONTRAVARIANT = 29
+  // final val ??? = 30
   final val HASDEFAULT = 31
   final val STABLE = 32
   final val MACRO = 33
@@ -473,8 +492,9 @@ object TastyFormat {
   final val PARAMalias = 41
   final val TRANSPARENT = 42
   final val INFIX = 43
-  final val EMPTYCLAUSE = 44
-  final val SPLITCLAUSE = 45
+  final val INVISIBLE = 44
+  final val EMPTYCLAUSE = 45
+  final val SPLITCLAUSE = 46
 
   // Cat. 2:    tag Nat
 
@@ -534,6 +554,7 @@ object TastyFormat {
   final val IMPORT = 132
   final val TYPEPARAM = 133
   final val PARAM = 134
+  // final val ??? = 135
   final val APPLY = 136
   final val TYPEAPPLY = 137
   final val TYPED = 138
@@ -564,7 +585,9 @@ object TastyFormat {
   final val TYPEBOUNDS = 163
   final val TYPEBOUNDStpt = 164
   final val ANDtype = 165
+  // final val ??? = 166
   final val ORtype = 167
+  // final val ??? = 168
   final val POLYtype = 169
   final val TYPELAMBDAtype = 170
   final val LAMBDAtpt = 171
@@ -574,7 +597,8 @@ object TastyFormat {
   final val TYPEREFin = 175
   final val SELECTin = 176
   final val EXPORT = 177
-
+  // final val ??? = 178
+  // final val ??? = 179
   final val METHODtype = 180
 
   final val MATCHtype = 190
@@ -601,7 +625,6 @@ object TastyFormat {
 
   def isModifierTag(tag: Int): Boolean = tag match {
     case PRIVATE
-       | INTERNAL
        | PROTECTED
        | ABSTRACT
        | FINAL
@@ -637,6 +660,7 @@ object TastyFormat {
        | PARAMalias
        | EXPORTED
        | OPEN
+       | INVISIBLE
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -664,7 +688,6 @@ object TastyFormat {
     case TRUEconst => "TRUEconst"
     case NULLconst => "NULLconst"
     case PRIVATE => "PRIVATE"
-    case INTERNAL => "INTERNAL"
     case PROTECTED => "PROTECTED"
     case ABSTRACT => "ABSTRACT"
     case FINAL => "FINAL"
@@ -699,6 +722,7 @@ object TastyFormat {
     case PARAMsetter => "PARAMsetter"
     case EXPORTED => "EXPORTED"
     case OPEN => "OPEN"
+    case INVISIBLE => "INVISIBLE"
     case PARAMalias => "PARAMalias"
     case EMPTYCLAUSE => "EMPTYCLAUSE"
     case SPLITCLAUSE => "SPLITCLAUSE"

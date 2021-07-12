@@ -20,6 +20,11 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
   private class BridgesCursor(using Context) extends OverridingPairs.Cursor(root) {
 
+    override def isSubParent(parent: Symbol, bc: Symbol)(using Context) =
+      true
+      	// Never consider a bridge if there is a superclass that would contain it
+      	// See run/t2857.scala for a test that would break with a VerifyError otherwise.
+
     /** Only use the superclass of `root` as a parent class. This means
      *  overriding pairs that have a common implementation in a trait parent
      *  are also counted. This is necessary because we generate bridge methods
@@ -31,7 +36,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       !sym.isOneOf(MethodOrModule) || super.exclude(sym)
   }
 
-  //val site = root.thisType
+  val site = root.thisType
 
   private var toBeRemoved = immutable.Set[Symbol]()
   private val bridges = mutable.ListBuffer[Tree]()
@@ -72,7 +77,13 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
                       |clashes with definition of the member itself; both have erased type ${info(member)(using elimErasedCtx)}."""",
                   bridgePosFor(member))
     }
-    else if (!bridgeExists)
+    else if !inContext(preErasureCtx)(site.memberInfo(member).matches(site.memberInfo(other))) then
+      // Neither symbol signatures nor pre-erasure types seen from root match; this means
+      // according to Scala 2 semantics there is no override.
+      // A bridge might introduce a classcast exception.
+      // Example where this was observed: run/i12828a.scala and MapView in stdlib213
+      report.log(i"suppress bridge in $root for ${member} in ${member.owner} and ${other.showLocated} since member infos ${site.memberInfo(member)} and ${site.memberInfo(other)} do not match")
+    else if !bridgeExists then
       addBridge(member, other)
   }
 

@@ -477,7 +477,7 @@ object Denotations {
             val jointInfo = infoMeet(info1, info2, safeIntersection)
             if jointInfo.exists then
               val sym = if symScore >= 0 then sym1 else sym2
-              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
+              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre, denot1.isRefinedMethod || denot2.isRefinedMethod)
             else if symScore == 2 then denot1
             else if symScore == -2 then denot2
             else
@@ -569,7 +569,7 @@ object Denotations {
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
-    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type): SingleDenotation
+    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
 
     final def name(using Context): Name = symbol.name
 
@@ -582,8 +582,12 @@ object Denotations {
      */
     def prefix: Type = NoPrefix
 
-    /** Either the Scala or Java signature of the info, depending on where the
-     *  symbol is defined.
+    /** True if the info of this denotation comes from a refinement. */
+    def isRefinedMethod: Boolean = false
+
+    /** For SymDenotations, the language-specific signature of the info, depending on
+     *  where the symbol is defined. For non-SymDenotations, the Scala 3
+     *  signature.
      *
      *  Invariants:
      *  - Before erasure, the signature of a denotation is always equal to the
@@ -595,17 +599,17 @@ object Denotations {
      *    SingleDenotations will have distinct signatures (cf #9050).
      */
     final def signature(using Context): Signature =
-      signature(isJava = !isType && symbol.is(JavaDefined))
+      signature(sourceLanguage = if isType || !this.isInstanceOf[SymDenotation] then SourceLanguage.Scala3 else SourceLanguage(symbol))
 
-    /** Overload of `signature` which lets the caller pick between the Java and
-     *  Scala signature of the info. Useful to match denotations defined in
+    /** Overload of `signature` which lets the caller pick the language used
+     *  to compute the signature of the info. Useful to match denotations defined in
      *  different classes (see `matchesLoosely`).
      */
-    def signature(isJava: Boolean)(using Context): Signature =
+    def signature(sourceLanguage: SourceLanguage)(using Context): Signature =
       if (isType) Signature.NotAMethod // don't force info if this is a type denotation
       else info match {
         case info: MethodOrPoly =>
-          try info.signature(isJava)
+          try info.signature(sourceLanguage)
           catch { // !!! DEBUG
             case scala.util.control.NonFatal(ex) =>
               report.echo(s"cannot take signature of $info")
@@ -614,9 +618,9 @@ object Denotations {
         case _ => Signature.NotAMethod
       }
 
-    def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix)(using Context): SingleDenotation =
-      if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix)) this
-      else newLikeThis(symbol, info, pre)
+    def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix, isRefinedMethod: Boolean = this.isRefinedMethod)(using Context): SingleDenotation =
+      if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix) && (isRefinedMethod == this.isRefinedMethod)) this
+      else newLikeThis(symbol, info, pre, isRefinedMethod)
 
     def mapInfo(f: Type => Type)(using Context): SingleDenotation =
       derivedSingleDenotation(symbol, f(info))
@@ -787,8 +791,6 @@ object Denotations {
       val currentPeriod = ctx.period
       val valid = myValidFor
 
-      def signalError() = println(s"error while transforming $this")
-
       def assertNotPackage(d: SingleDenotation, transformer: DenotTransformer) = d match
         case d: ClassDenotation =>
           assert(!d.is(Package), s"illegal transformation of package denotation by transformer $transformer")
@@ -832,7 +834,7 @@ object Denotations {
                 // To work correctly, we need to demand that the context with the new phase
                 // is not retained in the result.
             catch case ex: CyclicReference =>
-              signalError()
+              // println(s"error while transforming $this")
               throw ex
             finally
               mutCtx.setPeriod(savedPeriod)
@@ -1013,36 +1015,36 @@ object Denotations {
 
     /** `matches` without a target name check.
      *
-     *  We consider a Scala method and a Java method to match if they have
-     *  matching Scala signatures. This allows us to override some Java
-     *  definitions even if they have a different erasure (see i8615b,
-     *  i9109b), Erasure takes care of adding any necessary bridge to make
-     *  this work at runtime.
+     *  For definitions coming from different languages, we pick a common
+     *  language to compute their signatures. This allows us for example to
+     *  override some Java definitions from Scala even if they have a different
+     *  erasure (see i8615b, i9109b), Erasure takes care of adding any necessary
+     *  bridge to make this work at runtime.
      */
-    def matchesLoosely(other: SingleDenotation)(using Context): Boolean =
+    def matchesLoosely(other: SingleDenotation, alwaysCompareTypes: Boolean = false)(using Context): Boolean =
       if isType then true
       else
-        val isJava = symbol.is(JavaDefined)
-        val otherIsJava = other.symbol.is(JavaDefined)
-        val useJavaSig = isJava && otherIsJava
-        val sig = signature(isJava = useJavaSig)
-        val otherSig = other.signature(isJava = useJavaSig)
+        val thisLanguage = SourceLanguage(symbol)
+        val otherLanguage = SourceLanguage(other.symbol)
+        val commonLanguage = SourceLanguage.commonLanguage(thisLanguage, otherLanguage)
+        val sig = signature(commonLanguage)
+        val otherSig = other.signature(commonLanguage)
         sig.matchDegree(otherSig) match
           case FullMatch =>
-            true
+            !alwaysCompareTypes || info.matches(other.info)
           case MethodNotAMethodMatch =>
             !ctx.erasedTypes && {
               // A Scala zero-parameter method and a Scala non-method always match.
-              if !isJava && !otherIsJava then
+              if !thisLanguage.isJava && !otherLanguage.isJava then
                 true
               // Java allows defining both a field and a zero-parameter method with the same name,
               // so they must not match.
-              else if isJava && otherIsJava then
+              else if thisLanguage.isJava && otherLanguage.isJava then
                 false
               // A Java field never matches a Scala method.
-              else if isJava then
+              else if thisLanguage.isJava then
                 symbol.is(Method)
-              else // otherIsJava
+              else // otherLanguage.isJava
                 other.symbol.is(Method)
             }
           case ParamMatch =>
@@ -1061,11 +1063,12 @@ object Denotations {
     def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation =
+      val realExcluded = if ctx.isAfterTyper then excluded else excluded | Invisible
       def symd: SymDenotation = this match
         case symd: SymDenotation => symd
         case _ => symbol.denot
       if !required.isEmpty && !symd.isAllOf(required)
-         || !excluded.isEmpty && symd.isOneOf(excluded) then NoDenotation
+         || symd.isOneOf(realExcluded) then NoDenotation
       else this
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T = f(this)
 
@@ -1105,7 +1108,11 @@ object Denotations {
         case sd: SymDenotation => true
         case _ => info eq symbol.info
 
-      if !owner.membersNeedAsSeenFrom(pre) && ((pre ne owner.thisType) || hasOriginalInfo)
+      def ownerIsPrefix = pre match
+        case pre: ThisType => pre.sameThis(owner.thisType)
+        case _ => false
+
+      if !owner.membersNeedAsSeenFrom(pre) && (!ownerIsPrefix || hasOriginalInfo)
          || symbol.is(NonMember)
       then this
       else derived(symbol.info)
@@ -1124,26 +1131,30 @@ object Denotations {
     prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new UniqueRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      if isRefinedMethod then
+        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+      else
+        new UniqueRefDenotation(s, i, validFor, pre)
   }
 
   class JointRefDenotation(
     symbol: Symbol,
     initInfo: Type,
     initValidFor: Period,
-    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
+    prefix: Type,
+    override val isRefinedMethod: Boolean) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = false
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new JointRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
   }
 
   class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
       this
   }
 

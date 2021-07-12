@@ -5,13 +5,18 @@ import collection.JavaConverters._
 import dotty.tools.scaladoc._
 import scala.quoted._
 
+import SymOps._
+import ScaladocSupport._
+
 trait BasicSupport:
   self: TastyParser =>
-  import qctx.reflect._
-  object SymOps extends SymOps[qctx.type](qctx)
-  export SymOps._
 
-  def parseAnnotation(annotTerm: Term): Annotation =
+  object SymOpsWithLinkCache extends SymOpsWithLinkCache
+  export SymOpsWithLinkCache._
+
+
+  def parseAnnotation(using Quotes)(annotTerm: reflect.Term): Annotation =
+    import reflect._
     import dotty.tools.dotc.ast.Trees.{SeqLiteral}
     val dri = annotTerm.tpe.typeSymbol.dri
     def inner(t: Term): List[Annotation.AnnotationParameter] = t match {
@@ -24,7 +29,6 @@ trait BasicSupport:
         case other => List(Annotation.UnresolvedParameter(None, other.show))
       }
 
-
     val params = annotTerm match
       case Apply(target, appliedWith) => {
         appliedWith.flatMap(inner)
@@ -32,12 +36,8 @@ trait BasicSupport:
 
     Annotation(dri, params)
 
-  extension (sym: Symbol)
+  extension (using Quotes)(sym: reflect.Symbol)
     def documentation = sym.docstring.map(parseComment(_, sym.tree))
-
-    def source(using Quotes) =
-      val path = sym.pos.map(_.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath)
-      path.map(TastyMemberSource(_, sym.pos.get.startLine))
 
     def getAnnotations(): List[Annotation] =
       sym.annotations.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
@@ -49,5 +49,4 @@ trait BasicSupport:
       }.map(parseAnnotation)
 
     def isLeftAssoc: Boolean = !sym.name.endsWith(":")
-
-
+  end extension

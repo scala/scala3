@@ -12,7 +12,9 @@ import java.util.Optional
 object Diagnostic:
 
   def shouldExplain(dia: Diagnostic)(using Context): Boolean =
-    dia.msg.explanation.nonEmpty && ctx.settings.explain.value
+    ctx.settings.explain.value && dia.msg.canExplain
+    || ctx.settings.explainTypes.value && dia.msg.isInstanceOf[TypeMismatchMsg]
+        // keep old explain-types behavior for backwards compatibility and cross-compilation
 
   // `Diagnostics to be consumed by `Reporter` ---------------------- //
   class Error(

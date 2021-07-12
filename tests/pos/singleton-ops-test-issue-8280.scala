@@ -1,5 +1,5 @@
 import scala.compiletime.ops.int.*
-import scala.compiletime.S
+import scala.compiletime.ops.int.S
 
 class Foo[T <: Int] {
   def incP = new Foo[T + 1]

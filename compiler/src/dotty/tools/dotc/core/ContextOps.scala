@@ -2,8 +2,8 @@ package dotty.tools.dotc
 package core
 
 import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, NameOps._
-import Denotations._
-import SymDenotations.LazyType, Names.Name, StdNames.nme
+import Denotations._, SymDenotations._
+import Names.Name, StdNames.nme
 import ast.untpd
 
 /** Extension methods for contexts where we want to keep the ctx.<methodName> syntax */
@@ -34,12 +34,49 @@ object ContextOps:
               if (elem.name == name) return elem.sym.denot // return self
             }
             val pre = ctx.owner.thisType
-            pre.findMember(name, pre, required, excluded)
+            if ctx.isJava then javaFindMember(name, pre, required, excluded)
+            else pre.findMember(name, pre, required, excluded)
           }
           else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
             ctx.owner.findMember(name, ctx.owner.thisType, required, excluded)
         else
           ctx.scope.denotsNamed(name).filterWithFlags(required, excluded).toDenot(NoPrefix)
+      }
+
+    final def javaFindMember(name: Name, pre: Type, required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags): Denotation =
+      assert(ctx.isJava)
+      inContext(ctx) {
+
+        val preSym = pre.typeSymbol
+
+        // 1. Try to search in current type and parents.
+        val directSearch = pre.findMember(name, pre, required, excluded)
+
+        // 2. Try to search in companion class if current is an object.
+        def searchCompanionClass = if preSym.is(Flags.Module) then
+          preSym.companionClass.thisType.findMember(name, pre, required, excluded)
+          else NoDenotation
+
+        // 3. Try to search in companion objects of super classes.
+        // In Java code, static inner classes, which we model as members of the companion object,
+        // can be referenced from an ident in a subclass or by a selection prefixed by the subclass.
+        def searchSuperCompanionObjects =
+          val toSearch = if preSym.is(Flags.Module) then
+            if preSym.companionClass.exists then
+              preSym.companionClass.asClass.baseClasses
+            else Nil
+          else
+            preSym.asClass.baseClasses
+
+          toSearch.iterator.map { bc =>
+            val pre1 = bc.companionModule.namedType
+            pre1.findMember(name, pre1, required, excluded)
+          }.find(_.exists).getOrElse(NoDenotation)
+
+        if preSym.isClass then
+          directSearch orElse searchCompanionClass orElse searchSuperCompanionObjects
+        else
+          directSearch
       }
 
     /** A fresh local context with given tree and owner.

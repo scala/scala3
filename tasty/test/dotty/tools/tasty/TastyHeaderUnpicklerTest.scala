@@ -57,8 +57,8 @@ object TastyHeaderUnpicklerTest {
     buf.writeNat(exp)
     buf.writeNat(compilerBytes.length)
     buf.writeBytes(compilerBytes, compilerBytes.length)
-    buf.writeUncompressedLong(237478l)
-    buf.writeUncompressedLong(324789l)
+    buf.writeUncompressedLong(237478L)
+    buf.writeUncompressedLong(324789L)
     buf
   }
 

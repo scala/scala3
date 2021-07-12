@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -eux
 
-AUTHOR=$GITHUB_ACTOR
 echo "Pull request submitted by $AUTHOR";
 signed=$(curl -s https://www.lightbend.com/contribute/cla/scala/check/$AUTHOR | jq -r ".signed");
 if [ "$signed" = "true" ] ; then

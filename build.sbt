@@ -10,7 +10,6 @@ val `scala3-sbt-bridge` = Build.`scala3-sbt-bridge`
 val `scala3-sbt-bridge-tests` = Build.`scala3-sbt-bridge-tests`
 val `scala3-staging` = Build.`scala3-staging`
 val `scala3-tasty-inspector` = Build.`scala3-tasty-inspector`
-val `scala3-tasty-inspector-nonbootstrapped` = Build.`scala3-tasty-inspector-nonbootstrapped`
 val `scala3-language-server` = Build.`scala3-language-server`
 val `scala3-bench` = Build.`scala3-bench`
 val `scala3-bench-bootstrapped` = Build.`scala3-bench-bootstrapped`
@@ -20,7 +19,6 @@ val `tasty-core` = Build.`tasty-core`
 val `tasty-core-bootstrapped` = Build.`tasty-core-bootstrapped`
 val `tasty-core-scala2` = Build.`tasty-core-scala2`
 val scaladoc = Build.scaladoc
-val `scaladoc-nonBootstrapped` = Build.`scaladoc-nonBootstrapped`
 val `scaladoc-testcases` = Build.`scaladoc-testcases`
 val `scaladoc-js` = Build.`scaladoc-js`
 val `scala3-bench-run` = Build.`scala3-bench-run`
@@ -32,7 +30,7 @@ val sjsSandbox = Build.sjsSandbox
 val sjsJUnitTests = Build.sjsJUnitTests
 val sjsCompilerTests = Build.sjsCompilerTests
 
-val `sbt-dotty` = Build.`sbt-dotty`
+val `sbt-test` = Build.`sbt-test`
 val `vscode-dotty` = Build.`vscode-dotty`
 
 inThisBuild(Build.thisBuildSettings)

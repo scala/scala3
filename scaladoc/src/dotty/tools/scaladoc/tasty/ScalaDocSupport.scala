@@ -6,10 +6,12 @@ import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc.Scaladoc.CommentSyntax
 import dotty.tools.scaladoc.tasty.comments.Comment
 
-trait ScaladocSupport { self: TastyParser =>
-  import qctx.reflect._
+import scala.quoted._
 
-  def parseCommentString(comment: String, sym: Symbol, pos: Option[Position]): Comment =
+object ScaladocSupport:
+
+  def parseCommentString(using Quotes, DocContext)(comment: String, sym: reflect.Symbol, pos: Option[reflect.Position]): Comment =
+    import reflect.report
     val preparsed = comments.Preparser.preparse(comments.Cleaner.clean(comment))
 
     val commentSyntax =
@@ -22,22 +24,22 @@ trait ScaladocSupport { self: TastyParser =>
 
             CommentSyntax.default
           }
-        case None => ctx.args.defaultSyntax
+        case None => summon[DocContext].args.defaultSyntax
       }
 
     val parser = commentSyntax match {
       case CommentSyntax.Wiki =>
-        comments.WikiCommentParser(comments.Repr(qctx)(sym))
+        comments.WikiCommentParser(comments.Repr(quotes)(sym))
       case CommentSyntax.Markdown =>
-        comments.MarkdownCommentParser(comments.Repr(qctx)(sym))
+        comments.MarkdownCommentParser(comments.Repr(quotes)(sym))
     }
     parser.parse(preparsed)
 
-  def parseComment(docstring: String,  tree: Tree): Comment =
+  def parseComment(using Quotes, DocContext)(docstring: String,  tree: reflect.Tree): Comment =
     val commentString: String =
       if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
         import dotty.tools.dotc
-        given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+        given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
 
         val sym = tree.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
 
@@ -47,5 +49,3 @@ trait ScaladocSupport { self: TastyParser =>
         docstring
 
     parseCommentString(commentString, tree.symbol, Some(tree.pos))
-
-}

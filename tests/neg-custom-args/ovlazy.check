@@ -1,4 +1,4 @@
--- Error: tests/neg-custom-args/ovlazy.scala:5:20 ----------------------------------------------------------------------
+-- [E164] Declaration Error: tests/neg-custom-args/ovlazy.scala:5:20 ---------------------------------------------------
 5 |  override lazy val x: Int = 2 // error
   |                    ^
   |                    error overriding value x in class A of type Int;

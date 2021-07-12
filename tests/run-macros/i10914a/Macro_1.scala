@@ -24,7 +24,7 @@ object Dsl {
     import quotes.reflect.*
     val inputs = c match
       case '{ Container($list) } =>
-        list.valueOrError
+        list.valueOrAbort
       case _ => report.throwError("Cannot Extract List from Container")
     '{ Entity(${Expr(inputs.head.value)}) }
 }

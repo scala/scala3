@@ -1,2 +1,2 @@
-2: Pattern Match Exhaustivity: (List(_, _, _*), List(_, _*)), (Nil, List(_, _*)), (List(_, _*), List(_, _, _*)), (List(_, _*), Nil)
+2: Pattern Match Exhaustivity: (List(_, _, _*), _: List), (Nil, List(_, _*)), (_: List, List(_, _, _*)), (List(_, _*), Nil)
 11: Pattern Match Exhaustivity: (Foo(None), Foo(_))

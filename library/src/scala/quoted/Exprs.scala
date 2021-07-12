@@ -14,7 +14,7 @@ object Exprs:
    *      ...
    *  }
    *  ```
-   *  To directly get the value of all expressions in a sequence `exprs: Seq[Expr[T]]` consider using `exprs.map(_.value)`/`exprs.map(_.valueOrError)` insead.
+   *  To directly get the value of all expressions in a sequence `exprs: Seq[Expr[T]]` consider using `exprs.map(_.value)`/`exprs.map(_.valueOrError)` instead.
    */
   def unapply[T](exprs: Seq[Expr[T]])(using FromExpr[T])(using Quotes): Option[Seq[T]] =
     val builder = Seq.newBuilder[T]

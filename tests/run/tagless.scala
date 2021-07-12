@@ -103,7 +103,7 @@ object Test extends App {
     private class Exc(msg: String) extends Exception(msg)
     def _throw(msg: String)(using CanThrow): Nothing = throw new Exc(msg)
     def _try[T](op: Maybe[T])(handler: String => T): T = {
-      given CanThrow with {}
+      given CanThrow()
       try op
       catch {
         case ex: Exception => handler(ex.getMessage)

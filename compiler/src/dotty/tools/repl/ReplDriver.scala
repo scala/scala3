@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
+import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
@@ -66,8 +67,9 @@ class ReplDriver(settings: Array[String],
 
   /** Create a fresh and initialized context with IDE mode enabled */
   private def initialCtx = {
-    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive | Mode.ReadComments)
+    val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
+    rootCtx.setSetting(rootCtx.settings.YreadComments, true)
     setup(settings, rootCtx) match
       case Some((files, ictx)) =>
         shouldStart = true
@@ -179,11 +181,10 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
-    def makeCandidate(completion: Completion) = {
-      val displ = completion.label
+    def makeCandidate(label: String) = {
       new Candidate(
-        /* value    = */ displ,
-        /* displ    = */ displ, // displayed value
+        /* value    = */ label,
+        /* displ    = */ label, // displayed value
         /* group    = */ null,  // can be used to group completions together
         /* descr    = */ null,  // TODO use for documentation?
         /* suffix   = */ null,
@@ -201,7 +202,7 @@ class ReplDriver(settings: Array[String],
         given Context = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Span(cursor))
         val (_, completions) = Completion.completions(srcPos)
-        completions.map(makeCandidate)
+        completions.map(_.label).distinct.map(makeCandidate)
       }
       .getOrElse(Nil)
   }
@@ -307,6 +308,7 @@ class ReplDriver(settings: Array[String],
           .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
             defn.topClasses.contains(denot.symbol.owner) || denot.symbol.isConstructor
+             || denot.symbol.name.is(DefaultGetterName)
           }
 
       val vals =

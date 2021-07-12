@@ -3,7 +3,7 @@ layout: doc-page
 title: "Safe Initialization"
 ---
 
-Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ycheck-init`.
+Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ysafe-init`.
 
 ## A Quick Glance
 
@@ -15,12 +15,12 @@ Given the following code snippet:
 
 ``` scala
 abstract class AbstractFile:
-   def name: String
-   val extension: String = name.substring(4)
+  def name: String
+  val extension: String = name.substring(4)
 
 class RemoteFile(url: String) extends AbstractFile:
-   val localFile: String = s"${url.##}.tmp"  // error: usage of `localFile` before it's initialized
-   def name: String = localFile
+  val localFile: String = s"${url.##}.tmp"  // error: usage of `localFile` before it's initialized
+  def name: String = localFile
 ```
 
 The checker will report:
@@ -40,10 +40,10 @@ Given the code below:
 
 ``` scala
 object Trees:
-   class ValDef { counter += 1 }
-   class EmptyValDef extends ValDef
-   val theEmptyValDef = new EmptyValDef
-   private var counter = 0  // error
+  class ValDef { counter += 1 }
+  class EmptyValDef extends ValDef
+  val theEmptyValDef = new EmptyValDef
+  private var counter = 0  // error
 ```
 
 The checker will report:
@@ -64,13 +64,13 @@ Given the code below:
 
 ``` scala
 abstract class Parent:
-   val f: () => String = () => this.message
-   def message: String
+  val f: () => String = () => this.message
+  def message: String
 
 class Child extends Parent:
-   val a = f()
-   val b = "hello"           // error
-   def message: String = b
+  val a = f()
+  val b = "hello"           // error
+  def message: String = b
 ```
 
 The checker reports:
@@ -122,12 +122,12 @@ following example shows:
 ``` scala
 class MyException(val b: B) extends Exception("")
 class A:
-   val b = try { new B } catch { case myEx: MyException => myEx.b }
-   println(b.a)
+  val b = try { new B } catch { case myEx: MyException => myEx.b }
+  println(b.a)
 
 class B:
-   throw new MyException(this)
-   val a: Int = 1
+  throw new MyException(this)
+  val a: Int = 1
 ```
 
 In the code above, the control effect teleport the uninitialized value
@@ -141,12 +141,12 @@ object under initialization. As an example, the following code will be rejected:
 
 ``` scala
 trait Reporter:
-   def report(msg: String): Unit
+  def report(msg: String): Unit
 
 class FileReporter(ctx: Context) extends Reporter:
-   ctx.typer.reporter = this                // ctx now reaches an uninitialized object
-   val file: File = new File("report.txt")
-   def report(msg: String) = file.write(msg)
+  ctx.typer.reporter = this                // ctx now reaches an uninitialized object
+  val file: File = new File("report.txt")
+  def report(msg: String) = file.write(msg)
 ```
 
 In the code above, suppose `ctx` points to a transitively initialized
@@ -185,13 +185,13 @@ With the established principles and design goals, following rules are imposed:
    initialization in order to enforce different rules. Scala
    has different syntax for them, it thus is not an issue.
 
-2. References to objects under initialization may not be passed as arguments to method calls or constructors.
+2. Objects under initialization may not be passed as arguments to method calls.
 
-   Escape of `this` in the constructor is commonly regarded as an
-   anti-pattern, and it's rarely used in practice. This rule is simple
-   for the programmer to reason about initialization and it simplifies
-   implementation. The theory supports safe escape of `this` with the help of
-   annotations, we delay the extension until there is a strong need.
+   Escape of `this` in the constructor is commonly regarded as an anti-pattern.
+   However, escape of `this` as constructor arguments are allowed, to support
+   creation of cyclic data structures. The checker will ensure that the escaped
+   non-initialized object is not used, i.e. calling methods or accessing fields
+   on the escaped object is not allowed.
 
 3. Local definitions may only refer to transitively initialized objects.
 
@@ -201,91 +201,29 @@ With the established principles and design goals, following rules are imposed:
    reasoning about initialization: programmers may safely assume that all local
    definitions only point to transitively initialized objects.
 
-## Modularity (considered)
+## Modularity
 
-Currently, the analysis works across project boundaries based on TASTy.
-The following is a proposal to make the checking more modular.
-The feedback from the community is welcome.
+The analysis takes the primary constructor of concrete classes as entry points.
+It follows the constructors of super classes, which might be defined in another project.
+The analysis takes advantage of TASTy for analyzing super classes defined in another project.
 
-For modularity, we need to forbid subtle initialization interaction beyond
-project boundaries. For example, the following code passes the check when the
-two classes are defined in the same project:
+The crossing of project boundary raises a concern about modularity. It is
+well-known in object-oriented programming that superclass and subclass are
+tightly coupled. For example, adding a method in the superclass requires
+recompiling the child class for checking safe overriding.
 
-```Scala
-class Base:
-   private val map: mutable.Map[Int, String] = mutable.Map.empty
-   def enter(k: Int, v: String) = map(k) = v
+Initialization is no exception in this respect. The initialization of an object
+essentially invovles close interaction between subclass and superclass. If the
+superclass is defined in another project, the crossing of project boundary
+cannot be avoided for soundness of the analysis.
 
-class Child extends Base:
-   enter(1, "one")
-   enter(2, "two")
-```
+Meanwhile, inheritance across project boundary has been under scrutiny and the
+introduction of [open classes](./open-classes.html) mitigate the concern here.
+For example, the initialization check could enforce that the constructors of
+open classes may not contain method calls on `this` or introduce annotations as
+a contract.
 
-However, when the class `Base` and `Child` are defined in two different
-projects, the check can emit a warning for the calls to `enter` in the class
-`Child`. This restricts subtle initialization within project boundaries,
-and avoids accidental violation of contracts across library versions.
-
-We can impose the following rules to enforce modularity:
-
-1. A class or trait that may be extended in another project should not
-   call _virtual_ methods on `this` in its template/mixin evaluation,
-   directly or indirectly.
-
-2. The method call `o.m(args)` is forbidden if `o` is not transitively
-   initialized and the target of `m` is defined in an external project.
-
-3. The expression `new p.C(args)` is forbidden, if `p` is not transitively
-   initialized and `C` is defined in an external project.
-
-## Theory
-
-The theory is based on type-and-effect systems [2, 3]. We introduce two concepts,
-_effects_ and _potentials_:
-
-```
-π = this | Warm(C, π) | π.f | π.m | π.super[D] | Cold | Fun(Π, Φ) | π.outer[C]
-ϕ = π↑ | π.f! | π.m!
-```
-
-Potentials (π) represent values that are possibly under initialization.
-
-- `this`: current object
-- `Warm(C, π)`: an object of type `C` where all its fields are assigned, and the potential for `this` of its enclosing class is `π`.
-- `π.f`: the potential of the field `f` in the potential `π`
-- `π.m`: the potential of the field `f` in the potential `π`
-- `π.super[D]`: essentially the object π, used for virtual method resolution
-- `Cold`: an object with unknown initialization status
-- `Fun(Π, Φ)`: a function, when called produce effects Φ and return potentials Π.
-- `π.outer[C]`: the potential of `this` for the enclosing class of `C` when `C.this` is `π`.
-
-Effects are triggered from potentials:
-
-- `π↑`: promote the object pointed to by the potential `π` to fully-initialized
-- `π.f!`: access field `f` on the potential `π`
-- `π.m!`: call the method `m` on the potential `π`
-
-To ensure that the checking always terminate and for better
-performance, we restrict the length of potentials to be finite (by
-default 2). If the potential is too long, the checker stops
-tracking it by checking that the potential is actually transitively
-initialized.
-
-For an expression `e`, it may be summarized by the pair `(Π, Φ)`,
-which means evaluation of `e` may produce the effects Φ and return the
-potentials Π. Each field and method is associated with such a pair.
-We call such a pair _summary_. The expansion of proxy potentials and effects,
-such as `π.f`, `π.m` and `π.m!`, will take advantage of the summaries.
-Depending on the potential `π` for `this`, the summaries need to be rebased (`asSeenFrom`) before usage.
-
-The checking treats the templates of concrete classes as entry points.
-It maintains the set of initialized fields as initialization
-progresses, and check that only initialized fields are accessed during
-the initialization and there is no leaking of values under initialization.
-Virtual method calls on `this` is not a problem,
-as they can always be resolved statically.
-
-For a more detailed introduction of the theory, please refer to the paper _a type-and-effect system for safe initialization_ [3].
+The feedback from the community on the topic is welcome.
 
 ## Back Doors
 
@@ -302,5 +240,4 @@ mark some fields as lazy.
 ## References
 
 1. Fähndrich, M. and Leino, K.R.M., 2003, July. [_Heap monotonic typestates_](https://www.microsoft.com/en-us/research/publication/heap-monotonic-typestate/). In International Workshop on Aliasing, Confinement and Ownership in object-oriented programming (IWACO).
-2. Lucassen, J.M. and Gifford, D.K., 1988, January. [_Polymorphic effect systems_](https://dl.acm.org/doi/10.1145/73560.73564). In Proceedings of the 15th ACM SIGPLAN-SIGACT symposium on Principles of programming languages (pp. 47-57). ACM.
-3. Fengyun Liu, Ondřej Lhoták, Aggelos Biboudis, Paolo G. Giarrusso, and Martin Odersky. 2020. [_A type-and-effect system for object initialization_](https://dl.acm.org/doi/10.1145/3428243). OOPSLA, 2020.
+2. Fengyun Liu, Ondřej Lhoták, Aggelos Biboudis, Paolo G. Giarrusso, and Martin Odersky. 2020. [_A type-and-effect system for object initialization_](https://dl.acm.org/doi/10.1145/3428243). OOPSLA, 2020.

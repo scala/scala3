@@ -1,5 +1,7 @@
--- [E007] Type Mismatch Error: tests/neg/i7359-g.scala:5:25 ------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i7359-g.scala:5:19 ------------------------------------------------------------
 5 |val m : SAMTrait = () => "Hello" // error
-  |                         ^^^^^^^
-  |                         Found:    () => String
-  |                         Required: SAMTrait
+  |                   ^^^^^^^^^^^^^
+  |                   Found:    () => String
+  |                   Required: SAMTrait
+
+longer explanation available when compiling with `-explain`

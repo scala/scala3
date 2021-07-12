@@ -1,0 +1,5 @@
+-- Error: tests/neg/i9460.scala:3:6 ------------------------------------------------------------------------------------
+3 |class C extends B  // error
+  |      ^
+  |      parameterized trait A is indirectly implemented,
+  |      needs to be implemented directly so that arguments can be passed

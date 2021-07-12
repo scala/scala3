@@ -310,14 +310,6 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     }
   }
 
-  /** Mangle a JVM symbol name in a format better suited for internal uses by sbt. */
-  private def mangledName(sym: Symbol)(using Context): Name = {
-    def constructorName = sym.owner.fullName ++ ";init;"
-
-    if (sym.isConstructor) constructorName
-    else sym.name.stripModuleClassSuffix
-  }
-
   private def addMemberRefDependency(sym: Symbol)(using Context): Unit =
     if (!ignoreDependency(sym)) {
       val enclOrModuleClass = if (sym.is(ModuleVal)) sym.moduleClass else sym.enclosingClass
@@ -327,7 +319,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       if (fromClass.exists) { // can happen when visiting imports
         assert(fromClass.isClass)
 
-        addUsedName(fromClass, mangledName(sym), UseScope.Default)
+        addUsedName(fromClass, sym.zincMangledName, UseScope.Default)
         // packages have class symbol. Only record them as used names but not dependency
         if (!sym.is(Package)) {
           _dependencies += ClassDependency(fromClass, enclOrModuleClass, DependencyByMemberRef)
@@ -490,7 +482,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     val traverser = new TypeDependencyTraverser {
       def addDependency(symbol: Symbol) =
         if (!ignoreDependency(symbol) && symbol.is(Sealed)) {
-          val usedName = mangledName(symbol)
+          val usedName = symbol.zincMangledName
           addUsedName(usedName, UseScope.PatMatTarget)
         }
     }

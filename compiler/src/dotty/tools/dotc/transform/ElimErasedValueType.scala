@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import ast.{Trees, tpd}
@@ -12,6 +13,17 @@ import NameKinds.SuperAccessorName
 
 object ElimErasedValueType {
   val name: String = "elimErasedValueType"
+
+  def elimEVT(tp: Type)(using Context): Type = tp match {
+    case ErasedValueType(_, underlying) =>
+      elimEVT(underlying)
+    case tp: MethodType =>
+      val paramTypes = tp.paramInfos.mapConserve(elimEVT)
+      val retType = elimEVT(tp.resultType)
+      tp.derivedLambdaType(tp.paramNames, paramTypes, retType)
+    case _ =>
+      tp
+  }
 }
 
 /** This phase erases ErasedValueType to their underlying type.
@@ -24,6 +36,7 @@ object ElimErasedValueType {
 class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
 
   import tpd._
+  import ElimErasedValueType.elimEVT
 
   override def phaseName: String = ElimErasedValueType.name
 
@@ -45,17 +58,6 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       }
     case _ =>
       elimEVT(tp)
-  }
-
-  def elimEVT(tp: Type)(using Context): Type = tp match {
-    case ErasedValueType(_, underlying) =>
-      elimEVT(underlying)
-    case tp: MethodType =>
-      val paramTypes = tp.paramInfos.mapConserve(elimEVT)
-      val retType = elimEVT(tp.resultType)
-      tp.derivedLambdaType(tp.paramNames, paramTypes, retType)
-    case _ =>
-      tp
   }
 
   def transformTypeOfTree(tree: Tree)(using Context): Tree =
@@ -80,6 +82,10 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
   private def checkNoClashes(root: Symbol)(using Context) = {
     val opc = atPhase(thisPhase) {
       new OverridingPairs.Cursor(root) {
+        override def isSubParent(parent: Symbol, bc: Symbol)(using Context) =
+          // Need to compute suparents before erasure to not filter out parents
+          // that are bypassed with different types. See neg/11719a.scala.
+          atPhase(elimRepeatedPhase.next) { super.isSubParent(parent, bc) }
         override def exclude(sym: Symbol) =
           !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
         override def matches(sym1: Symbol, sym2: Symbol) =

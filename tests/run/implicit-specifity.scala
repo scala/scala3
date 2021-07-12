@@ -20,12 +20,12 @@ object Generic2 {
 
 class SubGen extends Generic
 object SubGen {
-  given SubGen with {}
+  given SubGen()
 }
 object Contextual {
   trait Context
 
-  given ctx: Context with {}
+  given ctx: Context()
 
   given showGen[T](using Generic): Show[T] = new Show[T](2)
 

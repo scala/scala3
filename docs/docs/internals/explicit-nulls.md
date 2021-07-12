@@ -5,40 +5,59 @@ title: "Explicit Nulls"
 
 The explicit nulls feature (enabled via a flag) changes the Scala type hierarchy
 so that reference types (e.g. `String`) are non-nullable. We can still express nullability
-with union types: e.g. `val x: String|Null = null`.
+with union types: e.g. `val x: String | Null = null`.
 
-The implementation of the feature in dotty can be conceptually divided in several parts:
-  1. changes to the type hierarchy so that `Null` is only a subtype of `Any`
-  2. a "translation layer" for Java interop that exposes the nullability in Java APIs
-  3. a "magic" `UncheckedNull` type (an alias for `Null`) that is recognized by the compiler and
-     allows unsound member selections (trading soundness for usability)
+The implementation of the feature in Scala 3 can be conceptually divided in several parts:
 
-## Feature Flag
+1. changes to the type hierarchy so that `Null` is only a subtype of `Any`
+2. a "translation layer" for Java interoperability that exposes the nullability in Java APIs
+3. a `unsafeNulls` language feature which enables implicit unsafe conversion between `T` and `T | Null`
 
-Explicit nulls are disabled by default. They can be enabled via `-Yexplicit-nulls` defined in
+## Explicit-Nulls Flag
+
+The explicit-nulls flag is currently disabled by default. It can be enabled via `-Yexplicit-nulls` defined in
 `ScalaSettings.scala`. All of the explicit-nulls-related changes should be gated behind the flag.
 
 ## Type Hierarchy
 
 We change the type hierarchy so that `Null` is only a subtype of `Any` by:
-  - modifying the notion of what is a nullable class (`isNullableClass`) in `SymDenotations`
-    to include _only_ `Null` and `Any`
-  - changing the parent of `Null` in `Definitions` to point to `Any` and not `AnyRef`
-  - changing `isBottomType` and `isBottomClass` in `Definitions`
 
-## Java Interop
+- modifying the notion of what is a nullable class (`isNullableClass`) in `SymDenotations`
+  to include _only_ `Null` and `Any`, which is used by `TypeComparer`
+- changing the parent of `Null` in `Definitions` to point to `Any` and not `AnyRef`
+- changing `isBottomType` and `isBottomClass` in `Definitions`
+
+## Working with Nullable Unions
+
+There are some utility functions for nullable types in `NullOpsDecorator.scala`.
+They are extension methods for `Type`; hence we can use them in this way: `tp.f(...)`.
+
+- `stripNull` syntactically strips all `Null` types in the union:
+  e.g. `T | Null => T`. This should only be used if we can guarantee `T` is a reference type.
+- `isNullableUnion` determines whether `this` is a nullable union.
+- `isNullableAfterErasure` determines whether `this` type can have `null` value after erasure.
+
+Within `Types.scala`, we also defined an extractor `OrNull` to extract the non-nullable part of a nullable unions .
+
+```scala
+(tp: Type) match
+  case OrNull(tp1) => // if tp is a nullable union: tp1 | Null
+  case _ => // otherwise
+```
+
+## Java Interoperability
 
 The problem we're trying to solve here is: if we see a Java method `String foo(String)`,
 what should that method look like to Scala?
-  - since we should be able to pass `null` into Java methods, the argument type should be `String|UncheckedNull`
-  - since Java methods might return `null`, the return type should be `String|UncheckedNull`
 
-`UncheckedNull` here is a type alias for `Null` with "magic" properties (see below).
+- since we should be able to pass `null` into Java methods, the argument type should be `String | Null`
+- since Java methods might return `null`, the return type should be `String | Null`
 
 At a high-level:
-  - we track the loading of Java fields and methods as they're loaded by the compiler
-  - we do this in two places: `Namer` (for Java sources) and `ClassFileParser` (for bytecode)
-  - whenever we load a Java member, we "nullify" its argument and return types
+
+- we track the loading of Java fields and methods as they're loaded by the compiler
+- we do this in two places: `Namer` (for Java sources) and `ClassFileParser` (for bytecode)
+- whenever we load a Java member, we "nullify" its argument and return types
 
 The nullification logic lives in `compiler/src/dotty/tools/dotc/core/JavaNullInterop.scala`.
 
@@ -49,50 +68,36 @@ produces what the type of the symbol should be in the explicit nulls world.
 
 1. If the symbol is a Enum value definition or a `TYPE_` field, we don't nullify the type
 2. If it is `toString()` method or the constructor, or it has a `@NotNull` annotation,
-  we nullify the type, without a `UncheckedNull` at the outmost level.
+  we nullify the type, without a `Null` at the outmost level.
 3. Otherwise, we nullify the type in regular way.
+
+The `@NotNull` annotations are defined in `Definitions.scala`.
 
 See `JavaNullMap` in `JavaNullInterop.scala` for more details about how we nullify different types.
 
-## UncheckedNull
+## Relaxed Overriding Check
 
-`UncheckedNull` is just an alias for `Null`, but with magic power. `UncheckedNull`'s magic (anti-)power is that
-it's unsound.
+If the explicit nulls flag is enabled, the overriding check between Scala classes and Java classes is relaxed.
 
-```scala
-val s: String|UncheckedNull = "hello"
-s.length // allowed, but might throw NPE
-```
+The `matches` function in `Types.scala` is used to select condidated for overriding check.
 
-`UncheckedNull` is defined as `UncheckedNullAlias` in `Definitions.scala`.
-The logic to allow member selections is defined in `findMember` in `Types.scala`:
-  - if we're finding a member in a type union
-  - and the union contains `UncheckedNull` on the r.h.s. after normalization (see below)
-  - then we can continue with `findMember` on the l.h.s of the union (as opposed to failing)
+The `compatibleTypes` in `RefCheck.scala` determines whether the overriding types are compatible.
 
-## Working with Nullable Unions
+## Nullified Upper Bound
 
-Within `Types.scala`, we defined some extractors to work with nullable unions:
-`OrNull` and `OrUncheckedNull`.
+Suppose we have a type bound `class C[T >: Null <: String]`, it becomes unapplicable in explicit nulls, since
+we don't have a type that is a supertype of `Null` and a subtype of `String`.
 
-```scala
-(tp: Type) match
-   case OrNull(tp1) => // if tp is a nullable union: tp1 | Null
-   case _ => // otherwise
-```
+Hence, when we read a type bound from Scala 2 Tasty or Scala 3 Tasty, the upper bound is nullified if the lower
+bound is exactly `Null`. The example above would become `class C[T >: Null <: String | Null]`.
 
-This extractor will call utility methods in `NullOpsDecorator.scala`. All of these
-are methods of the `Type` class, so call them with `this` as a receiver:
+## Unsafe Nulls Feature and SafeNulls Mode
 
-- `stripNull` syntactically strips all `Null` types in the union:
-  e.g. `String|Null => String`.
-- `stripUncheckedNull` is like `stripNull` but only removes `UncheckedNull` from the union.
-  This is needed when we want to "revert" the Java nullification function.
-- `stripAllUncheckedNull` collapses all `UncheckedNull` unions within this type, and not just the outermost
-  ones (as `stripUncheckedNull` does).
-- `isNullableUnion` determines whether `this` is a nullable union.
-- `isUncheckedNullableUnion` determines whether `this` is syntactically a union of the form
-  `T|UncheckedNull`.
+The `unsafeNulls` language feature is currently disabled by default. It can be enabled by importing `scala.language.unsafeNulls` or using `-language:unsafeNulls`. The feature object is defined in `library/src/scalaShadowing/language.scala`. We can use `config.Feature.enabled(nme.unsafeNulls)` to check if this feature is enabled.
+
+We use the `SafeNulls` mode to track `unsafeNulls`. If explicit nulls is enabled without `unsafeNulls`, there is a `SafeNulls` mode in the context; when `unsafeNulls` is enabled, `SafeNulls` mode will be removed from the context.
+
+Since we want to allow selecting member on nullable values, when searching a member of a type, the `| Null` part should be ignored. See `goOr` in `Types.scala`.
 
 ## Flow Typing
 
@@ -116,7 +121,7 @@ abstract class Node:
    val next: Node | Null
 
 def f =
-   val l: Node|Null = ???
+   val l: Node | Null = ???
    if l != null && l.next != null then
       val third: l.next.next.type = l.next.next
 ```
@@ -125,11 +130,12 @@ After typing, `f` becomes:
 
 ```scala
 def f =
-   val l: Node|Null = ???
+   val l: Node | Null = ???
    if l != null && l.$asInstanceOf$[l.type & Node].next != null then
       val third:
          l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next.type =
          l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next
 ```
+
 Notice that in the example above `(l.type & Node).next.type & Node` is still a stable path, so
 we can use it in the type and track it for flow typing.

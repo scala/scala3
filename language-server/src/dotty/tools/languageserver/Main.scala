@@ -20,7 +20,7 @@ import org.eclipse.lsp4j.jsonrpc.Launcher
  *    coursier launch $artifact -M dotty.tools.languageserver.Main -- -stdio
  *
  *  Where $artifact comes from the `.dotty-ide-artifact` file in the current project, this file
- *  can be created by the sbt-dotty plugin by running `sbt configureIDE`.
+ *  can be created by the DottyIDEPlugin by running `sbt configureIDE`.
  *
  *  See vscode-dotty/ for an example integration of the Dotty Language Server into Visual Studio Code.
  */

@@ -13,13 +13,13 @@ A drop-in library replacement is provided in [`scala.util.control.NonLocalReturn
 import scala.util.control.NonLocalReturns.*
 
 extension [T](xs: List[T])
-   def has(elem: T): Boolean = returning {
-      for x <- xs do
-         if x == elem then throwReturn(true)
-      false
-   }
+  def has(elem: T): Boolean = returning {
+    for x <- xs do
+      if x == elem then throwReturn(true)
+    false
+  }
 
 @main def test(): Unit =
-   val xs = List(1, 2, 3, 4, 5)
-   assert(xs.has(2) == xs.contains(2))
+  val xs = List(1, 2, 3, 4, 5)
+  assert(xs.has(2) == xs.contains(2))
 ```

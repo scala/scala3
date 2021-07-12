@@ -43,7 +43,7 @@ ul.post-list {
 
 /* headings anchors */
 a.anchor {
-  color: white;
+  color: transparent;
   margin-left: -23px;
   padding-right: 3px;
   transition: color .4s ease-out;
@@ -180,18 +180,6 @@ h5:hover a.anchor:hover {
   font-family: var(--font-family-monospace);
 }
 
-/* code */
-pre, code {
-  font-variant-ligatures: none;
-}
-pre {
-  padding: 0;
-  font-size: 13px;
-  background: var(--pre-bg);
-  border-radius: 2px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
 /* admonitions */
 blockquote {
   padding: 0 1em;
@@ -258,6 +246,20 @@ aside.success {
   main.container {
     padding: 15px 45px;
   }
+}
+
+.gitter-open-chat-button {
+  writing-mode: vertical-lr;
+  text-orientation: upright;
+  right: 0px;
+  bottom: 100px;
+  padding: 0.5em 0.25em 0.5em 0.25em;
+  border-bottom-left-radius: .5em;
+  border-top-right-radius: 0em;
+}
+
+.gitter-open-chat-button.is-collapsed {
+  transform: translateX(120%);
 }
 
 header {

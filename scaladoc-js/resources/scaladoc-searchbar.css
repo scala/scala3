@@ -1,15 +1,15 @@
 /* button */
 .search span {
-    background: #ED3522;
-    fill: #fff;
+    background: var(--red500);
+    fill: var(--white);
     cursor: pointer;
     border: none;
     padding: 9px;
     border-radius: 24px;
-    box-shadow: 0 0 16px #F27264;
+    box-shadow: 0 0 16px var(--code-bg);
 }
 .search span:hover {
-    fill: #F27264;
+    background: var(--red600);
 }
 
 @media(max-width: 576px) {
@@ -22,13 +22,14 @@
         box-shadow: none;
         margin-top: 2px;
     }
+
     .search span:hover {
         fill: var(--link-hover-fg);
     }
 }
 
 #scaladoc-search {
-    margin-top: 10px;
+    margin-top: 16px;
     cursor: pointer;
     position: fixed;
     top: 0;
@@ -43,12 +44,15 @@
 #scaladoc-searchbar {
     position: fixed;
     top: 50px;
-    right: 40px;
+    left: calc(5% + var(--side-width));
     z-index: 5;
-    width: calc(100% - 360px);
+    width: calc(90% - var(--side-width));
     box-shadow: 0 2px 16px 0 rgba(0, 42, 76, 0.15);
     font-size: 13px;
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
+    background-color: var(--leftbar-bg);
+    color: var(--leftbar-fg);
+    box-shadow: 0 0 2px var(--shadow);
 }
 
 #scaladoc-searchbar-input {
@@ -57,6 +61,8 @@
     border: none;
     border-bottom: 1px solid #bbb;
     padding: 10px;
+    background-color: var(--leftbar-bg);
+    color: var(--leftbar-fg);
 }
 
 #scaladoc-searchbar-input:focus {
@@ -64,7 +70,6 @@
 }
 
 #scaladoc-searchbar-results {
-    background: white;
     display: flex;
     flex-direction: column;
     max-height: 500px;
@@ -72,10 +77,17 @@
 }
 
 .scaladoc-searchbar-result {
-    background: white;
-    line-height: 32px;
-    padding-left: 10px;
-    padding-right: 10px;
+    background-color: var(--leftbar-bg);
+    color: var(--leftbar-fg);
+    line-height: 24px;
+    display: flex;
+    padding: 4px 10px 4px 10px;
+}
+
+.scaladoc-searchbar-result .micon {
+    height: 16px;
+    width: 16px;
+    margin: 4px 8px 0px 0px;
 }
 
 .scaladoc-searchbar-result:first-of-type {
@@ -83,15 +95,21 @@
 }
 
 .scaladoc-searchbar-result[selected] {
-    background-color: #d4edff;
+    background-color: var(--leftbar-hover-bg);
+    color: var(--leftbar-hover-fg);
 }
 
 .scaladoc-searchbar-result a {
-    color: #1f2326;
-}
-
-.scaladoc-searchbar-result .scaladoc-searchbar-location {
-    color: gray;
+    /* for some reason, with display:block if there's a wrap between the
+     * search result text and the location span, the dead space to the
+     * left of the location span doesn't get treated as part of the block,
+     * which defeats the purpose of making the <a> a block element.
+     * But inline-block with width:100% works as desired.
+     */
+    display: inline-block;
+    width: 100%;
+    text-indent: -20px;
+    padding-left: 20px;
 }
 
 #searchBar {
@@ -100,5 +118,37 @@
 
 .pull-right {
     float: right;
-    margin-left: auto
+    margin-left: auto;
+}
+
+.snippet-comment-button {
+    position: absolute;
+    display: inline-block;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    background:
+        linear-gradient(#fff, #fff),
+        linear-gradient(#fff, #fff),
+        #aaa;
+    background-position: center;
+    background-size: 50% 2px, 2px 50%;
+    background-repeat: no-repeat;
+    border-radius: 12px;
+    box-shadow: 0 0 2px var(--black);
+}
+
+.snippet-comment-button:hover {
+    background:
+        linear-gradient(#444, #444),
+        linear-gradient(#444, #444),
+        #ddd;
+    background-position: center;
+    background-size: 50% 2px, 2px 50%;
+    background-repeat: no-repeat;
+}
+
+.hide-snippet-comments-button {
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
 }

@@ -1,3 +1,4 @@
 class C(c: C) {
-  val c2 = new C(this)   // error
+  val d = c.c2          // error
+  val c2 = new C(this)
 }

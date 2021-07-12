@@ -1,1 +1,1 @@
-26: Pattern Match Exhaustivity: (true, _: String, _), (true, _: Double, _), (true, true, _), (true, false, _), (true, (), _), (false, _: String, _)
+26: Pattern Match Exhaustivity: (_: Int, _: String, _), (_: Int, _: Int, BANG), (_: Int, _: Int, BANG_EQUAL), (_: Int, _: Int, EQUAL), (_: Int, _: Int, EQUAL_EQUAL), (_: Int, true, _)

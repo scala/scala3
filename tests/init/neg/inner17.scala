@@ -5,7 +5,7 @@ class A {
     val a = f
   }
 
-  println(new B)              // error
+  println(new B)              // OK, can promote B early
 }
 
 class C extends A {

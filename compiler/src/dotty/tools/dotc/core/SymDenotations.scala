@@ -432,8 +432,8 @@ object SymDenotations {
           TypeBounds.empty
 
       info match
-        case TypeAlias(alias) if isOpaqueAlias && owner.isClass =>
-          setAlias(alias)
+        case info: AliasingBounds if isOpaqueAlias && owner.isClass =>
+          setAlias(info.alias)
           HKTypeLambda.boundsFromParams(tparams, bounds(rhs))
         case _ =>
           info
@@ -572,8 +572,9 @@ object SymDenotations {
         isAbsent(canForce)
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
-        (myInfo `eq` NoType) ||
-        is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
+        (myInfo `eq` NoType)
+        || is(Invisible) && !ctx.isAfterTyper
+        || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
 
     /** Is this symbol the root class or its companion object? */
@@ -797,7 +798,8 @@ object SymDenotations {
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
-      if (ctx.explicitNulls && !ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
+      if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
+      then symbol == defn.NullClass || symbol == defn.AnyClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -894,11 +896,14 @@ object SymDenotations {
      *  accessed via prefix `pre`?
      */
     def membersNeedAsSeenFrom(pre: Type)(using Context): Boolean =
+      def preIsThis = pre match
+        case pre: ThisType => pre.sameThis(thisType)
+        case _ => false
       !(  this.isTerm
        || this.isStaticOwner && !this.seesOpaques
        || ctx.erasedTypes
        || (pre eq NoPrefix)
-       || (pre eq thisType)
+       || preIsThis
        )
 
     /** Is this symbol concrete, or that symbol deferred? */
@@ -1175,11 +1180,13 @@ object SymDenotations {
      */
     final def companionModule(using Context): Symbol =
       if (is(Module)) sourceModule
+      else if registeredCompanion.isAbsent() then NoSymbol
       else registeredCompanion.sourceModule
 
     private def companionType(using Context): Symbol =
       if (is(Package)) NoSymbol
       else if (is(ModuleVal)) moduleClass.denot.companionType
+      else if registeredCompanion.isAbsent() then NoSymbol
       else registeredCompanion
 
     /** The class with the same (type-) name as this module or module class,
@@ -1502,8 +1509,11 @@ object SymDenotations {
 
     // ----- copies and transforms  ----------------------------------------
 
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new UniqueRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      if isRefinedMethod then
+        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+      else
+        new UniqueRefDenotation(s, i, validFor, pre)
 
     /** Copy this denotation, overriding selective fields */
     final def copySymDenotation(
@@ -1604,6 +1614,66 @@ object SymDenotations {
 
       annotations.collect { case Annotation.Child(child) => child }.reverse
     end children
+
+    /** Recursively assemble all children of this symbol, Preserves order of insertion.
+     */
+    final def sealedStrictDescendants(using Context): List[Symbol] =
+
+      @tailrec
+      def findLvlN(
+        explore: mutable.ArrayDeque[Symbol],
+        seen: util.HashSet[Symbol],
+        acc: mutable.ListBuffer[Symbol]
+      ): List[Symbol] =
+        if explore.isEmpty then
+          acc.toList
+        else
+          val sym      = explore.head
+          val explore1 = explore.dropInPlace(1)
+          val lvlN     = sym.children
+          val notSeen  = lvlN.filterConserve(!seen.contains(_))
+          if notSeen.isEmpty then
+            findLvlN(explore1, seen, acc)
+          else
+            findLvlN(explore1 ++= notSeen, {seen ++= notSeen; seen}, acc ++= notSeen)
+      end findLvlN
+
+      /** Scans through `explore` to see if there are recursive children.
+       *  If a symbol in `explore` has children that are not contained in
+       *  `lvl1`, fallback to `findLvlN`, or else return `lvl1`.
+       */
+      @tailrec
+      def findLvl2(
+        lvl1: List[Symbol], explore: List[Symbol], seenOrNull: util.HashSet[Symbol] | Null
+      ): List[Symbol] = explore match
+        case sym :: explore1 =>
+          val lvl2 = sym.children
+          if lvl2.isEmpty then // no children, scan rest of explore1
+            findLvl2(lvl1, explore1, seenOrNull)
+          else // check if we have seen the children before
+            val seen = // initialise the seen set if not already
+              if seenOrNull != null then seenOrNull
+              else util.HashSet.from(lvl1)
+            val notSeen = lvl2.filterConserve(!seen.contains(_))
+            if notSeen.isEmpty then // we found children, but we had already seen them, scan the rest of explore1
+              findLvl2(lvl1, explore1, seen)
+            else // found unseen recursive children, we should fallback to the loop
+              findLvlN(
+                explore = mutable.ArrayDeque.from(explore1).appendAll(notSeen),
+                seen = {seen ++= notSeen; seen},
+                acc = mutable.ListBuffer.from(lvl1).appendAll(notSeen)
+              )
+        case nil =>
+          lvl1
+      end findLvl2
+
+      val lvl1 = children
+      findLvl2(lvl1, lvl1, seenOrNull = null)
+    end sealedStrictDescendants
+
+    /** Same as `sealedStrictDescendants` but prepends this symbol as well.
+     */
+    final def sealedDescendants(using Context): List[Symbol] = this.symbol :: sealedStrictDescendants
   }
 
   /** The contents of a class definition during a period
@@ -1796,6 +1866,11 @@ object SymDenotations {
     def baseClasses(implicit onBehalf: BaseData, ctx: Context): List[ClassSymbol] =
       baseData._1
 
+    /** Like `baseClasses.length` but more efficient. */
+    def baseClassesLength(using BaseData, Context): Int =
+      // `+ 1` because the baseClassSet does not include the current class unlike baseClasses
+      baseClassSet.classIds.length + 1
+
     /** A bitset that contains the superId's of all base classes */
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
       baseData._2
@@ -1828,10 +1903,14 @@ object SymDenotations {
       )
 
     final override def isSubClass(base: Symbol)(using Context): Boolean =
-      derivesFrom(base) ||
-        base.isClass && (
-          (symbol eq defn.NothingClass) ||
-            (symbol eq defn.NullClass) && (base ne defn.NothingClass))
+      derivesFrom(base)
+      || base.isClass
+         && (
+          (symbol eq defn.NothingClass)
+          || (symbol eq defn.NullClass)
+              && (!ctx.mode.is(Mode.SafeNulls) || ctx.phase.erasedTypes)
+              && (base ne defn.NothingClass)
+        )
 
     /** Is it possible that a class inherits both `this` and `that`?
      *
@@ -1887,7 +1966,9 @@ object SymDenotations {
      *  someone does a findMember on a subclass.
      */
     def delete(sym: Symbol)(using Context): Unit = {
-      info.decls.openForMutations.unlink(sym)
+      val scope = info.decls.openForMutations
+      scope.unlink(sym, sym.name)
+      if sym.name != sym.originalName then scope.unlink(sym, sym.originalName)
       if (myMemberCache != null) myMemberCache.remove(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
@@ -1968,7 +2049,10 @@ object SymDenotations {
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
-      raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
+      val pre1 = pre match
+        case pre: OrType => pre.widenUnion
+        case _ => pre
+      raw.filterWithFlags(required, excluded).asSeenFrom(pre1).toDenot(pre1)
 
     final def findMemberNoShadowingBasedOnFlags(name: Name, pre: Type,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): Denotation =
@@ -2084,25 +2168,27 @@ object SymDenotations {
             computeTypeProxy
 
           case tp: AndOrType =>
-            def computeAndOrType = {
+            def computeAndOrType: Type =
               val tp1 = tp.tp1
               val tp2 = tp.tp2
+              if !tp.isAnd then
+                if tp1.isBottomType && (tp1 frozen_<:< tp2) then return recur(tp2)
+                if tp2.isBottomType && (tp2 frozen_<:< tp1) then return recur(tp1)
               val baseTp =
-                if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
+                if symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty then
                   symbol.typeRef
-                else {
+                else
                   val baseTp1 = recur(tp1)
                   val baseTp2 = recur(tp2)
                   val combined = if (tp.isAnd) baseTp1 & baseTp2 else baseTp1 | baseTp2
-                  combined match {
+                  combined match
                     case combined: AndOrType
                     if (combined.tp1 eq tp1) && (combined.tp2 eq tp2) && (combined.isAnd == tp.isAnd) => tp
                     case _ => combined
-                  }
-                }
+
               if (baseTp.exists && inCache(tp1) && inCache(tp2)) record(tp, baseTp)
               baseTp
-            }
+
             computeAndOrType
 
           case JavaArrayType(_) if symbol == defn.ObjectClass =>
@@ -2182,6 +2268,10 @@ object SymDenotations {
      */
     def paramAccessors(using Context): List[Symbol] =
       unforcedDecls.filter(_.is(ParamAccessor))
+
+    /** The term parameter getters of this class. */
+    def paramGetters(using Context): List[Symbol] =
+      paramAccessors.filterNot(_.isSetter)
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
@@ -2459,7 +2549,7 @@ object SymDenotations {
     }
 
   private[SymDenotations] def stillValidInOwner(denot: SymDenotation)(using Context): Boolean = try
-    val owner = denot.owner.denot
+    val owner = denot.maybeOwner.denot
     stillValid(owner)
     && (
       !owner.isClass

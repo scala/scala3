@@ -34,7 +34,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     ```scala
     class listOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
     final implicit def listOrd[T](implicit ord: Ord[T]): listOrd[T] =
-      new listOrd[T]
+     new listOrd[T]
     ```
 
  3. Alias givens map to implicit methods or implicit lazy vals. If an alias has neither type nor context parameters,
@@ -114,14 +114,14 @@ Extension methods have no direct counterpart in Scala 2, but they can be simulat
 
 ```scala
 extension (c: Circle)
-   def circumference: Double = c.radius * math.Pi * 2
+  def circumference: Double = c.radius * math.Pi * 2
 ```
 
 could be simulated to some degree by
 
 ```scala
 implicit class CircleDecorator(c: Circle) extends AnyVal {
-   def circumference: Double = c.radius * math.Pi * 2
+  def circumference: Double = c.radius * math.Pi * 2
 }
 ```
 
@@ -153,7 +153,7 @@ one can write
 
 ```scala
 given stringToToken: Conversion[String, Token] with
-   def apply(str: String): Token = KeyWord(str)
+  def apply(str: String): Token = KeyWord(str)
 ```
 
 or

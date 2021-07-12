@@ -1,5 +1,7 @@
--- [E007] Type Mismatch Error: tests/neg/i5311.scala:11:9 --------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i5311.scala:11:8 --------------------------------------------------------------
 11 |    baz((x : s.T[Int]) => x) // error
-   |         ^^^^^^^^^^^^^^^^^^
-   |         Found:    s.T[Int] => s.T[Int]
-   |         Required: m.Foo
+   |        ^^^^^^^^^^^^^^^^^^^
+   |        Found:    s.T[Int] => s.T[Int]
+   |        Required: m.Foo
+
+longer explanation available when compiling with `-explain`

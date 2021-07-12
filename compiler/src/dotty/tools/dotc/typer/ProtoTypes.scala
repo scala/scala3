@@ -64,19 +64,8 @@ object ProtoTypes {
                 i"""normalizedCompatible for $poly, $pt = $result
                    |constraint was: ${ctx.typerState.constraint}
                    |constraint now: ${newctx.typerState.constraint}""")
-            if result
-                && (ctx.typerState.constraint ne newctx.typerState.constraint)
-                && {
-                  val existingVars = ctx.typerState.uninstVars.toSet
-                  newctx.typerState.uninstVars.forall(existingVars.contains)
-                }
-            then newctx.typerState.commit()
-              // If the new constrait contains fresh type variables we cannot keep it,
-              // since those type variables are not instantiated anywhere in the source.
-              // See pos/i6682a.scala for a test case. See pos/11243.scala and pos/i5773b.scala
-              // for tests where it matters that we keep the constraint otherwise.
-              // TODO: A better solution would clean the new constraint, so that it "avoids"
-              // the problematic type variables. But we have not implemented such an algorithm yet.
+            if result && (ctx.typerState.constraint ne newctx.typerState.constraint) then
+              newctx.typerState.commit()
             result
           case _ => testCompat
       else explore(testCompat)
@@ -385,21 +374,46 @@ object ProtoTypes {
      *                before it is typed. The second Int parameter is the parameter index.
      */
     def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree = sameTree)(using Context): List[Tree] =
-      if (state.typedArgs.size == args.length) state.typedArgs
-      else {
-        val prevConstraint = protoCtx.typerState.constraint
+      if state.typedArgs.size == args.length then state.typedArgs
+      else
+        val passedTyperState = ctx.typerState
+        inContext(protoCtx.withUncommittedTyperState) {
+          val protoTyperState = ctx.typerState
+          val oldConstraint = protoTyperState.constraint
+          val args1 = args.mapWithIndexConserve((arg, idx) =>
+            cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
+          val newConstraint = protoTyperState.constraint
 
-        try
-          inContext(protoCtx) {
-            val args1 = args.mapWithIndexConserve((arg, idx) =>
-              cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
-            if !args1.exists(arg => isUndefined(arg.tpe)) then state.typedArgs = args1
-            args1
-          }
-        finally
-          if (protoCtx.typerState.constraint ne prevConstraint)
-            ctx.typerState.mergeConstraintWith(protoCtx.typerState)
-      }
+          if !args1.exists(arg => isUndefined(arg.tpe)) then state.typedArgs = args1
+
+          // We only need to propagate constraints if we typed the arguments in a different
+          // TyperState and if that created additional constraints.
+          if (passedTyperState ne protoTyperState) && (oldConstraint ne newConstraint) then
+            // To respect the pre-condition of `mergeConstraintWith` and keep
+            // `protoTyperState` committable we must ensure that it does not
+            // contain any type variable which don't already exist in the passed
+            // TyperState. This is achieved by instantiating any such type
+            // variable.
+            if protoTyperState.isCommittable then
+              val passedConstraint = passedTyperState.constraint
+              val newLambdas = newConstraint.domainLambdas.filter(tl =>
+                !passedConstraint.contains(tl) || passedConstraint.hasConflictingTypeVarsFor(tl, newConstraint))
+              val newTvars = newLambdas.flatMap(_.paramRefs).map(newConstraint.typeVarOfParam)
+
+              args1.foreach(arg => Inferencing.instantiateSelected(arg.tpe, newTvars))
+
+              // `instantiateSelected` can leave some type variables uninstantiated,
+              // so we maximize them in a second pass.
+              newTvars.foreach {
+                case tvar: TypeVar if !tvar.isInstantiated =>
+                  tvar.instantiate(fromBelow = false)
+                case _ =>
+              }
+
+            passedTyperState.mergeConstraintWith(protoTyperState)
+          end if
+          args1
+        }
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
      *  used to avoid repeated typings of trees when backtracking.
@@ -423,6 +437,10 @@ object ProtoTypes {
       val t = state.typedArg(arg)
       if (t == null) NoType else t.tpe
     }
+
+    /** Cache the typed argument */
+    def cacheArg(arg: untpd.Tree, targ: Tree) =
+      state.typedArg = state.typedArg.updated(arg, targ)
 
     /** The same proto-type but with all arguments combined in a single tuple */
     def tupledDual: FunProto = state.tupledDual match {
@@ -618,7 +636,7 @@ object ProtoTypes {
     def newTypeVars(tl: TypeLambda): List[TypeTree] =
       for (paramRef <- tl.paramRefs)
       yield {
-        val tt = TypeVarBinder().withSpan(owningTree.span)
+        val tt = InferredTypeTree().withSpan(owningTree.span)
         val tvar = TypeVar(paramRef, state)
         state.ownedVars += tvar
         tt.withType(tvar)
@@ -638,30 +656,51 @@ object ProtoTypes {
   def constrained(tl: TypeLambda)(using Context): TypeLambda =
     constrained(tl, EmptyTree)._1
 
-  def newTypeVar(bounds: TypeBounds)(using Context): TypeVar = {
+  /** A new type variable with given bounds for its origin.
+   *  @param  represents  If exists, the TermParamRef that the TypeVar represents
+   *                      in the substitution generated by `resultTypeApprox`
+   *  If `represents` exists, it is stored in the result type of the PolyType
+   *  that backs the TypeVar, to be retrieved by `representedParamRef`.
+   */
+  def newTypeVar(bounds: TypeBounds, represents: Type = NoType)(using Context): TypeVar = {
     val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
         pt => bounds :: Nil,
-        pt => defn.AnyType)
+        pt => represents.orElse(defn.AnyType))
     constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true)
       ._2.head.tpe.asInstanceOf[TypeVar]
   }
 
-  /** Create a new TypeVar that represents a dependent method parameter singleton */
-  def newDepTypeVar(tp: Type)(using Context): TypeVar =
-    newTypeVar(TypeBounds.upper(AndType(tp.widenExpr, defn.SingletonClass.typeRef)))
+  /** If `tvar` represents a parameter of a dependent function generated
+   *  by `newDepVar` called from `resultTypeApprox, the term parameter reference
+   *  for which the variable was substituted. Otherwise, NoType.
+   */
+  def representedParamRef(tvar: TypeVar)(using Context): Type =
+    if tvar.origin.paramName.is(DepParamName) then
+      tvar.origin.binder.resultType match
+        case ref: TermParamRef => ref
+        case _ => NoType
+    else NoType
+
+  /** Create a new TypeVar that represents a dependent method parameter singleton `ref` */
+  def newDepTypeVar(ref: TermParamRef)(using Context): TypeVar =
+    newTypeVar(
+      TypeBounds.upper(AndType(ref.underlying.widenExpr, defn.SingletonClass.typeRef)),
+      ref)
 
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards or TypeParamRefs.
    */
   def resultTypeApprox(mt: MethodType, wildcardOnly: Boolean = false)(using Context): Type =
     if mt.isResultDependent then
-      def replacement(tp: Type) =
+      def replacement(ref: TermParamRef) =
         if wildcardOnly
            || ctx.mode.is(Mode.TypevarsMissContext)
-           || !tp.widenExpr.isValueTypeOrWildcard
-        then WildcardType
-        else newDepTypeVar(tp)
-      mt.resultType.substParams(mt, mt.paramInfos.map(replacement))
+           || !ref.underlying.widenExpr.isValueTypeOrWildcard
+        then
+          WildcardType(ref.underlying.substParams(mt, mt.paramRefs.map(_ => WildcardType)).toBounds)
+        else
+          newDepTypeVar(ref)
+      mt.resultType.substParams(mt, mt.paramRefs.map(replacement))
     else mt.resultType
 
   /** The normalized form of a type

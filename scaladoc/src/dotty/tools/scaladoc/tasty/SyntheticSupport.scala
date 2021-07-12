@@ -3,48 +3,53 @@ package tasty
 
 import scala.quoted._
 
-trait SyntheticsSupport:
-  self: TastyParser =>
+object SyntheticsSupport:
 
-  import qctx.reflect._
+  extension (using Quotes)(t: reflect.TypeRepr)
+    def isTupleType: Boolean = t.hackIsTupleType(t)
 
-  extension (t: TypeRepr)
-    def isTupleType: Boolean = hackIsTupleType(using qctx)(t)
+    def isCompiletimeAppliedType: Boolean = t.hackIsCompiletimeAppliedType(t)
 
-    def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(using qctx)(t)
-
-    def hackIsTupleType(using Quotes)(rtpe: qctx.reflect.TypeRepr): Boolean =
+    private def hackIsTupleType(rtpe: reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+      given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isTupleType(tpe)
 
-    def hackIsCompiletimeAppliedType(using Quotes)(rtpe: qctx.reflect.TypeRepr): Boolean =
+    private def hackIsCompiletimeAppliedType(rtpe: reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+      given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isCompiletimeAppliedType(tpe.typeSymbol)
+  end extension
 
-  extension (s: Symbol)
-    def isSyntheticFunc: Boolean = s.flags.is(Flags.Synthetic) || s.flags.is(Flags.FieldAccessor) || isDefaultHelperMethod
+  extension (using Quotes)(s: reflect.Symbol)
+    def isSyntheticFunc: Boolean =
+      import reflect._
+      s.flags.is(Flags.Synthetic) || s.flags.is(Flags.FieldAccessor) || s.isDefaultHelperMethod
 
     def isSuperBridgeMethod: Boolean = s.name.contains("$super$")
 
     def isDefaultHelperMethod: Boolean = ".*\\$default\\$\\d+$".r.matches(s.name)
 
-    def isOpaque: Boolean = s.flags.is(Flags.Opaque)
+    def isOpaque: Boolean =
+      import reflect._
+      s.flags.is(Flags.Opaque)
 
-    def isInfix: Boolean = hackIsInfix(using qctx)(s)
+    def isInfix: Boolean = hackIsInfix(s)
 
-    def getmembers: List[Symbol] = hackGetmembers(using qctx)(s)
+    def getmembers: List[reflect.Symbol] = hackGetmembers(s)
 
-  def isValidPos(pos: Position) =
-    if hackExists(using qctx)(pos) then pos.start != pos.end else false
+  end extension
 
-  def isSyntheticField(c: Symbol) =
+  def isValidPos(using Quotes)(pos: reflect.Position) =
+    if hackExists(pos) then pos.start != pos.end else false
+
+  def isSyntheticField(using Quotes)(c: reflect.Symbol) =
+    import reflect._
     c.flags.is(Flags.CaseAccessor) || (c.flags.is(Flags.Module) && !c.flags.is(Flags.Given))
 
-  def constructorWithoutParamLists(c: ClassDef): Boolean =
+  def constructorWithoutParamLists(using Quotes)(c: reflect.ClassDef): Boolean =
     !isValidPos(c.constructor.pos)  || {
       val end = c.constructor.pos.end
       val typesEnd =  c.constructor.leadingTypeParams.lastOption.fold(end - 1)(_.pos.end)
@@ -53,10 +58,10 @@ trait SyntheticsSupport:
     }
 
   // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
-  def hackIsInfix(using Quotes)(rsym: qctx.reflect.Symbol): Boolean = {
-    import qctx.reflect._
+  private def hackIsInfix(using Quotes)(rsym: reflect.Symbol): Boolean = {
+    import reflect._
     import dotty.tools.dotc
-    given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     ctx.definitions.isInfix(sym)
   }
@@ -64,12 +69,18 @@ trait SyntheticsSupport:
   They are valdefs that describe case companion objects and cases from enum.
   TASTY crashed when calling _.tree on them.
   */
-  def hackGetmembers(using Quotes)(rsym: qctx.reflect.Symbol): List[qctx.reflect.Symbol] = {
-    import qctx.reflect._
+  private def hackGetmembers(using Quotes)(rsym: reflect.Symbol): List[reflect.Symbol] = {
+    import reflect._
     import dotty.tools.dotc
-    given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
-    sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef)).allMembers.iterator.map(_.symbol)
+    // `lookupPrefix` is private in `QuotesImpl#SymbolMethods`
+    val lookupPrefix =
+      if sym.isClass then
+        sym.thisType
+      else
+        sym.namedType
+    lookupPrefix.allMembers.iterator.map(_.symbol)
       .collect {
          case sym if
           (!sym.is(dotc.core.Flags.ModuleVal) || sym.is(dotc.core.Flags.Given)) &&
@@ -78,10 +89,10 @@ trait SyntheticsSupport:
       }.toList
   }
 
-  def hackGetSupertypes(using Quotes)(rdef: qctx.reflect.ClassDef) = {
-    import qctx.reflect._
+  private def hackGetSupertypes(using Quotes)(rdef: reflect.ClassDef) = {
+    import reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val classdef = rdef.asInstanceOf[dotc.ast.tpd.TypeDef]
     val ref = classdef.symbol.info.asInstanceOf[dotc.core.Types.ClassInfo].appliedRef
     val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] =
@@ -89,29 +100,28 @@ trait SyntheticsSupport:
     baseTypes.asInstanceOf[List[(Symbol, TypeRepr)]]
   }
 
-  def hackExists(using Quotes)(rpos: qctx.reflect.Position) = {
-    import qctx.reflect._
+  private def hackExists(using Quotes)(rpos: reflect.Position) = {
+    import reflect._
     import dotty.tools.dotc
     import dotty.tools.dotc.util.Spans._
-    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val pos = rpos.asInstanceOf[dotc.util.SourcePosition]
     pos.exists
   }
 
-  def getSupertypes(using Quotes)(c: ClassDef) = hackGetSupertypes(c).tail
+  def getSupertypes(using Quotes)(c: reflect.ClassDef) = hackGetSupertypes(c).tail
 
-  def typeForClass(c: ClassDef): TypeRepr =
-    import qctx.reflect._
+  def typeForClass(using Quotes)(c: reflect.ClassDef): reflect.TypeRepr =
+    import reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
     cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[TypeRepr]
 
-  def memberInfo(c: ClassDef, symbol: Symbol): TypeRepr =
-    import qctx.reflect._
+  def memberInfo(using Quotes)(c: reflect.ClassDef, symbol: reflect.Symbol): reflect.TypeRepr =
+    import reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     typeForClass(c).asInstanceOf[dotc.core.Types.Type]
       .memberInfo(symbol.asInstanceOf[dotc.core.Symbols.Symbol])
       .asInstanceOf[TypeRepr]
-

@@ -10,6 +10,6 @@ class S_3 {
   def ff(i: Int): String = J_2.f(i)
   def gg(i: Int): String = J_2.g(i)
   def hh(i: Int): String = (new J_2).h(i)
-  def genericff(a: String | Null): Array[String | UncheckedNull] = (new J_2).genericf(a)
+  def genericff(a: String | Null): Array[String | Null] = (new J_2).genericf(a)
   def genericgg(a: String | Null): java.util.List[String] = (new J_2).genericg(a)
 }

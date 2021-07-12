@@ -40,7 +40,7 @@ class RemoteFile(url: String) extends AbstractFile {
 Above, `extension` value is initialized prior to `localFile` because the fields of the parents of a class are initialized prior to the fields of the class. However, `extension` uses `localFile` during its initialization since it accesses this field from the `name` method. This scenario will lead to a `NullPointerException` on runtime when the access to uninitialized `localFile` happens.
 
 
-In this release, we have added an aid for the programmer to detect such mistakes automatically. If you compile the above program with the `-Ycheck-init` flag, you will get the following compile-time error:
+In this release, we have added an aid for the programmer to detect such mistakes automatically. If you compile the above program with the `-Ysafe-init` flag, you will get the following compile-time error:
 
 ```scala
 -- Error: /Users/kmetiuk/Projects/scala3/pg/release/snip_4.scala:8:7 -----------

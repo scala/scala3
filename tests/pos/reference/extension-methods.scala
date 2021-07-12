@@ -70,7 +70,7 @@ object ExtMethods:
   end SafeDiv
 
   def test1 =
-    given ops1: IntOps with {} // brings safeMod into scope
+    given ops1: IntOps() // brings safeMod into scope
     1.safeMod(2)
 
   class Lst[T](xs: T*):

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 # Try to autodetect real location of the script
-
-if [ -z "$PROG_HOME" ] ; then
+if [ -z "${PROG_HOME-}" ] ; then
   ## resolve links - $0 may be a link to PROG_HOME
   PRG="$0"
 
@@ -27,25 +26,30 @@ if [ -z "$PROG_HOME" ] ; then
   cd "$saveddir"
 fi
 
-addJvmOptions () {
-  jvm_options+=("'$1'")
-}
-
-addScalacOptions () {
-  java_options+=("'$1'")
-}
-
 source "$PROG_HOME/bin/common"
 
-declare -a residual_args
-declare -a script_args
-execute_repl=false
-execute_run=false
-execute_script=false
-with_compiler=false
-class_path_count=0
-CLASS_PATH=""
-save_compiled=false
+# This script operates in one of 3 usage modes:
+#   script
+#   repl
+#   run
+# execute_mode replaces mutually exclusive booleans:
+#  execute_repl=false
+#  execute_run=false
+#  execute_script=false
+setExecuteMode () {
+  case "${execute_mode-}" in
+  "") execute_mode="$1" ; shift ;;
+  *) echo "execute_mode==[${execute_mode-}], attempted overwrite by [$1]" 1>&2
+    exit 1
+    ;;
+  esac
+}
+
+
+with_compiler=false             # to add compiler jars to repl classpath
+let class_path_count=0 || true  # count classpath args, warning if more than 1
+save_compiled=false             # to save compiled script jar in script directory
+CLASS_PATH="" || true           # scala classpath
 
 # Little hack to check if all arguments are options
 all_params="$*"
@@ -53,22 +57,28 @@ truncated_params="${*#-}"
 # options_indicator != 0 if at least one parameter is not an option
 options_indicator=$(( ${#all_params} - ${#truncated_params} - $# ))
 
-[ -n "$SCALA_OPTS" ] && set -- $SCALA_OPTS "$@"
+[ -n "${SCALA_OPTS-}" ] && set -- $SCALA_OPTS "$@"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -repl)
-      execute_repl=true
+      setExecuteMode 'repl'
       shift
       ;;
     -run)
-      execute_run=true
+      setExecuteMode 'run'
       shift
       ;;
     -cp | -classpath)
-      CLASS_PATH="$2"
-      class_path_count+=1
+      CLASS_PATH="$2${PSEP}"
+      let class_path_count+=1
       shift
+      shift
+      ;;
+    -cp*|-classpath*) # partial fix for #10761
+      # hashbang can combine args, e.g. "-classpath 'lib/*'"
+      CLASS_PATH="${1#* *}${PSEP}"
+      let class_path_count+=1
       shift
       ;;
     -with-compiler)
@@ -76,58 +86,89 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     @*|-color:*)
-      addScalacOptions "${1}"
+      addScala "${1}"
       shift
       ;;
     -save|-savecompiled)
       save_compiled=true
-      scala_script_options+=("$1")
+      addScala "$1"
       shift
       ;;
     -compile-only)
-      scala_script_options+=("$1")
-      shift
-      ;;
-    -d)
-      DEBUG="$DEBUG_STR"
+      addScala "$1"
       shift
       ;;
     -version)
       # defer to scalac, then exit
-      addScalacOptions "${1}"
       shift
-      eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]}"
+      eval "\"$PROG_HOME/bin/scalac\" -version"
       scala_exit_status=$?
       onExit
       ;;
     -J*)
-      addJvmOptions "${1:2}"
-      addScalacOptions "${1}"
+      addJava "${1:2}"
+      addScala "${1}"
       shift ;;
+    -v|-verbose)
+      verbose=true
+      addScala "-verbose"
+      shift ;;
+    -run)
+      setExecuteMode 'run'
+      shift ;;
+
     *)
-      if [ $execute_script == false ]; then
-        # is a script if extension .scala or .sc or if has scala hash bang
-        if [[ -e "$1" && ("$1" == *.scala || "$1" == *.sc || -f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
-          execute_script=true
-          target_script="$1"
-        else
-          residual_args+=("$1")
-        fi
-      else
-        script_args+=("$1")
+      # script if extension .scala or .sc, or if has scala hashbang line
+      # no -f test, issue meaningful error message (file not found)
+      if [[ "$1" == *.scala || "$1" == *.sc ]]; then
+        setExecuteMode 'script' # execute_script=true
+
+      # -f test needed before we examine the hashbang line
+      elif [[ (-f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
+        setExecuteMode 'script' # execute_script=true
       fi
-      shift
+
+      if [ "${execute_mode-}" == 'script' ]; then
+        target_script="$1"
+        shift
+        if [ ! -f $target_script ]; then
+          # likely a typo or missing script file, quit early
+          echo "not found: $target_script" 1>&2
+          scala_exit_status=2
+          onExit
+        fi
+        # all are script args
+        while [[ $# -gt 0 ]]; do
+          addScript "${1}"
+          shift
+        done
+      else
+        # all unrecognized args appearing prior to a script name
+        addResidual "$1"
+        shift
+      fi
       ;;
 
   esac
 done
 
-if [ $execute_script == true ]; then
-  [ -n "${script_trace-}" ] && set -x
-  if [ "$CLASS_PATH" ]; then
-    cp_arg="-classpath \"$CLASS_PATH\""
+#[ -n "${dump_args}" ] && dumpArgs ; exit 2
+if [ -z "${execute_mode-}" ]; then
+  # no script was specified, set run or repl mode
+  if [[ $options_indicator -eq 0 ]]; then
+    setExecuteMode 'repl'
+  else
+    setExecuteMode 'run'
   fi
-  java_options+=(${scala_script_options})
+fi
+
+[ -n "${script_trace-}" ] && set -x
+
+case "${execute_mode-}" in
+script)
+  if [ "$CLASS_PATH" ]; then
+    script_cp_arg="-classpath '$CLASS_PATH'"
+  fi
   setScriptName="-Dscript.path=$target_script"
   target_jar="${target_script%.*}.jar"
   if [[ $save_compiled == true && "$target_jar" -nt "$target_script" ]]; then
@@ -135,33 +176,57 @@ if [ $execute_script == true ]; then
     scala_exit_status=$?
   else
     [[ $save_compiled == true ]] && rm -f $target_jar
-    residual_args+=($setScriptName)
-    eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
+    PROG_NAME=$ScriptingMain
+    compilerJavaClasspathArgs # initialize jvm_cp_args with toolchain classpath
+    scripting_string="-script $target_script ${script_args[@]}"
+    # use eval instead of exec, to insure that onExit is subsequently called
+
+    # $script_cp_arg must be the first argument to $ScriptingMain
+    # $scripting_string  must be last
+    eval "\"$JAVACMD\"" \
+       ${JAVA_OPTS:-$default_java_opts} \
+       "${java_args[@]}" \
+       "-classpath \"$jvm_cp_args\"" \
+       -Dscala.usejavacp=true \
+       "$setScriptName" \
+       "$ScriptingMain"  \
+        ${script_cp_arg-} \
+       "${scala_args[@]}" \
+       "${residual_args[@]}" \
+       "${scripting_string-}"    # must be the last arguments
     scala_exit_status=$?
   fi
-elif [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then
+  ;;
+
+repl)
   if [ "$CLASS_PATH" ]; then
-    cp_arg="-classpath \"$CLASS_PATH\""
+    repl_cparg="-classpath \"$CLASS_PATH\""
   fi
-  eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]} -repl ${residual_args[@]}"
+  eval "\"$PROG_HOME/bin/scalac\" ${repl_cparg-} ${scalac_options[@]} -repl ${residual_args[@]}"
   scala_exit_status=$?
-elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
-  cp_arg="$DOTTY_LIB$PSEP$SCALA_LIB"
+  ;;
+
+run)
+  run_cparg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then
-    cp_arg+="$PSEP."
+    run_cparg+="$PSEP."
   else
-    cp_arg+="$PSEP$CLASS_PATH"
+    run_cparg+="$PSEP$CLASS_PATH"
   fi
   if [ "$class_path_count" -gt 1 ]; then
     echo "warning: multiple classpaths are found, scala only use the last one."
   fi
   if [ $with_compiler == true ]; then
-    cp_arg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
+    run_cparg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
   fi
   # exec here would prevent onExit from being called, leaving terminal in unusable state
-  eval "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$cp_arg\"" "${jvm_options[@]}" "${residual_args[@]}"
+  eval "\"$JAVACMD\"" "-classpath \"$run_cparg\"" "${java_args[@]}" "${residual_args[@]}"
   scala_exit_status=$?
-else
+  ;;
+
+*)
   echo "warning: command option is not correct."
-fi
+  ;;
+esac
+
 onExit

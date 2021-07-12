@@ -1,0 +1,13 @@
+-- [E081] Type Error: tests/neg/i11561.scala:2:32 ----------------------------------------------------------------------
+2 |  val updateText1 = copy(text = _) // error
+  |                                ^
+  |                                Missing parameter type
+  |
+  |                                I could not infer the type of the parameter _$1 of expanded function:
+  |                                _$1 => State.this.text = _$1.
+-- [E052] Type Error: tests/neg/i11561.scala:3:30 ----------------------------------------------------------------------
+3 |  val updateText2 = copy(text = (_: String)) // error
+  |                         ^^^^^^^^^^^^^^^^^^
+  |                         Reassignment to val text
+
+longer explanation available when compiling with `-explain`

@@ -61,4 +61,4 @@
 -- Error: tests/neg/i4986c.scala:62:19 ---------------------------------------------------------------------------------
 62 |  i.m[Option[Long]] // error
    |                   ^
-   |                   String; List; [A, _$6] =>> List[Option[?]]; Int; Option[Long]; 
+   |                   String; List; [A, _] =>> List[Option[?]]; Int; Option[Long]; 

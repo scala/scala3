@@ -1,8 +1,8 @@
 # Scaladoc
 
 Scaladoc  is the documentation tool for
-[Scala 3](https://github.com/lampepfl/dotty), which is scheduled to become
-Scala 3.  It uses the TastyInspector to access definitions,
+[Scala 3](https://github.com/lampepfl/dotty).
+It uses the TastyInspector to access definitions,
 which is an officially supported way to access Scala 3's perspective of a
 codebase.
 
@@ -23,43 +23,36 @@ sbt scaladoc/generateSelfDocumentation
 sbt scaladoc/generateScalaDocumentation
 ```
 
-To actually view the documentation, the easiest way is to run the following in project root:
+To actually view the documentation, the easiest way is to run the following in the project root:
 
 ```
-cd output
+cd scaladoc/output
 python3 -m http.server 8080
 ```
 
 And afterwards point your browser to <http://localhost:8080/self> or
-<http://localhost:8080/stdLib> for this project and for Dotty documentation
+<http://localhost:8080/scala3> for this project and for Dotty documentation
 respectively.
 
 It's not strictly necessary to go through an HTTP server, but because of CORS
 the documentation won't work completely if you don't.
 
-## CLI Documentation
+## CLI and SBT Documentation
 
-CLI command for running our tool is in form: `sbt main -n <name> -o <output> -t <tasty-files> -cp <classpath> -s { <sources> } -d <documentation> ` where:
-
-- `<name>`: name of module in generated documentation
-- `<output>`: location where documentation should be created
-- `<tasty-files>`: is list of dirs or jars that contains tasty files that should be documented
-- `<classpath>`: classpath that was used to generate tasty files
-- `<sources>`: links to source files of module that are used to link symbols on pages to their source file. They need to be supplied in form:
-  `local_dir=remote_dir#line_suffix` e.g. `src/main/scala=https://github.com/lampepfl/scaladoc/tree/master/src/main/scala#L`
-- `<documentation>`: directory of static documentation that you would like to render with API documentation.
+The preferred way to use scaladoc is calling it from sbt `Compile/doc` task or to use CLI interface provided inside `dotty/bin/scaladoc` bash script.
+More information about specific scaladoc flags you can find inside [Usage docs](https://dotty.epfl.ch/docs/usage/scaladoc/settings.html)
 
 ## Developing
 
 At least two of our contributors use [Metals](https://scalameta.org/metals/) to
 work on the project.
 
-For every PR, we build documentation for scaladoc and Dotty. For example, for
-PR 123 you can find them at:
+For every PR named with prefix `scaladoc/`, we build documentation for scaladoc and Dotty. For example, for
+PR `scaladoc/update-docs` you can find them at:
 
-- <https://scala3doc.virtuslab.com/pr-123/self/main/index.html>
-- <https://scala3doc.virtuslab.com/pr-123/scala3/main/index.html>
-- <https://scala3doc.virtuslab.com/pr-123/testcases/main/index.html>
+- <https://scala3doc.virtuslab.com/pr-update-docs/self/main/index.html>
+- <https://scala3doc.virtuslab.com/pr-update-docs/scala3/main/index.html>
+- <https://scala3doc.virtuslab.com/pr-update-docs/testcases/main/index.html>
 
 Note that these correspond to the contents of `output` directory - that's
 precisely what they are.
@@ -73,21 +66,18 @@ You can also find the result of building the same sites for latest `master` at:
 ### Testing
 
 Most tests rely on comparing signatures (of classes, methods, objects etc.) extracted from the generated documentation
-to signatures found in source files. Such tests are defined using [MultipleFileTest](test/dotty/tools/scala3doc/MultipleFileTest.scala) class
-and its subtypes (such as [SingleFileTest](test/dotty/tools/scala3doc/SingleFileTest.scala))
+to signatures found in source files. Such tests are defined using [SignatureTest](test/dotty/tools/scaladoc/signatures/SignatureTest.scala) class
+and its subtypes (such as [TranslatableSignaturesTestCases](test/dotty/tools/scaladoc/signatures/TranslatableSignaturesTestCases.scala))
 
 WARNING: As the classes mentioned above are likely to evolve, the description below might easily get out of date.
 In case of any discrepancies rely on the source files instead.
 
-`MultipleFileTest` requires that you specify the names of the files used to extract signatures,
+`SignatureTest` requires that you specify the names of the files used to extract signatures,
 the names of directories containing corresponding TASTY files
 and the kinds of signatures from source files (corresponding to keywords used to declare them like `def`, `class`, `object` etc.)
 whose presence in the generated documentation will be checked (other signatures, when missing, will be ignored).
-The mentioned source files should be located directly inside `src/main/scala/tests` directory
+The mentioned source files should be located directly inside [](../scaladoc-testcases/src/tests) directory
 but the file names passed as parameters should contain neither this path prefix nor `.scala` suffix.
-The TASTY folders are expected to be located in `target/${dottyVersion}/classes/tests` (after successful compilation of the project)
-and similarly only their names relative to this path should be provided as tests' parameters.
-For `SingleFileTest` the name of the source file and the TASTY folder are expected to be the same.
 
 By default it's expected that all signatures from the source files will be present in the documentation
 but not vice versa (because the documentation can contain also inherited signatures).
@@ -128,20 +118,6 @@ class Bar
 ```
 
 Otherwise the implementation would be treated as a part of the signature.
-
-## Roadmap
-
-1. Publish an initial version of the tool together with an SBT plugin
-1. Replace Dottydoc as the dedicated tool for documenting Dotty code
-
-   This includes:
-
-   - supporting Dotty's doc pages
-   - releasing together with Dotty as the dedicated documentation tool
-
-1. Support all kinds of Dotty definition and generate documentation for the
-   standard library
-1. Reach feature parity with Scaladoc
 
 ## Contributing
 
