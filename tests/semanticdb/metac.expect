@@ -1289,8 +1289,8 @@ Schema => SemanticDB v4
 Uri => Extension.scala
 Text => empty
 Language => Scala
-Symbols => 17 entries
-Occurrences => 40 entries
+Symbols => 25 entries
+Occurrences => 54 entries
 
 Symbols:
 ext/Extension$package. => final package object ext extends Object { self: ext.type => +6 decls }
@@ -1305,6 +1305,14 @@ ext/Extension$package.readInto(). => method readInto [typeparam T ](param s: Str
 ext/Extension$package.readInto().(s) => param s: String
 ext/Extension$package.readInto().(x$2) => implicit given param x$2: Read[T]
 ext/Extension$package.readInto().[T] => typeparam T 
+ext/Functor# => trait Functor [typeparam F [unknown local0: <?>]] extends Object { self: Functor[F] => +3 decls }
+ext/Functor#[F] => typeparam F [unknown local0: <?>]
+ext/Functor#`<init>`(). => primary ctor <init> [typeparam F [unknown local0: <?>]](): Functor[F]
+ext/Functor#map(). => abstract method map [typeparam T , typeparam U ](param t: F[T])(param f: Function1[T, U]): F[U]
+ext/Functor#map().(f) => param f: Function1[T, U]
+ext/Functor#map().(t) => param t: F[T]
+ext/Functor#map().[T] => typeparam T 
+ext/Functor#map().[U] => typeparam U 
 ext/Read# => trait Read [covariant typeparam T ] extends Object { self: Read[T] => +3 decls }
 ext/Read#[T] => covariant typeparam T 
 ext/Read#`<init>`(). => primary ctor <init> [covariant typeparam T ](): Read[T]
@@ -1352,6 +1360,20 @@ Occurrences:
 [14:61..14:61): -> ext/Extension$package.readInto().(x$2)
 [14:62..14:72): fromString -> ext/Read#fromString().
 [14:73..14:74): s -> ext/Extension$package.readInto().(s)
+[16:6..16:13): Functor <- ext/Functor#
+[16:13..16:13): <- ext/Functor#`<init>`().
+[16:14..16:15): F <- ext/Functor#[F]
+[17:13..17:14): T <- ext/Functor#map().[T]
+[17:16..17:17): t <- ext/Functor#map().(t)
+[17:19..17:20): F -> ext/Functor#[F]
+[17:21..17:22): T -> ext/Functor#map().[T]
+[17:29..17:32): map <- ext/Functor#map().
+[17:33..17:34): U <- ext/Functor#map().[U]
+[17:36..17:37): f <- ext/Functor#map().(f)
+[17:39..17:40): T -> ext/Functor#map().[T]
+[17:44..17:45): U -> ext/Functor#map().[U]
+[17:48..17:49): F -> ext/Functor#[F]
+[17:50..17:51): U -> ext/Functor#map().[U]
 
 expect/ForComprehension.scala
 -----------------------------
