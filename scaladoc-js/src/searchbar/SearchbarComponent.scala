@@ -167,7 +167,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     if selectedElement != null then {
       selectedElement.removeAttribute("selected")
       val sibling = selectedElement.previousElementSibling
-      if sibling != null then {
+      if sibling != null && sibling.classList.contains("scaladoc-searchbar-result") then {
         sibling.setAttribute("selected", "")
         resultsDiv.scrollTop = sibling.asInstanceOf[html.Element].offsetTop - (2 * sibling.asInstanceOf[html.Element].clientHeight)
       }
@@ -184,9 +184,14 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       }
     } else {
       val firstResult = resultsDiv.firstElementChild
-      if firstResult != null then {
+      if firstResult != null && firstResult.classList.contains("scaladoc-searchbar-result") then {
         firstResult.setAttribute("selected", "")
         resultsDiv.scrollTop = firstResult.asInstanceOf[html.Element].offsetTop - (2 * firstResult.asInstanceOf[html.Element].clientHeight)
+      } else if firstResult != null && firstResult.firstElementChild != null && firstResult.firstElementChild.nextElementSibling != null then {
+        // for Inkuire there is another wrapper to avoid displaying old results + the first (child) div is a loading animation wrapper | should be resolved in #12995
+        val properFirstResult = firstResult.firstElementChild.nextElementSibling
+        properFirstResult.setAttribute("selected", "")
+        resultsDiv.scrollTop = properFirstResult.asInstanceOf[html.Element].offsetTop - (2 * properFirstResult.asInstanceOf[html.Element].clientHeight)
       }
     }
   }

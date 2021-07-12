@@ -218,13 +218,15 @@ class SymOpsWithLinkCache:
             import dotty.tools.dotc
             given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-            val extLink = if externalLinkCache.contains(csym.associatedFile) then externalLinkCache(csym.associatedFile)
-            else {
-              val calculatedLink = Option(csym.associatedFile).map(_.path).flatMap( path =>
-               dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path))))
-              externalLinkCache += (csym.associatedFile -> calculatedLink)
-              calculatedLink
-            }
+            val extLink = if externalLinkCache.contains(csym.associatedFile)
+              then externalLinkCache(csym.associatedFile)
+              else {
+                val calculatedLink = Option(csym.associatedFile).map(_.path).flatMap { path =>
+                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
+                }
+                externalLinkCache += (csym.associatedFile -> calculatedLink)
+                calculatedLink
+              }
             extLink.map(link => sym.constructPath(location, anchor, link))
         }
 

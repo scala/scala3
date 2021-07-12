@@ -325,7 +325,7 @@ object Build {
 
   lazy val scalacOptionsDocSettings = Seq(
       "-external-mappings:" +
-        ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
+        ".*scala.*::scaladoc3::https://dotty.epfl.ch/api/," +
         ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
       "-skip-by-regex:.+\\.internal($|\\..+)",
       "-skip-by-regex:.+\\.impl($|\\..+)",
