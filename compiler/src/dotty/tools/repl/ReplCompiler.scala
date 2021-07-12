@@ -46,7 +46,7 @@ class ReplCompiler extends Compiler {
 
       def importPreviousRun(id: Int)(using Context) = {
         // we first import the wrapper object id
-        val path = nme.EMPTY_PACKAGE ++ "." ++ objectNames(id)
+        val path = nme.REPL_PACKAGE ++ "." ++ objectNames(id)
         val ctx0 = ctx.fresh
           .setNewScope
           .withRootImports(RootRef(() => requiredModuleRef(path)) :: Nil)
@@ -58,7 +58,9 @@ class ReplCompiler extends Compiler {
           importContext(imp)(using ctx))
       }
 
-      val rootCtx = super.rootContext.withRootImports
+      val rootCtx = super.rootContext
+        .withRootImports   // default root imports
+        .withRootImports(RootRef(() => defn.EmptyPackageVal.termRef) :: Nil)
       (1 to state.objectIndex).foldLeft(rootCtx)((ctx, id) =>
         importPreviousRun(id)(using ctx))
     }
@@ -130,7 +132,7 @@ class ReplCompiler extends Compiler {
       val module = ModuleDef(objectTermName, tmpl)
         .withSpan(span)
 
-      PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
+      PackageDef(Ident(nme.REPL_PACKAGE), List(module))
     }
 
   private def createUnit(defs: Definitions, span: Span)(using Context): CompilationUnit = {
@@ -231,7 +233,7 @@ class ReplCompiler extends Compiler {
         val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
           .withMods(Modifiers(Final))
           .withSpan(Span(0, expr.length))
-        PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
+        PackageDef(Ident(nme.REPL_PACKAGE), List(wrapper))
       }
 
       ParseResult(sourceFile)(state) match {

@@ -327,8 +327,57 @@ object Trees {
 
   extension (mdef: untpd.DefTree) def mods: untpd.Modifiers = mdef.rawMods
 
-  abstract class NamedDefTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
+  sealed trait WithEndMarker[-T >: Untyped]:
+    self: PackageDef[T] | NamedDefTree[T] =>
+
+    import WithEndMarker.*
+
+    final def endSpan(using Context): Span =
+      if hasEndMarker then
+        val realName = srcName.stripModuleClassSuffix.lastPart
+        span.withStart(span.end - realName.length)
+      else
+        NoSpan
+
+    /** The name in source code that represents this construct,
+     *  and is the name that the user must write to create a valid
+     *  end marker.
+     *  e.g. a constructor definition is terminated in the source
+     *  code by `end this`, so it's `srcName` should return `this`.
+     */
+    protected def srcName(using Context): Name
+
+    final def withEndMarker(): self.type =
+      self.withAttachment(HasEndMarker, ())
+
+    final def withEndMarker(copyFrom: WithEndMarker[?]): self.type =
+      if copyFrom.hasEndMarker then
+        this.withEndMarker()
+      else
+        this
+
+    final def dropEndMarker(): self.type =
+      self.removeAttachment(HasEndMarker)
+      this
+
+    protected def hasEndMarker: Boolean = self.hasAttachment(HasEndMarker)
+
+  object WithEndMarker:
+    /** Property key that signals the tree was terminated
+     *  with an `end` marker in the source code
+     */
+    private val HasEndMarker: Property.StickyKey[Unit] = Property.StickyKey()
+
+  end WithEndMarker
+
+  abstract class NamedDefTree[-T >: Untyped](implicit @constructorOnly src: SourceFile)
+  extends NameTree[T] with DefTree[T] with WithEndMarker[T] {
     type ThisTree[-T >: Untyped] <: NamedDefTree[T]
+
+    protected def srcName(using Context): Name =
+      if name == nme.CONSTRUCTOR then nme.this_
+      else if symbol.isPackageObject then symbol.owner.name
+      else name
 
     /** The position of the name defined by this definition.
      *  This is a point position if the definition is synthetic, or a range position
@@ -342,7 +391,7 @@ object Trees {
         val point = span.point
         if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR) Span(point)
         else {
-          val realName = name.stripModuleClassSuffix.lastPart
+          val realName = srcName.stripModuleClassSuffix.lastPart
           Span(point, point + realName.length, point)
         }
       }
@@ -650,10 +699,12 @@ object Trees {
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
   }
 
-  /** A type tree that defines a new type variable. Its type is always a TypeVar.
-   *  Every TypeVar is created as the type of one TypeVarBinder.
+  /** A type tree whose type is inferred. These trees appear in two contexts
+   *    - as an argument of a TypeApply. In that case its type is always a TypeVar
+   *    - as a (result-)type of an inferred ValDef or DefDef.
+   *  Every TypeVar is created as the type of one InferredTypeTree.
    */
-  class TypeVarBinder[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]
+  class InferredTypeTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]
 
   /** ref.type */
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])(implicit @constructorOnly src: SourceFile)
@@ -857,9 +908,10 @@ object Trees {
 
   /** package pid { stats } */
   case class PackageDef[-T >: Untyped] private[ast] (pid: RefTree[T], stats: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
-    extends ProxyTree[T] {
+    extends ProxyTree[T] with WithEndMarker[T] {
     type ThisTree[-T >: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
+    protected def srcName(using Context): Name = pid.name
   }
 
   /** arg @annot */
@@ -1029,6 +1081,7 @@ object Trees {
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
     type Inlined = Trees.Inlined[T]
     type TypeTree = Trees.TypeTree[T]
+    type InferredTypeTree = Trees.InferredTypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
     type AppliedTypeTree = Trees.AppliedTypeTree[T]

@@ -31,7 +31,7 @@ object Test {
 
     rewrite {
       val s: "vals" = "vals"
-      println(s) // prints "foo" not "oof"
+      println(s)
     }
 
     rewrite {
@@ -41,7 +41,7 @@ object Test {
 
     rewrite {
       def s: "defs" = "defs"
-      println(s) // prints "foo" not "oof"
+      println(s)
     }
 
     rewrite {

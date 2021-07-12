@@ -68,7 +68,7 @@ extends SrcPos, interfaces.SourcePosition, Showable {
     if outer == null || outer == NoSourcePosition then this else outer.outermost
 
   /** Inner most position that is contained within the `outermost` position.
-   *  Most precise position that that comes from the call site.
+   *  Most precise position that comes from the call site.
    */
   def nonInlined: SourcePosition = {
     val om = outermost

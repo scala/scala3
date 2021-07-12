@@ -13,18 +13,23 @@ import collection.JavaConverters._
 class StaticSiteContext(
   val root: File,
   val args: Scaladoc.Args,
-  val sourceLinks: SourceLinks)(using val outerCtx: CompilerContext):
+  val sourceLinks: SourceLinks,
+  val snippetCompilerArgs: snippets.SnippetCompilerArgs,
+  val snippetChecker: snippets.SnippetChecker)(using val outerCtx: CompilerContext):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  def indexTemplate(): Seq[LoadedTemplate] =
+  def indexTemplate(): LoadedTemplate =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
 
     if files.size > 1 then
       val msg = s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}"
       report.error(msg)
 
-    files.flatMap(loadTemplate(_, isBlog = false)).take(1)
+    files.flatMap(loadTemplate(_, isBlog = false)).headOption.getOrElse {
+      val fakeFile = new File(root, "index.html")
+      LoadedTemplate(emptyTemplate(fakeFile, "index"), List.empty, fakeFile)
+    }
 
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
@@ -37,7 +42,7 @@ class StaticSiteContext(
     else Some(Sidebar.load(Files.readAllLines(sidebarFile).asScala.mkString("\n")))
 
   lazy val templates: Seq[LoadedTemplate] =
-    sideBarConfig.fold(loadAllFiles().sortBy(_.templateFile.title))(_.map(loadSidebarContent))
+    sideBarConfig.fold(loadAllFiles().sortBy(_.templateFile.title.name))(_.map(loadSidebarContent))
 
   lazy val orphanedTemplates: Seq[LoadedTemplate] = {
     def doFlatten(t: LoadedTemplate): Seq[Path] =
@@ -68,12 +73,12 @@ class StaticSiteContext(
       file.getName.endsWith(".html")
 
 
-  private def loadTemplate(from: File, isBlog: Boolean = false): Option[LoadedTemplate] =
+  private def loadTemplate(from: File, isBlog: Boolean): Option[LoadedTemplate] =
     if (!isValidTemplate(from)) None else
       try
         val topLevelFiles = if isBlog then Seq(from, new File(from, "_posts")) else Seq(from)
         val allFiles = topLevelFiles.filter(_.isDirectory).flatMap(_.listFiles())
-        val (indexes, children) = allFiles.flatMap(loadTemplate(_)).partition(_.templateFile.isIndexPage())
+        val (indexes, children) = allFiles.flatMap(loadTemplate(_, isBlog)).partition(_.templateFile.isIndexPage())
 
         def loadIndexPage(): TemplateFile =
           val indexFiles = from.listFiles { file => file.getName == "index.md" || file.getName == "index.html" }
@@ -87,18 +92,29 @@ class StaticSiteContext(
 
         val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)
 
-        val processedChildren = if !isBlog then children.sortBy(_.templateFile.title) else
-          def dateFrom(p: LoadedTemplate): String =
-            val pageSettings = p.templateFile.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
-            pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse("1900-01-01") // blogs without date are last
-          children.sortBy(dateFrom).reverse
+        def dateFrom(p: LoadedTemplate, default: String = "1900-01-01"): String =
+          val pageSettings = p.templateFile.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
+          pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse(default) // blogs without date are last
+
+        val processedChildren: Seq[LoadedTemplate] = if !isBlog then children.sortBy(_.templateFile.title.name) else
+          children.sortBy(dateFrom(_)).reverse
+
+        processedChildren.foreach { child =>
+          val regex = raw"(\d*-\d*-\d*)-(.*)".r
+          val setDate = dateFrom(child, "<no date>")
+          child.templateFile.name match
+            case regex(date, name) if date != setDate =>
+              val msg = s"Date $date in blog file: ${child.templateFile.name} doesn't match date from settings: $setDate."
+              report.warn(msg, from)
+            case name =>
+        }
 
         val processedTemplate = // Set provided name as arg in page for `docs`
           if from.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
-            if templateFile.title != "index" then
-              report.warn("Property `title` will be overriden by project name", from)
+            if templateFile.title.name != "index" then
+              report.warn("Property `title` will be overridden by project name", from)
 
-            templateFile.copy(title = args.name)
+            templateFile.copy(title = TemplateName.FilenameDefined(args.name))
           else templateFile
 
         Some(LoadedTemplate(processedTemplate, processedChildren.toList, from))
@@ -109,20 +125,31 @@ class StaticSiteContext(
             None
 
   private def loadSidebarContent(entry: Sidebar): LoadedTemplate = entry match
-    case Sidebar.Page(title, url) =>
-      val isBlog = title == "Blog"
+    case Sidebar.Page(optionTitle, url) =>
+      val isBlog = optionTitle == Some("Blog")
       val path = if isBlog then "blog" else
         if Files.exists(root.toPath.resolve(url)) then url
         else url.stripSuffix(".html") + ".md"
 
       val file = root.toPath.resolve(path).toFile
       val LoadedTemplate(template, children, _) = loadTemplate(file, isBlog).get // Add proper logging if file does not exisits
-      LoadedTemplate(template.copy(settings = template.settings + ("title" -> title), file = file), children, file)
+      optionTitle match
+        case Some(title) =>
+          val newTitle = template.title match
+            case t: TemplateName.YamlDefined => t
+            case _: TemplateName.FilenameDefined => TemplateName.SidebarDefined(title)
+            case t: TemplateName.SidebarDefined => t // should never reach this path
+          LoadedTemplate(template.copy(settings = template.settings + ("title" -> newTitle.name), file = file, title = newTitle), children, file)
+        case None =>
+          LoadedTemplate(template.copy(settings = template.settings, file = file), children, file)
 
-    case Sidebar.Category(title, nested) =>
-      // Add support for index.html/index.md files!
-      val fakeFile = new File(new File(root, "docs"), title)
-      LoadedTemplate(emptyTemplate(fakeFile, title), nested.map(loadSidebarContent), fakeFile)
+    case Sidebar.Category(title, optionUrl, nested) =>
+      optionUrl match
+        case Some(url) => // There is an index page for section, let's load it
+          loadSidebarContent(Sidebar.Page(Some(title), url)).copy(children = nested.map(loadSidebarContent))
+        case None => // No index page, let's create default fake file.
+          val fakeFile = new File(new File(root, "docs"), title)
+          LoadedTemplate(emptyTemplate(fakeFile, title), nested.map(loadSidebarContent), fakeFile)
 
   private def loadAllFiles() =
     def dir(name: String)= List(new File(root, name)).filter(_.isDirectory)
@@ -135,13 +162,16 @@ class StaticSiteContext(
         if link.startsWith("/") then root.toPath.resolve(link.drop(1))
         else template.file.toPath.getParent().resolve(link).normalize()
 
-      val baseFileName = baseFile.getFileName.toString
-      val mdFile = baseFile.resolveSibling(baseFileName.stripSuffix(".html") + ".md")
-      def trySuffix(pref: String) =
-       if baseFileName == pref then Seq(baseFile.getParent) else Nil
-      val strippedIndexes = trySuffix("index.html") ++ trySuffix("index.md")
+      val fileName = baseFile.getFileName.toString
+      val baseFileName = if fileName.endsWith(".md")
+          then fileName.stripSuffix(".md")
+          else fileName.stripSuffix(".html")
 
-      (Seq(baseFile, mdFile) ++ strippedIndexes).filter(Files.exists(_)).map(driFor)
+      Seq(
+        Some(baseFile.resolveSibling(baseFileName + ".html")),
+        Some(baseFile.resolveSibling(baseFileName + ".md")),
+        Option.when(baseFileName == "index")(baseFile.getParent)
+      ).flatten.filter(Files.exists(_)).map(driFor)
     }.toOption.filter(_.nonEmpty)
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 

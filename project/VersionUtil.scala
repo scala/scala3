@@ -3,7 +3,7 @@ import org.eclipse.jgit.lib.{Constants, ObjectId, Ref, Repository}
 import org.eclipse.jgit.revwalk.{RevCommit, RevWalk}
 
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.{Date, TimeZone}
 
 object VersionUtil {
 
@@ -38,6 +38,7 @@ object VersionUtil {
   def gitHash: String = git.headCommitSha.substring(0, 7)
   def commitDate: String = {
     val format = new SimpleDateFormat("yyyyMMdd")
+    format.setTimeZone(TimeZone.getTimeZone("UTC"))
     format.format(git.headCommitDate)
   }
 }

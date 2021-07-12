@@ -1,9 +1,11 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Types._, Symbols._, Contexts._
 import printing.Printer
 import printing.Texts.Text
+import Decorators._
 
 object Constants {
 
@@ -161,25 +163,29 @@ object Constants {
           }
         case pt => pt
       }
-      val target = classBound(pt).typeSymbol
-      if (target == tpe.typeSymbol)
-        this
-      else if ((target == defn.ByteClass) && isByteRange)
-        Constant(byteValue)
-      else if (target == defn.ShortClass && isShortRange)
-        Constant(shortValue)
-      else if (target == defn.CharClass && isCharRange)
-        Constant(charValue)
-      else if (target == defn.IntClass && isIntRange)
-        Constant(intValue)
-      else if (target == defn.LongClass && isLongRange)
-        Constant(longValue)
-      else if (target == defn.FloatClass && isFloatRange)
-        Constant(floatValue)
-      else if (target == defn.DoubleClass && isNumeric)
-        Constant(doubleValue)
-      else
-        null
+      pt match
+        case ConstantType(value) if value == this => this
+        case _: SingletonType => null
+        case _ =>
+          val target = classBound(pt).typeSymbol
+          if (target == tpe.typeSymbol)
+            this
+          else if ((target == defn.ByteClass) && isByteRange)
+            Constant(byteValue)
+          else if (target == defn.ShortClass && isShortRange)
+            Constant(shortValue)
+          else if (target == defn.CharClass && isCharRange)
+            Constant(charValue)
+          else if (target == defn.IntClass && isIntRange)
+            Constant(intValue)
+          else if (target == defn.LongClass && isLongRange)
+            Constant(longValue)
+          else if (target == defn.FloatClass && isFloatRange)
+            Constant(floatValue)
+          else if (target == defn.DoubleClass && isNumeric)
+            Constant(doubleValue)
+          else
+            null
     }
 
     def stringValue: String = value.toString

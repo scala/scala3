@@ -25,7 +25,7 @@ public final class CompilerInterface {
       initialLog.warn(() ->
         "The compiler class loader is badly configured.\n" +
         "Consider using a more recent version of your build tool:\n" +
-        " - sbt >= 1.4.0 and sbt-dotty >= 1.5.0\n" +
+        " - sbt >= 1.5.0\n" +
         " - Mill >= 0.9.3-21-002361\n" +
         " - Bloop >= 1.4.6-23-20a501bc"
       );

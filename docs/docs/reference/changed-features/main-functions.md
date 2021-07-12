@@ -9,25 +9,25 @@ Example:
 
 ```scala
 @main def happyBirthday(age: Int, name: String, others: String*) =
-   val suffix =
-      age % 100 match
-      case 11 | 12 | 13 => "th"
-      case _ =>
-         age % 10 match
-         case 1 => "st"
-         case 2 => "nd"
-         case 3 => "rd"
-         case _ => "th"
-   val bldr = new StringBuilder(s"Happy $age$suffix birthday, $name")
-   for other <- others do bldr.append(" and ").append(other)
-   bldr.toString
+  val suffix =
+    age % 100 match
+    case 11 | 12 | 13 => "th"
+    case _ =>
+      age % 10 match
+        case 1 => "st"
+        case 2 => "nd"
+        case 3 => "rd"
+        case _ => "th"
+  val bldr = new StringBuilder(s"Happy $age$suffix birthday, $name")
+  for other <- others do bldr.append(" and ").append(other)
+  bldr.toString
 ```
 
 This would generate a main program `happyBirthday` that could be called like this
 
 ```
 > scala happyBirthday 23 Lisa Peter
-Happy 23rd Birthday, Lisa and Peter!
+Happy 23rd birthday, Lisa and Peter
 ```
 
 A `@main` annotated method can be written either at the top-level or in a statically accessible object. The name of the program is in each case the name of the method, without any object prefixes. The `@main` method can have an arbitrary number of parameters.
@@ -62,15 +62,15 @@ For instance, the `happyBirthDay` method above would generate additional code eq
 
 ```scala
 final class happyBirthday:
-   import scala.util.CommandLineParser as CLP
-   <static> def main(args: Array[String]): Unit =
-      try
-         happyBirthday(
-            CLP.parseArgument[Int](args, 0),
-            CLP.parseArgument[String](args, 1),
-            CLP.parseRemainingArguments[String](args, 2))
-      catch
-         case error: CLP.ParseError => CLP.showError(error)
+  import scala.util.CommandLineParser as CLP
+  <static> def main(args: Array[String]): Unit =
+    try
+      happyBirthday(
+        CLP.parseArgument[Int](args, 0),
+        CLP.parseArgument[String](args, 1),
+        CLP.parseRemainingArguments[String](args, 2))
+    catch
+      case error: CLP.ParseError => CLP.showError(error)
 ```
 
 **Note**: The `<static>` modifier above expresses that the `main` method is generated
@@ -80,8 +80,8 @@ as a static method of class `happyBirthDay`. It is not available for user progra
 
 ```scala
 object happyBirthday extends App:
-   // needs by-hand parsing of arguments vector
-   ...
+  // needs by-hand parsing of arguments vector
+  ...
 ```
 
 The previous functionality of `App`, which relied on the "magic" [`DelayedInit`](../dropped-features/delayed-init.md) trait, is no longer available. [`App`](https://dotty.epfl.ch/api/scala/App.html) still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build

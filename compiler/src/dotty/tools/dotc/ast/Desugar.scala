@@ -7,7 +7,7 @@ import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags
 import Symbols._, StdNames._, Trees._, Phases._, ContextOps._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
-import typer.{FrontEnd, Namer}
+import typer.{FrontEnd, Namer, Checking}
 import util.{Property, SourceFile, SourcePosition}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
@@ -182,6 +182,7 @@ object desugar {
         tpt     = TypeTree(defn.UnitType),
         rhs     = setterRhs
       ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
+       .dropEndMarker() // the end marker should only appear on the getter definition
       Thicket(vdef1, setter)
     }
     else vdef1
@@ -298,7 +299,7 @@ object desugar {
             rhs = vparam.rhs
           )
           .withMods(Modifiers(
-            meth.mods.flags & (AccessFlags | Synthetic),
+            meth.mods.flags & (AccessFlags | Synthetic) | (vparam.mods.flags & Inline),
             meth.mods.privateWithin))
         val rest = defaultGetters(vparams :: paramss1, n + 1)
         if vparam.rhs.isEmpty then rest else defaultGetter :: rest
@@ -602,13 +603,8 @@ object desugar {
     //     def _1: T1 = this.p1
     //     ...
     //     def _N: TN = this.pN (unless already given as valdef or parameterless defdef)
-    //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
-    //              pN: TN = pN: @uncheckedVariance)(moreParams) =
+    //     def copy(p1: T1 = p1..., pN: TN = pN)(moreParams) =
     //       new C[...](p1, ..., pN)(moreParams)
-    //
-    // Note: copy default parameters need @uncheckedVariance; see
-    // neg/t1843-variances.scala for a test case. The test would give
-    // two errors without @uncheckedVariance, one of them spurious.
     val (caseClassMeths, enumScaffolding) = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
         DefDef(name, Nil, tpt, rhs).withMods(synthetic)
@@ -638,10 +634,8 @@ object desugar {
         }
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {
-          def copyDefault(vparam: ValDef) =
-            makeAnnotated("scala.annotation.unchecked.uncheckedVariance", refOfDef(vparam))
           val copyFirstParams = derivedVparamss.head.map(vparam =>
-            cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
+            cpy.ValDef(vparam)(rhs = refOfDef(vparam)))
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           DefDef(
@@ -866,16 +860,7 @@ object desugar {
     val mods = mdef.mods
     val moduleName = normalizeName(mdef, impl).asTermName
     def isEnumCase = mods.isEnumCase
-
-    def flagSourcePos(flag: FlagSet) = mods.mods.find(_.flags == flag).fold(mdef.sourcePos)(_.sourcePos)
-
-    if (mods.is(Abstract))
-      report.error(AbstractCannotBeUsedForObjects(mdef), flagSourcePos(Abstract))
-    if (mods.is(Sealed))
-      report.error(ModifierRedundantForObjects(mdef, "sealed"), flagSourcePos(Sealed))
-    // Maybe this should be an error; see https://github.com/scala/bug/issues/11094.
-    if (mods.is(Final) && !mods.is(Synthetic))
-      report.warning(ModifierRedundantForObjects(mdef, "final"), flagSourcePos(Final))
+    Checking.checkWellFormedModule(mdef)
 
     if (mods.is(Package))
       packageModuleDef(mdef)
@@ -899,6 +884,7 @@ object desugar {
       val clsTmpl = cpy.Template(impl)(self = clsSelf, body = impl.body)
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
+        .withEndMarker(copyFrom = mdef) // copy over the end marker position to the module class def
       Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
   }
@@ -909,28 +895,37 @@ object desugar {
       defDef(
         cpy.DefDef(mdef)(
           name = normalizeName(mdef, ext).asTermName,
-          paramss = mdef.paramss match
-            case params1 :: paramss1 if mdef.name.isRightAssocOperatorName =>
-              def badRightAssoc(problem: String) =
-                report.error(i"right-associative extension method $problem", mdef.srcPos)
-                ext.paramss ++ mdef.paramss
-              def noVParam = badRightAssoc("must start with a single parameter")
-              def checkVparam(params: ParamClause) = params match
-                case ValDefs(vparam :: Nil) =>
-                  if !vparam.mods.is(Given) then
-                    val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
-                    leadingUsing ::: params1 :: otherExtParamss ::: paramss1
-                  else badRightAssoc("cannot start with using clause")
-                case _ =>
-                  noVParam
-              params1 match
-                case TypeDefs(_) => paramss1 match
-                  case params2 :: _ => checkVparam(params2)
-                  case _            => noVParam
-                case _ =>
-                  checkVparam(params1)
+          paramss =
+            if mdef.name.isRightAssocOperatorName then
+              val (typaramss, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
 
-            case _ =>
+              paramss match
+                case params :: paramss1 => // `params` must have a single parameter and without `given` flag
+
+                  def badRightAssoc(problem: String) =
+                    report.error(i"right-associative extension method $problem", mdef.srcPos)
+                    ext.paramss ++ mdef.paramss
+
+                  params match
+                    case ValDefs(vparam :: Nil) =>
+                      if !vparam.mods.is(Given) then
+                        // we merge the extension parameters with the method parameters,
+                        // swapping the operator arguments:
+                        // e.g.
+                        //   extension [A](using B)(c: C)(using D)
+                        //     def %:[E](f: F)(g: G)(using H): Res = ???
+                        // will be encoded as
+                        //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
+                        val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
+                        leadingUsing ::: typaramss ::: params :: otherExtParamss ::: paramss1
+                      else
+                        badRightAssoc("cannot start with using clause")
+                    case _ =>
+                      badRightAssoc("must start with a single parameter")
+                case _ =>
+                  // no value parameters, so not an infix operator.
+                  ext.paramss ++ mdef.paramss
+            else
               ext.paramss ++ mdef.paramss
         ).withMods(mdef.mods | ExtensionMethod)
       )
@@ -953,7 +948,7 @@ object desugar {
       tree.withMods(mods)
     else if tree.name.startsWith("$") && !tree.isBackquoted then
       report.error(
-        """Quoted pattern variable names starting with $ are not suported anymore.
+        """Quoted pattern variable names starting with $ are not supported anymore.
           |Use lower cases type pattern name instead.
           |""".stripMargin,
         tree.srcPos)
@@ -1006,12 +1001,16 @@ object desugar {
           case tree: TypeDef => tree.name.toString
           case tree: AppliedTypeTree if followArgs && tree.args.nonEmpty =>
             s"${apply(x, tree.tpt)}_${extractArgs(tree.args)}"
+          case InfixOp(left, op, right) =>
+            if followArgs then s"${op.name}_${extractArgs(List(left, right))}"
+            else op.name.toString
           case tree: LambdaTypeTree =>
             apply(x, tree.body)
           case tree: Tuple =>
             extractArgs(tree.trees)
           case tree: Function if tree.args.nonEmpty =>
-            if (followArgs) s"${extractArgs(tree.args)}_to_${apply("", tree.body)}" else "Function"
+            if followArgs then s"${extractArgs(tree.args)}_to_${apply("", tree.body)}"
+            else "Function"
           case _ => foldOver(x, tree)
         }
       else x
@@ -1094,6 +1093,16 @@ object desugar {
     case IdPattern(named, tpt) =>
       derivedValDef(original, named, tpt, rhs, mods)
     case _ =>
+
+      def filterWildcardGivenBinding(givenPat: Bind): Boolean =
+        givenPat.name != nme.WILDCARD
+
+      def errorOnGivenBinding(bind: Bind)(using Context): Boolean =
+        report.error(
+          em"""${hl("given")} patterns are not allowed in a ${hl("val")} definition,
+              |please bind to an identifier and use an alias given.""".stripMargin, bind)
+        false
+
       def isTuplePattern(arity: Int): Boolean = pat match {
         case Tuple(pats) if pats.size == arity =>
           pats.forall(isVarPattern)
@@ -1109,13 +1118,23 @@ object desugar {
       // - `pat` is a tuple of N variables or wildcard patterns like `(x1, x2, ..., xN)`
       val tupleOptimizable = forallResults(rhs, isMatchingTuple)
 
+      val inAliasGenerator = original match
+        case _: GenAlias => true
+        case _ => false
+
       val vars =
         if (tupleOptimizable) // include `_`
-          pat match {
-            case Tuple(pats) =>
-              pats.map { case id: Ident => id -> TypeTree() }
-          }
-        else getVariables(pat)  // no `_`
+          pat match
+            case Tuple(pats) => pats.map { case id: Ident => id -> TypeTree() }
+        else
+          getVariables(
+            tree = pat,
+            shouldAddGiven =
+              if inAliasGenerator then
+                filterWildcardGivenBinding
+              else
+                errorOnGivenBinding
+          ) // no `_`
 
       val ids = for ((named, _) <- vars) yield Ident(named.name)
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
@@ -1302,7 +1321,9 @@ object desugar {
     if (nestedStats.isEmpty) pdef
     else {
       val name = packageObjectName(ctx.source)
-      val grouped = ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+      val grouped =
+        ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+          .withMods(Modifiers(Synthetic))
       cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)
     }
   }
@@ -1313,9 +1334,10 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean)(using Context): Block =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean, span: Span)(using Context): Block =
     Block(
       DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
+        .withSpan(span)
         .withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isContextual) ContextualEmptyTree else EmptyTree))
 
@@ -1556,14 +1578,21 @@ object desugar {
         }
       }
 
+      /** Is `pat` of the form `x`, `x T`, or `given T`? when used as the lhs of a generator,
+       *  these are all considered irrefutable.
+       */
+      def isVarBinding(pat: Tree): Boolean = pat match
+        case pat @ Bind(_, pat1) if pat.mods.is(Given) => isVarBinding(pat1)
+        case IdPattern(_) => true
+        case _ => false
+
       def needsNoFilter(gen: GenFrom): Boolean =
         if (gen.checkMode == GenCheckMode.FilterAlways) // pattern was prefixed by `case`
           false
-        else (
-          gen.checkMode != GenCheckMode.FilterNow ||
-          IdPattern.unapply(gen.pat).isDefined ||
-          isIrrefutable(gen.pat, gen.expr)
-        )
+        else
+          gen.checkMode != GenCheckMode.FilterNow
+          || isVarBinding(gen.pat)
+          || isIrrefutable(gen.pat, gen.expr)
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
@@ -1605,6 +1634,8 @@ object desugar {
 
     def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match {
       case Parens(body1) =>
+        makePolyFunction(targs, body1)
+      case Block(Nil, body1) =>
         makePolyFunction(targs, body1)
       case Function(vargs, res) =>
         assert(targs.nonEmpty)
@@ -1789,16 +1820,21 @@ object desugar {
   /** Returns list of all pattern variables, possibly with their types,
    *  without duplicates
    */
-  private def getVariables(tree: Tree)(using Context): List[VarInfo] = {
+  private def getVariables(tree: Tree, shouldAddGiven: Context ?=> Bind => Boolean)(using Context): List[VarInfo] = {
     val buf = ListBuffer[VarInfo]()
     def seenName(name: Name) = buf exists (_._1.name == name)
     def add(named: NameTree, t: Tree): Unit =
       if (!seenName(named.name) && named.name.isTermName) buf += ((named, t))
     def collect(tree: Tree): Unit = tree match {
-      case Bind(nme.WILDCARD, tree1) =>
+      case tree @ Bind(nme.WILDCARD, tree1) =>
+        if tree.mods.is(Given) then
+          val Typed(_, tpt) = tree1: @unchecked
+          if shouldAddGiven(tree) then
+            add(tree, tpt)
         collect(tree1)
       case tree @ Bind(_, Typed(tree1, tpt)) =>
-        add(tree, tpt)
+        if !(tree.mods.is(Given) && !shouldAddGiven(tree)) then
+          add(tree, tpt)
         collect(tree1)
       case tree @ Bind(_, tree1) =>
         add(tree, TypeTree())
@@ -1816,7 +1852,7 @@ object desugar {
       case SeqLiteral(elems, _) =>
         elems foreach collect
       case Alternative(trees) =>
-        for (tree <- trees; (vble, _) <- getVariables(tree))
+        for (tree <- trees; (vble, _) <- getVariables(tree, shouldAddGiven))
           report.error(IllegalVariableInPatternAlternative(), vble.srcPos)
       case Annotated(arg, _) =>
         collect(arg)

@@ -114,8 +114,10 @@ object Scala3:
 
       /** Is symbol global? Non-global symbols get localN names */
       def isGlobal(using Context): Boolean =
-        sym.is(Package)
-        || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && sym.owner.isGlobal
+        sym.exists && (
+          sym.is(Package)
+          || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && sym.owner.isGlobal
+        )
 
       def isLocalWithinSameName(using Context): Boolean =
         sym.exists && !sym.isGlobal && sym.name == sym.owner.name

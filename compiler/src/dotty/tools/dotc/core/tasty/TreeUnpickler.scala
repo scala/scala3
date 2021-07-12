@@ -24,6 +24,7 @@ import Variances.Invariant
 import TastyUnpickler.NameTable
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
+import typer.Nullables._
 import util.Spans._
 import util.SourceFile
 import ast.{TreeTypeMap, Trees, tpd, untpd}
@@ -362,7 +363,9 @@ class TreeUnpickler(reader: TastyReader,
               if nothingButMods(end) then
                 if lo.isMatch then MatchAlias(readVariances(lo))
                 else TypeAlias(readVariances(lo))
-              else TypeBounds(lo, readVariances(readType()))
+              else
+                val hi = readVariances(readType())
+                createNullableTypeBounds(lo, hi)
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case ANDtype =>
@@ -484,7 +487,9 @@ class TreeUnpickler(reader: TastyReader,
       if (lacksDefinition && tag != PARAM) flags |= Deferred
       if (tag == DEFDEF) flags |= Method
       if (givenFlags.is(Module))
-        flags = flags | (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
+        flags |= (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
+      if flags.is(Enum, butNot = Method) && name.isTermName then
+        flags |= StableRealizable
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
         else if (tag == PARAM) {
@@ -585,12 +590,10 @@ class TreeUnpickler(reader: TastyReader,
       val annots =  annotFns.map(_(sym.owner))
       sym.annotations = annots
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
-      val isSyntheticBeanAccessor = flags.isAllOf(Method | Synthetic) &&
-        annots.exists(a => a.matches(defn.BeanPropertyAnnot) || a.matches(defn.BooleanBeanPropertyAnnot))
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
-        case cls: ClassSymbol if (!isScala2MacroDefinedInScala3 || cls == defn.StringContextClass) && !isSyntheticBeanAccessor  =>
-          // Enter all members of classes that are not Scala 2 macros or synthetic bean accessors.
+        case cls: ClassSymbol if !isScala2MacroDefinedInScala3 || cls == defn.StringContextClass =>
+          // Enter all members of classes that are not Scala 2 macros.
           //
           // For `StringContext`, enter `s`, `f` and `raw`
           // These definitions will be entered when defined in Scala 2. It is fine to enter them
@@ -631,7 +634,6 @@ class TreeUnpickler(reader: TastyReader,
         }
         nextByte match {
           case PRIVATE => addFlag(Private)
-          case INTERNAL => ??? // addFlag(Internal)
           case PROTECTED => addFlag(Protected)
           case ABSTRACT =>
             readByte()
@@ -670,6 +672,7 @@ class TreeUnpickler(reader: TastyReader,
           case PARAMalias => addFlag(SuperParamAlias)
           case EXPORTED => addFlag(Exported)
           case OPEN => addFlag(Open)
+          case INVISIBLE => addFlag(Invisible)
           case TRANSPARENT => addFlag(Transparent)
           case INFIX => addFlag(Infix)
           case PRIVATEqualified =>
@@ -828,7 +831,11 @@ class TreeUnpickler(reader: TastyReader,
           val tpt = readTpt()(using localCtx)
           val paramss = normalizeIfConstructor(
               paramDefss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
-          val resType = effectiveResultType(sym, paramss, tpt.tpe)
+          val resType =
+            if name == nme.CONSTRUCTOR then
+              effectiveResultType(sym, paramss)
+            else
+              tpt.tpe
           sym.info = methodType(paramss, resType)
           DefDef(paramDefss, tpt)
         case VALDEF =>
@@ -866,23 +873,22 @@ class TreeUnpickler(reader: TastyReader,
           }
         case PARAM =>
           val tpt = readTpt()(using localCtx)
-          if (nothingButMods(end)) {
-            sym.info = tpt.tpe
-            ValDef(tpt)
-          }
-          else {
-            sym.info = ExprType(tpt.tpe)
-            pickling.println(i"reading param alias $name -> $currentAddr")
-            DefDef(Nil, tpt)
-          }
+          assert(nothingButMods(end))
+          sym.info = tpt.tpe
+          ValDef(tpt)
       }
       goto(end)
       setSpan(start, tree)
-      if (!sym.isType) // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
+
+      // Dealias any non-accessible type alias in the type of `sym`. This can be
+      // skipped for types (see `checkNoPrivateLeaks` for why) as well as for
+      // param accessors since they can't refer to an inaccesible type member of
+      // the class.
+      if !sym.isType && !sym.is(ParamAccessor) then
         sym.info = ta.avoidPrivateLeaks(sym)
 
-      if (ctx.mode.is(Mode.ReadComments)) {
-        assert(ctx.docCtx.isDefined, "Mode is `ReadComments`, but no `docCtx` is set.")
+      if (ctx.settings.YreadComments.value) {
+        assert(ctx.docCtx.isDefined, "`-Yread-docs` enabled, but no `docCtx` is set.")
         commentUnpicklerOpt.foreach { commentUnpickler =>
           val comment = commentUnpickler.commentAt(start)
           ctx.docCtx.get.addDocstring(tree.symbol, comment)
@@ -1184,15 +1190,34 @@ class TreeUnpickler(reader: TastyReader,
             case SELECTin =>
               var sname = readName()
               val qual = readTerm()
-              val owner = readType()
-              def select(name: Name, denot: Denotation) =
-                val prefix = ctx.typeAssigner.maybeSkolemizePrefix(qual.tpe.widenIfUnstable, name)
-                makeSelect(qual, name, denot.asSeenFrom(prefix))
-              sname match
-                case SignedName(name, sig, target) =>
-                  select(name, owner.decl(name).atSignature(sig, target))
-                case name =>
-                  select(name, owner.decl(name))
+              val ownerTpe = readType()
+              val owner = ownerTpe.typeSymbol
+              val SignedName(name, sig, target) = sname: @unchecked // only methods with params use SELECTin
+              val qualType = qual.tpe.widenIfUnstable
+              val prefix = ctx.typeAssigner.maybeSkolemizePrefix(qualType, name)
+
+              /** Tasty should still be able to resolve a method from another root class,
+               *  even if it has been moved to a super type,
+               *  or an override has been removed.
+               *
+               *  This is tested in
+               *  - sbt-test/tasty-compat/remove-override
+               *  - sbt-test/tasty-compat/move-method
+               */
+              def lookupInSuper =
+                val cls = ownerTpe.classSymbol
+                if cls.exists then
+                  cls.asClass.classDenot
+                    .findMember(name, cls.thisType, EmptyFlags, excluded=Private)
+                    .atSignature(sig, target)
+                else
+                  NoDenotation
+
+              val denot =
+                val d = ownerTpe.decl(name).atSignature(sig, target)
+                (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
+
+              makeSelect(qual, name, denot)
             case REPEATED =>
               val elemtpt = readTpt()
               SeqLiteral(until(end)(readTerm()), elemtpt)
@@ -1250,7 +1275,7 @@ class TreeUnpickler(reader: TastyReader,
               val lo = readTpt()
               val hi = if currentAddr == end then lo else readTpt()
               val alias = if currentAddr == end then EmptyTree else readTpt()
-              TypeBoundsTree(lo, hi, alias)
+              createNullableTypeBoundsTree(lo, hi, alias)
             case HOLE =>
               val idx = readNat()
               val tpe = readType()

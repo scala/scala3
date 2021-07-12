@@ -37,6 +37,7 @@ clear_out "$OUT"
 # check that `scalac -from-tasty` compiles and `scala` runs it
 echo "testing ./bin/scalac -from-tasty and scala -classpath"
 clear_out "$OUT1"
+./bin/scalac "$SOURCE" -d "$OUT"
 ./bin/scalac -from-tasty -d "$OUT1" "$OUT/$TASTY"
 ./bin/scala -classpath "$OUT1" "$MAIN" > "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
@@ -57,3 +58,22 @@ grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tm
 echo "testing ./bin/scaladoc"
 clear_out "$OUT1"
 ./bin/scaladoc -project Hello -d "$OUT1" "$OUT/out.jar"
+
+# check compilation when the class/tasty files already exist in the current directory
+echo "testing i11644"
+cwd=$(pwd)
+clear_out "$OUT"
+(cd "$OUT" && "$cwd/bin/scalac" "$cwd/tests/pos/i11644.scala" && "$cwd/bin/scalac" "$cwd/tests/pos/i11644.scala")
+
+# check options specified in files
+./bin/scalac @project/scripts/options "$SOURCE"
+
+# test command line options
+./bin/scalac -help > "$tmp" 2>&1
+grep -qe "Usage: scalac <options> <source files>" "$tmp"
+
+./bin/scala -help > "$tmp" 2>&1
+grep -qe "Usage: scala <options> <source files>" "$tmp"
+
+./bin/scala -d hello.jar tests/run/hello.scala
+ls hello.jar

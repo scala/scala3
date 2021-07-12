@@ -11,7 +11,17 @@ object HTML:
   case class Tag(name: String):
     def apply(tags: TagArg*): AppliedTag = apply()(tags:_*)
     def apply(first: AttrArg, rest: AttrArg*): AppliedTag = apply((first +: rest):_*)()
-    def apply(attrs: AttrArg*)(tags: TagArg*): AppliedTag = {
+    def apply(attrs: AttrArg*)(tags: TagArg*): AppliedTag =
+      def unpackTags(tags: TagArg*)(using sb: StringBuilder): StringBuilder =
+        tags.foreach {
+          case t: AppliedTag =>
+            sb.append(t)
+          case s: String =>
+            sb.append(s.escapeReservedTokens)
+          case s: Seq[AppliedTag | String] =>
+            unpackTags(s:_*)
+        }
+        sb
       val sb = StringBuilder()
       sb.append(s"<$name")
       attrs.filter(_ != Nil).foreach{
@@ -21,24 +31,11 @@ object HTML:
           sb.append(" ").append(e)
       }
       sb.append(">")
-      tags.foreach{
-        case t: AppliedTag =>
-          sb.append(t)
-        case s: String =>
-          sb.append(s.escapeReservedTokens)
-        case s: Seq[AppliedTag | String] =>
-          s.foreach{
-            case a: AppliedTag =>
-              sb.append(a)
-            case s: String =>
-              sb.append(s.escapeReservedTokens)
-          }
-      }
+      unpackTags(tags:_*)(using sb)
       sb.append(s"</$name>")
       sb
-    }
 
-  extension (s: String) private def escapeReservedTokens: String =
+  extension (s: String) def escapeReservedTokens: String =
     s.replace("&", "&amp;")
       .replace("<", "&lt;")
       .replace(">", "&gt;")
@@ -68,6 +65,7 @@ object HTML:
   val svg = Tag("svg")
   val button = Tag("button")
   val input = Tag("input")
+  val label = Tag("label")
   val script = Tag("script")
   val link = Tag("link")
   val footer = Tag("footer")
@@ -83,7 +81,7 @@ object HTML:
   val ol = Tag("ol")
   val li = Tag("li")
   val code = Tag("code")
-
+  val pre = Tag("pre")
 
   val cls = Attr("class")
   val href = Attr("href")
@@ -102,6 +100,7 @@ object HTML:
   val value = Attr("value")
   val onclick=Attr("onclick")
   val titleAttr =Attr("title")
+  val onkeyup = Attr("onkeyup")
 
   def raw(content: String): AppliedTag = new AppliedTag(content)
   def raw(content: StringBuilder): AppliedTag = content

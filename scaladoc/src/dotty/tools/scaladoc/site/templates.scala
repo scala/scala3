@@ -2,7 +2,7 @@ package dotty.tools.scaladoc
 package site
 
 import java.io.File
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
@@ -18,6 +18,7 @@ import liqp.Template
 import scala.collection.JavaConverters._
 
 import scala.io.Source
+import dotty.tools.scaladoc.snippets._
 
 case class RenderingContext(
   properties: Map[String, Object],
@@ -34,6 +35,12 @@ case class RenderingContext(
     )
 
 case class ResolvedPage(code: String, resources: List[String] = Nil)
+
+enum TemplateName(val name: String):
+  case YamlDefined(override val name: String) extends TemplateName(name)
+  case SidebarDefined(override val name: String) extends TemplateName(name)
+  case FilenameDefined(override val name: String) extends TemplateName(name)
+
 /**
  * case class for the template files.
  * Template file is a file `.md` or `.html` handling settings.
@@ -48,14 +55,36 @@ case class TemplateFile(
   rawCode: String,
   settings: Map[String, Object],
   name: String,
-  title: String,
+  title: TemplateName,
   hasFrame: Boolean,
   resources: List[String],
   layout: Option[String],
+  configOffset: Int
 ):
   def isIndexPage() = file.isFile && (file.getName == "index.md" || file.getName == "index.html")
 
-  private[site] def resolveInner(ctx: RenderingContext): ResolvedPage =
+  private[site] def resolveInner(ctx: RenderingContext)(using ssctx: StaticSiteContext): ResolvedPage =
+
+    lazy val snippetCheckingFunc: SnippetChecker.SnippetCheckingFunc =
+      val path = Some(Paths.get(file.getAbsolutePath))
+      val pathBasedArg = ssctx.snippetCompilerArgs.get(path)
+      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
+          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
+          val compilerData = SnippetCompilerData(
+            "staticsitesnippet",
+            Seq(SnippetCompilerData.ClassInfo(None, Nil, None)),
+            Nil,
+            SnippetCompilerData.Position(configOffset - 1, 0)
+          )
+          ssctx.snippetChecker.checkSnippet(str, Some(compilerData), arg, lineOffset).collect {
+              case r: SnippetCompilationResult if !r.isSuccessful =>
+                val msg = s"In static site (${file.getAbsolutePath}):\n${r.getSummary}"
+                report.error(msg)(using ssctx.outerCtx)
+                r
+              case r => r
+          }
+      }
+
     if (ctx.resolving.contains(file.getAbsolutePath))
       throw new RuntimeException(s"Cycle in templates involving $file: ${ctx.resolving}")
 
@@ -74,8 +103,11 @@ case class TemplateFile(
     val rendered = Template.parse(this.rawCode).render(mutableProperties)
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
+      // Snippet compiler currently supports markdown only
       val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
-      HtmlRenderer.builder(defaultMarkdownOptions).build().render(parser.parse(rendered))
+      val parsedMd = parser.parse(rendered)
+      val processed = FlexmarkSnippetProcessor.processSnippets(parsedMd, ssctx.snippetCompilerArgs.debug, snippetCheckingFunc)(using ssctx.outerCtx)
+      HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
 
     layoutTemplate match
       case None => ResolvedPage(code, resources ++ ctx.resources)

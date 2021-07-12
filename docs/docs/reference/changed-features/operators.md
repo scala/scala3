@@ -18,12 +18,12 @@ import scala.annotation.targetName
 
 trait MultiSet[T]:
 
-   infix def union(other: MultiSet[T]): MultiSet[T]
+  infix def union(other: MultiSet[T]): MultiSet[T]
 
-   def difference(other: MultiSet[T]): MultiSet[T]
+  def difference(other: MultiSet[T]): MultiSet[T]
 
-   @targetName("intersection")
-   def *(other: MultiSet[T]): MultiSet[T]
+  @targetName("intersection")
+  def *(other: MultiSet[T]): MultiSet[T]
 
 end MultiSet
 
@@ -79,8 +79,8 @@ The purpose of the `infix` modifier is to achieve consistency across a code base
     infix def op3[T](x: T, y: S): R    // error: two parameters
 
     extension (x: A)
-       infix def op4(y: B): R          // ok
-       infix def op5(y1: B, y2: B): R  // error: two parameters
+      infix def op4(y: B): R          // ok
+      infix def op5(y1: B, y2: B): R  // error: two parameters
     ```
 
  4. `infix` modifiers can also be given to type, trait or class definitions that have exactly two type parameters. An infix type like
@@ -113,14 +113,14 @@ Infix operators can now appear at the start of lines in a multi-line expression.
 
 ```scala
 val str = "hello"
-   ++ " world"
-   ++ "!"
+  ++ " world"
+  ++ "!"
 
 def condition =
-   x > 0
-   ||
-   xs.exists(_ > 0)
-   || xs.isEmpty
+  x > 0
+  ||
+  xs.exists(_ > 0)
+  || xs.isEmpty
 ```
 
 Previously, those expressions would have been rejected, since the compiler's semicolon inference
@@ -128,10 +128,12 @@ would have treated the continuations `++ " world"` or `|| xs.isEmpty` as separat
 
 To make this syntax work, the rules are modified to not infer semicolons in front of leading infix operators.
 A _leading infix operator_ is
- - a symbolic identifier such as `+`, or `approx_==`, or an identifier in backticks,
- - that starts a new line,
- - that precedes a token on the same or the next line that can start an expression,
- - and that is immediately followed by at least one whitespace character.
+ - a symbolic identifier such as `+`, or `approx_==`, or an identifier in backticks that
+ - starts a new line, and
+ - is not following a blank line, and
+ - is followed by at least one whitespace character and a token that can start an expression.
+ - Furthermore, if the operator appears on its own line, the next line must have at least
+   the same indentation width as the operator.
 
 Example:
 

@@ -4,7 +4,7 @@ package typer
 
 import core._
 import ast._
-import Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
+import Contexts._, ContextOps._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
 import util.Spans._
 import util.SrcPos
@@ -12,7 +12,6 @@ import config.Printers.typr
 import ast.Trees._
 import NameOps._
 import ProtoTypes._
-import Inferencing.couldInstantiateTypeVar
 import collection.mutable
 import reporting._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
@@ -117,12 +116,15 @@ trait TypeAssigner {
 
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
-    var qualType = qual1.tpe.widenIfUnstable
-    if !qualType.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
-      // constructors are selected on typeconstructor, type arguments are passed afterwards
-      qualType = errorType(em"$qualType takes type parameters", qual1.srcPos)
-    else if !qualType.isInstanceOf[TermType] then
-      qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.srcPos)
+    val qualType0 = qual1.tpe.widenIfUnstable
+    val qualType =
+      if !qualType0.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
+        // constructors are selected on typeconstructor, type arguments are passed afterwards
+        errorType(em"$qualType0 takes type parameters", qual1.srcPos)
+      else if !qualType0.isInstanceOf[TermType] && !qualType0.isError then
+        errorType(em"$qualType0 is illegal as a selection prefix", qual1.srcPos)
+      else
+        qualType0
 
     def arrayElemType = qual1.tpe.widen match
       case JavaArrayType(elemtp) => elemtp
@@ -143,7 +145,12 @@ trait TypeAssigner {
       // this is exactly what Erasure will do.
       case _ =>
         val pre = maybeSkolemizePrefix(qualType, name)
-        val mbr = qualType.findMember(name, pre)
+        val mbr =
+          if ctx.isJava then
+            ctx.javaFindMember(name, pre)
+          else
+            qualType.findMember(name, pre)
+
         if reallyExists(mbr) then qualType.select(name, mbr)
         else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType
         else NoType
@@ -154,7 +161,13 @@ trait TypeAssigner {
   def notAMemberErrorType(tree: untpd.Select, qual: Tree)(using Context): ErrorType =
     val qualType = qual.tpe.widenIfUnstable
     def kind = if tree.isType then "type" else "value"
-    def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum)
+    val foundWithoutNull = qualType match
+      case OrNull(qualType1) =>
+        val name = tree.name
+        val pre = maybeSkolemizePrefix(qualType1, name)
+        reallyExists(qualType1.findMember(name, pre))
+      case _ => false
+    def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
     val msg: Message =
       if tree.name == nme.CONSTRUCTOR then ex"$qualType does not have a constructor"
       else NotAMember(qualType, tree.name, kind, addendum)
@@ -222,19 +235,18 @@ trait TypeAssigner {
         else errorType("not a legal qualifying class for this", tree.srcPos))
   }
 
-  def assignType(tree: untpd.Super, qual: Tree, mixinClass: Symbol = NoSymbol)(using Context): Super = {
-    val mix = tree.mix
-    qual.tpe match {
-      case err: ErrorType => untpd.cpy.Super(tree)(qual, mix).withType(err)
+  def superType(qualType: Type, mix: untpd.Ident, mixinClass: Symbol, pos: SrcPos)(using Context) =
+    qualType match
+      case err: ErrorType => err
       case qtype @ ThisType(_) =>
         val cls = qtype.cls
         def findMixinSuper(site: Type): Type = site.parents filter (_.typeSymbol.name == mix.name) match {
           case p :: Nil =>
             p.typeConstructor
           case Nil =>
-            errorType(SuperQualMustBeParent(mix, cls), tree.srcPos)
+            errorType(SuperQualMustBeParent(mix, cls), pos)
           case p :: q :: _ =>
-            errorType("ambiguous parent class qualifier", tree.srcPos)
+            errorType("ambiguous parent class qualifier", pos)
         }
         val owntype =
           if (mixinClass.exists) mixinClass.appliedRef
@@ -244,9 +256,11 @@ trait TypeAssigner {
             val ps = cls.classInfo.parents
             if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
           }
-        tree.withType(SuperType(cls.thisType, owntype))
-    }
-  }
+        SuperType(cls.thisType, owntype)
+
+  def assignType(tree: untpd.Super, qual: Tree, mixinClass: Symbol = NoSymbol)(using Context): Super =
+    untpd.cpy.Super(tree)(qual, tree.mix)
+      .withType(superType(qual.tpe, tree.mix, mixinClass, tree.srcPos))
 
   /** Substitute argument type `argType` for parameter `pref` in type `tp`,
    *  skolemizing the argument type if it is not stable and `pref` occurs in `tp`.

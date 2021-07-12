@@ -20,7 +20,22 @@ package tests
   * ```scala
   * is.an("actual code block")
   * with.multiple("lines")
+  * """
+  * {{{
+  * and an embedded Wiki code block for good measure
+  * }}}
+  * """
   * ```
+  *
+  * While
+  * {{{
+  * this.is("a Wiki code block")
+  * """
+  * ```
+  * with an embedded Md code block for good measure
+  * ```
+  * """
+  * }}}
   *
   * And this
   *
@@ -131,6 +146,10 @@ class B extends A {
   class BB
 }
 
+class BModule {
+  def foo = "foo"
+}
+
 /** Companion object to test linking.
   *
   * This is my member: [[B$.Z]]
@@ -141,7 +160,7 @@ class B extends A {
   *
   * And this is my term member, addressed differently: [[this.Z$]]
   */
-object B {
+object B extends BModule {
   type Z = Int
   val Z: Int = 0
 }
@@ -161,6 +180,8 @@ package inner {
     def foo() = ()
   }
 }
+
+val bar = "bar"
 
 /** A class with a semi-non-trivial constructor.
   *

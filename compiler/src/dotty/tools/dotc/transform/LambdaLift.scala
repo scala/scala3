@@ -17,22 +17,37 @@ import ast.Trees._
 import SymUtils._
 import ExplicitOuter.outer
 import util.Store
-import collection.mutable
-import collection.mutable.{ HashMap, HashSet, LinkedHashMap, TreeSet }
+import collection.mutable.{HashMap, LinkedHashMap, ListBuffer}
 
-object LambdaLift {
+object LambdaLift:
   import ast.tpd._
-  private class NoPath extends Exception
 
   val name: String = "lambdaLift"
 
   /** The core lambda lift functionality. */
-  class Lifter(thisPhase: MiniPhase with DenotTransformer)(using Context) {
+  class Lifter(thisPhase: MiniPhase & DenotTransformer)(using Context):
 
-    private type SymSet = TreeSet[Symbol]
+    /** The outer parameter of a constructor */
+    private val outerParam = new HashMap[Symbol, Symbol]
 
-    /** A map storing free variables of functions and classes */
-    val free: mutable.LinkedHashMap[Symbol, SymSet] = new LinkedHashMap
+    /** Buffers for lifted out classes and methods, indexed by owner */
+    val liftedDefs: HashMap[Symbol, ListBuffer[Tree]] = new HashMap
+
+    val deps = new Dependencies(ctx.compilationUnit.tpdTree, ctx.withPhase(thisPhase)):
+      def isExpr(sym: Symbol)(using Context): Boolean = sym.is(Method)
+      def enclosure(using Context) = ctx.owner.enclosingMethod
+
+      override def process(tree: Tree)(using Context): Unit =
+        super.process(tree)
+        tree match
+          case tree: DefDef if tree.symbol.isConstructor =>
+            tree.termParamss.head.find(_.name == nme.OUTER) match
+              case Some(vdef) => outerParam(tree.symbol) = vdef.symbol
+              case _ =>
+          case tree: Template =>
+            liftedDefs(tree.symbol.owner) = new ListBuffer
+          case _ =>
+    end deps
 
     /** A map storing the free variable proxies of functions and classes.
      *  For every function and class, this is a map from the free variables
@@ -40,262 +55,10 @@ object LambdaLift {
      */
     private val proxyMap = new LinkedHashMap[Symbol, Map[Symbol, Symbol]]
 
-    /** A hashtable storing calls between functions */
-    private val called = new LinkedHashMap[Symbol, SymSet]
-
-    /** Symbols that are called from an inner class. */
-    private val calledFromInner = new HashSet[Symbol]
-
-    /** A map from local methods and classes to the owners to which they will be lifted as members.
-     *  For methods and classes that do not have any dependencies this will be the enclosing package.
-     *  symbols with packages as lifted owners will subsequently represented as static
-     *  members of their toplevel class, unless their enclosing class was already static.
-     *  Note: During tree transform (which runs at phase LambdaLift + 1), liftedOwner
-     *  is also used to decide whether a method had a term owner before.
-     */
-    private val liftedOwner = new LinkedHashMap[Symbol, Symbol]
-
-    /** The outer parameter of a constructor */
-    private val outerParam = new HashMap[Symbol, Symbol]
-
-    /** Buffers for lifted out classes and methods, indexed by owner */
-    val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap
-
-    /** A flag to indicate whether new free variables have been found */
-    private var changedFreeVars: Boolean = _
-
-    /** A flag to indicate whether lifted owners have changed */
-    private var changedLiftedOwner: Boolean = _
-
-    private val ord: Ordering[Symbol] = Ordering.by(_.id)
-    private def newSymSet = TreeSet.empty[Symbol](ord)
-
-    private def symSet(f: LinkedHashMap[Symbol, SymSet], sym: Symbol): SymSet =
-      f.getOrElseUpdate(sym, newSymSet)
-
-    def freeVars(sym: Symbol): List[Symbol] = free get sym match {
-      case Some(set) => set.toList
-      case None => Nil
-    }
-
     def proxyOf(sym: Symbol, fv: Symbol): Symbol = proxyMap.getOrElse(sym, Map.empty)(fv)
 
-    def proxies(sym: Symbol): List[Symbol] =  freeVars(sym).map(proxyOf(sym, _))
-
-    /** A symbol is local if it is owned by a term or a local trait,
-     *  or if it is a constructor of a local symbol.
-     */
-    def isLocal(sym: Symbol)(using Context): Boolean = {
-      val owner = sym.maybeOwner
-      owner.isTerm ||
-      owner.is(Trait) && isLocal(owner) ||
-      sym.isConstructor && isLocal(owner)
-    }
-
-    /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
-     *  than the previous value of `liftedowner(sym)`.
-     */
-    def narrowLiftedOwner(sym: Symbol, owner: Symbol)(using Context): Unit =
-      if (sym.maybeOwner.isTerm &&
-        owner.isProperlyContainedIn(liftedOwner(sym)) &&
-        owner != sym) {
-          report.log(i"narrow lifted $sym to $owner")
-          changedLiftedOwner = true
-          liftedOwner(sym) = owner
-      }
-
-    /** Mark symbol `sym` as being free in `enclosure`, unless `sym` is defined
-     *  in `enclosure` or there is an intermediate class properly containing `enclosure`
-     *  in which `sym` is also free. Also, update `liftedOwner` of `enclosure` so
-     *  that `enclosure` can access `sym`, or its proxy in an intermediate class.
-     *  This means:
-     *
-     *    1. If there is an intermediate class in which `sym` is free, `enclosure`
-     *       must be contained in that class (in order to access the `sym proxy stored
-     *       in the class).
-     *
-     *    2. If there is no intermediate class, `enclosure` must be contained
-     *       in the class enclosing `sym`.
-     *
-     *  @return  If there is a non-trait class between `enclosure` and
-     *           the owner of `sym`, the largest such class.
-     *           Otherwise, if there is a trait between `enclosure` and
-     *           the owner of `sym`, the largest such trait.
-     *           Otherwise, NoSymbol.
-     *
-     *  @pre sym.owner.isTerm, (enclosure.isMethod || enclosure.isClass)
-     *
-     *  The idea of `markFree` is illustrated with an example:
-     *
-     *  def f(x: int) = {
-     *    class C {
-     *      class D {
-     *        val y = x
-     *      }
-     *    }
-     *  }
-     *
-     *  In this case `x` is free in the primary constructor of class `C`.
-     *  but it is not free in `D`, because after lambda lift the code would be transformed
-     *  as follows:
-     *
-     *  def f(x$0: int) {
-     *    class C(x$0: int) {
-     *      val x$1 = x$0
-     *      class D {
-     *        val y = outer.x$1
-     *      }
-     *    }
-     *  }
-     */
-    private def markFree(sym: Symbol, enclosure: Symbol)(using Context): Symbol = try {
-      if (!enclosure.exists) throw new NoPath
-      if (enclosure == sym.enclosure) NoSymbol
-      else {
-        def nestedInConstructor(sym: Symbol): Boolean =
-          sym.isConstructor ||
-          sym.isTerm && nestedInConstructor(sym.enclosure)
-        report.debuglog(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
-        val intermediate =
-          if (enclosure.is(PackageClass)) enclosure
-          else if (enclosure.isConstructor) markFree(sym, enclosure.owner.enclosure)
-          else markFree(sym, enclosure.enclosure)
-        if (intermediate.exists) narrowLiftedOwner(enclosure, intermediate)
-        if !intermediate.isRealClass || nestedInConstructor(enclosure) then
-          // Constructors and methods nested inside traits get the free variables
-          // of the enclosing trait or class.
-          // Conversely, local traits do not get free variables.
-          // Methods inside constructors also don't have intermediates,
-          // need to get all their free variables passed directly.
-          if (!enclosure.is(Trait))
-            if (symSet(free, enclosure).add(sym)) {
-              changedFreeVars = true
-              report.log(i"$sym is free in $enclosure")
-            }
-        if (intermediate.isRealClass) intermediate
-        else if (enclosure.isRealClass) enclosure
-        else if (intermediate.isClass) intermediate
-        else if (enclosure.isClass) enclosure
-        else NoSymbol
-      }
-    }
-    catch {
-      case ex: NoPath =>
-        println(i"error lambda lifting ${ctx.compilationUnit}: $sym is not visible from $enclosure")
-        throw ex
-    }
-
-    private def markCalled(callee: Symbol, caller: Symbol)(using Context): Unit = {
-      report.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller in ${caller.owner}")
-      assert(isLocal(callee))
-      symSet(called, caller) += callee
-      if (callee.enclosingClass != caller.enclosingClass) calledFromInner += callee
-    }
-
-    private class CollectDependencies extends TreeTraverser {
-      def traverse(tree: Tree)(using Context) = try { //debug
-        val sym = tree.symbol
-
-        def enclosure = ctx.owner.enclosingMethod
-
-        def narrowTo(thisClass: ClassSymbol) = {
-          val enclMethod = enclosure
-          val enclClass = enclMethod.enclosingClass
-          narrowLiftedOwner(enclMethod,
-            if (enclClass.isContainedIn(thisClass)) thisClass
-            else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
-        }
-
-        tree match {
-          case tree: Ident =>
-            if (isLocal(sym))
-              if (sym is Method) markCalled(sym, enclosure)
-              else if (sym.isTerm) markFree(sym, enclosure)
-            def captureImplicitThis(x: Type): Unit =
-              x match {
-                case tr@TermRef(x, _) if (!tr.termSymbol.isStatic) => captureImplicitThis(x)
-                case x: ThisType if (!x.tref.typeSymbol.isStaticOwner) => narrowTo(x.tref.typeSymbol.asClass)
-                case _ =>
-              }
-            captureImplicitThis(tree.tpe)
-          case tree: Select =>
-            if (sym.is(Method) && isLocal(sym)) markCalled(sym, enclosure)
-          case tree: This =>
-            narrowTo(tree.symbol.asClass)
-          case tree: DefDef =>
-            if (sym.owner.isTerm)
-              liftedOwner(sym) = sym.enclosingPackageClass
-                // this will make methods in supercall constructors of top-level classes owned
-                // by the enclosing package, which means they will be static.
-                // On the other hand, all other methods will be indirectly owned by their
-                // top-level class. This avoids possible deadlocks when a static method
-                // has to access its enclosing object from the outside.
-            else if (sym.isConstructor) {
-              if (sym.isPrimaryConstructor && isLocal(sym.owner) && !sym.owner.is(Trait))
-                // add a call edge from the constructor of a local non-trait class to
-                // the class itself. This is done so that the constructor inherits
-                // the free variables of the class.
-                symSet(called, sym) += sym.owner
-
-              tree.termParamss.head.find(_.name == nme.OUTER) match {
-                case Some(vdef) => outerParam(sym) = vdef.symbol
-                case _ =>
-              }
-            }
-          case tree: TypeDef =>
-            if (sym.owner.isTerm) liftedOwner(sym) = sym.topLevelClass.owner
-          case tree: Template =>
-            liftedDefs(tree.symbol.owner) = new mutable.ListBuffer
-          case _ =>
-        }
-        traverseChildren(tree)
-      }
-      catch { //debug
-        case ex: Exception =>
-          println(i"$ex while traversing $tree")
-          throw ex
-      }
-    }
-
-    /** Compute final free variables map `fvs by closing over caller dependencies. */
-    private def computeFreeVars()(using Context): Unit =
-      while ({
-        changedFreeVars = false
-        for {
-          caller <- called.keys
-          callee <- called(caller)
-          fvs <- free get callee
-          fv <- fvs
-        }
-        markFree(fv, caller)
-        changedFreeVars
-      })
-      ()
-
-    /** Compute final liftedOwner map by closing over caller dependencies */
-    private def computeLiftedOwners()(using Context): Unit =
-      while ({
-        changedLiftedOwner = false
-        for {
-          caller <- called.keys
-          callee <- called(caller)
-        }
-        {
-          val normalizedCallee = callee.skipConstructor
-          val calleeOwner = normalizedCallee.owner
-          if (calleeOwner.isTerm) narrowLiftedOwner(caller, liftedOwner(normalizedCallee))
-          else {
-            assert(calleeOwner.is(Trait))
-            // methods nested inside local trait methods cannot be lifted out
-            // beyond the trait. Note that we can also call a trait method through
-            // a qualifier; in that case no restriction to lifted owner arises.
-            if (caller.isContainedIn(calleeOwner))
-              narrowLiftedOwner(caller, calleeOwner)
-          }
-        }
-        changedLiftedOwner
-      })
-      ()
+    def proxies(sym: Symbol): List[Symbol] =
+      deps.freeVars(sym).toList.map(proxyOf(sym, _))
 
     private def newName(sym: Symbol)(using Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method))
@@ -305,19 +68,18 @@ object LambdaLift {
       else sym.name.freshened
 
     private def generateProxies()(using Context): Unit =
-      for ((owner, freeValues) <- free.iterator) {
+      for owner <- deps.tracked do
+        val fvs = deps.freeVars(owner).toList
         val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
-        report.debuglog(i"free var proxy of ${owner.showLocated}: ${freeValues.toList}%, %")
-        proxyMap(owner) = {
-          for (fv <- freeValues.toList) yield {
+        report.debuglog(i"free var proxy of ${owner.showLocated}: $fvs%, %")
+        val freeProxyPairs =
+          for fv <- fvs yield
             val proxyName = newName(fv)
             val proxy =
               newSymbol(owner, proxyName.asTermName, newFlags, fv.info, coord = fv.coord)
                 .enteredAfter(thisPhase)
             (fv, proxy)
-          }
-        }.toMap
-      }
+        proxyMap(owner) = freeProxyPairs.toMap
 
     private def liftedInfo(local: Symbol)(using Context): Type = local.info match {
       case MethodTpe(pnames, ptypes, restpe) =>
@@ -330,7 +92,7 @@ object LambdaLift {
     }
 
     private def liftLocals()(using Context): Unit = {
-      for ((local, lOwner) <- liftedOwner) {
+      for ((local, lOwner) <- deps.logicalOwner) {
         val (newOwner, maybeStatic) =
           if (lOwner is Package) {
             val encClass = local.enclosingClass
@@ -365,20 +127,9 @@ object LambdaLift {
           initFlags = initFlags,
           info = liftedInfo(local)).installAfter(thisPhase)
       }
-      for (local <- free.keys)
-        if (!liftedOwner.contains(local))
+      for (local <- deps.tracked)
+        if (!deps.logicalOwner.contains(local))
           local.copySymDenotation(info = liftedInfo(local)).installAfter(thisPhase)
-    }
-
-    // initialization
-    atPhase(thisPhase) {
-      (new CollectDependencies).traverse(ctx.compilationUnit.tpdTree)
-      computeFreeVars()
-      computeLiftedOwners()
-    }
-    atPhase(thisPhase.next) {
-      generateProxies()
-      liftLocals()
     }
 
     def currentEnclosure(using Context): Symbol =
@@ -388,7 +139,8 @@ object LambdaLift {
       sym.enclosure == currentEnclosure
 
     private def proxy(sym: Symbol)(using Context): Symbol = {
-      def liftedEnclosure(sym: Symbol) = liftedOwner.getOrElse(sym, sym.enclosure)
+      def liftedEnclosure(sym: Symbol) =
+        deps.logicalOwner.getOrElse(sym, sym.enclosure)
       def searchIn(enclosure: Symbol): Symbol = {
         if (!enclosure.exists) {
           def enclosures(encl: Symbol): List[Symbol] =
@@ -429,10 +181,8 @@ object LambdaLift {
     }
 
     def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
-      free get sym match {
-        case Some(fvs) => fvs.toList.map(proxyRef(_)) ++ args
-        case _ => args
-      }
+      val fvs = deps.freeVars(sym)
+      if fvs.nonEmpty then fvs.toList.map(proxyRef(_)) ++ args else args
 
     def addFreeParams(tree: Tree, proxies: List[Symbol])(using Context): Tree = proxies match {
       case Nil => tree
@@ -445,7 +195,7 @@ object LambdaLift {
 
         /** Initialize proxy fields from proxy parameters and map `rhs` from fields to parameters */
         def copyParams(rhs: Tree) = {
-          val fvs = freeVars(sym.owner)
+          val fvs = deps.freeVars(sym.owner).toList
           val classProxies = fvs.map(proxyOf(sym.owner, _))
           val constrProxies = fvs.map(proxyOf(sym, _))
           report.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
@@ -470,9 +220,15 @@ object LambdaLift {
       EmptyTree
     }
 
-    def needsLifting(sym: Symbol): Boolean = liftedOwner contains sym
-  }
-}
+    def needsLifting(sym: Symbol): Boolean = deps.logicalOwner.contains(sym)
+
+    // initialization
+    atPhase(thisPhase.next) {
+      generateProxies()
+      liftLocals()
+    }
+  end Lifter
+end LambdaLift
 
 /** This phase performs the necessary rewritings to eliminate classes and methods
  *  nested in other methods. In detail:
@@ -558,7 +314,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     // reload them manually here.
     // Note: If you tweak this code, make sure to test your changes with
     // `Config.reuseSymDenotations` set to false to exercise this path more.
-    if denot.isInstanceOf[NonSymSingleDenotation] && lifter.free.contains(sym) then
+    if denot.isInstanceOf[NonSymSingleDenotation] && lifter.deps.freeVars(sym).nonEmpty then
       tree.qualifier.select(sym).withSpan(tree.span)
     else tree
 
@@ -572,7 +328,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val sym = tree.symbol
     val lft = lifter
     val paramsAdded =
-      if (lft.free.contains(sym)) lft.addFreeParams(tree, lft.proxies(sym)).asInstanceOf[DefDef]
+      if lft.deps.freeVars(sym).nonEmpty then lft.addFreeParams(tree, lft.proxies(sym)).asInstanceOf[DefDef]
       else tree
     if (lft.needsLifting(sym)) lft.liftDef(paramsAdded)
     else paramsAdded

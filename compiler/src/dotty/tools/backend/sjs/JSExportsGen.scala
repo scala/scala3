@@ -390,7 +390,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         None
       } else {
         val formalArgsRegistry = new FormalArgsRegistry(1, false)
-        val List(arg) = formalArgsRegistry.genFormalArgs()
+        val (List(arg), None) = formalArgsRegistry.genFormalArgs()
         val body = genExportSameArgc(jsName, formalArgsRegistry, setters.map(Exported.apply), static, None)
         Some((arg, body))
       }
@@ -425,7 +425,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val formalArgsRegistry = new FormalArgsRegistry(minArgc, needsRestParam)
 
     // Generate the list of formal parameters
-    val formalArgs = formalArgsRegistry.genFormalArgs()
+    val (formalArgs, restParam) = formalArgsRegistry.genFormalArgs()
 
     /* Generate the body
      * We have a fast-path for methods that are not overloaded. In addition to
@@ -440,7 +440,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       if (alts.tail.isEmpty) genApplyForSingleExported(formalArgsRegistry, alts.head, static)
       else genExportMethodMultiAlts(formalArgsRegistry, maxNonRepeatedArgc, alts, jsName, static)
 
-    js.JSMethodDef(flags, genExpr(jsName), formalArgs, body)(OptimizerHints.empty, None)
+    js.JSMethodDef(flags, genExpr(jsName), formalArgs, restParam, body)(OptimizerHints.empty, None)
   }
 
   private def genExportMethodMultiAlts(formalArgsRegistry: FormalArgsRegistry,
@@ -774,7 +774,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     else sym.owner
 
   private def defaultGetterDenot(targetSym: Symbol, sym: Symbol, paramIndex: Int): Denotation =
-    targetSym.info.member(DefaultGetterName(sym.name.asTermName, paramIndex))
+    targetSym.info.memberBasedOnFlags(DefaultGetterName(sym.name.asTermName, paramIndex), excluded = Bridge)
 
   private def defaultGetterDenot(sym: Symbol, paramIndex: Int): Denotation =
     defaultGetterDenot(targetSymForDefaultGetter(sym), sym, paramIndex)
@@ -855,7 +855,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         implicit val pos: Position = sym.span
         for ((name, info) <- namesAndInfosNow) yield {
           js.ParamDef(freshLocalIdent(name.mangledString), NoOriginalName, toIRType(info),
-              mutable = false, rest = false)
+              mutable = false)
         }
       }
 
@@ -1047,18 +1047,19 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       if (needsRestParam) freshLocalIdent("rest")(NoPosition).name
       else null
 
-    def genFormalArgs()(implicit pos: Position): List[js.ParamDef] = {
+    def genFormalArgs()(implicit pos: Position): (List[js.ParamDef], Option[js.ParamDef]) = {
       val fixedParamDefs = fixedParamNames.toList.map { paramName =>
-        js.ParamDef(js.LocalIdent(paramName), NoOriginalName, jstpe.AnyType, mutable = false, rest = false)
+        js.ParamDef(js.LocalIdent(paramName), NoOriginalName, jstpe.AnyType, mutable = false)
       }
 
-      if (needsRestParam) {
-        val restParamDef =
-          js.ParamDef(js.LocalIdent(restParamName), NoOriginalName, jstpe.AnyType, mutable = false, rest = true)
-        fixedParamDefs :+ restParamDef
-      } else {
-        fixedParamDefs
+      val restParam = {
+        if (needsRestParam)
+          Some(js.ParamDef(js.LocalIdent(restParamName), NoOriginalName, jstpe.AnyType, mutable = false))
+        else
+          None
       }
+
+      (fixedParamDefs, restParam)
     }
 
     def genArgRef(index: Int)(implicit pos: Position): js.Tree = {
@@ -1082,14 +1083,14 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
     }
 
-    def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.Tree] = {
+    def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.TreeOrJSSpread] = {
       val fixedArgRefs = fixedParamNames.toList.map { paramName =>
         js.VarRef(js.LocalIdent(paramName))(jstpe.AnyType)
       }
 
       if (needsRestParam) {
         val restArgRef = js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
-        fixedArgRefs :+ restArgRef
+        fixedArgRefs :+ js.JSSpread(restArgRef)
       } else {
         fixedArgRefs
       }

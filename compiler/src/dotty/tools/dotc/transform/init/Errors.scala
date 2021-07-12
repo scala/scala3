@@ -9,10 +9,8 @@ import core._
 import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
 
-import Effects._, Potentials._
-
 object Errors {
-  type Errors = List[Error]
+  type Errors = Seq[Error]
   val empty: Errors = Nil
 
   def show(errs: Errors)(using Context): String =
@@ -20,7 +18,7 @@ object Errors {
 
   sealed trait Error {
     def source: Tree
-    def trace: Vector[Tree]
+    def trace: Seq[Tree]
     def show(using Context): String
 
     def issue(using Context): Unit =
@@ -60,7 +58,7 @@ object Errors {
   }
 
   /** Access non-initialized field */
-  case class AccessNonInit(field: Symbol, trace: Vector[Tree]) extends Error {
+  case class AccessNonInit(field: Symbol, trace: Seq[Tree]) extends Error {
     def source: Tree = trace.last
     def show(using Context): String =
       "Access non-initialized " + field.show + "."
@@ -70,39 +68,28 @@ object Errors {
   }
 
   /** Promote `this` under initialization to fully-initialized */
-  case class PromoteThis(pot: ThisRef, source: Tree, trace: Vector[Tree]) extends Error {
-    def show(using Context): String = "Promote the value under initialization to fully-initialized."
+  case class PromoteError(msg: String, source: Tree, trace: Seq[Tree]) extends Error {
+    def show(using Context): String = "Promote the value under initialization to fully-initialized. " + msg + "."
   }
 
-  /** Promote `this` under initialization to fully-initialized */
-  case class PromoteWarm(pot: Warm, source: Tree, trace: Vector[Tree]) extends Error {
+  case class AccessCold(field: Symbol, source: Tree, trace: Seq[Tree]) extends Error {
     def show(using Context): String =
-      "Promoting the value under initialization to fully-initialized."
+      "Access field " + source.show + " on a value with an unknown initialization status."
   }
 
-  /** Promote a cold value under initialization to fully-initialized */
-  case class PromoteCold(source: Tree, trace: Vector[Tree]) extends Error {
-    def show(using Context): String =
-      "Promoting the value " + source.show + " to fully-initialized while it is under initialization" + "."
-  }
-
-  case class AccessCold(field: Symbol, source: Tree, trace: Vector[Tree]) extends Error {
-    def show(using Context): String =
-      "Access field " + source.show + " on a value with an unknown initialization status" + "."
-  }
-
-  case class CallCold(meth: Symbol, source: Tree, trace: Vector[Tree]) extends Error {
+  case class CallCold(meth: Symbol, source: Tree, trace: Seq[Tree]) extends Error {
     def show(using Context): String =
       "Call method " + source.show + " on a value with an unknown initialization" + "."
   }
 
-  case class CallUnknown(meth: Symbol, source: Tree, trace: Vector[Tree]) extends Error {
+  case class CallUnknown(meth: Symbol, source: Tree, trace: Seq[Tree]) extends Error {
     def show(using Context): String =
-      "Calling the external method " + meth.show + " may cause initialization errors" + "."
+      val prefix = if meth.is(Flags.Method) then "Calling the external method " else "Accessing the external field"
+      prefix + meth.show + " may cause initialization errors" + "."
   }
 
   /** Promote a value under initialization to fully-initialized */
-  case class UnsafePromotion(pot: Potential, source: Tree, trace: Vector[Tree], errors: Errors) extends Error {
+  case class UnsafePromotion(msg: String, source: Tree, trace: Seq[Tree], errors: Errors) extends Error {
     assert(errors.nonEmpty)
 
     override def issue(using Context): Unit =
@@ -110,7 +97,7 @@ object Errors {
 
     def show(using Context): String = {
       var index = 0
-      "Promoting the value to fully-initialized is unsafe.\n" + stacktrace +
+      "Promoting the value to fully-initialized is unsafe. " + msg + "\n" + stacktrace +
         "\nThe unsafe promotion may cause the following problem(s):\n" +
         (errors.flatMap(_.flatten).map { error =>
           index += 1

@@ -1,4 +1,5 @@
 scala> def foo(x: Option[Int]) = x match { case None => }
+-- Warning:
 1 | def foo(x: Option[Int]) = x match { case None => }
   |                           ^
   |                           match may not be exhaustive.

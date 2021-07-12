@@ -24,7 +24,7 @@ object JSConstructorGen {
       reportError: String => Unit)(
       implicit pos: Position): js.JSMethodDef = {
 
-    val js.JSMethodDef(_, dispatchName, dispatchArgs, dispatchResolution) =
+    val js.JSMethodDef(_, dispatchName, dispatchArgs, dispatchRestParam, dispatchResolution) =
       dispatch
 
     val jsConstructorBuilder = mkJSConstructorBuilder(ctors, reportError)
@@ -50,7 +50,7 @@ object JSConstructorGen {
     val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
         primaryCtorBody :: postPrimaryCtorBody :: js.Undefined() :: Nil)
 
-    js.JSMethodDef(js.MemberFlags.empty, dispatchName, dispatchArgs, newBody)(
+    js.JSMethodDef(js.MemberFlags.empty, dispatchName, dispatchArgs, dispatchRestParam, newBody)(
         dispatch.optimizerHints, None)
   }
 

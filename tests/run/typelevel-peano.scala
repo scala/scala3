@@ -1,5 +1,6 @@
 
 import compiletime.*
+import compiletime.ops.int.*
 
 object Test extends App {
 

@@ -1,7 +1,7 @@
 object Test {
 
   // Can't allocate an IArray
-  new IArray[String](10)  // error: not a class type // error: too many arguments
+  new IArray[String](10)  // error: does not have a constructor
 
   val xs = IArray(1, 2, 3)
 

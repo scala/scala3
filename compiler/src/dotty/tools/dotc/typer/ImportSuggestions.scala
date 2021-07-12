@@ -2,11 +2,13 @@ package dotty.tools
 package dotc
 package typer
 
+import backend.sjs.JSDefinitions
 import core._
 import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
 import Flags._, SymDenotations._
 import NameKinds.FlatName
 import NameOps._
+import StdNames._
 import config.Printers.{implicits, implicitsDetailed}
 import util.Spans.Span
 import ast.{untpd, tpd}
@@ -64,6 +66,8 @@ trait ImportSuggestions:
         else !root.name.is(FlatName)
           && !root.name.lastPart.contains('$')
           && root.is(ModuleVal, butNot = JavaDefined)
+          // The implicits in `scalajs.js.|` are implementation details and shouldn't be suggested
+          && !(root.name == nme.raw.BAR && ctx.settings.scalajs.value && root == JSDefinitions.jsdefn.PseudoUnionModule)
       }
 
     def nestedRoots(site: Type)(using Context): List[Symbol] =
@@ -163,12 +167,15 @@ trait ImportSuggestions:
       allCandidates.map(_.implicitRef.underlyingRef.symbol).toSet
     }
 
+    def testContext(): Context =
+      ctx.fresh.retractMode(Mode.ImplicitsEnabled).setExploreTyperState()
+
     /** Test whether the head of a given instance matches the expected type `pt`,
      *  ignoring any dependent implicit arguments.
      */
     def shallowTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
-      && inContext(ctx.fresh.setExploreTyperState()) {
+      && inContext(testContext()) {
         def test(pt: Type): Boolean = pt match
           case ViewProto(argType, OrType(rt1, rt2)) =>
             // Union types do not constrain results, since comparison with a union
@@ -205,7 +212,7 @@ trait ImportSuggestions:
         try
           timer.schedule(task, testOneImplicitTimeOut)
           typedImplicit(candidate, expectedType, argument, span)(
-            using ctx.fresh.setExploreTyperState()).isSuccess
+            using testContext()).isSuccess
         finally
           if task.cancel() then // timer task has not run yet
             assert(!ctx.run.isCancelled)

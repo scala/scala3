@@ -8,7 +8,7 @@ def f(x: Int)(using c: C) (y: Int) = x + c.x + y
 def g(x: Int)(using d: D) (y: d.T): d.T = d.trans(y)
 
 @main def Test =
-  given C(1) with {}
+  given C(1)
   val x = f
   assert(x(2)(3) == 6)
 

@@ -41,7 +41,7 @@ class SiteGeneratationTest extends BaseHtmlTest:
     checkFile("docs/index.html")(title = projectName, header = s"$projectName in header")
 
   def testMainIndexPage()(using ProjectContext) =
-    checkFile("index.html")(title = "Basic test", header = "Header", parents = Seq(projectName), indexLinks)
+    checkFile("index.html")(title = "Basic test", header = "Header", parents = Seq(), indexLinks)
 
   def testApiPages(
     mainTitle: String = "API",
@@ -96,4 +96,18 @@ class SiteGeneratationTest extends BaseHtmlTest:
   @Test
   def noExistingDocs() = withGeneratedSite(testDocPath.resolve("noExisting")){
     testApiPages(mainTitle = projectName, parents = Nil)
+  }
+
+  @Test
+  def staticLinking() = withGeneratedSite(testDocPath.resolve("static-links")){
+
+    withHtmlFile("docs/Adoc.html"){ content  =>
+        content.assertAttr("p a","href",
+        "dir/html.html",
+        "dir/name...with..dots..html",
+        "dir/name.with.md.and.html.html",
+        "dir/nested.html",
+        "dir/nested.svg"
+        )
+    }
   }

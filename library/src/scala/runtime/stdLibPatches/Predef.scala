@@ -35,12 +35,15 @@ object Predef:
 
   // Extension methods for working with explicit nulls
 
-  /** Strips away the nullability from a value.
-   *  e.g.
-   *    val s1: String|Null = "hello"
-   *    val s: String = s1.nn
+  /** Strips away the nullability from a value. Note that `.nn` performs a checked cast,
+   *  so if invoked on a `null` value it will throw an `NullPointerException`.
+   *  @example {{{
+   *  val s1: String | Null = "hello"
+   *  val s2: String = s1.nn
    *
-   *  Note that `.nn` performs a checked cast, so if invoked on a null value it'll throw an NPE.
+   *  val s3: String | Null = null
+   *  val s4: String = s3.nn // throw NullPointerException
+   *  }}}
    */
   extension [T](x: T | Null) inline def nn: x.type & T =
     scala.runtime.Scala3RunTime.nn(x)

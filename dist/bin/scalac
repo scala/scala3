@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-if [ -z "$PROG_HOME" ] ; then
+# Try to autodetect real location of the script
+if [ -z "${PROG_HOME-}" ] ; then
   ## resolve links - $0 may be a link to PROG_HOME
   PRG="$0"
 
@@ -27,70 +28,21 @@ fi
 
 source "$PROG_HOME/bin/common"
 
-default_java_opts="-Xmx768m -Xms768m"
+[ -z "$PROG_NAME" ] && PROG_NAME=$CompilerMain
+
 withCompiler=true
 
-CompilerMain=dotty.tools.dotc.Main
-DecompilerMain=dotty.tools.dotc.decompiler.Main
-ReplMain=dotty.tools.repl.Main
-ScriptingMain=dotty.tools.scripting.Main
-
-PROG_NAME=$CompilerMain
-
-addJava () {
-  java_args+=("'$1'")
-}
-addScala () {
-  scala_args+=("'$1'")
-}
-addResidual () {
-  residual_args+=("'$1'")
-}
-addScripting () {
-  scripting_args+=("'$1'")
-}
-
-classpathArgs () {
-  # echo "dotty-compiler: $DOTTY_COMP"
-  # echo "dotty-interface: $DOTTY_INTF"
-  # echo "dotty-library: $DOTTY_LIB"
-  # echo "tasty-core: $TASTY_CORE"
-  # echo "scala-asm: $SCALA_ASM"
-  # echo "scala-lib: $SCALA_LIB"
-  # echo "sbt-intface: $SBT_INTF"
-
-  toolchain=""
-  toolchain+="$SCALA_LIB$PSEP"
-  toolchain+="$DOTTY_LIB$PSEP"
-  toolchain+="$SCALA_ASM$PSEP"
-  toolchain+="$SBT_INTF$PSEP"
-  toolchain+="$DOTTY_INTF$PSEP"
-  toolchain+="$DOTTY_COMP$PSEP"
-  toolchain+="$TASTY_CORE$PSEP"
-  toolchain+="$DOTTY_STAGING$PSEP"
-  toolchain+="$DOTTY_TASTY_INSPECTOR$PSEP"
-
-  # jine
-  toolchain+="$JLINE_READER$PSEP"
-  toolchain+="$JLINE_TERMINAL$PSEP"
-  toolchain+="$JLINE_TERMINAL_JNA$PSEP"
-  toolchain+="$JNA$PSEP"
-
-  jvm_cp_args="-classpath \"$toolchain\""
-}
-
-in_scripting_args=false
 while [[ $# -gt 0 ]]; do
 case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
   -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
-       -debug) DEBUG="$DEBUG_STR" && shift ;;
     -q|-quiet) quiet=true && shift ;;
 
     # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
     -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
         -repl) PROG_NAME="$ReplMain" && shift ;;
-      -script) PROG_NAME="$ScriptingMain" && target_script="$2" && in_scripting_args=true && shift && shift ;;
+      -script) PROG_NAME="$ScriptingMain" && target_script="$2" && shift && shift
+               while [[ $# -gt 0 ]]; do addScript "$1" && shift ; done ;;
      -compile) PROG_NAME="$CompilerMain" && shift ;;
    -decompile) PROG_NAME="$DecompilerMain" && shift ;;
  -print-tasty) PROG_NAME="$DecompilerMain" && addScala "-print-tasty" && shift ;;
@@ -104,31 +56,30 @@ case "$1" in
           # will be available as system properties.
           -D*) addJava "$1" && shift ;;
           -J*) addJava "${1:2}" && shift ;;
-            *) if [ $in_scripting_args == false ]; then
-                addResidual "$1"
-               else
-                addScripting "$1"
-               fi
-               shift
-               ;;
+            *) addResidual "$1" && shift ;;
   esac
 done
 
-classpathArgs
+compilerJavaClasspathArgs
 
 if [ "$PROG_NAME" == "$ScriptingMain" ]; then
-  scripting_string="-script $target_script ${scripting_args[@]}"
+  setScriptName="-Dscript.path=$target_script"
+  scripting_string="-script $target_script ${script_args[@]}"
 fi
 
+[ -n "$script_trace" ] && set -x
+[ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405
+
+# exec here would prevent onExit from being called, leaving terminal in unusable state
 eval "\"$JAVACMD\"" \
-     ${JAVA_OPTS:-$default_java_opts} \
-     "${DEBUG-}" \
-     "${java_args[@]}" \
-     "$jvm_cp_args" \
-     -Dscala.usejavacp=true \
-     "$PROG_NAME"  \
-     "${scala_args[@]}" \
-     "${residual_args[@]}" \
-     "${scripting_string-}"
+   ${JAVA_OPTS:-$default_java_opts} \
+   "${java_args[@]}" \
+   "-classpath \"$jvm_cp_args\"" \
+   -Dscala.usejavacp=true \
+   "$setScriptName" \
+   "$PROG_NAME"  \
+   "${scala_args[@]}" \
+   "${residual_args[@]}" \
+   "${scripting_string-}"
 scala_exit_status=$?
-onExit
+

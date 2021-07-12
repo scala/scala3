@@ -6,42 +6,42 @@ title: "Opaque Type Aliases"
 Opaque types aliases provide type abstraction without any overhead. Example:
 
 ```scala
-object Logarithms:
+object MyMath:
 
-   opaque type Logarithm = Double
+  opaque type Logarithm = Double
 
-   object Logarithm:
+  object Logarithm:
 
-      // These are the two ways to lift to the Logarithm type
+    // These are the two ways to lift to the Logarithm type
 
-      def apply(d: Double): Logarithm = math.log(d)
+    def apply(d: Double): Logarithm = math.log(d)
 
-      def safe(d: Double): Option[Logarithm] =
-         if d > 0.0 then Some(math.log(d)) else None
+    def safe(d: Double): Option[Logarithm] =
+      if d > 0.0 then Some(math.log(d)) else None
 
-   end Logarithm
+  end Logarithm
 
-   // Extension methods define opaque types' public APIs
-   extension (x: Logarithm)
-      def toDouble: Double = math.exp(x)
-      def + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
-      def * (y: Logarithm): Logarithm = x + y
+  // Extension methods define opaque types' public APIs
+  extension (x: Logarithm)
+    def toDouble: Double = math.exp(x)
+    def + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
+    def * (y: Logarithm): Logarithm = x + y
 
-end Logarithms
+end MyMath
 ```
 
 This introduces `Logarithm` as a new abstract type, which is implemented as `Double`.
 The fact that `Logarithm` is the same as `Double` is only known in the scope where
-`Logarithm` is defined which in the above example corresponds to the object `Logarithms`.
+`Logarithm` is defined which in the above example corresponds to the object `MyMath`.
 Or in other words, within the scope it is treated as type alias, but this is opaque to the outside world
 where in consequence `Logarithm` is seen as an abstract type and has nothing to do with `Double`.
 
 The public API of `Logarithm` consists of the `apply` and `safe` methods defined in the companion object.
 They convert from `Double`s to `Logarithm` values. Moreover, an operation `toDouble` that converts the other way, and operations `+` and `*` are defined as extension methods on `Logarithm` values.
-The following operations would be valid because they use functionality implemented in the `Logarithms` object.
+The following operations would be valid because they use functionality implemented in the `MyMath` object.
 
 ```scala
-import Logarithms.Logarithm
+import MyMath.Logarithm
 
 val l = Logarithm(1.0)
 val l2 = Logarithm(2.0)
@@ -65,24 +65,24 @@ Opaque type aliases can also come with bounds. Example:
 ```scala
 object Access:
 
-   opaque type Permissions = Int
-   opaque type PermissionChoice = Int
-   opaque type Permission <: Permissions & PermissionChoice = Int
+  opaque type Permissions = Int
+  opaque type PermissionChoice = Int
+  opaque type Permission <: Permissions & PermissionChoice = Int
 
-   extension (x: Permissions)
-      def & (y: Permissions): Permissions = x | y
-   extension (x: PermissionChoice)
-      def | (y: PermissionChoice): PermissionChoice = x | y
-   extension (granted: Permissions)
-      def is(required: Permissions) = (granted & required) == required
-   extension (granted: Permissions)
-      def isOneOf(required: PermissionChoice) = (granted & required) != 0
+  extension (x: Permissions)
+    def & (y: Permissions): Permissions = x | y
+  extension (x: PermissionChoice)
+    def | (y: PermissionChoice): PermissionChoice = x | y
+  extension (granted: Permissions)
+    def is(required: Permissions) = (granted & required) == required
+  extension (granted: Permissions)
+    def isOneOf(required: PermissionChoice) = (granted & required) != 0
 
-   val NoPermission: Permission = 0
-   val Read: Permission = 1
-   val Write: Permission = 2
-   val ReadWrite: Permissions = Read | Write
-   val ReadOrWrite: PermissionChoice = Read | Write
+  val NoPermission: Permission = 0
+  val Read: Permission = 1
+  val Write: Permission = 2
+  val ReadWrite: Permissions = Read | Write
+  val ReadOrWrite: PermissionChoice = Read | Write
 
 end Access
 ```
@@ -111,22 +111,22 @@ two types.  Hence, the following usage scenario type-checks.
 
 ```scala
 object User:
-   import Access.*
+  import Access.*
 
-   case class Item(rights: Permissions)
+  case class Item(rights: Permissions)
 
-   val roItem = Item(Read)  // OK, since Permission <: Permissions
-   val rwItem = Item(ReadWrite)
-   val noItem = Item(NoPermission)
+  val roItem = Item(Read)  // OK, since Permission <: Permissions
+  val rwItem = Item(ReadWrite)
+  val noItem = Item(NoPermission)
 
-   assert(!roItem.rights.is(ReadWrite))
-   assert(roItem.rights.isOneOf(ReadOrWrite))
+  assert(!roItem.rights.is(ReadWrite))
+  assert(roItem.rights.isOneOf(ReadOrWrite))
 
-   assert(rwItem.rights.is(ReadWrite))
-   assert(rwItem.rights.isOneOf(ReadOrWrite))
+  assert(rwItem.rights.is(ReadWrite))
+  assert(rwItem.rights.isOneOf(ReadOrWrite))
 
-   assert(!noItem.rights.is(ReadWrite))
-   assert(!noItem.rights.isOneOf(ReadOrWrite))
+  assert(!noItem.rights.is(ReadWrite))
+  assert(!noItem.rights.isOneOf(ReadOrWrite))
 end User
 ```
 
@@ -141,14 +141,14 @@ For example, we can redefine the above example of Logarithms as a class.
 ```scala
 class Logarithms:
 
-   opaque type Logarithm = Double
+  opaque type Logarithm = Double
 
-   def apply(d: Double): Logarithm = math.log(d)
+  def apply(d: Double): Logarithm = math.log(d)
 
-   def safe(d: Double): Option[Logarithm] =
-      if d > 0.0 then Some(math.log(d)) else None
+  def safe(d: Double): Option[Logarithm] =
+    if d > 0.0 then Some(math.log(d)) else None
 
-   def mul(x: Logarithm, y: Logarithm) = x + y
+  def mul(x: Logarithm, y: Logarithm) = x + y
 ```
 
 Opaque type members of different instances are treated as different:

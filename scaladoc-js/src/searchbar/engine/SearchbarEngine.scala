@@ -1,6 +1,7 @@
 package dotty.tools.scaladoc
 
 import math.Ordering.Implicits.seqOrdering
+import org.scalajs.dom.Node
 
 class SearchbarEngine(pages: List[PageEntry]):
   def query(query: List[Matchers]): List[PageEntry] =

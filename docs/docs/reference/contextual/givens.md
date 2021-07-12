@@ -8,23 +8,23 @@ that serve for synthesizing arguments to [context parameters](./using-clauses.md
 
 ```scala
 trait Ord[T]:
-   def compare(x: T, y: T): Int
-   extension (x: T) def < (y: T) = compare(x, y) < 0
-   extension (x: T) def > (y: T) = compare(x, y) > 0
+  def compare(x: T, y: T): Int
+  extension (x: T) def < (y: T) = compare(x, y) < 0
+  extension (x: T) def > (y: T) = compare(x, y) > 0
 
 given intOrd: Ord[Int] with
-   def compare(x: Int, y: Int) =
-      if x < y then -1 else if x > y then +1 else 0
+  def compare(x: Int, y: Int) =
+    if x < y then -1 else if x > y then +1 else 0
 
 given listOrd[T](using ord: Ord[T]): Ord[List[T]] with
 
-   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match
-      case (Nil, Nil) => 0
-      case (Nil, _) => -1
-      case (_, Nil) => +1
-      case (x :: xs1, y :: ys1) =>
-         val fst = ord.compare(x, y)
-         if fst != 0 then fst else compare(xs1, ys1)
+  def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match
+    case (Nil, Nil) => 0
+    case (Nil, _) => -1
+    case (_, Nil) => +1
+    case (x :: xs1, y :: ys1) =>
+      val fst = ord.compare(x, y)
+      if fst != 0 then fst else compare(xs1, ys1)
 
 ```
 
@@ -42,9 +42,9 @@ of the last section can also be expressed like this:
 
 ```scala
 given Ord[Int] with
-   ...
+  ...
 given [T](using Ord[T]): Ord[List[T]] with
-   ...
+  ...
 ```
 
 If the name of a given is missing, the compiler will synthesize a name from
@@ -107,7 +107,7 @@ Given instances can also appear in patterns. Example:
 for given Context <- applicationContexts do
 
 pair match
-   case (ctx @ given Context, y) => ...
+  case (ctx @ given Context, y) => ...
 ```
 
 In the first fragment above, anonymous given instances for class `Context` are established by enumerating over `applicationContexts`. In the second fragment, a given `Context`
@@ -131,13 +131,13 @@ trait Tagged[A]
 
 case class Foo[A](value: Boolean)
 object Foo:
-   given fooTagged[A](using Tagged[A]): Foo[A] = Foo(true)
-   given fooNotTagged[A](using NotGiven[Tagged[A]]): Foo[A] = Foo(false)
+  given fooTagged[A](using Tagged[A]): Foo[A] = Foo(true)
+  given fooNotTagged[A](using NotGiven[Tagged[A]]): Foo[A] = Foo(false)
 
 @main def test(): Unit =
-   given Tagged[Int] with {}
-   assert(summon[Foo[Int]].value) // fooTagged is found
-   assert(!summon[Foo[String]].value) // fooNotTagged is found
+  given Tagged[Int]()
+  assert(summon[Foo[Int]].value) // fooTagged is found
+  assert(!summon[Foo[String]].value) // fooNotTagged is found
 ```
 
 ## Given Instance Initialization

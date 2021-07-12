@@ -11,8 +11,8 @@ object Test {
 
   def h(x: Int) given () = x // error: missing return type
 
-  given C: C(11) with {}
-  given D: D(11) with {}
+  given C: C(11)
+  given D: D(11)
 
   f(1)
   f(1)(using C)

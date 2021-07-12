@@ -14,7 +14,7 @@ their sum. Previously, the best way to do this was with a pattern-matching decom
 
 ```scala
 xs map {
-   case (x, y) => x + y
+  case (x, y) => x + y
 }
 ```
 
@@ -23,7 +23,7 @@ suggests that the pattern match could fail. As a shorter and clearer alternative
 
 ```scala
 xs.map {
-   (x, y) => x + y
+  (x, y) => x + y
 }
 ```
 

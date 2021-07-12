@@ -29,7 +29,6 @@ class NavigationTest extends BaseHtmlTest:
         NavMenuTestEntry("Nested in a directory", "dir/nested.html", Nil)
       )),
       NavMenuTestEntry("Adoc", "Adoc.html", Seq()),
-      NavMenuTestEntry("Basic test", "../index.html", Seq()),
       NavMenuTestEntry("API", "../api/index.html", Seq(
         NavMenuTestEntry("tests.site", "../api/tests/site.html", Seq(
           NavMenuTestEntry("BrokenLink", "../api/tests/site/BrokenLink.html", Nil),

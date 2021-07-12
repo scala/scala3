@@ -3,17 +3,27 @@ package dotty.tools.scaladoc.tasty
 import collection.JavaConverters._
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
+import dotty.tools.scaladoc.Inkuire
+
+import scala.quoted._
+
+import SymOps._
+import NameNormalizer._
+import SyntheticsSupport._
 
 trait ClassLikeSupport:
   self: TastyParser =>
   import qctx.reflect._
 
-  private def bareClasslikeKind(symbol: Symbol): Kind =
-     if symbol.flags.is(Flags.Module) then Kind.Object
-        else if symbol.flags.is(Flags.Trait) then  Kind.Trait(Nil, Nil)
-        else if symbol.flags.is(Flags.Enum) then Kind.Enum(Nil, Nil)
-        else if symbol.flags.is(Flags.Enum) && symbol.flags.is(Flags.Case) then Kind.EnumCase(Kind.Object)
-        else Kind.Class(Nil, Nil)
+  private given qctx.type = qctx
+
+  private def bareClasslikeKind(using Quotes)(symbol: reflect.Symbol): Kind =
+    import reflect._
+    if symbol.flags.is(Flags.Module) then Kind.Object
+    else if symbol.flags.is(Flags.Trait) then  Kind.Trait(Nil, Nil)
+    else if symbol.flags.is(Flags.Enum) then Kind.Enum(Nil, Nil)
+    else if symbol.flags.is(Flags.Enum) && symbol.flags.is(Flags.Case) then Kind.EnumCase(Kind.Object)
+    else Kind.Class(Nil, Nil)
 
   private def kindForClasslike(classDef: ClassDef): Kind =
     def typeArgs = classDef.getTypeParams.map(mkTypeArgument(_))
@@ -34,7 +44,7 @@ trait ClassLikeSupport:
           .filter(s => s.exists && !s.isHiddenByVisibility)
           .map( _.tree.asInstanceOf[DefDef])
       constr.fold(Nil)(
-        _.termParamss.map(pList => ParametersList(pList.params.map(mkParameter(_, parameterModifier)), if isUsingModifier(pList.params) then "using " else ""))
+        _.termParamss.map(pList => ParametersList(pList.params.map(p => mkParameter(p, parameterModifier)), paramListModifier(pList.params)))
         )
 
     if classDef.symbol.flags.is(Flags.Module) then Kind.Object
@@ -84,8 +94,79 @@ trait ClassLikeSupport:
       deprecated = classDef.symbol.isDeprecated()
     )
 
+    if summon[DocContext].args.generateInkuire then {
+
+      val classType = classDef.asInkuire(Set.empty, true)
+      val variableNames = classType.params.map(_.typ.name.name).toSet
+
+      val parents = classDef.parents.map(_.asInkuire(variableNames, false))
+
+      val isModule = classDef.symbol.flags.is(Flags.Module)
+
+      if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
+
+      classDef.symbol.declaredTypes.foreach {
+        case typeSymbol: Symbol =>
+          val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
+          if typeDef.rhs.symbol.fullName.contains("java") then
+            val t = typeSymbol.tree.asInkuire(variableNames, false) // TODO [Inkuire] Hack until type aliases are supported
+            val tJava = typeDef.rhs.symbol.tree.asInkuire(variableNames, false)
+            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))) // TODO [Inkuire] Hack until type aliases are supported
+            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
+      }
+
+      classDef.symbol.declaredMethods
+        .filter { (s: Symbol) =>
+          !s.flags.is(Flags.Private) &&
+            !s.flags.is(Flags.Protected) &&
+            !s.flags.is(Flags.Override)
+        }
+        .foreach {
+          case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
+                                          && classDef.symbol.flags.is(Flags.Module)
+                                          && implicitConversion.owner.fullName == ("scala.Predef$") =>
+            val defdef = implicitConversion.tree.asInstanceOf[DefDef]
+            val to = defdef.returnTpt.asInkuire(variableNames, false)
+            val from = defdef.paramss.flatMap(_.params).collectFirst {
+              case v: ValDef => v.tpt.asInkuire(variableNames, false)
+            }
+            from match
+              case Some(from) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
+              case None =>
+
+          case methodSymbol: Symbol =>
+            val defdef = methodSymbol.tree.asInstanceOf[DefDef]
+            val methodVars = defdef.paramss.flatMap(_.params).collect {
+              case TypeDef(name, _) => name
+            }
+            val vars = variableNames ++ methodVars
+            val receiver: Option[Inkuire.Type] =
+              Some(classType)
+                .filter(_ => !isModule)
+                .orElse(methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars, false).lift(s.tpt)))
+            val sgn = Inkuire.ExternalSignature(
+              signature = Inkuire.Signature(
+                receiver = receiver,
+                arguments = methodSymbol.nonExtensionParamLists.flatMap(_.params).collect {
+                  case ValDef(_, tpe, _) => tpe.asInkuire(vars, false)
+                },
+                result = defdef.returnTpt.asInkuire(vars, false),
+                context = Inkuire.SignatureContext(
+                  vars = vars.toSet,
+                  constraints = Map.empty //TODO [Inkuire] Type bounds
+                )
+              ),
+              name = methodSymbol.name,
+              packageName = methodSymbol.dri.location,
+              uri = methodSymbol.dri.externalLink.getOrElse("")
+            )
+            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
+      }
+
+    }
+
     if signatureOnly then baseMember else baseMember.copy(
-        members = classDef.extractPatchedMembers,
+        members = classDef.extractPatchedMembers.sortBy(m => (m.name, m.kind.name)),
         directParents = classDef.getParentsAsLinkToTypes,
         parents = supertypes,
         companion = classDef.getCompanion
@@ -116,7 +197,7 @@ trait ClassLikeSupport:
           parseMethod(c, dd.symbol,specificKind = Kind.Extension(target, _))
         }
       // TODO check given methods?
-      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven =>
+      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven && !dd.symbol.isArtifact =>
         Some(dd.symbol.owner.memberType(dd.name))
           .filterNot(_.exists)
           .map { _ =>
@@ -125,7 +206,7 @@ trait ClassLikeSupport:
             )
           }
 
-      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported =>
+      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported && !dd.symbol.isArtifact =>
         val exportedTarget = dd.rhs.collect {
           case a: Apply => a.fun.asInstanceOf[Select]
           case s: Select => s
@@ -142,11 +223,11 @@ trait ClassLikeSupport:
         Some(parseMethod(c, dd.symbol, specificKind = Kind.Exported(_))
           .withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
-      case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod =>
+      case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod && !dd.symbol.isArtifact =>
         Some(parseMethod(c, dd.symbol))
 
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
-        Some(parseTypeDef(c, td))
+        Some(parseTypeDef(td))
 
       case vd: ValDef if !isSyntheticField(vd.symbol)
         && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
@@ -208,7 +289,8 @@ trait ClassLikeSupport:
       }
     ).map(_.copy(inheritedFrom = inheritance))
 
-  extension (c: ClassDef)
+  extension (using Quotes)(c: reflect.ClassDef)
+
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
     def getNonTrivialInheritedMemberTrees =
@@ -216,6 +298,7 @@ trait ClassLikeSupport:
         .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
         .map(_.tree)
 
+  extension (c: ClassDef)
     def extractMembers: Seq[Member] = {
       val inherited = c.getNonTrivialInheritedMemberTrees.collect {
         case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
@@ -265,7 +348,7 @@ trait ClassLikeSupport:
         if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass
       yield (parentTree, parentSymbol)
 
-    def getConstructors: List[Symbol] = membersToDocument.collect {
+    def getConstructors: List[Symbol] = c.membersToDocument.collect {
       case d: DefDef if d.symbol.isClassConstructor && c.constructor.symbol != d.symbol => d.symbol
     }.toList
 
@@ -306,7 +389,7 @@ trait ClassLikeSupport:
 
     val enumTypes = companion.membersToDocument.collect {
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
-    }.toList.map(parseTypeDef(classDef, _))
+    }.toList.map(parseTypeDef)
 
     val enumNested = companion.membersToDocument.collect {
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
@@ -330,13 +413,7 @@ trait ClassLikeSupport:
       specificKind: (Kind.Def => Kind) = identity
     ): Member =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
-    val paramLists: List[TermParamClause] =
-      if emptyParamsList then Nil
-      else if methodSymbol.isExtensionMethod then
-        val params = method.termParamss
-        if methodSymbol.isLeftAssoc || params.size == 1 then params.tail
-        else params.head :: params.tail.drop(1)
-      else method.termParamss
+    val paramLists: List[TermParamClause] = methodSymbol.nonExtensionParamLists
     val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.leadingTypeParams
 
     val memberInfo = unwrapMemberInfo(c, methodSymbol)
@@ -344,7 +421,7 @@ trait ClassLikeSupport:
     val basicKind: Kind.Def = Kind.Def(
       genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes)),
       paramLists.zipWithIndex.map { (pList, index) =>
-        ParametersList(pList.params.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), if isUsingModifier(pList.params) then "using " else "")
+        ParametersList(pList.params.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), paramListModifier(pList.params))
       }
     )
 
@@ -364,9 +441,9 @@ trait ClassLikeSupport:
           Kind.Implicit(basicKind, None)
       else specificKind(basicKind)
 
-    val origin = if !methodSymbol.isOverriden then Origin.RegularlyDefined else
-      val overridenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
-      Origin.Overrides(overridenSyms.map(s => Overriden(s.name, s.dri)).toSeq)
+    val origin = if !methodSymbol.isOverridden then Origin.RegularlyDefined else
+      val overriddenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
+      Origin.Overrides(overriddenSyms.map(s => Overridden(s.name, s.dri)).toSeq)
 
     mkMember(methodSymbol, methodKind, memberInfo.res.asSignature)(origin = origin, deprecated = methodSymbol.isDeprecated())
 
@@ -405,7 +482,7 @@ trait ClassLikeSupport:
       memberInfo.get(name).fold(argument.rhs.asSignature)(_.asSignature)
     )
 
-  def parseTypeDef(c: ClassDef, typeDef: TypeDef): Member =
+  def parseTypeDef(typeDef: TypeDef): Member =
     def isTreeAbstract(typ: Tree): Boolean = typ match {
       case TypeBoundsTree(_, _) => true
       case LambdaTypeTree(params, body) => isTreeAbstract(body)
@@ -444,7 +521,7 @@ trait ClassLikeSupport:
       modifiers = modifiers,
       annotations = symbol.getAnnotations(),
       signature = signature,
-      sources = symbol.source(using qctx),
+      sources = symbol.source,
       origin = origin,
       inheritedFrom = inheritedFrom,
       graph = graph,
@@ -474,5 +551,9 @@ trait ClassLikeSupport:
 
     recursivelyCalculateMemberInfo(MemberInfo(Map.empty, List.empty, baseTypeRepr))
 
-  private def isUsingModifier(parameters: Seq[ValDef]): Boolean =
-    parameters.size > 0 && parameters(0).symbol.flags.is(Flags.Given)
+  private def paramListModifier(parameters: Seq[ValDef]): String =
+    if parameters.size > 0 then
+      if parameters(0).symbol.flags.is(Flags.Given) then "using "
+      else if parameters(0).symbol.flags.is(Flags.Implicit) then "implicit "
+      else ""
+    else ""

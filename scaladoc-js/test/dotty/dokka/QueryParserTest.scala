@@ -17,7 +17,7 @@ class QueryParserTest:
     "given",
     "type"
   )
-  private def testCase(query: String, result: List[Matchers]) = {
+  private def testCase(query: String, result: EngineQuery) = {
     val parsed = queryParser.parse(query)
     assertEquals(
       s"Query parser test error: for query: $query expected $result but found $parsed",
@@ -28,8 +28,8 @@ class QueryParserTest:
 
   @Test
   def queryParserTests() = {
-    kinds.foreach(k => testCase(s"$k ", List(ByKind(k), ByName(""))))
-    testCase("trait", List(ByName("trait")))
-    testCase("trait A", List(ByKind("trait"), ByName("A")))
-    testCase("`trait A`", List(ByName("trait A")))
+    kinds.foreach(k => testCase(s"$k ", EngineMatchersQuery(List(ByKind(k), ByName("")))))
+    testCase("trait", EngineMatchersQuery(List(ByName("trait"))))
+    testCase("trait A", EngineMatchersQuery(List(ByKind("trait"), ByName("A"))))
+    testCase("`trait A`", EngineMatchersQuery(List(ByName("trait A"))))
   }

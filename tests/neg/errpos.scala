@@ -1,11 +1,11 @@
 object Test {
   val x =     // error: expression expected
-  val y = 2   // error: ';' expected
+  val y = 2
 
   val z =     // error: expression expected
 
   // ...
-  val a = 3   // error: ';' expected
+  val a = 3
 
   val b = type // error: expression expected (on "type")
 

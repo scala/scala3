@@ -54,3 +54,9 @@ class Methods:
  def ++:(a: Int)(b: Double): Int
  = ???
 
+ def withImplicitParam(implicit a: Int): Int
+ = ???
+
+ def withImplicitParam2(v: String)(implicit ab: Double, a: Int, b: String): String
+ = ???
+

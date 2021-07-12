@@ -1,4 +1,12 @@
 -- [E156] Syntax Error: tests/neg/modifier-not-allowed.scala:2:13 ------------------------------------------------------
 2 |  opaque def o: Int = 3 // error
   |  ^^^^^^^^^^^^^^^^^^^^^
-  |  Modifier `opaque` is not allowed for this definition
+  |  Modifier opaque is not allowed for this definition
+-- [E156] Syntax Error: tests/neg/modifier-not-allowed.scala:3:2 -------------------------------------------------------
+3 |  abstract object A {} // error
+  |  ^^^^^^^^
+  |  Modifier abstract is not allowed for this definition
+-- [E156] Syntax Error: tests/neg/modifier-not-allowed.scala:4:2 -------------------------------------------------------
+4 |  sealed object A {} // error
+  |  ^^^^^^
+  |  Modifier sealed is not allowed for this definition

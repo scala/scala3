@@ -23,23 +23,24 @@ Type -+- ProxyType --+- NamedType ----+--- TypeRef
       |              |                +--- ThisType
       |              |                +--- SuperType
       |              |                +--- ConstantType
-      |              |                +--- MethodParam
+      |              |                +--- TermParamRef
       |              |                +----RecThis
       |              |                +--- SkolemType
-      |              +- PolyParam
+      |              +- TypeParamRef
       |              +- RefinedOrRecType -+-- RefinedType
       |              |                   -+-- RecType
-      |              +- HKApply
+      |              +- AppliedType
       |              +- TypeBounds
       |              +- ExprType
       |              +- AnnotatedType
       |              +- TypeVar
-      |              +- PolyType
+      |              +- HKTypeLambda
+      |              +- MatchType
       |
       +- GroundType -+- AndType
                      +- OrType
-                     +- MethodType -----+- ImplicitMethodType
-                     |                  +- JavaMethodType
+                     +- MethodOrPoly ---+-- PolyType
+                     |                  +-- MethodType
                      +- ClassInfo
                      |
                      +- NoType

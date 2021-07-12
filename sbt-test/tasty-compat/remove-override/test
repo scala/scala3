@@ -1,0 +1,8 @@
+# compile library A
+> a/compile
+# compile library B, from source, against A
+> b/compile
+# remove an override in library A'
+> a-changes/compile
+# compile B, from tasty, against A', it should compile: we can find the method in a supertype.
+> c/compile

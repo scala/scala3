@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
-if [ -z "$PROG_HOME" ] ; then
+#set -o nounset ; set -o errexit
+
+# Try to autodetect real location of the script
+if [ -z "${PROG_HOME-}" ] ; then
   ## resolve links - $0 may be a link to PROG_HOME
   PRG="$0"
 
@@ -26,7 +29,6 @@ if [ -z "$PROG_HOME" ] ; then
 fi
 
 source "$PROG_HOME/bin/common"
-
 default_java_opts="-Xmx768m -Xms768m"
 withCompiler=true
 
@@ -46,8 +48,8 @@ addScala () {
 addResidual () {
   residual_args+=("'$1'")
 }
-addScripting () {
-  scripting_args+=("'$1'")
+addScrip() {
+  script_args+=("'$1'")
 }
 
 classpathArgs () {
@@ -98,12 +100,12 @@ classpathArgs () {
   jvm_cp_args="-classpath \"$CLASS_PATH\""
 }
 
-in_scripting_args=false
+#for A in "$@" ; do echo "A[$A]" ; done ; exit 2
+
 while [[ $# -gt 0 ]]; do
 case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
   -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
-       -debug) DEBUG="$DEBUG_STR" && shift ;;
     -q|-quiet) quiet=true && shift ;;
 
       -colors) colors=true && shift ;;
@@ -113,11 +115,7 @@ case "$1" in
           # will be available as system properties.
           -D*) addJava "$1" && shift ;;
           -J*) addJava "${1:2}" && shift ;;
-            *) if [ $in_scripting_args == false ]; then
-                addResidual "$1"
-               else
-                addScripting "$1"
-               fi
+            *) addResidual "$1"
                shift
                ;;
   esac
@@ -127,12 +125,12 @@ classpathArgs
 
 eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
-     "$DEBUG" \
      "${java_args[@]}" \
-     "$jvm_cp_args" \
+     "${jvm_cp_args-}" \
+      -Dscala.usejavacp=true \
      "dotty.tools.scaladoc.Main"  \
      "${scala_args[@]}" \
      "${residual_args[@]}" \
-     "$scripting_string"
+     "${scripting_string-}"
 scala_exit_status=$?
 onExit

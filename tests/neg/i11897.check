@@ -1,0 +1,45 @@
+-- Error: tests/neg/i11897.scala:11:10 ---------------------------------------------------------------------------------
+11 |  val (x, given A) = (1, A(23)) // error
+   |          ^^^^^^^
+   |          given patterns are not allowed in a val definition,
+   |          please bind to an identifier and use an alias given.
+-- Error: tests/neg/i11897.scala:12:10 ---------------------------------------------------------------------------------
+12 |  val (_, given B) = (true, B(false)) // error
+   |          ^^^^^^^
+   |          given patterns are not allowed in a val definition,
+   |          please bind to an identifier and use an alias given.
+-- Error: tests/neg/i11897.scala:13:8 ----------------------------------------------------------------------------------
+13 |  val D(given C) = D(C("c")) // error
+   |        ^^^^^^^
+   |        given patterns are not allowed in a val definition,
+   |        please bind to an identifier and use an alias given.
+-- Error: tests/neg/i11897.scala:14:11 ---------------------------------------------------------------------------------
+14 |  val F(y, given E) = F(47, E(93)) // error
+   |           ^^^^^^^
+   |           given patterns are not allowed in a val definition,
+   |           please bind to an identifier and use an alias given.
+-- Error: tests/neg/i11897.scala:15:11 ---------------------------------------------------------------------------------
+15 |  val H(z, q @ given G) = H(47, G(101)) // error
+   |           ^^^^^^^^^^^
+   |           given patterns are not allowed in a val definition,
+   |           please bind to an identifier and use an alias given.
+-- Error: tests/neg/i11897.scala:16:18 ---------------------------------------------------------------------------------
+16 |  assert(summon[A] == A(23)) // error
+   |                  ^
+   |                  no implicit argument of type A was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11897.scala:17:18 ---------------------------------------------------------------------------------
+17 |  assert(summon[B] == B(false)) // error
+   |                  ^
+   |                  no implicit argument of type B was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11897.scala:18:18 ---------------------------------------------------------------------------------
+18 |  assert(summon[C] == C("c")) // error
+   |                  ^
+   |                  no implicit argument of type C was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11897.scala:19:18 ---------------------------------------------------------------------------------
+19 |  assert(summon[E] == E(93)) // error
+   |                  ^
+   |                  no implicit argument of type E was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11897.scala:20:18 ---------------------------------------------------------------------------------
+20 |  assert(summon[G] == G(101)) // error
+   |                  ^
+   |                  no implicit argument of type G was found for parameter x of method summon in object Predef

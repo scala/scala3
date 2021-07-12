@@ -14,8 +14,8 @@ case class Foo()
 
 case class Bar(
 } { ;  // error
-object Bar { // error
+object Bar {
   class Foo(a: Int) extends AnyVal
   Foo()
 }
-type Bar // error
+type Bar

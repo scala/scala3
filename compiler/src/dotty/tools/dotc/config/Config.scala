@@ -1,4 +1,5 @@
 package dotty.tools.dotc.config
+import annotation.internal.sharable
 
 object Config {
 
@@ -23,7 +24,10 @@ object Config {
   inline val checkConstraintsNonCyclic = false
 
   /** Check that each constraint resulting from a subtype test
-   *  is satisfiable.
+   *  is satisfiable. Also check that a type variable instantiation
+   *  satisfies its constraints.
+   *  Note that this can fail when bad bounds are in scope, like in
+   *  tests/neg/i4721a.scala.
    */
   inline val checkConstraintsSatisfiable = false
 
@@ -32,6 +36,15 @@ object Config {
    *  and the lower bound of Q is a subtype of the lower bound of P.
    */
   inline val checkConstraintsPropagated = false
+
+  /** Check that constraint bounds do not contain wildcard types */
+  inline val checkNoWildcardsInConstraint = false
+
+  /** If a constraint is over a type lambda `tl` and `tvar` is one of
+   *  the type variables associated with `tl` in the constraint, check
+   *  that the origin of `tvar` is a parameter of `tl`.
+   */
+  inline val checkConsistentVars = false
 
   /** Check that constraints of globally committable typer states are closed.
    *  NOTE: When enabled, the check can cause CyclicReference errors because

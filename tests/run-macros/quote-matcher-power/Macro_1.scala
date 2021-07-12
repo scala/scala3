@@ -4,7 +4,7 @@ import scala.quoted.*
 object Macros {
 
   def power_s(x: Expr[Double], n: Expr[Int]) (using Quotes): Expr[Double] =
-    power_s(x, n.valueOrError)
+    power_s(x, n.valueOrAbort)
 
   def power_s(x: Expr[Double], n: Int) (using Quotes): Expr[Double] =
     if (n == 0) '{1.0}

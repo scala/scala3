@@ -412,6 +412,58 @@ class Namer { typer: Typer =>
   def isEnumConstant(vd: ValDef)(using Context): Boolean =
     vd.mods.isAllOf(JavaEnumValue)
 
+  /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
+   *  If that's not already the case, add one. The added class type CT is determined as follows.
+   *  First, let C be the unique class such that
+   *  - there is a parent P_i such that P_i derives from C, and
+   *  - for every class D: If some parent P_j, j <= i derives from D, then C derives from D.
+   *  Then, let CT be the smallest type which
+   *  - has C as its class symbol, and
+   *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
+   *
+   * Tweak: It could be that at the point where the method is called, some superclass
+   * is still missing its parents. Parents are set to Nil when completion starts and are
+   * set to the actual parents later. If a superclass completes a subclass in one
+   * of its parents, the parents of the superclass or some intervening class might
+   * not yet be set. This situation can be detected by asking for the baseType of Any - 
+   * if that type does not exist, one of the base classes of this class misses its parents.
+   * If this situation arises, the computation of the superclass might be imprecise.
+   * For instance, in i12722.scala, the superclass of `IPersonalCoinOps` is computed
+   * as `Object`, where `JsObject` would be correct. The problem cannot be solved locally,
+   * but we detect the situaton and mark the superclass with a `@ProvisionalSuperClass`
+   * annotation in this case. When typechecking the class, we then run ensureFirstIsClass
+   * again and possibly improve the computed super class.
+   * An alternatiev fix would compute superclasses at typer instead at completion. But
+   * that breaks too many invariants. For instance, we rely on correct @Child annotations
+   * after completion, and these in turn need the superclass.
+   */
+  def ensureFirstIsClass(cls: ClassSymbol, parents: List[Type])(using Context): List[Type] =
+
+    def realClassParent(sym: Symbol): ClassSymbol =
+      if !sym.isClass then defn.ObjectClass
+      else if !sym.is(Trait) then sym.asClass
+      else sym.info.parents match
+        case parentRef :: _ => realClassParent(parentRef.typeSymbol)
+        case nil => defn.ObjectClass
+
+    def improve(candidate: ClassSymbol, parent: Type): ClassSymbol =
+      val pcls = realClassParent(parent.classSymbol)
+      if (pcls derivesFrom candidate) pcls else candidate
+
+    parents match
+      case p :: _ if p.classSymbol.isRealClass => parents
+      case _ =>
+        val pcls = parents.foldLeft(defn.ObjectClass)(improve)
+        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
+        val bases = parents.map(_.baseType(pcls))
+        var first = TypeComparer.glb(defn.ObjectType :: bases)
+        val isProvisional = parents.exists(!_.baseType(defn.AnyClass).exists)
+        if isProvisional then
+          typr.println(i"provisional superclass $first for $cls")
+          first = AnnotatedType(first, Annotation(defn.ProvisionalSuperClassAnnot))
+        checkFeasibleParent(first, cls.srcPos, em" in inferred superclass $first") :: parents
+  end ensureFirstIsClass
+
   /** Add child annotation for `child` to annotations of `cls`. The annotation
    *  is added at the correct insertion point, so that Child annotations appear
    *  in reverse order of their start positions.
@@ -617,7 +669,7 @@ class Namer { typer: Typer =>
           val classSym = ctx.effectiveScope.lookup(className)
           val moduleName = className.toTermName
           if needsConstructorProxies(classSym) && ctx.effectiveScope.lookupEntry(moduleName) == null then
-            enterSymbol(constructorCompanion(classSym.asClass))
+            enterSymbol(classConstructorCompanion(classSym.asClass))
       else if ctx.owner.is(PackageClass) then
         for case cdef @ TypeDef(moduleName, _) <- moduleDef.values do
           val moduleSym = ctx.effectiveScope.lookup(moduleName)
@@ -634,12 +686,12 @@ class Namer { typer: Typer =>
             val moduleName = className.toTermName
             val companionVals = ctx.effectiveScope.lookupAll(moduleName.encode)
             if companionVals.isEmpty && needsConstructorProxies(classSym) then
-              enterSymbol(constructorCompanion(classSym.asClass))
+              enterSymbol(classConstructorCompanion(classSym.asClass))
             else
               for moduleSym <- companionVals do
                 if moduleSym.is(Module) && !moduleSym.isDefinedInCurrentRun then
                   val companion =
-                    if needsConstructorProxies(classSym) then constructorCompanion(classSym.asClass)
+                    if needsConstructorProxies(classSym) then classConstructorCompanion(classSym.asClass)
                     else newModuleSymbol(
                       ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
                   enterSymbol(companion)
@@ -700,10 +752,10 @@ class Namer { typer: Typer =>
       case original: DefDef =>
         val typer1 = ctx.typer.newLikeThis
         nestedTyper(sym) = typer1
-        typer1.defDefSig(original, sym)(using localContext(sym).setTyper(typer1))
+        typer1.defDefSig(original, sym, this)(using localContext(sym).setTyper(typer1))
       case imp: Import =>
         try
-          val expr1 = typedImportQualifier(imp, typedAheadExpr)
+          val expr1 = typedImportQualifier(imp, typedAheadExpr(_, _)(using ctx.withOwner(sym)))
           ImportType(expr1)
         catch case ex: CyclicReference =>
           typr.println(s"error while completing ${imp.expr}")
@@ -732,6 +784,15 @@ class Namer { typer: Typer =>
             denot.info = completer
             completer.complete(denot)
     }
+
+    private var completedTypeParamSyms: List[TypeSymbol] = null
+
+    def setCompletedTypeParams(tparams: List[TypeSymbol]) =
+      completedTypeParamSyms = tparams
+
+    override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
+      if completedTypeParamSyms != null then completedTypeParamSyms
+      else Nil
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
       case original: untpd.MemberDef =>
@@ -972,159 +1033,173 @@ class Namer { typer: Typer =>
 
     def init(): Context = index(params)
 
-    /** Add forwarders as required by the export statements in this class */
-    private def processExports(using Context): Unit = {
+    /** The forwarders defined by export `exp` */
+    private def exportForwarders(exp: Export)(using Context): List[tpd.MemberDef] =
+      val buf = new mutable.ListBuffer[tpd.MemberDef]
+      val Export(expr, selectors) = exp
+      if expr.isEmpty then
+        report.error(em"Export selector must have prefix and `.`", exp.srcPos)
+        return Nil
 
-      /** A string indicating that no forwarders for this kind of symbol are emitted */
-      val SKIP = "(skip)"
+      val path = typedAheadExpr(expr, AnySelectionProto)
+      checkLegalExportPath(path, selectors)
+      lazy val wildcardBound = importBound(selectors, isGiven = false)
+      lazy val givenBound = importBound(selectors, isGiven = true)
 
-      /** The forwarders defined by export `exp`.
-       */
-      def exportForwarders(exp: Export): List[tpd.MemberDef] = {
-        val buf = new mutable.ListBuffer[tpd.MemberDef]
-        val Export(expr, selectors) = exp
-        if expr.isEmpty then
-          report.error(em"Export selector must have prefix and `.`", exp.srcPos)
-          return Nil
-
-        val path = typedAheadExpr(expr, AnySelectionProto)
-        checkLegalExportPath(path, selectors)
-        lazy val wildcardBound = importBound(selectors, isGiven = false)
-        lazy val givenBound = importBound(selectors, isGiven = true)
-
-        def whyNoForwarder(mbr: SingleDenotation): String = {
-          val sym = mbr.symbol
-          if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
-          else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy)) SKIP
-          else if (cls.derivesFrom(sym.owner) &&
-                   (sym.owner == cls || !sym.is(Deferred))) i"is already a member of $cls"
-          else if (sym.is(Override))
-            sym.allOverriddenSymbols.find(
-             other => cls.derivesFrom(other.owner) && !other.is(Deferred)) match {
-               case Some(other) => i"overrides ${other.showLocated}, which is already a member of $cls"
-               case None => ""
-            }
-          else ""
-        }
-
-        /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
-         *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
-         */
-        def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
-
-          def adaptForwarderParams(acc: List[List[tpd.Tree]], tp: Type, prefss: List[List[tpd.Tree]])
-            : List[List[tpd.Tree]] = tp match
-              case mt: MethodType
-              if mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam =>
-                // Note: in this branch we use the assumptions
-                // that `prefss.head` corresponds to `mt.paramInfos` and
-                // that `prefss.tail` corresponds to `mt.resType`
-                val init :+ vararg = prefss.head
-                val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
-                adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
-              case mt: MethodOrPoly =>
-                adaptForwarderParams(prefss.head :: acc, mt.resultType, prefss.tail)
-              case _ =>
-                acc.reverse ::: prefss
-
-          if whyNoForwarder(mbr) == "" then
-            val sym = mbr.symbol
-            val forwarder =
-              if mbr.isType then
-                val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
-                newSymbol(
-                  cls, forwarderName,
-                  Exported | Final,
-                  TypeAlias(path.tpe.select(sym)),
-                  coord = span)
-                // Note: This will always create unparameterzied aliases. So even if the original type is
-                // a parameterized class, say `C[X]` the alias will read `type C = d.C`. We currently do
-                // allow such type aliases. If we forbid them at some point (requiring the referred type to be
-                // fully applied), we'd have to change the scheme here as well.
-              else {
-                def refersToPrivate(tp: Type): Boolean = tp match
-                  case tp: TermRef => tp.termSymbol.is(Private) || refersToPrivate(tp.prefix)
-                  case _ => false
-                val (maybeStable, mbrInfo) =
-                  if sym.isStableMember && sym.isPublic && !refersToPrivate(path.tpe) then
-                    (StableRealizable, ExprType(path.tpe.select(sym)))
-                  else
-                    (EmptyFlags, mbr.info.ensureMethodic)
-                var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
-                if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
-                val forwarderName = checkNoConflict(alias, isPrivate = false, span)
-                newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
-              }
-            forwarder.info = avoidPrivateLeaks(forwarder)
-            forwarder.addAnnotations(sym.annotations)
-            val forwarderDef =
-              if (forwarder.isType) tpd.TypeDef(forwarder.asType)
-              else {
-                import tpd._
-                val ref = path.select(sym.asTerm)
-                val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
-                  ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss))
-                )
-                if forwarder.isInlineMethod then
-                  PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
-                ddef
-              }
-
-            buf += forwarderDef.withSpan(span)
-        end addForwarder
-
-        def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit = {
-          val size = buf.size
-          val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
-          mbrs.foreach(addForwarder(alias, _, span))
-          if (buf.size == size) {
-            val reason = mbrs.map(whyNoForwarder).dropWhile(_ == SKIP) match {
-              case Nil => ""
-              case why :: _ => i"\n$path.$name cannot be exported because it $why"
-            }
-            report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
-          }
-        }
-
-        def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
-          List(name, name.toTypeName)
-            .flatMap(path.tpe.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
-            .foreach(addForwarder(name, _, span)) // ignore if any are not added
-
-        def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
-          val nonContextual = mutable.HashSet(seen: _*)
-          for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
-            if !mbr.symbol.isSuperAccessor then
-              // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
-              // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
-              val alias = mbr.name.toTermName
-              if mbr.symbol.is(Given) then
-                if !seen.contains(alias) && mbr.matchesImportBound(givenBound) then
-                  addForwarder(alias, mbr, span)
-              else if !nonContextual.contains(alias) && mbr.matchesImportBound(wildcardBound) then
-                nonContextual += alias
-                addWildcardForwardersNamed(alias, span)
-
-        def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
-          case sel :: sels1 =>
-            if sel.isWildcard then
-              addWildcardForwarders(seen, sel.span)
-            else
-              if sel.rename != nme.WILDCARD then
-                addForwardersNamed(sel.name, sel.rename, sel.span)
-              addForwarders(sels1, sel.name :: seen)
-          case _ =>
-
-        addForwarders(selectors, Nil)
-        val forwarders = buf.toList
-        exp.pushAttachment(ExportForwarders, forwarders)
-        forwarders
+      def canForward(mbr: SingleDenotation): CanForward = {
+        import CanForward.*
+        val sym = mbr.symbol
+        if !sym.isAccessibleFrom(path.tpe) then
+          No("is not accessible")
+        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) then
+          Skip
+        else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
+          No(i"is already a member of $cls")
+        else if sym.is(Override) then
+          sym.allOverriddenSymbols.find(
+            other => cls.derivesFrom(other.owner) && !other.is(Deferred)
+          ) match
+              case Some(other) => No(i"overrides ${other.showLocated}, which is already a member of $cls")
+              case None => Yes
+        else if sym.isAllOf(JavaModule) then
+          Skip
+        else Yes
       }
 
-      for case exp @ Export(_, _) <- rest do
-        for forwarder <- exportForwarders(exp) do
-          forwarder.symbol.entered
-    }
+      /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
+        *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
+        */
+      def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
+
+        def adaptForwarderParams(acc: List[List[tpd.Tree]], tp: Type, prefss: List[List[tpd.Tree]])
+          : List[List[tpd.Tree]] = tp match
+            case mt: MethodType
+            if mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam =>
+              // Note: in this branch we use the assumptions
+              // that `prefss.head` corresponds to `mt.paramInfos` and
+              // that `prefss.tail` corresponds to `mt.resType`
+              val init :+ vararg = prefss.head
+              val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
+              adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
+            case mt: MethodOrPoly =>
+              adaptForwarderParams(prefss.head :: acc, mt.resultType, prefss.tail)
+            case _ =>
+              acc.reverse ::: prefss
+
+        if canForward(mbr) == CanForward.Yes then
+          val sym = mbr.symbol
+          val forwarder =
+            if mbr.isType then
+              val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
+              var target = path.tpe.select(sym)
+              if target.typeParams.nonEmpty then
+                target = target.EtaExpand(target.typeParams)
+              newSymbol(
+                cls, forwarderName,
+                Exported | Final,
+                TypeAlias(target),
+                coord = span)
+              // Note: This will always create unparameterzied aliases. So even if the original type is
+              // a parameterized class, say `C[X]` the alias will read `type C = d.C`. We currently do
+              // allow such type aliases. If we forbid them at some point (requiring the referred type to be
+              // fully applied), we'd have to change the scheme here as well.
+            else
+              def refersToPrivate(tp: Type): Boolean = tp match
+                case tp: TermRef => tp.termSymbol.is(Private) || refersToPrivate(tp.prefix)
+                case _ => false
+              val (maybeStable, mbrInfo) =
+                if sym.isStableMember && sym.isPublic && !refersToPrivate(path.tpe) then
+                  (StableRealizable, ExprType(path.tpe.select(sym)))
+                else
+                  (EmptyFlags, mbr.info.ensureMethodic)
+              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
+              if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
+              val forwarderName = checkNoConflict(alias, isPrivate = false, span)
+              newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
+
+          forwarder.info = avoidPrivateLeaks(forwarder)
+          forwarder.addAnnotations(sym.annotations)
+
+          val forwarderDef =
+            if (forwarder.isType) tpd.TypeDef(forwarder.asType)
+            else {
+              import tpd._
+              val ref = path.select(sym.asTerm)
+              val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
+                  ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss))
+              )
+              if forwarder.isInlineMethod then
+                PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
+              ddef
+            }
+
+          buf += forwarderDef.withSpan(span)
+      end addForwarder
+
+      def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
+        val size = buf.size
+        val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
+        mbrs.foreach(addForwarder(alias, _, span))
+        if buf.size == size then
+          val reason = mbrs.map(canForward).collect {
+            case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
+          }.headOption.getOrElse("")
+          report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
+
+      def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
+        List(name, name.toTypeName)
+          .flatMap(path.tpe.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
+          .foreach(addForwarder(name, _, span)) // ignore if any are not added
+
+      def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
+        val nonContextual = mutable.HashSet(seen: _*)
+        for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
+          if !mbr.symbol.isSuperAccessor then
+            // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
+            // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
+            val alias = mbr.name.toTermName
+            if mbr.symbol.is(Given) then
+              if !seen.contains(alias) && mbr.matchesImportBound(givenBound) then
+                addForwarder(alias, mbr, span)
+            else if !nonContextual.contains(alias) && mbr.matchesImportBound(wildcardBound) then
+              nonContextual += alias
+              addWildcardForwardersNamed(alias, span)
+
+      def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
+        case sel :: sels1 =>
+          if sel.isWildcard then
+            addWildcardForwarders(seen, sel.span)
+          else
+            if sel.rename != nme.WILDCARD then
+              addForwardersNamed(sel.name, sel.rename, sel.span)
+            addForwarders(sels1, sel.name :: seen)
+        case _ =>
+
+      addForwarders(selectors, Nil)
+      val forwarders = buf.toList
+      exp.pushAttachment(ExportForwarders, forwarders)
+      forwarders
+    end exportForwarders
+
+    /** Add forwarders as required by the export statements in this class */
+    private def processExports(using Context): Unit =
+
+      def process(stats: List[Tree])(using Context): Unit = stats match
+        case (stat: Export) :: stats1 =>
+          for forwarder <- exportForwarders(stat) do
+            forwarder.symbol.entered
+          process(stats1)
+        case (stat: Import) :: stats1 =>
+          process(stats1)(using ctx.importContext(stat, symbolOfTree(stat)))
+        case stat :: stats1 =>
+          process(stats1)
+        case Nil =>
+
+      // Do a quick scan whether we need to process at all. This avoids creating
+      // import contexts for nothing.
+      if rest.exists(_.isInstanceOf[Export]) then
+        process(rest)
+    end processExports
 
     /** Ensure constructor is completed so that any parameter accessors
      *  which have type trees deriving from its parameters can be
@@ -1237,12 +1312,50 @@ class Namer { typer: Typer =>
         }
       }
 
+      /** If `parents` contains references to traits that have supertraits with implicit parameters
+       *  add those supertraits in linearization order unless they are already covered by other
+       *  parent types. For instance, in
+       *
+       *    class A
+       *    trait B(using I) extends A
+       *    trait C extends B
+       *    class D extends A, C
+       *
+       *  the class declaration of `D` is augmented to
+       *
+       *    class D extends A, B, C
+       *
+       *  so that an implicit `I` can be passed to `B`. See i7613.scala for more examples.
+       */
+      def addUsingTraits(parents: List[Type]): List[Type] =
+        lazy val existing = parents.map(_.classSymbol).toSet
+        def recur(parents: List[Type]): List[Type] = parents match
+          case parent :: parents1 =>
+            val psym = parent.classSymbol
+            val addedTraits =
+              if psym.is(Trait) then
+                psym.asClass.baseClasses.tail.iterator
+                  .takeWhile(_.is(Trait))
+                  .filter(p =>
+                    p.primaryConstructor.info.takesImplicitParams
+                    && !cls.superClass.isSubClass(p)
+                    && !existing.contains(p))
+                  .toList.reverse
+              else Nil
+            addedTraits.map(parent.baseType) ::: parent :: recur(parents1)
+          case nil =>
+            Nil
+        if cls.isRealClass then recur(parents) else parents
+      end addUsingTraits
+
       completeConstructor(denot)
       denot.info = tempInfo
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         defn.adjustForBoxedUnit(cls,
-          ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span)
+          addUsingTraits(
+            ensureFirstIsClass(cls, parents.map(checkedParentType(_)))
+          )
         )
       )
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
@@ -1276,6 +1389,12 @@ class Namer { typer: Typer =>
     }
   }
 
+  /** Possible actions to perform when deciding on a forwarder for a member */
+  private enum CanForward:
+    case Yes
+    case No(whyNot: String)
+    case Skip  // for members that have never forwarders
+
   class SuspendCompleter extends LazyType, SymbolLoaders.SecondCompleter {
 
     final override def complete(denot: SymDenotation)(using Context): Unit =
@@ -1296,14 +1415,10 @@ class Namer { typer: Typer =>
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
-    inMode(ctx.mode &~ Mode.PatternOrTypeBits | Mode.Type) {
-      typedAhead(tree, typer.typed(_, pt))
-    }
+    typedAhead(tree, typer.typedType(_, pt))
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
-    withoutMode(Mode.PatternOrTypeBits) {
-      typedAhead(tree, typer.typed(_, pt))
-    }
+    typedAhead(tree, typer.typedExpr(_, pt))
 
   def typedAheadAnnotation(tree: Tree)(using Context): tpd.Tree =
     typedAheadExpr(tree, defn.AnnotationClass.typeRef)
@@ -1342,134 +1457,7 @@ class Namer { typer: Typer =>
    */
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
-    def inferredType = {
-      /** A type for this definition that might be inherited from elsewhere:
-       *  If this is a setter parameter, the corresponding getter type.
-       *  If this is a class member, the conjunction of all result types
-       *  of overridden methods.
-       *  NoType if neither case holds.
-       */
-      val inherited =
-        if (sym.owner.isTerm) NoType
-        else
-          // TODO: Look only at member of supertype instead?
-          lazy val schema = paramFn(WildcardType)
-          val site = sym.owner.thisType
-          val bcs = sym.owner.info.baseClasses
-          if bcs.isEmpty then
-            assert(ctx.reporter.errorsReported)
-            NoType
-          else bcs.tail.foldLeft(NoType: Type) { (tp, cls) =>
-            def instantiatedResType(info: Type, paramss: List[List[Symbol]]): Type = info match
-              case info: PolyType =>
-                paramss match
-                  case TypeSymbols(tparams) :: paramss1 if info.paramNames.length == tparams.length =>
-                    instantiatedResType(info.instantiate(tparams.map(_.typeRef)), paramss1)
-                  case _ =>
-                    NoType
-              case info: MethodType =>
-                paramss match
-                  case TermSymbols(vparams) :: paramss1 if info.paramNames.length == vparams.length =>
-                    instantiatedResType(info.instantiate(vparams.map(_.termRef)), paramss1)
-                  case _ =>
-                    NoType
-              case _ =>
-                if paramss.isEmpty then info.widenExpr
-                else NoType
-
-            val iRawInfo =
-              cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema, sym.targetName).info
-            val iResType = instantiatedResType(iRawInfo, paramss).asSeenFrom(site, cls)
-            if (iResType.exists)
-              typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inherited: $iResType")
-            tp & iResType
-          }
-      end inherited
-
-      /** The proto-type to be used when inferring the result type from
-       *  the right hand side. This is `WildcardType` except if the definition
-       *  is a default getter. In that case, the proto-type is the type of
-       *  the corresponding parameter where bound parameters are replaced by
-       *  Wildcards.
-       */
-      def rhsProto = sym.asTerm.name collect {
-        case DefaultGetterName(original, idx) =>
-          val meth: Denotation =
-            if (original.isConstructorName && (sym.owner.is(ModuleClass)))
-              sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
-            else
-              ctx.defContext(sym).denotNamed(original)
-          def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
-            case params :: paramss1 =>
-              if (idx < params.length) wildApprox(params(idx))
-              else paramProto(paramss1, idx - params.length)
-            case nil =>
-              WildcardType
-          }
-          val defaultAlts = meth.altsWith(_.hasDefaultParams)
-          if (defaultAlts.length == 1)
-            paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
-          else
-            WildcardType
-      } getOrElse WildcardType
-
-      // println(s"final inherited for $sym: ${inherited.toString}") !!!
-      // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-      // TODO Scala 3.1: only check for inline vals (no final ones)
-      def isInlineVal = sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
-
-      // Widen rhs type and eliminate `|' but keep ConstantTypes if
-      // definition is inline (i.e. final in Scala2) and keep module singleton types
-      // instead of widening to the underlying module class types.
-      // We also drop the @Repeated annotation here to avoid leaking it in method result types
-      // (see run/inferred-repeated-result).
-      def widenRhs(tp: Type): Type =
-        tp.widenTermRefExpr.simplified match
-          case ctp: ConstantType if isInlineVal => ctp
-          case tp => TypeComparer.widenInferred(tp, rhsProto)
-
-      // Replace aliases to Unit by Unit itself. If we leave the alias in
-      // it would be erased to BoxedUnit.
-      def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
-
-      var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
-      if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
-      if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
-      val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
-      if (typeParams.nonEmpty) {
-        // we'll be typing an expression from a polymorphic definition's body,
-        // so we must allow constraining its type parameters
-        // compare with typedDefDef, see tests/pos/gadt-inference.scala
-        rhsCtx.setFreshGADTBounds
-        rhsCtx.gadt.addToConstraint(typeParams)
-      }
-      def rhsType = PrepareInlineable.dropInlineIfError(sym,
-        typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(using rhsCtx)).tpe
-
-      // Approximate a type `tp` with a type that does not contain skolem types.
-      val deskolemize = new ApproximatingTypeMap {
-        def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
-          tp match {
-            case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
-            case _ => mapOver(tp)
-          }
-      }
-
-      def cookedRhsType = deskolemize(dealiasIfUnit(widenRhs(rhsType)))
-      def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
-      //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
-      if (inherited.exists)
-        if (isInlineVal) lhsType else inherited
-      else {
-        if (sym.is(Implicit))
-          mdef match {
-            case _: DefDef => missingType(sym, "result ")
-            case _: ValDef if sym.owner.isType => missingType(sym, "")
-            case _ =>
-          }
-        lhsType orElse WildcardType
-      }
-    }
+    def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
     lazy val termParamss = paramss.collect { case TermSymbols(vparams) => vparams }
 
     val tptProto = mdef.tpt match {
@@ -1516,7 +1504,7 @@ class Namer { typer: Typer =>
   }
 
   /** The type signature of a DefDef with given symbol */
-  def defDefSig(ddef: DefDef, sym: Symbol)(using Context): Type = {
+  def defDefSig(ddef: DefDef, sym: Symbol, completer: Namer#Completer)(using Context): Type = {
     // Beware: ddef.name need not match sym.name if sym was freshened!
     val isConstructor = sym.name == nme.CONSTRUCTOR
 
@@ -1545,20 +1533,191 @@ class Namer { typer: Typer =>
     //   5. Info of CP is copied to DP and DP is completed.
     index(ddef.leadingTypeParams)
     if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
-    for (tparam <- ddef.leadingTypeParams) typedAheadExpr(tparam)
-
+    val completedTypeParams =
+      for tparam <- ddef.leadingTypeParams yield typedAheadExpr(tparam).symbol
+    if completedTypeParams.forall(_.isType) then
+      completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[List[TypeSymbol]])
     ddef.trailingParamss.foreach(completeParams)
     val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
     sym.setParamss(paramSymss)
-    def wrapMethType(restpe: Type): Type = {
+    def wrapMethType(restpe: Type): Type =
       instantiateDependent(restpe, paramSymss)
-      methodType(paramSymss, restpe, isJava = ddef.mods.is(JavaDefined))
-    }
-    if (isConstructor) {
+      methodType(paramSymss, restpe, ddef.mods.is(JavaDefined))
+    if isConstructor then
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      wrapMethType(effectiveResultType(sym, paramSymss, NoType))
-    }
-    else valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
+      wrapMethType(effectiveResultType(sym, paramSymss))
+    else
+      valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
   }
+
+  def inferredResultType(
+      mdef: ValOrDefDef,
+      sym: Symbol,
+      paramss: List[List[Symbol]],
+      paramFn: Type => Type,
+      fallbackProto: Type
+    )(using Context): Type =
+
+    /** A type for this definition that might be inherited from elsewhere:
+     *  If this is a setter parameter, the corresponding getter type.
+     *  If this is a class member, the conjunction of all result types
+     *  of overridden methods.
+     *  NoType if neither case holds.
+     */
+    val inherited =
+      if (sym.owner.isTerm) NoType
+      else
+        // TODO: Look only at member of supertype instead?
+        lazy val schema = paramFn(WildcardType)
+        val site = sym.owner.thisType
+        val bcs = sym.owner.info.baseClasses
+        if bcs.isEmpty then
+          assert(ctx.reporter.errorsReported)
+          NoType
+        else bcs.tail.foldLeft(NoType: Type) { (tp, cls) =>
+          def instantiatedResType(info: Type, paramss: List[List[Symbol]]): Type = info match
+            case info: PolyType =>
+              paramss match
+                case TypeSymbols(tparams) :: paramss1 if info.paramNames.length == tparams.length =>
+                  instantiatedResType(info.instantiate(tparams.map(_.typeRef)), paramss1)
+                case _ =>
+                  NoType
+            case info: MethodType =>
+              paramss match
+                case TermSymbols(vparams) :: paramss1 if info.paramNames.length == vparams.length =>
+                  instantiatedResType(info.instantiate(vparams.map(_.termRef)), paramss1)
+                case _ =>
+                  NoType
+            case _ =>
+              if paramss.isEmpty then info.widenExpr
+              else NoType
+
+          val iRawInfo =
+            cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema, sym.targetName).info
+          val iResType = instantiatedResType(iRawInfo, paramss).asSeenFrom(site, cls)
+          if (iResType.exists)
+            typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inherited: $iResType")
+          tp & iResType
+        }
+    end inherited
+
+    /** If this is a default getter, the type of the corresponding method parameter,
+     *  otherwise NoType.
+     */
+    def defaultParamType = sym.name match
+      case DefaultGetterName(original, idx) =>
+        val meth: Denotation =
+          if (original.isConstructorName && (sym.owner.is(ModuleClass)))
+            sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
+          else
+            ctx.defContext(sym).denotNamed(original)
+        def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
+          case params :: paramss1 =>
+            if (idx < params.length) params(idx)
+            else paramProto(paramss1, idx - params.length)
+          case nil =>
+            NoType
+        }
+        val defaultAlts = meth.altsWith(_.hasDefaultParams)
+        if (defaultAlts.length == 1)
+          paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
+        else
+          NoType
+      case _ =>
+        NoType
+
+    /** The expected type for a default argument. This is normally the `defaultParamType`
+     *  with references to internal parameters replaced by wildcards. This replacement
+     *  makes it possible that the default argument can have a more specific type than the
+     *  parameter. For instance, we allow
+     *
+     *      class C[A](a: A) { def copy[B](x: B = a): C[B] = C(x) }
+     *
+     *  However, if the default parameter type is a context function type, we
+     *  have to make sure that wildcard types do not leak into the implicitly
+     *  generated closure's result type. Test case is pos/i12019.scala. If there
+     *  would be a leakage with the wildcard approximation, we pick the original
+     *  default parameter type as expected type.
+     */
+    def expectedDefaultArgType =
+      val originalTp = defaultParamType
+      val approxTp = wildApprox(originalTp)
+      approxTp.stripPoly match
+        case atp @ defn.ContextFunctionType(_, resType, _)
+        if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
+            || resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
+          originalTp
+        case _ =>
+          approxTp
+
+    // println(s"final inherited for $sym: ${inherited.toString}") !!!
+    // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
+    // TODO Scala 3.1: only check for inline vals (no final ones)
+    def isInlineVal = sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
+
+    var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
+    if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+    if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
+    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
+    if (typeParams.nonEmpty) {
+      // we'll be typing an expression from a polymorphic definition's body,
+      // so we must allow constraining its type parameters
+      // compare with typedDefDef, see tests/pos/gadt-inference.scala
+      rhsCtx.setFreshGADTBounds
+      rhsCtx.gadt.addToConstraint(typeParams)
+    }
+
+    def typedAheadRhs(pt: Type) =
+      PrepareInlineable.dropInlineIfError(sym,
+        typedAheadExpr(mdef.rhs, pt)(using rhsCtx))
+
+    def rhsType =
+      // For default getters, we use the corresponding parameter type as an
+      // expected type but we run it through `wildApprox` to allow default
+      // parameters like in `def mkList[T](value: T = 1): List[T]`.
+      val defaultTp = defaultParamType
+      val pt = inherited.orElse(expectedDefaultArgType).orElse(fallbackProto).widenExpr
+      val tp = typedAheadRhs(pt).tpe
+      if (defaultTp eq pt) && (tp frozen_<:< defaultTp) then
+        // When possible, widen to the default getter parameter type to permit a
+        // larger choice of overrides (see `default-getter.scala`).
+        // For justification on the use of `@uncheckedVariance`, see
+        // `default-getter-variance.scala`.
+        AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot))
+      else
+        // don't strip @uncheckedVariance annot for default getters
+        TypeOps.simplify(tp.widenTermRefExpr,
+            if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null) match
+          case ctp: ConstantType if isInlineVal => ctp
+          case tp => TypeComparer.widenInferred(tp, pt)
+
+    // Replace aliases to Unit by Unit itself. If we leave the alias in
+    // it would be erased to BoxedUnit.
+    def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
+
+    // Approximate a type `tp` with a type that does not contain skolem types.
+    val deskolemize = new ApproximatingTypeMap {
+      def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
+        tp match {
+          case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
+          case _ => mapOver(tp)
+        }
+    }
+
+    def cookedRhsType = deskolemize(dealiasIfUnit(rhsType))
+    def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
+    //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
+    if (inherited.exists)
+      if (isInlineVal) lhsType else inherited
+    else {
+      if (sym.is(Implicit))
+        mdef match {
+          case _: DefDef => missingType(sym, "result ")
+          case _: ValDef if sym.owner.isType => missingType(sym, "")
+          case _ =>
+        }
+      lhsType orElse WildcardType
+    }
+  end inferredResultType
 }

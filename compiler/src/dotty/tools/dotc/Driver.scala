@@ -77,11 +77,12 @@ class Driver {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
+    Feature.checkExperimentalSettings(using ictx)
     MacroClassLoader.init(ictx)
     Positioned.init(using ictx)
 
     inContext(ictx) {
-      if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then
+      if !ctx.settings.YdropComments.value || ctx.settings.YreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
       fileNamesOrNone.map { fileNames =>

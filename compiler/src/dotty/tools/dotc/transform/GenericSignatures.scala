@@ -10,7 +10,7 @@ import core.Flags._
 import core.Names.{DerivedName, Name, SimpleName, TypeName}
 import core.Symbols._
 import core.TypeApplications.TypeParamInfo
-import core.TypeErasure.{erasure, isUnboundedGeneric}
+import core.TypeErasure.{erasedGlb, erasure, isGenericArrayElement}
 import core.Types._
 import core.classfile.ClassfileConstants
 import ast.Trees._
@@ -19,6 +19,7 @@ import TypeUtils._
 import java.lang.StringBuilder
 
 import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
 
 /** Helper object to generate generic java signatures, as defined in
  *  the Java Virtual Machine Specification, §4.3.4
@@ -65,17 +66,71 @@ object GenericSignatures {
 
     def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, primitiveOK = false)
 
+    /** The signature of the upper-bound of a type parameter.
+     *
+     *  @pre none of the bounds are themselves type parameters.
+     *       TODO: Remove this restriction so we can support things like:
+     *
+     *           class Foo[A]:
+     *              def foo[S <: A & Object](...): ...
+     *
+     *        Which should emit a signature `S <: A`. See the handling
+     *        of `AndType` in `jsig` which already supports `def foo(x: A & Object)`.
+     */
     def boundsSig(bounds: List[Type]): Unit = {
-      val (isTrait, isClass) = bounds partition (_.typeSymbol.is(Trait))
-      isClass match {
-        case Nil    => builder.append(':') // + boxedSig(ObjectTpe)
-        case x :: _ => builder.append(':'); boxedSig(x)
-      }
-      isTrait.foreach { tp =>
+      val (repr :: _, others) = splitIntersection(bounds)
+      builder.append(':')
+
+      // In Java, intersections always erase to their first member, so put
+      // whatever parent erases to the Scala intersection erasure first in the
+      // signature.
+      if repr.classSymbol.is(Trait) then
+        // An initial ':' is needed if the intersection starts with an interface
+        // (cf https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-TypeParameter)
+        builder.append(':')
+      boxedSig(repr)
+      others.filter(_.classSymbol.is(Trait)).foreach { tp =>
         builder.append(':')
         boxedSig(tp)
       }
     }
+
+    /** The parents of this intersection where type parameters
+     *  that cannot appear in the signature have been replaced
+     *  by their upper-bound.
+     */
+    def flattenedIntersection(tp: AndType)(using Context): List[Type] =
+      val parents = ListBuffer[Type]()
+
+      def collect(parent: Type, parents: ListBuffer[Type]): Unit = parent.widenDealias match
+        case AndType(tp1, tp2) =>
+          collect(tp1, parents)
+          collect(tp2, parents)
+        case parent: TypeRef =>
+          if parent.symbol.isClass || isTypeParameterInSig(parent.symbol, sym0) then
+            parents += parent
+          else
+            collect(parent.superType, parents)
+        case parent =>
+          parents += parent
+
+      collect(tp, parents)
+      parents.toList
+    end flattenedIntersection
+
+    /** Split the `parents` of an intersection into two subsets:
+     *  those whose individual erasure matches the overall erasure
+     *  of the intersection and the others.
+     */
+    def splitIntersection(parents: List[Type])(using Context): (List[Type], List[Type]) =
+      val erasedParents = parents.map(erasure)
+      val erasedTp = erasedGlb(erasedParents)
+      parents.zip(erasedParents)
+        .partitionMap((parent, erasedParent) =>
+          if erasedParent =:= erasedTp then
+            Left(parent)
+          else
+            Right(parent))
 
     def paramSig(param: LambdaParam): Unit = {
       builder.append(sanitizeName(param.paramName))
@@ -184,7 +239,7 @@ object GenericSignatures {
           typeParamSig(ref.paramName.lastPart)
 
         case defn.ArrayOf(elemtp) =>
-          if (isUnboundedGeneric(elemtp))
+          if (isGenericArrayElement(elemtp, isScala2 = false))
             jsig(defn.ObjectType)
           else
             builder.append(ClassfileConstants.ARRAY_TAG)
@@ -236,7 +291,7 @@ object GenericSignatures {
 
         case PolyType(tparams, mtpe: MethodType) =>
           assert(tparams.nonEmpty)
-          if (toplevel) polyParamSig(tparams)
+          if (toplevel && !sym0.isConstructor) polyParamSig(tparams)
           jsig(mtpe)
 
         // Nullary polymorphic method
@@ -263,8 +318,20 @@ object GenericSignatures {
           builder.append(')')
           methodResultSig(restpe)
 
-        case AndType(tp1, tp2) =>
-          jsig(intersectionDominator(tp1 :: tp2 :: Nil), primitiveOK = primitiveOK)
+        case tp: AndType =>
+          // Only intersections appearing as the upper-bound of a type parameter
+          // can be preserved in generic signatures and those are already
+          // handled by `boundsSig`, so here we fallback to picking a parent of
+          // the intersection to determine its overall signature. We must pick a
+          // parent whose erasure matches the erasure of the intersection
+          // because javac relies on the generic signature to determine the
+          // bytecode signature. Additionally, we prefer picking a type
+          // parameter since that will likely lead to a more precise type.
+          val parents = flattenedIntersection(tp)
+          val (reprParents, _) = splitIntersection(parents)
+          val repr =
+            reprParents.find(_.typeSymbol.is(TypeParam)).getOrElse(reprParents.head)
+          jsig(repr, primitiveOK = primitiveOK)
 
         case ci: ClassInfo =>
           def polyParamSig(tparams: List[TypeParamInfo]): Unit =
@@ -307,38 +374,6 @@ object GenericSignatures {
   }
 
   private class UnknownSig extends Exception
-
-  /** The intersection dominator (SLS 3.7) of a list of types is computed as follows.
-    *
-    *  - If the list contains one or more occurrences of scala.Array with
-    *    type parameters El1, El2, ... then the dominator is scala.Array with
-    *    type parameter of intersectionDominator(List(El1, El2, ...)).           <--- @PP: not yet in spec.
-    *  - Otherwise, the list is reduced to a subsequence containing only the
-    *    types that are not supertypes of other listed types (the span.)
-    *  - If the span is empty, the dominator is Object.
-    *  - If the span contains a class Tc which is not a trait and which is
-    *    not Object, the dominator is Tc.                                        <--- @PP: "which is not Object" not in spec.
-    *  - Otherwise, the dominator is the first element of the span.
-    */
-  private def intersectionDominator(parents: List[Type])(using Context): Type =
-    if (parents.isEmpty) defn.ObjectType
-    else {
-      val psyms = parents map (_.typeSymbol)
-      if (psyms contains defn.ArrayClass)
-        // treat arrays specially
-        defn.ArrayType.appliedTo(intersectionDominator(parents.filter(_.typeSymbol == defn.ArrayClass).map(t => t.argInfos.head)))
-      else {
-        // implement new spec for erasure of refined types.
-        def isUnshadowed(psym: Symbol) =
-          !(psyms exists (qsym => (psym ne qsym) && (qsym isSubClass psym)))
-        val cs = parents.iterator.filter { p => // isUnshadowed is a bit expensive, so try classes first
-          val psym = p.classSymbol
-          psym.ensureCompleted()
-          psym.isClass && !psym.is(Trait) && isUnshadowed(psym)
-        }
-        (if (cs.hasNext) cs else parents.iterator.filter(p => isUnshadowed(p.classSymbol))).next()
-      }
-    }
 
   /* Drop redundant types (ones which are implemented by some other parent) from the immediate parents.
    * This is important on Android because there is otherwise an interface explosion.

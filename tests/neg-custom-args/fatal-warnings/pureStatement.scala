@@ -26,7 +26,7 @@ object Test {
 
   doSideEffects(1) // error: pure expression does nothing in statement position
 
-  val broken = new IDontExist("") // error // error
+  val broken = new IDontExist("") // error
   broken.foo // no extra error, and no pure expression warning
   broken.foo() // same
 }

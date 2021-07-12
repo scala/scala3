@@ -1,6 +1,0 @@
--- [E146] Syntax Error: tests/neg/AbstractObject.scala:1:0 -------------------------------------------------------------
-1 |abstract object A {} // error
-  |^^^^^^^^
-  |abstract modifier cannot be used for objects
-
-longer explanation available when compiling with `-explain`

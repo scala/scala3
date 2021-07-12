@@ -32,7 +32,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           case defn.ArrayOf(elemTp) =>
             val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
             if etag.tpe.isError then EmptyTree else etag.select(nme.wrap)
-          case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
+          case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
             val sym = tp.typeSymbol
             val classTag = ref(defn.ClassTagModule)
             val tag =
@@ -114,10 +114,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           cmpWithBoxed(cls1, cls2)
       else if cls2.isPrimitiveValueClass then
         cmpWithBoxed(cls2, cls1)
-      else if ctx.explicitNulls then
-        // If explicit nulls is enabled, we want to disallow comparison between Object and Null.
-        // If a nullable value has a non-nullable type, we can still cast it to nullable type
-        // then compare.
+      else if ctx.mode.is(Mode.SafeNulls) then
+        // If explicit nulls is enabled, and unsafeNulls is not enabled,
+        // we want to disallow comparison between Object and Null.
+        // If we have to check whether a variable with a non-nullable type has null value
+        // (for example, a NotNull java method returns null for some reasons),
+        // we can still cast it to a nullable type then compare its value.
         //
         // Example:
         // val x: String = null.asInstanceOf[String]
@@ -158,13 +160,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     def success(t: Tree) =
       New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
-
     formal.argInfos match
       case arg :: Nil =>
-        fullyDefinedType(arg.dealias, "ValueOf argument", span).normalized match
+        fullyDefinedType(arg, "ValueOf argument", span).normalized.dealias match
           case ConstantType(c: Constant) =>
             success(Literal(c))
-          case TypeRef(_, sym) if sym == defn.UnitClass =>
+          case tp: TypeRef if tp.isRef(defn.UnitClass) =>
             success(Literal(Constant(())))
           case n: TermRef =>
             success(ref(n))
@@ -178,6 +179,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
    */
   private def anonymousMirror(monoType: Type, attachment: Property.StickyKey[Unit], span: Span)(using Context) =
+    if ctx.isAfterTyper then ctx.compilationUnit.needsMirrorSupport = true
     val monoTypeDef = untpd.TypeDef(tpnme.MirroredMonoType, untpd.TypeTree(monoType))
     val newImpl = untpd.Template(
       constr = untpd.emptyConstructor,
@@ -215,6 +217,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case RefinedType(_, _, _) => false
       case _ => true
     loop(formal)
+
+  private def checkRefinement(formal: Type, name: TypeName, expected: Type, span: Span)(using Context): Unit =
+    val actual = formal.lookupRefined(name)
+    if actual.exists && !(expected =:= actual)
+    then report.error(
+      em"$name mismatch, expected: $expected, found: $actual.", ctx.source.atSpan(span))
 
   private def mkMirroredMonoType(mirroredType: HKTypeLambda)(using Context): Type =
     val monoMap = new TypeMap:
@@ -257,10 +265,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             case _ =>
               val elems = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr))
               (mirroredType, elems)
+          val elemsLabels = TypeOps.nestedPairs(elemLabels)
+          checkRefinement(formal, tpnme.MirroredElemTypes, elemsType, span)
+          checkRefinement(formal, tpnme.MirroredElemLabels, elemsLabels, span)
           val mirrorType =
             mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name, formal)
               .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
           val mirrorRef =
             if (cls.is(Scala2x)) anonymousMirror(monoType, ExtendsProductMirror, span)
             else companionPath(mirroredType, span)

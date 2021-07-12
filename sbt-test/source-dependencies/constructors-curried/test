@@ -1,0 +1,10 @@
+> compile
+$ copy-file changes/A2.scala A.scala
+# we should detect that A has changed,
+# this should trigger recompilation of B,
+# which should fail due to missing curried argument
+-> compile
+$ copy-file changes/B2.scala B.scala
+# B is updated so that it passes an extra
+# argument to A's constructor, it should compile
+> compile

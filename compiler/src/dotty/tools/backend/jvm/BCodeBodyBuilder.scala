@@ -228,7 +228,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       resKind
     }
 
-    def genPrimitiveOp(tree: Apply, expectedType: BType): BType = tree match {
+    def genPrimitiveOp(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
       case Apply(fun @ DesugaredSelect(receiver, _), _) =>
       val sym = tree.symbol
 
@@ -610,7 +610,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    def genTypeApply(t: TypeApply): BType = t match {
+    def genTypeApply(t: TypeApply): BType = (t: @unchecked) match {
       case TypeApply(fun@DesugaredSelect(obj, _), targs) =>
 
         val sym = fun.symbol
@@ -1414,7 +1414,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genLoadTry(tree: Try): BType
 
     def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol): BType = {
-      import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
+      import java.lang.invoke.LambdaMetafactory.{FLAG_BRIDGES, FLAG_SERIALIZABLE}
 
       report.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
       val generatedType = classBTypeFromSymbol(functionalInterface)
@@ -1445,9 +1445,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
       // TODO specialization
-      val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
+      val instantiatedMethodType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
 
-      val abstractMethod = atPhase(erasurePhase) {
+      val samMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
         samMethods match {
           case x :: Nil => x.symbol
@@ -1457,21 +1457,40 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         }
       }
 
-      val methodName = abstractMethod.javaSimpleName
-      val applyN = {
-        val mt = asmMethodType(abstractMethod)
-        mt.toASMType
+      val methodName = samMethod.javaSimpleName
+      val samMethodType = asmMethodType(samMethod).toASMType
+      // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
+      // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
+      val needsGenericBridge = samMethodType != instantiatedMethodType
+      val bridgeMethods = atPhase(erasurePhase){
+        samMethod.allOverriddenSymbols.toList
       }
-      val bsmArgs0 = Seq(applyN, targetHandle, constrainedType)
-      val bsmArgs =
-        if (isSerializable)
-          bsmArgs0 :+ Int.box(FLAG_SERIALIZABLE)
+      val overriddenMethodTypes = bridgeMethods.map(b => asmMethodType(b).toASMType)
+
+      // any methods which `samMethod` overrides need bridges made for them
+      // this is done automatically during erasure for classes we generate, but LMF needs to have them explicitly mentioned
+      // so we have to compute them at this relatively late point.
+      val bridgeTypes = (
+        if (needsGenericBridge)
+          instantiatedMethodType +: overriddenMethodTypes
         else
-          bsmArgs0
+          overriddenMethodTypes
+      ).distinct.filterNot(_ == samMethodType)
+
+      val needsBridges = bridgeTypes.nonEmpty
+
+      def flagIf(b: Boolean, flag: Int): Int = if (b) flag else 0
+      val flags = flagIf(isSerializable, FLAG_SERIALIZABLE) | flagIf(needsBridges, FLAG_BRIDGES)
+
+      val bsmArgs0 = Seq(samMethodType, targetHandle, instantiatedMethodType)
+      val bsmArgs1 = if (flags != 0) Seq(Int.box(flags)) else Seq.empty
+      val bsmArgs2 = if needsBridges then bridgeTypes.length +: bridgeTypes else Seq.empty
+
+      val bsmArgs = bsmArgs0 ++ bsmArgs1 ++ bsmArgs2
 
       val metafactory =
-        if (isSerializable)
-          lambdaMetaFactoryAltMetafactoryHandle // altMetafactory needed to be able to pass the SERIALIZABLE flag
+        if (flags != 0)
+          lambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
         else
           lambdaMetaFactoryMetafactoryHandle
 

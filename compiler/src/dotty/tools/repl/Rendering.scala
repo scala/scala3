@@ -33,7 +33,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   /** A `MessageRenderer` for the REPL without file positions */
   private val messageRenderer = new MessageRendering {
-    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String = ""
+    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String =
+      hl(diagnosticLevel)(s"-- $diagnosticLevel:")
   }
 
   private var myClassLoader: ClassLoader = _
@@ -47,7 +48,14 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     else {
       val parent = parentClassLoader.getOrElse {
         val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
-        new java.net.URLClassLoader(compilerClasspath.toArray, null)
+        // We can't use the system classloader as a parent because it would
+        // pollute the user classpath with everything passed to the JVM
+        // `-classpath`. We can't use `null` as a parent either because on Java
+        // 9+ that's the bootstrap classloader which doesn't contain modules
+        // like `java.sql`, so we use the parent of the system classloader,
+        // which should correspond to the platform classloader on Java 9+.
+        val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
+        new java.net.URLClassLoader(compilerClasspath.toArray, baseClassLoader)
       }
 
       myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
@@ -55,11 +63,21 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
         // We need to use the ScalaRunTime class coming from the scala-library
         // on the user classpath, and not the one available in the current
         // classloader, so we use reflection instead of simply calling
-        // `ScalaRunTime.replStringOf`.
+        // `ScalaRunTime.replStringOf`. Probe for new API without extraneous newlines.
+        // For old API, try to clean up extraneous newlines by stripping suffix and maybe prefix newline.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
-        val meth = scalaRuntime.getMethod("replStringOf", classOf[Object], classOf[Int])
+        val renderer = "stringOf"  // was: replStringOf
+        try {
+          val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
+          val truly = java.lang.Boolean.TRUE
 
-        (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
+          (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements), truly).asInstanceOf[String]
+        } catch {
+          case _: NoSuchMethodException =>
+            val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
+
+            (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
+        }
       }
       myClassLoader
     }
@@ -81,7 +99,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   private[repl] def replStringOf(value: Object)(using Context): String = {
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
-    truncate(myReplStringOf(value))
+    val res = myReplStringOf(value)
+    if res == null then "null // non-null reference has null-valued toString" else truncate(res)
   }
 
   /** Load the value of the symbol using reflection.
@@ -95,13 +114,13 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       resObj
         .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
         .map(_.invoke(null))
-    val string = value.map(replStringOf(_).trim)
+    val string = value.map(replStringOf(_))
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
     else
       string.map { s =>
-        if (s.startsWith(str.REPL_SESSION_LINE))
-          s.drop(str.REPL_SESSION_LINE.length).dropWhile(c => c.isDigit || c == '$')
+        if (s.startsWith(REPL_WRAPPER_NAME_PREFIX))
+          s.drop(REPL_WRAPPER_NAME_PREFIX.length).dropWhile(c => c.isDigit || c == '$')
         else
           s
       }
@@ -149,11 +168,14 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     val cause = ite.getCause match
       case e: ExceptionInInitializerError => e.getCause
       case e => e
-    def isWrapperCode(ste: StackTraceElement) =
-      ste.getClassName == d.symbol.owner.name.show
+    // detect
+    //at repl$.rs$line$2$.<clinit>(rs$line$2:1)
+    //at repl$.rs$line$2.res1(rs$line$2)
+    def isWrapperInitialization(ste: StackTraceElement) =
+      ste.getClassName.startsWith(nme.REPL_PACKAGE.toString + ".")  // d.symbol.owner.name.show is simple name
       && (ste.getMethodName == nme.STATIC_CONSTRUCTOR.show || ste.getMethodName == nme.CONSTRUCTOR.show)
 
-    cause.formatStackTracePrefix(!isWrapperCode(_))
+    cause.formatStackTracePrefix(!isWrapperInitialization(_))
   end renderError
 
   private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =
@@ -162,6 +184,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 }
 
 object Rendering {
+  final val REPL_WRAPPER_NAME_PREFIX = s"${nme.REPL_PACKAGE}.${str.REPL_SESSION_LINE}"
 
   extension (s: Symbol)
     def showUser(using Context): String = {

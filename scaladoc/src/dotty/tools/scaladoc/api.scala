@@ -76,10 +76,10 @@ enum Origin:
   case ImplicitlyAddedBy(name: String, dri: DRI)
   case ExtensionFrom(name: String, dri: DRI)
   case ExportedFrom(name: String, dri: Option[DRI])
-  case Overrides(overridenMembers: Seq[Overriden])
+  case Overrides(overriddenMembers: Seq[Overridden])
   case RegularlyDefined
 
-case class Overriden(name: String, dri: DRI)
+case class Overridden(name: String, dri: DRI)
 
 case class InheritedFrom(name: String, dri: DRI)
 
@@ -232,4 +232,15 @@ extension (s: Signature)
       case l: Link => l.name
     }.mkString
 
-case class TastyMemberSource(val path: java.nio.file.Path, val lineNumber: Int)
+case class TastyMemberSource(path: java.nio.file.Path, lineNumber: Int)
+
+object SnippetCompilerData:
+  case class Position(line: Int, column: Int)
+  case class ClassInfo(tpe: Option[String], names: Seq[String], generics: Option[String])
+
+case class SnippetCompilerData(
+  packageName: String,
+  classInfos: Seq[SnippetCompilerData.ClassInfo],
+  imports: List[String],
+  position: SnippetCompilerData.Position
+)

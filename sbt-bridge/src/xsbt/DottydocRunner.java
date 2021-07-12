@@ -43,37 +43,14 @@ public class DottydocRunner {
       return msg.toString();
     });
 
-    // When running with `-from-tasty`, remove the source files from arg list.
     String[] args;
-    boolean fromTasty = false;
+
+    ArrayList<String> retained = new ArrayList<>(args0.length);
     for (String arg : args0) {
-      if ("-from-tasty".equals(arg)) {
-        fromTasty = true;
-        break;
-      }
+      if (!((arg.endsWith(".scala") || arg.endsWith(".java")) && Files.exists(Paths.get(arg))))
+        retained.add(arg);
     }
-    if (fromTasty) {
-      ArrayList<String> excluded = new ArrayList<>(args0.length);
-      ArrayList<String> retained = new ArrayList<>(args0.length);
-      for (String arg : args0) {
-        if ((arg.endsWith(".scala") || arg.endsWith(".java")) && Files.exists(Paths.get(arg)))
-          excluded.add(arg);
-        else
-          retained.add(arg);
-      }
-      log.debug(() -> {
-        StringBuilder msg =
-          new StringBuilder("Running `-from-tasty`, excluding source files:");
-        for (String arg : excluded) {
-          msg.append("\n\t");
-          msg.append(arg);
-        }
-        return msg.toString();
-      });
-      args = retained.toArray(new String[retained.size()]);
-    } else {
-      args = args0;
-    }
+    args = retained.toArray(new String[retained.size()]);
 
     Context ctx = new ContextBase().initialCtx().fresh()
       .setReporter(new DelegatingReporter(delegate));

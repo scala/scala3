@@ -138,7 +138,7 @@ trait MessageRendering {
           |${Blue("===========").show}""".stripMargin
     )
     sb.append(EOL).append(m.explanation)
-    if (m.explanation.lastOption != Some(EOL)) sb.append(EOL)
+    if (!m.explanation.endsWith(EOL)) sb.append(EOL)
     sb.toString
   }
 
@@ -149,10 +149,13 @@ trait MessageRendering {
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists) {
       val pos1 = pos.nonInlined
-      val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
-      val marker = columnMarker(pos1, offset, diagnosticLevel)
-      val err = errorMsg(pos1, msg.message, offset)
-      sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
+      if (pos1.exists && pos1.source.file.exists) {
+        val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
+        val marker = columnMarker(pos1, offset, diagnosticLevel)
+        val err = errorMsg(pos1, msg.message, offset)
+        sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
+      }
+      else sb.append(msg.message)
     }
     else sb.append(msg.message)
     sb.toString

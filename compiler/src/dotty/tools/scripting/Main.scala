@@ -10,7 +10,7 @@ object Main:
       All arguments afterwards are script arguments.*/
   private def distinguishArgs(args: Array[String]): (Array[String], File, Array[String], Boolean, Boolean) =
     val (leftArgs, rest) = args.splitAt(args.indexOf("-script"))
-    assert(rest.size >= 2,s"internal error: rest == Array(${rest.mkString(",")})")
+    assert(rest.size >= 2, s"internal error: rest == Array(${rest.mkString(",")})")
 
     val file = File(rest(1))
     val scriptArgs = rest.drop(2)
@@ -32,10 +32,12 @@ object Main:
   def main(args: Array[String]): Unit =
     val (compilerArgs, scriptFile, scriptArgs, saveJar, invokeFlag) = distinguishArgs(args)
     val driver = ScriptingDriver(compilerArgs, scriptFile, scriptArgs)
-    try driver.compileAndRun { (outDir:Path, classpath:String, mainClass: String) =>
+    try driver.compileAndRun { (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
+      // write expanded classpath to java.class.path property, so called script can see it
+      sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
       if saveJar then
         // write a standalone jar to the script parent directory
-        writeJarfile(outDir, scriptFile, scriptArgs, classpath, mainClass)
+        writeJarfile(outDir, scriptFile, scriptArgs, classpathEntries, mainClass)
       invokeFlag
     }
     catch
@@ -47,10 +49,7 @@ object Main:
         throw e.getCause
 
   private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
-      classpath:String, mainClassName: String): Unit =
-
-    val javaClasspath = sys.props("java.class.path")
-    val runtimeClasspath = s"${classpath}$pathsep$javaClasspath"
+      classpathEntries:Seq[Path], mainClassName: String): Unit =
 
     val jarTargetDir: Path = Option(scriptFile.toPath.toAbsolutePath.getParent) match {
       case None => sys.error(s"no parent directory for script file [$scriptFile]")
@@ -60,7 +59,7 @@ object Main:
     def scriptBasename = scriptFile.getName.takeWhile(_!='.')
     val jarPath = s"$jarTargetDir/$scriptBasename.jar"
 
-    val cpPaths = runtimeClasspath.split(pathsep).map(_.toUrl)
+    val cpPaths = classpathEntries.map { _.toString.toUrl }
 
     import java.util.jar.Attributes.Name
     val cpString:String = cpPaths.distinct.mkString(" ")
@@ -92,7 +91,7 @@ object Main:
     // convert to absolute path relative to cwd.
     def absPath: String = norm match
       case str if str.isAbsolute => norm
-      case _ => Paths.get(userDir,norm).toString.norm
+      case _ => Paths.get(userDir, norm).toString.norm
 
     def toUrl: String = Paths.get(absPath).toUri.toURL.toString
 

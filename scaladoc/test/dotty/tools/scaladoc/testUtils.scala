@@ -54,9 +54,13 @@ def testArgs(files: Seq[File] = Nil, dest: File = new File("notUsed")) = Scalado
           name = "Test Project Name",
           output = dest,
           tastyFiles = files,
+          docsRoot = Some(""),
         )
 
-def testContext = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
+def testContext = 
+  val ctx = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
+  ctx.setSetting(ctx.settings.usejavacp, true)
+  ctx
 
 def testDocContext(files: Seq[File] = Nil) = DocContext(testArgs(files), testContext)
 

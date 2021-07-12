@@ -12,7 +12,7 @@ import dotty.tools.scaladoc.test.BuildInfo
 import util.IO
 
 class BaseHtmlTest:
-  val unresolvedLinkSelector = ".documentableBrief span[data-unresolved-link]"
+  val unresolvedLinkSelector = ".documentableBrief span[data-unresolved-link], .cover span[data-unresolved-link]"
 
   def projectName = "Test Project Name"
   def  projectVersion = "1.0.1-M1"
@@ -34,7 +34,7 @@ class BaseHtmlTest:
             tastyFiles = pcks.flatMap(tastyFiles(_)),
             output = dest.toFile,
             docsRoot = docsRoot,
-            projectVersion = Some(projectVersion),
+            projectVersion = Some(projectVersion)
           )
         Scaladoc.run(args)(using testContext)
         op(using ProjectContext(dest))

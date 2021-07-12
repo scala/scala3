@@ -21,11 +21,13 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.NameKinds.ExpandedName
 import dotty.tools.dotc.core.Signature
 import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
+import dotty.tools.dotc.transform.ElimErasedValueType
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
 
@@ -506,7 +508,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      *
      * must-single-thread
      */
-    private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol): Unit = {
+    private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean): Unit = {
       val moduleName     = internalName(module)
       val methodInfo     = module.thisType.memberInfo(m)
       val paramJavaTypes: List[BType] = methodInfo.firstParamTypes map toTypeKind
@@ -517,9 +519,10 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
        *  and we don't know what classes might be subclassing the companion class.  See SI-4827.
        */
       // TODO: evaluate the other flags we might be dropping on the floor here.
-      // TODO: ACC_SYNTHETIC ?
       val flags = GenBCodeOps.PublicStatic | (
         if (m.is(JavaVarargs)) asm.Opcodes.ACC_VARARGS else 0
+      ) | (
+        if (isSynthetic) asm.Opcodes.ACC_SYNTHETIC else 0
       )
 
       // TODO needed? for(ann <- m.annotations) { ann.symbol.initialize }
@@ -594,7 +597,16 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           report.log(s"No forwarder for non-public member $m")
         else {
           report.log(s"Adding static forwarder for '$m' from $jclassName to '$moduleClass'")
-          addForwarder(jclass, moduleClass, m)
+          // It would be simpler to not generate forwarders for these methods,
+          // but that wouldn't be binary-compatible with Scala 3.0.0, so instead
+          // we generate ACC_SYNTHETIC forwarders so Java compilers ignore them.
+          val isSynthetic =
+            m0.name.is(NameKinds.SyntheticSetterName) ||
+            // Only hide bridges generated at Erasure, mixin forwarders are also
+            // marked as bridge but shouldn't be hidden since they don't have a
+            // non-bridge overload.
+            m0.is(Bridge) && m0.initial.validFor.firstPhaseId == erasurePhase.next.id
+          addForwarder(jclass, moduleClass, m, isSynthetic)
         }
       }
     }
@@ -926,7 +938,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
 
     val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
-    val erasedMemberType = TypeErasure.fullErasure(memberTpe)
+    val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
     if (erasedMemberType =:= sym.denot.info)
       getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull
     else null

@@ -17,7 +17,7 @@ object Test {
 
   class D extends C {
     override def v(i: Int*) = () // error
-    def v(i: Array[Int]) = () // error
+    def v(i: Array[Int]) = () // ok, reported when used alone (see varargs-annot-2.scala)
   }
 
   @varargs def nov(a: Int) = 0 // error: A method without repeated parameters cannot be annotated with @varargs

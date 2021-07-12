@@ -102,9 +102,6 @@ object Mode {
   /** We are typing the body of an inline method */
   val InlineableBody: Mode = newMode(21, "InlineableBody")
 
-  /** Read comments from definitions when unpickling from TASTY */
-  val ReadComments: Mode = newMode(22, "ReadComments")
-
   /** We are synthesizing the receiver of an extension method */
   val SynthesizeExtMethodReceiver: Mode = newMode(23, "SynthesizeExtMethodReceiver")
 
@@ -120,7 +117,7 @@ object Mode {
   /** Are we resolving a TypeTest node? */
   val InTypeTest: Mode = newMode(27, "InTypeTest")
 
-  /** Are we enforcing null safety */
+  /** Are we enforcing null safety? */
   val SafeNulls = newMode(28, "SafeNulls")
 
   /** We are typing the body of the condition of an `inline if` or the scrutinee of an `inline match`

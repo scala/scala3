@@ -66,15 +66,25 @@ extension (r: report.type)
   def warn(m: String, e: Throwable)(using CompilerContext): Unit =
     r.warning(s"$m: ${throwableToString(e)}")
 
+  def echo(m: String)(using CompilerContext): Unit =
+    r.echo(m)
+
 case class NavigationNode(name: String, dri: DRI, nested: Seq[NavigationNode])
 
 case class DocContext(args: Scaladoc.Args, compilerContext: CompilerContext):
-  lazy val sourceLinks: SourceLinks = SourceLinks.load(using this)
+  lazy val sourceLinks = SourceLinks.load(args.sourceLinks, args.revision)(using compilerContext)
+
+  lazy val snippetCompilerArgs = snippets.SnippetCompilerArgs.load(args.snippetCompiler, args.snippetCompilerDebug)(using compilerContext)
+
+  lazy val snippetChecker = snippets.SnippetChecker(args)(using compilerContext)
 
   lazy val staticSiteContext = args.docsRoot.map(path => StaticSiteContext(
       File(path).getAbsoluteFile(),
       args,
-      sourceLinks
+      sourceLinks,
+      snippetCompilerArgs,
+      snippetChecker
     )(using compilerContext))
+
 
   val externalDocumentationLinks = args.externalMappings

@@ -123,6 +123,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
       checkInternalAnnotations(sym)
 
+      stripJSAnnotsOnExported(sym)
+
       /* Checks related to @js.native:
        * - if @js.native, verify that it is allowed in this context, and if
        *   yes, compute and store the JS native load spec
@@ -241,6 +243,32 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
     private def transformStatOrExpr(tree: Tree)(using Context): Tree = {
       tree match {
+        case Closure(env, call, functionalInterface) =>
+          val tpeSym = functionalInterface.tpe.typeSymbol
+          if (tpeSym.isJSType) {
+            def reportError(reasonAndExplanation: String): Unit = {
+              report.error(
+                  "Using an anonymous function as a SAM for the JavaScript type " +
+                  i"${tpeSym.fullName} is not allowed because " +
+                  reasonAndExplanation,
+                  tree)
+            }
+            if (!tpeSym.is(Trait) || tpeSym.asClass.superClass != jsdefn.JSFunctionClass) {
+              reportError(
+                  "it is not a trait extending js.Function. " +
+                  "Use an anonymous class instead.")
+            } else if (tpeSym.hasAnnotation(jsdefn.JSNativeAnnot)) {
+              reportError(
+                  "it is a native JS type. " +
+                  "It is not possible to directly implement it.")
+            } else if (!tree.tpe.possibleSamMethods.exists(_.symbol.hasJSCallCallingConvention)) {
+              reportError(
+                  "its single abstract method is not named `apply`. " +
+                  "Use an anonymous class instead.")
+            }
+          }
+          super.transform(tree)
+
         // Validate js.constructorOf[T]
         case TypeApply(ctorOfTree, List(tpeArg))
             if ctorOfTree.symbol == jsdefn.JSPackage_constructorOf =>
@@ -270,6 +298,14 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           }
 
           // TODO Warn for known duplicate property names
+
+          super.transform(tree)
+
+        case _: Export =>
+          if enclosingOwner is OwnerKind.JSNative then
+            report.error("Native JS traits, classes and objects cannot contain exported definitions.", tree)
+          else if enclosingOwner is OwnerKind.JSTrait then
+            report.error("Non-native JS traits cannot contain exported definitions.", tree)
 
           super.transform(tree)
 
@@ -395,7 +431,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
             val infoStr =
               if (sym1.is(Module)) ""
               else i" of type $info"
-            i"${if (showLocation) sym1.showLocated else sym1}$infoStr with JS name '${sym.jsName.displayName}'"
+            val ccStr = s" called from JS as '${sym.jsCallingConvention.displayName}'"
+            i"${if (showLocation) sym1.showLocated else sym1}$infoStr$ccStr"
           }
 
           def infoString(sym: Symbol): String = infoString0(sym, sym.owner != clsSym)
@@ -409,8 +446,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           }
 
           // Check for overrides with different JS names - issue scala-js/scala-js#1983
-          if (overriding.jsName != overridden.jsName)
-            emitOverrideError("has a different JS name")
+          if (overriding.jsCallingConvention != overridden.jsCallingConvention)
+            emitOverrideError("has a different JS calling convention")
 
           /* Cannot override a non-@JSOptional with an @JSOptional. Unfortunately
            * at this point the symbols do not have @JSOptional yet, so we need
@@ -430,7 +467,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       val kind = {
         if (!isJSNative) {
           if (sym.is(ModuleClass)) OwnerKind.JSMod
-          else OwnerKind.JSClass
+          else if (sym.is(Trait)) OwnerKind.JSTrait
+          else OwnerKind.JSNonTraitClass
         } else {
           if (sym.is(ModuleClass)) OwnerKind.JSNativeMod
           else OwnerKind.JSNativeClass
@@ -584,18 +622,12 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       assert(!sym.isLocalToBlock, i"$tree at ${tree.span}")
 
       sym.name match {
-        case nme.apply if !sym.hasAnnotation(jsdefn.JSNameAnnot) =>
-          if (!sym.is(Method) || sym.isJSGetter) {
-            report.error(
-                "A member named apply represents function application in JavaScript. " +
-                "A parameterless member should be exported as a property. " +
-                "You must add @JSName(\"apply\")",
-                sym)
-          } else if (enclosingOwner is OwnerKind.JSNonNative) {
-            report.error(
-                "A non-native JS class cannot declare a method named `apply` without `@JSName`",
-                sym)
-          }
+        case nme.apply if !sym.hasAnnotation(jsdefn.JSNameAnnot) && (!sym.is(Method) || sym.isJSGetter) =>
+          report.error(
+              "A member named apply represents function application in JavaScript. " +
+              "A parameterless member should be exported as a property. " +
+              "You must add @JSName(\"apply\")",
+              sym)
 
         case nme.equals_ if sym.info.matches(defn.Any_equals.info) =>
           report.error(
@@ -617,40 +649,75 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       if (sym.isJSSetter)
         checkSetterSignature(sym, tree, exported = false)
 
-      if (sym.isJSBracketAccess) {
-        if (enclosingOwner is OwnerKind.JSNonNative) {
-          report.error("@JSBracketAccess is not allowed in non-native JS classes", tree)
-        } else {
-          val allParamInfos = sym.info.paramInfoss.flatten
+      if (enclosingOwner is OwnerKind.JSNonNative) {
+        JSCallingConvention.of(sym) match {
+          case JSCallingConvention.Property(_) => // checked above
+          case JSCallingConvention.Method(_)   => // no checks needed
 
-          allParamInfos.size match {
-            case 1 =>
-              // ok
-            case 2 =>
-              if (!sym.info.finalResultType.isRef(defn.UnitClass))
-                report.error("@JSBracketAccess methods with two parameters must return Unit", tree)
-            case _ =>
-              report.error("@JSBracketAccess methods must have one or two parameters", tree)
-          }
+          case JSCallingConvention.Call if !sym.is(Deferred) =>
+            report.error("A non-native JS class cannot declare a concrete method named `apply` without `@JSName`", tree)
 
-          if (allParamInfos.exists(_.isRepeatedParam))
-            report.error("@JSBracketAccess methods may not have repeated parameters", tree)
-          if (sym.hasDefaultParams)
-            report.error("@JSBracketAccess methods may not have default parameters", tree)
+          case JSCallingConvention.Call => // if sym.isDeferred
+            /* Allow an abstract `def apply` only if the owner is a plausible
+             * JS function SAM trait.
+             */
+            val owner = sym.owner
+            val isPlausibleJSFunctionType = {
+              owner.is(Trait) &&
+              owner.asClass.superClass == jsdefn.JSFunctionClass &&
+              owner.typeRef.possibleSamMethods.map(_.symbol) == Seq(sym) &&
+              !sym.info.isInstanceOf[PolyType]
+            }
+            if (!isPlausibleJSFunctionType) {
+              report.error(
+                  "A non-native JS type can only declare an abstract method named `apply` without `@JSName` " +
+                  "if it is the SAM of a trait that extends js.Function",
+                  tree)
+            }
+
+          case JSCallingConvention.BracketAccess =>
+            report.error("@JSBracketAccess is not allowed in non-native JS classes", tree)
+          case JSCallingConvention.BracketCall =>
+            report.error("@JSBracketCall is not allowed in non-native JS classes", tree)
+          case JSCallingConvention.UnaryOp(_) =>
+            report.error("A non-native JS class cannot declare a method named like a unary operation without `@JSName`", tree)
+          case JSCallingConvention.BinaryOp(_) =>
+            report.error("A non-native JS class cannot declare a method named like a binary operation without `@JSName`", tree)
         }
-      }
+      } else {
+        def checkNoDefaultOrRepeated(subject: String) = {
+          if (sym.info.paramInfoss.flatten.exists(_.isRepeatedParam))
+            report.error(s"$subject may not have repeated parameters", tree)
+          if (sym.hasDefaultParams)
+            report.error(s"$subject may not have default parameters", tree)
+        }
 
-      if (sym.isJSBracketCall) {
-        if (enclosingOwner is OwnerKind.JSNonNative) {
-          report.error("@JSBracketCall is not allowed in non-native JS classes", tree)
-        } else {
-          // JS bracket calls must have at least one non-repeated parameter
-          sym.info.stripPoly match {
-            case mt: MethodType if mt.paramInfos.nonEmpty && !mt.paramInfos.head.isRepeatedParam =>
-              // ok
-            case _ =>
-              report.error("@JSBracketCall methods must have at least one non-repeated parameter", tree)
-          }
+        JSCallingConvention.of(sym) match {
+          case JSCallingConvention.Property(_) => // checked above
+          case JSCallingConvention.Method(_)   => // no checks needed
+          case JSCallingConvention.Call        => // no checks needed
+          case JSCallingConvention.UnaryOp(_)  => // no checks needed
+
+          case JSCallingConvention.BinaryOp(_) =>
+            checkNoDefaultOrRepeated("methods representing binary operations")
+
+          case JSCallingConvention.BracketAccess =>
+            val paramCount = sym.info.paramNamess.map(_.size).sum
+            if (paramCount != 1 && paramCount != 2)
+              report.error("@JSBracketAccess methods must have one or two parameters", tree)
+            else if (paramCount == 2 && !sym.info.finalResultType.isRef(defn.UnitClass))
+              report.error("@JSBracketAccess methods with two parameters must return Unit", tree)
+
+            checkNoDefaultOrRepeated("@JSBracketAccess methods")
+
+          case JSCallingConvention.BracketCall =>
+            // JS bracket calls must have at least one non-repeated parameter
+            sym.info.stripPoly match {
+              case mt: MethodType if mt.paramInfos.nonEmpty && !mt.paramInfos.head.isRepeatedParam =>
+                // ok
+              case _ =>
+                report.error("@JSBracketCall methods must have at least one non-repeated parameter", tree)
+            }
         }
       }
 
@@ -758,7 +825,29 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       super.transform(tree)
     }
 
+    /** Removes annotations from exported definitions (e.g. `export foo.bar`):
+     *  - `js.native`
+     *  - `js.annotation.*`
+     */
+    private def stripJSAnnotsOnExported(sym: Symbol)(using Context): Unit =
+      if !sym.is(Exported) then
+        return // only remove annotations from exported definitions
+
+      val JSNativeAnnot = jsdefn.JSNativeAnnot
+      val JSAnnotPackage = jsdefn.JSAnnotPackage
+
+      extension (sym: Symbol) def isJSAnnot =
+        (sym eq JSNativeAnnot) || (sym.owner eq JSAnnotPackage)
+
+      val newAnnots = sym.annotations.filterConserve(!_.symbol.isJSAnnot)
+      if newAnnots ne sym.annotations then
+        sym.annotations = newAnnots
+    end stripJSAnnotsOnExported
+
     private def checkRHSCallsJSNative(tree: ValOrDefDef, longKindStr: String)(using Context): Unit = {
+      if tree.symbol.is(Exported) then
+        return // we already report an error that exports are not allowed here, this prevents extra errors.
+
       // Check that the rhs is exactly `= js.native`
       tree.rhs match {
         case sel: Select if sel.symbol == jsdefn.JSPackage_native =>
@@ -936,10 +1025,12 @@ object PrepJSInterop {
     val JSNativeClass = new OwnerKind(0x04)
     /** A native JS object, which extends js.Any. */
     val JSNativeMod = new OwnerKind(0x08)
-    /** A non-native JS class/trait. */
-    val JSClass = new OwnerKind(0x10)
+    /** A non-native JS class (not a trait). */
+    val JSNonTraitClass = new OwnerKind(0x10)
+    /** A non-native JS trait. */
+    val JSTrait = new OwnerKind(0x20)
     /** A non-native JS object. */
-    val JSMod = new OwnerKind(0x20)
+    val JSMod = new OwnerKind(0x40)
 
     // Compound kinds
 
@@ -949,12 +1040,12 @@ object PrepJSInterop {
     /** A native JS class/trait/object. */
     val JSNative = JSNativeClass | JSNativeMod
     /** A non-native JS class/trait/object. */
-    val JSNonNative = JSClass | JSMod
+    val JSNonNative = JSNonTraitClass | JSTrait | JSMod
     /** A JS type, i.e., something extending js.Any. */
     val JSType = JSNative | JSNonNative
 
     /** Any kind of class/trait, i.e., a Scala or JS class/trait. */
-    val AnyClass = ScalaClass | JSNativeClass | JSClass
+    val AnyClass = ScalaClass | JSNativeClass | JSNonTraitClass | JSTrait
   }
 
   /** Tests if the symbol extend `js.Any`.

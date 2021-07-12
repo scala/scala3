@@ -2,11 +2,11 @@ package scala.quoted
 
 /** A type class for types that can convert a `quoted.Expr[T]` to a `T`.
  *
- *  - Converts expression containg literal values to their values:
+ *  - Converts expression containing literal values to their values:
  *    - `'{1}` -> `1`, `'{2}` -> `2`, ...
  *    - For all primitive types and `String`
  *  - Converts an expression that constructs a copy of its value.
- *    - This expression must be some kind of datastructure (`Some`, `List`, `Either`, ...)
+ *    - This expression must be some kind of data structure (`Some`, `List`, `Either`, ...)
  *    - Calls to `new X` or `X.apply` can be lifted into its value
  *    - Arguments of constructors can be recursively unlifted
  */
@@ -25,57 +25,57 @@ trait FromExpr[T] {
 object FromExpr {
 
   /** Default implementation of `FromExpr[Boolean]`
-   *  - Unlifts `'{true}` into `Some(true)`
-   *  - Unlifts `'{false}` into `Some(false)`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{true}` into `Some(true)`
+   *  - Transform `'{false}` into `Some(false)`
+   *  - Otherwise returns `None`
    */
   given BooleanFromExpr[T <: Boolean]: FromExpr[T] = new PrimitiveFromExpr
 
   /** Default implementation of `FromExpr[Byte]`
-   *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Byte`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{n}` into `Some(n)` for a literal `n` of type `Byte`
+   *  - Otherwise returns `None`
    */
   given ByteFromExpr[T <: Byte]: FromExpr[T] = new PrimitiveFromExpr
 
   /** Default implementation of `FromExpr[Short]`
-   *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Short`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{n}` into `Some(n)` for a literal `n` of type `Short`
+   *  - Otherwise returns `None`
    */
   given ShortFromExpr[T <: Short]: FromExpr[T] = new PrimitiveFromExpr
 
   /** Default implementation of `FromExpr[Int]`
-   *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Int`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{n}` into `Some(n)` for a literal `n` of type `Int`
+   *  - Otherwise returns `None`
    */
   given IntFromExpr[T <: Int]: FromExpr[T] = new PrimitiveFromExpr
 
   /** Default implementation of `FromExpr[Long]`
-   *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Long`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{n}` into `Some(n)` for a literal `n` of type `Long`
+   *  - Otherwise returns `None`
    */
   given LongFromExpr[T <: Long]: FromExpr[T] = new PrimitiveFromExpr
 
   /** Default implementation of `FromExpr[Float]`
-   *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Float`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{n}` into `Some(n)` for a literal `n` of type `Float`
+   *  - Otherwise returns `None`
    */
   given FloatFromExpr[T <: Float]: FromExpr[T] = new PrimitiveFromExpr
 
   /** Default implementation of `FromExpr[Double]`
-   *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Double`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{n}` into `Some(n)` for a literal `n` of type `Double`
+   *  - Otherwise returns `None`
    */
   given DoubleFromExpr[T <: Double]: FromExpr[T] = new PrimitiveFromExpr
 
   /** Default implementation of `FromExpr[Char]`
-   *  - Unlifts `'{c}` into `Some(c)` for a literal `c` of type `Char`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{c}` into `Some(c)` for a literal `c` of type `Char`
+   *  - Otherwise returns `None`
    */
   given CharFromExpr[T <: Char]: FromExpr[T] = new PrimitiveFromExpr
 
   /** Default implementation of `FromExpr[String]`
-   *  - Unlifts `'{str}` into `Some(str)` for a literal `str` of type `String`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{str}` into `Some(str)` for a literal `str` of type `String`
+   *  - Otherwise returns `None`
    */
   given StringFromExpr[T <: String]: FromExpr[T] = new PrimitiveFromExpr
 
@@ -84,19 +84,21 @@ object FromExpr {
     def unapply(expr: Expr[T])(using Quotes) =
       import quotes.reflect._
       def rec(tree: Term): Option[T] = tree match {
-        case Literal(c) if c.value != null => Some(c.value.asInstanceOf[T])
-        case Block(Nil, e) => rec(e)
+        case Block(stats, e) => if stats.isEmpty then rec(e) else None
+        case Inlined(_, bindings, e) => if bindings.isEmpty then rec(e) else None
         case Typed(e, _) => rec(e)
-        case Inlined(_, Nil, e) => rec(e)
-        case _  => None
+        case _ =>
+          tree.tpe.widenTermRefByName match
+            case ConstantType(c) => Some(c.value.asInstanceOf[T])
+            case _ => None
       }
       rec(expr.asTerm)
   }
 
   /** Default implementation of `FromExpr[Option]`
-   *  - Unlifts `'{Some(x)}` into `Some(Some(x))` if `x` is unliftable
-   *  - Unlifts `'{None}` into `Some(None)`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Some(x)}` into `Some(Some(x))` if `x` can be transformed using `FromExpr[T]`
+   *  - Transform `'{None}` into `Some(None)`
+   *  - Otherwise returns `None`
    */
   given OptionFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with {
     def unapply(x: Expr[Option[T]])(using Quotes) = x match {
@@ -108,8 +110,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[None]`
-   *  - Unlifts `'{None}` into `Some(None)`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{None}` into `Some(None)`
+   *  - Otherwise returns `None`
    */
   given NoneFromExpr: FromExpr[None.type] with {
     def unapply(x: Expr[None.type])(using Quotes) = x match {
@@ -119,8 +121,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Some]`
-   *  - Unlifts `'{Some(x)}` into `Some(Some(x))` if `x` is unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Some(x)}` into `Some(Some(x))` if `x` can be transformed using `FromExpr[T]`
+   *  - Otherwise returns `None`
    */
   given SomeFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Some[T]] with {
     def unapply(x: Expr[Some[T]])(using Quotes) = x match {
@@ -131,8 +133,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[StringContext]`
-   *  - Unlifts `'{StringContext(args: _*)}` into `Some(StringContext(args: _*))` if `args` is explicit and each one is liftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{StringContext(args: _*)}` into `Some(StringContext(args: _*))` if `args` is explicit and each one is liftable
+   *  - Otherwise returns `None`
    */
   given StringContextFromExpr: FromExpr[StringContext] with {
     def unapply(x: Expr[StringContext])(using Quotes) = x match {
@@ -143,8 +145,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[EmptyTuple]`
-   *  - Unlifts `'{EmptyTuple}` into `Some(EmptyTuple)`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{EmptyTuple}` into `Some(EmptyTuple)`
+   *  - Otherwise returns `None`
    */
   given EmptyTupleFromExpr: FromExpr[EmptyTuple.type] with {
     def unapply(x: Expr[EmptyTuple.type])(using Quotes) = x match {
@@ -154,8 +156,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple1[...]]`
-   *  - Unlifts `'{Tuple1(x1)}` into `Some(Tuple1(x1))` if `x1` is unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple1(x1)}` into `Some(Tuple1(x1))` if `x1` can be transformed using `FromExpr[T]`
+   *  - Otherwise returns `None`
    */
   given Tuple1FromExpr[T1](using Type[T1], FromExpr[T1]): FromExpr[Tuple1[T1]] with {
     def unapply(x: Expr[Tuple1[T1]])(using Quotes) = x match {
@@ -166,8 +168,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple2[...]]`
-   *  - Unlifts `'{Tuple2(x1, x2)}` into `Some(Tuple2(x1, x2))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple2(x1, x2)}` into `Some(Tuple2(x1, x2))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple2FromExpr[T1, T2](using Type[T1], Type[T2], FromExpr[T1], FromExpr[T2]): FromExpr[Tuple2[T1, T2]] with {
     def unapply(x: Expr[Tuple2[T1, T2]])(using Quotes) = x match {
@@ -179,8 +181,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple3[...]]`
-   *  - Unlifts `'{Tuple3(x1, x2, x3)}` into `Some(Tuple3(x1, x2, x3))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple3(x1, x2, x3)}` into `Some(Tuple3(x1, x2, x3))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple3FromExpr[T1, T2, T3](using Type[T1], Type[T2], Type[T3], FromExpr[T1], FromExpr[T2], FromExpr[T3]): FromExpr[Tuple3[T1, T2, T3]] with {
     def unapply(x: Expr[Tuple3[T1, T2, T3]])(using Quotes) = x match {
@@ -191,8 +193,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple4[...]]`
-   *  - Unlifts `'{Tuple4(x1, ..., x4)}` into `Some(Tuple4(x1, ..., x4))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple4(x1, ..., x4)}` into `Some(Tuple4(x1, ..., x4))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple4FromExpr[T1, T2, T3, T4](using Type[T1], Type[T2], Type[T3], Type[T4], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4]): FromExpr[Tuple4[T1, T2, T3, T4]] with {
     def unapply(x: Expr[Tuple4[T1, T2, T3, T4]])(using Quotes) = x match {
@@ -203,8 +205,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple5[...]]`
-   *  - Unlifts `'{Tuple5(x1, ..., x5)}` into `Some(Tuple5(x1, ..., x5))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple5(x1, ..., x5)}` into `Some(Tuple5(x1, ..., x5))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple5FromExpr[T1, T2, T3, T4, T5](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5]): FromExpr[Tuple5[T1, T2, T3, T4, T5]] with {
     def unapply(x: Expr[Tuple5[T1, T2, T3, T4, T5]])(using Quotes) = x match {
@@ -215,8 +217,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple6[...]]`
-   *  - Unlifts `'{Tuple6(x1, ..., x6)}` into `Some(Tuple6(x1, ..., x6))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple6(x1, ..., x6)}` into `Some(Tuple6(x1, ..., x6))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple6FromExpr[T1, T2, T3, T4, T5, T6](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6]): FromExpr[Tuple6[T1, T2, T3, T4, T5, T6]] with {
     def unapply(x: Expr[Tuple6[T1, T2, T3, T4, T5, T6]])(using Quotes) = x match {
@@ -227,8 +229,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple7[...]]`
-   *  - Unlifts `'{Tuple7(x1, ..., x7)}` into `Some(Tuple7(x1, ..., x7))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple7(x1, ..., x7)}` into `Some(Tuple7(x1, ..., x7))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple7FromExpr[T1, T2, T3, T4, T5, T6, T7](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7]): FromExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]] with {
     def unapply(x: Expr[Tuple7[T1, T2, T3, T4, T5, T6, T7]])(using Quotes) = x match {
@@ -239,8 +241,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple8[...]]`
-   *  - Unlifts `'{Tuple8(x1, ..., x8)}` into `Some(Tuple8(x1, ..., x8))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple8(x1, ..., x8)}` into `Some(Tuple8(x1, ..., x8))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple8FromExpr[T1, T2, T3, T4, T5, T6, T7, T8](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8]): FromExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]] with {
     def unapply(x: Expr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]])(using Quotes) = x match {
@@ -251,8 +253,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple9[...]]`
-   *  - Unlifts `'{Tuple9(x1, ..., x9)}` into `Some(Tuple9(x1, ..., x9))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple9(x1, ..., x9)}` into `Some(Tuple9(x1, ..., x9))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple9FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9]): FromExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]] with {
     def unapply(x: Expr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]])(using Quotes) = x match {
@@ -263,8 +265,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple10[...]]`
-   *  - Unlifts `'{Tuple0(x1, ..., x10)}` into `Some(Tuple0(x1, ..., x10))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple0(x1, ..., x10)}` into `Some(Tuple0(x1, ..., x10))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple10FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10]): FromExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]] with {
     def unapply(x: Expr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]])(using Quotes) = x match {
@@ -275,8 +277,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple11[...]]`
-   *  - Unlifts `'{Tuple1(x1, ..., x11)}` into `Some(Tuple1(x1, ..., x11))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple1(x1, ..., x11)}` into `Some(Tuple1(x1, ..., x11))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple11FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11]): FromExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]] with {
     def unapply(x: Expr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]])(using Quotes) = x match {
@@ -287,8 +289,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple12[...]]`
-   *  - Unlifts `'{Tuple2(x1, ..., x12)}` into `Some(Tuple2(x1, ..., x12))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple2(x1, ..., x12)}` into `Some(Tuple2(x1, ..., x12))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple12FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12]): FromExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]] with {
     def unapply(x: Expr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]])(using Quotes) = x match {
@@ -299,8 +301,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple13[...]]`
-   *  - Unlifts `'{Tuple3(x1, ..., x13)}` into `Some(Tuple3(x1, ..., x13))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple3(x1, ..., x13)}` into `Some(Tuple3(x1, ..., x13))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple13FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13]): FromExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]] with {
     def unapply(x: Expr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]])(using Quotes) = x match {
@@ -311,8 +313,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple14[...]]`
-   *  - Unlifts `'{Tuple4(x1, ..., x14)}` into `Some(Tuple4(x1, ..., x14))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple4(x1, ..., x14)}` into `Some(Tuple4(x1, ..., x14))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple14FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14]): FromExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]] with {
     def unapply(x: Expr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]])(using Quotes) = x match {
@@ -323,8 +325,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple15[...]]`
-   *  - Unlifts `'{Tuple5(x1, ..., x15)}` into `Some(Tuple5(x1, ..., x15))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple5(x1, ..., x15)}` into `Some(Tuple5(x1, ..., x15))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple15FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15]): FromExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]] with {
     def unapply(x: Expr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]])(using Quotes) = x match {
@@ -335,8 +337,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple16[...]]`
-   *  - Unlifts `'{Tuple6(x1, ..., x16)}` into `Some(Tuple6(x1, ..., x16))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple6(x1, ..., x16)}` into `Some(Tuple6(x1, ..., x16))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple16FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16]): FromExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]] with {
     def unapply(x: Expr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]])(using Quotes) = x match {
@@ -347,8 +349,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple17[...]]`
-   *  - Unlifts `'{Tuple7(x1, ..., x17)}` into `Some(Tuple7(x1, ..., x17))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple7(x1, ..., x17)}` into `Some(Tuple7(x1, ..., x17))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple17FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17]): FromExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]] with {
     def unapply(x: Expr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]])(using Quotes) = x match {
@@ -359,8 +361,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple18[...]]`
-   *  - Unlifts `'{Tuple8(x1, ..., x18)}` into `Some(Tuple8(x1, ..., x18))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple8(x1, ..., x18)}` into `Some(Tuple8(x1, ..., x18))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple18FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18]): FromExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]] with {
     def unapply(x: Expr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]])(using Quotes) = x match {
@@ -371,8 +373,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple19[...]]`
-   *  - Unlifts `'{Tuple9(x1, ..., x19)}` into `Some(Tuple9(x1, ..., x19))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple9(x1, ..., x19)}` into `Some(Tuple9(x1, ..., x19))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple19FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18], FromExpr[T19]): FromExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]] with {
     def unapply(x: Expr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]])(using Quotes) = x match {
@@ -383,8 +385,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple20[...]]`
-   *  - Unlifts `'{Tuple0(x1, ..., x20)}` into `Some(Tuple0(x1, ..., x20))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple0(x1, ..., x20)}` into `Some(Tuple0(x1, ..., x20))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple20FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], Type[T20], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18], FromExpr[T19], FromExpr[T20]): FromExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]] with {
     def unapply(x: Expr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]])(using Quotes) = x match {
@@ -395,8 +397,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple21[...]]`
-   *  - Unlifts `'{Tuple1(x1, ..., x21)}` into `Some(Tuple1(x1, ..., x21))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple1(x1, ..., x21)}` into `Some(Tuple1(x1, ..., x21))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple21FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], Type[T20], Type[T21], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18], FromExpr[T19], FromExpr[T20], FromExpr[T21]): FromExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]] with {
     def unapply(x: Expr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]])(using Quotes) = x match {
@@ -407,8 +409,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Tuple22[...]]`
-   *  - Unlifts `'{Tuple2(x1, ..., x22)}` into `Some(Tuple2(x1, ..., x22))` if all `xi` are unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Tuple2(x1, ..., x22)}` into `Some(Tuple2(x1, ..., x22))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Otherwise returns `None`
    */
   given Tuple22FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], Type[T20], Type[T21], Type[T22], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18], FromExpr[T19], FromExpr[T20], FromExpr[T21], FromExpr[T22]): FromExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]] with {
     def unapply(x: Expr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]])(using Quotes) = x match {
@@ -419,9 +421,9 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Seq]`
-   *  - Unlifts `'{Seq(x1, ..., xn)}` into `Some(Seq(x1, ..., xn))` if all `xi` are unliftable
-   *  - Unlifts sequences that come out of varargs
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Seq(x1, ..., xn)}` into `Some(Seq(x1, ..., xn))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Transform sequences that come out of varargs
+   *  - Otherwise returns `None`
    */
   given SeqFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Seq[T]] with {
     def unapply(x: Expr[Seq[T]])(using Quotes) = x match {
@@ -434,8 +436,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Nil]`
-   *  - Unlifts `'{Nil}` into `Some(Nil)`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Nil}` into `Some(Nil)`
+   *  - Otherwise returns `None`
    */
   given NilFromExpr: FromExpr[Nil.type] with {
     def unapply(x: Expr[Nil.type])(using Quotes) = x match {
@@ -445,10 +447,10 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[List]`
-   *  - Unlifts `'{List(x1, ..., xn)}` into `Some(List(x1, ..., xn))` if all `xi` are unliftable
-   *  - Unlifts `'{List.empty}` into `Some(Nil)`
-   *  - Unlifts `'{Nil}` into `Some(Nil)`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{List(x1, ..., xn)}` into `Some(List(x1, ..., xn))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Transform `'{List.empty}` into `Some(Nil)`
+   *  - Transform `'{Nil}` into `Some(Nil)`
+   *  - Otherwise returns `None`
    */
   given ListFromExpr[T](using Type[T], FromExpr[T]): FromExpr[List[T]] with {
     def unapply(x: Expr[List[T]])(using Quotes) = x match {
@@ -462,9 +464,9 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Set]`
-   *  - Unlifts `'{Set(x1, ..., xn)}` into `Some(Set(x1, ..., xn))` if all `xi` are unliftable
-   *  - Unlifts `'{Set.empty}` into `Some(Set())`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Set(x1, ..., xn)}` into `Some(Set(x1, ..., xn))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Transform `'{Set.empty}` into `Some(Set())`
+   *  - Otherwise returns `None`
    */
   given SetFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Set[T]] with {
     def unapply(x: Expr[Set[T]])(using Quotes) = x match {
@@ -477,9 +479,9 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Map]`
-   *  - Unlifts `'{Map(x1, ..., xn)}` into `Some(Map(x1, ..., xn))` if all `xi` are unliftable
-   *  - Unlifts `'{Map.empty}` into `Some(Map())`
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Map(x1, ..., xn)}` into `Some(Map(x1, ..., xn))` if all `xi` can be transformed using `FromExpr[Ti]`
+   *  - Transform `'{Map.empty}` into `Some(Map())`
+   *  - Otherwise returns `None`
    */
   given MapFromExpr[T, U](using Type[T], Type[U], FromExpr[T], FromExpr[U]): FromExpr[Map[T, U]] with {
     def unapply(x: Expr[Map[T, U]])(using Quotes) = x match {
@@ -492,9 +494,9 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Either]`
-   *  - Unlifts `'{Left(x)}` into `Some(Left(x))` if `x` is unliftable
-   *  - Unlifts `'{Right(x)}` into `Some(Right(x))` if `x` is unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Left(x)}` into `Some(Left(x))` if `x` can be transformed using `FromExpr[L]`
+   *  - Transform `'{Right(x)}` into `Some(Right(x))` if `x` can be transformed using `FromExpr[R]`
+   *  - Otherwise returns `None`
    */
   given EitherFromExpr[L, R](using Type[L], Type[R], FromExpr[L], FromExpr[R]): FromExpr[Either[L, R]] with {
     def unapply(x: Expr[Either[L, R]])(using Quotes) = x match {
@@ -505,8 +507,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Left]`
-   *  - Unlifts `'{Left(x)}` into `Some(Left(x))` if `x` is unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Left(x)}` into `Some(Left(x))` if `x` can be transformed using `FromExpr[L]`
+   *  - Otherwise returns `None`
    */
   given LeftFromExpr[L, R](using Type[L], Type[R], FromExpr[L]): FromExpr[Left[L, R]] with {
     def unapply(x: Expr[Left[L, R]])(using Quotes) = x match {
@@ -516,8 +518,8 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[Right]`
-   *  - Unlifts `'{Right(x)}` into `Some(Right(x))` if `x` is unliftable
-   *  - Otherwise unlifts to `None`
+   *  - Transform `'{Right(x)}` into `Some(Right(x))` if `x` can be transformed using `FromExpr[R]`
+   *  - Otherwise returns `None`
    */
   given RightFromExpr[L, R](using Type[L], Type[R], FromExpr[R]): FromExpr[Right[L, R]] with {
     def unapply(x: Expr[Right[L, R]])(using Quotes) = x match {

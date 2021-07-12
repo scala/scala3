@@ -7,7 +7,6 @@ import collection.mutable
  */
 abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def size: Int
-  final def isEmpty: Boolean = size == 0
   def + [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E]
   def - [E >: Elem <: AnyRef](x: E): SimpleIdentitySet[Elem]
   def contains[E >: Elem <: AnyRef](x: E): Boolean
@@ -15,20 +14,38 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
   def toList: List[Elem]
+
+  final def isEmpty: Boolean = size == 0
+
+  def forall[E >: Elem <: AnyRef](p: E => Boolean): Boolean = !exists(!p(_))
+
+  def filter(p: Elem => Boolean): SimpleIdentitySet[Elem] =
+    val z: SimpleIdentitySet[Elem] = SimpleIdentitySet.empty
+    (z /: this)((s, x) => if p(x) then s + x else s)
+
   def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
     if (this.size == 0) that
     else if (that.size == 0) this
     else ((this: SimpleIdentitySet[E]) /: that)(_ + _)
+
   def -- [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
     if (that.size == 0) this
     else
       ((SimpleIdentitySet.empty: SimpleIdentitySet[E]) /: this) { (s, x) =>
         if (that.contains(x)) s else s + x
       }
-  override def toString: String = toList.mkString("(", ", ", ")")
+  override def toString: String = toList.mkString("{", ", ", "}")
 }
 
 object SimpleIdentitySet {
+
+  def apply[Elem <: AnyRef](elems: Elem*): SimpleIdentitySet[Elem] =
+    elems.foldLeft(empty: SimpleIdentitySet[Elem])(_ + _)
+
+  extension [E <: AnyRef](xs: SimpleIdentitySet[E])
+    def intersect(ys: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
+      xs.filter(ys.contains)
+
   object empty extends SimpleIdentitySet[Nothing] {
     def size: Int = 0
     def + [E <: AnyRef](x: E): SimpleIdentitySet[E] =

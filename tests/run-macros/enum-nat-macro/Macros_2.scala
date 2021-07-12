@@ -25,6 +25,6 @@ import Nat.*
        case 0 => acc
        case n => inner[Succ[N]](n - 1, '{Succ($acc)})
 
-     val i = int.valueOrError
+     val i = int.valueOrAbort
      require(i >= 0)
      inner[Zero.type](i, '{Zero})

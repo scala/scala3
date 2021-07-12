@@ -35,7 +35,7 @@ class ConsoleReporter(
 
     if (didPrint && shouldExplain(dia))
       printMessage(explanation(dia.msg))
-    else if (didPrint && dia.msg.explanation.nonEmpty)
+    else if (didPrint && dia.msg.canExplain)
       printMessage("\nlonger explanation available when compiling with `-explain`")
   }
 

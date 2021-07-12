@@ -17,7 +17,7 @@ The entire suite of tests can be run using the bootstrapped compiler as follows:
 
 ```bash
 $ sbt
-> dotty-bootstrapped/test
+> scala3-bootstrapped/test
 ```
 
 There are currently several forms of tests in Dotty. These can be split into
@@ -32,7 +32,7 @@ To run all tests in e.g., for the compiler test-suite you can write:
 
 ```bash
 $ sbt
-> dotty-compiler/test
+> scala3-compiler/test
 ```
 
 To run a single test class you use `testOnly` and the fully qualified class name.
@@ -130,7 +130,7 @@ $ sbt
 ### Bootstrapped-only tests
 
 To run `testCompilation` on a bootstrapped Dotty compiler, use
-`dotty-compiler-bootstrapped/testCompilation` (with the same syntax as above).
+`scala3-compiler-bootstrapped/testCompilation` (with the same syntax as above).
 Some tests can only be run in bootstrapped compilers; that includes all tests
 with `with-compiler` in their name.
 
@@ -144,9 +144,14 @@ with `with-compiler` in their name.
  > testCompilation --from-tasty
  ```
 
- This mode can be run under `dotty-compiler-bootstrapped/testCompilation` to test on a bootstrapped Dotty compiler.
+ This mode can be run under `scala3-compiler-bootstrapped/testCompilation` to test on a bootstrapped Dotty compiler.
 
 ### SemanticDB tests
+
+```bash
+$ sbt
+> scala3-compiler-bootstrapped/testOnly dotty.tools.dotc.semanticdb.SemanticdbTests
+```
 
 The output of the `extractSemanticDB` phase, enabled with `-Xsemanticdb` is tested with the bootstrapped JUnit test
 `dotty.tools.dotc.semanticdb.SemanticdbTests`. It uses source files in `tests/semanticdb/expect` to generate
@@ -157,5 +162,5 @@ Expect files are used as regression tests to detect changes in the compiler.
 
 The test suite will create a new file if it detects any difference, which can be compared with the
 original expect file, or if the user wants to globally replace all expect files for semanticdb they can use
-`dotty-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect`, and compare the changes via version
+`scala3-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect`, and compare the changes via version
 control.

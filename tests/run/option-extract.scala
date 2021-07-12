@@ -6,7 +6,7 @@ enum Option[+A]:
   opaque type ExtractResult[B] = (=> B) => B
 
   def extract[B](f: A => B): ExtractResult[B] =
-    def result(default: => B): B = this match
+    def result(default: => B): B = (this: Option[A]) match
       case None => default
       case Some(elem) => f(elem)
     result

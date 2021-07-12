@@ -16,6 +16,10 @@ tuple-filter.scala
 i7740a.scala
 i7740b.scala
 i6507b.scala
+i12299a.scala
+
+# Tree is huge and blows stack for printing Text
+i7034.scala
 
 # Stale symbol: package object scala
 seqtype-cycle
@@ -24,17 +28,15 @@ seqtype-cycle
 i939.scala
 
 # Match types
-typelevel0.scala
-matchtype.scala
-6322.scala
-i7087.scala
-i7868.scala
 i7872.scala
-6709.scala
-6687.scala
 i11236.scala
 i11247.scala
 i11250
+i9999.scala
+8649.scala
+12093.scala
+9757.scala
+9890.scala
 
 # Opaque type
 i5720.scala
@@ -63,3 +65,8 @@ i8182.scala
 
 # local lifted value in annotation argument has different position after pickling
 i2797a
+
+# GADT cast applied to singleton type difference
+i4176-gadt.scala
+
+java-inherited-type1

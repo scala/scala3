@@ -7,7 +7,7 @@ object E {
   inline def eval[T](inline x: E[T]): T = ${ impl('x) }
 
   def impl[T: Type](expr: Expr[E[T]]) (using Quotes): Expr[T] =
-    expr.valueOrError.lift
+    expr.valueOrAbort.lift
 
   implicit def ev1[T: Type]: FromExpr[E[T]] = new FromExpr { // TODO use type class derivation
     def unapply(x: Expr[E[T]])(using Quotes) = (x match {

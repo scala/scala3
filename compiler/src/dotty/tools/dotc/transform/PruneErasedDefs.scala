@@ -19,13 +19,10 @@ import ast.tpd
  *  The phase also replaces all expressions that appear in an erased context by
  *  default values. This is necessary so that subsequent checking phases such
  *  as IsInstanceOfChecker don't give false negatives.
- *  Finally, the phase replaces `compiletime.uninitialized` on the right hand side
- *  of a mutable field definition by `_`. This avoids a "is declared erased, but is
- *  in fact used" error in Erasure and communicates to Constructors that the
- *  variable does not have an initializer.
  */
 class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
   import tpd._
+  import PruneErasedDefs._
 
   override def phaseName: String = PruneErasedDefs.name
 
@@ -34,47 +31,28 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
   override def runsAfterGroupsOf: Set[String] = Set(RefChecks.name, ExplicitOuter.name)
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if (sym.isEffectivelyErased && !sym.is(Private) && sym.owner.isClass)
-      sym.copySymDenotation(initFlags = sym.flags | Private)
-    else sym
+    if !sym.isEffectivelyErased || !sym.isTerm || sym.is(Private) || !sym.owner.isClass then sym
+    else sym.copySymDenotation(initFlags = sym.flags | Private)
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    if (tree.fun.tpe.widen.isErasedMethod)
-      cpy.Apply(tree)(tree.fun, tree.args.map(trivialErasedTree))
-    else tree
-
-  private def hasUninitializedRHS(tree: ValOrDefDef)(using Context): Boolean =
-    def recur(rhs: Tree): Boolean = rhs match
-      case rhs: RefTree =>
-        rhs.symbol == defn.Compiletime_uninitialized
-        && tree.symbol.is(Mutable) && tree.symbol.owner.isClass
-      case closureDef(ddef) if defn.isContextFunctionType(tree.tpt.tpe.dealias) =>
-        recur(ddef.rhs)
-      case _ =>
-        false
-    recur(tree.rhs)
+    if !tree.fun.tpe.widen.isErasedMethod then tree
+    else cpy.Apply(tree)(tree.fun, tree.args.map(trivialErasedTree))
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
-    val sym = tree.symbol
-    if tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty then
-      cpy.ValDef(tree)(rhs = trivialErasedTree(tree))
-    else if hasUninitializedRHS(tree) then
-      cpy.ValDef(tree)(rhs = cpy.Ident(tree.rhs)(nme.WILDCARD).withType(tree.tpt.tpe))
-    else
-      tree
+    if !tree.symbol.isEffectivelyErased || tree.rhs.isEmpty then tree
+    else cpy.ValDef(tree)(rhs = trivialErasedTree(tree.rhs))
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
-    if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)
-      cpy.DefDef(tree)(rhs = trivialErasedTree(tree))
-    else tree
-
-  private def trivialErasedTree(tree: Tree)(using Context): Tree =
-    tree.tpe.widenTermRefExpr.dealias.normalized match
-      case ConstantType(c) => Literal(c)
-      case _ => ref(defn.Predef_undefined)
+    if !tree.symbol.isEffectivelyErased || tree.rhs.isEmpty then tree
+    else cpy.DefDef(tree)(rhs = trivialErasedTree(tree.rhs))
 
 }
 
 object PruneErasedDefs {
+  import tpd._
+
   val name: String = "pruneErasedDefs"
+
+  def trivialErasedTree(tree: Tree)(using Context): Tree =
+    ref(defn.Compiletime_erasedValue).appliedToType(tree.tpe).withSpan(tree.span)
 }
