@@ -612,21 +612,17 @@ class Semantic {
       warm.klass.baseClasses.exists { klass =>
         klass.hasSource && klass.info.decls.exists { member =>
           if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
-            if member.isOneOf(Flags.Method | Flags.Lazy) then
-              val trace2 = trace.add(member.defTree)
+            if member.is(Flags.Method) then
+              val trace2 = trace.add(source)
               locally {
                 given Trace = trace2
                 val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, EmptyTree))
-                val res = warm.call(member, args, superType = NoType, source = source)
+                val res = warm.call(member, args, superType = NoType, source = member.defTree)
                 buffer ++= res.ensureHot(msg, source).errors
               }
             else
-              val trace2 = trace.add(member.defTree)
               val res = warm.select(member, source)
-              locally {
-                given Trace = trace2
-                buffer ++= res.ensureHot(msg, source).errors
-              }
+              buffer ++= res.ensureHot(msg, source).errors
           buffer.nonEmpty
         }
       }
