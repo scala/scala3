@@ -772,6 +772,13 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           js.Undefined()
         else
           genApplyJSClassMethod(targetTree, defaultGetter, defaultGetterArgs)
+      } else if (defaultGetter.owner == targetSym) {
+        /* We get here if a non-native constructor has a native companion.
+         * This is reported on a per-class level.
+         */
+        assert(sym.isClassConstructor,
+            s"got non-constructor method $sym with default method in JS native companion")
+        js.Undefined()
       } else {
         report.error(
             "When overriding a native method with default arguments, " +
