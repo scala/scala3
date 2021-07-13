@@ -191,7 +191,7 @@ object Scaladoc:
       val destFile = outputDir.nonDefault.fold(defaultDest())(_.file)
       val printableProjectName = projectName.nonDefault.fold("")("for " + _ )
       report.inform(
-        s"Generating documenation $printableProjectName in $destFile")
+        s"Generating documentation $printableProjectName in $destFile")
 
       if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
 
