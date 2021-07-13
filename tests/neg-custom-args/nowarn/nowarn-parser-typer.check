@@ -5,6 +5,13 @@
   |          its body in a block; no exceptions are handled.
 
 longer explanation available when compiling with `-explain`
+-- [E000] Syntax Error: tests/neg-custom-args/nowarn/nowarn-parser-typer.scala:22:26 -----------------------------------
+22 |@nowarn("id=1") def t5d = try 1 // error, wrong id
+   |                          ^^^^^
+   |                          A try without catch or finally is equivalent to putting
+   |                          its body in a block; no exceptions are handled.
+
+longer explanation available when compiling with `-explain`
 -- [E129] Potential Issue Error: tests/neg-custom-args/nowarn/nowarn-parser-typer.scala:16:11 --------------------------
 16 |def t3 = { 1; 2 } // error, the invalid nowarn doesn't silence this warning
    |           ^
