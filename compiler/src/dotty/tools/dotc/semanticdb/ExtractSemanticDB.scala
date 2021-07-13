@@ -313,7 +313,8 @@ class ExtractSemanticDB extends Phase:
       else
         Span(span.start)
 
-      registerOccurrence(sname, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
+      if sym.occursInSource then
+        registerOccurrence(sname, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
       if !sym.is(Package) then
         registerSymbol(sym, symkinds)
 
