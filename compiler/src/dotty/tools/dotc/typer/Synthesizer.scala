@@ -375,6 +375,112 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           synthesizedSumMirror(formal, span)
       case _ => EmptyTree
 
+  private def escapeJavaArray(elemTp: Type)(using Context): Type = elemTp match
+    case JavaArrayType(elemTp1) => defn.ArrayOf(escapeJavaArray(elemTp1))
+    case _ => elemTp
+
+  private enum ManifestKind:
+    case Full, Opt, Clss
+
+    /** The kind that should be used for an array element, if we are `OptManifest` then this
+     *  prevents wildcards arguments of Arrays being converted to `NoManifest`
+     */
+    def arrayElem = if this == Full then this else Clss
+
+  end ManifestKind
+
+  /** Manifest factory that does enough to satisfy the equality semantics for
+   *  - `scala.reflect.OptManifest` (only runtime class is recorded)
+   *  - `scala.reflect.Manifest` (runtime class of arguments are recorded, with wildcard upper bounds wrapped)
+   *  however,`toString` may be different.
+   *
+   * There are some differences to `ClassTag`,
+   *  e.g. in Scala 2 `manifest[Int @unchecked]` will fail, but `classTag[Int @unchecked]` succeeds.
+   */
+  private def manifestFactoryOf(kind: ManifestKind): SpecialHandler = (formal, span) =>
+    import ManifestKind.*
+
+    /* Creates a tree that calls the factory method called constructor in object scala.reflect.Manifest */
+    def factoryManifest(constructor: TermName, tparg: Type, args: Tree*): Tree =
+      if args.contains(EmptyTree) then
+        EmptyTree
+      else
+        val factory = if kind == Full then defn.ManifestFactoryModule else defn.ClassManifestFactoryModule
+        applyOverloaded(ref(factory), constructor, args.toList, tparg :: Nil, Types.WildcardType).withSpan(span)
+
+    /* Creates a tree representing one of the singleton manifests.*/
+    def singletonManifest(name: TermName) =
+      ref(defn.ManifestFactoryModule).select(name).ensureApplied.withSpan(span)
+
+    def synthArrayManifest(elemTp: Type, kind: ManifestKind, topLevel: Boolean): Tree =
+      factoryManifest(nme.arrayType, elemTp, synthesize(elemTp, kind.arrayElem, topLevel))
+
+    /** manifests generated from wildcards can not equal Int,Long,Any,AnyRef,AnyVal etc,
+     *  so we wrap their upper bound.
+     */
+    def synthWildcardManifest(tp: Manifestable, hi: Type, topLevel: Boolean): Tree =
+      factoryManifest(nme.wildcardType, tp, singletonManifest(nme.Nothing), synthesize(hi, Full, topLevel))
+
+    /** `Nil` if not full manifest */
+    def synthArgManifests(tp: Manifestable): List[Tree] = tp match
+      case AppliedType(_, args) if kind == Full && tp.typeSymbol.isClass =>
+        args.map(synthesize(_, Full, topLevel = false))
+      case _ =>
+        Nil
+
+    /** This type contains all top-level types supported by Scala 2's algorithm */
+    type Manifestable =
+      ThisType | TermRef | ConstantType | TypeRef | AppliedType | TypeBounds | RecType | RefinedType | AndType
+
+    def canManifest(tp: Manifestable, topLevel: Boolean) =
+      val sym = tp.typeSymbol
+      !sym.isAbstractType
+      && hasStableErasure(tp)
+      && !(topLevel && defn.isBottomClassAfterErasure(sym))
+
+    /** adapted from `syntheticClassTag` */
+    def synthManifest(tp: Manifestable, kind: ManifestKind, topLevel: Boolean) = tp match
+      case defn.ArrayOf(elemTp)              => synthArrayManifest(elemTp, kind, topLevel)
+      case TypeBounds(_, hi) if kind == Full => synthWildcardManifest(tp, hi, topLevel)
+
+      case tp if canManifest(tp, topLevel) =>
+        val sym = tp.typeSymbol
+        if sym.isPrimitiveValueClass || defn.SpecialManifestClasses.contains(sym) then
+          singletonManifest(sym.name.toTermName)
+        else
+          erasure(tp) match
+            case JavaArrayType(elemTp) =>
+              synthArrayManifest(escapeJavaArray(elemTp), kind, topLevel)
+
+            case etp =>
+              val clsArg = clsOf(etp).asInstance(defn.ClassType(tp)) // cast needed to resolve overloading
+              factoryManifest(nme.classType, tp, (clsArg :: synthArgManifests(tp))*)
+
+      case _ =>
+        EmptyTree
+
+    end synthManifest
+
+    def manifestOfType(tp0: Type, kind: ManifestKind, topLevel: Boolean): Tree = tp0.dealiasKeepAnnots match
+      case tp1: Manifestable => synthManifest(tp1, kind, topLevel)
+      case tp1               => EmptyTree
+
+    def synthesize(tp: Type, kind: ManifestKind, topLevel: Boolean): Tree =
+      manifestOfType(tp, kind, topLevel) match
+        case EmptyTree if kind == Opt => ref(defn.NoManifestModule)
+        case result                   => result
+
+    formal.argInfos match
+      case arg :: Nil =>
+        synthesize(fullyDefinedType(arg, "Manifest argument", span), kind, topLevel = true)
+      case _ =>
+        EmptyTree
+
+  end manifestFactoryOf
+
+  val synthesizedManifest: SpecialHandler = manifestFactoryOf(ManifestKind.Full)
+  val synthesizedOptManifest: SpecialHandler = manifestFactoryOf(ManifestKind.Opt)
+
   val specialHandlers = List(
     defn.ClassTagClass        -> synthesizedClassTag,
     defn.TypeTestClass        -> synthesizedTypeTest,
@@ -382,7 +488,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     defn.ValueOfClass         -> synthesizedValueOf,
     defn.Mirror_ProductClass  -> synthesizedProductMirror,
     defn.Mirror_SumClass      -> synthesizedSumMirror,
-    defn.MirrorClass          -> synthesizedMirror)
+    defn.MirrorClass          -> synthesizedMirror,
+    defn.ManifestClass        -> synthesizedManifest,
+    defn.OptManifestClass     -> synthesizedOptManifest,
+  )
 
   def tryAll(formal: Type, span: Span)(using Context): Tree =
     def recur(handlers: SpecialHandlers): Tree = handlers match
