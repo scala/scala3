@@ -1,0 +1,6 @@
+-- [E107] Syntax Error: tests/neg/i10757.scala:4:10 --------------------------------------------------------------------
+4 |  case Var(name, _) => name: String // error
+  |       ^^^^^^^^^^^^
+  |       Wrong number of argument patterns for Var; expected: (String)
+
+longer explanation available when compiling with `-explain`
