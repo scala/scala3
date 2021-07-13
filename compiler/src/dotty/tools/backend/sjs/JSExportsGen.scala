@@ -556,7 +556,22 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         genExportSameArgcRec(jsName, formalArgsRegistry, alts, paramIndex + 1, static, maxArgc)
       } else {
         // Sort them so that, e.g., isInstanceOf[String] comes before isInstanceOf[Object]
-        val sortedAltsByTypeTest = topoSortDistinctsBy(altsByTypeTest)(_._1)
+        val sortedAltsByTypeTest = topoSortDistinctsWith(altsByTypeTest) { (lhs, rhs) =>
+          (lhs._1, rhs._1) match {
+            // NoTypeTest is always last
+            case (_, NoTypeTest) => true
+            case (NoTypeTest, _) => false
+
+            case (PrimitiveTypeTest(_, rank1), PrimitiveTypeTest(_, rank2)) =>
+              rank1 <= rank2
+
+            case (InstanceOfTypeTest(t1), InstanceOfTypeTest(t2)) =>
+              t1 <:< t2
+
+            case (_: PrimitiveTypeTest, _: InstanceOfTypeTest) => true
+            case (_: InstanceOfTypeTest, _: PrimitiveTypeTest) => false
+          }
+        }
 
         val defaultCase = genThrowTypeError()
 
@@ -944,46 +959,14 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
   private case object NoTypeTest extends RTTypeTest
 
-  private object RTTypeTest {
-    given PartialOrdering[RTTypeTest] with {
-      override def tryCompare(lhs: RTTypeTest, rhs: RTTypeTest): Option[Int] = {
-        if (lteq(lhs, rhs)) if (lteq(rhs, lhs)) Some(0) else Some(-1)
-        else                if (lteq(rhs, lhs)) Some(1) else None
-      }
-
-      override def lteq(lhs: RTTypeTest, rhs: RTTypeTest): Boolean = {
-        (lhs, rhs) match {
-          // NoTypeTest is always last
-          case (_, NoTypeTest) => true
-          case (NoTypeTest, _) => false
-
-          case (PrimitiveTypeTest(_, rank1), PrimitiveTypeTest(_, rank2)) =>
-            rank1 <= rank2
-
-          case (InstanceOfTypeTest(t1), InstanceOfTypeTest(t2)) =>
-            t1 <:< t2
-
-          case (_: PrimitiveTypeTest, _: InstanceOfTypeTest) => true
-          case (_: InstanceOfTypeTest, _: PrimitiveTypeTest) => false
-        }
-      }
-
-      override def equiv(lhs: RTTypeTest, rhs: RTTypeTest): Boolean = {
-        lhs == rhs
-      }
-    }
-  }
-
   /** Very simple O(n²) topological sort for elements assumed to be distinct. */
-  private def topoSortDistinctsBy[A <: AnyRef, B](coll: List[A])(f: A => B)(
-      using ord: PartialOrdering[B]): List[A] = {
-
+  private def topoSortDistinctsWith[A <: AnyRef](coll: List[A])(lteq: (A, A) => Boolean): List[A] = {
     @tailrec
     def loop(coll: List[A], acc: List[A]): List[A] = {
       if (coll.isEmpty) acc
       else if (coll.tail.isEmpty) coll.head :: acc
       else {
-        val (lhs, rhs) = coll.span(x => !coll.forall(y => (x eq y) || !ord.lteq(f(x), f(y))))
+        val (lhs, rhs) = coll.span(x => !coll.forall(y => (x eq y) || !lteq(x, y)))
         assert(!rhs.isEmpty, s"cycle while ordering $coll")
         loop(lhs ::: rhs.tail, rhs.head :: acc)
       }
