@@ -6,6 +6,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.SourcePosition
 
 import java.util.regex.PatternSyntaxException
+import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
 
@@ -17,10 +18,12 @@ enum MessageFilter:
     case MessagePattern(pattern) =>
       val noHighlight = message.msg.rawMessage.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
       pattern.findFirstIn(noHighlight).nonEmpty
+    case MessageID(errorId) => message.msg.errorId == errorId
     case None => false
   }
   case Any, Deprecated, Feature, None
   case MessagePattern(pattern: Regex)
+  case MessageID(errorId: ErrorMessageID)
 
 enum Action:
   case Error, Warning, Info, Silent
@@ -48,18 +51,28 @@ object WConf:
     try Right(s.r)
     catch { case e: PatternSyntaxException => Left(s"invalid pattern `$s`: ${e.getMessage}") }
 
-  def parseFilter(s: String): Either[String, MessageFilter] =
-    val splitter = raw"([^=]+)=(.+)".r
-    s match
-      case "any" => Right(Any)
-      case splitter(filter, conf) => filter match
-        case "msg" => regex(conf).map(MessagePattern.apply)
-        case "cat" => conf match
-          case "deprecation" => Right(Deprecated)
-          case "feature"     => Right(Feature)
-          case _             => Left(s"unknown category: $conf")
-        case _ => Left(s"unknown filter: $filter")
-      case _ => Left(s"unknown filter: $s")
+  @sharable val Splitter = raw"([^=]+)=(.+)".r
+  @sharable val ErrorId = raw"E?(\d+)".r
+
+  def parseFilter(s: String): Either[String, MessageFilter] = s match
+    case "any" => Right(Any)
+    case Splitter(filter, conf) => filter match
+      case "msg" => regex(conf).map(MessagePattern.apply)
+      case "id" => conf match
+        case ErrorId(num) =>
+          val n = num.toInt + 2
+          if n < ErrorMessageID.values.length then
+            Right(MessageID(ErrorMessageID.fromOrdinal(n)))
+          else
+            Left(s"unknonw error message id: E$n")
+        case _ =>
+          Left(s"invalid error message id: $conf")
+      case "cat" => conf match
+        case "deprecation" => Right(Deprecated)
+        case "feature"     => Right(Feature)
+        case _             => Left(s"unknown category: $conf")
+      case _ => Left(s"unknown filter: $filter")
+    case _ => Left(s"unknown filter: $s")
 
   def parsed(using Context): WConf =
     val setting = ctx.settings.Wconf.value

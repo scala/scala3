@@ -149,10 +149,13 @@ private sealed trait WarningSettings:
          |  - Message content: msg=regex
          |    The regex need only match some part of the message, not all of it.
          |
+         |  - Message id: id=E129
+         |    The message id is printed with the warning.
+         |
          |<action>
          |  - error / e
          |  - warning / w
-         |  - info / i    (infos are not counted as warnings and don't affect `-Werror`)
+         |  - info / i    (infos are not counted as warnings and not affected by `-Werror`)
          |  - silent / s
          |
          |The default configuration is empty.
