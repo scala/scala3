@@ -4,18 +4,21 @@ package typer
 
 import core._
 import util.Spans.Span
+import unpickleScala2.Scala2Erasure
 import Contexts._
 import Types._, Flags._, Symbols._, Types._, Names._, StdNames._, Constants._
 import TypeErasure.{erasure, hasStableErasure}
 import Decorators._
 import ProtoTypes._
 import Inferencing.{fullyDefinedType, isFullyDefined}
+import Implicits.SearchSuccess
 import ast.untpd
 import transform.SymUtils._
 import transform.TypeUtils._
 import transform.SyntheticMembers._
 import util.Property
 import annotation.{tailrec, constructorOnly}
+import collection.mutable
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
@@ -375,6 +378,194 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           synthesizedSumMirror(formal, span)
       case _ => EmptyTree
 
+  private type Scala2RefinedType = RecType | RefinedType | AndType
+
+  /** @see dotty.tools.dotc.core.unpickleScala2.Scala2Erasure.flattenedParents */
+  private object Scala2RefinedType:
+
+    def unapply(tp: Scala2RefinedType)(using Context): Option[List[Type]] =
+
+      def checkSupported(tp: Type): Boolean = tp match
+        case AnnotatedType(_, _)     => false
+        case tp @ TypeRef(prefix, _) => !(!tp.symbol.exists && prefix.dealias.isInstanceOf[Scala2RefinedType])
+        case ground                  => true
+
+      @tailrec
+      def inner(explore: List[Type], acc: mutable.ListBuffer[Type]): Option[List[Type]] = explore match
+        case tp :: rest => tp match
+          case tp: RecType               => inner(tp.parent :: rest, acc)
+          case RefinedType(parent, _, _) => inner(parent :: rest, acc)
+          case AndType(l, r)             => inner(l :: r :: rest, acc)
+          case tp if checkSupported(tp)  => inner(rest, acc += tp)
+          case _                         => None // we can not create a manifest for unsupported parents
+
+        case nil => Some(acc.toList)
+      end inner
+
+      inner(tp :: Nil, new mutable.ListBuffer())
+
+    end unapply
+
+  end Scala2RefinedType
+
+  /** Replication of the `Implicits.ImplicitSearch.manifestOfType` algorithm found in nsc compiler.
+   *  @see (https://github.com/scala/scala/blob/0c011547b1ccf961ca427c3d3459955e618e93d5/src/compiler/scala/tools/nsc/typechecker/Implicits.scala#L1519)
+   */
+  private def manifestOfFactory(flavor: Symbol): SpecialHandler = (formal, span) =>
+
+    def materializeImplicit(formal: Type, span: Span)(using Context): Tree =
+      val arg = typer.inferImplicitArg(formal, span)
+      if arg.tpe.isError then
+        EmptyTree
+      else
+        arg
+
+    def inner(tp: Type, flavour: Symbol): Tree =
+
+      val full = flavor == defn.ManifestClass
+      val opt = flavor == defn.OptManifestClass
+
+      /* Creates a tree that calls the factory method called constructor in object scala.reflect.Manifest */
+      def manifestFactoryCall(constructor: TermName, tparg: Type, args: Tree*): Tree =
+        if args contains EmptyTree then
+          EmptyTree
+        else
+          val factory = if full then defn.ManifestFactoryModule else defn.ClassManifestFactoryModule
+          applyOverloaded(ref(factory), constructor, args.toList, tparg :: Nil, Types.WildcardType)
+            .withSpan(span)
+
+      /* Creates a tree representing one of the singleton manifests.*/
+      def findSingletonManifest(name: TermName) =
+        ref(defn.ManifestFactoryModule)
+          .select(name)
+          .ensureApplied
+          .withSpan(span)
+
+      /** Re-wraps a type in a manifest before calling `materializeImplicit` on the result
+       *
+       *  TODO: in scala 2 if not full the default is `reflect.ClassManifest`,
+       *  not `reflect.ClassTag`, which is treated differently.
+       */
+      def findManifest(tp: Type, manifestClass: Symbol = if full then defn.ManifestClass else NoSymbol) =
+        if manifestClass.exists then
+          materializeImplicit(manifestClass.typeRef.appliedTo(tp), span)
+        else
+          inner(tp, NoSymbol) // workaround so that a `ClassManifest` will be generated
+
+      def findSubManifest(tp: Type) =
+        findManifest(tp, if (full) defn.ManifestClass else defn.OptManifestClass)
+
+      def inferTypeTag(tp: Type) =
+        if defn.TypeTagType.exists then
+          typer.inferImplicit(defn.TypeTagType.appliedTo(tp), EmptyTree, span) match
+            case SearchSuccess(tagInScope, _, _, _) => Some(tagInScope)
+            case _ => None
+        else
+          None
+
+      def interopTypeTag(tp: Type, tagInScope: Tree) =
+        materializeImplicit(defn.ClassTagClass.typeRef.appliedTo(tp), span) match
+          case EmptyTree =>
+            report.error(i"""To create a Manifest here, it is necessary to interoperate with the
+              |TypeTag `$tagInScope` in scope. However TypeTag to Manifest conversion requires a
+              |ClassTag for the corresponding type to be present.
+              |To proceed add a ClassTag for the type `$tp` (e.g. by introducing a context bound)
+              |and recompile.""".stripMargin, ctx.source.atSpan(span))
+            EmptyTree
+          case clsTag =>
+            // if TypeTag is available, assume scala.reflect.runtime.universe is also
+            val ru = ref(defn.ReflectRuntimePackageObject_universe)
+            val optEnclosing = ctx.owner.enclosingClass
+            if optEnclosing.exists then
+              val enclosing = ref(defn.Predef_classOf).appliedToType(optEnclosing.typeRef)
+              val classLoader = enclosing.select(nme.getClassLoader).ensureApplied
+              val currentMirror = ru.select(nme.runtimeMirror).appliedTo(classLoader)
+              ru.select(nme.internal)
+                .select(nme.typeTagToManifest)
+                .appliedToType(tp)
+                .appliedTo(currentMirror, tagInScope)
+                .appliedTo(clsTag)
+                .withSpan(span)
+            else
+              EmptyTree
+
+      def manifestOfType(tp0: Type, isLowerBound: Boolean): Tree =
+
+        val tp1 = tp0.dealiasKeepAnnots
+
+        extension [T](xs: List[T]) def isSingleton = xs.lengthCompare(1) == 0
+
+        def classManifest(clsRef: Type, args: List[Type]): Tree =
+          val classarg = ref(defn.Predef_classOf).appliedToType(tp1)
+          val suffix0 = classarg :: (args map findSubManifest)
+          val pre = clsRef.normalizedPrefix
+          val ignorePrefix = (pre eq NoPrefix) || pre.typeSymbol.isStaticOwner
+          val suffix = if ignorePrefix then suffix0 else findSubManifest(pre) :: suffix0
+          manifestFactoryCall(nme.classType, tp, suffix*)
+
+        tp1 match
+          case ThisType(_) | TermRef(_,_) => manifestFactoryCall(nme.singleType, tp, singleton(tp1))
+          case ConstantType(c)            => inner(c.tpe, defn.ManifestClass)
+
+          case tp1 @ TypeRef(pre, desig) =>
+            val tpSym = tp1.typeSymbol
+            if tpSym.isPrimitiveValueClass || defn.isPhantomClass(tpSym) then
+              if !isLowerBound && defn.isBottomClassAfterErasure(tpSym) then
+                EmptyTree // `Nothing`/`Null` manifests are ClassTags, lets not make a loophole for them
+              else
+                findSingletonManifest(tpSym.name.toTermName)
+            else if tpSym == defn.ObjectClass || tpSym == defn.AnyRefAlias then
+              findSingletonManifest(nme.Object)
+            else if tpSym.isClass then
+              classManifest(tp1, Nil)
+            else
+              EmptyTree
+
+          case tp1 @ AppliedType(tycon, args) =>
+            val tpSym = tycon.typeSymbol
+            if tpSym == defn.RepeatedParamClass then
+              EmptyTree
+            else if tpSym == defn.ArrayClass && args.isSingleton then
+              manifestFactoryCall(nme.arrayType, args.head, findManifest(args.head))
+            else if tpSym.isClass then
+              classManifest(tycon, args)
+            else
+              EmptyTree
+
+          case TypeBounds(lo, hi) if full =>
+            manifestFactoryCall(nme.wildcardType, tp,
+              manifestOfType(lo, isLowerBound = true), manifestOfType(hi, isLowerBound))
+
+          case Scala2RefinedType(parents) =>
+            if parents.isSingleton then findManifest(parents.head)
+            else if full then manifestFactoryCall(nme.intersectionType, tp, (parents map findSubManifest)*)
+            else manifestOfType(Scala2Erasure.intersectionDominator(parents), isLowerBound)
+
+          case _ =>
+            EmptyTree
+      end manifestOfType
+
+      if full then
+        inferTypeTag(tp) match
+          case Some(tagInScope) => interopTypeTag(tp, tagInScope)
+          case _                => manifestOfType(tp, isLowerBound = false)
+      else
+        manifestOfType(tp, isLowerBound = false) match
+          case EmptyTree if opt => ref(defn.NoManifestModule)
+          case result           => result
+
+    end inner
+
+    formal.argInfos match
+      case arg :: Nil =>
+        inner(fullyDefinedType(arg, "Manifest argument", span), flavor)
+      case _ =>
+        EmptyTree
+  end manifestOfFactory
+
+  val synthesizedManifest: SpecialHandler = manifestOfFactory(defn.ManifestClass)
+  val synthesizedOptManifest: SpecialHandler = manifestOfFactory(defn.OptManifestClass)
+
   val specialHandlers = List(
     defn.ClassTagClass        -> synthesizedClassTag,
     defn.TypeTestClass        -> synthesizedTypeTest,
@@ -382,7 +573,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     defn.ValueOfClass         -> synthesizedValueOf,
     defn.Mirror_ProductClass  -> synthesizedProductMirror,
     defn.Mirror_SumClass      -> synthesizedSumMirror,
-    defn.MirrorClass          -> synthesizedMirror)
+    defn.MirrorClass          -> synthesizedMirror,
+    defn.ManifestClass        -> synthesizedManifest,
+    defn.OptManifestClass     -> synthesizedOptManifest,
+  )
 
   def tryAll(formal: Type, span: Span)(using Context): Tree =
     def recur(handlers: SpecialHandlers): Tree = handlers match
