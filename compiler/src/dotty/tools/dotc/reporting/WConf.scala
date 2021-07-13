@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.SourcePosition
 
 import java.util.regex.PatternSyntaxException
-import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
 
@@ -31,7 +30,7 @@ final case class WConf(confs: List[(List[MessageFilter], Action)]):
     case (filters, action) if filters.forall(_.matches(message)) => action
   }.getOrElse(Action.Warning)
 
-@sharable object WConf:
+object WConf:
   import Action._
   import MessageFilter._
 
@@ -49,38 +48,34 @@ final case class WConf(confs: List[(List[MessageFilter], Action)]):
     try Right(s.r)
     catch { case e: PatternSyntaxException => Left(s"invalid pattern `$s`: ${e.getMessage}") }
 
-  val splitter = raw"([^=]+)=(.+)".r
-
-  def parseFilter(s: String): Either[String, MessageFilter] = s match {
-    case "any" => Right(Any)
-    case splitter(filter, conf) => filter match {
-      case "msg" => regex(conf).map(MessagePattern.apply)
-      case "cat" =>
-        conf match {
+  def parseFilter(s: String): Either[String, MessageFilter] =
+    val splitter = raw"([^=]+)=(.+)".r
+    s match
+      case "any" => Right(Any)
+      case splitter(filter, conf) => filter match
+        case "msg" => regex(conf).map(MessagePattern.apply)
+        case "cat" => conf match
           case "deprecation" => Right(Deprecated)
           case "feature"     => Right(Feature)
           case _             => Left(s"unknown category: $conf")
-        }
-      case _ => Left(s"unknown filter: $filter")
-    }
-    case _ => Left(s"unknown filter: $s")
-  }
+        case _ => Left(s"unknown filter: $filter")
+      case _ => Left(s"unknown filter: $s")
 
-  private var parsedCache: (List[String], WConf) = null
   def parsed(using Context): WConf =
     val setting = ctx.settings.Wconf.value
-    if parsedCache == null || parsedCache._1 != setting then
+    def cached = ctx.base.wConfCache
+    if cached == null || cached._1 != setting then
       val conf = fromSettings(setting)
-      parsedCache = (setting, conf.getOrElse(WConf(Nil)))
+      ctx.base.wConfCache = (setting, conf.getOrElse(WConf(Nil)))
       conf.swap.foreach(msgs =>
         val multiHelp =
-          if (setting.sizeIs > 1)
+          if setting.sizeIs > 1 then
             """
               |Note: for multiple filters, use `-Wconf:filter1:action1,filter2:action2`
               |      or alternatively          `-Wconf:filter1:action1 -Wconf:filter2:action2`""".stripMargin
           else ""
         report.warning(s"Failed to parse `-Wconf` configuration: ${ctx.settings.Wconf.value.mkString(",")}\n${msgs.mkString("\n")}$multiHelp"))
-    parsedCache._2
+    cached._2
 
   def fromSettings(settings: List[String]): Either[List[String], WConf] =
     if (settings.isEmpty) Right(WConf(Nil))

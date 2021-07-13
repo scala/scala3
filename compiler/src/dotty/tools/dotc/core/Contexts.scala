@@ -959,6 +959,8 @@ object Contexts {
 
     private[core] val reusableDataReader = ReusableInstance(new ReusableDataReader())
 
+    private[dotc] var wConfCache: (List[String], WConf) = _
+
     def sharedCharArray(len: Int): Array[Char] =
       while len > charArray.length do
         charArray = new Array[Char](charArray.length * 2)

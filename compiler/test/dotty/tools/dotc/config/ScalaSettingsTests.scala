@@ -67,15 +67,19 @@ class ScalaSettingsTests:
   @Test def `WConf setting is parsed`: Unit =
     import reporting.{Action, Diagnostic, NoExplanation}
     val sets = new ScalaSettings
-    val args = tokenize("-Wconf:cat=deprecation:w,cat=feature:w -Wconf:msg=message\\.pattern:s")
+    val args = List("-Wconf:cat=deprecation:s,cat=feature:e", "-Wconf:msg=a problem\\.:s")
     val sumy = ArgsSummary(sets.defaultState, args, errors = Nil, warnings = Nil)
     val proc = sets.processArguments(sumy, processAll = true, skipped = Nil)
     val conf = sets.Wconf.valueIn(proc.sstate)
     val sut  = reporting.WConf.fromSettings(conf).getOrElse(???)
     val msg  = NoExplanation("There was a problem!")
-    val diag = new Diagnostic.DeprecationWarning(msg, util.NoSourcePosition)
-    assertEquals("Warns deprecation", Action.Warning, sut.action(diag))
+    val depr = new Diagnostic.DeprecationWarning(msg, util.NoSourcePosition)
+    assertEquals(Action.Silent, sut.action(depr))
     val feat = new Diagnostic.FeatureWarning(msg, util.NoSourcePosition)
-    assertEquals("Warns feature", Action.Warning, sut.action(feat))
+    assertEquals(Action.Error, sut.action(feat))
+    val warn = new Diagnostic.Warning(msg, util.NoSourcePosition)
+    assertEquals(Action.Warning, sut.action(warn))
+    val nowr = new Diagnostic.Warning(NoExplanation("This is a problem."), util.NoSourcePosition)
+    assertEquals(Action.Silent, sut.action(nowr))
 
 end ScalaSettingsTests
