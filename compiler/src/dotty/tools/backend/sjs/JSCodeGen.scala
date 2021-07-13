@@ -104,6 +104,17 @@ class JSCodeGen()(using genCtx: Context) {
     }
   }
 
+  private def withPerMethodBodyState[A](methodSym: Symbol)(body: => A): A = {
+    withScopedVars(
+        currentMethodSym := methodSym,
+        thisLocalVarIdent := None,
+        isModuleInitialized := new ScopedVar.VarBox(false),
+        undefinedDefaultParams := mutable.Set.empty,
+    ) {
+      body
+    }
+  }
+
   private def acquireContextualJSClassValue[A](f: Option[js.Tree] => A): A = {
     val jsClassValue = contextualJSClassValue.get
     withScopedVars(
@@ -1039,12 +1050,7 @@ class JSCodeGen()(using genCtx: Context) {
     val vparamss = dd.termParamss
     val rhs = dd.rhs
 
-    withScopedVars(
-        currentMethodSym       := sym,
-        undefinedDefaultParams := mutable.Set.empty,
-        thisLocalVarIdent      := None,
-        isModuleInitialized    := new ScopedVar.VarBox(false)
-    ) {
+    withPerMethodBodyState(sym) {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
       val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
