@@ -1245,7 +1245,7 @@ object Build {
       val distLocation = (dist / pack).value
       val projectVersion = version.value
       IO.createDirectory(file(outDir))
-      val stdLibVersion = stdlibVersion(Bootstrapped)
+      val stdLibVersion = stdlibVersion(NonBootstrapped)
       val scalaLib = findArtifactPath(externalCompilerClasspathTask.value, "scala-library")
       val dottyLib = (`scala3-library` / Compile / classDirectory).value
       // TODO add versions etc.
