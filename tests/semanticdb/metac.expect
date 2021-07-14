@@ -2830,14 +2830,20 @@ Schema => SemanticDB v4
 Uri => RecOrRefined.scala
 Text => empty
 Language => Scala
-Symbols => 51 entries
-Occurrences => 89 entries
+Symbols => 61 entries
+Occurrences => 109 entries
 
 Symbols:
 example/C# => class C extends Object { self: C => +3 decls }
 example/C#T1# => type T1 
 example/C#T2# => type T2 
 example/C#`<init>`(). => primary ctor <init> (): C
+example/PickOneRefinement_1# => class PickOneRefinement_1 [typeparam S  <: SpecialRefinement { abstract method pickOne (param as: String*): Option[Any] }] extends Object { self: PickOneRefinement_1[S] => +3 decls }
+example/PickOneRefinement_1#[S] => typeparam S  <: SpecialRefinement { abstract method pickOne (param as: String*): Option[Any] }
+example/PickOneRefinement_1#`<init>`(). => primary ctor <init> [typeparam S  <: SpecialRefinement { abstract method pickOne (param as: String*): Option[Any] }](): PickOneRefinement_1[S]
+example/PickOneRefinement_1#run(). => method run (param s: S, param as: String*): Option[String]
+example/PickOneRefinement_1#run().(as) => param as: String*
+example/PickOneRefinement_1#run().(s) => param s: S
 example/PolyHolder# => trait PolyHolder extends Object { self: PolyHolder => +2 decls }
 example/PolyHolder#`<init>`(). => primary ctor <init> (): PolyHolder
 example/PolyHolder#foo(). => abstract method foo [typeparam T ](param t: T): Any
@@ -2866,6 +2872,10 @@ example/Record#elems. => private[this] val method elems Tuple2[String, Any]*
 example/Record#fields. => private[this] val method fields Map[String, Any]
 example/Record#selectDynamic(). => method selectDynamic (param name: String): Any
 example/Record#selectDynamic().(name) => param name: String
+example/SpecialRefinement# => trait SpecialRefinement extends Object { self: SpecialRefinement => +2 decls }
+example/SpecialRefinement#`<init>`(). => primary ctor <init> (): SpecialRefinement
+example/SpecialRefinement#pickOne(). => abstract method pickOne (param as: String*): Option[Any]
+example/SpecialRefinement#pickOne().(as) => param as: String*
 local0 => abstract val method x Int
 local1 => abstract val method x Int
 local2 => abstract method y => Int
@@ -2976,6 +2986,26 @@ Occurrences:
 [25:19..25:21): T1 <- local17
 [25:28..25:30): T2 <- local18
 [25:33..25:35): T1 -> local17
+[27:6..27:23): SpecialRefinement <- example/SpecialRefinement#
+[28:2..28:2): <- example/SpecialRefinement#`<init>`().
+[28:6..28:13): pickOne <- example/SpecialRefinement#pickOne().
+[28:14..28:16): as <- example/SpecialRefinement#pickOne().(as)
+[28:18..28:24): String -> scala/Predef.String#
+[28:28..28:34): Option -> scala/Option#
+[28:35..28:38): Any -> scala/Any#
+[31:6..31:25): PickOneRefinement_1 <- example/PickOneRefinement_1#
+[31:25..31:25): <- example/PickOneRefinement_1#`<init>`().
+[31:26..31:27): S <- example/PickOneRefinement_1#[S]
+[32:6..32:9): run <- example/PickOneRefinement_1#run().
+[32:10..32:11): s <- example/PickOneRefinement_1#run().(s)
+[32:13..32:14): S -> example/PickOneRefinement_1#[S]
+[32:16..32:18): as <- example/PickOneRefinement_1#run().(as)
+[32:20..32:26): String -> scala/Predef.String#
+[32:30..32:36): Option -> scala/Option#
+[32:37..32:43): String -> scala/Predef.String#
+[32:47..32:48): s -> example/PickOneRefinement_1#run().(s)
+[32:49..32:56): pickOne -> example/SpecialRefinement#pickOne().
+[32:57..32:59): as -> example/PickOneRefinement_1#run().(as)
 
 expect/RightAssociativeExtension.scala
 --------------------------------------

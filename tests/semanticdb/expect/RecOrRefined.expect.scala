@@ -24,3 +24,11 @@ type Person/*<-example::RecOrRefined$package.Person#*/ = Record/*->example::Reco
 // RecType
 class C/*<-example::C#*/ { type T1/*<-example::C#T1#*/; type T2/*<-example::C#T2#*/ }
 type C2/*<-example::RecOrRefined$package.C2#*/ = C/*->example::C#*/ { type T1/*<-local17*/; type T2/*<-local18*/ = T1/*->local17*/ }
+
+trait SpecialRefinement/*<-example::SpecialRefinement#*/ {
+  def pickOne/*<-example::SpecialRefinement#pickOne().*/(as/*<-example::SpecialRefinement#pickOne().(as)*/: String/*->scala::Predef.String#*/*): Option/*->scala::Option#*/[Any/*->scala::Any#*/]
+}
+
+class PickOneRefinement_1/*<-example::PickOneRefinement_1#*/[S/*<-example::PickOneRefinement_1#[S]*/ <: SpecialRefinement { def pickOne(as: String*): Option[String] }] {
+  def run/*<-example::PickOneRefinement_1#run().*/(s/*<-example::PickOneRefinement_1#run().(s)*/: S/*->example::PickOneRefinement_1#[S]*/, as/*<-example::PickOneRefinement_1#run().(as)*/: String/*->scala::Predef.String#*/*): Option/*->scala::Option#*/[String/*->scala::Predef.String#*/] = s/*->example::PickOneRefinement_1#run().(s)*/.pickOne/*->example::SpecialRefinement#pickOne().*/(as/*->example::PickOneRefinement_1#run().(as)*/:_*)
+}

@@ -279,8 +279,17 @@ class TypeOps:
           val (parent, refinedInfos) = flatten(rt, List.empty)
           val stpe = s.IntersectionType(flattenParent(parent))
 
-          val decls = refinedInfos.flatMap { (name, _) =>
-            refinementSymtab.getOrErr((rt, name), sym)
+          val decls = refinedInfos.map { (name, info) =>
+            // In case refinement cannot be accessed from traverser and
+            // no symbols are registered to the symtab
+            // fall back to Type.member
+            val decl = refinementSymtab.getOrElse(
+              (rt, name),
+              rt.member(name).symbol
+            )
+            if decl == NoSymbol then
+              symbolNotFound(rt, name, sym)
+            decl
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
           s.StructuralType(stpe, sdecls)
