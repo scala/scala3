@@ -3695,6 +3695,15 @@ class JSCodeGen()(using genCtx: Context) {
         // BoxedUnit.UNIT, which is the boxed version of ()
         js.Undefined()
 
+      case JS_IMPORT =>
+        // js.import(arg)
+        val arg = genArgs1
+        js.JSImportCall(arg)
+
+      case JS_IMPORT_META =>
+        // js.import.meta
+        js.JSImportMeta()
+
       case JS_NATIVE =>
         // js.native
         report.error(
