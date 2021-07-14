@@ -5,7 +5,7 @@ import core.Symbols.{ Symbol , defn, NoSymbol }
 import core.Contexts._
 import core.Names
 import core.Names.Name
-import core.Types.Type
+import core.Types.{Type, TypeBounds}
 import core.Flags._
 import core.NameKinds
 import core.StdNames.nme
@@ -25,6 +25,42 @@ object Scala3:
   @sharable private val ctor          = raw"[^;].*`<init>`\((?:\+\d+)?\)\.".r
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
+
+  /** Fake symbol that represents wildcard symbol which will be converted to
+    * semanticdb symbol with
+    * - name: local...
+    * - SymbolInformation with signature TypeSignature of given type bound.
+    */
+  case class WildcardTypeSymbol(bounds: TypeBounds) {
+    private[Scala3] var sname: Option[String] = None
+  }
+  type SemanticSymbol = Symbol | WildcardTypeSymbol
+  extension (sym: SemanticSymbol)
+    def name(using Context): Name = sym match
+      case s: Symbol => s.name
+      case s: WildcardTypeSymbol => nme.WILDCARD
+
+    def symbolName(using builder: SemanticSymbolBuilder)(using Context): String =
+      sym match
+        case s: Symbol => SymbolOps.symbolName(s)
+        case s: WildcardTypeSymbol =>
+          s.sname.getOrElse {
+            val sname = builder.symbolName(s)
+            s.sname = Some(sname)
+            sname
+          }
+
+    def symbolInfo(symkinds: Set[SymbolKind])(using LinkMode, TypeOps, SemanticSymbolBuilder, Context): SymbolInformation =
+      sym match
+        case s: Symbol => SymbolOps.symbolInfo(s)(symkinds)
+        case s: WildcardTypeSymbol =>
+          SymbolInformation(
+            symbol = symbolName,
+            language = Language.SCALA,
+            kind = SymbolInformation.Kind.TYPE,
+            displayName = nme.WILDCARD.toString,
+            signature = s.bounds.toSemanticSig(NoSymbol),
+          )
 
   enum SymbolKind derives CanEqual:
     kind =>

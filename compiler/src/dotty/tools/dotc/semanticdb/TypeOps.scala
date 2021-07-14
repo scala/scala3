@@ -14,6 +14,7 @@ import ast.tpd._
 import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
+import Scala3.{SemanticSymbol, WildcardTypeSymbol}
 
 class TypeOps:
   import SymbolScopeOps._
@@ -38,9 +39,9 @@ class TypeOps:
           // e.g. `class HKClass[F <: [T] =>> [U] =>> (U, T)]`
           // and if the binder is HKTypeLambda, fallback to create fake symbol
           case lam: HKTypeLambda =>
-            lam.paramNames.zip(lam.paramInfos).toMap.get(name) match
+            lam.paramNames.zip(lam.paramInfos).find(t => t._1 == name) match
               case Some(info) =>
-                Some(newSymbol(parent, name, Flags.TypeParam, info))
+                Some(newSymbol(parent, name, Flags.TypeParam, info._2))
               case None =>
                 symbolNotFound(binder, name, parent)
                 None
@@ -131,8 +132,9 @@ class TypeOps:
             enterRefined(m.resType)
           case _ => ()
         }
-      enterParamRef(sym.owner.info)
-      enterRefined(sym.owner.info)
+      if sym.exists && sym.owner.exists then
+        enterParamRef(sym.owner.info)
+        enterRefined(sym.owner.info)
 
       def loop(tpe: Type): s.Signature = tpe match {
         case mp: MethodOrPoly =>
@@ -173,13 +175,12 @@ class TypeOps:
 
         case TypeBounds(lo, hi) =>
           // for `type X[T] = T` is equivalent to `[T] =>> T`
-          def tparams(tpe: Type): (Type, List[Symbol]) = tpe match {
+          def tparams(tpe: Type): (Type, List[SemanticSymbol]) = tpe match {
             case lambda: HKTypeLambda =>
-              val paramSyms = lambda.paramNames.zip(lambda.paramInfos).flatMap { (paramName, bounds) =>
+              val paramSyms: List[SemanticSymbol] = lambda.paramNames.zip(lambda.paramInfos).flatMap { (paramName, bounds) =>
                 // def x[T[_]] = ???
                 if paramName.isWildcard then
-                  val wildcardSym = newSymbol(NoSymbol, tpnme.WILDCARD, Flags.EmptyFlags, bounds)
-                  Some(wildcardSym)
+                  Some(WildcardTypeSymbol(bounds))
                 else
                   paramRefSymtab.getOrErr(lambda, paramName, sym)
               }
@@ -188,10 +189,9 @@ class TypeOps:
           }
           val (loRes, loParams) = tparams(lo)
           val (hiRes, hiParams) = tparams(hi)
-          val params = (loParams ++ hiParams).distinctBy(_.name)
+          val stparams = (loParams ++ hiParams).distinctBy(_.name).sscopeOpt
           val slo = loRes.toSemanticType(sym)
           val shi = hiRes.toSemanticType(sym)
-          val stparams = params.sscopeOpt
           s.TypeSignature(stparams, slo, shi)
 
         case other =>
@@ -320,7 +320,7 @@ class TypeOps:
               // display_name: "_" and,
               // signature: type_signature(..., lo = <Nothing>, hi = <T>)
               case bounds: TypeBounds =>
-                val wildcardSym = newSymbol(NoSymbol, tpnme.WILDCARD, Flags.EmptyFlags, bounds)
+                val wildcardSym = WildcardTypeSymbol(bounds)
                 val ssym = wildcardSym.symbolName
                 (Some(wildcardSym), s.TypeRef(s.Type.Empty, ssym, Seq.empty))
               case other =>
@@ -379,8 +379,8 @@ class TypeOps:
 
 
 object SymbolScopeOps:
-  import Scala3.given
-  extension (syms: List[Symbol])
+  import Scala3.{_, given}
+  extension (syms: List[SemanticSymbol])
     def sscope(using linkMode: LinkMode)(using SemanticSymbolBuilder, TypeOps, Context): s.Scope =
       linkMode match {
         case LinkMode.SymlinkChildren =>

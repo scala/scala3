@@ -23,10 +23,15 @@ class SemanticSymbolBuilder:
   private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]():
     override def default(key: Int) = Set[Symbol]()
 
+
   def symbolName(sym: Symbol)(using Context): String =
     val b = StringBuilder(20)
     addSymName(b, sym)
     b.toString
+  def symbolName(sym: WildcardTypeSymbol): String =
+    val idx = nextLocalIdx
+    nextLocalIdx += 1
+    s"${Symbols.LocalPrefix}${idx}"
 
   def funParamSymbol(sym: Symbol)(using Context): Name => String =
     if sym.isGlobal then
