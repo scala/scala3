@@ -3762,9 +3762,9 @@ Occurrences => 5 entries
 
 Symbols:
 exports/`exports-package$package`. => final package object exports extends Object { self: exports.type => +4 decls }
-exports/`exports-package$package`.Codec# => final type Codec  = Codec[<?>]
-exports/`exports-package$package`.Decoder# => final type Decoder  = Decoder[<?>]
-exports/`exports-package$package`.Encoder# => final type Encoder  = Encoder[<?>]
+exports/`exports-package$package`.Codec# => final type Codec [unknown T: <?>] = Codec[T]
+exports/`exports-package$package`.Decoder# => final type Decoder [unknown T: <?>] = Decoder[T]
+exports/`exports-package$package`.Encoder# => final type Encoder [unknown T: <?>] = Encoder[T]
 
 Occurrences:
 [0:8..0:15): exports <- exports/
