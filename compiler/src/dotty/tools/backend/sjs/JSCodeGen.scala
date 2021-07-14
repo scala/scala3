@@ -2633,7 +2633,10 @@ class JSCodeGen()(using genCtx: Context) {
               js.UnaryOp(IntToLong, intValue)
           }
         case jstpe.FloatType =>
-          js.UnaryOp(js.UnaryOp.DoubleToFloat, doubleValue)
+          if (from == jstpe.LongType)
+            js.UnaryOp(js.UnaryOp.LongToFloat, value)
+          else
+            js.UnaryOp(js.UnaryOp.DoubleToFloat, doubleValue)
         case jstpe.DoubleType =>
           doubleValue
       }

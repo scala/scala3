@@ -1160,7 +1160,8 @@ object Build {
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
             "strictFloats" -> sems.strictFloats,
             "productionMode" -> sems.productionMode,
-            "es2015" -> linkerConfig.esFeatures.useECMAScript2015,
+            "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
+            "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
         )
       }.taskValue,
 
