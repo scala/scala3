@@ -183,7 +183,7 @@ class TypeOps:
               val paramSyms: List[SemanticSymbol] = lambda.paramNames.zip(lambda.paramInfos).flatMap { (paramName, bounds) =>
                 // def x[T[_]] = ???
                 if paramName.isWildcard then
-                  Some(WildcardTypeSymbol(bounds))
+                  Some(WildcardTypeSymbol(sym, bounds))
                 else
                   val found = paramRefSymtab.lookup(lambda, paramName, sym)
                   if found.exists then
@@ -343,7 +343,7 @@ class TypeOps:
               // display_name: "_" and,
               // signature: type_signature(..., lo = <Nothing>, hi = <T>)
               case bounds: TypeBounds =>
-                val wildcardSym = WildcardTypeSymbol(bounds)
+                val wildcardSym = WildcardTypeSymbol(sym, bounds)
                 val ssym = wildcardSym.symbolName
                 (Some(wildcardSym), s.TypeRef(s.Type.Empty, ssym, Seq.empty))
               case other =>
