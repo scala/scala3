@@ -24,3 +24,11 @@ type Person = Record {
 // RecType
 class C { type T1; type T2 }
 type C2 = C { type T1; type T2 = T1 }
+
+trait SpecialRefinement {
+  def pickOne(as: String*): Option[Any]
+}
+
+class PickOneRefinement_1[S <: SpecialRefinement { def pickOne(as: String*): Option[String] }] {
+  def run(s: S, as: String*): Option[String] = s.pickOne(as:_*)
+}
