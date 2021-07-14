@@ -53,9 +53,6 @@ class TypeOps:
   private def symbolNotFound(binder: Type, name: Name, parent: Symbol)(using ctx: Context): Unit =
     warn(s"Ignoring ${name} of symbol ${parent}, type ${binder}")
 
-  private def unexpectedType(parent: Symbol, tpe: Type)(using Context): Unit =
-    warn(s"Unexpected type ${tpe} of symbol ${parent}")
-
   private def warn(msg: String)(using ctx: Context): Unit =
     report.warning(
       s"Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: ${msg}"
@@ -376,8 +373,7 @@ class TypeOps:
         case _: MatchType =>
           s.Type.Empty
 
-        case other =>
-          unexpectedType(sym, other)
+        case _ =>
           s.Type.Empty
       }
       loop(tpe)
