@@ -51,8 +51,14 @@ class TypeOps:
         }
 
   private def symbolNotFound(binder: Type, name: Name, parent: Symbol)(using ctx: Context): Unit =
+    warn(s"Ignoring ${name} of symbol ${parent}, type ${binder}")
+
+  private def unexpectedType(parent: Symbol, tpe: Type)(using Context): Unit =
+    warn(s"Unexpected type ${tpe} of symbol ${parent}")
+
+  private def warn(msg: String)(using ctx: Context): Unit =
     report.warning(
-      s"""Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: Ignoring ${name} of symbol ${parent}, type ${binder}"""
+      s"Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: ${msg}"
     )
 
   extension (tpe: Type)
@@ -361,7 +367,15 @@ class TypeOps:
         case NoPrefix =>
           s.Type.Empty
 
-        case _ => s.Type.Empty
+        // Not yet supported
+        case _: HKTypeLambda =>
+          s.Type.Empty
+        case _: MatchType =>
+          s.Type.Empty
+
+        case other =>
+          unexpectedType(sym, other)
+          s.Type.Empty
       }
       loop(tpe)
 
