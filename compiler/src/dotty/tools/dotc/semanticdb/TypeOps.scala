@@ -364,6 +364,9 @@ class TypeOps:
           val stpes = flatten(or).map(loop)
           s.UnionType(stpes)
 
+        case l: LazyRef =>
+          loop(l.ref)
+
         case NoPrefix =>
           s.Type.Empty
 
