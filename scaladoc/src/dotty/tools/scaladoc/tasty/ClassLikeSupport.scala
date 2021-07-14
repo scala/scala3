@@ -96,10 +96,10 @@ trait ClassLikeSupport:
 
     if summon[DocContext].args.generateInkuire then {
 
-      val classType = classDef.asInkuire(Set.empty, true)
+      val classType = classDef.asInkuire(Set.empty)
       val variableNames = classType.params.map(_.typ.name.name).toSet
 
-      val parents = classDef.parents.map(_.asInkuire(variableNames, false))
+      val parents = classDef.parents.map(_.asInkuire(variableNames))
 
       val isModule = classDef.symbol.flags.is(Flags.Module)
 
@@ -109,8 +109,8 @@ trait ClassLikeSupport:
         case typeSymbol: Symbol =>
           val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
           if typeDef.rhs.symbol.fullName.contains("java") then
-            val t = typeSymbol.tree.asInkuire(variableNames, false) // TODO [Inkuire] Hack until type aliases are supported
-            val tJava = typeDef.rhs.symbol.tree.asInkuire(variableNames, false)
+            val t = typeSymbol.tree.asInkuire(variableNames) // TODO [Inkuire] Hack until type aliases are supported
+            val tJava = typeDef.rhs.symbol.tree.asInkuire(variableNames)
             Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))) // TODO [Inkuire] Hack until type aliases are supported
             Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
       }
@@ -126,9 +126,9 @@ trait ClassLikeSupport:
                                           && classDef.symbol.flags.is(Flags.Module)
                                           && implicitConversion.owner.fullName == ("scala.Predef$") =>
             val defdef = implicitConversion.tree.asInstanceOf[DefDef]
-            val to = defdef.returnTpt.asInkuire(variableNames, false)
+            val to = defdef.returnTpt.asInkuire(variableNames)
             val from = defdef.paramss.flatMap(_.params).collectFirst {
-              case v: ValDef => v.tpt.asInkuire(variableNames, false)
+              case v: ValDef => v.tpt.asInkuire(variableNames)
             }
             from match
               case Some(from) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
@@ -143,14 +143,14 @@ trait ClassLikeSupport:
             val receiver: Option[Inkuire.Type] =
               Some(classType)
                 .filter(_ => !isModule)
-                .orElse(methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars, false).lift(s.tpt)))
+                .orElse(methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars).lift(s.tpt)))
             val sgn = Inkuire.ExternalSignature(
               signature = Inkuire.Signature(
                 receiver = receiver,
                 arguments = methodSymbol.nonExtensionParamLists.flatMap(_.params).collect {
-                  case ValDef(_, tpe, _) => tpe.asInkuire(vars, false)
+                  case ValDef(_, tpe, _) => tpe.asInkuire(vars)
                 },
-                result = defdef.returnTpt.asInkuire(vars, false),
+                result = defdef.returnTpt.asInkuire(vars),
                 context = Inkuire.SignatureContext(
                   vars = vars.toSet,
                   constraints = Map.empty //TODO [Inkuire] Type bounds
