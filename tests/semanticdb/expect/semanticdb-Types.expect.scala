@@ -74,7 +74,7 @@ object Test/*<-types::Test.*/ {
     val existentialType4/*<-types::Test.C#existentialType4.*/ = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
 
     def typeLambda1/*<-types::Test.C#typeLambda1().*/[M/*<-types::Test.C#typeLambda1().[M]*/[_]] = ???/*->scala::Predef.`???`().*/
-    typeLambda1/*->types::Test.C#typeLambda1().*/[({ type L/*<-local15*/[T/*<-local14*/] = List/*->scala::package.List#*/[T/*->local14*/] })#L]
+    typeLambda1/*->types::Test.C#typeLambda1().*/[({ type L/*<-local11*/[T/*<-local10*/] = List/*->scala::package.List#*/[T/*->local10*/] })#L]
 
     object ClassInfoType1/*<-types::Test.C#ClassInfoType1.*/
     class ClassInfoType2/*<-types::Test.C#ClassInfoType2#*/ extends B/*->types::B#*/ { def x/*<-types::Test.C#ClassInfoType2#x().*/ = 42 }

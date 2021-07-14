@@ -31,10 +31,11 @@ class SemanticSymbolBuilder:
     b.toString
   def symbolName(sym: FakeSymbol)(using Context): String =
     sym match
-      case _: WildcardTypeSymbol =>
-        val idx = nextLocalIdx
-        nextLocalIdx += 1
-        s"${Symbols.LocalPrefix}${idx}"
+      case sym: WildcardTypeSymbol =>
+        val b = StringBuilder(20)
+        addSymName(b, sym.owner)
+        b.append('['); addName(b, sym.name); b.append(']')
+        b.toString
       case sym: TypeParamRefSymbol =>
         val b = StringBuilder(20)
         addSymName(b, sym.owner)

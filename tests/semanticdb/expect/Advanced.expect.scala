@@ -36,8 +36,8 @@ object Test/*<-advanced::Test.*/ {
 
   {
     (???/*->scala::Predef.`???`().*/ : Any/*->scala::Any#*/) match {
-      case e3/*<-local15*/: List/*->scala::package.List#*/[_] =>
-        val e3x/*<-local17*/ = e3/*->local15*/.head/*->scala::collection::IterableOps#head().*/
+      case e3/*<-local12*/: List/*->scala::package.List#*/[_] =>
+        val e3x/*<-local14*/ = e3/*->local12*/.head/*->scala::collection::IterableOps#head().*/
         ()
     }
   }

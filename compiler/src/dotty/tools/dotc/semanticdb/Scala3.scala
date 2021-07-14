@@ -35,7 +35,7 @@ object Scala3:
     * - name: local...
     * - SymbolInformation with signature TypeSignature of given type bound.
     */
-  case class WildcardTypeSymbol(bounds: TypeBounds) extends FakeSymbol
+  case class WildcardTypeSymbol(owner: Symbol, bounds: TypeBounds) extends FakeSymbol
   case class TypeParamRefSymbol(owner: Symbol, name: Name, tp: TypeBounds) extends FakeSymbol
   type SemanticSymbol = Symbol | FakeSymbol
   extension (sym: SemanticSymbol)
