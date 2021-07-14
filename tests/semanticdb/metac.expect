@@ -49,14 +49,21 @@ Schema => SemanticDB v4
 Uri => Advanced.scala
 Text => empty
 Language => Scala
-Symbols => 38 entries
-Occurrences => 100 entries
+Symbols => 45 entries
+Occurrences => 113 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
 advanced/C#[T] => typeparam T 
 advanced/C#`<init>`(). => primary ctor <init> [typeparam T ](): C[T]
 advanced/C#t(). => method t => T
+advanced/HKClass# => class HKClass [typeparam F [unknown T: <?>] <: <?>] extends Object { self: HKClass[F] => +3 decls }
+advanced/HKClass#[F] => typeparam F [unknown T: <?>] <: <?>
+advanced/HKClass#`<init>`(). => primary ctor <init> [typeparam F [unknown T: <?>] <: <?>](): HKClass[F]
+advanced/HKClass#foo(). => method foo [typeparam T , typeparam U ](param x: F[T, U]): String
+advanced/HKClass#foo().(x) => param x: F[T, U]
+advanced/HKClass#foo().[T] => typeparam T 
+advanced/HKClass#foo().[U] => typeparam U 
 advanced/Structural# => class Structural extends Object { self: Structural => +5 decls }
 advanced/Structural#`<init>`(). => primary ctor <init> (): Structural
 advanced/Structural#s1(). => method s1 => Object { abstract val method x Int }
@@ -193,6 +200,19 @@ Occurrences:
 [39:12..39:15): e3x <- local17
 [39:18..39:20): e3 -> local15
 [39:21..39:25): head -> scala/collection/IterableOps#head().
+[47:6..47:13): HKClass <- advanced/HKClass#
+[47:13..47:13): <- advanced/HKClass#`<init>`().
+[47:14..47:15): F <- advanced/HKClass#[F]
+[48:6..48:9): foo <- advanced/HKClass#foo().
+[48:10..48:11): T <- advanced/HKClass#foo().[T]
+[48:12..48:13): U <- advanced/HKClass#foo().[U]
+[48:15..48:16): x <- advanced/HKClass#foo().(x)
+[48:18..48:19): F -> advanced/HKClass#[F]
+[48:20..48:21): T -> advanced/HKClass#foo().[T]
+[48:23..48:24): U -> advanced/HKClass#foo().[U]
+[48:28..48:34): String -> scala/Predef.String#
+[48:37..48:38): x -> advanced/HKClass#foo().(x)
+[48:39..48:47): toString -> scala/Tuple2#toString().
 
 expect/Annotations.scala
 ------------------------

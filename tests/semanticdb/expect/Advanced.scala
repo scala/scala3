@@ -42,3 +42,9 @@ object Test {
     }
   }
 }
+
+
+// Curried Type Application
+class HKClass[F <: [T] =>> [U] =>> (U, T)] {
+  def foo[T,U](x: F[T][U]): String = x.toString()
+}

@@ -42,3 +42,9 @@ object Test/*<-advanced::Test.*/ {
     }
   }
 }
+
+
+// Curried Type Application
+class HKClass/*<-advanced::HKClass#*/[F/*<-advanced::HKClass#[F]*/ <: [T] =>> [U] =>> (U, T)] {
+  def foo/*<-advanced::HKClass#foo().*/[T/*<-advanced::HKClass#foo().[T]*/,U/*<-advanced::HKClass#foo().[U]*/](x/*<-advanced::HKClass#foo().(x)*/: F/*->advanced::HKClass#[F]*/[T/*->advanced::HKClass#foo().[T]*/][U/*->advanced::HKClass#foo().[U]*/]): String/*->scala::Predef.String#*/ = x/*->advanced::HKClass#foo().(x)*/.toString/*->scala::Tuple2#toString().*/()
+}
