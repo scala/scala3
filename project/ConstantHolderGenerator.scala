@@ -35,6 +35,7 @@ object ConstantHolderGenerator {
   private final def literal(v: Any): String = v match {
     case s: String  => "raw\"\"\"" + s + "\"\"\""
     case b: Boolean => b.toString
+    case i: Int     => i.toString
     case f: File    => literal(f.getAbsolutePath)
 
     case _ =>
