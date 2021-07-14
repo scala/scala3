@@ -23,37 +23,23 @@ class TypeOps:
   given typeOps: TypeOps = this
 
   extension [T <: Type](symtab: mutable.Map[(T, Name), Symbol])
-    private def getOrErr(key: (T, Name), parent: Symbol)(using Context): Option[Symbol] =
-      val sym = symtab.get(key)
-      if sym.isEmpty then
-        symbolNotFound(key._1, key._2, parent)
-      sym
+    private def getOrErr(binder: T, name: Name, parent: Symbol)(using Context): Option[Symbol] =
+      // In case refinement or type param cannot be accessed from traverser and
+      // no symbols are registered to the symbol table, fall back to Type.member
+      val sym = symtab.getOrElse(
+        (binder, name),
+        binder.member(name).symbol
+      )
+      if sym.exists then
+        Some(sym)
+      else
+        symbolNotFound(binder, name, parent)
+        None
 
   private def symbolNotFound(binder: Type, name: Name, parent: Symbol)(using ctx: Context): Unit =
-    // Known issue: for exports
-    // ```
-    // // in Codec.scala
-    // trait Encoder[T] ...
-    //
-    // // in ExportCodec.scala
-    // export Encoder
-    // ```
-    // There's type argument TypeParamRef("T") for Codec in `ExportCodec.scala` whose binder is
-    //
-    // HKTypeLambda(
-    //   List(T),
-    //   List(TypeBounds(...)),
-    //   AppliedType(
-    //     TypeRef(... trait Decoder),
-    //     List(TypeParamRef(T))
-    //   )
-    // )
-    // where this HKTypeLambda never appears in the source code of `ExportCodec.scala`
-    val suppress = parent.is(Flags.Exported)
-    if !suppress then
-      report.warning(
-        s"""Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: Ignoring ${name} of type ${binder}"""
-      )
+    report.warning(
+      s"""Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: Ignoring ${name} of type ${binder}"""
+    )
 
   extension (tpe: Type)
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
@@ -144,12 +130,12 @@ class TypeOps:
           ): (Type, List[List[Symbol]], List[Symbol]) = t match {
             case mt: MethodType =>
               val syms = mt.paramNames.flatMap { paramName =>
-                paramRefSymtab.getOrErr((mt, paramName), sym)
+                paramRefSymtab.getOrErr(mt, paramName, sym)
               }
               flatten(mt.resType, paramss :+ syms, tparams)
             case pt: PolyType =>
               val syms = pt.paramNames.flatMap { paramName =>
-                paramRefSymtab.getOrErr((pt, paramName), sym)
+                paramRefSymtab.getOrErr(pt, paramName, sym)
               }
               // there shouldn't multiple type params
               flatten(pt.resType, paramss, tparams ++ syms)
@@ -183,7 +169,7 @@ class TypeOps:
                   val wildcardSym = newSymbol(NoSymbol, tpnme.WILDCARD, Flags.EmptyFlags, bounds)
                   Some(wildcardSym)
                 else
-                  paramRefSymtab.getOrErr((lambda, paramName), sym)
+                  paramRefSymtab.getOrErr(lambda, paramName, sym)
               }
               (lambda.resType, paramSyms)
             case _ => (tpe, Nil)
@@ -221,15 +207,16 @@ class TypeOps:
           s.SingleType(spre, ssym)
 
         case tref: ParamRef =>
-          val key = (tref.binder, tref.paramName)
-          paramRefSymtab.getOrErr(key, sym) match {
+          paramRefSymtab.getOrErr(
+            tref.binder, tref.paramName, sym
+          ) match {
             case Some(ref) =>
               val ssym = ref.symbolName
               tref match {
                 case _: TypeParamRef => s.TypeRef(s.Type.Empty, ssym, Seq.empty)
                 case _: TermParamRef => s.SingleType(s.Type.Empty, ssym)
               }
-            case None => // shouldn't happen
+            case None =>
               s.Type.Empty
           }
 
@@ -279,17 +266,8 @@ class TypeOps:
           val (parent, refinedInfos) = flatten(rt, List.empty)
           val stpe = s.IntersectionType(flattenParent(parent))
 
-          val decls = refinedInfos.map { (name, info) =>
-            // In case refinement cannot be accessed from traverser and
-            // no symbols are registered to the symtab
-            // fall back to Type.member
-            val decl = refinementSymtab.getOrElse(
-              (rt, name),
-              rt.member(name).symbol
-            )
-            if decl == NoSymbol then
-              symbolNotFound(rt, name, sym)
-            decl
+          val decls = refinedInfos.flatMap { (name, info) =>
+            refinementSymtab.getOrErr(rt, name, sym)
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
           s.StructuralType(stpe, sdecls)
