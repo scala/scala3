@@ -14,7 +14,7 @@ import ast.tpd._
 import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
-import Scala3.{SemanticSymbol, WildcardTypeSymbol}
+import Scala3.{SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol}
 
 class TypeOps:
   import SymbolScopeOps._
@@ -24,31 +24,31 @@ class TypeOps:
   given typeOps: TypeOps = this
 
   extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
-    private def getOrErr(binder: T, name: Name, parent: Symbol)(using Context): Option[Symbol] =
+    private def lookupOrErr(
+      binder: T,
+      name: Name,
+      parent: Symbol,
+    )(using Context): Option[Symbol] =
       // In case refinement or type param cannot be accessed from traverser and
       // no symbols are registered to the symbol table, fall back to Type.member
-      val sym = symtab.getOrElse(
-        (binder, name),
-        binder.member(name).symbol
-      )
+      val sym = symtab.lookup(binder, name, parent)
       if sym.exists then
         Some(sym)
       else
-        binder match {
-          // In case symtab and Type.member failed to find the symbol
-          // e.g. `class HKClass[F <: [T] =>> [U] =>> (U, T)]`
-          // and if the binder is HKTypeLambda, fallback to create fake symbol
-          case lam: HKTypeLambda =>
-            lam.paramNames.zip(lam.paramInfos).find(t => t._1 == name) match
-              case Some(info) =>
-                Some(newSymbol(parent, name, Flags.TypeParam, info._2))
-              case None =>
-                symbolNotFound(binder, name, parent)
-                None
-          case _ =>
-            symbolNotFound(binder, name, parent)
-            None
-        }
+        symbolNotFound(binder, name, parent)
+        None
+
+    private def lookup(
+      binder: T,
+      name: Name,
+      parent: Symbol,
+    )(using Context): Symbol =
+      // In case refinement or type param cannot be accessed from traverser and
+      // no symbols are registered to the symbol table, fall back to Type.member
+      symtab.getOrElse(
+        (binder, name),
+        binder.member(name).symbol
+      )
 
   private def symbolNotFound(binder: Type, name: Name, parent: Symbol)(using ctx: Context): Unit =
     warn(s"Ignoring ${name} of symbol ${parent}, type ${binder}")
@@ -148,12 +148,12 @@ class TypeOps:
           ): (Type, List[List[Symbol]], List[Symbol]) = t match {
             case mt: MethodType =>
               val syms = mt.paramNames.flatMap { paramName =>
-                paramRefSymtab.getOrErr(mt, paramName, sym)
+                paramRefSymtab.lookupOrErr(mt, paramName, sym)
               }
               flatten(mt.resType, paramss :+ syms, tparams)
             case pt: PolyType =>
               val syms = pt.paramNames.flatMap { paramName =>
-                paramRefSymtab.getOrErr(pt, paramName, sym)
+                paramRefSymtab.lookupOrErr(pt, paramName, sym)
               }
               flatten(pt.resType, paramss, tparams ++ syms)
             case other =>
@@ -185,7 +185,11 @@ class TypeOps:
                 if paramName.isWildcard then
                   Some(WildcardTypeSymbol(bounds))
                 else
-                  paramRefSymtab.getOrErr(lambda, paramName, sym)
+                  val found = paramRefSymtab.lookup(lambda, paramName, sym)
+                  if found.exists then
+                    Some(found)
+                  else
+                    Some(TypeParamRefSymbol(sym, paramName, bounds))
               }
               (lambda.resType, paramSyms)
             case _ => (tpe, Nil)
@@ -221,22 +225,38 @@ class TypeOps:
           val ssym = sym.symbolName
           s.SingleType(spre, ssym)
 
-        case tref: ParamRef =>
-          paramRefSymtab.getOrErr(
-            tref.binder, tref.paramName, sym
-          ) match {
-            case Some(ref) =>
-              val ssym = ref.symbolName
-              tref match {
-                case _: TypeParamRef => s.TypeRef(s.Type.Empty, ssym, Seq.empty)
-                case _: TermParamRef => s.SingleType(s.Type.Empty, ssym)
-              }
-            case None =>
-              s.Type.Empty
-          }
-
         case ThisType(TypeRef(_, sym: Symbol)) =>
           s.ThisType(sym.symbolName)
+
+        case tref: TermParamRef =>
+          paramRefSymtab.lookupOrErr(
+            tref.binder, tref.paramName, sym
+          ) match
+            case Some(ref) =>
+              val ssym = ref.symbolName
+              s.SingleType(s.Type.Empty, ssym)
+            case None =>
+              s.Type.Empty
+
+        case tref: TypeParamRef =>
+          val found = paramRefSymtab.lookup(tref.binder, tref.paramName, sym)
+          val tsym =
+            if found.exists then
+              Some(found)
+            else
+              tref.binder.typeParams.find(param => param.paramName == tref.paramName) match
+                case Some(param) =>
+                  val info = param.paramInfo
+                  Some(TypeParamRefSymbol(sym, tref.paramName, info))
+                case None =>
+                  symbolNotFound(tref.binder, tref.paramName, sym)
+                  None
+          tsym match
+            case Some(sym) =>
+              val ssym = sym.symbolName
+              s.TypeRef(s.Type.Empty, ssym, Seq.empty)
+            case None =>
+              s.Type.Empty
 
         case SuperType(thistpe, supertpe) =>
           val spre = loop(thistpe.typeSymbol.info)
@@ -282,7 +302,7 @@ class TypeOps:
           val stpe = s.IntersectionType(flattenParent(parent))
 
           val decls = refinedInfos.flatMap { (name, info) =>
-            refinementSymtab.getOrErr(rt, name, sym)
+            refinementSymtab.lookupOrErr(rt, name, sym)
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
           s.StructuralType(stpe, sdecls)

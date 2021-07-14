@@ -10,6 +10,7 @@ import Names.Name
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import dotty.tools.dotc.core.Types.TypeParamRef
 
 class SemanticSymbolBuilder:
   import Scala3.{_, given}
@@ -28,10 +29,17 @@ class SemanticSymbolBuilder:
     val b = StringBuilder(20)
     addSymName(b, sym)
     b.toString
-  def symbolName(sym: WildcardTypeSymbol): String =
-    val idx = nextLocalIdx
-    nextLocalIdx += 1
-    s"${Symbols.LocalPrefix}${idx}"
+  def symbolName(sym: FakeSymbol)(using Context): String =
+    sym match
+      case _: WildcardTypeSymbol =>
+        val idx = nextLocalIdx
+        nextLocalIdx += 1
+        s"${Symbols.LocalPrefix}${idx}"
+      case sym: TypeParamRefSymbol =>
+        val b = StringBuilder(20)
+        addSymName(b, sym.owner)
+        b.append('['); addName(b, sym.name); b.append(']')
+        b.toString
 
   def funParamSymbol(sym: Symbol)(using Context): Name => String =
     if sym.isGlobal then
@@ -41,13 +49,13 @@ class SemanticSymbolBuilder:
       name => locals.keys.find(local => local.isTerm && local.owner == sym && local.name == name)
                     .fold("<?>")(Symbols.LocalPrefix + locals(_))
 
+  private def addName(b: StringBuilder, name: Name): Unit =
+    val str = name.toString.unescapeUnicode
+    if str.isJavaIdent then b append str
+    else b append '`' append str append '`'
+
   /** Add semanticdb name of the given symbol to string builder */
   private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
-
-    def addName(name: Name) =
-      val str = name.toString.unescapeUnicode
-      if str.isJavaIdent then b append str
-      else b append '`' append str append '`'
 
     def addOwner(owner: Symbol): Unit =
       if !owner.isRoot then addSymName(b, owner)
@@ -74,9 +82,9 @@ class SemanticSymbolBuilder:
       if sym.is(ModuleClass) then
         addDescriptor(sym.sourceModule)
       else if sym.is(TypeParam) then
-        b.append('['); addName(sym.name); b.append(']')
+        b.append('['); addName(b, sym.name); b.append(']')
       else if sym.is(Param) then
-        b.append('('); addName(sym.name); b.append(')')
+        b.append('('); addName(b, sym.name); b.append(')')
       else if sym.isRoot then
         b.append(Symbols.RootPackage)
       else if sym.isEmptyPackage then
@@ -84,7 +92,7 @@ class SemanticSymbolBuilder:
       else if (sym.isScala2PackageObject) then
         b.append(Symbols.PackageObjectDescriptor)
       else
-        addName(sym.name)
+        addName(b, sym.name)
         if sym.is(Package) then b.append('/')
         else if sym.isType || sym.isAllOf(JavaModule) then b.append('#')
         else if sym.isOneOf(Method | Mutable)
