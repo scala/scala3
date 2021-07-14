@@ -1621,8 +1621,12 @@ class JSCodeGen()(using genCtx: Context) {
         }
 
       case If(cond, thenp, elsep) =>
+        val tpe =
+          if (isStat) jstpe.NoType
+          else toIRType(tree.tpe)
+
         js.If(genExpr(cond), genStatOrExpr(thenp, isStat),
-            genStatOrExpr(elsep, isStat))(toIRType(tree.tpe))
+            genStatOrExpr(elsep, isStat))(tpe)
 
       case Labeled(bind, expr) =>
         js.Labeled(encodeLabelSym(bind.symbol), toIRType(tree.tpe), genStatOrExpr(expr, isStat))
@@ -1857,7 +1861,10 @@ class JSCodeGen()(using genCtx: Context) {
     val Try(block, catches, finalizer) = tree
 
     val blockAST = genStatOrExpr(block, isStat)
-    val resultType = toIRType(tree.tpe)
+
+    val resultType =
+      if (isStat) jstpe.NoType
+      else toIRType(tree.tpe)
 
     val handled =
       if (catches.isEmpty) blockAST
