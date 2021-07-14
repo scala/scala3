@@ -18,7 +18,7 @@ trait InkuireSupport:
   private given qctx.type = qctx
 
   private def paramsForClass(classDef: ClassDef, vars: Set[String]): Seq[Inkuire.Variance] =
-    classDef.getTypeParams.map(mkTypeArgumentInkuire(_, vars))
+    classDef.getTypeParams.map(mkTypeArgumentInkuire)
 
   given TreeSyntaxInkuire: AnyRef with
     extension (tpeTree: Tree)
@@ -58,18 +58,27 @@ trait InkuireSupport:
     extension (tpe: TypeRepr)
       def asInkuire(vars: Set[String]): Inkuire.Type = inner(tpe, vars)
 
-  def mkTypeArgumentInkuire(argument: TypeDef, vars: Set[String] = Set.empty): Inkuire.Variance =
+  def mkTypeArgumentInkuire(argument: TypeDef): Inkuire.Variance =
+    //TODO [Inkuire] Type bounds (other than just HKTs)
     val name = argument.symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
+    val params = 1.to(typeVariableDeclarationParamsNo(argument)).map(_ => Inkuire.Type.StarProjection)
     val t = Inkuire.Type(
       name = Inkuire.TypeName(normalizedName),
       itid = argument.symbol.itid,
       isVariable = true,
-      params = Seq.empty //TODO [Inkuire] Type Lambdas
+      params = params.map(Inkuire.Invariance(_))
     )
     if argument.symbol.flags.is(Flags.Covariant) then Inkuire.Covariance(t)
     else if argument.symbol.flags.is(Flags.Contravariant) then Inkuire.Contravariance(t)
     else Inkuire.Invariance(t)
+
+  def typeVariableDeclarationParamsNo(argument: TypeDef): Int =
+    argument.rhs match
+      case t: TypeTree => t.tpe match
+        case TypeBounds(_, TypeLambda(names, _, _)) => names.size
+        case _ => 0
+      case _ => 0
 
   private def isRepeatedAnnotation(term: Term) =
     term.tpe match

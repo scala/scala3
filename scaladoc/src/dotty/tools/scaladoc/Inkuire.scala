@@ -70,6 +70,13 @@ object Inkuire {
           )
         )
       )
+
+    def StarProjection: Type =
+      Type(
+        name = TypeName("_"),
+        itid = Some(ITID("_", isParsed = false)),
+        isStarProjection = true
+      )
   }
 
   case class TypeName(name: String) {
