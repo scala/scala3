@@ -22,7 +22,7 @@ class TypeOps:
   private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
   given typeOps: TypeOps = this
 
-  extension [T <: Type](symtab: mutable.Map[(T, Name), Symbol])
+  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
     private def getOrErr(binder: T, name: Name, parent: Symbol)(using Context): Option[Symbol] =
       // In case refinement or type param cannot be accessed from traverser and
       // no symbols are registered to the symbol table, fall back to Type.member
@@ -33,12 +33,25 @@ class TypeOps:
       if sym.exists then
         Some(sym)
       else
-        symbolNotFound(binder, name, parent)
-        None
+        binder match {
+          // In case symtab and Type.member failed to find the symbol
+          // e.g. `class HKClass[F <: [T] =>> [U] =>> (U, T)]`
+          // and if the binder is HKTypeLambda, fallback to create fake symbol
+          case lam: HKTypeLambda =>
+            lam.paramNames.zip(lam.paramInfos).toMap.get(name) match
+              case Some(info) =>
+                Some(newSymbol(parent, name, Flags.TypeParam, info))
+              case None =>
+                symbolNotFound(binder, name, parent)
+                None
+          case _ =>
+            symbolNotFound(binder, name, parent)
+            None
+        }
 
   private def symbolNotFound(binder: Type, name: Name, parent: Symbol)(using ctx: Context): Unit =
     report.warning(
-      s"""Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: Ignoring ${name} of type ${binder}"""
+      s"""Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: Ignoring ${name} of symbol ${parent}, type ${binder}"""
     )
 
   extension (tpe: Type)
@@ -319,8 +332,12 @@ class TypeOps:
           val sargs = targs.map(_._2)
 
           val applied = loop(tycon) match
-            case ref: s.TypeRef => ref.copy(typeArguments = sargs)
-            case _ => s.Type.Empty
+            case ref @ s.TypeRef(_, _, targs) =>
+              // For curried applied type `F[T][U]` and tycon is also an `AppliedType`
+              // Convert it to TypeRef(..., targs = List(T, U))
+              ref.copy(typeArguments = targs ++ sargs)
+            case _ =>
+              s.Type.Empty
 
           if (wildcardSyms.isEmpty) applied
           else s.ExistentialType(
