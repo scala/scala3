@@ -26,24 +26,28 @@ object Scala3:
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
 
+  sealed trait FakeSymbol {
+    private[Scala3] var sname: Option[String] = None
+  }
+
   /** Fake symbol that represents wildcard symbol which will be converted to
     * semanticdb symbol with
     * - name: local...
     * - SymbolInformation with signature TypeSignature of given type bound.
     */
-  case class WildcardTypeSymbol(bounds: TypeBounds) {
-    private[Scala3] var sname: Option[String] = None
-  }
-  type SemanticSymbol = Symbol | WildcardTypeSymbol
+  case class WildcardTypeSymbol(bounds: TypeBounds) extends FakeSymbol
+  case class TypeParamRefSymbol(owner: Symbol, name: Name, tp: TypeBounds) extends FakeSymbol
+  type SemanticSymbol = Symbol | FakeSymbol
   extension (sym: SemanticSymbol)
     def name(using Context): Name = sym match
       case s: Symbol => s.name
       case s: WildcardTypeSymbol => nme.WILDCARD
+      case s: TypeParamRefSymbol => s.name
 
     def symbolName(using builder: SemanticSymbolBuilder)(using Context): String =
       sym match
         case s: Symbol => SymbolOps.symbolName(s)
-        case s: WildcardTypeSymbol =>
+        case s: FakeSymbol =>
           s.sname.getOrElse {
             val sname = builder.symbolName(s)
             s.sname = Some(sname)
@@ -58,8 +62,16 @@ object Scala3:
             symbol = symbolName,
             language = Language.SCALA,
             kind = SymbolInformation.Kind.TYPE,
-            displayName = nme.WILDCARD.toString,
+            displayName = nme.WILDCARD.show,
             signature = s.bounds.toSemanticSig(NoSymbol),
+          )
+        case s: TypeParamRefSymbol =>
+          SymbolInformation(
+            symbol = symbolName,
+            language = Language.SCALA,
+            kind = SymbolInformation.Kind.TYPE_PARAMETER,
+            displayName = s.name.show.unescapeUnicode,
+            signature = s.tp.toSemanticSig(NoSymbol),
           )
 
   enum SymbolKind derives CanEqual:
