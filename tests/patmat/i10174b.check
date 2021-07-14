@@ -1,2 +1,2 @@
-2: Pattern Match Exhaustivity: _: Int
-58: Match case Unreachable
+3: Pattern Match Exhaustivity: _: Int
+59: Match case Unreachable

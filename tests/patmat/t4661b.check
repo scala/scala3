@@ -1,2 +1,2 @@
-10: Pattern Match Exhaustivity: _: c.Foo
-13: Match case Unreachable
+11: Pattern Match Exhaustivity: _: c.Foo
+14: Match case Unreachable

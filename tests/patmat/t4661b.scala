@@ -1,3 +1,4 @@
+// scalac: -Ycheck-all-patmat
 class C {
   trait Foo
   class One extends Foo

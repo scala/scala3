@@ -1,4 +1,4 @@
-5: Pattern Match Exhaustivity: Perhaps(None)
-15: Pattern Match Exhaustivity: Nil
-31: Pattern Match Exhaustivity: Multi(None, _)
-44: Pattern Match Exhaustivity: Prod(None, _)
+6: Pattern Match Exhaustivity: Perhaps(None)
+16: Pattern Match Exhaustivity: Nil
+32: Pattern Match Exhaustivity: Multi(None, _)
+45: Pattern Match Exhaustivity: Prod(None, _)

@@ -1,3 +1,4 @@
+// scalac: -Ycheck-all-patmat
 object Test{
   def foo(a: Int) = a match {
     case 5  => "Five!"
