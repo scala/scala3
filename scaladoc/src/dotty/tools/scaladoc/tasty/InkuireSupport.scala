@@ -17,24 +17,24 @@ trait InkuireSupport:
 
   private given qctx.type = qctx
 
-  private def paramsForClass(classDef: ClassDef, vars: Set[String], isVariable: Boolean): Seq[Inkuire.Variance] =
-    classDef.getTypeParams.map(mkTypeArgumentInkuire(_, vars, isVariable))
+  private def paramsForClass(classDef: ClassDef, vars: Set[String]): Seq[Inkuire.Variance] =
+    classDef.getTypeParams.map(mkTypeArgumentInkuire(_, vars))
 
   given TreeSyntaxInkuire: AnyRef with
     extension (tpeTree: Tree)
-      def asInkuire(vars: Set[String], isVariable: Boolean): Inkuire.Type =
-        partialAsInkuire(vars, isVariable)(tpeTree)
+      def asInkuire(vars: Set[String]): Inkuire.Type =
+        partialAsInkuire(vars)(tpeTree)
 
-  def partialAsInkuire(vars: Set[String], isVariable: Boolean): PartialFunction[Tree, Inkuire.Type] = {
+  def partialAsInkuire(vars: Set[String]): PartialFunction[Tree, Inkuire.Type] = {
     case TypeBoundsTree(low, high) => inner(low.tpe, vars) //TODO [Inkuire] Type bounds
     case tpeTree: Applied =>
       inner(tpeTree.tpe, vars).copy(
-        params = tpeTree.args.map(p => Inkuire.Invariance(p.asInkuire(vars, isVariable)))
+        params = tpeTree.args.map(p => Inkuire.Invariance(p.asInkuire(vars)))
       )
     case tpeTree: TypeTree =>
       inner(tpeTree.tpe, vars)
     case term:  Term => inner(term.tpe, vars)
-    case classDef: ClassDef => mkTypeFromClassDef(classDef, vars, isVariable)
+    case classDef: ClassDef => mkTypeFromClassDef(classDef, vars)
     case typeDef: TypeDef =>
       Inkuire.Type(
         name = Inkuire.TypeName(typeDef.name),
@@ -42,11 +42,11 @@ trait InkuireSupport:
       )
   }
 
-  def mkTypeFromClassDef(classDef: ClassDef, vars: Set[String], isVariable: Boolean): Inkuire.Type = {
+  def mkTypeFromClassDef(classDef: ClassDef, vars: Set[String]): Inkuire.Type = {
     Inkuire.Type(
       name = Inkuire.TypeName(classDef.name),
       itid = classDef.symbol.itid,
-      params = paramsForClass(classDef, vars, isVariable)
+      params = paramsForClass(classDef, vars)
     )
   }
 
@@ -58,13 +58,13 @@ trait InkuireSupport:
     extension (tpe: TypeRepr)
       def asInkuire(vars: Set[String]): Inkuire.Type = inner(tpe, vars)
 
-  def mkTypeArgumentInkuire(argument: TypeDef, vars: Set[String] = Set.empty, isVariable: Boolean = false): Inkuire.Variance =
+  def mkTypeArgumentInkuire(argument: TypeDef, vars: Set[String] = Set.empty): Inkuire.Variance =
     val name = argument.symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
     val t = Inkuire.Type(
       name = Inkuire.TypeName(normalizedName),
       itid = argument.symbol.itid,
-      isVariable = vars.contains(normalizedName) || isVariable,
+      isVariable = true,
       params = Seq.empty //TODO [Inkuire] Type Lambdas
     )
     if argument.symbol.flags.is(Flags.Covariant) then Inkuire.Covariance(t)
@@ -141,7 +141,7 @@ trait InkuireSupport:
       Inkuire.Type.unresolved //TODO [Inkuire] <- should be handled by Singleton case, but didn't work
     case MatchType(bond, sc, cases) =>
       inner(sc, vars)
-    case ParamRef(TypeLambda(names, _, resType), i) =>
+    case ParamRef(TypeLambda(names, _, _), i) =>
       Inkuire.Type(
         name = Inkuire.TypeName(names(i)),
         itid = Some(Inkuire.ITID(s"external-itid-${names(i)}", isParsed = false)),
