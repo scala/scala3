@@ -3846,6 +3846,88 @@ Occurrences:
 [4:12..4:16): Test -> i9727/Test#
 [4:16..4:16): -> i9727/Test#`<init>`().
 
+expect/i9782.scala
+------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => i9782.scala
+Text => empty
+Language => Scala
+Symbols => 22 entries
+Occurrences => 45 entries
+
+Symbols:
+_empty_/Copy# => trait Copy [typeparam In  <: Txn[In], typeparam Out  <: Txn[Out]] extends Object { self: Copy[In, Out] => +5 decls }
+_empty_/Copy#[In] => typeparam In  <: Txn[In]
+_empty_/Copy#[Out] => typeparam Out  <: Txn[Out]
+_empty_/Copy#`<init>`(). => primary ctor <init> [typeparam In  <: Txn[In], typeparam Out  <: Txn[Out]](): Copy[In, Out]
+_empty_/Copy#apply(). => method apply [typeparam Repr [unknown ~: <?>] <: Elem[~]](param in: Repr[In]): Repr[Out]
+_empty_/Copy#apply().(in) => param in: Repr[In]
+_empty_/Copy#apply().[Repr] => typeparam Repr [unknown ~: <?>] <: Elem[~]
+_empty_/Copy#copyImpl(). => abstract method copyImpl [typeparam Repr [unknown ~: <?>] <: Elem[~]](param in: Repr[In]): Repr[Out]
+_empty_/Copy#copyImpl().(in) => param in: Repr[In]
+_empty_/Copy#copyImpl().[Repr] => typeparam Repr [unknown ~: <?>] <: Elem[~]
+_empty_/Elem# => trait Elem [typeparam T  <: Txn[T]] extends Object { self: Elem[T] => +2 decls }
+_empty_/Elem#[T] => typeparam T  <: Txn[T]
+_empty_/Elem#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Elem[T]
+_empty_/Obj# => trait Obj [typeparam T  <: Txn[T]] extends Object with Elem[T] { self: Obj[T] => +2 decls }
+_empty_/Obj#[T] => typeparam T  <: Txn[T]
+_empty_/Obj#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Obj[T]
+_empty_/Txn# => trait Txn [typeparam T  <: Txn[T]] extends Object { self: Txn[T] => +2 decls }
+_empty_/Txn#[T] => typeparam T  <: Txn[T]
+_empty_/Txn#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Txn[T]
+local0 => val local out: Repr[Out]
+local1 => val local inObj: Repr[In] & Obj[In]
+local2 => val local outObj: Repr[Out] & Obj[Out]
+
+Occurrences:
+[1:6..1:9): Txn <- _empty_/Txn#
+[1:9..1:9): <- _empty_/Txn#`<init>`().
+[1:10..1:11): T <- _empty_/Txn#[T]
+[3:6..3:10): Elem <- _empty_/Elem#
+[3:10..3:10): <- _empty_/Elem#`<init>`().
+[3:11..3:12): T <- _empty_/Elem#[T]
+[5:6..5:9): Obj <- _empty_/Obj#
+[5:9..5:9): <- _empty_/Obj#`<init>`().
+[5:10..5:11): T <- _empty_/Obj#[T]
+[5:31..5:35): Elem -> _empty_/Elem#
+[5:36..5:37): T -> _empty_/Obj#[T]
+[7:6..7:10): Copy <- _empty_/Copy#
+[7:10..7:10): <- _empty_/Copy#`<init>`().
+[7:11..7:13): In <- _empty_/Copy#[In]
+[7:26..7:29): Out <- _empty_/Copy#[Out]
+[8:6..8:14): copyImpl <- _empty_/Copy#copyImpl().
+[8:15..8:19): Repr <- _empty_/Copy#copyImpl().[Repr]
+[8:45..8:47): in <- _empty_/Copy#copyImpl().(in)
+[8:49..8:53): Repr -> _empty_/Copy#copyImpl().[Repr]
+[8:54..8:56): In -> _empty_/Copy#[In]
+[8:60..8:64): Repr -> _empty_/Copy#copyImpl().[Repr]
+[8:65..8:68): Out -> _empty_/Copy#[Out]
+[10:6..10:11): apply <- _empty_/Copy#apply().
+[10:12..10:16): Repr <- _empty_/Copy#apply().[Repr]
+[10:42..10:44): in <- _empty_/Copy#apply().(in)
+[10:46..10:50): Repr -> _empty_/Copy#apply().[Repr]
+[10:51..10:53): In -> _empty_/Copy#[In]
+[10:57..10:61): Repr -> _empty_/Copy#apply().[Repr]
+[10:62..10:65): Out -> _empty_/Copy#[Out]
+[11:8..11:11): out <- local0
+[11:14..11:22): copyImpl -> _empty_/Copy#copyImpl().
+[11:23..11:27): Repr -> _empty_/Copy#apply().[Repr]
+[11:29..11:31): in -> _empty_/Copy#apply().(in)
+[12:5..12:5): -> scala/Tuple2.apply().
+[12:5..12:7): in -> _empty_/Copy#apply().(in)
+[12:9..12:12): out -> local0
+[13:12..13:12): -> scala/Tuple2.unapply().
+[13:12..13:17): inObj <- local1
+[13:19..13:22): Obj -> _empty_/Obj#
+[13:23..13:25): In -> _empty_/Copy#[In]
+[13:28..13:34): outObj <- local2
+[13:36..13:39): Obj -> _empty_/Obj#
+[13:40..13:43): Out -> _empty_/Copy#[Out]
+[14:8..14:15): println -> scala/Predef.println(+1).
+[17:4..17:7): out -> local0
+
 expect/inlineconsume.scala
 --------------------------
 
@@ -3927,6 +4009,70 @@ Occurrences:
 [4:8..4:13): local <- local0
 [5:4..5:9): local -> local0
 [5:10..5:11): + -> scala/Int#`+`(+4).
+
+expect/nullary.scala
+--------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => nullary.scala
+Text => empty
+Language => Scala
+Symbols => 15 entries
+Occurrences => 34 entries
+
+Symbols:
+_empty_/Concrete# => class Concrete extends NullaryTest[Int, List] { self: Concrete => +3 decls }
+_empty_/Concrete#`<init>`(). => primary ctor <init> (): Concrete
+_empty_/Concrete#nullary2(). => method nullary2 => Int
+_empty_/Concrete#nullary3(). => method nullary3 => List[Int]
+_empty_/NullaryTest# => abstract class NullaryTest [typeparam T , typeparam m [unknown s: <?>]] extends Object { self: NullaryTest[T, m] => +9 decls }
+_empty_/NullaryTest#[T] => typeparam T 
+_empty_/NullaryTest#[m] => typeparam m [unknown s: <?>]
+_empty_/NullaryTest#`<init>`(). => primary ctor <init> [typeparam T , typeparam m [unknown s: <?>]](): NullaryTest[T, m]
+_empty_/NullaryTest#nullary(). => method nullary => String
+_empty_/NullaryTest#nullary2(). => abstract method nullary2 => T
+_empty_/NullaryTest#nullary3(). => abstract method nullary3 => m[T]
+_empty_/NullaryTest#x. => val method x String
+_empty_/NullaryTest#x2. => val method x2 T
+_empty_/NullaryTest#x3. => val method x3 m[T]
+_empty_/test. => final object test extends Object { self: test.type => +1 decls }
+
+Occurrences:
+[0:15..0:26): NullaryTest <- _empty_/NullaryTest#
+[0:26..0:26): <- _empty_/NullaryTest#`<init>`().
+[0:27..0:28): T <- _empty_/NullaryTest#[T]
+[0:30..0:31): m <- _empty_/NullaryTest#[m]
+[1:6..1:13): nullary <- _empty_/NullaryTest#nullary().
+[1:15..1:21): String -> scala/Predef.String#
+[2:6..2:7): x <- _empty_/NullaryTest#x.
+[2:10..2:17): nullary -> _empty_/NullaryTest#nullary().
+[4:6..4:14): nullary2 <- _empty_/NullaryTest#nullary2().
+[4:16..4:17): T -> _empty_/NullaryTest#[T]
+[5:6..5:8): x2 <- _empty_/NullaryTest#x2.
+[5:11..5:19): nullary2 -> _empty_/NullaryTest#nullary2().
+[7:6..7:14): nullary3 <- _empty_/NullaryTest#nullary3().
+[7:16..7:17): m -> _empty_/NullaryTest#[m]
+[7:18..7:19): T -> _empty_/NullaryTest#[T]
+[8:6..8:8): x3 <- _empty_/NullaryTest#x3.
+[8:11..8:19): nullary3 -> _empty_/NullaryTest#nullary3().
+[11:6..11:14): Concrete <- _empty_/Concrete#
+[11:23..11:34): NullaryTest -> _empty_/NullaryTest#
+[11:23..11:23): <- _empty_/Concrete#`<init>`().
+[11:35..11:38): Int -> scala/Int#
+[11:40..11:44): List -> scala/package.List#
+[11:45..11:45): -> _empty_/NullaryTest#`<init>`().
+[12:6..12:14): nullary2 <- _empty_/Concrete#nullary2().
+[13:6..13:14): nullary3 <- _empty_/Concrete#nullary3().
+[13:17..13:21): List -> scala/package.List.
+[13:21..13:21): -> scala/collection/IterableFactory#apply().
+[16:7..16:11): test <- _empty_/test.
+[17:7..17:15): Concrete -> _empty_/Concrete#
+[17:15..17:15): -> _empty_/Concrete#`<init>`().
+[17:17..17:25): nullary2 -> _empty_/Concrete#nullary2().
+[18:7..18:15): Concrete -> _empty_/Concrete#
+[18:15..18:15): -> _empty_/Concrete#`<init>`().
+[18:17..18:25): nullary3 -> _empty_/Concrete#nullary3().
 
 expect/recursion.scala
 ----------------------
