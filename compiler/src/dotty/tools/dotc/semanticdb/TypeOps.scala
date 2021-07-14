@@ -415,12 +415,13 @@ object SymbolScopeOps:
   import Scala3.{_, given}
   extension (syms: List[SemanticSymbol])
     def sscope(using linkMode: LinkMode)(using SemanticSymbolBuilder, TypeOps, Context): s.Scope =
-      linkMode match {
-        case LinkMode.SymlinkChildren =>
-          s.Scope(symlinks = syms.map(_.symbolName))
-        case LinkMode.HardlinkChildren =>
-          s.Scope(hardlinks = syms.map(_.symbolInfo(Set.empty)))
-      }
+      // if syms contains FakeSymbol, hardlink those symbols
+      // because fake symbols don't appear in Symbols section.
+      // If we symlink those fake symbols, we always fail to lookup those symlinked symbols.
+      if syms.exists(s => s.isInstanceOf[FakeSymbol]) || linkMode == LinkMode.HardlinkChildren then
+        s.Scope(hardlinks = syms.map(_.symbolInfo(Set.empty)(using LinkMode.HardlinkChildren)))
+      else
+        s.Scope(symlinks = syms.map(_.symbolName))
 
     def sscopeOpt(using linkMode: LinkMode)(using SemanticSymbolBuilder, TypeOps, Context): Option[s.Scope] =
       if syms.nonEmpty then Some(syms.sscope) else None
