@@ -96,10 +96,18 @@ trait ClassLikeSupport:
 
     if summon[DocContext].args.generateInkuire then {
 
-      val classType = classDef.asInkuire(Set.empty)
-      val variableNames = classType.params.map(_.typ.name.name).toSet
+      val classType: Inkuire.Type = classDef.asInkuire(Set.empty).asInstanceOf[Inkuire.Type]
 
-      val parents = classDef.parents.map(_.asInkuire(variableNames))
+      def varName(t: Inkuire.TypeLike): Option[String] = t match {
+        case tpe: Inkuire.Type      => Some(tpe.name.name)
+        case tl: Inkuire.TypeLambda => varName(tl.result)
+        case _                      => None
+      }
+
+      val variableNames: Set[String] = classType.params.map(_.typ)
+        .flatMap(varName(_).toList).toSet
+
+      val parents: Seq[Inkuire.Type] = classDef.parents.map(_.asInkuire(variableNames).asInstanceOf[Inkuire.Type])
 
       val isModule = classDef.symbol.flags.is(Flags.Module)
 
@@ -111,8 +119,12 @@ trait ClassLikeSupport:
           if typeDef.rhs.symbol.fullName.contains("java") then
             val t = typeSymbol.tree.asInkuire(variableNames) // TODO [Inkuire] Hack until type aliases are supported
             val tJava = typeDef.rhs.symbol.tree.asInkuire(variableNames)
-            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))) // TODO [Inkuire] Hack until type aliases are supported
-            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
+            t match
+              case t: Inkuire.Type => Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))) // TODO [Inkuire] Hack until type aliases are supported
+              case _ =>
+            tJava match
+              case tJava: Inkuire.Type => Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
+              case _ =>
       }
 
       classDef.symbol.declaredMethods
@@ -130,9 +142,9 @@ trait ClassLikeSupport:
             val from = defdef.paramss.flatMap(_.params).collectFirst {
               case v: ValDef => v.tpt.asInkuire(variableNames)
             }
-            from match
-              case Some(from) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
-              case None =>
+            (from, to) match
+              case (Some(from: Inkuire.Type), to: Inkuire.Type) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
+              case _ =>
 
           case methodSymbol: Symbol =>
             val defdef = methodSymbol.tree.asInstanceOf[DefDef]
@@ -140,7 +152,7 @@ trait ClassLikeSupport:
               case TypeDef(name, _) => name
             }
             val vars = variableNames ++ methodVars
-            val receiver: Option[Inkuire.Type] =
+            val receiver: Option[Inkuire.TypeLike] =
               Some(classType)
                 .filter(_ => !isModule)
                 .orElse(methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars).lift(s.tpt)))

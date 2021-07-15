@@ -38,7 +38,7 @@ object Inkuire {
   }
 
   object Signature {
-    def apply(receiver: Option[Type], arguments: Seq[Type], result: Type, context: SignatureContext): Signature =
+    def apply(receiver: Option[TypeLike], arguments: Seq[TypeLike], result: TypeLike, context: SignatureContext): Signature =
       Signature(receiver.map(Contravariance(_)), arguments.map(Contravariance(_)), Covariance(result), context)
   }
 
@@ -49,15 +49,32 @@ object Inkuire {
     uri:      String
   )
 
+  sealed trait TypeLike
+
   case class Type(
-    name: TypeName,
-    params: Seq[Variance] = Seq.empty,
-    nullable: Boolean = false,
-    itid: Option[ITID] = None,
-    isVariable: Boolean = false,
+    name:             TypeName,
+    params:           Seq[Variance] = Seq.empty,
+    nullable:         Boolean = false,
+    itid:             Option[ITID] = None,
+    isVariable:       Boolean = false,
     isStarProjection: Boolean = false,
-    isUnresolved: Boolean = false
-  )
+    isUnresolved:     Boolean = false
+  ) extends TypeLike
+
+  case class AndType(left: TypeLike, right: TypeLike) extends TypeLike
+  case class OrType(left: TypeLike, right: TypeLike) extends TypeLike
+
+  case class TypeLambda(args: Seq[Type], result: TypeLike) extends TypeLike
+
+  object TypeLambda {
+    def argument(name: String): Type =
+      val uuid = s"external-type-lambda-arg-$name"
+      Inkuire.Type(
+        name = Inkuire.TypeName(name),
+        itid = Some(Inkuire.ITID(uuid, isParsed = false)),
+        isVariable = true
+      )
+  }
 
   object Type {
     def unresolved: Type =
@@ -94,7 +111,7 @@ object Inkuire {
 
   case class SignatureContext(
     vars:        Set[String],
-    constraints: Map[String, Seq[Type]]
+    constraints: Map[String, Seq[TypeLike]]
   ) {
     override def hashCode: Int = vars.size.hashCode
 
@@ -110,16 +127,16 @@ object Inkuire {
   }
 
   sealed abstract class Variance {
-    val typ: Type
+    val typ: TypeLike
   }
 
-  case class Covariance(typ: Type) extends Variance
+  case class Covariance(typ: TypeLike) extends Variance
 
-  case class Contravariance(typ: Type) extends Variance
+  case class Contravariance(typ: TypeLike) extends Variance
 
-  case class Invariance(typ: Type) extends Variance
+  case class Invariance(typ: TypeLike) extends Variance
 
-  case class UnresolvedVariance(typ: Type) extends Variance
+  case class UnresolvedVariance(typ: TypeLike) extends Variance
 
   object EngineModelSerializers {
     def serialize(db: InkuireDb): JSON = {
@@ -161,16 +178,36 @@ object Inkuire {
       )
     }
 
-    private def serialize(t: Type): JSON = {
-      jsonObject(
-        ("name", serialize(t.name)),
-        ("params", jsonList(t.params.map(serialize))),
-        ("nullable", serialize(t.nullable)),
-        ("itid", serialize(t.itid.get)),
-        ("isVariable", serialize(t.isVariable)),
-        ("isStarProjection", serialize(t.isStarProjection)),
-        ("isUnresolved", serialize(t.isUnresolved))
-      )
+    private def serialize(t: TypeLike): JSON = t match {
+      case t: Type =>
+        jsonObject(
+          ("name", serialize(t.name)),
+          ("params", jsonList(t.params.map(serialize))),
+          ("nullable", serialize(t.nullable)),
+          ("itid", serialize(t.itid.get)),
+          ("isVariable", serialize(t.isVariable)),
+          ("isStarProjection", serialize(t.isStarProjection)),
+          ("isUnresolved", serialize(t.isUnresolved)),
+          ("typelikekind", serialize("type"))
+        )
+      case t: OrType =>
+        jsonObject(
+          ("left", serialize(t.left)),
+          ("right", serialize(t.right)),
+          ("typelikekind", serialize("ortype"))
+        )
+      case t: AndType =>
+        jsonObject(
+          ("left", serialize(t.left)),
+          ("right", serialize(t.right)),
+          ("typelikekind", serialize("andtype"))
+        )
+      case t: TypeLambda =>
+        jsonObject(
+          ("args", jsonList(t.args.map(serialize))),
+          ("result", serialize(t.result)),
+          ("typelikekind", serialize("typelambda"))
+        )
     }
 
     private def serialize(b: Boolean): JSON = {
@@ -248,7 +285,7 @@ object Inkuire {
       )
     }
 
-    private def serializeConstraints(constraints: Map[String, Seq[Type]]): JSON = {
+    private def serializeConstraints(constraints: Map[String, Seq[TypeLike]]): JSON = {
       jsonObject((
         constraints.toList.map {
           case (name, vs) =>
