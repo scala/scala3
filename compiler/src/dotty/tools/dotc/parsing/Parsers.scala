@@ -3627,7 +3627,7 @@ object Parsers {
       finalizeDef(gdef, mods1, start)
     }
 
-    /** Extension  ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
+    /** Extension  ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause} ‘(’ DefParam ‘)’
      *                  {UsingParamClause} ExtMethods
      */
     def extension(): ExtMethods =
