@@ -96,3 +96,6 @@ community-build/dotty-community-build-deps
 
 # Bloop
 .bsp
+
+# Coursier
+cs

@@ -15,6 +15,12 @@ def scripts(path: String): Array[File] = {
   dir.listFiles
 }
 
+extension (f: File) def absPath =
+  f.getAbsolutePath.replace('\\', '/')
+
+extension (str: String) def dropExtension =
+  str.reverse.dropWhile(_ != '.').drop(1).reverse
+
 private def withFile[T](file: File)(action: Source => T): T =
   resource(Source.fromFile(file, UTF_8.name))(action)
 
