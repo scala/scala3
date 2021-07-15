@@ -57,9 +57,9 @@ trait InkuireSupport:
     extension (tpe: TypeRepr)
       def asInkuire(vars: Set[String]): Inkuire.TypeLike = inner(tpe, vars)
 
-  private def genDummyTypeArgs(n: Int) =
+  private def genSyntheticTypeArgs(n: Int) =
     1.to(n).map { i =>
-      val uuid = s"dummy-arg$i${Random.nextString(10)}"
+      val uuid = s"synthetic-arg$i${Random.nextString(10)}"
       val name = s"X$i"
       Inkuire.Type(
         name = Inkuire.TypeName(name),
@@ -72,7 +72,7 @@ trait InkuireSupport:
     //TODO [Inkuire] Type bounds (other than just HKTs)
     val name = argument.symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-    val params = genDummyTypeArgs(typeVariableDeclarationParamsNo(argument))
+    val params = genSyntheticTypeArgs(typeVariableDeclarationParamsNo(argument))
     val res = Inkuire.Type(
       name = Inkuire.TypeName(normalizedName),
       itid = argument.symbol.itid,
