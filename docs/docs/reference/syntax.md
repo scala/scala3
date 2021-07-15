@@ -275,7 +275,7 @@ Enumerators       ::=  Generator {semi Enumerator | Guard}
 Enumerator        ::=  Generator
                     |  Guard {Guard}
                     |  Pattern1 ‘=’ Expr
-Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr                                       GenFrom(pat, expr)
+Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr
 Guard             ::=  ‘if’ PostfixExpr
 
 CaseClauses       ::=  CaseClause { CaseClause }
