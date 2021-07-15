@@ -4417,6 +4417,8 @@ object Types {
 
   private final class RecThisImpl(binder: RecType) extends RecThis(binder)
 
+  // @sharable private var skid: Int = 0
+
   // ----- Skolem types -----------------------------------------------
 
   /** A skolem type reference with underlying type `info`.
@@ -4433,6 +4435,10 @@ object Types {
     override def equals(that: Any): Boolean = this.eq(that.asInstanceOf[AnyRef])
 
     def withName(name: Name): this.type = { myRepr = name; this }
+
+    //skid += 1
+    //val id = skid
+    //assert(id != 10)
 
     private var myRepr: Name = null
     def repr(using Context): Name = {

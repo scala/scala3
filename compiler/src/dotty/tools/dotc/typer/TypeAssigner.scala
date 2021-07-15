@@ -348,7 +348,14 @@ trait TypeAssigner {
             }
           }
           else {
-            val argTypes = args.tpes
+            // Make sure arguments don't contain the type `pt` itself.
+            // make a copy of the argument if that's the case.
+            // See pos/i6682a.scala for a test case where this matters.
+            val ensureFresh = new TypeMap:
+              def apply(tp: Type) = mapOver(
+                if tp eq pt then pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
+                else tp)
+            val argTypes = args.tpes.mapConserve(ensureFresh)
             if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
             else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
           }
