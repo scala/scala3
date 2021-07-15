@@ -601,24 +601,20 @@ trait Inferencing { this: Typer =>
         def constraint = state.constraint
         type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
         val toInstantiate = new InstantiateQueue
-        for (tvar <- qualifying)
-          if (!tvar.isInstantiated && constraint.contains(tvar)) {
+        for tvar <- qualifying do
+          if !tvar.isInstantiated && constraint.contains(tvar) then
             constrainIfDependentParamRef(tvar, tree)
-
             // Needs to be checked again, since previous interpolations could already have
             // instantiated `tvar` through unification.
             val v = vs(tvar)
-            if (v == null) {
+            if v == null then
               typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
               toInstantiate += ((tvar, tvar.hasLowerBound))
-            }
+            else if v.intValue != 0 then
+              typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
+              toInstantiate += ((tvar, v.intValue == 1))
             else
-              if (v.intValue != 0) {
-                typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
-                toInstantiate += ((tvar, v.intValue == 1))
-              }
-              else typr.println(i"no interpolation for nonvariant $tvar in $state")
-          }
+              typr.println(i"no interpolation for nonvariant $tvar in $state")
 
         /** Instantiate all type variables in `buf` in the indicated directions.
          *  If a type variable A is instantiated from below, and there is another
@@ -694,7 +690,7 @@ trait Inferencing { this: Typer =>
 
         val arg = findArg(call)
         if !arg.isEmpty then
-          var argType = arg.tpe.widenExpr.widenTermRefExpr
+          var argType = arg.tpe.widenIfUnstable
           if !argType.isSingleton then argType = SkolemType(argType)
           argType <:< tvar
       case _ =>
