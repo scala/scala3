@@ -977,6 +977,8 @@ object Build {
       Test / test := (LocalProject("scala3-sbt-bridge-tests") / Test / test).value,
 
       // The `newCompilerInterface` is backward compatible with the `oldCompilerInterface`
+      // UPD: not exactly. Some methods are backward compatible, but some are not.
+      // E.g. `xsbti.compile.CompileProgress.advance` had different signature in 1.3.5 and 1.4.x
       libraryDependencies += Dependencies.newCompilerInterface % Provided
     )
 
@@ -989,10 +991,7 @@ object Build {
       Compile / sources := Seq(),
       Test / scalaSource := baseDirectory.value,
       Test / javaSource := baseDirectory.value,
-
-      // Tests disabled until zinc-api-info cross-compiles with 2.13,
-      // alternatively we could just copy in sources the part of zinc-api-info we need.
-      Test / sources := Seq()
+      libraryDependencies += (Dependencies.newZincApiInfo % Test)
     )
 
   lazy val `scala3-language-server` = project.in(file("language-server")).

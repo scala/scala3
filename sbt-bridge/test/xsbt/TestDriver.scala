@@ -7,7 +7,7 @@ class TestDriver extends Driver {
   override protected def sourcesRequired = false
 
   def getCompiler(args: Array[String], rootCtx: Context) = {
-    val (fileNames, ctx) = setup(args, rootCtx)
-    (newCompiler(ctx), ctx)
+    val Some((fileNames, ctx)) = setup(args, rootCtx)
+    (newCompiler(using ctx), ctx)
   }
 }

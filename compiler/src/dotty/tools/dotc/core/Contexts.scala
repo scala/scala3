@@ -36,24 +36,26 @@ import dotty.tools.dotc.profile.Profiler
 import util.Property.Key
 import util.Store
 import xsbti.AnalysisCallback
+import xsbti.compile.CompileProgress
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 
 object Contexts {
 
-  private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
-  private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
-  private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
-  private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
-  private val (compilationUnitLoc,  store5) = store4.newLocation[CompilationUnit]()
-  private val (runLoc,              store6) = store5.newLocation[Run]()
-  private val (profilerLoc,         store7) = store6.newLocation[Profiler]()
-  private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
-  private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo]()
-  private val (typeAssignerLoc,    store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (compilerCallbackLoc,   store1)  = Store.empty.newLocation[CompilerCallback]()
+  private val (sbtCallbackLoc,        store2)  = store1.newLocation[AnalysisCallback]()
+  private val (printerFnLoc,          store3)  = store2.newLocation[Context => Printer](new RefinedPrinter(_))
+  private val (settingsStateLoc,      store4)  = store3.newLocation[SettingsState]()
+  private val (compilationUnitLoc,    store5)  = store4.newLocation[CompilationUnit]()
+  private val (runLoc,                store6)  = store5.newLocation[Run]()
+  private val (profilerLoc,           store7)  = store6.newLocation[Profiler]()
+  private val (notNullInfosLoc,       store8)  = store7.newLocation[List[NotNullInfo]]()
+  private val (importInfoLoc,         store9)  = store8.newLocation[ImportInfo]()
+  private val (typeAssignerLoc,       store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (sbtCompileProgressLoc, store11) = store10.newLocation[CompileProgress]()
 
-  private val initialStore = store10
+  private val initialStore = store11
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -209,6 +211,9 @@ object Contexts {
 
     /** The sbt callback implementation if we are run from sbt, null otherwise */
     def sbtCallback: AnalysisCallback = store(sbtCallbackLoc)
+
+    /** The sbt compile progress implementation if we are run from sbt, null otherwise */
+    def sbtCompileProgress: CompileProgress = store(sbtCompileProgressLoc)
 
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
@@ -633,6 +638,7 @@ object Contexts {
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
+    def setSbtCompileProgress(progress: CompileProgress): this.type = updateStore(sbtCompileProgressLoc, progress)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run): this.type = updateStore(runLoc, run)

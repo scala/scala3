@@ -2,21 +2,26 @@
 package xsbti
 
 import java.io.File
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import xsbti.api.ClassLike
 import xsbti.api.DependencyContext
-import DependencyContext._
-import java.util.EnumSet
 
-class TestCallback extends AnalysisCallback
-{
+import java.nio.file.Path
+import java.util
+import java.util.{EnumSet, Optional}
+
+class TestCallback extends AnalysisCallback {
+
+  type MyFile = File
+
   case class TestUsedName(name: String, scopes: EnumSet[UseScope])
   val classDependencies = new ArrayBuffer[(String, String, DependencyContext)]
-  val binaryDependencies = new ArrayBuffer[(File, String, String, File, DependencyContext)]
-  val products = new ArrayBuffer[(File, File)]
-  val usedNamesAndScopes = scala.collection.mutable.Map.empty[String, Set[TestUsedName]].withDefaultValue(Set.empty)
-  val classNames = scala.collection.mutable.Map.empty[File, Set[(String, String)]].withDefaultValue(Set.empty)
-  val apis: scala.collection.mutable.Map[File, Seq[ClassLike]] = scala.collection.mutable.Map.empty
+  val binaryDependencies = new ArrayBuffer[(MyFile, String, String, MyFile, DependencyContext)]
+  val products = new ArrayBuffer[(MyFile, MyFile)]
+  val usedNamesAndScopes = mutable.Map.empty[String, Set[TestUsedName]].withDefaultValue(Set.empty)
+  val classNames = mutable.Map.empty[MyFile, Set[(String, String)]].withDefaultValue(Set.empty)
+  val apis: mutable.Map[MyFile, Seq[ClassLike]] = mutable.Map.empty.withDefaultValue(Seq.empty)
 
   def usedNames = usedNamesAndScopes.view.mapValues(_.map(_.name)).toMap
 
@@ -60,6 +65,16 @@ class TestCallback extends AnalysisCallback
   override def enabled(): Boolean = true
   def mainClass(source: File, className: String): Unit = ()
 
+  // not used (we have to use this version of zinc-apiinfo, because scala 2.13 is only supported since version 1.4)
+  override def api(sourceFile: VirtualFileRef, classApi: ClassLike): Unit = ???
+  override def startSource(source: VirtualFile): Unit = ???
+  override def binaryDependency(onBinaryEntry: Path, onBinaryClassName: String, fromClassName: String, fromSourceFile: VirtualFileRef, context: DependencyContext): Unit = ???
+  override def generatedNonLocalClass(source: VirtualFileRef, classFile: Path, binaryClassName: String, srcClassName: String): Unit = ???
+  override def generatedLocalClass(source: VirtualFileRef, classFile: Path): Unit = ???
+  override def mainClass(sourceFile: VirtualFileRef, className: String): Unit = ???
+  override def classesInOutputJar(): util.Set[String] = ???
+  override def isPickleJava: Boolean = ???
+  override def getPickleJarPair: Optional[T2[Path, Path]] = ???
 }
 
 object TestCallback {
@@ -78,8 +93,8 @@ object TestCallback {
     }
 
     private def pairsToMultiMap[A, B](pairs: collection.Seq[(A, B)]): Map[A, Set[B]] = {
-      import scala.collection.mutable.{ HashMap, MultiMap }
-      val emptyMultiMap = new HashMap[A, scala.collection.mutable.Set[B]] with MultiMap[A, B]
+      import mutable.{ HashMap, MultiMap }
+      val emptyMultiMap = new HashMap[A, mutable.Set[B]] with MultiMap[A, B]
       val multiMap = pairs.foldLeft(emptyMultiMap) {
         case (acc, (key, value)) =>
           acc.addBinding(key, value)

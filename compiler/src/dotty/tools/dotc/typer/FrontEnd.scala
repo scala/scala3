@@ -105,7 +105,19 @@ class FrontEnd extends Phase {
       for unit <- units yield
         report.inform(s"compiling ${unit.source}")
         ctx.fresh.setCompilationUnit(unit).withRootImports
-    unitContexts.foreach(parse(using _))
+
+    val progress = summon[Context].sbtCompileProgress
+
+    def runSubPhase(subPhaseName: String, body: Context ?=> Unit): Unit =
+      unitContexts.foreach { c =>
+        if (progress != null) {
+          progress.startUnit(phaseName + s" ($subPhaseName)", c.compilationUnit.source.file.path)
+        }
+        body(using c)
+      }
+
+    runSubPhase("parsing", parse)
+
     record("parsedTrees", ast.Trees.ntrees)
     remaining = unitContexts
     while remaining.nonEmpty do
@@ -117,9 +129,9 @@ class FrontEnd extends Phase {
                   |See https://github.com/scala/scala-xml for more information.""".stripMargin,
         firstXmlPos)
 
-    unitContexts.foreach(typeCheck(using _))
+    runSubPhase("typechecking", typeCheck)
     record("total trees after typer", ast.Trees.ntrees)
-    unitContexts.foreach(javaCheck(using _)) // after typechecking to avoid cycles
+    runSubPhase("checking java", javaCheck) // after typechecking to avoid cycles
 
     val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.checkSuspendedUnits(newUnits)

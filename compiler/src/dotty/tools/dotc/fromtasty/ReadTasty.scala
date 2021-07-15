@@ -11,6 +11,7 @@ import Denotations.staticRef
 import NameOps._
 import ast.Trees.Tree
 import Phases.Phase
+import xsbti.compile.CompileProgress
 
 
 /** Load trees from TASTY files */
@@ -22,10 +23,13 @@ class ReadTasty extends Phase {
     ctx.settings.fromTasty.value
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    withMode(Mode.ReadPositions)(units.flatMap(readTASTY(_)))
+    withMode(Mode.ReadPositions)(units.flatMap(readTASTY(_, summon[Context].sbtCompileProgress)))
 
-  def readTASTY(unit: CompilationUnit)(using Context): Option[CompilationUnit] = unit match {
+  private def readTASTY(unit: CompilationUnit, progress: CompileProgress)(using Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
+      if (progress != null) {
+        progress.startUnit(this.phaseName, unit.source.file.path)
+      }
       val className = unit.className.toTypeName
 
       def cannotUnpickle(reason: String): None.type = {

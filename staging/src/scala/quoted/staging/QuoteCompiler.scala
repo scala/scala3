@@ -61,8 +61,12 @@ private class QuoteCompiler extends Compiler:
     def phaseName: String = "quotedFrontend"
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+      val progress = ctx.sbtCompileProgress
       units.flatMap {
         case exprUnit: ExprCompilationUnit =>
+          if (progress != null) {
+            progress.startUnit(phaseName, exprUnit.source.file.path)
+          }
           val ctx1 = ctx.fresh.setPhase(this.start).setCompilationUnit(exprUnit)
           implicit val unitCtx: Context = SpliceScope.setSpliceScope(new RunScope)(using ctx1)
 

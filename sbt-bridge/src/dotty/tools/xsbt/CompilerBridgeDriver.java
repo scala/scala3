@@ -15,6 +15,7 @@ import scala.collection.mutable.ListBuffer;
 import scala.io.Codec;
 import xsbti.Problem;
 import xsbti.*;
+import xsbti.compile.CompileProgress;
 import xsbti.compile.Output;
 
 import java.io.IOException;
@@ -50,7 +51,13 @@ public class CompilerBridgeDriver extends Driver {
     return false;
   }
 
-  synchronized public void run(VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate) {
+  synchronized public void run(
+          VirtualFile[] sources,
+          AnalysisCallback callback,
+          CompileProgress progress,
+          Logger log,
+          Reporter delegate
+  ) {
     DelegatingReporter reporter = new DelegatingReporter(delegate);
     try {
       log.debug(this::infoOnCachedCompiler);
@@ -58,7 +65,8 @@ public class CompilerBridgeDriver extends Driver {
       Contexts.Context initialCtx = initCtx()
         .fresh()
         .setReporter(reporter)
-        .setSbtCallback(callback);
+        .setSbtCallback(callback)
+        .setSbtCompileProgress(progress);
 
       Contexts.Context context = setup(args, initialCtx).map(t -> t._2).getOrElse(() -> initialCtx);
 

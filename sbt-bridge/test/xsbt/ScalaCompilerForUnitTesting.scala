@@ -1,16 +1,15 @@
 /** Adapted from https://github.com/sbt/sbt/blob/0.13/compile/interface/src/test/scala/xsbt/ScalaCompilerForUnitTesting.scala */
 package xsbt
 
-import xsbti.compile.SingleOutput
-import java.io.File
-import xsbti._
+import dotty.tools.io.AbstractFile
 import sbt.io.IO
-import xsbti.api.{ ClassLike, Def, DependencyContext }
-import DependencyContext._
-import xsbt.api.SameAPI
-import sbt.internal.util.ConsoleLogger
+import xsbti.*
+import xsbti.TestCallback.ExtractedClassDependencies
+import xsbti.api.DependencyContext.*
+import xsbti.api.{ClassLike, DependencyContext}
+import xsbti.compile.{CompileProgress, TestCompileProgress}
 
-import TestCallback.ExtractedClassDependencies
+import java.io.File
 
 /**
  * Provides common functionality needed for unit tests that require compiling
@@ -24,7 +23,7 @@ class ScalaCompilerForUnitTesting {
    * extracted by ExtractAPI class.
    */
   def extractApiFromSrc(src: String): Seq[ClassLike] = {
-    val (Seq(tempSrcFile), analysisCallback) = compileSrcs(src)
+    val (Seq(tempSrcFile), analysisCallback, _) = compileSrcs(src)
     analysisCallback.apis(tempSrcFile)
   }
 
@@ -33,7 +32,7 @@ class ScalaCompilerForUnitTesting {
    * extracted by ExtractAPI class.
    */
   def extractApisFromSrcs(reuseCompilerInstance: Boolean)(srcs: List[String]*): Seq[Seq[ClassLike]] = {
-    val (tempSrcFiles, analysisCallback) = compileSrcs(srcs.toList, reuseCompilerInstance)
+    val (tempSrcFiles, analysisCallback, _) = compileSrcs(srcs.toList, reuseCompilerInstance)
     tempSrcFiles.map(analysisCallback.apis)
   }
 
@@ -51,7 +50,7 @@ class ScalaCompilerForUnitTesting {
       assertDefaultScope: Boolean = true
   ): Map[String, Set[String]] = {
     // we drop temp src file corresponding to the definition src file
-    val (Seq(_, tempSrcFile), analysisCallback) = compileSrcs(definitionSrc, actualSrc)
+    val (Seq(_, tempSrcFile), analysisCallback, _) = compileSrcs(definitionSrc, actualSrc)
 
     if (assertDefaultScope) for {
       (className, used) <- analysisCallback.usedNamesAndScopes
@@ -69,7 +68,7 @@ class ScalaCompilerForUnitTesting {
    * Only the names used in the last src file are returned.
    */
   def extractUsedNamesFromSrc(sources: String*): Map[String, Set[String]] = {
-    val (srcFiles, analysisCallback) = compileSrcs(sources: _*)
+    val (srcFiles, analysisCallback, _) = compileSrcs(sources: _*)
     srcFiles
       .map { srcFile =>
         val classesInSrc = analysisCallback.classNames(srcFile).map(_._1)
@@ -91,7 +90,7 @@ class ScalaCompilerForUnitTesting {
    * file system-independent way of testing dependencies between source code "files".
    */
   def extractDependenciesFromSrcs(srcs: List[List[String]]): ExtractedClassDependencies = {
-    val (_, testCallback) = compileSrcs(srcs, reuseCompilerInstance = true)
+    val (_, testCallback, _) = compileSrcs(srcs, reuseCompilerInstance = true)
 
     val memberRefDeps = testCallback.classDependencies collect {
       case (target, src, DependencyByMemberRef) => (src, target)
@@ -126,40 +125,41 @@ class ScalaCompilerForUnitTesting {
    * callback is returned as a result.
    */
   def compileSrcs(groupedSrcs: List[List[String]],
-    reuseCompilerInstance: Boolean): (Seq[File], TestCallback) = {
+    reuseCompilerInstance: Boolean): (Seq[File], TestCallback, TestCompileProgress) = {
     // withTemporaryDirectory { temp =>
     {
       val temp = IO.createTemporaryDirectory
       val analysisCallback = new TestCallback
+      val compileProgress = new TestCompileProgress
       val classesDir = new File(temp, "classes")
       classesDir.mkdir()
 
-      lazy val commonCompilerInstanceAndCtx = prepareCompiler(classesDir, analysisCallback, classesDir.toString)
+      lazy val commonCompilerInstanceAndCtx = prepareCompiler(classesDir, analysisCallback, compileProgress, classesDir.toString)
 
       val files = for ((compilationUnit, unitId) <- groupedSrcs.zipWithIndex) yield {
         // use a separate instance of the compiler for each group of sources to
         // have an ability to test for bugs in instability between source and pickled
         // representation of types
         val (compiler, ctx) = if (reuseCompilerInstance) commonCompilerInstanceAndCtx else
-          prepareCompiler(classesDir, analysisCallback, classesDir.toString)
-        val run = compiler.newRun(ctx)
+          prepareCompiler(classesDir, analysisCallback, compileProgress, classesDir.toString)
+        val run = compiler.newRun(using ctx)
         val srcFiles = compilationUnit.toSeq.zipWithIndex map {
           case (src, i) =>
             val fileName = s"Test-$unitId-$i.scala"
             prepareSrcFile(temp, fileName, src)
         }
-        val srcFilePaths = srcFiles.map(srcFile => srcFile.getAbsolutePath).toList
+        val srcFilePaths = srcFiles.map(_.getAbsolutePath).map(AbstractFile.getFile)
 
         run.compile(srcFilePaths)
 
         // srcFilePaths.foreach(f => new File(f).delete)
         srcFiles
       }
-      (files.flatten.toSeq, analysisCallback)
+      (files.flatten.toSeq, analysisCallback, compileProgress)
     }
   }
 
-  def compileSrcs(srcs: String*): (Seq[File], TestCallback) = {
+  def compileSrcs(srcs: String*): (Seq[File], TestCallback, TestCompileProgress) = {
     compileSrcs(List(srcs.toList), reuseCompilerInstance = true)
   }
 
@@ -169,14 +169,15 @@ class ScalaCompilerForUnitTesting {
     srcFile
   }
 
-  private def prepareCompiler(outputDir: File, analysisCallback: AnalysisCallback, classpath: String = ".") = {
+  private def prepareCompiler(outputDir: File, analysisCallback: AnalysisCallback, compileProgress: CompileProgress, classpath: String = ".") = {
     val args = Array.empty[String]
 
-    import dotty.tools.dotc.{Compiler, Driver}
-    import dotty.tools.dotc.core.Contexts._
+    import dotty.tools.dotc.core.Contexts.*
 
     val driver = new TestDriver
-    val ctx = (new ContextBase).initialCtx.fresh.setSbtCallback(analysisCallback)
+    val ctx = (new ContextBase).initialCtx.fresh
+      .setSbtCallback(analysisCallback)
+      .setSbtCompileProgress(compileProgress)
     driver.getCompiler(Array("-classpath", classpath, "-usejavacp", "-d", outputDir.getAbsolutePath), ctx)
   }
 

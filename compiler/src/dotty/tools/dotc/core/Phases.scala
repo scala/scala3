@@ -297,12 +297,17 @@ object Phases {
     def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
-    def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+      val progress = ctx.sbtCompileProgress
       units.map { unit =>
+        if (progress != null) {
+          progress.startUnit(phaseName, unit.source.file.path)
+        }
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
         run(using unitCtx)
         unitCtx.compilationUnit
       }
+    }
 
     def description: String = phaseName
 
