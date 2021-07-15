@@ -1,5 +1,5 @@
 abstract class A {
-  bar(this)
+  bar(this) // error
   def bar(x: A): Unit
 }
 

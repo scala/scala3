@@ -607,33 +607,24 @@ class Semantic {
       if classRef.memberClasses.nonEmpty || !warm.isFullyFilled then
         return PromoteError(msg, source, trace.toVector) :: Nil
 
-      val fields  = classRef.fields
-      val methods = classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred | Flags.Accessor)
       val buffer  = new mutable.ArrayBuffer[Error]
 
-      fields.exists { denot =>
-        val f = denot.symbol
-        if !f.isOneOf(Flags.Deferred | Flags.Private | Flags.Protected) && f.hasSource then
-          val trace2 = trace.add(f.defTree)
-          val res = warm.select(f, source)
-          locally {
-            given Trace = trace2
-            buffer ++= res.ensureHot(msg, source).errors
-          }
-        buffer.nonEmpty
-      }
-
-      buffer.nonEmpty || methods.exists { denot =>
-        val m = denot.symbol
-        if !m.isConstructor && m.hasSource then
-          val trace2 = trace.add(m.defTree)
-          locally {
-            given Trace = trace2
-            val args = m.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, EmptyTree))
-            val res = warm.call(m, args, superType = NoType, source = source)
-            buffer ++= res.ensureHot(msg, source).errors
-          }
-        buffer.nonEmpty
+      warm.klass.baseClasses.exists { klass =>
+        klass.hasSource && klass.info.decls.exists { member =>
+          if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
+            if member.is(Flags.Method) then
+              val trace2 = trace.add(source)
+              locally {
+                given Trace = trace2
+                val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, EmptyTree))
+                val res = warm.call(member, args, superType = NoType, source = member.defTree)
+                buffer ++= res.ensureHot(msg, source).errors
+              }
+            else
+              val res = warm.select(member, source)
+              buffer ++= res.ensureHot(msg, source).errors
+          buffer.nonEmpty
+        }
       }
 
       if buffer.isEmpty then Nil
