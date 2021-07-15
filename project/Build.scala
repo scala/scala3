@@ -190,6 +190,7 @@ object Build {
     // Avoid various sbt craziness involving classloaders and parallelism
     run / fork := true,
     Test / fork := true,
+    Test / envVars := Map("DOTTY_BOOTSTRAPPED_VERSION" -> dottyVersion),
     Test / parallelExecution := false,
 
     outputStrategy := Some(StdoutOutput),

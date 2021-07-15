@@ -73,15 +73,13 @@ object MainGenericRunner {
       )
     case arg :: tail =>
       val line = Try(Source.fromFile(arg).getLines.toList).toOption.flatMap(_.headOption)
-      val newSettings = if arg.endsWith(".scala") || arg.endsWith(".sc") || (line.nonEmpty && shebangscala.matches(line.get))
-        then {
-          settings
-            .withExecuteMode(ExecuteMode.Script)
-            .withTargetScript(arg)
-            .withScriptArgs(tail*)
-        } else
-          settings.withResidualArgs(arg)
-      process(tail, newSettings.withResidualArgs(arg))
+      if arg.endsWith(".scala") || arg.endsWith(".sc") || (line.nonEmpty && shebangscala.matches(line.get)) then
+        settings
+          .withExecuteMode(ExecuteMode.Script)
+          .withTargetScript(arg)
+          .withScriptArgs(tail*)
+      else
+        process(tail, settings.withResidualArgs(arg))
 
   def main(args: Array[String]): Unit =
     val settings = process(args.toList, Settings())
