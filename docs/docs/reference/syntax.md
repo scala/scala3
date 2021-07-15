@@ -265,7 +265,7 @@ ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerat
 Enumerators       ::=  Generator {semi Enumerator | Guard}
 Enumerator        ::=  Generator
                     |  Guard {Guard}
-                    |  Pattern1 ‘=’ Expr                                        GenAlias(pat, expr)
+                    |  Pattern1 ‘=’ Expr
 Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr                                       GenFrom(pat, expr)
 Guard             ::=  ‘if’ PostfixExpr
 
