@@ -100,10 +100,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   private def parentHasVarargsAnnotation(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(hasVarargsAnnotation)
 
   private def isVarargsMethod(sym: Symbol)(using Context) =
-    hasVarargsAnnotation(sym) ||
-      hasRepeatedParams(sym) &&
-        overridesJava(sym)
-        || sym.allOverriddenSymbols.exists(hasVarargsAnnotation)
+    hasVarargsAnnotation(sym)
+    || hasRepeatedParams(sym)
+        && (overridesJava(sym) || sym.allOverriddenSymbols.exists(hasVarargsAnnotation))
 
   /** Eliminate repeated parameters from method types. */
   private def elimRepeated(tp: Type, isJava: Boolean)(using Context): Type = tp.stripTypeVar match
