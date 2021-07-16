@@ -1,0 +1,12 @@
+-- [E161] Naming Error: tests/neg/i13089.scala:6:8 ---------------------------------------------------------------------
+6 |    def fails : Unit = {} // error
+  |    ^^^^^^^^^^^^^^^^^^^^^
+  |    fails is already defined as method fails in tests/neg/i13089.scala
+  |
+  |    Note that overloaded methods must all be defined in the same group of toplevel definitions
+-- [E161] Naming Error: tests/neg/i13089.scala:8:6 ---------------------------------------------------------------------
+8 |  def baz(x: String): Boolean = true // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  baz is already defined as method baz in tests/neg/i13089.scala
+  |
+  |  Note that overloaded methods must all be defined in the same group of toplevel definitions
