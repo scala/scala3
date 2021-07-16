@@ -131,7 +131,8 @@ trait ClassLikeSupport:
         .filter { (s: Symbol) =>
           !s.flags.is(Flags.Private) &&
             !s.flags.is(Flags.Protected) &&
-            !s.flags.is(Flags.Override)
+            !s.flags.is(Flags.Override) &&
+            !s.flags.is(Flags.Synthetic)
         }
         .foreach {
           case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
