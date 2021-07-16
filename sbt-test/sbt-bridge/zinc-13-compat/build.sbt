@@ -42,7 +42,7 @@ lazy val root = project.in(file("."))
             |object Scala3 {
             |  val version = "$scala3Version"
             |  val allJars = Array(
-            |    ${allJars.map(jar => s"""new File("${jar.getAbsolutePath}")""").mkString(",\n    ")}
+            |    ${allJars.map(jar => s"""new File("${jar.getAbsolutePath.replace("\\", "\\\\")}")""").mkString(",\n    ")}
             |  )
             |  val compilerJar = new File("$compilerJar")
             |  val libraryJars = Array(
@@ -64,8 +64,8 @@ lazy val root = project.in(file("."))
             |import java.io.File
             |
             |object Input {
-            |  val outputFile = new File("${output.getAbsolutePath}")
-            |  val sources = Array(new File("${sourceFile.getAbsolutePath}"))
+            |  val outputFile = new File("${output.getAbsolutePath.replace("\\", "\\\\")}")
+            |  val sources = Array(new File("${sourceFile.getAbsolutePath.replace("\\", "\\\\")}"))
             |}
             |""".stripMargin
       )
