@@ -660,6 +660,12 @@ object projects:
     dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
   )
 
+  lazy val monocle = SbtCommunityProject(
+    project = "Monocle",
+    sbtTestCommand = "coreJVM/test; macrosJVM/test; testJVM/test",
+    dependencies = List(cats, munit, discipline, disciplineMunit)
+  )
+
   lazy val protoquill = SbtCommunityProject(
     project = "protoquill",
     sbtTestCommand = "test",
@@ -777,6 +783,7 @@ def allProjects = List(
   projects.izumiReflect,
   projects.perspective,
   projects.akka,
+  projects.monocle,
   projects.protoquill,
   projects.onnxScala,
   projects.playJson,
