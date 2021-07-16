@@ -34,7 +34,20 @@ trait InkuireSupport:
       inner(tpeTree.tpe, vars)
     case term:  Term => inner(term.tpe, vars)
     case classDef: ClassDef => mkTypeFromClassDef(classDef, vars)
-    case typeDef: TypeDef =>
+    case typeDef: TypeDef => mkTypeDef(typeDef)
+  }
+
+  def mkTypeDef(typeDef: TypeDef): Inkuire.Type = typeDef.rhs match {
+    case LambdaTypeTree(paramsDefs, _) =>
+      val name = typeDef.symbol.normalizedName
+      val normalizedName = if name.matches("_\\$\\d*") then "_" else name
+      val params = paramsDefs.map(_.name).map(Inkuire.TypeLambda.argument)
+      Inkuire.Type(
+        name = Inkuire.TypeName(normalizedName),
+        itid = typeDef.symbol.itid,
+        params = params.map(Inkuire.Invariance(_))
+      )
+    case _ =>
       Inkuire.Type(
         name = Inkuire.TypeName(typeDef.name),
         itid = typeDef.symbol.itid

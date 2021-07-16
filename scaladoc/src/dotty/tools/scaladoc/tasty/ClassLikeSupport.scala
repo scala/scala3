@@ -114,6 +114,11 @@ trait ClassLikeSupport:
       if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
 
       classDef.symbol.declaredTypes.foreach {
+        case typeSymbol: Symbol if typeSymbol.flags.is(Flags.Opaque) =>
+          val t = typeSymbol.tree.asInkuire(variableNames)
+          t match
+              case t: Inkuire.Type => Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
+              case _ =>
         case typeSymbol: Symbol =>
           val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
           if typeDef.rhs.symbol.flags.is(Flags.JavaDefined) then
