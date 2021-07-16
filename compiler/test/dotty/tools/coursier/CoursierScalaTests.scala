@@ -56,6 +56,10 @@ class CoursierScalaTests:
       assert(output.mkString("\n").contains("Unable to create a system terminal")) // Scala attempted to create REPL so we can assume it is working
     repl()
 
+    def run() =
+      val output = CoursierScalaTests.csCmd("-run", "-classpath", scripts("/run").head.getParent, "myfile")
+      assert(output.mkString("\n") == "Hello")
+    run()
 
 object CoursierScalaTests:
 

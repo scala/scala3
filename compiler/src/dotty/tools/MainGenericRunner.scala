@@ -5,6 +5,9 @@ import scala.annotation.tailrec
 import scala.io.Source
 import scala.util.Try
 import java.net.URLClassLoader
+import sys.process._
+import java.io.File
+import java.lang.Thread
 
 enum ExecuteMode:
   case Guess
@@ -20,6 +23,7 @@ case class Settings(
   residualArgs: List[String] = List.empty,
   scriptArgs: List[String] = List.empty,
   targetScript: String = "",
+  areWithCompiler: Boolean = false,
 ) {
   def withExecuteMode(em: ExecuteMode): Settings = this.executeMode match
     case ExecuteMode.Guess =>
@@ -42,9 +46,14 @@ case class Settings(
         println(s"not found $file")
         this.copy(exitCode = 2)
   end withTargetScript
+
+  def withCompiler: Settings =
+    this.copy(areWithCompiler = true)
 }
 
 object MainGenericRunner {
+
+  final val classpathSeparator = ":"
 
   @tailrec
   def process(args: List[String], settings: Settings): Settings = args match
@@ -69,6 +78,8 @@ object MainGenericRunner {
           residualArgs = settings.residualArgs :+ "-verbose"
         )
       )
+    case "-with-compiler" :: tail =>
+      process(tail, settings.withCompiler)
     case arg :: tail =>
       val line = Try(Source.fromFile(arg).getLines.toList).toOption.flatMap(_.headOption)
       if arg.endsWith(".scala") || arg.endsWith(".sc") || (line.nonEmpty && raw"#!.*scala".r.matches(line.get)) then
@@ -85,24 +96,39 @@ object MainGenericRunner {
     settings.executeMode match
       case ExecuteMode.Repl =>
         val properArgs =
-          List("-classpath", settings.classPath.mkString(";")).filter(Function.const(settings.classPath.nonEmpty))
+          List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs
         repl.Main.main(properArgs.toArray)
       case ExecuteMode.Run =>
         val properArgs =
-          List("-classpath", settings.classPath.mkString(";")).filter(Function.const(settings.classPath.nonEmpty))
+          val newClasspath = settings.classPath ++ getClasspath :+ "."
+          List("-classpath", newClasspath.mkString(classpathSeparator)).filter(Function.const(newClasspath.nonEmpty))
             ++ settings.residualArgs
-        //TODO this is just a java proxy?
+        s"java ${properArgs.mkString(" ")}".! // For now we collect classpath that coursier provides for convenience
       case ExecuteMode.Script =>
         val properArgs =
-          List("classpath", settings.classPath.mkString(";")).filter(Function.const(settings.classPath.nonEmpty))
+          List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs
             ++ List("-script", settings.targetScript)
             ++ settings.scriptArgs
         scripting.Main.main(properArgs.toArray)
       case ExecuteMode.Guess =>
         val properArgs =
-          List("-classpath", settings.classPath.mkString(";")).filter(Function.const(settings.classPath.nonEmpty))
+          List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs
         repl.Main.main(properArgs.toArray)
+
+
+  private def getClasspath(cl: ClassLoader): Array[String] = cl match
+    case null => Array()
+    case u: URLClassLoader => u.getURLs.map(_.toURI.toString) ++ getClasspath(cl.getParent)
+    case cl if cl.getClass.getName == "jdk.internal.loader.ClassLoaders$AppClassLoader" =>
+      // Required with JDK >= 9
+      sys.props.getOrElse("java.class.path", "")
+        .split(File.pathSeparator)
+        .filter(_.nonEmpty)
+    case _ => getClasspath(cl.getParent)
+
+  private def getClasspath: List[String] =
+    getClasspath(Thread.currentThread().getContextClassLoader).toList
 }
