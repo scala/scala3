@@ -1,9 +1,9 @@
 package dotty.tools
 
+
 import scala.annotation.tailrec
 import scala.io.Source
 import scala.util.Try
-import scala.util.matching.Regex
 import java.net.URLClassLoader
 
 enum ExecuteMode:
@@ -46,8 +46,6 @@ case class Settings(
 
 object MainGenericRunner {
 
-  val shebangscala: Regex = """#!.*scala""".r
-
   @tailrec
   def process(args: List[String], settings: Settings): Settings = args match
     case Nil =>
@@ -73,7 +71,7 @@ object MainGenericRunner {
       )
     case arg :: tail =>
       val line = Try(Source.fromFile(arg).getLines.toList).toOption.flatMap(_.headOption)
-      if arg.endsWith(".scala") || arg.endsWith(".sc") || (line.nonEmpty && shebangscala.matches(line.get)) then
+      if arg.endsWith(".scala") || arg.endsWith(".sc") || (line.nonEmpty && raw"#!.*scala".r.matches(line.get)) then
         settings
           .withExecuteMode(ExecuteMode.Script)
           .withTargetScript(arg)
