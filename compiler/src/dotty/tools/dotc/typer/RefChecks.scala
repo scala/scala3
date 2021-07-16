@@ -995,20 +995,6 @@ object RefChecks {
     then
       Feature.checkExperimentalDef(sym, pos)
 
-  private def checkExperimentalSignature(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    val checker = new TypeTraverser:
-      def traverse(tp: Type): Unit =
-        if tp.typeSymbol.isExperimental then
-          Feature.checkExperimentalDef(tp.typeSymbol, pos)
-        else
-          traverseChildren(tp)
-    if !sym.owner.isExperimental && !pos.span.isSynthetic then // avoid double errors
-      checker.traverse(sym.info)
-
-  private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
-    for annot <- sym.annotations if annot.symbol.isExperimental && annot.tree.span.exists do
-      Feature.checkExperimentalDef(annot.symbol, annot.tree)
-
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
    */
@@ -1221,16 +1207,6 @@ object RefChecks {
         f(variableName, variableOffset)
 
   end checkImplicitNotFoundAnnotation
-
-
-  /** Check that classes extending experimental classes or nested in experimental classes have the @experimental annotation. */
-  private def checkExperimentalInheritance(cls: ClassSymbol)(using Context): Unit =
-    if !cls.hasAnnotation(defn.ExperimentalAnnot) then
-      cls.info.parents.find(_.typeSymbol.isExperimental) match
-        case Some(parent) =>
-          report.error(em"extension of experimental ${parent.typeSymbol} must have @experimental annotation", cls.srcPos)
-        case _ =>
-  end checkExperimentalInheritance
 }
 import RefChecks._
 
@@ -1287,8 +1263,6 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformValDef(tree: ValDef)(using Context): ValDef = {
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
-    checkExperimentalAnnots(tree.symbol)
-    checkExperimentalSignature(tree.symbol, tree)
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
       tree.rhs match {
@@ -1309,8 +1283,6 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
-    checkExperimentalAnnots(tree.symbol)
-    checkExperimentalSignature(tree.symbol, tree)
     checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
     checkUnaryMethods(tree.symbol)
     tree
@@ -1324,8 +1296,6 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
-    checkExperimentalInheritance(cls)
-    checkExperimentalAnnots(cls)
     tree
   }
   catch {
@@ -1368,17 +1338,6 @@ class RefChecks extends MiniPhase { thisPhase =>
       case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.span)
       case _ =>
     }
-    tree
-  }
-
-  override def transformTypeTree(tree: TypeTree)(using Context): TypeTree = {
-    checkExperimental(tree.symbol, tree.srcPos)
-    tree
-  }
-
-  override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
-    checkExperimental(tree.symbol, tree.srcPos)
-    checkExperimentalAnnots(tree.symbol)
     tree
   }
 }
