@@ -27,7 +27,6 @@ def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: 
   log(command.mkString(" "))
   val builder = new ProcessBuilder(command: _*).directory(projectDir.toFile).inheritIO()
   builder.environment.putAll(environment.asJava)
-  
   val process = builder.start()
   val exitCode = process.waitFor()
   exitCode
