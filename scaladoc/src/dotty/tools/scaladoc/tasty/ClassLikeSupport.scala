@@ -116,7 +116,7 @@ trait ClassLikeSupport:
       classDef.symbol.declaredTypes.foreach {
         case typeSymbol: Symbol =>
           val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
-          if typeDef.rhs.symbol.fullName.contains("java") then
+          if typeDef.rhs.symbol.flags.is(Flags.JavaDefined) then
             val t = typeSymbol.tree.asInkuire(variableNames) // TODO [Inkuire] Hack until type aliases are supported
             val tJava = typeDef.rhs.symbol.tree.asInkuire(variableNames)
             t match
