@@ -4,6 +4,7 @@ package transform
 
 import core._
 import Flags._, Symbols._, Contexts._, Scopes._, Decorators._, Types.Type
+import NameKinds.DefaultGetterName
 import collection.mutable
 import collection.immutable.BitSet
 import scala.annotation.tailrec
@@ -16,12 +17,12 @@ import scala.annotation.tailrec
  *  Adapted from the 2.9 version of OverridingPairs. The 2.10 version is IMO
  *  way too unwieldy to be maintained.
  */
-object OverridingPairs {
+object OverridingPairs:
 
   /** The cursor class
    *  @param base   the base class that contains the overriding pairs
    */
-  class Cursor(base: Symbol)(using Context) {
+  class Cursor(base: Symbol)(using Context):
 
     private val self = base.thisType
 
@@ -165,5 +166,64 @@ object OverridingPairs {
 
     nextOverriding()
     next()
-  }
-}
+  end Cursor
+
+  /** Is this `sym1` considered an override of `sym2` (or vice versa) if both are
+   *  seen as members of `site`?
+   *  We declare a match if either we have a full match including matching names
+   *  or we have a loose match with different target name but the types are the same.
+   *  We leave out pairs of methods in Java classes under the assumption since these
+   *  have already been checked and handled by javac.
+   *  This leaves two possible sorts of discrepancies to be reported as errors
+   *  in `RefChecks`:
+   *
+   *    - matching names, target names, and signatures but different types
+   *    - matching names and types, but different target names
+   *
+   *  This method is used as a replacement of `matches` in some subclasses of
+   *  OverridingPairs.
+   */
+  def isOverridingPair(sym1: Symbol, sym2: Symbol, self: Type)(using Context): Boolean =
+    if     sym1.owner.is(JavaDefined, butNot = Trait)
+        && sym2.owner.is(JavaDefined, butNot = Trait)
+    then false // javac already handles these checks and inserts bridges
+    else if sym1.isType then true
+    else
+      val sd1 = sym1.asSeenFrom(self)
+      val sd2 = sym2.asSeenFrom(self)
+      sd1.matchesLoosely(sd2)
+        && (sym1.hasTargetName(sym2.targetName)
+            || isOverridingPair(sym1, sd1.info, sym2, sd2.info))
+
+  /** Let `member` and `other` be members of some common class C with types
+   *  `memberTp` and `otherTp` in C. Are the two symbols considered an overriding
+   *  pair in C? We assume that names already match so we test only the types here.
+   *  @param fallBack  A function called if the initial test is false and
+   *                   `member` and `other` are term symbols.
+   */
+  def isOverridingPair(member: Symbol, memberTp: Type, other: Symbol, otherTp: Type, fallBack: => Boolean = false)(using Context): Boolean =
+    if member.isType then // intersection of bounds to refined types must be nonempty
+      memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi)
+      && (
+        (memberTp frozen_<:< otherTp)
+        || !member.owner.derivesFrom(other.owner)
+            && {
+              // if member and other come from independent classes or traits, their
+              // bounds must have non-empty-intersection
+              val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
+              jointBounds.lo frozen_<:< jointBounds.hi
+            }
+      )
+    else
+      // releaxed override check for explicit nulls if one of the symbols is Java defined,
+      // force `Null` being a subtype of reference types during override checking
+      val relaxedCtxForNulls =
+        if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
+          ctx.retractMode(Mode.SafeNulls)
+        else ctx
+      member.name.is(DefaultGetterName) // default getters are not checked for compatibility
+      || memberTp.overrides(otherTp,
+            member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack
+          )(using relaxedCtxForNulls)
+
+end OverridingPairs

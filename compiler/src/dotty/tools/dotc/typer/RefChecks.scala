@@ -17,6 +17,7 @@ import config.Printers.{checks, noPrinter}
 import scala.util.{Try, Failure, Success}
 import config.{ScalaVersion, NoScalaVersion}
 import Decorators._
+import OverridingPairs.isOverridingPair
 import typer.ErrorReporting._
 import config.Feature.{warnOnMigration, migrateTo3}
 import config.Printers.refcheck
@@ -264,31 +265,6 @@ object RefChecks {
       i"${if (showLocation) sym1.showLocated else sym1}$infoStr"
     }
 
-    def compatibleTypes(member: Symbol, memberTp: Type, other: Symbol, otherTp: Type, fallBack: => Boolean = false): Boolean =
-      try
-        if (member.isType) // intersection of bounds to refined types must be nonempty
-          memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi) &&
-          ((memberTp frozen_<:< otherTp) ||
-            !member.owner.derivesFrom(other.owner) && {
-              // if member and other come from independent classes or traits, their
-              // bounds must have non-empty-intersection
-              val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
-              jointBounds.lo frozen_<:< jointBounds.hi
-            })
-        else
-          // releaxed override check for explicit nulls if one of the symbols is Java defined,
-          // force `Null` being a subtype of reference types during override checking
-          val relaxedCtxForNulls =
-            if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
-              ctx.retractMode(Mode.SafeNulls)
-            else ctx
-          member.name.is(DefaultGetterName) // default getters are not checked for compatibility
-          || memberTp.overrides(otherTp, member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)(using relaxedCtxForNulls)
-      catch case ex: MissingType =>
-        // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
-        // because in that case we might access types that are not members of the qualifier.
-        false
-
     /* Check that all conditions for overriding `other` by `member`
        * of class `clazz` are met.
        */
@@ -318,10 +294,15 @@ object RefChecks {
       }
 
       def compatTypes(memberTp: Type, otherTp: Type): Boolean =
-        compatibleTypes(member, memberTp, other, otherTp,
-          fallBack = warnOnMigration(
-            overrideErrorMsg("no longer has compatible type"),
-            (if (member.owner == clazz) member else clazz).srcPos))
+        try
+          isOverridingPair(member, memberTp, other, otherTp,
+            fallBack = warnOnMigration(
+              overrideErrorMsg("no longer has compatible type"),
+              (if (member.owner == clazz) member else clazz).srcPos))
+        catch case ex: MissingType =>
+          // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
+          // because in that case we might access types that are not members of the qualifier.
+          false
 
       /** Do types of term members `member` and `other` as seen from `self` match?
        *  If not we treat them as not a real override and don't issue override
@@ -488,29 +469,9 @@ object RefChecks {
           }*/
     }
 
-    /** We declare a match if either we have a full match including matching names
-     *  or we have a loose match with different target name but the types are the same.
-     *  This leaves two possible sorts of discrepancies to be reported as errors
-     *  in `checkOveride`:
-     *
-     *    - matching names, target names, and signatures but different types
-     *    - matching names and types, but different target names
-     */
-    def considerMatching(sym1: Symbol, sym2: Symbol, self: Type): Boolean =
-      if     sym1.owner.is(JavaDefined, butNot = Trait)
-          && sym2.owner.is(JavaDefined, butNot = Trait)
-      then false // javac already handles these checks
-      else if sym1.isType then true
-      else
-        val sd1 = sym1.asSeenFrom(self)
-        val sd2 = sym2.asSeenFrom(self)
-        sd1.matchesLoosely(sd2)
-          && (sym1.hasTargetName(sym2.targetName)
-             || compatibleTypes(sym1, sd1.info, sym2, sd2.info))
-
     val opc = new OverridingPairs.Cursor(clazz):
       override def matches(sym1: Symbol, sym2: Symbol): Boolean =
-        considerMatching(sym1, sym2, self)
+        isOverridingPair(sym1, sym2, self)
 
       private def inLinearizationOrder(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
         val owner1 = sym1.owner
@@ -530,7 +491,7 @@ object RefChecks {
       //   - They overriding/overridden appear in linearization order.
       //     See neg/i5094.scala for an example where this matters.
       override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
-        considerMatching(sym1, sym2, parent.thisType)
+        isOverridingPair(sym1, sym2, parent.thisType)
          .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parent.thisType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parent.thisType).signature} = $result", refcheck)
         && inLinearizationOrder(sym1, sym2, parent)
     end opc
