@@ -77,7 +77,7 @@
   border-radius: 5px;
   background-color: var(--shadow);
   color: var(--shadow);
-  animation: dotFlashing 1s infinite alternate;
+  animation: dotFlashing .4s infinite alternate;
   display: inline-block;
   position: absolute;
   top: 0;
@@ -86,7 +86,7 @@
 .loading {
   left: 50%;
   position: relative;
-  animation-delay: .5s;
+  animation-delay: .2s;
 }
 
 .loading::before {
@@ -96,7 +96,7 @@
 
 .loading::after {
   left: 15px;
-  animation-delay: 1s;
+  animation-delay: .4s;
 }
 
 @keyframes dotFlashing {
