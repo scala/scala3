@@ -623,7 +623,8 @@ object Build {
           val dottyTastyInspector = jars("scala3-tasty-inspector")
           val dottyInterfaces = jars("scala3-interfaces")
           val tastyCore = jars("tasty-core")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore).mkString(File.pathSeparator)))
+          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
         } else run(args)
       },
 

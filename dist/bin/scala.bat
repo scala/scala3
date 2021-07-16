@@ -48,7 +48,7 @@ if %_EXECUTE_SCRIPT%==1 (
         echo Warning: Multiple classpaths are found, scala only use the last one. 1>&2
     )
     if %_WITH_COMPILER%==1 (
-        set "_CP_ARG=!_CP_ARG!%_PSEP%%_SCALA3_COMP%%_PSEP%%_TASTY_CORE%%_PSEP%%_SCALA3_INTF%%_PSEP%%_SCALA_ASM%%_PSEP%%_SCALA3_STAGING%%_PSEP%%_SCALA3_TASTY_INSPECTOR%"
+        set "_CP_ARG=!_CP_ARG!%_PSEP%%_SCALA3_COMP%%_PSEP%%_TASTY_CORE%%_PSEP%%_SCALA3_INTF%%_PSEP%%_SCALA_ASM%%_PSEP%%_SCALA3_STAGING%%_PSEP%%_SCALA3_TASTY_INSPECTOR%%_PSEP%%_SBT_INTF%"
     )
     set _JAVA_ARGS=-classpath "!_CP_ARG!" %_JVM_OPTS% %_RESIDUAL_ARGS%
     call "%_JAVACMD%" !_JAVA_ARGS!
