@@ -115,21 +115,24 @@ trait ClassLikeSupport:
 
       classDef.symbol.declaredTypes.foreach {
         case typeSymbol: Symbol if typeSymbol.flags.is(Flags.Opaque) =>
-          val t = typeSymbol.tree.asInkuire(variableNames)
-          t match
-              case t: Inkuire.Type => Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
-              case _ =>
+          val typ = typeSymbol.tree.asInkuire(variableNames)
+          if typ.isInstanceOf[Inkuire.Type] then {
+            val t = typ.asInstanceOf[Inkuire.Type]
+            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
+          }
         case typeSymbol: Symbol =>
           val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
           if typeDef.rhs.symbol.flags.is(Flags.JavaDefined) then
-            val t = typeSymbol.tree.asInkuire(variableNames) // TODO [Inkuire] Hack until type aliases are supported
-            val tJava = typeDef.rhs.symbol.tree.asInkuire(variableNames)
-            t match
-              case t: Inkuire.Type => Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))) // TODO [Inkuire] Hack until type aliases are supported
-              case _ =>
-            tJava match
-              case tJava: Inkuire.Type => Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
-              case _ =>
+            val typ = typeSymbol.tree.asInkuire(variableNames) // TODO [Inkuire] Hack until type aliases are supported
+            val typJava = typeDef.rhs.symbol.tree.asInkuire(variableNames)
+            if typ.isInstanceOf[Inkuire.Type] then { // TODO [Inkuire] Hack until type aliases are supported
+              val t = typ.asInstanceOf[Inkuire.Type]
+              Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
+            }
+            if typJava.isInstanceOf[Inkuire.Type] then {
+              val tJava = typJava.asInstanceOf[Inkuire.Type]
+              Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
+            }
       }
 
       classDef.symbol.declaredMethods
