@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Lazy Vals initialization
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/lazy-vals-init.html
 ---
 
 Scala 3 implements [Version 6](https://docs.scala-lang.org/sips/improved-lazy-val-initialization.html#version-6---no-synchronization-on-this-and-concurrent-initialization-of-fields)

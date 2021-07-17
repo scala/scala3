@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Limit 22"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/limit22.html
 ---
 
 The limits of 22 for the maximal number of parameters of function types and the

@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Procedure Syntax"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/procedure-syntax.html
 ---
 
 Procedure syntax

@@ -1,6 +1,7 @@
 ---
 layout: doc-page
-title: "Dropped: Delayedinit"
+title: "Dropped: DelayedInit"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/delayed-init.html
 ---
 
 The special handling of the `DelayedInit` trait is no longer supported.

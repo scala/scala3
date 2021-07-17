@@ -28,10 +28,10 @@
   --blue900: hsl(200, 72%, 8%);
 
   /* Red */
-  --red500: hsl(1 , 60% , 92%);
-  --red500: hsl(1 , 64% , 84%);
-  --red500: hsl(1 , 66% , 72%);
-  --red500: hsl(1 , 66% , 64%);
+  --red100: hsl(1 , 60%, 92%);
+  --red200: hsl(1 , 64%, 84%);
+  --red300: hsl(1 , 66%, 72%);
+  --red400: hsl(1 , 66% , 64%);
   --red500: hsl(1 , 71% , 52%);
   --red600: hsl(1 , 71% , 40%);
   --red700: hsl(1 , 72% , 32%);
@@ -82,6 +82,8 @@
   --selected-bg: var(--blue200);
 
   --shadow: var(--black);
+
+  --aside-warning-bg: var(--red100);
 }
 
   /* Dark Mode */
@@ -130,4 +132,6 @@
   --tab-default: var(--grey300);
 
   --shadow: var(--white);
+
+  --aside-warning-bg: var(--red800);
 }
