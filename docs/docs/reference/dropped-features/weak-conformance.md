@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Weak Conformance"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/weak-conformance.html
 ---
 
 In some situations, Scala used a _weak conformance_ relation when

@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Macros Spec"
+movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros-spec.html
 ---
 
 ## Implementation

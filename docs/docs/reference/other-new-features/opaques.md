@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Opaque Type Aliases"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/opaques.html
 ---
 
 Opaque types aliases provide type abstraction without any overhead. Example:

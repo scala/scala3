@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Implicit Conversions - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-conversions-spec.html
 ---
 
 ## Implementation

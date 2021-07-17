@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Type Lambdas - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/type-lambdas-spec.html
 ---
 
 ## Syntax

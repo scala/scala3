@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Trait Parameters"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/trait-parameters.html
 ---
 
 Scala 3 allows traits to have parameters, just like classes have parameters.

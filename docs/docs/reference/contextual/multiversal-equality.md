@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Multiversal Equality"
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/multiversal-equality.html
 ---
 
 Previously, Scala had universal equality: Two values of any types

@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Numeric Literals"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/numeric-literals.html
 ---
 
 **Note**: This feature is not yet part of the Scala 3 language definition. It can be made available by a language import:

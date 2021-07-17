@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Existential Types"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/existential-types.html
 ---
 
 Existential types using `forSome` (as in

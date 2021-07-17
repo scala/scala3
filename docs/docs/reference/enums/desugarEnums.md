@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Translation of Enums and ADTs"
+movedTo: https://docs.scala-lang.org/scala3/reference/enums/desugarEnums.html
 ---
 
 The compiler expands enums and their cases to code that only uses

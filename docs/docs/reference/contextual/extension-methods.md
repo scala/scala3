@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Extension Methods"
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/extension-methods.html
 ---
 
 Extension methods allow one to add methods to a type after the type is defined. Example:

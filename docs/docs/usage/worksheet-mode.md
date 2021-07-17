@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Worksheet mode with Dotty IDE"
+movedTo: https://docs.scala-lang.org/scala3/book/tools-worksheets.html
 ---
 
 A worksheet is a Scala file that is evaluated on save, and the result of each

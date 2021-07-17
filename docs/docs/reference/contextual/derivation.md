@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Type Class Derivation"
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/derivation.html
 ---
 
 Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple

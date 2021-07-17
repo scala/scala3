@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Export Clauses"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/export.html
 ---
 
 An export clause defines aliases for selected members of an object. Example:

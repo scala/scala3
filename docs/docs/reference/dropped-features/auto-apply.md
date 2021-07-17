@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Auto-Application"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/auto-apply.html
 ---
 
 Previously an empty argument list `()` was implicitly inserted when

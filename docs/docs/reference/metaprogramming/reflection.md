@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Reflection"
+movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/reflection.html
 ---
 
 Reflection enables inspection and construction of Typed Abstract Syntax Trees

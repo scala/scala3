@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "TASTy Inspection"
+movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/tasty-inspect.html
 ---
 
 ```scala

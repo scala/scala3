@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Match Types"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/match-types.html
 ---
 
 A match type reduces to one of its right-hand sides, depending on the type of

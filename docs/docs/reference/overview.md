@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Overview"
+movedTo: https://docs.scala-lang.org/scala3/reference/overview.html
 ---
 Scala 3 implements many language changes and improvements over Scala 2.
 In this reference, we discuss design decisions and present important differences compared to Scala 2.

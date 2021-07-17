@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Intersection Types"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/intersection-types.html
 ---
 
 Used on types, the `&` operator creates an intersection type.

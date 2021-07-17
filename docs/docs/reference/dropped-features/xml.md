@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: XML Literals"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/xml.html
 ---
 
 XML Literals are still supported, but will be dropped in the near future, to

@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Runtime Multi-Stage Programming"
+movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/staging.html
 ---
 
 The framework expresses at the same time compile-time metaprogramming and

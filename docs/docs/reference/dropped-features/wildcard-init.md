@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Wildcard Initializer"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/wildcard-init.html
 ---
 
 The syntax
