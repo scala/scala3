@@ -99,3 +99,6 @@ community-build/dotty-community-build-deps
 
 # Coursier
 cs
+
+# Coursier test product
+compiler/test-coursier/run/myfile.jar

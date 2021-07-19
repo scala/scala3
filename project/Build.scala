@@ -190,7 +190,6 @@ object Build {
     // Avoid various sbt craziness involving classloaders and parallelism
     run / fork := true,
     Test / fork := true,
-    Test / envVars := Map("DOTTY_BOOTSTRAPPED_VERSION" -> dottyVersion),
     Test / parallelExecution := false,
 
     outputStrategy := Some(StdoutOutput),
@@ -760,7 +759,24 @@ object Build {
     if (mode == NonBootstrapped) nonBootstrapedDottyCompilerSettings else bootstrapedDottyCompilerSettings
 
   lazy val `scala3-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
+
+  lazy val Scala3CompilerCoursierTest = config("scala3CompilerCoursierTest") extend Test
   lazy val `scala3-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped)
+    .configs(Scala3CompilerCoursierTest)
+    .settings(
+      inConfig(Scala3CompilerCoursierTest)(Defaults.testSettings),
+      Scala3CompilerCoursierTest / scalaSource := baseDirectory.value / "test-coursier",
+      Scala3CompilerCoursierTest / fork := true,
+      Scala3CompilerCoursierTest / envVars := Map("DOTTY_BOOTSTRAPPED_VERSION" -> dottyVersion),
+      Scala3CompilerCoursierTest / unmanagedClasspath += (Scala3CompilerCoursierTest / scalaSource).value,
+      Scala3CompilerCoursierTest / test := ((Scala3CompilerCoursierTest / test) dependsOn (
+          publishLocal, // Had to enumarate all deps since calling `scala3-bootstrap` / publishLocal will lead to recursive dependency => stack overflow
+          `scala3-interfaces` / publishLocal,
+          dottyLibrary(Bootstrapped) / publishLocal,
+          tastyCore(Bootstrapped) / publishLocal,
+        ),
+      ).value,
+    )
 
   def dottyCompiler(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-compiler`

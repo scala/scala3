@@ -1,20 +1,31 @@
 package dotty
 package tools
-package scripting
+package coursier
 
 import java.io.File
 import java.nio.file.{Path, Paths, Files}
 import scala.sys.process._
-
 import org.junit.Test
 import org.junit.BeforeClass
-
-import vulpix.TestConfiguration
-
-import dotty.tools.absPath
+import org.junit.Assert._
 import scala.collection.mutable.ListBuffer
 
+import java.net.URLClassLoader
+import java.net.URL
+
 class CoursierScalaTests:
+
+  private def scripts(path: String): Array[File] = {
+    val dir = new File(getClass.getResource(path).getPath)
+    assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
+    dir.listFiles
+  }
+
+  extension (f: File) private def absPath =
+    f.getAbsolutePath.replace('\\', '/')
+
+  extension (str: String) private def dropExtension =
+    str.reverse.dropWhile(_ != '.').drop(1).reverse
 
   // classpath tests are managed by scripting.ClasspathTests.scala
   def testFiles = scripts("/scripting").filter { ! _.getName.startsWith("classpath") }
@@ -38,28 +49,35 @@ class CoursierScalaTests:
       )
       for (line, expect) <- output zip expectedOutput do
         printf("expected: %-17s\nactual  : %s\n", expect, line)
-      assert(output == expectedOutput)
+      assertEquals(expectedOutput, output)
     scriptArgs()
 
     def version() =
       val output = CoursierScalaTests.csCmd("-version")
-      assert(output.mkString("\n").contains(sys.env("DOTTY_BOOTSTRAPPED_VERSION")))
+      assertTrue(output.mkString("\n").contains(sys.env("DOTTY_BOOTSTRAPPED_VERSION")))
     version()
 
     def emptyArgsEqualsRepl() =
       val output = CoursierScalaTests.csCmd()
-      assert(output.mkString("\n").contains("Unable to create a system terminal")) // Scala attempted to create REPL so we can assume it is working
+      assertTrue(output.mkString("\n").contains("Unable to create a system terminal")) // Scala attempted to create REPL so we can assume it is working
     emptyArgsEqualsRepl()
 
-    def repl() =
-      val output = CoursierScalaTests.csCmd("-repl")
-      assert(output.mkString("\n").contains("Unable to create a system terminal")) // Scala attempted to create REPL so we can assume it is working
-    repl()
-
     def run() =
-      val output = CoursierScalaTests.csCmd("-run", "-classpath", scripts("/run").head.getParent, "myfile")
-      assert(output.mkString("\n") == "Hello")
+      val output = CoursierScalaTests.csCmd("-run", "-classpath", scripts("/run").head.getParentFile.getParent, "run.myfile")
+      assertEquals(output.mkString("\n"), "Hello")
     run()
+
+    def notOnlyOptionsEqualsRun() =
+      val output = CoursierScalaTests.csCmd("-classpath", scripts("/run").head.getParentFile.getParent, "run.myfile")
+      assertEquals(output.mkString("\n"), "Hello")
+    notOnlyOptionsEqualsRun()
+
+    def jar() =
+      val source = new File(getClass.getResource("/run/myfile.scala").getPath)
+      val output = CoursierScalaTests.csCmd("-save", source.absPath)
+      assertEquals(output.mkString("\n"), "Hello")
+      assertTrue(source.getParentFile.listFiles.find(_.getName == "myfile.jar").isDefined)
+    jar()
 
 object CoursierScalaTests:
 
@@ -68,7 +86,6 @@ object CoursierScalaTests:
     val out = new ListBuffer[String]
     cmd.!(ProcessLogger(out += _, out += _))
     out.toList
-
 
   def csCmd(options: String*): List[String] =
     val newOptions = options match

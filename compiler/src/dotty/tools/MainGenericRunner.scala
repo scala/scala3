@@ -8,6 +8,7 @@ import java.net.URLClassLoader
 import sys.process._
 import java.io.File
 import java.lang.Thread
+import scala.annotation.internal.sharable
 
 enum ExecuteMode:
   case Guess
@@ -20,10 +21,12 @@ case class Settings(
   classPath: List[String] = List.empty,
   executeMode: ExecuteMode = ExecuteMode.Guess,
   exitCode: Int = 0,
+  javaArgs: List[String] = List.empty,
+  scalaArgs: List[String] = List.empty,
   residualArgs: List[String] = List.empty,
   scriptArgs: List[String] = List.empty,
   targetScript: String = "",
-  areWithCompiler: Boolean = false,
+  save: Boolean = false,
 ) {
   def withExecuteMode(em: ExecuteMode): Settings = this.executeMode match
     case ExecuteMode.Guess =>
@@ -32,6 +35,12 @@ case class Settings(
       println(s"execute_mode==[$executeMode], attempted overwrite by [$em]")
       this.copy(exitCode = 1)
   end withExecuteMode
+
+  def withScalaArgs(args: String*): Settings =
+    this.copy(scalaArgs = scalaArgs.appendedAll(args.toList))
+
+  def withJavaArgs(args: String*): Settings =
+    this.copy(javaArgs = javaArgs.appendedAll(args.toList))
 
   def withResidualArgs(args: String*): Settings =
     this.copy(residualArgs = residualArgs.appendedAll(args.toList))
@@ -47,23 +56,23 @@ case class Settings(
         this.copy(exitCode = 2)
   end withTargetScript
 
-  def withCompiler: Settings =
-    this.copy(areWithCompiler = true)
+  def withSave: Settings =
+    this.copy(save = true)
 }
 
 object MainGenericRunner {
 
-  final val classpathSeparator = ":"
+  val classpathSeparator = File.pathSeparator
+
+  @sharable val javaOption = raw"""-J(.*)""".r
 
   @tailrec
   def process(args: List[String], settings: Settings): Settings = args match
     case Nil =>
       settings
-    case "-repl" :: tail =>
-      process(tail, settings.withExecuteMode(ExecuteMode.Repl))
     case "-run" :: tail =>
       process(tail, settings.withExecuteMode(ExecuteMode.Run))
-    case ("-cp" | "-classpath" | "--classpath") :: cp :: tail =>
+    case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
       process(tail, settings.copy(classPath = settings.classPath.appended(cp)))
     case ("-version" | "--version") :: _ =>
       settings.copy(
@@ -78,8 +87,10 @@ object MainGenericRunner {
           residualArgs = settings.residualArgs :+ "-verbose"
         )
       )
-    case "-with-compiler" :: tail =>
-      process(tail, settings.withCompiler)
+    case "-save" :: tail =>
+      process(tail, settings.withSave)
+    case (o @ javaOption(striped)) :: tail =>
+      process(tail, settings.withJavaArgs(striped).withScalaArgs(o))
     case arg :: tail =>
       val line = Try(Source.fromFile(arg).getLines.toList).toOption.flatMap(_.headOption)
       if arg.endsWith(".scala") || arg.endsWith(".sc") || (line.nonEmpty && raw"#!.*scala".r.matches(line.get)) then
@@ -93,7 +104,8 @@ object MainGenericRunner {
   def main(args: Array[String]): Unit =
     val settings = process(args.toList, Settings())
     if settings.exitCode != 0 then System.exit(settings.exitCode)
-    settings.executeMode match
+
+    def run(mode: ExecuteMode): Unit = mode match
       case ExecuteMode.Repl =>
         val properArgs =
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
@@ -104,20 +116,23 @@ object MainGenericRunner {
           val newClasspath = settings.classPath ++ getClasspath :+ "."
           List("-classpath", newClasspath.mkString(classpathSeparator)).filter(Function.const(newClasspath.nonEmpty))
             ++ settings.residualArgs
-        s"java ${properArgs.mkString(" ")}".! // For now we collect classpath that coursier provides for convenience
+        s"java ${settings.javaArgs.mkString(" ")} ${properArgs.mkString(" ")}".! // For now we collect classpath that coursier provides for convenience
       case ExecuteMode.Script =>
         val properArgs =
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs
+            ++ (if settings.save then List("-save") else Nil)
             ++ List("-script", settings.targetScript)
+            ++ settings.scalaArgs
             ++ settings.scriptArgs
         scripting.Main.main(properArgs.toArray)
       case ExecuteMode.Guess =>
-        val properArgs =
-          List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
-            ++ settings.residualArgs
-        repl.Main.main(properArgs.toArray)
+        if args.toList.forall(_.startsWith("-")) then // all are options
+          run(ExecuteMode.Repl)
+        else
+          run(ExecuteMode.Run)
 
+    run(settings.executeMode)
 
   private def getClasspath(cl: ClassLoader): Array[String] = cl match
     case null => Array()
