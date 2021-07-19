@@ -382,7 +382,8 @@ class Typer extends Namer
               if !curOwner.is(Package) || isDefinedInCurrentUnit(defDenot) then
                 result = checkNewOrShadowed(found, Definition) // no need to go further out, we found highest prec entry
                 found match
-                  case found: NamedType if curOwner.isClass && isInherited(found.denot) =>
+                  case found: NamedType
+                  if curOwner.isClass && isInherited(found.denot) && !ctx.compilationUnit.isJava =>
                     checkNoOuterDefs(found.denot, ctx, ctx)
                   case _ =>
               else
