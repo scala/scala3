@@ -128,7 +128,10 @@ trait ClassLikeSupport:
             if typ.isInstanceOf[Inkuire.Type] then {
               val t = typ.asInstanceOf[Inkuire.Type]
               val rhsTypeLike = typeDef.rhs.asInkuire(variableNames)
-              Inkuire.db = Inkuire.db.copy(typeAliases = Inkuire.db.typeAliases.updated(t.itid.get, rhsTypeLike))
+              Inkuire.db = Inkuire.db.copy(
+                typeAliases = Inkuire.db.typeAliases.updated(t.itid.get, rhsTypeLike),
+                types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))
+              )
             }
             if typeDef.rhs.symbol.flags.is(Flags.JavaDefined) then
               val typJava = typeDef.rhs.asInkuire(variableNames)
