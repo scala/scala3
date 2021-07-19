@@ -113,35 +113,40 @@ trait ClassLikeSupport:
 
       if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
 
-      classDef.symbol.declaredTypes.foreach {
-        case typeSymbol: Symbol if typeSymbol.flags.is(Flags.Opaque) =>
-          val typ = typeSymbol.tree.asInkuire(variableNames)
-          if typ.isInstanceOf[Inkuire.Type] then {
-            val t = typ.asInstanceOf[Inkuire.Type]
-            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
-          }
-        case typeSymbol: Symbol =>
-          val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
-          if typeDef.rhs.symbol.flags.is(Flags.JavaDefined) then
-            val typ = typeSymbol.tree.asInkuire(variableNames) // TODO [Inkuire] Hack until type aliases are supported
-            val typJava = typeDef.rhs.symbol.tree.asInkuire(variableNames)
-            if typ.isInstanceOf[Inkuire.Type] then { // TODO [Inkuire] Hack until type aliases are supported
+      classDef.symbol.declaredTypes
+        .filter(viableSymbol)
+        .foreach {
+          case typeSymbol: Symbol if typeSymbol.flags.is(Flags.Opaque) =>
+            val typ = typeSymbol.tree.asInkuire(variableNames)
+            if typ.isInstanceOf[Inkuire.Type] then {
               val t = typ.asInstanceOf[Inkuire.Type]
               Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
             }
-            if typJava.isInstanceOf[Inkuire.Type] then {
-              val tJava = typJava.asInstanceOf[Inkuire.Type]
-              Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
+          case typeSymbol: Symbol if !typeSymbol.isClassDef =>
+            val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
+            val typ = typeSymbol.tree.asInkuire(variableNames)
+            if typ.isInstanceOf[Inkuire.Type] then {
+              val t = typ.asInstanceOf[Inkuire.Type]
+              val rhsTypeLike = typeDef.rhs.asInkuire(variableNames)
+              Inkuire.db = Inkuire.db.copy(typeAliases = Inkuire.db.typeAliases.updated(t.itid.get, rhsTypeLike))
             }
+            if typeDef.rhs.symbol.flags.is(Flags.JavaDefined) then
+              val typJava = typeDef.rhs.asInkuire(variableNames)
+              if typJava.isInstanceOf[Inkuire.Type] then {
+                val tJava = typJava.asInstanceOf[Inkuire.Type]
+                Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
+              }
+          case _ =>
       }
 
+      def viableSymbol(s: Symbol): Boolean =
+        !s.flags.is(Flags.Private) &&
+          !s.flags.is(Flags.Protected) &&
+          !s.flags.is(Flags.Override) &&
+          !s.flags.is(Flags.Synthetic)
+
       classDef.symbol.declaredMethods
-        .filter { (s: Symbol) =>
-          !s.flags.is(Flags.Private) &&
-            !s.flags.is(Flags.Protected) &&
-            !s.flags.is(Flags.Override) &&
-            !s.flags.is(Flags.Synthetic)
-        }
+        .filter(viableSymbol)
         .foreach {
           case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
                                           && classDef.symbol.flags.is(Flags.Module)

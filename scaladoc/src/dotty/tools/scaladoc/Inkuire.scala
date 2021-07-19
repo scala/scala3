@@ -5,7 +5,7 @@ import scala.collection.mutable.{ Map => MMap}
 
 object Inkuire {
 
-  var db = InkuireDb(Seq.empty, Map.empty, Seq.empty)
+  var db = InkuireDb(Seq.empty, Map.empty, Seq.empty, Map.empty)
 
   def beforeSave(): Unit = {
     db = db.copy(
@@ -23,7 +23,8 @@ object Inkuire {
   case class InkuireDb(
     functions:           Seq[ExternalSignature],
     types:               Map[ITID, (Type, Seq[Type])],
-    implicitConversions: Seq[(ITID, Type)]
+    implicitConversions: Seq[(ITID, Type)],
+    typeAliases:         Map[ITID, TypeLike]
   )
 
   case class ITID(uuid: String, isParsed: Boolean)
@@ -143,7 +144,8 @@ object Inkuire {
       jsonObject(
         ("types", serialize(db.types)),
         ("functions", jsonList(db.functions.map(serialize))),
-        ("implicitConversions", jsonList(db.implicitConversions.map(serializeConversion)))
+        ("implicitConversions", jsonList(db.implicitConversions.map(serializeConversion))),
+        ("typeAliases", serializeTypeAliases(db.typeAliases))
       )
     }
 
@@ -157,6 +159,15 @@ object Inkuire {
     }
 
     private def serialize(types: Map[ITID, (Type, Seq[Type])]): JSON = {
+      jsonObject((
+        types.toList.map {
+          case (itid, v) =>
+            (serializeAsKey(itid), serialize(v))
+        }
+      )*)
+    }
+
+    private def serializeTypeAliases(types: Map[ITID, TypeLike]): JSON = {
       jsonObject((
         types.toList.map {
           case (itid, v) =>
