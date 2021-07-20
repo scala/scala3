@@ -27,6 +27,7 @@ case class Settings(
   scriptArgs: List[String] = List.empty,
   targetScript: String = "",
   save: Boolean = false,
+  modeShouldBeRun: Boolean = false,
 ) {
   def withExecuteMode(em: ExecuteMode): Settings = this.executeMode match
     case ExecuteMode.Guess =>
@@ -58,6 +59,9 @@ case class Settings(
 
   def withSave: Settings =
     this.copy(save = true)
+
+  def withModeShouldBeRun: Settings =
+    this.copy(modeShouldBeRun = true)
 }
 
 object MainGenericRunner {
@@ -99,7 +103,8 @@ object MainGenericRunner {
           .withTargetScript(arg)
           .withScriptArgs(tail*)
       else
-        process(tail, settings.withResidualArgs(arg))
+        val newSettings = if arg.startsWith("-") then settings else settings.withModeShouldBeRun
+        process(tail, newSettings.withResidualArgs(arg))
 
   def main(args: Array[String]): Unit =
     val settings = process(args.toList, Settings())
@@ -127,10 +132,10 @@ object MainGenericRunner {
             ++ settings.scriptArgs
         scripting.Main.main(properArgs.toArray)
       case ExecuteMode.Guess =>
-        if args.toList.forall(_.startsWith("-")) then // all are options
-          run(ExecuteMode.Repl)
-        else
+        if settings.modeShouldBeRun then
           run(ExecuteMode.Run)
+        else
+          run(ExecuteMode.Repl)
 
     run(settings.executeMode)
 
