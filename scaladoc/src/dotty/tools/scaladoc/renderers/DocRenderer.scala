@@ -46,7 +46,7 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
           case 5 => h5(content)
           case 6 => h6(content)
     case Paragraph(text) => p(renderElement(text))
-    case Code(data: String) => pre(code(raw(data))) // TODO add classes
+    case Code(data: String) => pre(code(raw(data.escapeReservedTokens))) // TODO add classes
     case HorizontalRule => hr
 
     case UnorderedList(items) => ul(listItems(items))
