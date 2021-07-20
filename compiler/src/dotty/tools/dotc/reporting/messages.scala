@@ -1861,11 +1861,15 @@ import transform.SymUtils._
         i" in ${conflicting.associatedFile}"
       else if conflicting.owner == owner then ""
       else i" in ${conflicting.owner}"
+    private def note =
+      if owner.is(Method) || conflicting.is(Method) then
+        "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
+      else ""
     def msg =
       if conflicting.isTerm != name.isTermName then
         em"$name clashes with $conflicting$where; the two must be defined together"
       else
-        em"$name is already defined as $conflicting$where"
+        em"$name is already defined as $conflicting$where$note"
     def explain = ""
 
   class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
