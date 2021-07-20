@@ -24,4 +24,5 @@ class CodeSnippets:
       })
       a.classList.add("snippet-comment-button")
       e.insertBefore(a, e.firstChild)
+    case e => // skip
   }
