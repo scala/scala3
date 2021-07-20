@@ -72,6 +72,11 @@ class CoursierScalaTests:
       assertEquals(output.mkString("\n"), "Hello")
     notOnlyOptionsEqualsRun()
 
+    def help() =
+      val output = CoursierScalaTests.csCmd("-help")
+      assertTrue(output.mkString("\n").contains("Usage: scala <options> <source files>"))
+    help()
+
     def jar() =
       val source = new File(getClass.getResource("/run/myfile.scala").getPath)
       val output = CoursierScalaTests.csCmd("-save", source.absPath)
