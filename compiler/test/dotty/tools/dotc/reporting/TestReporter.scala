@@ -53,7 +53,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
 
   /** Prints the message with the given position indication. */
   def printMessageAndPos(dia: Diagnostic, extra: String)(using Context): Unit = {
-    val msg = messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia))
+    val msg = messageAndPos(dia)
     val extraInfo = inlineInfo(dia.pos)
 
     if (dia.level >= logLevel) {
