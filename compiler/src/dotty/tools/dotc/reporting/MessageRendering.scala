@@ -155,6 +155,7 @@ trait MessageRendering {
       sb.append(EOL).append("Matching filters for @nowarn or -Wconf:")
       if (hasId)
         sb.append(EOL).append("  - id=E").append(msg.errorId.errorNumber)
+        sb.append(EOL).append("  - name=").append(msg.errorId.productPrefix.stripSuffix("ID"))
       if (category.nonEmpty)
         sb.append(EOL).append("  - cat=").append(category)
 

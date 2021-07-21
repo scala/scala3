@@ -152,6 +152,9 @@ private sealed trait WarningSettings:
          |  - Message id: id=E129
          |    The message id is printed with the warning.
          |
+         |  - Message name: name=PureExpressionInStatementPosition
+         |    The message name is printed with the warning in verbose warning mode.
+         |
          |In verbose warning mode the compiler prints matching filters for warnings.
          |Verbose mode can be enabled globally using `-Wconf:any:verbose`, or locally
          |using the @nowarn annotation (example: `@nowarn("v") def test = try 1`).

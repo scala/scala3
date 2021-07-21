@@ -69,6 +69,10 @@ object WConf:
             Left(s"unknonw error message id: E$n")
         case _ =>
           Left(s"invalid error message id: $conf")
+      case "name" =>
+        try Right(MessageID(ErrorMessageID.valueOf(conf + "ID")))
+        catch case _: IllegalArgumentException => Left(s"unknown error message name: $conf")
+
       case "cat" => conf match
         case "deprecation" => Right(Deprecated)
         case "feature"     => Right(Feature)
