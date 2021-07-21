@@ -142,6 +142,22 @@ trait MessageRendering {
     sb.toString
   }
 
+  def appendFilterHelp(dia: Diagnostic, sb: mutable.StringBuilder): Unit =
+    import dia._
+    val hasId = msg.errorId.errorNumber >= 0
+    val category = dia match {
+      case _: UncheckedWarning => "unchecked"
+      case _: DeprecationWarning => "deprecation"
+      case _: FeatureWarning => "feature"
+      case _ => ""
+    }
+    if (hasId || category.nonEmpty)
+      sb.append(EOL).append("Matching filters for @nowarn or -Wconf:")
+      if (hasId)
+        sb.append(EOL).append("  - id=E").append(msg.errorId.errorNumber)
+      if (category.nonEmpty)
+        sb.append(EOL).append("  - cat=").append(category)
+
   /** The whole message rendered from `msg` */
   def messageAndPos(dia: Diagnostic)(using Context): String = {
     import dia._
@@ -160,6 +176,8 @@ trait MessageRendering {
       else sb.append(msg.message)
     }
     else sb.append(msg.message)
+    if (dia.isVerbose)
+      appendFilterHelp(dia, sb)
     sb.toString
   }
 

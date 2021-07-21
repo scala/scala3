@@ -152,9 +152,14 @@ private sealed trait WarningSettings:
          |  - Message id: id=E129
          |    The message id is printed with the warning.
          |
+         |In verbose warning mode the compiler prints matching filters for warnings.
+         |Verbose mode can be enabled globally using `-Wconf:any:verbose`, or locally
+         |using the @nowarn annotation (example: `@nowarn("v") def test = try 1`).
+         |
          |<action>
          |  - error / e
          |  - warning / w
+         |  - verbose / v (emit warning, show additional help for writing `-Wconf` filters)
          |  - info / i    (infos are not counted as warnings and not affected by `-Werror`)
          |  - silent / s
          |

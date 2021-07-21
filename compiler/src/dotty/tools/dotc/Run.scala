@@ -16,7 +16,8 @@ import io.{AbstractFile, PlainFile, VirtualFile}
 import Phases.unfusedPhases
 
 import util._
-import reporting.{Reporter, Suppression}
+import reporting.{Reporter, Suppression, Action}
+import reporting.Diagnostic
 import reporting.Diagnostic.Warning
 import rewrites.Rewrites
 
@@ -110,10 +111,14 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     def addSuspendedMessage(warning: Warning) =
       mySuspendedMessages.getOrElseUpdate(warning.pos.source, mutable.LinkedHashSet.empty) += warning
 
-    def isSuppressed(warning: Warning): Boolean =
-      mySuppressions.getOrElse(warning.pos.source, Nil).find(_.matches(warning)) match {
-        case Some(s) => s.markUsed(); true
-        case _ => false
+    def nowarnAction(dia: Diagnostic): Action.Warning.type | Action.Verbose.type | Action.Silent.type =
+      mySuppressions.getOrElse(dia.pos.source, Nil).find(_.matches(dia)) match {
+        case Some(s) =>
+          s.markUsed()
+          if (s.verbose) Action.Verbose
+          else Action.Silent
+        case _ =>
+          Action.Warning
       }
 
     def addSuppression(sup: Suppression): Unit =

@@ -2089,6 +2089,7 @@ class Typer extends Namer
   def registerNowarn(tree: Tree, mdef: untpd.Tree)(using Context): Unit =
     val annot = Annotations.Annotation(tree)
     def argPos = annot.argument(0).getOrElse(tree).sourcePos
+    var verbose = false
     val filters =
       if annot.arguments.isEmpty then List(MessageFilter.Any)
       else annot.argumentConstantString(0) match
@@ -2097,17 +2098,19 @@ class Typer extends Namer
           case _ =>
             report.warning(s"filter needs to be a compile-time constant string", argPos)
             Nil
+        case Some("") => Nil
+        case Some("verbose") | Some("v") =>
+          verbose = true
+          Nil
         case Some(s) =>
-          if s.isEmpty then Nil
+          val (ms, fs) = s.split('&').map(WConf.parseFilter).toList.partitionMap(identity)
+          if ms.nonEmpty then
+            report.warning(s"Invalid message filter\n${ms.mkString("\n")}", argPos)
+            List(MessageFilter.None)
           else
-            val (ms, fs) = s.split('&').map(WConf.parseFilter).toList.partitionMap(identity)
-            if ms.nonEmpty then
-              report.warning(s"Invalid message filter\n${ms.mkString("\n")}", argPos)
-              List(MessageFilter.None)
-            else
-              fs
+            fs
     val range = mdef.sourcePos
-    ctx.run.suppressions.addSuppression(Suppression(tree.sourcePos, filters, range.start, range.end))
+    ctx.run.suppressions.addSuppression(Suppression(tree.sourcePos, filters, range.start, range.end, verbose))
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef
