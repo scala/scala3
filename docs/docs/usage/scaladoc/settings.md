@@ -124,7 +124,7 @@ A directory containing static files from which to generate documentation. Defaul
 
 ##### -no-link-warnings
 
-Avoid warnings for ambiguous and incorrect links in members look up. Doesn't affect warnings for incorrect links of assets etc.
+Suppress warnings for ambiguous or incorrect links in members’ lookup. Doesn't affect warnings for incorrect links of assets etc.
 
 ##### -versions-dictionary-url
 
@@ -146,19 +146,29 @@ Example JSON file:
 
 Snippet compiler arguments provide a way to configure snippet checking.
 
-This setting accept list of arguments in format:
+This setting accepts a list of arguments in the format:
 args := arg{,arg}
 arg := [path=]flag
-where path is a prefix of source paths to members to which argument should be set.
+where the path is a prefix of source paths to members to which argument should be set.
 
-If path is not present, argument will be used as default.
+If the path is not present, the argument will be used as the default for all unmatched paths.
 
 Available flags:
 compile - Enables snippet checking.
 nocompile - Disables snippet checking.
 fail - Enables snippet checking, asserts that snippet doesn't compile.
 
-You can read more about snippet compiler [here](snippetCompiler.md)
+The fail flag comes in handy for snippets that present that some action would eventually fail during compilation, e. g. [Opaques page](docs/reference/other-new-features/opaques.html)
+
+Example usage:
+
+`-snippet-compiler:my/path/nc=nocompile,my/path/f=fail,compile`
+
+Which means:
+
+all snippets in files under directory `my/path/nc` should not be compiled at all
+all snippets in files under directory `my/path/f` should fail during compilation
+all other snippets should compile successfully
 
 ##### -Ysnippet-compiler-debug
 
