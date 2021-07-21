@@ -176,9 +176,9 @@ trait ClassLikeSupport:
             val sgn = Inkuire.ExternalSignature(
               signature = Inkuire.Signature(
                 receiver = receiver,
-                arguments = methodSymbol.nonExtensionParamLists.flatMap(_.params).collect {
-                  case ValDef(_, tpe, _) => tpe.asInkuire(vars)
-                },
+                arguments = methodSymbol.nonExtensionParamLists.collect {
+                  case tpc@TermParamClause(params) if !tpc.isImplicit && !tpc.isGiven => params //TODO [Inkuire] Implicit parameters
+                }.flatten.map(_.tpt.asInkuire(vars)),
                 result = defdef.returnTpt.asInkuire(vars),
                 context = Inkuire.SignatureContext(
                   vars = vars.toSet,
