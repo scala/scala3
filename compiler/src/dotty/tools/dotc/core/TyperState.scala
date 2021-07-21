@@ -143,7 +143,15 @@ class TyperState() {
     reporter.flush()
     setCommittable(false)
     val targetState = ctx.typerState
-    assert(!targetState.isCommitted, s"Attempt to commit $this into already committed $targetState")
+
+    // Committing into an already committed TyperState usually doesn't make
+    // sense since it means the constraints we're committing won't be propagated
+    // further, but it can happen if the targetState gets captured in a reported
+    // Message, because forcing that Message might involve creating and
+    // committing new TyperStates into the captured one after its been committed.
+    assert(!targetState.isCommitted || targetState.reporter.hasErrors || targetState.reporter.hasWarnings,
+      s"Attempt to commit $this into already committed $targetState")
+
     if constraint ne targetState.constraint then
       Stats.record("typerState.commit.new constraint")
       constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
