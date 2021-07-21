@@ -4,11 +4,11 @@ title: Static documentation
 
 # {{ page.title}}
 
-Scaladoc is able to generate static sites, known from [Jekyll](http://jekyllrb.com/) or [Docusaurus](https://docusaurus.io/).
-Having a combined tool allows to provide interaction between static documentation and API, thus allowing the two to blend naturally.
+Scaladoc can generate static sites, known from [Jekyll](http://jekyllrb.com/) or [Docusaurus](https://docusaurus.io/).
+Having a combined tool allows providing interaction between static documentation and API, thus allowing the two to blend naturally.
 
 Creating a site is just as simple as in Jekyll. The site root contains the
-layout of the site and all files placed there will be either considered static,
+the layout of the site and all files placed there will be either considered static,
 or processed for template expansion.
 
 The files that are considered for template expansion must end in `*.{html,md}`
@@ -29,12 +29,12 @@ index.html
 docs/getting-started.html
 ```
 
-Scaladoc can transform both files and directories (to organize your documentation into tree-like structure). By default directories has title based on file name and has empty content. There is an option to include `index.html` or `index.md` (not both) to provide both content and properties like title (see [Properties](#properties)).
+Scaladoc can transform both files and directories (to organize your documentation into a tree-like structure). By default, directories have a title based on the file name and have empty content. There is an option to include `index.html` or `index.md` (not both) to provide both content and properties like the title (see [Properties](#properties)).
 
 ## Properties
 
 Scaladoc uses the [Liquid](https://shopify.github.io/liquid/) templating engine
-and provides a number of custom filters and tags specific to Scala
+and provides several custom filters and tags specific to Scala
 documentation.
 
 In Scaladoc, all templates can contain YAML front-matter. The front-matter
@@ -47,15 +47,15 @@ title: My custom title
 ---
 ```
 
-Scaladoc uses some predefined properties to controls some aspect of page.
+Scaladoc uses some predefined properties to controls some aspects of page.
 
 Predefined properties:
 
- - **title** provide page title that will be used in navigation and html metadata.
- - **extraCss** additional `.css` files that will be included in this page. Paths should be relative to documentation root. **This setting is not exported to template engine.**
- - **extraJs** additional `.js` files that will be included in this page. Paths should be relative to documentation root. **This setting is not exported to template engine.**
- - **hasFrame** when set to `false` page will not include default layout (navigation, breadcrumbs etc.) but only token html wrapper to provide metadata and resources (js and css files). **This setting is not exported to template engine.**
-- **layout** - predefined layout to use, see below. **This setting is not exported to template engine.**
+ - **title** provide page title that will be used in navigation and HTML metadata.
+ - **extraCss** additional `.css` files that will be included in this page. Paths should be relative to the documentation root. **This setting is not exported to the template engine.**
+ - **extraJs** additional `.js` files that will be included in this page. Paths should be relative to the documentation root. **This setting is not exported to the template engine.**
+ - **hasFrame** when set to `false` page will not include default layout (navigation, breadcrumbs, etc.) but only token HTML wrapper to provide metadata and resources (js and css files). **This setting is not exported to the template engine.**
+- **layout** - predefined layout to use, see below. **This setting is not exported to the template engine.**
 
 
 ## Using existing Templates and Layouts
@@ -128,22 +128,22 @@ sidebar:
 ```
 
 The `sidebar` key is mandatory.
-On each level you can have three different types of entries: `page`, `blog` or `subsection`.
+On each level, you can have three different types of entries: `page`, `blog` or `subsection`.
 
-`Page` is a leaf of the structure and accepts following attributes:
-- `title` \[optional\] - title of the page
-- `page` \[mandatory\] - path to the file that will represent the page, it can be either html of markdown file to be rendered, there is also possibility to pass the `directory` path. If so, the scaladoc will render the directory and all its content as if there were no `sidebar.yml` basing of its tree structure and index files.
+`Page` is a leaf of the structure and accepts the following attributes:
+- `title` (optional) - title of the page
+- `page` (mandatory) - path to the file that will represent the page, it can be either html or markdown file to be rendered, there is also the possibility to pass the `directory` path. If so, the scaladoc will render the directory and all its content as if there were no `sidebar.yml` basing on its tree structure and index files.
 
 The `page` property
 
-`Subsection` accepts nested nodes, these can be either pages or subsection, which allow you to create tree-like navigation. The attributes are:
-- `title` \[optional\] - title of the page
-- `index` \[optional\] - path to the file that will represent the index file of the subsection, it can be either html of markdown file to be rendered
-- `subsection` \[mandatory\] - nested nodes, can be either pages or subsections
+`Subsection` accepts nested nodes, these can be either pages or subsections, which allow you to create tree-like navigation. The attributes are:
+- `title` (optional) - title of the page
+- `index` (optional) - path to the file that will represent the index file of the subsection, it can be either html or markdown file to be rendered
+- `subsection` (mandatory) - nested nodes, can be either pages or subsections
 
 The `Subsection` can omit `title` or `index`, however not specifying any of these properties disables you from giving the title of the section.
 
-The `Blog` is a special node represented by simple entry `- title: Blog` with no other attirbutes. All your blogposts will be automatically linked under this section. You can read more about blog [here](blog.md).
+The `Blog` is a special node represented by simple entry `- title: Blog` with no other attributes. All your blog posts will be automatically linked under this section. You can read more about the blog [here](blog.md).
 
 ```
 ├── blog
@@ -156,7 +156,7 @@ The `Blog` is a special node represented by simple entry `- title: Blog` with no
 
 ## Hierarchy of title
 
-There is a possibility to give custom title using `sidebar.yml`. The default strategy when choosing title for:
+There is a possibility to give the custom title using `sidebar.yml`. The default strategy when choosing the title for:
 
 #### Page
 
@@ -170,13 +170,13 @@ There is a possibility to give custom title using `sidebar.yml`. The default str
 2. `title` property from the `sidebar.yml` property
 3. filename
 
-Note that if you skip `index` file in your tree structure of you don't specify the `title` in the frontmatter, there will be given generic name `index`. The same applies when using `sidebar.yml` but not specifying `title` nor `index`, just a subsection. Again, generic `index` name will appear.
+Note that if you skip the `index` file in your tree structure or you don't specify the `title` in the frontmatter, there will be given a generic name `index`. The same applies when using `sidebar.yml` but not specifying `title` nor `index`, just a subsection. Again, a generic `index` name will appear.
 
 
 ## Static resources
 
 You can attach static resources (pdf, images) to your documentation by using two dedicated directories:
-`resources` and `images`. When you upload your assests under any of these directories you can reference them in markdown
+`resources` and `images`. When you upload your assets under any of these directories you can reference them in markdown
 as if they were relatively at the same level.
 
 For example, consider the following situation:
@@ -198,5 +198,5 @@ For example, consider the following situation:
 You can refer to the assets from within any of the files using markdown links:
 
 ```
-This is my blogpost. Here is the image ![](my_image.png) and here is my [pdf](my_file.pdf)
+This is my blog post. Here is the image ![](my_image.png) and here is my [pdf](my_file.pdf)
 ```
