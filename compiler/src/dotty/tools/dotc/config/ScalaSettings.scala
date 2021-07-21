@@ -144,7 +144,7 @@ private sealed trait WarningSettings:
          |<filter>
          |  - Any message: any
          |
-         |  - Message categories: cat=deprecation, cat=feature
+         |  - Message categories: cat=deprecation, cat=feature, cat=unchecked
          |
          |  - Message content: msg=regex
          |    The regex need only match some part of the message, not all of it.

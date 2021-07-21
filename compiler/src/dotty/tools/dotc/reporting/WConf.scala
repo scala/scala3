@@ -15,13 +15,14 @@ enum MessageFilter:
     case Any => true
     case Deprecated => message.isInstanceOf[Diagnostic.DeprecationWarning]
     case Feature => message.isInstanceOf[Diagnostic.FeatureWarning]
+    case Unchecked => message.isInstanceOf[Diagnostic.UncheckedWarning]
     case MessagePattern(pattern) =>
       val noHighlight = message.msg.rawMessage.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
       pattern.findFirstIn(noHighlight).nonEmpty
     case MessageID(errorId) => message.msg.errorId == errorId
     case None => false
   }
-  case Any, Deprecated, Feature, None
+  case Any, Deprecated, Feature, Unchecked, None
   case MessagePattern(pattern: Regex)
   case MessageID(errorId: ErrorMessageID)
 
@@ -70,6 +71,7 @@ object WConf:
       case "cat" => conf match
         case "deprecation" => Right(Deprecated)
         case "feature"     => Right(Feature)
+        case "unchecked"   => Right(Unchecked)
         case _             => Left(s"unknown category: $conf")
       case _ => Left(s"unknown filter: $filter")
     case _ => Left(s"unknown filter: $s")
