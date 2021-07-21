@@ -23,10 +23,10 @@ class ConsoleReporter(
   def doReport(dia: Diagnostic)(using Context): Unit = {
     dia match
       case dia: Error =>
-        printMessage(messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia)))
+        printMessage(messageAndPos(dia))
         if (ctx.settings.Xprompt.value) Reporter.displayPrompt(reader, writer)
       case dia =>
-        printMessage(messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia)))
+        printMessage(messageAndPos(dia))
 
     if shouldExplain(dia) then
       printMessage(explanation(dia.msg))

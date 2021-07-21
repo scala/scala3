@@ -143,15 +143,17 @@ trait MessageRendering {
   }
 
   /** The whole message rendered from `msg` */
-  def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(using Context): String = {
+  def messageAndPos(dia: Diagnostic)(using Context): String = {
+    import dia._
+    val levelString = diagnosticLevel(dia)
     val sb = mutable.StringBuilder()
-    val posString = posStr(pos, diagnosticLevel, msg)
+    val posString = posStr(pos, levelString, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists) {
       val pos1 = pos.nonInlined
       if (pos1.exists && pos1.source.file.exists) {
-        val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
-        val marker = columnMarker(pos1, offset, diagnosticLevel)
+        val (srcBefore, srcAfter, offset) = sourceLines(pos1, levelString)
+        val marker = columnMarker(pos1, offset, levelString)
         val err = errorMsg(pos1, msg.message, offset)
         sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
       }

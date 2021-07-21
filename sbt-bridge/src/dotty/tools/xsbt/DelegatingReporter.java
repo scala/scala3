@@ -32,9 +32,9 @@ final public class DelegatingReporter extends AbstractReporter {
     Severity severity = severityOf(dia.level());
     Position position = positionOf(dia.pos().nonInlined());
 
-    Message message = dia.msg();
     StringBuilder rendered = new StringBuilder();
-    rendered.append(messageAndPos(message, dia.pos(), diagnosticLevel(dia), ctx));
+    rendered.append(messageAndPos(dia, ctx));
+    Message message = dia.msg();
     boolean shouldExplain = Diagnostic.shouldExplain(dia, ctx);
     if (shouldExplain && !message.explanation().isEmpty()) {
       rendered.append(explanation(message, ctx));
