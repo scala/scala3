@@ -69,7 +69,7 @@ object Errors {
 
   /** Promote `this` under initialization to fully-initialized */
   case class PromoteError(msg: String, source: Tree, trace: Seq[Tree]) extends Error {
-    def show(using Context): String = "Promote the value under initialization to fully-initialized. " + msg + "."
+    def show(using Context): String = "Cannot prove that the value is fully initialized. " + msg + "."
   }
 
   case class AccessCold(field: Symbol, source: Tree, trace: Seq[Tree]) extends Error {

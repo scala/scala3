@@ -9,7 +9,7 @@ case class C[-T >: Int] (lhs: Int, rhs: Tree[T]) extends A {
 }
 
 object DesugarError {
-    val f: PartialFunction[A, Int] = {case C(_, rhs) => rhs.x} // error
+    val f: PartialFunction[A, Int] = {case C(_, rhs) => rhs.x}
 }
 
 
