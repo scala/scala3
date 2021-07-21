@@ -9,6 +9,9 @@ import sys.process._
 import java.io.File
 import java.lang.Thread
 import scala.annotation.internal.sharable
+import dotty.tools.dotc.util.ClasspathFromClassloader
+import dotty.tools.runner.ObjectRunner
+import dotty.tools.dotc.config.Properties.envOrNone
 
 enum ExecuteMode:
   case Guess
@@ -107,7 +110,9 @@ object MainGenericRunner {
         process(tail, newSettings.withResidualArgs(arg))
 
   def main(args: Array[String]): Unit =
-    val settings = process(args.toList, Settings())
+    val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" "))
+    val allArgs = scalaOpts ++ args
+    val settings = process(allArgs.toList, Settings())
     if settings.exitCode != 0 then System.exit(settings.exitCode)
 
     def run(mode: ExecuteMode): Unit = mode match
@@ -117,11 +122,9 @@ object MainGenericRunner {
             ++ settings.residualArgs
         repl.Main.main(properArgs.toArray)
       case ExecuteMode.Run =>
-        val properArgs =
-          val newClasspath = settings.classPath ++ getClasspath :+ "."
-          List("-classpath", newClasspath.mkString(classpathSeparator)).filter(Function.const(newClasspath.nonEmpty))
-            ++ settings.residualArgs
-        s"java ${settings.javaArgs.mkString(" ")} ${properArgs.mkString(" ")}".! // For now we collect classpath that coursier provides for convenience
+        val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
+        val newClasspath = (settings.classPath ++ scalaClasspath :+ ".").map(File(_).toURI.toURL)
+        errorFn("", ObjectRunner.runAndCatch(newClasspath, settings.residualArgs.head, settings.residualArgs.drop(1)))
       case ExecuteMode.Script =>
         val properArgs =
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
@@ -139,16 +142,10 @@ object MainGenericRunner {
 
     run(settings.executeMode)
 
-  private def getClasspath(cl: ClassLoader): Array[String] = cl match
-    case null => Array()
-    case u: URLClassLoader => u.getURLs.map(_.toURI.toString) ++ getClasspath(cl.getParent)
-    case cl if cl.getClass.getName == "jdk.internal.loader.ClassLoaders$AppClassLoader" =>
-      // Required with JDK >= 9
-      sys.props.getOrElse("java.class.path", "")
-        .split(File.pathSeparator)
-        .filter(_.nonEmpty)
-    case _ => getClasspath(cl.getParent)
 
-  private def getClasspath: List[String] =
-    getClasspath(Thread.currentThread().getContextClassLoader).toList
+  def errorFn(str: String, e: Option[Throwable] = None, isFailure: Boolean = true): Boolean = {
+    if (str.nonEmpty) Console.err.println(str)
+    e.foreach(_.printStackTrace())
+    !isFailure
+  }
 }
