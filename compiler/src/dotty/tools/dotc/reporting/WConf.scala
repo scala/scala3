@@ -27,7 +27,7 @@ enum MessageFilter:
   case MessageID(errorId: ErrorMessageID)
 
 enum Action:
-  case Error, Warning, Info, Silent
+  case Error, Warning, Verbose, Info, Silent
 
 final case class WConf(confs: List[(List[MessageFilter], Action)]):
   def action(message: Diagnostic): Action = confs.collectFirst {
@@ -43,6 +43,7 @@ object WConf:
   def parseAction(s: String): Either[List[String], Action] = s match {
     case "error" | "e"            => Right(Error)
     case "warning" | "w"          => Right(Warning)
+    case "verbose" | "v"          => Right(Verbose)
     case "info" | "i"             => Right(Info)
     case "silent" | "s"           => Right(Silent)
     case _                        => Left(List(s"unknown action: `$s`"))
@@ -107,12 +108,12 @@ object WConf:
       else Right(WConf(fs))
     }
 
-case class Suppression(annotPos: SourcePosition, filters: List[MessageFilter], start: Int, end: Int):
+case class Suppression(annotPos: SourcePosition, filters: List[MessageFilter], start: Int, end: Int, verbose: Boolean):
   private[this] var _used = false
   def used: Boolean = _used
   def markUsed(): Unit = { _used = true }
 
   def matches(dia: Diagnostic): Boolean = {
     val pos = dia.pos
-    pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))
+    pos.exists && start <= pos.start && pos.end <= end && (verbose || filters.forall(_.matches(dia)))
   }

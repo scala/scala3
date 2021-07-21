@@ -2,20 +2,19 @@ package dotty.tools
 package dotc
 package reporting
 
+import dotty.tools.dotc.ast.{Trees, tpd}
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Mode
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
+import dotty.tools.dotc.reporting.Diagnostic._
+import dotty.tools.dotc.reporting.Message._
+import dotty.tools.dotc.util.NoSourcePosition
+
+import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
-
-import core.Contexts._
-import core.Decorators._
-import collection.mutable
-import core.Mode
-import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
-import Diagnostic._
-import ast.{tpd, Trees}
-import Message._
-import core.Decorators._
-import util.NoSourcePosition
-
-import java.io.{ BufferedReader, PrintWriter }
+import scala.collection.mutable
+import scala.util.chaining._
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -142,12 +141,13 @@ abstract class Reporter extends interfaces.ReporterResult {
 
       val toReport = dia match
         case w: Warning =>
+          def fatal(w: Warning) = if ctx.settings.XfatalWarnings.value && !w.isSummarizedConditional then Some(w.toError) else Some(w)
           if ctx.settings.silentWarnings.value then None
-          else if ctx.settings.XfatalWarnings.value && !w.isSummarizedConditional then Some(w.toError)
           else WConf.parsed.action(dia) match
             case Silent  => None
             case Info    => Some(w.toInfo)
-            case Warning => Some(w)
+            case Warning => fatal(w)
+            case Verbose => fatal(w).tap(_.foreach(_.setVerbose()))
             case Error   => Some(w.toError)
         case _ => Some(dia)
 
@@ -175,8 +175,10 @@ abstract class Reporter extends interfaces.ReporterResult {
     dia match
       case w: Warning if ctx.run != null =>
         val sup = ctx.run.suppressions
-        if sup.suppressionsComplete(w.pos.source) then
-          if !sup.isSuppressed(w) then go()
+        if sup.suppressionsComplete(w.pos.source) then sup.nowarnAction(w) match
+          case Action.Warning => go()
+          case Action.Verbose => w.setVerbose(); go()
+          case Action.Silent =>
         else
           sup.addSuspendedMessage(w)
       case _ => go()
