@@ -73,10 +73,10 @@ class Compiler {
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
-         new RefChecks) ::           // Various checks mostly related to abstract members and overriding
-    List(new ElimOpaque,             // Turn opaque into normal aliases
+         new RefChecks,              // Various checks mostly related to abstract members and overriding
          new TryCatchPatterns,       // Compile cases in try/catch
-         new PatternMatcher,         // Compile pattern matches
+         new PatternMatcher) ::      // Compile pattern matches
+    List(new ElimOpaque,             // Turn opaque into normal aliases
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts

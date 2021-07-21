@@ -40,10 +40,8 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def phaseName: String = ExplicitOuter.name
 
-  /** List of names of phases that should have finished their processing of all compilation units
-    * before this phase starts
-    */
-  override def runsAfter: Set[String] = Set(PatternMatcher.name, HoistSuperArgs.name)
+  override def runsAfter:         Set[String] = Set(HoistSuperArgs.name)
+  override def runsAfterGroupsOf: Set[String] = Set(PatternMatcher.name)
 
   override def changesMembers: Boolean = true // the phase adds outer accessors
 
