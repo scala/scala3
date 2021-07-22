@@ -11,7 +11,10 @@ import org.junit.Test
 import vulpix.TestConfiguration
 
 
-/** Runs all tests contained in `compiler/test-resources/scripting/` */
+/** Verifies correct handling of command line arguments by `dist/bin/scala` and `dist/bin/scalac`.
+ *   +. arguments following a script path must be treated as script arguments
+ *   +. preserve script command line arguments.
+ */
 class BashScriptsTests:
   // classpath tests managed by scripting.ClasspathTests.scala
   def testFiles = scripts("/scripting").filter { ! _.getName.startsWith("classpath") }
@@ -45,9 +48,7 @@ class BashScriptsTests:
     val commandline = (Seq(scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
     if bashPath.toFile.exists then
       var cmd = Array(bashExe, "-c", commandline)
-      val output = for {
-        line <- Process(cmd).lazyLines_!
-      } yield line
+      val output = Process(cmd).lazyLines_!
       var fail = false
       printf("\n")
       for (line, expect) <- output zip expectedOutput do
@@ -76,6 +77,20 @@ class BashScriptsTests:
 
       if fail then
         assert(output == expectedOutput)
+
+  /*
+   * verify that scriptPath.sc sees a valid script.path property.
+   */
+  @Test def verifyScriptPathProperty =
+    val scriptFile = testFiles.find(_.getName == "scriptPath.sc").get
+    val expected = s"/${scriptFile.getName}"
+    printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
+    var cmd = Array(bashExe, "-c", scriptFile.absPath)
+    val output = Process(cmd).lazyLines_!
+    output.foreach { printf("[%s]\n",_) }
+    val valid = output.exists { _.endsWith(expected) }
+    if valid then printf("# valid script.path reported by [%s]\n",scriptFile.getName)
+    assert(valid, s"script ${scriptFile.absPath} did not report valid script.path value")
 
   extension (str: String) def dropExtension =
     str.reverse.dropWhile(_ != '.').drop(1).reverse
