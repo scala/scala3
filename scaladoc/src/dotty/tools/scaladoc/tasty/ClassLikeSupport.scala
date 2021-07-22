@@ -190,7 +190,8 @@ trait ClassLikeSupport:
               uri = methodSymbol.dri.externalLink.getOrElse(""),
               entryType = "def"
             )
-            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
+            val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
+            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ curriedSgn)
       }
 
       classDef.symbol.declaredFields
@@ -216,7 +217,8 @@ trait ClassLikeSupport:
               uri = valSymbol.dri.externalLink.getOrElse(""),
               entryType = "val"
             )
-            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
+            val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
+            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ curriedSgn)
         }
     }
 
