@@ -56,8 +56,7 @@ class ClasspathTests:
     printf("bash is [%s]\n", bashExe)
 
     if packBinScalaExists then
-      val echoTest = "" // "SCALAC_ECHO_TEST=1"
-      val bashCmdline = s"SCALA_OPTS= $echoTest ${scalaCopy.norm} -classpath '$wildcardEntry' $relpath"
+      val bashCmdline = s"SCALA_OPTS= ${scalaCopy.norm} -classpath '$wildcardEntry' $relpath"
      
       // ask [dist/bin/scalac] to echo generated command line so we can verify some things
       val cmd = Array(bashExe, "-c", bashCmdline)
