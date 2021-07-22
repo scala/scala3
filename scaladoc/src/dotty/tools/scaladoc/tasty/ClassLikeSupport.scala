@@ -187,11 +187,37 @@ trait ClassLikeSupport:
               ),
               name = methodSymbol.name,
               packageName = methodSymbol.dri.location,
-              uri = methodSymbol.dri.externalLink.getOrElse("")
+              uri = methodSymbol.dri.externalLink.getOrElse(""),
+              entryType = "def"
             )
             Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
       }
 
+      classDef.symbol.declaredFields
+        .filter(viableSymbol)
+        .foreach {
+          case valSymbol: Symbol =>
+            val valdef = valSymbol.tree.asInstanceOf[ValDef]
+            val receiver: Option[Inkuire.TypeLike] =
+              Some(classType)
+                .filter(_ => !isModule)
+            val sgn = Inkuire.ExternalSignature(
+              signature = Inkuire.Signature(
+                receiver = receiver,
+                arguments = Seq.empty,
+                result = valdef.tpt.asInkuire(variableNames),
+                context = Inkuire.SignatureContext(
+                  vars = variableNames.toSet,
+                  constraints = Map.empty //TODO [Inkuire] Type bounds
+                )
+              ),
+              name = valSymbol.name,
+              packageName = valSymbol.dri.location,
+              uri = valSymbol.dri.externalLink.getOrElse(""),
+              entryType = "val"
+            )
+            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ sgn)
+        }
     }
 
     if signatureOnly then baseMember else baseMember.copy(

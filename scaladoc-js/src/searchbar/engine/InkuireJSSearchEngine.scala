@@ -22,7 +22,7 @@ class InkuireJSSearchEngine {
       d.prettifiedSignature.asInstanceOf[String],
       d.pageLocation.asInstanceOf[String],
       d.functionName.asInstanceOf[String],
-      "def",
+      d.entryType.asInstanceOf[String],
       List.empty
     )
   }
