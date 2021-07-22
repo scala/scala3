@@ -176,10 +176,6 @@ object Scala3:
       def isSyntheticWithIdent(using Context): Boolean =
         sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
 
-      /** Check if the symbol occurs in source code */
-      def occursInSource(using Context): Boolean =
-        !sym.is(Synthetic) && !sym.name.is(NameKinds.EvidenceParamName)
-
       def symbolInfo(symkinds: Set[SymbolKind])(using LinkMode, TypeOps, SemanticSymbolBuilder, Context): SymbolInformation =
         val sname = sym.symbolName
         val signature = sym.info.toSemanticSig(sym)

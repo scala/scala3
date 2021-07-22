@@ -297,7 +297,7 @@ class ExtractSemanticDB extends Phase:
         generated += occ
 
     private def registerUseGuarded(qualSym: Option[Symbol], sym: Symbol, span: Span, treeSource: SourceFile)(using Context) =
-      if !excludeUse(qualSym, sym) then
+      if !excludeUse(qualSym, sym) && namePresentInSource(sym, span, treeSource) then
         registerUse(sym, span, treeSource)
 
     private def registerUse(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Unit =
@@ -313,7 +313,7 @@ class ExtractSemanticDB extends Phase:
       else
         Span(span.start)
 
-      if sym.occursInSource then
+      if namePresentInSource(sym, span, treeSource) then
         registerOccurrence(sname, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
       if !sym.is(Package) then
         registerSymbol(sym, symkinds)

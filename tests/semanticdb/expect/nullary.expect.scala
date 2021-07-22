@@ -11,7 +11,7 @@ abstract class NullaryTest/*<-_empty_::NullaryTest#*/[T/*<-_empty_::NullaryTest#
 
 class Concrete/*<-_empty_::Concrete#*/ extends NullaryTest/*->_empty_::NullaryTest#*/[Int/*->scala::Int#*/, List/*->scala::package.List#*/] {
   def nullary2/*<-_empty_::Concrete#nullary2().*/ = 1
-  def nullary3/*<-_empty_::Concrete#nullary3().*/ = List/*->scala::package.List.*//*->scala::collection::IterableFactory#apply().*/(1,2,3)
+  def nullary3/*<-_empty_::Concrete#nullary3().*/ = List/*->scala::package.List.*/(1,2,3)
 }
 
 object test/*<-_empty_::test.*/ {

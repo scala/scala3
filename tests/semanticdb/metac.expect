@@ -7,7 +7,7 @@ Uri => Access.scala
 Text => empty
 Language => Scala
 Symbols => 9 entries
-Occurrences => 19 entries
+Occurrences => 18 entries
 
 Symbols:
 example/Access# => class Access extends Object { self: Access => +8 decls }
@@ -23,7 +23,6 @@ example/Access#m7(). => method m7 => Nothing
 Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:12): Access <- example/Access#
-[3:2..3:2): <- example/Access#`<init>`().
 [3:14..3:16): m1 <- example/Access#m1().
 [3:19..3:22): ??? -> scala/Predef.`???`().
 [4:20..4:22): m2 <- example/Access#m2().
@@ -50,7 +49,7 @@ Uri => Advanced.scala
 Text => empty
 Language => Scala
 Symbols => 45 entries
-Occurrences => 113 entries
+Occurrences => 101 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
@@ -112,13 +111,11 @@ Occurrences:
 [5:21..5:31): Selectable -> scala/reflect/Selectable.
 [5:32..5:52): reflectiveSelectable -> scala/reflect/Selectable.reflectiveSelectable().
 [7:6..7:7): C <- advanced/C#
-[7:7..7:7): <- advanced/C#`<init>`().
 [7:8..7:9): T <- advanced/C#[T]
 [8:6..8:7): t <- advanced/C#t().
 [8:9..8:10): T -> advanced/C#[T]
 [8:13..8:16): ??? -> scala/Predef.`???`().
 [11:6..11:16): Structural <- advanced/Structural#
-[12:2..12:2): <- advanced/Structural#`<init>`().
 [12:6..12:8): s1 <- advanced/Structural#s1().
 [12:16..12:17): x <- local0
 [12:19..12:22): Int -> scala/Int#
@@ -146,7 +143,6 @@ Occurrences:
 [15:27..15:30): Int -> scala/Int#
 [15:35..15:38): ??? -> scala/Predef.`???`().
 [18:6..18:15): Wildcards <- advanced/Wildcards#
-[19:2..19:2): <- advanced/Wildcards#`<init>`().
 [19:6..19:8): e1 <- advanced/Wildcards#e1().
 [19:10..19:14): List -> scala/package.List#
 [19:20..19:23): ??? -> scala/Predef.`???`().
@@ -157,35 +153,27 @@ Occurrences:
 [23:7..23:11): Test <- advanced/Test.
 [24:6..24:7): s <- advanced/Test.s.
 [24:14..24:24): Structural -> advanced/Structural#
-[24:24..24:24): -> advanced/Structural#`<init>`().
 [25:6..25:8): s1 <- advanced/Test.s1.
 [25:11..25:12): s -> advanced/Test.s.
 [25:13..25:15): s1 -> advanced/Structural#s1().
 [26:6..26:9): s1x <- advanced/Test.s1x.
-[26:12..26:12): -> scala/reflect/Selectable.reflectiveSelectable().
 [26:12..26:13): s -> advanced/Test.s.
 [26:14..26:16): s1 -> advanced/Structural#s1().
-[26:16..26:16): -> scala/reflect/Selectable#selectDynamic().
 [27:6..27:8): s2 <- advanced/Test.s2.
 [27:11..27:12): s -> advanced/Test.s.
 [27:13..27:15): s2 -> advanced/Structural#s2().
 [28:6..28:9): s2x <- advanced/Test.s2x.
-[28:12..28:12): -> scala/reflect/Selectable.reflectiveSelectable().
 [28:12..28:13): s -> advanced/Test.s.
 [28:14..28:16): s2 -> advanced/Structural#s2().
-[28:16..28:16): -> scala/reflect/Selectable#selectDynamic().
 [29:6..29:8): s3 <- advanced/Test.s3.
 [29:11..29:12): s -> advanced/Test.s.
 [29:13..29:15): s3 -> advanced/Structural#s3().
 [30:6..30:9): s3x <- advanced/Test.s3x.
-[30:12..30:12): -> scala/reflect/Selectable.reflectiveSelectable().
 [30:12..30:13): s -> advanced/Test.s.
 [30:14..30:16): s3 -> advanced/Structural#s3().
-[30:16..30:16): -> scala/reflect/Selectable#applyDynamic().
 [30:19..30:22): ??? -> scala/Predef.`???`().
 [32:6..32:7): e <- advanced/Test.e.
 [32:14..32:23): Wildcards -> advanced/Wildcards#
-[32:23..32:23): -> advanced/Wildcards#`<init>`().
 [33:6..33:8): e1 <- advanced/Test.e1.
 [33:11..33:12): e -> advanced/Test.e.
 [33:13..33:15): e1 -> advanced/Wildcards#e1().
@@ -201,7 +189,6 @@ Occurrences:
 [39:18..39:20): e3 -> local12
 [39:21..39:25): head -> scala/collection/IterableOps#head().
 [47:6..47:13): HKClass <- advanced/HKClass#
-[47:13..47:13): <- advanced/HKClass#`<init>`().
 [47:14..47:15): F <- advanced/HKClass#[F]
 [48:6..48:9): foo <- advanced/HKClass#foo().
 [48:10..48:11): T <- advanced/HKClass#foo().[T]
@@ -223,7 +210,7 @@ Uri => Annotations.scala
 Text => empty
 Language => Scala
 Symbols => 22 entries
-Occurrences => 52 entries
+Occurrences => 47 entries
 
 Symbols:
 annot/Alias. => final object Alias extends Object { self: Alias.type => +2 decls }
@@ -263,7 +250,6 @@ Occurrences:
 [4:35..4:41): macros -> scala/language.experimental.macros.
 [6:1..6:16): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
 [7:6..7:17): Annotations <- annot/Annotations#
-[7:17..7:17): <- annot/Annotations#`<init>`().
 [7:19..7:42): TypeParameterAnnotation -> com/javacp/annot/TypeParameterAnnotation#
 [7:43..7:44): T <- annot/Annotations#[T]
 [7:47..7:66): ParameterAnnotation -> com/javacp/annot/ParameterAnnotation#
@@ -281,13 +267,10 @@ Occurrences:
 [17:3..17:17): TypeAnnotation -> com/javacp/annot/TypeAnnotation#
 [18:7..18:8): S <- annot/Annotations#S#
 [21:6..21:7): B <- annot/B#
-[21:7..21:7): <- annot/B#`<init>`().
 [21:9..21:30): ConstructorAnnotation -> com/javacp/annot/ConstructorAnnotation#
 [21:33..21:34): x <- annot/B#x.
 [21:36..21:39): Int -> scala/Int#
 [22:3..22:24): ConstructorAnnotation -> com/javacp/annot/ConstructorAnnotation#
-[23:6..23:10): <- annot/B#`<init>`(+1).
-[23:20..23:20): -> annot/B#`<init>`().
 [26:1..26:17): ObjectAnnotation -> com/javacp/annot/ObjectAnnotation#
 [27:7..27:8): M <- annot/M.
 [28:3..28:18): MacroAnnotation -> com/javacp/annot/MacroAnnotation#
@@ -295,7 +278,6 @@ Occurrences:
 [29:8..29:10): TT <- annot/M.m().[TT]
 [29:13..29:16): Int -> scala/Int#
 [29:25..29:28): ??? -> scala/Predef.`???`().
-[32:0..32:0): <- annot/T#`<init>`().
 [32:1..32:16): TraitAnnotation -> com/javacp/annot/TraitAnnotation#
 [33:6..33:7): T <- annot/T#
 [35:7..35:12): Alias <- annot/Alias.
@@ -312,7 +294,7 @@ Uri => Anonymous.scala
 Text => empty
 Language => Scala
 Symbols => 13 entries
-Occurrences => 32 entries
+Occurrences => 30 entries
 
 Symbols:
 example/Anonymous# => class Anonymous extends Object { self: Anonymous & Anonymous => +6 decls }
@@ -335,7 +317,6 @@ Occurrences:
 [1:13..1:21): language -> scala/language.
 [1:22..1:33): higherKinds -> scala/language.higherKinds.
 [3:6..3:15): Anonymous <- example/Anonymous#
-[4:2..4:2): <- example/Anonymous#`<init>`().
 [4:8..4:17): Anonymous -> example/Anonymous#
 [6:6..6:13): locally <- example/Anonymous#locally().
 [6:14..6:15): A <- example/Anonymous#locally().[A]
@@ -358,7 +339,6 @@ Occurrences:
 [14:11..14:14): Int -> scala/Int#
 [14:18..14:21): Int -> scala/Int#
 [14:29..14:32): ??? -> scala/Predef.`???`().
-[17:2..17:2): <- example/Anonymous#Foo#`<init>`().
 [17:8..17:11): Foo <- example/Anonymous#Foo#
 [18:6..18:9): foo <- example/Anonymous#foo.
 [18:16..18:19): Foo -> example/Anonymous#Foo#
@@ -372,7 +352,7 @@ Uri => AnonymousGiven.scala
 Text => empty
 Language => Scala
 Symbols => 5 entries
-Occurrences => 5 entries
+Occurrences => 4 entries
 
 Symbols:
 angiven/AnonymousGiven$package. => final package object angiven extends Object { self: angiven.type => +2 decls }
@@ -383,7 +363,6 @@ angiven/Foo#`<init>`(). => primary ctor <init> (): Foo
 
 Occurrences:
 [0:8..0:15): angiven <- angiven/
-[2:0..2:0): <- angiven/Foo#`<init>`().
 [2:6..2:9): Foo <- angiven/Foo#
 [4:4..4:7): bar <- angiven/AnonymousGiven$package.bar().
 [4:14..4:17): Foo -> angiven/Foo#
@@ -397,7 +376,7 @@ Uri => Classes.scala
 Text => empty
 Language => Scala
 Symbols => 109 entries
-Occurrences => 130 entries
+Occurrences => 113 entries
 
 Symbols:
 classes/C1# => final class C1 extends AnyVal { self: C1 => +2 decls }
@@ -517,54 +496,41 @@ Occurrences:
 [1:22..1:34): experimental -> scala/language.experimental.
 [1:35..1:41): macros -> scala/language.experimental.macros.
 [2:6..2:8): C1 <- classes/C1#
-[2:8..2:8): <- classes/C1#`<init>`().
 [2:13..2:15): x1 <- classes/C1#x1.
 [2:17..2:20): Int -> scala/Int#
 [2:30..2:36): AnyVal -> scala/AnyVal#
-[2:36..2:36): -> scala/AnyVal#`<init>`().
 [4:6..4:8): C2 <- classes/C2#
-[4:8..4:8): <- classes/C2#`<init>`().
 [4:13..4:15): x2 <- classes/C2#x2.
 [4:17..4:20): Int -> scala/Int#
 [4:30..4:36): AnyVal -> scala/AnyVal#
-[4:36..4:36): -> scala/AnyVal#`<init>`().
 [5:7..5:9): C2 <- classes/C2.
 [7:11..7:13): C3 <- classes/C3#
-[7:13..7:13): <- classes/C3#`<init>`().
 [7:14..7:15): x <- classes/C3#x.
 [7:17..7:20): Int -> scala/Int#
 [9:11..9:13): C4 <- classes/C4#
-[9:13..9:13): <- classes/C4#`<init>`().
 [9:14..9:15): x <- classes/C4#x.
 [9:17..9:20): Int -> scala/Int#
 [10:7..10:9): C4 <- classes/C4.
 [12:7..12:8): M <- classes/M.
 [13:17..13:19): C5 <- classes/M.C5#
-[13:19..13:19): <- classes/M.C5#`<init>`().
 [13:20..13:21): x <- classes/M.C5#x.
 [13:23..13:26): Int -> scala/Int#
 [16:11..16:13): C6 <- classes/C6#
-[16:13..16:13): <- classes/C6#`<init>`().
 [16:26..16:27): x <- classes/C6#x.
 [16:29..16:32): Int -> scala/Int#
 [18:6..18:8): C7 <- classes/C7#
-[18:8..18:8): <- classes/C7#`<init>`().
 [18:9..18:10): x <- classes/C7#x.
 [18:12..18:15): Int -> scala/Int#
 [20:6..20:8): C8 <- classes/C8#
-[20:8..20:8): <- classes/C8#`<init>`().
 [20:27..20:28): x <- classes/C8#x.
 [20:30..20:33): Int -> scala/Int#
 [22:6..22:8): C9 <- classes/C9#
-[22:8..22:8): <- classes/C9#`<init>`().
 [22:27..22:28): x <- classes/C9#x().
 [22:30..22:33): Int -> scala/Int#
 [24:6..24:9): C10 <- classes/C10#
-[24:9..24:9): <- classes/C10#`<init>`().
 [24:10..24:11): s <- classes/C10#s.
 [24:16..24:22): String -> scala/Predef.String#
 [26:6..26:9): C11 <- classes/C11#
-[27:2..27:2): <- classes/C11#`<init>`().
 [27:6..27:9): foo <- classes/C11#foo().
 [27:11..27:14): Int -> scala/Int#
 [27:23..27:26): ??? -> scala/Predef.`???`().
@@ -572,9 +538,7 @@ Occurrences:
 [28:18..28:21): Int -> scala/Int#
 [28:24..28:27): ??? -> scala/Predef.`???`().
 [31:6..31:9): C12 <- classes/C12#
-[33:2..33:2): <- classes/C12#`<init>`().
 [33:8..33:15): Context <- classes/C12#Context#
-[34:4..34:4): <- classes/C12#Context#`<init>`().
 [34:9..34:13): Expr <- classes/C12#Context#Expr#
 [34:14..34:15): T <- classes/C12#Context#Expr#[T]
 [36:6..36:10): foo1 <- classes/C12#foo1().
@@ -630,12 +594,10 @@ Occurrences:
 [47:7..47:8): N <- classes/N.
 [48:6..48:15): anonClass <- classes/N.anonClass.
 [48:22..48:24): C7 -> classes/C7#
-[48:24..48:24): -> classes/C7#`<init>`().
 [49:8..49:13): local <- local0
 [49:16..49:19): ??? -> scala/Predef.`???`().
 [51:6..51:13): anonFun <- classes/N.anonFun.
 [51:16..51:20): List -> scala/package.List.
-[51:20..51:20): -> scala/collection/IterableFactory#apply().
 [51:24..51:27): map -> scala/collection/immutable/List#map().
 [51:30..51:31): i <- local3
 [52:8..52:13): local <- local4
@@ -651,7 +613,7 @@ Uri => Empty.scala
 Text => empty
 Language => Scala
 Symbols => 6 entries
-Occurrences => 10 entries
+Occurrences => 8 entries
 
 Symbols:
 _empty_/A# => class A extends Object { self: A => +2 decls }
@@ -663,12 +625,10 @@ _empty_/B#a(). => method a => A
 
 Occurrences:
 [0:6..0:7): A <- _empty_/A#
-[1:2..1:2): <- _empty_/A#`<init>`().
 [1:6..1:7): b <- _empty_/A#b().
 [1:9..1:10): B -> _empty_/B#
 [1:13..1:16): ??? -> scala/Predef.`???`().
 [4:6..4:7): B <- _empty_/B#
-[5:2..5:2): <- _empty_/B#`<init>`().
 [5:6..5:7): a <- _empty_/B#a().
 [5:9..5:10): A -> _empty_/A#
 [5:13..5:16): ??? -> scala/Predef.`???`().
@@ -700,7 +660,7 @@ Uri => EndMarkers.scala
 Text => empty
 Language => Scala
 Symbols => 24 entries
-Occurrences => 42 entries
+Occurrences => 35 entries
 
 Symbols:
 endmarkers/Container# => class Container extends Object { self: Container => +5 decls }
@@ -731,12 +691,8 @@ local2 => local localDef: => Int
 Occurrences:
 [0:8..0:18): endmarkers <- endmarkers/
 [2:8..2:17): MultiCtor <- endmarkers/MultiCtor#
-[2:17..2:17): <- endmarkers/MultiCtor#`<init>`().
 [2:22..2:23): i <- endmarkers/MultiCtor#i.
 [2:25..2:28): Int -> scala/Int#
-[3:8..3:12): <- endmarkers/MultiCtor#`<init>`(+1).
-[4:11..4:11): -> endmarkers/MultiCtor#`<init>`().
-[5:8..5:12): this -> endmarkers/MultiCtor#`<init>`(+1).
 [6:6..6:15): MultiCtor -> endmarkers/MultiCtor#
 [8:6..8:20): topLevelMethod <- endmarkers/EndMarkers$package.topLevelMethod().
 [8:22..8:28): String -> scala/Predef.String#
@@ -748,12 +704,9 @@ Occurrences:
 [16:19..16:25): String -> scala/Predef.String#
 [18:6..18:17): topLevelVar -> endmarkers/EndMarkers$package.topLevelVar().
 [20:8..20:17): Container <- endmarkers/Container#
-[22:4..22:4): <- endmarkers/Container#`<init>`().
 [22:8..22:11): foo <- endmarkers/Container#foo().
-[23:7..23:7): -> scala/Tuple3.apply().
 [24:8..24:11): foo -> endmarkers/Container#foo().
 [26:8..26:11): bar <- endmarkers/Container#bar.
-[27:7..27:7): -> scala/Tuple3.apply().
 [28:8..28:11): bar -> endmarkers/Container#bar.
 [30:8..30:11): baz <- endmarkers/Container#baz().
 [32:8..32:11): baz -> endmarkers/Container#baz().
@@ -781,18 +734,16 @@ Uri => EndMarkers2.scala
 Text => empty
 Language => Scala
 Symbols => 2 entries
-Occurrences => 5 entries
+Occurrences => 3 entries
 
 Symbols:
 endmarkers2/package. => final package object endmarkers2 extends Object { self: endmarkers2.type => +2 decls }
 endmarkers2/package.Foo# => type Foo  = Unit
 
 Occurrences:
-[0:15..0:26): endmarkers2 <- endmarkers2/package.
 [2:7..2:10): Foo <- endmarkers2/package.Foo#
 [3:4..3:8): Unit -> scala/Unit#
 [4:6..4:9): Foo -> endmarkers2/package.Foo#
-[6:4..6:15): endmarkers2 -> endmarkers2/package.
 
 expect/EnumVal.scala
 --------------------
@@ -803,7 +754,7 @@ Uri => EnumVal.scala
 Text => empty
 Language => Scala
 Symbols => 16 entries
-Occurrences => 21 entries
+Occurrences => 16 entries
 
 Symbols:
 enumVal/A# => trait A extends Object { self: A => +1 decls }
@@ -828,23 +779,18 @@ Occurrences:
 [2:7..2:12): scala -> scala/
 [2:13..2:20): runtime -> scala/runtime/
 [2:21..2:30): EnumValue -> scala/runtime/EnumValue.
-[5:0..5:0): <- enumVal/A#`<init>`().
 [5:6..5:7): A <- enumVal/A#
 [7:5..7:10): Color <- enumVal/Color#
-[7:10..7:10): <- enumVal/Color#`<init>`().
 [7:15..7:18): rgb <- enumVal/Color#rgb.
 [7:20..7:23): Int -> scala/Int#
 [8:7..8:10): Red <- enumVal/Color.Red.
 [8:21..8:26): Color -> enumVal/Color#
-[8:26..8:26): -> enumVal/Color#`<init>`().
 [8:42..8:51): EnumValue -> scala/runtime/EnumValue#
 [9:7..9:12): Green <- enumVal/Color.Green.
 [9:21..9:26): Color -> enumVal/Color#
-[9:26..9:26): -> enumVal/Color#`<init>`().
 [9:42..9:43): A -> enumVal/A#
 [10:7..10:11): Blue <- enumVal/Color.Blue.
 [10:21..10:26): Color -> enumVal/Color#
-[10:26..10:26): -> enumVal/Color#`<init>`().
 
 expect/Enums.scala
 ------------------
@@ -855,7 +801,7 @@ Uri => Enums.scala
 Text => empty
 Language => Scala
 Symbols => 181 entries
-Occurrences => 184 entries
+Occurrences => 148 entries
 
 Symbols:
 _empty_/Enums. => final object Enums extends Object { self: Enums.type => +30 decls }
@@ -1044,21 +990,17 @@ Occurrences:
 [0:7..0:12): Enums <- _empty_/Enums.
 [1:9..1:12): <:< -> _empty_/Enums.`<:<`.
 [3:7..3:13): Colour <- _empty_/Enums.Colour#
-[4:4..4:4): <- _empty_/Enums.Colour#`<init>`().
 [4:11..4:17): Colour -> _empty_/Enums.Colour.
 [4:18..4:21): Red -> _empty_/Enums.Colour.Red.
 [5:9..5:12): Red <- _empty_/Enums.Colour.Red.
 [5:14..5:19): Green <- _empty_/Enums.Colour.Green.
 [5:21..5:25): Blue <- _empty_/Enums.Colour.Blue.
 [7:7..7:17): Directions <- _empty_/Enums.Directions#
-[8:4..8:4): <- _empty_/Enums.Directions#`<init>`().
 [8:9..8:14): North <- _empty_/Enums.Directions.North.
 [8:16..8:20): East <- _empty_/Enums.Directions.East.
 [8:22..8:27): South <- _empty_/Enums.Directions.South.
 [8:29..8:33): West <- _empty_/Enums.Directions.West.
 [10:7..10:12): Suits <- _empty_/Enums.Suits#
-[10:21..10:21): <- _empty_/Enums.Suits#`<init>`().
-[10:21..10:21): -> scala/CanEqual.derived.
 [11:9..11:15): Hearts <- _empty_/Enums.Suits.Hearts.
 [11:17..11:23): Spades <- _empty_/Enums.Suits.Spades.
 [11:25..11:30): Clubs <- _empty_/Enums.Suits.Clubs.
@@ -1083,7 +1025,6 @@ Occurrences:
 [18:11..18:17): Spades -> _empty_/Enums.Suits.Spades.
 [18:20..18:25): Clubs -> _empty_/Enums.Suits.Clubs.
 [21:7..21:15): WeekDays <- _empty_/Enums.WeekDays#
-[22:4..22:4): <- _empty_/Enums.WeekDays#`<init>`().
 [22:9..22:15): Monday <- _empty_/Enums.WeekDays.Monday.
 [23:9..23:16): Tuesday <- _empty_/Enums.WeekDays.Tuesday.
 [24:9..24:18): Wednesday <- _empty_/Enums.WeekDays.Wednesday.
@@ -1092,62 +1033,46 @@ Occurrences:
 [27:9..27:17): Saturday <- _empty_/Enums.WeekDays.Saturday.
 [28:9..28:15): Sunday <- _empty_/Enums.WeekDays.Sunday.
 [30:7..30:11): Coin <- _empty_/Enums.Coin#
-[30:11..30:11): <- _empty_/Enums.Coin#`<init>`().
 [30:12..30:17): value <- _empty_/Enums.Coin#value.
 [30:19..30:22): Int -> scala/Int#
 [31:9..31:14): Penny <- _empty_/Enums.Coin.Penny.
 [31:26..31:30): Coin -> _empty_/Enums.Coin#
-[31:30..31:30): -> _empty_/Enums.Coin#`<init>`().
 [32:9..32:15): Nickel <- _empty_/Enums.Coin.Nickel.
 [32:26..32:30): Coin -> _empty_/Enums.Coin#
-[32:30..32:30): -> _empty_/Enums.Coin#`<init>`().
 [33:9..33:13): Dime <- _empty_/Enums.Coin.Dime.
 [33:26..33:30): Coin -> _empty_/Enums.Coin#
-[33:30..33:30): -> _empty_/Enums.Coin#`<init>`().
 [34:9..34:16): Quarter <- _empty_/Enums.Coin.Quarter.
 [34:26..34:30): Coin -> _empty_/Enums.Coin#
-[34:30..34:30): -> _empty_/Enums.Coin#`<init>`().
 [35:9..35:15): Dollar <- _empty_/Enums.Coin.Dollar.
 [35:26..35:30): Coin -> _empty_/Enums.Coin#
-[35:30..35:30): -> _empty_/Enums.Coin#`<init>`().
 [37:7..37:12): Maybe <- _empty_/Enums.Maybe#
-[37:12..37:12): <- _empty_/Enums.Maybe#`<init>`().
 [37:14..37:15): A <- _empty_/Enums.Maybe#[A]
 [38:9..38:13): Just <- _empty_/Enums.Maybe.Just#
-[38:13..38:13): <- _empty_/Enums.Maybe.Just#`<init>`().
 [38:14..38:19): value <- _empty_/Enums.Maybe.Just#value.
 [38:21..38:22): A -> _empty_/Enums.Maybe.Just#[A]
 [39:9..39:13): None <- _empty_/Enums.Maybe.None.
 [41:7..41:10): Tag <- _empty_/Enums.Tag#
-[41:10..41:10): <- _empty_/Enums.Tag#`<init>`().
 [41:11..41:12): A <- _empty_/Enums.Tag#[A]
 [42:9..42:15): IntTag <- _empty_/Enums.Tag.IntTag.
 [42:24..42:27): Tag -> _empty_/Enums.Tag#
 [42:28..42:31): Int -> scala/Int#
-[42:32..42:32): -> _empty_/Enums.Tag#`<init>`().
 [43:9..43:19): BooleanTag <- _empty_/Enums.Tag.BooleanTag.
 [43:28..43:31): Tag -> _empty_/Enums.Tag#
 [43:32..43:39): Boolean -> scala/Boolean#
-[43:40..43:40): -> _empty_/Enums.Tag#`<init>`().
 [45:7..45:10): <:< <- _empty_/Enums.`<:<`#
-[45:10..45:10): <- _empty_/Enums.`<:<`#`<init>`().
 [45:12..45:13): A <- _empty_/Enums.`<:<`#[A]
 [45:15..45:16): B <- _empty_/Enums.`<:<`#[B]
 [46:9..46:13): Refl <- _empty_/Enums.`<:<`.Refl#
-[46:13..46:13): <- _empty_/Enums.`<:<`.Refl#`<init>`().
 [46:14..46:15): C <- _empty_/Enums.`<:<`.Refl#[C]
 [46:28..46:29): C -> _empty_/Enums.`<:<`.Refl#[C]
 [46:30..46:33): <:< -> _empty_/Enums.`<:<`#
 [46:34..46:35): C -> _empty_/Enums.`<:<`.Refl#[C]
-[46:35..46:35): -> _empty_/Enums.`<:<`#`<init>`().
 [48:9..48:12): <:< <- _empty_/Enums.`<:<`.
-[49:10..49:10): <- _empty_/Enums.`<:<`.`given_<:<_T_T`().
 [49:11..49:12): T <- _empty_/Enums.`<:<`.`given_<:<_T_T`().[T]
 [49:16..49:17): T -> _empty_/Enums.`<:<`.`given_<:<_T_T`().[T]
 [49:18..49:21): <:< -> _empty_/Enums.`<:<`#
 [49:22..49:23): T -> _empty_/Enums.`<:<`.`given_<:<_T_T`().[T]
 [49:27..49:31): Refl -> _empty_/Enums.`<:<`.Refl.
-[49:31..49:31): -> _empty_/Enums.`<:<`.Refl.apply().
 [51:13..51:14): A <- _empty_/Enums.unwrap().[A]
 [51:16..51:17): B <- _empty_/Enums.unwrap().[B]
 [51:19..51:22): opt <- _empty_/Enums.unwrap().(opt)
@@ -1163,29 +1088,22 @@ Occurrences:
 [51:81..51:82): B -> _empty_/Enums.unwrap().[B]
 [51:86..51:88): ev -> _empty_/Enums.unwrap().(ev)
 [52:9..52:13): Refl -> _empty_/Enums.`<:<`.Refl.
-[52:13..52:13): -> _empty_/Enums.`<:<`.Refl.unapply().
 [52:19..52:22): opt -> _empty_/Enums.unwrap().(opt)
 [52:23..52:30): flatMap -> scala/Option#flatMap().
 [52:31..52:39): identity -> scala/Predef.identity().
-[52:31..52:31): -> local0
 [52:40..52:46): Option -> scala/Option#
 [52:47..52:48): B -> _empty_/Enums.unwrap().[B]
 [54:6..54:11): some1 <- _empty_/Enums.some1.
 [54:14..54:18): Some -> scala/Some.
-[54:18..54:18): -> scala/Some.apply().
 [54:19..54:23): Some -> scala/Some.
-[54:23..54:23): -> scala/Some.apply().
 [54:28..54:34): unwrap -> _empty_/Enums.unwrap().
-[54:34..54:34): -> _empty_/Enums.`<:<`.`given_<:<_T_T`().
 [56:7..56:13): Planet <- _empty_/Enums.Planet#
-[56:13..56:13): <- _empty_/Enums.Planet#`<init>`().
 [56:14..56:18): mass <- _empty_/Enums.Planet#mass.
 [56:20..56:26): Double -> scala/Double#
 [56:28..56:34): radius <- _empty_/Enums.Planet#radius.
 [56:36..56:42): Double -> scala/Double#
 [56:52..56:56): Enum -> java/lang/Enum#
 [56:57..56:63): Planet -> _empty_/Enums.Planet#
-[56:64..56:64): -> java/lang/Enum#`<init>`().
 [57:22..57:23): G <- _empty_/Enums.Planet#G.
 [58:8..58:22): surfaceGravity <- _empty_/Enums.Planet#surfaceGravity().
 [58:25..58:26): G -> _empty_/Enums.Planet#G.
@@ -1203,28 +1121,20 @@ Occurrences:
 [59:55..59:69): surfaceGravity -> _empty_/Enums.Planet#surfaceGravity().
 [61:9..61:16): Mercury <- _empty_/Enums.Planet.Mercury.
 [61:25..61:31): Planet -> _empty_/Enums.Planet#
-[61:31..61:31): -> _empty_/Enums.Planet#`<init>`().
 [62:9..62:14): Venus <- _empty_/Enums.Planet.Venus.
 [62:25..62:31): Planet -> _empty_/Enums.Planet#
-[62:31..62:31): -> _empty_/Enums.Planet#`<init>`().
 [63:9..63:14): Earth <- _empty_/Enums.Planet.Earth.
 [63:25..63:31): Planet -> _empty_/Enums.Planet#
-[63:31..63:31): -> _empty_/Enums.Planet#`<init>`().
 [64:9..64:13): Mars <- _empty_/Enums.Planet.Mars.
 [64:25..64:31): Planet -> _empty_/Enums.Planet#
-[64:31..64:31): -> _empty_/Enums.Planet#`<init>`().
 [65:9..65:16): Jupiter <- _empty_/Enums.Planet.Jupiter.
 [65:25..65:31): Planet -> _empty_/Enums.Planet#
-[65:31..65:31): -> _empty_/Enums.Planet#`<init>`().
 [66:9..66:15): Saturn <- _empty_/Enums.Planet.Saturn.
 [66:25..66:31): Planet -> _empty_/Enums.Planet#
-[66:31..66:31): -> _empty_/Enums.Planet#`<init>`().
 [67:9..67:15): Uranus <- _empty_/Enums.Planet.Uranus.
 [67:25..67:31): Planet -> _empty_/Enums.Planet#
-[67:31..67:31): -> _empty_/Enums.Planet#`<init>`().
 [68:9..68:16): Neptune <- _empty_/Enums.Planet.Neptune.
 [68:25..68:31): Planet -> _empty_/Enums.Planet#
-[68:31..68:31): -> _empty_/Enums.Planet#`<init>`().
 
 expect/EtaExpansion.scala
 -------------------------
@@ -1235,7 +1145,7 @@ Uri => EtaExpansion.scala
 Text => empty
 Language => Scala
 Symbols => 3 entries
-Occurrences => 12 entries
+Occurrences => 8 entries
 
 Symbols:
 example/EtaExpansion# => class EtaExpansion extends Object { self: EtaExpansion => +1 decls }
@@ -1246,13 +1156,9 @@ Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:18): EtaExpansion <- example/EtaExpansion#
 [3:2..3:6): Some -> scala/Some.
-[3:2..3:2): <- example/EtaExpansion#`<init>`().
-[3:6..3:6): -> scala/Some.apply().
 [3:10..3:13): map -> scala/Option#map().
 [3:14..3:22): identity -> scala/Predef.identity().
-[3:14..3:14): -> local0
 [4:2..4:6): List -> scala/package.List.
-[4:6..4:6): -> scala/collection/IterableFactory#apply().
 [4:10..4:18): foldLeft -> scala/collection/LinearSeqOps#foldLeft().
 [4:25..4:26): + -> java/lang/String#`+`().
 
@@ -1265,7 +1171,7 @@ Uri => Example.scala
 Text => empty
 Language => Scala
 Symbols => 5 entries
-Occurrences => 25 entries
+Occurrences => 23 entries
 
 Symbols:
 example/Example. => final object Example extends Object { self: Example.type => +3 decls }
@@ -1287,7 +1193,6 @@ Occurrences:
 [5:23..5:30): mutable -> scala/collection/mutable/
 [5:31..5:36): Stack -> scala/collection/mutable/Stack#
 [5:37..5:40): Int -> scala/Int#
-[5:41..5:41): -> scala/collection/mutable/Stack#`<init>`(+1).
 [6:6..6:10): main <- example/Example.main().
 [6:11..6:15): args <- example/Example.main().(args)
 [6:17..6:22): Array -> scala/Array#
@@ -1299,7 +1204,6 @@ Occurrences:
 [9:16..9:23): reflect -> scala/reflect/
 [9:24..9:32): classTag -> scala/reflect/package.classTag().
 [9:33..9:36): Int -> scala/Int#
-[9:37..9:37): -> scala/reflect/ClassTag.apply().
 
 expect/Extension.scala
 ----------------------
@@ -1310,7 +1214,7 @@ Uri => Extension.scala
 Text => empty
 Language => Scala
 Symbols => 25 entries
-Occurrences => 54 entries
+Occurrences => 50 entries
 
 Symbols:
 ext/Extension$package. => final package object ext extends Object { self: ext.type => +6 decls }
@@ -1351,7 +1255,6 @@ Occurrences:
 [4:14..4:17): Int -> scala/Int#
 [4:21..4:27): String -> scala/Predef.String#
 [4:29..4:32): Int -> scala/Int#
-[4:37..4:37): -> scala/Tuple2.apply().
 [4:37..4:38): s -> ext/Extension$package.`#*#`().(s)
 [4:40..4:41): i -> ext/Extension$package.`#*#`().(i)
 [6:4..6:5): a <- ext/Extension$package.a.
@@ -1359,7 +1262,6 @@ Occurrences:
 [8:4..8:5): c <- ext/Extension$package.c.
 [8:14..8:17): #*# -> ext/Extension$package.`#*#`().
 [10:6..10:10): Read <- ext/Read#
-[10:10..10:10): <- ext/Read#`<init>`().
 [10:12..10:13): T <- ext/Read#[T]
 [11:6..11:16): fromString <- ext/Read#fromString().
 [11:17..11:18): s <- ext/Read#fromString().(s)
@@ -1377,11 +1279,9 @@ Occurrences:
 [14:46..14:52): summon -> scala/Predef.summon().
 [14:53..14:57): Read -> ext/Read#
 [14:58..14:59): T -> ext/Extension$package.readInto().[T]
-[14:61..14:61): -> ext/Extension$package.readInto().(x$2)
 [14:62..14:72): fromString -> ext/Read#fromString().
 [14:73..14:74): s -> ext/Extension$package.readInto().(s)
 [16:6..16:13): Functor <- ext/Functor#
-[16:13..16:13): <- ext/Functor#`<init>`().
 [16:14..16:15): F <- ext/Functor#[F]
 [17:13..17:14): T <- ext/Functor#map().[T]
 [17:16..17:17): t <- ext/Functor#map().(t)
@@ -1404,7 +1304,7 @@ Uri => ForComprehension.scala
 Text => empty
 Language => Scala
 Symbols => 13 entries
-Occurrences => 88 entries
+Occurrences => 52 entries
 
 Symbols:
 example/ForComprehension# => class ForComprehension extends Object { self: ForComprehension => +1 decls }
@@ -1424,86 +1324,50 @@ local10 => param f: Tuple4[Int, Int, Int, Int]
 Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:22): ForComprehension <- example/ForComprehension#
-[3:2..3:2): <- example/ForComprehension#`<init>`().
 [4:4..4:5): a <- local0
 [4:9..4:13): List -> scala/package.List.
-[4:13..4:13): -> scala/collection/IterableFactory#apply().
-[4:16..4:16): -> scala/collection/immutable/List#flatMap().
 [5:4..5:5): b <- local1
-[5:4..5:4): -> scala/Tuple2.apply().
 [5:4..5:5): b -> local1
-[5:4..5:4): -> local3
-[5:4..5:4): -> scala/Tuple2.unapply().
 [5:9..5:13): List -> scala/package.List.
-[5:13..5:13): -> scala/collection/IterableFactory#apply().
-[5:16..5:16): -> scala/collection/IterableOps#withFilter().
 [6:7..6:8): b -> local1
 [6:9..6:10): > -> scala/Int#`>`(+3).
-[6:12..6:12): -> scala/collection/WithFilter#map().
 [7:4..7:5): c <- local2
 [7:4..7:5): c -> local2
 [7:8..7:9): a -> local0
 [7:10..7:11): + -> scala/Int#`+`(+4).
 [7:12..7:13): b -> local1
-[7:13..7:13): -> scala/collection/immutable/List#map().
-[8:11..8:11): -> scala/Tuple3.apply().
 [8:11..8:12): a -> local0
 [8:14..8:15): b -> local1
 [8:17..8:18): c -> local2
 [10:4..10:5): a <- local4
 [10:9..10:13): List -> scala/package.List.
-[10:13..10:13): -> scala/collection/IterableFactory#apply().
-[10:16..10:16): -> scala/collection/immutable/List#flatMap().
 [11:4..11:5): b <- local5
 [11:9..11:13): List -> scala/package.List.
-[11:13..11:13): -> scala/collection/IterableFactory#apply().
 [11:14..11:15): a -> local4
-[11:16..11:16): -> scala/collection/IterableOps#withFilter().
-[13:6..13:6): -> scala/Tuple2.apply().
 [13:6..13:7): a -> local4
 [14:6..14:7): b -> local5
 [15:6..15:8): == -> scala/Any#`==`().
-[15:10..15:10): -> scala/Tuple2.apply().
-[15:15..15:15): -> scala/collection/WithFilter#flatMap().
-[16:4..16:4): -> local6
-[16:4..16:4): -> scala/Tuple2.unapply().
-[17:6..17:6): -> scala/Tuple2.unapply().
 [17:6..17:7): c <- local7
 [18:6..18:7): d <- local8
 [19:9..19:13): List -> scala/package.List.
-[19:13..19:13): -> scala/collection/IterableFactory#apply().
-[19:15..19:15): -> scala/Tuple2.apply().
 [19:15..19:16): a -> local4
 [19:18..19:19): b -> local5
-[19:21..19:21): -> scala/collection/IterableOps#withFilter().
-[19:21..19:21): -> scala/collection/WithFilter#withFilter().
-[21:6..21:6): -> scala/Tuple4.apply().
 [21:6..21:7): a -> local4
 [22:6..22:7): b -> local5
 [23:6..23:7): c -> local7
 [24:6..24:7): d -> local8
 [25:6..25:8): == -> scala/Any#`==`().
-[25:10..25:10): -> scala/Tuple4.apply().
-[25:21..25:21): -> scala/collection/WithFilter#map().
 [26:4..26:5): e <- local9
-[26:4..26:4): -> scala/Tuple2.apply().
 [26:4..26:5): e -> local9
-[27:6..27:6): -> scala/Tuple4.apply().
 [27:6..27:7): a -> local4
 [28:6..28:7): b -> local5
 [29:6..29:7): c -> local7
 [30:6..30:7): d -> local8
-[31:5..31:5): -> scala/collection/IterableOps#withFilter().
 [32:7..32:8): e -> local9
 [32:9..32:11): == -> scala/Any#`==`().
-[32:13..32:13): -> scala/Tuple4.apply().
-[32:24..32:24): -> scala/collection/WithFilter#flatMap().
 [33:4..33:5): f <- local10
 [33:9..33:13): List -> scala/package.List.
-[33:13..33:13): -> scala/collection/IterableFactory#apply().
 [33:14..33:15): e -> local9
-[33:16..33:16): -> scala/collection/immutable/List#map().
-[36:6..36:6): -> scala/Tuple6.apply().
 [36:6..36:7): a -> local4
 [37:6..37:7): b -> local5
 [38:6..38:7): c -> local7
@@ -1520,7 +1384,7 @@ Uri => Givens.scala
 Text => empty
 Language => Scala
 Symbols => 29 entries
-Occurrences => 70 entries
+Occurrences => 62 entries
 
 Symbols:
 a/b/Givens. => final object Givens extends Object { self: Givens.type => +12 decls }
@@ -1561,9 +1425,7 @@ Occurrences:
 [5:16..5:19): any <- a/b/Givens.sayHello().(any)
 [5:21..5:22): A -> a/b/Givens.sayHello().[A]
 [6:8..6:16): sayHello <- a/b/Givens.sayHello().
-[6:21..6:21): -> scala/StringContext.apply().
 [6:34..6:37): any -> a/b/Givens.sayHello().(any)
-[6:37..6:38): " -> scala/StringContext#s().
 [8:13..8:14): B <- a/b/Givens.sayGoodbye().[B]
 [8:13..8:14): B <- a/b/Givens.saySoLong().[B]
 [8:16..8:19): any <- a/b/Givens.sayGoodbye().(any)
@@ -1571,13 +1433,9 @@ Occurrences:
 [8:21..8:22): B -> a/b/Givens.sayGoodbye().[B]
 [8:21..8:22): B -> a/b/Givens.saySoLong().[B]
 [9:8..9:18): sayGoodbye <- a/b/Givens.sayGoodbye().
-[9:23..9:23): -> scala/StringContext.apply().
 [9:38..9:41): any -> a/b/Givens.sayGoodbye().(any)
-[9:41..9:42): " -> scala/StringContext#s().
 [10:8..10:17): saySoLong <- a/b/Givens.saySoLong().
-[10:22..10:22): -> scala/StringContext.apply().
 [10:37..10:40): any -> a/b/Givens.saySoLong().(any)
-[10:40..10:41): " -> scala/StringContext#s().
 [12:6..12:12): hello1 <- a/b/Givens.hello1.
 [12:17..12:25): sayHello -> a/b/Givens.sayHello().
 [13:6..13:14): goodbye1 <- a/b/Givens.goodbye1.
@@ -1585,7 +1443,6 @@ Occurrences:
 [14:6..14:13): soLong1 <- a/b/Givens.soLong1.
 [14:18..14:27): saySoLong -> a/b/Givens.saySoLong().
 [16:8..16:14): Monoid <- a/b/Givens.Monoid#
-[16:14..16:14): <- a/b/Givens.Monoid#`<init>`().
 [16:15..16:16): A <- a/b/Givens.Monoid#[A]
 [17:8..17:13): empty <- a/b/Givens.Monoid#empty().
 [17:15..17:16): A -> a/b/Givens.Monoid#[A]
@@ -1596,7 +1453,6 @@ Occurrences:
 [18:36..18:37): A -> a/b/Givens.Monoid#[A]
 [18:40..18:41): A -> a/b/Givens.Monoid#[A]
 [20:8..20:14): Monoid -> a/b/Givens.Monoid#
-[20:8..20:27): Monoid[String] with <- a/b/Givens.given_Monoid_String.
 [20:15..20:21): String -> scala/Predef.String#
 [21:8..21:13): empty <- a/b/Givens.given_Monoid_String.empty().
 [22:15..22:16): x <- a/b/Givens.given_Monoid_String.combine().(x)
@@ -1634,7 +1490,7 @@ Uri => ImplicitConversion.scala
 Text => empty
 Language => Scala
 Symbols => 23 entries
-Occurrences => 62 entries
+Occurrences => 48 entries
 
 Symbols:
 example/ImplicitConversion# => class ImplicitConversion extends Object { self: ImplicitConversion => +9 decls }
@@ -1667,7 +1523,6 @@ Occurrences:
 [2:13..2:21): language -> scala/language.
 [2:22..2:41): implicitConversions -> scala/language.implicitConversions.
 [4:6..4:24): ImplicitConversion <- example/ImplicitConversion#
-[5:2..5:2): <- example/ImplicitConversion#`<init>`().
 [5:9..5:27): ImplicitConversion -> example/ImplicitConversion.
 [6:15..6:28): string2Number <- example/ImplicitConversion#string2Number().
 [7:6..7:12): string <- example/ImplicitConversion#string2Number().(string)
@@ -1676,45 +1531,32 @@ Occurrences:
 [9:6..9:13): message <- example/ImplicitConversion#message.
 [10:6..10:12): number <- example/ImplicitConversion#number.
 [11:6..11:11): tuple <- example/ImplicitConversion#tuple.
-[11:15..11:15): -> scala/Tuple2.apply().
 [12:6..12:10): char <- example/ImplicitConversion#char.
 [12:12..12:16): Char -> scala/Char#
-[15:2..15:2): -> scala/Predef.augmentString().
 [15:2..15:9): message -> example/ImplicitConversion#message.
 [16:5..16:16): stripSuffix -> scala/collection/StringOps#stripSuffix().
-[17:2..17:2): -> example/ImplicitConversion.newAny2stringadd().
 [17:2..17:7): tuple -> example/ImplicitConversion#tuple.
 [17:8..17:9): + -> example/ImplicitConversion.newAny2stringadd#`+`().
 [20:6..20:7): x <- example/ImplicitConversion#x.
 [20:9..20:12): Int -> scala/Int#
-[20:15..20:15): -> example/ImplicitConversion#string2Number().
 [20:15..20:22): message -> example/ImplicitConversion#message.
-[23:4..23:4): -> scala/StringContext.apply().
 [23:11..23:18): message -> example/ImplicitConversion#message.
 [23:20..23:26): number -> example/ImplicitConversion#number.
-[23:26..23:27): " -> scala/StringContext#s().
-[24:2..24:2): -> scala/Predef.augmentString().
-[24:6..24:6): -> scala/StringContext.apply().
 [25:7..25:14): message -> example/ImplicitConversion#message.
 [26:7..26:13): number -> example/ImplicitConversion#number.
-[26:15..26:16): " -> scala/StringContext#s().
 [26:17..26:28): stripMargin -> scala/collection/StringOps#stripMargin(+1).
 [28:6..28:7): a <- example/ImplicitConversion#a.
 [28:9..28:12): Int -> scala/Int#
-[28:15..28:15): -> scala/Char.char2int().
 [28:15..28:19): char -> example/ImplicitConversion#char.
 [29:6..29:7): b <- example/ImplicitConversion#b.
 [29:9..29:13): Long -> scala/Long#
-[29:16..29:16): -> scala/Char.char2long().
 [29:16..29:20): char -> example/ImplicitConversion#char.
 [32:7..32:25): ImplicitConversion <- example/ImplicitConversion.
 [33:23..33:39): newAny2stringadd <- example/ImplicitConversion.newAny2stringadd#
-[33:39..33:39): <- example/ImplicitConversion.newAny2stringadd#`<init>`().
 [33:40..33:41): A <- example/ImplicitConversion.newAny2stringadd#[A]
 [33:55..33:59): self <- example/ImplicitConversion.newAny2stringadd#self.
 [33:61..33:62): A -> example/ImplicitConversion.newAny2stringadd#[A]
 [33:72..33:78): AnyVal -> scala/AnyVal#
-[33:78..33:78): -> scala/AnyVal#`<init>`().
 [34:8..34:9): + <- example/ImplicitConversion.newAny2stringadd#`+`().
 [34:10..34:15): other <- example/ImplicitConversion.newAny2stringadd#`+`().(other)
 [34:17..34:23): String -> scala/Predef.String#
@@ -1753,7 +1595,7 @@ Uri => InstrumentTyper.scala
 Text => empty
 Language => Scala
 Symbols => 8 entries
-Occurrences => 55 entries
+Occurrences => 52 entries
 
 Symbols:
 example/InstrumentTyper# => class InstrumentTyper extends Object { self: AnyRef & InstrumentTyper => +5 decls }
@@ -1781,11 +1623,9 @@ Occurrences:
 [5:13..5:17): Test -> types/Test.
 [7:6..7:21): InstrumentTyper <- example/InstrumentTyper#
 [7:24..7:28): self <- local0
-[7:24..7:24): <- example/InstrumentTyper#`<init>`().
 [7:30..7:36): AnyRef -> scala/AnyRef#
 [8:6..8:9): all <- example/InstrumentTyper#all().
 [8:12..8:16): List -> scala/package.List.
-[8:16..8:16): -> scala/collection/IterableFactory#apply().
 [9:4..9:11): Literal -> types/Test.Literal.
 [9:12..9:15): int -> types/Test.Literal.int.
 [10:4..10:11): Literal -> types/Test.Literal.
@@ -1809,7 +1649,6 @@ Occurrences:
 [19:4..19:11): Literal -> types/Test.Literal.
 [19:12..19:19): clazzOf -> types/Test.Literal.clazzOf.
 [20:4..20:8): List -> scala/package.List.
-[20:8..20:8): -> scala/collection/IterableFactory#apply().
 [22:7..22:20): AnnotatedType <- example/InstrumentTyper#AnnotatedType#
 [22:23..22:26): Int -> scala/Int#
 [22:28..22:33): param -> scala/annotation/meta/param#
@@ -1831,7 +1670,7 @@ Uri => InventedNames.scala
 Text => empty
 Language => Scala
 Symbols => 45 entries
-Occurrences => 72 entries
+Occurrences => 61 entries
 
 Symbols:
 givens/InventedNames$package. => final package object givens extends Object { self: givens.type => +24 decls }
@@ -1883,15 +1722,12 @@ givens/Z#doZ(). => abstract method doZ => List[T]
 Occurrences:
 [0:8..0:14): givens <- givens/
 [2:6..2:7): X <- givens/X#
-[3:2..3:2): <- givens/X#`<init>`().
 [3:6..3:9): doX <- givens/X#doX().
 [3:11..3:14): Int -> scala/Int#
 [5:6..5:7): Y <- givens/Y#
-[6:2..6:2): <- givens/Y#`<init>`().
 [6:6..6:9): doY <- givens/Y#doY().
 [6:11..6:17): String -> scala/Predef.String#
 [8:6..8:7): Z <- givens/Z#
-[8:7..8:7): <- givens/Z#`<init>`().
 [8:8..8:9): T <- givens/Z#[T]
 [9:6..9:9): doZ <- givens/Z#doZ().
 [9:11..9:15): List -> scala/package.List#
@@ -1899,11 +1735,8 @@ Occurrences:
 [13:6..13:14): intValue <- givens/InventedNames$package.intValue.
 [13:16..13:19): Int -> scala/Int#
 [14:6..14:12): String -> scala/Predef.String#
-[14:6..14:6): <- givens/InventedNames$package.given_String.
-[15:6..15:6): <- givens/InventedNames$package.given_Double().
 [15:13..15:16): Int -> scala/Int#
 [15:19..15:25): Double -> scala/Double#
-[16:6..16:6): <- givens/InventedNames$package.given_List_T().
 [16:7..16:8): T <- givens/InventedNames$package.given_List_T().[T]
 [16:11..16:15): List -> scala/package.List#
 [16:16..16:17): T -> givens/InventedNames$package.given_List_T().[T]
@@ -1915,14 +1748,11 @@ Occurrences:
 [19:7..19:10): * * <- givens/InventedNames$package.`* *`.
 [19:13..19:17): Long -> scala/Long#
 [21:6..21:7): X -> givens/X#
-[21:6..22:0): <- givens/InventedNames$package.given_X.
 [22:6..22:9): doX <- givens/InventedNames$package.given_X.doX().
 [24:13..24:14): X -> givens/X#
-[24:13..24:13): <- givens/InventedNames$package.given_Y#`<init>`().
 [24:17..24:18): Y -> givens/Y#
 [25:6..25:9): doY <- givens/InventedNames$package.given_Y#doY().
 [27:7..27:8): T <- givens/InventedNames$package.given_Z_T#[T]
-[27:7..27:7): <- givens/InventedNames$package.given_Z_T#`<init>`().
 [27:11..27:12): Z -> givens/Z#
 [27:13..27:14): T -> givens/InventedNames$package.given_Z_T#[T]
 [28:6..28:9): doZ <- givens/InventedNames$package.given_Z_T#doZ().
@@ -1935,7 +1765,6 @@ Occurrences:
 [33:8..33:20): given_String -> givens/InventedNames$package.given_String.
 [34:4..34:5): c <- givens/InventedNames$package.c.
 [34:8..34:20): given_Double -> givens/InventedNames$package.given_Double().
-[34:20..34:20): -> givens/InventedNames$package.intValue.
 [35:4..35:5): d <- givens/InventedNames$package.d.
 [35:8..35:20): given_List_T -> givens/InventedNames$package.given_List_T().
 [35:21..35:24): Int -> scala/Int#
@@ -1949,7 +1778,6 @@ Occurrences:
 [39:8..39:15): given_X -> givens/InventedNames$package.given_X.
 [40:4..40:5): y <- givens/InventedNames$package.y.
 [40:8..40:15): given_Y -> givens/InventedNames$package.given_Y().
-[40:15..40:15): -> givens/InventedNames$package.given_X.
 [41:4..41:5): z <- givens/InventedNames$package.z.
 [41:8..41:17): given_Z_T -> givens/InventedNames$package.given_Z_T().
 [41:18..41:24): String -> scala/Predef.String#
@@ -1963,7 +1791,7 @@ Uri => Issue1749.scala
 Text => empty
 Language => Scala
 Symbols => 7 entries
-Occurrences => 30 entries
+Occurrences => 22 entries
 
 Symbols:
 example/Issue1749# => class Issue1749 extends Object { self: Issue1749 => +3 decls }
@@ -1981,21 +1809,14 @@ Occurrences:
 [3:18..3:25): Ordered -> scala/math/Ordered.
 [3:26..3:43): orderingToOrdered -> scala/math/Ordered.orderingToOrdered().
 [5:6..5:15): Issue1749 <- example/Issue1749#
-[6:2..6:2): <- example/Issue1749#`<init>`().
 [6:6..6:8): x1 <- example/Issue1749#x1.
 [7:6..7:8): x2 <- example/Issue1749#x2.
-[8:2..8:2): -> scala/math/Ordered.orderingToOrdered().
-[8:3..8:3): -> scala/Tuple2.apply().
 [8:3..8:5): x1 -> example/Issue1749#x1.
 [8:7..8:9): x1 -> example/Issue1749#x1.
-[8:10..8:10): -> scala/math/Ordering.Tuple2().
-[8:10..8:10): -> scala/math/Ordering.Int.
 [9:5..9:12): compare -> scala/math/Ordered#compare().
-[9:14..9:14): -> scala/Tuple2.apply().
 [9:14..9:16): x2 -> example/Issue1749#x2.
 [9:18..9:20): x2 -> example/Issue1749#x2.
 [12:6..12:15): Issue1854 <- example/Issue1854#
-[13:2..13:2): <- example/Issue1854#`<init>`().
 [13:6..13:9): map <- example/Issue1854#map.
 [13:12..13:22): collection -> scala/collection/
 [13:23..13:30): mutable -> scala/collection/mutable/
@@ -2004,7 +1825,6 @@ Occurrences:
 [13:41..13:47): String -> scala/Predef.String#
 [13:49..13:55): String -> scala/Predef.String#
 [14:2..14:5): map -> example/Issue1854#map.
-[14:5..14:5): -> scala/collection/mutable/MapOps#update().
 
 expect/Local.scala
 ------------------
@@ -2015,7 +1835,7 @@ Uri => Local.scala
 Text => empty
 Language => Scala
 Symbols => 6 entries
-Occurrences => 11 entries
+Occurrences => 10 entries
 
 Symbols:
 example/Local# => class Local extends Object { self: Local => +2 decls }
@@ -2028,7 +1848,6 @@ local2 => local id: [typeparam A ](param a: A): A
 Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:11): Local <- example/Local#
-[3:2..3:2): <- example/Local#`<init>`().
 [3:6..3:7): a <- example/Local#a().
 [4:8..4:10): id <- local2
 [4:11..4:12): A <- local0
@@ -2047,7 +1866,7 @@ Uri => Locals.scala
 Text => empty
 Language => Scala
 Symbols => 3 entries
-Occurrences => 7 entries
+Occurrences => 6 entries
 
 Symbols:
 local0 => val local x: Int
@@ -2060,7 +1879,6 @@ Occurrences:
 [3:6..3:8): xs <- locals/Test.xs.
 [4:8..4:9): x <- local0
 [5:4..5:8): List -> scala/package.List.
-[5:8..5:8): -> scala/collection/IterableFactory#apply().
 [5:9..5:10): x -> local0
 
 expect/MetacJava.scala
@@ -2072,7 +1890,7 @@ Uri => MetacJava.scala
 Text => empty
 Language => Scala
 Symbols => 10 entries
-Occurrences => 72 entries
+Occurrences => 62 entries
 
 Symbols:
 example/MetacJava# => class MetacJava extends Object { self: MetacJava => +9 decls }
@@ -2092,46 +1910,37 @@ Occurrences:
 [2:11..2:17): javacp -> com/javacp/
 [4:6..4:15): MetacJava <- example/MetacJava#
 [5:2..5:8): javacp -> com/javacp/
-[5:2..5:2): <- example/MetacJava#`<init>`().
 [5:9..5:18): MetacJava -> com/javacp/MetacJava#
 [5:19..5:30): StaticInner -> com/javacp/MetacJava#StaticInner#
 [5:31..5:39): isStatic -> com/javacp/MetacJava#StaticInner#isStatic().
 [6:6..6:12): javacp -> com/javacp/
 [6:13..6:22): MetacJava -> com/javacp/MetacJava#
 [6:23..6:34): StaticInner -> com/javacp/MetacJava#StaticInner#
-[6:34..6:34): -> com/javacp/MetacJava#StaticInner#`<init>`().
 [6:37..6:48): isNotStatic -> com/javacp/MetacJava#StaticInner#isNotStatic().
 [7:6..7:11): inner <- example/MetacJava#inner.
 [7:18..7:24): javacp -> com/javacp/
 [7:25..7:34): MetacJava -> com/javacp/MetacJava#
-[7:34..7:34): -> com/javacp/MetacJava#`<init>`().
 [8:6..8:15): overload1 <- example/MetacJava#overload1.
 [8:22..8:27): inner -> example/MetacJava#inner.
 [8:28..8:37): Overload1 -> com/javacp/MetacJava#Overload1#
-[8:37..8:37): -> com/javacp/MetacJava#Overload1#`<init>`().
 [9:6..9:15): overload2 <- example/MetacJava#overload2.
 [9:22..9:27): inner -> example/MetacJava#inner.
 [9:28..9:37): Overload2 -> com/javacp/MetacJava#Overload2#
-[9:37..9:37): -> com/javacp/MetacJava#Overload2#`<init>`().
 [10:2..10:7): inner -> example/MetacJava#inner.
 [10:8..10:16): overload -> com/javacp/MetacJava#overload().
 [10:21..10:30): overload1 -> example/MetacJava#overload1.
 [10:31..10:32): A -> com/javacp/MetacJava#Overload1#A#
-[10:32..10:32): -> com/javacp/MetacJava#Overload1#A#`<init>`().
 [11:2..11:7): inner -> example/MetacJava#inner.
 [11:8..11:16): overload -> com/javacp/MetacJava#overload(+1).
 [11:21..11:30): overload2 -> example/MetacJava#overload2.
 [11:31..11:32): A -> com/javacp/MetacJava#Overload2#A#
-[11:32..11:32): -> com/javacp/MetacJava#Overload2#A#`<init>`().
 [12:6..12:17): staticInner <- example/MetacJava#staticInner.
 [12:24..12:30): javacp -> com/javacp/
 [12:31..12:40): MetacJava -> com/javacp/MetacJava#
 [12:41..12:52): StaticInner -> com/javacp/MetacJava#StaticInner#
-[12:52..12:52): -> com/javacp/MetacJava#StaticInner#`<init>`().
 [13:6..13:15): nonStatic <- example/MetacJava#nonStatic.
 [13:22..13:33): staticInner -> example/MetacJava#staticInner.
 [13:34..13:43): NonStatic -> com/javacp/MetacJava#StaticInner#NonStatic#
-[13:43..13:43): -> com/javacp/MetacJava#StaticInner#NonStatic#`<init>`().
 [14:2..14:11): nonStatic -> example/MetacJava#nonStatic.
 [14:12..14:18): method -> com/javacp/MetacJava#StaticInner#NonStatic#method().
 [14:19..14:28): nonStatic -> example/MetacJava#nonStatic.
@@ -2142,7 +1951,6 @@ Occurrences:
 [15:39..15:48): MetacJava -> com/javacp/MetacJava#
 [15:49..15:58): Overload3 -> com/javacp/MetacJava#Overload3#
 [15:59..15:60): A -> com/javacp/MetacJava#Overload3#A#
-[15:60..15:60): -> com/javacp/MetacJava#Overload3#A#`<init>`().
 [16:6..16:15): interface <- example/MetacJava#interface.
 [16:17..16:23): javacp -> com/javacp/
 [16:24..16:33): Interface -> com/javacp/Interface#
@@ -2169,7 +1977,7 @@ Uri => MethodUsages.scala
 Text => empty
 Language => Scala
 Symbols => 3 entries
-Occurrences => 85 entries
+Occurrences => 80 entries
 
 Symbols:
 example/MethodUsages# => class MethodUsages extends Object { self: MethodUsages => +2 decls }
@@ -2179,11 +1987,9 @@ example/MethodUsages#m. => val method m Methods[Int]
 Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:18): MethodUsages <- example/MethodUsages#
-[3:2..3:2): <- example/MethodUsages#`<init>`().
 [3:6..3:7): m <- example/MethodUsages#m.
 [3:14..3:21): Methods -> example/Methods#
 [3:22..3:25): Int -> scala/Int#
-[3:26..3:26): -> example/Methods#`<init>`().
 [4:2..4:3): m -> example/MethodUsages#m.
 [4:4..4:6): m1 -> example/Methods#m1().
 [5:2..5:3): m -> example/MethodUsages#m.
@@ -2203,7 +2009,6 @@ Occurrences:
 [11:11..11:12): m -> example/MethodUsages#m.
 [11:13..11:17): List -> example/Methods#List#
 [11:18..11:21): Int -> scala/Int#
-[11:22..11:22): -> example/Methods#List#`<init>`().
 [12:2..12:3): m -> example/MethodUsages#m.
 [12:4..12:6): m6 -> example/Methods#m6(+2).
 [12:7..12:10): Nil -> scala/package.Nil.
@@ -2213,8 +2018,6 @@ Occurrences:
 [13:14..13:15): m -> example/MethodUsages#m.
 [13:16..13:20): List -> example/Methods#List#
 [13:21..13:24): Int -> scala/Int#
-[13:25..13:25): -> example/Methods#List#`<init>`().
-[13:26..13:26): -> scala/math/Ordering.Int.
 [14:2..14:3): m -> example/MethodUsages#m.
 [14:4..14:11): `m8().` -> example/Methods#`m8().`().
 [15:2..15:3): m -> example/MethodUsages#m.
@@ -2272,7 +2075,7 @@ Uri => Methods.scala
 Text => empty
 Language => Scala
 Symbols => 82 entries
-Occurrences => 156 entries
+Occurrences => 153 entries
 
 Symbols:
 example/Methods# => class Methods [typeparam T ] extends Object { self: Methods[T] => +44 decls }
@@ -2368,10 +2171,8 @@ Occurrences:
 [3:13..3:21): language -> scala/language.
 [3:22..3:34): existentials -> scala/language.existentials.
 [5:6..5:13): Methods <- example/Methods#
-[5:13..5:13): <- example/Methods#`<init>`().
 [5:14..5:15): T <- example/Methods#[T]
 [6:8..6:12): List <- example/Methods#List#
-[6:12..6:12): <- example/Methods#List#`<init>`().
 [6:13..6:14): T <- example/Methods#List#[T]
 [7:7..7:12): AList <- example/Methods#AList#
 [7:13..7:14): T <- example/Methods#AList#[T]
@@ -2416,8 +2217,8 @@ Occurrences:
 [16:29..16:32): ??? -> scala/Predef.`???`().
 [17:6..17:8): m7 <- example/Methods#m7().
 [17:9..17:10): U <- example/Methods#m7().[U]
+[17:10..17:10): <- example/Methods#m7().(evidence$1)
 [17:12..17:20): Ordering -> scala/math/Ordering#
-[17:20..17:20): -> example/Methods#m7().[U]
 [17:22..17:23): c <- example/Methods#m7().(c)
 [17:25..17:32): Methods -> example/Methods#
 [17:33..17:34): T -> example/Methods#[T]
@@ -2427,7 +2228,6 @@ Occurrences:
 [17:51..17:54): ??? -> scala/Predef.`???`().
 [18:7..18:12): m8(). <- example/Methods#`m8().`().
 [18:18..18:21): ??? -> scala/Predef.`???`().
-[19:2..19:2): <- example/Methods#`m9().`#`<init>`().
 [19:9..19:14): m9(). <- example/Methods#`m9().`#
 [20:6..20:8): m9 <- example/Methods#m9().
 [20:9..20:10): x <- example/Methods#m9().(x)
@@ -2525,7 +2325,7 @@ Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
 Symbols => 43 entries
-Occurrences => 43 entries
+Occurrences => 40 entries
 
 Symbols:
 example/NamedApplyBlockCaseClassConstruction. => final object NamedApplyBlockCaseClassConstruction extends Object { self: NamedApplyBlockCaseClassConstruction.type => +6 decls }
@@ -2595,7 +2395,6 @@ Occurrences:
 [5:28..5:29): c -> example/NamedApplyBlockMethods.foo().(c)
 [6:6..6:15): recursive <- example/NamedApplyBlockMethods.recursive().
 [6:18..6:21): foo -> example/NamedApplyBlockMethods.foo().
-[6:18..6:18): -> local1
 [6:22..6:27): local -> example/NamedApplyBlockMethods.local.
 [6:29..6:30): c -> example/NamedApplyBlockMethods.foo().(c)
 [6:33..6:36): foo -> example/NamedApplyBlockMethods.foo().
@@ -2603,7 +2402,6 @@ Occurrences:
 [6:44..6:45): c -> example/NamedApplyBlockMethods.foo().(c)
 [9:7..9:43): NamedApplyBlockCaseClassConstruction <- example/NamedApplyBlockCaseClassConstruction.
 [10:13..10:16): Msg <- example/NamedApplyBlockCaseClassConstruction.Msg#
-[10:16..10:16): <- example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().
 [10:17..10:21): body <- example/NamedApplyBlockCaseClassConstruction.Msg#body.
 [10:23..10:29): String -> scala/Predef.String#
 [10:31..10:35): head <- example/NamedApplyBlockCaseClassConstruction.Msg#head.
@@ -2613,7 +2411,6 @@ Occurrences:
 [11:6..11:14): bodyText <- example/NamedApplyBlockCaseClassConstruction.bodyText.
 [12:6..12:9): msg <- example/NamedApplyBlockCaseClassConstruction.msg.
 [12:12..12:15): Msg -> example/NamedApplyBlockCaseClassConstruction.Msg.
-[12:15..12:15): -> example/NamedApplyBlockCaseClassConstruction.Msg.apply().
 [12:16..12:24): bodyText -> example/NamedApplyBlockCaseClassConstruction.bodyText.
 [12:26..12:30): tail -> example/NamedApplyBlockCaseClassConstruction.Msg.apply().(tail)
 
@@ -2626,7 +2423,7 @@ Uri => NamedArguments.scala
 Text => empty
 Language => Scala
 Symbols => 16 entries
-Occurrences => 13 entries
+Occurrences => 10 entries
 
 Symbols:
 example/NamedArguments# => class NamedArguments extends Object { self: NamedArguments => +4 decls }
@@ -2649,13 +2446,10 @@ example/NamedArguments#`<init>`(). => primary ctor <init> (): NamedArguments
 Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:20): NamedArguments <- example/NamedArguments#
-[3:2..3:2): <- example/NamedArguments#`<init>`().
 [3:13..3:17): User <- example/NamedArguments#User#
-[3:17..3:17): <- example/NamedArguments#User#`<init>`().
 [3:18..3:22): name <- example/NamedArguments#User#name.
 [3:24..3:30): String -> scala/Predef.String#
 [4:2..4:6): User -> example/NamedArguments#User.
-[4:6..4:6): -> example/NamedArguments#User.apply().
 [4:7..4:11): name -> example/NamedArguments#User.apply().(name)
 [5:2..5:6): User -> example/NamedArguments#User.
 [5:7..5:12): apply -> example/NamedArguments#User.apply().
@@ -2670,7 +2464,7 @@ Uri => NewModifiers.scala
 Text => empty
 Language => Scala
 Symbols => 14 entries
-Occurrences => 18 entries
+Occurrences => 15 entries
 
 Symbols:
 _empty_/NewModifiers$package. => final package object _empty_ extends Object { self: _empty_.type { opaque type OpaqueB  } => +2 decls }
@@ -2696,15 +2490,12 @@ Occurrences:
 [5:12..5:19): OpaqueB <- _empty_/NewModifiers$package.OpaqueB#
 [5:22..5:25): Int -> scala/Int#
 [7:6..7:23): NewModifiersClass <- _empty_/NewModifiersClass#
-[8:2..8:2): <- _empty_/NewModifiersClass#`<init>`().
 [8:14..8:15): C <- _empty_/NewModifiersClass#C#
 [8:18..8:21): Int -> scala/Int#
 [9:8..9:14): Nested <- _empty_/NewModifiersClass#Nested#
-[10:4..10:4): <- _empty_/NewModifiersClass#Nested#`<init>`().
 [10:16..10:28): NestedOpaque <- _empty_/NewModifiersClass#Nested#NestedOpaque#
 [10:31..10:34): Int -> scala/Int#
 [14:6..14:23): NewModifiersTrait <- _empty_/NewModifiersTrait#
-[15:2..15:2): <- _empty_/NewModifiersTrait#`<init>`().
 [15:14..15:15): D <- _empty_/NewModifiersTrait#D#
 [15:18..15:21): Int -> scala/Int#
 
@@ -2737,7 +2528,7 @@ Uri => Overrides.scala
 Text => empty
 Language => Scala
 Symbols => 6 entries
-Occurrences => 10 entries
+Occurrences => 8 entries
 
 Symbols:
 example/A# => trait A extends Object { self: A => +2 decls }
@@ -2750,11 +2541,9 @@ example/B#foo(). => method foo => Int
 Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:7): A <- example/A#
-[2:10..2:10): <- example/A#`<init>`().
 [2:14..2:17): foo <- example/A#foo().
 [2:19..2:22): Int -> scala/Int#
 [3:6..3:7): B <- example/B#
-[3:7..3:7): <- example/B#`<init>`().
 [3:18..3:19): A -> example/A#
 [3:26..3:29): foo <- example/B#foo().
 [3:31..3:34): Int -> scala/Int#
@@ -2768,7 +2557,7 @@ Uri => Prefixes.scala
 Text => empty
 Language => Scala
 Symbols => 19 entries
-Occurrences => 49 entries
+Occurrences => 47 entries
 
 Symbols:
 prefixes/C# => class C extends Object { self: C => +6 decls }
@@ -2794,7 +2583,6 @@ prefixes/Test.n3(). => method n3 => T
 Occurrences:
 [0:8..0:16): prefixes <- prefixes/
 [2:6..2:7): C <- prefixes/C#
-[3:2..3:2): <- prefixes/C#`<init>`().
 [3:7..3:8): T <- prefixes/C#T#
 [4:6..4:8): m1 <- prefixes/C#m1().
 [4:10..4:11): T -> prefixes/C#T#
@@ -2812,7 +2600,6 @@ Occurrences:
 [14:14..14:17): ??? -> scala/Predef.`???`().
 [17:7..17:8): O <- prefixes/O.
 [17:17..17:18): C -> prefixes/C#
-[17:18..17:18): -> prefixes/C#`<init>`().
 [18:6..18:8): o1 <- prefixes/O.o1().
 [18:10..18:11): T -> prefixes/C#T#
 [18:14..18:17): ??? -> scala/Predef.`???`().
@@ -2851,7 +2638,7 @@ Uri => RecOrRefined.scala
 Text => empty
 Language => Scala
 Symbols => 61 entries
-Occurrences => 109 entries
+Occurrences => 102 entries
 
 Symbols:
 example/C# => class C extends Object { self: C => +3 decls }
@@ -2940,7 +2727,6 @@ Occurrences:
 [4:41..4:42): z <- local5
 [4:48..4:51): ??? -> scala/Predef.`???`().
 [5:6..5:16): PolyHolder <- example/PolyHolder#
-[6:2..6:2): <- example/PolyHolder#`<init>`().
 [6:6..6:9): foo <- example/PolyHolder#foo().
 [6:10..6:11): T <- example/PolyHolder#foo().[T]
 [6:13..6:14): t <- example/PolyHolder#foo().(t)
@@ -2975,7 +2761,6 @@ Occurrences:
 [12:45..12:46): T -> local12
 [12:49..12:50): T -> local12
 [14:6..14:12): Record <- example/Record#
-[14:12..14:12): <- example/Record#`<init>`().
 [14:13..14:18): elems <- example/Record#elems.
 [14:21..14:27): String -> scala/Predef.String#
 [14:29..14:32): Any -> scala/Any#
@@ -2983,13 +2768,11 @@ Occurrences:
 [15:14..15:20): fields <- example/Record#fields.
 [15:23..15:28): elems -> example/Record#elems.
 [15:29..15:34): toMap -> scala/collection/IterableOnceOps#toMap().
-[15:34..15:34): -> scala/`<:<`.refl().
 [16:6..16:19): selectDynamic <- example/Record#selectDynamic().
 [16:20..16:24): name <- example/Record#selectDynamic().(name)
 [16:26..16:32): String -> scala/Predef.String#
 [16:35..16:38): Any -> scala/Any#
 [16:41..16:47): fields -> example/Record#fields.
-[16:47..16:47): -> scala/collection/MapOps#apply().
 [16:48..16:52): name -> example/Record#selectDynamic().(name)
 [18:5..18:11): Person <- example/RecOrRefined$package.Person#
 [18:14..18:20): Record -> example/Record#
@@ -2998,7 +2781,6 @@ Occurrences:
 [20:6..20:9): age <- local16
 [20:11..20:14): Int -> scala/Int#
 [24:6..24:7): C <- example/C#
-[24:10..24:10): <- example/C#`<init>`().
 [24:15..24:17): T1 <- example/C#T1#
 [24:24..24:26): T2 <- example/C#T2#
 [25:5..25:7): C2 <- example/RecOrRefined$package.C2#
@@ -3007,14 +2789,12 @@ Occurrences:
 [25:28..25:30): T2 <- local18
 [25:33..25:35): T1 -> local17
 [27:6..27:23): SpecialRefinement <- example/SpecialRefinement#
-[28:2..28:2): <- example/SpecialRefinement#`<init>`().
 [28:6..28:13): pickOne <- example/SpecialRefinement#pickOne().
 [28:14..28:16): as <- example/SpecialRefinement#pickOne().(as)
 [28:18..28:24): String -> scala/Predef.String#
 [28:28..28:34): Option -> scala/Option#
 [28:35..28:38): Any -> scala/Any#
 [31:6..31:25): PickOneRefinement_1 <- example/PickOneRefinement_1#
-[31:25..31:25): <- example/PickOneRefinement_1#`<init>`().
 [31:26..31:27): S <- example/PickOneRefinement_1#[S]
 [32:6..32:9): run <- example/PickOneRefinement_1#run().
 [32:10..32:11): s <- example/PickOneRefinement_1#run().(s)
@@ -3036,7 +2816,7 @@ Uri => RightAssociativeExtension.scala
 Text => empty
 Language => Scala
 Symbols => 5 entries
-Occurrences => 13 entries
+Occurrences => 12 entries
 
 Symbols:
 ext/RightAssociativeExtension$package. => final package object ext extends Object { self: ext.type => +3 decls }
@@ -3054,7 +2834,6 @@ Occurrences:
 [3:14..3:17): Int -> scala/Int#
 [3:21..3:27): String -> scala/Predef.String#
 [3:29..3:32): Int -> scala/Int#
-[3:37..3:37): -> scala/Tuple2.apply().
 [3:37..3:38): s -> ext/RightAssociativeExtension$package.`:*:`().(s)
 [3:40..3:41): i -> ext/RightAssociativeExtension$package.`:*:`().(i)
 [5:4..5:5): b <- ext/RightAssociativeExtension$package.b.
@@ -3069,7 +2848,7 @@ Uri => Selfs.scala
 Text => empty
 Language => Scala
 Symbols => 13 entries
-Occurrences => 26 entries
+Occurrences => 17 entries
 
 Symbols:
 local0 => selfparam self: C1
@@ -3088,30 +2867,21 @@ selfs/C6#`<init>`(). => primary ctor <init> (): C6
 
 Occurrences:
 [0:8..0:13): selfs <- selfs/
-[2:0..2:0): <- selfs/B#`<init>`().
 [2:6..2:7): B <- selfs/B#
 [4:6..4:8): C1 <- selfs/C1#
 [4:17..4:18): B -> selfs/B#
-[4:17..4:17): <- selfs/C1#`<init>`().
-[4:18..4:18): -> selfs/B#`<init>`().
 [4:21..4:25): self <- local0
 [7:6..7:8): C2 <- selfs/C2#
 [7:17..7:18): B -> selfs/B#
-[7:17..7:17): <- selfs/C2#`<init>`().
-[7:18..7:18): -> selfs/B#`<init>`().
 [7:21..7:25): self <- local1
 [7:27..7:28): B -> selfs/B#
 [10:6..10:8): C3 <- selfs/C3#
 [10:17..10:18): B -> selfs/B#
-[10:17..10:17): <- selfs/C3#`<init>`().
-[10:18..10:18): -> selfs/B#`<init>`().
 [10:21..10:25): self <- local2
 [10:27..10:28): B -> selfs/B#
 [10:34..10:36): C1 -> selfs/C1#
 [13:6..13:8): C6 <- selfs/C6#
 [13:17..13:18): B -> selfs/B#
-[13:17..13:17): <- selfs/C6#`<init>`().
-[13:18..13:18): -> selfs/B#`<init>`().
 [13:27..13:28): B -> selfs/B#
 
 expect/Synthetic.scala
@@ -3123,7 +2893,7 @@ Uri => Synthetic.scala
 Text => empty
 Language => Scala
 Symbols => 40 entries
-Occurrences => 163 entries
+Occurrences => 112 entries
 
 Symbols:
 example/Synthetic# => class Synthetic extends Object { self: Synthetic => +21 decls }
@@ -3174,112 +2944,72 @@ Occurrences:
 [2:22..2:41): implicitConversions -> scala/language.implicitConversions.
 [4:6..4:15): Synthetic <- example/Synthetic#
 [5:2..5:6): List -> scala/package.List.
-[5:2..5:2): <- example/Synthetic#`<init>`().
-[5:6..5:6): -> scala/collection/IterableFactory#apply().
 [5:10..5:13): map -> scala/collection/immutable/List#map().
 [5:16..5:17): + -> scala/Int#`+`(+4).
-[6:2..6:2): -> scala/Predef.intArrayOps().
 [6:2..6:7): Array -> scala/Array.
 [6:8..6:13): empty -> scala/Array.empty().
 [6:14..6:17): Int -> scala/Int#
-[6:18..6:18): -> scala/reflect/ClassTag.apply().
 [6:19..6:29): headOption -> scala/collection/ArrayOps#headOption().
-[7:2..7:2): -> scala/Predef.augmentString().
 [7:9..7:20): stripPrefix -> scala/collection/StringOps#stripPrefix().
 [10:6..10:10): Name <- example/Synthetic#Name.
-[10:13..10:13): -> scala/Predef.augmentString().
 [10:25..10:26): r -> scala/collection/StringOps#r().
 [11:6..11:7): x <- example/Synthetic#x.
 [11:8..11:11): #:: -> scala/package.`#::`.
-[11:11..11:11): -> scala/package.`#::`.unapply().
 [11:12..11:14): xs <- example/Synthetic#xs.
 [11:17..11:25): LazyList -> scala/package.LazyList.
-[11:25..11:25): -> scala/collection/IterableFactory#apply().
 [12:6..12:10): Name -> example/Synthetic#Name.
-[12:10..12:10): -> scala/util/matching/Regex#unapplySeq().
 [12:11..12:15): name <- example/Synthetic#name.
-[13:8..13:8): -> scala/collection/immutable/LazyList.toDeferrer().
-[13:14..13:14): -> scala/collection/immutable/LazyList.toDeferrer().
 [13:14..13:22): LazyList -> scala/package.LazyList.
 [13:23..13:28): empty -> scala/collection/immutable/LazyList.empty().
-[13:28..13:28): -> scala/collection/immutable/LazyList.Deferrer#`#::`().
 [15:6..15:8): a1 <- example/Synthetic#a1.
 [15:9..15:12): #:: -> scala/package.`#::`.
-[15:12..15:12): -> scala/package.`#::`.unapply().
 [15:13..15:15): a2 <- example/Synthetic#a2.
 [15:16..15:19): #:: -> scala/package.`#::`.
-[15:19..15:19): -> scala/package.`#::`.unapply().
 [15:20..15:22): as <- example/Synthetic#as.
 [15:25..15:33): LazyList -> scala/package.LazyList.
-[15:33..15:33): -> scala/collection/IterableFactory#apply().
 [17:6..17:9): lst <- example/Synthetic#lst.
-[17:18..17:18): -> scala/collection/immutable/LazyList.toDeferrer().
-[17:24..17:24): -> scala/collection/immutable/LazyList.toDeferrer().
 [17:24..17:32): LazyList -> scala/package.LazyList.
 [17:33..17:38): empty -> scala/collection/immutable/LazyList.empty().
-[17:38..17:38): -> scala/collection/immutable/LazyList.Deferrer#`#::`().
 [19:7..19:8): x <- local0
-[19:12..19:12): -> scala/LowPriorityImplicits#intWrapper().
 [19:14..19:16): to -> scala/runtime/RichInt#to().
-[19:19..19:19): -> scala/collection/immutable/Range#foreach().
 [19:21..19:22): y <- local1
-[19:26..19:26): -> scala/LowPriorityImplicits#intWrapper().
 [19:28..19:33): until -> scala/runtime/RichInt#until().
-[19:36..19:36): -> scala/collection/immutable/Range#foreach().
 [19:38..19:45): println -> scala/Predef.println(+1).
-[19:46..19:46): -> scala/Predef.ArrowAssoc().
 [19:46..19:47): x -> local0
 [19:48..19:50): -> -> scala/Predef.ArrowAssoc#`->`().
 [19:51..19:52): x -> local0
 [20:7..20:8): i <- local2
-[20:12..20:12): -> scala/LowPriorityImplicits#intWrapper().
 [20:14..20:16): to -> scala/runtime/RichInt#to().
-[20:19..20:19): -> scala/collection/StrictOptimizedIterableOps#flatMap().
 [20:21..20:22): j <- local3
-[20:26..20:26): -> scala/LowPriorityImplicits#intWrapper().
 [20:28..20:33): until -> scala/runtime/RichInt#until().
-[20:36..20:36): -> scala/collection/immutable/Range#map().
-[20:45..20:45): -> scala/Tuple2.apply().
 [20:45..20:46): i -> local2
 [20:48..20:49): j -> local3
 [21:7..21:8): i <- local4
-[21:12..21:12): -> scala/LowPriorityImplicits#intWrapper().
 [21:14..21:16): to -> scala/runtime/RichInt#to().
-[21:19..21:19): -> scala/collection/StrictOptimizedIterableOps#flatMap().
 [21:21..21:22): j <- local5
-[21:26..21:26): -> scala/LowPriorityImplicits#intWrapper().
 [21:28..21:33): until -> scala/runtime/RichInt#until().
-[21:36..21:36): -> scala/collection/IterableOps#withFilter().
 [21:40..21:41): i -> local4
 [21:42..21:43): % -> scala/Int#`%`(+3).
 [21:46..21:48): == -> scala/Int#`==`(+3).
-[21:50..21:50): -> scala/collection/WithFilter#map().
-[21:59..21:59): -> scala/Tuple2.apply().
 [21:59..21:60): i -> local4
 [21:62..21:63): j -> local5
 [23:9..23:10): s <- example/Synthetic#s.
 [24:8..24:13): apply <- example/Synthetic#s.apply().
-[25:5..25:5): -> example/Synthetic#s.apply().
 [26:6..26:11): apply -> example/Synthetic#s.apply().
 [27:15..27:18): Bar <- example/Synthetic#s.Bar#
-[27:18..27:18): <- example/Synthetic#s.Bar#`<init>`().
 [28:4..28:7): Bar -> example/Synthetic#s.Bar.
-[28:7..28:7): -> example/Synthetic#s.Bar.apply().
 [29:9..29:21): asInstanceOf -> scala/Any#asInstanceOf().
 [29:22..29:25): Int -> scala/Int#
 [29:29..29:32): Int -> scala/Int#
-[29:33..29:33): -> scala/Function1#apply().
 [32:8..32:9): J <- example/Synthetic#J#
-[32:9..32:9): <- example/Synthetic#J#`<init>`().
 [32:10..32:11): T <- example/Synthetic#J#[T]
+[32:11..32:11): <- example/Synthetic#J#evidence$1.
 [32:13..32:21): Manifest -> scala/Predef.Manifest#
-[32:21..32:21): -> example/Synthetic#J#[T]
 [32:29..32:32): arr <- example/Synthetic#J#arr.
 [32:35..32:40): Array -> scala/Array.
 [32:41..32:46): empty -> scala/Array.empty().
 [32:47..32:48): T -> example/Synthetic#J#[T]
 [32:49..32:49): -> example/Synthetic#J#evidence$1.
-[34:2..34:2): <- example/Synthetic#F#`<init>`().
 [34:8..34:9): F <- example/Synthetic#F#
 [35:15..35:23): ordering <- example/Synthetic#ordering.
 [35:25..35:33): Ordering -> scala/package.Ordering#
@@ -3288,10 +3018,7 @@ Occurrences:
 [36:6..36:7): f <- example/Synthetic#f.
 [36:9..36:16): Ordered -> scala/package.Ordered#
 [36:17..36:18): F -> example/Synthetic#F#
-[36:22..36:22): -> scala/math/Ordered.orderingToOrdered().
 [36:26..36:27): F -> example/Synthetic#F#
-[36:27..36:27): -> example/Synthetic#F#`<init>`().
-[36:27..36:27): -> example/Synthetic#ordering.
 [38:9..38:14): scala -> scala/
 [38:15..38:25): concurrent -> scala/concurrent/
 [38:26..38:42): ExecutionContext -> scala/concurrent/ExecutionContext.
@@ -3302,35 +3029,27 @@ Occurrences:
 [40:15..40:25): concurrent -> scala/concurrent/
 [40:26..40:32): Future -> scala/concurrent/Future.
 [40:33..40:43): successful -> scala/concurrent/Future.successful().
-[40:46..40:46): -> scala/concurrent/Future#foreach().
 [41:4..41:5): b <- local7
 [41:9..41:14): scala -> scala/
 [41:15..41:25): concurrent -> scala/concurrent/
 [41:26..41:32): Future -> scala/concurrent/Future.
 [41:33..41:43): successful -> scala/concurrent/Future.successful().
-[41:46..41:46): -> scala/concurrent/Future#foreach().
 [42:4..42:11): println -> scala/Predef.println(+1).
 [42:12..42:13): a -> local6
-[42:14..42:14): -> scala/concurrent/ExecutionContext.Implicits.global().
 [44:4..44:5): a <- local8
 [44:9..44:14): scala -> scala/
 [44:15..44:25): concurrent -> scala/concurrent/
 [44:26..44:32): Future -> scala/concurrent/Future.
 [44:33..44:43): successful -> scala/concurrent/Future.successful().
-[44:46..44:46): -> scala/concurrent/Future#flatMap().
 [45:4..45:5): b <- local9
 [45:9..45:14): scala -> scala/
 [45:15..45:25): concurrent -> scala/concurrent/
 [45:26..45:32): Future -> scala/concurrent/Future.
 [45:33..45:43): successful -> scala/concurrent/Future.successful().
-[45:46..45:46): -> scala/concurrent/Future#withFilter().
 [46:7..46:8): a -> local8
 [46:9..46:10): < -> scala/Int#`<`(+3).
 [46:11..46:12): b -> local9
-[46:12..46:12): -> scala/concurrent/ExecutionContext.Implicits.global().
-[46:12..46:12): -> scala/concurrent/Future#map().
 [47:10..47:11): a -> local8
-[47:11..47:11): -> scala/concurrent/ExecutionContext.Implicits.global().
 
 expect/Traits.scala
 -------------------
@@ -3341,7 +3060,7 @@ Uri => Traits.scala
 Text => empty
 Language => Scala
 Symbols => 13 entries
-Occurrences => 16 entries
+Occurrences => 12 entries
 
 Symbols:
 local0 => final class $anon extends Object with U { self: $anon => +1 decls }
@@ -3361,19 +3080,15 @@ traits/V#`<init>`(). => primary ctor <init> (): V
 Occurrences:
 [0:8..0:14): traits <- traits/
 [2:6..2:7): T <- traits/T#
-[3:2..3:2): <- traits/T#`<init>`().
 [3:6..3:7): x <- traits/T#x().
-[6:0..6:0): <- traits/U#`<init>`().
 [6:13..6:14): U <- traits/U#
 [7:7..7:8): U <- traits/U.
 [8:6..8:7): u <- traits/U.u().
 [8:9..8:10): U -> traits/U#
 [8:17..8:18): U -> traits/U#
-[11:0..11:0): <- traits/C#`<init>`().
 [11:6..11:7): C <- traits/C#
 [12:6..12:7): V <- traits/V#
 [12:10..12:14): self <- local2
-[12:10..12:10): <- traits/V#`<init>`().
 [12:16..12:17): C -> traits/C#
 
 expect/ValPattern.scala
@@ -3385,7 +3100,7 @@ Uri => ValPattern.scala
 Text => empty
 Language => Scala
 Symbols => 22 entries
-Occurrences => 63 entries
+Occurrences => 46 entries
 
 Symbols:
 example/ValPattern# => class ValPattern extends Object { self: ValPattern => +14 decls }
@@ -3414,19 +3129,13 @@ local5 => var local number1Var: Int
 Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:16): ValPattern <- example/ValPattern#
-[4:2..4:2): <- example/ValPattern#`<init>`().
 [4:7..4:11): left <- example/ValPattern#left.
 [4:13..4:18): right <- example/ValPattern#right.
-[4:23..4:23): -> scala/Tuple2.apply().
 [5:6..5:10): Some -> scala/Some.
-[5:10..5:10): -> scala/Some.unapply().
 [5:11..5:18): number1 <- example/ValPattern#number1.
 [6:4..6:8): Some -> scala/Some.
-[6:8..6:8): -> scala/Some.apply().
 [8:6..8:10): List -> scala/package.List.
-[8:10..8:10): -> scala/collection/SeqFactory#unapplySeq().
 [8:11..8:15): Some -> scala/Some.
-[8:15..8:15): -> scala/Some.unapply().
 [8:16..8:18): q1 <- example/ValPattern#q1.
 [8:21..8:25): None -> scala/None.
 [8:27..8:31): None -> scala/None.
@@ -3434,16 +3143,12 @@ Occurrences:
 [8:46..8:49): ??? -> scala/Predef.`???`().
 [10:7..10:14): leftVar <- example/ValPattern#leftVar().
 [10:16..10:24): rightVar <- example/ValPattern#rightVar().
-[10:29..10:29): -> scala/Tuple2.apply().
 [11:6..11:10): Some -> scala/Some.
-[11:10..11:10): -> scala/Some.unapply().
 [11:11..11:21): number1Var <- example/ValPattern#number1Var().
 [12:4..12:8): Some -> scala/Some.
-[12:8..12:8): -> scala/Some.apply().
 [14:6..14:9): app <- example/ValPattern#app().
 [14:13..14:17): Unit -> scala/Unit#
 [15:4..15:11): println -> scala/Predef.println(+1).
-[17:8..17:8): -> scala/Tuple6.apply().
 [17:8..17:15): number1 -> example/ValPattern#number1.
 [18:8..18:12): left -> example/ValPattern#left.
 [19:8..19:13): right -> example/ValPattern#right.
@@ -3453,22 +3158,15 @@ Occurrences:
 [25:4..25:11): locally -> scala/Predef.locally().
 [26:11..26:15): left <- local0
 [26:17..26:22): right <- local1
-[26:27..26:27): -> scala/Tuple2.apply().
 [27:10..27:14): Some -> scala/Some.
-[27:14..27:14): -> scala/Some.unapply().
 [27:15..27:22): number1 <- local2
 [28:8..28:12): Some -> scala/Some.
-[28:12..28:12): -> scala/Some.apply().
 [30:11..30:18): leftVar <- local3
 [30:20..30:28): rightVar <- local4
-[30:33..30:33): -> scala/Tuple2.apply().
 [31:10..31:14): Some -> scala/Some.
-[31:14..31:14): -> scala/Some.unapply().
 [31:15..31:25): number1Var <- local5
 [32:8..32:12): Some -> scala/Some.
-[32:12..32:12): -> scala/Some.apply().
 [33:6..33:13): println -> scala/Predef.println(+1).
-[35:10..35:10): -> scala/Tuple6.apply().
 [35:10..35:17): number1 -> local2
 [36:10..36:14): left -> local0
 [37:10..37:15): right -> local1
@@ -3485,7 +3183,7 @@ Uri => Vals.scala
 Text => empty
 Language => Scala
 Symbols => 42 entries
-Occurrences => 129 entries
+Occurrences => 127 entries
 
 Symbols:
 example/ValUsages. => final object ValUsages extends Object { self: ValUsages.type => +2 decls }
@@ -3534,7 +3232,6 @@ local4 => implicit var local yil: Int
 Occurrences:
 [0:8..0:15): example <- example/
 [2:15..2:19): Vals <- example/Vals#
-[2:19..2:19): <- example/Vals#`<init>`().
 [2:20..2:21): p <- example/Vals#p.
 [2:23..2:26): Int -> scala/Int#
 [2:32..2:34): xp <- example/Vals#xp.
@@ -3660,7 +3357,6 @@ Occurrences:
 [48:18..48:19): v -> example/ValUsages.v.
 [48:20..48:23): yim -> example/Vals#yim().
 [49:2..49:3): v -> example/ValUsages.v.
-[49:3..49:18): .explicitSetter -> example/Vals#`explicitSetter_=`().
 
 expect/Vararg.scala
 -------------------
@@ -3671,7 +3367,7 @@ Uri => Vararg.scala
 Text => empty
 Language => Scala
 Symbols => 6 entries
-Occurrences => 11 entries
+Occurrences => 10 entries
 
 Symbols:
 example/Vararg# => class Vararg extends Object { self: Vararg => +3 decls }
@@ -3684,7 +3380,6 @@ example/Vararg#add2().(a) => param a: Seq[Int]*
 Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:12): Vararg <- example/Vararg#
-[3:2..3:2): <- example/Vararg#`<init>`().
 [3:6..3:10): add1 <- example/Vararg#add1().
 [3:11..3:12): a <- example/Vararg#add1().(a)
 [3:14..3:17): Int -> scala/Int#
@@ -3703,7 +3398,7 @@ Uri => exports-example-Codec.scala
 Text => empty
 Language => Scala
 Symbols => 21 entries
-Occurrences => 39 entries
+Occurrences => 30 entries
 
 Symbols:
 exports/example/Codec# => trait Codec [typeparam T ] extends Object with Decoder[T] with Encoder[T] { self: Codec[T] => +6 decls }
@@ -3732,7 +3427,6 @@ Occurrences:
 [0:8..0:15): exports -> exports/
 [0:16..0:23): example <- exports/example/
 [2:6..2:13): Decoder <- exports/example/Decoder#
-[2:13..2:13): <- exports/example/Decoder#`<init>`().
 [2:15..2:16): T <- exports/example/Decoder#[T]
 [3:6..3:12): decode <- exports/example/Decoder#decode().
 [3:13..3:14): a <- exports/example/Decoder#decode().(a)
@@ -3740,7 +3434,6 @@ Occurrences:
 [3:22..3:26): Byte -> scala/Byte#
 [3:30..3:31): T -> exports/example/Decoder#[T]
 [6:6..6:13): Encoder <- exports/example/Encoder#
-[6:13..6:13): <- exports/example/Encoder#`<init>`().
 [6:15..6:16): T <- exports/example/Encoder#[T]
 [7:6..7:12): encode <- exports/example/Encoder#encode().
 [7:13..7:14): t <- exports/example/Encoder#encode().(t)
@@ -3748,7 +3441,6 @@ Occurrences:
 [7:20..7:25): Array -> scala/Array#
 [7:26..7:30): Byte -> scala/Byte#
 [10:6..10:11): Codec <- exports/example/Codec#
-[10:11..10:11): <- exports/example/Codec#`<init>`().
 [10:12..10:13): T <- exports/example/Codec#[T]
 [10:15..10:21): decode <- exports/example/Codec#decode.
 [10:23..10:30): Decoder -> exports/example/Decoder#
@@ -3761,13 +3453,7 @@ Occurrences:
 [11:26..11:33): Encoder -> exports/example/Encoder#
 [11:34..11:35): T -> exports/example/Codec#[T]
 [12:9..12:15): decode -> exports/example/Codec#decode.
-[12:15..12:15): -> exports/example/Decoder#decode().
-[12:15..12:15): -> exports/example/Codec#decode().(a)
-[12:16..12:16): <- exports/example/Codec#decode().
 [13:9..13:15): encode -> exports/example/Codec#encode.
-[13:15..13:15): -> exports/example/Encoder#encode().
-[13:15..13:15): -> exports/example/Codec#encode().(t)
-[13:16..13:16): <- exports/example/Codec#encode().
 
 expect/exports-package.scala
 ----------------------------
@@ -3802,7 +3488,7 @@ Uri => filename%20with%20spaces.scala
 Text => empty
 Language => Scala
 Symbols => 2 entries
-Occurrences => 3 entries
+Occurrences => 2 entries
 
 Symbols:
 example/FilenameWithSpaces# => class FilenameWithSpaces extends Object { self: FilenameWithSpaces => +1 decls }
@@ -3810,7 +3496,6 @@ example/FilenameWithSpaces#`<init>`(). => primary ctor <init> (): FilenameWithSp
 
 Occurrences:
 [0:8..0:15): example <- example/
-[2:0..2:0): <- example/FilenameWithSpaces#`<init>`().
 [2:6..2:24): FilenameWithSpaces <- example/FilenameWithSpaces#
 
 expect/i9727.scala
@@ -3822,7 +3507,7 @@ Uri => i9727.scala
 Text => empty
 Language => Scala
 Symbols => 7 entries
-Occurrences => 11 entries
+Occurrences => 8 entries
 
 Symbols:
 i9727/Test# => class Test extends Object { self: Test => +2 decls }
@@ -3836,15 +3521,12 @@ i9727/i9727$package.b. => val method b Test
 Occurrences:
 [0:8..0:13): i9727 <- i9727/
 [2:6..2:10): Test <- i9727/Test#
-[2:10..2:10): <- i9727/Test#`<init>`().
 [2:11..2:12): a <- i9727/Test#a.
 [2:14..2:17): Int -> scala/Int#
 [3:4..3:5): a <- i9727/i9727$package.a.
 [3:12..3:16): Test -> i9727/Test#
-[3:16..3:16): -> i9727/Test#`<init>`().
 [4:4..4:5): b <- i9727/i9727$package.b.
 [4:12..4:16): Test -> i9727/Test#
-[4:16..4:16): -> i9727/Test#`<init>`().
 
 expect/i9782.scala
 ------------------
@@ -3855,7 +3537,7 @@ Uri => i9782.scala
 Text => empty
 Language => Scala
 Symbols => 22 entries
-Occurrences => 45 entries
+Occurrences => 39 entries
 
 Symbols:
 _empty_/Copy# => trait Copy [typeparam In  <: Txn[In], typeparam Out  <: Txn[Out]] extends Object { self: Copy[In, Out] => +5 decls }
@@ -3883,18 +3565,14 @@ local2 => val local outObj: Repr[Out] & Obj[Out]
 
 Occurrences:
 [1:6..1:9): Txn <- _empty_/Txn#
-[1:9..1:9): <- _empty_/Txn#`<init>`().
 [1:10..1:11): T <- _empty_/Txn#[T]
 [3:6..3:10): Elem <- _empty_/Elem#
-[3:10..3:10): <- _empty_/Elem#`<init>`().
 [3:11..3:12): T <- _empty_/Elem#[T]
 [5:6..5:9): Obj <- _empty_/Obj#
-[5:9..5:9): <- _empty_/Obj#`<init>`().
 [5:10..5:11): T <- _empty_/Obj#[T]
 [5:31..5:35): Elem -> _empty_/Elem#
 [5:36..5:37): T -> _empty_/Obj#[T]
 [7:6..7:10): Copy <- _empty_/Copy#
-[7:10..7:10): <- _empty_/Copy#`<init>`().
 [7:11..7:13): In <- _empty_/Copy#[In]
 [7:26..7:29): Out <- _empty_/Copy#[Out]
 [8:6..8:14): copyImpl <- _empty_/Copy#copyImpl().
@@ -3915,10 +3593,8 @@ Occurrences:
 [11:14..11:22): copyImpl -> _empty_/Copy#copyImpl().
 [11:23..11:27): Repr -> _empty_/Copy#apply().[Repr]
 [11:29..11:31): in -> _empty_/Copy#apply().(in)
-[12:5..12:5): -> scala/Tuple2.apply().
 [12:5..12:7): in -> _empty_/Copy#apply().(in)
 [12:9..12:12): out -> local0
-[13:12..13:12): -> scala/Tuple2.unapply().
 [13:12..13:17): inObj <- local1
 [13:19..13:22): Obj -> _empty_/Obj#
 [13:23..13:25): In -> _empty_/Copy#[In]
@@ -3937,7 +3613,7 @@ Uri => inlineconsume.scala
 Text => empty
 Language => Scala
 Symbols => 3 entries
-Occurrences => 9 entries
+Occurrences => 8 entries
 
 Symbols:
 inlineconsume/Foo# => class Foo extends Object { self: Foo => +2 decls }
@@ -3950,7 +3626,6 @@ Occurrences:
 [2:18..2:28): FakePredef -> inlinedefs/FakePredef.
 [2:29..2:35): assert -> inlinedefs/FakePredef.assert().
 [4:6..4:9): Foo <- inlineconsume/Foo#
-[5:2..5:2): <- inlineconsume/Foo#`<init>`().
 [5:6..5:10): test <- inlineconsume/Foo#test().
 [5:13..5:19): assert -> inlinedefs/FakePredef.assert().
 [5:22..5:23): > -> scala/Int#`>`(+3).
@@ -3964,7 +3639,7 @@ Uri => inlinedefs.scala
 Text => empty
 Language => Scala
 Symbols => 3 entries
-Occurrences => 12 entries
+Occurrences => 10 entries
 
 Symbols:
 inlinedefs/FakePredef. => final object FakePredef extends Object { self: FakePredef.type => +2 decls }
@@ -3979,11 +3654,9 @@ Occurrences:
 [13:56..13:63): Boolean -> scala/Boolean#
 [13:66..13:70): Unit -> scala/Unit#
 [14:9..14:18): assertion -> inlinedefs/FakePredef.assert().(assertion)
-[14:18..14:18): -> scala/Boolean#`unary_!`().
 [15:16..15:20): java -> java/
 [15:21..15:25): lang -> java/lang/
 [15:26..15:40): AssertionError -> java/lang/AssertionError#
-[15:40..15:40): -> java/lang/AssertionError#`<init>`(+2).
 
 expect/local-file.scala
 -----------------------
@@ -3994,7 +3667,7 @@ Uri => local-file.scala
 Text => empty
 Language => Scala
 Symbols => 3 entries
-Occurrences => 7 entries
+Occurrences => 6 entries
 
 Symbols:
 example/`local-file`# => class local-file extends Object { self: local-file => +1 decls }
@@ -4005,7 +3678,6 @@ Occurrences:
 [0:8..0:15): example <- example/
 [2:7..2:17): local-file <- example/`local-file`#
 [3:2..3:9): locally -> scala/Predef.locally().
-[3:2..3:2): <- example/`local-file`#`<init>`().
 [4:8..4:13): local <- local0
 [5:4..5:9): local -> local0
 [5:10..5:11): + -> scala/Int#`+`(+4).
@@ -4019,7 +3691,7 @@ Uri => nullary.scala
 Text => empty
 Language => Scala
 Symbols => 15 entries
-Occurrences => 34 entries
+Occurrences => 28 entries
 
 Symbols:
 _empty_/Concrete# => class Concrete extends NullaryTest[Int, List] { self: Concrete => +3 decls }
@@ -4040,7 +3712,6 @@ _empty_/test. => final object test extends Object { self: test.type => +1 decls 
 
 Occurrences:
 [0:15..0:26): NullaryTest <- _empty_/NullaryTest#
-[0:26..0:26): <- _empty_/NullaryTest#`<init>`().
 [0:27..0:28): T <- _empty_/NullaryTest#[T]
 [0:30..0:31): m <- _empty_/NullaryTest#[m]
 [1:6..1:13): nullary <- _empty_/NullaryTest#nullary().
@@ -4058,20 +3729,15 @@ Occurrences:
 [8:11..8:19): nullary3 -> _empty_/NullaryTest#nullary3().
 [11:6..11:14): Concrete <- _empty_/Concrete#
 [11:23..11:34): NullaryTest -> _empty_/NullaryTest#
-[11:23..11:23): <- _empty_/Concrete#`<init>`().
 [11:35..11:38): Int -> scala/Int#
 [11:40..11:44): List -> scala/package.List#
-[11:45..11:45): -> _empty_/NullaryTest#`<init>`().
 [12:6..12:14): nullary2 <- _empty_/Concrete#nullary2().
 [13:6..13:14): nullary3 <- _empty_/Concrete#nullary3().
 [13:17..13:21): List -> scala/package.List.
-[13:21..13:21): -> scala/collection/IterableFactory#apply().
 [16:7..16:11): test <- _empty_/test.
 [17:7..17:15): Concrete -> _empty_/Concrete#
-[17:15..17:15): -> _empty_/Concrete#`<init>`().
 [17:17..17:25): nullary2 -> _empty_/Concrete#nullary2().
 [18:7..18:15): Concrete -> _empty_/Concrete#
-[18:15..18:15): -> _empty_/Concrete#`<init>`().
 [18:17..18:25): nullary3 -> _empty_/Concrete#nullary3().
 
 expect/recursion.scala
@@ -4083,7 +3749,7 @@ Uri => recursion.scala
 Text => empty
 Language => Scala
 Symbols => 36 entries
-Occurrences => 56 entries
+Occurrences => 45 entries
 
 Symbols:
 local0 => case val method N$1  <: Nat
@@ -4127,11 +3793,9 @@ Occurrences:
 [1:8..1:17): recursion <- recursion/
 [3:7..3:11): Nats <- recursion/Nats.
 [4:15..4:18): Nat <- recursion/Nats.Nat#
-[5:4..5:4): <- recursion/Nats.Nat#`<init>`().
 [5:27..5:29): ++ <- recursion/Nats.Nat#`++`().
 [5:32..5:36): Succ -> recursion/Nats.Succ#
 [5:50..5:54): Succ -> recursion/Nats.Succ.
-[5:54..5:54): -> recursion/Nats.Succ.apply().
 [7:27..7:28): + <- recursion/Nats.Nat#`+`().
 [7:36..7:40): that <- recursion/Nats.Nat#`+`().(that)
 [7:42..7:45): Nat -> recursion/Nats.Nat#
@@ -4139,8 +3803,6 @@ Occurrences:
 [9:13..9:17): Zero -> recursion/Nats.Zero.
 [9:24..9:28): that -> recursion/Nats.Nat#`+`().(that)
 [10:13..10:17): Succ -> recursion/Nats.Succ.
-[10:17..10:17): -> recursion/Nats.Succ.unapply().
-[10:17..10:17): -> local0
 [10:18..10:19): p <- local1
 [10:24..10:25): p -> local1
 [10:26..10:27): + -> recursion/Nats.Nat#`+`().
@@ -4149,7 +3811,6 @@ Occurrences:
 [14:14..14:18): Zero <- recursion/Nats.Zero.
 [14:27..14:30): Nat -> recursion/Nats.Nat#
 [15:13..15:17): Succ <- recursion/Nats.Succ#
-[15:17..15:17): <- recursion/Nats.Succ#`<init>`().
 [15:18..15:19): N <- recursion/Nats.Succ#[N]
 [15:28..15:29): p <- recursion/Nats.Succ#p.
 [15:31..15:32): N -> recursion/Nats.Succ#[N]
@@ -4161,8 +3822,6 @@ Occurrences:
 [18:11..18:12): n -> recursion/Nats.toIntg().(n)
 [19:11..19:15): Zero -> recursion/Nats.Zero.
 [20:11..20:15): Succ -> recursion/Nats.Succ.
-[20:15..20:15): -> recursion/Nats.Succ.unapply().
-[20:15..20:15): -> local2
 [20:16..20:17): p <- local3
 [20:22..20:28): toIntg -> recursion/Nats.toIntg().
 [20:29..20:30): p -> local3
@@ -4170,12 +3829,8 @@ Occurrences:
 [23:6..23:9): j31 <- recursion/Nats.j31.
 [23:12..23:18): toIntg -> recursion/Nats.toIntg().
 [23:19..23:23): Zero -> recursion/Nats.Zero.
-[23:24..23:24): -> recursion/Nats.Zero.
-[23:24..23:32): ++.++.++ <- local4
 [23:24..23:26): ++ -> recursion/Nats.Nat#`++`().
-[23:27..23:35): ++.++ +  <- local5
 [23:27..23:29): ++ -> recursion/Nats.Nat#`++`().
-[23:30..23:38): ++ + Zer <- local6
 [23:30..23:32): ++ -> recursion/Nats.Nat#`++`().
 [23:33..23:34): + -> recursion/Nats.Nat#`+`().
 [23:35..23:39): Zero -> recursion/Nats.Zero.
@@ -4190,7 +3845,7 @@ Uri => semanticdb-Definitions.scala
 Text => empty
 Language => Scala
 Symbols => 10 entries
-Occurrences => 9 entries
+Occurrences => 7 entries
 
 Symbols:
 a/Definitions. => final object Definitions extends Object { self: Definitions.type => +9 decls }
@@ -4210,9 +3865,7 @@ Occurrences:
 [2:6..2:7): a <- a/Definitions.a.
 [3:6..3:7): b <- a/Definitions.b().
 [4:6..4:7): c <- a/Definitions.c().
-[5:2..5:2): <- a/Definitions.D#`<init>`().
 [5:8..5:9): D <- a/Definitions.D#
-[6:2..6:2): <- a/Definitions.E#`<init>`().
 [6:8..6:9): E <- a/Definitions.E#
 
 expect/semanticdb-Flags.scala
@@ -4224,7 +3877,7 @@ Uri => semanticdb-Flags.scala
 Text => empty
 Language => Scala
 Symbols => 50 entries
-Occurrences => 82 entries
+Occurrences => 70 entries
 
 Symbols:
 flags/p/package. => final package object p extends Object { self: p.type => +23 decls }
@@ -4284,7 +3937,6 @@ Occurrences:
 [2:13..2:21): language -> scala/language.
 [2:22..2:34): experimental -> scala/language.experimental.
 [2:35..2:41): macros -> scala/language.experimental.macros.
-[4:15..4:16): p <- flags/p/package.
 [5:2..5:3): p -> flags/p/
 [5:19..5:20): x <- flags/p/package.x.
 [6:25..6:26): y <- flags/p/package.y().
@@ -4297,7 +3949,6 @@ Occurrences:
 [8:13..8:16): Int -> scala/Int#
 [8:25..8:28): ??? -> scala/Predef.`???`().
 [9:17..9:18): C <- flags/p/package.C#
-[9:18..9:18): <- flags/p/package.C#`<init>`().
 [9:20..9:21): T <- flags/p/package.C#[T]
 [9:24..9:25): U <- flags/p/package.C#[U]
 [9:27..9:28): V <- flags/p/package.C#[V]
@@ -4307,15 +3958,11 @@ Occurrences:
 [9:39..9:40): U -> flags/p/package.C#[U]
 [9:42..9:43): z <- flags/p/package.C#z.
 [9:45..9:46): V -> flags/p/package.C#[V]
-[10:8..10:12): <- flags/p/package.C#`<init>`(+1).
-[10:22..10:22): -> flags/p/package.C#`<init>`().
 [10:22..10:25): ??? -> scala/Predef.`???`().
 [10:27..10:30): ??? -> scala/Predef.`???`().
 [10:32..10:35): ??? -> scala/Predef.`???`().
-[11:8..11:12): <- flags/p/package.C#`<init>`(+2).
 [11:13..11:14): t <- flags/p/package.C#`<init>`(+2).(t)
 [11:16..11:17): T -> flags/p/package.C#[T]
-[11:26..11:26): -> flags/p/package.C#`<init>`().
 [11:26..11:27): t -> flags/p/package.C#`<init>`(+2).(t)
 [11:29..11:32): ??? -> scala/Predef.`???`().
 [11:34..11:37): ??? -> scala/Predef.`???`().
@@ -4332,12 +3979,9 @@ Occurrences:
 [17:7..17:8): V <- flags/p/package.V#
 [17:12..17:15): Int -> scala/Int#
 [18:14..18:15): X <- flags/p/package.X.
-[19:2..19:2): <- flags/p/package.Y#`<init>`().
 [19:14..19:15): Y <- flags/p/package.Y#
-[20:2..20:2): <- flags/p/package.Z#`<init>`().
 [20:15..20:16): Z <- flags/p/package.Z#
 [21:8..21:10): AA <- flags/p/package.AA#
-[21:10..21:10): <- flags/p/package.AA#`<init>`().
 [21:11..21:12): x <- flags/p/package.AA#x.
 [21:14..21:17): Int -> scala/Int#
 [21:23..21:24): y <- flags/p/package.AA#y.
@@ -4345,16 +3989,13 @@ Occurrences:
 [21:35..21:36): z <- flags/p/package.AA#z().
 [21:38..21:41): Int -> scala/Int#
 [22:8..22:9): S <- flags/p/package.S#
-[22:9..22:9): <- flags/p/package.S#`<init>`().
 [22:11..22:22): specialized -> scala/specialized#
 [22:23..22:24): T <- flags/p/package.S#[T]
 [23:6..23:10): List -> scala/package.List.
-[23:10..23:10): -> scala/collection/SeqFactory#unapplySeq().
 [23:11..23:14): xs1 <- flags/p/package.xs1.
 [23:18..23:21): ??? -> scala/Predef.`???`().
 [24:2..24:5): ??? -> scala/Predef.`???`().
 [24:19..24:23): List -> scala/package.List.
-[24:23..24:23): -> scala/collection/SeqFactory#unapplySeq().
 [24:24..24:27): xs2 <- local0
 [24:32..24:35): ??? -> scala/Predef.`???`().
 [25:2..25:5): ??? -> scala/Predef.`???`().
@@ -4371,7 +4012,7 @@ Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
 Symbols => 142 entries
-Occurrences => 250 entries
+Occurrences => 225 entries
 
 Symbols:
 local0 => abstract method k => Int
@@ -4526,7 +4167,6 @@ Occurrences:
 [3:13..3:21): language -> scala/language.
 [3:22..3:33): higherKinds -> scala/language.higherKinds.
 [5:6..5:9): ann <- types/ann#
-[5:9..5:9): <- types/ann#`<init>`().
 [5:10..5:11): T <- types/ann#[T]
 [5:13..5:14): x <- types/ann#x.
 [5:16..5:17): T -> types/ann#[T]
@@ -4535,38 +4175,25 @@ Occurrences:
 [5:44..5:60): StaticAnnotation -> scala/annotation/StaticAnnotation#
 [6:6..6:10): ann1 <- types/ann1#
 [6:19..6:24): scala -> scala/
-[6:19..6:19): <- types/ann1#`<init>`().
 [6:25..6:35): annotation -> scala/annotation/
 [6:36..6:52): StaticAnnotation -> scala/annotation/StaticAnnotation#
 [7:6..7:10): ann2 <- types/ann2#
 [7:19..7:24): scala -> scala/
-[7:19..7:19): <- types/ann2#`<init>`().
 [7:25..7:35): annotation -> scala/annotation/
 [7:36..7:52): StaticAnnotation -> scala/annotation/StaticAnnotation#
-[9:0..9:0): <- types/B#`<init>`().
 [9:6..9:7): B <- types/B#
-[11:0..11:0): <- types/C#`<init>`().
 [11:6..11:7): C <- types/C#
 [13:6..13:7): P <- types/P#
-[14:2..14:2): <- types/P#C#`<init>`().
-[14:2..14:2): <- types/P#`<init>`().
 [14:8..14:9): C <- types/P#C#
-[15:2..15:2): <- types/P#X#`<init>`().
 [15:8..15:9): X <- types/P#X#
 [16:6..16:7): x <- types/P#x.
 [16:14..16:15): X -> types/P#X#
-[16:15..16:15): -> types/P#X#`<init>`().
 [19:6..19:7): T <- types/T#
-[20:2..20:2): <- types/T#C#`<init>`().
-[20:2..20:2): <- types/T#`<init>`().
 [20:8..20:9): C <- types/T#C#
-[21:2..21:2): <- types/T#X#`<init>`().
 [21:8..21:9): X <- types/T#X#
 [22:6..22:7): x <- types/T#x.
 [22:14..22:15): X -> types/T#X#
-[22:15..22:15): -> types/T#X#`<init>`().
 [25:11..25:14): Foo <- types/Foo#
-[25:14..25:14): <- types/Foo#`<init>`().
 [25:15..25:16): s <- types/Foo#s.
 [27:7..27:10): Foo <- types/Foo.
 [28:6..28:7): x <- types/Foo.x.
@@ -4575,22 +4202,17 @@ Occurrences:
 [29:17..29:18): x -> types/Foo.x.
 [32:7..32:11): Test <- types/Test.
 [33:8..33:9): M <- types/Test.M#
-[34:4..34:4): <- types/Test.M#`<init>`().
 [34:8..34:9): m <- types/Test.M#m().
 [34:11..34:14): Int -> scala/Int#
 [34:17..34:20): ??? -> scala/Predef.`???`().
 [37:8..37:9): N <- types/Test.N#
-[38:4..38:4): <- types/Test.N#`<init>`().
 [38:8..38:9): n <- types/Test.N#n().
 [38:11..38:14): Int -> scala/Int#
 [38:17..38:20): ??? -> scala/Predef.`???`().
 [41:8..41:9): C <- types/Test.C#
 [41:18..41:19): M -> types/Test.M#
-[41:18..41:18): <- types/Test.C#`<init>`().
-[41:19..41:19): -> types/Test.M#`<init>`().
 [42:8..42:9): p <- types/Test.C#p.
 [42:16..42:17): P -> types/P#
-[42:17..42:17): -> types/P#`<init>`().
 [43:8..43:9): x <- types/Test.C#x.
 [43:12..43:13): p -> types/Test.C#p.
 [43:14..43:15): x -> types/P#x.
@@ -4650,11 +4272,9 @@ Occurrences:
 [64:43..64:46): ??? -> scala/Predef.`???`().
 [65:8..65:21): compoundType5 <- types/Test.C#compoundType5.
 [65:28..65:29): M -> types/Test.M#
-[65:29..65:29): -> types/Test.M#`<init>`().
 [65:35..65:36): N -> types/Test.N#
 [66:8..66:21): compoundType6 <- types/Test.C#compoundType6.
 [66:28..66:29): M -> types/Test.M#
-[66:29..66:29): -> types/Test.M#`<init>`().
 [66:35..66:36): N -> types/Test.N#
 [66:43..66:44): k <- local7
 [66:46..66:49): Int -> scala/Int#
@@ -4687,11 +4307,8 @@ Occurrences:
 [78:11..78:25): ClassInfoType1 <- types/Test.C#ClassInfoType1.
 [79:10..79:24): ClassInfoType2 <- types/Test.C#ClassInfoType2#
 [79:33..79:34): B -> types/B#
-[79:33..79:33): <- types/Test.C#ClassInfoType2#`<init>`().
-[79:34..79:34): -> types/B#`<init>`().
 [79:41..79:42): x <- types/Test.C#ClassInfoType2#x().
 [80:10..80:24): ClassInfoType3 <- types/Test.C#ClassInfoType3#
-[80:24..80:24): <- types/Test.C#ClassInfoType3#`<init>`().
 [80:25..80:26): T <- types/Test.C#ClassInfoType3#[T]
 [82:11..82:21): MethodType <- types/Test.C#MethodType.
 [83:10..83:12): x1 <- types/Test.C#MethodType.x1().
@@ -4724,7 +4341,6 @@ Occurrences:
 [92:25..92:28): Int -> scala/Int#
 [92:31..92:34): ??? -> scala/Predef.`???`().
 [95:15..95:27): RepeatedType <- types/Test.C#RepeatedType#
-[95:27..95:27): <- types/Test.C#RepeatedType#`<init>`().
 [95:28..95:29): s <- types/Test.C#RepeatedType#s.
 [95:31..95:37): String -> scala/Predef.String#
 [96:10..96:12): m1 <- types/Test.C#RepeatedType#m1().
@@ -4778,7 +4394,7 @@ Uri => semanticdb-extract.scala
 Text => empty
 Language => Scala
 Symbols => 18 entries
-Occurrences => 22 entries
+Occurrences => 20 entries
 
 Symbols:
 _empty_/AnObject. => final object AnObject extends Object { self: AnObject.type => +6 decls }
@@ -4812,7 +4428,6 @@ Occurrences:
 [8:5..8:14): substring -> java/lang/String#substring().
 [9:5..9:14): substring -> java/lang/String#substring(+1).
 [11:2..11:6): List -> scala/package.List.
-[11:6..11:6): -> scala/collection/IterableFactory#apply().
 [12:2..12:6): List -> scala/package.List.
 [12:7..12:12): apply -> scala/collection/IterableFactory#apply().
 [13:2..13:6): List -> scala/package.List.
@@ -4820,7 +4435,6 @@ Occurrences:
 [14:2..14:9): println -> scala/Predef.println(+1).
 [14:12..14:13): + -> scala/Int#`+`(+4).
 [16:13..16:16): Foo <- _empty_/AnObject.Foo#
-[16:16..16:16): <- _empty_/AnObject.Foo#`<init>`().
 [16:17..16:18): x <- _empty_/AnObject.Foo#x.
 [16:20..16:23): Int -> scala/Int#
 
@@ -4833,7 +4447,7 @@ Uri => toplevel.scala
 Text => empty
 Language => Scala
 Symbols => 19 entries
-Occurrences => 44 entries
+Occurrences => 35 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram extends Object { self: MyProgram => +2 decls }
@@ -4880,20 +4494,11 @@ Occurrences:
 [2:46..2:47): z -> _empty_/toplevel$package.combine(+1).(z)
 [3:4..3:11): combine <- _empty_/toplevel$package.combine(+2).
 [4:4..4:7): foo <- _empty_/toplevel$package.foo().
-[5:0..5:0): -> _empty_/toplevel$package.MyProgram().
-[5:0..5:0): -> scala/util/CommandLineParser.parseArgument().
-[5:0..5:0): -> _empty_/MyProgram#main().(args)
-[5:0..5:0): -> scala/util/CommandLineParser.FromString.given_FromString_Int.
-[5:0..5:0): -> scala/util/CommandLineParser.showError().
-[5:0..5:0): -> local0
-[5:0..5:0): <- _empty_/MyProgram#`<init>`().
-[5:0..5:0): <- _empty_/MyProgram#
 [5:1..5:5): main -> scala/main#
 [5:10..5:19): MyProgram <- _empty_/toplevel$package.MyProgram().
 [5:20..5:25): times <- _empty_/toplevel$package.MyProgram().(times)
 [5:27..5:30): Int -> scala/Int#
 [5:33..5:37): Unit -> scala/Unit#
-[5:41..5:41): -> scala/LowPriorityImplicits#intWrapper().
 [5:43..5:45): to -> scala/runtime/RichInt#to().
 [5:46..5:51): times -> _empty_/toplevel$package.MyProgram().(times)
 [5:53..5:60): foreach -> scala/collection/immutable/Range#foreach().
