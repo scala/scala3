@@ -2,11 +2,23 @@
 5 |def t1 = f // error
   |         ^
   |         method f is deprecated
--- Error: tests/neg-custom-args/nowarn/nowarn-refchecks.scala:9:29 -----------------------------------------------------
-9 |@nowarn("msg=fish") def t4 = f // error
-  |                             ^
-  |                             method f is deprecated
--- Error: tests/neg-custom-args/nowarn/nowarn-refchecks.scala:15:9 -----------------------------------------------------
-15 |def t9 = f: @nowarn("msg=fish") // error
+-- Error: tests/neg-custom-args/nowarn/nowarn-refchecks.scala:10:9 -----------------------------------------------------
+10 |def t4 = f // error
    |         ^
    |         method f is deprecated
+-- Error: tests/neg-custom-args/nowarn/nowarn-refchecks.scala:17:9 -----------------------------------------------------
+17 |def t9 = f: // error
+   |         ^
+   |         method f is deprecated
+-- Error: tests/neg-custom-args/nowarn/nowarn-refchecks.scala:9:1 ------------------------------------------------------
+9 |@nowarn("msg=fish") // error, unused nowarn
+  |^^^^^^^^^^^^^^^^^^^
+  |@nowarn annotation does not suppress any warnings
+-- Error: tests/neg-custom-args/nowarn/nowarn-refchecks.scala:18:3 -----------------------------------------------------
+18 |  @nowarn("msg=fish") // error, unused nowarn
+   |  ^^^^^^^^^^^^^^^^^^^
+   |  @nowarn annotation does not suppress any warnings
+-- Error: tests/neg-custom-args/nowarn/nowarn-refchecks.scala:23:1 -----------------------------------------------------
+23 |@nowarn("cat=unchecked") def t7b(x: Any) = x match // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^
+   |@nowarn annotation does not suppress any warnings

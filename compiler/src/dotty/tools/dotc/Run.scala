@@ -125,13 +125,24 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       val source = sup.annotPos.source
       mySuppressions.getOrElseUpdate(source, mutable.ListBuffer.empty) += sup
 
-    def reportSuspendedMessages(unit: CompilationUnit)(using Context): Unit = {
+    def reportSuspendedMessages(source: SourceFile)(using Context): Unit = {
       // sort suppressions. they are not added in any particular order because of lazy type completion
-      for (sups <- mySuppressions.get(unit.source))
-        mySuppressions(unit.source) = sups.sortBy(sup => 0 - sup.start)
-      mySuppressionsComplete += unit.source
-      mySuspendedMessages.remove(unit.source).foreach(_.foreach(ctx.reporter.issueIfNotSuppressed))
+      for (sups <- mySuppressions.get(source))
+        mySuppressions(source) = sups.sortBy(sup => 0 - sup.start)
+      mySuppressionsComplete += source
+      mySuspendedMessages.remove(source).foreach(_.foreach(ctx.reporter.issueIfNotSuppressed))
     }
+
+    def warnUnusedSuppressions(): Unit =
+      // if we stop before typer completes (errors in parser, Ystop), report all suspended messages
+      mySuspendedMessages.keysIterator.toList.foreach(reportSuspendedMessages)
+      if ctx.settings.WunusedHas.nowarn then
+        for {
+          source <- mySuppressions.keysIterator.toList
+          sups   <- mySuppressions.remove(source)
+          sup    <- sups.reverse
+        } if (!sup.used)
+          report.warning("@nowarn annotation does not suppress any warnings", sup.annotPos)
 
   /** The compilation units currently being compiled, this may return different
    *  results over time.
@@ -264,6 +275,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       val action = finalizeActions.remove(0)
       action()
     }
+    suppressions.warnUnusedSuppressions()
     compiling = false
   }
 

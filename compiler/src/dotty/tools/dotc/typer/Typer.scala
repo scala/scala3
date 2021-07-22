@@ -2110,7 +2110,9 @@ class Typer extends Namer
           else
             fs
     val range = mdef.sourcePos
-    ctx.run.suppressions.addSuppression(Suppression(tree.sourcePos, filters, range.start, range.end, verbose))
+    val sup = Suppression(tree.sourcePos, filters, range.start, range.end, verbose)
+    if filters == List(MessageFilter.None) then sup.markUsed()
+    ctx.run.suppressions.addSuppression(sup)
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef

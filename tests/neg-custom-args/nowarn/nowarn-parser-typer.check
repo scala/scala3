@@ -5,15 +5,15 @@
   |          its body in a block; no exceptions are handled.
 
 longer explanation available when compiling with `-explain`
--- [E000] Syntax Error: tests/neg-custom-args/nowarn/nowarn-parser-typer.scala:23:26 -----------------------------------
-23 |@nowarn("id=1") def t5d = try 1 // error, wrong id
-   |                          ^^^^^
-   |                          A try without catch or finally is equivalent to putting
-   |                          its body in a block; no exceptions are handled.
+-- [E000] Syntax Error: tests/neg-custom-args/nowarn/nowarn-parser-typer.scala:24:10 -----------------------------------
+24 |def t5d = try 1 // error, wrong id
+   |          ^^^^^
+   |          A try without catch or finally is equivalent to putting
+   |          its body in a block; no exceptions are handled.
 
 longer explanation available when compiling with `-explain`
--- [E000] Syntax Error: tests/neg-custom-args/nowarn/nowarn-parser-typer.scala:25:28 -----------------------------------
-25 |@nowarn("verbose") def t6 = try 1 // error with details
+-- [E000] Syntax Error: tests/neg-custom-args/nowarn/nowarn-parser-typer.scala:26:28 -----------------------------------
+26 |@nowarn("verbose") def t6 = try 1 // error with details
    |                            ^^^^^
    |                            A try without catch or finally is equivalent to putting
    |                            its body in a block; no exceptions are handled.
@@ -33,3 +33,7 @@ longer explanation available when compiling with `-explain`
    |        ^^^^^^
    |        Invalid message filter
    |        unknown filter: wat?
+-- Error: tests/neg-custom-args/nowarn/nowarn-parser-typer.scala:23:1 --------------------------------------------------
+23 |@nowarn("id=1") // error, unused nowarn
+   |^^^^^^^^^^^^^^^
+   |@nowarn annotation does not suppress any warnings

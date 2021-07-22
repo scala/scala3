@@ -1,11 +1,13 @@
 package dotty.tools.dotc
 package config
 
+import dotty.tools.dotc.config.PathResolver.Defaults
+import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.io.{ Directory, PlainDirectory, AbstractFile, JDK9Reflectors }
-import PathResolver.Defaults
-import rewrites.Rewrites
-import Settings.{ Setting, SettingGroup }
+import dotty.tools.dotc.rewrites.Rewrites
+import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
+
+import scala.util.chaining._
 
 class ScalaSettings extends SettingGroup with AllScalaSettings
 
@@ -132,6 +134,18 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+
+  val Wunused: Setting[List[String]] = MultiChoiceSetting(
+    name = "-Wunused",
+    helpArg = "warning",
+    descr = "Enable or disable specific `unused` warnings",
+    choices = List("nowarn", "all"),
+    default = Nil
+  )
+  object WunusedHas:
+    def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
+    def nowarn(using Context) = allOr("nowarn")
+
   val Wconf: Setting[List[String]] = MultiStringSetting(
     "-Wconf",
     "patterns",
