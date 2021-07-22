@@ -19,17 +19,21 @@ class StaticSiteContext(
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  def indexTemplate(): LoadedTemplate =
+  private def indexFiles =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
 
     if files.size > 1 then
       val msg = s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}"
       report.error(msg)
+    files
 
-    files.flatMap(loadTemplate(_, isBlog = false)).headOption.getOrElse {
-      val fakeFile = new File(root, "index.html")
-      LoadedTemplate(emptyTemplate(fakeFile, "index"), List.empty, fakeFile)
-    }
+  def hasIndexFile = indexFiles.nonEmpty
+
+  def emptyIndexTemplate =
+    val fakeFile = new File(root, "index.html")
+    LoadedTemplate(emptyTemplate(fakeFile, "index"), List.empty, fakeFile)
+
+  def indexTemplates(): Seq[LoadedTemplate] = indexFiles.flatMap(loadTemplate(_, isBlog = false))
 
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")

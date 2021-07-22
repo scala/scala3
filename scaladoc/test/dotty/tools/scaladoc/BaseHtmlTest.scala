@@ -41,8 +41,6 @@ class BaseHtmlTest:
 
       finally IO.delete(dest.toFile)
 
-  val testDocPath = Paths.get(BuildInfo.testDocumentationRoot)
-
   class DocumentContext(d: Document, path: Path):
     import collection.JavaConverters._
 

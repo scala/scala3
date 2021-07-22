@@ -30,17 +30,17 @@ class NavigationTest extends BaseHtmlTest:
       )),
       NavMenuTestEntry("Adoc", "Adoc.html", Seq()),
       NavMenuTestEntry("API", "../api/index.html", Seq(
-        NavMenuTestEntry("tests.site", "../api/tests/site.html", Seq(
-          NavMenuTestEntry("BrokenLink", "../api/tests/site/BrokenLink.html", Nil),
-          NavMenuTestEntry("BrokenLinkWiki", "../api/tests/site/BrokenLinkWiki.html", Nil),
-          NavMenuTestEntry("OtherPackageLink", "../api/tests/site/OtherPackageLink.html", Nil),
-          NavMenuTestEntry("OtherPackageLinkWiki", "../api/tests/site/OtherPackageLinkWiki.html", Nil),
-          NavMenuTestEntry("SamePackageLink", "../api/tests/site/SamePackageLink.html", Nil),
-          NavMenuTestEntry("SamePackageLinkWiki", "../api/tests/site/SamePackageLinkWiki.html", Nil),
-          NavMenuTestEntry("SomeClass", "../api/tests/site/SomeClass.html", Nil)
+        NavMenuTestEntry("tests.site", "../tests/site.html", Seq(
+          NavMenuTestEntry("BrokenLink", "../tests/site/BrokenLink.html", Nil),
+          NavMenuTestEntry("BrokenLinkWiki", "../tests/site/BrokenLinkWiki.html", Nil),
+          NavMenuTestEntry("OtherPackageLink", "../tests/site/OtherPackageLink.html", Nil),
+          NavMenuTestEntry("OtherPackageLinkWiki", "../tests/site/OtherPackageLinkWiki.html", Nil),
+          NavMenuTestEntry("SamePackageLink", "../tests/site/SamePackageLink.html", Nil),
+          NavMenuTestEntry("SamePackageLinkWiki", "../tests/site/SamePackageLinkWiki.html", Nil),
+          NavMenuTestEntry("SomeClass", "../tests/site/SomeClass.html", Nil)
         )),
-        NavMenuTestEntry("tests.site.some.other", "../api/tests/site/some/other.html", Seq(
-          NavMenuTestEntry("SomeOtherPackage", "../api/tests/site/some/other/SomeOtherPackage.html", Nil),
+        NavMenuTestEntry("tests.site.some.other", "../tests/site/some/other.html", Seq(
+          NavMenuTestEntry("SomeOtherPackage", "../tests/site/some/other/SomeOtherPackage.html", Nil),
         ))
       )),
     ))

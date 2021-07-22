@@ -26,7 +26,7 @@ class AbstractMembers extends ScaladocTest("abstractmembersignatures"):
   }
 
   private def signaturesFromDocumentation()(using DocContext): Map[String, List[(String, String)]] =
-    val output = summon[DocContext].args.output.toPath.resolve("api")
+    val output = summon[DocContext].args.output.toPath
     val signatures = List.newBuilder[(String, (String, String))]
     def processFile(path: Path): Unit =
       val document = Jsoup.parse(IO.read(path))

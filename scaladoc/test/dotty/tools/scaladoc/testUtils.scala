@@ -7,6 +7,7 @@ import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import dotty.tools.scaladoc.test.BuildInfo
 import org.junit.Assert._
 import java.io.File
+import java.nio.file.Paths
 
 
 case class ReportedDiagnostics(errors: List[Diagnostic], warnings: List[Diagnostic], infos: List[Diagnostic]):
@@ -57,14 +58,14 @@ def testArgs(files: Seq[File] = Nil, dest: File = new File("notUsed")) = Scalado
           docsRoot = Some(""),
         )
 
-def testContext = 
+def testContext =
   val ctx = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
   ctx.setSetting(ctx.settings.usejavacp, true)
   ctx
 
 def testDocContext(files: Seq[File] = Nil) = DocContext(testArgs(files), testContext)
 
-def tastyFiles(name: String, allowEmpty: Boolean = false) =
+def tastyFiles(name: String, allowEmpty: Boolean = false, rootPck: String = "tests") =
   def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {
     throw AssertionError(s"$dir not found. The test name is incorrect or scaladoc-testcases were not recompiled.")
   }
@@ -73,7 +74,9 @@ def tastyFiles(name: String, allowEmpty: Boolean = false) =
       case f if f.getName endsWith ".tasty" => f :: Nil
       case _ => Nil
     }
-  val files = BuildInfo.test_testcasesOutputDir.flatMap(p => collectFiles(File(s"$p/tests/$name")))
+  val outputDir = BuildInfo.test_testcasesOutputDir
+  val files = outputDir.flatMap(p => collectFiles(File(s"$p/$rootPck/$name")))
   assert(files.nonEmpty || allowEmpty)
   files.toSeq
 
+def testDocPath = Paths.get(BuildInfo.testDocumentationRoot)

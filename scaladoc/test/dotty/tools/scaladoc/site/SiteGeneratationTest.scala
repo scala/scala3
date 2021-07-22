@@ -45,18 +45,19 @@ class SiteGeneratationTest extends BaseHtmlTest:
 
   def testApiPages(
     mainTitle: String = "API",
-    parents: Seq[String] = Seq(projectName))(using ProjectContext) =
-      checkFile("api/index.html")(
+    parents: Seq[String] = Seq(projectName),
+    hasToplevelIndexIndex: Boolean = true)(using ProjectContext) =
+      checkFile((if hasToplevelIndexIndex then "api/" else "" )+ "index.html")(
         title = mainTitle,
         header = projectName,
         parents = parents
       )
-      checkFile("api/tests/site.html")(
+      checkFile("tests/site.html")(
         title = "tests.site",
         header = "tests.site",
         parents = parents :+ mainTitle
       )
-      checkFile("api/tests/site/SomeClass.html")(
+      checkFile("tests/site/SomeClass.html")(
         title = "SomeClass",
         header = "SomeClass",
         parents = parents ++ Seq(mainTitle, "tests.site")
@@ -70,12 +71,12 @@ class SiteGeneratationTest extends BaseHtmlTest:
     testApiPages()
 
     withHtmlFile("docs/Adoc.html"){ content  =>
-        content.assertAttr("p a","href", "../api/tests/site/SomeClass.html")
+        content.assertAttr("p a","href", "../tests/site/SomeClass.html")
     }
 
-    withHtmlFile("api/tests/site/SomeClass.html"){ content  =>
+    withHtmlFile("tests/site/SomeClass.html"){ content  =>
       content.assertAttr(".breadcrumbs a","href",
-        "../../../docs/index.html", "../../index.html", "../site.html", "SomeClass.html"
+        "../../docs/index.html", "../../api/index.html", "../site.html", "SomeClass.html"
       )
     }
   }
@@ -84,18 +85,18 @@ class SiteGeneratationTest extends BaseHtmlTest:
   def noGlobalIndexTest() = withGeneratedSite(testDocPath.resolve("noGlobalIndex")){
     testDocPages()
     testDocIndexPage()
-    testApiPages()
+    testApiPages(hasToplevelIndexIndex = false)
   }
 
   @Test
   def noIndexesTest() = withGeneratedSite(testDocPath.resolve("noIndexes")){
     testDocPages()
-    testApiPages()
+    testApiPages(hasToplevelIndexIndex = false)
   }
 
   @Test
   def noExistingDocs() = withGeneratedSite(testDocPath.resolve("noExisting")){
-    testApiPages(mainTitle = projectName, parents = Nil)
+    testApiPages(mainTitle = projectName, parents = Nil, hasToplevelIndexIndex = false)
   }
 
   @Test
