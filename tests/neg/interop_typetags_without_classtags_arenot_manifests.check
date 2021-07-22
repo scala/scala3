@@ -1,0 +1,10 @@
+
+
+-- Error: tests/neg/interop_typetags_without_classtags_arenot_manifests/Test_3.scala:5:23 ------------------------------
+5 |    println(manifest[T]) // error
+  |                       ^
+  |                       To create a Manifest here, it is necessary to interoperate with the
+  |                       TypeTag `evidence$1` in scope. However TypeTag to Manifest conversion requires a
+  |                       ClassTag for the corresponding type to be present.
+  |                       To proceed add a ClassTag for the type `T` (e.g. by introducing a context bound)
+  |                       and recompile.

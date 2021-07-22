@@ -1,0 +1,6 @@
+
+
+-- Error: tests/neg/interop_abstypetags_arenot_manifests/Test_3.scala:5:23 ---------------------------------------------
+5 |    println(manifest[T]) // error
+  |                       ^
+  |                       No Manifest available for T.

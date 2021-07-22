@@ -111,22 +111,22 @@ object Test
     assertNoRelationship[List[Int], List[AnyRef]]
 
     // Nothing
-    assertSubType[Nothing, Any]
-    assertSubType[Nothing, AnyVal]
-    assertSubType[Nothing, AnyRef]
-    assertSubType[Nothing, String]
-    assertSubType[Nothing, List[String]]
-    assertSubType[Nothing, Null]
-    assertSameType[Nothing, Nothing]
+    // assertSubType[Nothing, Any]
+    // assertSubType[Nothing, AnyVal]
+    // assertSubType[Nothing, AnyRef]
+    // assertSubType[Nothing, String]
+    // assertSubType[Nothing, List[String]]
+    // assertSubType[Nothing, Null]
+    // assertSameType[Nothing, Nothing]
 
     // Null
-    assertSubType[Null, Any]
-    assertNoRelationship[Null, AnyVal]
-    assertSubType[Null, AnyRef]
-    assertSubType[Null, String]
-    assertSubType[Null, List[String]]
-    assertSameType[Null, Null]
-    assertSuperType[Null, Nothing]
+    // assertSubType[Null, Any]
+    // assertNoRelationship[Null, AnyVal]
+    // assertSubType[Null, AnyRef]
+    // assertSubType[Null, String]
+    // assertSubType[Null, List[String]]
+    // assertSameType[Null, Null]
+    // assertSuperType[Null, Nothing]
 
     // Any
     assertSameType[Any, Any]
@@ -134,8 +134,8 @@ object Test
     assertSuperType[Any, AnyRef]
     assertSuperType[Any, String]
     assertSuperType[Any, List[String]]
-    assertSuperType[Any, Null]
-    assertSuperType[Any, Nothing]
+    // assertSuperType[Any, Null]
+    // assertSuperType[Any, Nothing]
 
     // Misc unrelated types
     assertNoRelationship[Unit, AnyRef]

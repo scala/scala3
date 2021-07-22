@@ -1,0 +1,6 @@
+
+
+-- Error: tests/neg/interop_abstypetags_arenot_classtags/Test_3.scala:6:23 ---------------------------------------------
+6 |    println(classTag[T]) // error
+  |                       ^
+  |                       No ClassTag available for T
