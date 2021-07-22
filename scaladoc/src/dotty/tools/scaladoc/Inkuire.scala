@@ -47,7 +47,8 @@ object Inkuire {
     signature:    Signature,
     name:         String,
     packageName:  String,
-    uri:      String
+    uri:          String,
+    entryType:    String
   )
 
   sealed trait TypeLike
@@ -266,7 +267,8 @@ object Inkuire {
         ("signature", serialize(e.signature)),
         ("name", serialize(e.name)),
         ("packageName", serialize(e.packageName)),
-        ("uri", serialize(e.uri))
+        ("uri", serialize(e.uri)),
+        ("entryType", serialize(e.entryType))
       )
     }
 
