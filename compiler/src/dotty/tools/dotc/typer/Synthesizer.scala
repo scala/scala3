@@ -26,7 +26,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context ?=> Tree
-  private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
+  type SpecialHandlerGen = Type => Context ?=> SpecialHandler
+  private type SpecialHandlers = List[(ClassSymbol, SpecialHandlerGen)]
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
     formal.argInfos match
@@ -442,15 +443,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           .withSpan(span)
 
       /** Re-wraps a type in a manifest before calling `materializeImplicit` on the result
-       *
-       *  TODO: in scala 2 if not full the default is `reflect.ClassManifest`,
-       *  not `reflect.ClassTag`, which is treated differently.
        */
-      def findManifest(tp: Type, manifestClass: Symbol = if full then defn.ManifestClass else NoSymbol) =
-        if manifestClass.exists then
-          materializeImplicit(manifestClass.typeRef.appliedTo(tp), span)
-        else
-          inner(tp, NoSymbol) // workaround so that a `ClassManifest` will be generated
+      def findManifest(tp: Type, manifestClass: Symbol = if full then defn.ManifestClass else defn.ClassManifestAlias) =
+        materializeImplicit(manifestClass.typeRef.appliedTo(tp), span)
 
       def findSubManifest(tp: Type) =
         findManifest(tp, if (full) defn.ManifestClass else defn.OptManifestClass)
@@ -565,17 +560,24 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   val synthesizedManifest: SpecialHandler = manifestOfFactory(defn.ManifestClass)
   val synthesizedOptManifest: SpecialHandler = manifestOfFactory(defn.OptManifestClass)
+  val synthesizedClassManifest: SpecialHandler = manifestOfFactory(defn.ClassManifestAlias)
 
-  val specialHandlers = List(
-    defn.ClassTagClass        -> synthesizedClassTag,
-    defn.TypeTestClass        -> synthesizedTypeTest,
-    defn.CanEqualClass        -> synthesizedCanEqual,
-    defn.ValueOfClass         -> synthesizedValueOf,
-    defn.Mirror_ProductClass  -> synthesizedProductMirror,
-    defn.Mirror_SumClass      -> synthesizedSumMirror,
-    defn.MirrorClass          -> synthesizedMirror,
-    defn.ManifestClass        -> synthesizedManifest,
-    defn.OptManifestClass     -> synthesizedOptManifest,
+  def genSynthesizedClassTag(formal: Type)(using Context): SpecialHandler =
+    if formal.dealias.typeSymbol == defn.ClassManifestAlias then
+      synthesizedClassManifest
+    else
+      synthesizedClassTag
+
+  val specialHandlers: SpecialHandlers = List(
+    defn.ClassTagClass        -> genSynthesizedClassTag,
+    defn.TypeTestClass        -> Function.const(synthesizedTypeTest),
+    defn.CanEqualClass        -> Function.const(synthesizedCanEqual),
+    defn.ValueOfClass         -> Function.const(synthesizedValueOf),
+    defn.Mirror_ProductClass  -> Function.const(synthesizedProductMirror),
+    defn.Mirror_SumClass      -> Function.const(synthesizedSumMirror),
+    defn.MirrorClass          -> Function.const(synthesizedMirror),
+    defn.ManifestClass        -> Function.const(synthesizedManifest),
+    defn.OptManifestClass     -> Function.const(synthesizedOptManifest),
   )
 
   def tryAll(formal: Type, span: Span)(using Context): Tree =
@@ -588,10 +590,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             tp.baseType(cls)
         val base = baseWithRefinements(formal)
         val result =
-          if (base <:< formal.widenExpr)
-            // With the subtype test we enforce that the searched type `formal` is of the right form
-            handler(base, span)
-          else EmptyTree
+          if base <:< formal.widenExpr then
+            handler(formal)(base, span)
+          else
+            EmptyTree
         result.orElse(recur(rest))
       case Nil =>
         EmptyTree

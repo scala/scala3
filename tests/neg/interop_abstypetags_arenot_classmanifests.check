@@ -1,0 +1,6 @@
+
+
+-- Error: tests/neg/interop_abstypetags_arenot_classmanifests/Test_3.scala:6:40 ----------------------------------------
+6 |    println(implicitly[ClassManifest[T]]) // error
+  |                                        ^
+  |                                        No ClassManifest available for T.

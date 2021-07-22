@@ -731,6 +731,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case tp: AndOrType =>
         // scalajs.js.|.UnionOps has a type parameter upper-bounded by `_ | _`
         tp.derivedAndOrType(mapArg(tp.tp1).bounds.hi, mapArg(tp.tp2).bounds.hi)
+      case tp @ AnnotatedType(inner, annot) =>
+        // added to support hijacking of `scala.reflect.ClassManifest`,
+        // we set its info to `[T] >: ClassTag[T] <: ClassTag[T] @unchecked`
+        val inner1 = elim(inner)
+        tp.derivedAnnotatedType(inner1, annot)
       case _ =>
         tp
     }

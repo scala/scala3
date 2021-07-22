@@ -4,8 +4,8 @@ package core
 
 import scala.annotation.{threadUnsafe => tu}
 import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._, Phases._
-import Flags._, Scopes._, Decorators._, NameOps._, Periods._, NullOpsDecorator._
-import unpickleScala2.Scala2Unpickler.ensureConstructor
+import Flags._, Scopes._, Decorators._, NameOps._, Periods._, NullOpsDecorator._, Annotations.Annotation
+import unpickleScala2.Scala2Unpickler, Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
 import Denotations.SingleDenotation
@@ -778,13 +778,36 @@ class Definitions {
     else
       NoSymbol
   }
+  @tu lazy val ClassManifestAlias: Symbol = ReflectPackageClass.requiredType("ClassManifest")
   @tu lazy val ManifestClass: ClassSymbol = requiredClass("scala.reflect.Manifest")
   @tu lazy val ManifestFactoryModule: Symbol = requiredModule("scala.reflect.ManifestFactory")
   @tu lazy val ClassManifestFactoryModule: Symbol = requiredModule("scala.reflect.ClassManifestFactory")
   @tu lazy val OptManifestClass: ClassSymbol = requiredClass("scala.reflect.OptManifest")
   @tu lazy val NoManifestModule: Symbol = requiredModule("scala.reflect.NoManifest")
 
-  @tu lazy val ReflectPackageClass: Symbol = requiredPackage("scala.reflect.package").moduleClass
+  @tu lazy val ReflectPackageClass: Symbol = {
+
+    def adjustClassManifest(module: Symbol)(using Context): Unit =
+      // `scala.reflect.ClassManifest` is a type alias to `scala.reflect.ClassTag`,
+      // however we need to prevent it from being dealiased for the purpose of summoning of
+      // a `ClassManifest`, which has a different result in Scala 2.
+      // With this solution values of `ClassManifest` and `ClassTag` are still interchangeable.
+      val classManifest = module.moduleClass.requiredType("ClassManifest")
+      classManifest.infoOrCompleter match
+        case TypeAlias(HKTypeLambda(params, ref)) =>
+          val unchecked = Annotation(UncheckedAnnot) // could be any annotation really
+          classManifest.info = HKTypeLambda.fromParams(params, TypeBounds(ref, AnnotatedType(ref, unchecked)))
+    end adjustClassManifest
+
+    val module = requiredPackage("scala.reflect.package")
+    module.infoOrCompleter match
+      case completer: ModuleCompleter =>
+        module.info = new ModuleCompleter(completer.moduleClass):
+          override def complete(root: SymDenotation)(using Context): Unit =
+            completer.complete(root)
+            adjustClassManifest(module)
+        module.moduleClass
+  }
   @tu lazy val ClassTagClass: ClassSymbol = requiredClass("scala.reflect.ClassTag")
   @tu lazy val ClassTagModule: Symbol = ClassTagClass.companionModule
     @tu lazy val ClassTagModule_apply: Symbol = ClassTagModule.requiredMethod(nme.apply)
@@ -1796,7 +1819,7 @@ class Definitions {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass :+ ReflectPackageClass
 
       isInitialized = true
     }
