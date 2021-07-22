@@ -1,8 +1,8 @@
 package classes
 import scala.language/*->scala::language.*/.experimental/*->scala::language.experimental.*/.macros/*->scala::language.experimental.macros.*/
-class C1/*<-classes::C1#*/(val x1/*<-classes::C1#x1.*/: Int/*->scala::Int#*/) extends AnyVal/*->scala::AnyVal#*//*->scala::AnyVal#`<init>`().*/
+class C1/*<-classes::C1#*/(val x1/*<-classes::C1#x1.*/: Int/*->scala::Int#*/) extends AnyVal/*->scala::AnyVal#*/
 
-class C2/*<-classes::C2#*/(val x2/*<-classes::C2#x2.*/: Int/*->scala::Int#*/) extends AnyVal/*->scala::AnyVal#*//*->scala::AnyVal#`<init>`().*/
+class C2/*<-classes::C2#*/(val x2/*<-classes::C2#x2.*/: Int/*->scala::Int#*/) extends AnyVal/*->scala::AnyVal#*/
 object C2/*<-classes::C2.*/
 
 case class C3/*<-classes::C3#*/(x/*<-classes::C3#x.*/: Int/*->scala::Int#*/)
@@ -49,7 +49,7 @@ object N/*<-classes::N.*/ {
   val anonClass/*<-classes::N.anonClass.*/ = new C7/*->classes::C7#*/(42) {
     val local/*<-local0*/ = ???/*->scala::Predef.`???`().*/
   }
-  val anonFun/*<-classes::N.anonFun.*/ = List/*->scala::package.List.*//*->scala::collection::IterableFactory#apply().*/(1).map/*->scala::collection::immutable::List#map().*/ { i/*<-local3*/ =>
+  val anonFun/*<-classes::N.anonFun.*/ = List/*->scala::package.List.*/(1).map/*->scala::collection::immutable::List#map().*/ { i/*<-local3*/ =>
     val local/*<-local4*/ = 2
     local/*->local4*/ +/*->scala::Int#`+`(+4).*/ 2
   }

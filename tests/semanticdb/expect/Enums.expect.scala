@@ -8,7 +8,7 @@ object Enums/*<-_empty_::Enums.*/:
   enum Directions/*<-_empty_::Enums.Directions#*/:
     case North/*<-_empty_::Enums.Directions.North.*/, East/*<-_empty_::Enums.Directions.East.*/, South/*<-_empty_::Enums.Directions.South.*/, West/*<-_empty_::Enums.Directions.West.*/
 
-  enum Suits/*<-_empty_::Enums.Suits#*/ derives /*->scala::CanEqual.derived.*/CanEqual:
+  enum Suits/*<-_empty_::Enums.Suits#*/ derives CanEqual:
     case Hearts/*<-_empty_::Enums.Suits.Hearts.*/, Spades/*<-_empty_::Enums.Suits.Spades.*/, Clubs/*<-_empty_::Enums.Suits.Clubs.*/, Diamonds/*<-_empty_::Enums.Suits.Diamonds.*/
 
   object Suits/*<-_empty_::Enums.Suits.*/:
@@ -47,14 +47,14 @@ object Enums/*<-_empty_::Enums.*/:
     case Refl/*<-_empty_::Enums.`<:<`.Refl#*/[C/*<-_empty_::Enums.`<:<`.Refl#[C]*/]() extends (C/*->_empty_::Enums.`<:<`.Refl#[C]*/ <:</*->_empty_::Enums.`<:<`#*/ C/*->_empty_::Enums.`<:<`.Refl#[C]*/)
 
   object <:</*<-_empty_::Enums.`<:<`.*/ :
-    given /*<-_empty_::Enums.`<:<`.`given_<:<_T_T`().*/[T/*<-_empty_::Enums.`<:<`.`given_<:<_T_T`().[T]*/]: (T/*->_empty_::Enums.`<:<`.`given_<:<_T_T`().[T]*/ <:</*->_empty_::Enums.`<:<`#*/ T/*->_empty_::Enums.`<:<`.`given_<:<_T_T`().[T]*/) = Refl/*->_empty_::Enums.`<:<`.Refl.*//*->_empty_::Enums.`<:<`.Refl.apply().*/()
+    given [T/*<-_empty_::Enums.`<:<`.`given_<:<_T_T`().[T]*/]: (T/*->_empty_::Enums.`<:<`.`given_<:<_T_T`().[T]*/ <:</*->_empty_::Enums.`<:<`#*/ T/*->_empty_::Enums.`<:<`.`given_<:<_T_T`().[T]*/) = Refl/*->_empty_::Enums.`<:<`.Refl.*/()
 
   extension [A/*<-_empty_::Enums.unwrap().[A]*/, B/*<-_empty_::Enums.unwrap().[B]*/](opt/*<-_empty_::Enums.unwrap().(opt)*/: Option/*->scala::Option#*/[A/*->_empty_::Enums.unwrap().[A]*/]) def unwrap/*<-_empty_::Enums.unwrap().*/(using ev/*<-_empty_::Enums.unwrap().(ev)*/: A/*->_empty_::Enums.unwrap().[A]*/ <:</*->_empty_::Enums.`<:<`#*/ Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]): Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/] = ev/*->_empty_::Enums.unwrap().(ev)*/ match
-    case Refl/*->_empty_::Enums.`<:<`.Refl.*//*->_empty_::Enums.`<:<`.Refl.unapply().*/() => opt/*->_empty_::Enums.unwrap().(opt)*/.flatMap/*->scala::Option#flatMap().*/(identity/*->scala::Predef.identity().*//*->local0*/[Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]])
+    case Refl/*->_empty_::Enums.`<:<`.Refl.*/() => opt/*->_empty_::Enums.unwrap().(opt)*/.flatMap/*->scala::Option#flatMap().*/(identity/*->scala::Predef.identity().*/[Option/*->scala::Option#*/[B/*->_empty_::Enums.unwrap().[B]*/]])
 
-  val some1/*<-_empty_::Enums.some1.*/ = Some/*->scala::Some.*//*->scala::Some.apply().*/(Some/*->scala::Some.*//*->scala::Some.apply().*/(1)).unwrap/*->_empty_::Enums.unwrap().*//*->_empty_::Enums.`<:<`.`given_<:<_T_T`().*/
+  val some1/*<-_empty_::Enums.some1.*/ = Some/*->scala::Some.*/(Some/*->scala::Some.*/(1)).unwrap/*->_empty_::Enums.unwrap().*/
 
-  enum Planet/*<-_empty_::Enums.Planet#*/(mass/*<-_empty_::Enums.Planet#mass.*/: Double/*->scala::Double#*/, radius/*<-_empty_::Enums.Planet#radius.*/: Double/*->scala::Double#*/) extends Enum/*->java::lang::Enum#*/[Planet/*->_empty_::Enums.Planet#*/]/*->java::lang::Enum#`<init>`().*/:
+  enum Planet/*<-_empty_::Enums.Planet#*/(mass/*<-_empty_::Enums.Planet#mass.*/: Double/*->scala::Double#*/, radius/*<-_empty_::Enums.Planet#radius.*/: Double/*->scala::Double#*/) extends Enum/*->java::lang::Enum#*/[Planet/*->_empty_::Enums.Planet#*/]:
     private final val G/*<-_empty_::Enums.Planet#G.*/ = 6.67300E-11
     def surfaceGravity/*<-_empty_::Enums.Planet#surfaceGravity().*/ = G/*->_empty_::Enums.Planet#G.*/ */*->scala::Double#`*`(+6).*/ mass/*->_empty_::Enums.Planet#mass.*/ //*->scala::Double#`::`(+6).*/ (radius/*->_empty_::Enums.Planet#radius.*/ */*->scala::Double#`*`(+6).*/ radius/*->_empty_::Enums.Planet#radius.*/)
     def surfaceWeight/*<-_empty_::Enums.Planet#surfaceWeight().*/(otherMass/*<-_empty_::Enums.Planet#surfaceWeight().(otherMass)*/: Double/*->scala::Double#*/) = otherMass/*->_empty_::Enums.Planet#surfaceWeight().(otherMass)*/ */*->scala::Double#`*`(+6).*/ surfaceGravity/*->_empty_::Enums.Planet#surfaceGravity().*/

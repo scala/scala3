@@ -10,8 +10,8 @@ trait Copy/*<-_empty_::Copy#*/[In/*<-_empty_::Copy#[In]*/ <: Txn[In], Out/*<-_em
 
   def apply/*<-_empty_::Copy#apply().*/[Repr/*<-_empty_::Copy#apply().[Repr]*/[~ <: Txn[~]] <: Elem[~]](in/*<-_empty_::Copy#apply().(in)*/: Repr/*->_empty_::Copy#apply().[Repr]*/[In/*->_empty_::Copy#[In]*/]): Repr/*->_empty_::Copy#apply().[Repr]*/[Out/*->_empty_::Copy#[Out]*/] = {
     val out/*<-local0*/ = copyImpl/*->_empty_::Copy#copyImpl().*/[Repr/*->_empty_::Copy#apply().[Repr]*/](in/*->_empty_::Copy#apply().(in)*/)
-    (/*->scala::Tuple2.apply().*/in/*->_empty_::Copy#apply().(in)*/, out/*->local0*/) match {
-      case (/*->scala::Tuple2.unapply().*/inObj/*<-local1*/: Obj/*->_empty_::Obj#*/[In/*->_empty_::Copy#[In]*/], outObj/*<-local2*/: Obj/*->_empty_::Obj#*/[Out/*->_empty_::Copy#[Out]*/]) =>     // problem here
+    (in/*->_empty_::Copy#apply().(in)*/, out/*->local0*/) match {
+      case (inObj/*<-local1*/: Obj/*->_empty_::Obj#*/[In/*->_empty_::Copy#[In]*/], outObj/*<-local2*/: Obj/*->_empty_::Obj#*/[Out/*->_empty_::Copy#[Out]*/]) =>     // problem here
         println/*->scala::Predef.println(+1).*/("copy the attributes")
       case _ =>
     }

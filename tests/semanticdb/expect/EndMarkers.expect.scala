@@ -1,9 +1,9 @@
 package endmarkers:
 
   class MultiCtor/*<-endmarkers::MultiCtor#*/(val i/*<-endmarkers::MultiCtor#i.*/: Int/*->scala::Int#*/):
-    def this/*<-endmarkers::MultiCtor#`<init>`(+1).*/() =
+    def this() =
       this(23)
-    end this/*->endmarkers::MultiCtor#`<init>`(+1).*/
+    end this
   end MultiCtor/*->endmarkers::MultiCtor#*/
 
   def topLevelMethod/*<-endmarkers::EndMarkers$package.topLevelMethod().*/: String/*->scala::Predef.String#*/ =
@@ -21,11 +21,11 @@ package endmarkers:
   class Container/*<-endmarkers::Container#*/:
 
     def foo/*<-endmarkers::Container#foo().*/ =
-      (/*->scala::Tuple3.apply().*/1,2,3)
+      (1,2,3)
     end foo/*->endmarkers::Container#foo().*/
 
     val bar/*<-endmarkers::Container#bar.*/ =
-      (/*->scala::Tuple3.apply().*/4,5,6)
+      (4,5,6)
     end bar/*->endmarkers::Container#bar.*/
 
     var baz/*<-endmarkers::Container#baz().*/ =
