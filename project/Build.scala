@@ -1325,6 +1325,7 @@ object Build {
       generateScalaDocumentation := Def.inputTaskDyn {
         val extraArgs = spaceDelimited("[output]").parsed
         val dest = file(extraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
+        val justAPI = extraArgs.drop(1).headOption == Some("--justAPI")
         val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
 
         val dottyJars: Seq[java.io.File] = Seq(
@@ -1346,21 +1347,24 @@ object Build {
 
         val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
 
+        def generateDocTask =
+          generateDocumentation(
+            roots, "Scala 3", dest.getAbsolutePath, "master",
+            Seq(
+              "-comment-syntax", "wiki",
+              s"-source-links:docs=github://lampepfl/dotty/master#docs",
+              "-doc-root-content", docRootFile.toString,
+              "-Ydocument-synthetic-types"
+            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Ylegacy-api-layout")))
+
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
+        else if (justAPI) generateDocTask
         else Def.task{
           IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
 
           // This file is used by GitHub Pages when the page is available in a custom domain
           IO.write(dest / "CNAME", "dotty.epfl.ch")
-        }.dependsOn(generateDocumentation(
-          roots, "Scala 3", dest.getAbsolutePath, "master",
-          Seq(
-            "-comment-syntax", "wiki",
-            "-siteroot", "docs",
-            s"-source-links:docs=github://lampepfl/dotty/master#docs",
-            "-doc-root-content", docRootFile.toString,
-            "-Ydocument-synthetic-types"
-          )))
+        }.dependsOn(generateDocTask)
       }.evaluated,
 
       generateTestcasesDocumentation := Def.taskDyn {
