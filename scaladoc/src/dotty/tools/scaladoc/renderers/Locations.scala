@@ -32,15 +32,18 @@ trait Locations(using ctx: DocContext):
         val path = dri match
           case `docsRootDRI` => List("docs", "index")
           case `apiPageDRI` =>
-            if ctx.staticSiteContext.fold(false)(_.hasIndexFile) then List("api", "index") else List("index")
+            if ctx.args.legacyAPILayout || ctx.staticSiteContext.fold(false)(_.hasIndexFile)
+              then List("api", "index")
+              else List("index")
           case dri if dri.isStaticFile =>
             Paths.get(dri.location).iterator.asScala.map(_.toString).toList
           case dri =>
             val loc = dri.location
-            loc.split(Array('.')).toList match
+            val fqn = loc.split(Array('.')).toList match
               case "<empty>" :: Nil  => "_empty_" :: Nil
               case "<empty>" :: tail => "_empty_" :: tail
               case other => other
+            if ctx.args.legacyAPILayout then "api" :: fqn else fqn
         cache.put(dri, path)
         path
       case cached => cached
