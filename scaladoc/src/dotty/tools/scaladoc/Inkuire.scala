@@ -1,7 +1,6 @@
 package dotty.tools.scaladoc
 
 import dotty.tools.scaladoc.util._
-import scala.collection.mutable.{ Map => MMap}
 
 object Inkuire {
 
@@ -18,6 +17,18 @@ object Inkuire {
   def generateInkuireConfig(externalMappings: Seq[String]): String = {
     val paths = ("../inkuire-db.json" +: externalMappings.map(_ + "../inkuire-db.json")).map(jsonString)
     jsonObject(("inkuirePaths", jsonList(paths))).toString
+  }
+
+  def curry(e: Signature): Signature = {
+    e.result.typ match
+      case t: Type if t.name.name == s"Function${t.params.size-1}" =>
+        curry(
+          e.copy(
+            arguments = e.arguments ++ t.params.init.map(_.typ).map(Contravariance(_)),
+            result = Covariance(t.params.last.typ)
+          )
+        )
+      case _ => e
   }
 
   case class InkuireDb(
