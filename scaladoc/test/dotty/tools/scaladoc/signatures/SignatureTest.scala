@@ -104,7 +104,7 @@ abstract class SignatureTest(
         }
 
   private def signaturesFromDocumentation()(using DocContext): Seq[String] =
-    val output = summon[DocContext].args.output.toPath.resolve("api")
+    val output = summon[DocContext].args.output.toPath
     val signatures = List.newBuilder[String]
 
     def processFile(path: Path): Unit = if filterFunc(path) then

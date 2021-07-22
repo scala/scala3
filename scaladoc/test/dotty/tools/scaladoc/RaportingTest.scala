@@ -44,7 +44,7 @@ class ReportingTest:
     finally Files.delete(notTasty)
 
   @Test
-  def verbosePrintsDokkaMessage =
+  def testSuccessfulDocsGeneration =
     val ctx = testContext
     ctx.setSetting(ctx.settings.verbose, true)
     checkReportedDiagnostics(ctx = ctx){ diag =>
@@ -52,4 +52,36 @@ class ReportingTest:
       assertNoErrors(diag)
 
       assertMessagesAbout(diag.infoMsgs)("generation completed successfully")
+    }
+
+  @Test
+  def testErrorInCaseOfAssetShadowing =
+    val ctx = testContext
+    ctx.setSetting(ctx.settings.verbose, true)
+    val docsRoot = testDocPath.resolve("conflicts-resources").toString
+    checkReportedDiagnostics(_.copy(
+      docsRoot = Some(docsRoot),
+      tastyFiles = tastyFiles("tests", rootPck = "resources")
+    )){ diag =>
+      assertNoWarning(diag)
+      val Seq(msg) = diag.errorMsgs.map(_.toLowerCase)
+      Seq("conflict","api", "resource", "resources/tests/adoc.html").foreach(word =>
+        Assert.assertTrue(s"Error message: $msg should contains $word", msg.contains(word)))
+    }
+
+  @Test
+  def testErrorInCaseOfDocsShadowing =
+    val ctx = testContext
+    ctx.setSetting(ctx.settings.verbose, true)
+    val docsRoot = testDocPath.resolve("conflicts-pages").toString
+    checkReportedDiagnostics(_.copy(
+      docsRoot = Some(docsRoot),
+      tastyFiles = tastyFiles("tests", rootPck = "docs")
+    )){ diag =>
+      assertNoWarning(diag)
+      val Seq(msg) = diag.errorMsgs.map(_.toLowerCase)
+      Seq("conflict","api", "static", "page", "docs/tests/adoc.html")
+      .foreach( word =>
+          Assert.assertTrue(s"Error message: $msg should contains $word", msg.contains(word))
+        )
     }

@@ -60,7 +60,7 @@ abstract class ExternalLocationProviderIntegrationTest(
   )
 
   override def runTest = afterRendering {
-    val output = summon[DocContext].args.output.toPath.resolve("api")
+    val output = summon[DocContext].args.output.toPath
     val linksBuilder = List.newBuilder[String]
 
     def processFile(path: Path): Unit =
@@ -72,7 +72,6 @@ abstract class ExternalLocationProviderIntegrationTest(
         linksBuilder ++= hrefValues
       }
 
-    println(output)
     IO.foreachFileIn(output, processFile)
     val links = linksBuilder.result
     val errors = expectedLinks.flatMap(expect => Option.when(!links.contains(expect))(expect))
