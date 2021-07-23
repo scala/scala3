@@ -73,15 +73,9 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
       case _ => ""
     }
 
-    dia match {
-      case dia: Error => {
-        _errorBuf.append(dia)
-        _consoleReporter.doReport(dia)
-        printMessageAndPos(dia, extra)
-      }
-      case dia =>
-        printMessageAndPos(dia, extra)
-    }
+    if dia.level >= ERROR then _errorBuf.append(dia)
+    if dia.level >= WARNING then _consoleReporter.doReport(dia)
+    printMessageAndPos(dia, extra)
   }
 }
 
