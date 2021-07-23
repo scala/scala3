@@ -270,12 +270,14 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runCtx.setProfiler(Profiler())
     unfusedPhases.foreach(_.initContext(runCtx))
     runPhases(using runCtx)
-    if (!ctx.reporter.hasErrors) Rewrites.writeBack()
+    if (!ctx.reporter.hasErrors)
+      Rewrites.writeBack()
+      // later phases don't run when there are errors, which would lead to stale `unused @nowarn` warnings
+      suppressions.warnUnusedSuppressions()
     while (finalizeActions.nonEmpty) {
       val action = finalizeActions.remove(0)
       action()
     }
-    suppressions.warnUnusedSuppressions()
     compiling = false
   }
 
