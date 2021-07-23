@@ -8,9 +8,10 @@ import scala.concurrent.duration._
 class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val resultsChunkSize = 100
   extension (p: PageEntry)
-    def toHTML(inkuire: Boolean = false) =
+    def toHTML =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
       wrapper.classList.add("scaladoc-searchbar-result")
+      wrapper.classList.add("scaladoc-searchbar-result-row")
       wrapper.classList.add("monospace")
 
       val icon = document.createElement("span").asInstanceOf[html.Span]
@@ -18,7 +19,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       icon.classList.add(p.kind.take(2))
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href = if inkuire then p.location else Globals.pathToRoot + p.location
+      resultA.href = Globals.pathToRoot + p.location
       resultA.text = s"${p.fullName}"
 
       val location = document.createElement("span")
@@ -34,8 +35,52 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       })
       wrapper
 
+  extension (m: InkuireMatch)
+    def toHTML =
+      val wrapper = document.createElement("div").asInstanceOf[html.Div]
+      wrapper.classList.add("scaladoc-searchbar-result")
+      wrapper.classList.add("monospace")
+
+      val resultDiv = document.createElement("div").asInstanceOf[html.Div]
+      resultDiv.classList.add("scaladoc-searchbar-result-row")
+
+      val icon = document.createElement("span").asInstanceOf[html.Span]
+      icon.classList.add("micon")
+      icon.classList.add(m.entryType.take(2))
+
+      val resultA = document.createElement("a").asInstanceOf[html.Anchor]
+      resultA.href = m.pageLocation
+      resultA.text = m.functionName
+
+      val packageDiv = document.createElement("div").asInstanceOf[html.Div]
+      packageDiv.classList.add("scaladoc-searchbar-inkuire-package")
+
+      val packageIcon = document.createElement("span").asInstanceOf[html.Span]
+      packageIcon.classList.add("micon")
+      packageIcon.classList.add("pa")
+
+      val packageSpan = document.createElement("span").asInstanceOf[html.Span]
+      packageSpan.textContent = m.packageLocation
+
+      val signature = document.createElement("span")
+      signature.classList.add("pull-right")
+      signature.classList.add("scaladoc-searchbar-inkuire-signature")
+      signature.textContent = m.prettifiedSignature
+
+      wrapper.appendChild(resultDiv)
+      resultDiv.appendChild(icon)
+      resultDiv.appendChild(resultA)
+      resultA.appendChild(signature)
+      wrapper.appendChild(packageDiv)
+      packageDiv.appendChild(packageIcon)
+      packageDiv.appendChild(packageSpan)
+      wrapper.addEventListener("mouseover", {
+        case e: MouseEvent => handleHover(wrapper)
+      })
+      wrapper
+
   def handleNewFluffQuery(matchers: List[Matchers]) =
-    val result = engine.query(matchers).map(_.toHTML(inkuire = false))
+    val result = engine.query(matchers).map(_.toHTML)
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
@@ -86,8 +131,8 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
           animation.classList.add("loading")
           loading.appendChild(animation)
           properResultsDiv.appendChild(loading)
-          inkuireEngine.query(query) { (p: PageEntry) =>
-            properResultsDiv.appendChild(p.toHTML(inkuire = true))
+          inkuireEngine.query(query) { (m: InkuireMatch) =>
+            properResultsDiv.appendChild(m.toHTML)
           } { (s: String) =>
             animation.classList.remove("loading")
             properResultsDiv.appendChild(s.toHTMLError)

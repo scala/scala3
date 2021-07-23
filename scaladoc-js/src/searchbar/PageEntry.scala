@@ -20,6 +20,14 @@ case class PageEntry(
   tokens: List[String]
 )
 
+case class InkuireMatch(
+  prettifiedSignature: String,
+  functionName:        String,
+  packageLocation:     String,
+  pageLocation:        String,
+  entryType:           String
+)
+
 object PageEntry {
   def apply(jsObj: PageEntryJS): PageEntry = PageEntry(
       jsObj.t,
