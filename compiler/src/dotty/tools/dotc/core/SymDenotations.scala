@@ -2244,7 +2244,7 @@ object SymDenotations {
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
               // implicits in package objects are added by the overriding `memberNames` in `PackageClassDenotation`
-            else info.decls.iterator.filter(_.isOneOf(GivenOrImplicit))
+            else info.decls.iterator.filter(_.isOneOf(GivenOrImplicitVal))
           else info.decls.iterator
         for (sym <- ownSyms) maybeAdd(sym.name)
         names

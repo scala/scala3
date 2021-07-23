@@ -13,7 +13,6 @@ import Scopes._
 import Uniques._
 import ast.Trees._
 import ast.untpd
-import Flags.GivenOrImplicit
 import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
 import typer.{Implicits, ImportInfo, Inliner, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import Nullables._
