@@ -354,11 +354,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
     case pat: Ident if isBackquoted(pat) =>
       Typ(pat.tpe, decomposed = false)
 
-    case Ident(nme.WILDCARD) =>
-      Typ(erase(pat.tpe.stripAnnots, isValue = true), decomposed = false)
-
     case Ident(_) | Select(_, _) =>
-      Typ(erase(pat.tpe.stripAnnots, isValue = true), decomposed = false)
+      Typ(erase(pat.tpe.stripAnnots.widenSkolem, isValue = true), decomposed = false)
 
     case Alternative(trees) =>
       Or(trees.map(project(_)))
