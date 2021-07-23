@@ -612,6 +612,7 @@ object Scanners {
       prev.copyFrom(this)
       lastOffset = lastCharOffset
       fetchToken()
+      if token == END && !isEndMarker then token = IDENTIFIER
     }
 
     def reset() = {
