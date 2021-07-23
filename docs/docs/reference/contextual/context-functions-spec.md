@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Context Functions - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/context-functions-spec.html
 ---
 
 ## Syntax

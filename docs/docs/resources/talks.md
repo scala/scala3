@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Talks
+movedTo: https://docs.scala-lang.org/scala3/talks.html
 ---
 
 Talks on Dotty
