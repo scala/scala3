@@ -25,6 +25,9 @@ trait Locations(using ctx: DocContext):
 
   var cache = new JHashMap[DRI, Seq[String]]()
 
+  private[renderers] def pathsConflictResoultionMsg =
+    "Using `-Ylegacy-api-layout` flag will move all API documentaiton into `api` subdirectory and will fix this conflict."
+
   // TODO verify if location exisits
   def rawLocation(dri: DRI): Seq[String] =
     cache.get(dri) match
