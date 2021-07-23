@@ -61,3 +61,27 @@ longer explanation available when compiling with `-explain`
 38 |  @nowarn("msg=fish") // error (unused nowarn)
    |  ^^^^^^^^^^^^^^^^^^^
    |  @nowarn annotation does not suppress any warnings
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:50:0 ---------------------------------------------------------------
+50 |@nowarn def t9a = { 1: @nowarn; 2 } // error (outer @nowarn is unused)
+   |^^^^^^^
+   |@nowarn annotation does not suppress any warnings
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:51:27 --------------------------------------------------------------
+51 |@nowarn def t9b = { 1: Int @nowarn; 2 } // error (inner @nowarn is unused, it covers the type, not the expression)
+   |                           ^^^^^^^
+   |                           @nowarn annotation does not suppress any warnings
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:56:0 ---------------------------------------------------------------
+56 |@nowarn @ann(f) def t10b = 0  // error (unused nowarn)
+   |^^^^^^^
+   |@nowarn annotation does not suppress any warnings
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:57:8 ---------------------------------------------------------------
+57 |@ann(f: @nowarn) def t10c = 0 // error (unused nowarn), should be silent
+   |        ^^^^^^^
+   |        @nowarn annotation does not suppress any warnings
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:60:0 ---------------------------------------------------------------
+60 |@nowarn class I1a { // error (unused nowarn)
+   |^^^^^^^
+   |@nowarn annotation does not suppress any warnings
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:65:0 ---------------------------------------------------------------
+65 |@nowarn class I1b { // error (unused nowarn)
+   |^^^^^^^
+   |@nowarn annotation does not suppress any warnings

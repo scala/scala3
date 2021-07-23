@@ -1,4 +1,4 @@
-import annotation.nowarn
+import scala.annotation.{ nowarn, Annotation }
 
 // This test doesn't run with `-Werror`, because once there's an error, later phases are skipped and we would not see
 // their warnings.
@@ -46,3 +46,32 @@ def t8a(x: Any) = x match
 @nowarn("cat=unchecked") def t8(x: Any) = x match
   case _: List[Int] => 0
   case _ => 1
+
+@nowarn def t9a = { 1: @nowarn; 2 } // error (outer @nowarn is unused)
+@nowarn def t9b = { 1: Int @nowarn; 2 } // error (inner @nowarn is unused, it covers the type, not the expression)
+
+class ann(a: Any) extends Annotation
+
+@ann(f) def t10a = 0          // should be a deprecation warning, but currently isn't
+@nowarn @ann(f) def t10b = 0  // error (unused nowarn)
+@ann(f: @nowarn) def t10c = 0 // error (unused nowarn), should be silent
+
+def forceCompletionOfI1a = (new I1a).m
+@nowarn class I1a { // error (unused nowarn)
+  @nowarn def m = { 1; 2 }
+}
+
+// completion during type checking
+@nowarn class I1b { // error (unused nowarn)
+  @nowarn def m = { 1; 2 }
+}
+
+@nowarn class I1c {
+  def m = { 1; 2 }
+}
+
+trait T {
+  @nowarn val t1 = { 0; 1 }
+}
+
+class K extends T
