@@ -17,7 +17,7 @@ import vulpix.TestConfiguration
  */
 class BashScriptsTests:
   // classpath tests managed by scripting.ClasspathTests.scala
-  def testFiles = scripts("/scripting").filter { ! _.getName.startsWith("classpath") }
+  def testFiles = scripts("/scripting")
 
   lazy val expectedOutput = List(
     "arg  0:[a]", 
@@ -92,10 +92,35 @@ class BashScriptsTests:
     if valid then printf("# valid script.path reported by [%s]\n",scriptFile.getName)
     assert(valid, s"script ${scriptFile.absPath} did not report valid script.path value")
 
-  extension (str: String) def dropExtension =
+  /*
+   * verify SCALA_OPTS can specify an @argsfile when launching a scala script in `dist/bin/scala`.
+   */
+  @Test def verifyScalaOpts =
+    val scriptFile = testFiles.find(_.getName == "classpathReport.sc").get
+    printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
+    val argsfile = createArgsFile() // avoid problems caused by drive letter
+    val envPairs = List(("SCALA_OPTS",s"@$argsfile"))
+    var cmd = Array(bashExe, "-c", scriptFile.absPath)
+    val output: Seq[String] = Process(cmd,cwd,envPairs:_*).lazyLines_!.toList
+    val expected = s"${cwd.toString}"
+    val List(line1: String, line2: String) = output.take(2)
+    val valid = line2.dropWhile( _ != ' ').trim.startsWith(expected)
+    if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n",cwd, scriptFile.getName)
+    assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
+
+  lazy val cwd = Paths.get(dotty.tools.dotc.config.Properties.userDir).toFile
+
+  def createArgsFile(): String =
+    val utfCharset = java.nio.charset.StandardCharsets.UTF_8.name
+    val text = s"-classpath ${cwd.absPath}"
+    val path = Files.createTempFile("scriptingTest",".args")
+    Files.write(path, text.getBytes(utfCharset))
+    path.toFile.getAbsolutePath.replace('\\','/')
+
+  extension (str: String) def dropExtension: String =
     str.reverse.dropWhile(_ != '.').drop(1).reverse
 
-  extension(f: File) def absPath =
+  extension(f: File) def absPath: String =
     f.getAbsolutePath.replace('\\', '/')
 
   lazy val osname = Option(sys.props("os.name")).getOrElse("").toLowerCase
