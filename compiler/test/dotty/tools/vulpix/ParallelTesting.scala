@@ -665,7 +665,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       lazy val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
       def hasMissingAnnotations = getMissingExpectedErrors(errorMap, reporters.iterator.flatMap(_.errors))
       def showErrors = "-> following the errors:\n" +
-        reporters.flatMap(_.allErrors.map(e => e.pos.line.toString + ": " + e.message)).mkString(start = "at ", sep = "\n at ", end = "")
+        reporters.flatMap(_.allErrors.map(e => (e.pos.line + 1).toString + ": " + e.message)).mkString(start = "at ", sep = "\n at ", end = "")
 
       if (compilerCrashed) Some(s"Compiler crashed when compiling: ${testSource.title}")
       else if (actualErrors == 0) Some(s"\nNo errors found when compiling neg test $testSource")
