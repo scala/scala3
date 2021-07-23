@@ -9,3 +9,7 @@
    |                                   Required: String
 
 longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/i2033.scala:6:37 ---------------------------------------------------------------------------------
+6 |    val out = new ObjectOutputStream(println)
+  |                                     ^^^^^^^
+  |method println is eta-expanded even though java.io.OutputStream does not have the @FunctionalInterface annotation.
