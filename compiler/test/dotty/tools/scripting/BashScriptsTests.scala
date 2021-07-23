@@ -31,10 +31,10 @@ class BashScriptsTests:
   lazy val testScriptArgs = Seq(
     "a", "b", "c", "-repl", "-run", "-script", "-debug"
   )
-  lazy val (bashExe,bashPath) =
+  lazy val (bashExe, bashPath) =
     val bexe = getBashPath
     val bpath = Paths.get(bexe)
-    printf("bashExe: [%s]\n", bexe)
+    // printf("bashExe: [%s]\n", bexe)
     (bexe, bpath)
 
   val showArgsScript = testFiles.find(_.getName == "showArgs.sc").get.absPath
@@ -44,7 +44,7 @@ class BashScriptsTests:
 
   /* verify `dist/bin/scalac` */
   @Test def verifyScalacArgs =
-    printf("scalacPath[%s]\n",scalacPath)
+    printf("scalacPath[%s]\n", scalacPath)
     val commandline = (Seq(scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
     if bashPath.toFile.exists then
       var cmd = Array(bashExe, "-c", commandline)
@@ -69,7 +69,7 @@ class BashScriptsTests:
       } yield line
       var fail = false
       printf("\n")
-      var mismatches = List.empty[(String,String)]
+      var mismatches = List.empty[(String, String)]
       for (line, expect) <- output zip expectedOutput do
         printf("expected: %-17s\nactual  : %s\n", expect, line)
         if line != expect then
@@ -85,12 +85,14 @@ class BashScriptsTests:
     val scriptFile = testFiles.find(_.getName == "scriptPath.sc").get
     val expected = s"/${scriptFile.getName}"
     printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
-    var cmd = Array(bashExe, "-c", scriptFile.absPath)
-    val output = Process(cmd).lazyLines_!
-    output.foreach { printf("[%s]\n",_) }
-    val valid = output.exists { _.endsWith(expected) }
-    if valid then printf("# valid script.path reported by [%s]\n",scriptFile.getName)
-    assert(valid, s"script ${scriptFile.absPath} did not report valid script.path value")
+    val (exitCode, stdout, stderr) = bashCommand(scriptFile.absPath)
+    if exitCode == 0 && ! stderr.exists(_.contains("Permission denied")) then
+      // var cmd = Array(bashExe, "-c", scriptFile.absPath)
+      // val stdout = Process(cmd).lazyLines_!
+      stdout.foreach { printf("######### [%s]\n", _) }
+      val valid = stdout.exists { _.endsWith(expected) }
+      if valid then printf("# valid script.path reported by [%s]\n", scriptFile.getName)
+      assert(valid, s"script ${scriptFile.absPath} did not report valid script.path value")
 
   /*
    * verify SCALA_OPTS can specify an @argsfile when launching a scala script in `dist/bin/scala`.
@@ -99,23 +101,27 @@ class BashScriptsTests:
     val scriptFile = testFiles.find(_.getName == "classpathReport.sc").get
     printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
     val argsfile = createArgsFile() // avoid problems caused by drive letter
-    val envPairs = List(("SCALA_OPTS",s"@$argsfile"))
-    var cmd = Array(bashExe, "-c", scriptFile.absPath)
-    val output: Seq[String] = Process(cmd,cwd,envPairs:_*).lazyLines_!.toList
-    val expected = s"${cwd.toString}"
-    val List(line1: String, line2: String) = output.take(2)
-    val valid = line2.dropWhile( _ != ' ').trim.startsWith(expected)
-    if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n",cwd, scriptFile.getName)
-    assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
+    val envPairs = List(("SCALA_OPTS", s"@$argsfile"))
+    val (exitCode, stdout, stderr) = bashCommand(scriptFile.absPath, envPairs:_*)
+    if exitCode != 0 || stderr.exists(_.contains("Permission denied")) then
+      stderr.foreach { System.err.printf("stderr [%s]\n", _) }
+      printf("unable to execute script, return value is %d\n", exitCode)
+    else
+      // val stdout: Seq[String] = Process(cmd, cwd, envPairs:_*).lazyLines_!.toList
+      val expected = s"${cwd.toString}"
+      val List(line1: String, line2: String) = stdout.take(2)
+      val valid = line2.dropWhile( _ != ' ').trim.startsWith(expected)
+      if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", cwd, scriptFile.getName)
+      assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
 
   lazy val cwd = Paths.get(dotty.tools.dotc.config.Properties.userDir).toFile
 
   def createArgsFile(): String =
     val utfCharset = java.nio.charset.StandardCharsets.UTF_8.name
     val text = s"-classpath ${cwd.absPath}"
-    val path = Files.createTempFile("scriptingTest",".args")
+    val path = Files.createTempFile("scriptingTest", ".args")
     Files.write(path, text.getBytes(utfCharset))
-    path.toFile.getAbsolutePath.replace('\\','/')
+    path.toFile.getAbsolutePath.replace('\\', '/')
 
   extension (str: String) def dropExtension: String =
     str.reverse.dropWhile(_ != '.').drop(1).reverse
@@ -127,13 +133,25 @@ class BashScriptsTests:
 
   def getBashPath: String =
     var whichBash = ""
-    printf("osname[%s]\n", osname)
+    //printf("osname[%s]\n", osname)
     if osname.startsWith("windows") then
       whichBash = which("bash.exe")
     else
       whichBash = which("bash")
 
     whichBash
+
+  def bashCommand(cmdstr: String, envPairs: (String, String)*): (Int, Seq[String], Seq[String]) = {
+    import scala.sys.process._
+    val cmd = Seq(bashExe, "-c", cmdstr)
+    val proc = Process(cmd, None, envPairs *)
+    var (stdout, stderr) = (List.empty[String], List.empty[String])
+    val exitVal = proc ! ProcessLogger (
+      (out: String) => stdout ::= out, 
+      (err: String) => stderr ::= err
+    )
+    (exitVal, stdout.reverse, stderr.reverse)
+  }
 
   def execCmd(command: String, options: String *): Seq[String] =
     val cmd = (command :: options.toList).toSeq
