@@ -92,7 +92,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
         if page.link.dri.isStaticFile then
           val dest = absolutePath(page.link.dri)
           if apiPaths.contains(dest) then
-            report.error(s"Conflict between static page and API member for $dest")
+            report.error(s"Conflict between static page and API member for $dest. $pathsConflictResoultionMsg")
           page.children.foreach(walk)
 
       all.foreach (walk)

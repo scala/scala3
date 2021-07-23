@@ -6,6 +6,6 @@ TaskKey[Unit]("checkScaladocOptions") := {
 }
 
 TaskKey[Unit]("checkHtmlFiles") := {
-  val helloHtml = (Compile / doc / target).value / "api" / "hello.html"
+  val helloHtml = (Compile / doc / target).value / "hello.html"
   assert(helloHtml.exists)
 }
