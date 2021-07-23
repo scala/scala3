@@ -16,20 +16,18 @@ class InkuireJSSearchEngine {
   val scriptPath     = Globals.pathToRoot + "scripts/"
   val worker: Worker = new Worker(scriptPath + "inkuire-worker.js")
 
-  def dynamicToPageEntry(d: Dynamic): PageEntry = {
-    PageEntry(
-      d.functionName.asInstanceOf[String],
+  def dynamicToMatch(d: Dynamic): InkuireMatch = {
+    InkuireMatch(
       d.prettifiedSignature.asInstanceOf[String],
-      d.pageLocation.asInstanceOf[String],
       d.functionName.asInstanceOf[String],
-      d.entryType.asInstanceOf[String],
-      List.empty
+      d.packageLocation.asInstanceOf[String],
+      d.pageLocation.asInstanceOf[String],
+      d.entryType.asInstanceOf[String]
     )
   }
 
-  def query(s: String)(callback: PageEntry => Unit)(endCallback: String => Unit): List[PageEntry] = {
+  def query(s: String)(callback: InkuireMatch => Unit)(endCallback: String => Unit): Unit = {
     worker.onmessage = _ => ()
-    val res = ListBuffer[PageEntry]()
     val func = (msg: MessageEvent) => {
       msg.data.asInstanceOf[String] match {
         case "engine_ready" =>
@@ -38,13 +36,12 @@ class InkuireJSSearchEngine {
           endCallback(endMsg.drop("query_ended".length))
         case q =>
           val matches = JSON.parse(q).matches
-          val actualMatches = matches.asInstanceOf[js.Array[Dynamic]].map(dynamicToPageEntry)
+          val actualMatches = matches.asInstanceOf[js.Array[Dynamic]].map(dynamicToMatch)
           actualMatches.foreach(callback)
       }
     }
     worker.onmessage = func
     worker.postMessage(s)
-    res.toList
   }
 
 }

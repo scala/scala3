@@ -80,8 +80,11 @@
     background-color: var(--leftbar-bg);
     color: var(--leftbar-fg);
     line-height: 24px;
-    display: flex;
     padding: 4px 10px 4px 10px;
+}
+
+.scaladoc-searchbar-result-row {
+    display: flex;
 }
 
 .scaladoc-searchbar-result .micon {

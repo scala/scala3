@@ -113,3 +113,17 @@
     background-color: var(--leftbar-bg);
   }
 }
+
+.scaladoc-searchbar-inkuire-package {
+  display: none;
+  color: var(--symbol-fg)
+}
+
+div[selected] > .scaladoc-searchbar-inkuire-package {
+  display: flex;
+}
+
+.scaladoc-searchbar-inkuire-package > .micon {
+  float: right;
+  margin-left: auto !important;
+}
