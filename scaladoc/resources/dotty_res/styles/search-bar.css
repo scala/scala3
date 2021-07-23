@@ -66,7 +66,7 @@
 
 /* Loading */
 .loading-wrapper {
-  align-self: center;
+  text-align: center;
   padding: 4px;
 }
 
@@ -75,16 +75,19 @@
   width: 10px;
   height: 10px;
   border-radius: 5px;
-  background-color: var(--shadow);
-  color: var(--shadow);
-  animation: dotFlashing .4s infinite alternate;
+  background-color: var(--leftbar-bg);
+  color: var(--leftbar-bg);
+  animation-name: dotFlashing;
+  animation-duration: 1.6s;
+  animation-iteration-count: infinite;
+  animation-direction: normal;
+  animation-timing-function: ease-in-out;
   display: inline-block;
   position: absolute;
   top: 0;
 }
 
 .loading {
-  left: 50%;
   position: relative;
   animation-delay: .2s;
 }
@@ -103,7 +106,10 @@
   0% {
     background-color: var(--leftbar-bg);
   }
-  100% {
+  25% {
     background-color: var(--shadow);
+  }
+  50% {
+    background-color: var(--leftbar-bg);
   }
 }
