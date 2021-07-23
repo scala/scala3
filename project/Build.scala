@@ -1355,7 +1355,7 @@ object Build {
               s"-source-links:docs=github://lampepfl/dotty/master#docs",
               "-doc-root-content", docRootFile.toString,
               "-Ydocument-synthetic-types"
-            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Ylegacy-api-layout")))
+            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")))
 
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
         else if (justAPI) generateDocTask

@@ -26,7 +26,7 @@ trait Locations(using ctx: DocContext):
   var cache = new JHashMap[DRI, Seq[String]]()
 
   private[renderers] def pathsConflictResoultionMsg =
-    "Using `-Ylegacy-api-layout` flag will move all API documentaiton into `api` subdirectory and will fix this conflict."
+    "Using `-Yapi-subdirectory` flag will move all API documentation into `api` subdirectory and will fix this conflict."
 
   // TODO verify if location exisits
   def rawLocation(dri: DRI): Seq[String] =
@@ -35,7 +35,7 @@ trait Locations(using ctx: DocContext):
         val path = dri match
           case `docsRootDRI` => List("docs", "index")
           case `apiPageDRI` =>
-            if ctx.args.legacyAPILayout || ctx.staticSiteContext.fold(false)(_.hasIndexFile)
+            if ctx.args.apiSubdirectory || ctx.staticSiteContext.fold(false)(_.hasIndexFile)
               then List("api", "index")
               else List("index")
           case dri if dri.isStaticFile =>
@@ -46,7 +46,7 @@ trait Locations(using ctx: DocContext):
               case "<empty>" :: Nil  => "_empty_" :: Nil
               case "<empty>" :: tail => "_empty_" :: tail
               case other => other
-            if ctx.args.legacyAPILayout then "api" :: fqn else fqn
+            if ctx.args.apiSubdirectory then "api" :: fqn else fqn
         cache.put(dri, path)
         path
       case cached => cached

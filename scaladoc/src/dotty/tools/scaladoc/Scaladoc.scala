@@ -59,7 +59,7 @@ object Scaladoc:
     noLinkWarnings: Boolean = false,
     versionsDictionaryUrl: Option[String] = None,
     generateInkuire : Boolean = false,
-    legacyAPILayout : Boolean = false
+    apiSubdirectory : Boolean = false
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -225,7 +225,7 @@ object Scaladoc:
         snippetCompilerDebug.get,
         versionsDictionaryUrl.nonDefault,
         generateInkuire.get,
-        legacyAPILayout.get,
+        apiSubdirectory.get,
       )
       (Some(docArgs), newContext)
     }

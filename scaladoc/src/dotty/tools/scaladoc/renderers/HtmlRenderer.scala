@@ -58,8 +58,14 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
   val hiddenPages: Seq[Page] =
     staticSite match
-      case None => Nil
+      case None =>
+        Seq(navigablePage.copy( // Add index page that is a copy of api/index.html
+          link = navigablePage.link.copy(dri = docsRootDRI),
+          children = Nil
+        ))
       case Some(siteContext) =>
+        // In case that we do not have an index page and we do not have any API entries 
+        // we want to create empty index page, so there is one
         val actualIndexTemplate = siteContext.indexTemplates() match
           case Nil if effectiveMembers.isEmpty => Seq(siteContext.emptyIndexTemplate)
           case templates => templates
