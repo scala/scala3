@@ -321,7 +321,7 @@ object Flags {
   val (Extension @ _, ExtensionMethod @ _, _) = newFlags(28, "<extension>")
 
   /** An inferable (`given`) parameter */
-  val (Given @ _, _, _) = newFlags(29, "given")
+  val (Given @ _, GivenVal @ _, GivenType @ _) = newFlags(29, "given")
 
   /** Symbol is defined by a Java class */
   val (JavaDefined @ _, JavaDefinedVal @ _, _) = newFlags(30, "<java>")

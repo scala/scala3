@@ -1631,7 +1631,7 @@ trait Applications extends Compatibility {
     /** Widen the result type of synthetic given methods from the implementation class to the
      *  type that's implemented. Example
      *
-     *      given I[X] as T { ... }
+     *      given I[X]: T with { ... }
      *
      *  This desugars to
      *
@@ -1641,7 +1641,7 @@ trait Applications extends Compatibility {
      *  To compare specificity we should compare with `T`, not with its implementation `I[X]`.
      *  No such widening is performed for given aliases, which are not synthetic. E.g.
      *
-     *      given J[X] as T = rhs
+     *      given J[X]: T = rhs
      *
      *  already has the right result type `T`. Neither is widening performed for given
      *  objects, since these are anyway taken to be more specific than methods

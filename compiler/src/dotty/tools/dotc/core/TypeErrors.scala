@@ -141,7 +141,7 @@ class CyclicReference private (val denot: SymDenotation) extends TypeError {
         }
 
       // Give up and give generic errors.
-      else if (cycleSym.isOneOf(GivenOrImplicit, butNot = Method) && cycleSym.owner.isTerm)
+      else if (cycleSym.isOneOf(GivenOrImplicitVal, butNot = Method) && cycleSym.owner.isTerm)
         CyclicReferenceInvolvingImplicit(cycleSym)
       else
         CyclicReferenceInvolving(denot)

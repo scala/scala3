@@ -63,7 +63,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
   private def nestedScopeCtx(defs: List[Tree])(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
     defs foreach {
-      case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) => nestedCtx.enter(d.symbol)
+      case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) => nestedCtx.enter(d.symbol)
       case _ =>
     }
     nestedCtx
@@ -74,7 +74,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     new TreeTraverser {
       def traverse(tree: Tree)(using Context): Unit = {
         tree match {
-          case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) =>
+          case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) =>
             nestedCtx.enter(d.symbol)
           case _ =>
         }
