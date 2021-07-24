@@ -1,16 +1,14 @@
 -- Error: tests/neg-custom-args/deprecation/manifest-summoning.scala:1:34 ----------------------------------------------
 1 |val foo = manifest[List[? <: Int]] // error
   |                                  ^
-  |                                  Compiler synthesis of Manifest and OptManifest is deprecated,
-  |                                  and calls should be replaced by `reflect.classTag[List[? <: Int]]`.
-  |                                  Alternatively, the using new metaprogramming features of Scala 3
-  |                                  could help avoid the need for runtime type information, see
-  |                                  https://docs.scala-lang.org/scala3/reference/metaprogramming.html
+  |                                  Compiler synthesis of Manifest and OptManifest is deprecated, instead
+  |                                  replace with the type `scala.reflect.ClassTag[List[? <: Int]]`.
+  |                                  Alternatively, consider using the new metaprogramming features of Scala 3,
+  |                                  see https://docs.scala-lang.org/scala3/reference/metaprogramming.html
 -- Error: tests/neg-custom-args/deprecation/manifest-summoning.scala:2:41 ----------------------------------------------
 2 |val bar = optManifest[Array[? <: String]] // error
   |                                         ^
-  |                                         Compiler synthesis of Manifest and OptManifest is deprecated,
-  |                                         and calls should be replaced by `reflect.classTag[Array[? <: String]]`.
-  |                                         Alternatively, the using new metaprogramming features of Scala 3
-  |                                         could help avoid the need for runtime type information, see
-  |                                         https://docs.scala-lang.org/scala3/reference/metaprogramming.html
+  |                                        Compiler synthesis of Manifest and OptManifest is deprecated, instead
+  |                                        replace with the type `scala.reflect.ClassTag[Array[? <: String]]`.
+  |                                        Alternatively, consider using the new metaprogramming features of Scala 3,
+  |                                        see https://docs.scala-lang.org/scala3/reference/metaprogramming.html
