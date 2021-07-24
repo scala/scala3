@@ -315,7 +315,7 @@ object Flags {
   val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")
 
   /** A parameter with a default value / A structural given class or an implicit class */
-  val (_, HasDefault @ _, GivenClass @ _) = newFlags(27, "<hasdefault/given-class>")
+  val (_, HasDefault @ _, _) = newFlags(27, "<hasdefault>")
 
   /** An extension method, or a collective extension instance */
   val (Extension @ _, ExtensionMethod @ _, _) = newFlags(28, "<extension>")

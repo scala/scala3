@@ -719,8 +719,8 @@ object SymDenotations {
 	 */
     final def isCoDefinedGiven(cls: Symbol)(using Context): Boolean =
       is(Method) && isOneOf(GivenOrImplicit)
-      && ( is(Synthetic)       // previous scheme used in 3.0
-         || cls.is(GivenClass) // new scheme from 3.1
+      && ( is(Synthetic)                 // previous scheme used in 3.0
+         || cls.isOneOf(GivenOrImplicit) // new scheme from 3.1
          )
       && name == cls.name.toTermName && owner == cls.owner
 

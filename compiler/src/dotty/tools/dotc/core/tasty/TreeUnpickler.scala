@@ -667,7 +667,7 @@ class TreeUnpickler(reader: TastyReader,
           case HASDEFAULT => addFlag(HasDefault)
           case STABLE => addFlag(StableRealizable)
           case EXTENSION => addFlag(Extension)
-          case GIVEN => addFlag(if isType then GivenClass else Given)
+          case GIVEN => addFlag(Given)
           case PARAMsetter => addFlag(ParamAccessor)
           case PARAMalias => addFlag(SuperParamAlias)
           case EXPORTED => addFlag(Exported)

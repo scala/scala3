@@ -810,9 +810,7 @@ object desugar {
         }
       }
       val classMods =
-        if mods.is(Given) then mods &~ Given | Synthetic | GivenClass
-        else if mods.is(Implicit) then mods &~ Implicit | GivenClass
-        else mods
+      	if mods.is(Given) then mods | Synthetic else mods
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
