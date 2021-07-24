@@ -233,7 +233,7 @@ object Flags {
   val (Param @ _, TermParam @ _, TypeParam @ _) = newFlags(8, "<param>")
 
   /** Labeled with `implicit` modifier (implicit value) */
-  val (Implicit @ _, ImplicitTerm @ _, _) = newFlags(9, "implicit")
+  val (Implicit @ _, ImplicitVal @ _, _) = newFlags(9, "implicit")
 
   /** Labeled with `lazy` (a lazy val) / a trait */
   val (LazyOrTrait @ _, Lazy @ _, Trait @ _) = newFlags(10, "lazy", "<trait>")
@@ -314,14 +314,14 @@ object Flags {
   /** A Scala 2x super accessor / an unpickled Scala 2.x class */
   val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")
 
-  /** A parameter with a default value / A structural given class or an implicit class */
+  /** A parameter with a default value */
   val (_, HasDefault @ _, _) = newFlags(27, "<hasdefault>")
 
   /** An extension method, or a collective extension instance */
   val (Extension @ _, ExtensionMethod @ _, _) = newFlags(28, "<extension>")
 
   /** An inferable (`given`) parameter */
-  val (Given @ _, GivenVal @ _, GivenType @ _) = newFlags(29, "given")
+  val (Given @ _, GivenVal @ _,  _) = newFlags(29, "given")
 
   /** Symbol is defined by a Java class */
   val (JavaDefined @ _, JavaDefinedVal @ _, _) = newFlags(30, "<java>")

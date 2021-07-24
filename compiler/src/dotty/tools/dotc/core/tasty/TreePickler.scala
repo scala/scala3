@@ -723,8 +723,8 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Erased)) writeModTag(ERASED)
     if (flags.is(Exported)) writeModTag(EXPORTED)
     if (flags.is(Given)) writeModTag(GIVEN)
+    if (flags.is(Implicit)) writeModTag(IMPLICIT)
     if (isTerm) {
-      if (flags.is(Implicit)) writeModTag(IMPLICIT)
       if (flags.is(Lazy, butNot = Module)) writeModTag(LAZY)
       if (flags.is(AbsOverride)) { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
       if (flags.is(Mutable)) writeModTag(MUTABLE)
