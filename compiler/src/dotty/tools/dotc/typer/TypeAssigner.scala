@@ -348,7 +348,17 @@ trait TypeAssigner {
             }
           }
           else {
-            val argTypes = args.tpes
+            // Make sure arguments don't contain the type `pt` itself.
+            // make a copy of the argument if that's the case.
+            // This is done to compensate for the fact that normally every
+            // reference to a polytype would have to be a fresh copy of that type,
+            // but we want to avoid that because it would increase compilation cost.
+            // See pos/i6682a.scala for a test case where the defensive copying matters.
+            val ensureFresh = new TypeMap:
+              def apply(tp: Type) = mapOver(
+                if tp eq pt then pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
+                else tp)
+            val argTypes = args.tpes.mapConserve(ensureFresh)
             if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
             else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
           }
