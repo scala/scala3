@@ -473,7 +473,7 @@ object Checking {
     if (sym.is(Implicit)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
-      if (sym.isType)
+      if sym.isType && (!sym.isClass || sym.is(Trait)) then
         fail(TypesAndTraitsCantBeImplicit())
     }
     if sym.is(Transparent) then
