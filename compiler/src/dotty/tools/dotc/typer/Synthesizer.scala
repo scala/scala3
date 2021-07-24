@@ -472,7 +472,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     formal.argInfos match
       case arg :: Nil =>
-        synthesize(fullyDefinedType(arg, "Manifest argument", span), kind, topLevel = true)
+        val manifest = synthesize(fullyDefinedType(arg, "Manifest argument", span), kind, topLevel = true)
+        if manifest != EmptyTree then
+          report.deprecationWarning(
+            i"""Compiler synthesis of Manifest and OptManifest is deprecated,
+               |and calls should be replaced by `reflect.classTag[$arg]`.
+               |Alternatively, the using new metaprogramming features of Scala 3
+               |could help avoid the need for runtime type information, see
+               |https://docs.scala-lang.org/scala3/reference/metaprogramming.html""", ctx.source.atSpan(span))
+        manifest
       case _ =>
         EmptyTree
 
