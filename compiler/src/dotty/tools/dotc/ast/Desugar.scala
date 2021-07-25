@@ -1261,6 +1261,14 @@ object desugar {
       makeOp(left, right, Span(left.span.start, op.span.end, op.span.start))
   }
 
+  /** Translate throws type `A throws E1 | ... | En`
+   */
+  def throws(tpt: Tree, op: Ident, excepts: Tree)(using Context): AppliedTypeTree = excepts match
+    case InfixOp(l, bar @ Ident(tpnme.raw.BAR), r) =>
+      throws(throws(tpt, op, l), bar, r)
+    case e =>
+      AppliedTypeTree(cpy.Ident(op)(tpnme.THROWS), tpt :: excepts :: Nil)
+
   /** Translate tuple expressions of arity <= 22
    *
    *     ()             ==>   ()

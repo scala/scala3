@@ -1,26 +1,26 @@
--- Error: tests/neg/saferExceptions.scala:14:16 ------------------------------------------------------------------------
-14 |      case 4 => throw Exception()             // error
+-- Error: tests/neg/saferExceptions.scala:12:16 ------------------------------------------------------------------------
+12 |      case 4 => throw Exception()             // error
    |                ^^^^^^^^^^^^^^^^^
    |                The ability to throw exception Exception is missing.
    |                The ability can be provided by one of the following:
    |                 - A using clause `(using CanThrow[Exception])`
-   |                 - A `canThrow` clause in a result type such as `X canThrow Exception`
+   |                 - A `throws` clause in a result type such as `X throws Exception`
    |                 - an enclosing `try` that catches Exception
    |
    |                The following import might fix the problem:
    |
    |                  import unsafeExceptions.canThrowAny
    |
--- Error: tests/neg/saferExceptions.scala:19:48 ------------------------------------------------------------------------
-19 |  def baz(x: Int): Int canThrow Failure = bar(x)  // error
-   |                                                ^
-   |                                The ability to throw exception java.io.IOException is missing.
-   |                                The ability can be provided by one of the following:
-   |                                 - A using clause `(using CanThrow[java.io.IOException])`
-   |                                 - A `canThrow` clause in a result type such as `X canThrow java.io.IOException`
-   |                                 - an enclosing `try` that catches java.io.IOException
+-- Error: tests/neg/saferExceptions.scala:17:46 ------------------------------------------------------------------------
+17 |  def baz(x: Int): Int throws Failure = bar(x)  // error
+   |                                              ^
+   |                                    The ability to throw exception java.io.IOException is missing.
+   |                                    The ability can be provided by one of the following:
+   |                                     - A using clause `(using CanThrow[java.io.IOException])`
+   |                                     - A `throws` clause in a result type such as `X throws java.io.IOException`
+   |                                     - an enclosing `try` that catches java.io.IOException
    |
-   |                                The following import might fix the problem:
+   |                                    The following import might fix the problem:
    |
-   |                                  import unsafeExceptions.canThrowAny
+   |                                      import unsafeExceptions.canThrowAny
    |

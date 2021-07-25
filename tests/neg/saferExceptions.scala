@@ -4,9 +4,7 @@ object test:
 
   class Failure extends Exception
 
-  def bar(x: Int): Int
-      `canThrow` Failure
-      `canThrow` IOException =
+  def bar(x: Int): Int throws Failure | IOException =
     x match
       case 1 => throw AssertionError()
       case 2 => throw Failure()               // ok
@@ -15,5 +13,5 @@ object test:
       case 5 => throw Throwable()             // ok: Throwable is treated as unchecked
       case _ => 0
 
-  def foo(x: Int): Int canThrow Exception = bar(x)
-  def baz(x: Int): Int canThrow Failure = bar(x)  // error
+  def foo(x: Int): Int throws Exception = bar(x)
+  def baz(x: Int): Int throws Failure = bar(x)  // error
