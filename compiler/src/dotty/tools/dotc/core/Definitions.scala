@@ -764,6 +764,12 @@ class Definitions {
   @tu lazy val SelectableClass: ClassSymbol = requiredClass("scala.Selectable")
   @tu lazy val WithoutPreciseParameterTypesClass: Symbol = requiredClass("scala.Selectable.WithoutPreciseParameterTypes")
 
+  @tu lazy val ManifestClass: ClassSymbol = requiredClass("scala.reflect.Manifest")
+  @tu lazy val ManifestFactoryModule: Symbol = requiredModule("scala.reflect.ManifestFactory")
+  @tu lazy val ClassManifestFactoryModule: Symbol = requiredModule("scala.reflect.ClassManifestFactory")
+  @tu lazy val OptManifestClass: ClassSymbol = requiredClass("scala.reflect.OptManifest")
+  @tu lazy val NoManifestModule: Symbol = requiredModule("scala.reflect.NoManifest")
+
   @tu lazy val ReflectPackageClass: Symbol = requiredPackage("scala.reflect.package").moduleClass
   @tu lazy val ClassTagClass: ClassSymbol = requiredClass("scala.reflect.ClassTag")
   @tu lazy val ClassTagModule: Symbol = ClassTagClass.companionModule
@@ -1432,6 +1438,8 @@ class Definitions {
   @tu lazy val NotRuntimeClasses: Set[Symbol] = Set(AnyClass, MatchableClass, AnyValClass, NullClass, NothingClass)
 
   @tu lazy val SpecialClassTagClasses: Set[Symbol] = Set(UnitClass, AnyClass, AnyValClass)
+
+  @tu lazy val SpecialManifestClasses: Set[Symbol] = Set(AnyClass, AnyValClass, ObjectClass, NullClass, NothingClass)
 
   /** Classes that are known not to have an initializer irrespective of
    *  whether NoInits is set. Note: FunctionXXLClass is in this set
