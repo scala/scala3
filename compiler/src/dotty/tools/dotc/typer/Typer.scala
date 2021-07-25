@@ -2636,7 +2636,10 @@ class Typer extends Namer
     val untpd.InfixOp(l, op, r) = tree
     val result =
       if (ctx.mode.is(Mode.Type))
-        typedAppliedTypeTree(cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
+        typedAppliedTypeTree(
+          if op.name == tpnme.throws && Feature.enabled(Feature.saferExceptions)
+          then desugar.throws(l, op, r)
+          else cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
       else if (ctx.mode.is(Mode.Pattern))
         typedUnApply(cpy.Apply(tree)(op, l :: r :: Nil), pt)
       else {

@@ -7,15 +7,17 @@ import annotation.{implicitNotFound, experimental}
  *  a given of class `CanThrow[Ex]` to be available.
  */
 @experimental
-@implicitNotFound("The ability to throw exception ${E} is missing.\nThe ability can be provided by one of the following:\n - A using clause `(using CanThrow[${E}])`\n - A `canThrow` clause in a result type such as `X canThrow ${E}`\n - an enclosing `try` that catches ${E}")
+@implicitNotFound("The ability to throw exception ${E} is missing.\nThe ability can be provided by one of the following:\n - A using clause `(using CanThrow[${E}])`\n - A `throws` clause in a result type such as `X throws ${E}`\n - an enclosing `try` that catches ${E}")
 erased class CanThrow[-E <: Exception]
 
 /** A helper type to allow syntax like
  *
- *    def f(): T canThrow Ex
+ *    def f(): T throws Ex1 | Ex2
+ *
+ *  Used in desugar.throws.
  */
 @experimental
-infix type canThrow[R, +E <: Exception] = CanThrow[E] ?=> R
+infix type $throws[R, +E <: Exception] = CanThrow[E] ?=> R
 
 @experimental
 object unsafeExceptions:

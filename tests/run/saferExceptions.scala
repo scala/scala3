@@ -17,7 +17,7 @@ def foo(x: Int) =
     case ex: Exception => 4
     case ex: Throwable => 5
 
-def bar(x: Int): Int canThrow Exception =
+def bar(x: Int): Int throws Exception =
   x match
     case 1 => throw AssertionError()
     case 2 => throw Fail()

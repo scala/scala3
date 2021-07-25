@@ -305,6 +305,7 @@ object StdNames {
     val SPECIALIZED_INSTANCE: N     = "specInstance$"
     val THIS: N                     = "_$this"
     val TRAIT_CONSTRUCTOR: N        = "$init$"
+    val THROWS: N                   = "$throws"
     val U2EVT: N                    = "u2evt$"
     val ALLARGS: N                  = "$allArgs"
 
@@ -602,6 +603,7 @@ object StdNames {
     val this_ : N               = "this"
     val thisPrefix : N          = "thisPrefix"
     val throw_ : N              = "throw"
+    val throws: N               = "throws"
     val toArray: N              = "toArray"
     val toList: N               = "toList"
     val toObjectArray : N       = "toObjectArray"

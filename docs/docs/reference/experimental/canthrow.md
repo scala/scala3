@@ -47,9 +47,9 @@ However, a programming language is not a framework; it has to cater also for tho
 Why does `map` work so poorly with Java's checked exception model? It's because
 `map`'s signature limits function arguments to not throw checked exceptions. We could try to come up with a more polymorphic formulation of `map`. For instance, it could look like this:
 ```scala
-  def map[B, E](f: A => B canThrow E): List[B] canThrow E
+  def map[B, E](f: A => B throws E): List[B] throws E
 ```
-This assumes a type `A canThrow E` to indicate computations of type `A` that can throw an exception of type `E`. But in practice the overhead of the additional type parameters makes this approach unappealing as well. Note in particular that we'd have to parameterize _every method_ that takes a function argument that way, so the added overhead of declaring all these exception types looks just like a sort of ceremony we would like to avoid.
+This assumes a type `A throws E` to indicate computations of type `A` that can throw an exception of type `E`. But in practice the overhead of the additional type parameters makes this approach unappealing as well. Note in particular that we'd have to parameterize _every method_ that takes a function argument that way, so the added overhead of declaring all these exception types looks just like a sort of ceremony we would like to avoid.
 
 But there is a way to avoid the ceremony. Instead of concentrating on possible _effects_ such as "this code might throw an exception", concentrate on _capabilities_ such as "this code needs the capability to throw an exception". From a standpoint of expressiveness this is quite similar. But capabilities can be expressed as parameters whereas traditionally effects are expressed as some addition to result values. It turns out that this can make a big difference!
 
@@ -71,19 +71,32 @@ How can the ability be produced? There are several possibilities:
 Most often, the ability is produced by having a using clause `(using CanThrow[Exc])` in some enclosing scope. This roughly corresponds to a `throws` clause
 in Java. The analogy is even stronger since alongside `CanThrow` there is also the following type alias defined in the `scala` package:
 ```scala
-infix type canThrow[R, +E <: Exception] = CanThrow[E] ?=> R
+infix type $throws[R, +E <: Exception] = CanThrow[E] ?=> R
 ```
-That is, `R canThrow E` is a context function type that takes an implicit `CanThrow[E]` parameter and that returns a value of type `R`. Therefore, a method written like this:
+That is, `R $throws E` is a context function type that takes an implicit `CanThrow[E]` parameter and that returns a value of type `R`. What's more, the compiler
+will translate an infix types with `throws` as the operator to `$throws` applications
+according to the rules
+```
+                A throws E  -->  A $throws E
+    A throws E₁ | ... | Eᵢ  -->  A $throws E₁ ... $throws Eᵢ
+```
+Therefore, a method written like this:
 ```scala
 def m(x: T)(using CanThrow[E]): U
 ```
 can alternatively be expressed like this:
 ```scala
-def m(x: T): U canThrow E
+def m(x: T): U throws E
 ```
-_Aside_: If we rename `canThrow` to `throws` we would have a perfect analogy with Java but unfortunately `throws` is already taken in Scala 2.13.
-
-The `CanThrow`/`canThrow` combo essentially propagates the `CanThrow` requirement outwards. But where are these abilities created in the first place? That's in the `try` expression. Given a `try` like this:
+Multiple `CanThrow` capabilities can be combined in a single throws clause. For instance, the method
+```scala
+def m2(x: T)(using CanThrow[E1], CanThrow[E2]): U
+```
+can alternatively be expressed like this:
+```scala
+def m(x: T): U throws E1 | E2
+```
+The `CanThrow`/`throws` combo essentially propagates the `CanThrow` requirement outwards. But where are these abilities created in the first place? That's in the `try` expression. Given a `try` like this:
 
 ```scala
 try
@@ -126,16 +139,16 @@ You'll get this error message:
   |The ability to throw exception LimitExceeded is missing.
   |The ability can be provided by one of the following:
   | - A using clause `(using CanThrow[LimitExceeded])`
-  | - A `canThrow` clause in a result type such as `X canThrow LimitExceeded`
+  | - A `throws` clause in a result type such as `X throws LimitExceeded`
   | - an enclosing `try` that catches LimitExceeded
   |
   |The following import might fix the problem:
   |
   |  import unsafeExceptions.canThrowAny
 ```
-As the error message implies, you have to declare that `f` needs the ability to throw a `LimitExceeded` exception. The most concise way to do so is to add a `canThrow` clause:
+As the error message implies, you have to declare that `f` needs the ability to throw a `LimitExceeded` exception. The most concise way to do so is to add a `throws` clause:
 ```scala
-def f(x: Double): Double canThrow LimitExceeded =
+def f(x: Double): Double throws LimitExceeded =
   if x < limit then x * x else throw LimitExceeded()
 ```
 Now put a call to `f` in a `try` that catches `LimitExceeded`:
@@ -169,12 +182,12 @@ So the takeaway is that the effects as abilities model naturally provides for ef
 
 ## Gradual Typing Via Imports
 
-Another advantage is that the model allows a gradual migration from current unchecked exceptions to safer exceptions. Imagine for a moment that `experimental.saferExceptions` is turned on everywhere. There would be lots of code that breaks since functions have not yet been properly annotated with `canThrow`. But it's easy to create an escape hatch that lets us ignore the breakages for a while: simply add the import
+Another advantage is that the model allows a gradual migration from current unchecked exceptions to safer exceptions. Imagine for a moment that `experimental.saferExceptions` is turned on everywhere. There would be lots of code that breaks since functions have not yet been properly annotated with `throws`. But it's easy to create an escape hatch that lets us ignore the breakages for a while: simply add the import
 ```scala
 import scala.unsafeExceptions.canThrowAny
 ```
 This will provide the `CanThrow` ability for any exception, and thereby allow
-all throws and all other calls, no matter what the current state of `canThrow` declarations is. Here's the
+all throws and all other calls, no matter what the current state of `throws` declarations is. Here's the
 definition of `canThrowAny`:
 ```scala
 package scala
@@ -188,7 +201,8 @@ enable more fluid explorations of code without regard for complete exception saf
 
 To summarize, the extension for safer exception checking consists of the following elements:
 
- - It adds to the standard library the class `scala.CanThrow`, the type `scala.canThrow`, and the `scala.unsafeExceptions` object, as they were described above.
+ - It adds to the standard library the class `scala.CanThrow`, the type `scala.$throws`, and the `scala.unsafeExceptions` object, as they were described above.
+ - It adds some desugaring rules ro rewrite `throws` types to cascaded `$throws` types.
  - It augments the type checking of `throw` by _demanding_ a `CanThrow` ability or the thrown exception.
  - It augments the type checking of `try` by _providing_ `CanThrow` abilities for every caught exception.
 
