@@ -2455,7 +2455,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           }
 
         def isDefinedInCurrentRun: Boolean =
-          self.topLevelClass.asClass.isDefinedInCurrentRun
+          self.exists && self.topLevelClass.asClass.isDefinedInCurrentRun
         def isLocalDummy: Boolean = self.denot.isLocalDummy
         def isRefinementClass: Boolean = self.denot.isRefinementClass
         def isAliasType: Boolean = self.denot.isAliasType
