@@ -734,16 +734,18 @@ Uri => EndMarkers2.scala
 Text => empty
 Language => Scala
 Symbols => 2 entries
-Occurrences => 3 entries
+Occurrences => 5 entries
 
 Symbols:
 endmarkers2/package. => final package object endmarkers2 extends Object { self: endmarkers2.type => +2 decls }
 endmarkers2/package.Foo# => type Foo  = Unit
 
 Occurrences:
+[0:15..0:26): endmarkers2 <- endmarkers2/package.
 [2:7..2:10): Foo <- endmarkers2/package.Foo#
 [3:4..3:8): Unit -> scala/Unit#
 [4:6..4:9): Foo -> endmarkers2/package.Foo#
+[6:4..6:15): endmarkers2 -> endmarkers2/package.
 
 expect/EnumVal.scala
 --------------------
@@ -3877,7 +3879,7 @@ Uri => semanticdb-Flags.scala
 Text => empty
 Language => Scala
 Symbols => 50 entries
-Occurrences => 70 entries
+Occurrences => 71 entries
 
 Symbols:
 flags/p/package. => final package object p extends Object { self: p.type => +23 decls }
@@ -3937,6 +3939,7 @@ Occurrences:
 [2:13..2:21): language -> scala/language.
 [2:22..2:34): experimental -> scala/language.experimental.
 [2:35..2:41): macros -> scala/language.experimental.macros.
+[4:15..4:16): p <- flags/p/package.
 [5:2..5:3): p -> flags/p/
 [5:19..5:20): x <- flags/p/package.x.
 [6:25..6:26): y <- flags/p/package.y().
@@ -4447,7 +4450,7 @@ Uri => toplevel.scala
 Text => empty
 Language => Scala
 Symbols => 19 entries
-Occurrences => 35 entries
+Occurrences => 34 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram extends Object { self: MyProgram => +2 decls }
@@ -4504,6 +4507,5 @@ Occurrences:
 [5:53..5:60): foreach -> scala/collection/immutable/Range#foreach().
 [5:67..5:74): println -> scala/Predef.println(+1).
 [6:4..6:10): fooRef <- _empty_/toplevel$package.fooRef().
-[6:13..6:29): toplevel$package -> _empty_/toplevel$package.
 [6:30..6:33): foo -> _empty_/toplevel$package.foo().
 
