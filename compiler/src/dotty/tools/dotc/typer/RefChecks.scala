@@ -1186,7 +1186,7 @@ object RefChecks {
 
   /** Check that classes extending experimental classes or nested in experimental classes have the @experimental annotation. */
   private def checkExperimentalInheritance(cls: ClassSymbol)(using Context): Unit =
-    if !cls.hasAnnotation(defn.ExperimentalAnnot) then
+    if !cls.isAnonymousClass && !cls.hasAnnotation(defn.ExperimentalAnnot) then
       cls.info.parents.find(_.typeSymbol.isExperimental) match
         case Some(parent) =>
           report.error(em"extension of experimental ${parent.typeSymbol} must have @experimental annotation", cls.srcPos)
