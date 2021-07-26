@@ -36,11 +36,12 @@ class BashScriptsTests:
 
   val showArgsScript = testFiles.find(_.getName == "showArgs.sc").get.absPath
 
-  val scalacPath = which("scalac")
-  val scalaPath = which("scala")
+  val scalacPath = "dist/target/pack/bin/scalac" // which("scalac")
+  val scalaPath = "dist/target/pack/bin/scala"   // which("scala")
 
   /* verify `dist/bin/scalac` */
   @Test def verifyScalacArgs =
+    printf("scalacPath[%s]\n",scalacPath)
     val commandline = (Seq(scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
     if bashPath.toFile.exists then
       var cmd = Array(bashExe, "-c", commandline)
@@ -50,7 +51,7 @@ class BashScriptsTests:
       var fail = false
       printf("\n")
       for (line, expect) <- output zip expectedOutput do
-        printf("expected: %-17s| actual: %s\n", line, expect)
+        printf("expected: %-17s\nactual  : %s\n", expect, line)
         if line != expect then
           fail = true
 
@@ -67,8 +68,9 @@ class BashScriptsTests:
       } yield line
       var fail = false
       printf("\n")
+      var mismatches = List.empty[(String,String)]
       for (line, expect) <- output zip expectedOutput do
-        printf("expected: %-17s| actual: %s\n", line, expect)
+        printf("expected: %-17s\nactual  : %s\n", expect, line)
         if line != expect then
           fail = true
 

@@ -15,21 +15,26 @@ import java.nio.file.{Path => JPath}
 import scala.io.Source._
 import org.junit.Test
 
+class PatmatDefaultExhaustivityTest extends PatmatExhaustivityTest {
+  override val testsDir = "tests/patmat-default"
+  override val options  = super.options.filter(_ != "-Ycheck-all-patmat")
+}
+
 class PatmatExhaustivityTest {
   val testsDir = "tests/patmat"
   // stop-after: patmatexhaust-huge.scala crash compiler
-  val options = List("-pagewidth", "80", "-color:never", "-Ystop-after:explicitSelf", "-Ycheck-all-patmat", "-classpath", TestConfiguration.basicClasspath)
+  def options = List("-pagewidth", "80", "-color:never", "-Ystop-after:explicitSelf", "-Ycheck-all-patmat", "-classpath", TestConfiguration.basicClasspath)
 
   private def compile(files: Seq[String]): Seq[String] = {
     val stringBuffer = new StringWriter()
-    val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
+    val printWriter  = new PrintWriter(stringBuffer)
+    val reporter = TestReporter.simplifiedReporter(printWriter)
 
     try {
       Main.process((options ++ files).toArray, reporter, null)
     } catch {
       case e: Throwable =>
-        println(s"Compile $files exception:")
-        e.printStackTrace()
+        e.printStackTrace(printWriter)
     }
 
     stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {

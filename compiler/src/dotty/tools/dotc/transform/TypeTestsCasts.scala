@@ -339,8 +339,14 @@ object TypeTestsCasts {
           case AppliedType(tref: TypeRef, _) if tref.symbol == defn.PairClass =>
             ref(defn.RuntimeTuples_isInstanceOfNonEmptyTuple).appliedTo(expr)
           case _ =>
-            val erasedTestType = erasure(testType)
-            transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
+            val testWidened = testType.widen
+            defn.untestableClasses.find(testWidened.isRef(_)) match
+              case Some(untestable) =>
+                report.error(i"$untestable cannot be used in runtime type tests", tree.srcPos)
+                constant(expr, Literal(Constant(false)))
+              case _ =>
+                val erasedTestType = erasure(testType)
+                transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
         }
 
         if (sym.isTypeTest) {

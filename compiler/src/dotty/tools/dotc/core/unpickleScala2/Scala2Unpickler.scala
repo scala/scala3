@@ -700,7 +700,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
     // Cannot use standard `existsPart` method because it calls `lookupRefined`
     // which can cause CyclicReference errors.
-    val isBoundAccumulator = new ExistsAccumulator(isBound, stopAtStatic = true, forceLazy = true):
+    val isBoundAccumulator = new ExistsAccumulator(isBound, StopAt.Static, forceLazy = true):
       override def foldOver(x: Boolean, tp: Type): Boolean = tp match
         case tp: TypeRef => applyToPrefix(x, tp)
         case _ => super.foldOver(x, tp)

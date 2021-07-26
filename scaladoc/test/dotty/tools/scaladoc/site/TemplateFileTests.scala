@@ -43,7 +43,7 @@ class TemplateFileTests:
         |code""".stripMargin
     ) { t =>
       assertEquals(t.rawCode, "code")
-      assertEquals(t.title, "myTitle")
+      assertEquals(t.title.name, "myTitle")
     }
 
 

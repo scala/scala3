@@ -333,7 +333,7 @@ object Inferencing {
     @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
       case Apply(fn, _) => boundVars(fn, acc)
       case TypeApply(fn, targs) =>
-        val tvars = targs.filter(_.isInstanceOf[TypeVarBinder[?]]).tpes.collect {
+        val tvars = targs.filter(_.isInstanceOf[InferredTypeTree]).tpes.collect {
           case tvar: TypeVar
           if !tvar.isInstantiated &&
              ctx.typerState.ownedVars.contains(tvar) &&
@@ -403,20 +403,21 @@ object Inferencing {
     val vs = variances(tp)
     val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
     vs foreachBinding { (tvar, v) =>
-      if (v == 1) tvar.instantiate(fromBelow = false)
-      else if (v == -1) tvar.instantiate(fromBelow = true)
-      else {
-        val bounds = TypeComparer.fullBounds(tvar.origin)
-        if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
-          tvar.instantiate(fromBelow = false)
+      if !tvar.isInstantiated then
+        if (v == 1) tvar.instantiate(fromBelow = false)
+        else if (v == -1) tvar.instantiate(fromBelow = true)
         else {
-          // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
-          // Instead, we simultaneously add them later on.
-          val wildCard = newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
-          tvar.instantiateWith(wildCard.typeRef)
-          patternBindings += ((wildCard, tvar.origin))
+          val bounds = TypeComparer.fullBounds(tvar.origin)
+          if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
+            tvar.instantiate(fromBelow = false)
+          else {
+            // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
+            // Instead, we simultaneously add them later on.
+            val wildCard = newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
+            tvar.instantiateWith(wildCard.typeRef)
+            patternBindings += ((wildCard, tvar.origin))
+          }
         }
-      }
     }
     val res = patternBindings.toList.map { (boundSym, _) =>
       // substitute bounds of pattern bound variables to deal with possible F-bounds
@@ -600,24 +601,20 @@ trait Inferencing { this: Typer =>
         def constraint = state.constraint
         type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
         val toInstantiate = new InstantiateQueue
-        for (tvar <- qualifying)
-          if (!tvar.isInstantiated && constraint.contains(tvar)) {
+        for tvar <- qualifying do
+          if !tvar.isInstantiated && constraint.contains(tvar) then
             constrainIfDependentParamRef(tvar, tree)
-
             // Needs to be checked again, since previous interpolations could already have
             // instantiated `tvar` through unification.
             val v = vs(tvar)
-            if (v == null) {
+            if v == null then
               typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
               toInstantiate += ((tvar, tvar.hasLowerBound))
-            }
+            else if v.intValue != 0 then
+              typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
+              toInstantiate += ((tvar, v.intValue == 1))
             else
-              if (v.intValue != 0) {
-                typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
-                toInstantiate += ((tvar, v.intValue == 1))
-              }
-              else typr.println(i"no interpolation for nonvariant $tvar in $state")
-          }
+              typr.println(i"no interpolation for nonvariant $tvar in $state")
 
         /** Instantiate all type variables in `buf` in the indicated directions.
          *  If a type variable A is instantiated from below, and there is another
@@ -654,13 +651,16 @@ trait Inferencing { this: Typer =>
             while buf.nonEmpty do
               val first @ (tvar, fromBelow) = buf.head
               buf.dropInPlace(1)
-              val suspend = buf.exists{ (following, _) =>
-                if fromBelow then
-                  constraint.isLess(following.origin, tvar.origin)
-                else
-                  constraint.isLess(tvar.origin, following.origin)
-              }
-              if suspend then suspended += first else tvar.instantiate(fromBelow)
+              if !tvar.isInstantiated then
+                val suspend = buf.exists{ (following, _) =>
+                  if fromBelow then
+                    constraint.isLess(following.origin, tvar.origin)
+                  else
+                    constraint.isLess(tvar.origin, following.origin)
+                }
+                if suspend then suspended += first else tvar.instantiate(fromBelow)
+              end if
+            end while
             doInstantiate(suspended)
         end doInstantiate
         doInstantiate(toInstantiate)
@@ -690,7 +690,7 @@ trait Inferencing { this: Typer =>
 
         val arg = findArg(call)
         if !arg.isEmpty then
-          var argType = arg.tpe.widenExpr.widenTermRefExpr
+          var argType = arg.tpe.widenIfUnstable
           if !argType.isSingleton then argType = SkolemType(argType)
           argType <:< tvar
       case _ =>

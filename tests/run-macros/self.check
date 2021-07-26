@@ -1,0 +1,3 @@
+ExprType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Int))
+MethodType(List(x), List(TypeRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Predef),String)), TypeRef(TypeRef(ThisType(TypeRef(ThisType(TypeRef(NoPrefix,module class <root>)),module class <empty>)),B),X))
+MethodType(List(x), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Int)), TypeRef(TypeRef(ThisType(TypeRef(ThisType(TypeRef(NoPrefix,module class <root>)),module class <empty>)),B),X))

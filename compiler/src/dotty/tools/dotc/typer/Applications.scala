@@ -210,6 +210,7 @@ object Applications {
         case Select(receiver, _) => receiver
         case mr => mr.tpe.normalizedPrefix match {
           case mr: TermRef => ref(mr)
+          case mr: ThisType => singleton(mr)
           case mr =>
             if testOnly then
               // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
@@ -1359,7 +1360,7 @@ trait Applications extends Compatibility {
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
-            if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled) untpd.Tuple(args) :: Nil
+            if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled && defn.isTupleType(argType)) untpd.Tuple(args) :: Nil
             else args
           case _ => args
         }

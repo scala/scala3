@@ -1140,11 +1140,10 @@ object SymDenotations {
       else NoSymbol
 
     /** The closest enclosing extension method containing this definition,
-     *  provided the extension method appears in the same class.
+     *  including methods outside the current class.
      */
     final def enclosingExtensionMethod(using Context): Symbol =
       if this.is(ExtensionMethod) then symbol
-      else if this.isClass then NoSymbol
       else if this.exists then owner.enclosingExtensionMethod
       else NoSymbol
 
@@ -2049,7 +2048,10 @@ object SymDenotations {
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
-      raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
+      val pre1 = pre match
+        case pre: OrType => pre.widenUnion
+        case _ => pre
+      raw.filterWithFlags(required, excluded).asSeenFrom(pre1).toDenot(pre1)
 
     final def findMemberNoShadowingBasedOnFlags(name: Name, pre: Type,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): Denotation =
@@ -2546,7 +2548,7 @@ object SymDenotations {
     }
 
   private[SymDenotations] def stillValidInOwner(denot: SymDenotation)(using Context): Boolean = try
-    val owner = denot.owner.denot
+    val owner = denot.maybeOwner.denot
     stillValid(owner)
     && (
       !owner.isClass

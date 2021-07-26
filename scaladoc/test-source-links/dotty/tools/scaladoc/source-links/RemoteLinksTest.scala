@@ -37,7 +37,7 @@ class RemoteLinksTest:
   @Test
   def runTest =
     assertTrue(mtslAll.nonEmpty)
-    val mtsl = randomGenerator.shuffle(mtslAll).take(40) // take 40 random entries
+    val mtsl = randomGenerator.shuffle(mtslAll).take(80) // take 80 random entries
     val pageToMtsl: Map[String, List[(String, String)]] = mtsl.groupMap(_._2.split("#L").head)(v => (v._1, v._2.split("#L").last))
     pageToMtsl.foreach { case (link, members) =>
       try

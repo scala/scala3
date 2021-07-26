@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Programmatic Structural Types - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/structural-types-spec.html
 ---
 
 ## Syntax
@@ -100,12 +101,19 @@ conversion that can turn `v` into a `Selectable`, and the selection methods coul
   val b: { def put(x: String): Unit } = a  // error
   b.put("abc") // looks for a method with a `String` parameter
   ```
-  The second to last line is not well-typed, since the erasure of the parameter type of `put` in class `Sink` is `Object`, but the erasure of `put`'s parameter in the type of `b` is `String`. This additional condition is necessary, since we will have to resort to reflection to call a structural member like `put` in the type of `b` above. The condition ensures that the statically known parameter types of the refinement correspond up to erasure to the parameter types of the selected call target at runtime.
+  The second to last line is not well-typed,
+  since the erasure of the parameter type of `put` in class `Sink` is `Object`,
+  but the erasure of `put`'s parameter in the type of `b` is `String`.
+  This additional condition is necessary, since we will have to resort
+  to some (as yet unknown) form of reflection to call a structural member
+  like `put` in the type of `b` above. The condition ensures that the statically
+  known parameter types of the refinement correspond up to erasure to the
+  parameter types of the selected call target at runtime.
 
-  The usual reflection dispatch algorithms need to know exact erased parameter types. For instance, if the example above would typecheck, the call
+  Most reflection dispatch algorithms need to know exact erased parameter types. For instance, if the example above would typecheck, the call
   `b.put("abc")` on the last line would look for a method `put` in the runtime type of `b` that takes a `String` parameter. But the `put` method is the one from class `Sink`, which takes an `Object` parameter. Hence the call would fail at runtime with a `NoSuchMethodException`.
 
-  One might hope for a "more intelligent" reflexive dispatch algorithm that does not require exact parameter type matching. Unfortunately, this can always run into ambiguities. For instance, continuing the example above, we might introduce a new subclass `Sink1` of `Sink` and change the definition of `a` as follows:
+  One might hope for a "more intelligent" reflexive dispatch algorithm that does not require exact parameter type matching. Unfortunately, this can always run into ambiguities, as long as overloading is a possibility. For instance, continuing the example above, we might introduce a new subclass `Sink1` of `Sink` and change the definition of `a` as follows:
 
   ```scala
   class Sink1[A] extends Sink[A] { def put(x: "123") = ??? }
@@ -116,6 +124,20 @@ conversion that can turn `v` into a `Selectable`, and the selection methods coul
   types `Object` and `String`, respectively. Yet dynamic dispatch still needs to go
   to the first `put` method, even though the second looks like a better match.
 
+  For the cases where we can in fact implement reflection without knowing precise parameter types (for instance if static overloading is replaced by dynamically dispatched multi-methods), there is an escape hatch. For types that extend `scala.Selectable.WithoutPreciseParameterTypes` the signature check is omitted. Example:
+
+  ```scala
+  trait MultiMethodSelectable extends Selectable.WithoutPreciseParameterTypes:
+    // Assume this version of `applyDynamic` can be implemented without knowing
+    // precise parameter types `paramTypes`:
+    def applyDynamic(name: String, paramTypes: Class[_]*)(args: Any*): Any = ???
+
+  class Sink[A] extends MultiMethodSelectable:
+    def put(x: A): Unit = {}
+
+  val a = new Sink[String]
+  val b: MultiMethodSelectable { def put(x: String): Unit } = a  // OK
+  ```
 ## Differences with Scala 2 Structural Types
 
 - Scala 2 supports structural types by means of Java reflection. Unlike

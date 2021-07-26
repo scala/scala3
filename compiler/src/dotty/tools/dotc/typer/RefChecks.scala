@@ -4,7 +4,7 @@ package typer
 
 import transform._
 import core._
-import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._
+import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._, NameKinds._
 import StdNames._, Denotations._, SymUtils._, Phases._, SymDenotations._
 import NameKinds.DefaultGetterName
 import Annotations._
@@ -17,6 +17,7 @@ import config.Printers.{checks, noPrinter}
 import scala.util.{Try, Failure, Success}
 import config.{ScalaVersion, NoScalaVersion}
 import Decorators._
+import OverridingPairs.isOverridingPair
 import typer.ErrorReporting._
 import config.Feature.{warnOnMigration, migrateTo3}
 import config.Printers.refcheck
@@ -264,31 +265,6 @@ object RefChecks {
       i"${if (showLocation) sym1.showLocated else sym1}$infoStr"
     }
 
-    def compatibleTypes(member: Symbol, memberTp: Type, other: Symbol, otherTp: Type, fallBack: => Boolean = false): Boolean =
-      try
-        if (member.isType) // intersection of bounds to refined types must be nonempty
-          memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi) &&
-          ((memberTp frozen_<:< otherTp) ||
-            !member.owner.derivesFrom(other.owner) && {
-              // if member and other come from independent classes or traits, their
-              // bounds must have non-empty-intersection
-              val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
-              jointBounds.lo frozen_<:< jointBounds.hi
-            })
-        else
-          // releaxed override check for explicit nulls if one of the symbols is Java defined,
-          // force `Null` being a subtype of reference types during override checking
-          val relaxedCtxForNulls =
-            if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
-              ctx.retractMode(Mode.SafeNulls)
-            else ctx
-          member.name.is(DefaultGetterName) // default getters are not checked for compatibility
-          || memberTp.overrides(otherTp, member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)(using relaxedCtxForNulls)
-      catch case ex: MissingType =>
-        // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
-        // because in that case we might access types that are not members of the qualifier.
-        false
-
     /* Check that all conditions for overriding `other` by `member`
        * of class `clazz` are met.
        */
@@ -318,10 +294,23 @@ object RefChecks {
       }
 
       def compatTypes(memberTp: Type, otherTp: Type): Boolean =
-        compatibleTypes(member, memberTp, other, otherTp,
-          fallBack = warnOnMigration(
-            overrideErrorMsg("no longer has compatible type"),
-            (if (member.owner == clazz) member else clazz).srcPos))
+        try
+          isOverridingPair(member, memberTp, other, otherTp,
+            fallBack = warnOnMigration(
+              overrideErrorMsg("no longer has compatible type"),
+              (if (member.owner == clazz) member else clazz).srcPos))
+        catch case ex: MissingType =>
+          // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
+          // because in that case we might access types that are not members of the qualifier.
+          false
+
+      /** Do types of term members `member` and `other` as seen from `self` match?
+       *  If not we treat them as not a real override and don't issue override
+       *  error messages. Also, bridges are not generated in this case.
+       *  Type members are always assumed to match.
+       */
+      def trueMatch: Boolean =
+        member.isType || memberTp(self).matches(otherTp(self))
 
       def emitOverrideError(fullmsg: Message) =
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
@@ -333,7 +322,7 @@ object RefChecks {
         }
 
       def overrideError(msg: String, compareTypes: Boolean = false) =
-        if (noErrorType)
+        if trueMatch && noErrorType then
           emitOverrideError(overrideErrorMsg(msg, compareTypes))
 
       def autoOverride(sym: Symbol) =
@@ -359,24 +348,6 @@ object RefChecks {
           overrideError(i"has a different target name annotation; it should be $otherTargetName")
 
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
-
-      // return if we already checked this combination elsewhere
-      if (member.owner != clazz) {
-        def deferredCheck = member.is(Deferred) || !other.is(Deferred)
-        def subOther(s: Symbol) = s derivesFrom other.owner
-        def subMember(s: Symbol) = s derivesFrom member.owner
-
-        if (subOther(member.owner) && deferredCheck)
-          //Console.println(infoString(member) + " shadows1 " + infoString(other) " in " + clazz);//DEBUG
-          return
-        val parentSymbols = clazz.info.parents.map(_.typeSymbol)
-        if (parentSymbols exists (p => subOther(p) && subMember(p) && deferredCheck))
-          //Console.println(infoString(member) + " shadows2 " + infoString(other) + " in " + clazz);//DEBUG
-          return
-        if (parentSymbols forall (p => subOther(p) == subMember(p)))
-          //Console.println(infoString(member) + " shadows " + infoString(other) + " in " + clazz);//DEBUG
-          return
-      }
 
       /* Is the intersection between given two lists of overridden symbols empty? */
       def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) = {
@@ -412,7 +383,7 @@ object RefChecks {
         overrideError("cannot be used here - class definitions cannot be overridden")
       else if (!other.is(Deferred) && member.isClass)
         overrideError("cannot be used here - classes can only override abstract types")
-      else if (other.isEffectivelyFinal) // (1.2)
+      else if other.isEffectivelyFinal then // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
       else if (member.is(ExtensionMethod) && !other.is(ExtensionMethod)) // (1.3)
         overrideError("is an extension method, cannot override a normal method")
@@ -433,9 +404,11 @@ object RefChecks {
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
           () // OK, don't complain about type aliases which are equal
-        else if (member.owner != clazz && other.owner != clazz &&
-                 !(other.owner derivesFrom member.owner))
-          emitOverrideError(
+        else if member.owner != clazz
+             && other.owner != clazz
+             && !other.owner.derivesFrom(member.owner)
+        then
+          overrideError(
             s"$clazz inherits conflicting members:\n  "
               + infoStringWithLocation(other) + "  and\n  " + infoStringWithLocation(member)
               + "\n(Note: this can be resolved by declaring an override in " + clazz + ".)")
@@ -497,24 +470,30 @@ object RefChecks {
     }
 
     val opc = new OverridingPairs.Cursor(clazz):
-
-      /** We declare a match if either we have a full match including matching names
-       *  or we have a loose match with different target name but the types are the same.
-       *  This leaves two possible sorts of discrepancies to be reported as errors
-       *  in `checkOveride`:
-       *
-       *    - matching names, target names, and signatures but different types
-       *    - matching names and types, but different target names
-       */
       override def matches(sym1: Symbol, sym2: Symbol): Boolean =
-        !(sym1.owner.is(JavaDefined, butNot = Trait) && sym2.owner.is(JavaDefined, butNot = Trait)) && // javac already handles these checks
-        (sym1.isType || {
-          val sd1 = sym1.asSeenFrom(clazz.thisType)
-          val sd2 = sym2.asSeenFrom(clazz.thisType)
-          sd1.matchesLoosely(sd2)
-          && (sym1.hasTargetName(sym2.targetName)
-             || compatibleTypes(sym1, sd1.info, sym2, sd2.info))
-        })
+        isOverridingPair(sym1, sym2, self)
+
+      private def inLinearizationOrder(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
+        val owner1 = sym1.owner
+        val owner2 = sym2.owner
+        def precedesIn(bcs: List[ClassSymbol]): Boolean = (bcs: @unchecked) match
+          case bc :: bcs1 =>
+            if owner1 eq bc then true
+            else if owner2 eq bc then false
+            else precedesIn(bcs1)
+          case _ =>
+            false
+        precedesIn(parent.asClass.baseClasses)
+
+      // We can exclude pairs safely from checking only under two additional conditions
+      //   - their signatures also match in the parent class.
+      //     See neg/i12828.scala for an example where this matters.
+      //   - They overriding/overridden appear in linearization order.
+      //     See neg/i5094.scala for an example where this matters.
+      override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
+        isOverridingPair(sym1, sym2, parent.thisType)
+         .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parent.thisType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parent.thisType).signature} = $result", refcheck)
+        && inLinearizationOrder(sym1, sym2, parent)
     end opc
 
     while opc.hasNext do
@@ -528,13 +507,11 @@ object RefChecks {
     //
     //   class A { type T = B }
     //   class B extends A { override type T }
-    for
-      dcl <- clazz.info.decls.iterator
-      if dcl.is(Deferred)
-      other <- dcl.allOverriddenSymbols
-      if !other.is(Deferred)
-    do
-      checkOverride(dcl, other)
+    for dcl <- clazz.info.decls.iterator do
+      if dcl.is(Deferred) then
+        for other <- dcl.allOverriddenSymbols do
+          if !other.is(Deferred) then
+            checkOverride(dcl, other)
 
     printMixinOverrideErrors()
 
@@ -578,7 +555,8 @@ object RefChecks {
         def isConcrete(sym: Symbol) = sym.exists && !sym.isOneOf(NotConcrete)
         clazz.nonPrivateMembersNamed(mbr.name)
           .filterWithPredicate(
-            impl => isConcrete(impl.symbol) && mbrDenot.matchesLoosely(impl))
+            impl => isConcrete(impl.symbol)
+              && mbrDenot.matchesLoosely(impl, alwaysCompareTypes = true))
           .exists
 
       /** The term symbols in this class and its baseclasses that are
@@ -1047,6 +1025,47 @@ object RefChecks {
           report.error(i"private $sym cannot override ${other.showLocated}", sym.srcPos)
   end checkNoPrivateOverrides
 
+  /** Check that unary method definition do not receive parameters.
+   *  They can only receive inferred parameters such as type parameters and implicit parameters.
+   */
+  def checkUnaryMethods(sym: Symbol)(using Context): Unit =
+    /** Check that the only term parameters are contextual or implicit */
+    def checkParameters(tpe: Type): Unit =
+      tpe match
+        case tpe: MethodType =>
+          if tpe.isImplicitMethod || tpe.isContextualMethod then
+            checkParameters(tpe.resType)
+          else
+            val what =
+              if tpe.paramNames.isEmpty then "empty parameter list.\n\nPossible fix: remove the `()` arguments."
+              else "parameters"
+            report.warning(s"Unary method cannot take $what", sym.sourcePos)
+        case tpe: PolyType =>
+          checkParameters(tpe.resType)
+        case _ =>
+          // ok
+
+    /** Skip leading type and contextual parameters, then skip the
+     *  self parameter, and finally check the parameter
+     */
+    def checkExtensionParameters(tpe: Type): Unit =
+      tpe match
+        case tpe: MethodType =>
+          assert(tpe.paramNames.length == 1)
+          if tpe.isContextualMethod then checkExtensionParameters(tpe.resType)
+          else checkParameters(tpe.resType)
+        case tpe: PolyType =>
+          checkExtensionParameters(tpe.resType)
+
+    if sym.name.startsWith(nme.UNARY_PREFIX.toString) then
+      if sym.is(Extension) || sym.name.is(ExtMethName) then
+        // if is method from `extension` or value class
+        checkExtensionParameters(sym.info)
+      else
+        checkParameters(sym.info)
+
+  end checkUnaryMethods
+
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
   class OptLevelInfo {
@@ -1167,7 +1186,7 @@ object RefChecks {
 
   /** Check that classes extending experimental classes or nested in experimental classes have the @experimental annotation. */
   private def checkExperimentalInheritance(cls: ClassSymbol)(using Context): Unit =
-    if !cls.hasAnnotation(defn.ExperimentalAnnot) then
+    if !cls.isAnonymousClass && !cls.hasAnnotation(defn.ExperimentalAnnot) then
       cls.info.parents.find(_.typeSymbol.isExperimental) match
         case Some(parent) =>
           report.error(em"extension of experimental ${parent.typeSymbol} must have @experimental annotation", cls.srcPos)
@@ -1254,6 +1273,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
     checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
+    checkUnaryMethods(tree.symbol)
     tree
   }
 

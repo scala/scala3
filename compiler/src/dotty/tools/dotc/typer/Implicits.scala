@@ -732,7 +732,7 @@ trait ImplicitRunInfo:
       case null =>
         record(i"implicitScope")
         val liftToAnchors = new TypeMap:
-          override def stopAtStatic = true
+          override def stopAt = StopAt.Static
           private val seen = util.HashSet[Type]()
 
           def applyToUnderlying(t: TypeProxy) =

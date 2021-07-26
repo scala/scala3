@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "How to write a type class `derived` method using macros"
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/derivation-macro.html
 ---
 
 In the main [derivation](./derivation.md) documentation page, we explained the

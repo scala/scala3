@@ -1003,7 +1003,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       /** True if `tp1` and `tp2` have compatible type constructors and their
        *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
        */
-      def isMatchingApply(tp1: Type): Boolean = tp1 match {
+      def isMatchingApply(tp1: Type): Boolean = tp1.widen match {
         case tp1 @ AppliedType(tycon1, args1) =>
           // We intentionally do not automatically dealias `tycon1` or `tycon2` here.
           // `TypeApplications#appliedTo` already takes care of dealiasing type
@@ -1391,7 +1391,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      */
     def canCompare(ts: Set[Type]) =
       ctx.phase.isTyper
-      || !ts.exists(_.existsPart(_.isInstanceOf[SkolemType], stopAtStatic = true))
+      || !ts.exists(_.existsPart(_.isInstanceOf[SkolemType], StopAt.Static))
 
     def verified(result: Boolean): Boolean =
       if Config.checkAtomsComparisons then
@@ -1571,6 +1571,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @see [[sufficientEither]] for the normal case
    */
   protected def either(op1: => Boolean, op2: => Boolean): Boolean =
+    Stats.record("TypeComparer.either")
     if ctx.mode.is(Mode.GadtConstraintInference) || useNecessaryEither then
       necessaryEither(op1, op2)
     else
@@ -1778,10 +1779,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // then the symbol referred to in the subtype must have a signature that coincides
         // in its parameters with the refinement's signature. The reason for the check
         // is that if the refinement does not refer to a member symbol, we will have to
-        // resort to reflection to invoke the member. And reflection needs to know exact
-        // erased parameter types. See neg/i12211.scala.
+        // resort to reflection to invoke the member. And Java reflection needs to know exact
+        // erased parameter types. See neg/i12211.scala. Other reflection algorithms could
+        // conceivably dispatch without knowning precise parameter signatures. One can signal
+        // this by inheriting from the `scala.reflect.SignatureCanBeImprecise` marker trait,
+        // in which case the signature test is elided.
         def sigsOK(symInfo: Type, info2: Type) =
           tp2.underlyingClassRef(refinementOK = true).member(name).exists
+          || tp2.derivesFrom(defn.WithoutPreciseParameterTypesClass)
           || symInfo.isInstanceOf[MethodType]
               && symInfo.signature.consistentParams(info2.signature)
 
@@ -2238,7 +2243,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  opportunistically merged.
    */
   final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
-    andTypeGen(tp1, tp2, AndType(_, _), isErased = isErased)
+    andTypeGen(tp1, tp2, AndType.balanced(_, _), isErased = isErased)
 
   final def simplifyAndTypeWithFallback(tp1: Type, tp2: Type, fallback: Type): Type =
     andTypeGen(tp1, tp2, (_, _) => fallback)
@@ -2260,7 +2265,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val t2 = distributeOr(tp2, tp1, isSoft)
       if (t2.exists) t2
       else if (isErased) erasedLub(tp1, tp2)
-      else liftIfHK(tp1, tp2, OrType(_, _, soft = isSoft), _ | _, _ & _)
+      else liftIfHK(tp1, tp2, OrType.balanced(_, _, soft = isSoft), _ | _, _ & _)
     }
   }
 

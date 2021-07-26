@@ -33,7 +33,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   /** A `MessageRenderer` for the REPL without file positions */
   private val messageRenderer = new MessageRendering {
-    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String = ""
+    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String =
+      hl(diagnosticLevel)(s"-- $diagnosticLevel:")
   }
 
   private var myClassLoader: ClassLoader = _
@@ -167,11 +168,14 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     val cause = ite.getCause match
       case e: ExceptionInInitializerError => e.getCause
       case e => e
-    def isWrapperCode(ste: StackTraceElement) =
-      ste.getClassName == d.symbol.owner.name.show
+    // detect
+    //at repl$.rs$line$2$.<clinit>(rs$line$2:1)
+    //at repl$.rs$line$2.res1(rs$line$2)
+    def isWrapperInitialization(ste: StackTraceElement) =
+      ste.getClassName.startsWith(nme.REPL_PACKAGE.toString + ".")  // d.symbol.owner.name.show is simple name
       && (ste.getMethodName == nme.STATIC_CONSTRUCTOR.show || ste.getMethodName == nme.CONSTRUCTOR.show)
 
-    cause.formatStackTracePrefix(!isWrapperCode(_))
+    cause.formatStackTracePrefix(!isWrapperInitialization(_))
   end renderError
 
   private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =

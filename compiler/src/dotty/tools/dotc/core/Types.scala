@@ -439,14 +439,14 @@ object Types {
 
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
-      existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true, forceLazy = false)
+      existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false)
 
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
      */
-    final def existsPart(p: Type => Boolean, stopAtStatic: Boolean = false, forceLazy: Boolean = true)(using Context): Boolean =
-      new ExistsAccumulator(p, stopAtStatic, forceLazy).apply(false, this)
+    final def existsPart(p: Type => Boolean, stopAt: StopAt = StopAt.None, forceLazy: Boolean = true)(using Context): Boolean =
+      new ExistsAccumulator(p, stopAt, forceLazy).apply(false, this)
 
     /** Returns true if all parts of this type satisfy predicate `p`.
      */
@@ -454,8 +454,8 @@ object Types {
       !existsPart(!p(_))
 
     /** Performs operation on all parts of this type */
-    final def foreachPart(p: Type => Unit, stopAtStatic: Boolean = false)(using Context): Unit =
-      new ForeachAccumulator(p, stopAtStatic).apply((), this)
+    final def foreachPart(p: Type => Unit, stopAt: StopAt = StopAt.None)(using Context): Unit =
+      new ForeachAccumulator(p, stopAt).apply((), this)
 
     /** The parts of this type which are type or term refs and which
      *  satisfy predicate `p`.
@@ -1282,13 +1282,10 @@ object Types {
       case tp =>
         tp.widenUnionWithoutNull
 
+    /** Overridden in OrType */
     def widenUnionWithoutNull(using Context): Type = widen match
-      case tp @ OrType(lhs, rhs) if tp.isSoft =>
-        TypeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match
-          case union: OrType => union.join
-          case res => res
-      case tp: AndOrType =>
-        tp.derivedAndOrType(tp.tp1.widenUnionWithoutNull, tp.tp2.widenUnionWithoutNull)
+      case tp: AndType =>
+        tp.derivedAndType(tp.tp1.widenUnionWithoutNull, tp.tp2.widenUnionWithoutNull)
       case tp: RefinedType =>
         tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
       case tp: RecType =>
@@ -1715,6 +1712,14 @@ object Types {
 
     /** If this is a proto type, WildcardType, otherwise the type itself */
     def dropIfProto: Type = this
+
+    /** If this is an AndType, the number of factors, 1 for all other types */
+    def andFactorCount: Int = 1
+
+    /** If this is a OrType, the number of factors if that match `soft`,
+     *  1 for all other types.
+     */
+    def orFactorCount(soft: Boolean): Int = 1
 
 // ----- Substitutions -----------------------------------------------------
 
@@ -3110,6 +3115,12 @@ object Types {
       myBaseClasses
     }
 
+    private var myFactorCount = 0
+    override def andFactorCount =
+      if myFactorCount == 0 then
+      	myFactorCount = tp1.andFactorCount + tp2.andFactorCount
+      myFactorCount
+
     def derivedAndType(tp1: Type, tp2: Type)(using Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else AndType.make(tp1, tp2, checkValid = true)
@@ -3134,6 +3145,23 @@ object Types {
              tp2.isValueTypeOrWildcard, i"$tp1 & $tp2 / " + s"$tp1 & $tp2")
       unchecked(tp1, tp2)
     }
+
+    def balanced(tp1: Type, tp2: Type)(using Context): AndType =
+      tp1 match
+        case AndType(tp11, tp12) if tp1.andFactorCount > tp2.andFactorCount * 2 =>
+          if tp11.andFactorCount < tp12.andFactorCount then
+            return apply(tp12, balanced(tp11, tp2))
+          else
+            return apply(tp11, balanced(tp12, tp2))
+        case _ =>
+      tp2 match
+        case AndType(tp21, tp22) if tp2.andFactorCount > tp1.andFactorCount * 2 =>
+          if tp22.andFactorCount < tp21.andFactorCount then
+            return apply(balanced(tp1, tp22), tp21)
+          else
+            return apply(balanced(tp1, tp21), tp22)
+        case _ =>
+      apply(tp1, tp2)
 
     def unchecked(tp1: Type, tp2: Type)(using Context): AndType = {
       assertUnerased()
@@ -3181,6 +3209,14 @@ object Types {
       myBaseClasses
     }
 
+    private var myFactorCount = 0
+    override def orFactorCount(soft: Boolean) =
+      if this.isSoft == soft then
+        if myFactorCount == 0 then
+          myFactorCount = tp1.orFactorCount(soft) + tp2.orFactorCount(soft)
+        myFactorCount
+      else 1
+
     assert(tp1.isValueTypeOrWildcard &&
            tp2.isValueTypeOrWildcard, s"$tp1 $tp2")
 
@@ -3197,6 +3233,20 @@ object Types {
       }
       myJoin
     }
+
+    private var myUnion: Type = _
+    private var myUnionPeriod: Period = Nowhere
+
+    override def widenUnionWithoutNull(using Context): Type =
+      if myUnionPeriod != ctx.period then
+        myUnion =
+          if isSoft then
+            TypeComparer.lub(tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull, canConstrain = true) match
+              case union: OrType => union.join
+              case res => res
+          else derivedOrType(tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull)
+        if !isProvisional then myUnionPeriod = ctx.period
+      myUnion
 
     private var atomsRunId: RunId = NoRunId
     private var myAtoms: Atoms = _
@@ -3238,10 +3288,29 @@ object Types {
   final class CachedOrType(tp1: Type, tp2: Type, override val isSoft: Boolean) extends OrType(tp1, tp2)
 
   object OrType {
+
     def apply(tp1: Type, tp2: Type, soft: Boolean)(using Context): OrType = {
       assertUnerased()
       unique(new CachedOrType(tp1, tp2, soft))
     }
+
+    def balanced(tp1: Type, tp2: Type, soft: Boolean)(using Context): OrType =
+      tp1 match
+        case OrType(tp11, tp12) if tp1.orFactorCount(soft) > tp2.orFactorCount(soft) * 2 =>
+          if tp11.orFactorCount(soft) < tp12.orFactorCount(soft) then
+            return apply(tp12, balanced(tp11, tp2, soft), soft)
+          else
+            return apply(tp11, balanced(tp12, tp2, soft), soft)
+        case _ =>
+      tp2 match
+        case OrType(tp21, tp22) if tp2.orFactorCount(soft) > tp1.orFactorCount(soft) * 2 =>
+          if tp22.orFactorCount(soft) < tp21.orFactorCount(soft) then
+            return apply(balanced(tp1, tp22, soft), tp21, soft)
+          else
+            return apply(balanced(tp1, tp21, soft), tp22, soft)
+        case _ =>
+      apply(tp1, tp2, soft)
+
     def make(tp1: Type, tp2: Type, soft: Boolean)(using Context): Type =
       if (tp1 eq tp2) tp1
       else apply(tp1, tp2, soft)
@@ -4348,6 +4417,8 @@ object Types {
 
   private final class RecThisImpl(binder: RecType) extends RecThis(binder)
 
+  // @sharable private var skid: Int = 0
+
   // ----- Skolem types -----------------------------------------------
 
   /** A skolem type reference with underlying type `info`.
@@ -4364,6 +4435,10 @@ object Types {
     override def equals(that: Any): Boolean = this.eq(that.asInstanceOf[AnyRef])
 
     def withName(name: Name): this.type = { myRepr = name; this }
+
+    //skid += 1
+    //val id = skid
+    //assert(id != 10)
 
     private var myRepr: Name = null
     def repr(using Context): Name = {
@@ -4479,8 +4554,14 @@ object Types {
 
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(using Context): Type = {
-      assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
-      typr.println(s"instantiating ${this.show} with ${tp.show}")
+      assert(tp ne this, i"self instantiation of $origin, constraint = ${ctx.typerState.constraint}")
+      assert(!myInst.exists, i"$origin is already instantiated to $myInst but we attempted to instantiate it to $tp")
+      typr.println(i"instantiating $this with $tp")
+
+      if Config.checkConstraintsSatisfiable then
+        assert(currentEntry.bounds.contains(tp),
+          i"$origin is constrained to be $currentEntry but attempted to instantiate it to $tp")
+
       if ((ctx.typerState eq owningState.get) && !TypeComparer.subtypeCheckInProgress)
         setInst(tp)
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
@@ -4495,7 +4576,11 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      instantiateWith(avoidCaptures(TypeComparer.instanceType(origin, fromBelow)))
+      val tp = avoidCaptures(TypeComparer.instanceType(origin, fromBelow))
+      if myInst.exists then // The line above might have triggered instantiation of the current type variable
+        myInst
+      else
+        instantiateWith(tp)
 
     /** For uninstantiated type variables: the entry in the constraint (either bounds or
      *  provisional instance value)
@@ -5199,6 +5284,12 @@ object Types {
 
   // ----- TypeMaps --------------------------------------------------------------------
 
+  /** Where a traversal should stop */
+  enum StopAt:
+    case None    // traverse everything
+    case Package // stop at package references
+    case Static  // stop at static references
+
   /** Common base class of TypeMap and TypeAccumulator */
   abstract class VariantTraversal:
     protected[core] var variance: Int = 1
@@ -5211,7 +5302,7 @@ object Types {
       res
     }
 
-    protected def stopAtStatic: Boolean = true
+    protected def stopAt: StopAt = StopAt.Static
 
     /** Can the prefix of this static reference be omitted if the reference
      *  itself can be omitted? Overridden in TypeOps#avoid.
@@ -5220,7 +5311,11 @@ object Types {
 
     protected def stopBecauseStaticOrLocal(tp: NamedType)(using Context): Boolean =
       (tp.prefix eq NoPrefix)
-      || stopAtStatic && tp.currentSymbol.isStatic && isStaticPrefix(tp.prefix)
+      || {
+        val stop = stopAt
+        stop == StopAt.Static && tp.currentSymbol.isStatic && isStaticPrefix(tp.prefix)
+        || stop == StopAt.Package && tp.currentSymbol.is(Package)
+      }
   end VariantTraversal
 
   abstract class TypeMap(implicit protected var mapCtx: Context)
@@ -5409,7 +5504,7 @@ object Types {
       derivedClassInfo(tp, this(tp.prefix))
 
     def andThen(f: Type => Type): TypeMap = new TypeMap {
-      override def stopAtStatic = thisMap.stopAtStatic
+      override def stopAt = thisMap.stopAt
       def apply(tp: Type) = f(thisMap(tp))
     }
   }
@@ -5831,12 +5926,12 @@ object Types {
 
   class ExistsAccumulator(
       p: Type => Boolean,
-      override val stopAtStatic: Boolean,
+      override val stopAt: StopAt,
       forceLazy: Boolean)(using Context) extends TypeAccumulator[Boolean]:
     def apply(x: Boolean, tp: Type): Boolean =
       x || p(tp) || (forceLazy || !tp.isInstanceOf[LazyRef]) && foldOver(x, tp)
 
-  class ForeachAccumulator(p: Type => Unit, override val stopAtStatic: Boolean)(using Context) extends TypeAccumulator[Unit] {
+  class ForeachAccumulator(p: Type => Unit, override val stopAt: StopAt)(using Context) extends TypeAccumulator[Unit] {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 

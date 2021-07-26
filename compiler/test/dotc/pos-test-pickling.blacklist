@@ -18,6 +18,9 @@ i7740b.scala
 i6507b.scala
 i12299a.scala
 
+# Tree is huge and blows stack for printing Text
+i7034.scala
+
 # Stale symbol: package object scala
 seqtype-cycle
 
@@ -66,3 +69,4 @@ i2797a
 # GADT cast applied to singleton type difference
 i4176-gadt.scala
 
+java-inherited-type1

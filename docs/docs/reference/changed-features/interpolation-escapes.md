@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Escapes in interpolations"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/interpolation-escapes.html
 ---
 
 In Scala 2 there is no straightforward way to represent a single quote character `"` in a single quoted interpolation. A `\` character can't be used for that because interpolators themselves decide how to handle escaping, so the parser doesn't know whether the `"` should be escaped or used as a terminator.

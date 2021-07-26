@@ -93,10 +93,18 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     "./docs"
   )
 
+  val noLinkWarnings: Setting[Boolean] = BooleanSetting(
+    "-no-link-warnings",
+    "Avoid warnings for ambiguous and incorrect links in members look up. Doesn't affect warnings for incorrect links of assets etc.",
+    false
+  )
+
   val versionsDictionaryUrl: Setting[String] = StringSetting(
     "-versions-dictionary-url",
     "versions dictionary url",
-    "A URL pointing to a JSON document containing a dictionary version -> documentation location. Useful for libraries that maintain different releases docs",
+    "A URL pointing to a JSON document containing a dictionary `version label -> documentation location`. " +
+      "The JSON file has single property \"versions\" that holds dictionary of labels of specific docs and URL pointing to their index.html top-level file. " +
+      "Useful for libraries that maintain different versions of their documentation.",
     ""
   )
 
@@ -109,5 +117,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val snippetCompilerDebug: Setting[Boolean] =
     BooleanSetting("-Ysnippet-compiler-debug", snippets.SnippetCompilerArgs.debugUsage, false)
 
+  val generateInkuire: Setting[Boolean] =
+    BooleanSetting("-Ygenerate-inkuire", "Generates InkuireDB and enables Hoogle-like searches", false)
+
   def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug)
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug, generateInkuire)

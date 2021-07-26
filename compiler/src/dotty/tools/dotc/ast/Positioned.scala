@@ -36,7 +36,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
       ids.put(this, ownId)
       if ownId == debugId then
         println(s"Debug tree (id=$debugId) creation \n$this\n")
-        Reporter.displayPrompt(Console.in, new PrintWriter(Console.err, true))
+        Thread.dumpStack()
 
   allocateId()
 

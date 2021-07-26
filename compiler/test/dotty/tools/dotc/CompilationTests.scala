@@ -60,6 +60,7 @@ class CompilationTests {
       compileFile("tests/pos-custom-args/i8875.scala", defaultOptions.and("-Xprint:getters")),
       compileFile("tests/pos-custom-args/i9267.scala", defaultOptions.and("-Ystop-after:erasure")),
       compileFile("tests/pos-special/extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration")),
+      compileFile("tests/pos-custom-args/help.scala", defaultOptions.and("-help", "-V", "-W", "-X", "-Y")),
     ).checkCompile()
   }
 
@@ -71,7 +72,8 @@ class CompilationTests {
       compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite")),
-      compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite"))
+      compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite")),
+      compileFile("tests/rewrites/i12340.scala", unindentOptions.and("-rewrite")),
     ).checkRewrites()
   }
 

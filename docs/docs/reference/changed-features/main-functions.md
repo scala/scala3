@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Main Methods"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/main-functions.html
 ---
 
 Scala 3 offers a new way to define programs that can be invoked from the command line:

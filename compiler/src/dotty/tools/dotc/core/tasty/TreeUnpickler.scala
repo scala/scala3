@@ -873,19 +873,18 @@ class TreeUnpickler(reader: TastyReader,
           }
         case PARAM =>
           val tpt = readTpt()(using localCtx)
-          if (nothingButMods(end)) {
-            sym.info = tpt.tpe
-            ValDef(tpt)
-          }
-          else {
-            sym.info = ExprType(tpt.tpe)
-            pickling.println(i"reading param alias $name -> $currentAddr")
-            DefDef(Nil, tpt)
-          }
+          assert(nothingButMods(end))
+          sym.info = tpt.tpe
+          ValDef(tpt)
       }
       goto(end)
       setSpan(start, tree)
-      if (!sym.isType) // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
+
+      // Dealias any non-accessible type alias in the type of `sym`. This can be
+      // skipped for types (see `checkNoPrivateLeaks` for why) as well as for
+      // param accessors since they can't refer to an inaccesible type member of
+      // the class.
+      if !sym.isType && !sym.is(ParamAccessor) then
         sym.info = ta.avoidPrivateLeaks(sym)
 
       if (ctx.settings.YreadComments.value) {

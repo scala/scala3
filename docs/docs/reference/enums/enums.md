@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Enumerations"
+movedTo: https://docs.scala-lang.org/scala3/reference/enums/enums.html
 ---
 
 An enumeration is used to define a type consisting of a set of named values.

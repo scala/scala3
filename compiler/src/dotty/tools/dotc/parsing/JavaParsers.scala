@@ -751,35 +751,8 @@ object JavaParsers {
           makeTemplate(List(), statics, List(), false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
       }
 
-    def importCompanionObject(cdef: TypeDef): Tree =
-      Import(
-        Ident(cdef.name.toTermName).withSpan(NoSpan),
-        ImportSelector(Ident(nme.WILDCARD)) :: Nil)
-
-    // Importing the companion object members cannot be done uncritically: see
-    // ticket #2377 wherein a class contains two static inner classes, each of which
-    // has a static inner class called "Builder" - this results in an ambiguity error
-    // when each performs the import in the enclosing class's scope.
-    //
-    // To address this I moved the import Companion._ inside the class, as the first
-    // statement.  This should work without compromising the enclosing scope, but may (?)
-    // end up suffering from the same issues it does in scala - specifically that this
-    // leaves auxiliary constructors unable to access members of the companion object
-    // as unqualified identifiers.
-    def addCompanionObject(statics: List[Tree], cdef: TypeDef): List[Tree] = {
-      // if there are no statics we can use the original cdef, but we always
-      // create the companion so import A._ is not an error (see ticket #1700)
-      val cdefNew =
-        if (statics.isEmpty) cdef
-        else {
-          val template = cdef.rhs.asInstanceOf[Template]
-          cpy.TypeDef(cdef)(cdef.name,
-            cpy.Template(template)(body = importCompanionObject(cdef) :: template.body))
-              .withMods(cdef.mods)
-        }
-
-      List(makeCompanionObject(cdefNew, statics), cdefNew)
-    }
+    def addCompanionObject(statics: List[Tree], cdef: TypeDef): List[Tree] =
+      List(makeCompanionObject(cdef, statics), cdef)
 
     def importDecl(): List[Tree] = {
       val start = in.offset
@@ -901,16 +874,7 @@ object JavaParsers {
             members) ++= decls
         }
       }
-      def forwarders(sdef: Tree): List[Tree] = sdef match {
-        case TypeDef(name, _) if (parentToken == INTERFACE) =>
-          var rhs: Tree = Select(Ident(parentName.toTermName), name)
-          List(TypeDef(name, rhs).withMods(Modifiers(Flags.Protected)))
-        case _ =>
-          List()
-      }
-      val sdefs = statics.toList
-      val idefs = members.toList ::: (sdefs flatMap forwarders)
-      (sdefs, idefs)
+      (statics.toList, members.toList)
     }
     def annotationParents: List[Select] = List(
       scalaAnnotationDot(tpnme.Annotation),

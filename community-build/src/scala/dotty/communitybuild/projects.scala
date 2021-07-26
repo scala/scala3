@@ -278,7 +278,19 @@ object projects:
 
   lazy val scalatest: SbtCommunityProject = SbtCommunityProject(
     project       = "scalatest",
-    sbtTestCommand   = "scalacticDotty/clean; scalacticDottyJS/clean; scalacticTestDotty/test; scalatestTestDotty/test; scalacticDottyJS/compile; scalatestDottyJS/compile",
+    sbtTestCommand   =
+      List(
+        "scalacticDotty/clean; scalacticDottyJS/clean",
+
+        // Some scalatest's tests are flaky (https://github.com/scalatest/scalatest/issues/2049)
+        // so we disable them, this list is based on the one used in the Scala 2 community build
+        // (https://github.com/scala/community-build/blob/2.13.x/proj/scalatest.conf).
+        """set scalatestTest / Test / unmanagedSources / excludeFilter := HiddenFileFilter || "GeneratorSpec.scala" || "FrameworkSuite.scala" || "WaitersSpec.scala" || "TestSortingReporterSpec.scala" || "JavaFuturesSpec.scala" || "ParallelTestExecutionSpec.scala" || "TimeLimitsSpec.scala" || "TestThreadsStartingCounterSpec.scala" || "SuiteSortingReporterSpec.scala" || "CommonGeneratorsSpec.scala" || "PropCheckerAssertingSpec.scala" || "ConductorMethodsSuite.scala"""",
+        """set scalacticTest / Test / unmanagedSources / excludeFilter := HiddenFileFilter || "NonEmptyArraySpec.scala"""",
+        """set genRegularTests4 / Test / managedSources ~= (_.filterNot(_.getName == "FrameworkSuite.scala").filterNot(_.getName == "GeneratorSpec.scala").filterNot(_.getName == "CommonGeneratorsSpec.scala").filterNot(_.getName == "ParallelTestExecutionSpec.scala").filterNot(_.getName == "DispatchReporterSpec.scala").filterNot(_.getName == "TestThreadsStartingCounterSpec.scala").filterNot(_.getName == "EventuallySpec.scala"))""",
+
+        "scalacticTestDotty/test; scalatestTestDotty/test; scalacticDottyJS/compile; scalatestDottyJS/compile"
+      ).mkString("; "),
     sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal; scalacticDottyJS/publishLocal; scalatestDottyJS/publishLocal",
     sbtDocCommand = ";scalacticDotty/doc", // fails with missing type ;scalatestDotty/doc"
     // cannot take signature of (test: org.scalatest.concurrent.ConductorFixture#OneArgTest):
@@ -357,8 +369,8 @@ object projects:
   lazy val stdLib213 = SbtCommunityProject(
     project       = "stdLib213",
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
-    sbtTestCommand   = """library/compile""",
-    sbtPublishCommand = """set library/Compile/packageDoc/publishArtifact := false; library/publishLocal""",
+    sbtTestCommand   = """set Global / fatalWarnings := false; library/compile""",
+    sbtPublishCommand = """set Global / fatalWarnings := false; set library/Compile/packageDoc/publishArtifact := false; library/publishLocal""",
     // sbtDocCommand = "library/doc" // Does no compile? No idea :/
   )
 
@@ -648,6 +660,12 @@ object projects:
     dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
   )
 
+  lazy val monocle = SbtCommunityProject(
+    project = "Monocle",
+    sbtTestCommand = "coreJVM/test; macrosJVM/test; testJVM/test",
+    dependencies = List(cats, munit, discipline, disciplineMunit)
+  )
+
   lazy val protoquill = SbtCommunityProject(
     project = "protoquill",
     sbtTestCommand = "test",
@@ -765,6 +783,7 @@ def allProjects = List(
   projects.izumiReflect,
   projects.perspective,
   projects.akka,
+  projects.monocle,
   projects.protoquill,
   projects.onnxScala,
   projects.playJson,

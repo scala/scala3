@@ -99,7 +99,7 @@ trait ConstraintHandling {
       val bound = dropWildcards(rawBound)
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
       val equalBounds = (if isUpper then lo else hi) eq bound
-      if equalBounds && !bound.existsPart(_ eq param, stopAtStatic = true) then
+      if equalBounds && !bound.existsPart(_ eq param, StopAt.Static) then
         // The narrowed bounds are equal and not recursive,
         // so we can remove `param` from the constraint.
         constraint = constraint.replace(param, bound)
@@ -300,8 +300,15 @@ trait ConstraintHandling {
         dropped = dropped.tail
         recur(tp)
 
+    val saved = ctx.typerState.snapshot()
     val tpw = recur(tp)
-    if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
+    if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then
+      // Rollback any constraint change that would lead to `tp` no longer
+      // being a valid solution.
+      ctx.typerState.resetTo(saved)
+      tp
+    else
+      tpw
   end dropTransparentTraits
 
   /** If `tp` is an applied match type alias which is also an unreducible application

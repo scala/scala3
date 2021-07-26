@@ -253,7 +253,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(name: Name, tp: Type) =
-      toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp)
+      toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
     Text(lam.paramNames.lazyZip(lam.paramInfos).map(paramText), ", ")
   }
 
@@ -371,7 +371,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   end decomposeLambdas
 
   /** String representation of a definition's type following its name */
-  protected def toTextRHS(tp: Type): Text = controlled {
+  protected def toTextRHS(tp: Type, isParameter: Boolean = false): Text = controlled {
     homogenize(tp) match {
       case tp: TypeBounds =>
         val (tparamStr, rhs) = decomposeLambdas(tp)
@@ -401,7 +401,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case mt: MethodType =>
         toTextGlobal(mt)
       case tp: ExprType =>
-        ": => " ~ toTextGlobal(tp.widenExpr)
+        // parameterless methods require special treatment, see #11201
+        (if (isParameter) ": => " else ": ") ~ toTextGlobal(tp.widenExpr)
       case tp =>
         ": " ~ toTextGlobal(tp)
     }

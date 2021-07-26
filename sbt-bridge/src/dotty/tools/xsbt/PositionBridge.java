@@ -125,4 +125,53 @@ public class PositionBridge implements Position {
   public String toString() {
       return pos.toString();
   }
+  
+  @Override
+  public Optional<Integer> startOffset() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.start());
+  }
+
+  @Override
+  public Optional<Integer> endOffset() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.end());
+  }
+
+  @Override
+  public Optional<Integer> startLine() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.startLine() + 1);
+  }
+
+  @Override
+  public Optional<Integer> endLine() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.endLine() + 1);
+  }
+
+  @Override
+  public Optional<Integer> startColumn() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.startColumn());
+  }
+
+  @Override
+  public Optional<Integer> endColumn() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.endColumn());
+  }
+
 }

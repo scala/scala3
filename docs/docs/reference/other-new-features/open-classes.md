@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Open Classes"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/open-classes.html
 ---
 
 An `open` modifier on a class signals that the class is planned for extensions. Example:

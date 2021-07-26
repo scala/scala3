@@ -194,20 +194,18 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         if isExpr(sym) && isLocal(sym) then markCalled(sym, enclosure)
       case tree: This =>
         narrowTo(tree.symbol.asClass)
-      case tree: DefDef =>
-        if sym.owner.isTerm then
-          logicOwner(sym) = sym.enclosingPackageClass
-            // this will make methods in supercall constructors of top-level classes owned
-            // by the enclosing package, which means they will be static.
-            // On the other hand, all other methods will be indirectly owned by their
-            // top-level class. This avoids possible deadlocks when a static method
-            // has to access its enclosing object from the outside.
-        else if sym.isConstructor then
-          if sym.isPrimaryConstructor && isLocal(sym.owner) && !sym.owner.is(Trait) then
-            // add a call edge from the constructor of a local non-trait class to
-            // the class itself. This is done so that the constructor inherits
-            // the free variables of the class.
-            symSet(called, sym) += sym.owner
+      case tree: MemberDef if isExpr(sym) && sym.owner.isTerm =>
+        logicOwner(sym) = sym.enclosingPackageClass
+          // this will make methods in supercall constructors of top-level classes owned
+          // by the enclosing package, which means they will be static.
+          // On the other hand, all other methods will be indirectly owned by their
+          // top-level class. This avoids possible deadlocks when a static method
+          // has to access its enclosing object from the outside.
+      case tree: DefDef if sym.isPrimaryConstructor && isLocal(sym.owner) && !sym.owner.is(Trait) =>
+        // add a call edge from the constructor of a local non-trait class to
+        // the class itself. This is done so that the constructor inherits
+        // the free variables of the class.
+        symSet(called, sym) += sym.owner
       case tree: TypeDef =>
         if sym.owner.isTerm then logicOwner(sym) = sym.topLevelClass.owner
       case _ =>

@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Context Bounds"
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/context-bounds.html
 ---
 
 A context bound is a shorthand for expressing the common pattern of a context parameter that depends on a type parameter. Using a context bound, the `maximum` function of the last section can be written like this:
@@ -9,7 +10,7 @@ A context bound is a shorthand for expressing the common pattern of a context pa
 def maximum[T: Ord](xs: List[T]): T = xs.reduceLeft(max)
 ```
 
-A bound like `: Ord` on a type parameter `T` of a method or class indicates a context parameter `with Ord[T]`. The context parameter(s) generated from context bounds come last in the definition of the containing method or class. For instance,
+A bound like `: Ord` on a type parameter `T` of a method or class indicates a context parameter `using Ord[T]`. The context parameter(s) generated from context bounds come last in the definition of the containing method or class. For instance,
 
 ```scala
 def f[T: C1 : C2, U: C3](x: T)(using y: U, z: V): R

@@ -359,6 +359,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if (sym.isClass)
             VarianceChecker.check(tree)
             annotateExperimental(sym)
+            tree.rhs match
+              case impl: Template =>
+                for parent <- impl.parents do
+                  Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
             // Add SourceFile annotation to top-level classes
             if sym.owner.is(Package)
                && ctx.compilationUnit.source.exists

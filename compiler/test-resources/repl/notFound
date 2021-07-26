@@ -1,8 +1,10 @@
 scala>  Foo
+-- Error:
 1 |  Foo
   |  ^^^
   |  Not found: Foo
 scala>  Bar
+-- Error:
 1 |  Bar
   |  ^^^
   |  Not found: Bar

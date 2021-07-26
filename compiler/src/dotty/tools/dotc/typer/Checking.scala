@@ -191,6 +191,30 @@ object Checking {
       report.errorOrMigrationWarning(em"$tp is not a legal $what\nsince it${rstatus.msg}", pos)
   }
 
+  /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
+   *  the superclass of `cls` derived from the superclass of `parent`.
+   *
+   *  An exception is made if `cls` extends `Any`, and `parent` is `java.io.Serializable`
+   *  or `java.lang.Comparable`. These two classes are treated by Scala as universal
+   *  traits. E.g. the following is OK:
+   *
+   *      ... extends Any with java.io.Serializable
+   *
+   *  The standard library relies on this idiom.
+   */
+  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: SrcPos)(using Context): Unit =
+    parent match {
+      case parent: ClassSymbol if parent.is(Trait) =>
+        val psuper = parent.superClass
+        val csuper = cls.superClass
+        val ok = csuper.derivesFrom(psuper) ||
+          parent.is(JavaDefined) && csuper == defn.AnyClass &&
+          (parent == defn.JavaSerializableClass || parent == defn.ComparableClass)
+        if (!ok)
+          report.error(em"illegal trait inheritance: super$csuper does not derive from $parent's super$psuper", pos)
+      case _ =>
+    }
+
   /** A type map which checks that the only cycles in a type are F-bounds
    *  and that protects all F-bounded references by LazyRefs.
    */
@@ -1088,7 +1112,7 @@ trait Checking {
         }
       case _ =>
     }
-    tp.foreachPart(check, stopAtStatic = true)
+    tp.foreachPart(check, StopAt.Static)
     if (ok) tp else UnspecifiedErrorType
   }
 

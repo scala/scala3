@@ -21,6 +21,7 @@ enum Resource(val path: String):
   case Classpath(override val path: String, name: String) extends Resource(path)
   case File(override val path: String, file: Path) extends Resource(path)
   case URL(url: String) extends Resource(url)
+  case URLToCopy(url: String, dest: String) extends Resource(url)
 
 trait Resources(using ctx: DocContext) extends Locations, Writer:
   private def dynamicJsData =
@@ -60,6 +61,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     val fromResources = List(
       "styles/nord-light.css",
       "styles/scalastyle.css",
+      "styles/colors.css",
       "styles/dotty-icons.css",
       "styles/diagram.css",
       "styles/filter-bar.css",
@@ -76,7 +78,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/components/Input.js",
       "scripts/components/FilterGroup.js",
       "scripts/components/Filter.js",
-      "scripts/searchbar.js"
+      "scripts/searchbar.js",
+      "scripts/inkuire-worker.js"
     ).map(dottyRes)
 
     val urls = List(
@@ -86,7 +89,13 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
     ).map(Resource.URL.apply)
 
-    fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
+    val urlToPathMappings = List(
+      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M2/inkuire.js", "scripts/inkuire.js"),
+    ).map { case (url, path) =>
+      Resource.URLToCopy(url, path)
+    }
+
+    fromResources ++ urls ++ urlToPathMappings ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
 
   val searchDataPath = "scripts/searchData.js"
   val memberResourcesPaths = Seq(searchDataPath) ++ memberResources.map(_.path)
@@ -135,6 +144,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     dottyRes("fonts/dotty-icons.woff"),
     dottyRes("fonts/dotty-icons.ttf"),
     dottyRes("images/scaladoc_logo.svg"),
+    dottyRes("images/scaladoc_logo_dark.svg"),
     dottyRes("images/class.svg"),
     dottyRes("images/class_comp.svg"),
     dottyRes("images/object.svg"),
@@ -175,3 +185,5 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         Seq(copy(file, path))
       case Resource.URL(url) =>
         Nil
+      case Resource.URLToCopy(url, dest) =>
+        Seq(copy(new URL(url).openStream(), dest))

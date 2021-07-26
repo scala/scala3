@@ -86,9 +86,9 @@ trait MemberLookup {
       res
     catch
       case e: Exception =>
-        // TODO (https://github.com/lampepfl/scala3doc/issues/238): proper reporting
-        val msg = s"Unable to find a link for ${query} ${ownerOpt.fold("")(o => "in " + o.name)}"
-        report.warn(msg, e)
+        if (!summon[DocContext].args.noLinkWarnings) then
+          val msg = s"Unable to find a link for ${query} ${ownerOpt.fold("")(o => "in " + o.name)}"
+          report.warn(msg, e)
         None
 
   private def hackMembersOf(using Quotes)(rsym: reflect.Symbol) = {
