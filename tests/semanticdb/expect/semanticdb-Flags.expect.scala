@@ -2,7 +2,7 @@ package flags
 
 import scala.language/*->scala::language.*/.experimental/*->scala::language.experimental.*/.macros/*->scala::language.experimental.macros.*/
 
-package object p {
+package object p/*<-flags::p::package.*/ {
   private lazy val x/*<-flags::p::package.x.*/ = 1
   protected implicit var y/*<-flags::p::package.y().*/: Int/*->scala::Int#*/ = 2
   def z/*<-flags::p::package.z().*/(pp/*<-flags::p::package.z().(pp)*/: Int/*->scala::Int#*/) = 3

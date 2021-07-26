@@ -326,7 +326,8 @@ class ExtractSemanticDB extends Phase:
           if content.lift(span.end - 1).map(_ == '`').getOrElse(false) then
             (span.start + 1, span.end - 1)
           else (span.start, span.end)
-        content.slice(start, end).mkString == sym.name.stripModuleClassSuffix.lastPart.toString
+        val target = if sym.isPackageObject then sym.owner else sym
+        content.slice(start, end).mkString == target.name.stripModuleClassSuffix.lastPart.toString
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
       val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
