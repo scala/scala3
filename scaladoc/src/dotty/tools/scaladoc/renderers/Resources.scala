@@ -90,7 +90,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     ).map(Resource.URL.apply)
 
     val urlToPathMappings = List(
-      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M1/inkuire.js", "scripts/inkuire.js"),
+      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M2/inkuire.js", "scripts/inkuire.js"),
     ).map { case (url, path) =>
       Resource.URLToCopy(url, path)
     }
