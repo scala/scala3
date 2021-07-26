@@ -7,6 +7,7 @@ import Contexts._
 import Symbols._
 import Types._
 import StdNames._
+import NameKinds.OuterSelectName
 
 import ast.tpd._
 import util.EqHashMap
@@ -797,7 +798,15 @@ class Semantic {
             res.call(id.symbol, args, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
-        eval(qualifier, thisV, klass).select(expr.symbol, expr)
+        val qualRes = eval(qualifier, thisV, klass)
+
+        name match
+          case OuterSelectName(_, hops) =>
+            val SkolemType(tp) = expr.tpe
+            val outer = resolveOuterSelect(tp.classSymbol.asClass, qualRes.value, hops, source = expr)
+            Result(outer, qualRes.errors)
+          case _ =>
+            qualRes.select(expr.symbol, expr)
 
       case _: This =>
         cases(expr.tpe, thisV, klass, expr)
@@ -961,6 +970,40 @@ class Semantic {
           Cold
         case Cold => Cold
 
+  }
+
+  /** Resolve outer select introduced during inlining.
+   *
+   *  See `tpd.outerSelect` and `ElimOuterSelect`.
+   */
+  def resolveOuterSelect(target: ClassSymbol, thisV: Value, hops: Int, source: Tree): Contextual[Value] = log("resolving outer " + target.show + ", this = " + thisV.show + ", hops = " + hops, printer, res => res.asInstanceOf[Value].show) {
+    // Is `target` reachable from `cls` with the given `hops`?
+    def reachable(cls: ClassSymbol, hops: Int): Boolean =
+      if hops == 0 then cls == target
+      else reachable(cls.lexicallyEnclosingClass.asClass, hops - 1)
+
+    thisV match
+      case Hot => Hot
+
+      case addr: Addr =>
+        val obj = heap(addr)
+        val curOpt = obj.klass.baseClasses.find(cls => reachable(cls, hops))
+        curOpt match
+          case Some(cur) =>
+            resolveThis(target, thisV, cur, source)
+
+          case None =>
+            report.warning("unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, source.srcPos)
+            Cold
+
+      case RefSet(refs) =>
+        refs.map(ref => resolveOuterSelect(target, ref, hops, source)).join
+
+      case fun: Fun =>
+        report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, source.srcPos)
+        Cold
+
+      case Cold => Cold
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
