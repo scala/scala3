@@ -319,9 +319,14 @@ class ExtractSemanticDB extends Phase:
         registerSymbol(sym, symkinds)
 
     private def namePresentInSource(sym: Symbol, span: Span, source:SourceFile)(using Context): Boolean =
-      val content = source.content()
-      val (start, end) = if content(span.end - 1) == '`' then (span.start + 1, span.end - 1) else (span.start, span.end)
-      content.slice(start, end).mkString == sym.name.stripModuleClassSuffix.lastPart.toString
+      if !span.exists then false
+      else
+        val content = source.content()
+        val (start, end) =
+          if content.lift(span.end - 1).map(_ == '`').getOrElse(false) then
+            (span.start + 1, span.end - 1)
+          else (span.start, span.end)
+        content.slice(start, end).mkString == sym.name.stripModuleClassSuffix.lastPart.toString
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
       val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
