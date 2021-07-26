@@ -190,14 +190,19 @@ object Inliner {
     // as its right hand side. The call to the wrapper unapply serves as the signpost for pattern matching.
     // After pattern matching, the anonymous class is removed in phase InlinePatterns with a beta reduction step.
     //
-    // An inline unapply `P.unapply` in a plattern `P(x1,x2,...)` is transformed into
-    // `{ class $anon { def unapply(t0: T0)(using t1: T1, t2: T2, ...): R = P.unapply(t0)(using t1, t2, ...) }; new $anon }.unapply`
-    // and the call `P.unapply(x1, x2, ...)` is inlined.
+    // An inline unapply `P.unapply` in a pattern `P(using y1,y2,...)(x1,x2,...)` is transformed into
+    // `{ class $anon { def unapply(using l1: L1, l2: L2, ...)(s: S)(using t1: T1, t2: T2, ...): R = P.unapply(using l1, l2, ...)(s)(using t1, t2, ...) }; new $anon }.unapply(using y1,y2,...)`
+    // and the call `P.unapply(using l1, l2,...)(x1, x2, ...)(using t1, t2, ...)` is inlined.
     // This serves as a placeholder for the inlined body until the `patternMatcher` phase. After pattern matcher
     // transforms the patterns into terms, the `inlinePatterns` phase removes this anonymous class by β-reducing
     // the call to the `unapply`.
 
-    val UnApply(fun, implicits, patterns) = unapp
+    object SplitFunAndGivenArgs:
+      def unapply(tree: Tree): (Tree, List[List[Tree]]) = tree match
+        case Apply(SplitFunAndGivenArgs(fn, argss), args) => (fn, argss :+ args)
+        case _ => (tree, Nil)
+
+    val UnApply(SplitFunAndGivenArgs(fun, givenArgss) , implicits, patterns) = unapp
     val sym = unapp.symbol
     val cls = newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), newScope, coord = sym.coord)
     val constr = newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
@@ -209,13 +214,15 @@ object Inliner {
       case info: PolyType => info.instantiate(targs.map(_.tpe))
       case info => info
 
-    val unappplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
-    val unapply = DefDef(unappplySym, argss =>
-      inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
+    val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
+    val unapply = DefDef(unapplySym, argss =>
+      fun.appliedToArgss(argss).withSpan(unapp.span)
     )
+
     val cdef = ClassDef(cls, DefDef(constr), List(unapply))
     val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
-    val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
+    val newFun = newUnapply.select(unapplySym).withSpan(unapp.span).appliedToArgss(givenArgss)
+
     cpy.UnApply(unapp)(newFun, implicits, patterns)
   }
 
