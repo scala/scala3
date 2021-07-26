@@ -39,9 +39,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               if defn.SpecialClassTagClasses.contains(sym) then
                 classTag.select(sym.name.toTermName)
               else
-                val clsOfType = erasure(tp) match
-                  case JavaArrayType(elemType) => defn.ArrayOf(elemType)
-                  case etp => etp
+                val clsOfType = escapeJavaArray(erasure(tp))
                 classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(clsOfType))
             tag.withSpan(span)
           case tp => EmptyTree
@@ -375,9 +373,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           synthesizedSumMirror(formal, span)
       case _ => EmptyTree
 
-  private def escapeJavaArray(elemTp: Type)(using Context): Type = elemTp match
-    case JavaArrayType(elemTp1) => defn.ArrayOf(escapeJavaArray(elemTp1))
-    case _ => elemTp
+  private def escapeJavaArray(tp: Type)(using Context): Type = tp match
+    case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
+    case _                     => tp
 
   private enum ManifestKind:
     case Full, Opt, Clss
