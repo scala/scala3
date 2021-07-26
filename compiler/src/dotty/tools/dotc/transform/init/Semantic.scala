@@ -28,23 +28,19 @@ class Semantic {
    *  Value = Hot | Cold | Warm | ThisRef | Fun | RefSet
    *
    *                 Cold
-   *        ┌──────►  ▲   ◄──┐  ◄────┐
-   *        │         │      │       │
-   *        │         │      │       │
-   *   ThisRef(C)     │      │       │
-   *        ▲         │      │       │
-   *        │     Warm(D)   Fun    RefSet
-   *        │         ▲      ▲       ▲
-   *        │         │      │       │
-   *      Warm(C)     │      │       │
-   *        ▲         │      │       │
-   *        │         │      │       │
-   *        └─────────┴──────┴───────┘
+   *        ┌──────►  ▲  ◄────┐  ◄────┐
+   *        │         │       │       │
+   *        │         │       │       │
+   *        |         │       │       │
+   *        |         │       │       │
+   *   ThisRef(C)  Warm(D)   Fun    RefSet
+   *        │         ▲       ▲       ▲
+   *        │         │       │       │
+   *        |         │       │       │
+   *        ▲         │       │       │
+   *        │         │       │       │
+   *        └─────────┴───────┴───────┘
    *                  Hot
-   *
-   *   The most important ordering is the following:
-   *
-   *       Hot ⊑ Warm(C) ⊑ ThisRef(C) ⊑ Cold
    *
    *   The diagram above does not reflect relationship between `RefSet`
    *   and other values. `RefSet` represents a set of values which could
@@ -301,9 +297,6 @@ class Semantic {
 
       case (Cold, _) => Cold
       case (_, Cold) => Cold
-
-      case (a: Warm, b: ThisRef) if a.klass == b.klass => b
-      case (a: ThisRef, b: Warm) if a.klass == b.klass => a
 
       case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) => RefSet(a :: b :: Nil)
 
