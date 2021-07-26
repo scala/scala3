@@ -529,7 +529,8 @@ class Semantic {
             
               case addr: Addr => 
                 val res = eval(vdef.rhs, addr, klass)
-                if res.value.promote("Try promote", source).isEmpty then Result(Hot, Errors.empty) else res
+                res
+                // if res.value.promote("Try promote", source).isEmpty then Result(Hot, Errors.empty) else res
                 
               case _ => 
                 report.error("unexpected defTree when accessing local variable, sym = " + sym.show + ", defTree = " + sym.defTree.show, source)
