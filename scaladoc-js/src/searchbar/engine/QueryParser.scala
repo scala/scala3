@@ -19,7 +19,7 @@ class QueryParser:
   val kindRegex = ("(?i)" + kinds.mkString("(","|",")") + " (.*)").r
   val restRegex = raw"(.*)".r
   val escapedRegex = raw"`(.*)`".r
-  val signatureRegex = raw"([^=>]+=>.*)".r
+  val signatureRegex = raw"(.*=>.*)".r
 
   def parseMatchers(query: String): List[Matchers] = query match {
     case escapedRegex(rest) => List(ByName(rest))

@@ -13,3 +13,8 @@ class JustAClass {
 class JustAnotherClass extends JustAClass {
   def method(i: InType2): OutType2 = ???
 }
+
+object InkuireObject {
+  def function(i: InType1): OutType1 = ???
+  val value: InType1 => OutType1 = ???
+}
