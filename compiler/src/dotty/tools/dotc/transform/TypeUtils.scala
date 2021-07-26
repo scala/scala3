@@ -28,7 +28,7 @@ object TypeUtils {
      *  derives from Exception but not from RuntimeException. According to
      *  that definition Throwable is unchecked. That makes sense since you should
      *  neither throw nor catch `Throwable` anyway, so we should not define
-     *  an ability to do so.
+     *  a capability to do so.
      */
     def isCheckedException(using Context): Boolean =
       self.derivesFrom(defn.ExceptionClass)
