@@ -55,7 +55,7 @@ the implemented type(s).
 
 ```scala
 given_Ord_Int
-given_Ord_List_T
+given_Ord_List
 ```
 
 The precise rules for synthesizing names are found [here](./relationship-implicits.html#anonymous-given-instances). These rules do not guarantee absence of name conflicts between
