@@ -50,6 +50,9 @@ abstract class SignatureTest(
       (s"Not documented signatures:\n${expectedButNotFound.mkString("\n")}")
     val unexpectedReport = Option.when(!unexpected.isEmpty)
       (s"Unexpectedly documented signatures:\n${unexpected.mkString("\n")}")
+
+    println("Expecting following signatures: " + expectedFromSources)
+
     val reports = missingReport ++ unexpectedReport
 
     if !reports.isEmpty then
