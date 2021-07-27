@@ -72,7 +72,8 @@ object MainGenericRunner {
   val classpathSeparator = File.pathSeparator
 
   @sharable val javaOption = raw"""-J(.*)""".r
-
+  @sharable val scalaOption = raw"""@.*""".r
+  @sharable val colorOption = raw"""-color:.*""".r
   @tailrec
   def process(args: List[String], settings: Settings): Settings = args match
     case Nil =>
@@ -98,6 +99,10 @@ object MainGenericRunner {
       process(tail, settings.withSave)
     case (o @ javaOption(striped)) :: tail =>
       process(tail, settings.withJavaArgs(striped).withScalaArgs(o))
+    case (o @ scalaOption(_*)) :: tail =>
+      process(tail, settings.withScalaArgs(o))
+    case (o @ colorOption(_*)) :: tail =>
+      process(tail, settings.withScalaArgs(o))
     case arg :: tail =>
       val line = Try(Source.fromFile(arg).getLines.toList).toOption.flatMap(_.headOption)
       if arg.endsWith(".scala") || arg.endsWith(".sc") || (line.nonEmpty && raw"#!.*scala".r.matches(line.get)) then

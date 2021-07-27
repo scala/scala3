@@ -52,6 +52,13 @@ class CoursierScalaTests:
       assertEquals(expectedOutput, output)
     scriptArgs()
 
+    def scriptPath() =
+      val scriptPath = scripts("/scripting").find(_.getName == "showArgs.sc").get.absPath
+      val args = scriptPath
+      val output = CoursierScalaTests.csCmd(args*)
+      assertTrue(output.startsWith("script.path:"))
+    scriptPath()
+
     def version() =
       val output = CoursierScalaTests.csCmd("-version")
       assertTrue(output.mkString("\n").contains(sys.env("DOTTY_BOOTSTRAPPED_VERSION")))
