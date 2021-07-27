@@ -64,13 +64,14 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           children = Nil
         ))
       case Some(siteContext) =>
-        // In case that we do not have an index page and we do not have any API entries 
+        // In case that we do not have an index page and we do not have any API entries
         // we want to create empty index page, so there is one
-        val actualIndexTemplate = siteContext.indexTemplates() match
-          case Nil if effectiveMembers.isEmpty => Seq(siteContext.emptyIndexTemplate)
-          case templates => templates
+        val actualIndexTemplate = siteContext.indexTemplate() match {
+            case None if effectiveMembers.isEmpty => Seq(siteContext.emptyIndexTemplate)
+            case templates => templates.toSeq
+          }
 
-        (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
+          (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
 
   /**
    * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
