@@ -53,10 +53,10 @@ class CoursierScalaTests:
     scriptArgs()
 
     def scriptPath() =
-      val scriptPath = scripts("/scripting").find(_.getName == "showArgs.sc").get.absPath
+      val scriptPath = scripts("/scripting").find(_.getName == "scriptPath.sc").get.absPath
       val args = scriptPath
-      val output = CoursierScalaTests.csCmd(args*)
-      assertTrue(output.startsWith("script.path:"))
+      val output = CoursierScalaTests.csCmd(args)
+      assertTrue(output.mkString("\n").startsWith("script.path:"))
     scriptPath()
 
     def version() =
