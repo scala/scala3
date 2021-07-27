@@ -84,3 +84,5 @@ class ImplicitConversionsTest3 extends SignatureTest(
 )
 
 class SpecializedSignature extends SignatureTest("specializedSignature", SignatureTest.all)
+
+class ContextBounds extends SignatureTest("contextBounds", SignatureTest.all)

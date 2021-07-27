@@ -476,9 +476,14 @@ trait ClassLikeSupport:
     val memberInfo = unwrapMemberInfo(c, methodSymbol)
 
     val basicKind: Kind.Def = Kind.Def(
-      genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes)),
-      paramLists.zipWithIndex.map { (pList, index) =>
-        ParametersList(pList.params.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), paramListModifier(pList.params))
+      genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes, memberInfo.contextBounds)),
+      paramLists.zipWithIndex.flatMap { (pList, index) =>
+        memberInfo.paramLists(index) match
+          case EvidenceOnlyParameterList => Nil
+          case info: RegularParameterList =>
+            Seq(ParametersList(pList.params.map(
+              mkParameter(_, paramPrefix, memberInfo = info)), paramListModifier(pList.params)
+            ))
       }
     )
 
@@ -523,7 +528,11 @@ trait ClassLikeSupport:
         isGrouped
       )
 
-  def mkTypeArgument(argument: TypeDef, memberInfo: Map[String, TypeBounds] = Map.empty): TypeParameter =
+  def mkTypeArgument(
+    argument: TypeDef,
+    memberInfo: Map[String, TypeBounds] = Map.empty,
+    contextBounds: Map[String, DSignature] = Map.empty
+    ): TypeParameter =
     val variancePrefix: "+" | "-" | "" =
       if  argument.symbol.flags.is(Flags.Covariant) then "+"
       else if argument.symbol.flags.is(Flags.Contravariant) then "-"
@@ -531,12 +540,18 @@ trait ClassLikeSupport:
 
     val name = argument.symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
+    val boundsSignature = memberInfo.get(name).fold(argument.rhs.asSignature)(_.asSignature)
+    val signature = contextBounds.get(name) match
+      case None => boundsSignature
+      case Some(contextBoundsSignature) =>
+        boundsSignature ++ DSignature(" : ") ++ contextBoundsSignature
+
     TypeParameter(
       argument.symbol.getAnnotations(),
       variancePrefix,
       normalizedName,
       argument.symbol.dri,
-      memberInfo.get(name).fold(argument.rhs.asSignature)(_.asSignature)
+      signature
     )
 
   def parseTypeDef(typeDef: TypeDef): Member =
@@ -586,7 +601,18 @@ trait ClassLikeSupport:
       deprecated = deprecated
     )
 
-  case class MemberInfo(genericTypes: Map[String, TypeBounds], paramLists: List[Map[String, TypeRepr]], res: TypeRepr)
+  object EvidenceOnlyParameterList
+  type RegularParameterList = Map[String, TypeRepr]
+  type ParameterList = RegularParameterList | EvidenceOnlyParameterList.type
+
+  case class MemberInfo(
+    genericTypes: Map[String, TypeBounds],
+    paramLists: List[ParameterList],
+    res: TypeRepr,
+    contextBounds: Map[String, DSignature] = Map.empty,
+  )
+
+  def isSyntheticEvidence(name: String) = name.startsWith("evidence$")
 
   def unwrapMemberInfo(c: ClassDef, symbol: Symbol): MemberInfo =
     val baseTypeRepr = memberInfo(c, symbol)
@@ -595,7 +621,35 @@ trait ClassLikeSupport:
       MemberInfo(polyType.paramNames.zip(polyType.paramBounds).toMap, List.empty, polyType.resType)
 
     def handleMethodType(memberInfo: MemberInfo, methodType: MethodType): MemberInfo =
-      MemberInfo(memberInfo.genericTypes, memberInfo.paramLists ++ List(methodType.paramNames.zip(methodType.paramTypes).toMap), methodType.resType)
+      val rawParams = methodType.paramNames.zip(methodType.paramTypes).toMap
+      val (evidences, newParams) = rawParams.partition(e => isSyntheticEvidence(e._1))
+      val newLists: List[ParameterList] = if newParams.isEmpty && evidences.nonEmpty
+        then memberInfo.paramLists ++  Seq(EvidenceOnlyParameterList)
+        else memberInfo.paramLists ++ Seq(newParams)
+
+      def findParamRefs(t: TypeRepr): Seq[ParamRef] = t match
+        case paramRef: ParamRef => Seq(paramRef)
+        case AppliedType(_, args) => args.flatMap(findParamRefs)
+        case MatchType(bound, scrutinee,  cases) =>
+            findParamRefs(bound) ++ findParamRefs(scrutinee)
+        case _ => Nil
+
+      def nameForRef(ref: ParamRef): String =
+        val PolyType(names, _, _) = ref.binder
+        names(ref.paramNum)
+
+      val contextBounds =
+        evidences.collect {
+          case (_, AppliedType(tpe, List(typeParam: ParamRef))) =>
+            nameForRef(typeParam) -> tpe.asSignature
+          case (_, original) =>
+            val typeParam = findParamRefs(original).head // TODO throw nicer error!
+            val name = nameForRef(typeParam)
+            val signature = Seq(s"([$name] =>> ") ++ original.asSignature ++ Seq(")")
+            name -> signature
+        }
+
+      MemberInfo(memberInfo.genericTypes, newLists , methodType.resType, contextBounds.toMap)
 
     def handleByNameType(memberInfo: MemberInfo, byNameType: ByNameType): MemberInfo =
       MemberInfo(memberInfo.genericTypes, memberInfo.paramLists, byNameType.underlying)
