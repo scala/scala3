@@ -207,3 +207,9 @@
 [submodule "community-build/community-projects/libretto"]
 	path = community-build/community-projects/libretto
 	url = https://github.com/dotty-staging/libretto.git
+[submodule "community-build/community-projects/jackson-module-scala"]
+	path = community-build/community-projects/jackson-module-scala
+	url = https://github.com/FasterXML/jackson-module-scala.git
+[submodule "community-build/community-projects/scala-java8-compat"]
+	path = community-build/community-projects/scala-java8-compat
+	url = https://github.com/scala/scala-java8-compat.git
