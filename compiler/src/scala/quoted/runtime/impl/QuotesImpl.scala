@@ -1747,6 +1747,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
+        def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr =
+          self.subst(from, to)
       end extension
     end TypeReprMethods
 
