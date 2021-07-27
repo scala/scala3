@@ -19,7 +19,14 @@ val UnresolvedLocationLink = "#"
 trait Locations(using ctx: DocContext):
   def effectiveMembers: Map[DRI, Member]
 
+  // We generate this collection only if there may be a conflict with resources.
+  // Potentially can be quite big.
+  lazy val apiPaths = effectiveMembers.keySet.filterNot(_.isStaticFile).map(absolutePath)
+
   var cache = new JHashMap[DRI, Seq[String]]()
+
+  private[renderers] def pathsConflictResoultionMsg =
+    "Using `-Yapi-subdirectory` flag will move all API documentation into `api` subdirectory and will fix this conflict."
 
   // TODO verify if location exisits
   def rawLocation(dri: DRI): Seq[String] =
@@ -27,7 +34,10 @@ trait Locations(using ctx: DocContext):
       case null =>
         val path = dri match
           case `docsRootDRI` => List("docs", "index")
-          case `apiPageDRI` => List("api", "index")
+          case `apiPageDRI` =>
+            if ctx.args.apiSubdirectory || ctx.staticSiteContext.fold(false)(_.hasIndexFile)
+              then List("api", "index")
+              else List("index")
           case dri if dri.isStaticFile =>
             Paths.get(dri.location).iterator.asScala.map(_.toString).toList
           case dri =>
@@ -36,8 +46,7 @@ trait Locations(using ctx: DocContext):
               case "<empty>" :: Nil  => "_empty_" :: Nil
               case "<empty>" :: tail => "_empty_" :: tail
               case other => other
-
-            Seq("api") ++ fqn
+            if ctx.args.apiSubdirectory then "api" :: fqn else fqn
         cache.put(dri, path)
         path
       case cached => cached
