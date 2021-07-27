@@ -1,3 +1,3 @@
-9: Pattern Match Exhaustivity: Nil
-23: Pattern Match Exhaustivity: true, false
-27: Pattern Match Exhaustivity: _: Int
+10: Pattern Match Exhaustivity: Nil
+24: Pattern Match Exhaustivity: true, false
+28: Pattern Match Exhaustivity: _: Int

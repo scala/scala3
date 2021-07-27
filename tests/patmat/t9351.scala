@@ -1,3 +1,4 @@
+// scalac: -Ycheck-all-patmat
 trait A {}
 case object B extends A {}
 case object C extends A {}
