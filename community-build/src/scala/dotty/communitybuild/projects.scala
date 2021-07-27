@@ -508,6 +508,12 @@ object projects:
     sbtPublishCommand = "compat30/publishLocal",
   )
 
+  lazy val scalaJava8Compat = SbtCommunityProject(
+    project        = "scala-java8-compat",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+  )
+
   lazy val verify = SbtCommunityProject(
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
@@ -716,6 +722,13 @@ object projects:
     dependencies = List(scalatest)
   )
 
+  lazy val jacksonModuleScala = SbtCommunityProject(
+    project = "jackson-module-scala",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalaJava8Compat, scalatest)
+  )
+
 end projects
 
 def allProjects = List(
@@ -762,6 +775,7 @@ def allProjects = List(
   projects.catsEffect3,
   projects.scalaParallelCollections,
   projects.scalaCollectionCompat,
+  projects.scalaJava8Compat,
   projects.verify,
   projects.discipline,
   projects.disciplineMunit,
@@ -792,6 +806,7 @@ def allProjects = List(
   projects.scalacheckEffect,
   projects.fs2,
   projects.libretto,
+  projects.jacksonModuleScala,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
