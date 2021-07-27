@@ -30,6 +30,7 @@ source "$PROG_HOME/bin/common"
 
 # exec here would prevent onExit from being called, leaving terminal in unusable state
 compilerJavaClasspathArgs
+[ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405
 eval "\"$JAVACMD\"" "-classpath \"$jvm_cp_args\"" "dotty.tools.MainGenericRunner" "-classpath \"$jvm_cp_args\"" "$@"
 scala_exit_status=$?
 

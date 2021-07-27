@@ -13,6 +13,8 @@ object Main:
     assert(rest.size >= 2, s"internal error: rest == Array(${rest.mkString(",")})")
 
     val file = File(rest(1))
+    // write script path to script.path property, so called script can see it
+    sys.props("script.path") = file.toPath.toAbsolutePath.toString
     val scriptArgs = rest.drop(2)
     var saveJar = false
     var invokeFlag = true // by default, script main method is invoked
