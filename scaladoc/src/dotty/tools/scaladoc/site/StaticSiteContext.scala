@@ -25,7 +25,8 @@ class StaticSiteContext(
     if files.size > 1 then
       val msg = s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}"
       report.error(msg)
-    files
+
+    files.headOption
 
   def hasIndexFile = indexFiles.nonEmpty
 
@@ -33,7 +34,8 @@ class StaticSiteContext(
     val fakeFile = new File(root, "index.html")
     LoadedTemplate(emptyTemplate(fakeFile, "index"), List.empty, fakeFile)
 
-  def indexTemplates(): Seq[LoadedTemplate] = indexFiles.flatMap(loadTemplate(_, isBlog = false))
+  def indexTemplate(): Option[LoadedTemplate] =
+    indexFiles.flatMap(loadTemplate(_, isBlog = false))
 
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
