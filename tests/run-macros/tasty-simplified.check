@@ -1,4 +1,4 @@
-Functor[Const[scala.collection.immutable.List[Dummy]]]
-Functor[Const[scala.Int]]
-Functor[Const[Dummy]]
-Functor[Const[scala.Option[Dummy]]]
+Functor[[A >: scala.Nothing <: scala.Any] => scala.collection.immutable.List[A]]
+Unapply[[F >: scala.Nothing <: [_$9 >: scala.Nothing <: scala.Any] => scala.Any] => Functor[F], Wrap[scala.Int]]
+Unapply[[F >: scala.Nothing <: [_$9 >: scala.Nothing <: scala.Any] => scala.Any] => Functor[F], Wrap[Dummy]]
+Functor[[A >: scala.Nothing <: scala.Any] => scala.Option[A]]
