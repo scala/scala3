@@ -2639,17 +2639,17 @@ Schema => SemanticDB v4
 Uri => RecOrRefined.scala
 Text => empty
 Language => Scala
-Symbols => 61 entries
-Occurrences => 102 entries
+Symbols => 62 entries
+Occurrences => 103 entries
 
 Symbols:
 example/C# => class C extends Object { self: C => +3 decls }
 example/C#T1# => type T1 
 example/C#T2# => type T2 
 example/C#`<init>`(). => primary ctor <init> (): C
-example/PickOneRefinement_1# => class PickOneRefinement_1 [typeparam S  <: SpecialRefinement { abstract method pickOne (param as: String*): Option[Any] }] extends Object { self: PickOneRefinement_1[S] => +3 decls }
-example/PickOneRefinement_1#[S] => typeparam S  <: SpecialRefinement { abstract method pickOne (param as: String*): Option[Any] }
-example/PickOneRefinement_1#`<init>`(). => primary ctor <init> [typeparam S  <: SpecialRefinement { abstract method pickOne (param as: String*): Option[Any] }](): PickOneRefinement_1[S]
+example/PickOneRefinement_1# => class PickOneRefinement_1 [typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }] extends Object { self: PickOneRefinement_1[S] => +3 decls }
+example/PickOneRefinement_1#[S] => typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }
+example/PickOneRefinement_1#`<init>`(). => primary ctor <init> [typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }](): PickOneRefinement_1[S]
 example/PickOneRefinement_1#run(). => method run (param s: S, param as: String*): Option[String]
 example/PickOneRefinement_1#run().(as) => param as: String*
 example/PickOneRefinement_1#run().(s) => param s: S
@@ -2683,50 +2683,51 @@ example/Record#selectDynamic(). => method selectDynamic (param name: String): An
 example/Record#selectDynamic().(name) => param name: String
 example/SpecialRefinement# => trait SpecialRefinement extends Object { self: SpecialRefinement => +2 decls }
 example/SpecialRefinement#`<init>`(). => primary ctor <init> (): SpecialRefinement
-example/SpecialRefinement#pickOne(). => abstract method pickOne (param as: String*): Option[Any]
-example/SpecialRefinement#pickOne().(as) => param as: String*
-local0 => abstract val method x Int
+example/SpecialRefinement#pickOne(). => abstract method pickOne [typeparam T ](param as: T*): Option[Any]
+example/SpecialRefinement#pickOne().(as) => param as: T*
+example/SpecialRefinement#pickOne().[T] => typeparam T 
 local1 => abstract val method x Int
-local2 => abstract method y => Int
-local3 => abstract val method x Int
-local4 => abstract method y => Int
-local5 => type z 
-local6 => typeparam T 
-local7 => param t: T
-local8 => abstract method foo [typeparam T ](param t: T): T
-local9 => typeparam T 
-local10 => param t: T
-local11 => abstract method foo [typeparam T ](param t: T): T
-local12 => typeparam T 
-local13 => param t: T
-local14 => abstract method foo [typeparam T ](param t: T): T
-local15 => abstract val method name String
-local16 => abstract val method age Int
-local17 => type T1 
-local18 => type T2  = T1
+local2 => abstract val method x Int
+local3 => abstract method y => Int
+local4 => abstract val method x Int
+local5 => abstract method y => Int
+local6 => type z 
+local7 => typeparam T 
+local8 => param t: T
+local9 => abstract method foo [typeparam T ](param t: T): T
+local10 => typeparam T 
+local11 => param t: T
+local12 => abstract method foo [typeparam T ](param t: T): T
+local13 => typeparam T 
+local14 => param t: T
+local15 => abstract method foo [typeparam T ](param t: T): T
+local16 => abstract val method name String
+local17 => abstract val method age Int
+local18 => type T1 
+local19 => type T2  = T1
 
 Occurrences:
 [0:8..0:15): example <- example/
 [2:4..2:6): m1 <- example/RecOrRefined$package.m1().
 [2:7..2:8): a <- example/RecOrRefined$package.m1().(a)
 [2:10..2:13): Int -> scala/Int#
-[2:20..2:21): x <- local0
+[2:20..2:21): x <- local1
 [2:23..2:26): Int -> scala/Int#
 [2:32..2:35): ??? -> scala/Predef.`???`().
 [3:4..3:6): m2 <- example/RecOrRefined$package.m2().
 [3:7..3:8): x <- example/RecOrRefined$package.m2().(x)
-[3:16..3:17): x <- local1
+[3:16..3:17): x <- local2
 [3:19..3:22): Int -> scala/Int#
-[3:28..3:29): y <- local2
+[3:28..3:29): y <- local3
 [3:31..3:34): Int -> scala/Int#
 [3:40..3:43): ??? -> scala/Predef.`???`().
 [4:4..4:6): m3 <- example/RecOrRefined$package.m3().
 [4:7..4:8): x <- example/RecOrRefined$package.m3().(x)
-[4:16..4:17): x <- local3
+[4:16..4:17): x <- local4
 [4:19..4:22): Int -> scala/Int#
-[4:28..4:29): y <- local4
+[4:28..4:29): y <- local5
 [4:31..4:34): Int -> scala/Int#
-[4:41..4:42): z <- local5
+[4:41..4:42): z <- local6
 [4:48..4:51): ??? -> scala/Predef.`???`().
 [5:6..5:16): PolyHolder <- example/PolyHolder#
 [6:6..6:9): foo <- example/PolyHolder#foo().
@@ -2737,31 +2738,31 @@ Occurrences:
 [9:4..9:6): m4 <- example/RecOrRefined$package.m4().
 [9:7..9:8): x <- example/RecOrRefined$package.m4().(x)
 [9:10..9:20): PolyHolder -> example/PolyHolder#
-[9:27..9:30): foo <- local8
-[9:31..9:32): T <- local6
-[9:34..9:35): t <- local7
-[9:37..9:38): T -> local6
-[9:41..9:42): T -> local6
+[9:27..9:30): foo <- local9
+[9:31..9:32): T <- local7
+[9:34..9:35): t <- local8
+[9:37..9:38): T -> local7
+[9:41..9:42): T -> local7
 [9:48..9:51): ??? -> scala/Predef.`???`().
 [10:4..10:6): m5 <- example/RecOrRefined$package.m5().
 [10:7..10:8): Z <- example/RecOrRefined$package.m5().[Z]
 [10:10..10:11): x <- example/RecOrRefined$package.m5().(x)
 [10:13..10:16): Int -> scala/Int#
 [10:19..10:29): PolyHolder -> example/PolyHolder#
-[10:36..10:39): foo <- local11
-[10:40..10:41): T <- local9
-[10:43..10:44): t <- local10
-[10:46..10:47): T -> local9
-[10:50..10:51): T -> local9
+[10:36..10:39): foo <- local12
+[10:40..10:41): T <- local10
+[10:43..10:44): t <- local11
+[10:46..10:47): T -> local10
+[10:50..10:51): T -> local10
 [10:56..10:59): ??? -> scala/Predef.`???`().
 [12:5..12:7): m6 <- example/RecOrRefined$package.m6#
 [12:11..12:12): X <- example/RecOrRefined$package.m6#[X]
 [12:18..12:28): PolyHolder -> example/PolyHolder#
-[12:35..12:38): foo <- local14
-[12:39..12:40): T <- local12
-[12:42..12:43): t <- local13
-[12:45..12:46): T -> local12
-[12:49..12:50): T -> local12
+[12:35..12:38): foo <- local15
+[12:39..12:40): T <- local13
+[12:42..12:43): t <- local14
+[12:45..12:46): T -> local13
+[12:49..12:50): T -> local13
 [14:6..14:12): Record <- example/Record#
 [14:13..14:18): elems <- example/Record#elems.
 [14:21..14:27): String -> scala/Predef.String#
@@ -2778,24 +2779,25 @@ Occurrences:
 [16:48..16:52): name -> example/Record#selectDynamic().(name)
 [18:5..18:11): Person <- example/RecOrRefined$package.Person#
 [18:14..18:20): Record -> example/Record#
-[19:6..19:10): name <- local15
+[19:6..19:10): name <- local16
 [19:12..19:18): String -> scala/Predef.String#
-[20:6..20:9): age <- local16
+[20:6..20:9): age <- local17
 [20:11..20:14): Int -> scala/Int#
 [24:6..24:7): C <- example/C#
 [24:15..24:17): T1 <- example/C#T1#
 [24:24..24:26): T2 <- example/C#T2#
 [25:5..25:7): C2 <- example/RecOrRefined$package.C2#
 [25:10..25:11): C -> example/C#
-[25:19..25:21): T1 <- local17
-[25:28..25:30): T2 <- local18
-[25:33..25:35): T1 -> local17
+[25:19..25:21): T1 <- local18
+[25:28..25:30): T2 <- local19
+[25:33..25:35): T1 -> local18
 [27:6..27:23): SpecialRefinement <- example/SpecialRefinement#
 [28:6..28:13): pickOne <- example/SpecialRefinement#pickOne().
-[28:14..28:16): as <- example/SpecialRefinement#pickOne().(as)
-[28:18..28:24): String -> scala/Predef.String#
-[28:28..28:34): Option -> scala/Option#
-[28:35..28:38): Any -> scala/Any#
+[28:14..28:15): T <- example/SpecialRefinement#pickOne().[T]
+[28:17..28:19): as <- example/SpecialRefinement#pickOne().(as)
+[28:21..28:22): T -> example/SpecialRefinement#pickOne().[T]
+[28:26..28:32): Option -> scala/Option#
+[28:33..28:36): Any -> scala/Any#
 [31:6..31:25): PickOneRefinement_1 <- example/PickOneRefinement_1#
 [31:26..31:27): S <- example/PickOneRefinement_1#[S]
 [32:6..32:9): run <- example/PickOneRefinement_1#run().
@@ -3470,9 +3472,9 @@ Occurrences => 5 entries
 
 Symbols:
 exports/`exports-package$package`. => final package object exports extends Object { self: exports.type => +4 decls }
-exports/`exports-package$package`.Codec# => final type Codec [unknown T: <?>] = Codec[T]
-exports/`exports-package$package`.Decoder# => final type Decoder [unknown T: <?>] = Decoder[T]
-exports/`exports-package$package`.Encoder# => final type Encoder [unknown T: <?>] = Encoder[T]
+exports/`exports-package$package`.Codec# => final type Codec [typeparam T ] = Codec[T]
+exports/`exports-package$package`.Decoder# => final type Decoder [typeparam T ] = Decoder[T]
+exports/`exports-package$package`.Encoder# => final type Encoder [typeparam T ] = Encoder[T]
 
 Occurrences:
 [0:8..0:15): exports <- exports/

@@ -36,13 +36,18 @@ object Scala3:
     * - SymbolInformation with signature TypeSignature of given type bound.
     */
   case class WildcardTypeSymbol(owner: Symbol, bounds: TypeBounds) extends FakeSymbol
+
+  case class TermParamRefSymbol(owner: Symbol, name: Name, tp: Type) extends FakeSymbol
   case class TypeParamRefSymbol(owner: Symbol, name: Name, tp: TypeBounds) extends FakeSymbol
+  case class RefinementSymbol(name: Name, tp: Type) extends FakeSymbol
   type SemanticSymbol = Symbol | FakeSymbol
   extension (sym: SemanticSymbol)
     def name(using Context): Name = sym match
       case s: Symbol => s.name
       case s: WildcardTypeSymbol => nme.WILDCARD
+      case s: TermParamRefSymbol => s.name
       case s: TypeParamRefSymbol => s.name
+      case s: RefinementSymbol => s.name
 
     def symbolName(using builder: SemanticSymbolBuilder)(using Context): String =
       sym match
@@ -65,6 +70,14 @@ object Scala3:
             displayName = nme.WILDCARD.show,
             signature = s.bounds.toSemanticSig(NoSymbol),
           )
+        case s: TermParamRefSymbol =>
+          SymbolInformation(
+            symbol = symbolName,
+            language = Language.SCALA,
+            kind = SymbolInformation.Kind.PARAMETER,
+            displayName = s.name.show.unescapeUnicode,
+            signature = s.tp.toSemanticSig(NoSymbol),
+          )
         case s: TypeParamRefSymbol =>
           SymbolInformation(
             symbol = symbolName,
@@ -72,6 +85,22 @@ object Scala3:
             kind = SymbolInformation.Kind.TYPE_PARAMETER,
             displayName = s.name.show.unescapeUnicode,
             signature = s.tp.toSemanticSig(NoSymbol),
+          )
+        case s: RefinementSymbol =>
+          val signature = s.tp.toSemanticSig(NoSymbol)
+          val kind = signature match
+            case _: TypeSignature => SymbolInformation.Kind.TYPE
+            case _: MethodSignature => SymbolInformation.Kind.METHOD
+            case _: ValueSignature => SymbolInformation.Kind.FIELD
+            case _ => SymbolInformation.Kind.UNKNOWN_KIND
+          SymbolInformation(
+            symbol = symbolName,
+            language = Language.SCALA,
+            kind = kind,
+            displayName = s.name.show.unescapeUnicode,
+            properties =
+              SymbolInformation.Property.ABSTRACT.value,
+            signature = signature,
           )
 
   enum SymbolKind derives CanEqual:
