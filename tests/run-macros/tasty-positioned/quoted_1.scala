@@ -13,7 +13,7 @@ object Positioned {
     import quotes.reflect.{Position as Pos, *}
     val pos = Pos.ofMacroExpansion
 
-    val path = Expr(pos.sourceFile.jpath.toString)
+    val path = Expr(pos.sourceFile.getJPath.get.toString)
     val start = Expr(pos.start)
     val end = Expr(pos.end)
     val startLine = Expr(pos.startLine)

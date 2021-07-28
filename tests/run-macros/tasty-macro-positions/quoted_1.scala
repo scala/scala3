@@ -30,6 +30,6 @@ object Macros {
 
   def posStr(using Quotes)(pos: quotes.reflect.Position): Expr[String] = {
     import quotes.reflect.*
-    Expr(s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]")
+    Expr(s"${pos.sourceFile.name}:[${pos.start}..${pos.end}]")
   }
 }
