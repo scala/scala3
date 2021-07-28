@@ -74,10 +74,6 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
       inputRes.foldLeft(initialState) { (state, input) =>
         val (out, nstate) = evaluate(state, input)
         out.linesIterator.foreach(buf.append)
-
-        assert(out.endsWith("\n"),
-               s"Expected output of $input to end with newline")
-
         nstate
       }
       buf.toList.flatMap(filterEmpties)

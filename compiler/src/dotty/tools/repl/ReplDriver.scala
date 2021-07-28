@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.{unfusedPhases, typerPhase}
 import dotty.tools.dotc.core.Denotations.Denotation
@@ -124,6 +125,10 @@ class ReplDriver(settings: Array[String],
   final def runUntilQuit(initialState: State = initialState): State = {
     val terminal = new JLineTerminal
 
+    out.println(
+      s"""Welcome to Scala $simpleVersionString ($javaVersion, Java $javaVmName).
+         |Type in expressions for evaluation. Or try :help.""".stripMargin)
+
     /** Blockingly read a line, getting back a parse result */
     def readLine(state: State): ParseResult = {
       val completer: Completer = { (_, line, candidates) =>
@@ -208,7 +213,7 @@ class ReplDriver(settings: Array[String],
   }
 
   private def interpret(res: ParseResult)(implicit state: State): State = {
-    val newState = res match {
+    res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
         compile(parsed, state)
 
@@ -224,11 +229,6 @@ class ReplDriver(settings: Array[String],
 
       case _ => // new line, empty tree
         state
-    }
-    inContext(newState.context) {
-      if (!ctx.settings.XreplDisableDisplay.value)
-        out.println()
-      newState
     }
   }
 

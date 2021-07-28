@@ -218,7 +218,7 @@ class ReplCompilerTests extends ReplTest {
       run("""val r = raw"\d+".r""")
     } andThen { implicit state =>
       run("""val r() = "abc"""")
-      assertEquals("scala.MatchError: abc (of class java.lang.String)", storedOutput().linesIterator.drop(2).next())
+      assertEquals("scala.MatchError: abc (of class java.lang.String)", storedOutput().linesIterator.drop(1).next())
     }
   @Test def `i10214 must show MatchError on literal type` = fromInitialState { implicit state =>
     run("val (x: 1) = 2")

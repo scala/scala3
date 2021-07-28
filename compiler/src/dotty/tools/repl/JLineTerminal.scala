@@ -28,7 +28,7 @@ final class JLineTerminal extends java.io.Closeable {
   private def blue(str: String)(using Context) =
     if (ctx.settings.color.value != "never") Console.BLUE + str + Console.RESET
     else str
-  private def prompt(using Context)        = blue("scala> ")
+  private def prompt(using Context)        = blue("\nscala> ")
   private def newLinePrompt(using Context) = blue("     | ")
 
   /** Blockingly read line from `System.in`
