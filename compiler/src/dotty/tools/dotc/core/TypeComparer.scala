@@ -2542,7 +2542,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         x && {
           t match {
             case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
-            case _: SkolemType | _: TypeVar => false
+            case _: SkolemType | _: TypeVar | _: TypeParamRef => false
             case _ => foldOver(x, t)
           }
         }
