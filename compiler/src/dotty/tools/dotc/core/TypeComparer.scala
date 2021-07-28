@@ -2928,8 +2928,11 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       // obviously sound, but quite restrictive. With the current formulation,
       // we need to be careful that `provablyEmpty` covers all the conditions
       // used to conclude disjointness in `provablyDisjoint`.
-      if (provablyEmpty(scrut)) NoType
-      else recur(cases)
+      if (provablyEmpty(scrut))
+        MatchTypeTrace.emptyScrutinee(scrut)
+        NoType
+      else
+        recur(cases)
     }
   }
 }
