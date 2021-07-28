@@ -36,10 +36,21 @@ class SemanticSymbolBuilder:
         addSymName(b, sym.owner)
         b.append('['); addName(b, sym.name); b.append(']')
         b.toString
+      case sym: TermParamRefSymbol =>
+        val b = StringBuilder(20)
+        addSymName(b, sym.owner)
+        b.append('('); addName(b, sym.name); b.append(')')
+        b.toString
       case sym: TypeParamRefSymbol =>
         val b = StringBuilder(20)
         addSymName(b, sym.owner)
         b.append('['); addName(b, sym.name); b.append(']')
+        b.toString
+      case sym: RefinementSymbol =>
+        val b = StringBuilder(20)
+        val localIdx = nextLocalIdx
+        nextLocalIdx += 1
+        b.append(Symbols.LocalPrefix).append(localIdx)
         b.toString
 
   def funParamSymbol(sym: Symbol)(using Context): Name => String =
