@@ -2518,6 +2518,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def decompose(sym: Symbol, tp: Type): List[Type] =
       sym.children.map(x => refineUsingParent(tp, x)).filter(_.exists)
 
+    def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
+      override def apply(x: Boolean, t: Type) =
+        x && {
+          t match {
+            case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
+            case _: SkolemType | _: TypeVar => false
+            case _ => foldOver(x, t)
+          }
+        }
+    }.apply(true, tp)
+
     (tp1.dealias, tp2.dealias) match {
       case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol == defn.SingletonClass || tp2.symbol == defn.SingletonClass =>
         false
@@ -2563,21 +2574,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // doesn't have type tags, meaning that users cannot write patterns
         // that do type tests on higher kinded types.
         def invariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
-          covariantDisjoint(tp1, tp2, tparam) || !isSameType(tp1, tp2) && {
-            // We can only trust a "no" from `isSameType` when both
-            // `tp1` and `tp2` are fully instantiated.
-            def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
-              override def apply(x: Boolean, t: Type) =
-                x && {
-                  t match {
-                    case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
-                    case _: SkolemType | _: TypeVar => false
-                    case _ => foldOver(x, t)
-                  }
-                }
-            }.apply(true, tp)
-            fullyInstantiated(tp1) && fullyInstantiated(tp2)
-          }
+          covariantDisjoint(tp1, tp2, tparam) ||
+          !isSameType(tp1, tp2) &&
+          fullyInstantiated(tp1) && // We can only trust a "no" from `isSameType` when
+          fullyInstantiated(tp2)    // both `tp1` and `tp2` are fully instantiated.
 
         args1.lazyZip(args2).lazyZip(tycon1.typeParams).exists {
           (arg1, arg2, tparam) =>
