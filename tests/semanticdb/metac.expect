@@ -48,7 +48,7 @@ Schema => SemanticDB v4
 Uri => Advanced.scala
 Text => empty
 Language => Scala
-Symbols => 45 entries
+Symbols => 49 entries
 Occurrences => 101 entries
 
 Symbols:
@@ -58,6 +58,7 @@ advanced/C#`<init>`(). => primary ctor <init> [typeparam T ](): C[T]
 advanced/C#t(). => method t => T
 advanced/HKClass# => class HKClass [typeparam F [typeparam T ] <: <?>] extends Object { self: HKClass[F] => +3 decls }
 advanced/HKClass#[F] => typeparam F [typeparam T ] <: <?>
+advanced/HKClass#[F][T] => typeparam T 
 advanced/HKClass#`<init>`(). => primary ctor <init> [typeparam F [typeparam T ] <: <?>](): HKClass[F]
 advanced/HKClass#foo(). => method foo [typeparam T , typeparam U ](param x: F[T, U]): String
 advanced/HKClass#foo().(x) => param x: F[T, U]
@@ -73,6 +74,7 @@ advanced/Structural#s4().(a) => param a: Int
 advanced/Test. => final object Test extends Object { self: Test.type => +11 decls }
 advanced/Test.e. => val method e Wildcards
 advanced/Test.e1. => val method e1 List[_] forSome { type _  }
+advanced/Test.e1.[_] => type _ 
 advanced/Test.e1x. => val method e1x Any
 advanced/Test.s. => val method s Structural
 advanced/Test.s1. => val method s1 Object { abstract val method x Int }
@@ -84,7 +86,9 @@ advanced/Test.s3x. => val method s3x Int
 advanced/Wildcards# => class Wildcards extends Object { self: Wildcards => +3 decls }
 advanced/Wildcards#`<init>`(). => primary ctor <init> (): Wildcards
 advanced/Wildcards#e1(). => method e1 => List[_] forSome { type _  }
+advanced/Wildcards#e1().[_] => type _ 
 advanced/Wildcards#e2(). => method e2 => List[_] forSome { type _  <: Int }
+advanced/Wildcards#e2().[_] => type _  <: Int
 local0 => abstract val method x Int
 local1 => abstract val method x Int
 local2 => val method x Int
@@ -294,7 +298,7 @@ Schema => SemanticDB v4
 Uri => Anonymous.scala
 Text => empty
 Language => Scala
-Symbols => 13 entries
+Symbols => 15 entries
 Occurrences => 30 entries
 
 Symbols:
@@ -308,7 +312,9 @@ example/Anonymous#locally().(x) => param x: A
 example/Anonymous#locally().[A] => typeparam A 
 example/Anonymous#m1(). => method m1 [typeparam T [type _ ]]: Nothing
 example/Anonymous#m1().[T] => typeparam T [type _ ]
+example/Anonymous#m1().[T][_] => type _ 
 example/Anonymous#m2(). => method m2 => Map[_, List[_] forSome { type _  }] forSome { type _  }
+example/Anonymous#m2().[_] => type _ 
 local0 => val local x: Function1[Int, Int]
 local1 => final class $anon extends Object with Foo { self: $anon => +1 decls }
 
@@ -805,7 +811,7 @@ Schema => SemanticDB v4
 Uri => Enums.scala
 Text => empty
 Language => Scala
-Symbols => 181 entries
+Symbols => 187 entries
 Occurrences => 148 entries
 
 Symbols:
@@ -884,6 +890,7 @@ _empty_/Enums.Maybe.Just.unapply().[A] => typeparam A
 _empty_/Enums.Maybe.None. => case val static enum method None Maybe[Nothing]
 _empty_/Enums.Maybe.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Maybe[_] forSome { type _  }
 _empty_/Enums.Maybe.fromOrdinal().(ordinal) => param ordinal: Int
+_empty_/Enums.Maybe.fromOrdinal().[_] => type _ 
 _empty_/Enums.Planet# => abstract sealed enum class Planet extends Enum[Planet] with Enum { self: Planet => +6 decls }
 _empty_/Enums.Planet#G. => private[this] final val method G 6.673E-11
 _empty_/Enums.Planet#`<init>`(). => primary ctor <init> (param mass: Double, param radius: Double): Planet
@@ -935,13 +942,17 @@ _empty_/Enums.Tag#[A] => typeparam A
 _empty_/Enums.Tag#`<init>`(). => primary ctor <init> [typeparam A ](): Tag[A]
 _empty_/Enums.Tag. => final object Tag extends Object { self: Tag.type => +7 decls }
 _empty_/Enums.Tag.$values. => private[this] val method $values Array[Tag[_] forSome { type _  }]
+_empty_/Enums.Tag.$values.[_] => type _ 
 _empty_/Enums.Tag.BooleanTag. => case val static enum method BooleanTag Tag[Boolean]
 _empty_/Enums.Tag.IntTag. => case val static enum method IntTag Tag[Int]
 _empty_/Enums.Tag.fromOrdinal(). => method fromOrdinal (param ordinal: Int): Tag[_] forSome { type _  }
 _empty_/Enums.Tag.fromOrdinal().(ordinal) => param ordinal: Int
+_empty_/Enums.Tag.fromOrdinal().[_] => type _ 
 _empty_/Enums.Tag.valueOf(). => method valueOf (param $name: String): Tag[_] forSome { type _  >: Int & Boolean <: Int | Boolean }
 _empty_/Enums.Tag.valueOf().($name) => param $name: String
+_empty_/Enums.Tag.valueOf().[_] => type _  >: Int & Boolean <: Int | Boolean
 _empty_/Enums.Tag.values(). => method values => Array[Tag[_] forSome { type _  }]
+_empty_/Enums.Tag.values().[_] => type _ 
 _empty_/Enums.WeekDays# => abstract sealed enum class WeekDays extends Object with Enum { self: WeekDays => +1 decls }
 _empty_/Enums.WeekDays#`<init>`(). => primary ctor <init> (): WeekDays
 _empty_/Enums.WeekDays. => final object WeekDays extends Object { self: WeekDays.type => +13 decls }
@@ -983,6 +994,7 @@ _empty_/Enums.`<:<`.`given_<:<_T_T`(). => final implicit given method given_<:<_
 _empty_/Enums.`<:<`.`given_<:<_T_T`().[T] => typeparam T 
 _empty_/Enums.`<:<`.fromOrdinal(). => method fromOrdinal (param ordinal: Int): <:<[_, _] forSome { type _ ; type _  }
 _empty_/Enums.`<:<`.fromOrdinal().(ordinal) => param ordinal: Int
+_empty_/Enums.`<:<`.fromOrdinal().[_] => type _ 
 _empty_/Enums.some1. => val method some1 Option[Int]
 _empty_/Enums.unwrap(). => method unwrap [typeparam A , typeparam B ](param opt: Option[A])(implicit given param ev: <:<[A, Option[B]]): Option[B]
 _empty_/Enums.unwrap().(ev) => implicit given param ev: <:<[A, Option[B]]
@@ -1218,7 +1230,7 @@ Schema => SemanticDB v4
 Uri => Extension.scala
 Text => empty
 Language => Scala
-Symbols => 25 entries
+Symbols => 26 entries
 Occurrences => 50 entries
 
 Symbols:
@@ -1236,6 +1248,7 @@ ext/Extension$package.readInto().(x$2) => implicit given param x$2: Read[T]
 ext/Extension$package.readInto().[T] => typeparam T 
 ext/Functor# => trait Functor [typeparam F [type _ ]] extends Object { self: Functor[F] => +3 decls }
 ext/Functor#[F] => typeparam F [type _ ]
+ext/Functor#[F][_] => type _ 
 ext/Functor#`<init>`(). => primary ctor <init> [typeparam F [type _ ]](): Functor[F]
 ext/Functor#map(). => abstract method map [typeparam T , typeparam U ](param t: F[T])(param f: Function1[T, U]): F[U]
 ext/Functor#map().(f) => param f: Function1[T, U]
@@ -2642,7 +2655,7 @@ Schema => SemanticDB v4
 Uri => RecOrRefined.scala
 Text => empty
 Language => Scala
-Symbols => 62 entries
+Symbols => 65 entries
 Occurrences => 103 entries
 
 Symbols:
@@ -2652,6 +2665,8 @@ example/C#T2# => type T2
 example/C#`<init>`(). => primary ctor <init> (): C
 example/PickOneRefinement_1# => class PickOneRefinement_1 [typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }] extends Object { self: PickOneRefinement_1[S] => +3 decls }
 example/PickOneRefinement_1#[S] => typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }
+example/PickOneRefinement_1#[S](as) => param as: T*
+example/PickOneRefinement_1#[S][T] => typeparam T 
 example/PickOneRefinement_1#`<init>`(). => primary ctor <init> [typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }](): PickOneRefinement_1[S]
 example/PickOneRefinement_1#run(). => method run (param s: S, param as: String*): Option[String]
 example/PickOneRefinement_1#run().(as) => param as: String*
@@ -2689,6 +2704,7 @@ example/SpecialRefinement#`<init>`(). => primary ctor <init> (): SpecialRefineme
 example/SpecialRefinement#pickOne(). => abstract method pickOne [typeparam T ](param as: T*): Option[Any]
 example/SpecialRefinement#pickOne().(as) => param as: T*
 example/SpecialRefinement#pickOne().[T] => typeparam T 
+local0 => abstract method pickOne [typeparam T ](param as: T*): Option[String]
 local1 => abstract val method x Int
 local2 => abstract val method x Int
 local3 => abstract method y => Int
@@ -3470,14 +3486,17 @@ Schema => SemanticDB v4
 Uri => exports-package.scala
 Text => empty
 Language => Scala
-Symbols => 4 entries
+Symbols => 7 entries
 Occurrences => 5 entries
 
 Symbols:
 exports/`exports-package$package`. => final package object exports extends Object { self: exports.type => +4 decls }
 exports/`exports-package$package`.Codec# => final type Codec [typeparam T ] = Codec[T]
+exports/`exports-package$package`.Codec#[T] => typeparam T 
 exports/`exports-package$package`.Decoder# => final type Decoder [typeparam T ] = Decoder[T]
+exports/`exports-package$package`.Decoder#[T] => typeparam T 
 exports/`exports-package$package`.Encoder# => final type Encoder [typeparam T ] = Encoder[T]
+exports/`exports-package$package`.Encoder#[T] => typeparam T 
 
 Occurrences:
 [0:8..0:15): exports <- exports/
@@ -3543,7 +3562,7 @@ Schema => SemanticDB v4
 Uri => i9782.scala
 Text => empty
 Language => Scala
-Symbols => 22 entries
+Symbols => 24 entries
 Occurrences => 39 entries
 
 Symbols:
@@ -3554,9 +3573,11 @@ _empty_/Copy#`<init>`(). => primary ctor <init> [typeparam In  <: Txn[In], typep
 _empty_/Copy#apply(). => method apply [typeparam Repr [typeparam ~  <: Txn[~]] <: Elem[~]](param in: Repr[In]): Repr[Out]
 _empty_/Copy#apply().(in) => param in: Repr[In]
 _empty_/Copy#apply().[Repr] => typeparam Repr [typeparam ~  <: Txn[~]] <: Elem[~]
+_empty_/Copy#apply().[Repr][`~`] => typeparam ~  <: Txn[~]
 _empty_/Copy#copyImpl(). => abstract method copyImpl [typeparam Repr [typeparam ~  <: Txn[~]] <: Elem[~]](param in: Repr[In]): Repr[Out]
 _empty_/Copy#copyImpl().(in) => param in: Repr[In]
 _empty_/Copy#copyImpl().[Repr] => typeparam Repr [typeparam ~  <: Txn[~]] <: Elem[~]
+_empty_/Copy#copyImpl().[Repr][`~`] => typeparam ~  <: Txn[~]
 _empty_/Elem# => trait Elem [typeparam T  <: Txn[T]] extends Object { self: Elem[T] => +2 decls }
 _empty_/Elem#[T] => typeparam T  <: Txn[T]
 _empty_/Elem#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Elem[T]
@@ -3697,7 +3718,7 @@ Schema => SemanticDB v4
 Uri => nullary.scala
 Text => empty
 Language => Scala
-Symbols => 15 entries
+Symbols => 16 entries
 Occurrences => 28 entries
 
 Symbols:
@@ -3708,6 +3729,7 @@ _empty_/Concrete#nullary3(). => method nullary3 => List[Int]
 _empty_/NullaryTest# => abstract class NullaryTest [typeparam T , typeparam m [typeparam s ]] extends Object { self: NullaryTest[T, m] => +9 decls }
 _empty_/NullaryTest#[T] => typeparam T 
 _empty_/NullaryTest#[m] => typeparam m [typeparam s ]
+_empty_/NullaryTest#[m][s] => typeparam s 
 _empty_/NullaryTest#`<init>`(). => primary ctor <init> [typeparam T , typeparam m [typeparam s ]](): NullaryTest[T, m]
 _empty_/NullaryTest#nullary(). => method nullary => String
 _empty_/NullaryTest#nullary2(). => abstract method nullary2 => T
@@ -3755,7 +3777,7 @@ Schema => SemanticDB v4
 Uri => recursion.scala
 Text => empty
 Language => Scala
-Symbols => 36 entries
+Symbols => 37 entries
 Occurrences => 45 entries
 
 Symbols:
@@ -3766,6 +3788,7 @@ local3 => val local p: N$2
 local4 => val local Nat_this: Zero.type
 local5 => val local Nat_this: Succ[Zero.type]
 local6 => val local Nat_this: Succ[_] forSome { type _  <: Succ[Zero.type] }
+local6[_] => type _  <: Succ[Zero.type]
 recursion/Nats. => final object Nats extends Object { self: Nats.type => +9 decls }
 recursion/Nats.Nat# => sealed trait Nat extends Object { self: Nat => +3 decls }
 recursion/Nats.Nat#`++`(). => inline transparent macro ++ => Succ[Nat.this.type]
@@ -4021,7 +4044,7 @@ Schema => SemanticDB v4
 Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
-Symbols => 142 entries
+Symbols => 147 entries
 Occurrences => 225 entries
 
 Symbols:
@@ -4113,6 +4136,7 @@ types/Test.C#TypeType.m2(). => method m2 [typeparam T2  = C]: Nothing
 types/Test.C#TypeType.m2().[T2] => typeparam T2  = C
 types/Test.C#TypeType.m3(). => method m3 [typeparam M3 [type _ ]]: Nothing
 types/Test.C#TypeType.m3().[M3] => typeparam M3 [type _ ]
+types/Test.C#TypeType.m3().[M3][_] => type _ 
 types/Test.C#`<init>`(). => primary ctor <init> (): C
 types/Test.C#annType1. => val method annType1 T @ann[T]
 types/Test.C#annType2. => val method annType2 T @ann1 @ann2
@@ -4123,8 +4147,11 @@ types/Test.C#compoundType4. => val method compoundType4 Object
 types/Test.C#compoundType5. => val method compoundType5 M & N
 types/Test.C#compoundType6. => val method compoundType6 M & N
 types/Test.C#existentialType2. => val method existentialType2 List[_] forSome { type _  }
+types/Test.C#existentialType2.[_] => type _ 
 types/Test.C#existentialType3. => val method existentialType3 Class[_] forSome { type _  <: <FromJavaObject> }
+types/Test.C#existentialType3.[_] => type _  <: <FromJavaObject>
 types/Test.C#existentialType4. => val method existentialType4 Class[_] forSome { type _  <: <FromJavaObject> }
+types/Test.C#existentialType4.[_] => type _  <: <FromJavaObject>
 types/Test.C#p. => val method p P
 types/Test.C#singleType1. => val method singleType1 x.type
 types/Test.C#singleType2. => val method singleType2 p.x.type
@@ -4135,6 +4162,7 @@ types/Test.C#thisType1. => val method thisType1 C.this.type
 types/Test.C#thisType2. => val method thisType2 C.this.type
 types/Test.C#typeLambda1(). => method typeLambda1 [typeparam M [type _ ]]: Nothing
 types/Test.C#typeLambda1().[M] => typeparam M [type _ ]
+types/Test.C#typeLambda1().[M][_] => type _ 
 types/Test.C#typeRef1. => val method typeRef1 C
 types/Test.C#typeRef2. => val method typeRef2 p.C
 types/Test.C#typeRef3. => val method typeRef3 T#C

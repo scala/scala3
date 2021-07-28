@@ -48,9 +48,7 @@ class SemanticSymbolBuilder:
         b.toString
       case sym: RefinementSymbol =>
         val b = StringBuilder(20)
-        val localIdx = nextLocalIdx
-        nextLocalIdx += 1
-        b.append(Symbols.LocalPrefix).append(localIdx)
+        addLocalSymName(b)
         b.toString
 
   def funParamSymbol(sym: Symbol)(using Context): Name => String =
@@ -65,6 +63,11 @@ class SemanticSymbolBuilder:
     val str = name.toString.unescapeUnicode
     if str.isJavaIdent then b append str
     else b append '`' append str append '`'
+
+  private def addLocalSymName(b: StringBuilder): Unit =
+    val idx = nextLocalIdx
+    nextLocalIdx += 1
+    b.append(Symbols.LocalPrefix).append(idx)
 
   /** Add semanticdb name of the given symbol to string builder */
   private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =

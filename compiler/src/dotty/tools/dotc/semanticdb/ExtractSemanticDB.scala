@@ -44,9 +44,9 @@ class ExtractSemanticDB extends Phase:
 
   override def run(using Context): Unit =
     val unit = ctx.compilationUnit
-    val extract = Extractor()
-    extract.traverse(unit.tpdTree)
-    ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbolInfos.toList)
+    val extractor = Extractor()
+    extractor.extract(unit.tpdTree)
+    ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList)
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:
@@ -67,6 +67,11 @@ class ExtractSemanticDB extends Phase:
 
     /** The symbol occurrences generated so far, as a set */
     private val generated = new mutable.HashSet[SymbolOccurrence]
+
+    def extract(tree: Tree)(using Context): Unit =
+      traverse(tree)
+      val fakeSyms = converter.fakeSymbols.map(_.symbolInfo(Set.empty)(using LinkMode.SymlinkChildren, converter))
+      symbolInfos.appendAll(fakeSyms)
 
     /** Definitions of this symbol should be excluded from semanticdb */
     private def excludeDef(sym: Symbol)(using Context): Boolean =
