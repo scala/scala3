@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package config
 
-import java.security.AccessControlException
-
 /** For placing a wrapper function around property functions.
  *  Motivated by places like google app engine throwing exceptions
  *  on property lookups.
@@ -29,6 +27,14 @@ trait WrappedProperties extends PropertiesTrait {
 
 object WrappedProperties {
   object AccessControl extends WrappedProperties {
-    def wrap[T](body: => T): Option[T] = try Some(body) catch { case _: AccessControlException => None }
+    def wrap[T](body: => T): Option[T] =
+      try Some(body)
+      catch {
+        // the actual exception we are concerned with is AccessControlException,
+        // but that's deprecated on JDK 17, so catching its superclass is a convenient
+        // way to avoid a deprecation warning
+        case _: SecurityException =>
+          None
+      }
   }
 }
