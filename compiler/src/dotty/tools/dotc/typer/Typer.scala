@@ -382,7 +382,8 @@ class Typer extends Namer
               if !curOwner.is(Package) || isDefinedInCurrentUnit(defDenot) then
                 result = checkNewOrShadowed(found, Definition) // no need to go further out, we found highest prec entry
                 found match
-                  case found: NamedType if curOwner.isClass && isInherited(found.denot) =>
+                  case found: NamedType
+                  if curOwner.isClass && isInherited(found.denot) && !ctx.compilationUnit.isJava =>
                     checkNoOuterDefs(found.denot, ctx, ctx)
                   case _ =>
               else
@@ -1477,8 +1478,10 @@ class Typer extends Namer
       case _ =>
         if tree.isInline then checkInInlineContext("inline match", tree.srcPos)
         val sel1 = typedExpr(tree.selector)
-        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
-
+        val rawSelectorTpe = fullyDefinedType(sel1.tpe, "pattern selector", tree.span)
+        val selType = rawSelectorTpe match
+          case c: ConstantType if tree.isInline => c
+          case otherTpe => otherTpe.widen
         /** Extractor for match types hidden behind an AppliedType/MatchAlias */
         object MatchTypeInDisguise {
           def unapply(tp: AppliedType): Option[MatchType] = tp match {
@@ -3881,7 +3884,7 @@ class Typer extends Namer
           // - it complicates the protocol
           // - such code patterns usually implies hidden errors in the code
           // - it's safe/sound to reject the code
-          report.error(TypeMismatch(tree.tpe, pt, "\npattern type is incompatible with expected type"), tree.srcPos)
+          report.error(TypeMismatch(tree.tpe, pt, Some(tree), "\npattern type is incompatible with expected type"), tree.srcPos)
         else
           val cmp =
             untpd.Apply(

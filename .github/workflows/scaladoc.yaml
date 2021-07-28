@@ -39,7 +39,9 @@ jobs:
         run: ./project/scripts/sbt scaladoc-js/test
 
       - name: Compile and test
-        run: ./project/scripts/sbt scaladoc/test
+        run: |
+          ./project/scripts/sbt scaladoc/test
+          ./project/scripts/cmdScaladocTests
 
       - name: Locally publish self
         run: ./project/scripts/sbt scaladoc/publishLocal

@@ -1140,11 +1140,10 @@ object SymDenotations {
       else NoSymbol
 
     /** The closest enclosing extension method containing this definition,
-     *  provided the extension method appears in the same class.
+     *  including methods outside the current class.
      */
     final def enclosingExtensionMethod(using Context): Symbol =
       if this.is(ExtensionMethod) then symbol
-      else if this.isClass then NoSymbol
       else if this.exists then owner.enclosingExtensionMethod
       else NoSymbol
 

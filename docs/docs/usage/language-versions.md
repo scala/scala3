@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Language Versions"
+movedTo: https://docs.scala-lang.org/scala3/reference/language-versions.html
 ---
 
 The default Scala language version currently supported by the Dotty compiler is `3.0`. There are also other language versions that can be specified instead:

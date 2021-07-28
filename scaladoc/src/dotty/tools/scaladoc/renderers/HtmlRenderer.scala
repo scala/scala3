@@ -64,13 +64,19 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           children = Nil
         ))
       case Some(siteContext) =>
-        (siteContext.orphanedTemplates :+ siteContext.indexTemplate()).map(templateToPage(_, siteContext))
+        // In case that we do not have an index page and we do not have any API entries
+        // we want to create empty index page, so there is one
+        val actualIndexTemplate = siteContext.indexTemplate() match {
+            case None if effectiveMembers.isEmpty => Seq(siteContext.emptyIndexTemplate)
+            case templates => templates.toSeq
+          }
+
+          (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
 
   /**
    * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
    */
-  private def getAllPages: Seq[Page] =
-
+  val allPages: Seq[Page] =
     def traversePages(page: Page): (Page, Seq[Page]) =
       val (newChildren, newPagesToRemove): (Seq[Page], Seq[Page]) = page.children.map(traversePages(_)).foldLeft((Seq[Page](), Seq[Page]())) {
         case ((pAcc, ptrAcc), (p, ptr)) => (pAcc :+ p, ptrAcc ++ ptr)
@@ -83,9 +89,22 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
     val (newNavigablePage, pagesToRemove) = traversePages(navigablePage)
 
-    newNavigablePage +: hiddenPages.filterNot(pagesToRemove.contains)
+    val all = newNavigablePage +: hiddenPages.filterNot(pagesToRemove.contains)
+    // We need to check for conflicts only if we have top-level member called blog or docs
+    val hasPotentialConflict =
+      rootPackage.members.exists(m => m.name.startsWith("docs") || m.name.startsWith("blog"))
 
-  val allPages = getAllPages
+    if hasPotentialConflict then
+      def walk(page: Page): Unit =
+        if page.link.dri.isStaticFile then
+          val dest = absolutePath(page.link.dri)
+          if apiPaths.contains(dest) then
+            report.error(s"Conflict between static page and API member for $dest. $pathsConflictResoultionMsg")
+          page.children.foreach(walk)
+
+      all.foreach (walk)
+
+    all
 
   def renderContent(page: Page) = page.content match
     case m: Member =>

@@ -72,7 +72,8 @@ class CompilationTests {
       compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite")),
-      compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite"))
+      compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite")),
+      compileFile("tests/rewrites/i12340.scala", unindentOptions.and("-rewrite")),
     ).checkRewrites()
   }
 
@@ -176,6 +177,7 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/matchable.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
       compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
       compileFile("tests/neg-custom-args/feature-shadowing.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
+      compileDir("tests/neg-custom-args/hidden-type-errors",  defaultOptions.and("-explain")),
     ).checkExpectedErrors()
   }
 

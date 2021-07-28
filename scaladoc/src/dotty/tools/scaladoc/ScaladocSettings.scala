@@ -120,5 +120,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val generateInkuire: Setting[Boolean] =
     BooleanSetting("-Ygenerate-inkuire", "Generates InkuireDB and enables Hoogle-like searches", false)
 
+  val apiSubdirectory: Setting[Boolean] =
+    BooleanSetting("-Yapi-subdirectory", "Put the API documentation pages inside a directory `api/`", false)
+
   def scaladocSpecificSettings: Set[Setting[_]] =
     Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug, generateInkuire)

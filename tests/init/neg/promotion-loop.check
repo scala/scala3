@@ -1,9 +1,7 @@
 -- Error: tests/init/neg/promotion-loop.scala:16:10 --------------------------------------------------------------------
 16 |  println(b)      // error
    |          ^
-   |Promoting the value to fully-initialized is unsafe. May only use initialized value as arguments
+   |       Cannot prove that the value is fully-initialized. May only use initialized value as arguments.
    |
-   |The unsafe promotion may cause the following problem(s):
-   |
-   |1. Promote the value under initialization to fully-initialized. May only use initialized value as arguments. Calling trace:
-   | -> val outer = test	[ promotion-loop.scala:12 ]
+   |       The unsafe promotion may cause the following problem:
+   |       Promote the value under initialization to fully-initialized. May only use initialized value as arguments.

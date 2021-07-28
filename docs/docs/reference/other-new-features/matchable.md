@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "The Matchable Trait"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/matchable.html
 ---
 
 A new trait `Matchable` controls the ability to pattern match.

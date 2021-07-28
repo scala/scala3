@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "IDE support for Scala 3"
+movedTo: https://docs.scala-lang.org/scala3/getting-started.html
 ---
 
 IDE support for Scala 3 is available in IDEs based on [Scala Metals](https://scalameta.org/metals/)

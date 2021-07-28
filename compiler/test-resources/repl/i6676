@@ -1,19 +1,24 @@
 scala> xml"
+-- Error:
 1 | xml"
   |    ^
   |    unclosed string literal
 scala> xml""
+-- Error:
 1 | xml""
   | ^^^^^
   | value xml is not a member of StringContext
 scala> xml"""
+-- Error:
 1 | xml"""
   |    ^
   |    unclosed multi-line string literal
+-- Error:
 1 | xml"""
   |       ^
   |       unclosed multi-line string literal
 scala> s"
+-- Error:
 1 | s"
   |  ^
   |  unclosed string literal

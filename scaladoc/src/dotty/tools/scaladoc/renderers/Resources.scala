@@ -90,7 +90,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     ).map(Resource.URL.apply)
 
     val urlToPathMappings = List(
-      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M1/inkuire.js", "scripts/inkuire.js"),
+      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M2/inkuire.js", "scripts/inkuire.js"),
     ).map { case (url, path) =>
       Resource.URLToCopy(url, path)
     }
@@ -171,19 +171,23 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
   )
 
   def renderResource(resource: Resource): Seq[String] =
-    resource match
-      case Resource.Text(path, content) =>
-        Seq(write(path, content))
-      case Resource.Classpath(path, name) =>
-        getClass.getClassLoader.getResourceAsStream(name) match
-          case null =>
-            report.error(s"Unable to find $name on classpath")
-            Nil
-          case is =>
-            try Seq(copy(is, path)) finally is.close()
-      case Resource.File(path, file) =>
-        Seq(copy(file, path))
-      case Resource.URL(url) =>
-        Nil
-      case Resource.URLToCopy(url, dest) =>
-        Seq(copy(new URL(url).openStream(), dest))
+    if resource.path.endsWith(".html") && apiPaths.contains(resource.path) then
+      report.error(s"Conflict between resource and API member for ${resource.path}. $pathsConflictResoultionMsg")
+      Nil
+    else
+      resource match
+        case Resource.Text(path, content) =>
+          Seq(write(path, content))
+        case Resource.Classpath(path, name) =>
+          getClass.getClassLoader.getResourceAsStream(name) match
+            case null =>
+              report.error(s"Unable to find $name on classpath")
+              Nil
+            case is =>
+              try Seq(copy(is, path)) finally is.close()
+        case Resource.File(path, file) =>
+          Seq(copy(file, path))
+        case Resource.URL(url) =>
+          Nil
+        case Resource.URLToCopy(url, dest) =>
+          Seq(copy(new URL(url).openStream(), dest))

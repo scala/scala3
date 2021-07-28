@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Getting Started: Users
+movedTo: https://docs.scala-lang.org/scala3/getting-started.html
 ---
 
 ## Trying out Dotty

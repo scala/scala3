@@ -127,6 +127,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   @Test def scalacheckEffect = projects.scalacheckEffect.run()
   @Test def scodec = projects.scodec.run()
   @Test def scodecBits = projects.scodecBits.run()
+  @Test def monocle = projects.monocle.run()
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
 end CommunityBuildTestB
 

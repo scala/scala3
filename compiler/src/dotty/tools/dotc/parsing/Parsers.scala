@@ -330,7 +330,7 @@ object Parsers {
         else if in.token == END then
           if endSeen then syntaxError("duplicate end marker")
           checkEndMarker(stats)
-          recur(sepSeen, true)
+          recur(sepSeen, endSeen = true)
         else if isStatSeqEnd || in.token == altEnd then
           false
         else if sepSeen || endSeen then
@@ -537,15 +537,13 @@ object Parsers {
     def inBrackets[T](body: => T): T = enclosed(LBRACKET, body)
 
     def inBracesOrIndented[T](body: => T, rewriteWithColon: Boolean = false): T =
-      if (in.token == INDENT) {
-        val rewriteToBraces =
-          in.rewriteNoIndent &&
-          !testChars(in.lastOffset - 3, " =>") // braces are always optional after `=>` so none should be inserted
-        if (rewriteToBraces) indentedToBraces(body)
+      if in.token == INDENT then
+        val rewriteToBraces = in.rewriteNoIndent
+          && !testChars(in.lastOffset - 3, " =>") // braces are always optional after `=>` so none should be inserted
+        if rewriteToBraces then indentedToBraces(body)
         else enclosed(INDENT, body)
-      }
       else
-        if (in.rewriteToIndent) bracesToIndented(body, rewriteWithColon)
+        if in.rewriteToIndent then bracesToIndented(body, rewriteWithColon)
         else inBraces(body)
 
     def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
@@ -635,26 +633,18 @@ object Parsers {
       else idx
 
     /** Parse indentation region `body` and rewrite it to be in braces instead */
-    def indentedToBraces[T](body: => T): T = {
-      val enclRegion = in.currentRegion.enclosing
-      def indentWidth = enclRegion.indentWidth
+    def indentedToBraces[T](body: => T): T =
+      val enclRegion   = in.currentRegion.enclosing          // capture on entry
+      def indentWidth  = enclRegion.indentWidth
       val followsColon = testChar(in.lastOffset - 1, ':')
-      val startOpening =
-        if (followsColon)
-          if (testChar(in.lastOffset - 2, ' ')) in.lastOffset - 2
-          else in.lastOffset - 1
-        else in.lastOffset
-      val endOpening = in.lastOffset
-
-      val t = enclosed(INDENT, body)
 
       /** Is `expr` a tree that lacks a final `else`? Put such trees in `{...}` to make
        *  sure we don't accidentally merge them with a following `else`.
        */
       def isPartialIf(expr: Tree): Boolean = expr match {
         case If(_, _, EmptyTree) => true
-        case If(_, _, e) => isPartialIf(e)
-        case _ => false
+        case If(_, _, e)         => isPartialIf(e)
+        case _                   => false
       }
 
       /** Is `expr` a (possibly curried) function that has a multi-statement block
@@ -662,41 +652,43 @@ object Parsers {
        *  a `=>` in braces.
        */
       def isBlockFunction[T](expr: T): Boolean = expr match {
-        case Function(_, body) => isBlockFunction(body)
+        case Function(_, body)  => isBlockFunction(body)
         case Block(stats, expr) => stats.nonEmpty || isBlockFunction(expr)
-        case _ => false
+        case _                  => false
       }
 
       /** Start of first line after in.lastOffset that does not have a comment
        *  at indent width greater than the indent width of the closing brace.
        */
       def closingOffset(lineStart: Offset): Offset =
-        if (in.lineOffset >= 0 && lineStart >= in.lineOffset) in.lineOffset
-        else {
-          val candidate = source.nextLine(lineStart)
+        if in.lineOffset >= 0 && lineStart >= in.lineOffset then in.lineOffset
+        else
           val commentStart = skipBlanks(lineStart)
-          if (testChar(commentStart, '/') && indentWidth < in.indentWidth(commentStart))
-            closingOffset(source.nextLine(lineStart))
-          else
-            lineStart
-        }
+          if testChar(commentStart, '/') && indentWidth < in.indentWidth(commentStart)
+          then closingOffset(source.nextLine(lineStart))
+          else lineStart
 
       def needsBraces(t: Any): Boolean = t match {
         case Match(EmptyTree, _) => true
-        case Block(stats, expr) =>
-          stats.nonEmpty || needsBraces(expr)
-        case expr: Tree =>
-          followsColon ||
-          isPartialIf(expr) && in.token == ELSE ||
-          isBlockFunction(expr)
-        case _ => true
+        case Block(stats, expr)  => stats.nonEmpty || needsBraces(expr)
+        case expr: Tree          => followsColon
+                                 || isPartialIf(expr) && in.token == ELSE
+                                 || isBlockFunction(expr)
+        case _                   => true
       }
-      if (needsBraces(t)) {
+      // begin indentedToBraces
+      val startOpening =
+        if followsColon then
+          if testChar(in.lastOffset - 2, ' ') then in.lastOffset - 2
+          else in.lastOffset - 1
+        else in.lastOffset
+      val endOpening = in.lastOffset
+      val t = enclosed(INDENT, body)
+      if needsBraces(t) then
         patch(source, Span(startOpening, endOpening), " {")
         patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix ++ "}\n")
-      }
       t
-    }
+    end indentedToBraces
 
     /** The region to eliminate when replacing an opening `(` or `{` that ends a line.
      *  The `(` or `{` is at in.offset.
@@ -1304,17 +1296,21 @@ object Parsers {
         case _: (ForYield | ForDo) => in.token == FOR
         case _ => false
 
-      def matchesAndSetEnd(last: T): Boolean = {
+      def endName = if in.token == IDENTIFIER then in.name.toString else tokenString(in.token)
+
+      def matchesAndSetEnd(last: T): Boolean =
         val didMatch = matches(last)
         if didMatch then
           updateSpanOfLast(last)
         didMatch
-      }
 
       if in.token == END then
         val start = in.skipToken()
         if stats.isEmpty || !matchesAndSetEnd(stats.last) then
           syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
+        else if overlapsPatch(source, Span(start, start)) then
+          patch(source, Span(start, start), "")
+          patch(source, Span(start, in.lastCharOffset), s"} // end $endName")
         in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
         in.nextToken()
     end checkEndMarker
@@ -2509,9 +2505,9 @@ object Parsers {
         GenFrom(pat, subExpr(), checkMode)
       }
 
-    /** ForExpr  ::= `for' (`(' Enumerators `)' | `{' Enumerators `}')
-     *                {nl} [`yield'] Expr
-     *            |  `for' Enumerators (`do' Expr | `yield' Expr)
+    /** ForExpr  ::=  ‘for’ ‘(’ Enumerators ‘)’ {nl} [‘do‘ | ‘yield’] Expr
+     *             |  ‘for’ ‘{’ Enumerators ‘}’ {nl} [‘do‘ | ‘yield’] Expr
+     *             |  ‘for’     Enumerators          (‘do‘ | ‘yield’) Expr
      */
     def forExpr(): Tree =
       atSpan(in.skipToken()) {
@@ -3631,7 +3627,7 @@ object Parsers {
       finalizeDef(gdef, mods1, start)
     }
 
-    /** Extension  ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
+    /** Extension  ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause} ‘(’ DefParam ‘)’
      *                  {UsingParamClause} ExtMethods
      */
     def extension(): ExtMethods =
@@ -3854,9 +3850,9 @@ object Parsers {
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
       var self: ValDef = EmptyValDef
       val stats = new ListBuffer[Tree]
-      if (isExprIntro && !isDefIntro(modifierTokens)) {
+      if isExprIntro && !isDefIntro(modifierTokens) then
         val first = expr1()
-        if (in.token == ARROW) {
+        if in.token == ARROW then
           first match {
             case Typed(tree @ This(EmptyTypeIdent), tpt) =>
               self = makeSelfDef(nme.WILDCARD, tpt).withSpan(first.span)
@@ -3867,11 +3863,10 @@ object Parsers {
           }
           in.token = SELFARROW // suppresses INDENT insertion after `=>`
           in.nextToken()
-        }
         else
           stats += first
           statSepOrEnd(stats)
-      }
+      end if
       while
         var empty = false
         if (in.token == IMPORT)
@@ -3888,7 +3883,7 @@ object Parsers {
           empty = true
         statSepOrEnd(stats, empty)
       do ()
-      (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
+      (self, if stats.isEmpty then List(EmptyTree) else stats.toList)
     }
 
     /** RefineStatSeq    ::=  RefineStat {semi RefineStat}

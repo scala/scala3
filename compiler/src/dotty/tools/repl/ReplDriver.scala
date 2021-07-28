@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
+import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
@@ -307,6 +308,7 @@ class ReplDriver(settings: Array[String],
           .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
             defn.topClasses.contains(denot.symbol.owner) || denot.symbol.isConstructor
+             || denot.symbol.name.is(DefaultGetterName)
           }
 
       val vals =

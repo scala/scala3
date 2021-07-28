@@ -3,6 +3,7 @@ scala> case class Foo[A](a: A)
 scala> Foo(1)
 val res0: Foo[Int] = Foo(1)
 scala> val x: Foo[String] = res0
+-- Error:
 1 | val x: Foo[String] = res0
   |                      ^^^^
   |                      Found:    (res0 : Foo[Int])

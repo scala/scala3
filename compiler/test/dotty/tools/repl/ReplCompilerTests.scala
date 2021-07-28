@@ -85,6 +85,11 @@ class ReplCompilerTests extends ReplTest {
       assertEquals("x: Int = 10", storedOutput().trim)
     }
 
+  @Test def defaultParamter = fromInitialState { implicit state =>
+    run("def foo(a: Int = 1): 1 = 1")
+    assertEquals("def foo(a: Int): 1", storedOutput().trim)
+  }
+
   @Test def i8677 = fromInitialState { implicit state =>
     run {
       """|sealed trait T1
@@ -218,6 +223,17 @@ class ReplCompilerTests extends ReplTest {
   @Test def `i10214 must show MatchError on literal type` = fromInitialState { implicit state =>
     run("val (x: 1) = 2")
     assertEquals("scala.MatchError: 2 (of class java.lang.Integer)", storedOutput().linesIterator.next())
+  }
+  @Test def `i12920 must truncate stack trace to user code` = fromInitialState { implicit state =>
+    run("???")
+    val all = lines()
+    assertEquals(3, all.length)
+    assertEquals("scala.NotImplementedError: an implementation is missing", all.head)
+    /* avoid asserting much about line number or elided count
+    scala.NotImplementedError: an implementation is missing
+      at scala.Predef$.$qmark$qmark$qmark(Predef.scala:344)
+      ... 28 elided
+     */
   }
 }
 

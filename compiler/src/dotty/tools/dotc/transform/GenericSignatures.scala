@@ -291,7 +291,7 @@ object GenericSignatures {
 
         case PolyType(tparams, mtpe: MethodType) =>
           assert(tparams.nonEmpty)
-          if (toplevel) polyParamSig(tparams)
+          if (toplevel && !sym0.isConstructor) polyParamSig(tparams)
           jsig(mtpe)
 
         // Nullary polymorphic method

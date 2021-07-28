@@ -5,6 +5,7 @@ import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 import dotty.tools.scaladoc.Inkuire
 
+import scala.util.Random
 import scala.quoted._
 
 import SymOps._
@@ -17,36 +18,47 @@ trait InkuireSupport:
 
   private given qctx.type = qctx
 
-  private def paramsForClass(classDef: ClassDef, vars: Set[String], isVariable: Boolean): Seq[Inkuire.Variance] =
-    classDef.getTypeParams.map(mkTypeArgumentInkuire(_, vars, isVariable))
+  private def paramsForClass(classDef: ClassDef, vars: Set[String]): Seq[Inkuire.Variance] =
+    classDef.getTypeParams.map(mkTypeArgumentInkuire)
 
   given TreeSyntaxInkuire: AnyRef with
     extension (tpeTree: Tree)
-      def asInkuire(vars: Set[String], isVariable: Boolean): Inkuire.Type =
-        partialAsInkuire(vars, isVariable)(tpeTree)
+      def asInkuire(vars: Set[String]): Inkuire.TypeLike =
+        partialAsInkuire(vars)(tpeTree)
 
-  def partialAsInkuire(vars: Set[String], isVariable: Boolean): PartialFunction[Tree, Inkuire.Type] = {
+  def partialAsInkuire(vars: Set[String]): PartialFunction[Tree, Inkuire.TypeLike] = {
     case TypeBoundsTree(low, high) => inner(low.tpe, vars) //TODO [Inkuire] Type bounds
     case tpeTree: Applied =>
-      inner(tpeTree.tpe, vars).copy(
-        params = tpeTree.args.map(p => Inkuire.Invariance(p.asInkuire(vars, isVariable)))
-      )
+      inner(tpeTree.tpe, vars)
     case tpeTree: TypeTree =>
       inner(tpeTree.tpe, vars)
     case term:  Term => inner(term.tpe, vars)
-    case classDef: ClassDef => mkTypeFromClassDef(classDef, vars, isVariable)
-    case typeDef: TypeDef =>
+    case classDef: ClassDef => mkTypeFromClassDef(classDef, vars)
+    case typeDef: TypeDef => mkTypeDef(typeDef)
+  }
+
+  def mkTypeDef(typeDef: TypeDef): Inkuire.Type = typeDef.rhs match {
+    case LambdaTypeTree(paramsDefs, _) =>
+      val name = typeDef.symbol.normalizedName
+      val normalizedName = if name.matches("_\\$\\d*") then "_" else name
+      val params = paramsDefs.map(_.name).map(Inkuire.TypeLambda.argument)
+      Inkuire.Type(
+        name = Inkuire.TypeName(normalizedName),
+        itid = typeDef.symbol.itid,
+        params = params.map(Inkuire.Invariance(_))
+      )
+    case _ =>
       Inkuire.Type(
         name = Inkuire.TypeName(typeDef.name),
         itid = typeDef.symbol.itid
       )
   }
 
-  def mkTypeFromClassDef(classDef: ClassDef, vars: Set[String], isVariable: Boolean): Inkuire.Type = {
+  def mkTypeFromClassDef(classDef: ClassDef, vars: Set[String]): Inkuire.Type = {
     Inkuire.Type(
       name = Inkuire.TypeName(classDef.name),
       itid = classDef.symbol.itid,
-      params = paramsForClass(classDef, vars, isVariable)
+      params = paramsForClass(classDef, vars)
     )
   }
 
@@ -56,20 +68,43 @@ trait InkuireSupport:
 
   given TypeSyntaxInkuire: AnyRef with
     extension (tpe: TypeRepr)
-      def asInkuire(vars: Set[String]): Inkuire.Type = inner(tpe, vars)
+      def asInkuire(vars: Set[String]): Inkuire.TypeLike = inner(tpe, vars)
 
-  def mkTypeArgumentInkuire(argument: TypeDef, vars: Set[String] = Set.empty, isVariable: Boolean = false): Inkuire.Variance =
+  private def genSyntheticTypeArgs(n: Int, resSymbol: Symbol) =
+    1.to(n).map { i =>
+      val uuid = s"synthetic-arg$i${resSymbol.hashCode}"
+      val name = s"X$i"
+      Inkuire.Type(
+        name = Inkuire.TypeName(name),
+        itid = Some(Inkuire.ITID(uuid, isParsed = false)),
+        isVariable = true
+      )
+    }
+
+  def mkTypeArgumentInkuire(argument: TypeDef): Inkuire.Variance =
+    //TODO [Inkuire] Type bounds (other than just HKTs)
     val name = argument.symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-    val t = Inkuire.Type(
+    val params = genSyntheticTypeArgs(typeVariableDeclarationParamsNo(argument), argument.symbol)
+    val res = Inkuire.Type(
       name = Inkuire.TypeName(normalizedName),
       itid = argument.symbol.itid,
-      isVariable = vars.contains(normalizedName) || isVariable,
-      params = Seq.empty //TODO [Inkuire] Type Lambdas
+      isVariable = true,
+      params = params.map(Inkuire.Invariance(_))
     )
+    val t = params.toList match
+      case Nil => res
+      case _ => Inkuire.TypeLambda(params, res)
     if argument.symbol.flags.is(Flags.Covariant) then Inkuire.Covariance(t)
     else if argument.symbol.flags.is(Flags.Contravariant) then Inkuire.Contravariance(t)
     else Inkuire.Invariance(t)
+
+  def typeVariableDeclarationParamsNo(argument: TypeDef): Int =
+    argument.rhs match
+      case t: TypeTree => t.tpe match
+        case TypeBounds(_, TypeLambda(names, _, _)) => names.size
+        case _ => 0
+      case _ => 0
 
   private def isRepeatedAnnotation(term: Term) =
     term.tpe match
@@ -85,9 +120,9 @@ trait InkuireSupport:
         case _ => false
       case _ => false
 
-  private def inner(tp: TypeRepr, vars: Set[String]): Inkuire.Type = tp match
-    case OrType(left, right) => inner(left, vars)  //TODO [Inkuire] Or/AndTypes
-    case AndType(left, right) => inner(left, vars)  //TODO [Inkuire] Or/AndTypes
+  private def inner(tp: TypeRepr, vars: Set[String]): Inkuire.TypeLike = tp match
+    case OrType(left, right) => Inkuire.OrType(inner(left, vars), inner(right, vars))
+    case AndType(left, right) => Inkuire.AndType(inner(left, vars), inner(right, vars))
     case ByNameType(tpe) => inner(tpe, vars)
     case ConstantType(constant) =>
       Inkuire.Type(
@@ -102,8 +137,8 @@ trait InkuireSupport:
       inner(tpe, vars) //TODO [Inkuire] Repeated types
     case AnnotatedType(tpe, _) =>
       inner(tpe, vars)
-    case tl @ TypeLambda(params, paramBounds, resType) =>
-      inner(resType, vars) //TODO [Inkuire] Type lambdas
+    case tl @ TypeLambda(paramNames, _, resType) =>
+      Inkuire.TypeLambda(paramNames.map(Inkuire.TypeLambda.argument), inner(resType, vars)) //TODO [Inkuire] Type bounds
     case r: Refinement =>
       inner(r.info, vars) //TODO [Inkuire] Refinements
     case t @ AppliedType(tpe, typeList) =>
@@ -123,7 +158,7 @@ trait InkuireSupport:
           itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
         )
       else
-        inner(tpe, vars).copy(
+        inner(tpe, vars).asInstanceOf[Inkuire.Type].copy(
           params = typeList.map(p => Inkuire.Invariance(inner(p, vars)))
         )
     case tp: TypeRef =>
@@ -141,12 +176,8 @@ trait InkuireSupport:
       Inkuire.Type.unresolved //TODO [Inkuire] <- should be handled by Singleton case, but didn't work
     case MatchType(bond, sc, cases) =>
       inner(sc, vars)
-    case ParamRef(TypeLambda(names, _, resType), i) =>
-      Inkuire.Type(
-        name = Inkuire.TypeName(names(i)),
-        itid = Some(Inkuire.ITID(s"external-itid-${names(i)}", isParsed = false)),
-        isVariable = true
-      )
+    case ParamRef(TypeLambda(names, _, _), i) =>
+      Inkuire.TypeLambda.argument(names(i))
     case ParamRef(m: MethodType, i) =>
       inner(m.paramTypes(i), vars)
     case RecursiveType(tp) =>

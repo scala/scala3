@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Implicit Conversions"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-conversions.html
 ---
 
 An _implicit conversion_, also called _view_, is a conversion that

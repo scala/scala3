@@ -1,4 +1,5 @@
 scala> object test { type ::[A, B]; def a: Int :: Int = ???; def b: Int = a }
+-- Error:
 1 | object test { type ::[A, B]; def a: Int :: Int = ???; def b: Int = a }
   |                                                                    ^
   |                                                      Found:    Int :: Int

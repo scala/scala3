@@ -127,10 +127,6 @@ jobs:
          || (
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
-         )
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip test_windows_fast]')
          )"
 

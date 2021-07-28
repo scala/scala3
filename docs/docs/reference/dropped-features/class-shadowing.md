@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Class Shadowing"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/class-shadowing.html
 ---
 
 Scala 2 so far allowed patterns like this:

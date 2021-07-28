@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Programmatic Structural Types - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/structural-types-spec.html
 ---
 
 ## Syntax

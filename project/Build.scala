@@ -65,7 +65,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   val referenceVersion = "3.0.0"
 
-  val baseVersion = "3.0.2-RC1"
+  val baseVersion = "3.0.3-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -81,7 +81,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.0.0"
+  val previousDottyVersion = "3.0.1"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -325,7 +325,7 @@ object Build {
 
   lazy val scalacOptionsDocSettings = Seq(
       "-external-mappings:" +
-        ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
+        ".*scala.*::scaladoc3::https://dotty.epfl.ch/api/," +
         ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
       "-skip-by-regex:.+\\.internal($|\\..+)",
       "-skip-by-regex:.+\\.impl($|\\..+)",
@@ -1245,7 +1245,7 @@ object Build {
       val distLocation = (dist / pack).value
       val projectVersion = version.value
       IO.createDirectory(file(outDir))
-      val stdLibVersion = stdlibVersion(Bootstrapped)
+      val stdLibVersion = stdlibVersion(NonBootstrapped)
       val scalaLib = findArtifactPath(externalCompilerClasspathTask.value, "scala-library")
       val dottyLib = (`scala3-library` / Compile / classDirectory).value
       // TODO add versions etc.
@@ -1325,6 +1325,7 @@ object Build {
       generateScalaDocumentation := Def.inputTaskDyn {
         val extraArgs = spaceDelimited("[output]").parsed
         val dest = file(extraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
+        val justAPI = extraArgs.drop(1).headOption == Some("--justAPI")
         val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
 
         val dottyJars: Seq[java.io.File] = Seq(
@@ -1346,21 +1347,24 @@ object Build {
 
         val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
 
+        def generateDocTask =
+          generateDocumentation(
+            roots, "Scala 3", dest.getAbsolutePath, "master",
+            Seq(
+              "-comment-syntax", "wiki",
+              s"-source-links:docs=github://lampepfl/dotty/master#docs",
+              "-doc-root-content", docRootFile.toString,
+              "-Ydocument-synthetic-types"
+            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")))
+
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
+        else if (justAPI) generateDocTask
         else Def.task{
           IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
 
           // This file is used by GitHub Pages when the page is available in a custom domain
           IO.write(dest / "CNAME", "dotty.epfl.ch")
-        }.dependsOn(generateDocumentation(
-          roots, "Scala 3", dest.getAbsolutePath, "master",
-          Seq(
-            "-comment-syntax", "wiki",
-            "-siteroot", "docs",
-            s"-source-links:docs=github://lampepfl/dotty/master#docs",
-            "-doc-root-content", docRootFile.toString,
-            "-Ydocument-synthetic-types"
-          )))
+        }.dependsOn(generateDocTask)
       }.evaluated,
 
       generateTestcasesDocumentation := Def.taskDyn {
