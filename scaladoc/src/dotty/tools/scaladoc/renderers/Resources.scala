@@ -171,8 +171,9 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
   )
 
   def renderResource(resource: Resource): Seq[String] =
-    if resource.path.endsWith(".html") && apiPaths.contains(resource.path) then
-      report.error(s"Conflict between resource and API member for ${resource.path}. $pathsConflictResoultionMsg")
+    val normalizedPath = resource.path.replace('\\', '/')
+    if normalizedPath.endsWith(".html") && apiPaths.contains(normalizedPath) then
+      report.error(s"Conflict between resource and API member for $normalizedPath. $pathsConflictResoultionMsg")
       Nil
     else
       resource match
