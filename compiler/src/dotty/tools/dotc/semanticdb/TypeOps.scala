@@ -14,13 +14,16 @@ import ast.tpd._
 import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
-import Scala3.{SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
+import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
 
 class TypeOps:
   import SymbolScopeOps._
   import Scala3.given
   private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
   private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
+
+  // save generated fake symbols so we can insert them into symbols section of SemanticDB
+  val fakeSymbols = mutable.Set[FakeSymbol]()
   given typeOps: TypeOps = this
 
   extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
@@ -55,6 +58,9 @@ class TypeOps:
     report.warning(
       s"Internal error in extracting SemanticDB while compiling ${ctx.compilationUnit.source}: ${msg}"
     )
+
+  private def registerFakeSymbol(sym: FakeSymbol)(using Context, SemanticSymbolBuilder): Unit =
+    fakeSymbols.add(sym)
 
   extension (tpe: Type)
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
@@ -146,16 +152,20 @@ class TypeOps:
           ): (Type, List[List[SemanticSymbol]], List[SemanticSymbol]) = t match {
             case mt: MethodType =>
               val syms: List[SemanticSymbol] = mt.paramNames.zip(mt.paramInfos).map { (name, info) =>
-                paramRefSymtab.lookup(mt, name).getOrElse(
-                  TermParamRefSymbol(sym, name, info)
-                )
+                paramRefSymtab.lookup(mt, name).getOrElse {
+                  val fakeSym = TermParamRefSymbol(sym, name, info)
+                  registerFakeSymbol(fakeSym)
+                  fakeSym
+                }
               }
               flatten(mt.resType, paramss :+ syms, tparams)
             case pt: PolyType =>
               val syms: List[SemanticSymbol] = pt.paramNames.zip(pt.paramInfos).map { (name, info) =>
-                paramRefSymtab.lookup(pt, name).getOrElse(
-                  TypeParamRefSymbol(sym, name, info)
-                )
+                paramRefSymtab.lookup(pt, name).getOrElse {
+                  val fakeSym = TypeParamRefSymbol(sym, name, info)
+                  registerFakeSymbol(fakeSym)
+                  fakeSym
+                }
               }
               flatten(pt.resType, paramss, tparams ++ syms)
             case other =>
@@ -185,11 +195,15 @@ class TypeOps:
               val paramSyms: List[SemanticSymbol] = lambda.paramNames.zip(lambda.paramInfos).map { (paramName, bounds) =>
                 // def x[T[_]] = ???
                 if paramName.isWildcard then
-                  WildcardTypeSymbol(sym, bounds)
+                  val fakeSym = WildcardTypeSymbol(sym, bounds)
+                  registerFakeSymbol(fakeSym)
+                  fakeSym
                 else
-                  paramRefSymtab.lookup(lambda, paramName).getOrElse(
-                    TypeParamRefSymbol(sym, paramName, bounds)
-                  )
+                  paramRefSymtab.lookup(lambda, paramName).getOrElse {
+                    val fakeSym = TypeParamRefSymbol(sym, paramName, bounds)
+                    registerFakeSymbol(fakeSym)
+                    fakeSym
+                  }
               }
               (lambda.resType, paramSyms)
             case _ => (tpe, Nil)
@@ -245,7 +259,9 @@ class TypeOps:
               tref.binder.typeParams.find(param => param.paramName == tref.paramName) match
                 case Some(param) =>
                   val info = param.paramInfo
-                  Some(TypeParamRefSymbol(sym, tref.paramName, info))
+                  val fakeSym = TypeParamRefSymbol(sym, tref.paramName, info)
+                  registerFakeSymbol(fakeSym)
+                  Some(fakeSym)
                 case None =>
                   symbolNotFound(tref.binder, tref.paramName, sym)
                   None
@@ -300,9 +316,11 @@ class TypeOps:
           val stpe = s.IntersectionType(flattenParent(parent))
 
           val decls: List[SemanticSymbol] = refinedInfos.map { (name, info) =>
-            refinementSymtab.lookup(rt, name).getOrElse(
-              RefinementSymbol(name, info)
-            )
+            refinementSymtab.lookup(rt, name).getOrElse {
+              val fakeSym = RefinementSymbol(sym, name, info)
+              registerFakeSymbol(fakeSym)
+              fakeSym
+            }
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
           s.StructuralType(stpe, sdecls)
@@ -348,6 +366,7 @@ class TypeOps:
               // signature: type_signature(..., lo = <Nothing>, hi = <T>)
               case bounds: TypeBounds =>
                 val wildcardSym = WildcardTypeSymbol(sym, bounds)
+                registerFakeSymbol(wildcardSym)
                 val ssym = wildcardSym.symbolName
                 (Some(wildcardSym), s.TypeRef(s.Type.Empty, ssym, Seq.empty))
               case other =>
@@ -419,13 +438,11 @@ object SymbolScopeOps:
   import Scala3.{_, given}
   extension (syms: List[SemanticSymbol])
     def sscope(using linkMode: LinkMode)(using SemanticSymbolBuilder, TypeOps, Context): s.Scope =
-      // if syms contains FakeSymbol, hardlink those symbols
-      // because fake symbols don't appear in Symbols section.
-      // If we symlink those fake symbols, we always fail to lookup those symlinked symbols.
-      if syms.exists(s => s.isInstanceOf[FakeSymbol]) || linkMode == LinkMode.HardlinkChildren then
-        s.Scope(hardlinks = syms.map(_.symbolInfo(Set.empty)(using LinkMode.HardlinkChildren)))
-      else
-        s.Scope(symlinks = syms.map(_.symbolName))
+      linkMode match
+        case LinkMode.SymlinkChildren =>
+          s.Scope(symlinks = syms.map(_.symbolName))
+        case LinkMode.HardlinkChildren =>
+          s.Scope(hardlinks = syms.map(_.symbolInfo(Set.empty)))
 
-    def sscopeOpt(using linkMode: LinkMode)(using SemanticSymbolBuilder, TypeOps, Context): Option[s.Scope] =
+    def sscopeOpt(using LinkMode, SemanticSymbolBuilder, TypeOps, Context): Option[s.Scope] =
       if syms.nonEmpty then Some(syms.sscope) else None

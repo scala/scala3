@@ -39,7 +39,7 @@ object Scala3:
 
   case class TermParamRefSymbol(owner: Symbol, name: Name, tp: Type) extends FakeSymbol
   case class TypeParamRefSymbol(owner: Symbol, name: Name, tp: TypeBounds) extends FakeSymbol
-  case class RefinementSymbol(name: Name, tp: Type) extends FakeSymbol
+  case class RefinementSymbol(owner: Symbol, name: Name, tp: Type) extends FakeSymbol
   type SemanticSymbol = Symbol | FakeSymbol
   extension (sym: SemanticSymbol)
     def name(using Context): Name = sym match
@@ -68,7 +68,7 @@ object Scala3:
             language = Language.SCALA,
             kind = SymbolInformation.Kind.TYPE,
             displayName = nme.WILDCARD.show,
-            signature = s.bounds.toSemanticSig(NoSymbol),
+            signature = s.bounds.toSemanticSig(s.owner),
           )
         case s: TermParamRefSymbol =>
           SymbolInformation(
@@ -76,7 +76,7 @@ object Scala3:
             language = Language.SCALA,
             kind = SymbolInformation.Kind.PARAMETER,
             displayName = s.name.show.unescapeUnicode,
-            signature = s.tp.toSemanticSig(NoSymbol),
+            signature = s.tp.toSemanticSig(s.owner),
           )
         case s: TypeParamRefSymbol =>
           SymbolInformation(
@@ -84,10 +84,10 @@ object Scala3:
             language = Language.SCALA,
             kind = SymbolInformation.Kind.TYPE_PARAMETER,
             displayName = s.name.show.unescapeUnicode,
-            signature = s.tp.toSemanticSig(NoSymbol),
+            signature = s.tp.toSemanticSig(s.owner),
           )
         case s: RefinementSymbol =>
-          val signature = s.tp.toSemanticSig(NoSymbol)
+          val signature = s.tp.toSemanticSig(s.owner)
           val kind = signature match
             case _: TypeSignature => SymbolInformation.Kind.TYPE
             case _: MethodSignature => SymbolInformation.Kind.METHOD
