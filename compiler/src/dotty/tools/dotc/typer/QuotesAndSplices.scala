@@ -66,8 +66,11 @@ trait QuotesAndSplices {
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_of.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
       else
         typedApply(untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.quoted), pt)(using pushQuotes(qctx)).select(nme.apply).appliedTo(qctx)
-    tree1.withSpan(tree.span)
+    makeInlineable(tree1.withSpan(tree.span))
   }
+
+  private def makeInlineable(tree: Tree)(using Context): Tree =
+    ctx.compilationUnit.inlineAccessors.makeInlineable(tree)
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
