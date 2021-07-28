@@ -11,9 +11,15 @@ sealed trait Tuple extends Product {
   inline def toArray: Array[Object] =
     runtime.Tuples.toArray(this)
 
+  // NOTE: Replaced by `toList` extension method in the `Tuple` object.
+  //       Kept this version of the method as `private[scala]` to be
+  //       able to unpickle older TASTy files.
+  // TODO: When we can break TASTy compat, replace this method with one that has the following signature
+  //       `inline def toList[This >: this.type <: Tuple]: List[Union[This]]`
+  //       and remove the extension method in the `Tuple` object.
   /** Create a copy this tuple as a List */
-  inline def toList[This >: this.type <: Tuple]: List[Union[This]] =
-    this.productIterator.toList.asInstanceOf[List[Union[This]]]
+  private[scala] inline def toList: List[Union[this.type]] =
+    this.productIterator.toList.asInstanceOf[List[Union[this.type]]]
 
   /** Create a copy this tuple as an IArray */
   inline def toIArray: IArray[Object] =
@@ -231,6 +237,13 @@ object Tuple {
 
   def fromProductTyped[P <: Product](p: P)(using m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
     runtime.Tuples.fromProduct(p).asInstanceOf[m.MirroredElemTypes]
+
+  // TODO: When we can break TASTy compat, move this method to `Tuple` class and use the following signature
+  //       `inline def toList[This >: this.type <: Tuple]: List[Union[This]]`
+  /** Create a copy this tuple as a List */
+  extension [This <: Tuple](inline tuple: This)
+    inline def toList: List[Union[This]] =
+      tuple.productIterator.toList.asInstanceOf[List[Union[This]]]
 }
 
 /** A tuple of 0 elements */
