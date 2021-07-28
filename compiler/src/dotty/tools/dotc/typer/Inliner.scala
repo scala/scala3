@@ -379,7 +379,8 @@ object Inliner {
 
     /** Expand call to scala.compiletime.codeOf */
     def codeOf(arg: Tree, pos: SrcPos)(using Context): Tree =
-      Literal(Constant(arg.show)).withSpan(pos.span)
+      val ctx1 = ctx.fresh.setSetting(ctx.settings.color, "never")
+      Literal(Constant(arg.show(using ctx1))).withSpan(pos.span)
   }
 
   extension (tp: Type) {
