@@ -280,7 +280,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         case _ => None
       }.collect {
         case (Some(on), members) =>
-          val sig = Signature(s"extension (${on.name}: ") ++ on.signature ++ Signature(")")
+          val typeSig = InlineSignatureBuilder()
+            .text("extension ")
+            .generics(on.typeParams)
+            .asInstanceOf[InlineSignatureBuilder].names.reverse
+          val argsSig = InlineSignatureBuilder()
+            .functionParameters(on.argsLists)
+            .asInstanceOf[InlineSignatureBuilder].names.reverse
+          val sig = typeSig ++ Signature(s"(${on.name}: ") ++ on.signature ++ Signature(")") ++ argsSig
           MGroup(span(sig.map(renderElement)), members.sortBy(_.name).toSeq, on.name)
       }.toSeq
 

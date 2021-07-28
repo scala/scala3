@@ -182,7 +182,7 @@ trait ClassLikeSupport:
             val sgn = Inkuire.ExternalSignature(
               signature = Inkuire.Signature(
                 receiver = receiver,
-                arguments = methodSymbol.nonExtensionParamLists.collect {
+                arguments = methodSymbol.nonExtensionTermParamLists.collect {
                   case tpc@TermParamClause(params) if !tpc.isImplicit && !tpc.isGiven => params //TODO [Inkuire] Implicit parameters
                 }.flatten.map(_.tpt.asInkuire(vars)),
                 result = defdef.returnTpt.asInkuire(vars),
@@ -249,11 +249,18 @@ trait ClassLikeSupport:
   private def isDocumentableExtension(s: Symbol) =
     !s.isHiddenByVisibility && !s.isSyntheticFunc && s.isExtensionMethod
 
-  private def parseMember(c: ClassDef)(s: Tree): Option[Member] = processTreeOpt(s)(s match
+  private def parseMember(c: ClassDef)(s: Tree): Option[Member] = processTreeOpt(s) { s match
       case dd: DefDef if isDocumentableExtension(dd.symbol) =>
         dd.symbol.extendedSymbol.map { extSym =>
+          val memberInfo = unwrapMemberInfo(c, dd.symbol)
+          val typeParams = dd.symbol.extendedTypeParams.map(mkTypeArgument(_, memberInfo.genericTypes))
+          val termParams = dd.symbol.extendedTermParamLists.zipWithIndex.map { case (paramList, index) =>
+            ParametersList(paramList.params.map(mkParameter(_, memberInfo = memberInfo.paramLists(index))), paramListModifier(paramList.params))
+          }
           val target = ExtensionTarget(
             extSym.symbol.normalizedName,
+            typeParams,
+            termParams,
             extSym.tpt.asSignature,
             extSym.tpt.symbol.dri,
             extSym.symbol.pos.get.start
@@ -309,7 +316,7 @@ trait ClassLikeSupport:
         Some(parseClasslike(c))
 
       case _ => None
-  )
+  }
 
   private def parseGivenClasslike(c: ClassDef): Member = {
     val parsedClasslike = parseClasslike(c)
@@ -477,8 +484,8 @@ trait ClassLikeSupport:
       specificKind: (Kind.Def => Kind) = identity
     ): Member =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
-    val paramLists: List[TermParamClause] = methodSymbol.nonExtensionParamLists
-    val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.leadingTypeParams
+    val paramLists: List[TermParamClause] = methodSymbol.nonExtensionTermParamLists
+    val genericTypes: List[TypeDef] = if (methodSymbol.isClassConstructor) Nil else methodSymbol.nonExtensionLeadingTypeParams
 
     val memberInfo = unwrapMemberInfo(c, methodSymbol)
 
