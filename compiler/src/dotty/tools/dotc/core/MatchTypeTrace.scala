@@ -13,6 +13,7 @@ object MatchTypeTrace:
     case TryReduce(scrut: Type)
     case NoMatches(scrut: Type, cases: List[Type])
     case Stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])
+    case EmptyScrutinee(scrut: Type)
   import TraceEntry._
 
   private class MatchTrace:
@@ -61,6 +62,12 @@ object MatchTypeTrace:
   def stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])(using Context) =
     matchTypeFail(Stuck(scrut, stuckCase, otherCases))
 
+  /** Record a failure that scrutinee `scrut` is provably empty.
+   *  Only the first failure is recorded.
+   */
+  def emptyScrutinee(scrut: Type)(using Context) =
+    matchTypeFail(EmptyScrutinee(scrut))
+
   /** Record in the trace that we are trying to reduce `scrut` when performing `op`
    *  If `op` succeeds the entry is removed after exit. If `op` fails, it stays.
    */
@@ -91,6 +98,9 @@ object MatchTypeTrace:
          |  matches none of the cases
          |
          |    ${casesText(cases)}"""
+    case EmptyScrutinee(scrut) =>
+      i"""  failed since selector  $scrut
+         |  is uninhabited."""
     case Stuck(scrut, stuckCase, otherCases) =>
       i"""  failed since selector  $scrut
          |  does not match  ${caseText(stuckCase)}
