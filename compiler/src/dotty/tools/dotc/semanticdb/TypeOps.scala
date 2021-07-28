@@ -225,6 +225,8 @@ class TypeOps:
     private def toSemanticType(sym: Symbol)(using LinkMode, SemanticSymbolBuilder, Context): s.Type =
       import ConstantOps._
       def loop(tpe: Type): s.Type = tpe match {
+        case t if t.isFromJavaObject =>
+          loop(defn.AnyType)
         case ExprType(tpe) =>
           val stpe = loop(tpe)
           s.ByNameType(stpe)
