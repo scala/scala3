@@ -100,7 +100,7 @@ object MatchTypeTrace:
          |    ${casesText(cases)}"""
     case EmptyScrutinee(scrut) =>
       i"""  failed since selector  $scrut
-         |  is uninhabited."""
+         |  is uninhabited (there are no values of that type)."""
     case Stuck(scrut, stuckCase, otherCases) =>
       i"""  failed since selector  $scrut
          |  does not match  ${caseText(stuckCase)}
