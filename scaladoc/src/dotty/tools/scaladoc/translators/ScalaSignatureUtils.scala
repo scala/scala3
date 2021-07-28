@@ -28,10 +28,11 @@ trait SignatureBuilder extends ScalaSignatureUtils {
       prefix: String = "",
       suffix: String = "",
       separator: String = ", ",
+      forcePrefixAndSuffix: Boolean = false
     )(
       elemOp: (SignatureBuilder, E) => SignatureBuilder
     ): SignatureBuilder = elements match {
-      case Nil => this
+      case Nil => if forcePrefixAndSuffix then this.text(prefix + suffix) else this
       case head :: tail =>
         tail.foldLeft(elemOp(text(prefix), head))((b, e) => elemOp(b.text(separator), e)).text(suffix)
     }
@@ -85,7 +86,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
       if params.isEmpty then this.text("")
       else if params.size == 1 && params(0).parameters == Nil then this.text("()")
       else this.list(params, separator = ""){ (bld, pList) =>
-        bld.list(pList.parameters, s"(${pList.modifiers}", ")"){ (bld, p) =>
+        bld.list(pList.parameters, s"(${pList.modifiers}", ")", forcePrefixAndSuffix = true){ (bld, p) =>
             val annotationsAndModifiers = bld.annotationsInline(p)
               .text(p.modifiers)
             val name = p.name.fold(annotationsAndModifiers)(annotationsAndModifiers.memberName(_, p.dri).text(": "))
