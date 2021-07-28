@@ -368,7 +368,9 @@ class TypeOps:
               // signature: type_signature(..., lo = <Nothing>, hi = <T>)
               case bounds: TypeBounds =>
                 val wildcardSym = WildcardTypeSymbol(sym, bounds)
-                registerFakeSymbol(wildcardSym)
+                // DO NOT register the wildcard symbol to symbol section here
+                // since it's not a symbol definition
+                // registerFakeSymbol(wildcardSym)
                 val ssym = wildcardSym.symbolName
                 (Some(wildcardSym), s.TypeRef(s.Type.Empty, ssym, Seq.empty))
               case other =>
