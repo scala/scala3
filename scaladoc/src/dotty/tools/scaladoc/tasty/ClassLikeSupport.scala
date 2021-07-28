@@ -10,6 +10,7 @@ import scala.quoted._
 import SymOps._
 import NameNormalizer._
 import SyntheticsSupport._
+import dotty.tools.dotc.core.NameKinds
 
 trait ClassLikeSupport:
   self: TastyParser =>
@@ -612,20 +613,21 @@ trait ClassLikeSupport:
     contextBounds: Map[String, DSignature] = Map.empty,
   )
 
-  def isSyntheticEvidence(name: String) = name.startsWith("evidence$")
 
   def unwrapMemberInfo(c: ClassDef, symbol: Symbol): MemberInfo =
     val baseTypeRepr = memberInfo(c, symbol)
+
+    def isSyntheticEvidence(name: String) = 
+      if !name.startsWith(NameKinds.EvidenceParamName.separator) then false else
+        symbol.paramSymss.flatten.find(_.name == name).exists(_.flags.is(Flags.Implicit))
 
     def handlePolyType(polyType: PolyType): MemberInfo =
       MemberInfo(polyType.paramNames.zip(polyType.paramBounds).toMap, List.empty, polyType.resType)
 
     def handleMethodType(memberInfo: MemberInfo, methodType: MethodType): MemberInfo =
       val rawParams = methodType.paramNames.zip(methodType.paramTypes).toMap
-      val (evidences, newParams) = rawParams.partition(e => isSyntheticEvidence(e._1))
-      val newLists: List[ParameterList] = if newParams.isEmpty && evidences.nonEmpty
-        then memberInfo.paramLists ++  Seq(EvidenceOnlyParameterList)
-        else memberInfo.paramLists ++ Seq(newParams)
+      val (evidences, notEvidences) = rawParams.partition(e => isSyntheticEvidence(e._1))
+      
 
       def findParamRefs(t: TypeRepr): Seq[ParamRef] = t match
         case paramRef: ParamRef => Seq(paramRef)
@@ -638,16 +640,24 @@ trait ClassLikeSupport:
         val PolyType(names, _, _) = ref.binder
         names(ref.paramNum)
 
-      val contextBounds =
-        evidences.collect {
+      val (paramsThatLookLikeContextBounds, contextBounds) =
+        evidences.partitionMap {
           case (_, AppliedType(tpe, List(typeParam: ParamRef))) =>
-            nameForRef(typeParam) -> tpe.asSignature
-          case (_, original) =>
-            val typeParam = findParamRefs(original).head // TODO throw nicer error!
-            val name = nameForRef(typeParam)
-            val signature = Seq(s"([$name] =>> ") ++ original.asSignature ++ Seq(")")
-            name -> signature
+            Right(nameForRef(typeParam) -> tpe.asSignature)
+          case (name, original) =>
+            findParamRefs(original) match 
+              case Nil => Left((name, original))
+              case typeParam :: _ =>
+                val name = nameForRef(typeParam)
+                val signature = Seq(s"([$name] =>> ") ++ original.asSignature ++ Seq(")")
+                Right(name -> signature)
         }
+
+      val newParams = notEvidences ++ paramsThatLookLikeContextBounds
+
+      val newLists: List[ParameterList] = if newParams.isEmpty   && contextBounds.nonEmpty
+        then memberInfo.paramLists ++  Seq(EvidenceOnlyParameterList)
+        else memberInfo.paramLists ++ Seq(newParams)
 
       MemberInfo(memberInfo.genericTypes, newLists , methodType.resType, contextBounds.toMap)
 
