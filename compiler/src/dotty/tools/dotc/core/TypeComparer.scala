@@ -2585,17 +2585,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def covariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
           provablyDisjoint(tp1, tp2) && typeparamCorrespondsToField(tycon1, tparam)
 
-        // In the invariant case, we used a weaker version of disjointness:
-        // we consider types not equal with respect to =:= to be disjoint
+        // In the invariant case, we also use a stronger notion of disjointness:
+        // we consider fully instantiated types not equal wrt =:= to be disjoint
         // (under any context). This is fine because it matches the runtime
         // semantics of pattern matching. To implement a pattern such as
         // `case Inv[T] => ...`, one needs a type tag for `T` and the compiler
         // is used at runtime to check it the scrutinee's type is =:= to `T`.
-        // Note that this is currently a theoretical concern since we Dotty
+        // Note that this is currently a theoretical concern since Dotty
         // doesn't have type tags, meaning that users cannot write patterns
         // that do type tests on higher kinded types.
         def invariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
-          covariantDisjoint(tp1, tp2, tparam) ||
+          provablyDisjoint(tp1, tp2) ||
           !isSameType(tp1, tp2) &&
           fullyInstantiated(tp1) && // We can only trust a "no" from `isSameType` when
           fullyInstantiated(tp2)    // both `tp1` and `tp2` are fully instantiated.
