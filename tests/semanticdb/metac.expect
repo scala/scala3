@@ -210,7 +210,7 @@ Uri => Annotations.scala
 Text => empty
 Language => Scala
 Symbols => 22 entries
-Occurrences => 47 entries
+Occurrences => 48 entries
 
 Symbols:
 annot/Alias. => final object Alias extends Object { self: Alias.type => +2 decls }
@@ -271,6 +271,7 @@ Occurrences:
 [21:33..21:34): x <- annot/B#x.
 [21:36..21:39): Int -> scala/Int#
 [22:3..22:24): ConstructorAnnotation -> com/javacp/annot/ConstructorAnnotation#
+[23:6..23:10): <- annot/B#`<init>`(+1).
 [26:1..26:17): ObjectAnnotation -> com/javacp/annot/ObjectAnnotation#
 [27:7..27:8): M <- annot/M.
 [28:3..28:18): MacroAnnotation -> com/javacp/annot/MacroAnnotation#
@@ -660,7 +661,7 @@ Uri => EndMarkers.scala
 Text => empty
 Language => Scala
 Symbols => 24 entries
-Occurrences => 35 entries
+Occurrences => 37 entries
 
 Symbols:
 endmarkers/Container# => class Container extends Object { self: Container => +5 decls }
@@ -693,6 +694,8 @@ Occurrences:
 [2:8..2:17): MultiCtor <- endmarkers/MultiCtor#
 [2:22..2:23): i <- endmarkers/MultiCtor#i.
 [2:25..2:28): Int -> scala/Int#
+[3:8..3:12): <- endmarkers/MultiCtor#`<init>`(+1).
+[5:8..5:12): this -> endmarkers/MultiCtor#`<init>`(+1).
 [6:6..6:15): MultiCtor -> endmarkers/MultiCtor#
 [8:6..8:20): topLevelMethod <- endmarkers/EndMarkers$package.topLevelMethod().
 [8:22..8:28): String -> scala/Predef.String#
@@ -3881,7 +3884,7 @@ Uri => semanticdb-Flags.scala
 Text => empty
 Language => Scala
 Symbols => 50 entries
-Occurrences => 71 entries
+Occurrences => 73 entries
 
 Symbols:
 flags/p/package. => final package object p extends Object { self: p.type => +23 decls }
@@ -3963,9 +3966,11 @@ Occurrences:
 [9:39..9:40): U -> flags/p/package.C#[U]
 [9:42..9:43): z <- flags/p/package.C#z.
 [9:45..9:46): V -> flags/p/package.C#[V]
+[10:8..10:12): <- flags/p/package.C#`<init>`(+1).
 [10:22..10:25): ??? -> scala/Predef.`???`().
 [10:27..10:30): ??? -> scala/Predef.`???`().
 [10:32..10:35): ??? -> scala/Predef.`???`().
+[11:8..11:12): <- flags/p/package.C#`<init>`(+2).
 [11:13..11:14): t <- flags/p/package.C#`<init>`(+2).(t)
 [11:16..11:17): T -> flags/p/package.C#[T]
 [11:26..11:27): t -> flags/p/package.C#`<init>`(+2).(t)

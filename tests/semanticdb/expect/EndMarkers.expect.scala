@@ -1,9 +1,9 @@
 package endmarkers:
 
   class MultiCtor/*<-endmarkers::MultiCtor#*/(val i/*<-endmarkers::MultiCtor#i.*/: Int/*->scala::Int#*/):
-    def this() =
+    def this/*<-endmarkers::MultiCtor#`<init>`(+1).*/() =
       this(23)
-    end this
+    end this/*->endmarkers::MultiCtor#`<init>`(+1).*/
   end MultiCtor/*->endmarkers::MultiCtor#*/
 
   def topLevelMethod/*<-endmarkers::EndMarkers$package.topLevelMethod().*/: String/*->scala::Predef.String#*/ =
