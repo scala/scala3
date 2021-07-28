@@ -141,14 +141,52 @@ object SymOps:
         else termParamss(1).params(0)
       }
 
-    def nonExtensionParamLists: List[reflect.TermParamClause] =
+    def extendedTypeParams: List[reflect.TypeDef] =
+      import reflect.*
+      val method = sym.tree.asInstanceOf[DefDef]
+      method.leadingTypeParams
+
+    def extendedTermParamLists: List[reflect.TermParamClause] =
+      import reflect.*
+      if sym.nonExtensionLeadingTypeParams.nonEmpty then
+        sym.nonExtensionParamLists.takeWhile {
+          case _: TypeParamClause => false
+          case _ => true
+        }.collect {
+          case tpc: TermParamClause => tpc
+        }
+      else
+        List.empty
+
+    def nonExtensionTermParamLists: List[reflect.TermParamClause] =
+      import reflect.*
+      if sym.nonExtensionLeadingTypeParams.nonEmpty then
+        sym.nonExtensionParamLists.dropWhile {
+          case _: TypeParamClause => false
+          case _ => true
+        }.drop(1).collect {
+          case tpc: TermParamClause => tpc
+        }
+      else
+        sym.nonExtensionParamLists.collect {
+          case tpc: TermParamClause => tpc
+        }
+
+    def nonExtensionParamLists: List[reflect.ParamClause] =
       import reflect.*
       val method = sym.tree.asInstanceOf[DefDef]
       if sym.isExtensionMethod then
-        val params = method.termParamss
-        if sym.isLeftAssoc || params.size == 1 then params.tail
-        else params.head :: params.tail.drop(1)
-      else method.termParamss
+        val params = method.paramss
+        val toDrop = if method.leadingTypeParams.nonEmpty then 2 else 1
+        if sym.isLeftAssoc || params.size == 1 then params.drop(toDrop)
+        else params.head :: params.tail.drop(toDrop)
+      else method.paramss
+
+    def nonExtensionLeadingTypeParams: List[reflect.TypeDef] =
+      import reflect.*
+      sym.nonExtensionParamLists.collectFirst {
+        case TypeParamClause(params) => params
+      }.toList.flatten
 
   end extension
 
