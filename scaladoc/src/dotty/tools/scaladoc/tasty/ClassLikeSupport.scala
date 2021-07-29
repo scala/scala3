@@ -83,13 +83,18 @@ trait ClassLikeSupport:
       case (symbol, tpe) =>
         LinkToType(tpe.asSignature, symbol.dri, bareClasslikeKind(symbol))
     }
-    val selfSiangture: DSignature = typeForClass(classDef).asSignature
+    val selfType = classDef.self.map { (valdef: ValDef) =>
+      val symbol = valdef.symbol
+      val tpe = valdef.tpt.tpe
+      LinkToType(tpe.asSignature, symbol.dri, bareClasslikeKind(symbol))
+    }
+    val selfSignature: DSignature = typeForClass(classDef).asSignature
 
     val graph = HierarchyGraph.withEdges(
-      getSupertypesGraph(classDef, LinkToType(selfSiangture, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)))
+      getSupertypesGraph(classDef, LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)))
     )
 
-    val baseMember = mkMember(classDef.symbol, kindForClasslike(classDef), selfSiangture)(
+    val baseMember = mkMember(classDef.symbol, kindForClasslike(classDef), selfSignature)(
       modifiers = modifiers,
       graph = graph,
       deprecated = classDef.symbol.isDeprecated()
@@ -227,6 +232,7 @@ trait ClassLikeSupport:
         members = classDef.extractPatchedMembers.sortBy(m => (m.name, m.kind.name)),
         directParents = classDef.getParentsAsLinkToTypes,
         parents = supertypes,
+        selfType = selfType,
         companion = classDef.getCompanion
     )
 

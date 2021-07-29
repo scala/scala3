@@ -351,12 +351,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
       val supertypes = signatureList(m.parents)
       val subtypes = signatureList(m.knownChildren)
+      val selfType = signatureList(m.selfType.toSeq)
 
       renderTabs(
         singleSelection = true,
         Tab("Graph", "graph", graphHtml, "showGraph"),
         Tab("Supertypes", "supertypes", supertypes),
         Tab("Known subtypes", "subtypes", subtypes),
+        Tab("Self type", "selftype", selfType)
       )
 
   private def buildDocumentableFilter = div(cls := "documentableFilter")(

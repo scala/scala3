@@ -155,6 +155,7 @@ case class Member(
   members : Seq[Member] = Nil,
   directParents: Seq[LinkToType] = Nil,
   parents: Seq[LinkToType] = Nil,
+  selfType: Option[LinkToType] = None,
   knownChildren: Seq[LinkToType] = Nil,
   companion: Option[DRI] = None,
   deprecated: Option[Annotation] = None,
