@@ -79,7 +79,7 @@ class CommentExpander {
       case None =>
         // SI-8210 - The warning would be false negative when this symbol is a setter
         if (ownComment.indexOf("@inheritdoc") != -1 && ! sym.isSetter)
-          println(s"${sym.span}: the comment for ${sym} contains @inheritdoc, but no parent comment is available to inherit from.")
+          report.warning(s"The comment for ${sym} contains @inheritdoc, but no parent comment is available to inherit from.", sym.srcPos)
         ownComment.replace("@inheritdoc", "<invalid inheritdoc annotation>")
       case Some(sc) =>
         if (ownComment == "") sc
@@ -159,7 +159,7 @@ class CommentExpander {
     * @param sym    The child symbol
     * @return       The child comment with the inheritdoc sections expanded
     */
-  def expandInheritdoc(parent: String, child: String, sym: Symbol): String =
+  def expandInheritdoc(parent: String, child: String, sym: Symbol)(using Context): String =
     if (child.indexOf("@inheritdoc") == -1)
       child
     else {
@@ -193,8 +193,8 @@ class CommentExpander {
               val sectionTextBounds = extractSectionText(parent, section)
               cleanupSectionText(parent.substring(sectionTextBounds._1, sectionTextBounds._2))
             case None =>
-              println(s"""${sym.span}: the """" + getSectionHeader + "\" annotation of the " + sym +
-                  " comment contains @inheritdoc, but the corresponding section in the parent is not defined.")
+              report.warning(s"""The """" + getSectionHeader + "\" annotation of the " + sym +
+                  " comment contains @inheritdoc, but the corresponding section in the parent is not defined.", sym.srcPos)
               "<invalid inheritdoc annotation>"
           }
 
