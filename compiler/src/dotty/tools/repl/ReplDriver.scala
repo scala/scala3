@@ -18,7 +18,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
-import dotty.tools.dotc.reporting.MessageRendering
+import dotty.tools.dotc.reporting.{MessageRendering, StoreReporter}
 import dotty.tools.dotc.reporting.{Message, Diagnostic}
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
@@ -174,8 +174,8 @@ class ReplDriver(settings: Array[String],
     }
   }
 
-  private def newRun(state: State) = {
-    val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state)
+  private def newRun(state: State, reporter: StoreReporter = newStoreReporter) = {
+    val run = compiler.newRun(rootCtx.fresh.setReporter(reporter), state)
     state.copy(context = run.runContext)
   }
 
@@ -243,7 +243,7 @@ class ReplDriver(settings: Array[String],
       unfusedPhases(using ctx).collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
     implicit val state = {
-      val state0 = newRun(istate)
+      val state0 = newRun(istate, parsed.reporter)
       state0.copy(context = state0.context.withSource(parsed.source))
     }
     compiler

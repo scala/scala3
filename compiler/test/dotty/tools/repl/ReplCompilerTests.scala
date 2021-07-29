@@ -95,7 +95,7 @@ class ReplCompilerTests extends ReplTest {
       """|sealed trait T1
          |case class X() extends T1
          |case class Y() extends T1
-         | case object O extends T1
+         |case object O extends T1
          """.stripMargin
     }
 
