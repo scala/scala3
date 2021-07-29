@@ -35,11 +35,13 @@ object Preparser {
       inCodeBlock: Boolean
     ): PreparsedComment = remaining match {
       case CodeBlockStartRegex(before, marker, after) :: ls if !inCodeBlock =>
-        if (!before.trim.isEmpty && !after.trim.isEmpty)
+        if (before.trim.nonEmpty && after.trim.nonEmpty && marker == "```")
+          go(docBody, tags, lastTagKey, before :: (marker + after) :: ls, inCodeBlock = false)
+        else if (before.trim.nonEmpty && after.trim.nonEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = false)
-        else if (!before.trim.isEmpty)
+        else if (before.trim.nonEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: ls, inCodeBlock = false)
-        else if (!after.trim.isEmpty)
+        else if (after.trim.nonEmpty && marker != "```")
           go(docBody, tags, lastTagKey, marker :: after :: ls, inCodeBlock = true)
         else lastTagKey match {
           case Some(key) =>
@@ -50,15 +52,15 @@ object Preparser {
               }
             go(docBody, tags + (key -> value), lastTagKey, ls, inCodeBlock = true)
           case None =>
-            go(docBody append endOfLine append marker, tags, lastTagKey, ls, inCodeBlock = true)
+            go(docBody append endOfLine append (marker + after), tags, lastTagKey, ls, inCodeBlock = true)
         }
 
       case CodeBlockEndRegex(before, marker, after) :: ls =>
-        if (!before.trim.isEmpty && !after.trim.isEmpty)
+        if (before.trim.nonEmpty && after.trim.nonEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = true)
-        if (!before.trim.isEmpty)
+        if (before.trim.nonEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: ls, inCodeBlock = true)
-        else if (!after.trim.isEmpty)
+        else if (after.trim.nonEmpty)
           go(docBody, tags, lastTagKey, marker :: after :: ls, inCodeBlock = false)
         else lastTagKey match {
           case Some(key) =>
