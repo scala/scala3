@@ -349,9 +349,18 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           div(link.kind.name," ", link.signature.map(renderElement))
         )))
 
+      def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
+        if list.isEmpty then Nil
+        else Seq(div(cls := "symbol monospace") { list.map {
+          case link if link.kind.isInstanceOf[Kind.SelfType] =>
+            div(link.kind.asInstanceOf[Kind.SelfType].selfName, ": ", link.signature.map(renderElement))
+          case link =>
+            div("self: ", link.signature.map(renderElement))
+        }})
+
       val supertypes = signatureList(m.parents)
       val subtypes = signatureList(m.knownChildren)
-      val selfType = signatureList(m.selfType.toSeq)
+      val selfType = selfTypeList(m.selfType.toList)
 
       renderTabs(
         singleSelection = true,
