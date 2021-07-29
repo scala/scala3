@@ -75,11 +75,7 @@ object SyntheticsSupport:
     given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     // `lookupPrefix` is private in `QuotesImpl#SymbolMethods`
-    val lookupPrefix =
-      if sym.isClass then
-        sym.thisType
-      else
-        sym.namedType
+    val lookupPrefix = sym.namedType
     lookupPrefix.allMembers.iterator.map(_.symbol)
       .collect {
          case sym if
