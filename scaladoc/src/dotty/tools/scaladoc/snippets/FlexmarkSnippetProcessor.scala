@@ -48,7 +48,7 @@ object FlexmarkSnippetProcessor:
           case result => result
         }
 
-        node.insertBefore(new ExtendedFencedCodeBlock(node, snippetCompilationResult))
+        node.insertBefore(ExtendedFencedCodeBlock(node, snippetCompilationResult))
         node.unlink()
       }
     }
