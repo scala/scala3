@@ -38,7 +38,7 @@ object ScalaSignatureProvider:
         builder.text("package ").name(documentable.name, documentable.dri)
       case Kind.RootPackage =>
         builder
-      case Kind.Unknown =>
+      case Kind.Unknown | _: Kind.SelfType =>
         ???
 
   private def enumEntrySignature(member: Member, cls: Kind.Class, bdr: SignatureBuilder): SignatureBuilder =
