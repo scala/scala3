@@ -864,9 +864,12 @@ class TreeUnpickler(reader: TastyReader,
               override def completerTypeParams(sym: Symbol)(using Context) =
                 rhs.tpe.typeParams
             }
+            val tparamSyms = rhs match
+              case LambdaTypeTree(tparams, body) => tparams.map(_.symbol.asType)
+              case _ => Nil
             sym.info = sym.opaqueToBounds(
               checkNonCyclic(sym, rhs.tpe.toBounds, reportErrors = false),
-              rhs, rhs.tpe.typeParams)
+              rhs, tparamSyms)
             if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
             sym.resetFlag(Provisional)
             TypeDef(rhs)
