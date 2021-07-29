@@ -75,9 +75,9 @@ object Regexes {
 
   /** The start of a Scaladoc code block */
   val CodeBlockStartRegex =
-    new Regex("""(.*?)((?:\{\{\{)|(?:\u000E<pre(?: [^>]*)?>\u000E))(.*)""")
+    new Regex("""(.*?)((?:\{\{\{)|(?:```)|(?:\u000E<pre(?: [^>]*)?>\u000E))(.*)""")
 
   /** The end of a Scaladoc code block */
   val CodeBlockEndRegex =
-    new Regex("""(.*?)((?:\}\}\})|(?:\u000E</pre>\u000E))(.*)""")
+    new Regex("""(.*?)((?:\}\}\})|(?:```)|(?:\u000E</pre>\u000E))(.*)""")
 }
