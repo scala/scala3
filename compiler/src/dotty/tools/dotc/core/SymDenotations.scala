@@ -407,7 +407,7 @@ object SymDenotations {
      *  @param tparams The type parameters with which the right-hand side bounds should be abstracted
      *
      */
-    def opaqueToBounds(info: Type, rhs: tpd.Tree, tparams: List[TypeParamInfo])(using Context): Type =
+    def opaqueToBounds(info: Type, rhs: tpd.Tree, tparams: List[TypeSymbol])(using Context): Type =
 
       def setAlias(tp: Type) =
         def recur(self: Type): Unit = self match
