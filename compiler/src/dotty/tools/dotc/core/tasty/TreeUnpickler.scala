@@ -1399,7 +1399,7 @@ class TreeUnpickler(reader: TastyReader,
       if (path.nonEmpty) {
         val sourceFile = ctx.getSource(path)
         posUnpicklerOpt match
-          case Some(posUnpickler) =>
+          case Some(posUnpickler) if !sourceFile.initizlized =>
             sourceFile.setLineIndicesFromLineSizes(posUnpickler.lineSizes)
           case _ =>
         pickling.println(i"source change at $addr: $path")
