@@ -2614,10 +2614,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         provablyDisjoint(tp1, gadtBounds(tp2.symbol).hi) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
         tp1.termSymbol != tp2.termSymbol
-      case (tp1: TermRef, _) if isEnumValue(tp1) =>
-        false
-      case (_, tp2: TermRef) if isEnumValue(tp2) =>
-        false
+      case (tp1: TermRef, tp2: TypeRef) if isEnumValue(tp1) =>
+        fullyInstantiated(tp2) && !tp1.classSymbols.exists(_.derivesFrom(tp2.symbol))
+      case (tp1: TypeRef, tp2: TermRef) if isEnumValue(tp2) =>
+        fullyInstantiated(tp1) && !tp2.classSymbols.exists(_.derivesFrom(tp1.symbol))
       case (tp1: Type, tp2: Type) if defn.isTupleType(tp1) =>
         provablyDisjoint(tp1.toNestedPairs, tp2)
       case (tp1: Type, tp2: Type) if defn.isTupleType(tp2) =>
