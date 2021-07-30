@@ -7,7 +7,6 @@ import Types._, Contexts._, Flags._
 import Symbols._, Annotations._, Trees._, Symbols._, Constants.Constant
 import Decorators._
 import dotty.tools.dotc.transform.SymUtils._
-import core.tasty.TreePickler.Hole
 
 /** A map that applies three functions and a substitution together to a tree and
  *  makes sure they are coordinated so that the result is well-typed. The functions are

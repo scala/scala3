@@ -11,7 +11,6 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode

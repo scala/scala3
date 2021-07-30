@@ -12,7 +12,6 @@ import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.util.{SourceFile, SrcPos}

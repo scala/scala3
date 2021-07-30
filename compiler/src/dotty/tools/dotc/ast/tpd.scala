@@ -44,7 +44,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Apply(fn: Tree, args: List[Tree])(using Context): Apply = fn match
     case Block(Nil, expr) =>
       Apply(expr, args)
-    case _: RefTree | _: GenericApply | _: Inlined | _: tasty.TreePickler.Hole =>
+    case _: RefTree | _: GenericApply | _: Inlined | _: Hole =>
       ta.assignType(untpd.Apply(fn, args), fn, args)
 
   def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = fn match

@@ -13,7 +13,6 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Property

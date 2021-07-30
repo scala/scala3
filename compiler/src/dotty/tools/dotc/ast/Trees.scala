@@ -16,7 +16,6 @@ import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
 import Decorators._
-import dotty.tools.dotc.core.tasty.TreePickler.Hole
 
 object Trees {
 
@@ -980,6 +979,15 @@ object Trees {
   def genericEmptyValDef[T >: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
+  /** Tree that replaces a splice in pickled quotes.
+   *  It is only used when picking quotes (Will never be in a TASTy file).
+   */
+  case class Hole[-T >: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
+    type ThisTree[-T >: Untyped] <: Hole[T]
+    override def isTerm: Boolean = isTermHole
+    override def isType: Boolean = !isTermHole
+  }
+
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
     def recur(buf: ListBuffer[Tree[T]], remaining: List[Tree[T]]): ListBuffer[Tree[T]] =
       remaining match {
@@ -1103,6 +1111,8 @@ object Trees {
     type PackageDef = Trees.PackageDef[T]
     type Annotated = Trees.Annotated[T]
     type Thicket = Trees.Thicket[T]
+
+    type Hole = Trees.Hole[T]
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
