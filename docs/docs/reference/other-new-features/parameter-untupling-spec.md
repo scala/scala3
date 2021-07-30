@@ -5,24 +5,23 @@ movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/paramet
 ---
 
 ## Motivation
-
 Say you have a list of pairs
 
-```scala
+```scala sc-name:Base.scala
 val xs: List[(Int, Int)]
 ```
 
 and you want to map `xs` to a list of `Int`s so that each pair of numbers is mapped to their sum.
 Previously, the best way to do this was with a pattern-matching decomposition:
 
-```scala
+```scala sc-compile-with:Base.scala
 xs.map {
   case (x, y) => x + y
 }
 ```
 While correct, this is inconvenient. Instead, we propose to write it the following way:
 
-```scala
+```scala sc-compile-with:Base.scala
 xs.map {
   (x, y) => x + y
 }
@@ -30,7 +29,7 @@ xs.map {
 
 or, equivalently:
 
-```scala
+```scala sc-compile-with:Base.scala
 xs.map(_ + _)
 ```
 
@@ -60,18 +59,18 @@ Parameter untupling composes with eta-expansion. That is, an n-ary function gene
 
 If the function
 
-```scala
+```scala sc:nocompile
 (p1, ..., pn) => e
 ```
 
 is feasible for parameter untupling with the expected type `TupleN[T1, ..., Tn] => Te`, then continue to type check the following adapted function
 
 ```scala
-(x: TupleN[T1, ..., Tn]) =>
+def func[T1, T2 /*, Tn*/] = (x: Tuple2[T1, T2 /*, Tn*/]) =>
   def p1: T1 = x._1
-  ...
-  def pn: Tn = x._n
-  e
+  def p2: T2 = x._2
+  // def pn: Tn = x._n
+  ???
 ```
 
 with the same expected type.

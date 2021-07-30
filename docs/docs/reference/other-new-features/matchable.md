@@ -20,7 +20,7 @@ The `IArray` type offers extension methods for `length` and `apply`, but not for
 However, there is a potential hole due to pattern matching. Consider:
 
 ```scala
-val imm: IArray[Int] = ...
+val imm: IArray[Int]
 imm match
   case a: Array[Int] => a(0) = 1
 ```
@@ -31,6 +31,7 @@ The test will succeed at runtime since `IArray`s _are_ represented as
 __Aside:__ One could also achieve the same by casting:
 
 ```scala
+val imm: IArray[Int]
 imm.asInstanceOf[Array[Int]](0) = 1
 ```
 
@@ -40,6 +41,7 @@ Note also that the problem is not tied to opaque types as match selectors. The f
 type `T` as match selector leads to the same problem:
 
 ```scala
+val imm: IArray[Int]
 def f[T](x: T) = x match
   case a: Array[Int] => a(0) = 0
 f(imm)
@@ -75,7 +77,7 @@ extended by both `AnyVal` and `AnyRef`. Since `Matchable` is a supertype of ever
 
 Here is the hierarchy of top-level classes and traits with their defined methods:
 
-```scala
+```scala sc:nocompile
 abstract class Any:
   def getClass
   def isInstanceOf
@@ -118,7 +120,7 @@ is guaranteed to succeed at run-time since `Any` and `Matchable` both erase to
 
 For instance, consider the definitions
 
-```scala
+```scala sc-name:Meter.scala
 opaque type Meter = Double
 def Meter(x: Double) = x
 
@@ -128,14 +130,14 @@ def Second(x: Double) = x
 
 Here, universal `equals` will return true for
 
-```scala
-  Meter(10).equals(Second(10))
+```scala sc-compile-with:Meter.scala
+Meter(10).equals(Second(10))
 ```
 
 even though this is clearly false mathematically. With [multiversal equality](../contextual/multiversal-equality.md) one can mitigate that problem somewhat by turning
 
-```scala
-  Meter(10) == Second(10)
+```scala sc-compile-with:Meter.scala
+Meter(10) == Second(10)
 ```
 
 into a type error.

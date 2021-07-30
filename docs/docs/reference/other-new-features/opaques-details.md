@@ -21,6 +21,11 @@ at the top-level. They cannot be defined in local blocks.
 The general form of a (monomorphic) opaque type alias is
 
 ```scala
+//{
+type L
+type U
+type R >: L <: U
+//}
 opaque type T >: L <: U = R
 ```
 
@@ -29,11 +34,18 @@ where the lower bound `L` and the upper bound `U` may be missing, in which case 
 Inside the scope of the alias definition, the alias is transparent: `T` is treated
 as a normal alias of `R`. Outside its scope, the alias is treated as the abstract type
 ```scala
+//{
+type L
+type U
+//}
 type T >: L <: U
 ```
 A special case arises if the opaque type alias is defined in an object. Example:
 
 ```scala
+//{
+type R
+//}
 object o:
   opaque type T = R
 ```
@@ -56,11 +68,18 @@ def id(x: o.T): o.T = x
 Opaque type aliases can have a single type parameter list. The following aliases
 are well-formed
 ```scala
+//{
+type T
+//}
 opaque type F[T] = (T, T)
 opaque type G = [T] =>> List[T]
 ```
 but the following are not:
-```scala
+```scala sc:fail
+//{
+type T
+type U
+//}
 opaque type BadF[T] = [U] =>> (T, U)
 opaque type BadG = [T] =>> [U] => (T, U)
 ```
@@ -74,7 +93,7 @@ defined on the underlying type. For instance,
 ```scala
   opaque type T = Int
 
-  ...
+  // ...
   val x: T
   val y: T
   x == y    // uses Int equality for the comparison.
@@ -96,7 +115,7 @@ object obj:
 def z: String = x   // error: found: A, required: String
 ```
 This behavior becomes clear if one recalls that top-level definitions are placed in their own synthetic object. For instance, the code in `test1.scala` would expand to
-```scala
+```scala sc:fail
 object test1$package:
   opaque type A = String
   val x: A = "abc"

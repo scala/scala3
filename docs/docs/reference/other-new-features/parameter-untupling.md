@@ -6,14 +6,14 @@ movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/paramet
 
 Say you have a list of pairs
 
-```scala
+```scala sc-name:Base.scala
 val xs: List[(Int, Int)]
 ```
 
 and you want to map `xs` to a list of `Int`s so that each pair of numbers is mapped to
 their sum. Previously, the best way to do this was with a pattern-matching decomposition:
 
-```scala
+```scala sc-compile-with:Base.scala
 xs map {
   case (x, y) => x + y
 }
@@ -22,7 +22,7 @@ xs map {
 While correct, this is also inconvenient and confusing, since the `case`
 suggests that the pattern match could fail. As a shorter and clearer alternative Scala 3 now allows
 
-```scala
+```scala sc-compile-with:Base.scala
 xs.map {
   (x, y) => x + y
 }
@@ -30,7 +30,7 @@ xs.map {
 
 or, equivalently:
 
-```scala
+```scala sc-compile-with:Base.scala
 xs.map(_ + _)
 ```
 

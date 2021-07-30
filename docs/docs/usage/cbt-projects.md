@@ -9,7 +9,7 @@ incremental compilation is not supported), we recommend [using Dotty with sbt](s
 cbt comes with built-in Dotty support. Follow the
 [cbt tutorial](https://github.com/cvogt/cbt/), then simply extend `Dotty` in the Build class.
 
-```scala
+```scala sc:nocompile
 // build/build.scala
 import cbt.*
 class Build(val context: Context) extends Dotty {

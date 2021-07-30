@@ -16,7 +16,7 @@ NamedTypeArg      ::=  id ‘=’ Type
 
 Note in particular that named arguments cannot be passed to type constructors:
 
-``` scala
+``` scala sc:fail
 class C[T]
 
 val x: C[T = Int] = // error

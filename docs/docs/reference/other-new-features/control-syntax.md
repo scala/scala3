@@ -8,6 +8,16 @@ Scala 3 has a new "quiet" syntax for control expressions that does not rely on
 enclosing the condition in parentheses, and also allows to drop parentheses or braces
 around the generators of a `for`-expression. Examples:
 ```scala
+//{
+import java.io.IOException
+type T
+var x: Int
+var xs: List[Int]
+var ys: List[Int]
+var body: T
+var handle: T
+def f(x: Int): Int = ???
+//}
 if x < 0 then
   "negative"
 else if x == 0 then

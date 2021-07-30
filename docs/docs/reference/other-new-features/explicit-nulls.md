@@ -22,6 +22,9 @@ val x: String | Null = null // ok
 A nullable type could have null value during runtime; hence, it is not safe to select a member without checking its nullity.
 
 ```scala
+//{
+val x: String | Null
+//}
 x.trim // error: trim is not member of String | Null
 ```
 
@@ -123,7 +126,7 @@ We illustrate the rules with following examples:
 - The first two rules are easy: we nullify reference types but not value types.
 
   ```java
-  class C {
+  abstract class C {
     String s;
     int x;
   }
@@ -132,7 +135,7 @@ We illustrate the rules with following examples:
   ==>
 
   ```scala
-  class C:
+  abstract class C:
     val s: String | Null
     val x: Int
   ```
@@ -145,30 +148,33 @@ We illustrate the rules with following examples:
 
   ==>
 
-  ```scala
-  class C[T] { def foo(): T | Null }
+  ```scala sc-name:C.scala
+  class C[T] { def foo(): T | Null = null }
   ```
 
   Notice this is rule is sometimes too conservative, as witnessed by
 
-  ```scala
+  ```scala sc:fail sc-compile-with:C.scala
   class InScala:
-    val c: C[Bool] = ???  // C as above
-    val b: Bool = c.foo() // no longer typechecks, since foo now returns Bool | Null
+    val c: C[Boolean] = ???  // C as above
+    val b: Boolean = c.foo() // no longer typechecks, since foo now returns Bool | Null
   ```
 
 - We can reduce the number of redundant nullable types we need to add. Consider
 
   ```java
-  class Box<T> { T get(); }
-  class BoxFactory<T> { Box<T> makeBox(); }
+  abstract class Box<T> { T get(); }
+  abstract class BoxFactory<T> { Box<T> makeBox(); }
   ```
 
   ==>
 
-  ```scala
-  class Box[T] { def get(): T | Null }
-  class BoxFactory[T] { def makeBox(): Box[T] | Null }
+  ```scala sc-name:Box.scala
+  abstract class Box[T] { def get(): T | Null }
+  ```
+
+  ```scala sc-compile-with:Box.scala
+  abstract class BoxFactory[T] { def makeBox(): Box[T] | Null }
   ```
 
   Suppose we have a `BoxFactory[String]`. Notice that calling `makeBox()` on it returns a
@@ -184,7 +190,7 @@ We illustrate the rules with following examples:
 - We will append `Null` to the type arguments if the generic class is defined in Scala.
 
   ```java
-  class BoxFactory<T> {
+  abstract class BoxFactory<T> {
     Box<T> makeBox(); // Box is Scala-defined
     List<Box<List<T>>> makeCrazyBoxes(); // List is Java-defined
   }
@@ -192,8 +198,8 @@ We illustrate the rules with following examples:
 
   ==>
 
-  ```scala
-  class BoxFactory[T]:
+  ```scala sc-compile-with:Box.scala
+  abstract class BoxFactory[T]:
     def makeBox(): Box[T | Null] | Null
     def makeCrazyBoxes(): java.util.List[Box[java.util.List[T] | Null]] | Null
   ```
@@ -221,10 +227,13 @@ We illustrate the rules with following examples:
   ==>
 
   ```scala
+  //{
+  def getNewName(): String = ???
+  //}
   class Constants:
-    val NAME: String("name") = "name"
-    val AGE: Int(0) = 0
-    val CHAR: Char('a') = 'a'
+    val NAME: String = "name"
+    val AGE: Int = 0
+    val CHAR: Char = 'a'
 
     val NAME_GENERATED: String | Null = getNewName()
   ```
@@ -242,8 +251,8 @@ We illustrate the rules with following examples:
 
   ==>
 
-  ```scala
-  class C:
+  ```scala sc-compile-with:Box.scala
+  abstract class C:
     val name: String
     def getNames(prefix: String | Null): java.util.List[String] // we still need to nullify the paramter types
     def getBoxedName(): Box[String | Null] // we don't append `Null` to the outmost level, but we still need to nullify inside
@@ -252,7 +261,7 @@ We illustrate the rules with following examples:
   The annotation must be from the list below to be recognized as `NotNull` by the compiler.
   Check `Definitions.scala` for an updated list.
 
-  ```scala
+  ```scala sc:nocompile
   // A list of annotations that are commonly used to indicate
   // that a field/method argument or return type is not null.
   // These annotations are used by the nullification logic in
@@ -283,11 +292,17 @@ Suppose we have Java method `String f(String x)`, we can override this method in
 
 ```scala
 def f(x: String | Null): String | Null
+```
 
+```scala
 def f(x: String): String | Null
+```
 
+```scala
 def f(x: String | Null): String
+```
 
+```scala
 def f(x: String): String
 ```
 
@@ -304,7 +319,7 @@ Example:
 
 ```scala
 val s: String | Null = ???
-if s != null then
+if s != null then ???
   // s: String
 
 // s: String | Null
@@ -316,9 +331,12 @@ assert(s != null)
 A similar inference can be made for the `else` case if the test is `p == null`
 
 ```scala
+val s: String | Null = ???
 if s == null then
+  ???
   // s: String | Null
 else
+  ???
   // s: String
 ```
 
@@ -332,13 +350,16 @@ We also support logical operators (`&&`, `||`, and `!`):
 val s: String | Null = ???
 val s2: String | Null = ???
 if s != null && s2 != null then
+  ???
   // s: String
   // s2: String
 
 if s == null || s2 == null then
+  ???
   // s: String | Null
   // s2: String | Null
 else
+  ???
   // s: String
   // s2: String
 ```
@@ -351,11 +372,14 @@ We also support type specialization _within_ the condition, taking into account 
 val s: String | Null = ???
 
 if s != null && s.length > 0 then // s: String in `s.length > 0`
+  ???
   // s: String
 
 if s == null || s.length > 0 then // s: String in `s.length > 0`
+  ???
   // s: String | Null
 else
+  ???
   // s: String
 ```
 
@@ -442,6 +466,7 @@ We don't support:
   val s: String | Null = ???
   val s2: String | Null = ???
   if s != null && s == s2 then
+    ???
     // s:  String inferred
     // s2: String not inferred
   ```

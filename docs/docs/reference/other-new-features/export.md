@@ -6,7 +6,7 @@ movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/export.
 
 An export clause defines aliases for selected members of an object. Example:
 
-```scala
+```scala sc-name:Model.scala
 class BitMap
 class InkJet
 
@@ -31,7 +31,7 @@ class Copier:
 
 The two `export` clauses define the following _export aliases_ in class `Copier`:
 
-```scala
+```scala sc:nocompile
 final def scan(): BitMap            = scanUnit.scan()
 final def print(bits: BitMap): Unit = printUnit.print(bits)
 final type PrinterType              = printUnit.PrinterType
@@ -39,14 +39,14 @@ final type PrinterType              = printUnit.PrinterType
 
 They can be accessed inside `Copier` as well as from outside:
 
-```scala
+```scala sc-compile-with:Model.scala
 val copier = new Copier
 copier.print(copier.scan())
 ```
 
 An export clause has the same format as an import clause. Its general form is:
 
-```scala
+```scala sc:nocompile
 export path . { sel_1, ..., sel_n }
 ```
 
@@ -86,9 +86,9 @@ referring to private values in the qualifier path
 are marked by the compiler as "stable" and their result types are the singleton types of the aliased definitions. This means that they can be used as parts of stable identifier paths, even though they are technically methods. For instance, the following is OK:
 ```scala
 class C { type T }
-object O { val c: C = ... }
+object O { val c: C = ??? }
 export O.c
-def f: c.T = ...
+def f: c.T = ???
 ```
 
 
@@ -98,7 +98,7 @@ def f: c.T = ...
  1. If an export clause contains a wildcard or given selector, it is forbidden for its qualifier path to refer to a package. This is because it is not yet known how to safely track wildcard dependencies to a package for the purposes of incremental compilation.
 
  1. Simple renaming exports like
-    ```scala
+    ```scala sc:nocompile
     export status as stat
     ```
     are not supported yet. They would run afoul of the restriction that the
@@ -142,16 +142,19 @@ ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
 Export clauses raise questions about the order of elaboration during type checking.
 Consider the following example:
 
-```scala
-class B { val c: Int }
+```scala sc-name:Base.scala
+class B { val c: Int = ??? }
 object a { val b = new B }
+```
+
+```scala sc-compile-with:Base.scala
 export a.*
 export b.*
 ```
 
 Is the `export b.*` clause legal? If yes, what does it export? Is it equivalent to `export a.b.*`? What about if we swap the last two clauses?
 
-```
+```scala sc:fail sc-compile-with:Base.scala
 export b.*
 export a.*
 ```

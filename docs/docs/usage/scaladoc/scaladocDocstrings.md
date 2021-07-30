@@ -25,7 +25,7 @@ Scaladoc comments go before the items they pertain to in a special comment block
   * Even on empty paragraph-break lines.
   *
   * Note that the * on each line is aligned
-  * with the second * in /** so that the
+  * with the second * in /\** so that the
   * left margin is on the same column on the
   * first line and on subsequent ones.
   *
@@ -83,7 +83,7 @@ These tags are well-suited to larger types or packages, with many members. They 
 
 These tags are not enabled by default! You must pass the -groups flag to Scaladoc in order to turn them on. Typically the sbt for this will look something like:
 
-```scala
+```scala sc:nocompile
 Compile / doc / scalacOptions ++= Seq(
   "-groups"
 )

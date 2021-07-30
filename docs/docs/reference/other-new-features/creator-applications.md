@@ -9,24 +9,26 @@ function application, without needing to write `new`.
 
 Scala 3 generalizes this scheme to all concrete classes. Example:
 
-```scala
-class StringBuilder(s: String):
+```scala sc-name:Base.scala
+class MyStringBuilder(s: String):
   def this() = this("")
+```
 
-StringBuilder("abc")  // old: new StringBuilder("abc")
-StringBuilder()       // old: new StringBuilder()
+```scala sc-compile-with:Base.scala
+MyStringBuilder("abc")  // old: new MyStringBuilder("abc")
+MyStringBuilder()       // old: new MyStringBuilder()
 ```
 
 This works since a companion object with two `apply` methods
 is generated together with the class. The object looks like this:
 
-```scala
-object StringBuilder:
-  inline def apply(s: String): StringBuilder = new StringBuilder(s)
-  inline def apply(): StringBuilder = new StringBuilder()
+```scala sc-compile-with:Base.scala
+object MyStringBuilder:
+  inline def apply(s: String): MyStringBuilder = new MyStringBuilder(s)
+  inline def apply(): MyStringBuilder = new MyStringBuilder()
 ```
 
-The synthetic object `StringBuilder` and its `apply` methods are called _constructor proxies_.
+The synthetic object `MyStringBuilder` and its `apply` methods are called _constructor proxies_.
 Constructor proxies are generated even for Java classes and classes coming from Scala 2.
 The precise rules are as follows:
 

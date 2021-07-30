@@ -17,12 +17,15 @@ value that works for parameters of any kind. This is now possible through a form
 Kind polymorphism relies on the special type `scala.AnyKind` that can be used as an upper bound of a type.
 
 ```scala
-def f[T <: AnyKind] = ...
+def f[T <: AnyKind] = ???
 ```
 
 The actual type arguments of `f` can then be types of arbitrary kinds. So the following would all be legal:
 
 ```scala
+//{
+def f[T <: AnyKind] = ???
+//}
 f[Int]
 f[List]
 f[Map]

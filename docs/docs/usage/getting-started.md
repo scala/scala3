@@ -79,7 +79,7 @@ brew upgrade dotty
 ### Scala 3 for Scripting
 If you have followed the steps in "Standalone Installation" section and have the `scala` executable on your `PATH`, you can run `*.scala` files as scripts. Given a source named Test.scala:
 
-```scala
+```scala sc:nocompile
 @main def Test(name: String): Unit =
   println(s"Hello ${name}!")
 ```

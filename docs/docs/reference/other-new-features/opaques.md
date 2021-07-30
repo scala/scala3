@@ -6,7 +6,7 @@ movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/opaques
 
 Opaque types aliases provide type abstraction without any overhead. Example:
 
-```scala
+```scala sc-name:MyMath.scala
 object MyMath:
 
   opaque type Logarithm = Double
@@ -41,7 +41,7 @@ The public API of `Logarithm` consists of the `apply` and `safe` methods defined
 They convert from `Double`s to `Logarithm` values. Moreover, an operation `toDouble` that converts the other way, and operations `+` and `*` are defined as extension methods on `Logarithm` values.
 The following operations would be valid because they use functionality implemented in the `MyMath` object.
 
-```scala
+```scala sc-compile-with:MyMath.scala
 import MyMath.Logarithm
 
 val l = Logarithm(1.0)
@@ -52,7 +52,10 @@ val l4 = l + l2
 
 But the following operations would lead to type errors:
 
-```scala
+```scala sc:fail sc-compile-with:MyMath.scala
+import MyMath.Logarithm
+
+val l = Logarithm(1.0)
 val d: Double = l       // error: found: Logarithm, required: Double
 val l2: Logarithm = 1.0 // error: found: Double, required: Logarithm
 l * 2                   // error: found: Int(2), required: Logarithm
@@ -63,7 +66,7 @@ l / l2                  // error: `/` is not a member of Logarithm
 
 Opaque type aliases can also come with bounds. Example:
 
-```scala
+```scala sc-name:Access.scala
 object Access:
 
   opaque type Permissions = Int
@@ -110,7 +113,7 @@ All three opaque type aliases have the same underlying representation type `Int`
 it known outside the `Access` object that `Permission` is a subtype of the other
 two types.  Hence, the following usage scenario type-checks.
 
-```scala
+```scala sc-compile-with:Access.scala
 object User:
   import Access.*
 
@@ -139,7 +142,7 @@ since `Permissions` and `PermissionChoice` are different, unrelated types outsid
 While typically, opaque types are used together with objects to hide implementation details of a module, they can also be used with classes.
 
 For example, we can redefine the above example of Logarithms as a class.
-```scala
+```scala sc-name:Logarithms.scala
 class Logarithms:
 
   opaque type Logarithm = Double
@@ -153,7 +156,7 @@ class Logarithms:
 ```
 
 Opaque type members of different instances are treated as different:
-```scala
+```scala sc:fail sc-compile-with:Logarithms.scala
 val l1 = new Logarithms
 val l2 = new Logarithms
 val x = l1(1.5)

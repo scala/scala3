@@ -8,11 +8,12 @@ A `@targetName` annotation on a definition defines an alternate name for the imp
 
 ```scala
 import scala.annotation.targetName
+trait Vec[T]
 
 object VecOps:
   extension [T](xs: Vec[T])
     @targetName("append")
-    def ++= [T] (ys: Vec[T]): Vec[T] = ...
+    def ++= (ys: Vec[T]): Vec[T] = ???
 ```
 
 Here, the `++=` operation is implemented (in Byte code or native code) under the name `append`. The implementation name affects the code that is generated, and is the name under which code from other languages can call the method. For instance, `++=` could be invoked from Java like this:
@@ -50,7 +51,7 @@ The `@targetName` annotation has no bearing on Scala usages. Any application of 
 
 This means that `@targetName` annotations can be used to disambiguate two method definitions that would otherwise clash. For instance.
 
-```scala
+```scala sc:fail
 def f(x: => String): Int = x.length
 def f(x: => Int): Int = x + 1  // error: double definition
 ```
@@ -59,6 +60,7 @@ The two definitions above clash since their erased parameter types are both `Fun
 they have the same names and signatures. But we can avoid the clash by adding a `@targetName` annotation to either method or to both of them. Example:
 
 ```scala
+import scala.annotation.targetName
 @targetName("f_string")
 def f(x: => String): Int = x.length
 def f(x: => Int): Int = x + 1  // OK
@@ -69,23 +71,12 @@ This will produce methods `f_string` and `f` in the generated code.
 However, `@targetName` annotations are not allowed to break overriding relationships
 between two definitions that have otherwise the same names and types. So the following would be in error:
 
-```scala
+```scala sc:fail
 import annotation.targetName
 class A:
   def f(): Int = 1
 class B extends A:
   @targetName("g") def f(): Int = 2
-```
-
-The compiler reports here:
-
-```
--- Error: test.scala:6:23 ------------------------------------------------------
-6 |  @targetName("g") def f(): Int = 2
-  |                       ^
-  |error overriding method f in class A of type (): Int;
-  |  method f of type (): Int should not have a @targetName
-  |  annotation since the overridden member hasn't one either
 ```
 
 The relevant overriding rules can be summarized as follows:
@@ -97,7 +88,7 @@ The relevant overriding rules can be summarized as follows:
 As usual, any overriding relationship in the generated code must also
 be present in the original code. So the following example would also be in error:
 
-```scala
+```scala sc:fail
 import annotation.targetName
 class A:
   def f(): Int = 1
@@ -106,15 +97,4 @@ class B extends A:
 ```
 
 Here, the original methods `g` and `f` do not override each other since they have
-different names. But once we switch to target names, there is a clash that is reported by the compiler:
-
-```
--- [E120] Naming Error: test.scala:4:6 -----------------------------------------
-4 |class B extends A:
-  |      ^
-  |      Name clash between defined and inherited member:
-  |      def f(): Int in class A at line 3 and
-  |      def g(): Int in class B at line 5
-  |      have the same name and type after erasure.
-1 error found
-```
+different names. But once we switch to target names, there is a clash that is reported by the compiler.

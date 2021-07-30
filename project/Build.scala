@@ -1371,7 +1371,8 @@ object Build {
               "-comment-syntax", "wiki",
               s"-source-links:docs=github://lampepfl/dotty/master#docs",
               "-doc-root-content", docRootFile.toString,
-              "-Ydocument-synthetic-types"
+              "-Ydocument-synthetic-types",
+              s"-snippet-compiler:docs/docs/usage=compile,docs/docs/release-notes=nocompile,docs/docs/reference/other-new-features=compile"
             ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")))
 
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }

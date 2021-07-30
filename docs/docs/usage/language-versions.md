@@ -24,11 +24,10 @@ There are two ways to specify a language version.
  - With a `-source` command line setting, e.g. `-source 3.0-migration`.
  - With a `scala.language` import at the top of a source file, e.g:
 
-```scala
-package p
+```scala sc:nocompile
 import scala.language.`future-migration`
 
-class C { ... }
+class C { /*...*/ }
 ```
 
 Language imports supersede command-line settings in the source files where they are specified. Only one language import specifying a source version is allowed in a source file, and it must come before any definitions in that file.

@@ -18,6 +18,9 @@ This variant is more contentious and less stable than the rest of the significan
 
 Similar to what is done for classes and objects, a `:` that follows a function reference at the end of a line means braces can be omitted for function arguments. Example:
 ```scala
+import language.experimental.fewerBraces
+def times(i: Int)(fn: => Unit) = (0 to i).foreach(x => fn)
+
 times(10):
   println("ah")
   println("ha")
@@ -26,24 +29,37 @@ times(10):
 The colon can also follow an infix operator:
 
 ```scala
-credentials ++ :
-  val file = Path.userHome / ".credentials"
-  if file.exists
-  then Seq(Credentials(file))
+import language.experimental.fewerBraces
+//{
+val numbers: Seq[Int]
+val n: Int
+//}
+
+numbers ++ :
+  if n > 0
+  then Seq(n)
   else Seq()
 ```
 
 Function calls that take multiple argument lists can also be handled this way:
 
 ```scala
+import language.experimental.fewerBraces
+//{
+import java.io.File
+import io.Source
+val files: Map[String, File]
+val fileName: String
+//}
+
 val firstLine = files.get(fileName).fold:
-    val fileNames = files.values
+    val fileNames = files.keys
     s"""no file named $fileName found among
-      |${values.mkString(\n)}""".stripMargin
+      |${fileNames.mkString("\n")}""".stripMargin
   :
     f =>
-      val lines = f.iterator.map(_.readLine)
-      lines.mkString("\n)
+      val lines = Source.fromFile(f).getLines()
+      lines.mkString("\n")
 ```
 
 
@@ -51,10 +67,15 @@ val firstLine = files.get(fileName).fold:
 
 Braces can also be omitted around multiple line function value arguments:
 ```scala
+import language.experimental.fewerBraces
+//{
+val elems: Seq[Int]
+//}
+
 val xs = elems.map x =>
   val y = x - 1
   y * y
-xs.foldLeft (x, y) =>
+xs.foldLeft(0) (x, y) =>
   x + y
 ```
 Braces can be omitted if the lambda starts with a parameter list and `=>` or `=>?` at the end of one line and it has an indented body on the following lines.
@@ -73,10 +94,14 @@ IndentedArgument ::=  indent (CaseClauses | Block) outdent
 Note that a lambda argument must have the `=>` at the end of a line for braces
 to be optional. For instance, the following would also be incorrect:
 
-```scala
+```scala sc-name:Base.scala
+val xs: Seq[Int]
+```
+
+```scala sc:fail sc-compile-with:Base.scala
   xs.map x => x + 1   // error: braces or parentheses are required
 ```
 The lambda has to be enclosed in braces or parentheses:
-```scala
+```scala sc-compile-with:Base.scala
   xs.map(x => x + 1)  // ok
 ```

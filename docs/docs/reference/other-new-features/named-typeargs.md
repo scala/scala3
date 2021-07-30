@@ -8,6 +8,10 @@ title: "Named Type Arguments"
 Type arguments of methods can now be specified by name as well as by position. Example:
 
 ``` scala
+//{
+import scala.language.experimental.namedTypeArguments
+// Currently, to use this feature you need to use experimental import
+//}
 def construct[Elem, Coll[_]](xs: Elem*): Coll[Elem] = ???
 
 val xs1 = construct[Coll = List, Elem = Int](1, 2, 3)

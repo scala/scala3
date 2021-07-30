@@ -21,7 +21,10 @@ The compiler enforces two rules for well-indented programs, flagging violations 
 
     This rule is helpful for finding missing closing braces. It prevents errors like:
 
-    ```scala
+    ```scala sc:fail
+    //{
+    val x: Int
+    //}
     if (x < 0) {
       println(1)
       println(2)
@@ -32,6 +35,9 @@ The compiler enforces two rules for well-indented programs, flagging violations 
  2. If significant indentation is turned off (i.e. under Scala 2 mode or under `-no-indent`) and we are at the  start of an indented sub-part of an expression, and the indented part ends in a newline, the next statement must start at an indentation width less than the sub-part. This prevents errors where an opening brace was forgotten, as in
 
     ```scala
+    //{
+    val x: Int
+    //}
     if (x < 0)
       println(1)
       println(2)   // error: missing `{`
@@ -103,6 +109,9 @@ There are two rules:
 It is an error if the indentation width of the token following an `<outdent>` does not match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
 
 ```scala
+//{
+val x: Int
+//}
 if x < 0 then
     -x
   else   // error: `else` does not align correctly
@@ -114,14 +123,28 @@ at the top-level, inside braces `{...}`, but not inside parentheses `(...)`, pat
 
 **Note:** The rules for leading infix operators above are there to make sure that
 ```scala
-  one
-  + two.match
-      case 1 => b
-      case 2 => c
-  + three
+//{
+val one: Int
+val two: Int
+val three: Int
+val b: Int
+val c: Int
+//}
+one
++ two.match
+    case 1 => b
+    case 2 => c
++ three
 ```
 is parsed as `one + (two.match ...) + three`. Also, that
 ```scala
+//{
+val x: Boolean
+val a: Int
+val b: Int
+val c: Int
+val d: Int
+//}
 if x then
     a
   + b
@@ -143,7 +166,7 @@ Analogous rules apply for enum bodies and local packages containing nested defin
 
 With these new rules, the following constructs are all valid:
 
-```scala
+```scala sc:nocompile
 trait A:
   def f: Int
 
@@ -202,8 +225,10 @@ Indentation can be mixed freely with braces `{...}`, as well as brackets `[...]`
 
 For instance, consider:
 ```scala
+def f(x: Int, fn: Int => Int) = ???
+val x: Int
 {
-  val x = f(x: Int, y =>
+  val v = f(x, y =>
     x * (
       y + 1
     ) +
@@ -233,6 +258,7 @@ The indentation rules for `match` expressions and `catch` clauses are refined as
 The rules allow to write `match` expressions where cases are not indented themselves, as in the example below:
 
 ```scala
+val x: Int
 x match
 case 1 => print("I")
 case 2 => print("II")
@@ -250,20 +276,24 @@ Indentation-based syntax has many advantages over other conventions. But one pos
 To solve this problem, Scala 3 offers an optional `end` marker. Example:
 
 ```scala
-def largeMethod(...) =
-  ...
-  if ... then ...
+def largeMethod(/*...*/) =
+  /*...*/
+  if ??? then
+  /*...*/
+  ???
   else
-    ... // a large block
+  /*...*/
+  ???
   end if
-  ... // more code
+  /*...*/
+  ???
 end largeMethod
 ```
 
 An `end` marker consists of the identifier `end` and a follow-on specifier token that together constitute all the tokes of a line. Possible specifier tokens are
 identifiers or one of the following keywords
 
-```scala
+```scala sc:nocompile
 if   while    for    match    try    new    this    val   given
 ```
 
@@ -281,51 +311,47 @@ End markers are allowed in statement sequences. The specifier token `s` of an en
 For instance, the following end markers are all legal:
 
 ```scala
-package p1.p2:
+abstract class C():
 
-  abstract class C():
+  def this(x: Int) =
+    this()
+    if x > 0 then
+      val a :: b =
+        x :: Nil
+      end val
+      var y =
+        x
+      end y
+      while y > 0 do
+        println(y)
+        y -= 1
+      end while
+      try
+        x match
+          case 0 => println("0")
+          case _ =>
+        end match
+      finally
+        println("done")
+      end try
+    end if
+  end this
 
-    def this(x: Int) =
-      this()
-      if x > 0 then
-        val a :: b =
-          x :: Nil
-        end val
-        var y =
-          x
-        end y
-        while y > 0 do
-          println(y)
-          y -= 1
-        end while
-        try
-          x match
-            case 0 => println("0")
-            case _ =>
-          end match
-        finally
-          println("done")
-        end try
-      end if
-    end this
+  def f: String
+end C
 
-    def f: String
-  end C
+object C:
+  given C =
+    new C:
+      def f = "!"
+      end f
+    end new
+  end given
+end C
 
-  object C:
-    given C =
-      new C:
-        def f = "!"
-        end f
-      end new
-    end given
-  end C
-
-  extension (x: C)
-    def ff: String = x.f ++ x.f
-  end extension
-
-end p2
+extension (x: C)
+  def ff: String = x.f ++ x.f
+end extension
 ```
 
 #### When to Use End Markers
@@ -423,6 +449,10 @@ import language.experimental.fewerBraces
 This variant is more contentious and less stable than the rest of the significant indentation scheme. In this variant, a colon `:` at the end of a line is also one of the possible tokens that opens an indentation region. Examples:
 
 ```scala
+//{
+import language.experimental.fewerBraces
+def times(i: Int)(fn: => Unit) = (0 to i).foreach(x => fn)
+//}
 times(10):
   println("ah")
   println("ha")
@@ -431,20 +461,27 @@ times(10):
 or
 
 ```scala
-xs.map:
-  x =>
-    val y = x - 1
-    y * y
+//{
+import language.experimental.fewerBraces
+val elems: Seq[Int]
+//}
+val xs = elems.map x =>
+  val y = x - 1
+  y * y
 ```
 
 The colon is usable not only for lambdas and by-name parameters, but
 also even for ordinary parameters:
 
 ```scala
-credentials ++ :
-  val file = Path.userHome / ".credentials"
-  if file.exists
-  then Seq(Credentials(file))
+//{
+import language.experimental.fewerBraces
+val numbers: Seq[Int]
+val n: Int
+//}
+numbers ++ :
+  if n > 0
+  then Seq(n)
   else Seq()
 ```
 
