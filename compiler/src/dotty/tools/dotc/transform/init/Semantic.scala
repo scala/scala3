@@ -406,7 +406,6 @@ class Semantic {
               given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
-              // try early promotion here; if returns error, returns cold
               val env2 = Env(ddef, args.map(_.value).widenArgs)
               if target.isPrimaryConstructor then
                 given Env = env2
@@ -497,6 +496,46 @@ class Semantic {
           Result(value2, errors)
       }
     }
+
+    def accessLocal(tmref: TermRef, klass: ClassSymbol, source: Tree): Contextual[Result] =
+      val sym = tmref.symbol
+
+      def default() = Result(Hot, Nil)
+
+      if sym.is(Flags.Param) && sym.owner.isConstructor then
+        // instances of local classes inside secondary constructors cannot
+        // reach here, as those values are abstracted by Cold instead of Warm.
+        // This enables us to simplify the domain without sacrificing
+        // expressiveness nor soundess, as local classes inside secondary
+        // constructors are uncommon.
+        if sym.isContainedIn(klass) then
+          Result(env.lookup(sym), Nil)
+        else
+          // We don't know much about secondary constructor parameters in outer scope.
+          // It's always safe to approximate them with `Cold`.
+          Result(Cold, Nil)
+      else if sym.is(Flags.Param) then
+        default()
+      else
+        sym.defTree match {
+          case vdef: ValDef =>
+            // resolve this for local variable
+            val enclosingClass = sym.owner.enclosingClass.asClass
+            val thisValue2 = resolveThis(enclosingClass, value, klass, source)
+            thisValue2 match {
+              case Hot => Result(Hot, Errors.empty)
+
+              case Cold => Result(Cold, Nil)
+
+              case addr: Addr => eval(vdef.rhs, addr, klass)
+
+              case _ =>
+                 report.error("unexpected defTree when accessing local variable, sym = " + sym.show + ", defTree = " + sym.defTree.show, source)
+                 default()
+            }
+
+          case _ => default()
+        }
   end extension
 
 // ----- Promotion ----------------------------------------------------
@@ -685,7 +724,7 @@ class Semantic {
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Addr, klass: ClassSymbol): Contextual[List[Result]] = 
+  def eval(exprs: List[Tree], thisV: Addr, klass: ClassSymbol): Contextual[List[Result]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
@@ -848,8 +887,7 @@ class Semantic {
       case vdef : ValDef =>
         // local val definition
         // TODO: support explicit @cold annotation for local definitions
-        eval(vdef.rhs, thisV, klass, true)
-        // .ensureHot("Local definitions may only hold initialized values", vdef)
+        eval(vdef.rhs, thisV, klass, cacheResult = true)
 
       case ddef : DefDef =>
         // local method
@@ -877,44 +915,8 @@ class Semantic {
         Result(Hot, Errors.empty)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
-        val sym = tmref.symbol
+        thisV.accessLocal(tmref, klass, source)
 
-        def default() = Result(Hot, Nil)
-
-        if sym.is(Flags.Param) && sym.owner.isConstructor then
-          // instances of local classes inside secondary constructors cannot
-          // reach here, as those values are abstracted by Cold instead of Warm.
-          // This enables us to simplify the domain without sacrificing
-          // expressiveness nor soundess, as local classes inside secondary
-          // constructors are uncommon.
-          if sym.isContainedIn(klass) then
-            Result(env.lookup(sym), Nil)
-          else
-            // We don't know much about secondary constructor parameters in outer scope.
-            // It's always safe to approximate them with `Cold`.
-            Result(Cold, Nil)
-        else
-          sym.defTree match {
-            case vdef: ValDef => {
-              // resolve this for local variable
-              val enclosingClass = sym.owner.enclosingClass.asClass
-              val thisValue2 = resolveThis(enclosingClass, thisV, klass, source)
-              thisValue2 match {
-                case Hot => Result(Hot, Errors.empty)
-                case Cold => {
-                  val error = AccessCold(sym, source, trace.toVector)
-                  Result(Hot, error :: Nil)
-                }
-                case addr: Addr => {
-                  val res = eval(vdef.rhs, addr, klass)
-                  if res.value.promote("Try promote", source).isEmpty then Result(Hot, Errors.empty) else res
-                }
-                case _ => ???
-              }
-            }
-            case _ => default()
-          }
-          
       case tmref: TermRef =>
         cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
