@@ -2530,7 +2530,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }.apply(true, tp)
 
     (tp1.dealias, tp2.dealias) match {
-      case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol == defn.SingletonClass || tp2.symbol == defn.SingletonClass =>
+      case (tp1: TypeRef, _) if tp1.symbol == defn.SingletonClass =>
+        false
+      case (_, tp2: TypeRef) if tp2.symbol == defn.SingletonClass =>
         false
       case (tp1: ConstantType, tp2: ConstantType) =>
         tp1 != tp2
