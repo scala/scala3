@@ -69,7 +69,6 @@ enum Kind(val name: String){
     extends Kind("given") with ImplicitConversionProvider
   case Implicit(kind: Kind.Def | Kind.Val.type, conversion: Option[ImplicitConversion])
     extends Kind(kind.name)  with ImplicitConversionProvider
-  case SelfType(selfName: String) extends Kind("self")
   case Unknown extends Kind("Unknown")
 }
 

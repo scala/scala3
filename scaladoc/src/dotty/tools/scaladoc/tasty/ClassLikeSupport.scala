@@ -86,7 +86,7 @@ trait ClassLikeSupport:
     val selfType = classDef.self.map { (valdef: ValDef) =>
       val symbol = valdef.symbol
       val tpe = valdef.tpt.tpe
-      LinkToType(tpe.asSignature, symbol.dri, Kind.SelfType(valdef.name))
+      LinkToType(tpe.asSignature, symbol.dri, Kind.Type(false, false, Seq.empty))
     }
     val selfSignature: DSignature = typeForClass(classDef).asSignature
 
