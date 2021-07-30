@@ -860,17 +860,24 @@ class TreeUnpickler(reader: TastyReader,
             sym.info = TypeBounds.empty // needed to avoid cyclic references when unpickling rhs, see i3816.scala
             sym.setFlag(Provisional)
             val rhs = readTpt()(using localCtx)
-            sym.info = new NoCompleter {
+
+            sym.info = new NoCompleter:
               override def completerTypeParams(sym: Symbol)(using Context) =
                 rhs.tpe.typeParams
-            }
-            val tparamSyms = rhs match
-              case LambdaTypeTree(tparams, body) => tparams.map(_.symbol.asType)
-              case _ => Nil
-            sym.info = sym.opaqueToBounds(
-              checkNonCyclic(sym, rhs.tpe.toBounds, reportErrors = false),
-              rhs, tparamSyms)
-            if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
+
+            def opaqueToBounds(info: Type): Type =
+              val tparamSyms = rhs match
+                case LambdaTypeTree(tparams, body) => tparams.map(_.symbol.asType)
+                case _ => Nil
+              sym.opaqueToBounds(info, rhs, tparamSyms)
+
+            val info = checkNonCyclic(sym, rhs.tpe.toBounds, reportErrors = false)
+            if sym.isOpaqueAlias then
+              sym.info = opaqueToBounds(info)
+              sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
+            else
+              sym.info = info
+
             sym.resetFlag(Provisional)
             TypeDef(rhs)
           }
