@@ -4039,7 +4039,7 @@ object Types {
   // ----- Type application: LambdaParam, AppliedType ---------------------
 
   /** The parameter of a type lambda */
-  case class LambdaParam(tl: TypeLambda, n: Int) extends ParamInfo {
+  case class LambdaParam(tl: TypeLambda, n: Int) extends ParamInfo, printing.Showable {
     type ThisName = TypeName
 
     def isTypeParam(using Context): Boolean = tl.paramNames.head.isTypeName
@@ -4084,6 +4084,8 @@ object Types {
           case _ =>
             myVariance = Invariant
       myVariance
+
+    def toText(printer: Printer): Text = printer.toText(this)
   }
 
   /** A type application `C[T_1, ..., T_n]` */

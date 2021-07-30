@@ -540,6 +540,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(annot: Annotation): Text = s"@${annot.symbol.name}" // for now
 
+  def toText(param: LambdaParam): Text =
+    varianceSign(param.paramVariance)
+    ~ toText(param.paramName)
+    ~ (if param.isTypeParam then "" else ": ")
+    ~ toText(param.paramInfo)
+
   protected def escapedString(str: String): String = str flatMap escapedChar
 
   def dclsText(syms: List[Symbol], sep: String): Text = Text(syms map dclText, sep)
