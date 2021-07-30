@@ -124,34 +124,201 @@
     margin-left: auto;
 }
 
-.snippet-comment-button {
-    position: absolute;
+/* Snippets */
+
+.snippet .snippet-meta {
+    border-top: 2px solid var(--inactive-bg);
+    color: var(--inactive-fg);
+    margin-top: 10px;
+    padding-top: 10px;
+    font-size: 0.75em;
+}
+
+.snippet-meta .snippet-label {
+    font-weight: bold;
+}
+
+.snippet .buttons {
+    --icon-size: 24px;
+}
+
+.snippet-showhide {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    --slider-width: 48px;
+    --slider-height: 20px;
+    --slider-diameter: calc(var(--slider-height) - 4px);
+}
+
+.snippet-showhide p {
+    margin-left: 4px;
+    margin-bottom: 0;
+    margin-top: 0;
+    color: var(--inactive-fg);
+}
+
+.snippet-showhide-button {
     display: inline-block;
-    left: 50%;
-    width: 24px;
-    height: 24px;
-    background:
-        linear-gradient(#fff, #fff),
-        linear-gradient(#fff, #fff),
-        #aaa;
-    background-position: center;
-    background-size: 50% 2px, 2px 50%;
-    background-repeat: no-repeat;
-    border-radius: 12px;
-    box-shadow: 0 0 2px var(--black);
+    position: relative;
+    width: var(--slider-width);
+    height: var(--slider-height);
+    margin-bottom: 0;
 }
 
-.snippet-comment-button:hover {
-    background:
-        linear-gradient(#444, #444),
-        linear-gradient(#444, #444),
-        #ddd;
-    background-position: center;
-    background-size: 50% 2px, 2px 50%;
-    background-repeat: no-repeat;
+.snippet-showhide-button input {
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
-.hide-snippet-comments-button {
-    -ms-transform: rotate(45deg);
-    transform: rotate(45deg);
+.snippet-showhide-button .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--inactive-bg);
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: var(--slider-height);
 }
+
+.snippet-showhide-button .slider:before {
+    position: absolute;
+    content: "";
+    height: var(--slider-diameter);
+    width: var(--slider-diameter);
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--inactive-fg);
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+.snippet-showhide-button .slider:hover::before {
+    background-color: var(--active-fg);
+}
+
+input:checked + .slider {
+    background-color: var(--active-bg);
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--active-bg-shadow);
+}
+
+input:checked + .slider:before {
+    --translation-size: calc(var(--slider-width) - var(--slider-diameter) - 4px);
+    -webkit-transform: translateX(var(--translation-size));
+    -ms-transform: translateX(var(--translation-size));
+    transform: translateX(var(--translation-size));
+}
+
+.snippet .buttons .tooltip::after {
+    top: 32px;
+}
+
+.snippet .buttons {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+}
+
+.snippet .buttons button {
+    outline: none;
+    background: none;
+    border: none;
+    font-size: var(--icon-size);
+    color: var(--inactive-fg);
+}
+
+.snippet .buttons button:hover:not(:disabled) {
+    color: var(--inactive-fg-shadow)
+}
+
+.snippet .buttons button:active:not(:disabled) {
+    transform: translateY(2px);
+    color: var(--active-fg)
+}
+
+.snippet .buttons button:disabled {
+    color: var(--inactive-bg)
+}
+
+
+.snippet .buttons>:not(:last-child) {
+    border-left: 2px solid var(--inactive-bg);
+}
+
+.snippet .buttons>* {
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.unselectable {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.included-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.included-section a {
+    color: var(--inactive-fg) !important;
+    font-size: 0.75em;
+}
+
+.included-section b {
+    font-weight: bold;
+}
+
+.hideable.hidden {
+    display: none;
+}
+
+@media(max-width: 576px) {
+    .snippet-showhide {
+        --slider-width: 32px;
+        --slider-height: 16px;
+    }
+
+    .snippet .buttons {
+        --icon-size: 16px;
+        font-size: 16px;
+    }
+
+}
+
+@media(max-width: 360px) {
+    .snippet-showhide {
+        --slider-width: 32px;
+        --slider-height: 16px;
+    }
+
+    .snippet .buttons {
+        --icon-size: 16px;
+        font-size: 0px;
+    }
+
+}
+
+@media(max-width: 240px) {
+    .snippet-showhide {
+        --slider-width: 24px;
+        --slider-height: 10px;
+    }
+
+    .snippet .buttons {
+        --icon-size: 16px;
+        font-size: 0px;
+    }
+
+}
+
