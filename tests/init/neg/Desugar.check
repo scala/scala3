@@ -1,5 +1,0 @@
--- Error: tests/init/neg/Desugar.scala:12:61 ---------------------------------------------------------------------------
-12 |    val f: PartialFunction[A, Int] = {case C(_, rhs) => rhs.x} // error
-   |                                                             ^
-   |                   Calling the external method constructor $anon may cause initialization errors. Calling trace:
-   |                    -> val f: PartialFunction[A, Int] = {case C(_, rhs) => rhs.x} // error	[ Desugar.scala:12 ]

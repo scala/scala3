@@ -25,7 +25,3 @@ object localWarm {
     }
     val a = new A(5)
 }
-
-
-
-

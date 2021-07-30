@@ -19,5 +19,5 @@ object InteractiveDriver {
         case _ => new C[Int]
     }
     val l: Seq[Any] = Seq(1, 2, new C[Double], new D[Int])
-    val l2: Seq[C[?]] = l.collect{ case x: InteractiveDriver[?] => h(x) } // error
+    val l2: Seq[C[?]] = l.collect{ case x: InteractiveDriver[?] => h(x) }
 }

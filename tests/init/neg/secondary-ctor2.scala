@@ -6,8 +6,8 @@ class A(b: B, x: Int) {
     }
     Inner().foo()
 
-    val f = () => new A(b, 3) // error: Cannot promote
-    f() // ok
+    val f = () => new A(b, 3)
+    f()
   }
 }
 
