@@ -97,7 +97,13 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags, debug: Boolean) 
         ) else Nil
       }
 
-    val result = messages.flatMap { msg =>
+    val mResult = compilationMessagesWithPos.flatMap { cmsg =>
+      messages
+        .find(msg => isSamePosition(msg, cmsg))
+        .fold(Seq(s"Unexpected compilation message: ${cmsg.message} at relative line: ${cmsg.position.fold(-1)(_.line)}"))(_ => Seq())
+    }
+
+    val result = mResult ++ messages.flatMap { msg =>
       compilationMessagesWithPos
         .find(cmsg => isSamePosition(msg, cmsg))
         .fold(Seq(s"Expected ${msg.level.text} message at ${msg.offset.line}:${msg.offset.column}.")) { resp =>
