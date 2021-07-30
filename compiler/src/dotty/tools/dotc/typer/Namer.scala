@@ -425,7 +425,7 @@ class Namer { typer: Typer =>
    * is still missing its parents. Parents are set to Nil when completion starts and are
    * set to the actual parents later. If a superclass completes a subclass in one
    * of its parents, the parents of the superclass or some intervening class might
-   * not yet be set. This situation can be detected by asking for the baseType of Any - 
+   * not yet be set. This situation can be detected by asking for the baseType of Any -
    * if that type does not exist, one of the base classes of this class misses its parents.
    * If this situation arises, the computation of the superclass might be imprecise.
    * For instance, in i12722.scala, the superclass of `IPersonalCoinOps` is computed
@@ -988,9 +988,12 @@ class Namer { typer: Typer =>
       val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
 
       def opaqueToBounds(info: Type): Type =
-        if sym.isOpaqueAlias && info.typeParams.nonEmpty && info.hkResult.typeParams.nonEmpty then
-          report.error(em"opaque type alias cannot have multiple type parameter lists", rhs.srcPos)
-        sym.opaqueToBounds(info, rhs1, tparamSyms)
+        if sym.isOpaqueAlias then
+          if info.typeParams.nonEmpty && info.hkResult.typeParams.nonEmpty then
+            report.error(em"opaque type alias cannot have multiple type parameter lists", rhs.srcPos)
+          sym.opaqueToBounds(info, rhs1, tparamSyms)
+        else
+          info
 
       if (isDerived) sym.info = unsafeInfo
       else {
