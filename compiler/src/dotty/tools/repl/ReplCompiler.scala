@@ -38,34 +38,36 @@ class ReplCompiler extends Compiler {
     List(new PostTyper),
   )
 
-  def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
+  def newRun(initCtx: Context, state: State): Run =
+    val run = new Run(this, initCtx) {
+      /** Import previous runs and user defined imports */
+      override protected def rootContext(using Context): Context = {
+        def importContext(imp: tpd.Import)(using Context) =
+          ctx.importContext(imp, imp.symbol)
 
-    /** Import previous runs and user defined imports */
-    override protected def rootContext(using Context): Context = {
-      def importContext(imp: tpd.Import)(using Context) =
-        ctx.importContext(imp, imp.symbol)
+        def importPreviousRun(id: Int)(using Context) = {
+          // we first import the wrapper object id
+          val path = nme.REPL_PACKAGE ++ "." ++ objectNames(id)
+          val ctx0 = ctx.fresh
+            .setNewScope
+            .withRootImports(RootRef(() => requiredModuleRef(path)) :: Nil)
 
-      def importPreviousRun(id: Int)(using Context) = {
-        // we first import the wrapper object id
-        val path = nme.REPL_PACKAGE ++ "." ++ objectNames(id)
-        val ctx0 = ctx.fresh
-          .setNewScope
-          .withRootImports(RootRef(() => requiredModuleRef(path)) :: Nil)
+          // then its user defined imports
+          val imports = state.imports.getOrElse(id, Nil)
+          if imports.isEmpty then ctx0
+          else imports.foldLeft(ctx0.fresh.setNewScope)((ctx, imp) =>
+            importContext(imp)(using ctx))
+        }
 
-        // then its user defined imports
-        val imports = state.imports.getOrElse(id, Nil)
-        if imports.isEmpty then ctx0
-        else imports.foldLeft(ctx0.fresh.setNewScope)((ctx, imp) =>
-          importContext(imp)(using ctx))
+        val rootCtx = super.rootContext
+          .withRootImports   // default root imports
+          .withRootImports(RootRef(() => defn.EmptyPackageVal.termRef) :: Nil)
+        (1 to state.objectIndex).foldLeft(rootCtx)((ctx, id) =>
+          importPreviousRun(id)(using ctx))
       }
-
-      val rootCtx = super.rootContext
-        .withRootImports   // default root imports
-        .withRootImports(RootRef(() => defn.EmptyPackageVal.termRef) :: Nil)
-      (1 to state.objectIndex).foldLeft(rootCtx)((ctx, id) =>
-        importPreviousRun(id)(using ctx))
     }
-  }
+    run.suppressions.initSuspendedMessages(state.context.run)
+    run
 
   private val objectNames = mutable.Map.empty[Int, TermName]
 
