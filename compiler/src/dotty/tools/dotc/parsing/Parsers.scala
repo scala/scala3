@@ -2625,11 +2625,11 @@ object Parsers {
             val start = in.skipToken()
             Ident(tpnme.WILDCARD).withSpan(Span(start, in.lastOffset, start))
           case _ =>
-            infixType()
+            rejectWildcardType(infixType())
         }
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
-        val t = typ()
+        val t = rejectWildcardType(typ())
         if in.token == SEMI then in.nextToken()
         newLinesOptWhenFollowedBy(CASE)
         t
