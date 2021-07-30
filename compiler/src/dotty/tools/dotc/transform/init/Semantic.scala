@@ -7,6 +7,7 @@ import Contexts._
 import Symbols._
 import Types._
 import StdNames._
+import NameKinds.OuterSelectName
 
 import ast.tpd._
 import util.EqHashMap
@@ -27,23 +28,19 @@ class Semantic {
    *  Value = Hot | Cold | Warm | ThisRef | Fun | RefSet
    *
    *                 Cold
-   *        ┌──────►  ▲   ◄──┐  ◄────┐
-   *        │         │      │       │
-   *        │         │      │       │
-   *   ThisRef(C)     │      │       │
-   *        ▲         │      │       │
-   *        │     Warm(D)   Fun    RefSet
-   *        │         ▲      ▲       ▲
-   *        │         │      │       │
-   *      Warm(C)     │      │       │
-   *        ▲         │      │       │
-   *        │         │      │       │
-   *        └─────────┴──────┴───────┘
+   *        ┌──────►  ▲  ◄────┐  ◄────┐
+   *        │         │       │       │
+   *        │         │       │       │
+   *        |         │       │       │
+   *        |         │       │       │
+   *   ThisRef(C)  Warm(D)   Fun    RefSet
+   *        │         ▲       ▲       ▲
+   *        │         │       │       │
+   *        |         │       │       │
+   *        ▲         │       │       │
+   *        │         │       │       │
+   *        └─────────┴───────┴───────┘
    *                  Hot
-   *
-   *   The most important ordering is the following:
-   *
-   *       Hot ⊑ Warm(C) ⊑ ThisRef(C) ⊑ Cold
    *
    *   The diagram above does not reflect relationship between `RefSet`
    *   and other values. `RefSet` represents a set of values which could
@@ -194,6 +191,7 @@ class Semantic {
     class PromotionInfo {
       var isCurrentObjectPromoted: Boolean = false
       val values = mutable.Set.empty[Value]
+      override def toString(): String = values.toString()
     }
     /** Values that have been safely promoted */
     opaque type Promoted = PromotionInfo
@@ -299,9 +297,6 @@ class Semantic {
 
       case (Cold, _) => Cold
       case (_, Cold) => Cold
-
-      case (a: Warm, b: ThisRef) if a.klass == b.klass => b
-      case (a: ThisRef, b: Warm) if a.klass == b.klass => a
 
       case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) => RefSet(a :: b :: Nil)
 
@@ -495,6 +490,46 @@ class Semantic {
           Result(value2, errors)
       }
     }
+
+    def accessLocal(tmref: TermRef, klass: ClassSymbol, source: Tree): Contextual[Result] =
+      val sym = tmref.symbol
+
+      def default() = Result(Hot, Nil)
+
+      if sym.is(Flags.Param) && sym.owner.isConstructor then
+        // instances of local classes inside secondary constructors cannot
+        // reach here, as those values are abstracted by Cold instead of Warm.
+        // This enables us to simplify the domain without sacrificing
+        // expressiveness nor soundess, as local classes inside secondary
+        // constructors are uncommon.
+        if sym.isContainedIn(klass) then
+          Result(env.lookup(sym), Nil)
+        else
+          // We don't know much about secondary constructor parameters in outer scope.
+          // It's always safe to approximate them with `Cold`.
+          Result(Cold, Nil)
+      else if sym.is(Flags.Param) then
+        default()
+      else
+        sym.defTree match {
+          case vdef: ValDef =>
+            // resolve this for local variable
+            val enclosingClass = sym.owner.enclosingClass.asClass
+            val thisValue2 = resolveThis(enclosingClass, value, klass, source)
+            thisValue2 match {
+              case Hot => Result(Hot, Errors.empty)
+
+              case Cold => Result(Cold, Nil)
+
+              case addr: Addr => eval(vdef.rhs, addr, klass)
+
+              case _ =>
+                 report.error("unexpected defTree when accessing local variable, sym = " + sym.show + ", defTree = " + sym.defTree.show, source)
+                 default()
+            }
+
+          case _ => default()
+        }
   end extension
 
 // ----- Promotion ----------------------------------------------------
@@ -756,7 +791,15 @@ class Semantic {
             res.call(id.symbol, args, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
-        eval(qualifier, thisV, klass).select(expr.symbol, expr)
+        val qualRes = eval(qualifier, thisV, klass)
+
+        name match
+          case OuterSelectName(_, hops) =>
+            val SkolemType(tp) = expr.tpe
+            val outer = resolveOuterSelect(tp.classSymbol.asClass, qualRes.value, hops, source = expr)
+            Result(outer, qualRes.errors)
+          case _ =>
+            qualRes.select(expr.symbol, expr)
 
       case _: This =>
         cases(expr.tpe, thisV, klass, expr)
@@ -846,7 +889,7 @@ class Semantic {
       case vdef : ValDef =>
         // local val definition
         // TODO: support explicit @cold annotation for local definitions
-        eval(vdef.rhs, thisV, klass).ensureHot("Local definitions may only hold initialized values", vdef)
+        eval(vdef.rhs, thisV, klass, cacheResult = true)
 
       case ddef : DefDef =>
         // local method
@@ -874,24 +917,7 @@ class Semantic {
         Result(Hot, Errors.empty)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
-        val sym = tmref.symbol
-
-        def default() = Result(Hot, Nil)
-
-        if sym.is(Flags.Param) && sym.owner.isConstructor then
-          // instances of local classes inside secondary constructors cannot
-          // reach here, as those values are abstracted by Cold instead of Warm.
-          // This enables us to simplify the domain without sacrificing
-          // expressiveness nor soundess, as local classes inside secondary
-          // constructors are uncommon.
-          if sym.isContainedIn(klass) then
-            Result(env.lookup(sym), Nil)
-          else
-            // We don't know much about secondary constructor parameters in outer scope.
-            // It's always safe to approximate them with `Cold`.
-            Result(Cold, Nil)
-        else
-          default()
+        thisV.accessLocal(tmref, klass, source)
 
       case tmref: TermRef =>
         cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
@@ -937,6 +963,40 @@ class Semantic {
           Cold
         case Cold => Cold
 
+  }
+
+  /** Resolve outer select introduced during inlining.
+   *
+   *  See `tpd.outerSelect` and `ElimOuterSelect`.
+   */
+  def resolveOuterSelect(target: ClassSymbol, thisV: Value, hops: Int, source: Tree): Contextual[Value] = log("resolving outer " + target.show + ", this = " + thisV.show + ", hops = " + hops, printer, res => res.asInstanceOf[Value].show) {
+    // Is `target` reachable from `cls` with the given `hops`?
+    def reachable(cls: ClassSymbol, hops: Int): Boolean =
+      if hops == 0 then cls == target
+      else reachable(cls.lexicallyEnclosingClass.asClass, hops - 1)
+
+    thisV match
+      case Hot => Hot
+
+      case addr: Addr =>
+        val obj = heap(addr)
+        val curOpt = obj.klass.baseClasses.find(cls => reachable(cls, hops))
+        curOpt match
+          case Some(cur) =>
+            resolveThis(target, thisV, cur, source)
+
+          case None =>
+            report.warning("unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, source.srcPos)
+            Cold
+
+      case RefSet(refs) =>
+        refs.map(ref => resolveOuterSelect(target, ref, hops, source)).join
+
+      case fun: Fun =>
+        report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, source.srcPos)
+        Cold
+
+      case Cold => Cold
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
