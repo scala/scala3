@@ -37,13 +37,13 @@ class Checker extends Phase {
 
   val traverser = new TreeTraverser {
     override def traverse(tree: Tree)(using Context): Unit =
+      traverseChildren(tree)
       tree match {
         case tdef: MemberDef =>
           // self-type annotation ValDef has no symbol
           if tdef.name != nme.WILDCARD then
             tdef.symbol.defTree = tree
         case _ =>
-          traverseChildren(tree)
       }
   }
 
