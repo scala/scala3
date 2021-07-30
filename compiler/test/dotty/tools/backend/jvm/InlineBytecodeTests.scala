@@ -397,10 +397,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
         List(
           IntOp(BIPUSH, 10),
           VarOp(ISTORE, 1),
-          VarOp(ILOAD, 1),
-          Op(ICONST_1),
-          Op(IADD),
-          VarOp(ISTORE, 1),
+          Incr(IINC, 1, 1),
           VarOp(ILOAD, 1),
           Op(IRETURN),
         )
