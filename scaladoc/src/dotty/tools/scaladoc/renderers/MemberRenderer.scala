@@ -351,11 +351,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
       def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
         if list.isEmpty then Nil
-        else Seq(div(cls := "symbol monospace") { list.map {
-          case link if link.kind.isInstanceOf[Kind.SelfType] =>
-            div(link.kind.asInstanceOf[Kind.SelfType].selfName, ": ", link.signature.map(renderElement))
-          case link =>
-            div("self: ", link.signature.map(renderElement))
+        else Seq(div(cls := "symbol monospace") { list.map { link =>
+          div(link.signature.map(renderElement))
         }})
 
       val supertypes = signatureList(m.parents)
