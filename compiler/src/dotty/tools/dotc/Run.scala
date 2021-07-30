@@ -106,6 +106,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private val mySuspendedMessages: mutable.LinkedHashMap[SourceFile, mutable.LinkedHashSet[Warning]] = mutable.LinkedHashMap.empty
 
   object suppressions:
+    // When the REPL creates a new run (ReplDriver.compile), parsing is already done in the old context, with the
+    // previous Run. Parser warnings were suspended in the old run and need to be copied over so they are not lost.
+    // Same as scala/scala/commit/79ca1408c7.
+    def initSuspendedMessages(oldRun: Run) = if oldRun != null then
+      mySuspendedMessages.clear()
+      mySuspendedMessages ++= oldRun.mySuspendedMessages
+
     def suppressionsComplete(source: SourceFile) = source == NoSource || mySuppressionsComplete(source)
 
     def addSuspendedMessage(warning: Warning) =

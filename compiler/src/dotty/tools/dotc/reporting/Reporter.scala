@@ -90,6 +90,8 @@ abstract class Reporter extends interfaces.ReporterResult {
     finally incompleteHandler = saved
   }
 
+  private def isIncompleteChecking = incompleteHandler ne defaultIncompleteHandler
+
   private var _errorCount = 0
   private var _warningCount = 0
 
@@ -172,6 +174,9 @@ abstract class Reporter extends interfaces.ReporterResult {
       }
     end go
 
+    // `ctx.run` can be null in test, also in the repl when parsing the first line. The parser runs early, the Run is
+    // only created in ReplDriver.compile when a line is submitted. This means that `@nowarn` doesnt work on parser
+    // warnings in the first line.
     dia match
       case w: Warning if ctx.run != null =>
         val sup = ctx.run.suppressions
@@ -180,7 +185,11 @@ abstract class Reporter extends interfaces.ReporterResult {
           case Action.Verbose => w.setVerbose(); go()
           case Action.Silent =>
         else
-          sup.addSuspendedMessage(w)
+          // ParseResult.isIncomplete creates a new source file and reporter to check if the input is complete.
+          // The reporter's warnings are discarded, and we should not add them to the run's suspended messages,
+          // otherwise they are later reported.
+          if !isIncompleteChecking then
+            sup.addSuspendedMessage(w)
       case _ => go()
   end issueIfNotSuppressed
 
