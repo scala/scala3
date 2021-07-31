@@ -1579,15 +1579,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
   }
 
-  /** Does this symbol actually correspond to an interface that will be emitted?
-   *  In the backend, this should be preferred over `isInterface` because it
-   *  also returns true for the symbols of the fake companion objects we
-   *  create for Java-defined classes as well as for Java annotations
-   *  which we represent as classes.
-   */
-  private def isEmittedInterface(sym: Symbol): Boolean = sym.isInterface ||
-    sym.is(JavaDefined) && (toDenot(sym).isAnnotation || sym.is(ModuleClass) && (sym.companionClass.is(PureInterface)) || sym.companionClass.is(Trait))
-
 }
 
 object BCodeBodyBuilder {

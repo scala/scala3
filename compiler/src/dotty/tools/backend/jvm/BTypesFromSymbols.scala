@@ -94,7 +94,8 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
     val superClassSym: Symbol =  {
       val t = classSym.asClass.superClass
-      if (t.exists) t
+      if (toDenot(classSym).isJavaAnnotation) defn.ObjectClass
+      else if (t.exists) t
       else if (classSym.is(ModuleClass)) {
         // workaround #371
 
@@ -106,7 +107,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     assert(
       if (classSym == defn.ObjectClass)
         superClassSym == NoSymbol
-      else if (classSym.isInterface)
+      else if (isEmittedInterface(classSym))
         superClassSym == defn.ObjectClass
       else
         // A ClassBType for a primitive class (scala.Boolean et al) is only created when compiling these classes.
@@ -305,7 +306,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     0 .addFlagIf(privateFlag, ACC_PRIVATE)
       .addFlagIf(!privateFlag, ACC_PUBLIC)
       .addFlagIf(sym.is(Deferred) || sym.isOneOf(AbstractOrTrait), ACC_ABSTRACT)
-      .addFlagIf(sym.isInterface, ACC_INTERFACE)
+      .addFlagIf(isEmittedInterface(sym), ACC_INTERFACE)
       .addFlagIf(finalFlag
         // Primitives are "abstract final" to prohibit instantiation
         // without having to provide any implementations, but that is an
@@ -317,12 +318,13 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       .addFlagIf(sym.isStaticMember, ACC_STATIC)
       .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
       .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
-      .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
+      .addFlagIf(sym.isClass && !isEmittedInterface(sym), ACC_SUPER)
       .addFlagIf(sym.isAllOf(JavaEnumTrait), ACC_ENUM)
       .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
       .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
       .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)
       .addFlagIf(sym.is(Enum), ACC_ENUM)
+      .addFlagIf(sym.isJavaAnnotation, ACC_ANNOTATION)
   }
 
   def javaFieldFlags(sym: Symbol) = {
@@ -333,4 +335,18 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
       .addFlagIf(!sym.is(Mutable), ACC_FINAL)
   }
+
+  /** Does this symbol actually correspond to an interface that will be emitted?
+   *  In the backend, this should be preferred over `isInterface` because it
+   *  also returns true for the symbols of the fake companion objects we
+   *  create for Java-defined classes as well as for Java annotations
+   *  which we represent as classes.
+   */
+  final def isEmittedInterface(sym: Symbol): Boolean =
+    sym.isInterface ||
+    sym.is(JavaDefined) && (
+         toDenot(sym).isAnnotation
+      || sym.is(ModuleClass) && sym.companionClass.is(PureInterface)
+      || sym.companionClass.is(Trait)
+    )
 }
