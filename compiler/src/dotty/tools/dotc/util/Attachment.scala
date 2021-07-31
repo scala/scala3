@@ -117,7 +117,7 @@ object Attachment {
     }
 
     final def pushAttachment[V](key: Key[V], value: V)(using ctx: Context): Unit = {
-      assert(!hasAttachment(key) || ctx.run.errorsToBeReported, s"duplicate attachment for key $key")
+      assert(!hasAttachment(key) || ctx.base.errorsToBeReported, s"duplicate attachment for key $key")
       next = new Link(key, value, next)
     }
 
