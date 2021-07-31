@@ -157,6 +157,8 @@ abstract class Reporter extends interfaces.ReporterResult {
         case dia: Error =>
           errors = dia :: errors
           _errorCount += 1
+          if ctx.typerState.isGlobalCommittable then
+            ctx.run.errorsToBeReported = true
         case dia: Info => // nothing to do here
         // match error if d is something else
 
