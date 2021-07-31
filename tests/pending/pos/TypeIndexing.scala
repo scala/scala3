@@ -10,7 +10,7 @@
 
 object Test {
   def use(a : A) = a match  {
-    case b @ A(t) ⇒
+    case b @ A(t) =>
       val s: b.T = t // type mismatch.
                      // found t.type (with underlying type <unapply-selector>.T)
                      // required: a.T

@@ -12,5 +12,5 @@ def f(): Unit =
 
 @main def Test(): Unit =
   println(summonAll[Tuple.Map[("foo", "bar"), ValueOf]].toList.map{
-    case str: ValueOf[_] ⇒ str.value
+    case str: ValueOf[_] => str.value
   })

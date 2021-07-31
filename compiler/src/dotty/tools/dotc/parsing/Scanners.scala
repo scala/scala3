@@ -879,9 +879,11 @@ object Scanners {
         case _ =>
           def fetchOther() =
             if (ch == '\u21D2') {
+              report.deprecationWarning("The unicode arrow `⇒` is deprecated, use `=>` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
               nextChar(); token = ARROW
             }
             else if (ch == '\u2190') {
+              report.deprecationWarning("The unicode arrow `←` is deprecated, use `<-` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
               nextChar(); token = LARROW
             }
             else if (Character.isUnicodeIdentifierStart(ch)) {

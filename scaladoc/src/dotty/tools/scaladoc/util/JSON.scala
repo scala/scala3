@@ -31,7 +31,7 @@ def jsonString(s: String): JSON =
 
     sb.append('"')
     firstToBeEncoded() match
-      case -1 ⇒ sb.append(s)
+      case -1 => sb.append(s)
       case first =>
         // sb.append(s, 0, first) for "abc", 0, 2 produce "(abc,0,2)" rather then "ab" as in Java
         sb.append(s.substring(0, first))

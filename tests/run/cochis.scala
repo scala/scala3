@@ -6,7 +6,7 @@ trait A {
   def trans[A] (x : A) (implicit f : A => A) = f(x)
 }
 object Test extends A with App {
-  implicit def succ : Int ⇒ Int = x ⇒ x + 1 // (3)
+  implicit def succ : Int => Int = x => x + 1 // (3)
   def bad [A] (x : A) : A = trans[A](x) // (4) incoherent denition !
   val v1 = bad [Int] (3) // (5) evaluates to 3
   val v2 = trans [Int] (3) // (6) substituting bad by trans is rejected
