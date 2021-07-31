@@ -91,13 +91,7 @@ object JavaParsers {
 
     def scalaAnnotationDot(name: Name): Select = Select(scalaDot(nme.annotation), name)
 
-    def javaDot(name: Name): Tree =
-      Select(rootDot(nme.java), name)
-
-    def javaLangDot(name: Name): Tree =
-      Select(javaDot(nme.lang), name)
-
-    def javaLangObject(): Tree = javaLangDot(tpnme.Object)
+    def javaLangObject(): Tree = javaDotLangDot(tpnme.Object)
 
     def arrayOf(tpt: Tree): AppliedTypeTree =
       AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
@@ -878,7 +872,7 @@ object JavaParsers {
     }
     def annotationParents: List[Select] = List(
       scalaAnnotationDot(tpnme.Annotation),
-      Select(javaLangDot(nme.annotation), tpnme.Annotation),
+      Select(javaDotLangDot(nme.annotation), tpnme.Annotation),
       scalaAnnotationDot(tpnme.ClassfileAnnotation)
     )
     def annotationDecl(start: Offset, mods: Modifiers): List[Tree] = {
@@ -942,7 +936,7 @@ object JavaParsers {
         AppliedTypeTree(javaLangDot(tpnme.Enum), List(enumType))
         */
       val superclazz = Apply(TypeApply(
-        Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
+        Select(New(javaDotLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
           makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnumTrait)

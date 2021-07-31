@@ -1284,8 +1284,8 @@ class Namer { typer: Typer =>
         val ptype = parentType(parent)(using completerCtx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
-          val pt = checkClassType(ptype, parent.srcPos,
-              traitReq = parent ne parents.head, stablePrefixReq = true)
+          val traitReq = (parent ne parents.head) && !(ptype.typeSymbol.isJavaAnnotation)
+          val pt = checkClassType(ptype, parent.srcPos, traitReq = traitReq, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
               case Select(qual: Super, _) if Feature.migrateTo3 =>
