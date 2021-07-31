@@ -144,17 +144,6 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Actions that need to be performed at the end of the current compilation run */
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
-  /** A variable that records that some error was reported in a globally committable context.
-   *  The error will not necessarlily be emitted, since it could still be that
-   *  the enclosing context will be aborted. The variable is used as a smoke test
-   *  to turn off assertions that might be wrong if the program is erroneous. To
-   *  just test for `ctx.reporter.errorsReported` is not always enough, since it
-   *  could be that the context in which the assertion is tested is a completer context
-   *  that's different from the context where the error was reported. See i13218.scala
-   *  for a test.
-   */
-  var errorsToBeReported = false
-
   def compile(files: List[AbstractFile]): Unit =
     try
       val sources = files.map(runContext.getSource(_))
