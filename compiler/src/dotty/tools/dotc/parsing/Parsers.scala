@@ -1829,7 +1829,7 @@ object Parsers {
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
-      else if location.inPattern then refinedType()
+      else if location.inPattern then rejectWildcardType(refinedType())
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
