@@ -9,3 +9,7 @@ type M1[X] = X match {
 type M2[X] = X match {
   case Any => ? // error: Unbound wildcard type
 }
+
+val a = "" match { case _: _ => () } // error: Unbound wildcard type
+
+val b = try { } catch { case _: _ => () } // error: Unbound wildcard type
