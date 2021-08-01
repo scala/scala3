@@ -53,7 +53,7 @@ object TypeApplications {
       || {
         val paramRefs = tparams.map(_.paramRef)
         tp.typeParams.corresponds(tparams) { (param1, param2) =>
-          param2.paramInfo <:< param1.paramInfo.substParams(tp, paramRefs)
+          param2.paramInfo frozen_<:< param1.paramInfo.substParams(tp, paramRefs)
         }
       }
 
