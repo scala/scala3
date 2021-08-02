@@ -30,14 +30,14 @@ case class SnippetCompilerArgs(scFlags: PathBased[SCFlags], val debug: Boolean, 
 object SnippetCompilerArgs:
   val usage =
     """
-    |Snippet compiler arguments provide a way to configure snippet checking.
+    |Snippet compiler arguments provide a way to configure snippet type checking.
     |
     |This setting accept list of arguments in format:
     |args := arg{,arg}
     |arg := [path=]flag
-    |where path is a prefix of source paths to members to which argument should be set.
+    |where `path` is a prefix of the path to source files where snippets are located and `flag` is the mode in which snippets will be type checked.
     |
-    |If path is not present, argument will be used as default.
+    |If the path is not present, the argument will be used as the default for all unmatched paths..
     |
     |Available flags:
     |compile - Enables snippet checking.
