@@ -2,7 +2,7 @@
 title: Static documentation
 ---
 
-# {{ page.title}}
+# {{ page.title }}
 
 Scaladoc can generate static sites, known from [Jekyll](http://jekyllrb.com/) or [Docusaurus](https://docusaurus.io/).
 Having a combined tool allows providing interaction between static documentation and API, thus allowing the two to blend naturally.
@@ -130,20 +130,20 @@ sidebar:
 The `sidebar` key is mandatory.
 On each level, you can have three different types of entries: `page`, `blog` or `subsection`.
 
-`Page` is a leaf of the structure and accepts the following attributes:
+`page` is a leaf of the structure and accepts the following attributes:
 - `title` (optional) - title of the page
 - `page` (mandatory) - path to the file that will represent the page, it can be either html or markdown file to be rendered, there is also the possibility to pass the `directory` path. If so, the scaladoc will render the directory and all its content as if there were no `sidebar.yml` basing on its tree structure and index files.
 
 The `page` property
 
-`Subsection` accepts nested nodes, these can be either pages or subsections, which allow you to create tree-like navigation. The attributes are:
+`subsection` accepts nested nodes, these can be either pages or subsections, which allow you to create tree-like navigation. The attributes are:
 - `title` (optional) - title of the page
 - `index` (optional) - path to the file that will represent the index file of the subsection, it can be either html or markdown file to be rendered
 - `subsection` (mandatory) - nested nodes, can be either pages or subsections
 
-The `Subsection` can omit `title` or `index`, however not specifying any of these properties disables you from giving the title of the section.
+In `subsection`s, you can omit `title` or `index`, however not specifying any of these properties prevents you from specifying the title of the section.
 
-The `Blog` is a special node represented by simple entry `- title: Blog` with no other attributes. All your blog posts will be automatically linked under this section. You can read more about the blog [here](blog.md).
+`blog` is a special node represented by simple entry `- title: Blog` with no other attributes. All your blog posts will be automatically linked under this section. You can read more about the blog [here](blog.md).
 
 ```
 ├── blog
@@ -156,7 +156,7 @@ The `Blog` is a special node represented by simple entry `- title: Blog` with no
 
 ## Hierarchy of title
 
-There is a possibility to give the custom title using `sidebar.yml`. The default strategy when choosing the title for:
+If the title is specified multiple times, the priority is as follows (from highest to lowest priority): 
 
 #### Page
 
@@ -176,7 +176,7 @@ Note that if you skip the `index` file in your tree structure or you don't speci
 ## Static resources
 
 You can attach static resources (pdf, images) to your documentation by using two dedicated directories:
-`resources` and `images`. When you upload your assets under any of these directories you can reference them in markdown
+`resources` and `images`. After placing your assets under any of these directories, you can reference them in markdown
 as if they were relatively at the same level.
 
 For example, consider the following situation:
