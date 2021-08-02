@@ -29,7 +29,7 @@ index.html
 docs/getting-started.html
 ```
 
-Scaladoc can transform both files and directories (to organize your documentation into a tree-like structure). By default, directories have a title based on the file name and have empty content. There is an option to include `index.html` or `index.md` (not both) to provide both content and properties like the title (see [Properties](#properties)).
+Scaladoc can transform both files and directories (to organize your documentation into a tree-like structure). By default, directories have a title based on the file name and have empty content. It is possible to provide index pages for each section by creating `index.html` or `index.md` (not both) in the dedicated directory.
 
 ## Properties
 
@@ -156,7 +156,7 @@ In `subsection`s, you can omit `title` or `index`, however not specifying any of
 
 ## Hierarchy of title
 
-If the title is specified multiple times, the priority is as follows (from highest to lowest priority): 
+If the title is specified multiple times, the priority is as follows (from highest to lowest priority):
 
 #### Page
 

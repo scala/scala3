@@ -144,12 +144,12 @@ Example JSON file:
 
 ##### -snippet-compiler
 
-Snippet compiler arguments provide a way to configure snippet checking.
+Snippet compiler arguments provide a way to configure snippet type checking.
 
 This setting accepts a list of arguments in the format:
 args := arg{,arg}
 arg := [path=]flag
-where the path is a prefix of source paths to members to which argument should be set.
+where `path` is a prefix of the path to source files where snippets are located and `flag` is the mode in which snippets will be type checked.
 
 If the path is not present, the argument will be used as the default for all unmatched paths.
 
@@ -176,4 +176,5 @@ Setting this option makes snippet compiler print the snippet as it is compiled (
 
 ##### -Ydocument-synthetic-types
 
-Documents intrinsic types e. g. Any, Nothing. Setting is useful only for stdlib
+Include pages providing documentation for the intrinsic types (e. g. Any, Nothing) to the docs. The setting is useful only for stdlib because scaladoc for Scala 3 relies on TASTy files, but we cannot provide them for intrinsic types since they are embedded in the compiler.
+All other users should not concern with this setting.
