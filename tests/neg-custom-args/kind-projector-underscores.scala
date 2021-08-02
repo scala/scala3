@@ -10,3 +10,5 @@ object Test {
   type -_ = Int // error -_ not allowed as a type def name without backticks
   type +_ = Int // error +_ not allowed as a type def name without backticks
 }
+
+class BacktickUnderscoreIsNotFine extends Foo[List[`_`]] // error wildcard invalid as backquoted identifier

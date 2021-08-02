@@ -41,3 +41,20 @@ class VarianceAnnotationIsActuallyIgnored6 extends FooPlus[λ[`-x` => Either[Int
 class VarianceAnnotationIsActuallyIgnored7 extends QuxPlus[λ[(`-x`, `-y`) => Either[y, x]]]
 class VarianceAnnotationIsActuallyIgnored8 extends FooPlus[BazPlus[Int => -*, -*, Int]]
 class VarianceAnnotationIsActuallyIgnored9 extends Foo[λ[`-x` => BazPlus[x => -*, Int, x]]]
+
+class BackticksAreFine1 extends FooPlus[Either[Int, `-*`]]
+class BackticksAreFine2 extends FooPlus[Either[`-*`, Int]]
+class BackticksAreFine3 extends FooMinus[`+*` => Int]
+class BackticksAreFine4 extends FooPlus[Int => `-*`]
+class BackticksAreFine5 extends FooPlus[(Int, `-*`, Int)]
+class BackticksAreFine6 extends FooPlus[BazPlus[Int => `-*`, `-*`, Int]]
+class BackticksAreFine7 extends Foo[λ[`-x` => BazPlus[x => `-*`, Int, x]]]
+class BackticksAreFine8 extends Foo[λ[`x` => BazPlus[x => `*`, Int, x]]]
+
+// https://github.com/lampepfl/dotty/issues/13141
+// i13141
+object A {
+  class X { type Blah = Int }
+  val * = new X
+  val a: *.Blah = 2
+}
