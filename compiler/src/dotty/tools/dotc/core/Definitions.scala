@@ -1210,6 +1210,9 @@ class Definitions {
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
 
+  @tu lazy val caseClassSynthesized: Set[Symbol] = Set(Any_toString, Product_canEqual,
+    Product_productArity, Product_productPrefix, Product_productElement, Product_productElementName)
+
   val LazyHolder: PerRun[Map[Symbol, Symbol]] = new PerRun({
     def holderImpl(holderType: String) = requiredClass("scala.runtime." + holderType)
     Map[Symbol, Symbol](
