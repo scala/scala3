@@ -50,7 +50,6 @@ trait AllScalaSettings extends CommonScalaSettings, VerboseSettings, WarningSett
     // it is otherwise subsumed by -explain, and should be dropped as soon as we can.
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
-  val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", ScalaSettings.supportedReleaseVersions, "", aliases = List("--release"))
   val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
   val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.", aliases = List("--unchecked"))
   val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
@@ -87,6 +86,7 @@ trait CommonScalaSettings extends PluginSettings:
   self: SettingGroup =>
 
   /* Path related settings */
+  val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", ScalaSettings.supportedReleaseVersions, "", aliases = List("--release"))
   val bootclasspath: Setting[String] = PathSetting("-bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath, aliases = List("--boot-class-path"))
   val extdirs: Setting[String] = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs, aliases = List("--extension-directories"))
   val javabootclasspath: Setting[String] = PathSetting("-javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath, aliases = List("--java-boot-class-path"))
