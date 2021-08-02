@@ -126,6 +126,10 @@
 
 /* Snippets */
 
+.snippet {
+    cursor: default;
+}
+
 .snippet .snippet-meta {
     border-top: 2px solid var(--inactive-bg);
     color: var(--inactive-fg);
@@ -139,15 +143,15 @@
 }
 
 .snippet .buttons {
-    --icon-size: 24px;
+    --icon-size: 16px;
 }
 
 .snippet-showhide {
     display: flex;
     flex-direction: row;
     align-items: center;
-    --slider-width: 48px;
-    --slider-height: 20px;
+    --slider-width: 40px;
+    --slider-height: 16px;
     --slider-diameter: calc(var(--slider-height) - 4px);
 }
 
@@ -233,6 +237,7 @@ input:checked + .slider:before {
     border: none;
     font-size: var(--icon-size);
     color: var(--inactive-fg);
+    cursor: pointer;
 }
 
 .snippet .buttons button:hover:not(:disabled) {
