@@ -3690,7 +3690,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The symbol of the companion module */
         def companionModule: Symbol
 
-        /** Case class or case object children of a sealed trait */
+        /** Case class or case object children of a sealed trait or cases of an `enum`. */
         def children: List[Symbol]
       end extension
     }
