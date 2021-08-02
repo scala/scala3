@@ -510,8 +510,10 @@ object projects:
 
   lazy val scalaJava8Compat = SbtCommunityProject(
     project        = "scala-java8-compat",
-    sbtTestCommand = "test",
-    sbtPublishCommand = "publishLocal",
+    // the fnGen subproject must be built with 2.12.x
+    sbtTestCommand = s"++2.12.14; ++$compilerVersion; set fnGen/dependencyOverrides := Nil; test",
+    sbtPublishCommand = s"++2.12.14; ++$compilerVersion; set fnGen/dependencyOverrides := Nil; publishLocal",
+    scalacOptions = Nil // avoid passing Scala 3 options to Scala 2.12 in fnGen subproject
   )
 
   lazy val verify = SbtCommunityProject(
