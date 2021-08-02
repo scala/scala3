@@ -172,7 +172,7 @@ all other snippets should compile successfully
 
 ##### -Ysnippet-compiler-debug
 
-Setting this option causes snippet compiler to print snippet as it is compiled (after wrapping).
+Setting this option makes snippet compiler print the snippet as it is compiled (after wrapping).
 
 ##### -Ydocument-synthetic-types
 
