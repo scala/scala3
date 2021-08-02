@@ -41,12 +41,12 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Opaque extends Modifier("opaque", true)
   case Open extends Modifier("open", true)
 
-case class ExtensionTarget(name: String, signature: Signature, dri: DRI, position: Long)
+case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
 trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
 trait Classlike
 
-enum Kind(val name: String){
+enum Kind(val name: String):
   case RootPackage extends Kind("")
   case Package extends Kind("package")
   case Class(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
@@ -70,7 +70,6 @@ enum Kind(val name: String){
   case Implicit(kind: Kind.Def | Kind.Val.type, conversion: Option[ImplicitConversion])
     extends Kind(kind.name)  with ImplicitConversionProvider
   case Unknown extends Kind("Unknown")
-}
 
 enum Origin:
   case ImplicitlyAddedBy(name: String, dri: DRI)
