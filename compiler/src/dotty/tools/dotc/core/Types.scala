@@ -2257,7 +2257,7 @@ object Types {
       if (!d.exists && !allowPrivate && ctx.mode.is(Mode.Interactive))
         // In the IDE we might change a public symbol to private, and would still expect to find it.
         d = memberDenot(prefix, name, true)
-      if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
+      if (!d.exists && ctx.isAfterTyper && lastDenotation.isInstanceOf[SymDenotation])
         // name has changed; try load in earlier phase and make current
         d = atPhase(ctx.phaseId - 1)(memberDenot(name, allowPrivate)).current
       if (d.isOverloaded)
