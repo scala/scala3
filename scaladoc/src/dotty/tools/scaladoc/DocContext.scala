@@ -74,7 +74,7 @@ case class NavigationNode(name: String, dri: DRI, nested: Seq[NavigationNode])
 case class DocContext(args: Scaladoc.Args, compilerContext: CompilerContext):
   lazy val sourceLinks = SourceLinks.load(args.sourceLinks, args.revision)(using compilerContext)
 
-  lazy val snippetCompilerArgs = snippets.SnippetCompilerArgs.load(args.snippetCompiler, args.snippetCompilerDebug)(using compilerContext)
+  lazy val snippetCompilerArgs = snippets.SnippetCompilerArgs.load(args.snippetCompiler)(using compilerContext)
 
   lazy val snippetChecker = snippets.SnippetChecker(args)(using compilerContext)
 

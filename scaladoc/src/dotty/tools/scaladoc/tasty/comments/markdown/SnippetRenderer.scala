@@ -58,6 +58,18 @@ object SnippetRenderer:
     }
     mRes.getOrElse(snippetLines)
 
+  private def wrapCommonIndent(snippetLines: Seq[SnippetLine]): Seq[SnippetLine] =
+    val nonHiddenSnippetLines = snippetLines.filter(l => !l.classes.contains("hideable"))
+    nonHiddenSnippetLines.headOption.map(_.content.takeWhile(_ == ' ')).map { prefix =>
+      val maxCommonIndent = nonHiddenSnippetLines.foldLeft(prefix) { (currPrefix, elem) =>
+        if elem.content.startsWith(currPrefix) then currPrefix else elem.content.takeWhile(_ == ' ')
+      }
+      snippetLines.map { line =>
+        if line.classes.contains("hideable") then line
+        else line.copy(content = span(cls := "hideable")(maxCommonIndent).toString + line.content.stripPrefix(maxCommonIndent))
+      }
+    }.getOrElse(snippetLines)
+
   private def wrapLineInBetween(startSymbol: Option[String], endSymbol: Option[String], line: SnippetLine): SnippetLine =
     val startIdx = startSymbol.map(s => line.content.indexOf(s))
     val endIdx = endSymbol.map(s => line.content.indexOf(s))
@@ -90,6 +102,7 @@ object SnippetRenderer:
     }
     wrapImportedSection
       .andThen(wrapHiddenSymbols)
+      .andThen(wrapCommonIndent)
       .apply(snippetLines)
 
   private def addCompileMessages(messages: Seq[SnippetCompilerMessage])(codeLines: Seq[SnippetLine]): Seq[SnippetLine] =

@@ -13,11 +13,15 @@ object WrappedSnippet:
   def apply(str: String): WrappedSnippet =
     val baos = new ByteArrayOutputStream()
     val ps = new PrintStream(baos)
+    ps.startHide()
     ps.println("package snippets")
     ps.println("object Snippet {")
+    ps.endHide()
     str.split('\n').foreach(ps.printlnWithIndent(indent, _))
+    ps.startHide()
     ps.println("}")
-    WrappedSnippet(baos.toString, 0, 0, indent, indent)
+    ps.endHide()
+    WrappedSnippet(baos.toString, 0, 0, indent + 2 /*Hide tokens*/, indent)
 
   def apply(
     str: String,
@@ -29,6 +33,7 @@ object WrappedSnippet:
   ): WrappedSnippet =
     val baos = new ByteArrayOutputStream()
     val ps = new PrintStream(baos)
+    ps.startHide()
     ps.println(s"package ${packageName.getOrElse("snippets")}")
     imports.foreach(i => ps.println(s"import $i"))
     val notEmptyClassInfos = if classInfos.isEmpty then Seq(SnippetCompilerData.ClassInfo(None, Nil, None)) else classInfos
@@ -38,17 +43,23 @@ object WrappedSnippet:
         ps.printlnWithIndent(indent * i + indent, s"val $name = self")
       }
     }
+    ps.endHide()
     str.split('\n').foreach(ps.printlnWithIndent(notEmptyClassInfos.size * indent, _))
+    ps.startHide()
     (0 to notEmptyClassInfos.size -1).reverse.foreach( i => ps.printlnWithIndent(i * indent, "}"))
+    ps.endHide()
     WrappedSnippet(
       baos.toString,
       outerLineOffset,
       outerColumnOffset,
-      notEmptyClassInfos.size + notEmptyClassInfos.flatMap(_.names).size + packageName.size,
+      notEmptyClassInfos.size + notEmptyClassInfos.flatMap(_.names).size + packageName.size + 2 /*Hide tokens*/,
       notEmptyClassInfos.size * indent
     )
 
-  extension (ps: PrintStream) private def printlnWithIndent(indent: Int, str: String) =
-    ps.println((" " * indent) + str)
+  extension (ps: PrintStream)
+    private def printlnWithIndent(indent: Int, str: String) =
+      ps.println((" " * indent) + str)
+    private def startHide() = ps.println(raw"//{")
+    private def endHide() = ps.println(raw"//}")
 
 
