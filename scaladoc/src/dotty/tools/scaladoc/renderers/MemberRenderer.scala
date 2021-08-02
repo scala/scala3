@@ -349,14 +349,22 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           div(link.kind.name," ", link.signature.map(renderElement))
         )))
 
+      def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
+        if list.isEmpty then Nil
+        else Seq(div(cls := "symbol monospace") { list.map { link =>
+          div(link.signature.map(renderElement))
+        }})
+
       val supertypes = signatureList(m.parents)
       val subtypes = signatureList(m.knownChildren)
+      val selfType = selfTypeList(m.selfType.toList)
 
       renderTabs(
         singleSelection = true,
         Tab("Graph", "graph", graphHtml, "showGraph"),
         Tab("Supertypes", "supertypes", supertypes),
         Tab("Known subtypes", "subtypes", subtypes),
+        Tab("Self type", "selftype", selfType)
       )
 
   private def buildDocumentableFilter = div(cls := "documentableFilter")(
