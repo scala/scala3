@@ -57,6 +57,7 @@ class CoursierScalaTests:
       val args = scriptPath
       val output = CoursierScalaTests.csCmd(args)
       assertTrue(output.mkString("\n").startsWith("script.path:"))
+      assertTrue(output.mkString("\n").endsWith("scriptPath.sc"))
     scriptPath()
 
     def version() =
