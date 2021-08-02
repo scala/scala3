@@ -114,9 +114,6 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val snippetCompiler: Setting[List[String]] =
     MultiStringSetting("-snippet-compiler", "snippet-compiler", snippets.SnippetCompilerArgs.usage)
 
-  val snippetCompilerDebug: Setting[Boolean] =
-    BooleanSetting("-Ysnippet-compiler-debug", snippets.SnippetCompilerArgs.debugUsage, false)
-
   val generateInkuire: Setting[Boolean] =
     BooleanSetting("-Ygenerate-inkuire", "Generates InkuireDB and enables Hoogle-like searches", false)
 
@@ -124,4 +121,4 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     BooleanSetting("-Yapi-subdirectory", "Put the API documentation pages inside a directory `api/`", false)
 
   def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug, generateInkuire)
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire)

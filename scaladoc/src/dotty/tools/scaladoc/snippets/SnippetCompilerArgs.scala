@@ -3,7 +3,7 @@ package snippets
 
 import java.nio.file.Path
 
-case class SnippetCompilerArg(flag: SCFlags, debug: Boolean):
+case class SnippetCompilerArg(flag: SCFlags):
   def overrideFlag(f: SCFlags): SnippetCompilerArg = copy(flag = f)
 
 sealed trait SCFlags(val flagName: String)
@@ -15,16 +15,16 @@ object SCFlags:
 
   def values: Seq[SCFlags] = Seq(Compile, NoCompile, Fail)
 
-case class SnippetCompilerArgs(scFlags: PathBased[SCFlags], val debug: Boolean, defaultFlag: SCFlags):
+case class SnippetCompilerArgs(scFlags: PathBased[SCFlags], defaultFlag: SCFlags):
   def get(member: Member): SnippetCompilerArg =
     member.sources
       .flatMap(s => scFlags.get(s.path).map(_.elem))
-      .fold(SnippetCompilerArg(defaultFlag, debug))(SnippetCompilerArg(_, debug))
+      .fold(SnippetCompilerArg(defaultFlag))(SnippetCompilerArg(_))
 
   def get(path: Option[Path]): SnippetCompilerArg =
     path
       .flatMap(p => scFlags.get(p).map(_.elem))
-      .fold(SnippetCompilerArg(defaultFlag, debug))(SnippetCompilerArg(_, debug))
+      .fold(SnippetCompilerArg(defaultFlag))(SnippetCompilerArg(_))
 
 
 object SnippetCompilerArgs:
@@ -46,11 +46,7 @@ object SnippetCompilerArgs:
     |
     """.stripMargin
 
-  val debugUsage = """
-  |Setting this option causes snippet compiler to print snippet as it is compiled (after wrapping).
-  """.stripMargin
-
-  def load(args: List[String], debug: Boolean, defaultFlag: SCFlags = SCFlags.NoCompile)(using CompilerContext): SnippetCompilerArgs = {
+  def load(args: List[String], defaultFlag: SCFlags = SCFlags.NoCompile)(using CompilerContext): SnippetCompilerArgs = {
     PathBased.parse[SCFlags](args)(using SCFlagsParser) match {
       case PathBased.ParsingResult(errors, res) =>
         if errors.nonEmpty then report.warning(s"""
@@ -60,7 +56,7 @@ object SnippetCompilerArgs:
             |$usage
             |""".stripMargin
         )
-        SnippetCompilerArgs(res, debug, defaultFlag)
+        SnippetCompilerArgs(res, defaultFlag)
     }
   }
 

@@ -59,7 +59,7 @@ class SnippetCompiler(
       case diagnostic if diagnostic.position.isPresent =>
         val diagPos = diagnostic.position.get
         val pos = Some(
-          Position(diagPos.line + line - innerLineOffset, diagPos.column + column - innerColumnOffset, diagPos.lineContent, if arg.debug then diagPos.line else diagPos.line - innerLineOffset)
+          Position(diagPos.line + line - innerLineOffset, diagPos.column + column - innerColumnOffset, diagPos.lineContent, diagPos.line)
         )
         val dmsg = Try(diagnostic.message) match {
           case Success(msg) => msg
