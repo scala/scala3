@@ -96,3 +96,9 @@ community-build/dotty-community-build-deps
 
 # Bloop
 .bsp
+
+# Coursier
+cs
+
+# Coursier test product
+compiler/test-coursier/run/myfile.jar
