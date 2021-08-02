@@ -14,6 +14,10 @@ longer explanation available when compiling with `-explain`
    |        =, >:, or <: expected, but '_' found
 
 longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/kind-projector-underscores.scala:14:51 -------------------------------------------------
+14 |class BacktickUnderscoreIsNotFine extends Foo[List[`_`]] // error wildcard invalid as backquoted identifier
+   |                                                   ^
+   |                                                   wildcard invalid as backquoted identifier
 -- Error: tests/neg-custom-args/kind-projector-underscores.scala:5:23 --------------------------------------------------
 5 |class Bar1 extends Foo[Either[_, _]] // error
   |                       ^^^^^^^^^^^^

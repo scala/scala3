@@ -1609,8 +1609,6 @@ object Parsers {
       else if isIdent(nme.?) then
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
-      else if isIdent(nme.*) && !ctx.settings.YkindProjector.isDefault then
-        typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
           if in.token == LPAREN && in.featureEnabled(Feature.dependent)
