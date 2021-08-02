@@ -12,6 +12,7 @@ class CodeSnippets:
 
   def enrichSnippets() = document.querySelectorAll("div.snippet").foreach {
     case snippet: html.Element =>
+      snippet.addEventListener("click", e => e.stopPropagation())
       snippetAnchor(snippet)
       handleHideableCode(snippet)
       handleImportedCode(snippet)
@@ -120,7 +121,8 @@ class CodeSnippets:
     val buttonsSection = getButtonsSection(snippet)
     buttonsSection.foreach(s =>
       s.appendChild(copyButton)
-      s.appendChild(runButton)
+      // Temporarily disabled
+      // s.appendChild(runButton)
     )
   }
 
