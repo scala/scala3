@@ -109,7 +109,7 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   )
 
   val YdocumentSyntheticTypes: Setting[Boolean] =
-    BooleanSetting("-Ydocument-synthetic-types", "Documents intrinsic types e. g. Any, Nothing. Setting is useful only for stdlib", false)
+    BooleanSetting("-Ydocument-synthetic-types", "Attach pages with documentation of the intrinsic types e. g. Any, Nothing to the docs. Setting is useful only for stdlib.", false)
 
   val snippetCompiler: Setting[List[String]] =
     MultiStringSetting("-snippet-compiler", "snippet-compiler", snippets.SnippetCompilerArgs.usage)
