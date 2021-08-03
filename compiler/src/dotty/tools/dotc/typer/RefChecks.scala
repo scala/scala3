@@ -253,7 +253,7 @@ object RefChecks {
     def infoString(sym: Symbol) = infoString0(sym, sym.owner != clazz)
     def infoStringWithLocation(sym: Symbol) = infoString0(sym, true)
 
-    def infoString0(sym: Symbol, showLocation: Boolean) = {
+    def infoString0(sym: Symbol, showLocation: Boolean) = atPhase(typerPhase) {
       val sym1 = sym.underlyingSymbol
       def info = self.memberInfo(sym1)
       val infoStr =
@@ -264,6 +264,11 @@ object RefChecks {
         else ""
       i"${if (showLocation) sym1.showLocated else sym1}$infoStr"
     }
+
+    def incompatibleRepeatedParam(member: Symbol, other: Symbol): Boolean =
+      member.is(Method, butNot = JavaDefined) && other.is(Method, butNot = JavaDefined) && atPhase(typerPhase) {
+        member.info.paramInfoss.nestedZipExists(other.info.paramInfoss)(_.isRepeatedParam != _.isRepeatedParam)
+      }
 
     /* Check that all conditions for overriding `other` by `member`
        * of class `clazz` are met.
@@ -350,10 +355,8 @@ object RefChecks {
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
 
       /* Is the intersection between given two lists of overridden symbols empty? */
-      def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) = {
-        val set2 = syms2.toSet
-        !(syms1 exists (set2 contains _))
-      }
+      def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) =
+        !syms1.exists(syms2.toSet.contains)
 
       // o: public | protected        | package-protected  (aka java's default access)
       // ^-may be overridden by member with access privileges-v
@@ -414,6 +417,8 @@ object RefChecks {
               + "\n(Note: this can be resolved by declaring an override in " + clazz + ".)")
         else if member.is(Exported) then
           overrideError("cannot override since it comes from an export")
+        else if incompatibleRepeatedParam(member, other) then
+          overrideError("cannot override because erased signatures conflict in repeated parameter")
         else
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
@@ -839,6 +844,7 @@ object RefChecks {
       def isSignatureMatch(sym: Symbol) = sym.isType || {
         val self = clazz.thisType
         sym.asSeenFrom(self).matches(member.asSeenFrom(self))
+        && !incompatibleRepeatedParam(sym, member)
       }
 
       /* The rules for accessing members which have an access boundary are more
@@ -871,8 +877,8 @@ object RefChecks {
     }
 
     // 4. Check that every defined member with an `override` modifier overrides some other member.
-    for (member <- clazz.info.decls)
-      if (member.isAnyOverride && !(clazz.thisType.baseClasses exists (hasMatchingSym(_, member)))) {
+    for member <- clazz.info.decls do
+      if member.isAnyOverride && !clazz.thisType.baseClasses.exists(hasMatchingSym(_, member)) then
         if (checks != noPrinter)
           for (bc <- clazz.info.baseClasses.tail) {
             val sym = bc.info.decl(member.name).symbol
@@ -896,7 +902,7 @@ object RefChecks {
         }
         member.resetFlag(Override)
         member.resetFlag(AbsOverride)
-      }
+      end if
   }
 
   // Note: if a symbol has both @deprecated and @migration annotations and both

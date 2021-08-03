@@ -222,6 +222,22 @@ object Decorators {
     def nestedExists(p: T => Boolean): Boolean = xss match
       case xs :: xss1 => xs.exists(p) || xss1.nestedExists(p)
       case nil => false
+    def nestedZipExists(yss: List[List[U]])(f: (T, U) => Boolean): Boolean =
+      @tailrec def zipExists(p1: List[T], p2: List[U]): Boolean =
+        p1 match
+          case h :: t =>
+            p2 match
+              case h2 :: t2 => f(h, h2) || zipExists(t, t2)
+              case _ => false
+          case _ => false
+      @tailrec def loop(ps1: List[List[T]], ps2: List[List[U]]): Boolean =
+        ps1 match
+          case h :: t =>
+            ps2 match
+              case h2 :: t2 => zipExists(h, h2) || loop(t, t2)
+              case _ => false
+          case _ => false
+      loop(xss, yss)
   end extension
 
   extension (text: Text)
