@@ -187,6 +187,12 @@ object Scala3:
       def isStatic: Boolean = (info.properties & SymbolInformation.Property.STATIC.value) != 0
       def isEnum: Boolean = (info.properties & SymbolInformation.Property.ENUM.value) != 0
       def isDefault: Boolean = (info.properties & SymbolInformation.Property.DEFAULT.value) != 0
+      def isGiven: Boolean = (info.properties & SymbolInformation.Property.GIVEN.value) != 0
+      def isInline: Boolean = (info.properties & SymbolInformation.Property.INLINE.value) != 0
+      def isOpen: Boolean = (info.properties & SymbolInformation.Property.OPEN.value) != 0
+      def isTransparent: Boolean = (info.properties & SymbolInformation.Property.TRANSPARENT.value) != 0
+      def isInfix: Boolean = (info.properties & SymbolInformation.Property.INFIX.value) != 0
+      def isOpaque: Boolean = (info.properties & SymbolInformation.Property.OPAQUE.value) != 0
 
       def isUnknownKind: Boolean = info.kind.isUnknownKind
       def isLocal: Boolean = info.kind.isLocal

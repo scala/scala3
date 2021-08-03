@@ -343,7 +343,7 @@ Occurrences => 5 entries
 Symbols:
 angiven/AnonymousGiven$package. => final package object angiven
 angiven/AnonymousGiven$package.bar(). => method bar
-angiven/AnonymousGiven$package.bar().(x$1) => implicit param x$1
+angiven/AnonymousGiven$package.bar().(x$1) => given param x$1
 angiven/Foo# => trait Foo
 angiven/Foo#`<init>`(). => primary ctor <init>
 
@@ -437,7 +437,7 @@ classes/C10#s. => private[this] val method s
 classes/C11# => class C11
 classes/C11#`<init>`(). => primary ctor <init>
 classes/C11#foo(). => macro foo
-classes/C11#foo(). => macro foo
+classes/C11#foo(). => inline macro foo
 classes/C12# => class C12
 classes/C12#Context# => class Context
 classes/C12#Context#Expr# => type Expr
@@ -935,7 +935,7 @@ _empty_/Enums.Suits.Clubs. => case val static enum method Clubs
 _empty_/Enums.Suits.Diamonds. => case val static enum method Diamonds
 _empty_/Enums.Suits.Hearts. => case val static enum method Hearts
 _empty_/Enums.Suits.Spades. => case val static enum method Spades
-_empty_/Enums.Suits.derived$CanEqual. => implicit lazy val method derived$CanEqual
+_empty_/Enums.Suits.derived$CanEqual. => lazy val given method derived$CanEqual
 _empty_/Enums.Suits.fromOrdinal(). => method fromOrdinal
 _empty_/Enums.Suits.fromOrdinal().(ordinal) => param ordinal
 _empty_/Enums.Suits.isBlack(). => method isBlack
@@ -994,13 +994,13 @@ _empty_/Enums.`<:<`.Refl.toString(). => method toString
 _empty_/Enums.`<:<`.Refl.unapply(). => method unapply
 _empty_/Enums.`<:<`.Refl.unapply().(x$1) => param x$1
 _empty_/Enums.`<:<`.Refl.unapply().[C] => typeparam C
-_empty_/Enums.`<:<`.`given_<:<_T_T`(). => final implicit method given_<:<_T_T
+_empty_/Enums.`<:<`.`given_<:<_T_T`(). => final given method given_<:<_T_T
 _empty_/Enums.`<:<`.`given_<:<_T_T`().[T] => typeparam T
 _empty_/Enums.`<:<`.fromOrdinal(). => method fromOrdinal
 _empty_/Enums.`<:<`.fromOrdinal().(ordinal) => param ordinal
 _empty_/Enums.some1. => val method some1
 _empty_/Enums.unwrap(). => method unwrap
-_empty_/Enums.unwrap().(ev) => implicit param ev
+_empty_/Enums.unwrap().(ev) => given param ev
 _empty_/Enums.unwrap().(opt) => param opt
 _empty_/Enums.unwrap().[A] => typeparam A
 _empty_/Enums.unwrap().[B] => typeparam B
@@ -1445,16 +1445,16 @@ a/b/Givens.Monoid#combine().(x) => param x
 a/b/Givens.Monoid#combine().(y) => param y
 a/b/Givens.Monoid#empty(). => abstract method empty
 a/b/Givens.foo(). => method foo
-a/b/Givens.foo().(A) => implicit param A
+a/b/Givens.foo().(A) => given param A
 a/b/Givens.foo().[A] => typeparam A
-a/b/Givens.given_Monoid_String. => final implicit object given_Monoid_String
+a/b/Givens.given_Monoid_String. => final given object given_Monoid_String
 a/b/Givens.given_Monoid_String.combine(). => method combine
 a/b/Givens.given_Monoid_String.combine().(x) => param x
 a/b/Givens.given_Monoid_String.combine().(y) => param y
 a/b/Givens.given_Monoid_String.empty(). => method empty
 a/b/Givens.goodbye1. => val method goodbye1
 a/b/Givens.hello1. => val method hello1
-a/b/Givens.int2String(). => final implicit macro int2String
+a/b/Givens.int2String(). => final given inline macro int2String
 a/b/Givens.sayGoodbye(). => method sayGoodbye
 a/b/Givens.sayGoodbye().(any) => param any
 a/b/Givens.sayGoodbye().[B] => typeparam B
@@ -1748,7 +1748,7 @@ Occurrences => 72 entries
 
 Symbols:
 givens/InventedNames$package. => final package object givens
-givens/InventedNames$package.`* *`. => final implicit lazy val method * *
+givens/InventedNames$package.`* *`. => final lazy val given method * *
 givens/InventedNames$package.a. => val method a
 givens/InventedNames$package.b. => val method b
 givens/InventedNames$package.c. => val method c
@@ -1756,29 +1756,29 @@ givens/InventedNames$package.d. => val method d
 givens/InventedNames$package.e. => val method e
 givens/InventedNames$package.f. => val method f
 givens/InventedNames$package.g. => val method g
-givens/InventedNames$package.given_Char. => final implicit lazy val method given_Char
-givens/InventedNames$package.given_Double(). => final implicit method given_Double
-givens/InventedNames$package.given_Double().(x$1) => implicit param x$1
-givens/InventedNames$package.given_Float. => final implicit lazy val method given_Float
-givens/InventedNames$package.given_List_T(). => final implicit method given_List_T
+givens/InventedNames$package.given_Char. => final lazy val given method given_Char
+givens/InventedNames$package.given_Double(). => final given method given_Double
+givens/InventedNames$package.given_Double().(x$1) => given param x$1
+givens/InventedNames$package.given_Float. => final lazy val given method given_Float
+givens/InventedNames$package.given_List_T(). => final given method given_List_T
 givens/InventedNames$package.given_List_T().[T] => typeparam T
-givens/InventedNames$package.given_String. => final implicit lazy val method given_String
-givens/InventedNames$package.given_X. => final implicit object given_X
+givens/InventedNames$package.given_String. => final lazy val given method given_String
+givens/InventedNames$package.given_X. => final given object given_X
 givens/InventedNames$package.given_X.doX(). => method doX
 givens/InventedNames$package.given_Y# => class given_Y
 givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init>
-givens/InventedNames$package.given_Y#`<init>`().(x$1) => implicit val param x$1
+givens/InventedNames$package.given_Y#`<init>`().(x$1) => val given param x$1
 givens/InventedNames$package.given_Y#doY(). => method doY
-givens/InventedNames$package.given_Y#x$1. => protected implicit val method x$1
-givens/InventedNames$package.given_Y(). => final implicit method given_Y
-givens/InventedNames$package.given_Y().(x$1) => implicit param x$1
+givens/InventedNames$package.given_Y#x$1. => protected val given method x$1
+givens/InventedNames$package.given_Y(). => final given method given_Y
+givens/InventedNames$package.given_Y().(x$1) => given param x$1
 givens/InventedNames$package.given_Z_T# => class given_Z_T
 givens/InventedNames$package.given_Z_T#[T] => typeparam T
 givens/InventedNames$package.given_Z_T#`<init>`(). => primary ctor <init>
 givens/InventedNames$package.given_Z_T#doZ(). => method doZ
-givens/InventedNames$package.given_Z_T(). => final implicit method given_Z_T
+givens/InventedNames$package.given_Z_T(). => final given method given_Z_T
 givens/InventedNames$package.given_Z_T().[T] => typeparam T
-givens/InventedNames$package.intValue. => final implicit lazy val method intValue
+givens/InventedNames$package.intValue. => final lazy val given method intValue
 givens/InventedNames$package.x. => val method x
 givens/InventedNames$package.y. => val method y
 givens/InventedNames$package.z. => val method z
@@ -2575,8 +2575,8 @@ Occurrences => 4 entries
 
 Symbols:
 _empty_/NewModifiers. => final object NewModifiers
-_empty_/NewModifiers.A# => type A
-_empty_/NewModifiers.foo. => val method foo
+_empty_/NewModifiers.A# => opaque type A
+_empty_/NewModifiers.foo. => val inline method foo
 
 Occurrences:
 [0:7..0:19): NewModifiers <- _empty_/NewModifiers.
@@ -3574,8 +3574,8 @@ Occurrences => 12 entries
 
 Symbols:
 inlinedefs/FakePredef. => final object FakePredef
-inlinedefs/FakePredef.assert(). => final macro assert
-inlinedefs/FakePredef.assert().(assertion) => param assertion
+inlinedefs/FakePredef.assert(). => final inline transparent macro assert
+inlinedefs/FakePredef.assert().(assertion) => inline param assertion
 
 Occurrences:
 [0:8..0:18): inlinedefs <- inlinedefs/
@@ -3637,9 +3637,9 @@ local5 => val local Nat_this
 local6 => val local Nat_this
 recursion/Nats. => final object Nats
 recursion/Nats.Nat# => sealed trait Nat
-recursion/Nats.Nat#`++`(). => macro ++
-recursion/Nats.Nat#`+`(). => macro +
-recursion/Nats.Nat#`+`().(that) => param that
+recursion/Nats.Nat#`++`(). => inline transparent macro ++
+recursion/Nats.Nat#`+`(). => inline transparent macro +
+recursion/Nats.Nat#`+`().(that) => inline param that
 recursion/Nats.Nat#`<init>`(). => primary ctor <init>
 recursion/Nats.Succ# => case class Succ
 recursion/Nats.Succ#[N] => typeparam N
@@ -3662,8 +3662,8 @@ recursion/Nats.Succ.unapply().(x$1) => param x$1
 recursion/Nats.Succ.unapply().[N] => typeparam N
 recursion/Nats.Zero. => final case object Zero
 recursion/Nats.j31. => val method j31
-recursion/Nats.toIntg(). => macro toIntg
-recursion/Nats.toIntg().(n) => param n
+recursion/Nats.toIntg(). => inline transparent macro toIntg
+recursion/Nats.toIntg().(n) => inline param n
 
 Occurrences:
 [1:8..1:17): recursion <- recursion/
@@ -4385,7 +4385,7 @@ _empty_/MyProgram#main().(args) => param args
 _empty_/toplevel$package. => final package object _empty_
 _empty_/toplevel$package.MyProgram(). => method MyProgram
 _empty_/toplevel$package.MyProgram().(times) => param times
-_empty_/toplevel$package.a. => val method a
+_empty_/toplevel$package.a. => val inline method a
 _empty_/toplevel$package.combine(). => method combine
 _empty_/toplevel$package.combine().(x) => param x
 _empty_/toplevel$package.combine().(y) => param y

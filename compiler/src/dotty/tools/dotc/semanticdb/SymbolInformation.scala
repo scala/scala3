@@ -437,6 +437,12 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
     def isPrimary: _root_.scala.Boolean = false
     def isEnum: _root_.scala.Boolean = false
     def isDefault: _root_.scala.Boolean = false
+    def isGiven: _root_.scala.Boolean = false
+    def isInline: _root_.scala.Boolean = false
+    def isOpen: _root_.scala.Boolean = false
+    def isTransparent: _root_.scala.Boolean = false
+    def isInfix: _root_.scala.Boolean = false
+    def isOpaque: _root_.scala.Boolean = false
     
     final def asRecognized: _root_.scala.Option[dotty.tools.dotc.semanticdb.SymbolInformation.Property.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[dotty.tools.dotc.semanticdb.SymbolInformation.Property.Recognized])
   }
@@ -550,9 +556,51 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
     }
     
     @SerialVersionUID(0L)
+    case object GIVEN extends Property(65536) with Property.Recognized {
+      val index = 15
+      val name = "GIVEN"
+      override def isGiven: _root_.scala.Boolean = true
+    }
+    
+    @SerialVersionUID(0L)
+    case object INLINE extends Property(131072) with Property.Recognized {
+      val index = 16
+      val name = "INLINE"
+      override def isInline: _root_.scala.Boolean = true
+    }
+    
+    @SerialVersionUID(0L)
+    case object OPEN extends Property(262144) with Property.Recognized {
+      val index = 17
+      val name = "OPEN"
+      override def isOpen: _root_.scala.Boolean = true
+    }
+    
+    @SerialVersionUID(0L)
+    case object TRANSPARENT extends Property(524288) with Property.Recognized {
+      val index = 18
+      val name = "TRANSPARENT"
+      override def isTransparent: _root_.scala.Boolean = true
+    }
+    
+    @SerialVersionUID(0L)
+    case object INFIX extends Property(1048576) with Property.Recognized {
+      val index = 19
+      val name = "INFIX"
+      override def isInfix: _root_.scala.Boolean = true
+    }
+    
+    @SerialVersionUID(0L)
+    case object OPAQUE extends Property(2097152) with Property.Recognized {
+      val index = 20
+      val name = "OPAQUE"
+      override def isOpaque: _root_.scala.Boolean = true
+    }
+    
+    @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Property(unrecognizedValue) with SemanticdbUnrecognizedEnum
     
-    lazy val values = scala.collection.immutable.Seq(UNKNOWN_PROPERTY, ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY, CASE, COVARIANT, CONTRAVARIANT, VAL, VAR, STATIC, PRIMARY, ENUM, DEFAULT)
+    lazy val values = scala.collection.immutable.Seq(UNKNOWN_PROPERTY, ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY, CASE, COVARIANT, CONTRAVARIANT, VAL, VAR, STATIC, PRIMARY, ENUM, DEFAULT, GIVEN, INLINE, OPEN, TRANSPARENT, INFIX, OPAQUE)
     def fromValue(__value: _root_.scala.Int): Property = __value match {
       case 0 => UNKNOWN_PROPERTY
       case 4 => ABSTRACT
@@ -569,6 +617,12 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
       case 8192 => PRIMARY
       case 16384 => ENUM
       case 32768 => DEFAULT
+      case 65536 => GIVEN
+      case 131072 => INLINE
+      case 262144 => OPEN
+      case 524288 => TRANSPARENT
+      case 1048576 => INFIX
+      case 2097152 => OPAQUE
       case __other => Unrecognized(__other)
     }
     

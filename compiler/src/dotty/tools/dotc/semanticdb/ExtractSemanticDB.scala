@@ -429,7 +429,7 @@ class ExtractSemanticDB extends Phase:
         props |= SymbolInformation.Property.FINAL.value
       if sym.is(Sealed) then
         props |= SymbolInformation.Property.SEALED.value
-      if sym.isOneOf(GivenOrImplicit) then
+      if sym.is(Implicit) then
         props |= SymbolInformation.Property.IMPLICIT.value
       if sym.is(Lazy, butNot=Module) then
         props |= SymbolInformation.Property.LAZY.value
@@ -449,6 +449,20 @@ class ExtractSemanticDB extends Phase:
         props |= SymbolInformation.Property.STATIC.value
       if sym.is(Enum) then
         props |= SymbolInformation.Property.ENUM.value
+      if sym.is(Given) then
+        props |= SymbolInformation.Property.GIVEN.value
+      if sym.is(Inline) then
+        props |= SymbolInformation.Property.INLINE.value
+      if sym.is(Open) then
+        props |= SymbolInformation.Property.OPEN.value
+      if sym.is(Open) then
+        props |= SymbolInformation.Property.OPEN.value
+      if sym.is(Transparent) then
+        props |= SymbolInformation.Property.TRANSPARENT.value
+      if sym.is(Infix) then
+        props |= SymbolInformation.Property.INFIX.value
+      if sym.is(Opaque) then
+        props |= SymbolInformation.Property.OPAQUE.value
       props
 
     private def symbolAccess(sym: Symbol, kind: SymbolInformation.Kind)(using Context): Access =
