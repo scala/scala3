@@ -24,5 +24,5 @@ object ABug:
     N match
       case Zero => One
       case One => One
-      case ? => ![--[N]] × (N)
+      case _ => ![--[N]] × (N)
       case ? :: ? => ![--[N]] × (N)

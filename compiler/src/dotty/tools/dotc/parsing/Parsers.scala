@@ -2609,10 +2609,10 @@ object Parsers {
     def typeCaseClause(): CaseDef = atSpan(in.offset) {
       val pat = inSepRegion(InCase) {
         accept(CASE)
-        infixType()
+        rejectWildcardType(infixType())
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
-        val t = typ()
+        val t = rejectWildcardType(typ())
         newLinesOptWhenFollowedBy(CASE)
         t
       })
