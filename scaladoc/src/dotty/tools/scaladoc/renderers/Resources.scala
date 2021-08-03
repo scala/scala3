@@ -52,6 +52,16 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case "js" => script(`type` := "text/javascript", src := resolveLink(dri, res), if (deferJs) Seq(defer := "true") else Nil)
         case _ => raw("")
 
+  val onlyRenderedResources: Seq[Resource] =
+    List(
+      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M2/inkuire.js", "scripts/inkuire.js"),
+    ).map { case (url, path) =>
+      Resource.URLToCopy(url, path)
+    } ++
+    List(
+      "scripts/inkuire-worker.js"
+    ).map(dottyRes)
+
   val earlyMemberResources: Seq[Resource] =
     List(
       "scripts/theme.js"
@@ -78,8 +88,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/components/Input.js",
       "scripts/components/FilterGroup.js",
       "scripts/components/Filter.js",
-      "scripts/searchbar.js",
-      "scripts/inkuire-worker.js"
+      "scripts/searchbar.js"
     ).map(dottyRes)
 
     val urls = List(
@@ -90,13 +99,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
     ).map(Resource.URL.apply)
 
-    val urlToPathMappings = List(
-      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M2/inkuire.js", "scripts/inkuire.js"),
-    ).map { case (url, path) =>
-      Resource.URLToCopy(url, path)
-    }
 
-    fromResources ++ urls ++ urlToPathMappings ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
+    fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
 
   val searchDataPath = "scripts/searchData.js"
   val memberResourcesPaths = Seq(searchDataPath) ++ memberResources.map(_.path)
