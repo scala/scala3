@@ -18,7 +18,7 @@ class SnippetCompilerTest {
     0
   )
 
-  def runTest(str: String) = compiler.compile(wrapFn(str), SnippetCompilerArg(SCFlags.Compile, false))
+  def runTest(str: String) = compiler.compile(wrapFn(str), SnippetCompilerArg(SCFlags.Compile))
 
   private def assertSuccessfulCompilation(res: SnippetCompilationResult): Unit = res match {
     case r @ SnippetCompilationResult(_, isSuccessful, _, messages) => assert(isSuccessful, r.getSummary)
