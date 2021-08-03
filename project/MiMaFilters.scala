@@ -11,5 +11,8 @@ object MiMaFilters {
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.getJPath"),
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.name"),
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.path"),
+
+    // New APIs marked @experimental in 3.1.0
+    exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.flatMap"),
   )
 }
