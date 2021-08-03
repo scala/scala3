@@ -154,7 +154,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
     val siteResourcesPaths = allPages.toSet.flatMap(specificResources) ++ staticResources
 
-    val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(allPages)
+    val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(allPages) ++ onlyRenderedResources
     resources.flatMap(renderResource)
 
   def render(): Unit =
