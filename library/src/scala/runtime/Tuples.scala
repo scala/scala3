@@ -388,6 +388,11 @@ object Tuples {
     case _ => fromIArray(self.productIterator.map(f(_).asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use toIArray
   }
 
+  def flatMap[F[_] <: Tuple](self: Tuple, f: [t] => t => F[t]): Tuple = self match {
+    case EmptyTuple => self
+    case _ => fromIArray(self.toIArray.flatMap(f(_).toIArray))
+  }
+
   def take(self: Tuple, n: Int): Tuple = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val selfSize: Int = self.size

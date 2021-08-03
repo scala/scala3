@@ -54,6 +54,12 @@ sealed trait Tuple extends Product {
   inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
     runtime.Tuples.map(this, f).asInstanceOf[Map[this.type, F]]
 
+  /** Called on a tuple `(a1, ..., an)`, returns a new tuple `f(a1) ++ ... ++ f(an)`.
+   *  The result is typed as `Concat[F[A1], ...Concat[F[An], EmptyTuple]...])` if the tuple type is fully known.
+   */
+  inline def flatMap[F[_] <: Tuple](f: [t] => t => F[t]): FlatMap[this.type, F] =
+    runtime.Tuples.flatMap(this, f).asInstanceOf[FlatMap[this.type, F]]
+
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(a1, ..., an)` consisting
    *  of its first n elements.
    */
