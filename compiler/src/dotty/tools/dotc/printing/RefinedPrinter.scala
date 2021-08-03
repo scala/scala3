@@ -699,6 +699,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case MacroTree(call) =>
         keywordStr("macro ") ~ toTextGlobal(call)
+      case Hole(isTermHole, idx, args) =>
+        val (prefix, postfix) = if isTermHole then ("{{{ ", " }}}") else ("[[[ ", " ]]]")
+        val argsText = toTextGlobal(args, ", ")
+        prefix ~~ idx.toString ~~ "|" ~~ argsText ~~ postfix
       case _ =>
         tree.fallbackToText(this)
     }

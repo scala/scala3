@@ -11,7 +11,6 @@ import Constants._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
 import util.Spans._
-import tasty.TreePickler.Hole
 import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd

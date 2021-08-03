@@ -91,7 +91,7 @@ class PositionPickler(
           | _: Trees.PackageDef[?]
           // holes can change source files when filled, which means
           // they might lose their position
-          | _: TreePickler.Hole => true
+          | _: Trees.Hole[?] => true
       case _ => false
     }
 
