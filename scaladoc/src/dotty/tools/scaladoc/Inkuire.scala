@@ -15,7 +15,10 @@ object Inkuire {
   }
 
   def generateInkuireConfig(externalMappings: Seq[String]): String = {
-    val paths = ("../inkuire-db.json" +: externalMappings.map(_ + "../inkuire-db.json")).map(jsonString)
+    val paths =
+      List("../inkuire-db.json").map(jsonString)
+        // TODO: #13243
+        // ++ externalMappings.map(_ + "../inkuire-db.json")).map(jsonString)
     jsonObject(("inkuirePaths", jsonList(paths))).toString
   }
 
