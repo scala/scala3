@@ -92,6 +92,12 @@ class CoursierScalaTests:
       assertTrue(source.getParentFile.listFiles.find(_.getName == "myfile.jar").isDefined)
     jar()
 
+    def runThatJar() =
+      val source = new File(getClass.getResource("/run/myfile.jar").getPath)
+      val output = CoursierScalaTests.csCmd(source.absPath)
+      assertEquals(output.mkString("\n"), "Hello")
+    runThatJar()
+
 object CoursierScalaTests:
 
   def execCmd(command: String, options: String*): List[String] =

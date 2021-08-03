@@ -12,6 +12,8 @@ import scala.annotation.internal.sharable
 import dotty.tools.dotc.util.ClasspathFromClassloader
 import dotty.tools.runner.ObjectRunner
 import dotty.tools.dotc.config.Properties.envOrNone
+import java.util.jar._
+import java.util.jar.Attributes.Name
 
 enum ExecuteMode:
   case Guess
@@ -129,7 +131,25 @@ object MainGenericRunner {
       case ExecuteMode.Run =>
         val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
         val newClasspath = (settings.classPath ++ scalaClasspath :+ ".").map(File(_).toURI.toURL)
-        errorFn("", ObjectRunner.runAndCatch(newClasspath, settings.residualArgs.head, settings.residualArgs.drop(1)))
+        val res = ObjectRunner.runAndCatch(newClasspath, settings.residualArgs.head, settings.residualArgs.drop(1)).flatMap {
+          case ex: ClassNotFoundException if ex.getMessage == settings.residualArgs.head =>
+            val file = settings.residualArgs.head
+            def withJarInput[T](f: JarInputStream => T): T =
+              val in = new JarInputStream(java.io.FileInputStream(file))
+              try f(in)
+              finally in.close()
+            val manifest = withJarInput(s => Option(s.getManifest))
+            manifest match
+              case None => Some(IllegalArgumentException(s"Cannot find manifest in jar: $file"))
+              case Some(f) =>
+                f.getMainAttributes.get(Name.MAIN_CLASS) match
+                  case mainClass: String =>
+                    ObjectRunner.runAndCatch(newClasspath :+ File(file).toURI.toURL, mainClass, settings.residualArgs)
+                  case _ =>
+                    Some(IllegalArgumentException(s"No main class defined in manifest in jar: $file"))
+          case ex => Some(ex)
+        }
+        errorFn("", res)
       case ExecuteMode.Script =>
         val properArgs =
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
