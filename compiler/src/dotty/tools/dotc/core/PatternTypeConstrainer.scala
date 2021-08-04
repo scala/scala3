@@ -74,7 +74,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false, touchedTypeMembers: Boolean = false): Boolean = trace.force(i"constrainPatternType($scrut, $pat, $forceInvariantRefinement, $touchedTypeMembers)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false, touchedTypeMembers: Boolean = false): Boolean = trace(i"constrainPatternType($scrut, $pat, $forceInvariantRefinement, $touchedTypeMembers)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
     def classesMayBeCompatible: Boolean = {
       import Flags._
       val patCls = pat.classSymbol
@@ -295,7 +295,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     val assumeInvariantRefinement =
       migrateTo3 || forceInvariantRefinement || refinementIsInvariant(patternTp)
 
-    trace.force(i"constraining simple pattern type $tp >:< $pt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
+    trace(i"constraining simple pattern type $tp >:< $pt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       (tp, pt) match {
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
           val saved = state.constraint
