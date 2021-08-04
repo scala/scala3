@@ -185,6 +185,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private inline def inFrozenGadtAndConstraint[T](inline op: T): T =
     inFrozenGadtIf(true)(inFrozenConstraint(op))
 
+  extension (sym: Symbol)
+    private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
+      val bounds = gadtBounds(sym)
+      bounds != null && op(bounds)
+
   extension (ntp: NamedType)
     private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
       val bounds = gadtBounds(ntp)
@@ -519,7 +524,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           tp2.onGadtBounds(gbounds2 =>
             isSubTypeWhenFrozen(tp1, gbounds2.lo)
             || tp1.match
-                case tp1: NamedType if ctx.gadt.contains(tp1) =>
+                case tp1: NamedType if gadtContains(tp1) =>
                   // Note: since we approximate constrained types only with their non-param bounds,
                   // we need to manually handle the case when we're comparing two constrained types,
                   // one of which is constrained to be a subtype of another.
