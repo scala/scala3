@@ -33,6 +33,7 @@ case class Settings(
   targetScript: String = "",
   save: Boolean = false,
   modeShouldBeRun: Boolean = false,
+  compiler: Boolean = false,
 ) {
   def withExecuteMode(em: ExecuteMode): Settings = this.executeMode match
     case ExecuteMode.Guess =>
@@ -67,6 +68,9 @@ case class Settings(
 
   def withModeShouldBeRun: Settings =
     this.copy(modeShouldBeRun = true)
+
+  def withCompiler: Settings =
+    this.copy(compiler = true)
 }
 
 object MainGenericRunner {
@@ -99,6 +103,8 @@ object MainGenericRunner {
       )
     case "-save" :: tail =>
       process(tail, settings.withSave)
+    case "-with-compiler" :: tail =>
+      process(tail, settings.withCompiler)
     case (o @ javaOption(striped)) :: tail =>
       process(tail, settings.withJavaArgs(striped).withScalaArgs(o))
     case (o @ scalaOption(_*)) :: tail =>
@@ -130,7 +136,15 @@ object MainGenericRunner {
         repl.Main.main(properArgs.toArray)
       case ExecuteMode.Run =>
         val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
-        val newClasspath = (settings.classPath ++ scalaClasspath :+ ".").map(File(_).toURI.toURL)
+
+        def removeCompiler(cp: Array[String]) =
+          if (!settings.compiler) then // Let's remove compiler from the classpath
+            val compilerLibs = Seq("scala3-compiler", "scala3-interfaces", "tasty-core", "scala-asm", "scala3-staging", "scala3-tasty-inspector")
+            cp.filterNot(c => compilerLibs.exists(c.contains))
+          else
+            cp
+        val newClasspath = (settings.classPath ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
+
         val res = ObjectRunner.runAndCatch(newClasspath, settings.residualArgs.head, settings.residualArgs.drop(1)).flatMap {
           case ex: ClassNotFoundException if ex.getMessage == settings.residualArgs.head =>
             val file = settings.residualArgs.head
