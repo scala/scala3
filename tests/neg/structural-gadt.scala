@@ -15,7 +15,7 @@ object Test {
 
     case _: Expr { type T <: Int } =>
       val a: A = 0 // error
-      val i: Int = ??? : A
+      val i: Int = ??? : A  // limitation  // error
 
     case _: IntExpr =>
       val a: A = 0
