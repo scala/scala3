@@ -1284,7 +1284,8 @@ object Build {
         scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
         dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
         dottySrcLink(referenceVersion),
-      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets ++ Seq("-Ygenerate-inkuire")
+        "-Ygenerate-inkuire",
+      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
       import _root_.scala.sys.process._
       val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
       Def.task {
@@ -1371,6 +1372,8 @@ object Build {
               "-comment-syntax", "wiki",
               s"-source-links:docs=github://lampepfl/dotty/master#docs",
               "-doc-root-content", docRootFile.toString,
+              "-versions-dictionary-url",
+              "https://scala-lang.org/api/versions.json",
               "-Ydocument-synthetic-types"
             ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")))
 
