@@ -4114,7 +4114,7 @@ object Types {
         cachedSuper = tycon match {
           case tycon: HKTypeLambda => defn.AnyType
           case tycon: TypeRef if tycon.symbol.isClass => tycon
-          case tycon: TypeProxy => tycon.superType.applyIfParameterized(args)
+          case tycon: TypeProxy => tycon.superType.applyIfParameterized(args).normalized
           case _ => defn.AnyType
         }
         validSuper = if (tycon.isProvisional) Nowhere else ctx.period
