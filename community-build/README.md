@@ -6,6 +6,8 @@ This project contains tests to build and test a corpus of open sources Scala pro
 
 To run the community build on a local machine, first fetch all the git submodules with `git submodule update --init` and run `sbt community-build/test` from the root of the dotty repo.
 
+To run a single project, you can use the usual syntax for running a single JUnit test, for example `community-build/testOnly -- *shapeless`
+
 ## Adding your project
 
 To add your project to the community build you can follow these steps:
