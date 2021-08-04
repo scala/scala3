@@ -1,6 +1,8 @@
-# Dotty Community Build
+# Scala 3 Community Build
 
-This project contains tests to build and test a corpus of open sources Scala projects against the latest version of Dotty.
+This project contains tests to build and test a corpus of open sources Scala projects against the latest version of Scala 3.
+
+## Running it locally
 
 To run the community build on a local machine, first fetch all the git submodules with `git submodule update --init` and run `sbt community-build/test` from the root of the dotty repo.
 
@@ -8,8 +10,8 @@ To run the community build on a local machine, first fetch all the git submodule
 
 To add your project to the community build you can follow these steps:
 
-1. Get your project to compile with Dotty. Instructions can be found on the [dotty-example-project](https://github.com/lampepfl/dotty-example-project).
-   See the submodules in [community-projects](https://github.com/lampepfl/dotty/tree/master/community-build/community-projects/) for examples of projects that compile with Dotty.
+1. Get your project to compile with Scala 3. Instructions can be found on the [scala3-example-project](https://github.com/lampepfl/scala3-example-project).
+   See the submodules in [community-projects](https://github.com/lampepfl/dotty/tree/master/community-build/community-projects/) for examples of projects that compile with Scala 3.
 
 2. Open a PR against this repo that:
      - Adds your project as a new git submodule
