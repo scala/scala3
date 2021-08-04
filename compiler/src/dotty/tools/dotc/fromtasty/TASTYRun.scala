@@ -17,9 +17,9 @@ class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
     val classNames = files.flatMap { file =>
       file.extension match
         case "jar" =>
-          JarArchive.open(Path(file.path), create = false).iterator()
-            .filter(e => e.extension == "tasty" && !fromTastyIgnoreList(e.name))
-            .map(e => e.name.stripSuffix(".tasty").replace("/", "."))
+          JarArchive.open(Path(file.path), create = false).allFileNames()
+            .filter(e => Path.extension(e) == "tasty" && !fromTastyIgnoreList(e))
+            .map(e => e.stripSuffix(".tasty").replace("/", "."))
             .toList
         case "tasty" => TastyFileUtil.getClassName(file)
         case _ =>

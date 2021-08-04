@@ -3,6 +3,7 @@ package dotty.tools.io
 import java.nio.file.{FileSystemAlreadyExistsException, FileSystems}
 
 import scala.jdk.CollectionConverters._
+import java.util.jar.JarFile
 
 /**
  * This class implements an [[AbstractFile]] backed by a jar
@@ -10,6 +11,8 @@ import scala.jdk.CollectionConverters._
  */
 class JarArchive private (root: Directory) extends PlainDirectory(root) {
   def close(): Unit = jpath.getFileSystem().close()
+  def allFileNames(): Iterator[String] = 
+    java.nio.file.Files.walk(jpath).iterator().asScala.map(_.toString)
 }
 
 object JarArchive {
