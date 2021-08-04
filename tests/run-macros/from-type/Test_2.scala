@@ -2,8 +2,9 @@
 @main def Test: Unit =
   testValueOfType[true]
   testValueOfType[false]
-  testValueOfByte[1]
-  testValueOfShort[2]
+  // TODO support Byte and short literal types
+  // testValueOfType[1b]
+  // testValueOfType[2s]
   testValueOfType[3]
   testValueOfType[4]
   testValueOfType[5L]
@@ -29,6 +30,3 @@
   testValueOfType[Null]
   testValueOfType[Any]
   testValueOfType[Some[1]]
-
-transparent inline def testValueOfByte[B <: Byte] = testValueOfType[B]
-transparent inline def testValueOfShort[S <: Short] = testValueOfType[S]

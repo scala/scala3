@@ -43,6 +43,9 @@ class CompilationUnit protected (val source: SourceFile) {
    */
   var needsInlining: Boolean = false
 
+  /** Set to `true` if inliner added anonymous mirrors that need to be completed */
+  var needsMirrorSupport: Boolean = false
+
   /** Will be set to `true` if contains `Quote`.
    *  The information is used in phase `Staging` in order to avoid traversing trees that need no transformations.
    */
@@ -63,7 +66,7 @@ class CompilationUnit protected (val source: SourceFile) {
   def isSuspendable: Boolean = true
 
   /** Suspends the compilation unit by thowing a SuspendException
-   *  and recoring the suspended compilation unit
+   *  and recording the suspended compilation unit
    */
   def suspend()(using Context): Nothing =
     assert(isSuspendable)

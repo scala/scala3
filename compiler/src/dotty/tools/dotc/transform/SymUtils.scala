@@ -100,6 +100,8 @@ object SymUtils:
     def whyNotGenericSum(declScope: Symbol)(using Context): String =
       if (!self.is(Sealed))
         s"it is not a sealed ${self.kindString}"
+      else if (!self.isOneOf(AbstractOrTrait))
+        s"it is not an abstract class"
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsMirror
@@ -259,6 +261,13 @@ object SymUtils:
         && self.owner.linkedClass.is(Case)
         && self.owner.linkedClass.isDeclaredInfix
 
+    /** Is symbol declared or inherits @experimental? */
+    def isExperimental(using Context): Boolean =
+      // TODO should be add `@experimental` to `class experimental` in PostTyper?
+      self.eq(defn.ExperimentalAnnot)
+      || self.hasAnnotation(defn.ExperimentalAnnot)
+      || (self.maybeOwner.isClass && self.owner.hasAnnotation(defn.ExperimentalAnnot))
+
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.
     */
@@ -278,5 +287,50 @@ object SymUtils:
         self.addAnnotation(
           Annotation(defn.TargetNameAnnot,
             Literal(Constant(nameFn(original.targetName).toString)).withSpan(original.span)))
+
+    /** The return type as seen from the body of this definition. It is
+     *  computed from the symbol's type by replacing param refs by param symbols.
+     */
+    def localReturnType(using Context): Type =
+      if self.isConstructor then defn.UnitType
+      else
+        def instantiateRT(info: Type, psymss: List[List[Symbol]]): Type = info match
+          case info: PolyType =>
+            instantiateRT(info.instantiate(psymss.head.map(_.typeRef)), psymss.tail)
+          case info: MethodType =>
+            instantiateRT(info.instantiate(psymss.head.map(_.termRef)), psymss.tail)
+          case info =>
+            info.widenExpr
+        instantiateRT(self.info, self.paramSymss)
+
+    /** The expected type of a return to `self` at the place indicated by the context.
+     *  This is the local return type instantiated by the symbols of any context function
+     *  closures that enclose the site of the return
+     */
+    def returnProto(using Context): Type =
+
+      /** If `pt` is a context function type, its return type. If the CFT
+       * is dependent, instantiate with the parameters of the associated
+       * anonymous function.
+       * @param  paramss  the parameters of the anonymous functions
+       *                  enclosing the return expression
+       */
+      def instantiateCFT(pt: Type, paramss: => List[List[Symbol]]): Type =
+        val ift = defn.asContextFunctionType(pt)
+        if ift.exists then
+          ift.nonPrivateMember(nme.apply).info match
+            case appType: MethodType =>
+              instantiateCFT(appType.instantiate(paramss.head.map(_.termRef)), paramss.tail)
+        else pt
+
+      def iftParamss = ctx.owner.ownersIterator
+          .filter(_.is(Method, butNot = Accessor))
+          .takeWhile(_.isAnonymousFunction)
+          .toList
+          .reverse
+          .map(_.paramSymss.head)
+
+      instantiateCFT(self.localReturnType, iftParamss)
+    end returnProto
   end extension
 end SymUtils

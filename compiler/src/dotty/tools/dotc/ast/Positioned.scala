@@ -36,7 +36,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
       ids.put(this, ownId)
       if ownId == debugId then
         println(s"Debug tree (id=$debugId) creation \n$this\n")
-        Reporter.displayPrompt(Console.in, new PrintWriter(Console.err, true))
+        Thread.dumpStack()
 
   allocateId()
 
@@ -65,12 +65,11 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     if (span == mySpan) this
     else {
       val newpd: this.type =
-        if (mySpan.isSynthetic) {
-          if (!mySpan.exists && span.exists)
-            envelope(source, span.startPos) // fill in children spans
+        if !mySpan.exists then
+          if span.exists then envelope(source, span.startPos) // fill in children spans
           this
-        }
-        else cloneIn(source)
+        else
+          cloneIn(source)
       newpd.span = span
       newpd
     }

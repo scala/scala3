@@ -17,13 +17,12 @@ import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 
 import scala.collection.JavaConverters._
 
-val docsRootDRI: DRI = DRI(location = "index.md")
-val docsDRI: DRI = DRI(location = "docs/index.md")
-val apiPageDRI: DRI = DRI(location = "api")
+val docsRootDRI: DRI = DRI(location = "docs/index", symbolUUID = staticFileSymbolUUID)
+val apiPageDRI: DRI = DRI(location = "api/index")
 
 val defaultMarkdownOptions: DataHolder =
   new MutableDataSet()
-    .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
+    .setFrom(ParserEmulationProfile.COMMONMARK.getOptions)
     .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
     .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
     .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")
@@ -36,7 +35,8 @@ val defaultMarkdownOptions: DataHolder =
       EmojiExtension.create(),
       YamlFrontMatterExtension.create(),
       StrikethroughExtension.create(),
-      WikiLinkExtension.create()
+      WikiLinkExtension.create(),
+      tasty.comments.markdown.SnippetRenderingExtension
     ))
 
 def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
@@ -45,10 +45,11 @@ def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
   rawCode = "",
   settings = Map.empty,
   name = file.getName.stripSuffix(".html"),
-  title = title,
+  title = TemplateName.FilenameDefined(title),
   hasFrame = true,
   resources = List.empty,
-  layout = None
+  layout = None,
+  configOffset = 0
 )
 
 final val ConfigSeparator = "---"
@@ -103,9 +104,10 @@ def loadTemplateFile(file: File): TemplateFile = {
     rawCode = content.mkString(LineSeparator),
     settings = settings,
     name = name,
-    title = stringSetting(allSettings, "title").getOrElse(name),
+    title = stringSetting(allSettings, "title").map(TemplateName.YamlDefined(_)).getOrElse(TemplateName.FilenameDefined(name)),
     hasFrame = !stringSetting(allSettings, "hasFrame").contains("false"),
     resources = (listSetting(allSettings, "extraCSS") ++ listSetting(allSettings, "extraJS")).flatten.toList,
-    layout = stringSetting(allSettings, "layout")
+    layout = stringSetting(allSettings, "layout"),
+    configOffset = config.size
   )
 }

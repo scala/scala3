@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Changes in Overload Resolution"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/overload-resolution.html
 ---
 
 Overload resolution in Scala 3 improves on Scala 2 in two ways.
@@ -49,7 +50,7 @@ overload resolution based on additional argument blocks.
 The handling of function values with missing parameter types has been improved. We can now
 pass such values in the first argument list of an overloaded application, provided
 that the remaining parameters suffice for picking a variant of the overloaded function.
-For example, the following code compiles in Scala 3, while it results in an
+For example, the following code compiles in Scala 3, while it results in a
 missing parameter type error in Scala2:
 
 ```scala

@@ -13,7 +13,7 @@ class Y {
   }
 
   val x = new X
-  x.b.g               // error
+  x.b.g
 
-  val n = 10
+  val n = 10     // error
 }

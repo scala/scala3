@@ -1,0 +1,24 @@
+-- Error: tests/neg/i11854.scala:4:14 ----------------------------------------------------------------------------------
+4 |inline val j: Int = 2 // error
+  |              ^^^
+  |              inline value must have a literal constant type
+-- Error: tests/neg/i11854.scala:5:14 ----------------------------------------------------------------------------------
+5 |inline val b: Boolean = true // error
+  |              ^^^^^^^
+  |              inline value must have a literal constant type
+-- Error: tests/neg/i11854.scala:6:14 ----------------------------------------------------------------------------------
+6 |inline val s: String = "" // error
+  |              ^^^^^^
+  |              inline value must have a literal constant type
+-- Error: tests/neg/i11854.scala:7:18 ----------------------------------------------------------------------------------
+7 |inline val bagA = new Bag(Seq('a', 'b', 'c')) // error
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                  inline value must contain a literal constant value.
+  |
+  |                  To inline more complex types consider using `inline def`
+-- Error: tests/neg/i11854.scala:8:23 ----------------------------------------------------------------------------------
+8 |inline val bagB: Bag = new Bag(Seq('a', 'b', 'c')) // error
+  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                       inline value must contain a literal constant value.
+  |
+  |                       To inline more complex types consider using `inline def`

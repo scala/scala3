@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dropped: Auto-Application"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/auto-apply.html
 ---
 
 Previously an empty argument list `()` was implicitly inserted when
@@ -74,10 +75,10 @@ exactly in their parameter lists.
 
 ```scala
 class A:
-   def next(): Int
+  def next(): Int
 
 class B extends A:
-   def next: Int // overriding error: incompatible type
+  def next: Int // overriding error: incompatible type
 ```
 
 Methods overriding Java or Scala 2 methods are again exempted from this

@@ -45,8 +45,8 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           val msg = s"ERROR: Multiple index pages for doc found ${indexes.map(_.file)}"
           report.error(msg)
 
-        val templatePages =
-          (templates ++ siteContext.indexTemplate()).map(templateToPage(_, siteContext))
+        val templatePages = templates.map(templateToPage(_, siteContext))
+
         indexes.headOption match
           case None if templatePages.isEmpty=>
             rootPckPage.withTitle(args.name)
@@ -63,10 +63,48 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           link = navigablePage.link.copy(dri = docsRootDRI),
           children = Nil
         ))
-      case Some(site) =>
-        site.orphanedTemplates.map(templateToPage(_, site))
+      case Some(siteContext) =>
+        // In case that we do not have an index page and we do not have any API entries
+        // we want to create empty index page, so there is one
+        val actualIndexTemplate = siteContext.indexTemplate() match {
+            case None if effectiveMembers.isEmpty => Seq(siteContext.emptyIndexTemplate)
+            case templates => templates.toSeq
+          }
 
-  val allPages = navigablePage +: hiddenPages
+          (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
+
+  /**
+   * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
+   */
+  val allPages: Seq[Page] =
+    def traversePages(page: Page): (Page, Seq[Page]) =
+      val (newChildren, newPagesToRemove): (Seq[Page], Seq[Page]) = page.children.map(traversePages(_)).foldLeft((Seq[Page](), Seq[Page]())) {
+        case ((pAcc, ptrAcc), (p, ptr)) => (pAcc :+ p, ptrAcc ++ ptr)
+      }
+      hiddenPages.find(_.link == page.link) match
+        case None =>
+          (page.copy(children = newChildren), newPagesToRemove)
+        case Some(newPage) =>
+          (newPage.copy(children = newChildren), newPagesToRemove :+ newPage)
+
+    val (newNavigablePage, pagesToRemove) = traversePages(navigablePage)
+
+    val all = newNavigablePage +: hiddenPages.filterNot(pagesToRemove.contains)
+    // We need to check for conflicts only if we have top-level member called blog or docs
+    val hasPotentialConflict =
+      rootPackage.members.exists(m => m.name.startsWith("docs") || m.name.startsWith("blog"))
+
+    if hasPotentialConflict then
+      def walk(page: Page): Unit =
+        if page.link.dri.isStaticFile then
+          val dest = absolutePath(page.link.dri)
+          if apiPaths.contains(dest) then
+            report.error(s"Conflict between static page and API member for $dest. $pathsConflictResoultionMsg")
+          page.children.foreach(walk)
+
+      all.foreach (walk)
+
+    all
 
   def renderContent(page: Page) = page.content match
     case m: Member =>
@@ -102,18 +140,21 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
     def siteRoot = staticSite.get.root.toPath
     def pathToResource(p: String) = Resource.File(p, siteRoot.resolve(p))
 
-    val siteImages = staticSite.toSeq.flatMap { _ =>
-      val siteImgPath = siteRoot.resolve("images")
+    def harvestResources(path: String) =
+      val siteImgPath = siteRoot.resolve(path)
       if !Files.exists(siteImgPath) then Nil
       else
         val allPaths = Files.walk(siteImgPath, FileVisitOption.FOLLOW_LINKS)
         val files = allPaths.filter(Files.isRegularFile(_)).iterator().asScala
         files.map(p => siteRoot.relativize(p).toString).toList
+
+    val staticResources = staticSite.toSeq.flatMap { _ =>
+      harvestResources("images") ++ harvestResources("resources")
     }
 
-    val siteResourcesPaths = allPages.toSet.flatMap(specificResources) ++ siteImages
+    val siteResourcesPaths = allPages.toSet.flatMap(specificResources) ++ staticResources
 
-    val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(allPages)
+    val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(allPages) ++ onlyRenderedResources
     resources.flatMap(renderResource)
 
   def render(): Unit =
@@ -127,34 +168,46 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
       case _ =>
         memberResourcesPaths
 
+    val earlyResources = page.content match
+      case t: ResolvedTemplate => if t.hasFrame then earlyMemberResourcePaths else Nil
+      case _ => earlyMemberResourcePaths
+
     head(
       meta(charset := "utf-8"),
       meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1"),
       title(page.link.name),
+      canonicalUrl(absolutePath(page.link.dri)),
       link(
         rel := "shortcut icon",
         `type` := "image/x-icon",
         href := resolveLink(page.link.dri, "favicon.ico")
       ),
-      linkResources(page.link.dri, resources).toList,
-      script(raw(s"""var pathToRoot = "${pathToRoot(page.link.dri)}";"""))
+      linkResources(page.link.dri, earlyResources, deferJs = false).toList,
+      linkResources(page.link.dri, resources, deferJs = true).toList,
+      script(raw(s"""var pathToRoot = "${pathToRoot(page.link.dri)}";""")),
+      ctx.args.versionsDictionaryUrl match
+        case Some(url) => script(raw(s"""var versionsDictionaryUrl = "$url";"""))
+        case None => ""
     )
 
   private def buildNavigation(pageLink: Link): AppliedTag =
-    def navigationIcon(member: Member) = member.kind match {
-      case m if m.isInstanceOf[Classlike] => Seq(span(cls := s"micon ${member.kind.name.head}"))
+    def navigationIcon(member: Member) = member match {
+      case m if m.needsOwnPage => Seq(span(cls := s"micon ${member.kind.name.take(2)}"))
       case _ => Nil
     }
 
     def renderNested(nav: Page, toplevel: Boolean = false): (Boolean, AppliedTag) =
       val isSelected = nav.link.dri == pageLink.dri
-      def linkHtml(exapnded: Boolean = false) =
-        val attrs = if (isSelected || toplevel) Seq(cls := "selected expanded") else Nil
+      def linkHtml(expanded: Boolean = false) =
+        val attrs: Seq[String] = Seq(
+          Option.when(isSelected)("selected"),
+          Option.when(expanded)("expanded")
+        ).flatten
         val icon = nav.content match {
           case m: Member => navigationIcon(m)
           case _ => Nil
         }
-        Seq(a(href := pathToPage(pageLink.dri, nav.link.dri), attrs)(icon, nav.link.name))
+        Seq(a(href := pathToPage(pageLink.dri, nav.link.dri), cls := attrs.mkString(" "))(icon, span(nav.link.name)))
 
       nav.children match
         case Nil => isSelected -> div(linkHtml())
@@ -165,10 +218,19 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
             if expanded || isSelected || toplevel then Seq(cls := "expanded") else Nil
           (isSelected || expanded) -> div(attr)(
             linkHtml(expanded),
-            span(cls := "ar"),
+            if toplevel then Nil else span(cls := "ar"),
             nested.map(_._2)
           )
+
     renderNested(navigablePage, toplevel = true)._2
+
+  private def canonicalUrl(l: String): AppliedTag | String =
+    val canon = args.docCanonicalBaseUrl
+    if !canon.isEmpty then
+      val canonicalUrl = if canon.endsWith("/") then canon else canon + "/"
+      link(rel := "canonical", href := canonicalUrl + l)
+    else
+      "" // return empty tag
 
   private def hasSocialLinks = !args.socialLinks.isEmpty
 
@@ -194,6 +256,13 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
         )).dropRight(1)
       div(cls := "breadcrumbs")(innerTags:_*)
 
+    def textFooter: String | AppliedTag =
+      args.projectFooter.fold("") { f =>
+        span(id := "footer-text")(
+          raw(f)
+        )
+      }
+
     div(id := "container")(
       div(id := "leftColumn")(
         div(id := "logo")(
@@ -201,8 +270,15 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           span(
             div(cls:="projectName")(args.name)
           ),
-          span(
-            args.projectVersion.map(v => div(cls:="projectVersion")(v)).toList
+          div(id := "version")(
+            div(cls := "versions-dropdown")(
+              div(onclick := "dropdownHandler()", id := "dropdown-button", cls := "dropdownbtn dropdownbtnactive")(
+                args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
+              ),
+              div(id := "dropdown-content", cls := "dropdown-content")(
+                input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
+              ),
+            )
           ),
           div(cls := "socials")(
             socialLinks()
@@ -225,26 +301,39 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           )
         ),
         footer(
-          span(cls := "go-to-top-icon")(
-            a(href := "#container")(
-              span(cls:="icon-vertical_align_top"),
-              raw("&nbsp;Back to top")
-            )
-          ),
-          div(cls := "socials")(
-            if hasSocialLinks then Seq(raw("Social links&nbsp;")) else Nil,
-            socialLinks(whiteIcon = false)
-          ),
           div(id := "generated-by")(
-            raw("Generated by&nbsp;"),
+            span(cls := "footer-text")(raw("Generated by")),
             a(href := "https://github.com/lampepfl/dotty/tree/master/scaladoc")(
               img(
                 src := resolveRoot(link.dri, "images/scaladoc_logo.svg"),
                 alt := "scaladoc",
                 cls := "scaladoc_logo"
+              ),
+              img(
+                src := resolveRoot(link.dri, "images/scaladoc_logo_dark.svg"),
+                alt := "scaladoc",
+                cls := "scaladoc_logo_dark"
               )
             )
+          ),
+          textFooter,
+          div(cls := "socials")(
+            span(cls := "footer-text")(if hasSocialLinks then Seq(raw("Social links")) else Nil),
+            socialLinks(whiteIcon = false)
+          ),
+          div(cls := "mode")(
+            span(cls :="footer-text")(raw("Mode")),
+            label(id := "theme-toggle", cls := "switch")(
+              input(`type` := "checkbox"),
+              span(cls := "slider")
+            )
+          ),
+          span(cls := "go-to-top-icon")(
+            a(href := "#container")(
+              span(cls:="icon-vertical_align_top"),
+              span(cls :="footer-text")(raw("Back to top"))
+            )
+          )
         )
       )
-    )
     )

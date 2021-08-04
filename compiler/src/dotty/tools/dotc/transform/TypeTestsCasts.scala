@@ -28,16 +28,12 @@ import config.Printers.{ transforms => debug }
 object TypeTestsCasts {
   import ast.tpd._
   import typer.Inferencing.maximizeType
-  import typer.ProtoTypes.{ constrained, newTypeVar }
+  import typer.ProtoTypes.constrained
 
   /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
    *
    *  First do the following substitution:
    *  (a) replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType
-   *  (b) replace pattern binder types (e.g., `_$1`) in X:
-   *      - variance = 1  : hiBound
-   *      - variance = -1 : loBound
-   *      - variance = 0  : OrType(Any, Nothing) // TODO: use original type param bounds
    *
    *  Then check:
    *
@@ -67,29 +63,6 @@ object TypeTestsCasts {
       }
     }.apply(tp)
 
-    def replaceX(tp: Type)(using Context) = new TypeMap {
-      def apply(tp: Type) = tp match {
-        case tref: TypeRef if tref.typeSymbol.isPatternBound =>
-          if (variance == 1) tref.info.hiBound
-          else if (variance == -1) tref.info.loBound
-          else OrType(defn.AnyType, defn.NothingType, soft = true) // TODO: what does this line do?
-        case _ => mapOver(tp)
-      }
-    }.apply(tp)
-
-    /** Approximate type parameters depending on variance */
-    def stripTypeParam(tp: Type)(using Context) = new ApproximatingTypeMap {
-      val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
-      def apply(tp: Type): Type = tp match {
-        case _: MatchType =>
-          tp // break cycles
-        case tp: TypeRef if !tp.symbol.isClass =>
-          boundTypeParams.getOrElseUpdate(tp, newTypeVar(tp.underlying.toBounds))
-        case _ =>
-          mapOver(tp)
-      }
-    }.apply(tp)
-
     /** Returns true if the type arguments of `P` can be determined from `X` */
     def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
       val AppliedType(tycon, _) = P
@@ -102,16 +75,34 @@ object TypeTestsCasts {
       val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
       val P1 = tycon.appliedTo(tvars)
 
+      debug.println("before " + ctx.typerState.constraint.show)
       debug.println("P : " + P.show)
       debug.println("P1 : " + P1.show)
       debug.println("X : " + X.show)
 
-      // It does not matter if P1 is not a subtype of X.
+      // It does not matter whether P1 is a subtype of X or not.
       // It just tries to infer type arguments of P1 from X if the value x
       // conforms to the type skeleton pre.F[_]. Then it goes on to check
       // if P1 <: P, which means the type arguments in P are trivial,
       // thus no runtime checks are needed for them.
-      P1 <:< X
+      withMode(Mode.GadtConstraintInference) {
+        // Why not widen type arguments here? Given the following program
+        //
+        //    trait Tree[-T] class Ident[-T] extends Tree[T]
+        //
+        //    def foo1(tree: Tree[Int]) = tree.isInstanceOf[Ident[Int]]
+        //
+        // In checking whether the test tree.isInstanceOf[Ident[Int]]
+        // is realizable, we want to constrain Ident[X] <: Tree[Int],
+        // such that we can infer X = Int and Ident[X] <:< Ident[Int].
+        //
+        // If we perform widening, we will get X = Nothing, and we don't have
+        // Ident[X] <:< Ident[Int] any more.
+        TypeComparer.constrainPatternType(P1, X, forceInvariantRefinement = true)
+        debug.println(
+          TypeComparer.explained(_.constrainPatternType(P1, X, forceInvariantRefinement = true))
+        )
+      }
 
       // Maximization of the type means we try to cover all possible values
       // which conform to the skeleton pre.F[_] and X. Then we have to make
@@ -119,10 +110,11 @@ object TypeTestsCasts {
       // type arguments in P are trivial (no runtime check needed).
       maximizeType(P1, span, fromScala2x = false)
 
+      debug.println("after " + ctx.typerState.constraint.show)
+
       val res = P1 <:< P
 
       debug.println(TypeComparer.explained(_.isSubType(P1, P)))
-
       debug.println("P1 : " + P1.show)
       debug.println("P1 <:< P = " + res)
 
@@ -140,7 +132,7 @@ object TypeTestsCasts {
           case _                   => recur(defn.AnyType, tpT)
         }
       case tpe: AppliedType     =>
-        X.widen match {
+        X.widenDealias match {
           case OrType(tp1, tp2) =>
             // This case is required to retrofit type inference,
             // which cut constraints in the following two cases:
@@ -151,10 +143,8 @@ object TypeTestsCasts {
           case _ =>
             // always false test warnings are emitted elsewhere
             X.classSymbol.exists && P.classSymbol.exists &&
-              !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
-            // first try without striping type parameters for performance
-            typeArgsTrivial(X, tpe) ||
-            typeArgsTrivial(stripTypeParam(X), tpe)
+              !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass)
+            || typeArgsTrivial(X, tpe)
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
@@ -163,7 +153,7 @@ object TypeTestsCasts {
       case _                    => true
     })
 
-    val res = recur(replaceX(X.widen), replaceP(P))
+    val res = recur(X.widen, replaceP(P))
 
     debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
 
@@ -307,7 +297,7 @@ object TypeTestsCasts {
             derivedTree(expr, defn.Any_asInstanceOf, testType)
         }
 
-        /** Transform isInstanceOf OrType
+        /** Transform isInstanceOf
          *
          *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
          *    expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
@@ -334,7 +324,7 @@ object TypeTestsCasts {
               transformTypeTest(e, tp1, flagUnrelated)
                 .and(transformTypeTest(e, tp2, flagUnrelated))
             }
-          case defn.MultiArrayOf(elem, ndims) if isUnboundedGeneric(elem) =>
+          case defn.MultiArrayOf(elem, ndims) if isGenericArrayElement(elem, isScala2 = false) =>
             def isArrayTest(arg: Tree) =
               ref(defn.runtimeMethodRef(nme.isArray)).appliedTo(arg, Literal(Constant(ndims)))
             if (ndims == 1) isArrayTest(expr)
@@ -349,15 +339,21 @@ object TypeTestsCasts {
           case AppliedType(tref: TypeRef, _) if tref.symbol == defn.PairClass =>
             ref(defn.RuntimeTuples_isInstanceOfNonEmptyTuple).appliedTo(expr)
           case _ =>
-            val erasedTestType = erasure(testType)
-            transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
+            val testWidened = testType.widen
+            defn.untestableClasses.find(testWidened.isRef(_)) match
+              case Some(untestable) =>
+                report.error(i"$untestable cannot be used in runtime type tests", tree.srcPos)
+                constant(expr, Literal(Constant(false)))
+              case _ =>
+                val erasedTestType = erasure(testType)
+                transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
         }
 
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
           if (!isTrusted && !checkable(expr.tpe, argType, tree.span))
-            report.warning(i"the type test for $argType cannot be checked at runtime", tree.srcPos)
+            report.warning(i"the type test for $argType cannot be checked at runtime", expr.srcPos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         }
         else if (sym.isTypeCast)

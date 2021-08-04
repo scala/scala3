@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Scala 3 Syntax Summary"
+movedTo: https://docs.scala-lang.org/scala3/reference/syntax.html
 ---
 
 The following description of Scala tokens uses literal characters `‘c’` when
@@ -69,8 +70,10 @@ stringElement    ::=  printableChar \ (‘"’ | ‘\’)
                    |  charEscapeSeq
 multiLineChars   ::=  {[‘"’] [‘"’] char \ ‘"’} {‘"’}
 processedStringLiteral
-                 ::=  alphaid ‘"’ {printableChar \ (‘"’ | ‘$’) | escape} ‘"’
+                 ::=  alphaid ‘"’ {[‘\’] processedStringPart | ‘\\’ | ‘\"’} ‘"’
                    |  alphaid ‘"""’ {[‘"’] [‘"’] char \ (‘"’ | ‘$’) | escape} {‘"’} ‘"""’
+processedStringPart
+                 ::= printableChar \ (‘"’ | ‘$’ | ‘\’) | escape
 escape           ::=  ‘$$’
                    |  ‘$’ letter { letter | digit }
                    |  ‘{’ Block  [‘;’ whiteSpace stringFormat whiteSpace] ‘}’
@@ -159,10 +162,10 @@ Type              ::=  FunType
                     |  FunParamClause ‘=>>’ Type
                     |  MatchType
                     |  InfixType
-FunType           ::=  FunArgTypes (‘=>’ | ‘?=>’) Type
+FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
                     |  HKTypeParamClause '=>' Type
-FunArgTypes       ::=  InfixType
-                    |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
+FunTypeArgs       ::=  InfixType
+                    |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause
 FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
@@ -187,6 +190,7 @@ Singleton         ::=  SimpleRef
 
 FunArgType        ::=  Type
                     |  ‘=>’ Type
+FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
 ParamValueType    ::=  Type [‘*’]
 TypeArgs          ::=  ‘[’ Types ‘]’
@@ -199,8 +203,10 @@ Types             ::=  Type {‘,’ Type}
 ### Expressions
 ```ebnf
 Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr
+                    |  HkTypeParamClause ‘=>’ Expr
                     |  Expr1
 BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
+                    |  HkTypeParamClause ‘=>’ Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id
@@ -214,7 +220,6 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ‘throw’ Expr
                     |  ‘return’ [Expr]
                     |  ForExpr
-                    |  HkTypeParamClause ‘=>’ Expr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr
                     |  PostfixExpr [Ascription]
@@ -259,8 +264,10 @@ BlockStat         ::=  Import
                     |  Expr1
                     |  EndMarker
 
-ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘yield’] Expr
-                    |  ‘for’ Enumerators (‘do’ Expr | ‘yield’ Expr)
+ForExpr           ::=  ‘for’ ‘(’ Enumerators0 ‘)’ {nl} [‘do‘ | ‘yield’] Expr
+                    |  ‘for’ ‘{’ Enumerators0 ‘}’ {nl} [‘do‘ | ‘yield’] Expr
+                    |  ‘for’     Enumerators0          (‘do‘ | ‘yield’) Expr
+Enumerators0      ::=  {nl} Enumerators [semi]
 Enumerators       ::=  Generator {semi Enumerator | Guard}
 Enumerator        ::=  Generator
                     |  Guard
@@ -309,14 +316,14 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypeParamClause] 
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
-                    |  [nl] ‘(’ ‘using’ (ClsParams | Types) ‘)’
+                    |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
 DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’ | UsingParamClause
-UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefParams | Types) ‘)’
+UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefParams | FunArgTypes) ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param
 ```
@@ -393,9 +400,9 @@ ObjectDef         ::=  id [Template]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefParamClause`, `UsingParamClause` must be present
-StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
-Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
-                       {UsingParamClause} ExtMethods
+StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ TemplateBody]
+Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
+                       ‘(’ DefParam ‘)’ {UsingParamClause} ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
 Template          ::=  InheritClauses [TemplateBody]

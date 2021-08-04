@@ -6,7 +6,6 @@ import Contexts._, Types._, Symbols._, Names._, Flags._
 import SymDenotations._
 import util.Spans._
 import util.Stats
-import NameKinds.DepParamName
 import Decorators._
 import StdNames._
 import collection.mutable
@@ -139,6 +138,10 @@ object TypeOps:
           case tp1 => tp1
         }
       case tp: AppliedType =>
+        tp.tycon match
+          case tycon: TypeRef if tycon.info.isInstanceOf[MatchAlias] =>
+            isFullyDefined(tp, ForceDegree.all)
+          case _ =>
         val normed = tp.tryNormalize
         if normed.exists then normed else tp.map(simplify(_, theMap))
       case tp: TypeParamRef =>
@@ -160,13 +163,17 @@ object TypeOps:
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
       case AnnotatedType(parent, annot)
-      if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+      if annot.symbol == defn.UncheckedVarianceAnnot && !ctx.mode.is(Mode.Type) && !theMap.isInstanceOf[SimplifyKeepUnchecked] =>
         simplify(parent, theMap)
       case _: MatchType =>
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>
         tp // See documentation of `Types#simplified`
+      case tp: SkolemType =>
+        // Mapping over a skolem creates a new skolem which by definition won't
+        // be =:= to the original one.
+        tp
       case _ =>
         mapOver
     }
@@ -175,6 +182,8 @@ object TypeOps:
   class SimplifyMap(using Context) extends TypeMap {
     def apply(tp: Type): Type = simplify(tp, this)
   }
+
+  class SimplifyKeepUnchecked(using Context) extends SimplifyMap
 
   /** Approximate union type by intersection of its dominators.
    *  That is, replace a union type Tn | ... | Tn
@@ -194,12 +203,16 @@ object TypeOps:
    */
   def orDominator(tp: Type)(using Context): Type = {
 
-    /** a faster version of cs1 intersect cs2 */
-    def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] = {
-      val cs2AsSet = new util.HashSet[ClassSymbol](128)
-      cs2.foreach(cs2AsSet += _)
-      cs1.filter(cs2AsSet.contains)
-    }
+    /** a faster version of cs1 intersect cs2 that treats bottom types correctly */
+    def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] =
+      if cs1.head == defn.NothingClass then cs2
+      else if cs2.head == defn.NothingClass then cs1
+      else if cs1.head == defn.NullClass && !ctx.explicitNulls && cs2.head.derivesFrom(defn.ObjectClass) then cs2
+      else if cs2.head == defn.NullClass && !ctx.explicitNulls && cs1.head.derivesFrom(defn.ObjectClass) then cs1
+      else
+        val cs2AsSet = new util.HashSet[ClassSymbol](128)
+        cs2.foreach(cs2AsSet += _)
+        cs1.filter(cs2AsSet.contains)
 
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
     def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
@@ -335,7 +348,12 @@ object TypeOps:
 
     tp match {
       case tp: OrType =>
-        approximateOr(tp.tp1, tp.tp2)
+        (tp.tp1.dealias, tp.tp2.dealias) match
+          case (tp1 @ AppliedType(tycon1, args1), tp2 @ AppliedType(tycon2, args2))
+          if tycon1.typeSymbol == tycon2.typeSymbol && (tycon1 =:= tycon2) =>
+            mergeRefinedOrApplied(tp1, tp2)
+          case (tp1, tp2) =>
+            approximateOr(tp1, tp2)
       case _ =>
         tp
     }
@@ -412,7 +430,7 @@ object TypeOps:
           sym.is(Package) || sym.isStatic && isStaticPrefix(pre.prefix)
         case _ => true
 
-      def apply(tp: Type): Type = tp match {
+      def apply(tp: Type): Type = tp match
         case tp: TermRef
         if toAvoid(tp.symbol) || partsToAvoid(Nil, tp.info).nonEmpty =>
           tp.info.widenExpr.dealias match {
@@ -451,7 +469,7 @@ object TypeOps:
           mapOver(tl)
         case _ =>
           mapOver(tp)
-      }
+      end apply
 
       /** Three deviations from standard derivedSelect:
        *   1. We first try a widening conversion to the type's info with
@@ -677,18 +695,27 @@ object TypeOps:
    */
   private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
     // In order for a child type S to qualify as a valid subtype of the parent
-    // T, we need to test whether it is possible S <: T. Therefore, we replace
-    // type parameters in T with tvars, and see if the subtyping is true.
-    val approximateTypeParams = new TypeMap {
+    // T, we need to test whether it is possible S <: T.
+    //
+    // The check is different from subtype checking due to type parameters and
+    // `this`. We perform the following operations to approximate the parameters:
+    //
+    // 1. Replace type parameters in T with tvars
+    // 2. Replace `A.this.C` with `A#C` (see tests/patmat/i12681.scala)
+    //
+    val approximateParent = new TypeMap {
       val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
 
       def apply(tp: Type): Type = tp.dealias match {
         case _: MatchType =>
           tp // break cycles
 
+        case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
+          tref
+
         case tp: TypeRef if !tp.symbol.isClass =>
-          def lo = LazyRef(apply(tp.underlying.loBound))
-          def hi = LazyRef(apply(tp.underlying.hiBound))
+          def lo = LazyRef.of(apply(tp.underlying.loBound))
+          def hi = LazyRef.of(apply(tp.underlying.hiBound))
           val lookup = boundTypeParams.lookup(tp)
           if lookup != null then lookup
           else
@@ -754,7 +781,8 @@ object TypeOps:
             this(tref)
           else {
             prefixTVar = WildcardType  // prevent recursive call from assigning it
-            prefixTVar = newTypeVar(TypeBounds.upper(this(tref)))
+            val tref2 = this(tref.applyIfParameterized(tref.typeParams.map(_ => TypeBounds.empty)))
+            prefixTVar = newTypeVar(TypeBounds.upper(tref2))
             prefixTVar
           }
         case tp => mapOver(tp)
@@ -771,7 +799,7 @@ object TypeOps:
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/i3645b.scala
     def parentQualify(tp1: Type, tp2: Type) = tp1.classSymbol.info.parents.exists { parent =>
-      parent.argInfos.nonEmpty && approximateTypeParams(parent) <:< tp2
+      parent.argInfos.nonEmpty && approximateParent(parent) <:< tp2
     }
 
     def instantiate(): Type = {
@@ -781,8 +809,8 @@ object TypeOps:
 
     if (protoTp1 <:< tp2) instantiate()
     else {
-      val protoTp2 = approximateTypeParams(tp2)
-      if (protoTp1 <:< protoTp2 || parentQualify(protoTp1, protoTp2)) instantiate()
+      val approxTp2 = approximateParent(tp2)
+      if (protoTp1 <:< approxTp2 || parentQualify(protoTp1, approxTp2)) instantiate()
       else NoType
     }
   }

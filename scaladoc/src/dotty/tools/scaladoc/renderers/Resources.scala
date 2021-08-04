@@ -21,6 +21,7 @@ enum Resource(val path: String):
   case Classpath(override val path: String, name: String) extends Resource(path)
   case File(override val path: String, file: Path) extends Resource(path)
   case URL(url: String) extends Resource(url)
+  case URLToCopy(url: String, dest: String) extends Resource(url)
 
 trait Resources(using ctx: DocContext) extends Locations, Writer:
   private def dynamicJsData =
@@ -38,7 +39,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   private def dottyRes(path: String) = Resource.Classpath(path, s"dotty_res/$path")
 
-  def linkResources(dri: DRI, resources: Iterable[String]): Iterable[AppliedTag] =
+  def linkResources(dri: DRI, resources: Iterable[String], deferJs: Boolean): Iterable[AppliedTag] =
     def fileExtension(url: String): String =
       val param = url.indexOf('?')
       val end = if param < 0 then url.length else param
@@ -48,13 +49,29 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     for res <- resources yield
       fileExtension(res) match
         case "css" => link(rel := "stylesheet", href := resolveLink(dri, res))
-        case "js" => script(`type` := "text/javascript", src := resolveLink(dri, res), defer := "true")
+        case "js" => script(`type` := "text/javascript", src := resolveLink(dri, res), if (deferJs) Seq(defer := "true") else Nil)
         case _ => raw("")
+
+  val onlyRenderedResources: Seq[Resource] =
+    List(
+      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M2/inkuire.js", "scripts/inkuire.js"),
+    ).map { case (url, path) =>
+      Resource.URLToCopy(url, path)
+    } ++
+    List(
+      "scripts/inkuire-worker.js"
+    ).map(dottyRes)
+
+  val earlyMemberResources: Seq[Resource] =
+    List(
+      "scripts/theme.js"
+    ).map(dottyRes)
 
   val memberResources: Seq[Resource] =
     val fromResources = List(
       "styles/nord-light.css",
       "styles/scalastyle.css",
+      "styles/colors.css",
       "styles/dotty-icons.css",
       "styles/diagram.css",
       "styles/filter-bar.css",
@@ -76,16 +93,18 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
     val urls = List(
       "https://code.jquery.com/jquery-3.5.1.min.js",
+      "https://use.fontawesome.com/releases/v5.15.3/js/all.js",
       "https://d3js.org/d3.v6.min.js",
       "https://cdn.jsdelivr.net/npm/graphlib-dot@0.6.2/dist/graphlib-dot.min.js",
       "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
     ).map(Resource.URL.apply)
 
+
     fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
 
   val searchDataPath = "scripts/searchData.js"
   val memberResourcesPaths = Seq(searchDataPath) ++ memberResources.map(_.path)
-
+  val earlyMemberResourcePaths = earlyMemberResources.map(_.path)
 
   def searchData(pages: Seq[Page]) =
     def flattenToText(signature: Signature): String =
@@ -94,21 +113,22 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case s: String => s
       }.mkString
 
-    def mkEntry(dri: DRI, name: String, text: String, descr: String) = jsonObject(
+    def mkEntry(dri: DRI, name: String, text: String, descr: String, kind: String) = jsonObject(
         "l" -> jsonString(absolutePath(dri)),
         "n" -> jsonString(name),
         "t" -> jsonString(text),
-        "d" -> jsonString(descr)
+        "d" -> jsonString(descr),
+        "k" -> jsonString(kind)
       )
 
     def processPage(page: Page): Seq[JSON] =
       val res =  page.content match
-        case m: Member =>
+        case m: Member if m.kind != Kind.RootPackage =>
           val descr = m.dri.asFileLocation
           def processMember(member: Member): Seq[JSON] =
             val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
             val sig = Signature(member.kind.name, " ") ++ Seq(Link(member.name, member.dri)) ++ signatureBuilder.names.reverse
-            val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr)
+            val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr, member.kind.name)
             val children = member
                 .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])
                 .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty)
@@ -116,7 +136,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
           processMember(m)
         case _ =>
-          Seq(mkEntry(page.link.dri, page.link.name, page.link.name, ""))
+          Seq(mkEntry(page.link.dri, page.link.name, page.link.name, "", "static"))
 
       res ++ page.children.flatMap(processPage)
 
@@ -124,11 +144,12 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     Resource.Text(searchDataPath, s"pages = ${jsonList(entries)};")
 
 
-  def allResources(pages: Seq[Page]): Seq[Resource] = memberResources ++ Seq(
+  def allResources(pages: Seq[Page]): Seq[Resource] = earlyMemberResources ++ memberResources ++ Seq(
     dottyRes("favicon.ico"),
     dottyRes("fonts/dotty-icons.woff"),
     dottyRes("fonts/dotty-icons.ttf"),
     dottyRes("images/scaladoc_logo.svg"),
+    dottyRes("images/scaladoc_logo_dark.svg"),
     dottyRes("images/class.svg"),
     dottyRes("images/class_comp.svg"),
     dottyRes("images/object.svg"),
@@ -138,6 +159,11 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     dottyRes("images/enum.svg"),
     dottyRes("images/enum_comp.svg"),
     dottyRes("images/given.svg"),
+    dottyRes("images/method.svg"),
+    dottyRes("images/type.svg"),
+    dottyRes("images/val.svg"),
+    dottyRes("images/package.svg"),
+    dottyRes("images/static.svg"),
     dottyRes("images/github-icon-black.png"),
     dottyRes("images/github-icon-white.png"),
     dottyRes("images/discord-icon-black.png"),
@@ -150,17 +176,24 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
   )
 
   def renderResource(resource: Resource): Seq[String] =
-    resource match
-      case Resource.Text(path, content) =>
-        Seq(write(path, content))
-      case Resource.Classpath(path, name) =>
-        getClass.getClassLoader.getResourceAsStream(name) match
-          case null =>
-            report.error(s"Unable to find $name on classpath")
-            Nil
-          case is =>
-            try Seq(copy(is, path)) finally is.close()
-      case Resource.File(path, file) =>
-        Seq(copy(file, path))
-      case Resource.URL(url) =>
-        Nil
+    val normalizedPath = resource.path.replace('\\', '/')
+    if normalizedPath.endsWith(".html") && apiPaths.contains(normalizedPath) then
+      report.error(s"Conflict between resource and API member for $normalizedPath. $pathsConflictResoultionMsg")
+      Nil
+    else
+      resource match
+        case Resource.Text(path, content) =>
+          Seq(write(path, content))
+        case Resource.Classpath(path, name) =>
+          getClass.getClassLoader.getResourceAsStream(name) match
+            case null =>
+              report.error(s"Unable to find $name on classpath")
+              Nil
+            case is =>
+              try Seq(copy(is, path)) finally is.close()
+        case Resource.File(path, file) =>
+          Seq(copy(file, path))
+        case Resource.URL(url) =>
+          Nil
+        case Resource.URLToCopy(url, dest) =>
+          Seq(copy(new URL(url).openStream(), dest))

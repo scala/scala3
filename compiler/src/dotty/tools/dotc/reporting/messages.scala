@@ -16,7 +16,7 @@ import printing.Formatting
 import ErrorMessageID._
 import ast.Trees
 import config.{Feature, ScalaVersion}
-import typer.ErrorReporting.err
+import typer.ErrorReporting.{err, matchReductionAddendum}
 import typer.ProtoTypes.ViewProto
 import scala.util.control.NonFatal
 import StdNames.nme
@@ -45,7 +45,11 @@ import transform.SymUtils._
   abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Type"
 
-  abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+  trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
+    override def msgSuffix: String = matchReductionAddendum(tps*)
+
+  abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+  extends Message(errorId), ShowMatchTrace(found, expected):
     def kind = "Type Mismatch"
     def explain = err.whyNoMatchStr(found, expected)
     override def canExplain = true
@@ -145,7 +149,6 @@ import transform.SymUtils._
   }
 
   class AnonymousFunctionMissingParamType(param: untpd.ValDef,
-                                          args: List[untpd.Tree],
                                           tree: untpd.Function,
                                           pt: Type)
                                           (using Context)
@@ -153,7 +156,7 @@ import transform.SymUtils._
     def msg = {
       val ofFun =
         if param.name.is(WildcardParamName)
-           || (MethodType.syntheticParamNames(args.length + 1) contains param.name)
+           || (MethodType.syntheticParamNames(tree.args.length + 1) contains param.name)
         then i" of expanded function:\n$tree"
         else ""
 
@@ -238,7 +241,7 @@ import transform.SymUtils._
     }
   }
 
-  class TypeMismatch(found: Type, expected: Type, addenda: => String*)(using Context)
+  class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: => String*)(using Context)
     extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
@@ -277,11 +280,17 @@ import transform.SymUtils._
       val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)(using printCtx)
       s"""|Found:    $foundStr
           |Required: $expectedStr""".stripMargin
-        + whereSuffix + postScript
+        + whereSuffix + postScript 
+
+    override def explain = 
+      val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
+      treeStr + "\n" + super.explain
+      
+
   end TypeMismatch
 
   class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
-  extends NotFoundMsg(NotAMemberID) {
+  extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
     //println(i"site = $site, decls = ${site.decls}, source = ${site.typeSymbol.sourceFile}") //DEBUG
 
     def msg = {
@@ -834,8 +843,34 @@ import transform.SymUtils._
 
   class MatchCaseOnlyNullWarning()(using Context)
   extends PatternMatchMsg(MatchCaseOnlyNullWarningID) {
-    def msg = em"""Only ${hl("null")} is matched. Consider using ${hl("case null =>")} instead."""
+    def msg = em"""Unreachable case except for ${hl("null")} (if this is intentional, consider writing ${hl("case null =>")} instead)."""
     def explain = ""
+  }
+
+  class MatchableWarning(tp: Type, pattern: Boolean)(using Context)
+  extends TypeMsg(MatchableWarningID) {
+    def msg =
+      val kind = if pattern then "pattern selector" else "value"
+      em"""${kind} should be an instance of Matchable,,
+          |but it has unmatchable type $tp instead"""
+
+    def explain =
+      if pattern then
+        em"""A value of type $tp cannot be the selector of a match expression
+            |since it is not constrained to be `Matchable`. Matching on unconstrained
+            |values is disallowed since it can uncover implementation details that
+            |were intended to be hidden and thereby can violate paramtetricity laws
+            |for reasoning about programs.
+            |
+            |The restriction can be overridden by appending `.asMatchable` to
+            |the selector value. `asMatchable` needs to be imported from
+            |scala.compiletime. Example:
+            |
+            |    import compiletime.asMatchable
+            |    def f[X](x: X) = x.asMatchable match { ... }"""
+      else
+        em"""The value can be converted to a `Matchable` by appending `.asMatchable`.
+            |`asMatchable` needs to be imported from scala.compiletime."""
   }
 
   class SeqWildcardPatternPos()(using Context)
@@ -1441,6 +1476,14 @@ import transform.SymUtils._
     def msg = em"""$tp does not conform to its self type $selfType; cannot be instantiated"""
   }
 
+  class IllegalParameterInit(found: Type, expected: Type, param: Symbol, cls: Symbol)(using Context)
+    extends TypeMismatchMsg(found, expected)(IllegalParameterInitID):
+    def msg =
+      em"""illegal parameter initialization of $param.
+          |
+          |  The argument passed for $param has type: $found
+          |  but $cls expects $param to have type: $expected"""
+
   class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
     implicit ctx: Context)
     extends SyntaxMsg(AbstractMemberMayNotHaveModifierID) {
@@ -1521,6 +1564,12 @@ import transform.SymUtils._
   class CannotExtendJavaEnum(sym: Symbol)(using Context)
     extends SyntaxMsg(CannotExtendJavaEnumID) {
       def msg = em"""$sym cannot extend ${hl("java.lang.Enum")}: only enums defined with the ${hl("enum")} syntax can"""
+      def explain = ""
+    }
+
+  class CannotExtendContextFunction(sym: Symbol)(using Context)
+    extends SyntaxMsg(CannotExtendFunctionID) {
+      def msg = em"""$sym cannot extend a context function class"""
       def explain = ""
     }
 
@@ -1609,18 +1658,6 @@ import transform.SymUtils._
   class ValueClassParameterMayNotBeCallByName(valueClass: Symbol, param: Symbol)(using Context)
     extends SyntaxMsg(ValueClassParameterMayNotBeCallByNameID) {
     def msg = s"Value class parameter `${param.name}` may not be call-by-name"
-    def explain = ""
-  }
-
-  class OnlyCaseClassOrCaseObjectAllowed()(using Context)
-    extends SyntaxMsg(OnlyCaseClassOrCaseObjectAllowedID) {
-    def msg = em"""Only ${hl("case class")} or ${hl("case object")} allowed"""
-    def explain = ""
-  }
-
-  class ExpectedToplevelDef()(using Context)
-    extends SyntaxMsg(ExpectedTopLevelDefID) {
-    def msg = "Expected a toplevel definition"
     def explain = ""
   }
 
@@ -1780,12 +1817,16 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class IllegalStartOfStatement(isModifier: Boolean)(using Context) extends SyntaxMsg(IllegalStartOfStatementID) {
-    def msg = {
-      val addendum = if (isModifier) ": no modifiers allowed here" else ""
-      "Illegal start of statement" + addendum
-    }
-    def explain = "A statement is either an import, a definition or an expression."
+  class IllegalStartOfStatement(what: String, isModifier: Boolean, isStat: Boolean)(using Context) extends SyntaxMsg(IllegalStartOfStatementID) {
+    def msg =
+      if isStat then
+        "this kind of statement is not allowed here"
+      else
+        val addendum = if isModifier then ": this modifier is not allowed here" else ""
+        s"Illegal start of $what$addendum"
+    def explain =
+      i"""A statement is an import or export, a definition or an expression.
+         |Some statements are only allowed in certain contexts"""
   }
 
   class TraitIsExpected(symbol: Symbol)(using Context) extends SyntaxMsg(TraitIsExpectedID) {
@@ -1826,11 +1867,15 @@ import transform.SymUtils._
         i" in ${conflicting.associatedFile}"
       else if conflicting.owner == owner then ""
       else i" in ${conflicting.owner}"
+    private def note =
+      if owner.is(Method) || conflicting.is(Method) then
+        "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
+      else ""
     def msg =
       if conflicting.isTerm != name.isTermName then
         em"$name clashes with $conflicting$where; the two must be defined together"
       else
-        em"$name is already defined as $conflicting$where"
+        em"$name is already defined as $conflicting$where$note"
     def explain = ""
 
   class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
@@ -2126,7 +2171,7 @@ import transform.SymUtils._
       val addendum =
         if (scrutTp != testTp) s" is a subtype of ${testTp.show}"
         else " is the same as the tested type"
-      s"The highlighted type test will always succeed since the scrutinee type ($scrutTp.show)" + addendum
+      s"The highlighted type test will always succeed since the scrutinee type ${scrutTp.show}" + addendum
     }
     def explain = ""
   }
@@ -2338,32 +2383,6 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class AbstractCannotBeUsedForObjects(mdef: untpd.ModuleDef)(using Context)
-    extends SyntaxMsg(AbstractCannotBeUsedForObjectsID) {
-    def msg = em"${hl("abstract")} modifier cannot be used for objects"
-
-    def explain =
-      em"""|Objects are final and cannot be extended, thus cannot have the ${hl("abstract")} modifier
-           |
-           |You may want to define an abstract class:
-           | ${hl("abstract")} ${hl("class")} Abstract${mdef.name} { }
-           |
-           |And extend it in an object:
-           | ${hl("object")} ${mdef.name} ${hl("extends")} Abstract${mdef.name} { }
-           |""".stripMargin
-  }
-
-  class ModifierRedundantForObjects(mdef: untpd.ModuleDef, modifier: String)(using Context)
-    extends SyntaxMsg(ModifierRedundantForObjectsID) {
-    def msg = em"${hl(modifier)} modifier is redundant for objects"
-
-    def explain =
-      em"""|Objects cannot be extended making the ${hl(modifier)} modifier redundant.
-           |You may want to define the object without it:
-           | ${hl("object")} ${mdef.name} { }
-           |""".stripMargin
-  }
-
   class TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef: Symbol, caseDef: untpd.TypeDef)(using Context)
     extends SyntaxMsg(TypedCaseDoesNotExplicitlyExtendTypedEnumID) {
     def msg = i"explicit extends clause needed because both enum case and enum class have type parameters"
@@ -2457,7 +2476,13 @@ import transform.SymUtils._
 
   class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
     extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
-    def msg = s"Modifier `${flag.flagsString}` is not allowed for this definition"
+    def msg = em"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
+    def explain = ""
+  }
+
+  class RedundantModifier(flag: Flag)(using Context)
+    extends SyntaxMsg(RedundantModifierID) {
+    def msg = em"Modifier ${hl(flag.flagsString)} is redundant for this definition"
     def explain = ""
   }
 

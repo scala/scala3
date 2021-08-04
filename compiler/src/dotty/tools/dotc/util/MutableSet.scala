@@ -8,7 +8,7 @@ abstract class MutableSet[T] extends ReadOnlySet[T]:
   def +=(x: T): Unit
 
   /** Like `+=` but return existing element equal to `x` of it exists,
-   *  `x` itself otherwose.
+   *  `x` itself otherwise.
    */
   def put(x: T): T
 

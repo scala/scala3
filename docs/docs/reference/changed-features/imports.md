@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Imports"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/imports.html
 ---
 
 The syntax of wildcard and renaming imports (and exports) has changed.
@@ -16,8 +17,8 @@ If you want to import a member named `*` specifically, you can use backticks aro
 
 ```scala
 object A:
-   def * = ...
-   def min = ...
+  def * = ...
+  def min = ...
 
 object B:
   import A.`*`   // imports just `*`

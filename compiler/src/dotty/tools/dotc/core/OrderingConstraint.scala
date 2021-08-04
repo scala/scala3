@@ -280,9 +280,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     var current = this
     val todos = new mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint]
     var i = 0
+    val dropWildcards = AvoidWildcardsMap()
     while (i < poly.paramNames.length) {
       val param = poly.paramRefs(i)
-      val stripped = stripParams(nonParamBounds(param), todos, isUpper = true)
+      val bounds = dropWildcards(nonParamBounds(param))
+      val stripped = stripParams(bounds, todos, isUpper = true)
       current = updateEntry(current, param, stripped)
       while todos.nonEmpty do
         current = todos.head(current, param)
@@ -309,8 +311,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         val r1 = recur(tp.tp1, fromBelow)
         val r2 = recur(tp.tp2, fromBelow)
         if (r1 eq tp.tp1) && (r2 eq tp.tp2) then tp
-        else if tp.isAnd then r1 & r2
-        else r1 | r2
+        else tp.match
+          case tp: OrType =>
+            TypeComparer.lub(r1, r2, isSoft = tp.isSoft)
+          case _ =>
+            r1 & r2
       case tp: TypeParamRef =>
         if tp eq param then
           if fromBelow then defn.NothingType else defn.AnyType
@@ -373,6 +378,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       Nil
 
   private def updateEntry(current: This, param: TypeParamRef, tp: Type)(using Context): This = {
+    if Config.checkNoWildcardsInConstraint then assert(!tp.containsWildcardTypes)
     var current1 = boundsLens.update(this, current, param, tp)
     tp match {
       case TypeBounds(lo, hi) =>
@@ -485,24 +491,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
             throw new AssertionError(i"cannot merge $this with $other, mergeEntries($e1, $e2) failed")
       }
 
-    /** Ensure that constraint `c` does not associate different TypeVars for the
-     *  same type lambda than this constraint. Do this by renaming type lambdas
-     *  in `c` where necessary.
-     */
-    def ensureNotConflicting(c: OrderingConstraint): OrderingConstraint = {
-      def hasConflictingTypeVarsFor(tl: TypeLambda) =
-        this.typeVarOfParam(tl.paramRefs(0)) ne c.typeVarOfParam(tl.paramRefs(0))
-          // Note: Since TypeVars are allocated in bulk for each type lambda, we only
-          // have to check the first one to find out if some of them are different.
-      val conflicting = c.domainLambdas.find(tl =>
-        this.contains(tl) && hasConflictingTypeVarsFor(tl))
-      conflicting match {
-        case Some(tl) => ensureNotConflicting(c.rename(tl))
-        case None => c
-      }
-    }
-
-    val that = ensureNotConflicting(other.asInstanceOf[OrderingConstraint])
+    val that = other.asInstanceOf[OrderingConstraint]
 
     new OrderingConstraint(
         merge(this.boundsMap, that.boundsMap, mergeEntries),
@@ -510,24 +499,23 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         merge(this.upperMap, that.upperMap, mergeParams))
   }.showing(i"constraint merge $this with $other = $result", constr)
 
-  def rename(tl: TypeLambda)(using Context): OrderingConstraint = {
-    assert(contains(tl))
-    val tl1 = ensureFresh(tl)
-    def swapKey[T](m: ArrayValuedMap[T]) = m.remove(tl).updated(tl1, m(tl))
+  def hasConflictingTypeVarsFor(tl: TypeLambda, that: Constraint): Boolean =
+    contains(tl) && that.contains(tl) &&
+    // Since TypeVars are allocated in bulk for each type lambda, we only have
+    // to check the first one to find out if some of them are different.
+    (this.typeVarOfParam(tl.paramRefs(0)) ne that.typeVarOfParam(tl.paramRefs(0)))
+
+  def subst(from: TypeLambda, to: TypeLambda)(using Context): OrderingConstraint =
+    def swapKey[T](m: ArrayValuedMap[T]) = m.remove(from).updated(to, m(from))
     var current = newConstraint(swapKey(boundsMap), swapKey(lowerMap), swapKey(upperMap))
-    def subst[T <: Type](x: T): T = x.subst(tl, tl1).asInstanceOf[T]
+    def subst[T <: Type](x: T): T = x.subst(from, to).asInstanceOf[T]
     current.foreachParam {(p, i) =>
       current = boundsLens.map(this, current, p, i, subst)
       current = lowerLens.map(this, current, p, i, _.map(subst))
       current = upperLens.map(this, current, p, i, _.map(subst))
     }
-    current.foreachTypeVar { tvar =>
-      val TypeParamRef(binder, n) = tvar.origin
-      if (binder eq tl) tvar.setOrigin(tl1.paramRefs(n))
-    }
     constr.println(i"renamed $this to $current")
     current.checkNonCyclic()
-  }
 
   def instType(tvar: TypeVar): Type = entry(tvar.origin) match
     case _: TypeBounds => NoType
@@ -541,11 +529,18 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         // HKLambdas are hash-consed, need to create an artificial difference by adding
         // a LazyRef to a bound.
         val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
-        paramInfos = TypeBounds(lo, LazyRef(hi)) :: pinfos1
+        paramInfos = TypeBounds(lo, LazyRef.of(hi)) :: pinfos1
       }
       ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))
     }
     else tl
+
+  def checkConsistentVars()(using Context): Unit =
+    for param <- domainParams do
+      typeVarOfParam(param) match
+        case tvar: TypeVar =>
+          assert(tvar.origin == param, i"mismatch $tvar, $param")
+        case _ =>
 
 // ---------- Exploration --------------------------------------------------------
 

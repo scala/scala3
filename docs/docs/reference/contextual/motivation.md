@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Overview"
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual.html
 ---
 
 ### Critique of the Status Quo

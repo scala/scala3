@@ -8,6 +8,7 @@ trait PageEntryJS extends js.Object {
   val t: String = js.native
   val d: String = js.native
   val l: String = js.native
+  val k: String = js.native
 }
 
 case class PageEntry(
@@ -15,7 +16,16 @@ case class PageEntry(
   description: String,
   location: String,
   shortName: String,
+  kind: String,
   tokens: List[String]
+)
+
+case class InkuireMatch(
+  prettifiedSignature: String,
+  functionName:        String,
+  packageLocation:     String,
+  pageLocation:        String,
+  entryType:           String
 )
 
 object PageEntry {
@@ -24,6 +34,7 @@ object PageEntry {
       jsObj.d,
       jsObj.l,
       jsObj.n.toLowerCase,
+      jsObj.k,
       StringUtils.createCamelCaseTokens(jsObj.n)
     )
 }

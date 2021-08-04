@@ -6,7 +6,7 @@ object Macros {
   def macro1Impl (using Quotes)= '{3}
 
   inline def macro2(inline p: Boolean) = ${ macro2Impl('p) }
-  def macro2Impl(p: Expr[Boolean]) (using Quotes)= if (p.valueOrError) '{3} else '{4}
+  def macro2Impl(p: Expr[Boolean]) (using Quotes)= if (p.valueOrAbort) '{3} else '{4}
 
   inline def macro3(n: Int) = ${ macro3Impl('n) }
   def macro3Impl(p: Expr[Int]) (using Quotes)= '{ 2 + $p }
@@ -20,7 +20,7 @@ object Macros {
   inline def power(inline n: Int, x: Double) = ${ powerCode('n, 'x) }
 
   def powerCode(n: Expr[Int], x: Expr[Double]) (using Quotes): Expr[Double] =
-    powerCode(n.valueOrError, x)
+    powerCode(n.valueOrAbort, x)
 
   def powerCode(n: Int, x: Expr[Double]) (using Quotes): Expr[Double] =
     if (n == 0) '{1.0}

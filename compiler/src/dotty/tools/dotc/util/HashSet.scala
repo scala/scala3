@@ -7,6 +7,11 @@ object HashSet:
    */
   inline val DenseLimit = 8
 
+  def from[T](xs: IterableOnce[T]): HashSet[T] =
+    val set = new HashSet[T]()
+    set ++= xs
+    set
+
 /** A hash set that allows some privileged protected access to its internals
  *  @param  initialCapacity  Indicates the initial number of slots in the hash table.
  *                           The actual number of slots is always a power of 2, so the

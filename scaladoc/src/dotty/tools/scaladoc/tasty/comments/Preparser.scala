@@ -35,11 +35,13 @@ object Preparser {
       inCodeBlock: Boolean
     ): PreparsedComment = remaining match {
       case CodeBlockStartRegex(before, marker, after) :: ls if !inCodeBlock =>
-        if (!before.trim.isEmpty && !after.trim.isEmpty)
+        if (!before.trim.isEmpty && !after.trim.isEmpty && marker == "```")
+          go(docBody, tags, lastTagKey, before :: (marker + after) :: ls, inCodeBlock = false)
+        else if (!before.trim.isEmpty && !after.trim.isEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = false)
         else if (!before.trim.isEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: ls, inCodeBlock = false)
-        else if (!after.trim.isEmpty)
+        else if (!after.trim.isEmpty && marker != "```")
           go(docBody, tags, lastTagKey, marker :: after :: ls, inCodeBlock = true)
         else lastTagKey match {
           case Some(key) =>
@@ -50,7 +52,7 @@ object Preparser {
               }
             go(docBody, tags + (key -> value), lastTagKey, ls, inCodeBlock = true)
           case None =>
-            go(docBody append endOfLine append marker, tags, lastTagKey, ls, inCodeBlock = true)
+            go(docBody append endOfLine append (marker + after), tags, lastTagKey, ls, inCodeBlock = true)
         }
 
       case CodeBlockEndRegex(before, marker, after) :: ls =>
@@ -138,7 +140,7 @@ object Preparser {
             bodyTags.keys.toSeq flatMap {
               case stk: SymbolTagKey if (stk.name == key.name) => Some(stk)
               case stk: SimpleTagKey if (stk.name == key.name) =>
-                // dottydoc.println(s"$span: tag '@${stk.name}' must be followed by a symbol name")
+                // scaladoc.println(s"$span: tag '@${stk.name}' must be followed by a symbol name")
                 None
               case _ => None
             }
@@ -146,7 +148,7 @@ object Preparser {
             for (key <- keys) yield {
               val bs = (bodyTags remove key).get
               // if (bs.length > 1)
-                // dottydoc.println(s"$span: only one '@${key.name}' tag for symbol ${key.symbol} is allowed")
+                // scaladoc.println(s"$span: only one '@${key.name}' tag for symbol ${key.symbol} is allowed")
               (key.symbol, bs.head)
             }
           SortedMap.empty[String, String] ++ pairs

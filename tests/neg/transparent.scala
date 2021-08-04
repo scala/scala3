@@ -5,5 +5,5 @@ transparent class c // error
 transparent object y // error
 transparent trait t // ok
 transparent type T = c  // error
-transparent given c with {} // error
+transparent given c() // error
 

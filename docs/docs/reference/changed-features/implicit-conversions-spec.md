@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Implicit Conversions - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-conversions-spec.html
 ---
 
 ## Implementation
@@ -17,7 +18,7 @@ The standard library defines an abstract class `Conversion`:
 package scala
 @java.lang.FunctionalInterface
 abstract class Conversion[-T, +U] extends Function1[T, U]:
-   def apply(x: T): U
+  def apply(x: T): U
 ```
 
 Function literals are automatically converted to `Conversion` values.

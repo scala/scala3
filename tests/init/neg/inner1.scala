@@ -4,7 +4,7 @@ class Foo {
   val list = List(1, 2, 3) // error, as Inner access `this.list`
 
   val inner: Inner = new this.Inner // ok, `list` is instantiated
-  lib.escape(inner) // error
+  lib.escape(inner) // ok, can promote inner early
 
   val name = "good"
 

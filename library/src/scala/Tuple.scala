@@ -1,6 +1,7 @@
 package scala
 import annotation.showAsInfix
 import compiletime._
+import compiletime.ops.int._
 
 /** Tuple of arbitrary arity */
 sealed trait Tuple extends Product {
@@ -92,7 +93,7 @@ object Tuple {
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
 
-  /** Type of the element a position N in the tuple X */
+  /** Type of the element at position N in the tuple X */
   type Elem[X <: Tuple, N <: Int] = X match {
     case x *: xs =>
       N match {
@@ -108,18 +109,18 @@ object Tuple {
   }
 
   /** Fold a tuple `(T1, ..., Tn)` into `F[T1, F[... F[Tn, Z]...]]]` */
-  type Fold[T <: Tuple, Z, F[_, _]] = T match
+  type Fold[Tup <: Tuple, Z, F[_, _]] = Tup match
     case EmptyTuple => Z
     case h *: t => F[h, Fold[t, Z, F]]
 
   /** Converts a tuple `(T1, ..., Tn)` to `(F[T1], ..., F[Tn])` */
-  type Map[Tup <: Tuple, F[_]] <: Tuple = Tup match {
+  type Map[Tup <: Tuple, F[_ <: Union[Tup]]] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => F[h] *: Map[t, F]
   }
 
   /** Converts a tuple `(T1, ..., Tn)` to a flattened `(..F[T1], ..., ..F[Tn])` */
-  type FlatMap[Tup <: Tuple, F[_] <: Tuple] <: Tuple = Tup match {
+  type FlatMap[Tup <: Tuple, F[_ <: Union[Tup]] <: Tuple] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => Concat[F[h], FlatMap[t, F]]
   }

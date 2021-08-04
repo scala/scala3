@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Universal Apply Methods"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/creator-applications.html
 ---
 
 Scala case classes generate apply methods, so that values of case classes can be created using simple
@@ -10,7 +11,7 @@ Scala 3 generalizes this scheme to all concrete classes. Example:
 
 ```scala
 class StringBuilder(s: String):
-   def this() = this("")
+  def this() = this("")
 
 StringBuilder("abc")  // old: new StringBuilder("abc")
 StringBuilder()       // old: new StringBuilder()
@@ -21,8 +22,8 @@ is generated together with the class. The object looks like this:
 
 ```scala
 object StringBuilder:
-   inline def apply(s: String): StringBuilder = new StringBuilder(s)
-   inline def apply(): StringBuilder = new StringBuilder()
+  inline def apply(s: String): StringBuilder = new StringBuilder(s)
+  inline def apply(): StringBuilder = new StringBuilder()
 ```
 
 The synthetic object `StringBuilder` and its `apply` methods are called _constructor proxies_.

@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Dependent Function Types"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/dependent-function-types.html
 ---
 
 A dependent function type is a function type whose result depends
@@ -42,7 +43,7 @@ refinement. In fact, the dependent function type above is just syntactic sugar f
 
 ```scala
 Function1[Entry, Entry#Key]:
-   def apply(e: Entry): e.Key
+  def apply(e: Entry): e.Key
 ```
 
 [More details](./dependent-function-types-spec.md)

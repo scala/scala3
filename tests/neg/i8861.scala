@@ -20,7 +20,7 @@ object Test {
   )
   def minimalFail[M](c: Container { type A = M }): M = c.visit(
     int = vi => vi.i : vi.A,
-    str = vs => vs.t : vs.A  // error
+    str = vs => vs.t : vs.A  // error // error
   )
 
   def main(args: Array[String]): Unit = {

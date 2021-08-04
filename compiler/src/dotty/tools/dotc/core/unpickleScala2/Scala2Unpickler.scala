@@ -13,6 +13,7 @@ import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import util.Spans._
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
 import ast.untpd.Modifiers
+import backend.sjs.JSDefinitions
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
@@ -433,11 +434,15 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     var name = at(nameref, () => readName()(using ctx))
     val owner = readSymbolRef()
 
-    if (name eq nme.getClass_) && defn.hasProblematicGetClass(owner.name) then
+    var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
+
+    if (name eq nme.getClass_) && defn.hasProblematicGetClass(owner.name)
+       // Scala 2 sometimes pickle the same type parameter symbol multiple times
+       // (see i11173 for an example), but we should only unpickle it once.
+       || tag == TYPEsym && flags.is(TypeParam) && symScope(owner).lookup(name.asTypeName).exists
+    then
       // skip this member
       return NoSymbol
-
-    var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
 
     name = name.adjustIfModuleClass(flags)
     if (flags.is(Method))
@@ -490,7 +495,27 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         sym.setFlag(Scala2x)
       if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || sym.is(Scala2Existential))) {
         val owner = sym.owner
-        if (owner.isClass)
+        val canEnter =
+          owner.isClass &&
+          (!sym.is(TypeParam) ||
+            owner.infoOrCompleter.match
+              case completer: ClassUnpickler =>
+                // Type parameters seen after class initialization are not
+                // actually type parameters of the current class but of some
+                // external class because of the bizarre way in which Scala 2
+                // pickles them (see
+                // https://github.com/scala/scala/blob/aa31e3e6bb945f5d69740d379ede1cd514904109/src/compiler/scala/tools/nsc/symtab/classfile/Pickler.scala#L181-L197).
+                // Make sure we don't enter them in the class otherwise the
+                // compiler will get very confused (testcase in sbt-test/scala2-compat/i12641).
+                // Note: I don't actually know if these stray type parameters
+                // can also show up before initialization, if that's the case
+                // we'll need to study more closely how Scala 2 handles type
+                // parameter unpickling and try to emulate it.
+                !completer.isInitialized
+              case _ =>
+                true)
+
+        if (canEnter)
           owner.asClass.enter(sym, symScope(owner))
       }
       sym
@@ -620,23 +645,30 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   object localMemberUnpickler extends LocalUnpickler
 
   class ClassUnpickler(infoRef: Int) extends LocalUnpickler with TypeParamsCompleter {
-    private def readTypeParams()(using Context): List[TypeSymbol] = {
+    private var myTypeParams: List[TypeSymbol] = null
+
+    private def readTypeParams()(using Context): Unit = {
       val tag = readByte()
       val end = readNat() + readIndex
-      if (tag == POLYtpe) {
-        val unusedRestpeRef = readNat()
-        until(end, () => readSymbolRef()(using ctx)).asInstanceOf[List[TypeSymbol]]
-      }
-      else Nil
+      myTypeParams =
+        if (tag == POLYtpe) {
+          val unusedRestpeRef = readNat()
+          until(end, () => readSymbolRef()(using ctx)).asInstanceOf[List[TypeSymbol]]
+        } else Nil
     }
-    private def loadTypeParams(using Context) =
+    private def loadTypeParams()(using Context) =
       atReadPos(index(infoRef), () => readTypeParams()(using ctx))
 
+    /** Have the type params of this class already been unpickled? */
+    def isInitialized: Boolean = myTypeParams ne null
+
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
-    def init()(using Context): List[TypeSymbol] = loadTypeParams
+    def init()(using Context): List[TypeSymbol] =
+      if !isInitialized then loadTypeParams()
+      myTypeParams
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      loadTypeParams
+      init()
   }
 
   def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol, infoRef: Int): ClassUnpickler =
@@ -668,13 +700,17 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
     // Cannot use standard `existsPart` method because it calls `lookupRefined`
     // which can cause CyclicReference errors.
-    val isBoundAccumulator = new ExistsAccumulator(isBound, stopAtStatic = true, forceLazy = true):
+    val isBoundAccumulator = new ExistsAccumulator(isBound, StopAt.Static, forceLazy = true):
       override def foldOver(x: Boolean, tp: Type): Boolean = tp match
         case tp: TypeRef => applyToPrefix(x, tp)
         case _ => super.foldOver(x, tp)
 
     def removeSingleton(tp: Type): Type =
       if (tp isRef defn.SingletonClass) defn.AnyType else tp
+    def mapArg(arg: Type) = arg match {
+      case arg: TypeRef if isBound(arg) => arg.symbol.info
+      case _ => arg
+    }
     def elim(tp: Type): Type = tp match {
       case tp @ RefinedType(parent, name, rinfo) =>
         val parent1 = elim(tp.parent)
@@ -690,12 +726,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
       case tp @ AppliedType(tycon, args) =>
         val tycon1 = tycon.safeDealias
-        def mapArg(arg: Type) = arg match {
-          case arg: TypeRef if isBound(arg) => arg.symbol.info
-          case _ => arg
-        }
         if (tycon1 ne tycon) elim(tycon1.appliedTo(args))
         else tp.derivedAppliedType(tycon, args.map(mapArg))
+      case tp: AndOrType =>
+        // scalajs.js.|.UnionOps has a type parameter upper-bounded by `_ | _`
+        tp.derivedAndOrType(mapArg(tp.tp1).bounds.hi, mapArg(tp.tp2).bounds.hi)
       case _ =>
         tp
     }
@@ -777,6 +812,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val tycon = select(pre, sym)
         val args = until(end, () => readTypeRef())
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
+        else if (ctx.settings.scalajs.value && args.length == 2 &&
+            sym.owner == JSDefinitions.jsdefn.ScalaJSJSPackageClass && sym == JSDefinitions.jsdefn.PseudoUnionClass) {
+          // Treat Scala.js pseudo-unions as real unions, this requires a
+          // special-case in erasure, see TypeErasure#eraseInfo.
+          OrType(args(0), args(1), soft = false)
+        }
         else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
@@ -997,9 +1038,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    */
   protected def deferredAnnot(end: Int)(using Context): Annotation = {
     val start = readIndex
-    val atp = readTypeRef()
     val phase = ctx.phase
-    Annotation.deferred(atp.typeSymbol)(
+    Annotation.deferredSymAndTree(
+        atReadPos(start, () => atPhase(phase)(readTypeRef().typeSymbol)))(
         atReadPos(start, () => atPhase(phase)(readAnnotationContents(end))))
   }
 

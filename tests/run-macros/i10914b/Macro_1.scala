@@ -13,7 +13,7 @@ object Dsl {
     //println("Getting Input: " + Printer.TreeStructure.show(c.asTerm))
     val entExpr = c match
       case '{ Input($ent) } => ent
-      case _ => report.throwError("Cannot Extract Entity from Input")
+      case _ => report.errorAndAbort("Cannot Extract Entity from Input")
     '{ Container(List($entExpr)) }
 
 
@@ -28,7 +28,7 @@ object Dsl {
     import quotes.reflect.*
     val inputs = c match
       case '{ Container($list) } =>
-        list.valueOrError
-      case _ => report.throwError("Cannot Extract List from Container")
+        list.valueOrAbort
+      case _ => report.errorAndAbort("Cannot Extract List from Container")
     '{ Entity(${Expr(inputs.head.value)}) }
 }

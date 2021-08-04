@@ -3,9 +3,13 @@ package tasty
 
 import collection.JavaConverters._
 
+import SymOps._
+
 trait PackageSupport:
     self: TastyParser =>
     import qctx.reflect._
+
+    private given qctx.type = qctx
 
     def parsePackage(pck: PackageClause): (String, Member) =
       val name = pck.symbol.fullName

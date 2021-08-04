@@ -126,9 +126,33 @@ class Path private[io] (val jpath: JPath) {
   /**
    * @return The path of the parent directory, or root if path is already root
    */
-  def parent: Directory = jpath.normalize.getParent match {
-    case null => Directory(jpath)
-    case parent => Directory(parent)
+  def parent: Directory = {
+    // We don't call JPath#normalize here because it may result in resolving
+    // to a different path than intended, such as when the given path contains
+    // a `..` component and the preceding name is a symbolic link.
+    // https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html#normalize--
+    //
+    // Paths ending with `..` or `.` are handled specially here as
+    // JPath#getParent wants to simply strip away that last element.
+    // For the `..` case, we should take care not to fall into the above trap
+    // as the preceding name may be a symbolic link. This leaves little choice
+    // (since we don't want to access the file system) but to return the given
+    // path with `..` appended. By contrast, a `.` as the final path element
+    // is always redundant and should be removed before computing the parent.
+    if path.isEmpty then
+      Directory("..")
+    else if jpath.endsWith("..") then
+      (this / "..").toDirectory
+    else if jpath.endsWith(".") then
+      jpath.getParent match   // strip the trailing `.` element
+        case null => Directory("..")
+        case p    => new Path(p).parent
+    else jpath.getParent match
+      case null =>
+        if isAbsolute then toDirectory  // it should be a root
+        else Directory(".")
+      case x =>
+        Directory(x)
   }
   def parents: List[Directory] = {
     val p = parent

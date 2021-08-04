@@ -12,7 +12,6 @@ import scala.annotation.threadUnsafe
 import scala.collection.generic.Clearable
 import scala.collection.mutable
 import scala.reflect.ClassTag
-import dotty.tools.dotc.util.WeakHashSet
 import dotty.tools.io.AbstractFile
 import scala.tools.asm.AnnotationVisitor
 import dotty.tools.dotc.core._

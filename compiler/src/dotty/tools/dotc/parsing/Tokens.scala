@@ -95,7 +95,6 @@ abstract class TokensCommon {
   //final val THEN = 60;             enter(THEN, "then")
   //final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   //final val ENUM = 62;             enter(ENUM, "enum")
-  //final val ERASED = 63;           enter(ERASED, "erased")
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
@@ -181,10 +180,10 @@ object Tokens extends TokensCommon {
   final val THEN = 60;             enter(THEN, "then")
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
-  final val ERASED = 63;           enter(ERASED, "erased")
-  final val GIVEN = 64;            enter(GIVEN, "given")
-  final val EXPORT = 65;           enter(EXPORT, "export")
-  final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
+  final val GIVEN = 63;            enter(GIVEN, "given")
+  final val EXPORT = 64;           enter(EXPORT, "export")
+  final val MACRO = 65;            enter(MACRO, "macro") // TODO: remove
+  final val END = 66;              enter(END, "end")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -209,7 +208,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
+  final val alphaKeywords: TokenSet = tokenRange(IF, END)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, CTXARROW)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
 
@@ -240,8 +239,7 @@ object Tokens extends TokensCommon {
 
   final val defIntroTokens: TokenSet = templateIntroTokens | dclIntroTokens
 
-  final val localModifierTokens: TokenSet = BitSet(
-    ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY, ERASED)
+  final val localModifierTokens: TokenSet = BitSet(ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY)
 
   final val accessModifierTokens: TokenSet = BitSet(
     PRIVATE, PROTECTED)
@@ -251,15 +249,15 @@ object Tokens extends TokensCommon {
 
   final val modifierTokensOrCase: TokenSet = modifierTokens | BitSet(CASE)
 
-  final val modifierFollowers = modifierTokens | defIntroTokens
+  final val modifierFollowers = modifierTokensOrCase | defIntroTokens
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
 
   final val canStartStatTokens2: TokenSet = canStartExprTokens2 | mustStartStatTokens | BitSet(
-    AT, CASE)
+    AT, CASE, END) // END is included since it might be tested before being converted back to IDENTIFIER
   final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
-    AT, CASE)
+    AT, CASE, END)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
 
@@ -276,14 +274,14 @@ object Tokens extends TokensCommon {
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
-    statCtdTokens | BitSet(COLONEOL, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW)
+    statCtdTokens | BitSet(COLONEOL, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW, RETURN)
 
   /** Faced with the choice between a type and a formal parameter, the following
    *  tokens determine it's a formal parameter.
    */
   final val startParamTokens: BitSet = modifierTokens | BitSet(VAL, VAR, AT)
 
-  final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
+  final val scala3keywords = BitSet(ENUM, GIVEN)
 
   final val endMarkerTokens = identifierTokens | BitSet(IF, WHILE, FOR, MATCH, TRY, NEW, THROW, GIVEN, VAL, THIS)
 

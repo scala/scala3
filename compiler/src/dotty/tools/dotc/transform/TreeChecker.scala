@@ -91,7 +91,7 @@ class TreeChecker extends Phase with SymTransformer {
     // until erasure, see the comment above `Compiler#phases`.
     if (ctx.phaseId <= erasurePhase.id) {
       val initial = symd.initial
-      assert(symd.signature == initial.signature,
+      assert(symd == initial || symd.signature == initial.signature,
         i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
            |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
@@ -128,6 +128,8 @@ class TreeChecker extends Phase with SymTransformer {
     report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
 
     inContext(ctx) {
+      assert(ctx.typerState.constraint.domainLambdas.isEmpty,
+        i"non-empty constraint at end of $fusedPhase: ${ctx.typerState.constraint}, ownedVars = ${ctx.typerState.ownedVars.toList}%, %")
       assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
     }
 
@@ -420,6 +422,30 @@ class TreeChecker extends Phase with SymTransformer {
       assert(tree.qual.tpe.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
 
+    override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
+      val tpt1 = checkSimpleKinded(typedType(tree.tpt))
+      val expr1 = tree.expr match
+        case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
+          tree.expr.withType(tpt1.tpe)
+        case _ =>
+          var pt1 = tpt1.tpe
+          if pt1.isRepeatedParam then
+            pt1 = pt1.translateFromRepeated(toArray = tree.expr.typeOpt.derivesFrom(defn.ArrayClass))
+          val isAfterInlining =
+            val inliningPhase = ctx.base.inliningPhase
+            inliningPhase.exists && ctx.phase.id > inliningPhase.id
+          if isAfterInlining then
+            // The staging phase destroys in PCPCheckAndHeal the property that
+            // tree.expr.tpe <:< pt1. A test case where this arises is run-macros/enum-nat-macro.
+            // We should follow up why this happens. If the problem is fixed, we can
+            // drop the isAfterInlining special case. To reproduce the problem, just
+            // change the condition from `isAfterInlining` to `false`.
+            typed(tree.expr)
+          else
+            //println(i"typing $tree, ${tree.expr.typeOpt}, $pt1, ${ctx.mode is Mode.Pattern}")
+            typed(tree.expr, pt1)
+      untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+
     private def checkOwner(tree: untpd.Tree)(using Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
@@ -446,8 +472,7 @@ class TreeChecker extends Phase with SymTransformer {
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
 
-      def isAllowed(sym: Symbol): Boolean =
-        sym.is(ConstructorProxy) && !ctx.phase.erasedTypes
+      def isAllowed(sym: Symbol): Boolean = sym.is(ConstructorProxy)
 
       val symbolsNotDefined = (decls -- defined - constr.symbol).filterNot(isAllowed)
 
@@ -567,7 +592,7 @@ class TreeChecker extends Phase with SymTransformer {
           !isPrimaryConstructorReturn &&
           !pt.isInstanceOf[FunOrPolyProto])
         assert(tree.tpe <:< pt, {
-          val mismatch = TypeMismatch(tree.tpe, pt)
+          val mismatch = TypeMismatch(tree.tpe, pt, Some(tree))
           i"""|${mismatch.msg}
               |found: ${infoStr(tree.tpe)}
               |expected: ${infoStr(pt)}

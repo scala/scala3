@@ -300,6 +300,11 @@ object Flags {
    *
    *  - the purity analysis used by the inliner to decide whether it is safe to elide, and
    *  - the TASTy reader of Scala 2.13, to determine whether there is a $init$ method.
+   *
+   *  StableRealizable is
+   *  - asserted for methods
+   *  - automatic in conjunction with Module or Enum vals
+   *  - cached for other vals
    */
   val (_, StableRealizable @ _, _) = newFlags(24, "<stable>")
 
@@ -360,8 +365,8 @@ object Flags {
   /** An export forwarder */
   val (Exported @ _, _, _) = newFlags(41, "exported")
 
-  /** Labeled with `erased` modifier (erased value)  */
-  val (_, Erased @ _, _) = newFlags(42, "erased")
+  /** Labeled with `erased` modifier (erased value or class)  */
+  val (Erased @ _, _, _) = newFlags(42, "erased")
 
   /** An opaque type alias or a class containing one */
   val (Opaque @ _, _, _) = newFlags(43, "opaque")
@@ -439,13 +444,13 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent)
+    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent, Erased)
 
   val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
 
   val TermSourceModifierFlags: FlagSet =
-    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Erased
+    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy
 
   /** Flags representing modifiers that can appear in trees */
   val ModifierFlags: FlagSet =
@@ -460,7 +465,7 @@ object Flags {
     Module, Package, Deferred, Method, Case, Enum, Param, ParamAccessor,
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
-    Extension, NonMember, Implicit, Given, Permanent, Synthetic,
+    Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
     SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
@@ -515,18 +520,18 @@ object Flags {
   val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Lifted | MixedIn | Specialized | ConstructorProxy | Invisible
+    Lifted | MixedIn | Specialized | ConstructorProxy | Invisible | Erased
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
     Override | Final | Method | Implicit | Given | Lazy |
-    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased | Transparent
+    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Transparent
 
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Flags retained in export forwarders */
-  val RetainedExportFlags = Given | Implicit | Inline
+  val RetainedExportFlags = Given | Implicit | Inline | Transparent
 
   /** Flags that apply only to classes */
   val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags
@@ -584,6 +589,7 @@ object Flags {
   val MethodOrModule: FlagSet                = Method | Module
   val ParamForwarder: FlagSet                = Method | ParamAccessor | StableRealizable      // A parameter forwarder
   val PrivateMethod: FlagSet                 = Method | Private
+  val StableMethod: FlagSet                  = Method | StableRealizable
   val NoInitsInterface: FlagSet              = NoInits | PureInterface
   val NoInitsTrait: FlagSet                  = NoInits | Trait                                // A trait that does not need to be initialized
   val ValidForeverFlags: FlagSet             = Package | Permanent | Scala2SpecialFlags

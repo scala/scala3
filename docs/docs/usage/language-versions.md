@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Language Versions"
+movedTo: https://docs.scala-lang.org/scala3/reference/language-versions.html
 ---
 
 The default Scala language version currently supported by the Dotty compiler is `3.0`. There are also other language versions that can be specified instead:
@@ -21,7 +22,7 @@ The default Scala language version currently supported by the Dotty compiler is 
 There are two ways to specify a language version.
 
  - With a `-source` command line setting, e.g. `-source 3.0-migration`.
- - With a `scala.language` import at the top of a compilation unit, e.g:
+ - With a `scala.language` import at the top of a source file, e.g:
 
 ```scala
 package p
@@ -30,5 +31,5 @@ import scala.language.`future-migration`
 class C { ... }
 ```
 
-Language imports supersede command-line settings in the compilation units where they are specified. Only one language import specifying a source version is allowed in a compilation unit, and it must come before any definitions in that unit.
+Language imports supersede command-line settings in the source files where they are specified. Only one language import specifying a source version is allowed in a source file, and it must come before any definitions in that file.
 

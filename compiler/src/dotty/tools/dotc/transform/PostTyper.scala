@@ -243,10 +243,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(using Context): Tree = tree match {
         case Inlined(call, _, expansion) =>
-          val newExpansion = tree.tpe match
-            case ConstantType(c) => Literal(c)
-            case _ => Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe))
-          cpy.Inlined(tree)(call, Nil, newExpansion.withSpan(tree.span))
+          val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
+          cpy.Inlined(tree)(call, Nil, newExpansion)
         case _ => super.transform(tree)
       }
     }
@@ -257,6 +255,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
+        // TODO move CaseDef case lower: keep most probable trees first for performance
+        case CaseDef(pat, _, _) =>
+          val gadtCtx =
+           pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
+             case Some(gadt) => ctx.fresh.setGadt(gadt)
+             case None =>
+               ctx
+          super.transform(tree)(using gadtCtx)
         case tree: Ident if !tree.isType =>
           if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
             ctx.compilationUnit.needsInlining = true
@@ -282,7 +288,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               tpd.cpy.Apply(tree)(
                 tree.fun,
                 tree.args.mapConserve(arg =>
-                  if (methType.isImplicitMethod && arg.span.isSynthetic) ref(defn.Predef_undefined)
+                  if (methType.isImplicitMethod && arg.span.isSynthetic)
+                    PruneErasedDefs.trivialErasedTree(arg)
                   else dropInlines.transform(arg)))
             else
               tree
@@ -295,6 +302,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
+              ctx.typer.checkClassType(tree.tpe, tree.srcPos, traitReq = false, stablePrefixReq = true)
+              if !nu.tpe.isLambdaSub then
+                // Check the constructor type as well; it could be an illegal singleton type
+                // which would not be reflected as `tree.tpe`
+                ctx.typer.checkClassType(nu.tpe, tree.srcPos, traitReq = false, stablePrefixReq = false)
               Checking.checkInstantiable(tree.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>
@@ -346,6 +358,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val sym = tree.symbol
           if (sym.isClass)
             VarianceChecker.check(tree)
+            annotateExperimental(sym)
+            tree.rhs match
+              case impl: Template =>
+                for parent <- impl.parents do
+                  Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
             // Add SourceFile annotation to top-level classes
             if sym.owner.is(Package)
                && ctx.compilationUnit.source.exists
@@ -413,12 +430,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             //     case x: (_: Tree[?])
         case m @ MatchTypeTree(bounds, selector, cases) =>
           // Analog to the case above for match types
-          def tranformIgnoringBoundsCheck(x: CaseDef): CaseDef =
+          def transformIgnoringBoundsCheck(x: CaseDef): CaseDef =
             withMode(Mode.Pattern)(super.transform(x)).asInstanceOf[CaseDef]
           cpy.MatchTypeTree(tree)(
             super.transform(bounds),
             super.transform(selector),
-            cases.mapConserve(tranformIgnoringBoundsCheck)
+            cases.mapConserve(transformIgnoringBoundsCheck)
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
@@ -436,5 +453,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+
+    private def annotateExperimental(sym: Symbol)(using Context): Unit =
+      if sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot) then
+        sym.addAnnotation(defn.ExperimentalAnnot)
+        sym.companionModule.addAnnotation(defn.ExperimentalAnnot)
+
   }
 }

@@ -12,12 +12,12 @@ Occurrences => 19 entries
 Symbols:
 example/Access# => class Access
 example/Access#`<init>`(). => primary ctor <init>
-example/Access#m1(). => method m1
-example/Access#m2(). => method m2
-example/Access#m3(). => method m3
-example/Access#m4(). => method m4
-example/Access#m5(). => method m5
-example/Access#m6(). => method m6
+example/Access#m1(). => private[this] method m1
+example/Access#m2(). => private[this] method m2
+example/Access#m3(). => private[example/Access#] method m3
+example/Access#m4(). => protected method m4
+example/Access#m5(). => protected[this] method m5
+example/Access#m6(). => protected[example/] method m6
 example/Access#m7(). => method m7
 
 Occurrences:
@@ -201,12 +201,12 @@ annot/Annotations#`<init>`(). => primary ctor <init>
 annot/Annotations#`<init>`().(x) => param x
 annot/Annotations#field. => val method field
 annot/Annotations#method(). => method method
-annot/Annotations#x. => val method x
+annot/Annotations#x. => private[this] val method x
 annot/B# => class B
 annot/B#`<init>`(). => primary ctor <init>
 annot/B#`<init>`().(x) => param x
 annot/B#`<init>`(+1). => ctor <init>
-annot/B#x. => val method x
+annot/B#x. => private[this] val method x
 annot/M. => final object M
 annot/M.m(). => macro m
 annot/M.m().[TT] => typeparam TT
@@ -252,7 +252,7 @@ Occurrences:
 [21:33..21:34): x <- annot/B#x.
 [21:36..21:39): Int -> scala/Int#
 [22:3..22:24): ConstructorAnnotation -> com/javacp/annot/ConstructorAnnotation#
-[23:6..23:12): <- annot/B#`<init>`(+1).
+[23:6..23:10): <- annot/B#`<init>`(+1).
 [23:20..23:20): -> annot/B#`<init>`().
 [26:1..26:17): ObjectAnnotation -> com/javacp/annot/ObjectAnnotation#
 [27:7..27:8): M <- annot/M.
@@ -338,7 +338,7 @@ Uri => AnonymousGiven.scala
 Text => empty
 Language => Scala
 Symbols => 5 entries
-Occurrences => 6 entries
+Occurrences => 5 entries
 
 Symbols:
 angiven/AnonymousGiven$package. => final package object angiven
@@ -351,7 +351,6 @@ Occurrences:
 [0:8..0:15): angiven <- angiven/
 [2:0..2:0): <- angiven/Foo#`<init>`().
 [2:6..2:9): Foo <- angiven/Foo#
-[4:0..4:0): <- angiven/AnonymousGiven$package.
 [4:4..4:7): bar <- angiven/AnonymousGiven$package.bar().
 [4:14..4:17): Foo -> angiven/Foo#
 
@@ -412,7 +411,7 @@ classes/C6#`<init>`().(x) => param x
 classes/C6#copy$default$1(). => method copy$default$1
 classes/C6#copy(). => method copy
 classes/C6#copy().(x) => param x
-classes/C6#x. => val method x
+classes/C6#x. => private val method x
 classes/C6. => final object C6
 classes/C6.apply(). => method apply
 classes/C6.apply().(x) => param x
@@ -422,19 +421,19 @@ classes/C6.unapply().(x$1) => param x$1
 classes/C7# => class C7
 classes/C7#`<init>`(). => primary ctor <init>
 classes/C7#`<init>`().(x) => param x
-classes/C7#x. => val method x
+classes/C7#x. => private[this] val method x
 classes/C8# => class C8
 classes/C8#`<init>`(). => primary ctor <init>
 classes/C8#`<init>`().(x) => param x
-classes/C8#x. => val method x
+classes/C8#x. => private[this] val method x
 classes/C9# => class C9
 classes/C9#`<init>`(). => primary ctor <init>
 classes/C9#`<init>`().(x) => param x
-classes/C9#x(). => var method x
+classes/C9#x(). => private[this] var method x
 classes/C10# => class C10
 classes/C10#`<init>`(). => primary ctor <init>
 classes/C10#`<init>`().(s) => param s
-classes/C10#s. => val method s
+classes/C10#s. => private[this] val method s
 classes/C11# => class C11
 classes/C11#`<init>`(). => primary ctor <init>
 classes/C11#foo(). => macro foo
@@ -466,7 +465,7 @@ classes/M. => final object M
 classes/M.C5# => class C5
 classes/M.C5#`<init>`(). => primary ctor <init>
 classes/M.C5#`<init>`().(x) => param x
-classes/M.C5#x. => val method x
+classes/M.C5#x. => private[this] val method x
 classes/M.C5(). => final implicit method C5
 classes/M.C5().(x) => param x
 classes/N. => final object N
@@ -658,6 +657,161 @@ Occurrences:
 [0:8..0:15): example <- example/
 [2:7..2:18): EmptyObject <- example/EmptyObject.
 
+expect/EndMarkers.scala
+-----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => EndMarkers.scala
+Text => empty
+Language => Scala
+Symbols => 24 entries
+Occurrences => 42 entries
+
+Symbols:
+endmarkers/Container# => class Container
+endmarkers/Container#`<init>`(). => primary ctor <init>
+endmarkers/Container#`baz_=`(). => var method baz_=
+endmarkers/Container#`baz_=`().(x$1) => param x$1
+endmarkers/Container#bar. => val method bar
+endmarkers/Container#baz(). => var method baz
+endmarkers/Container#foo(). => method foo
+endmarkers/EndMarkers$package. => final package object endmarkers
+endmarkers/EndMarkers$package.`topLevelVar_=`(). => var method topLevelVar_=
+endmarkers/EndMarkers$package.`topLevelVar_=`().(x$1) => param x$1
+endmarkers/EndMarkers$package.topLevelMethod(). => method topLevelMethod
+endmarkers/EndMarkers$package.topLevelVal. => val method topLevelVal
+endmarkers/EndMarkers$package.topLevelVar(). => var method topLevelVar
+endmarkers/EndMarkers$package.topLevelWithLocals(). => method topLevelWithLocals
+endmarkers/MultiCtor# => class MultiCtor
+endmarkers/MultiCtor#`<init>`(). => primary ctor <init>
+endmarkers/MultiCtor#`<init>`().(i) => val param i
+endmarkers/MultiCtor#`<init>`(+1). => ctor <init>
+endmarkers/MultiCtor#i. => val method i
+endmarkers/TestObj. => final object TestObj
+endmarkers/TestObj.foo(). => method foo
+local0 => val local localVal
+local1 => var local localVar
+local2 => local localDef
+
+Occurrences:
+[0:8..0:18): endmarkers <- endmarkers/
+[2:8..2:17): MultiCtor <- endmarkers/MultiCtor#
+[2:17..2:17): <- endmarkers/MultiCtor#`<init>`().
+[2:22..2:23): i <- endmarkers/MultiCtor#i.
+[2:25..2:28): Int -> scala/Int#
+[3:8..3:12): <- endmarkers/MultiCtor#`<init>`(+1).
+[4:11..4:11): -> endmarkers/MultiCtor#`<init>`().
+[5:8..5:12): this -> endmarkers/MultiCtor#`<init>`(+1).
+[6:6..6:15): MultiCtor -> endmarkers/MultiCtor#
+[8:6..8:20): topLevelMethod <- endmarkers/EndMarkers$package.topLevelMethod().
+[8:22..8:28): String -> scala/Predef.String#
+[10:6..10:20): topLevelMethod -> endmarkers/EndMarkers$package.topLevelMethod().
+[12:6..12:17): topLevelVal <- endmarkers/EndMarkers$package.topLevelVal.
+[12:19..12:22): Int -> scala/Int#
+[14:6..14:17): topLevelVal -> endmarkers/EndMarkers$package.topLevelVal.
+[16:6..16:17): topLevelVar <- endmarkers/EndMarkers$package.topLevelVar().
+[16:19..16:25): String -> scala/Predef.String#
+[18:6..18:17): topLevelVar -> endmarkers/EndMarkers$package.topLevelVar().
+[20:8..20:17): Container <- endmarkers/Container#
+[22:4..22:4): <- endmarkers/Container#`<init>`().
+[22:8..22:11): foo <- endmarkers/Container#foo().
+[23:7..23:7): -> scala/Tuple3.apply().
+[24:8..24:11): foo -> endmarkers/Container#foo().
+[26:8..26:11): bar <- endmarkers/Container#bar.
+[27:7..27:7): -> scala/Tuple3.apply().
+[28:8..28:11): bar -> endmarkers/Container#bar.
+[30:8..30:11): baz <- endmarkers/Container#baz().
+[32:8..32:11): baz -> endmarkers/Container#baz().
+[34:6..34:15): Container -> endmarkers/Container#
+[36:6..36:24): topLevelWithLocals <- endmarkers/EndMarkers$package.topLevelWithLocals().
+[36:26..36:30): Unit -> scala/Unit#
+[38:8..38:16): localVal <- local0
+[40:8..40:16): localVal -> local0
+[42:8..42:16): localVar <- local1
+[44:8..44:16): localVar -> local1
+[46:8..46:16): localDef <- local2
+[48:8..48:16): localDef -> local2
+[50:6..50:24): topLevelWithLocals -> endmarkers/EndMarkers$package.topLevelWithLocals().
+[52:9..52:16): TestObj <- endmarkers/TestObj.
+[54:8..54:11): foo <- endmarkers/TestObj.foo().
+[56:6..56:13): TestObj -> endmarkers/TestObj.
+[58:4..58:14): endmarkers -> endmarkers/
+
+expect/EndMarkers2.scala
+------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => EndMarkers2.scala
+Text => empty
+Language => Scala
+Symbols => 2 entries
+Occurrences => 5 entries
+
+Symbols:
+endmarkers2/package. => final package object endmarkers2
+endmarkers2/package.Foo# => type Foo
+
+Occurrences:
+[0:15..0:26): endmarkers2 <- endmarkers2/package.
+[2:7..2:10): Foo <- endmarkers2/package.Foo#
+[3:4..3:8): Unit -> scala/Unit#
+[4:6..4:9): Foo -> endmarkers2/package.Foo#
+[6:4..6:15): endmarkers2 -> endmarkers2/package.
+
+expect/EnumVal.scala
+--------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => EnumVal.scala
+Text => empty
+Language => Scala
+Symbols => 16 entries
+Occurrences => 21 entries
+
+Symbols:
+enumVal/A# => trait A
+enumVal/A#`<init>`(). => primary ctor <init>
+enumVal/Color# => abstract sealed enum class Color
+enumVal/Color#`<init>`(). => primary ctor <init>
+enumVal/Color#`<init>`().(rgb) => val param rgb
+enumVal/Color#rgb. => val method rgb
+enumVal/Color. => final object Color
+enumVal/Color.$values. => private[this] val method $values
+enumVal/Color.Blue. => case val static enum method Blue
+enumVal/Color.Green. => case val static enum method Green
+enumVal/Color.Red. => case val static enum method Red
+enumVal/Color.fromOrdinal(). => method fromOrdinal
+enumVal/Color.fromOrdinal().(ordinal) => param ordinal
+enumVal/Color.valueOf(). => method valueOf
+enumVal/Color.valueOf().($name) => param $name
+enumVal/Color.values(). => method values
+
+Occurrences:
+[0:8..0:15): enumVal <- enumVal/
+[2:7..2:12): scala -> scala/
+[2:13..2:20): runtime -> scala/runtime/
+[2:21..2:30): EnumValue -> scala/runtime/EnumValue.
+[5:0..5:0): <- enumVal/A#`<init>`().
+[5:6..5:7): A <- enumVal/A#
+[7:5..7:10): Color <- enumVal/Color#
+[7:10..7:10): <- enumVal/Color#`<init>`().
+[7:15..7:18): rgb <- enumVal/Color#rgb.
+[7:20..7:23): Int -> scala/Int#
+[8:7..8:10): Red <- enumVal/Color.Red.
+[8:21..8:26): Color -> enumVal/Color#
+[8:26..8:26): -> enumVal/Color#`<init>`().
+[8:42..8:51): EnumValue -> scala/runtime/EnumValue#
+[9:7..9:12): Green <- enumVal/Color.Green.
+[9:21..9:26): Color -> enumVal/Color#
+[9:26..9:26): -> enumVal/Color#`<init>`().
+[9:42..9:43): A -> enumVal/A#
+[10:7..10:11): Blue <- enumVal/Color.Blue.
+[10:21..10:26): Color -> enumVal/Color#
+[10:26..10:26): -> enumVal/Color#`<init>`().
+
 expect/Enums.scala
 ------------------
 
@@ -667,16 +821,16 @@ Uri => Enums.scala
 Text => empty
 Language => Scala
 Symbols => 181 entries
-Occurrences => 201 entries
+Occurrences => 184 entries
 
 Symbols:
 _empty_/Enums. => final object Enums
 _empty_/Enums.Coin# => abstract sealed enum class Coin
 _empty_/Enums.Coin#`<init>`(). => primary ctor <init>
 _empty_/Enums.Coin#`<init>`().(value) => param value
-_empty_/Enums.Coin#value. => val method value
+_empty_/Enums.Coin#value. => private[this] val method value
 _empty_/Enums.Coin. => final object Coin
-_empty_/Enums.Coin.$values. => val method $values
+_empty_/Enums.Coin.$values. => private[this] val method $values
 _empty_/Enums.Coin.Dime. => case val static enum method Dime
 _empty_/Enums.Coin.Dollar. => case val static enum method Dollar
 _empty_/Enums.Coin.Nickel. => case val static enum method Nickel
@@ -690,10 +844,10 @@ _empty_/Enums.Coin.values(). => method values
 _empty_/Enums.Colour# => abstract sealed enum class Colour
 _empty_/Enums.Colour#`<init>`(). => primary ctor <init>
 _empty_/Enums.Colour. => final object Colour
-_empty_/Enums.Colour.$new(). => method $new
+_empty_/Enums.Colour.$new(). => private[this] method $new
 _empty_/Enums.Colour.$new().($name) => param $name
 _empty_/Enums.Colour.$new().(_$ordinal) => param _$ordinal
-_empty_/Enums.Colour.$values. => val method $values
+_empty_/Enums.Colour.$values. => private[this] val method $values
 _empty_/Enums.Colour.Blue. => case val static enum method Blue
 _empty_/Enums.Colour.Green. => case val static enum method Green
 _empty_/Enums.Colour.Red. => case val static enum method Red
@@ -705,10 +859,10 @@ _empty_/Enums.Colour.values(). => method values
 _empty_/Enums.Directions# => abstract sealed enum class Directions
 _empty_/Enums.Directions#`<init>`(). => primary ctor <init>
 _empty_/Enums.Directions. => final object Directions
-_empty_/Enums.Directions.$new(). => method $new
+_empty_/Enums.Directions.$new(). => private[this] method $new
 _empty_/Enums.Directions.$new().($name) => param $name
 _empty_/Enums.Directions.$new().(_$ordinal) => param _$ordinal
-_empty_/Enums.Directions.$values. => val method $values
+_empty_/Enums.Directions.$values. => private[this] val method $values
 _empty_/Enums.Directions.East. => case val static enum method East
 _empty_/Enums.Directions.North. => case val static enum method North
 _empty_/Enums.Directions.South. => case val static enum method South
@@ -746,17 +900,17 @@ _empty_/Enums.Maybe.None. => case val static enum method None
 _empty_/Enums.Maybe.fromOrdinal(). => method fromOrdinal
 _empty_/Enums.Maybe.fromOrdinal().(ordinal) => param ordinal
 _empty_/Enums.Planet# => abstract sealed enum class Planet
-_empty_/Enums.Planet#G. => final val method G
+_empty_/Enums.Planet#G. => private[this] final val method G
 _empty_/Enums.Planet#`<init>`(). => primary ctor <init>
 _empty_/Enums.Planet#`<init>`().(mass) => param mass
 _empty_/Enums.Planet#`<init>`().(radius) => param radius
-_empty_/Enums.Planet#mass. => val method mass
-_empty_/Enums.Planet#radius. => val method radius
+_empty_/Enums.Planet#mass. => private[this] val method mass
+_empty_/Enums.Planet#radius. => private[this] val method radius
 _empty_/Enums.Planet#surfaceGravity(). => method surfaceGravity
 _empty_/Enums.Planet#surfaceWeight(). => method surfaceWeight
 _empty_/Enums.Planet#surfaceWeight().(otherMass) => param otherMass
 _empty_/Enums.Planet. => final object Planet
-_empty_/Enums.Planet.$values. => val method $values
+_empty_/Enums.Planet.$values. => private[this] val method $values
 _empty_/Enums.Planet.Earth. => case val static enum method Earth
 _empty_/Enums.Planet.Jupiter. => case val static enum method Jupiter
 _empty_/Enums.Planet.Mars. => case val static enum method Mars
@@ -773,10 +927,10 @@ _empty_/Enums.Planet.values(). => method values
 _empty_/Enums.Suits# => abstract sealed enum class Suits
 _empty_/Enums.Suits#`<init>`(). => primary ctor <init>
 _empty_/Enums.Suits. => final object Suits
-_empty_/Enums.Suits.$new(). => method $new
+_empty_/Enums.Suits.$new(). => private[this] method $new
 _empty_/Enums.Suits.$new().($name) => param $name
 _empty_/Enums.Suits.$new().(_$ordinal) => param _$ordinal
-_empty_/Enums.Suits.$values. => val method $values
+_empty_/Enums.Suits.$values. => private[this] val method $values
 _empty_/Enums.Suits.Clubs. => case val static enum method Clubs
 _empty_/Enums.Suits.Diamonds. => case val static enum method Diamonds
 _empty_/Enums.Suits.Hearts. => case val static enum method Hearts
@@ -795,7 +949,7 @@ _empty_/Enums.Tag# => abstract sealed enum class Tag
 _empty_/Enums.Tag#[A] => typeparam A
 _empty_/Enums.Tag#`<init>`(). => primary ctor <init>
 _empty_/Enums.Tag. => final object Tag
-_empty_/Enums.Tag.$values. => val method $values
+_empty_/Enums.Tag.$values. => private[this] val method $values
 _empty_/Enums.Tag.BooleanTag. => case val static enum method BooleanTag
 _empty_/Enums.Tag.IntTag. => case val static enum method IntTag
 _empty_/Enums.Tag.fromOrdinal(). => method fromOrdinal
@@ -806,10 +960,10 @@ _empty_/Enums.Tag.values(). => method values
 _empty_/Enums.WeekDays# => abstract sealed enum class WeekDays
 _empty_/Enums.WeekDays#`<init>`(). => primary ctor <init>
 _empty_/Enums.WeekDays. => final object WeekDays
-_empty_/Enums.WeekDays.$new(). => method $new
+_empty_/Enums.WeekDays.$new(). => private[this] method $new
 _empty_/Enums.WeekDays.$new().($name) => param $name
 _empty_/Enums.WeekDays.$new().(_$ordinal) => param _$ordinal
-_empty_/Enums.WeekDays.$values. => val method $values
+_empty_/Enums.WeekDays.$values. => private[this] val method $values
 _empty_/Enums.WeekDays.Friday. => case val static enum method Friday
 _empty_/Enums.WeekDays.Monday. => case val static enum method Monday
 _empty_/Enums.WeekDays.Saturday. => case val static enum method Saturday
@@ -840,10 +994,10 @@ _empty_/Enums.`<:<`.Refl.toString(). => method toString
 _empty_/Enums.`<:<`.Refl.unapply(). => method unapply
 _empty_/Enums.`<:<`.Refl.unapply().(x$1) => param x$1
 _empty_/Enums.`<:<`.Refl.unapply().[C] => typeparam C
+_empty_/Enums.`<:<`.`given_<:<_T_T`(). => final implicit method given_<:<_T_T
+_empty_/Enums.`<:<`.`given_<:<_T_T`().[T] => typeparam T
 _empty_/Enums.`<:<`.fromOrdinal(). => method fromOrdinal
 _empty_/Enums.`<:<`.fromOrdinal().(ordinal) => param ordinal
-_empty_/Enums.`<:<`.given_T(). => final implicit method given_T
-_empty_/Enums.`<:<`.given_T().[T] => typeparam T
 _empty_/Enums.some1. => val method some1
 _empty_/Enums.unwrap(). => method unwrap
 _empty_/Enums.unwrap().(ev) => implicit param ev
@@ -910,23 +1064,18 @@ Occurrences:
 [31:9..31:14): Penny <- _empty_/Enums.Coin.Penny.
 [31:26..31:30): Coin -> _empty_/Enums.Coin#
 [31:30..31:30): -> _empty_/Enums.Coin#`<init>`().
-[31:33..31:33): -> scala/runtime/EnumValue#
 [32:9..32:15): Nickel <- _empty_/Enums.Coin.Nickel.
 [32:26..32:30): Coin -> _empty_/Enums.Coin#
 [32:30..32:30): -> _empty_/Enums.Coin#`<init>`().
-[32:33..32:33): -> scala/runtime/EnumValue#
 [33:9..33:13): Dime <- _empty_/Enums.Coin.Dime.
 [33:26..33:30): Coin -> _empty_/Enums.Coin#
 [33:30..33:30): -> _empty_/Enums.Coin#`<init>`().
-[33:34..33:34): -> scala/runtime/EnumValue#
 [34:9..34:16): Quarter <- _empty_/Enums.Coin.Quarter.
 [34:26..34:30): Coin -> _empty_/Enums.Coin#
 [34:30..34:30): -> _empty_/Enums.Coin#`<init>`().
-[34:34..34:34): -> scala/runtime/EnumValue#
 [35:9..35:15): Dollar <- _empty_/Enums.Coin.Dollar.
 [35:26..35:30): Coin -> _empty_/Enums.Coin#
 [35:30..35:30): -> _empty_/Enums.Coin#`<init>`().
-[35:35..35:35): -> scala/runtime/EnumValue#
 [37:7..37:12): Maybe <- _empty_/Enums.Maybe#
 [37:12..37:12): <- _empty_/Enums.Maybe#`<init>`().
 [37:14..37:15): A <- _empty_/Enums.Maybe#[A]
@@ -934,9 +1083,7 @@ Occurrences:
 [38:13..38:13): <- _empty_/Enums.Maybe.Just#`<init>`().
 [38:14..38:19): value <- _empty_/Enums.Maybe.Just#value.
 [38:21..38:22): A -> _empty_/Enums.Maybe.Just#[A]
-[39:4..39:4): -> _empty_/Enums.Maybe#`<init>`().
 [39:9..39:13): None <- _empty_/Enums.Maybe.None.
-[39:13..39:13): -> scala/runtime/EnumValue#
 [41:7..41:10): Tag <- _empty_/Enums.Tag#
 [41:10..41:10): <- _empty_/Enums.Tag#`<init>`().
 [41:11..41:12): A <- _empty_/Enums.Tag#[A]
@@ -944,12 +1091,10 @@ Occurrences:
 [42:24..42:27): Tag -> _empty_/Enums.Tag#
 [42:28..42:31): Int -> scala/Int#
 [42:32..42:32): -> _empty_/Enums.Tag#`<init>`().
-[42:32..42:32): -> scala/runtime/EnumValue#
 [43:9..43:19): BooleanTag <- _empty_/Enums.Tag.BooleanTag.
 [43:28..43:31): Tag -> _empty_/Enums.Tag#
 [43:32..43:39): Boolean -> scala/Boolean#
 [43:40..43:40): -> _empty_/Enums.Tag#`<init>`().
-[43:40..43:40): -> scala/runtime/EnumValue#
 [45:7..45:10): <:< <- _empty_/Enums.`<:<`#
 [45:10..45:10): <- _empty_/Enums.`<:<`#`<init>`().
 [45:12..45:13): A <- _empty_/Enums.`<:<`#[A]
@@ -962,11 +1107,11 @@ Occurrences:
 [46:34..46:35): C -> _empty_/Enums.`<:<`.Refl#[C]
 [46:35..46:35): -> _empty_/Enums.`<:<`#`<init>`().
 [48:9..48:12): <:< <- _empty_/Enums.`<:<`.
-[49:10..49:17): [T]: (T <- _empty_/Enums.`<:<`.given_T().
-[49:11..49:12): T <- _empty_/Enums.`<:<`.given_T().[T]
-[49:16..49:17): T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:10..49:10): <- _empty_/Enums.`<:<`.`given_<:<_T_T`().
+[49:11..49:12): T <- _empty_/Enums.`<:<`.`given_<:<_T_T`().[T]
+[49:16..49:17): T -> _empty_/Enums.`<:<`.`given_<:<_T_T`().[T]
 [49:18..49:21): <:< -> _empty_/Enums.`<:<`#
-[49:22..49:23): T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:22..49:23): T -> _empty_/Enums.`<:<`.`given_<:<_T_T`().[T]
 [49:27..49:31): Refl -> _empty_/Enums.`<:<`.Refl.
 [49:31..49:31): -> _empty_/Enums.`<:<`.Refl.apply().
 [51:13..51:14): A <- _empty_/Enums.unwrap().[A]
@@ -997,7 +1142,7 @@ Occurrences:
 [54:19..54:23): Some -> scala/Some.
 [54:23..54:23): -> scala/Some.apply().
 [54:28..54:34): unwrap -> _empty_/Enums.unwrap().
-[54:34..54:34): -> _empty_/Enums.`<:<`.given_T().
+[54:34..54:34): -> _empty_/Enums.`<:<`.`given_<:<_T_T`().
 [56:7..56:13): Planet <- _empty_/Enums.Planet#
 [56:13..56:13): <- _empty_/Enums.Planet#`<init>`().
 [56:14..56:18): mass <- _empty_/Enums.Planet#mass.
@@ -1025,35 +1170,27 @@ Occurrences:
 [61:9..61:16): Mercury <- _empty_/Enums.Planet.Mercury.
 [61:25..61:31): Planet -> _empty_/Enums.Planet#
 [61:31..61:31): -> _empty_/Enums.Planet#`<init>`().
-[61:52..61:52): -> scala/runtime/EnumValue#
 [62:9..62:14): Venus <- _empty_/Enums.Planet.Venus.
 [62:25..62:31): Planet -> _empty_/Enums.Planet#
 [62:31..62:31): -> _empty_/Enums.Planet#`<init>`().
-[62:52..62:52): -> scala/runtime/EnumValue#
 [63:9..63:14): Earth <- _empty_/Enums.Planet.Earth.
 [63:25..63:31): Planet -> _empty_/Enums.Planet#
 [63:31..63:31): -> _empty_/Enums.Planet#`<init>`().
-[63:53..63:53): -> scala/runtime/EnumValue#
 [64:9..64:13): Mars <- _empty_/Enums.Planet.Mars.
 [64:25..64:31): Planet -> _empty_/Enums.Planet#
 [64:31..64:31): -> _empty_/Enums.Planet#`<init>`().
-[64:52..64:52): -> scala/runtime/EnumValue#
 [65:9..65:16): Jupiter <- _empty_/Enums.Planet.Jupiter.
 [65:25..65:31): Planet -> _empty_/Enums.Planet#
 [65:31..65:31): -> _empty_/Enums.Planet#`<init>`().
-[65:52..65:52): -> scala/runtime/EnumValue#
 [66:9..66:15): Saturn <- _empty_/Enums.Planet.Saturn.
 [66:25..66:31): Planet -> _empty_/Enums.Planet#
 [66:31..66:31): -> _empty_/Enums.Planet#`<init>`().
-[66:52..66:52): -> scala/runtime/EnumValue#
 [67:9..67:15): Uranus <- _empty_/Enums.Planet.Uranus.
 [67:25..67:31): Planet -> _empty_/Enums.Planet#
 [67:31..67:31): -> _empty_/Enums.Planet#`<init>`().
-[67:52..67:52): -> scala/runtime/EnumValue#
 [68:9..68:16): Neptune <- _empty_/Enums.Planet.Neptune.
 [68:25..68:31): Planet -> _empty_/Enums.Planet#
 [68:31..68:31): -> _empty_/Enums.Planet#`<init>`().
-[68:52..68:52): -> scala/runtime/EnumValue#
 
 expect/EtaExpansion.scala
 -------------------------
@@ -1139,7 +1276,7 @@ Uri => Extension.scala
 Text => empty
 Language => Scala
 Symbols => 8 entries
-Occurrences => 19 entries
+Occurrences => 18 entries
 
 Symbols:
 ext/Extension$package. => final package object ext
@@ -1153,7 +1290,6 @@ ext/Extension$package.foo().(s) => param s
 
 Occurrences:
 [0:8..0:11): ext <- ext/
-[2:0..2:0): <- ext/Extension$package.
 [2:11..2:12): s <- ext/Extension$package.foo().(s)
 [2:11..2:12): s <- ext/Extension$package.`#*#`().(s)
 [2:14..2:20): String -> scala/Predef.String#
@@ -1432,7 +1568,7 @@ example/ImplicitConversion.newAny2stringadd#`+`(). => method +
 example/ImplicitConversion.newAny2stringadd#`+`().(other) => param other
 example/ImplicitConversion.newAny2stringadd#`<init>`(). => primary ctor <init>
 example/ImplicitConversion.newAny2stringadd#`<init>`().(self) => param self
-example/ImplicitConversion.newAny2stringadd#self. => val method self
+example/ImplicitConversion.newAny2stringadd#self. => private val method self
 example/ImplicitConversion.newAny2stringadd(). => final implicit method newAny2stringadd
 example/ImplicitConversion.newAny2stringadd().(self) => param self
 example/ImplicitConversion.newAny2stringadd().[A] => typeparam A
@@ -1598,6 +1734,138 @@ Occurrences:
 [24:22..24:29): classOf -> scala/Predef.classOf().
 [24:30..24:36): Option -> scala/Option#
 [24:37..24:40): Int -> scala/Int#
+
+expect/InventedNames.scala
+--------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => InventedNames.scala
+Text => empty
+Language => Scala
+Symbols => 45 entries
+Occurrences => 72 entries
+
+Symbols:
+givens/InventedNames$package. => final package object givens
+givens/InventedNames$package.`* *`. => final implicit lazy val method * *
+givens/InventedNames$package.a. => val method a
+givens/InventedNames$package.b. => val method b
+givens/InventedNames$package.c. => val method c
+givens/InventedNames$package.d. => val method d
+givens/InventedNames$package.e. => val method e
+givens/InventedNames$package.f. => val method f
+givens/InventedNames$package.g. => val method g
+givens/InventedNames$package.given_Char. => final implicit lazy val method given_Char
+givens/InventedNames$package.given_Double(). => final implicit method given_Double
+givens/InventedNames$package.given_Double().(x$1) => implicit param x$1
+givens/InventedNames$package.given_Float. => final implicit lazy val method given_Float
+givens/InventedNames$package.given_List_T(). => final implicit method given_List_T
+givens/InventedNames$package.given_List_T().[T] => typeparam T
+givens/InventedNames$package.given_String. => final implicit lazy val method given_String
+givens/InventedNames$package.given_X. => final implicit object given_X
+givens/InventedNames$package.given_X.doX(). => method doX
+givens/InventedNames$package.given_Y# => class given_Y
+givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init>
+givens/InventedNames$package.given_Y#`<init>`().(x$1) => implicit val param x$1
+givens/InventedNames$package.given_Y#doY(). => method doY
+givens/InventedNames$package.given_Y#x$1. => protected implicit val method x$1
+givens/InventedNames$package.given_Y(). => final implicit method given_Y
+givens/InventedNames$package.given_Y().(x$1) => implicit param x$1
+givens/InventedNames$package.given_Z_T# => class given_Z_T
+givens/InventedNames$package.given_Z_T#[T] => typeparam T
+givens/InventedNames$package.given_Z_T#`<init>`(). => primary ctor <init>
+givens/InventedNames$package.given_Z_T#doZ(). => method doZ
+givens/InventedNames$package.given_Z_T(). => final implicit method given_Z_T
+givens/InventedNames$package.given_Z_T().[T] => typeparam T
+givens/InventedNames$package.intValue. => final implicit lazy val method intValue
+givens/InventedNames$package.x. => val method x
+givens/InventedNames$package.y. => val method y
+givens/InventedNames$package.z. => val method z
+givens/X# => trait X
+givens/X#`<init>`(). => primary ctor <init>
+givens/X#doX(). => abstract method doX
+givens/Y# => trait Y
+givens/Y#`<init>`(). => primary ctor <init>
+givens/Y#doY(). => abstract method doY
+givens/Z# => trait Z
+givens/Z#[T] => typeparam T
+givens/Z#`<init>`(). => primary ctor <init>
+givens/Z#doZ(). => abstract method doZ
+
+Occurrences:
+[0:8..0:14): givens <- givens/
+[2:6..2:7): X <- givens/X#
+[3:2..3:2): <- givens/X#`<init>`().
+[3:6..3:9): doX <- givens/X#doX().
+[3:11..3:14): Int -> scala/Int#
+[5:6..5:7): Y <- givens/Y#
+[6:2..6:2): <- givens/Y#`<init>`().
+[6:6..6:9): doY <- givens/Y#doY().
+[6:11..6:17): String -> scala/Predef.String#
+[8:6..8:7): Z <- givens/Z#
+[8:7..8:7): <- givens/Z#`<init>`().
+[8:8..8:9): T <- givens/Z#[T]
+[9:6..9:9): doZ <- givens/Z#doZ().
+[9:11..9:15): List -> scala/package.List#
+[9:16..9:17): T -> givens/Z#[T]
+[13:6..13:14): intValue <- givens/InventedNames$package.intValue.
+[13:16..13:19): Int -> scala/Int#
+[14:6..14:6): <- givens/InventedNames$package.given_String.
+[14:6..14:12): String -> scala/Predef.String#
+[15:6..15:6): <- givens/InventedNames$package.given_Double().
+[15:13..15:16): Int -> scala/Int#
+[15:19..15:25): Double -> scala/Double#
+[16:6..16:6): <- givens/InventedNames$package.given_List_T().
+[16:7..16:8): T <- givens/InventedNames$package.given_List_T().[T]
+[16:11..16:15): List -> scala/package.List#
+[16:16..16:17): T -> givens/InventedNames$package.given_List_T().[T]
+[16:21..16:24): Nil -> scala/package.Nil.
+[17:6..17:16): given_Char <- givens/InventedNames$package.given_Char.
+[17:18..17:22): Char -> scala/Char#
+[18:7..18:18): given_Float <- givens/InventedNames$package.given_Float.
+[18:21..18:26): Float -> scala/Float#
+[19:7..19:10): * * <- givens/InventedNames$package.`* *`.
+[19:13..19:17): Long -> scala/Long#
+[21:6..22:0): <- givens/InventedNames$package.given_X.
+[21:6..21:7): X -> givens/X#
+[22:6..22:9): doX <- givens/InventedNames$package.given_X.doX().
+[24:13..24:13): <- givens/InventedNames$package.given_Y#`<init>`().
+[24:13..24:14): X -> givens/X#
+[24:17..24:18): Y -> givens/Y#
+[25:6..25:9): doY <- givens/InventedNames$package.given_Y#doY().
+[27:7..27:7): <- givens/InventedNames$package.given_Z_T#`<init>`().
+[27:7..27:8): T <- givens/InventedNames$package.given_Z_T#[T]
+[27:11..27:12): Z -> givens/Z#
+[27:13..27:14): T -> givens/InventedNames$package.given_Z_T#[T]
+[28:6..28:9): doZ <- givens/InventedNames$package.given_Z_T#doZ().
+[28:11..28:15): List -> scala/package.List#
+[28:16..28:17): T -> givens/InventedNames$package.given_Z_T#[T]
+[28:21..28:24): Nil -> scala/package.Nil.
+[32:4..32:5): a <- givens/InventedNames$package.a.
+[32:8..32:16): intValue -> givens/InventedNames$package.intValue.
+[33:4..33:5): b <- givens/InventedNames$package.b.
+[33:8..33:20): given_String -> givens/InventedNames$package.given_String.
+[34:4..34:5): c <- givens/InventedNames$package.c.
+[34:8..34:20): given_Double -> givens/InventedNames$package.given_Double().
+[34:20..34:20): -> givens/InventedNames$package.intValue.
+[35:4..35:5): d <- givens/InventedNames$package.d.
+[35:8..35:20): given_List_T -> givens/InventedNames$package.given_List_T().
+[35:21..35:24): Int -> scala/Int#
+[36:4..36:5): e <- givens/InventedNames$package.e.
+[36:8..36:18): given_Char -> givens/InventedNames$package.given_Char.
+[37:4..37:5): f <- givens/InventedNames$package.f.
+[37:8..37:19): given_Float -> givens/InventedNames$package.given_Float.
+[38:4..38:5): g <- givens/InventedNames$package.g.
+[38:8..38:13): `* *` -> givens/InventedNames$package.`* *`.
+[39:4..39:5): x <- givens/InventedNames$package.x.
+[39:8..39:15): given_X -> givens/InventedNames$package.given_X.
+[40:4..40:5): y <- givens/InventedNames$package.y.
+[40:8..40:15): given_Y -> givens/InventedNames$package.given_Y().
+[40:15..40:15): -> givens/InventedNames$package.given_X.
+[41:4..41:5): z <- givens/InventedNames$package.z.
+[41:8..41:17): given_Z_T -> givens/InventedNames$package.given_Z_T().
+[41:18..41:24): String -> scala/Predef.String#
 
 expect/Issue1749.scala
 ----------------------
@@ -2459,7 +2727,7 @@ Uri => RightAssociativeExtension.scala
 Text => empty
 Language => Scala
 Symbols => 5 entries
-Occurrences => 14 entries
+Occurrences => 13 entries
 
 Symbols:
 ext/RightAssociativeExtension$package. => final package object ext
@@ -2470,7 +2738,6 @@ ext/RightAssociativeExtension$package.b. => val method b
 
 Occurrences:
 [0:8..0:11): ext <- ext/
-[2:0..2:0): <- ext/RightAssociativeExtension$package.
 [2:11..2:12): s <- ext/RightAssociativeExtension$package.`:*:`().(s)
 [2:14..2:20): String -> scala/Predef.String#
 [3:6..3:9): :*: <- ext/RightAssociativeExtension$package.`:*:`().
@@ -2912,7 +3179,7 @@ Symbols:
 example/ValUsages. => final object ValUsages
 example/ValUsages.v. => val method v
 example/Vals# => abstract class Vals
-example/Vals#_explicitSetter(). => var method _explicitSetter
+example/Vals#_explicitSetter(). => private[this] var method _explicitSetter
 example/Vals#`<init>`(). => primary ctor <init>
 example/Vals#`<init>`().(p) => param p
 example/Vals#`<init>`().(xp) => val param xp
@@ -2931,19 +3198,19 @@ example/Vals#`yp_=`(). => var method yp_=
 example/Vals#`yp_=`().(x$1) => param x$1
 example/Vals#explicitSetter(). => method explicitSetter
 example/Vals#m(). => method m
-example/Vals#p. => val method p
+example/Vals#p. => private[this] val method p
 example/Vals#xam. => abstract val method xam
 example/Vals#xfm. => final val method xfm
 example/Vals#xim. => implicit val method xim
-example/Vals#xlm. => val method xlm
+example/Vals#xlm. => private[this] val method xlm
 example/Vals#xm. => val method xm
 example/Vals#xp. => val method xp
-example/Vals#xzlm. => lazy val method xzlm
+example/Vals#xzlm. => private[this] lazy val method xzlm
 example/Vals#xzm. => lazy val method xzm
 example/Vals#yam(). => abstract var method yam
 example/Vals#yfm(). => final var method yfm
 example/Vals#yim(). => implicit var method yim
-example/Vals#ylm(). => var method ylm
+example/Vals#ylm(). => private[this] var method ylm
 example/Vals#ym(). => var method ym
 example/Vals#yp(). => var method yp
 local0 => val local xl
@@ -3134,10 +3401,10 @@ exports/example/Codec#`<init>`().(decode) => param decode
 exports/example/Codec#`<init>`().(encode) => param encode
 exports/example/Codec#decode(). => final method decode
 exports/example/Codec#decode().(a) => param a
-exports/example/Codec#decode. => val method decode
+exports/example/Codec#decode. => private[this] val method decode
 exports/example/Codec#encode(). => final method encode
 exports/example/Codec#encode().(t) => param t
-exports/example/Codec#encode. => val method encode
+exports/example/Codec#encode. => private[this] val method encode
 exports/example/Decoder# => trait Decoder
 exports/example/Decoder#[T] => covariant typeparam T
 exports/example/Decoder#`<init>`(). => primary ctor <init>
@@ -3199,7 +3466,7 @@ Uri => exports-package.scala
 Text => empty
 Language => Scala
 Symbols => 4 entries
-Occurrences => 6 entries
+Occurrences => 5 entries
 
 Symbols:
 exports/`exports-package$package`. => final package object exports
@@ -3209,7 +3476,6 @@ exports/`exports-package$package`.Encoder# => final type Encoder
 
 Occurrences:
 [0:8..0:15): exports <- exports/
-[2:0..2:0): <- exports/`exports-package$package`.
 [2:7..2:14): example -> exports/example/
 [2:16..2:23): Decoder <- exports/`exports-package$package`.Decoder#
 [2:25..2:32): Encoder <- exports/`exports-package$package`.Encoder#
@@ -3244,13 +3510,13 @@ Uri => i9727.scala
 Text => empty
 Language => Scala
 Symbols => 7 entries
-Occurrences => 12 entries
+Occurrences => 11 entries
 
 Symbols:
 i9727/Test# => class Test
 i9727/Test#`<init>`(). => primary ctor <init>
 i9727/Test#`<init>`().(a) => param a
-i9727/Test#a. => val method a
+i9727/Test#a. => private[this] val method a
 i9727/i9727$package. => final package object i9727
 i9727/i9727$package.a. => val method a
 i9727/i9727$package.b. => val method b
@@ -3261,7 +3527,6 @@ Occurrences:
 [2:10..2:10): <- i9727/Test#`<init>`().
 [2:11..2:12): a <- i9727/Test#a.
 [2:14..2:17): Int -> scala/Int#
-[3:0..3:0): <- i9727/i9727$package.
 [3:4..3:5): a <- i9727/i9727$package.a.
 [3:12..3:16): Test -> i9727/Test#
 [3:16..3:16): -> i9727/Test#`<init>`().
@@ -3512,7 +3777,7 @@ flags/p/package.AA#`<init>`().(y) => val param y
 flags/p/package.AA#`<init>`().(z) => var param z
 flags/p/package.AA#`z_=`(). => var method z_=
 flags/p/package.AA#`z_=`().(x$1) => param x$1
-flags/p/package.AA#x. => val method x
+flags/p/package.AA#x. => private[this] val method x
 flags/p/package.AA#y. => val method y
 flags/p/package.AA#z(). => var method z
 flags/p/package.C# => abstract class C
@@ -3527,9 +3792,9 @@ flags/p/package.C#`<init>`(+1). => ctor <init>
 flags/p/package.C#`<init>`(+2). => ctor <init>
 flags/p/package.C#`<init>`(+2).(t) => param t
 flags/p/package.C#w(). => abstract method w
-flags/p/package.C#x. => val method x
-flags/p/package.C#y. => val method y
-flags/p/package.C#z. => val method z
+flags/p/package.C#x. => private[this] val method x
+flags/p/package.C#y. => private[this] val method y
+flags/p/package.C#z. => private[this] val method z
 flags/p/package.S# => class S
 flags/p/package.S#[T] => typeparam T
 flags/p/package.S#`<init>`(). => primary ctor <init>
@@ -3543,13 +3808,13 @@ flags/p/package.Y# => final class Y
 flags/p/package.Y#`<init>`(). => primary ctor <init>
 flags/p/package.Z# => sealed trait Z
 flags/p/package.Z#`<init>`(). => primary ctor <init>
-flags/p/package.`y_=`(). => var method y_=
+flags/p/package.`y_=`(). => protected var method y_=
 flags/p/package.`y_=`().(x$1) => param x$1
 flags/p/package.m(). => macro m
 flags/p/package.m().[TT] => typeparam TT
-flags/p/package.x. => lazy val method x
+flags/p/package.x. => private[flags/p/] lazy val method x
 flags/p/package.xs1. => val method xs1
-flags/p/package.y(). => implicit var method y
+flags/p/package.y(). => protected implicit var method y
 flags/p/package.z(). => method z
 flags/p/package.z().(pp) => param pp
 local0 => val local xs2
@@ -3561,7 +3826,7 @@ Occurrences:
 [2:13..2:21): language -> scala/language.
 [2:22..2:34): experimental -> scala/language.experimental.
 [2:35..2:41): macros -> scala/language.experimental.macros.
-[4:15..5:3): <- flags/p/package.
+[4:15..4:16): p <- flags/p/package.
 [5:2..5:3): p -> flags/p/
 [5:19..5:20): x <- flags/p/package.x.
 [6:25..6:26): y <- flags/p/package.y().
@@ -3584,12 +3849,12 @@ Occurrences:
 [9:39..9:40): U -> flags/p/package.C#[U]
 [9:42..9:43): z <- flags/p/package.C#z.
 [9:45..9:46): V -> flags/p/package.C#[V]
-[10:8..10:14): <- flags/p/package.C#`<init>`(+1).
+[10:8..10:12): <- flags/p/package.C#`<init>`(+1).
 [10:22..10:22): -> flags/p/package.C#`<init>`().
 [10:22..10:25): ??? -> scala/Predef.`???`().
 [10:27..10:30): ??? -> scala/Predef.`???`().
 [10:32..10:35): ??? -> scala/Predef.`???`().
-[11:8..11:14): <- flags/p/package.C#`<init>`(+2).
+[11:8..11:12): <- flags/p/package.C#`<init>`(+2).
 [11:13..11:14): t <- flags/p/package.C#`<init>`(+2).(t)
 [11:16..11:17): T -> flags/p/package.C#[T]
 [11:26..11:26): -> flags/p/package.C#`<init>`().
@@ -3788,7 +4053,7 @@ types/ann# => class ann
 types/ann#[T] => typeparam T
 types/ann#`<init>`(). => primary ctor <init>
 types/ann#`<init>`().(x) => param x
-types/ann#x. => val method x
+types/ann#x. => private[this] val method x
 types/ann1# => class ann1
 types/ann1#`<init>`(). => primary ctor <init>
 types/ann2# => class ann2
@@ -4109,8 +4374,8 @@ Schema => SemanticDB v4
 Uri => toplevel.scala
 Text => empty
 Language => Scala
-Symbols => 18 entries
-Occurrences => 42 entries
+Symbols => 19 entries
+Occurrences => 44 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram
@@ -4130,10 +4395,10 @@ _empty_/toplevel$package.combine(+1).(y) => param y
 _empty_/toplevel$package.combine(+1).(z) => param z
 _empty_/toplevel$package.combine(+2). => method combine
 _empty_/toplevel$package.foo(). => method foo
+_empty_/toplevel$package.fooRef(). => method fooRef
 local0 => val local error
 
 Occurrences:
-[0:0..0:0): <- _empty_/toplevel$package.
 [0:11..0:12): a <- _empty_/toplevel$package.a.
 [1:11..1:12): x <- _empty_/toplevel$package.combine().(x)
 [1:14..1:17): Int -> scala/Int#
@@ -4175,4 +4440,7 @@ Occurrences:
 [5:46..5:51): times -> _empty_/toplevel$package.MyProgram().(times)
 [5:53..5:60): foreach -> scala/collection/immutable/Range#foreach().
 [5:67..5:74): println -> scala/Predef.println(+1).
+[6:4..6:10): fooRef <- _empty_/toplevel$package.fooRef().
+[6:13..6:29): toplevel$package -> _empty_/toplevel$package.
+[6:30..6:33): foo -> _empty_/toplevel$package.foo().
 

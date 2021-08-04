@@ -39,6 +39,10 @@ public class PositionBridge implements Position {
     public Optional<String> pointerSpace() {
       return Optional.empty();
     }
+
+    public String toString() {
+      return "";
+    }
   };
 
   public PositionBridge(SourcePosition pos, SourceFile src) {
@@ -116,4 +120,58 @@ public class PositionBridge implements Position {
       result.append(lineContent.charAt(i) == '\t' ? '\t' : ' ');
     return Optional.of(result.toString());
   }
+
+  @Override
+  public String toString() {
+      return pos.toString();
+  }
+  
+  @Override
+  public Optional<Integer> startOffset() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.start());
+  }
+
+  @Override
+  public Optional<Integer> endOffset() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.end());
+  }
+
+  @Override
+  public Optional<Integer> startLine() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.startLine() + 1);
+  }
+
+  @Override
+  public Optional<Integer> endLine() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.endLine() + 1);
+  }
+
+  @Override
+  public Optional<Integer> startColumn() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.startColumn());
+  }
+
+  @Override
+  public Optional<Integer> endColumn() {
+    if (src.content().length == 0)
+      return Optional.empty();
+    else
+      return Optional.of(pos.endColumn());
+  }
+
 }

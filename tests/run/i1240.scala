@@ -19,7 +19,9 @@ object Test {
       // In Java, this gives an error like this:
       // methods foo(A) from C[D] and foo(String) from C[D] are inherited with the same signature
       // But the analogous example with `b1` compiles OK in Java.
-    assert(b2.foo(new D) == "T foo")
+    assert(b2.foo(new D) == "D foo")
+      // Here we get "D foo" since a bridge method for foo(x: D) was inserted
+      // in the anonymous class of b2.
   }
 }
 

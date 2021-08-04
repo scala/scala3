@@ -7,7 +7,8 @@ import Settings._
 import core.Contexts._
 import Properties._
 
-import scala.collection.JavaConverters._
+ import scala.PartialFunction.cond
+ import scala.collection.JavaConverters._
 
 trait CliCommand:
 
@@ -63,6 +64,7 @@ trait CliCommand:
     }
 
     sg.processArguments(expandedArguments, processAll = true, settingsState = ss)
+  end distill
 
   /** Creates a help message for a subset of options based on cond */
   protected def availableOptionsMsg(cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
@@ -106,8 +108,9 @@ trait CliCommand:
           // For now, skip the default values that do not make sense for the end user.
           // For example 'false' for the version command.
           ""
-      s"${formatName(s.name)} ${formatDescription(s.description)}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
+      s"${formatName(s.name)} ${formatDescription(shortHelp(s))}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
     ss.map(helpStr).mkString("", "\n", s"\n${formatName("@<file>")} ${formatDescription("A text file containing compiler arguments (options and source files).")}\n")
+  end availableOptionsMsg
 
   protected def shortUsage: String = s"Usage: $cmdName <options> <source files>"
 
@@ -121,15 +124,30 @@ trait CliCommand:
     prefix + "\n" + availableOptionsMsg(cond)
 
   protected def isStandard(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
-    !isAdvanced(s) && !isPrivate(s)
+    !isVerbose(s) && !isWarning(s) && !isAdvanced(s) && !isPrivate(s) || s.name == "-Werror" || s.name == "-Wconf"
+  protected def isVerbose(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
+    s.name.startsWith("-V") && s.name != "-V"
+  protected def isWarning(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
+    s.name.startsWith("-W") && s.name != "-W" || s.name == "-Xlint"
   protected def isAdvanced(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     s.name.startsWith("-X") && s.name != "-X"
   protected def isPrivate(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     s.name.startsWith("-Y") && s.name != "-Y"
+  protected def shortHelp(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): String =
+    s.description.linesIterator.next()
+  protected def isHelping(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
+    cond(s.value) {
+      case ss: List[?] if s.isMultivalue => ss.contains("help")
+      case s: String                     => "help" == s
+    }
 
   /** Messages explaining usage and options */
   protected def usageMessage(using settings: ConcreteSettings)(using SettingsState) =
     createUsageMsg("where possible standard", shouldExplain = false, isStandard)
+  protected def vusageMessage(using settings: ConcreteSettings)(using SettingsState) =
+    createUsageMsg("Possible verbose", shouldExplain = true, isVerbose)
+  protected def wusageMessage(using settings: ConcreteSettings)(using SettingsState) =
+    createUsageMsg("Possible warning", shouldExplain = true, isWarning)
   protected def xusageMessage(using settings: ConcreteSettings)(using SettingsState) =
     createUsageMsg("Possible advanced", shouldExplain = true, isAdvanced)
   protected def yusageMessage(using settings: ConcreteSettings)(using SettingsState) =

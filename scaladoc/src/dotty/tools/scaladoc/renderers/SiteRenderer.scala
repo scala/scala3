@@ -22,33 +22,45 @@ trait SiteRenderer(using DocContext) extends Locations:
   def templateToPage(t: LoadedTemplate, staticSiteCtx: StaticSiteContext): Page =
     val dri = staticSiteCtx.driFor(t.file.toPath)
     val content = ResolvedTemplate(t, staticSiteCtx)
-    Page(Link(t.templateFile.title, dri), content, t.children.map(templateToPage(_, staticSiteCtx)))
+    Page(Link(t.templateFile.title.name, dri), content, t.children.map(templateToPage(_, staticSiteCtx)))
 
   private val HashRegex = "([^#]+)(#.+)".r
 
   def siteContent(pageDri: DRI, content: ResolvedTemplate): AppliedTag =
     import content.ctx
-    def tryAsDri(str: String) =
+    def tryAsDri(str: String): Option[String] =
       val (path, prefix) = str match
         case HashRegex(path, prefix) => (path, prefix)
         case _ => (str, "")
 
-      val res = ctx.driForLink(content.template.templateFile, path).filter(driExisits)
-      if res.isEmpty then report.warn(s"Unable to resolve link '$str'", content.template.file)
-      res.headOption.fold(str)(pathToPage(pageDri, _) + prefix)
+      val res = ctx.driForLink(content.template.templateFile, path).filter(driExists)
+      res.headOption.map(pathToPage(pageDri, _) + prefix)
 
     def processLocalLink(str: String): String =
-      if str.startsWith("#") || str.isEmpty then str
-      else Try(URL(str)).map(_ => str).getOrElse(tryAsDri(str))
+      Try(URL(str)).map(_ => str).toOption.orElse {
+        tryAsDri(str)
+      }.orElse {
+        Option.when(
+          Files.exists(Paths.get(content.ctx.root.toPath.toAbsolutePath.toString, str))
+        )(
+          resolveLink(pageDri, str.stripPrefix("/"))
+        )
+      }.getOrElse {
+        report.warn(s"Unable to resolve link '$str'", content.template.file)
+        str
+      }
+
+    def processLocalLinkWithGuard(str: String): String =
+      if str.startsWith("#") || str.isEmpty then
+        str
+      else
+        processLocalLink(str)
 
     val document = Jsoup.parse(content.resolved.code)
     document.select("a").forEach(element =>
-      element.attr("href", processLocalLink(element.attr("href")))
+      element.attr("href", processLocalLinkWithGuard(element.attr("href")))
     )
     document.select("img").forEach { element =>
-      val link = element.attr("src")
-      Try(new URL(link)).getOrElse {
-        if(link.startsWith("/")) element.attr("src", resolveLink(pageDri, link.drop(1)))
-      }
-    }// foreach does not work here
+      element.attr("src", processLocalLink(element.attr("src")))
+    } // foreach does not work here. Why?
     raw(document.outerHtml())

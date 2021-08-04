@@ -24,6 +24,8 @@ import Types._
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
+import org.scalajs.ir.{Trees => js}
+
 /** Additional extensions for `Symbol`s that are only relevant for Scala.js. */
 object JSSymUtils {
   /** The result type for `sym.jsName`.
@@ -38,6 +40,55 @@ object JSSymUtils {
     def displayName(using Context): String = this match {
       case Literal(name) => name
       case Computed(sym) => sym.fullName.toString()
+    }
+  }
+
+  enum JSCallingConvention {
+    case Call, BracketAccess, BracketCall
+    case Method(name: JSName)
+    case Property(name: JSName)
+    case UnaryOp(code: js.JSUnaryOp.Code)
+    case BinaryOp(code: js.JSBinaryOp.Code)
+
+    def displayName(using Context): String = this match {
+      case Call           => "function application"
+      case BracketAccess  => "bracket access"
+      case BracketCall    => "bracket call"
+      case Method(name)   => "method '" + name.displayName + "'"
+      case Property(name) => "property '" + name.displayName + "'"
+      case UnaryOp(code)  => "unary operator"
+      case BinaryOp(code) => "binary operator"
+    }
+  }
+
+  object JSCallingConvention {
+    def of(sym: Symbol)(using Context): JSCallingConvention = {
+      assert(sym.isTerm, s"got non-term symbol: $sym")
+
+      if (isJSBracketAccess(sym)) {
+        BracketAccess
+      } else if (isJSBracketCall(sym)) {
+        BracketCall
+      } else {
+        def default = {
+          val jsName = sym.jsName
+          if (sym.isJSProperty) Property(jsName)
+          else Method(jsName)
+        }
+
+        if (!sym.hasAnnotation(jsdefn.JSNameAnnot)) {
+          lazy val pc = sym.info.paramNamess.map(_.size).sum
+
+          sym.name match {
+            case nme.apply                             => Call
+            case JSUnaryOpMethodName(code) if pc == 0  => UnaryOp(code)
+            case JSBinaryOpMethodName(code) if pc == 1 => BinaryOp(code)
+            case _                                     => default
+          }
+        } else {
+          default
+        }
+      }
     }
   }
 
@@ -66,10 +117,9 @@ object JSSymUtils {
 
     /** Should this symbol be translated into a JS getter? */
     def isJSGetter(using Context): Boolean = {
-      sym.is(Module) || (
-          sym.is(Method)
-            && sym.info.firstParamTypes.isEmpty
-            && atPhaseNoLater(erasurePhase)(sym.info.isParameterless))
+      sym.is(Module)
+        || !sym.is(Method)
+        || (sym.info.firstParamTypes.isEmpty && atPhaseNoLater(erasurePhase)(sym.info.isParameterless))
     }
 
     /** Should this symbol be translated into a JS setter? */
@@ -108,6 +158,19 @@ object JSSymUtils {
       }
     }
 
+    /** Is this symbol a default param accessor for the constructor of a native JS class? */
+    def isJSNativeCtorDefaultParam(using Context): Boolean = {
+      sym.name.is(DefaultGetterName)
+        && sym.name.exclude(DefaultGetterName) == nme.CONSTRUCTOR
+        && sym.owner.linkedClass.hasAnnotation(jsdefn.JSNativeAnnot)
+    }
+
+    def jsCallingConvention(using Context): JSCallingConvention =
+      JSCallingConvention.of(sym)
+
+    def hasJSCallCallingConvention(using Context): Boolean =
+      sym.jsCallingConvention == JSCallingConvention.Call
+
     /** Gets the unqualified JS name of the symbol.
      *
      *  If it is not explicitly specified with an `@JSName` annotation, the
@@ -127,5 +190,45 @@ object JSSymUtils {
     def defaultJSName(using Context): String =
       if (sym.isTerm) sym.asTerm.name.unexpandedName.getterName.toString()
       else sym.name.unexpandedName.stripModuleClassSuffix.toString()
+  }
+
+  private object JSUnaryOpMethodName {
+    private val map = Map(
+      nme.UNARY_+ -> js.JSUnaryOp.+,
+      nme.UNARY_- -> js.JSUnaryOp.-,
+      nme.UNARY_~ -> js.JSUnaryOp.~,
+      nme.UNARY_! -> js.JSUnaryOp.!
+    )
+
+    def unapply(name: TermName): Option[js.JSUnaryOp.Code] =
+      map.get(name)
+  }
+
+  private object JSBinaryOpMethodName {
+    private val map = Map(
+      nme.ADD -> js.JSBinaryOp.+,
+      nme.SUB -> js.JSBinaryOp.-,
+      nme.MUL -> js.JSBinaryOp.*,
+      nme.DIV -> js.JSBinaryOp./,
+      nme.MOD -> js.JSBinaryOp.%,
+
+      nme.LSL -> js.JSBinaryOp.<<,
+      nme.ASR -> js.JSBinaryOp.>>,
+      nme.LSR -> js.JSBinaryOp.>>>,
+      nme.OR  -> js.JSBinaryOp.|,
+      nme.AND -> js.JSBinaryOp.&,
+      nme.XOR -> js.JSBinaryOp.^,
+
+      nme.LT -> js.JSBinaryOp.<,
+      nme.LE -> js.JSBinaryOp.<=,
+      nme.GT -> js.JSBinaryOp.>,
+      nme.GE -> js.JSBinaryOp.>=,
+
+      nme.ZAND -> js.JSBinaryOp.&&,
+      nme.ZOR  -> js.JSBinaryOp.||
+    )
+
+    def unapply(name: TermName): Option[js.JSBinaryOp.Code] =
+      map.get(name)
   }
 }

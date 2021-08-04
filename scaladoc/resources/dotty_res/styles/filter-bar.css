@@ -1,6 +1,6 @@
 .documentableFilter {
-  padding: 24px 12px;
-  background-color: var(--leftbar-bg);
+  padding: 24px 24px 24px 12px;
+  background-color: var(--code-bg);
 }
 
 .documentableFilter.active .filterToggleButton svg {
@@ -26,22 +26,28 @@
 }
 
 .filterToggleButton svg {
-  fill: var(--code-bg);
+  fill: var(--icon-color);
   transition: fill 0.1s ease-in, transform 0.1s ease-in-out;
 }
 
 .filterToggleButton:hover svg,
 .filterToggleButton:focus svg {
-  fill: var(--active-tab-color);
+  fill: var(--icon-color);
 }
 
 .filterableInput {
-  padding: 6px 4px;
   flex: 1;
   outline: 0;
-  border: 0;
+  border: 1px solid var(--border-medium);
   border-radius: 3px;
-  background-color: var(--code-bg);
+  background-color: var(--body-bg);
+  font-family: "Lato", sans-serif;
+  padding: 8px;
+  margin-left: 8px;
+}
+
+.filterableInput:focus {
+  border: 1px solid var(--active-bg-shadow);
 }
 
 .filterLowerContainer {
@@ -50,12 +56,11 @@
 }
 
 .filterGroup {
-  display: flex;
   margin-bottom: 16px;
 }
 
 .filterList {
-  margin-left: 10px;
+  margin: 0.5em;
 }
 
 .filterButtonItem {
@@ -66,12 +71,12 @@
   outline: 0;
   border: 0;
   border-radius: 3px;
-  color: var(--leftbar-bg);
-  background-color: var(--code-bg);
+  color: var(--inactive-fg);
+  background-color: var(--inactive-bg);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  border-bottom: 2px solid var(--inactive-fg);
+  border-bottom: 2px solid var(--inactive-bg-shadow);
   transition: all 0.1s ease-in;
 }
 
@@ -81,9 +86,9 @@
 }
 
 .filterButtonItem.active {
-  color: var(--code-bg);
-  border-bottom-color: var(--link-fg);
-  background-color: var(--active-tab-color);
+  color: var(--active-fg);
+  border-bottom-color: var(--active-bg-shadow);
+  background-color: var(--active-bg);
 }
 
 .filterButtonItem.visible {
@@ -91,17 +96,19 @@
 }
 
 .groupTitle {
-  min-width: 98px;
-  margin-top: 4px;
+  margin-bottom: 4px;
   font-weight: 700;
-  font-size: 14px;
-  color: var(--code-bg);
+  color: var(--body-fg);
+}
+.groupTitle > span {
+  display: inline-block;
+  vertical-align: baseline;
 }
 
 .groupButtonsContainer {
-  display: flex;
-  align-items: center;
-  margin-top: 4px;
+  display: inline-block;
+  vertical-align: baseline;
+  margin-left: 1em;
 }
 
 .selectAll {
@@ -114,8 +121,8 @@
   border: 0;
   background-color: transparent;
   padding: 0;
-  color: var(--code-bg);
-  font-size: 8px;
+  color: var(--active-fg);
+  font-size: 0.7em;
   cursor: pointer;
   transition: all 0.1s ease-in;
 }
@@ -123,7 +130,7 @@
 .selectAll {
   padding: 4px;
   border-radius: 2px;
-  background-color: var(--active-tab-color);
+  background-color: var(--active-bg);
 }
 
 .selectAll:hover,
@@ -133,5 +140,5 @@
 
 .deselectAll:hover,
 .deselectAll:focus {
-  color: var(--active-tab-color);
+  color: var(--active-bg);
 }

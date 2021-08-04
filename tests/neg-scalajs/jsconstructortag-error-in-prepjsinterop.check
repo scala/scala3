@@ -13,7 +13,7 @@
 -- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:17:59 ----------------------------------------
 17 |  val d = js.constructorTag[NativeJSClass { def bar: Int }] // error
    |                                                           ^
-   |                                                           NativeJSClass{bar: => Int} is not a class type
+   |                                                           NativeJSClass{bar: Int} is not a class type
 -- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:19:36 ----------------------------------------
 19 |  val e = js.constructorTag[JSTrait] // error
    |                                    ^
@@ -29,7 +29,7 @@
 -- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:23:53 ----------------------------------------
 23 |  val h = js.constructorTag[JSClass { def bar: Int }] // error
    |                                                     ^
-   |                                                     JSClass{bar: => Int} is not a class type
+   |                                                     JSClass{bar: Int} is not a class type
 -- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:25:45 ----------------------------------------
 25 |  def foo[A <: js.Any] = js.constructorTag[A] // error
    |                                             ^

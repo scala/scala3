@@ -61,7 +61,7 @@ class StringConcatTest extends DottyBytecodeTest {
       }
 
       assertEquals(List(
-        "<init>()V",
+        "<init>(I)V",
         "toString()Ljava/lang/String;",
         "append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
         "append(Ljava/lang/Object;)Ljava/lang/StringBuilder;",
@@ -82,7 +82,7 @@ class StringConcatTest extends DottyBytecodeTest {
       )
 
       assertEquals(List(
-        "<init>()V",
+        "<init>(I)V",
         "toString()Ljava/lang/String;",
         "append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
         "append(Ljava/lang/String;)Ljava/lang/StringBuilder;",

@@ -4,7 +4,7 @@ import scala.quoted.*
 inline def power(x: Double, inline n: Int) = ${ powerCode1('x, 'n) }
 
 private def powerCode1(using Quotes)(x: Expr[Double], n: Expr[Int]): Expr[Double] =
-  powerCode(x, n.valueOrError)
+  powerCode(x, n.valueOrAbort)
 
 private def powerCode(using Quotes)(x: Expr[Double], n: Int): Expr[Double] =
   if (n == 0) Expr(1.0)

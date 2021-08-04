@@ -33,7 +33,7 @@ import NameKinds.DefaultGetterName
 import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
-import transform.patmat.SpaceEngine.isIrrefutableUnapply
+import transform.patmat.SpaceEngine.isIrrefutable
 import config.Feature._
 import config.SourceVersion._
 
@@ -113,7 +113,7 @@ object Checking {
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
-        if (tycon.isLambdaSub && tp.hasWildcardArg)
+        if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
             tree.srcPos)
@@ -190,6 +190,30 @@ object Checking {
     if (rstatus ne Realizable)
       report.errorOrMigrationWarning(em"$tp is not a legal $what\nsince it${rstatus.msg}", pos)
   }
+
+  /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
+   *  the superclass of `cls` derived from the superclass of `parent`.
+   *
+   *  An exception is made if `cls` extends `Any`, and `parent` is `java.io.Serializable`
+   *  or `java.lang.Comparable`. These two classes are treated by Scala as universal
+   *  traits. E.g. the following is OK:
+   *
+   *      ... extends Any with java.io.Serializable
+   *
+   *  The standard library relies on this idiom.
+   */
+  def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: SrcPos)(using Context): Unit =
+    parent match {
+      case parent: ClassSymbol if parent.is(Trait) =>
+        val psuper = parent.superClass
+        val csuper = cls.superClass
+        val ok = csuper.derivesFrom(psuper) ||
+          parent.is(JavaDefined) && csuper == defn.AnyClass &&
+          (parent == defn.JavaSerializableClass || parent == defn.ComparableClass)
+        if (!ok)
+          report.error(em"illegal trait inheritance: super$csuper does not derive from $parent's super$psuper", pos)
+      case _ =>
+    }
 
   /** A type map which checks that the only cycles in a type are F-bounds
    *  and that protects all F-bounded references by LazyRefs.
@@ -301,7 +325,7 @@ object Checking {
         catch {
           case ex: CyclicReference =>
             report.debuglog(i"cycle detected for $tp, $nestedCycleOK, $cycleOK")
-            if (cycleOK) LazyRef(tp)
+            if (cycleOK) LazyRef.of(tp)
             else if (reportErrors) throw ex
             else tp
         }
@@ -403,11 +427,11 @@ object Checking {
       return
 
     def qualifies(sym: Symbol) = sym.name.isTypeName && !sym.is(Private)
-    val abstractTypeNames =
-      for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
-      yield mbr.name.asTypeName
-
     withMode(Mode.CheckCyclic) {
+      val abstractTypeNames =
+        for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
+        yield mbr.name.asTypeName
+
       for name <- abstractTypeNames do
         try
           val mbr = joint.member(name)
@@ -425,6 +449,7 @@ object Checking {
   /** Check that symbol's definition is well-formed. */
   def checkWellFormed(sym: Symbol)(using Context): Unit = {
     def fail(msg: Message) = report.error(msg, sym.srcPos)
+    def warn(msg: Message) = report.warning(msg, sym.srcPos)
 
     def checkWithDeferred(flag: FlagSet) =
       if (sym.isOneOf(flag))
@@ -433,9 +458,10 @@ object Checking {
       if (sym.isAllOf(flag1 | flag2)) fail(msg)
     def checkCombination(flag1: FlagSet, flag2: FlagSet) =
       if sym.isAllOf(flag1 | flag2) then fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
-    def checkApplicable(flag: FlagSet, ok: Boolean) =
-      if (!ok && !sym.is(Synthetic))
-        fail(ModifierNotAllowedForDefinition(Erased))
+    def checkApplicable(flag: Flag, ok: Boolean) =
+      if sym.is(flag, butNot = Synthetic) && !ok then
+        fail(ModifierNotAllowedForDefinition(flag))
+        sym.resetFlag(flag)
 
     if (sym.is(Inline) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
@@ -463,11 +489,21 @@ object Checking {
       fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
-    if (sym.is(Trait) && sym.is(Final))
-      fail(TraitsMayNotBeFinal(sym))
+    if sym.is(Trait) then
+      if sym.is(Final) then
+        fail(TraitsMayNotBeFinal(sym))
+      else if sym.is(Open) then
+        warn(RedundantModifier(Open))
+    if sym.isAllOf(Abstract | Open) then
+      warn(RedundantModifier(Open))
+    if sym.is(Open) && sym.isLocal then
+      warn(RedundantModifier(Open))
     // Skip ModuleVal since the annotation will also be on the ModuleClass
-    if (sym.hasAnnotation(defn.TailrecAnnot) && !sym.isOneOf(Method | ModuleVal))
-      fail(TailrecNotApplicable(sym))
+    if sym.hasAnnotation(defn.TailrecAnnot) then
+      if !sym.isOneOf(Method | ModuleVal) then
+        fail(TailrecNotApplicable(sym))
+      else if sym.is(Inline) then
+        fail("Inline methods cannot be @tailrec")
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
@@ -485,6 +521,15 @@ object Checking {
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
       fail("Traits cannot have secondary constructors" + addendum)
+    checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
+    checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
+    if (sym.isType && !sym.is(Deferred))
+      for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
+        fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
+        sym.setFlag(Private) // break the overriding relationship by making sym Private
+      }
+    checkApplicable(Erased,
+      !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)
@@ -493,16 +538,21 @@ object Checking {
     checkCombination(Private, Override)
     checkCombination(Lazy, Inline)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
-    if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
-    if (sym.is(Lazy)) checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
-    if (sym.isType && !sym.is(Deferred))
-      for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
-        fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
-        sym.setFlag(Private) // break the overriding relationship by making sym Private
-      }
-    if (sym.is(Erased))
-      checkApplicable(Erased, !sym.isOneOf(MutableOrLazy, butNot = Given))
   }
+
+  /** Check for illegal or redundant modifiers on modules. This is done separately
+   *  from checkWellformed, since the original module modifiers don't surivive desugaring
+   */
+  def checkWellFormedModule(mdef: untpd.ModuleDef)(using Context) =
+    val mods = mdef.mods
+    def flagSourcePos(flag: FlagSet) =
+      mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
+    if mods.is(Abstract) then
+      report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
+    if mods.is(Sealed) then
+      report.error(ModifierNotAllowedForDefinition(Sealed), flagSourcePos(Sealed))
+    if mods.is(Final, butNot = Synthetic) then
+      report.warning(RedundantModifier(Final), flagSourcePos(Final))
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
    *  to a private type or value which is invisible at a point where `M` is still
@@ -724,7 +774,7 @@ trait Checking {
             recur(pat1, pt)
           case UnApply(fn, _, pats) =>
             check(pat, pt) &&
-            (isIrrefutableUnapply(fn, pats.length) || fail(pat, pt)) && {
+            (isIrrefutable(fn) || fail(pat, pt)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
@@ -936,7 +986,9 @@ trait Checking {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
-          if (decl is Synthetic) doubleDefError(other, decl)
+          if decl.name.is(DefaultGetterName) && ctx.reporter.errorsReported then
+            () // do nothing; we already have reported an error that overloaded variants cannot have default arguments
+          else if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
         if decl.hasDefaultParams && other.hasDefaultParams then
@@ -963,18 +1015,6 @@ trait Checking {
         report.error(i"""$called is already implemented by super${caller.superClass},
                    |its constructor cannot be called again""", call.srcPos)
 
-      if (caller.is(Module)) {
-        val traverser = new TreeTraverser {
-          def traverse(tree: Tree)(using Context) = tree match {
-            case tree: RefTree if tree.isTerm && (tree.tpe.classSymbol eq caller) =>
-              report.error("super constructor cannot be passed a self reference", tree.srcPos)
-            case _ =>
-              traverseChildren(tree)
-          }
-        }
-        traverser.traverse(call)
-      }
-
       // Check that constructor call is of the form _.<init>(args1)...(argsN).
       // This guards against calls resulting from inserted implicits or applies.
       def checkLegalConstructorCall(tree: Tree, encl: Tree, kind: String): Unit = tree match {
@@ -996,11 +1036,6 @@ trait Checking {
         // needed to make pos/java-interop/t1196 work.
       errorTree(tpt, MissingTypeParameterFor(tpt.tpe))
     else tpt
-
-  /** Check that the signature of the class mamber does not return a repeated parameter type */
-  def checkSignatureRepeatedParam(sym: Symbol)(using Context): Unit =
-    if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
-      report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
 
   /** Verify classes extending AnyVal meet the requirements */
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =
@@ -1077,7 +1112,7 @@ trait Checking {
         }
       case _ =>
     }
-    tp.foreachPart(check, stopAtStatic = true)
+    tp.foreachPart(check, StopAt.Static)
     if (ok) tp else UnspecifiedErrorType
   }
 
@@ -1284,9 +1319,7 @@ trait Checking {
   def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit =
     if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`future-migration`) then
       val kind = if pattern then "pattern selector" else "value"
-      report.warning(
-        em"""${kind} should be an instance of Matchable,
-            |but it has unmatchable type $tp instead""", pos)
+      report.warning(MatchableWarning(tp, pattern), pos)
 }
 
 trait ReChecking extends Checking {

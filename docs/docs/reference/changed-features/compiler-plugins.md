@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Changes in Compiler Plugins"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/compiler-plugins.html
 ---
 
 Compiler plugins are supported by Dotty (and Scala 3) since 0.9. There are two notable changes
@@ -63,28 +64,28 @@ import dotty.tools.dotc.plugins.{PluginPhase, StandardPlugin}
 import dotty.tools.dotc.transform.{Pickler, Staging}
 
 class DivideZero extends StandardPlugin:
-   val name: String = "divideZero"
-   override val description: String = "divide zero check"
+  val name: String = "divideZero"
+  override val description: String = "divide zero check"
 
-   def init(options: List[String]): List[PluginPhase] =
-      (new DivideZeroPhase) :: Nil
+  def init(options: List[String]): List[PluginPhase] =
+    (new DivideZeroPhase) :: Nil
 
 class DivideZeroPhase extends PluginPhase:
-   import tpd.*
+  import tpd.*
 
-   val phaseName = "divideZero"
+  val phaseName = "divideZero"
 
-   override val runsAfter = Set(Pickler.name)
-   override val runsBefore = Set(Staging.name)
+  override val runsAfter = Set(Pickler.name)
+  override val runsBefore = Set(Staging.name)
 
-   override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
-      tree match
-         case Apply(Select(rcvr, nme.DIV), List(Literal(Constant(0))))
-         if rcvr.tpe <:< defn.IntType =>
-            report.error("dividing by zero", tree.pos)
-         case _ =>
-            ()
-      tree
+  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
+    tree match
+      case Apply(Select(rcvr, nme.DIV), List(Literal(Constant(0))))
+      if rcvr.tpe <:< defn.IntType =>
+        report.error("dividing by zero", tree.pos)
+      case _ =>
+        ()
+    tree
 end DivideZeroPhase
 ```
 
@@ -109,11 +110,11 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.plugins.ResearchPlugin
 
 class DummyResearchPlugin extends ResearchPlugin:
-   val name: String = "dummy"
-   override val description: String = "dummy research plugin"
+  val name: String = "dummy"
+  override val description: String = "dummy research plugin"
 
-   def init(options: List[String], phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] =
-      phases
+  def init(options: List[String], phases: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] =
+    phases
 end DummyResearchPlugin
 ```
 

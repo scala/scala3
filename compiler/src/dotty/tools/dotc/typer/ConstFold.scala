@@ -29,12 +29,12 @@ object ConstFold:
   def Apply[T <: Apply](tree: T)(using Context): T =
     tree.fun match
       case Select(xt, op) if foldedBinops.contains(op) =>
-        xt.tpe.widenTermRefExpr.normalized match
-          case ConstantType(x) =>
+        xt match
+          case ConstantTree(x) =>
             tree.args match
               case yt :: Nil =>
-                yt.tpe.widenTermRefExpr.normalized match
-                  case ConstantType(y) => tree.withFoldedType(foldBinop(op, x, y))
+                yt match
+                  case ConstantTree(y) => tree.withFoldedType(foldBinop(op, x, y))
                   case _ => tree
               case _ => tree
           case _ => tree
@@ -46,8 +46,8 @@ object ConstFold:
 
   def Select[T <: Select](tree: T)(using Context): T =
     if foldedUnops.contains(tree.name) then
-      tree.qualifier.tpe.widenTermRefExpr.normalized match
-        case ConstantType(x) => tree.withFoldedType(foldUnop(tree.name, x))
+      tree.qualifier match
+        case ConstantTree(x) => tree.withFoldedType(foldUnop(tree.name, x))
         case _ => tree
     else tree
 
@@ -58,6 +58,17 @@ object ConstFold:
     case TypeApply(_, targ :: Nil) if tree.symbol eq defn.Predef_classOf =>
       tree.withFoldedType(Constant(targ.tpe))
     case _ => tree
+
+  private object ConstantTree:
+    def unapply(tree: Tree)(using Context): Option[Constant] =
+      tree match
+        case Inlined(_, Nil, expr) => unapply(expr)
+        case Typed(expr, _) => unapply(expr)
+        case Literal(c) if c.tag == Constants.NullTag => Some(c)
+        case _ =>
+          tree.tpe.widenTermRefExpr.normalized.simplified match
+            case ConstantType(c) => Some(c)
+            case _ => None
 
   extension [T <: Tree](tree: T)(using Context)
     private def withFoldedType(c: Constant | Null): T =
@@ -164,15 +175,24 @@ object ConstFold:
     case _ => null
   }
   private def foldStringOp(op: Name, x: Constant, y: Constant): Constant = op match {
-    case nme.ADD  => Constant(x.stringValue + y.stringValue)
+    case nme.ADD => Constant(x.stringValue + y.stringValue)
     case nme.EQ  => Constant(x.stringValue == y.stringValue)
+    case nme.NE  => Constant(x.stringValue != y.stringValue)
     case _ => null
   }
+
+  private def foldNullOp(op: Name, x: Constant, y: Constant): Constant =
+    assert(x.tag == NullTag || y.tag == NullTag)
+    op match
+      case nme.EQ => Constant(x.tag == y.tag)
+      case nme.NE => Constant(x.tag != y.tag)
+      case _ => null
 
   private def foldBinop(op: Name, x: Constant, y: Constant): Constant =
     val optag =
       if (x.tag == y.tag) x.tag
       else if (x.isNumeric && y.isNumeric) math.max(x.tag, y.tag)
+      else if (x.tag == NullTag || y.tag == NullTag) NullTag
       else NoTag
 
     try optag match
@@ -182,6 +202,7 @@ object ConstFold:
       case  FloatTag                              => foldFloatOp(op, x, y)
       case  DoubleTag                             => foldDoubleOp(op, x, y)
       case  StringTag                             => foldStringOp(op, x, y)
+      case  NullTag                               => foldNullOp(op, x, y)
       case  _                                     => null
       catch case ex: ArithmeticException => null // the code will crash at runtime,
                                                  // but that is better than the

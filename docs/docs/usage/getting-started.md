@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Getting Started: Users
+movedTo: https://docs.scala-lang.org/scala3/getting-started.html
 ---
 
 ## Trying out Dotty
@@ -38,7 +39,7 @@ Start using the Dotty IDE in any Dotty project by following the
 ### Standalone installation
 Releases are available for download on the [Releases Section](https://github.com/lampepfl/dotty/releases)
 of the Dotty repository. Releases include three executables: `scalac` the Dotty compiler,
-`scaladoc` the [Scaladoc](scaladoc.md) and `scala` the Dotty REPL.
+`scaladoc` the [Scaladoc](./scaladoc/index.md) and `scala` the Dotty REPL.
 
 ```
 .

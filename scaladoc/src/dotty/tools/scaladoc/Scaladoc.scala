@@ -2,16 +2,20 @@ package dotty.tools.scaladoc
 
 import java.util.ServiceLoader
 import java.io.File
+import java.io.FileWriter
 import java.util.jar._
 import collection.JavaConverters._
 import collection.immutable.ArraySeq
 
-import java.nio.file.Files
+import java.nio.file.{ Files, Paths }
 
 import dotty.tools.dotc.config.Settings._
-import dotty.tools.dotc.config.CommonScalaSettings
+import dotty.tools.dotc.config.{ CommonScalaSettings, AllScalaSettings }
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.core.Contexts._
+
+import dotty.tools.scaladoc.Inkuire
+import dotty.tools.scaladoc.Inkuire._
 
 object Scaladoc:
   enum CommentSyntax:
@@ -31,10 +35,12 @@ object Scaladoc:
     tastyDirs: Seq[File] = Nil,
     tastyFiles: Seq[File] = Nil,
     classpath: String = "",
+    bootclasspath: String = "",
     output: File,
     docsRoot: Option[String] = None,
     projectVersion: Option[String] = None,
     projectLogo: Option[String] = None,
+    projectFooter: Option[String] = None,
     defaultSyntax: CommentSyntax = CommentSyntax.Markdown,
     sourceLinks: List[String] = Nil,
     revision: Option[String] = None,
@@ -42,7 +48,17 @@ object Scaladoc:
     socialLinks: List[SocialLinks] = Nil,
     identifiersToSkip: List[String] = Nil,
     regexesToSkip: List[String] = Nil,
-    rootDocPath: Option[String] = None
+    rootDocPath: Option[String] = None,
+    includeAuthors: Boolean = false,
+    includeGroups: Boolean = false,
+    includePrivateAPI: Boolean = false,
+    docCanonicalBaseUrl: String = "",
+    documentSyntheticTypes: Boolean = false,
+    snippetCompiler: List[String] = Nil,
+    noLinkWarnings: Boolean = false,
+    versionsDictionaryUrl: Option[String] = None,
+    generateInkuire : Boolean = false,
+    apiSubdirectory : Boolean = false
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -59,7 +75,7 @@ object Scaladoc:
       val tastyFiles = parsedArgs.tastyFiles ++ parsedArgs.tastyDirs.flatMap(listTastyFiles)
 
       if !ctx.reporter.hasErrors then
-        val updatedArgs = parsedArgs.copy(tastyDirs = Nil, tastyFiles = tastyFiles)
+        val updatedArgs = parsedArgs.copy(tastyDirs = parsedArgs.tastyDirs, tastyFiles = tastyFiles)
 
         if (parsedArgs.output.exists()) util.IO.delete(parsedArgs.output)
 
@@ -67,9 +83,27 @@ object Scaladoc:
         report.inform("Done")
       else report.error("Failure")
 
+      if parsedArgs.generateInkuire then dumpInkuireDB(parsedArgs.output.getAbsolutePath, parsedArgs)
     }
+
     ctx.reporter
 
+  def dumpInkuireDB(output: String, parsedArgs: Args) = {
+    val dbPath = Paths.get(output, "inkuire-db.json")
+    val dbFile = dbPath.toFile()
+    dbFile.createNewFile()
+    val dbWriter = new FileWriter(dbFile, false)
+    Inkuire.beforeSave()
+    dbWriter.write(s"${EngineModelSerializers.serialize(Inkuire.db)}")
+    dbWriter.close()
+
+    val configPath = Paths.get(output, "scripts/inkuire-config.json")
+    val configFile = configPath.toFile()
+    configFile.createNewFile()
+    val configWriter = new FileWriter(configFile, false)
+    configWriter.write(Inkuire.generateInkuireConfig(parsedArgs.externalMappings.map(_.documentationUrl.toString)))
+    configWriter.close()
+  }
 
   def extract(args: Array[String], rootCtx: CompilerContext): (Option[Scaladoc.Args], CompilerContext) =
     val newContext = rootCtx.fresh
@@ -93,10 +127,16 @@ object Scaladoc:
         )(s => newContext.setSetting(s.asInstanceOf[Setting[T]], newValue))
       }
 
-    allSettings.filterNot(scaladocSpecificSettings.contains).foreach(setInGlobal)
+    val commonScalaSettings = (new SettingGroup with CommonScalaSettings).allSettings
+    val allScalaSettings = (new SettingGroup with AllScalaSettings).allSettings
 
-    summary.warnings.foreach(report.warning(_))
-    summary.errors.foreach(report.error(_))
+    val (shared, other) = allSettings
+      .filter(s => !s.isDefaultIn(summary.sstate))
+      .filter(allScalaSettings.contains)
+      .partition(commonScalaSettings.contains)
+    shared.foreach(setInGlobal)
+
+    if !other.isEmpty then report.echo(s"Skipping unused scalacOptions: ${other.map(_.name).mkString(", ")}")
 
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
@@ -151,7 +191,7 @@ object Scaladoc:
       val destFile = outputDir.nonDefault.fold(defaultDest())(_.file)
       val printableProjectName = projectName.nonDefault.fold("")("for " + _ )
       report.inform(
-        s"Generating documenation $printableProjectName in $destFile")
+        s"Generating documentation $printableProjectName in $destFile")
 
       if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
 
@@ -160,10 +200,12 @@ object Scaladoc:
         dirs,
         validFiles,
         classpath.get,
+        bootclasspath.get,
         destFile,
         siteRoot.nonDefault,
         projectVersion.nonDefault,
         projectLogo.nonDefault,
+        projectFooter.nonDefault,
         parseSyntax,
         sourceLinks.get,
         revision.nonDefault,
@@ -171,7 +213,17 @@ object Scaladoc:
         socialLinksParsed,
         skipById.get ++ deprecatedSkipPackages.get,
         skipByRegex.get,
-        docRootContent.nonDefault
+        docRootContent.nonDefault,
+        author.get,
+        groups.get,
+        visibilityPrivate.get,
+        docCanonicalBaseUrl.get,
+        YdocumentSyntheticTypes.get,
+        snippetCompiler.get,
+        noLinkWarnings.get,
+        versionsDictionaryUrl.nonDefault,
+        generateInkuire.get,
+        apiSubdirectory.get,
       )
       (Some(docArgs), newContext)
     }

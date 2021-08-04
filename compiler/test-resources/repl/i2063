@@ -1,12 +1,15 @@
 scala> 	class Foo extends Bar // with one tab
+-- Error:
 1 | 	class Foo extends Bar // with one tab
   | 	                  ^^^
   | 	                  Not found: type Bar
 scala>                                                                               class Foo extends Bar // with spaces
+-- Error:
 1 |                                                                               class Foo extends Bar // with spaces
   |                                                                                                 ^^^
   |                                                       Not found: type Bar
 scala>                                                                                  class Foo extends Bar // with tabs
+-- Error:
 1 |                                                                                  class Foo extends Bar // with tabs
   |                                                                                                    ^^^
   |                                                       Not found: type Bar

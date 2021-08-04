@@ -16,7 +16,7 @@ object Macros {
   inline def power(inline n: Int, x: Double) = ${ powerCode('n, 'x) }
 
   def powerCode(n: Expr[Int], x: Expr[Double]) (using Quotes): Expr[Double] =
-    powerCode(n.valueOrError, x)
+    powerCode(n.valueOrAbort, x)
 
   def powerCode(n: Int, x: Expr[Double])(using Quotes): Expr[Double] =
     if (n == 0) '{1.0}

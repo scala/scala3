@@ -25,9 +25,6 @@
 [submodule "community-build/community-projects/stdLib213"]
 	path = community-build/community-projects/stdLib213
 	url = https://github.com/dotty-staging/scala
-[submodule "community-build/community-projects/pdbp"]
-	path = community-build/community-projects/pdbp
-	url = https://github.com/dotty-staging/pdbp
 [submodule "community-build/community-projects/sourcecode"]
 	path = community-build/community-projects/sourcecode
 	url = https://github.com/dotty-staging/sourcecode
@@ -103,10 +100,6 @@
 [submodule "community-build/community-projects/requests-scala"]
 	path = community-build/community-projects/requests-scala
 	url = https://github.com/dotty-staging/requests-scala.git
-[submodule "community-build/community-projects/cats-effect-2"]
-	path = community-build/community-projects/cats-effect-2
-	url = https://github.com/dotty-staging/cats-effect.git
-	branch = series/2.x
 [submodule "community-build/community-projects/cats-effect-3"]
 	path = community-build/community-projects/cats-effect-3
 	url = https://github.com/dotty-staging/cats-effect.git
@@ -187,9 +180,30 @@
 [submodule "community-build/community-projects/protoquill"]
 	path = community-build/community-projects/protoquill
 	url = https://github.com/dotty-staging/protoquill.git
+[submodule "community-build/community-projects/Monocle"]
+	path = community-build/community-projects/Monocle
+	url = https://github.com/dotty-staging/Monocle.git
 [submodule "community-build/community-projects/onnx-scala"]
 	path = community-build/community-projects/onnx-scala
 	url = https://github.com/dotty-staging/onnx-scala.git
 [submodule "community-build/community-projects/cask"]
 	path = community-build/community-projects/cask
 	url = https://github.com/dotty-staging/cask.git
+[submodule "community-build/community-projects/play-json"]
+	path = community-build/community-projects/play-json
+	url = https://github.com/dotty-staging/play-json.git
+[submodule "community-build/community-projects/scalatestplus-testng"]
+	path = community-build/community-projects/scalatestplus-testng
+	url = https://github.com/dotty-staging/scalatestplus-testng.git
+[submodule "community-build/community-projects/munit-cats-effect"]
+	path = community-build/community-projects/munit-cats-effect
+	url = https://github.com/dotty-staging/munit-cats-effect.git
+[submodule "community-build/community-projects/scalacheck-effect"]
+	path = community-build/community-projects/scalacheck-effect
+	url = https://github.com/dotty-staging/scalacheck-effect.git
+[submodule "community-build/community-projects/fs2"]
+	path = community-build/community-projects/fs2
+	url = https://github.com/dotty-staging/fs2.git
+[submodule "community-build/community-projects/libretto"]
+	path = community-build/community-projects/libretto
+	url = https://github.com/dotty-staging/libretto.git

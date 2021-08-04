@@ -1,3 +1,3 @@
-8: Pattern Match Exhaustivity: _: A
-17: Pattern Match Exhaustivity: (_, _)
-28: Pattern Match Exhaustivity: (_, _)
+9: Pattern Match Exhaustivity: _: A
+18: Pattern Match Exhaustivity: (_, _)
+29: Pattern Match Exhaustivity: (_, _)

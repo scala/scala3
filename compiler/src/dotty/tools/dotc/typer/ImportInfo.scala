@@ -181,7 +181,7 @@ class ImportInfo(symf: Context ?=> Symbol,
       assert(myUnimported != null)
     myUnimported
 
-  private val isLanguageImport: Boolean = untpd.isLanguageImport(qualifier)
+  private val isLanguageImport: Boolean = untpd.languageImport(qualifier).isDefined
 
   private var myUnimported: Symbol = _
 

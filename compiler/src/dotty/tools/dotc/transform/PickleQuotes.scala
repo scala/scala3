@@ -11,7 +11,6 @@ import Constants._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
 import util.Spans._
-import tasty.TreePickler.Hole
 import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd
@@ -481,10 +480,16 @@ class PickleQuotes extends MacroTransform {
         transform(tree)(using ctx.withSource(tree.source))
       else reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
-          case Apply(TypeApply(fn, (body: RefTree) :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of && isCaptured(body.symbol, level + 1) =>
+          case Apply(TypeApply(fn, (body: RefTree) :: Nil), _)
+          if fn.symbol == defn.QuotedTypeModule_of && isCaptured(body.symbol, level + 1) =>
             // Optimization: avoid the full conversion when capturing `X` with `x$1: Type[X$1]`
             // in `Type.of[X]` to `Type.of[x$1.Underlying]` and go directly to `X$1`
             capturers(body.symbol)(body)
+          case Apply(Select(Apply(TypeApply(fn,_), List(ref: RefTree)),nme.apply),List(quotes))
+          if fn.symbol == defn.QuotedRuntime_exprQuote && isCaptured(ref.symbol, level + 1) =>
+            // Optimization: avoid the full conversion when capturing `x` with `x$1: Expr[X]`
+            // in `'{x}` to `'{ ${x$1} }'` and go directly to `x$1`
+            capturers(ref.symbol)(ref).select(nme.apply).appliedTo(quotes)
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val body = capturers(tree.symbol).apply(tree)
             if (tree.isType)

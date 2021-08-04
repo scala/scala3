@@ -15,7 +15,7 @@ object DotDiagramBuilder:
 
     val vWithId = diagram.verteciesWithId
     val sealedNodes = diagram.sealedNodes
-    val vertecies = vWithId.map { (vertex, id) =>
+    val vertecies = vWithId.toList.sortBy((_, id) => id).map { (vertex, id) =>
       s"""node${id} [id=node${id}, label="${getHtmlLabel(vertex, renderer, sealedNodes)}", style="${getStyle(vertex.kind)}"];\n"""
     }.mkString
 

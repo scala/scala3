@@ -9,4 +9,4 @@
 -- Error: tests/neg-custom-args/kind-projector.scala:6:22 --------------------------------------------------------------
 6 |class Bar2 extends Foo[*] // error
   |                      ^
-  |                      Type argument _$4 does not have the same kind as its bound [_$1]
+  |                      Type argument _ does not have the same kind as its bound [_$1]

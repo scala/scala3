@@ -43,6 +43,24 @@ object ErrorReporting {
   def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
 
+  def missingArgs(tree: Tree, mt: Type)(using Context): Unit =
+    val meth = err.exprStr(methPart(tree))
+    mt match
+      case mt: MethodType if mt.paramNames.isEmpty =>
+        report.error(MissingEmptyArgumentList(meth), tree.srcPos)
+      case _ =>
+        report.error(em"missing arguments for $meth", tree.srcPos)
+
+  def matchReductionAddendum(tps: Type*)(using Context): String =
+    val collectMatchTrace = new TypeAccumulator[String]:
+      def apply(s: String, tp: Type): String =
+        if s.nonEmpty then s
+        else tp match
+          case tp: AppliedType if tp.isMatchAlias => MatchTypeTrace.record(tp.tryNormalize)
+          case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
+          case _ => foldOver(s, tp)
+    tps.foldLeft("")(collectMatchTrace)
+
   class Errors(using Context) {
 
     /** An explanatory note to be added to error messages
@@ -113,7 +131,7 @@ object ErrorReporting {
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
           "\nMaybe you are missing an else part for the conditional?"
         case _ => ""
-      errorTree(tree, TypeMismatch(treeTp, pt, implicitFailure.whyNoConversion, missingElse))
+      errorTree(tree, TypeMismatch(treeTp, pt, Some(tree), implicitFailure.whyNoConversion, missingElse))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
@@ -245,7 +263,9 @@ class ImplicitSearchError(
       val shortMessage = userDefinedImplicitNotFoundParamMessage
         .orElse(userDefinedImplicitNotFoundTypeMessage)
         .getOrElse(defaultImplicitNotFoundMessage)
-      formatMsg(shortMessage)() ++ hiddenImplicitsAddendum
+      formatMsg(shortMessage)()
+      ++ hiddenImplicitsAddendum
+      ++ ErrorReporting.matchReductionAddendum(pt)
   }
 
   private def formatMsg(shortForm: String)(headline: String = shortForm) = arg match {
@@ -295,7 +315,7 @@ class ImplicitSearchError(
   }
 
   private def defaultImplicitNotFoundMessage = {
-    em"no implicit argument of type $pt was found${location("for")}"
+    ex"no implicit argument of type $pt was found${location("for")}"
   }
 
   /** Construct a custom error message given an ambiguous implicit
@@ -367,21 +387,34 @@ class ImplicitSearchError(
    *  def foo(implicit foo: Foo): Any = ???
    */
   private def userDefinedImplicitNotFoundTypeMessage: Option[String] =
-    pt.baseClasses.iterator
-      // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
-      .filter(sym => Feature.migrateTo3 || sym != defn.Function1)
-      .map(userDefinedImplicitNotFoundTypeMessage(_))
-      .find(_.isDefined).flatten
+    def recur(tp: Type): Option[String] = tp match
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        userDefinedImplicitNotFoundTypeMessage(sym).orElse(recur(tp.info))
+      case tp: ClassInfo =>
+        tp.baseClasses.iterator
+          .map(userDefinedImplicitNotFoundTypeMessage)
+          .find(_.isDefined).flatten
+      case tp: TypeProxy =>
+        recur(tp.underlying)
+      case tp: AndType =>
+        recur(tp.tp1).orElse(recur(tp.tp2))
+      case _ =>
+        None
+    recur(pt)
 
-  private def userDefinedImplicitNotFoundTypeMessage(classSym: ClassSymbol): Option[String] =
-    userDefinedMsg(classSym, defn.ImplicitNotFoundAnnot).map { rawMsg =>
-      val substituteType = (_: Type).asSeenFrom(pt, classSym)
-      formatAnnotationMessage(rawMsg, classSym, substituteType)
-    }
+  private def userDefinedImplicitNotFoundTypeMessage(sym: Symbol): Option[String] =
+    for
+      rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
+      if Feature.migrateTo3 || sym != defn.Function1
+        // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
+    yield
+      val substituteType = (_: Type).asSeenFrom(pt, sym)
+      formatAnnotationMessage(rawMsg, sym, substituteType)
 
   private def hiddenImplicitsAddendum: String =
     def hiddenImplicitNote(s: SearchSuccess) =
-      em"\n\nNote: given instance ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+      em"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
 
     val normalImports = ignoredInstanceNormalImport.map(hiddenImplicitNote)
 

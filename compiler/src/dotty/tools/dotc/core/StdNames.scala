@@ -133,6 +133,7 @@ object StdNames {
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
+    val REPL_PACKAGE: N               = "repl$"
     val ROOT: N                       = "<root>"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
@@ -366,7 +367,6 @@ object StdNames {
     val EnumValue: N            = "EnumValue"
     val ExistentialTypeTree: N  = "ExistentialTypeTree"
     val Flag : N                = "Flag"
-    val floatHash: N            = "floatHash"
     val Ident: N                = "Ident"
     val Import: N               = "Import"
     val Literal: N              = "Literal"
@@ -413,6 +413,7 @@ object StdNames {
     val argv : N                = "argv"
     val arrayClass: N           = "arrayClass"
     val arrayElementClass: N    = "arrayElementClass"
+    val arrayType: N            = "arrayType"
     val arrayValue: N           = "arrayValue"
     val array_apply : N         = "array_apply"
     val array_clone : N         = "array_clone"
@@ -439,6 +440,7 @@ object StdNames {
     val checkInitialized: N     = "checkInitialized"
     val ClassManifestFactory: N = "ClassManifestFactory"
     val classOf: N              = "classOf"
+    val classType: N            = "classType"
     val clone_ : N              = "clone"
     val common: N               = "common"
     val compiletime : N         = "compiletime"
@@ -466,6 +468,7 @@ object StdNames {
     val equalsNumNum : N        = "equalsNumNum"
     val equalsNumObject : N     = "equalsNumObject"
     val equals_ : N             = "equals"
+    val erased: N               = "erased"
     val error: N                = "error"
     val eval: N                 = "eval"
     val eqlAny: N               = "eqlAny"
@@ -479,6 +482,7 @@ object StdNames {
     val find_ : N               = "find"
     val flagsFromBits : N       = "flagsFromBits"
     val flatMap: N              = "flatMap"
+    val floatHash: N            = "floatHash"
     val foreach: N              = "foreach"
     val format: N               = "format"
     val fromDigits: N           = "fromDigits"
@@ -624,6 +628,7 @@ object StdNames {
     val values: N               = "values"
     val view_ : N               = "view"
     val wait_ : N               = "wait"
+    val wildcardType: N         = "wildcardType"
     val withFilter: N           = "withFilter"
     val withFilterIfRefutable: N = "withFilterIfRefutable$"
     val WorksheetWrapper: N     = "WorksheetWrapper"
@@ -658,6 +663,12 @@ object StdNames {
       final val SLASH: N  = "/"
       final val STAR : N  = "*"
       final val TILDE: N  = "~"
+
+      // kind-projector compat symbols
+      final val MINUS_STAR  : N = "-*"
+      final val PLUS_STAR   : N = "+*"
+      final val MINUS_USCORE: N = "-_"
+      final val PLUS_USCORE : N = "+_"
 
       final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
     }

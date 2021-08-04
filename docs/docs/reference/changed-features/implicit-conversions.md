@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Implicit Conversions"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-conversions.html
 ---
 
 An _implicit conversion_, also called _view_, is a conversion that
@@ -34,7 +35,7 @@ method that expects a `java.lang.Integer`
 ```scala
 import scala.language.implicitConversions
 implicit def int2Integer(x: Int): java.lang.Integer =
-   x.asInstanceOf[java.lang.Integer]
+  x.asInstanceOf[java.lang.Integer]
 ```
 
 The second example shows how to use `Conversion` to define an
@@ -44,11 +45,11 @@ types:
 ```scala
 import scala.language.implicitConversions
 implicit def ordT[T, S](
-      implicit conv: Conversion[T, S],
-               ordS: Ordering[S]
+    implicit conv: Conversion[T, S],
+             ordS: Ordering[S]
    ): Ordering[T] =
-    // `ordS` compares values of type `S`, but we can convert from `T` to `S`
-   (x: T, y: T) => ordS.compare(x, y)
+   // `ordS` compares values of type `S`, but we can convert from `T` to `S`
+  (x: T, y: T) => ordS.compare(x, y)
 
 class A(val x: Int) // The type for which we want an `Ordering`
 

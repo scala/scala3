@@ -19,10 +19,10 @@ object FileName {
             case Right(fn) =>
               '{FileName.unsafe(${Expr(fn.name)})} // Or `Expr(fn)` if there is a `ToExpr[FileName]`
             case Left(_) =>
-              report.throwError(s"$s is not a valid file name! It must not contain a /", fileName)
+              report.errorAndAbort(s"$s is not a valid file name! It must not contain a /", fileName)
          }
 
       case _ =>
-        report.throwError(s"$fileName is not a valid file name. It must be a literal string", fileName)
+        report.errorAndAbort(s"$fileName is not a valid file name. It must be a literal string", fileName)
     }
 }

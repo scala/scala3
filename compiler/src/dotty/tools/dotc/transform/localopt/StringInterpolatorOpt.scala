@@ -121,7 +121,7 @@ class StringInterpolatorOpt extends MiniPhase {
       (sym.name == nme.f && sym.eq(defn.StringContext_f)) ||
       (sym.name == nme.s && sym.eq(defn.StringContext_s))
     if (isInterpolatedMethod)
-      tree match {
+      (tree: @unchecked) match {
         case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
           val stri = strs.iterator
           val elemi = elems.iterator

@@ -39,7 +39,9 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   extension [A](state: State)
     def andThen(op: State => A): A = op(state)
 
-  def testFile(f: JFile): Unit = {
+  def testFile(f: JFile): Unit = testScript(f.toString, readLines(f))
+
+  def testScript(name: => String, lines: List[String]): Unit = {
     val prompt = "scala>"
 
     def evaluate(state: State, input: String) =
@@ -50,7 +52,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
       }
       catch {
         case ex: Throwable =>
-          System.err.println(s"failed while running script: $f, on:\n$input")
+          System.err.println(s"failed while running script: $name, on:\n$input")
           throw ex
       }
 
@@ -60,13 +62,12 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         case nonEmptyLine => nonEmptyLine :: Nil
       }
 
-    val expectedOutput = readLines(f).flatMap(filterEmpties)
+    val expectedOutput = lines.flatMap(filterEmpties)
     val actualOutput = {
       resetToInitial()
 
-      val lines = readLines(f)
       assert(lines.head.startsWith(prompt),
-        s"""Each file has to start with the prompt: "$prompt"""")
+        s"""Each script must start with the prompt: "$prompt"""")
       val inputRes = lines.filter(_.startsWith(prompt))
 
       val buf = new ArrayBuffer[String]
@@ -88,12 +89,12 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
       println("actual ===========>")
       println(actualOutput.mkString(EOL))
 
-      fail(s"Error in file $f, expected output did not match actual")
+      fail(s"Error in script $name, expected output did not match actual")
     end if
   }
 }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-Yerased-terms", "-pagewidth", "80")
+  val commonOptions = Array("-color:never", "-language:experimental.erasedDefinitions", "-pagewidth", "80")
   val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.basicClasspath)
   lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.withStagingClasspath)

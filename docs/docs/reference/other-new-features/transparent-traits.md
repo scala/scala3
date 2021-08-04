@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Transparent Traits"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/transparent-traits.html
 ---
 
 Traits are used in two roles:

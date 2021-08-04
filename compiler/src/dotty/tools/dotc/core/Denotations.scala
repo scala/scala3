@@ -477,7 +477,7 @@ object Denotations {
             val jointInfo = infoMeet(info1, info2, safeIntersection)
             if jointInfo.exists then
               val sym = if symScore >= 0 then sym1 else sym2
-              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
+              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre, denot1.isRefinedMethod || denot2.isRefinedMethod)
             else if symScore == 2 then denot1
             else if symScore == -2 then denot2
             else
@@ -569,7 +569,7 @@ object Denotations {
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
-    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type): SingleDenotation
+    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
 
     final def name(using Context): Name = symbol.name
 
@@ -581,6 +581,9 @@ object Denotations {
      *  `Config.reuseSymDenotations` for details.
      */
     def prefix: Type = NoPrefix
+
+    /** True if the info of this denotation comes from a refinement. */
+    def isRefinedMethod: Boolean = false
 
     /** For SymDenotations, the language-specific signature of the info, depending on
      *  where the symbol is defined. For non-SymDenotations, the Scala 3
@@ -615,9 +618,9 @@ object Denotations {
         case _ => Signature.NotAMethod
       }
 
-    def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix)(using Context): SingleDenotation =
-      if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix)) this
-      else newLikeThis(symbol, info, pre)
+    def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix, isRefinedMethod: Boolean = this.isRefinedMethod)(using Context): SingleDenotation =
+      if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix) && (isRefinedMethod == this.isRefinedMethod)) this
+      else newLikeThis(symbol, info, pre, isRefinedMethod)
 
     def mapInfo(f: Type => Type)(using Context): SingleDenotation =
       derivedSingleDenotation(symbol, f(info))
@@ -788,8 +791,6 @@ object Denotations {
       val currentPeriod = ctx.period
       val valid = myValidFor
 
-      def signalError() = println(s"error while transforming $this")
-
       def assertNotPackage(d: SingleDenotation, transformer: DenotTransformer) = d match
         case d: ClassDenotation =>
           assert(!d.is(Package), s"illegal transformation of package denotation by transformer $transformer")
@@ -833,7 +834,7 @@ object Denotations {
                 // To work correctly, we need to demand that the context with the new phase
                 // is not retained in the result.
             catch case ex: CyclicReference =>
-              signalError()
+              // println(s"error while transforming $this")
               throw ex
             finally
               mutCtx.setPeriod(savedPeriod)
@@ -1020,7 +1021,7 @@ object Denotations {
      *  erasure (see i8615b, i9109b), Erasure takes care of adding any necessary
      *  bridge to make this work at runtime.
      */
-    def matchesLoosely(other: SingleDenotation)(using Context): Boolean =
+    def matchesLoosely(other: SingleDenotation, alwaysCompareTypes: Boolean = false)(using Context): Boolean =
       if isType then true
       else
         val thisLanguage = SourceLanguage(symbol)
@@ -1030,7 +1031,7 @@ object Denotations {
         val otherSig = other.signature(commonLanguage)
         sig.matchDegree(otherSig) match
           case FullMatch =>
-            true
+            !alwaysCompareTypes || info.matches(other.info)
           case MethodNotAMethodMatch =>
             !ctx.erasedTypes && {
               // A Scala zero-parameter method and a Scala non-method always match.
@@ -1107,7 +1108,11 @@ object Denotations {
         case sd: SymDenotation => true
         case _ => info eq symbol.info
 
-      if !owner.membersNeedAsSeenFrom(pre) && ((pre ne owner.thisType) || hasOriginalInfo)
+      def ownerIsPrefix = pre match
+        case pre: ThisType => pre.sameThis(owner.thisType)
+        case _ => false
+
+      if !owner.membersNeedAsSeenFrom(pre) && (!ownerIsPrefix || hasOriginalInfo)
          || symbol.is(NonMember)
       then this
       else derived(symbol.info)
@@ -1126,26 +1131,30 @@ object Denotations {
     prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new UniqueRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      if isRefinedMethod then
+        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+      else
+        new UniqueRefDenotation(s, i, validFor, pre)
   }
 
   class JointRefDenotation(
     symbol: Symbol,
     initInfo: Type,
     initValidFor: Period,
-    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
+    prefix: Type,
+    override val isRefinedMethod: Boolean) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = false
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new JointRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
   }
 
   class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
       this
   }
 

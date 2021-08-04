@@ -41,12 +41,12 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Opaque extends Modifier("opaque", true)
   case Open extends Modifier("open", true)
 
-case class ExtensionTarget(name: String, signature: Signature, dri: DRI, position: Long)
+case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
 trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
 trait Classlike
 
-enum Kind(val name: String){
+enum Kind(val name: String):
   case RootPackage extends Kind("")
   case Package extends Kind("package")
   case Class(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
@@ -70,16 +70,15 @@ enum Kind(val name: String){
   case Implicit(kind: Kind.Def | Kind.Val.type, conversion: Option[ImplicitConversion])
     extends Kind(kind.name)  with ImplicitConversionProvider
   case Unknown extends Kind("Unknown")
-}
 
 enum Origin:
   case ImplicitlyAddedBy(name: String, dri: DRI)
   case ExtensionFrom(name: String, dri: DRI)
   case ExportedFrom(name: String, dri: Option[DRI])
-  case Overrides(overridenMembers: Seq[Overriden])
+  case Overrides(overriddenMembers: Seq[Overridden])
   case RegularlyDefined
 
-case class Overriden(name: String, dri: DRI)
+case class Overridden(name: String, dri: DRI)
 
 case class InheritedFrom(name: String, dri: DRI)
 
@@ -155,6 +154,7 @@ case class Member(
   members : Seq[Member] = Nil,
   directParents: Seq[LinkToType] = Nil,
   parents: Seq[LinkToType] = Nil,
+  selfType: Option[LinkToType] = None,
   knownChildren: Seq[LinkToType] = Nil,
   companion: Option[DRI] = None,
   deprecated: Option[Annotation] = None,
@@ -232,4 +232,15 @@ extension (s: Signature)
       case l: Link => l.name
     }.mkString
 
-case class TastyMemberSource(val path: java.nio.file.Path, val lineNumber: Int)
+case class TastyMemberSource(path: java.nio.file.Path, lineNumber: Int)
+
+object SnippetCompilerData:
+  case class Position(line: Int, column: Int)
+  case class ClassInfo(tpe: Option[String], names: Seq[String], generics: Option[String])
+
+case class SnippetCompilerData(
+  packageName: String,
+  classInfos: Seq[SnippetCompilerData.ClassInfo],
+  imports: List[String],
+  position: SnippetCompilerData.Position
+)

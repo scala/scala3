@@ -8,7 +8,7 @@ abstract class BaseIntegrationTest(pck: String) extends BaseHtmlTest:
   @Test
   def testLinks: Unit =  withGeneratedDoc(pcks = Seq(pck, "commonlinks")) {
     def checkDocLinks(links: String*)(ctx: DocumentContext): Unit =
-      ctx.assertAttr(".documentableBrief a", "href", links:_*)
+      ctx.assertAttr(".documentableBrief a, .cover a", "href", links:_*)
       ctx.assertNotExists("unresolvedLinkSelector")
 
     def checkUnresolved(ctx: DocumentContext): Unit =
@@ -18,11 +18,11 @@ abstract class BaseIntegrationTest(pck: String) extends BaseHtmlTest:
         "", "" // each represent a link
         )
 
-    withHtmlFile(s"api/tests/$pck/BrokenLinks.html")(checkUnresolved)
+    withHtmlFile(s"tests/$pck/BrokenLinks.html")(checkUnresolved)
     val otherPackagePath = "../commonlinks/SomeOtherPackage.html"
-    withHtmlFile(s"api/tests/$pck/OtherPackageLink.html")(checkDocLinks(otherPackagePath))
+    withHtmlFile(s"tests/$pck/OtherPackageLink.html")(checkDocLinks(otherPackagePath))
     // OtherPackageMembers - does not work, TODO?
-    withHtmlFile(s"api/tests/$pck/SamePackageLink.html")(checkDocLinks("SomeClass.html"))
+    withHtmlFile(s"tests/$pck/SamePackageLink.html")(checkDocLinks("SomeClass.html"))
     // SamePackageMembers - does not work, TODO?
   }
 

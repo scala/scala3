@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Union Types"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/union-types.html
 ---
 
 A union type `A | B` has as values all values of type `A` and also all values of type `B`.
@@ -11,10 +12,10 @@ case class UserName(name: String)
 case class Password(hash: Hash)
 
 def help(id: UserName | Password) =
-   val user = id match
-      case UserName(name) => lookupName(name)
-      case Password(hash) => lookupPassword(hash)
-   ...
+  val user = id match
+    case UserName(name) => lookupName(name)
+    case Password(hash) => lookupPassword(hash)
+  ...
 ```
 
 Union types are duals of intersection types. `|` is _commutative_:

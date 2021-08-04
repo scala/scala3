@@ -6,6 +6,7 @@ import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Phases._
 import Flags.JavaDefined
 import Uniques.unique
 import TypeOps.makePackageObjPrefixExplicit
+import backend.sjs.JSDefinitions
 import transform.ExplicitOuter._
 import transform.ValueClasses._
 import transform.TypeUtils._
@@ -142,29 +143,31 @@ object TypeErasure {
     }
   }
 
-  private def erasureIdx(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) =
+  private def erasureIdx(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, isSymbol: Boolean, wildcardOK: Boolean) =
     extension (b: Boolean) def toInt = if b then 1 else 0
     wildcardOK.toInt
-    + (isConstructor.toInt    << 1)
-    + (semiEraseVCs.toInt     << 2)
-    + (sourceLanguage.ordinal << 3)
+    + (isSymbol.toInt         << 1)
+    + (isConstructor.toInt    << 2)
+    + (semiEraseVCs.toInt     << 3)
+    + (sourceLanguage.ordinal << 4)
 
-  private val erasures = new Array[TypeErasure](1 << (SourceLanguage.bits + 3))
+  private val erasures = new Array[TypeErasure](1 << (SourceLanguage.bits + 4))
 
   for
     sourceLanguage <- SourceLanguage.values
     semiEraseVCs <- List(false, true)
     isConstructor <- List(false, true)
+    isSymbol <- List(false, true)
     wildcardOK <- List(false, true)
   do
-    erasures(erasureIdx(sourceLanguage, semiEraseVCs, isConstructor, wildcardOK)) =
-      new TypeErasure(sourceLanguage, semiEraseVCs, isConstructor, wildcardOK)
+    erasures(erasureIdx(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, wildcardOK)) =
+      new TypeErasure(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, wildcardOK)
 
   /** Produces an erasure function. See the documentation of the class [[TypeErasure]]
    *  for a description of each parameter.
    */
-  private def erasureFn(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean): TypeErasure =
-    erasures(erasureIdx(sourceLanguage, semiEraseVCs, isConstructor, wildcardOK))
+  private def erasureFn(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, isSymbol: Boolean, wildcardOK: Boolean): TypeErasure =
+    erasures(erasureIdx(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, wildcardOK))
 
   /** The current context with a phase no later than erasure */
   def preErasureCtx(using Context) =
@@ -175,7 +178,7 @@ object TypeErasure {
    *  @param tp            The type to erase.
   */
   def erasure(tp: Type)(using Context): Type =
-    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = false, isConstructor = false, wildcardOK = false)(tp)(using preErasureCtx)
+    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = false, isConstructor = false, isSymbol = false, wildcardOK = false)(tp)(using preErasureCtx)
 
   /** The value class erasure of a Scala type, where value classes are semi-erased to
    *  ErasedValueType (they will be fully erased in [[ElimErasedValueType]]).
@@ -183,11 +186,11 @@ object TypeErasure {
    *  @param tp            The type to erase.
    */
   def valueErasure(tp: Type)(using Context): Type =
-    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(using preErasureCtx)
+    erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = true, isConstructor = false, isSymbol = false, wildcardOK = false)(tp)(using preErasureCtx)
 
   /** The erasure that Scala 2 would use for this type. */
   def scala2Erasure(tp: Type)(using Context): Type =
-    erasureFn(sourceLanguage = SourceLanguage.Scala2, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(using preErasureCtx)
+    erasureFn(sourceLanguage = SourceLanguage.Scala2, semiEraseVCs = true, isConstructor = false, isSymbol = false, wildcardOK = false)(tp)(using preErasureCtx)
 
   /** Like value class erasure, but value classes erase to their underlying type erasure */
   def fullErasure(tp: Type)(using Context): Type =
@@ -197,7 +200,7 @@ object TypeErasure {
 
   def sigName(tp: Type, sourceLanguage: SourceLanguage)(using Context): TypeName = {
     val normTp = tp.translateFromRepeated(toArray = sourceLanguage.isJava)
-    val erase = erasureFn(sourceLanguage, semiEraseVCs = !sourceLanguage.isJava, isConstructor = false, wildcardOK = true)
+    val erase = erasureFn(sourceLanguage, semiEraseVCs = !sourceLanguage.isJava, isConstructor = false, isSymbol = false, wildcardOK = true)
     erase.sigName(normTp)(using preErasureCtx)
   }
 
@@ -227,7 +230,7 @@ object TypeErasure {
   def transformInfo(sym: Symbol, tp: Type)(using Context): Type = {
     val sourceLanguage = SourceLanguage(sym)
     val semiEraseVCs = !sourceLanguage.isJava // Java sees our value classes as regular classes.
-    val erase = erasureFn(sourceLanguage, semiEraseVCs, sym.isConstructor, wildcardOK = false)
+    val erase = erasureFn(sourceLanguage, semiEraseVCs, sym.isConstructor, isSymbol = true, wildcardOK = false)
 
     def eraseParamBounds(tp: PolyType): Type =
       tp.derivedLambdaType(
@@ -235,6 +238,7 @@ object TypeErasure {
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
+    else if sym.is(ConstructorProxy) then NoType
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(using preErasureCtx))
     else if (sym.is(Label)) erase.eraseResult(sym.info)(using preErasureCtx)
     else erase.eraseInfo(tp, sym)(using preErasureCtx) match {
@@ -266,42 +270,70 @@ object TypeErasure {
     }
   }
 
-  /** Underlying type that does not contain aliases or abstract types
-   *  at top-level, treating opaque aliases as transparent.
+  /** Is `Array[tp]` a generic Array that needs to be erased to `Object`?
+   *  This is true if among the subtypes of `Array[tp]` there is either:
+   *  - both a reference array type and a primitive array type
+   *    (e.g. `Array[_ <: Int | String]`, `Array[_ <: Any]`)
+   *  - or two different primitive array types (e.g. `Array[_ <: Int | Double]`)
+   *  In both cases the erased lub of those array types on the JVM is `Object`.
+   *
+   *  In addition, if `isScala2` is true, we mimic the Scala 2 erasure rules and
+   *  also return true for element types upper-bounded by a non-reference type
+   *  such as in `Array[_ <: Int]` or `Array[_ <: UniversalTrait]`.
    */
-  def classify(tp: Type)(using Context): Type =
-    if (tp.typeSymbol.isClass) tp
-    else tp match {
-      case tp: TypeProxy => classify(tp.translucentSuperType)
-      case tp: AndOrType => tp.derivedAndOrType(classify(tp.tp1), classify(tp.tp2))
-      case _ => tp
-    }
+  def isGenericArrayElement(tp: Type, isScala2: Boolean)(using Context): Boolean = {
+    /** A symbol that represents the sort of JVM array that values of type `t` can be stored in:
+     *  - If we can always store such values in a reference array, return Object
+     *  - If we can always store them in a specific primitive array, return the
+     *    corresponding primitive class
+     *  - Otherwise, return `NoSymbol`.
+     */
+    def arrayUpperBound(t: Type): Symbol = t.dealias match
+      case t: TypeRef if t.symbol.isClass =>
+        val sym = t.symbol
+        // Only a few classes have both primitives and references as subclasses.
+        if (sym eq defn.AnyClass) || (sym eq defn.AnyValClass) || (sym eq defn.MatchableClass) || (sym eq defn.SingletonClass)
+           || isScala2 && !(t.derivesFrom(defn.ObjectClass) || t.isNullType) then
+          NoSymbol
+        // We only need to check for primitives because derived value classes in arrays are always boxed.
+        else if sym.isPrimitiveValueClass then
+          sym
+        else
+          defn.ObjectClass
+      case tp: TypeProxy =>
+        arrayUpperBound(tp.translucentSuperType)
+      case tp: AndOrType =>
+        val repr1 = arrayUpperBound(tp.tp1)
+        val repr2 = arrayUpperBound(tp.tp2)
+        if repr1 eq repr2 then
+          repr1
+        else if tp.isAnd then
+          repr1.orElse(repr2)
+        else
+          NoSymbol
+      case _ =>
+        NoSymbol
 
-  /** Is `tp` an abstract type or polymorphic type parameter that has `Any`, `AnyVal`, `Null`,
-   *  or a universal trait as upper bound and that is not Java defined? Arrays of such types are
-   *  erased to `Object` instead of `Object[]`.
-   */
-  def isUnboundedGeneric(tp: Type)(using Context): Boolean = {
-    def isBoundedType(t: Type): Boolean = t match {
-      case t: OrType => isBoundedType(t.tp1) && isBoundedType(t.tp2)
-      case _ => t.derivesFrom(defn.ObjectClass) || t.isNullType
-    }
+    /** Can one of the JVM Array type store all possible values of type `t`?  */
+    def fitsInJVMArray(t: Type): Boolean = arrayUpperBound(t).exists
 
     tp.dealias match {
       case tp: TypeRef if !tp.symbol.isOpaqueAlias =>
         !tp.symbol.isClass &&
-        !isBoundedType(classify(tp)) &&
-        !tp.symbol.is(JavaDefined)
+        !tp.symbol.is(JavaDefined) && // In Java code, Array[T] can never erase to Object
+        !fitsInJVMArray(tp)
       case tp: TypeParamRef =>
-        !isBoundedType(classify(tp))
-      case tp: TypeAlias => isUnboundedGeneric(tp.alias)
+        !fitsInJVMArray(tp)
+      case tp: TypeAlias =>
+        isGenericArrayElement(tp.alias, isScala2)
       case tp: TypeBounds =>
-        val upper = classify(tp.hi)
-        !isBoundedType(upper) &&
-        !upper.isPrimitiveValueType
-      case tp: TypeProxy => isUnboundedGeneric(tp.translucentSuperType)
-      case tp: AndType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
-      case tp: OrType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
+        !fitsInJVMArray(tp.hi)
+      case tp: TypeProxy =>
+        isGenericArrayElement(tp.translucentSuperType, isScala2)
+      case tp: AndType =>
+        isGenericArrayElement(tp.tp1, isScala2) && isGenericArrayElement(tp.tp2, isScala2)
+      case tp: OrType =>
+        isGenericArrayElement(tp.tp1, isScala2) || isGenericArrayElement(tp.tp2, isScala2)
       case _ => false
     }
   }
@@ -391,32 +423,89 @@ object TypeErasure {
   }
 
   /** The erased greatest lower bound of two erased type picks one of the two argument types.
-   *  It prefers, in this order:
-   *  - arrays over non-arrays
-   *  - subtypes over supertypes, unless isJava is set
-   *  - real classes over traits
+   *
+   *  This operation has the following the properties:
+   *  - Associativity and commutativity, because this method acts as the minimum
+   *    of the total order induced by `compareErasedGlb`.
    */
-  def erasedGlb(tp1: Type, tp2: Type, isJava: Boolean)(using Context): Type = tp1 match {
-    case JavaArrayType(elem1) =>
-      tp2 match {
-        case JavaArrayType(elem2) => JavaArrayType(erasedGlb(elem1, elem2, isJava))
-        case _ => tp1
-      }
-    case _ =>
-      tp2 match {
-        case JavaArrayType(_) => tp2
-        case _ =>
-          val tsym1 = tp1.typeSymbol
-          val tsym2 = tp2.typeSymbol
-          if (!tsym2.exists) tp1
-          else if (!tsym1.exists) tp2
-          else if (!isJava && tsym1.derivesFrom(tsym2)) tp1
-          else if (!isJava && tsym2.derivesFrom(tsym1)) tp2
-          else if (tp1.typeSymbol.isRealClass) tp1
-          else if (tp2.typeSymbol.isRealClass) tp2
-          else tp1
-      }
-  }
+  def erasedGlb(tp1: Type, tp2: Type)(using Context): Type =
+    if compareErasedGlb(tp1, tp2) <= 0 then tp1 else tp2
+
+  /** Overload of `erasedGlb` to compare more than two types at once. */
+  def erasedGlb(tps: List[Type])(using Context): Type =
+    tps.min(using (a,b) => compareErasedGlb(a, b))
+
+  /** A comparison function that induces a total order on erased types,
+   *  where `A <= B` implies that the erasure of `A & B` should be A.
+   *
+   *  This order respects the following properties:
+   *  - ErasedValueTypes <= non-ErasedValueTypes
+   *  - arrays <= non-arrays
+   *  - primitives <= non-primitives
+   *  - real classes <= traits
+   *  - subtypes <= supertypes
+   *
+   *  Since this isn't enough to order to unrelated classes, we use
+   *  lexicographic ordering of the class symbol full name as a tie-breaker.
+   *  This ensure that `A <= B && B <= A` iff `A =:= B`.
+   *
+   *  @see erasedGlb
+   */
+  private def compareErasedGlb(tp1: Type, tp2: Type)(using Context): Int =
+    // this check is purely an optimization.
+    if tp1 eq tp2 then
+      return 0
+
+    val isEVT1 = tp1.isInstanceOf[ErasedValueType]
+    val isEVT2 = tp2.isInstanceOf[ErasedValueType]
+    if isEVT1 && isEVT2 then
+      return compareErasedGlb(tp1.asInstanceOf[ErasedValueType].tycon, tp2.asInstanceOf[ErasedValueType].tycon)
+    else if isEVT1 then
+      return -1
+    else if isEVT2 then
+      return 1
+
+    val isArray1 = tp1.isInstanceOf[JavaArrayType]
+    val isArray2 = tp2.isInstanceOf[JavaArrayType]
+    if isArray1 && isArray2 then
+      return compareErasedGlb(tp1.asInstanceOf[JavaArrayType].elemType, tp2.asInstanceOf[JavaArrayType].elemType)
+    else if isArray1 then
+      return -1
+    else if isArray2 then
+      return 1
+
+    val sym1 = tp1.classSymbol
+    val sym2 = tp2.classSymbol
+    def compareClasses: Int =
+      if sym1.isSubClass(sym2) then
+        -1
+      else if sym2.isSubClass(sym1) then
+        1
+      // Intentionally compare Strings and not Names, since the ordering on
+      // Names depends on implementation details like `NameKind#tag`.
+      else
+        sym1.fullName.toString.compareTo(sym2.fullName.toString)
+
+    val isPrimitive1 = sym1.isPrimitiveValueClass
+    val isPrimitive2 = sym2.isPrimitiveValueClass
+    if isPrimitive1 && isPrimitive2 then
+      return compareClasses
+    else if isPrimitive1 then
+      return -1
+    else if isPrimitive2 then
+      return 1
+
+    val isRealClass1 = sym1.isRealClass
+    val isRealClass2 = sym2.isRealClass
+    if isRealClass1 && isRealClass2 then
+      return compareClasses
+    else if isRealClass1 then
+      return -1
+    else if isRealClass2 then
+      return 1
+
+    compareClasses
+  end compareErasedGlb
 
   /** Does the (possibly generic) type `tp` have the same erasure in all its
    *  possible instantiations?
@@ -446,10 +535,11 @@ import TypeErasure._
  *                        (they will be fully erased in [[ElimErasedValueType]]).
  *                        If false, they are erased like normal classes.
  *  @param isConstructor  Argument forms part of the type of a constructor
+ *  @param isSymbol       If true, the type being erased is the info of a symbol.
  *  @param wildcardOK     Wildcards are acceptable (true when using the erasure
  *                        for computing a signature name).
  */
-class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) {
+class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, isSymbol: Boolean, wildcardOK: Boolean) {
 
   /**  The erasure |T| of a type T. This is:
    *
@@ -515,15 +605,29 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     case tp: TypeProxy =>
       this(tp.underlying)
     case tp @ AndType(tp1, tp2) =>
-      if sourceLanguage.isScala2 then
+      if sourceLanguage.isJava then
+        this(tp1)
+      else if sourceLanguage.isScala2 then
         this(Scala2Erasure.intersectionDominator(Scala2Erasure.flattenedParents(tp)))
       else
-        erasedGlb(this(tp1), this(tp2), isJava = sourceLanguage.isJava)
+        erasedGlb(this(tp1), this(tp2))
     case OrType(tp1, tp2) =>
-      TypeComparer.orType(this(tp1), this(tp2), isErased = true)
+      if isSymbol && sourceLanguage.isScala2 && ctx.settings.scalajs.value then
+        // In Scala2Unpickler we unpickle Scala.js pseudo-unions as if they were
+        // real unions, but we must still erase them as Scala 2 would to emit
+        // the correct signatures in SJSIR.
+        // We only do this when `isSymbol` is true since in other situations we
+        // cannot distinguish a Scala.js pseudo-union from a Scala 3 union that
+        // has been substituted into a Scala 2 type (e.g., via `asSeenFrom`),
+        // erasing these unions as if they were pseudo-unions could have an
+        // impact on overriding relationships so it's best to leave them
+        // alone (and this doesn't impact the SJSIR we generate).
+        JSDefinitions.jsdefn.PseudoUnionType
+      else
+        TypeComparer.orType(this(tp1), this(tp2), isErased = true)
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
-        erasureFn(sourceLanguage, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
+        erasureFn(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, wildcardOK)(tpToErase)
       val (names, formals0) = if (tp.isErasedMethod) (Nil, Nil) else (tp.paramNames, tp.paramInfos)
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
@@ -565,9 +669,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
 
   private def eraseArray(tp: Type)(using Context) = {
     val defn.ArrayOf(elemtp) = tp
-    if (classify(elemtp).derivesFrom(defn.NullClass)) JavaArrayType(defn.ObjectType)
-    else if (isUnboundedGeneric(elemtp) && !sourceLanguage.isJava) defn.ObjectType
-    else JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, wildcardOK)(elemtp))
+    if (isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2)) defn.ObjectType
+    else JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, wildcardOK)(elemtp))
   }
 
   private def erasePair(tp: Type)(using Context): Type = {
@@ -594,7 +697,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
             // See doc comment for ElimByName for speculation how we could improve this.
         else
           MethodType(Nil, Nil,
-            eraseResult(sym.info.finalResultType.translateFromRepeated(toArray = sourceLanguage.isJava)))
+            eraseResult(rt.translateFromRepeated(toArray = sourceLanguage.isJava)))
       case tp1: PolyType =>
         eraseResult(tp1.resultType) match
           case rt: MethodType => rt
@@ -608,7 +711,9 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       val genericUnderlying = unbox.info.resultType
       val underlying = tp.select(unbox).widen.resultType
 
-      val erasedUnderlying = erasure(underlying)
+      // The underlying part of an ErasedValueType cannot be an ErasedValueType itself
+      val erase = erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, wildcardOK)
+      val erasedUnderlying = erase(underlying)
 
       // Ideally, we would just use `erasedUnderlying` as the erasure of `tp`, but to
       // be binary-compatible with Scala 2 we need two special cases for polymorphic
@@ -620,7 +725,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       //   erased like `Array[A]` as seen from its definition site, no matter
       //   the `X` (same if `A` is bounded).
       //
-      // The binary compatibility is checked by sbt-dotty/sbt-test/scala2-compat/i8001
+      // The binary compatibility is checked by sbt-test/scala2-compat/i8001
       val erasedValueClass =
         if erasedUnderlying.isPrimitiveValueType && !genericUnderlying.isPrimitiveValueType then
           defn.boxedType(erasedUnderlying)
@@ -646,7 +751,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     // correctly (see SIP-15 and [[Erasure.Boxing.adaptToType]]), so the result type of a
     // constructor method should not be semi-erased.
     if semiEraseVCs && isConstructor && !tp.isInstanceOf[MethodOrPoly] then
-      erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, wildcardOK).eraseResult(tp)
+      erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, wildcardOK).eraseResult(tp)
     else tp match
       case tp: TypeRef =>
         val sym = tp.symbol
@@ -715,10 +820,10 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         sigName(this(tp))
       case tp: TypeProxy =>
         sigName(tp.underlying)
-      case _: ErrorType | WildcardType | NoType =>
-        tpnme.WILDCARD
       case tp: WildcardType =>
-        sigName(tp.optBounds)
+        tpnme.Uninstantiated
+      case _: ErrorType | NoType =>
+        tpnme.ERROR
       case _ =>
         val erasedTp = this(tp)
         assert(erasedTp ne tp, tp)

@@ -22,21 +22,10 @@ import annotation.constructorOnly
 import collection.mutable
 import dotty.tools.tasty.TastyFormat.ASTsSection
 
-object TreePickler {
-
-  case class Hole(isTermHole: Boolean, idx: Int, args: List[tpd.Tree])(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
-    override def isTerm: Boolean = isTermHole
-    override def isType: Boolean = !isTermHole
-    override def fallbackToText(printer: Printer): Text =
-      if isTermHole then s"{{{ $idx |" ~~ printer.toTextGlobal(tpe) ~~ "|" ~~ printer.toTextGlobal(args, ", ") ~~ "}}}"
-      else s"[[[ $idx |" ~~ printer.toTextGlobal(tpe) ~~ "|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]]"
-  }
-}
 
 class TreePickler(pickler: TastyPickler) {
   val buf: TreeBuffer = new TreeBuffer
   pickler.newSection(ASTsSection, buf)
-  import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex
   import tpd._
@@ -332,6 +321,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickleDef(tag: Int, mdef: MemberDef, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(using Context): Unit = {
     val sym = mdef.symbol
+
     assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)
@@ -355,8 +345,7 @@ class TreePickler(pickler: TastyPickler) {
   def pickleParam(tree: Tree)(using Context): Unit = {
     registerTreeAddr(tree)
     tree match {
-      case tree: ValDef => pickleDef(PARAM, tree, tree.tpt)
-      case tree: DefDef => pickleDef(PARAM, tree, tree.tpt, tree.rhs)
+      case tree: ValDef  => pickleDef(PARAM, tree, tree.tpt)
       case tree: TypeDef => pickleDef(TYPEPARAM, tree, tree.rhs)
     }
   }
@@ -409,22 +398,23 @@ class TreePickler(pickler: TastyPickler) {
             case _ =>
               val sig = tree.tpe.signature
               var ename = tree.symbol.targetName
-              val isAmbiguous =
-                sig != Signature.NotAMethod
-                && qual.tpe.nonPrivateMember(name).match
-                  case d: MultiDenotation => d.atSignature(sig, ename).isInstanceOf[MultiDenotation]
-                  case _ => false
-              if isAmbiguous then
+              val selectFromQualifier =
+                name.isTypeName
+                || qual.isInstanceOf[Hole] // holes have no symbol
+                || sig == Signature.NotAMethod // no overload resolution necessary
+                || !tree.denot.symbol.exists // polymorphic function type
+                || tree.denot.asSingleDenotation.isRefinedMethod // refined methods have no defining class symbol
+              if selectFromQualifier then
+                writeByte(if name.isTypeName then SELECTtpt else SELECT)
+                pickleNameAndSig(name, sig, ename)
+                pickleTree(qual)
+              else // select from owner
                 writeByte(SELECTin)
                 withLength {
                   pickleNameAndSig(name, tree.symbol.signature, ename)
                   pickleTree(qual)
                   pickleType(tree.symbol.owner.typeRef)
                 }
-              else
-                writeByte(if (name.isTypeName) SELECTtpt else SELECT)
-                pickleNameAndSig(name, sig, ename)
-                pickleTree(qual)
           }
         case Apply(fun, args) =>
           if (fun.symbol eq defn.throwMethod) {
@@ -729,21 +719,21 @@ class TreePickler(pickler: TastyPickler) {
     if flags.is(Transparent) then writeModTag(TRANSPARENT)
     if flags.is(Infix) then writeModTag(INFIX)
     if flags.is(Invisible) then writeModTag(INVISIBLE)
+    if (flags.is(Erased)) writeModTag(ERASED)
+    if (flags.is(Exported)) writeModTag(EXPORTED)
     if (isTerm) {
       if (flags.is(Implicit)) writeModTag(IMPLICIT)
       if (flags.is(Given)) writeModTag(GIVEN)
-      if (flags.is(Erased)) writeModTag(ERASED)
       if (flags.is(Lazy, butNot = Module)) writeModTag(LAZY)
       if (flags.is(AbsOverride)) { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
       if (flags.is(Mutable)) writeModTag(MUTABLE)
       if (flags.is(Accessor)) writeModTag(FIELDaccessor)
       if (flags.is(CaseAccessor)) writeModTag(CASEaccessor)
       if (flags.is(HasDefault)) writeModTag(HASDEFAULT)
-      if (flags.is(StableRealizable)) writeModTag(STABLE)
+      if flags.isAllOf(StableMethod) then writeModTag(STABLE) // other StableRealizable flag occurrences are either implied or can be recomputed
       if (flags.is(Extension)) writeModTag(EXTENSION)
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
       if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)
-      if (flags.is(Exported)) writeModTag(EXPORTED)
       assert(!(flags.is(Label)))
     }
     else {

@@ -8,6 +8,7 @@ import org.junit.Test
 import java.nio.file.Files
 
 class TemplateFileTests:
+  given staticSiteContext: StaticSiteContext = testDocContext().staticSiteContext.get
   private def testTemplate(code: String, ext: String = "html")(op: TemplateFile => Unit): Unit =
     val tmpFile = Files.createTempFile("headerTests", s".${ext}").toFile()
     try
@@ -42,7 +43,7 @@ class TemplateFileTests:
         |code""".stripMargin
     ) { t =>
       assertEquals(t.rawCode, "code")
-      assertEquals(t.title, "myTitle")
+      assertEquals(t.title.name, "myTitle")
     }
 
 

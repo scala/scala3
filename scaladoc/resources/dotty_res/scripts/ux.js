@@ -20,7 +20,7 @@ window.addEventListener("DOMContentLoaded", () => {
     $(this).parent().toggleClass("expanded")
   });
 
-  $('.names .tab').on('click', function(){
+  $('.names .tab').on('click', function() {
     parent = $(this).parents(".tabs").first()
     shown = $(this).hasClass('selected')
     single = parent.hasClass("single")
@@ -32,16 +32,21 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!shown) { myTab.addClass('selected') }
     if (shown && !single) myTab.removeClass('selected')
 
-    if(!shown && $(this).find(".showGraph")){
+    if(!shown && $(this).filter(".showGraph").length > 0) {
       showGraph()
       $(this).find(".showGraph").removeClass("showGraph")
     }
   })
 
   if (location.hash) {
-    var selected = document.getElementById(location.hash.substring(1));
-    if (selected){
-      selected.classList.toggle("expand");
+    var target = location.hash.substring(1);
+    // setting the 'expand' class on the top-level container causes undesireable styles
+    // to apply to the top-level docs, so we avoid this logic for that element.
+    if (target != 'container') {
+      var selected = document.getElementById(location.hash.substring(1));
+      if (selected) {
+        selected.classList.toggle("expand");
+      }
     }
   }
 
@@ -54,6 +59,20 @@ window.addEventListener("DOMContentLoaded", () => {
   hljs.registerLanguage("scala", highlightDotty);
   hljs.registerAliases(["dotty", "scala3"], "scala");
   hljs.initHighlighting();
+
+  /* listen for the `F` key to be pressed, to focus on the member filter input (if it's present) */
+  document.body.addEventListener('keydown', e => {
+    if (e.key == "f") {
+      const tag = e.target.tagName;
+      if (tag != "INPUT" && tag != "TEXTAREA") {
+        const filterInput = findRef('.documentableFilter input.filterableInput');
+        if (filterInput != null) {
+          // if we focus during this event handler, the `f` key gets typed into the input
+          setTimeout(() => filterInput.focus(), 1);
+        }
+      }
+    }
+  })
 });
 
 var zoom;
@@ -65,8 +84,8 @@ function showGraph() {
     if (dotNode){
       var svg = d3.select("#graph");
       var radialGradient = svg.append("defs").append("radialGradient").attr("id", "Gradient");
-      radialGradient.append("stop").attr("stop-color", "#ffd47f").attr("offset", "20%");
-      radialGradient.append("stop").attr("stop-color", "white").attr("offset", "100%");
+      radialGradient.append("stop").attr("stop-color", "var(--aureole)").attr("offset", "20%");
+      radialGradient.append("stop").attr("stop-color", "var(--code-bg)").attr("offset", "100%");
 
       var inner = svg.append("g");
 

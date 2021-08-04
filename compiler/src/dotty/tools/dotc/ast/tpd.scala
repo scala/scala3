@@ -41,15 +41,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Super(qual: Tree, mixName: TypeName, mixinClass: Symbol = NoSymbol)(using Context): Super =
     Super(qual, if (mixName.isEmpty) untpd.EmptyTypeIdent else untpd.Ident(mixName), mixinClass)
 
-  def Apply(fn: Tree, args: List[Tree])(using Context): Apply = {
-    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply] || fn.isInstanceOf[Inlined] || fn.isInstanceOf[tasty.TreePickler.Hole])
-    ta.assignType(untpd.Apply(fn, args), fn, args)
-  }
+  def Apply(fn: Tree, args: List[Tree])(using Context): Apply = fn match
+    case Block(Nil, expr) =>
+      Apply(expr, args)
+    case _: RefTree | _: GenericApply | _: Inlined | _: Hole =>
+      ta.assignType(untpd.Apply(fn, args), fn, args)
 
-  def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = {
-    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply])
-    ta.assignType(untpd.TypeApply(fn, args), fn, args)
-  }
+  def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = fn match
+    case Block(Nil, expr) =>
+      TypeApply(expr, args)
+    case _: RefTree | _: GenericApply =>
+      ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
   def Literal(const: Constant)(using Context): Literal =
     ta.assignType(untpd.Literal(const))
@@ -961,8 +963,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(using Context): Tree = tp.dealias match {
+      case ConstantType(c) if c.tag == StringTag =>
+        singleton(tp).equal(tree)
       case tp: SingletonType =>
-        if (tp.widen.derivesFrom(defn.ObjectClass))
+        if tp.widen.derivesFrom(defn.ObjectClass) then
           tree.ensureConforms(defn.ObjectType).select(defn.Object_eq).appliedTo(singleton(tp))
         else
           singleton(tp).equal(tree)
@@ -977,11 +981,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     /** cast tree to `tp`, assuming no exception is raised, i.e the operation is pure */
-    def cast(tp: Type)(using Context): Tree = {
-      assert(tp.isValueType, i"bad cast: $tree.asInstanceOf[$tp]")
+    def cast(tp: Type)(using Context): Tree = cast(TypeTree(tp))
+
+    /** cast tree to `tp`, assuming no exception is raised, i.e the operation is pure */
+    def cast(tpt: TypeTree)(using Context): Tree =
+      assert(tpt.tpe.isValueType, i"bad cast: $tree.asInstanceOf[$tpt]")
       tree.select(if (ctx.erasedTypes) defn.Any_asInstanceOf else defn.Any_typeCast)
-        .appliedToType(tp)
-    }
+        .appliedToTypeTree(tpt)
 
     /** cast `tree` to `tp` (or its box/unbox/cast equivalent when after
      *  erasure and value and non-value types are mixed),

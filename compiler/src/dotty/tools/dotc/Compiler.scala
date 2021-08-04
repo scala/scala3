@@ -50,6 +50,7 @@ class Compiler {
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
     List(new Inlining) ::           // Inline and execute macros
+    List(new PostInlining) ::       // Add mirror support for inlined code
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
     Nil
@@ -63,8 +64,8 @@ class Compiler {
          new CheckStatic,            // Check restrictions that apply to @static members
          new BetaReduce,             // Reduce closure applications
          new InlineVals,             // Check right hand-sides of an `inline val`s
-         new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
-         new init.Checker) ::        // Check initialization of objects
+         new ExpandSAMs) ::          // Expand single abstract method closures to anonymous classes
+    List(new init.Checker) ::        // Check initialization of objects
     List(new ElimRepeated,           // Rewrite vararg parameters and arguments
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
@@ -72,16 +73,17 @@ class Compiler {
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
-         new RefChecks) ::           // Various checks mostly related to abstract members and overriding
-    List(new ElimOpaque,             // Turn opaque into normal aliases
+         new RefChecks,              // Various checks mostly related to abstract members and overriding
          new TryCatchPatterns,       // Compile cases in try/catch
-         new PatternMatcher,         // Compile pattern matches
+         new PatternMatcher) ::      // Compile pattern matches
+    List(new ElimOpaque,             // Turn opaque into normal aliases
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new ElimByName,             // Expand by-name parameter references
-         new StringInterpolatorOpt) :: // Optimizes raw and s string interpolators by rewriting them to string concatentations
+         new StringInterpolatorOpt) :: // Optimizes raw and s string interpolators by rewriting them to string concatenations
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
+         new UninitializedDefs,      // Replaces `compiletime.uninitialized` by `_`
          new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
@@ -119,6 +121,7 @@ class Compiler {
          new ElimStaticThis,         // Replace `this` references to static objects by global identifiers
          new CountOuterAccesses) ::  // Identify outer accessors that can be dropped
     List(new DropOuterAccessors,     // Drop unused outer accessors
+         new CheckNoSuperThis,       // Check that supercalls don't contain references to `this`
          new Flatten,                // Lift all inner classes to package scope
          new RenameLifted,           // Renames lifted classes to local numbering scheme
          new TransformWildcards,     // Replace wildcards with default values
@@ -127,7 +130,8 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
-         new CollectSuperCalls) ::   // Find classes that are called with super
+         new CollectSuperCalls,      // Find classes that are called with super
+         new RepeatableAnnotations) :: // Aggregate repeatable annotations
     Nil
 
   /** Generate the output of the compilation */

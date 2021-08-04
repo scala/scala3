@@ -7,7 +7,7 @@ import dotc.core.Contexts._
 import dotc.core.StdNames.str
 import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
-import dotc.reporting.Diagnostic
+import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.util.SourceFile
 
 import scala.annotation.internal.sharable
@@ -16,7 +16,7 @@ import scala.annotation.internal.sharable
 sealed trait ParseResult
 
 /** An error free parsing resulting in a list of untyped trees */
-case class Parsed(source: SourceFile, trees: List[untpd.Tree]) extends ParseResult
+case class Parsed(source: SourceFile, trees: List[untpd.Tree], reporter: StoreReporter) extends ParseResult
 
 /** A parsing result containing syntax `errors` */
 case class SyntaxErrors(sourceCode: String,
@@ -154,7 +154,7 @@ object ParseResult {
               reporter.removeBufferedMessages,
               stats)
           else
-            Parsed(source, stats)
+            Parsed(source, stats, reporter)
         }
     }
   }

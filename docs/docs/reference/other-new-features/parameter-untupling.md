@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: "Parameter Untupling"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/parameter-untupling.html
 ---
 
 Say you have a list of pairs
@@ -14,7 +15,7 @@ their sum. Previously, the best way to do this was with a pattern-matching decom
 
 ```scala
 xs map {
-   case (x, y) => x + y
+  case (x, y) => x + y
 }
 ```
 
@@ -23,7 +24,7 @@ suggests that the pattern match could fail. As a shorter and clearer alternative
 
 ```scala
 xs.map {
-   (x, y) => x + y
+  (x, y) => x + y
 }
 ```
 

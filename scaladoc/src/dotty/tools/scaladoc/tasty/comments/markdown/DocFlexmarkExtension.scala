@@ -10,13 +10,22 @@ import com.vladsch.flexmark.ext.wikilink.internal.WikiLinkLinkRefProcessor
 import com.vladsch.flexmark.util.ast._
 import com.vladsch.flexmark.util.options._
 import com.vladsch.flexmark.util.sequence.BasedSequence
+import com.vladsch.flexmark._
 
+import dotty.tools.scaladoc.snippets._
+import scala.collection.JavaConverters._
 
 class DocLinkNode(
   val target: DocLink,
   val body: String,
   seq: BasedSequence
-  ) extends WikiNode(seq, false, false, false, false)
+) extends WikiNode(seq, false, false, false, false)
+
+case class ExtendedFencedCodeBlock(
+  name: Option[String],
+  codeBlock: ast.FencedCodeBlock,
+  compilationResult: Option[SnippetCompilationResult]
+) extends BlankLine(codeBlock.getContentChars())
 
 class DocFlexmarkParser(resolveLink: String => DocLink) extends Parser.ParserExtension:
 
@@ -55,7 +64,9 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
 
     object Render extends NodeRenderer:
       override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[_]] =
-        JSet(new NodeRenderingHandler(classOf[DocLinkNode], Handler))
+        JSet(
+          new NodeRenderingHandler(classOf[DocLinkNode], Handler),
+        )
 
     object Factory extends NodeRendererFactory:
       override def create(options: DataHolder): NodeRenderer = Render
@@ -65,5 +76,10 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
 
 object DocFlexmarkRenderer:
   def render(node: Node)(renderLink: (DocLink, String) => String) =
-    val opts = MarkdownParser.mkMarkdownOptions(Seq(DocFlexmarkRenderer(renderLink)))
+    val opts = MarkdownParser.mkMarkdownOptions(
+      Seq(
+        DocFlexmarkRenderer(renderLink),
+        SnippetRenderingExtension
+      )
+    )
     HtmlRenderer.builder(opts).build().render(node)

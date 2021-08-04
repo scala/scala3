@@ -1,5 +1,6 @@
 import Nat.*
 import compiletime.*
+import compiletime.ops.int.*
 
 enum Nat:
   case Zero

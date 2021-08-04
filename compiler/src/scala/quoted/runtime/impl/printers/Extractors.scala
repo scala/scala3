@@ -33,6 +33,7 @@ object Extractors {
     if (flags.is(Flags.ExtensionMethod)) flagList += "Flags.ExtensionMethod"
     if (flags.is(Flags.FieldAccessor)) flagList += "Flags.FieldAccessor"
     if (flags.is(Flags.Final)) flagList += "Flags.Final"
+    if (flags.is(Flags.Given)) flagList += "Flags.Given"
     if (flags.is(Flags.HasDefault)) flagList += "Flags.HasDefault"
     if (flags.is(Flags.Implicit)) flagList += "Flags.Implicit"
     if (flags.is(Flags.Infix)) flagList += "Flags.Infix"
@@ -121,11 +122,9 @@ object Extractors {
         this += "DefDef(\"" += name += "\", " ++= paramsClauses += ", " += returnTpt += ", " += rhs += ")"
       case TypeDef(name, rhs) =>
         this += "TypeDef(\"" += name += "\", " += rhs += ")"
-      case ClassDef(name, constr, parents, derived, self, body) =>
+      case ClassDef(name, constr, parents, self, body) =>
         this += "ClassDef(\"" += name += "\", " += constr += ", "
         visitList[Tree](parents, visitTree)
-        this += ", "
-        visitList[TypeTree](derived, visitTree)
         this += ", " += self += ", " ++= body += ")"
       case Import(expr, selectors) =>
         this += "Import(" += expr += ", " ++= selectors += ")"
@@ -172,7 +171,7 @@ object Extractors {
       case Unapply(fun, implicits, patterns) =>
         this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
       case Alternatives(patterns) =>
-        this += "Alternative(" ++= patterns += ")"
+        this += "Alternatives(" ++= patterns += ")"
     }
 
     def visitConstant(x: Constant): this.type = x match {

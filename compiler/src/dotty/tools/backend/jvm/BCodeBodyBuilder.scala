@@ -88,9 +88,23 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case Assign(lhs, rhs) =>
           val s = lhs.symbol
           val Local(tk, _, idx, _) = locals.getOrMakeLocal(s)
-          genLoad(rhs, tk)
-          lineNumber(tree)
-          bc.store(idx, tk)
+
+          rhs match {
+            case Apply(Select(larg: Ident, nme.ADD), Literal(x) :: Nil)
+            if larg.symbol == s && tk.isIntSizedType && x.isShortRange =>
+              lineNumber(tree)
+              bc.iinc(idx, x.intValue)
+
+            case Apply(Select(larg: Ident, nme.SUB), Literal(x) :: Nil)
+            if larg.symbol == s && tk.isIntSizedType && Constant(-x.intValue).isShortRange =>
+              lineNumber(tree)
+              bc.iinc(idx, -x.intValue)
+
+            case _ =>
+              genLoad(rhs, tk)
+              lineNumber(tree)
+              bc.store(idx, tk)
+          }
 
         case _ =>
           genLoad(tree, UNIT)
@@ -228,7 +242,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       resKind
     }
 
-    def genPrimitiveOp(tree: Apply, expectedType: BType): BType = tree match {
+    def genPrimitiveOp(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
       case Apply(fun @ DesugaredSelect(receiver, _), _) =>
       val sym = tree.symbol
 
@@ -610,7 +624,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    def genTypeApply(t: TypeApply): BType = t match {
+    def genTypeApply(t: TypeApply): BType = (t: @unchecked) match {
       case TypeApply(fun@DesugaredSelect(obj, _), targs) =>
 
         val sym = fun.symbol
@@ -1063,30 +1077,109 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
+    /* Generate string concatenation
+     *
+     * On JDK 8: create and append using `StringBuilder`
+     * On JDK 9+: use `invokedynamic` with `StringConcatFactory`
+     */
     def genStringConcat(tree: Tree): BType = {
       lineNumber(tree)
       liftStringConcat(tree) match {
-        // Optimization for expressions of the form "" + x.  We can avoid the StringBuilder.
+        // Optimization for expressions of the form "" + x
         case List(Literal(Constant("")), arg) =>
           genLoad(arg, ObjectReference)
           genCallMethod(defn.String_valueOf_Object, InvokeStyle.Static)
 
         case concatenations =>
-          bc.genStartConcat
-          for (elem <- concatenations) {
-            val loadedElem = elem match {
+          val concatArguments = concatenations.view
+            .filter {
+              case Literal(Constant("")) => false // empty strings are no-ops in concatenation
+              case _ => true
+            }
+            .map {
               case Apply(boxOp, value :: Nil) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
-
-              case _ => elem
+              case other => other
             }
-            val elemType = tpeTK(loadedElem)
-            genLoad(loadedElem, elemType)
-            bc.genConcat(elemType)
+            .toList
+
+          // `StringConcatFactory` only got added in JDK 9, so use `StringBuilder` for lower
+          if (classfileVersion < asm.Opcodes.V9) {
+
+            // Estimate capacity needed for the string builder
+            val approxBuilderSize = concatArguments.view.map {
+              case Literal(Constant(s: String)) => s.length
+              case Literal(c @ Constant(_)) if c.isNonUnitAnyVal => String.valueOf(c).length
+              case _ => 0
+            }.sum
+            bc.genNewStringBuilder(approxBuilderSize)
+
+            for (elem <- concatArguments) {
+              val elemType = tpeTK(elem)
+              genLoad(elem, elemType)
+              bc.genStringBuilderAppend(elemType)
+            }
+            bc.genStringBuilderEnd
+          } else {
+
+            /* `StringConcatFactory#makeConcatWithConstants` accepts max 200 argument slots. If
+             * the string concatenation is longer (unlikely), we spill into multiple calls
+             */
+            val MaxIndySlots = 200
+            val TagArg = '\u0001'    // indicates a hole (in the recipe string) for an argument
+            val TagConst = '\u0002'  // indicates a hole (in the recipe string) for a constant
+
+            val recipe = new StringBuilder()
+            val argTypes = Seq.newBuilder[asm.Type]
+            val constVals = Seq.newBuilder[String]
+            var totalArgSlots = 0
+            var countConcats = 1     // ie. 1 + how many times we spilled
+
+            for (elem <- concatArguments) {
+              val tpe = tpeTK(elem)
+              val elemSlots = tpe.size
+
+              // Unlikely spill case
+              if (totalArgSlots + elemSlots >= MaxIndySlots) {
+                bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
+                countConcats += 1
+                totalArgSlots = 0
+                recipe.setLength(0)
+                argTypes.clear()
+                constVals.clear()
+              }
+
+              elem match {
+                case Literal(Constant(s: String)) =>
+                  if (s.contains(TagArg) || s.contains(TagConst)) {
+                    totalArgSlots += elemSlots
+                    recipe.append(TagConst)
+                    constVals += s
+                  } else {
+                    recipe.append(s)
+                  }
+
+                case other =>
+                  totalArgSlots += elemSlots
+                  recipe.append(TagArg)
+                  val tpe = tpeTK(elem)
+                  argTypes += tpe.toASMType
+                  genLoad(elem, tpe)
+              }
+            }
+            bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
+
+            // If we spilled, generate one final concat
+            if (countConcats > 1) {
+              bc.genIndyStringConcat(
+                TagArg.toString * countConcats,
+                Seq.fill(countConcats)(StringRef.toASMType),
+                Seq.empty
+              )
+            }
           }
-          bc.genEndConcat
       }
       StringRef
     }
@@ -1414,7 +1507,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genLoadTry(tree: Try): BType
 
     def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol): BType = {
-      import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
+      import java.lang.invoke.LambdaMetafactory.{FLAG_BRIDGES, FLAG_SERIALIZABLE}
 
       report.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
       val generatedType = classBTypeFromSymbol(functionalInterface)
@@ -1445,9 +1538,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
       // TODO specialization
-      val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
+      val instantiatedMethodType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
 
-      val abstractMethod = atPhase(erasurePhase) {
+      val samMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
         samMethods match {
           case x :: Nil => x.symbol
@@ -1457,21 +1550,40 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         }
       }
 
-      val methodName = abstractMethod.javaSimpleName
-      val applyN = {
-        val mt = asmMethodType(abstractMethod)
-        mt.toASMType
+      val methodName = samMethod.javaSimpleName
+      val samMethodType = asmMethodType(samMethod).toASMType
+      // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
+      // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
+      val needsGenericBridge = samMethodType != instantiatedMethodType
+      val bridgeMethods = atPhase(erasurePhase){
+        samMethod.allOverriddenSymbols.toList
       }
-      val bsmArgs0 = Seq(applyN, targetHandle, constrainedType)
-      val bsmArgs =
-        if (isSerializable)
-          bsmArgs0 :+ Int.box(FLAG_SERIALIZABLE)
+      val overriddenMethodTypes = bridgeMethods.map(b => asmMethodType(b).toASMType)
+
+      // any methods which `samMethod` overrides need bridges made for them
+      // this is done automatically during erasure for classes we generate, but LMF needs to have them explicitly mentioned
+      // so we have to compute them at this relatively late point.
+      val bridgeTypes = (
+        if (needsGenericBridge)
+          instantiatedMethodType +: overriddenMethodTypes
         else
-          bsmArgs0
+          overriddenMethodTypes
+      ).distinct.filterNot(_ == samMethodType)
+
+      val needsBridges = bridgeTypes.nonEmpty
+
+      def flagIf(b: Boolean, flag: Int): Int = if (b) flag else 0
+      val flags = flagIf(isSerializable, FLAG_SERIALIZABLE) | flagIf(needsBridges, FLAG_BRIDGES)
+
+      val bsmArgs0 = Seq(samMethodType, targetHandle, instantiatedMethodType)
+      val bsmArgs1 = if (flags != 0) Seq(Int.box(flags)) else Seq.empty
+      val bsmArgs2 = if needsBridges then bridgeTypes.length +: bridgeTypes else Seq.empty
+
+      val bsmArgs = bsmArgs0 ++ bsmArgs1 ++ bsmArgs2
 
       val metafactory =
-        if (isSerializable)
-          lambdaMetaFactoryAltMetafactoryHandle // altMetafactory needed to be able to pass the SERIALIZABLE flag
+        if (flags != 0)
+          lambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
         else
           lambdaMetaFactoryMetafactoryHandle
 

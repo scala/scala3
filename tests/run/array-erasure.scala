@@ -35,11 +35,41 @@ object Test {
     }
   }
 
+  def arr3[T <: Int](x: Array[T]) = {
+    x(0) == 2
+    x.sameElements(x)
+  }
+
+  def arr4[T <: Int | Double](x: Array[T]) = {
+    x(0) == 2
+    x.sameElements(x)
+  }
+
+  def arr5[T <: Int | String](x: Array[T]) = {
+    x(0) == 2
+    x.sameElements(x)
+  }
+
+  def arr6[T <: Matchable](x: Array[T]) = {
+    x(0) == 2
+    x.sameElements(x)
+  }
+
   def main(args: Array[String]): Unit = {
     val x: Array[Int] = Array(0)
 
     arr0(x)
     arr1(x)
     arr2(x)
+    arr3(x)
+    arr4(x)
+    arr5(x)
+    arr6(x)
+
+
+    val str: Any = ""
+    assert(!str.isInstanceOf[Array[?]])
+    assert(!str.isInstanceOf[Array[Array[?]]])
+    assert(!str.isInstanceOf[Array[? <: Array[?]]])
   }
 }

@@ -1,5 +1,6 @@
 package scala.quoted
 
+import scala.annotation.experimental
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
@@ -7,7 +8,7 @@ import scala.reflect.TypeTest
  *  Usage:
  *  ```scala
  *  def myExpr[T](using Quotes): Expr[T] = {
- *     import quotes.relect._
+ *     import quotes.reflect._
  *     ...
  *  }
  *  ```
@@ -19,7 +20,7 @@ transparent inline def quotes(using inline q: Quotes): q.type = q
  *  Used to perform all operations on quoted `Expr` or `Type`.
  *
  *  It contains the low-level Typed AST API metaprogramming API.
- *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
+ *  This API does not have the static type guarantees that `Expr` and `Type` provide.
  */
 trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
@@ -53,6 +54,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Emits an error and throws if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
      */
+    // TODO: deprecate in 3.1.0 and remove @experimental from valueOrAbort
+    // @deprecated("Use valueOrThrow", "3.1.0")
     def valueOrError(using FromExpr[T]): T =
       val fromExpr = summon[FromExpr[T]]
       def reportError =
@@ -60,6 +63,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         reflect.report.throwError(msg, self)
       given Quotes = Quotes.this
       fromExpr.unapply(self).getOrElse(reportError)
+
+    /** Return the value of this expression.
+     *
+     *  Emits an error and aborts if the expression does not represent a value or possibly contains side effects.
+     *  Otherwise returns the value.
+     */
+    @experimental
+    def valueOrAbort(using FromExpr[T]): T
 
   end extension
 
@@ -283,7 +294,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     }
 
-    /** Tree representing a pacakage clause in the source code
+    /** Tree representing a package clause in the source code
      *
      *  ```scala
      *  package foo {
@@ -445,8 +456,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ClassDef` */
     trait ClassDefModule { this: ClassDef.type =>
-      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
-      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])
+      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
+      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
     }
 
     /** Makes extension methods on `ClassDef` available without any imports */
@@ -461,8 +472,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  The first parent is always a class.
          */
         def parents: List[Tree /* Term | TypeTree */]
-        /** List of derived type classes */
-        def derived: List[TypeTree] // TODO remove? It seems these don't exist after desugaring
         /** Self-type of the class
          *
          *  ```scala
@@ -477,7 +486,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  ```scala
          *  class C {
-         *     ... // statemets
+         *     ... // statements
          *  }
          *  ```
          *  @syntax markdown
@@ -499,6 +508,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val DefDef` */
     trait DefDefModule { this: DefDef.type =>
+      /** Create a method definition `def f[..](...)` with the signature defined in the symbol.
+       *
+       *  The `rhsFn` is a function that receives references to its parameters and should return
+       *  `Some` containing the implementation of the method. Returns `None` the method has no implementation.
+       *  Any definition directly inside the implementation should have `symbol` as owner.
+       *
+       *  See also: `Tree.changeOwner`
+       */
       def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef
       def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef
       def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term])
@@ -513,7 +530,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** List of type and term parameter clauses */
         def paramss: List[ParamClause]
 
-        /** List of leading type paramters or Nil if the method does not have leading type paramters.
+        /** List of leading type parameters or Nil if the method does not have leading type parameters.
          *
          *  Note: Non leading type parameters can be found in extension methods such as
          *  ```scala
@@ -524,7 +541,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def leadingTypeParams: List[TypeDef]
 
         /** List of parameter clauses following the leading type parameters or all clauses.
-         *  Return all parameter clauses if there are no leading type paramters.
+         *  Return all parameter clauses if there are no leading type parameters.
          *
          *  Non leading type parameters can be found in extension methods such as
          *  ```scala
@@ -541,7 +558,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def returnTpt: TypeTree
 
         /** The tree of the implementation of the method.
-         *  Returns `None` if the method does not hava an implemetation.
+         *  Returns `None` if the method does not have an implementation.
          */
         def rhs: Option[Term]
       end extension
@@ -549,7 +566,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ValDef
 
-    /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
+    /** Tree representing a value definition in the source code This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
     type ValDef <: Definition
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValDef` */
@@ -560,19 +577,27 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ValDef` */
     trait ValDefModule { this: ValDef.type =>
+      /** Create a value definition `val x`, `var x` or `lazy val x` with the signature defined in the symbol.
+       *
+       *  The `rhs` should return be `Some` containing the implementation of the method.
+       *  Returns `None` the method has no implementation.
+       *  Any definition directly inside the implementation should have `symbol` as owner.
+       *
+       *  See also: `Tree.changeOwner`
+       */
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term])
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }` */
-      def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term
+      def let(owner: Symbol, name: String, rhs: Term)(body: Ref => Term): Term
 
       /** Creates a block `{ val x = <rhs: Term>; <body(x): Term> }` */
-      def let(owner: Symbol, rhs: Term)(body: Ident => Term): Term =
+      def let(owner: Symbol, rhs: Term)(body: Ref => Term): Term =
         let(owner, "x", rhs)(body)
 
       /** Creates a block `{ val x1 = <terms(0): Term>; ...; val xn = <terms(n-1): Term>; <body(List(x1, ..., xn)): Term> }` */
-      def let(owner: Symbol, terms: List[Term])(body: List[Ident] => Term): Term
+      def let(owner: Symbol, terms: List[Term])(body: List[Ref] => Term): Term
     }
 
     /** Makes extension methods on `ValDef` available without any imports */
@@ -661,7 +686,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Replace Ident nodes references to the underlying tree that defined them */
         def underlying: Term
 
-        /** Converts a partally applied term into a lambda expression */
+        /** Converts a partially applied term into a lambda expression */
         def etaExpand(owner: Symbol): Term
 
         /** A unary apply node with given argument: `tree(arg)` */
@@ -941,7 +966,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end NamedArgMethods
 
-    /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
+    /** Tree representing an application of arguments.
+     *  It represents a single list of arguments, multiple argument lists will have nested `Apply`s
+     */
     type Apply <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Apply` */
@@ -970,7 +997,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: Apply)
         /** The `fun` part of an (implicit) application like `fun(args)`
          *
-         *  It maybe a partially applied method:
+         *  It may be a partially applied method:
          *  ```scala
          *  def f(x1: Int)(x2: Int) = ...
          *  f(1)(2)
@@ -982,7 +1009,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def fun: Term
         /** The arguments (implicitly) passed to the method
          *
-         *  The `Apply` maybe a partially applied method:
+         *  The `Apply` may be a partially applied method:
          *  ```scala
          *  def f(x1: Int)(x2: Int) = ...
          *  f(1)(2)
@@ -995,7 +1022,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ApplyMethods
 
-    /** Tree an application of type arguments */
+    /** Tree representing an application of type arguments */
     type TypeApply <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeApply` */
@@ -1024,7 +1051,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: TypeApply)
         /** The `fun` part of an (inferred) type application like `fun[Args]`
          *
-         *  It maybe a partially applied method:
+         *  It may be a partially applied method:
          *  ```scala
          *  extension (x: Int) def f[T](y: T) = ...
          *  // represented as
@@ -1040,7 +1067,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def fun: Term
         /** The (inferred) type arguments passed to the method
          *
-         *  The `TypeApply` maybe a partially applied method:
+         *  The `TypeApply` may be a partially applied method:
          *  ```scala
          *  extension (x: Int) def f[T](y: T) = ...
          *  // represented as
@@ -1257,7 +1284,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  ```
        *  @param owner: owner of the generated `meth` symbol
        *  @param tpe: Type of the definition
-       *  @param rhsFn: Funtion that recieves the `meth` symbol and the a list of references to the `params`
+       *  @param rhsFn: Function that receives the `meth` symbol and the a list of references to the `params`
        *  @syntax markdown
        */
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
@@ -1936,9 +1963,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Type tree representing wildcard type bounds written in the source.
     *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
-    *  represents a type but has `TypeBound`a inside.
+    *  represents a type but has `TypeBounds` inside.
     */
-    type WildcardTypeTree  <: Tree
+    type WildcardTypeTree <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `WildcardTypeTree` */
     given WildcardTypeTreeTypeTest: TypeTest[Tree, WildcardTypeTree]
@@ -2104,7 +2131,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** A parameter clause `[X1, ..., Xn]` or `(x1: X1, ..., xn: Xx)`
      *
-     *  `[X1, ..., Xn]` are reresented with `TypeParamClause` and `(x1: X1, ..., xn: Xx)` are represented with `TermParamClause`
+     *  `[X1, ..., Xn]` are represented with `TypeParamClause` and `(x1: X1, ..., xn: Xx)` are represented with `TermParamClause`
      *
      *  `ParamClause` encodes the following enumeration
      *  ```scala
@@ -2158,8 +2185,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: TermParamClause)
         /** List of parameters of the clause */
         def params: List[ValDef]
-        /** Is this a given parameter clause `(implicit X1, ..., Xn)`, `(given X1, ..., Xn)` or `(given x1: X1, ..., xn: Xn)` */
+        /** Is this an implicit parameter clause `(implicit x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
+        /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+        def isGiven: Boolean
+        /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
+        @experimental
+        def isErased: Boolean
     end TermParamClauseMethods
 
     /** A type parameter clause `[X1, ..., Xn]` */
@@ -2340,7 +2372,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *  Usage:
         *  ```scala
         *  typeRepr.asType match
-        *    case '[$t] =>
+        *    case '[t] =>
         *      '{ val x: t = ... }
         *  ```
         *  @syntax markdown
@@ -2406,7 +2438,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Is this type a function type?
         *
-        *  @return true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
+        *  @return true if the dealiased type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
         *
         *  @note The function
         *
@@ -2605,7 +2637,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end AppliedTypeMethods
 
-    /** A type with an anottation `T @foo` */
+    /** A type with an annotation `T @foo` */
     type AnnotatedType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AnnotatedType` */
@@ -3339,7 +3371,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /////////////
 
     /** Symbol of a definition.
-    *  Then can be compared with == to know if the definition is the same.
+    *   Symbols can be compared with `==` to know if two definitions are the same.
     */
     type Symbol <: AnyRef
 
@@ -3460,14 +3492,28 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def docstring: Option[String]
 
         /** Tree of this definition
-        *
-        *  If this symbol `isClassDef` it will return `a `ClassDef`,
-        *  if this symbol `isTypeDef` it will return `a `TypeDef`,
-        *  if this symbol `isValDef` it will return `a `ValDef`,
-        *  if this symbol `isDefDef` it will return `a `DefDef`
-        *  if this symbol `isBind` it will return `a `Bind`,
-        *  else will throw
-        */
+         *
+         *  If this symbol `isClassDef` it will return `a `ClassDef`,
+         *  if this symbol `isTypeDef` it will return `a `TypeDef`,
+         *  if this symbol `isValDef` it will return `a `ValDef`,
+         *  if this symbol `isDefDef` it will return `a `DefDef`
+         *  if this symbol `isBind` it will return `a `Bind`,
+         *  else will throw
+         *
+         *  **Warning**: avoid using this method in macros.
+         *
+         *  **Caveat**: The tree is not guaranteed to exist unless the compiler
+         *  option `-Yretain-trees` is enabled.
+         *
+         *  **Anti-pattern**: The following code is an anti-pattern:
+         *
+         *      symbol.tree.tpe
+         *
+         *  It should be replaced by the following code:
+         *
+         *      tp.memberType(symbol)
+         *
+         */
         def tree: Tree
 
         /** Is the annotation defined with `annotSym` attached to this symbol? */
@@ -3542,34 +3588,70 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredFields: List[Symbol]
 
         /** Get named non-private fields declared or inherited */
+        // TODO: deprecate in 3.1.0 and remove @experimental from fieldMember
+        // @deprecated("Use fieldMember", "3.1")
         def memberField(name: String): Symbol
 
+        /** Get named non-private fields declared or inherited */
+        @experimental
+        def fieldMember(name: String): Symbol
+
         /** Get all non-private fields declared or inherited */
+        // TODO: deprecate in 3.1.0 and remove @experimental from fieldMembers
+        // @deprecated("Use fieldMembers", "3.1")
         def memberFields: List[Symbol]
+
+        /** Get all non-private fields declared or inherited */
+        @experimental
+        def fieldMembers: List[Symbol]
 
         /** Get non-private named methods defined directly inside the class */
         def declaredMethod(name: String): List[Symbol]
 
-        /** Get all non-private methods defined directly inside the class, exluding constructors */
+        /** Get all non-private methods defined directly inside the class, excluding constructors */
         def declaredMethods: List[Symbol]
 
         /** Get named non-private methods declared or inherited */
+        // TODO: deprecate in 3.1.0 and remove @experimental from methodMember
+        // @deprecated("Use methodMember", "3.1")
         def memberMethod(name: String): List[Symbol]
 
+        /** Get named non-private methods declared or inherited */
+        @experimental
+        def methodMember(name: String): List[Symbol]
+
         /** Get all non-private methods declared or inherited */
+        // TODO: deprecate in 3.1.0 and remove @experimental from methodMembers
+        // @deprecated("Use methodMembers", "3.1")
         def memberMethods: List[Symbol]
+
+        /** Get all non-private methods declared or inherited */
+        @experimental
+        def methodMembers: List[Symbol]
 
         /** Get non-private named methods defined directly inside the class */
         def declaredType(name: String): List[Symbol]
 
-        /** Get all non-private methods defined directly inside the class, exluding constructors */
+        /** Get all non-private methods defined directly inside the class, excluding constructors */
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
+        // TODO: deprecate in 3.1.0 and remove @experimental from typeMember
+        // @deprecated("Use typeMember", "3.1")
         def memberType(name: String): Symbol
 
+        /** Type member with the given name directly declared in the class */
+        @experimental
+        def typeMember(name: String): Symbol
+
         /** Type member directly declared in the class */
+        // TODO: deprecate in 3.1.0 and remove @experimental from typeMembers
+        // @deprecated("Use typeMembers", "3.1")
         def memberTypes: List[Symbol]
+
+        /** Type member directly declared in the class */
+        @experimental
+        def typeMembers: List[Symbol]
 
         /** All members directly declared in the class */
         def declarations: List[Symbol]
@@ -3608,7 +3690,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The symbol of the companion module */
         def companionModule: Symbol
 
-        /** Case class or case object children of a sealed trait */
+        /** Case class or case object children of a sealed trait or cases of an `enum`. */
         def children: List[Symbol]
       end extension
     }
@@ -3842,7 +3924,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def Abstract: Flags
 
       /** Is this generated by Scala compiler.
-       *  Coresponds to ACC_SYNTHETIC in the JVM.
+       *  Corresponds to ACC_SYNTHETIC in the JVM.
        */
       def Artifact: Flags
 
@@ -3909,10 +3991,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is this symbol `lazy` */
       def Lazy: Flags
 
-      /** Is this symbol local? Used in conjunction with private/private[T] to mean private[this] extends Modifier proctected[this] */
+      /** Is this symbol local? Used in conjunction with private/private[T] to mean private[this] extends Modifier protected[this] */
       def Local: Flags
 
-      /** Is this symbol marked as a macro. An inline method containing toplevel splices */
+      /** Is this symbol marked as a macro. An inline method containing top level splices */
       def Macro: Flags
 
       def Method: Flags
@@ -4081,7 +4163,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // REPORTING //
     ///////////////
 
-    /** Module containg error and waring reporiting. */
+    /** Module containing error and warning reporting. */
     val report: reportModule
 
     /** Methods of the module object `val report` */
@@ -4096,23 +4178,50 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Report an error message at the given position */
       def error(msg: String, pos: Position): Unit
 
-      /** Report an error at the position of the macro expansion and throws a StopMacroExpansion */
+      /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
+      @experimental
+      def errorAndAbort(msg: String): Nothing
+
+      /** Report an error at the position of `expr` and throw a StopMacroExpansion */
+      @experimental
+      def errorAndAbort(msg: String, expr: Expr[Any]): Nothing
+
+      /** Report an error message at the given position and throw a StopMacroExpansion */
+      @experimental
+      def errorAndAbort(msg: String, pos: Position): Nothing
+
+      /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
+      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
+      // @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String): Nothing
 
-      /** Report an error at the position of `expr` */
+      /** Report an error at the position of `expr` and throw a StopMacroExpansion */
+      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
+      // @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String, expr: Expr[Any]): Nothing
 
-      /** Report an error message at the given position and throws a StopMacroExpansion */
+      /** Report an error message at the given position and throw a StopMacroExpansion */
+      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
+      // @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String, pos: Position): Nothing
 
       /** Report a warning at the position of the macro expansion */
       def warning(msg: String): Unit
 
-      /** Report a warning at the on the position of `expr` */
+      /** Report a warning at the position of `expr` */
       def warning(msg: String, expr: Expr[Any]): Unit
 
-      /** Report an warning message at the given position */
+      /** Report a warning message at the given position */
       def warning(msg: String, pos: Position): Unit
+
+      /** Report an info at the position of the macro expansion */
+      def info(msg: String): Unit
+
+      /** Report an info message at the position of `expr` */
+      def info(msg: String, expr: Expr[Any]): Unit
+
+      /** Report an info message at the given position */
+      def info(msg: String, pos: Position): Unit
 
     }
 
@@ -4126,7 +4235,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  import qctx.reflect._
+    *  import quotes.reflect._
     *  class MyTreeAccumulator extends TreeAccumulator[X] {
     *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ...
     *  }
@@ -4191,9 +4300,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case tdef @ TypeDef(_, rhs) =>
             val owner = tdef.symbol
             foldTree(x, rhs)(owner)
-          case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
+          case cdef @ ClassDef(_, constr, parents, self, body) =>
             val owner = cdef.symbol
-            foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr)(owner), parents)(owner), derived)(owner), self)(owner), body)(owner)
+            foldTrees(foldTrees(foldTrees(foldTree(x, constr)(owner), parents)(owner), self)(owner), body)(owner)
           case Import(expr, _) =>
             foldTree(x, expr)(owner)
           case Export(expr, _) =>
@@ -4230,7 +4339,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  import qctx.relfect._
+    *  import quotes.reflect._
     *  class MyTraverser extends TreeTraverser {
     *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ...
     *  }
@@ -4307,7 +4416,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             val owner = tree.symbol
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))
           case tree: ClassDef =>
-            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
+            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.self, tree.body)
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Export =>
@@ -4334,7 +4443,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case New(tpt) =>
             New.copy(tree)(transformTypeTree(tpt)(owner))
           case Typed(expr, tpt) =>
-            Typed.copy(tree)(transformTerm(expr)(owner), transformTypeTree(tpt)(owner))
+            Typed.copy(tree)(/*FIXME #12222: transformTerm(expr)(owner)*/transformTree(expr)(owner).asInstanceOf[Term], transformTypeTree(tpt)(owner))
           case tree: NamedArg =>
             NamedArg.copy(tree)(tree.name, transformTerm(tree.value)(owner))
           case Assign(lhs, rhs) =>
@@ -4440,15 +4549,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Printer` */
     trait PrinterModule { self: Printer.type =>
-      /** Prints fully elaborated vesion of the source code. */
+      /** Prints fully elaborated version of the source code. */
       def TreeCode: Printer[Tree]
 
-      /** Prints fully elaborated vesion of the source code.
+      /** Prints fully elaborated version of the source code.
        *  Same as `TreeCode` but does not print full package prefixes.
        */
       def TreeShortCode: Printer[Tree]
 
-      /** Prints fully elaborated vesion of the source code using ANSI colors. */
+      /** Prints fully elaborated version of the source code using ANSI colors. */
       def TreeAnsiCode: Printer[Tree]
 
       /** Prints a pattern like representation of the `Tree`.
