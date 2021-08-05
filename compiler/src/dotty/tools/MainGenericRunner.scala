@@ -14,6 +14,7 @@ import dotty.tools.runner.ObjectRunner
 import dotty.tools.dotc.config.Properties.envOrNone
 import java.util.jar._
 import java.util.jar.Attributes.Name
+import dotty.tools.io.Jar
 
 enum ExecuteMode:
   case Guess
