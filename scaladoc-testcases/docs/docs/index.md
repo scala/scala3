@@ -3,11 +3,15 @@
 
 ---
 
-```scala sc:compile
-2 + List(0)
+```scala
+val someVariable: Int = 2
 ```
 
-```scala sc:compile
-new snippetCompiler.Snippet0 { }
+```scala sc:fail
+trait RenderingContext
+class Renderer(using RenderingContext)
+val renderer: Renderer = Renderer()
 ```
+
+
 

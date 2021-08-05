@@ -21,7 +21,8 @@ object SnippetRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
         SnippetRenderer.renderSnippetWithMessages(
           node.name,
           node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
-          node.compilationResult.toSeq.flatMap(_.messages)
+          node.compilationResult.toSeq.flatMap(_.messages),
+          node.hasContext
         )
       )
 

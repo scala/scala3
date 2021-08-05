@@ -134,7 +134,7 @@ object SnippetRenderer:
     div(cls := "snippet-label")(name)
   ).toString
 
-  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage]): String =
+  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], hasContext: Boolean): String =
     val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).apply(codeLines).map(_.toHTML)
     val codeHTML = s"""<code class="language-scala">${transformedLines.mkString("")}</code>"""
-    s"""<div class="snippet"><div class="buttons"></div><pre>$codeHTML</pre>${snippetName.fold("")(snippetLabel(_))}</div>"""
+    s"""<div class="snippet" ${if hasContext then "hasContext" else ""}><div class="buttons"></div><pre>$codeHTML</pre>${snippetName.fold("")(snippetLabel(_))}</div>"""

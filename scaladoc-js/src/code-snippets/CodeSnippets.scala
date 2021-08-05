@@ -1,7 +1,10 @@
 package dotty.tools.scaladoc
 
+import scala.scalajs.js
 import org.scalajs.dom._
 import org.scalajs.dom.ext._
+
+import CodeSnippetsGlobals._
 
 class CodeSnippets:
 
@@ -12,7 +15,7 @@ class CodeSnippets:
 
   def enrichSnippets() = document.querySelectorAll("div.snippet").foreach {
     case snippet: html.Element =>
-      snippet.addEventListener("click", e => e.stopPropagation())
+      snippet.addEventListener("click", (e: MouseEvent) => e.asInstanceOf[js.Dynamic].fromSnippet = true)
       snippetAnchor(snippet)
       handleHideableCode(snippet)
       handleImportedCode(snippet)
@@ -109,20 +112,41 @@ class CodeSnippets:
       val div = document.createElement("div")
       val button = document.createElement("button").asInstanceOf[html.Button]
       val icon = document.createElement("i")
-      icon.classList.add("fas")
-      icon.classList.add("fa-play")
+      def initialState() = {
+        icon.classList.add("fas")
+        icon.classList.add("fa-play")
+        button.setAttribute("state", "run")
+      }
+      def toggleState() = {
+        icon.classList.toggle("fa-play")
+        icon.classList.toggle("fa-times")
+        if button.getAttribute("state") == "run" then button.setAttribute("state", "exit")
+        else button.setAttribute("state", "run")
+      }
+      initialState()
       button.appendChild(icon)
       button.classList.add("run-button")
-      button.addEventListener("click", _ => {}) // TODO: Run button #13065
-      button.disabled = true
+      button.addEventListener("click", _ =>
+        if button.getAttribute("state") == "run" then
+          scastie.Embedded(snippet.querySelector("pre"))
+        else
+          snippet.querySelector("pre") match {
+            case p: html.Element => p.style = ""
+            case _ =>
+          }
+          snippet.querySelector(".scastie.embedded") match {
+            case s: html.Element => snippet.removeChild(s)
+            case _ =>
+          }
+        toggleState()
+      )
       div.appendChild(button)
       div
     }
     val buttonsSection = getButtonsSection(snippet)
     buttonsSection.foreach(s =>
       s.appendChild(copyButton)
-      // Temporarily disabled
-      // s.appendChild(runButton)
+      if !snippet.hasAttribute("hasContext") then s.appendChild(runButton)
     )
   }
 

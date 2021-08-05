@@ -10,7 +10,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (elements) {
     for (i = 0; i < elements.length; i++) {
       elements[i].onclick = function(e) {
-        if(!$(e.target).is("a"))
+        if(!$(e.target).is("a") && e.fromSnippet !== true)
           this.classList.toggle("expand")
       }
     }
