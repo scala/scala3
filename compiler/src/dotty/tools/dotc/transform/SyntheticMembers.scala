@@ -63,7 +63,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   private def initSymbols(using Context) =
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
-      myCaseSymbols = myValueSymbols ++ defn.caseClassSynthesized
+      myCaseSymbols = defn.caseClassSynthesized.toList
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myEnumValueSymbols = List(defn.Product_productPrefix)
       myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString
