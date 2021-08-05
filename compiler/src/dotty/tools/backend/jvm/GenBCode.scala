@@ -68,10 +68,55 @@ class GenBCode extends Phase {
           // If we close the jar the next run will not be able to write on the jar.
           // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
           report.error("Can not suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
+
+        updateJarManifestWithMainClass(units, jar)
         jar.close()
       case _ =>
     }
   }
+
+  private def updateJarManifestWithMainClass(units: List[CompilationUnit], jarArchive: JarArchive)(using Context): Unit =
+    val mainClass = Option.when(!ctx.settings.XmainClass.isDefault)(ctx.settings.XmainClass.value).orElse {
+      val _mainClassesBuffer = new mutable.HashSet[String]
+      units.map { unit =>
+        unit.tpdTree.foreachSubTree { tree =>
+          val sym = tree.symbol
+          import dotty.tools.dotc.core.NameOps.stripModuleClassSuffix
+          val name = sym.fullName.stripModuleClassSuffix.toString
+            // We strip module class suffix. Zinc relies on a class and its companion having the same name
+
+          if (sym.isStatic && !sym.is(Flags.Trait) && ctx.platform.hasMainMethod(sym)) {
+            // If sym is an object, all main methods count, otherwise only @static ones count.
+            _mainClassesBuffer += name
+          }
+        }
+      }
+      _mainClassesBuffer.toList.match
+        case List(mainClass) =>
+          Some(mainClass)
+        case Nil =>
+          report.warning("No Main-Class designated or discovered.")
+          None
+        case mcs =>
+          report.warning(s"No Main-Class due to multiple entry points:\n  ${mcs.mkString("\n  ")}")
+          None
+    }
+
+    mainClass.map { mc =>
+      import scala.util.Properties._
+      import java.util.jar._
+      import Attributes.Name._
+      val manifest = new Manifest
+      val attrs = manifest.getMainAttributes
+      attrs.put(MANIFEST_VERSION, "1.0")
+      attrs.put(ScalaCompilerVersion, versionNumberString)
+      attrs.put(MAIN_CLASS, mc)
+      val file = jarArchive.subdirectoryNamed("META-INF").fileNamed("MANIFEST.MF")
+      val os = file.output
+      manifest.write(os)
+      os.close()
+    }
+  end updateJarManifestWithMainClass
 }
 
 object GenBCode {
