@@ -19,6 +19,7 @@ import sys.process._
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
   def compileAndRun(pack:(Path, Seq[Path], String) => Boolean = null): Unit =
     val outDir = Files.createTempDirectory("scala3-scripting")
+    outDir.toFile.deleteOnExit()
     setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh) match
       case Some((toCompile, rootCtx)) =>
         given Context = rootCtx.fresh.setSetting(rootCtx.settings.outputDir,
