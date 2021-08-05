@@ -194,6 +194,98 @@ input:checked + .slider:before {
   display: none;
 }
 
+.snippet .scastie.embedded {
+  width: 100%;
+}
+
+.snippet .scastie.embedded .content {
+  height: unset;
+}
+
+.snippet .scastie.embedded .editor-container {
+  height: unset;
+}
+
+.snippet .scastie.embedded .editor-container .code {
+  height: unset;
+}
+
+.snippet .scastie.embedded .editor-container .editor-wrapper {
+  padding-top: 48px;
+  height: unset;
+}
+
+.snippet .scastie .CodeMirror, .snippet .scastie .CodeMirror-scroll {
+  height:unset;
+}
+
+.snippet .scastie.embedded .editor-container .code .CodeMirror-scroll {
+  height:unset !important;
+  min-height: 50px !important;
+}
+
+.snippet .scastie .editor-container .console-container .console {
+  height: unset !important;
+}
+
+.snippet .scastie .CodeMirror-gutters {
+  background-color: var(--code-bg) !important;
+}
+
+.snippet .scastie .CodeMirror {
+  color: var(--code-fg) !important;
+  background-color: var(--code-bg) !important;
+}
+
+.snippet .scastie .embedded-menu > * {
+  background-color: transparent !important;
+  color: var(--active-fg) !important;
+  width: 64px;
+  font-size: 1em;
+  padding: 8px;
+  position: unset;
+}
+
+.snippet .scastie .embedded-menu li:hover {
+  background-color: var(--active-bg) !important;
+}
+
+.snippet .scastie .embedded-menu {
+  margin: 15px;
+  display: block;
+}
+
+.snippet .scastie .embedded-menu > li {
+  display: unset;
+  border: unset;
+  transition-duration: 0.4s;
+}
+
+:root.theme-dark .snippet .scastie .embedded-menu > .logo img {
+  filter: unset;
+}
+:root .snippet .scastie .embedded-menu > .logo img {
+  filter: invert(100%) hue-rotate(180deg);
+}
+
+
+.snippet .scastie .output-console pre {
+  color: white;
+  background-color: rgb(0, 43, 54);
+}
+
+.snippet .scastie .app.light .editor-container .handler {
+  background-color: var(--code-bg) !important;
+}
+
+.snippet .scastie .console-container {
+  margin-left: 30px;
+}
+
+.snippet .scastie .main-panel {
+  background-color: unset !important;
+}
+
 @media(max-width: 576px) {
   .snippet-showhide {
       --slider-width: 32px;

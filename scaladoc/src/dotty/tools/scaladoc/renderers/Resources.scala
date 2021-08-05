@@ -57,8 +57,24 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/inkuire.js"
     ).map(dottyRes) ++
     List(
-      "scripts/inkuire-worker.js"
+      "scripts/inkuire-worker.js",
+      "webfonts/fa-brands-400.eot",
+      "webfonts/fa-brands-400.svg",
+      "webfonts/fa-brands-400.ttf",
+      "webfonts/fa-brands-400.woff",
+      "webfonts/fa-brands-400.woff2",
+      "webfonts/fa-regular-400.eot",
+      "webfonts/fa-regular-400.svg",
+      "webfonts/fa-regular-400.ttf",
+      "webfonts/fa-regular-400.woff",
+      "webfonts/fa-regular-400.woff2",
+      "webfonts/fa-solid-900.eot",
+      "webfonts/fa-solid-900.svg",
+      "webfonts/fa-solid-900.ttf",
+      "webfonts/fa-solid-900.woff",
+      "webfonts/fa-solid-900.woff2"
     ).map(dottyRes)
+
 
   val earlyMemberResources: Seq[Resource] =
     List(
@@ -78,6 +94,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/social-links.css",
       "styles/ux.css",
       "styles/versions-dropdown.css",
+      "styles/fontawesome.css",
       "hljs/highlight.pack.js",
       "hljs/LICENSE",
       "scripts/hljs-scala3.js",
@@ -94,10 +111,10 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
     val urls = List(
       "https://code.jquery.com/jquery-3.5.1.min.js",
-      "https://use.fontawesome.com/releases/v5.15.3/js/all.js",
       "https://d3js.org/d3.v6.min.js",
       "https://cdn.jsdelivr.net/npm/graphlib-dot@0.6.2/dist/graphlib-dot.min.js",
       "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
+      "https://scastie.scala-lang.org/embedded.js"
     ).map(Resource.URL.apply)
 
 
