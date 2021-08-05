@@ -1085,10 +1085,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   var touchedGADTs = false
                   var gadtIsInstantiated = false
 
-                  extension (sym: Symbol)
+                  extension (ntp: NamedType)
                     inline def byGadtBounds(inline op: TypeBounds => Boolean): Boolean =
                       touchedGADTs = true
-                      sym.onGadtBounds(
+                      ntp.onGadtBounds(
                         b => op(b) && { gadtIsInstantiated = b.isInstanceOf[TypeAlias]; true })
 
                   def byGadtOrdering: Boolean =
@@ -1098,8 +1098,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
                   val res = (
                     tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
-                    || tycon1sym.byGadtBounds(b => isSubTypeWhenFrozen(b.hi, tycon2))
-                    || tycon2sym.byGadtBounds(b => isSubTypeWhenFrozen(tycon1, b.lo))
+                    || tycon1.byGadtBounds(b => isSubTypeWhenFrozen(b.hi, tycon2))
+                    || tycon2.byGadtBounds(b => isSubTypeWhenFrozen(tycon1, b.lo))
                     || byGadtOrdering
                   ) && {
                     // There are two cases in which we can assume injectivity.
