@@ -268,28 +268,23 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val fusedPhase = ctx.base.fusedContaining(prevPhase)
-    val tree =
-      if (ctx.isAfterTyper) unit.tpdTree
-      else unit.untpdTree
+    val echoHeader = f"[[syntax trees at end of $fusedPhase%25s]] // ${unit.source}"
+    val tree = if ctx.isAfterTyper then unit.tpdTree else unit.untpdTree
     val treeString = tree.show(using ctx.withProperty(XprintMode, Some(())))
 
-    report.echo(s"result of $unit after $fusedPhase:")
-
     last match {
-      case SomePrintedTree(phase, lastTreeSting) if lastTreeSting != treeString =>
-        val msg =
-          if (!ctx.settings.XprintDiff.value && !ctx.settings.XprintDiffDel.value) treeString
-          else DiffUtil.mkColoredCodeDiff(treeString, lastTreeSting, ctx.settings.XprintDiffDel.value)
-        report.echo(msg)
-        SomePrintedTree(fusedPhase.toString, treeString)
-
-      case SomePrintedTree(phase, lastTreeSting) =>
-        report.echo("  Unchanged since " + phase)
+      case SomePrintedTree(phase, lastTreeString) if lastTreeString == treeString =>
+        report.echo(s"$echoHeader: unchanged since $phase")
         last
 
-      case NoPrintedTree =>
-        report.echo(treeString)
-        SomePrintedTree(fusedPhase.toString, treeString)
+      case SomePrintedTree(phase, lastTreeString) if ctx.settings.XprintDiff.value || ctx.settings.XprintDiffDel.value =>
+        val diff = DiffUtil.mkColoredCodeDiff(treeString, lastTreeString, ctx.settings.XprintDiffDel.value)
+        report.echo(s"$echoHeader\n$diff\n")
+        SomePrintedTree(fusedPhase.phaseName, treeString)
+
+      case _ =>
+        report.echo(s"$echoHeader\n$treeString\n")
+        SomePrintedTree(fusedPhase.phaseName, treeString)
     }
   }
 

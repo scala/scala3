@@ -1,4 +1,4 @@
-result of tests/printing/i620.scala after typer:
+[[syntax trees at end of                     typer]] // tests/printing/i620.scala
 package O {
   package O.A {
     class D() extends Object() {
@@ -30,3 +30,4 @@ package O {
     }
   }
 }
+
