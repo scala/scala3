@@ -25,6 +25,8 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.SymUtils._
 
+import InlinedSourceMaps._
+
 /*
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded/
@@ -80,6 +82,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var isCZParcelable             = false
     var isCZStaticModule           = false
 
+    var sourceMap: InlinedSourceMap = null
+
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
@@ -100,6 +104,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def genPlainClass(cd0: TypeDef) = cd0 match {
       case TypeDef(_, impl: Template) =>
+
       assert(cnode == null, "GenBCode detected nested methods.")
       innerClassBufferASM.clear()
 
@@ -277,7 +282,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
+        sourceMap = sourceMapFor(cunit)(s => classBTypeFromSymbol(s).internalName)
+        cnode.visitSource(cunit.source.file.name, sourceMap.debugExtension.orNull)
       }
 
       enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
@@ -371,6 +377,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var shouldEmitCleanup          = false
     // line numbers
     var lastEmittedLineNr          = -1
+    // by real line number we mean line number that is not pointing to virtual lines added by inlined calls
+    var lastRealLineNr             = -1
 
     object bc extends JCodeMethodN {
       override def jmethod = PlainSkelBuilder.this.mnode
@@ -539,19 +547,27 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case labnode: asm.tree.LabelNode => (labnode.getLabel == lbl);
         case _ => false } )
     }
-    def lineNumber(tree: Tree): Unit = {
-      if (!emitLines || !tree.span.exists) return;
-      val nr = ctx.source.offsetToLine(tree.span.point) + 1
-      if (nr != lastEmittedLineNr) {
+
+    def emitNr(nr: Int): Unit =
+      if nr != lastEmittedLineNr then
         lastEmittedLineNr = nr
-        lastInsn match {
+        lastInsn match
           case lnn: asm.tree.LineNumberNode =>
             // overwrite previous landmark as no instructions have been emitted for it
             lnn.line = nr
           case _ =>
             mnode.visitLineNumber(nr, currProgramPoint())
-        }
-      }
+
+    def lineNumber(tree: Tree): Unit = {
+      if !emitLines || !tree.span.exists then return;
+      if tree.source != cunit.source then
+        sourceMap.lineFor(tree.sourcePos, lastRealLineNr) match
+          case Some(nr) => emitNr(nr)
+          case None => ()
+      else
+        val nr = ctx.source.offsetToLine(tree.span.point) + 1
+        lastRealLineNr = nr
+        emitNr(nr)
     }
 
     // on entering a method
