@@ -117,6 +117,12 @@ object Tools:
     if info.isPrimary then sb.append("primary ")
     if info.isEnum then sb.append("enum ")
     if info.isDefault then sb.append("default ")
+    if info.isGiven then sb.append("given ")
+    if info.isInline then sb.append("inline ")
+    if info.isOpen then sb.append("open ")
+    if info.isTransparent then sb.append("transparent ")
+    if info.isInfix then sb.append("infix ")
+    if info.isOpaque then sb.append("opaque ")
     info.kind match
       case LOCAL => sb.append("local ")
       case FIELD => sb.append("field ")
