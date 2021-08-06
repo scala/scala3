@@ -268,7 +268,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
     val fusedPhase = ctx.base.fusedContaining(prevPhase)
-    val treeString = unit.tpdTree.show(using ctx.withProperty(XprintMode, Some(())))
+    val tree =
+      if (ctx.isAfterTyper) unit.tpdTree
+      else unit.untpdTree
+    val treeString = tree.show(using ctx.withProperty(XprintMode, Some(())))
 
     report.echo(s"result of $unit after $fusedPhase:")
 
