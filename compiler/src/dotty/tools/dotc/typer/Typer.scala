@@ -1872,8 +1872,7 @@ class Typer extends Namer
             arg match {
               case untpd.WildcardTypeBoundsTree()
               if tparam.paramInfo.isLambdaSub &&
-                 tpt1.tpe.typeParamSymbols.nonEmpty &&
-                 !ctx.mode.is(Mode.Pattern) =>
+                 tpt1.tpe.typeParamSymbols.nonEmpty =>
                 // An unbounded `_` automatically adapts to type parameter bounds. This means:
                 // If we have wildcard application C[?], where `C` is a class replace
                 // with C[? >: L <: H] where `L` and `H` are the bounds of the corresponding
