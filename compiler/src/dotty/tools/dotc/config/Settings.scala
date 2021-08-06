@@ -130,7 +130,8 @@ object Settings:
             val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
             update(output, args)
           }
-        case (IntTag, arg2 :: args2) =>
+        case (IntTag, _) =>
+          val arg2 :: args2 = if (argRest == "") args else argRest :: args
           try {
             val x = arg2.toInt
             choices match {
