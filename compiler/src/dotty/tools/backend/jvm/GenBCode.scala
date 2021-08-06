@@ -83,8 +83,6 @@ class GenBCode extends Phase {
           val sym = tree.symbol
           import dotty.tools.dotc.core.NameOps.stripModuleClassSuffix
           val name = sym.fullName.stripModuleClassSuffix.toString
-            // We strip module class suffix. Zinc relies on a class and its companion having the same name
-
           if (sym.isStatic && !sym.is(Flags.Trait) && ctx.platform.hasMainMethod(sym)) {
             // If sym is an object, all main methods count, otherwise only @static ones count.
             _mainClassesBuffer += name
@@ -103,17 +101,11 @@ class GenBCode extends Phase {
     }
 
     mainClass.map { mc =>
-      import scala.util.Properties._
-      import java.util.jar._
-      import Attributes.Name._
-      val manifest = new Manifest
-      val attrs = manifest.getMainAttributes
-      attrs.put(MANIFEST_VERSION, "1.0")
-      attrs.put(ScalaCompilerVersion, versionNumberString)
-      attrs.put(MAIN_CLASS, mc)
+      val manifest = Jar.WManifest()
+      manifest.mainClass = mc
       val file = jarArchive.subdirectoryNamed("META-INF").fileNamed("MANIFEST.MF")
       val os = file.output
-      manifest.write(os)
+      manifest.underlying.write(os)
       os.close()
     }
   end updateJarManifestWithMainClass

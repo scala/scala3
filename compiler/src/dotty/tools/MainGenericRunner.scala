@@ -149,19 +149,11 @@ object MainGenericRunner {
         val res = ObjectRunner.runAndCatch(newClasspath, settings.residualArgs.head, settings.residualArgs.drop(1)).flatMap {
           case ex: ClassNotFoundException if ex.getMessage == settings.residualArgs.head =>
             val file = settings.residualArgs.head
-            def withJarInput[T](f: JarInputStream => T): T =
-              val in = new JarInputStream(java.io.FileInputStream(file))
-              try f(in)
-              finally in.close()
-            val manifest = withJarInput(s => Option(s.getManifest))
-            manifest match
-              case None => Some(IllegalArgumentException(s"Cannot find manifest in jar: $file"))
-              case Some(f) =>
-                f.getMainAttributes.get(Name.MAIN_CLASS) match
-                  case mainClass: String =>
-                    ObjectRunner.runAndCatch(newClasspath :+ File(file).toURI.toURL, mainClass, settings.residualArgs)
-                  case _ =>
-                    Some(IllegalArgumentException(s"No main class defined in manifest in jar: $file"))
+            Jar(file).mainClass match
+              case Some(mc) =>
+                ObjectRunner.runAndCatch(newClasspath :+ File(file).toURI.toURL, mc, settings.residualArgs)
+              case None =>
+                Some(IllegalArgumentException(s"No main class defined in manifest in jar: $file"))
           case ex => Some(ex)
         }
         errorFn("", res)

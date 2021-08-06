@@ -44,7 +44,7 @@ class Jar(file: File) {
   import Jar._
 
   lazy val jarFile: JarFile  = new JarFile(file.jpath.toFile)
-  lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest))
+  lazy val manifest: Option[Manifest] = withJarInput(s => Option(s.getManifest).orElse(findManifest(s)))
 
   def mainClass: Option[String]     = manifest.map(_(Name.MAIN_CLASS))
   /** The manifest-defined classpath String if available. */
@@ -72,6 +72,21 @@ class Jar(file: File) {
     case null   => errorFn("No such entry: " + entry) ; null
     case x      => x
   }
+
+  /**
+   * Hack for Java reading MANIFEST.MF only if it is at the first entry of the JAR file and otherwise returns null.
+   * https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/util/jar/JarInputStream.java#L74
+   * Suprisingly, such jars still can be successfully runned jars via `java -jar path.jar` so it is only problem for Jar readers.
+   */
+  private def findManifest(s: JarInputStream): Option[Manifest] =
+    val entry = s.getNextEntry
+    if entry != null && entry.getName != JarFile.MANIFEST_NAME then
+      findManifest(s)
+    else if entry == null then
+      None
+    else
+      Some(Manifest(s))
+
   override def toString: String = "" + file
 }
 
