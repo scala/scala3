@@ -78,7 +78,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     shadowed = "class C(val c: Int)",
     script =
       """|scala> new C().c
-         |-- Error:
+         |-- Error: ----------------------------------------------------------------------
          |1 | new C().c
          |  | ^^^^^^^
          |  | missing argument for parameter c of constructor C in class C: (c: Int): C

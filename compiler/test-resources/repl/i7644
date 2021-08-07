@@ -1,18 +1,20 @@
 scala> class T extends CanEqual
--- Error:
+-- [E112] Syntax Error: --------------------------------------------------------
 1 | class T extends CanEqual
   |       ^
   |       Cannot extend sealed trait CanEqual in a different source file
--- Error:
+longer explanation available when compiling with `-explain`
+-- [E056] Syntax Error: --------------------------------------------------------
 1 | class T extends CanEqual
   |                 ^^^^^^^^
   |                 Missing type parameter for CanEqual
 scala> class T extends CanEqual
--- Error:
+-- [E112] Syntax Error: --------------------------------------------------------
 1 | class T extends CanEqual
   |       ^
   |       Cannot extend sealed trait CanEqual in a different source file
--- Error:
+longer explanation available when compiling with `-explain`
+-- [E056] Syntax Error: --------------------------------------------------------
 1 | class T extends CanEqual
   |                 ^^^^^^^^
   |                 Missing type parameter for CanEqual

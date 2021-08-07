@@ -5,7 +5,7 @@ scala> object bar { class Foo }
 scala> implicit def eqFoo: CanEqual[foo.Foo, foo.Foo] = CanEqual.derived
 def eqFoo: CanEqual[foo.Foo, foo.Foo]
 scala> object Bar { new foo.Foo == new bar.Foo }
--- Error:
+-- Error: ----------------------------------------------------------------------
 1 | object Bar { new foo.Foo == new bar.Foo }
   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
   |      Values of types foo.Foo and bar.Foo cannot be compared with == or !=

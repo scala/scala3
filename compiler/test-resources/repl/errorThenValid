@@ -1,5 +1,5 @@
 scala> val xs = scala.collection.mutable.ListBuffer[Int]
--- Error:
+-- [E081] Type Error: ----------------------------------------------------------
 1 | val xs = scala.collection.mutable.ListBuffer[Int]
   |          ^
   |          Missing parameter type

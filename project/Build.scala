@@ -150,6 +150,8 @@ object Build {
   // Used to run binaries similar to ./bin/scala script
   val scala = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
+  val repl = taskKey[Unit]("spawns a repl with the correct classpath")
+
   // Compiles the documentation and static site
   val genDocs = inputKey[Unit]("run scaladoc to generate static documentation site")
 
@@ -196,9 +198,7 @@ object Build {
 
     // enable verbose exception messages for JUnit
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
-  ) ++
-    // Spawns a repl with the correct classpath
-    addCommandAlias("repl", "scala3-compiler-bootstrapped/console")
+  )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
   lazy val globalSettings = Def.settings(
@@ -753,7 +753,9 @@ object Build {
         "scala3-tasty-inspector"  -> (LocalProject("scala3-tasty-inspector") / Compile / packageBin).value.getAbsolutePath,
         "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
       )
-    }
+    },
+    repl := (Compile / console).value,
+    Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
   )
 
   def dottyCompilerSettings(implicit mode: Mode): sbt.Def.SettingsDefinition =
@@ -1725,6 +1727,7 @@ object Build {
         // non-bootstrapped compiler), so publish the bootstrapped one by
         // default.
         addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
+        repl := (`scala3-compiler-bootstrapped` / repl).value,
       ).
       settings(
         publish / skip := true

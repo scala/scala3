@@ -39,9 +39,9 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   extension [A](state: State)
     def andThen(op: State => A): A = op(state)
 
-  def testFile(f: JFile): Unit = testScript(f.toString, readLines(f))
+  def testFile(f: JFile): Unit = testScript(f.toString, readLines(f), Some(f))
 
-  def testScript(name: => String, lines: List[String]): Unit = {
+  def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Unit = {
     val prompt = "scala>"
 
     def evaluate(state: State, input: String) =
@@ -80,12 +80,19 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
     }
 
     if !FileDiff.matches(actualOutput, expectedOutput) then
-      println("expected =========>")
-      println(expectedOutput.mkString(EOL))
-      println("actual ===========>")
-      println(actualOutput.mkString(EOL))
+      // Some tests aren't file-based but just pass a string, so can't update anything then
+      // Also the files here are the copies in target/ not the original, so you need to vimdiff/mv them...
+      if dotty.Properties.testsUpdateCheckfile && scriptFile != None then
+        val checkFile = scriptFile.get
+        FileDiff.dump(checkFile.toPath.toString, actualOutput)
+        println(s"Wrote updated script file to $checkFile")
+      else
+        println("expected =========>")
+        println(expectedOutput.mkString(EOL))
+        println("actual ===========>")
+        println(actualOutput.mkString(EOL))
 
-      fail(s"Error in script $name, expected output did not match actual")
+        fail(s"Error in script $name, expected output did not match actual")
     end if
   }
 }

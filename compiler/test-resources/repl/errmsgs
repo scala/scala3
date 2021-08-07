@@ -1,42 +1,48 @@
 scala> class Inv[T](x: T)
 // defined class Inv
 scala> val x: List[String] = List(1)
--- Error:
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val x: List[String] = List(1)
   |                            ^
   |                            Found:    (1 : Int)
   |                            Required: String
+longer explanation available when compiling with `-explain`
 scala> val y: List[List[String]] = List(List(1))
--- Error:
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val y: List[List[String]] = List(List(1))
   |                                       ^
   |                                       Found:    (1 : Int)
   |                                       Required: String
+longer explanation available when compiling with `-explain`
 scala> val z: (List[String], List[Int]) = (List(1), List("a"))
--- Error:
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val z: (List[String], List[Int]) = (List(1), List("a"))
   |                                          ^
   |                                          Found:    (1 : Int)
   |                                          Required: String
--- Error:
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val z: (List[String], List[Int]) = (List(1), List("a"))
   |                                                   ^^^
   |                                                  Found:    ("a" : String)
   |                                                  Required: Int
+longer explanation available when compiling with `-explain`
 scala> val a: Inv[String] = new Inv(new Inv(1))
--- Error:
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val a: Inv[String] = new Inv(new Inv(1))
   |                              ^^^^^^^^^^
   |                              Found:    Inv[Int]
   |                              Required: String
+longer explanation available when compiling with `-explain`
 scala> val b: Inv[String] = new Inv(1)
--- Error:
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val b: Inv[String] = new Inv(1)
   |                              ^
   |                              Found:    (1 : Int)
   |                              Required: String
+longer explanation available when compiling with `-explain`
 scala> abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
--- Error:
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
   |                                                                                  ^
   |Found:    (C.this.x : C.this.T)
@@ -44,7 +50,8 @@ scala> abstract class C { type T; val x: T; val s: Unit = { type T = String; var
   |
   |where:    T  is a type in class C
   |          T² is a type in the initializer of value s which is an alias of String
--- Error:
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
   |                                                                                                                                    ^
   |Found:    (y : T)
@@ -52,34 +59,40 @@ scala> abstract class C { type T; val x: T; val s: Unit = { type T = String; var
   |
   |where:    T  is a type in the initializer of value s which is an alias of String
   |          T² is a type in method f which is an alias of Int
+longer explanation available when compiling with `-explain`
 scala> class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
--- Error:
+-- [E008] Not Found Error: -----------------------------------------------------
 1 | class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
   |                                                        ^^^^^^^^
   |                 value barr is not a member of Foo - did you mean foo.bar?
 scala> val x: List[Int] = "foo" :: List(1)
--- Error:
+-- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val x: List[Int] = "foo" :: List(1)
   |                    ^^^^^
   |                    Found:    ("foo" : String)
   |                    Required: Int
+longer explanation available when compiling with `-explain`
 scala> while (((  foo ))) {}
--- Error:
+-- [E006] Not Found Error: -----------------------------------------------------
 1 | while (((  foo ))) {}
   |            ^^^
   |            Not found: foo
+longer explanation available when compiling with `-explain`
 scala> val a: iDontExist = 1
--- Error:
+-- [E006] Not Found Error: -----------------------------------------------------
 1 | val a: iDontExist = 1
   |        ^^^^^^^^^^
   |        Not found: type iDontExist
+longer explanation available when compiling with `-explain`
 scala> def foo1(x: => Int) = x _
--- Error:
+-- [E099] Syntax Error: --------------------------------------------------------
 1 | def foo1(x: => Int) = x _
   |                       ^^^
   |Only function types can be followed by _ but the current expression has type Int
+longer explanation available when compiling with `-explain`
 scala> def foo2(x: => Int): () => Int = x _
--- Error:
+-- [E099] Syntax Error: --------------------------------------------------------
 1 | def foo2(x: => Int): () => Int = x _
   |                                  ^^^
   |Only function types can be followed by _ but the current expression has type Int
+longer explanation available when compiling with `-explain`
