@@ -7,6 +7,7 @@ scala> val x: List[String] = List(1)
   |                            Found:    (1 : Int)
   |                            Required: String
 longer explanation available when compiling with `-explain`
+1 error found
 scala> val y: List[List[String]] = List(List(1))
 -- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val y: List[List[String]] = List(List(1))
@@ -14,6 +15,7 @@ scala> val y: List[List[String]] = List(List(1))
   |                                       Found:    (1 : Int)
   |                                       Required: String
 longer explanation available when compiling with `-explain`
+1 error found
 scala> val z: (List[String], List[Int]) = (List(1), List("a"))
 -- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val z: (List[String], List[Int]) = (List(1), List("a"))
@@ -27,6 +29,7 @@ longer explanation available when compiling with `-explain`
   |                                                  Found:    ("a" : String)
   |                                                  Required: Int
 longer explanation available when compiling with `-explain`
+2 errors found
 scala> val a: Inv[String] = new Inv(new Inv(1))
 -- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val a: Inv[String] = new Inv(new Inv(1))
@@ -34,6 +37,7 @@ scala> val a: Inv[String] = new Inv(new Inv(1))
   |                              Found:    Inv[Int]
   |                              Required: String
 longer explanation available when compiling with `-explain`
+1 error found
 scala> val b: Inv[String] = new Inv(1)
 -- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val b: Inv[String] = new Inv(1)
@@ -41,6 +45,7 @@ scala> val b: Inv[String] = new Inv(1)
   |                              Found:    (1 : Int)
   |                              Required: String
 longer explanation available when compiling with `-explain`
+1 error found
 scala> abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
 -- [E007] Type Mismatch Error: -------------------------------------------------
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
@@ -60,11 +65,13 @@ longer explanation available when compiling with `-explain`
   |where:    T  is a type in the initializer of value s which is an alias of String
   |          T² is a type in method f which is an alias of Int
 longer explanation available when compiling with `-explain`
+2 errors found
 scala> class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
 -- [E008] Not Found Error: -----------------------------------------------------
 1 | class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
   |                                                        ^^^^^^^^
   |                 value barr is not a member of Foo - did you mean foo.bar?
+1 error found
 scala> val x: List[Int] = "foo" :: List(1)
 -- [E007] Type Mismatch Error: -------------------------------------------------
 1 | val x: List[Int] = "foo" :: List(1)
@@ -72,27 +79,32 @@ scala> val x: List[Int] = "foo" :: List(1)
   |                    Found:    ("foo" : String)
   |                    Required: Int
 longer explanation available when compiling with `-explain`
+1 error found
 scala> while (((  foo ))) {}
 -- [E006] Not Found Error: -----------------------------------------------------
 1 | while (((  foo ))) {}
   |            ^^^
   |            Not found: foo
 longer explanation available when compiling with `-explain`
+1 error found
 scala> val a: iDontExist = 1
 -- [E006] Not Found Error: -----------------------------------------------------
 1 | val a: iDontExist = 1
   |        ^^^^^^^^^^
   |        Not found: type iDontExist
 longer explanation available when compiling with `-explain`
+1 error found
 scala> def foo1(x: => Int) = x _
 -- [E099] Syntax Error: --------------------------------------------------------
 1 | def foo1(x: => Int) = x _
   |                       ^^^
   |Only function types can be followed by _ but the current expression has type Int
 longer explanation available when compiling with `-explain`
+1 error found
 scala> def foo2(x: => Int): () => Int = x _
 -- [E099] Syntax Error: --------------------------------------------------------
 1 | def foo2(x: => Int): () => Int = x _
   |                                  ^^^
   |Only function types can be followed by _ but the current expression has type Int
 longer explanation available when compiling with `-explain`
+1 error found

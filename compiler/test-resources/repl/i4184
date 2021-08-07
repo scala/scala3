@@ -9,3 +9,4 @@ scala> object Bar { new foo.Foo == new bar.Foo }
 1 | object Bar { new foo.Foo == new bar.Foo }
   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
   |      Values of types foo.Foo and bar.Foo cannot be compared with == or !=
+1 error found

@@ -4,3 +4,4 @@ scala> import scala.quoted._; inline def myMacro[T]: Unit = ${ myMacroImpl[T] };
   |                                                                                                                                       ^^^^^^^^^^^^
   |      Cannot call macro method myMacroImpl defined in the same source file
   | This location contains code that was inlined from rs$line$1:1
+1 error found

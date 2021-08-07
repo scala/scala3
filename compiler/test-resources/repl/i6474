@@ -13,6 +13,7 @@ scala> (1, 2): Foo3.T[Int][Int]
 1 | (1, 2): Foo3.T[Int][Int]
   |         ^^^^^^^^^^^^^^^^
   |         Missing type parameter for Foo3.T[Int][Int]
+1 error found
 scala> ((1, 2): Foo3.T[Int][Int][Int]): Foo3.T[Any][Int][Int]
 val res2: (Any, Int) = (1,2)
 scala> object Foo3 { type T[A] = [B] =>> [C] =>> (A, B) }

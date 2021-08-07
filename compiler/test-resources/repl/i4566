@@ -5,3 +5,4 @@ scala> object test { type ::[A, B]; def a: Int :: Int = ???; def b: Int = a }
   |                                                      Found:    Int :: Int
   |                                                      Required: Int
 longer explanation available when compiling with `-explain`
+1 error found

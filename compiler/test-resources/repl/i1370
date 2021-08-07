@@ -3,3 +3,4 @@ scala> object Lives { class Private { def foo1: Any = new Private.C1; def foo2: 
 1 | object Lives { class Private { def foo1: Any = new Private.C1; def foo2: Any = new Private.C2 };  object Private { class C1 private {}; private class C2 {} } }
   |                                                    ^^^^^^^^^^
   |constructor C1 cannot be accessed as a member of Lives.Private.C1 from class Private.
+1 error found

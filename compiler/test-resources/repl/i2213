@@ -9,3 +9,4 @@ scala> def x: Int
 1 | def x: Int
   |     ^
   |Declaration of method x not allowed here: only classes can have declared but undefined members
+1 error found

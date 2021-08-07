@@ -8,6 +8,7 @@ longer explanation available when compiling with `-explain`
 1 | class T extends CanEqual
   |                 ^^^^^^^^
   |                 Missing type parameter for CanEqual
+2 errors found
 scala> class T extends CanEqual
 -- [E112] Syntax Error: --------------------------------------------------------
 1 | class T extends CanEqual
@@ -18,3 +19,4 @@ longer explanation available when compiling with `-explain`
 1 | class T extends CanEqual
   |                 ^^^^^^^^
   |                 Missing type parameter for CanEqual
+2 errors found

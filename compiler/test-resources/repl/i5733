@@ -1,6 +1,7 @@
 scala> abstract class F { def f(arg: Any): Unit; override def toString = "F" }
 // defined class F
 scala> val f: F = println
+1 warning found
 -- Warning: --------------------------------------------------------------------
 1 | val f: F = println
   |            ^^^^^^^
