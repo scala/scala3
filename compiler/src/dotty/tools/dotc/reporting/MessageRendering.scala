@@ -107,15 +107,19 @@ trait MessageRendering {
       .mkString(EOL)
   }
 
+  /** The source file path, line and column numbers from the given SourcePosition */
+  def posFileStr(pos: SourcePosition): String =
+    val path = pos.source.file.path
+    if pos.exists then s"$path:${pos.line + 1}:${pos.column}" else path
+
   /** The separator between errors containing the source file and error type
     *
     * @return separator containing error location and kind
     */
   def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String =
     if (pos.source != NoSourcePosition.source) hl(diagnosticLevel)({
-      val pos1 = pos.nonInlined
-      val file = if !pos.exists then pos1.source.file.toString else
-        s"${pos1.source.file.toString}:${pos1.line + 1}:${pos1.column}"
+      val fileAndPos = posFileStr(pos.nonInlined)
+      val file = if fileAndPos.isEmpty || fileAndPos.endsWith(" ") then fileAndPos else s"$fileAndPos "
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
           val errorNumber = message.errorId.errorNumber
@@ -124,7 +128,7 @@ trait MessageRendering {
       val kind =
         if (message.kind == "") diagnosticLevel
         else s"${message.kind} $diagnosticLevel"
-      val prefix = s"-- ${errId}${kind}: $file "
+      val prefix = s"-- ${errId}${kind}: $file"
 
       prefix +
         ("-" * math.max(ctx.settings.pageWidth.value - stripColor(prefix).length, 0))
@@ -192,12 +196,13 @@ trait MessageRendering {
 
   def diagnosticLevel(dia: Diagnostic): String =
     dia match {
-      case dia: Error => "Error"
       case dia: FeatureWarning => "Feature Warning"
       case dia: DeprecationWarning => "Deprecation Warning"
       case dia: UncheckedWarning => "Unchecked Warning"
       case dia: MigrationWarning => "Migration Warning"
-      case dia: Warning => "Warning"
-      case dia: Info => "Info"
+      case _ => dia.level match // Diagnostic isn't sealed (e.g. created in the REPL) so provide a fallback
+        case interfaces.Diagnostic.ERROR   => "Error"
+        case interfaces.Diagnostic.WARNING => "Warning"
+        case interfaces.Diagnostic.INFO    => "Info"
     }
 }

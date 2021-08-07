@@ -1,5 +1,5 @@
 scala>  object Foo { val bar = new Object { def baz = 1 }; bar.baz }
--- Error:
+-- [E008] Not Found Error: -----------------------------------------------------
 1 |  object Foo { val bar = new Object { def baz = 1 }; bar.baz }
   |                                                     ^^^^^^^
   |                                       value baz is not a member of Object

@@ -1,7 +1,7 @@
 scala> abstract class F { def f(arg: Any): Unit; override def toString = "F" }
 // defined class F
 scala> val f: F = println
--- Warning:
+-- Warning: --------------------------------------------------------------------
 1 | val f: F = println
   |            ^^^^^^^
   |method println is eta-expanded even though F does not have the @FunctionalInterface annotation.

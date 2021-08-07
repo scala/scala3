@@ -31,12 +31,6 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   private val MaxStringElements: Int = 1000  // no need to mkString billions of elements
 
-  /** A `MessageRenderer` for the REPL without file positions */
-  private val messageRenderer = new MessageRendering {
-    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String =
-      hl(diagnosticLevel)(s"-- $diagnosticLevel:")
-  }
-
   private var myClassLoader: ClassLoader = _
 
   private var myReplStringOf: Object => String = _
@@ -125,14 +119,6 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
           s
       }
   }
-
-  /** Formats errors using the `messageRenderer` */
-  def formatError(dia: Diagnostic)(implicit state: State): Diagnostic =
-    new Diagnostic(
-      messageRenderer.messageAndPos(dia)(using state.context),
-      dia.pos,
-      dia.level
-    )
 
   def renderTypeDef(d: Denotation)(using Context): Diagnostic =
     infoDiagnostic("// defined " ++ d.symbol.showUser, d)

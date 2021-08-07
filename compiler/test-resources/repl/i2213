@@ -1,10 +1,11 @@
 scala> def x
--- Error:
+-- [E019] Syntax Error: --------------------------------------------------------
 1 | def x
   |      ^
   |      Missing return type
+longer explanation available when compiling with `-explain`
 scala> def x: Int
--- Error:
+-- [E067] Syntax Error: --------------------------------------------------------
 1 | def x: Int
   |     ^
   |Declaration of method x not allowed here: only classes can have declared but undefined members

@@ -1,10 +1,12 @@
 scala>  Foo
--- Error:
+-- [E006] Not Found Error: -----------------------------------------------------
 1 |  Foo
   |  ^^^
   |  Not found: Foo
+longer explanation available when compiling with `-explain`
 scala>  Bar
--- Error:
+-- [E006] Not Found Error: -----------------------------------------------------
 1 |  Bar
   |  ^^^
   |  Not found: Bar
+longer explanation available when compiling with `-explain`
