@@ -117,4 +117,19 @@ object equality1 {
   (1, "a") == (1, "a", true)  // error: cannot compare
   (1, "a", true, 't', 10L) == (1, "a", 1.5D, 't', 10L) // error: cannot compare
 
+
+  val ns1 = List(1, 2, 3, 4, 5)
+  val ns2 = List(1, 2, 3, 4, 5)
+  ns1 == ns2
+
+  val ss = List("1", "2", "3", "4", "5")
+  ns1 == ss // error: cannot compare
+
+  ns1 match {
+    case n :: ns =>
+      println(s"head: $n, tail: ${ns.mkString("[", ",", "]")}")
+    case Nil =>
+      println("empty")
+  }
+
 }

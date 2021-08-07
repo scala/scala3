@@ -20,10 +20,10 @@ object Test extends App {
   val y: Triple[List[Two], One, Two] = ???
   val z: Triple[One, List[Two], One] = ???
   x == y // OK
+  y == x // OK
   x == x // OK
   y == y // OK
 
-  y == x // error
   x == z // error
   z == y // error
 }
