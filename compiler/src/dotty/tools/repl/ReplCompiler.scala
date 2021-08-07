@@ -153,6 +153,7 @@ class ReplCompiler extends Compiler {
   private def runCompilationUnit(unit: CompilationUnit, state: State): Result[(CompilationUnit, State)] = {
     val ctx = state.context
     ctx.run.compileUnits(unit :: Nil)
+    ctx.run.printSummary() // this outputs "2 errors found" like normal - but we might decide that's needlessly noisy for the REPL
 
     if (!ctx.reporter.hasErrors) (unit, state).result
     else ctx.reporter.removeBufferedMessages(using ctx).errors

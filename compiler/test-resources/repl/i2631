@@ -3,3 +3,4 @@ scala> class Foo(x : Any) { val foo : Integer = 0; def this() = { this(foo) } }
 1 | class Foo(x : Any) { val foo : Integer = 0; def this() = { this(foo) } }
   |                                                                 ^^^
   |                          foo is not accessible from constructor arguments
+1 error found

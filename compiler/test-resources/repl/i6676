@@ -8,6 +8,7 @@ scala> xml""
 1 | xml""
   | ^^^^^
   | value xml is not a member of StringContext
+1 error found
 scala> xml"""
 -- Error: ----------------------------------------------------------------------
 1 | xml"""

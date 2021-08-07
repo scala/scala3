@@ -4,6 +4,7 @@ scala> class B { override def foo(i: Int): Unit = {}; }
   |                        ^
   |                        method foo overrides nothing
 longer explanation available when compiling with `-explain`
+1 error found
 scala> class A { def foo: Unit = {}; }
 // defined class A
 scala> class B extends A { override def foo(i: Int): Unit = {}; }
@@ -12,3 +13,4 @@ scala> class B extends A { override def foo(i: Int): Unit = {}; }
   |                                  ^
   |      method foo has a different signature than the overridden declaration
 longer explanation available when compiling with `-explain`
+1 error found

@@ -1,4 +1,5 @@
 scala> def foo(x: Option[Int]) = x match { case None => }
+1 warning found
 -- [E029] Pattern Match Exhaustivity Warning: ----------------------------------
 1 | def foo(x: Option[Int]) = x match { case None => }
   |                           ^

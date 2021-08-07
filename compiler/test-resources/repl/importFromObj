@@ -11,6 +11,7 @@ scala> buf += xs
   |        Found:    (o.xs : List[Int])
   |        Required: Int
 longer explanation available when compiling with `-explain`
+1 error found
 scala> buf ++= xs
 val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
 scala> import util.foobar
@@ -18,8 +19,10 @@ scala> import util.foobar
 1 | import util.foobar
   |             ^^^^^^
   |             value foobar is not a member of util
+1 error found
 scala> import util.foobar.bar
 -- [E008] Not Found Error: -----------------------------------------------------
 1 | import util.foobar.bar
   |        ^^^^^^^^^^^
   |        value foobar is not a member of util
+1 error found

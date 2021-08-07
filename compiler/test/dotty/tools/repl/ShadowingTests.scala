@@ -82,6 +82,7 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |1 | new C().c
          |  | ^^^^^^^
          |  | missing argument for parameter c of constructor C in class C: (c: Int): C
+         |1 error found
          |
          |scala> new C(13).c
          |val res0: Int = 13
