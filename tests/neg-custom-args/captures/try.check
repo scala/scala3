@@ -1,0 +1,38 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:32 ------------------------------------------
+29 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)  // error
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                Found:    (() => Nothing) retains x
+   |                                Required: () => Nothing
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:43:2 -------------------------------------------
+43 |  yy  // error
+   |  ^^
+   |  Found:    (yy : List[(xx : (() => Int) retains *)])
+   |  Required: List[() => Int]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:50:2 -------------------------------------------
+45 |val global = handle {
+46 |  (x: CanThrow[Exception]) =>
+47 |    () =>
+48 |      raise(new Exception)(using x)
+49 |      22
+50 |} {  // error
+   |             ^
+   |             Found:    (() => Int) retains *
+   |             Required: () => Int
+51 |  (ex: Exception) => () => 22
+52 |}
+
+longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/try.scala:22:28 ---------------------------------------------------------------
+22 |  val a = handle[Exception, CanThrow[Exception]] { // error
+   |                            ^^^^^^^^^^^^^^^^^^^
+   |                            type argument is not allowed to capture the universal capability *
+-- Error: tests/neg-custom-args/captures/try.scala:34:11 ---------------------------------------------------------------
+34 |  val xx = handle { // error
+   |           ^^^^^^
+   |           inferred type argument ((() => Int) retains *) is not allowed to capture the universal capability *
+   |
+   |           The inferred arguments are: [Exception, ((() => Int) retains *)]

@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boxmap.scala:15:2 ----------------------------------------
+15 |  () => b[Box[B]]((x: A) => box(f(x)))  // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Found:    (() => Box[B]) retains b retains f
+   |  Required: () => Box[B]
+   |
+   |  where:    B is a type in method lazymap with bounds <: Top
+
+longer explanation available when compiling with `-explain`
