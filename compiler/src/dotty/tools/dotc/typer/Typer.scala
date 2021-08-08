@@ -3159,7 +3159,7 @@ class Typer extends Namer
    */
   def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean = true)(using Context): Tree =
     try
-      trace(i"adapting $tree to $pt ${if (tryGadtHealing) "" else "(tryGadtHealing=false)" }\n", typr, show = true) {
+      trace(i"adapting $tree to $pt ${if (tryGadtHealing) "" else "(tryGadtHealing=false)" }", typr, show = true) {
         record("adapt")
         adapt1(tree, pt, locked, tryGadtHealing)
       }
