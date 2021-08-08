@@ -1167,14 +1167,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         else
           fallback(tycon2bounds.lo)
 
-      def compareTyConGadtBounds: Boolean =
-        tycon2 match
-          case tycon2: TypeRef =>
-            val tycon2sym = tycon2.symbol
-            tycon2sym.onGadtBounds { bounds2 =>
-              compareLower(bounds2, tyconIsTypeRef = false)
-            }
-          case _ => false
+      def byGadtBounds: Boolean =
+        {
+          tycon2 match
+            case tycon2: TypeRef =>
+              val tycon2sym = tycon2.symbol
+              tycon2sym.onGadtBounds { bounds2 =>
+                compareLower(bounds2, tyconIsTypeRef = false)
+              }
+            case _ => false
+        } && { GADTused = true; true }
 
       tycon2 match {
         case param2: TypeParamRef =>
@@ -1183,7 +1185,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           compareLower(bounds(param2), tyconIsTypeRef = false)
         case tycon2: TypeRef =>
           isMatchingApply(tp1) ||
-          compareTyConGadtBounds ||
+          byGadtBounds ||
           defn.isCompiletimeAppliedType(tycon2.symbol) && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true) || {
             tycon2.info match {
               case info2: TypeBounds =>
