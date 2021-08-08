@@ -526,7 +526,7 @@ object Inferencing {
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
-    case tp: CapturingType => tp.derivedCapturingType(captureWildcards(tp.parent), tp.ref)
+    case tp: CapturingType => tp.derivedCapturingType(captureWildcards(tp.parent), tp.refs)
     case _ => tp
   }
 }
@@ -695,6 +695,7 @@ trait Inferencing { this: Typer =>
           if !argType.isSingleton then argType = SkolemType(argType)
           argType <:< tvar
       case _ =>
+        () // scala-meta complains if this is missing, but I could not mimimize further
   end constrainIfDependentParamRef
 }
 
@@ -709,4 +710,3 @@ trait Inferencing { this: Typer =>
 
 enum IfBottom:
   case ok, fail, flip
-

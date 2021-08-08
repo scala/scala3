@@ -490,7 +490,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // under -Ycheck. Test case is i7965.scala.
 
       case tp1: CapturingType =>
-        if tp2.captureSet.accountsFor(tp1.ref) then recur(tp1.parent, tp2)
+        if tp1.refs <:< tp2.captureSet then recur(tp1.parent, tp2)
         else thirdTry
       case tp1: MatchType =>
         val reduced = tp1.reduced
@@ -820,7 +820,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               //   ---------------------------
               //      E |- x: {x} T
               //
-              CapturingType(tp2, defn.captureRootType.typeRef)
+              CapturingType(tp2, CaptureSet.universal)
             case _ => tp2
           isSubType(tp1.underlying.widenExpr, tp2n, approx.addLow)
         }
@@ -2368,8 +2368,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       tp1.underlying & tp2
     case tp1: AnnotatedType if !tp1.isRefining =>
       tp1.underlying & tp2
-    case tp1: CapturingType if !tp2.captureSet.accountsFor(tp1.ref) =>
-      tp1.parent & tp2
+    case tp1: CapturingType =>
+      if tp2.captureSet <:< tp1.refs then tp1.parent & tp2
+      else tp1.derivedCapturingType(tp1.parent & tp2, tp1.refs)
     case _ =>
       NoType
   }

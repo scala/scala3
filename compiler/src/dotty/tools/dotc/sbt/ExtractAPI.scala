@@ -521,8 +521,8 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       case SuperType(thistpe, supertpe) =>
         val s = combineApiTypes(apiType(thistpe), apiType(supertpe))
         withMarker(s, superMarker)
-      case CapturingType(parent, ref) =>
-        val s = combineApiTypes(apiType(parent), apiType(ref))
+      case CapturingType(parent, refs) =>
+        val s = combineApiTypes(apiType(parent), apiType(refs.toRetainsTypeArg))
         withMarker(s, retainsMarker)
       case _ => {
         internalError(i"Unhandled type $tp of class ${tp.getClass}")

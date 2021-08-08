@@ -11,40 +11,50 @@ import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
 
-case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
+/** A class for capture sets. Capture sets can be constants or variables.
+ */
+sealed abstract class CaptureSet extends Showable:
   import CaptureSet.*
 
-  def isEmpty: Boolean = elems.isEmpty
+  /** The elements of this capture set. For capture variables,
+   *  the elements known so far.
+   */
+  def elems: Refs
+
+  /** Is this capture set constant (i.e. not a capture variable)?
+   */
+  def isConst: Boolean
+
+  /** Is this capture set (always) empty? For capture veraiables, returns
+   *  always false
+   */
+  def isEmpty: Boolean
   def nonEmpty: Boolean = !isEmpty
 
-  private var myClosure: Refs | Null = null
+  /** Add new elements to this capture set if allowed.
+   *  @pre `newElems` is not empty and does not overlap with `this.elems`.
+   *  Constant capture sets never allow to add new elements.
+   *  Variables allow it if and only if the new elements can be included
+   *  in all their supersets.
+   *  @return true iff elements were added
+   */
+  protected def addNewElems(newElems: Refs)(using Context): Boolean
 
-  def closure(using Context): Refs =
-    if myClosure == null then
-      var cl = elems
-      var seen: Refs = SimpleIdentitySet.empty
-      while
-        val prev = cl
-        for ref <- cl do
-          if !seen.contains(ref) then
-            seen += ref
-            cl = cl ++ ref.captureSetOfInfo.elems
-        prev ne cl
-      do ()
-      myClosure = cl
-    myClosure
+  /** If this is a variable, add `cs` as a super set */
+  protected def addSuper(cs: CaptureSet): this.type
 
-  def ++ (that: CaptureSet): CaptureSet =
-    if this.isEmpty then that
-    else if that.isEmpty then this
-    else CaptureSet(elems ++ that.elems)
+  /** If `cs` is a variable, add this capture set as one of its super sets */
+  protected def addSub(cs: CaptureSet): this.type =
+    cs.addSuper(this)
+    this
 
-  def + (ref: CaptureRef) =
-    if elems.contains(ref) then this
-    else CaptureSet(elems + ref)
-
-  def intersect (that: CaptureSet): CaptureSet =
-    CaptureSet(this.elems.intersect(that.elems))
+  /** Try to include all references of `elems` that are not yet accounted by this
+   *  capture set. Inclusion is via `addElems`.
+   *  @return true iff elements were added
+   */
+  protected def tryInclude(elems: Refs)(using Context): Boolean =
+    val unaccounted = elems.filter(!accountsFor(_))
+    unaccounted.isEmpty || addNewElems(unaccounted)
 
   /** {x} <:< this   where <:< is subcapturing */
   def accountsFor(x: CaptureRef)(using Context) =
@@ -52,10 +62,37 @@ case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
 
   /** The subcapturing test */
   def <:< (that: CaptureSet)(using Context): Boolean =
-    elems.isEmpty || elems.forall(that.accountsFor)
+    that.tryInclude(elems) && { addSuper(that); true }
 
+  /** The smallest capture set (via <:<) that is a superset of both
+   *  `this` and `that`
+   */
+  def ++ (that: CaptureSet)(using Context): CaptureSet =
+    if this.isConst && this.elems.forall(that.accountsFor) then that
+    else if that.isConst && that.elems.forall(this.accountsFor) then this
+    else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
+    else Var(this.elems ++ that.elems).addSub(this).addSub(that)
+
+  /** The smallest superset (via <:<) of this capture set that also contains `ref`.
+   */
+  def + (ref: CaptureRef)(using Context) = ++ (ref.singletonCaptureSet)
+
+  /** The largest capture set (via <:<) that is a subset of both `this` and `that`
+   */
+  def intersect(that: CaptureSet)(using Context): CaptureSet =
+    if this.isConst && this.elems.forall(that.accountsFor) then this
+    else if that.isConst && that.elems.forall(this.accountsFor) then that
+    else if this.isConst && that.isConst then Const(this.elems.intersect(that.elems))
+    else Var(this.elems.intersect(that.elems)).addSuper(this).addSuper(that)
+
+  /** capture set obtained by applying `f` to all elements of the current capture set
+   *  and joining the results. If the current capture set is a variable, the same
+   *  transformation is applied to all future additions of new elements.
+   */
   def flatMap(f: CaptureRef => CaptureSet)(using Context): CaptureSet =
-    (empty /: elems)((cs, ref) => cs ++ f(ref))
+    mapRefs(elems, f) match
+      case cs: Const => cs
+      case cs: Var => Mapped(cs, f)
 
   def substParams(tl: BindingType, to: List[Type])(using Context) =
     flatMap {
@@ -63,22 +100,78 @@ case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
       case ref => ref.singletonCaptureSet
     }
 
-  override def toString = elems.toString
+  def toRetainsTypeArg(using Context): Type =
+    assert(isConst)
+    ((NoType: Type) /: elems) ((tp, ref) =>
+      if tp.exists then OrType(tp, ref, soft = false) else ref)
 
   override def toText(printer: Printer): Text =
     Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}")
 
 object CaptureSet:
   type Refs = SimpleIdentitySet[CaptureRef]
+  type Vars = SimpleIdentitySet[Var]
+  type Deps = SimpleIdentitySet[CaptureSet]
 
-   @sharable val empty: CaptureSet = CaptureSet(SimpleIdentitySet.empty)
+  private val emptySet = SimpleIdentitySet.empty
+  @sharable private var varId = 0
+
+  val empty: CaptureSet = Const(emptySet)
+
+  /** The universal capture set `{*}` */
+  def universal(using Context): CaptureSet =
+    defn.captureRootType.typeRef.singletonCaptureSet
 
   /** Used as a recursion brake */
-  @sharable private[core] val Pending = CaptureSet(SimpleIdentitySet.empty)
+  @sharable private[core] val Pending = Const(SimpleIdentitySet.empty)
 
   def apply(elems: CaptureRef*)(using Context): CaptureSet =
     if elems.isEmpty then empty
-    else CaptureSet(SimpleIdentitySet(elems.map(_.normalizedRef)*))
+    else Const(SimpleIdentitySet(elems.map(_.normalizedRef)*))
+
+  class Const private[CaptureSet] (val elems: Refs) extends CaptureSet:
+    assert(elems != null)
+    def isConst = true
+    def isEmpty: Boolean = elems.isEmpty
+
+    def addNewElems(elems: Refs)(using Context): Boolean = false
+    def addSuper(cs: CaptureSet) = this
+
+    override def toString = elems.toString
+  end Const
+
+  class Var private[CaptureSet] (initialElems: Refs) extends CaptureSet:
+    val id =
+      varId += 1
+      varId
+
+    var elems: Refs = initialElems
+    var deps: Deps = emptySet
+    def isConst = false
+    def isEmpty = false
+
+    def addNewElems(newElems: Refs)(using Context): Boolean =
+      deps.forall(_.tryInclude(newElems)) && { elems ++= newElems; true }
+
+    def addSuper(cs: CaptureSet) = { deps += cs; this }
+
+    override def toString = s"Var$id$elems"
+  end Var
+
+  class Mapped private[CaptureSet] (cv: Var, f: CaptureRef => CaptureSet) extends Var(cv.elems):
+    addSub(cv)
+
+    override def accountsFor(x: CaptureRef)(using Context): Boolean =
+      f(x).elems.forall(super.accountsFor)
+
+    override def addNewElems(newElems: Refs)(using Context): Boolean =
+      super.addNewElems(mapRefs(newElems, f).elems)
+
+    override def toString = s"Mapped$id$elems"
+  end Mapped
+
+  def mapRefs(xs: Refs, f: CaptureRef => CaptureSet)(using Context): CaptureSet =
+    (empty /: xs)((cs, x) => cs ++ f(x))
 
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
     def captureSetOf(tp: Type): CaptureSet = tp match
@@ -105,8 +198,8 @@ object CaptureSet:
         tp.captureSet
       case tp: ParamRef =>
         tp.captureSet
-      case CapturingType(parent, ref) =>
-        recur(parent) + ref
+      case CapturingType(parent, refs) =>
+        recur(parent) ++ refs
       case AppliedType(tycon, args) =>
         val cs = recur(tycon)
         tycon.typeParams match
@@ -125,3 +218,8 @@ object CaptureSet:
     recur(tp)
       .showing(i"capture set of $tp = $result", capt)
 
+  def fromRetainsTypeArg(tp: Type)(using Context): CaptureSet = tp match
+    case tp: CaptureRef => tp.singletonCaptureSet
+    case OrType(tp1, tp2) => fromRetainsTypeArg(tp1) ++ fromRetainsTypeArg(tp2)
+
+end CaptureSet

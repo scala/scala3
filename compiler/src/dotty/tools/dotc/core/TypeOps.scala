@@ -169,7 +169,7 @@ object TypeOps:
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
       case tp: CapturingType
-      if !ctx.mode.is(Mode.Type) && tp.parent.captureSet.accountsFor(tp.ref) =>
+      if !ctx.mode.is(Mode.Type) && tp.refs <:< tp.parent.captureSet =>
         simplify(tp.parent, theMap)
       case tp: MethodicType =>
         tp // See documentation of `Types#simplified`
@@ -275,7 +275,7 @@ object TypeOps:
         case tp1: RecType =>
           return tp1.rebind(approximateOr(tp1.parent, tp2))
         case tp1: CapturingType =>
-          return tp1.derivedCapturingType(approximateOr(tp1.parent, tp2), tp1.ref)
+          return tp1.derivedCapturingType(approximateOr(tp1.parent, tp2), tp1.refs)
         case err: ErrorType =>
           return err
         case _ =>
@@ -284,7 +284,7 @@ object TypeOps:
         case tp2: RecType =>
           return tp2.rebind(approximateOr(tp1, tp2.parent))
         case tp2: CapturingType =>
-          return tp2.derivedCapturingType(approximateOr(tp1, tp2.parent), tp2.ref)
+          return tp2.derivedCapturingType(approximateOr(tp1, tp2.parent), tp2.refs)
         case err: ErrorType =>
           return err
         case _ =>

@@ -361,7 +361,7 @@ class TreeUnpickler(reader: TastyReader,
               val args = until(end)(readType())
               tycon match
                 case tycon: TypeRef if tycon.symbol == defn.Predef_retainsType =>
-                  CapturingType.checked(args(0), args(1))
+                  CapturingType(args(0), CaptureSet.fromRetainsTypeArg(args(1)))
                 case _ =>
                   tycon.appliedTo(args)
             case TYPEBOUNDS =>

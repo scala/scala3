@@ -373,7 +373,7 @@ object Types {
       case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
       case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
       case WildcardType(optBounds) => optBounds.unusableForInference
-      case CapturingType(parent, ref) => parent.unusableForInference || ref.unusableForInference
+      case CapturingType(parent, refs) => parent.unusableForInference || refs.elems.exists(_.unusableForInference)
       case _: ErrorType => true
       case _ => false
 
@@ -1382,7 +1382,7 @@ object Types {
         val tp1 = tp.parent.dealias1(keep)
         if keep(tp) then tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: CapturingType =>
-        tp.derivedCapturingType(tp.parent.dealias1(keep), tp.ref)
+        tp.derivedCapturingType(tp.parent.dealias1(keep), tp.refs)
       case tp: LazyRef =>
         tp.ref.dealias1(keep)
       case _ => this
@@ -1843,7 +1843,7 @@ object Types {
     }
 
     def capturing(ref: CaptureRef)(using Context): Type =
-      if captureSet.accountsFor(ref) then this else CapturingType(this, ref)
+      if captureSet.accountsFor(ref) then this else CapturingType(this, ref.singletonCaptureSet)
 
     def capturing(cs: CaptureSet)(using Context): Type =
       (this /: cs.elems)(_.capturing(_))
@@ -3688,10 +3688,13 @@ object Types {
           case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
           case tp: TermParamRef if tp.binder eq thisLambdaType => TrueDeps
           case tp: CapturingType =>
-            val status1 = compute(status, tp.parent, theAcc)
-            tp.ref match
-              case tp: TermParamRef if tp.binder eq thisLambdaType => combine(status1, CaptureDeps)
-              case _ => status1
+            var status1 = compute(status, tp.parent, theAcc)
+            for ref <- tp.refs.elems do
+              ref match
+                case tp: TermParamRef if tp.binder eq thisLambdaType =>
+                  status1 = combine(status1, CaptureDeps)
+                case _ =>
+            status1
           case _: ThisType | _: BoundType | NoPrefix => status
           case _ =>
             (if theAcc != null then theAcc else DepAcc()).foldOver(status, tp)
@@ -5175,39 +5178,39 @@ object Types {
       unique(CachedAnnotatedType(parent, annot))
   end AnnotatedType
 
-  abstract case class CapturingType(parent: Type, ref: CaptureRef) extends AnnotOrCaptType:
+  abstract case class CapturingType(parent: Type, refs: CaptureSet) extends AnnotOrCaptType:
     override def underlying(using Context): Type = parent
 
-    def derivedCapturingType(parent: Type, ref: CaptureRef)(using Context): CapturingType =
-      if (parent eq this.parent) && (ref eq this.ref) then this
-      else CapturingType(parent, ref)
+    override def captureSet(using Context) = refs
 
-    def derivedCapturing(parent: Type, capt: Type)(using Context): Type =
-      if (parent eq this.parent) && (capt eq this.ref) then this
-      else parent.capturing(capt.captureSet)
+    def derivedCapturingType(parent: Type, refs: CaptureSet)(using Context): Type =
+      if (parent eq this.parent) && (refs eq this.refs) then this
+      else CapturingType(parent, refs)
+
+    def derivedCapturingType(parent: Type, capt: Type)(using Context): Type =
+      parent.capturing(capt.captureSet)
 
     // equals comes from case class; no matching override is needed
 
     override def computeHash(bs: Binders): Int =
-      doHash(bs, parent, ref)
+      doHash(bs, refs, parent)
     override def hashIsStable: Boolean =
-      parent.hashIsStable && ref.hashIsStable
+      parent.hashIsStable
 
     override def eql(that: Type): Boolean = that match
-      case that: CapturingType => (parent eq that.parent) && (ref eq that.ref)
+      case that: CapturingType => (parent eq that.parent) && (refs eq that.refs)
       case _ => false
 
     override def iso(that: Any, bs: BinderPairs): Boolean = that match
-      case that: CapturingType => parent.equals(that.parent, bs) && ref.equals(that.ref, bs)
+      case that: CapturingType => parent.equals(that.parent, bs) && (refs eq that.refs)
       case _ => false
 
-  class CachedCapturingType(parent: Type, ref: CaptureRef) extends CapturingType(parent, ref)
+  class CachedCapturingType(parent: Type, refs: CaptureSet) extends CapturingType(parent, refs)
 
   object CapturingType:
-    def apply(parent: Type, ref: CaptureRef)(using Context): CapturingType =
-      unique(CachedCapturingType(parent, ref.normalizedRef))
-    def checked(parent: Type, ref: Type)(using Context): CapturingType = ref match
-      case ref: CaptureRef => apply(parent, ref)
+    def apply(parent: Type, refs: CaptureSet)(using Context): Type =
+      if refs.isEmpty then parent
+      else unique(CachedCapturingType(parent, refs))
   end CapturingType
 
   // Special type objects and classes -----------------------------------------------------
@@ -5481,8 +5484,8 @@ object Types {
       tp.derivedMatchType(bound, scrutinee, cases)
     protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
       tp.derivedAnnotatedType(underlying, annot)
-    protected def derivedCapturing(tp: CapturingType, parent: Type, capt: Type): Type =
-      tp.derivedCapturing(parent, capt)
+    protected def derivedCapturingType(tp: CapturingType, parent: Type, refs: CaptureSet): Type =
+      tp.derivedCapturingType(parent, refs)
     protected def derivedWildcardType(tp: WildcardType, bounds: Type): Type =
       tp.derivedWildcardType(bounds)
     protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
@@ -5562,8 +5565,8 @@ object Types {
           if (underlying1 eq underlying) tp
           else derivedAnnotatedType(tp, underlying1, mapOver(annot))
 
-        case tp @ CapturingType(parent, ref) =>
-          derivedCapturing(tp, this(parent), this(ref))
+        case tp @ CapturingType(parent, refs) =>
+          derivedCapturingType(tp, this(parent), refs.flatMap(this(_).captureSet))
 
         case _: ThisType
           | _: BoundType
@@ -5884,15 +5887,12 @@ object Types {
           if (underlying.isExactlyNothing) underlying
           else tp.derivedAnnotatedType(underlying, annot)
       }
-    override protected def derivedCapturing(tp: CapturingType, parent: Type, capt: Type): Type =
-      capt match
+    override protected def derivedCapturingType(tp: CapturingType, parent: Type, refs: CaptureSet): Type =
+      parent match
         case Range(lo, hi) =>
-          range(derivedCapturing(tp, parent, hi), derivedCapturing(tp, parent, lo))
-        case _ => parent match
-          case Range(lo, hi) =>
-            range(derivedCapturing(tp, lo, capt), derivedCapturing(tp, hi, capt))
-          case _ =>
-            tp.derivedCapturing(parent, capt)
+          range(derivedCapturingType(tp, lo, refs), derivedCapturingType(tp, hi, refs))
+        case _ =>
+          tp.derivedCapturingType(parent, refs)
 
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType =
       tp.derivedWildcardType(rangeToBounds(bounds))
@@ -6033,8 +6033,8 @@ object Types {
       case AnnotatedType(underlying, annot) =>
         this(applyToAnnot(x, annot), underlying)
 
-      case CapturingType(parent, ref) =>
-        this(this(x, parent), ref)
+      case CapturingType(parent, refs) =>
+        (this(x, parent) /: refs.elems)(this)
 
       case tp: ProtoType =>
         tp.fold(x, this)

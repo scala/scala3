@@ -282,7 +282,7 @@ class TreePickler(pickler: TastyPickler) {
       withLength {
         pickleType(defn.Predef_retainsType.typeRef)
         pickleType(tp.parent)
-        pickleType(tp.ref)
+        pickleType(tp.refs.toRetainsTypeArg)
       }
     case tpe: PolyType if richTypes =>
       pickleMethodic(POLYtype, tpe, EmptyFlags)

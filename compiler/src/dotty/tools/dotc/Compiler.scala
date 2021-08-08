@@ -3,7 +3,7 @@ package dotc
 
 import core._
 import Contexts._
-import typer.{TyperPhase, RefChecks}
+import typer.{TyperPhase, RefChecks, CheckCaptures}
 import parsing.Parser
 import Phases.Phase
 import transform._
