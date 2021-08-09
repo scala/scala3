@@ -21,7 +21,5 @@ object ConstantOps:
       case DoubleTag => s.DoubleConstant(const.doubleValue)
       case StringTag => s.StringConstant(const.stringValue)
       case NullTag => s.NullConstant()
-      // ConstantType(_: Type, ClazzTag) should be converted as it's type
-      // NoTag => it shouldn't happen
       case _ => throw new Error(s"Constant ${const} can't be converted to Semanticdb Constant.")
     }

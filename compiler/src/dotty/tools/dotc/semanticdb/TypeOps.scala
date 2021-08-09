@@ -10,6 +10,7 @@ import core.Flags
 import core.Names.Name
 import core.StdNames.tpnme
 import ast.tpd._
+import scala.util.chaining.scalaUtilChainingOps
 
 import collection.mutable
 
@@ -153,18 +154,14 @@ class TypeOps:
             case mt: MethodType =>
               val syms: List[SemanticSymbol] = mt.paramNames.zip(mt.paramInfos).map { (name, info) =>
                 paramRefSymtab.lookup(mt, name).getOrElse {
-                  val fakeSym = TermParamRefSymbol(sym, name, info)
-                  registerFakeSymbol(fakeSym)
-                  fakeSym
+                  TermParamRefSymbol(sym, name, info).tap(registerFakeSymbol)
                 }
               }
               flatten(mt.resType, paramss :+ syms, tparams)
             case pt: PolyType =>
               val syms: List[SemanticSymbol] = pt.paramNames.zip(pt.paramInfos).map { (name, info) =>
                 paramRefSymtab.lookup(pt, name).getOrElse {
-                  val fakeSym = TypeParamRefSymbol(sym, name, info)
-                  registerFakeSymbol(fakeSym)
-                  fakeSym
+                  TypeParamRefSymbol(sym, name, info).tap(registerFakeSymbol)
                 }
               }
               flatten(pt.resType, paramss, tparams ++ syms)
@@ -195,14 +192,10 @@ class TypeOps:
               val paramSyms: List[SemanticSymbol] = lambda.paramNames.zip(lambda.paramInfos).map { (paramName, bounds) =>
                 // def x[T[_]] = ???
                 if paramName.isWildcard then
-                  val fakeSym = WildcardTypeSymbol(sym, bounds)
-                  registerFakeSymbol(fakeSym)
-                  fakeSym
+                  WildcardTypeSymbol(sym, bounds).tap(registerFakeSymbol)
                 else
                   paramRefSymtab.lookup(lambda, paramName).getOrElse {
-                    val fakeSym = TypeParamRefSymbol(sym, paramName, bounds)
-                    registerFakeSymbol(fakeSym)
-                    fakeSym
+                    TypeParamRefSymbol(sym, paramName, bounds).tap(registerFakeSymbol)
                   }
               }
               (lambda.resType, paramSyms)
@@ -261,9 +254,7 @@ class TypeOps:
               tref.binder.typeParams.find(param => param.paramName == tref.paramName) match
                 case Some(param) =>
                   val info = param.paramInfo
-                  val fakeSym = TypeParamRefSymbol(sym, tref.paramName, info)
-                  registerFakeSymbol(fakeSym)
-                  Some(fakeSym)
+                  Some(TypeParamRefSymbol(sym, tref.paramName, info).tap(registerFakeSymbol))
                 case None =>
                   symbolNotFound(tref.binder, tref.paramName, sym)
                   None
@@ -319,9 +310,7 @@ class TypeOps:
 
           val decls: List[SemanticSymbol] = refinedInfos.map { (name, info) =>
             refinementSymtab.lookup(rt, name).getOrElse {
-              val fakeSym = RefinementSymbol(sym, name, info)
-              registerFakeSymbol(fakeSym)
-              fakeSym
+              RefinementSymbol(sym, name, info).tap(registerFakeSymbol)
             }
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
