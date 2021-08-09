@@ -441,14 +441,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           throw e
 
     protected def compile(files0: Array[JFile], flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
-      val flags = flags0.and("-d", targetDir.getPath)
-        .withClasspath(targetDir.getPath)
-
       def flattenFiles(f: JFile): Array[JFile] =
         if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
         else Array(f)
 
       val files: Array[JFile] = files0.flatMap(flattenFiles)
+
+      val flags = flags0
+        .and(toolArgsFor(files.toList.map(_.toPath))(using getCodecFromEncodingOpt(flags0)): _*)
+        .and("-d", targetDir.getPath)
+        .withClasspath(targetDir.getPath)
 
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
@@ -976,7 +978,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           target.copy(files = files2)
         case target @ SeparateCompilationSource(_, dir, _, outDir) =>
           target.copy(dir = copyToDir(outDir, dir))
-      }
+      }.map(_.withFlags("-rewrite"))
 
       new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
       this
@@ -1128,7 +1130,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
   /** Compiles a single file from the string path `f` using the supplied flags */
-  def compileFile(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
+  def compileFile(f: String, flags: TestFlags = TestConfiguration.defaultOptions)(implicit testGroup: TestGroup): CompilationTest = {
     val sourceFile = new JFile(f)
     val parent = sourceFile.getParentFile
     val outDir =
@@ -1137,7 +1139,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     require(
       sourceFile.exists && !sourceFile.isDirectory &&
-      (parent ne null) && parent.exists && parent.isDirectory,
+      (parent ne null) && parent.isDirectory,
       s"Source file: $f, didn't exist"
     )
 
@@ -1157,7 +1159,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  By default, files are compiled in alphabetical order. An optional seed
    *  can be used for randomization.
    */
-  def compileDir(f: String, flags: TestFlags, randomOrder: Option[Int] = None, recursive: Boolean = true)(implicit testGroup: TestGroup): CompilationTest = {
+  def compileDir(f: String, flags: TestFlags = TestConfiguration.defaultOptions, randomOrder: Option[Int] = None, recursive: Boolean = true)(implicit testGroup: TestGroup): CompilationTest = {
     val outDir = defaultOutputDir + testGroup + JFile.separator
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
@@ -1188,7 +1190,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  `testName` since files can be in separate directories and or be otherwise
    *  dissociated
    */
-  def compileList(testName: String, files: List[String], flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
+  def compileList(testName: String, files: List[String], flags: TestFlags = TestConfiguration.defaultOptions)(implicit testGroup: TestGroup): CompilationTest = {
     val outDir = defaultOutputDir + testGroup + JFile.separator + testName + JFile.separator
 
     // Directories in which to compile all containing files with `flags`:
@@ -1219,7 +1221,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  - Directories can have an associated check-file, where the check file has
    *    the same name as the directory (with the file extension `.check`)
    */
-  def compileFilesInDir(f: String, flags: TestFlags, fileFilter: FileFilter = FileFilter.NoFilter)(implicit testGroup: TestGroup): CompilationTest = {
+  def compileFilesInDir(f: String, flags: TestFlags = TestConfiguration.defaultOptions, fileFilter: FileFilter = FileFilter.NoFilter)(implicit testGroup: TestGroup): CompilationTest = {
     val outDir = defaultOutputDir + testGroup + JFile.separator
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
@@ -1260,7 +1262,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  Tests in the first part of the tuple must be executed before the second.
    *  Both testsRequires explicit delete().
    */
-  def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(
+  def compileTastyInDir(f: String, flags0: TestFlags = TestConfiguration.defaultOptions, fromTastyFilter: FileFilter)(
       implicit testGroup: TestGroup): TastyCompilationTest = {
     val outDir = defaultOutputDir + testGroup + JFile.separator
     val flags = flags0 and "-Yretain-trees"
@@ -1344,7 +1346,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    *  sub-directories and as such, does **not** perform separate compilation
    *  tests.
    */
-  def compileShallowFilesInDir(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
+  def compileShallowFilesInDir(f: String, flags: TestFlags = TestConfiguration.defaultOptions)(implicit testGroup: TestGroup): CompilationTest = {
     val outDir = defaultOutputDir + testGroup + JFile.separator
     val sourceDir = new JFile(f)
     checkRequirements(f, sourceDir, outDir)
@@ -1358,6 +1360,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
   }
+
+  private def getCodecFromEncodingOpt(flags: TestFlags) =
+    flags.options.sliding(2).collectFirst {
+      case Array("-encoding", encoding) => scala.io.Codec(encoding)
+    }.getOrElse(scala.io.Codec.UTF8)
 }
 
 object ParallelTesting {

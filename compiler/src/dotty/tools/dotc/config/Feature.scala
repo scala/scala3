@@ -36,7 +36,8 @@ object Feature:
    *  but subtracting the prefix `scala.language.` at the front.
    */
   def enabledBySetting(feature: TermName)(using Context): Boolean =
-    ctx.base.settings.language.value.contains(feature.toString)
+    ctx.base.settings.language.value.contains(s"$feature")
+    && !ctx.base.settings.language.value.contains(s"-$feature")
 
   /** Is `feature` enabled by by an import? This is the case if the feature
    *  is imported by a named import

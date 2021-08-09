@@ -20,6 +20,9 @@ final case class TestFlags(
   def withRunClasspath(classPath: String): TestFlags =
     TestFlags(defaultClassPath, s"$runClassPath${JFile.pathSeparator}$classPath", options, javacOptions)
 
+  def withCompileAndRunClasspath(classPath: String): TestFlags =
+    withClasspath(classPath).withRunClasspath(classPath)
+
   def withJavacOnlyOptions(flags: String*): TestFlags =
     TestFlags(defaultClassPath, runClassPath, options, javacOptions ++ flags)
 

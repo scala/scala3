@@ -108,7 +108,9 @@ object Settings:
             fail(s"$argValue is not a valid choice for $name", args)
           case _ =>
             update(argValue, args)
-      def doSet(argRest: String) = ((implicitly[ClassTag[T]], args): @unchecked) match {
+      def doSet(argRest: String): ArgsSummary = ((implicitly[ClassTag[T]], args): @unchecked) match {
+        case (BooleanTag, _) if argRest != "" =>
+          argRest.toBooleanOption.fold(fail(s"'$arg' isn't a legal value for $name'", args))(update(_, args))
         case (BooleanTag, _) =>
           update(true, args)
         case (OptionTag, _) =>
@@ -137,7 +139,7 @@ object Settings:
               case Some(r: Range) if x < r.head || r.last < x =>
                 fail(s"$arg2 is out of legal range ${r.head}..${r.last} for $name", args2)
               case Some(xs) if !xs.contains(x) =>
-                fail(s"$arg2 is not a valid choice for $name", args)
+                fail(s"$arg2 is not a valid choice for $name", args2)
               case _ =>
                 update(x, args2)
             }

@@ -61,14 +61,10 @@ object TestConfiguration {
   val commonOptions = Array("-indent", "-language:postfixOps") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
-  val withCompilerOptions =
-    defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
-  lazy val withStagingOptions =
-    defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
-  lazy val withTastyInspectorOptions =
-    defaultOptions.withClasspath(withTastyInspectorClasspath).withRunClasspath(withTastyInspectorClasspath)
-  lazy val scalaJSOptions =
-    defaultOptions.and("-scalajs").withClasspath(scalaJSClasspath)
+  val withCompilerOptions = defaultOptions.withCompileAndRunClasspath(withCompilerClasspath)
+  lazy val withStagingOptions = defaultOptions.withCompileAndRunClasspath(withStagingClasspath)
+  lazy val withTastyInspectorOptions = defaultOptions.withCompileAndRunClasspath(withTastyInspectorClasspath)
+  lazy val scalaJSOptions = defaultOptions.and("-scalajs").withClasspath(scalaJSClasspath)
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
   val picklingOptions = defaultOptions and (
@@ -77,8 +73,7 @@ object TestConfiguration {
     "-Yprint-pos",
     "-Yprint-pos-syms"
   )
-  val picklingWithCompilerOptions =
-    picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  val picklingWithCompilerOptions = picklingOptions.withCompileAndRunClasspath(withCompilerClasspath)
   val scala2CompatMode = defaultOptions.and("-source", "3.0-migration")
   val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")

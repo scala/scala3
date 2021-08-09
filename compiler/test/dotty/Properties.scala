@@ -5,15 +5,11 @@ import java.nio.file._
 /** Runtime properties from defines or environmnent */
 object Properties {
 
-  /** If property is unset or "TRUE" we consider it `true` */
-  private def propIsNullOrTrue(prop: String): Boolean = {
-    val prop = System.getProperty("dotty.tests.interactive")
-    prop == null || prop == "TRUE"
-  }
+  private def propIsNullOrTrue(prop: String): Boolean =
+    sys.props.getOrElseUpdate(prop, "FALSE") == "TRUE"
 
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
-  || sys.env.isDefinedAt("DRONE")  // TODO remove this when we drop Drone
 
   /** Tests should run interactive? */
   val testsInteractive: Boolean = propIsNullOrTrue("dotty.tests.interactive")
@@ -24,20 +20,17 @@ object Properties {
   val testsFilter: Option[String] = sys.props.get("dotty.tests.filter")
 
   /** Tests should override the checkfiles with the current output */
-  val testsUpdateCheckfile: Boolean =
-    sys.props.getOrElse("dotty.tests.updateCheckfiles", "FALSE") == "TRUE"
+  val testsUpdateCheckfile: Boolean = propIsNullOrTrue("dotty.tests.updateCheckfiles")
 
-  /** When set, the run tests are only compiled - not run, a warning will be
-   *  issued
-   */
-  val testsNoRun: Boolean = sys.props.get("dotty.tests.norun").isDefined
+  /** When set, the run tests are only compiled - not run, a warning will be issued */
+  val testsNoRun: Boolean = sys.props.contains("dotty.tests.norun")
 
   /** Should Unit tests run in safe mode?
    *
    *  For run tests this means that we respawn child JVM processes after each
    *  test, so that they are never reused.
    */
-  val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
+  val testsSafeMode: Boolean = sys.props.contains("dotty.tests.safemode")
 
   /** Extra directory containing sources for the compiler */
   def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
