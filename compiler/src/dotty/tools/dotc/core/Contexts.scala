@@ -52,8 +52,9 @@ object Contexts {
   private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
   private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo]()
   private val (typeAssignerLoc,    store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (entryPointsLoc,     store11) = store10.newLocation[EntryPoints](new EntryPoints)
 
-  private val initialStore = store10
+  private val initialStore = store11
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -238,6 +239,9 @@ object Contexts {
 
     /** The current type assigner or typer */
     def typeAssigner: TypeAssigner = store(typeAssignerLoc)
+
+    /** The current entry points */
+    def entryPoints: EntryPoints = store(entryPointsLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null

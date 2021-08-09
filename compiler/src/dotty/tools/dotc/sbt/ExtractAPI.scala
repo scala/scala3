@@ -66,7 +66,7 @@ class ExtractAPI extends Phase {
 
     val apiTraverser = new ExtractAPICollector
     val classes = apiTraverser.apiSource(unit.tpdTree)
-    val mainClasses = apiTraverser.mainClasses
+    val mainClasses = ctx.entryPoints.toSet
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
@@ -144,7 +144,6 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
   private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
 
   private val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
-  private val _mainClasses = new mutable.HashSet[String]
 
   private object Constants {
     val emptyStringArray = Array[String]()
@@ -195,11 +194,6 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
   def apiClass(sym: ClassSymbol): api.ClassLikeDef =
     classLikeCache.getOrElseUpdate(sym, computeClass(sym))
 
-  def mainClasses: Set[String] = {
-    forceThunks()
-    _mainClasses.toSet
-  }
-
   private def computeClass(sym: ClassSymbol): api.ClassLikeDef = {
     import xsbti.api.{DefinitionType => dt}
     val defType =
@@ -233,11 +227,6 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       childrenOfSealedClass, topLevel, tparams)
 
     allNonLocalClassesInSrc += cl
-
-    if (sym.isStatic && !sym.is(Trait) && ctx.platform.hasMainMethod(sym)) {
-       // If sym is an object, all main methods count, otherwise only @static ones count.
-      _mainClasses += name
-    }
 
     api.ClassLikeDef.of(name, acc, modifiers, anns, tparams, defType)
   }
