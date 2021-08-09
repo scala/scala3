@@ -12,7 +12,6 @@ import typer.Implicits._
 import typer.ImportInfo
 import Variances.varianceSign
 import util.SourcePosition
-import java.lang.Integer.toOctalString
 import scala.util.control.NonFatal
 import scala.annotation.switch
 
@@ -525,7 +524,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case '"' => "\\\""
     case '\'' => "\\\'"
     case '\\' => "\\\\"
-    case _ => if (ch.isControl) "\\0" + toOctalString(ch) else String.valueOf(ch)
+    case _ => if (ch.isControl) f"\u${ch.toInt}%04x" else String.valueOf(ch)
   }
 
   def toText(const: Constant): Text = const.tag match {
