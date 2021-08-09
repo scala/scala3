@@ -140,10 +140,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       mySuspendedMessages.remove(source).foreach(_.foreach(ctx.reporter.issueIfNotSuppressed))
     }
 
-    def warnUnusedSuppressions(): Unit =
-      // if we stop before typer completes (errors in parser, Ystop), report all suspended messages
+    def runFinished(hasErrors: Boolean): Unit =
+      // report suspended messages (in case the run finished before typer)
       mySuspendedMessages.keysIterator.toList.foreach(reportSuspendedMessages)
-      if ctx.settings.WunusedHas.nowarn then
+      // report unused nowarns only if all all phases are done
+      if !hasErrors && ctx.settings.WunusedHas.nowarn then
         for {
           source <- mySuppressions.keysIterator.toList
           sups   <- mySuppressions.remove(source)
@@ -279,8 +280,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runPhases(using runCtx)
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
-      // later phases don't run when there are errors, which would lead to stale `unused @nowarn` warnings
-      suppressions.warnUnusedSuppressions()
+    suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)
     while (finalizeActions.nonEmpty) {
       val action = finalizeActions.remove(0)
       action()
