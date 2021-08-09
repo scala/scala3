@@ -257,6 +257,8 @@ longer explanation available when compiling with `-explain`
     |                                        Note: a match type could not be fully reduced:
     |
     |                                          trying to reduce  Test.T9[(Nothing, String)]
+    |                                          failed since selector  (Nothing, String)
+    |                                          is uninhabited (there are no values of that type).
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:106:40 ----------------------------------------------------
@@ -268,6 +270,8 @@ longer explanation available when compiling with `-explain`
     |                                        Note: a match type could not be fully reduced:
     |
     |                                          trying to reduce  Test.T9[(String, Nothing)]
+    |                                          failed since selector  (String, Nothing)
+    |                                          is uninhabited (there are no values of that type).
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:107:37 ----------------------------------------------------
@@ -279,6 +283,8 @@ longer explanation available when compiling with `-explain`
     |                                     Note: a match type could not be fully reduced:
     |
     |                                       trying to reduce  Test.T9[(Int, Nothing)]
+    |                                       failed since selector  (Int, Nothing)
+    |                                       is uninhabited (there are no values of that type).
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:108:37 ----------------------------------------------------
@@ -290,6 +296,8 @@ longer explanation available when compiling with `-explain`
     |                                     Note: a match type could not be fully reduced:
     |
     |                                       trying to reduce  Test.T9[(Nothing, Int)]
+    |                                       failed since selector  (Nothing, Int)
+    |                                       is uninhabited (there are no values of that type).
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:109:29 ----------------------------------------------------
