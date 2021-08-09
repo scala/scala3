@@ -61,35 +61,26 @@ class GenBCode extends Phase {
 
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+    outputDir match
+      case jar: JarArchive =>
+        updateJarManifestWithMainClass(jar)
+      case _ =>
     try super.runOn(units)
-    finally myOutput match {
+    finally outputDir match {
       case jar: JarArchive =>
         if (ctx.run.suspendedUnits.nonEmpty)
           // If we close the jar the next run will not be able to write on the jar.
           // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
           report.error("Can not suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
 
-        updateJarManifestWithMainClass(units, jar)
         jar.close()
       case _ =>
     }
   }
 
-  private def updateJarManifestWithMainClass(units: List[CompilationUnit], jarArchive: JarArchive)(using Context): Unit =
+  private def updateJarManifestWithMainClass(jarArchive: JarArchive)(using Context): Unit =
     val mainClass = Option.when(!ctx.settings.XmainClass.isDefault)(ctx.settings.XmainClass.value).orElse {
-      val _mainClassesBuffer = new mutable.HashSet[String]
-      units.map { unit =>
-        unit.tpdTree.foreachSubTree { tree =>
-          val sym = tree.symbol
-          import dotty.tools.dotc.core.NameOps.stripModuleClassSuffix
-          val name = sym.fullName.stripModuleClassSuffix.toString
-          if (sym.isStatic && !sym.is(Flags.Trait) && ctx.platform.hasMainMethod(sym)) {
-            // If sym is an object, all main methods count, otherwise only @static ones count.
-            _mainClassesBuffer += name
-          }
-        }
-      }
-      _mainClassesBuffer.toList.match
+      ctx.entryPoints.toList.match
         case List(mainClass) =>
           Some(mainClass)
         case Nil =>
@@ -99,7 +90,6 @@ class GenBCode extends Phase {
           report.warning(s"No Main-Class due to multiple entry points:\n  ${mcs.mkString("\n  ")}")
           None
     }
-
     mainClass.map { mc =>
       val manifest = Jar.WManifest()
       manifest.mainClass = mc
