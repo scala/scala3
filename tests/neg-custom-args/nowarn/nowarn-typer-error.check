@@ -1,0 +1,6 @@
+-- [E006] Not Found Error: tests/neg-custom-args/nowarn/nowarn-typer-error.scala:4:11 ----------------------------------
+4 |  def t1 = / // error
+  |           ^
+  |           Not found: /
+
+longer explanation available when compiling with `-explain`
