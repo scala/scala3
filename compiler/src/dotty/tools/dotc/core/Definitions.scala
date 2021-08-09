@@ -1210,7 +1210,7 @@ class Definitions {
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
 
-  @tu lazy val caseClassSynthesized: Set[Symbol] = Set(
+  @tu lazy val caseClassSynthesized: List[Symbol] = List(
     Any_hashCode, Any_equals, Any_toString, Product_canEqual, Product_productArity,
     Product_productPrefix, Product_productElement, Product_productElementName)
 
