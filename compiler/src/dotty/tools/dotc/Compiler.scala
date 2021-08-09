@@ -44,7 +44,6 @@ class Compiler {
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
-    List(new CollectEntryPoints) :: // Collect all entry points and save them in the context
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
     Nil
@@ -133,6 +132,7 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
+         new CollectEntryPoints,     // Collect all entry points and save them in the context
          new CollectSuperCalls,      // Find classes that are called with super
          new RepeatableAnnotations) :: // Aggregate repeatable annotations
     Nil
