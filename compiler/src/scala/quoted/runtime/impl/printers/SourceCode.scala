@@ -1224,6 +1224,12 @@ object SourceCode {
         this += " <: "
         printType(hi)
 
+      case MatchCase(pat, rhs) =>
+        this += "case "
+        printType(pat)
+        this += " => "
+        printType(rhs)
+
       case _ =>
         throw new MatchError(tpe.show(using Printer.TypeReprStructure))
     }

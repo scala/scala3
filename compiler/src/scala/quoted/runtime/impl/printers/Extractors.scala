@@ -232,6 +232,8 @@ object Extractors {
         this += "TypeBounds(" += lo += ", " += hi += ")"
       case NoPrefix() =>
         this += "NoPrefix()"
+      case MatchCase(pat, rhs) =>
+        this += "MatchCase(" += pat += ", " += rhs += ")"
     }
 
     def visitSignature(sig: Signature): this.type = {
