@@ -200,6 +200,7 @@ default_java_opts="-Xmx768m -Xms768m"
 
 CompilerMain=dotty.tools.dotc.Main
 DecompilerMain=dotty.tools.dotc.decompiler.Main
+TastyPrinterMain=dotty.tools.dotc.core.tasty.TastyPrinter
 ReplMain=dotty.tools.repl.Main
 ScriptingMain=dotty.tools.scripting.Main
 
