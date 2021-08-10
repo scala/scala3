@@ -16,6 +16,9 @@ DOTTY_NONBOOTSTRAPPED_VERSION=$(eval $DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND | ta
 DOTTY_BOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(Build.dottyVersion)\""
 DOTTY_BOOTSTRAPPED_VERSION=$(eval $DOTTY_BOOTSTRAPPED_VERSION_COMMAND | tail -n 2 | head -n 1)
 
+GITHUB_REPOSITORY="lampepfl/dotty"
+GITHUB_SHA="3.0.0"
+
 "$SBT" "scaladoc/generateTestcasesDocumentation" > "$tmp" 2>&1 || echo "generated testcases project with sbt"
 dist/target/pack/bin/scaladoc \
   -d "$OUT1" \
@@ -31,6 +34,8 @@ dist/target/pack/bin/scaladoc \
   -Ygenerate-inkuire \
   "-skip-by-id:scala.runtime.stdLibPatches" \
   "-skip-by-id:scala.runtime.MatchCase" \
+  "-snippet-compiler:scaladoc-testcases/docs=compile" \
+  -siteroot scaladoc-testcases/docs \
   -project-footer "Copyright (c) 2002-2021, LAMP/EPFL" \
   -author -groups -revision master -project-version "${DOTTY_BOOTSTRAPPED_VERSION}" \
   out/bootstrap/scaladoc-testcases/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/classes > "$tmp" 2>&1 || echo "generated testcases project with scripts"
