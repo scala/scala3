@@ -65,7 +65,7 @@ object SnippetRenderer:
         if elem.content.startsWith(currPrefix) then currPrefix else elem.content.takeWhile(_ == ' ')
       }
       snippetLines.map { line =>
-        if line.classes.contains("hideable") then line
+        if line.classes.contains("hideable") || maxCommonIndent.size == 0 then line
         else line.copy(content = span(cls := "hideable")(maxCommonIndent).toString + line.content.stripPrefix(maxCommonIndent))
       }
     }.getOrElse(snippetLines)
