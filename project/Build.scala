@@ -643,13 +643,14 @@ object Build {
             arg != "-with-compiler" && arg != "-Ythrough-tasty")
 
         val main =
-          if (decompile || printTasty) "dotty.tools.dotc.decompiler.Main"
+          if (decompile) "dotty.tools.dotc.decompiler.Main"
+          else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
           else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
           else "dotty.tools.dotc.Main"
 
         var extraClasspath = Seq(scalaLib, dottyLib)
 
-        if ((decompile || printTasty) && !args.contains("-classpath"))
+        if (decompile && !args.contains("-classpath"))
           extraClasspath ++= Seq(".")
 
         if (args0.contains("-with-compiler")) {
@@ -664,7 +665,7 @@ object Build {
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore)
         }
 
-        val fullArgs = main :: insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+        val fullArgs = main :: (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator)))
 
         (Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,

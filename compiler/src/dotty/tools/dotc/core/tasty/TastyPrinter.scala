@@ -11,13 +11,51 @@ import TastyUnpickler._
 import util.Spans.offsetToInt
 import printing.Highlighting._
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
+import java.nio.file.{Files, Paths}
+import dotty.tools.io.{JarArchive, Path}
 
 object TastyPrinter:
-  def show(bytes: Array[Byte])(using Context): String =
+
+  def showContents(bytes: Array[Byte], noColor: Boolean): String =
     val printer =
-      if ctx.settings.color.value == "never" then new TastyPrinter(bytes)
+      if noColor then new TastyPrinter(bytes)
       else new TastyAnsiiPrinter(bytes)
     printer.showContents()
+
+  def main(args: Array[String]): Unit = {
+    // TODO: Decouple CliCommand from Context and use CliCommand.distill?
+    val lineWidth = 80
+    val line = "-" * lineWidth
+    val noColor = args.contains("-color:never")
+    var printLastLine = false
+    def printTasty(fileName: String, bytes: Array[Byte]): Unit =
+      println(line)
+      println(fileName)
+      println(line)
+      println(showContents(bytes, noColor))
+      println()
+      printLastLine = true
+    for arg <- args if arg != "-print-tasty" do
+      if arg == "-print-tasty" || arg == "-color:never" then () // skip
+      else if arg.startsWith("-") then println(s"bad option '$arg' was ignored")
+      else if arg.endsWith(".tasty") then {
+        val path = Paths.get(arg)
+        if Files.exists(path) then printTasty(arg, Files.readAllBytes(path))
+        else println("File not found: " + arg)
+      }
+      else if arg.endsWith(".jar") then {
+        val jar = JarArchive.open(Path(arg), create = false)
+        try
+          for file <- jar.iterator() if file.name.endsWith(".tasty") do
+            printTasty(s"$arg ${file.path}", file.toByteArray)
+        finally jar.close()
+
+      }
+      else println(s"Not a '.tasty' or '.jar' file: $arg")
+
+    if printLastLine then
+      println(line)
+  }
 
 class TastyPrinter(bytes: Array[Byte]) {
 

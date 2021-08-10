@@ -40,12 +40,8 @@ class DecompilationPrinter extends Phase {
 
   private def printToOutput(out: PrintStream)(using Context): Unit = {
     val unit = ctx.compilationUnit
-    if (ctx.settings.printTasty.value)
-      println(TastyPrinter.show(unit.pickled.head._2()))
-    else {
-      val unitFile = unit.source.toString.replace("\\", "/").replace(".class", ".tasty")
-      out.println(s"/** Decompiled from $unitFile */")
-      out.println(QuotesImpl.showDecompiledTree(unit.tpdTree))
-    }
+    val unitFile = unit.source.toString.replace("\\", "/").replace(".class", ".tasty")
+    out.println(s"/** Decompiled from $unitFile */")
+    out.println(QuotesImpl.showDecompiledTree(unit.tpdTree))
   }
 }

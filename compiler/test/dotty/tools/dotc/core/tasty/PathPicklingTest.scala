@@ -1,7 +1,7 @@
 package dotty.tools.dotc.core.tasty
 
 import java.io.{File => JFile, ByteArrayOutputStream, IOException}
-import java.nio.file.{Files, NoSuchFileException, Path, Paths}
+import java.nio.file.{Files, NoSuchFileException, Paths}
 
 import scala.sys.process._
 
@@ -19,7 +19,7 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.io.{Directory, File, Path}
+import dotty.tools.io.{Directory, File, Path, JarArchive}
 
 import dotty.tools.vulpix.TestConfiguration
 
@@ -42,28 +42,24 @@ class PathPicklingTest {
       assertFalse("Compilation failed.", rep.hasErrors)
     }
 
-    val decompiled =
-      val outstream = new ByteArrayOutputStream()
-      val options = TestConfiguration.defaultOptions
-        .and("-print-tasty")
-        .and("-color:never")
-        .and(s"$out/out.jar")
-      val reporter = TestReporter.reporter(System.out, logLevel = ERROR)
-      val rep = Console.withOut(outstream) {
-        decompiler.Main.process(options.all, reporter)
-      }
-      assertFalse("Decompilation failed.", rep.hasErrors)
-      new String(outstream.toByteArray(), "UTF-8")
+    val printedTasty =
+      val sb = new StringBuffer
+      val jar = JarArchive.open(Path(s"$out/out.jar"), create = false)
+      try
+        for file <- jar.iterator() if file.name.endsWith(".tasty") do
+          sb.append(TastyPrinter.showContents(file.toByteArray, noColor = true))
+      finally jar.close()
+      sb.toString()
 
-    assertTrue(decompiled.contains(": i10430/lib.scala"))
-    assertTrue(decompiled.contains(": i10430/app.scala"))
-    assertTrue(decompiled.contains("[i10430/lib.scala]"))
-    assertTrue(decompiled.contains("[i10430/app.scala]"))
+    assertTrue(printedTasty.contains(": i10430/lib.scala"))
+    assertTrue(printedTasty.contains("[i10430/lib.scala]"))
+    assertFalse(printedTasty.contains(": i10430\\lib.scala"))
+    assertFalse(printedTasty.contains("[i10430\\lib.scala]"))
 
-    assertFalse(decompiled.contains(": i10430\\lib.scala"))
-    assertFalse(decompiled.contains(": i10430\\app.scala"))
-    assertFalse(decompiled.contains("[i10430\\lib.scala]"))
-    assertFalse(decompiled.contains("[i10430\\app.scala]"))
+    assertTrue(printedTasty.contains(": i10430/app.scala"))
+    assertTrue(printedTasty.contains("[i10430/app.scala]"))
+    assertFalse(printedTasty.contains(": i10430\\app.scala"))
+    assertFalse(printedTasty.contains("[i10430\\app.scala]"))
   }
 
   private def delete(file: JFile): Unit = {
