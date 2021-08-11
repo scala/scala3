@@ -1,4 +1,4 @@
-abstract class NullaryTest/*<-_empty_::NullaryTest#*/[T/*<-_empty_::NullaryTest#[T]*/, m/*<-_empty_::NullaryTest#[m]*/[s]] {
+abstract class NullaryTest/*<-_empty_::NullaryTest#*/[T/*<-_empty_::NullaryTest#[T]*/, m/*<-_empty_::NullaryTest#[m]*/[s/*<-_empty_::NullaryTest#`<init>`().[m][s]*/]] {
   def nullary/*<-_empty_::NullaryTest#nullary().*/: String/*->scala::Predef.String#*/ = "a"
   val x/*<-_empty_::NullaryTest#x.*/ = nullary/*->_empty_::NullaryTest#nullary().*/
 

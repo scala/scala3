@@ -13,7 +13,7 @@ object Nats/*<-recursion::Nats.*/ {
   }
 
   case object Zero/*<-recursion::Nats.Zero.*/ extends Nat/*->recursion::Nats.Nat#*/
-  case class Succ/*<-recursion::Nats.Succ#*/[N/*<-recursion::Nats.Succ#[N]*/ <: Nat](p/*<-recursion::Nats.Succ#p.*/: N/*->recursion::Nats.Succ#[N]*/) extends Nat/*->recursion::Nats.Nat#*/
+  case class Succ/*<-recursion::Nats.Succ#*/[N/*<-recursion::Nats.Succ#[N]*/ <: Nat/*->recursion::Nats.Nat#*/](p/*<-recursion::Nats.Succ#p.*/: N/*->recursion::Nats.Succ#[N]*/) extends Nat/*->recursion::Nats.Nat#*/
 
   transparent inline def toIntg/*<-recursion::Nats.toIntg().*/(inline n/*<-recursion::Nats.toIntg().(n)*/: Nat/*->recursion::Nats.Nat#*/): Int/*->scala::Int#*/ =
     inline n/*->recursion::Nats.toIntg().(n)*/ match {
