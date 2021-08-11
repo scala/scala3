@@ -362,6 +362,7 @@ Text => empty
 Language => Scala
 Symbols => 5 entries
 Occurrences => 4 entries
+Synthetics => 1 entries
 
 Symbols:
 angiven/AnonymousGiven$package. => final package object angiven extends Object { self: angiven.type => +2 decls }
@@ -375,6 +376,9 @@ Occurrences:
 [2:6..2:9): Foo <- angiven/Foo#
 [4:4..4:7): bar <- angiven/AnonymousGiven$package.bar().
 [4:14..4:17): Foo -> angiven/Foo#
+
+Synthetics:
+[4:14..4:17):Foo => x$1
 
 expect/Classes.scala
 --------------------
@@ -1228,6 +1232,7 @@ Text => empty
 Language => Scala
 Symbols => 26 entries
 Occurrences => 50 entries
+Synthetics => 2 entries
 
 Symbols:
 ext/Extension$package. => final package object ext extends Object { self: ext.type => +6 decls }
@@ -1308,6 +1313,10 @@ Occurrences:
 [17:44..17:45): U -> ext/Functor#map().[U]
 [17:48..17:49): F -> ext/Functor#[F]
 [17:50..17:51): U -> ext/Functor#map().[U]
+
+Synthetics:
+[14:24..14:31):Read[T] => x$2
+[14:46..14:61):summon[Read[T]] => *(x$2)
 
 expect/ForComprehension.scala
 -----------------------------
@@ -1685,6 +1694,7 @@ Text => empty
 Language => Scala
 Symbols => 45 entries
 Occurrences => 61 entries
+Synthetics => 7 entries
 
 Symbols:
 givens/InventedNames$package. => final package object givens extends Object { self: givens.type => +24 decls }
@@ -1796,6 +1806,15 @@ Occurrences:
 [41:8..41:17): given_Z_T -> givens/InventedNames$package.given_Z_T().
 [41:18..41:24): String -> scala/Predef.String#
 
+Synthetics:
+[14:0..14:20):given String = "str" => given_String
+[15:13..15:16):Int => x$1
+[17:0..17:28):given given_Char: Char = '?' => given_Char
+[18:0..18:32):given `given_Float`: Float = 3.0 => given_Float
+[24:13..24:14):X => x$1
+[34:8..34:20):given_Double => *(intValue)
+[40:8..40:15):given_Y => *(given_X)
+
 expect/Issue1749.scala
 ----------------------
 
@@ -1806,6 +1825,7 @@ Text => empty
 Language => Scala
 Symbols => 7 entries
 Occurrences => 22 entries
+Synthetics => 2 entries
 
 Symbols:
 example/Issue1749# => class Issue1749 extends Object { self: Issue1749 => +3 decls }
@@ -1839,6 +1859,10 @@ Occurrences:
 [13:41..13:47): String -> scala/Predef.String#
 [13:49..13:55): String -> scala/Predef.String#
 [14:2..14:5): map -> example/Issue1854#map.
+
+Synthetics:
+[8:2..8:10):(x1, x1) => *(Tuple2(Int, Int))
+[8:10..8:10): => *(Int, Int)
 
 expect/Local.scala
 ------------------
@@ -1992,6 +2016,7 @@ Text => empty
 Language => Scala
 Symbols => 3 entries
 Occurrences => 80 entries
+Synthetics => 1 entries
 
 Symbols:
 example/MethodUsages# => class MethodUsages extends Object { self: MethodUsages => +2 decls }
@@ -2079,6 +2104,9 @@ Occurrences:
 [34:2..34:3): m -> example/MethodUsages#m.
 [34:4..34:7): m20 -> example/Methods#m20(+2).
 [34:8..34:9): m -> example/Methods#m17.m().
+
+Synthetics:
+[13:2..13:26):m.m7(m, new m.List[Int]) => *(Int)
 
 expect/Methods.scala
 --------------------
@@ -2654,6 +2682,7 @@ Text => empty
 Language => Scala
 Symbols => 68 entries
 Occurrences => 110 entries
+Synthetics => 1 entries
 
 Symbols:
 example/C# => class C extends Object { self: C => +3 decls }
@@ -2837,6 +2866,9 @@ Occurrences:
 [32:49..32:56): pickOne -> example/SpecialRefinement#pickOne().
 [32:57..32:59): as -> example/PickOneRefinement_1#run().(as)
 
+Synthetics:
+[15:23..15:34):elems.toMap => *(refl[Tuple2[String, Any]])
+
 expect/RightAssociativeExtension.scala
 --------------------------------------
 
@@ -2922,11 +2954,22 @@ Schema => SemanticDB v4
 Uri => Synthetic.scala
 Text => empty
 Language => Scala
-Symbols => 40 entries
-Occurrences => 112 entries
+Symbols => 52 entries
+Occurrences => 133 entries
+Synthetics => 9 entries
 
 Symbols:
-example/Synthetic# => class Synthetic extends Object { self: Synthetic => +21 decls }
+example/Synthetic# => class Synthetic extends Object { self: Synthetic => +23 decls }
+example/Synthetic#Contexts. => final object Contexts extends Object { self: Contexts.type => +6 decls }
+example/Synthetic#Contexts.foo(). => method foo (param x: Int)(implicit given param x$2: Int): Nothing
+example/Synthetic#Contexts.foo().(x$2) => implicit given param x$2: Int
+example/Synthetic#Contexts.foo().(x) => param x: Int
+example/Synthetic#Contexts.m1(). => method m1 (implicit given param x$1: Int): Nothing
+example/Synthetic#Contexts.m1().(x$1) => implicit given param x$1: Int
+example/Synthetic#Contexts.m2(). => method m2 (implicit given param x: Int): Nothing
+example/Synthetic#Contexts.m2().(x) => implicit given param x: Int
+example/Synthetic#Contexts.m3(). => method m3 => Nothing
+example/Synthetic#Contexts.m4(). => method m4 => Nothing
 example/Synthetic#F# => class F extends Object { self: F => +1 decls }
 example/Synthetic#F#`<init>`(). => primary ctor <init> (): F
 example/Synthetic#J# => class J [typeparam T ] extends Object { self: J[T] => +4 decls }
@@ -2966,6 +3009,8 @@ local6 => param a: Int
 local7 => param b: Int
 local8 => param a: Int
 local9 => param b: Int
+local10 => final implicit lazy val given local x: Int
+local11 => final implicit lazy val given local given_Int: Int
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3080,6 +3125,38 @@ Occurrences:
 [46:9..46:10): < -> scala/Int#`<`(+3).
 [46:11..46:12): b -> local9
 [47:10..47:11): a -> local8
+[49:9..49:17): Contexts <- example/Synthetic#Contexts.
+[50:8..50:11): foo <- example/Synthetic#Contexts.foo().
+[50:12..50:13): x <- example/Synthetic#Contexts.foo().(x)
+[50:15..50:18): Int -> scala/Int#
+[50:26..50:29): Int -> scala/Int#
+[50:33..50:36): ??? -> scala/Predef.`???`().
+[51:8..51:10): m1 <- example/Synthetic#Contexts.m1().
+[51:17..51:20): Int -> scala/Int#
+[51:24..51:27): foo -> example/Synthetic#Contexts.foo().
+[52:8..52:10): m2 <- example/Synthetic#Contexts.m2().
+[52:17..52:18): x <- example/Synthetic#Contexts.m2().(x)
+[52:20..52:23): Int -> scala/Int#
+[52:27..52:30): foo -> example/Synthetic#Contexts.foo().
+[53:8..53:10): m3 <- example/Synthetic#Contexts.m3().
+[54:12..54:13): x <- local10
+[54:15..54:18): Int -> scala/Int#
+[55:6..55:9): foo -> example/Synthetic#Contexts.foo().
+[55:10..55:11): x -> local10
+[56:8..56:10): m4 <- example/Synthetic#Contexts.m4().
+[57:12..57:15): Int -> scala/Int#
+[58:6..58:9): foo -> example/Synthetic#Contexts.foo().
+
+Synthetics:
+[32:35..32:49):Array.empty[T] => *(evidence$1)
+[36:22..36:27):new F => *(ordering)
+[50:26..50:29):Int => x$2
+[51:17..51:20):Int => x$1
+[51:24..51:30):foo(0) => *(x$1)
+[52:27..52:33):foo(0) => *(x)
+[55:6..55:12):foo(x) => *(x)
+[57:6..57:19):given Int = 1 => given_Int
+[58:6..58:12):foo(0) => *(given_Int)
 
 expect/Traits.scala
 -------------------
@@ -4512,6 +4589,7 @@ Text => empty
 Language => Scala
 Symbols => 19 entries
 Occurrences => 34 entries
+Synthetics => 1 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram extends Object { self: MyProgram => +2 decls }
@@ -4569,4 +4647,7 @@ Occurrences:
 [5:67..5:74): println -> scala/Predef.println(+1).
 [6:4..6:10): fooRef <- _empty_/toplevel$package.fooRef().
 [6:30..6:33): foo -> _empty_/toplevel$package.foo().
+
+Synthetics:
+[5:0..5:0): => *(given_FromString_Int)
 

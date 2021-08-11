@@ -5,8 +5,8 @@ import dotty.tools.dotc.{semanticdb => s}
 import scala.collection.mutable
 import dotty.tools.dotc.semanticdb.Scala3.{_, given}
 import SymbolInformation.Kind._
-
-class SymbolInfomationPrinter (symtab: PrinterSymtab):
+import dotty.tools.dotc.util.SourceFile
+class SymbolInformationPrinter (symtab: PrinterSymtab):
   val notes = InfoNotes()
   val infoPrinter = InfoPrinter(notes)
 
@@ -28,8 +28,9 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
         val displayName = if sym.isGlobal then sym.desc.value else sym
         SymbolInformation(symbol = sym, displayName = displayName)
       }
+  end InfoNotes
 
-  class InfoPrinter(notes: InfoNotes) {
+  class InfoPrinter(notes: InfoNotes):
     private enum SymbolStyle:
       case Reference, Definition
     def pprint(info: SymbolInformation): String =
@@ -81,7 +82,7 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
     private def pprintDef(info: SymbolInformation) =
       notes.enter(info)
       pprint(info.symbol, SymbolStyle.Definition)
-    private def pprintRef(sym: String): String = pprint(sym, SymbolStyle.Reference)
+    def pprintRef(sym: String): String = pprint(sym, SymbolStyle.Reference)
     private def pprintDef(sym: String): String = pprint(sym, SymbolStyle.Definition)
     private def pprint(sym: String, style: SymbolStyle): String =
       val info = notes.visit(sym)
@@ -137,7 +138,7 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
         case _ =>
           "<?>"
 
-    private def pprint(tpe: Type): String = {
+    protected def pprint(tpe: Type): String = {
       def prefix(tpe: Type): String = tpe match
         case TypeRef(pre, sym, args) =>
           val preStr = pre match {
@@ -204,7 +205,7 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
         case tpe => s"@${pprint(tpe)}"
       }
 
-    private def pprint(const: Constant): String = const match {
+    protected def pprint(const: Constant): String = const match {
         case Constant.Empty =>
           "<?>"
         case UnitConstant() =>
@@ -245,7 +246,6 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
           s"private[${ssym}] "
         case ProtectedWithinAccess(ssym) =>
           s"protected[${ssym}] "
-
     extension (scope: Scope)
       private def infos: List[SymbolInformation] =
         if (scope.symlinks.nonEmpty)
@@ -258,8 +258,8 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
         case Some(s) => s.infos
         case None => Nil
       }
-  }
-end SymbolInfomationPrinter
+  end InfoPrinter
+end SymbolInformationPrinter
 
 extension (info: SymbolInformation)
   def prefixBeforeTpe: String = {
@@ -280,3 +280,110 @@ object PrinterSymtab:
     new PrinterSymtab {
       override def info(symbol: String): Option[SymbolInformation] = map.get(symbol)
     }
+
+def processRange(sb: StringBuilder, range: Range): Unit =
+  sb.append('[')
+    .append(range.startLine).append(':').append(range.startCharacter)
+    .append("..")
+    .append(range.endLine).append(':').append(range.endCharacter)
+    .append("):")
+
+
+
+class SyntheticPrinter(symtab: PrinterSymtab, source: SourceFile) extends SymbolInformationPrinter(symtab):
+
+  def pprint(synth: Synthetic): String =
+    val sb = new StringBuilder()
+    val notes = InfoNotes()
+    val treePrinter = TreePrinter(source, synth.range, notes)
+
+    synth.range match
+      case Some(range) =>
+        processRange(sb, range)
+        sb.append(source.substring(range))
+      case None =>
+        sb.append("[):")
+    sb.append(" => ")
+    sb.append(treePrinter.pprint(synth.tree))
+    sb.toString
+
+  extension (source: SourceFile)
+    private def substring(range: Option[s.Range]): String =
+      range match
+        case Some(range) => source.substring(range)
+        case None => ""
+    private def substring(range: s.Range): String =
+      /** get the line length of a given line */
+      def lineLength(line: Int): Int =
+        val isLastLine = source.lineToOffsetOpt(line).nonEmpty && source.lineToOffsetOpt(line + 1).isEmpty
+        if isLastLine then source.content.length - source.lineToOffset(line) - 1
+        else source.lineToOffset(line + 1) - source.lineToOffset(line) - 1 // -1 for newline char
+
+      val start = source.lineToOffset(range.startLine) +
+        math.min(range.startCharacter, lineLength(range.startLine))
+      val end = source.lineToOffset(range.endLine) +
+        math.min(range.endCharacter, lineLength(range.endLine))
+      new String(source.content, start, end - start)
+
+
+  // def pprint(tree: s.Tree, range: Option[Range]): String =
+  class TreePrinter(source: SourceFile, originalRange: Option[Range], notes: InfoNotes) extends InfoPrinter(notes):
+    def pprint(tree: Tree): String =
+      val sb = new StringBuilder()
+      processTree(tree)(using sb)
+      sb.toString
+
+
+    private def rep[T](xs: Seq[T], seq: String)(f: T => Unit)(using sb: StringBuilder): Unit =
+      xs.zipWithIndex.foreach { (x, i) =>
+        if i != 0 then sb.append(seq)
+        f(x)
+      }
+
+    private def processTree(tree: Tree)(using sb: StringBuilder): Unit =
+      tree match {
+        case tree: ApplyTree =>
+          processTree(tree.function)
+          sb.append("(")
+          rep(tree.arguments, ", ")(processTree)
+          sb.append(")")
+        case tree: FunctionTree =>
+          sb.append("{")
+          sb.append("(")
+          rep(tree.parameters, ", ")(processTree)
+          sb.append(") =>")
+          processTree(tree.body)
+          sb.append("}")
+        case tree: IdTree =>
+          sb.append(pprintRef(tree.symbol))
+        case tree: LiteralTree =>
+          sb.append(pprint(tree.constant))
+        case tree: MacroExpansionTree =>
+          sb.append("(`macro-expandee` : `")
+          sb.append(pprint(tree.tpe))
+          sb.append(")")
+        case tree: OriginalTree =>
+          if (tree.range == originalRange && originalRange.nonEmpty) then
+            sb.append("*")
+          else
+            sb.append("orig(")
+            sb.append(source.substring(tree.range))
+            sb.append(")")
+        case tree: SelectTree =>
+          processTree(tree.qualifier)
+          sb.append(".")
+          tree.id match
+            case Some(tree) => processTree(tree)
+            case None => ()
+        case tree: TypeApplyTree =>
+          processTree(tree.function)
+          sb.append("[")
+          rep(tree.typeArguments, ", ")((t) => sb.append(pprint(t)))
+          sb.append("]")
+
+        case _ =>
+          sb.append("<?>")
+      }
+
+
+end SyntheticPrinter

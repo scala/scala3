@@ -16,7 +16,6 @@ import NameOps._
 import util.Spans.Span
 import util.{SourceFile, SourcePosition}
 import transform.SymUtils._
-import SymbolInformation.{Kind => k}
 
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable
@@ -46,12 +45,13 @@ class ExtractSemanticDB extends Phase:
     val unit = ctx.compilationUnit
     val extractor = Extractor()
     extractor.extract(unit.tpdTree)
-    ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList)
+    ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList, extractor.synthetics.toList)
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:
-    given s.SemanticSymbolBuilder = s.SemanticSymbolBuilder()
-    val converter = s.TypeOps()
+    given builder: s.SemanticSymbolBuilder = s.SemanticSymbolBuilder()
+    val synth = SyntheticsExtractor()
+    given converter: s.TypeOps = s.TypeOps()
 
     /** The bodies of synthetic locals */
     private val localBodies = mutable.HashMap[Symbol, Tree]()
@@ -61,6 +61,8 @@ class ExtractSemanticDB extends Phase:
 
     /** The extracted symbol infos */
     val symbolInfos = new mutable.ListBuffer[SymbolInformation]()
+
+    val synthetics = new mutable.ListBuffer[s.Synthetic]()
 
     /** A cache of localN names */
     val localNames = new mutable.HashSet[String]()
@@ -158,11 +160,22 @@ class ExtractSemanticDB extends Phase:
                 tree match
                   case tree: DefDef =>
                     tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
-                  case tree: ValDef if tree.symbol.is(Given) => traverse(tree.tpt)
+                  case tree: ValDef if tree.symbol.is(Given) =>
+                    synth.tryFindSynthetic(tree).foreach { synth =>
+                      synthetics += synth
+                    }
+                    traverse(tree.tpt)
                   case _ =>
                 if !tree.symbol.isGlobal then
                   localBodies(tree.symbol) = tree.rhs
                 // ignore rhs
+
+              // `given Int` (syntax sugar of `given given_Int: Int`)
+              case tree: ValDef if tree.symbol.isInventedGiven =>
+                synth.tryFindSynthetic(tree).foreach { synth =>
+                  synthetics += synth
+                }
+                traverse(tree.tpt)
               case PatternValDef(pat, rhs) =>
                 traverse(rhs)
                 PatternValDef.collectPats(pat).foreach(traverse)
@@ -197,6 +210,10 @@ class ExtractSemanticDB extends Phase:
         case tree: Apply =>
           @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
+          synth.tryFindSynthetic(tree).foreach { synth =>
+            synthetics += synth
+          }
+
           for arg <- tree.args do
             arg match
               case tree @ NamedArg(name, arg) =>
@@ -291,12 +308,6 @@ class ExtractSemanticDB extends Phase:
 
     end PatternValDef
 
-
-    private def range(span: Span, treeSource: SourceFile)(using Context): Option[Range] =
-      def lineCol(offset: Int) = (treeSource.offsetToLine(offset), treeSource.column(offset))
-      val (startLine, startCol) = lineCol(span.start)
-      val (endLine, endCol) = lineCol(span.end)
-      Some(Range(startLine, startCol, endLine, endCol))
 
 
     private def registerSymbol(sym: Symbol, symkinds: Set[SymbolKind])(using Context): Unit =
@@ -466,7 +477,12 @@ object ExtractSemanticDB:
 
   val name: String = "extractSemanticDB"
 
-  def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
+  def write(
+    source: SourceFile,
+    occurrences: List[SymbolOccurrence],
+    symbolInfos: List[SymbolInformation],
+    synthetics: List[Synthetic],
+  )(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     val semanticdbTarget =
       val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
@@ -488,7 +504,8 @@ object ExtractSemanticDB:
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,
-      occurrences = occurrences
+      occurrences = occurrences,
+      synthetics = synthetics,
     )
     val docs = TextDocuments(List(doc))
     val out = Files.newOutputStream(outpath)
