@@ -50,6 +50,7 @@ Text => empty
 Language => Scala
 Symbols => 48 entries
 Occurrences => 105 entries
+Synthetics => 3 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
@@ -207,6 +208,11 @@ Occurrences:
 [48:28..48:34): String -> scala/Predef.String#
 [48:37..48:38): x -> advanced/HKClass#foo().(x)
 [48:39..48:47): toString -> scala/Tuple2#toString().
+
+Synthetics:
+[26:12..26:16):s.s1 => reflectiveSelectable(*)
+[28:12..28:16):s.s2 => reflectiveSelectable(*)
+[30:12..30:16):s.s3 => reflectiveSelectable(*)
 
 expect/Annotations.scala
 ------------------------
@@ -1514,6 +1520,7 @@ Text => empty
 Language => Scala
 Symbols => 23 entries
 Occurrences => 48 entries
+Synthetics => 6 entries
 
 Symbols:
 example/ImplicitConversion# => class ImplicitConversion extends Object { self: ImplicitConversion => +9 decls }
@@ -1589,6 +1596,16 @@ Occurrences:
 [34:50..34:54): self -> example/ImplicitConversion.newAny2stringadd#self.
 [34:56..34:57): + -> java/lang/String#`+`().
 [34:58..34:63): other -> example/ImplicitConversion.newAny2stringadd#`+`().(other)
+
+Synthetics:
+[15:2..15:9):message => augmentString(*)
+[17:2..17:7):tuple => newAny2stringadd[Tuple2[Int, Int]](*)
+[20:15..20:22):message => string2Number(*)
+[24:2..26:16):s"""Hello
+     |$message
+     |$number""" => augmentString(*)
+[28:15..28:19):char => char2int(*)
+[29:16..29:20):char => char2long(*)
 
 expect/Imports.scala
 --------------------
@@ -1825,7 +1842,7 @@ Text => empty
 Language => Scala
 Symbols => 7 entries
 Occurrences => 22 entries
-Synthetics => 2 entries
+Synthetics => 3 entries
 
 Symbols:
 example/Issue1749# => class Issue1749 extends Object { self: Issue1749 => +3 decls }
@@ -1861,6 +1878,7 @@ Occurrences:
 [14:2..14:5): map -> example/Issue1854#map.
 
 Synthetics:
+[8:2..8:10):(x1, x1) => orderingToOrdered[Tuple2[Int, Int]](*)
 [8:2..8:10):(x1, x1) => *(Tuple2(Int, Int))
 [8:10..8:10): => *(Int, Int)
 
@@ -2956,7 +2974,7 @@ Text => empty
 Language => Scala
 Symbols => 52 entries
 Occurrences => 133 entries
-Synthetics => 9 entries
+Synthetics => 24 entries
 
 Symbols:
 example/Synthetic# => class Synthetic extends Object { self: Synthetic => +23 decls }
@@ -3148,7 +3166,22 @@ Occurrences:
 [58:6..58:9): foo -> example/Synthetic#Contexts.foo().
 
 Synthetics:
+[6:2..6:18):Array.empty[Int] => intArrayOps(*)
+[7:2..7:8):"fooo" => augmentString(*)
+[10:13..10:24):"name:(.*)" => augmentString(*)
+[13:8..13:28):2 #:: LazyList.empty => toDeferrer[Int](*)
+[13:14..13:28):LazyList.empty => toDeferrer[Nothing](*)
+[17:18..17:38):2 #:: LazyList.empty => toDeferrer[Int](*)
+[17:24..17:38):LazyList.empty => toDeferrer[Nothing](*)
+[19:12..19:13):1 => intWrapper(*)
+[19:26..19:27):0 => intWrapper(*)
+[19:46..19:47):x => ArrowAssoc[Int](*)
+[20:12..20:13):1 => intWrapper(*)
+[20:26..20:27):0 => intWrapper(*)
+[21:12..21:13):1 => intWrapper(*)
+[21:26..21:27):0 => intWrapper(*)
 [32:35..32:49):Array.empty[T] => *(evidence$1)
+[36:22..36:27):new F => orderingToOrdered[F](*)
 [36:22..36:27):new F => *(ordering)
 [50:26..50:29):Int => x$2
 [51:17..51:20):Int => x$1
@@ -4589,7 +4622,7 @@ Text => empty
 Language => Scala
 Symbols => 19 entries
 Occurrences => 34 entries
-Synthetics => 1 entries
+Synthetics => 2 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram extends Object { self: MyProgram => +2 decls }
@@ -4650,4 +4683,5 @@ Occurrences:
 
 Synthetics:
 [5:0..5:0): => *(given_FromString_Int)
+[5:41..5:42):1 => intWrapper(*)
 

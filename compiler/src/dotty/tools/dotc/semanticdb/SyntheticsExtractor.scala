@@ -33,6 +33,18 @@ class SyntheticsExtractor:
             )
           ).toOpt
 
+        case tree: Apply if tree.fun.symbol.is(Implicit) =>
+          val pos = range(tree.span, tree.source)
+          s.Synthetic(
+            pos,
+            s.ApplyTree(
+              tree.fun.toSemanticTree,
+              arguments = List(
+                s.OriginalTree(pos)
+              )
+            )
+          ).toOpt
+
         // Anonymous context parameter
         case tree: ValDef if tree.symbol.is(Given) =>
           s.Synthetic(
