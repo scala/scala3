@@ -4,7 +4,6 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.transform.MegaPhase._
-import dotty.tools.dotc.ast.tpd
 import java.io.{File => _}
 
 import dotty.tools.dotc.core._
@@ -12,10 +11,12 @@ import SymDenotations._
 import Contexts._
 import Types._
 import Symbols._
+import Phases._
 import dotty.tools.dotc.util.SourcePosition
 import Decorators._
 import StdNames.nme
 import dotty.tools.io.JarArchive
+import dotty.tools.backend.jvm.GenBCode
 
 /**
  * Small phase to be run to collect main classes and store them in the context.
@@ -40,7 +41,7 @@ class CollectEntryPoints extends MiniPhase:
 
 
   override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree =
-    ctx.entryPoints ++= getEntryPoint(tree)
+    getEntryPoint(tree).map(registerEntryPoint)
     tree
 
   private def getEntryPoint(tree: tpd.TypeDef)(using Context): Option[String] =
@@ -48,3 +49,11 @@ class CollectEntryPoints extends MiniPhase:
     import dotty.tools.dotc.core.NameOps.stripModuleClassSuffix
     val name = sym.fullName.stripModuleClassSuffix.toString
     Option.when(sym.isStatic && !sym.is(Flags.Trait) && ctx.platform.hasMainMethod(sym))(name)
+
+  private def registerEntryPoint(s: String)(using Context) = {
+    genBCodePhase match {
+      case genBCodePhase: GenBCode =>
+        genBCodePhase.registerEntryPoint(s)
+      case _ =>
+    }
+  }

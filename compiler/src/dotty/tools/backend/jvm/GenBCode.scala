@@ -42,6 +42,9 @@ class GenBCode extends Phase {
     superCallsMap.update(sym, old + calls)
   }
 
+  private val entryPoints = new mutable.HashSet[String]()
+  def registerEntryPoint(s: String): Unit = entryPoints += s
+
   private var myOutput: AbstractFile = _
 
   private def outputDir(using Context): AbstractFile = {
@@ -63,7 +66,7 @@ class GenBCode extends Phase {
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     outputDir match
       case jar: JarArchive =>
-        updateJarManifestWithMainClass(jar)
+        updateJarManifestWithMainClass(jar, entryPoints.toList)
       case _ =>
     try super.runOn(units)
     finally outputDir match {
@@ -78,9 +81,9 @@ class GenBCode extends Phase {
     }
   }
 
-  private def updateJarManifestWithMainClass(jarArchive: JarArchive)(using Context): Unit =
+  private def updateJarManifestWithMainClass(jarArchive: JarArchive, entryPoints: List[String])(using Context): Unit =
     val mainClass = Option.when(!ctx.settings.XmainClass.isDefault)(ctx.settings.XmainClass.value).orElse {
-      ctx.entryPoints.toList.match
+      entryPoints match
         case List(mainClass) =>
           Some(mainClass)
         case Nil =>
