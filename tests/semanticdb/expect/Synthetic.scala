@@ -47,4 +47,15 @@ class Synthetic {
     if a < b
   } yield a
 
+  object Contexts {
+    def foo(x: Int)(using Int) = ???
+    def m1(using Int) = foo(0)
+    def m2(using x: Int) = foo(0)
+    def m3 =
+      given x: Int = 1
+      foo(x)
+    def m4 =
+      given Int = 1
+      foo(0)
+  }
 }

@@ -53,9 +53,10 @@ object Tools:
 
   def metac(doc: TextDocument, realPath: Path)(using sb: StringBuilder): StringBuilder =
     val symtab = PrinterSymtab.fromTextDocument(doc)
-    val symPrinter = SymbolInfomationPrinter(symtab)
+    val symPrinter = SymbolInformationPrinter(symtab)
     val realURI = realPath.toString
-    given SourceFile = SourceFile.virtual(doc.uri, doc.text)
+    given sourceFile: SourceFile = SourceFile.virtual(doc.uri, doc.text)
+    val synthPrinter = SyntheticPrinter(symtab, sourceFile)
     sb.append(realURI).nl
     sb.append("-" * realURI.length).nl
     sb.nl
@@ -66,6 +67,8 @@ object Tools:
     sb.append("Language => ").append(languageString(doc.language)).nl
     sb.append("Symbols => ").append(doc.symbols.length).append(" entries").nl
     sb.append("Occurrences => ").append(doc.occurrences.length).append(" entries").nl
+    if doc.synthetics.nonEmpty then
+      sb.append("Synthetics => ").append(doc.synthetics.length).append(" entries").nl
     sb.nl
     sb.append("Symbols:").nl
     doc.symbols.sorted.foreach(s => processSymbol(s, symPrinter))
@@ -73,6 +76,11 @@ object Tools:
     sb.append("Occurrences:").nl
     doc.occurrences.sorted.foreach(processOccurrence)
     sb.nl
+    if doc.synthetics.nonEmpty then
+      sb.append("Synthetics:").nl
+      doc.synthetics.sorted.foreach(s => processSynth(s, synthPrinter))
+      sb.nl
+    sb
   end metac
 
   private def schemaString(schema: Schema) =
@@ -92,17 +100,16 @@ object Tools:
     case UNKNOWN_LANGUAGE | Unrecognized(_) => "unknown"
   end languageString
 
-  private def processSymbol(info: SymbolInformation, printer: SymbolInfomationPrinter)(using sb: StringBuilder): Unit =
+  private def processSymbol(info: SymbolInformation, printer: SymbolInformationPrinter)(using sb: StringBuilder): Unit =
     sb.append(printer.pprintSymbolInformation(info)).nl
+
+  private def processSynth(synth: Synthetic, printer: SyntheticPrinter)(using sb: StringBuilder): Unit =
+    sb.append(printer.pprint(synth)).nl
 
   private def processOccurrence(occ: SymbolOccurrence)(using sb: StringBuilder, sourceFile: SourceFile): Unit =
     occ.range match
     case Some(range) =>
-      sb.append('[')
-        .append(range.startLine).append(':').append(range.startCharacter)
-        .append("..")
-        .append(range.endLine).append(':').append(range.endCharacter)
-        .append("):")
+      processRange(sb, range)
       if range.endLine == range.startLine
       && range.startCharacter != range.endCharacter
       && !(occ.symbol.isConstructor && occ.role.isDefinition) then

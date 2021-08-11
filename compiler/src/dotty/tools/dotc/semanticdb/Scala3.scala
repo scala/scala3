@@ -10,6 +10,10 @@ import core.Flags._
 import core.NameKinds
 import core.StdNames.nme
 import SymbolInformation.{Kind => k}
+import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.{semanticdb => s}
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 
@@ -25,6 +29,12 @@ object Scala3:
   @sharable private val ctor          = raw"[^;].*`<init>`\((?:\+\d+)?\)\.".r
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
+
+  def range(span: Span, treeSource: SourceFile)(using Context): Option[Range] =
+    def lineCol(offset: Int) = (treeSource.offsetToLine(offset), treeSource.column(offset))
+    val (startLine, startCol) = lineCol(span.start)
+    val (endLine, endCol) = lineCol(span.end)
+    Some(Range(startLine, startCol, endLine, endCol))
 
   sealed trait FakeSymbol {
     private[Scala3] var sname: Option[String] = None
@@ -220,6 +230,12 @@ object Scala3:
       /** Synthetic symbols that are not anonymous or numbered empty ident */
       def isSyntheticWithIdent(using Context): Boolean =
         sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
+
+      /** Check if the symbol is invented by Desugar.inventGivenOrExtensionName
+       *  return true if the symbol is defined as `given Int = ...` and name is invented as "given_Int"
+       */
+      def isInventedGiven(using Context): Boolean =
+        sym.is(Given) && sym.name.startsWith("given_")
 
       /** The semanticdb name of the given symbol */
       def symbolName(using builder: SemanticSymbolBuilder)(using Context): String =
@@ -423,9 +439,7 @@ object Scala3:
       def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
   end RangeOps
 
-  /** Sort symbol occurrences by their start position. */
-  given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>
-    x.range -> y.range match
+  private def compareRange(x: Option[Range], y: Option[Range]): Int = x -> y match
     case None -> _ | _ -> None => 0
     case Some(a) -> Some(b) =>
       val byLine = Integer.compare(a.startLine, b.startLine)
@@ -433,9 +447,13 @@ object Scala3:
         byLine
       else // byCharacter
         Integer.compare(a.startCharacter, b.startCharacter)
-  end OccurrenceOrdering
+
+  /** Sort symbol occurrences by their start position. */
+  given Ordering[SymbolOccurrence] = (x, y) => compareRange(x.range, y.range)
 
   given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(IdentifierOrdering())
+
+  given Ordering[Synthetic] = (x, y) => compareRange(x.range, y.range)
 
   /**
     * A comparator for identifier like "Predef" or "Function10".
