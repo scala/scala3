@@ -47,4 +47,15 @@ class Synthetic/*<-example::Synthetic#*/ {
     if a/*->local8*/ </*->scala::Int#`<`(+3).*/ b/*->local9*/
   } yield a/*->local8*/
 
+  object Contexts/*<-example::Synthetic#Contexts.*/ {
+    def foo/*<-example::Synthetic#Contexts.foo().*/(x/*<-example::Synthetic#Contexts.foo().(x)*/: Int/*->scala::Int#*/)(using Int/*->scala::Int#*/) = ???/*->scala::Predef.`???`().*/
+    def m1/*<-example::Synthetic#Contexts.m1().*/(using Int/*->scala::Int#*/) = foo/*->example::Synthetic#Contexts.foo().*/(0)
+    def m2/*<-example::Synthetic#Contexts.m2().*/(using x/*<-example::Synthetic#Contexts.m2().(x)*/: Int/*->scala::Int#*/) = foo/*->example::Synthetic#Contexts.foo().*/(0)
+    def m3/*<-example::Synthetic#Contexts.m3().*/ =
+      given x/*<-local10*/: Int/*->scala::Int#*/ = 1
+      foo/*->example::Synthetic#Contexts.foo().*/(x/*->local10*/)
+    def m4/*<-example::Synthetic#Contexts.m4().*/ =
+      given Int/*->scala::Int#*/ = 1
+      foo/*->example::Synthetic#Contexts.foo().*/(0)
+  }
 }
