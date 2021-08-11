@@ -48,8 +48,8 @@ Schema => SemanticDB v4
 Uri => Advanced.scala
 Text => empty
 Language => Scala
-Symbols => 46 entries
-Occurrences => 101 entries
+Symbols => 47 entries
+Occurrences => 105 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
@@ -58,8 +58,9 @@ advanced/C#`<init>`(). => primary ctor <init> [typeparam T ](): C[T]
 advanced/C#t(). => method t => T
 advanced/HKClass# => class HKClass [typeparam F [typeparam T ] <: <?>] extends Object { self: HKClass[F] => +3 decls }
 advanced/HKClass#[F] => typeparam F [typeparam T ] <: <?>
-advanced/HKClass#[F][T] => typeparam T 
 advanced/HKClass#`<init>`(). => primary ctor <init> [typeparam F [typeparam T ] <: <?>](): HKClass[F]
+advanced/HKClass#`<init>`().[F][T] => typeparam T 
+advanced/HKClass#`<init>`().[F][U] => typeparam U 
 advanced/HKClass#foo(). => method foo [typeparam T , typeparam U ](param x: F[T, U]): String
 advanced/HKClass#foo().(x) => param x: F[T, U]
 advanced/HKClass#foo().[T] => typeparam T 
@@ -191,6 +192,10 @@ Occurrences:
 [39:21..39:25): head -> scala/collection/IterableOps#head().
 [47:6..47:13): HKClass <- advanced/HKClass#
 [47:14..47:15): F <- advanced/HKClass#[F]
+[47:20..47:21): T <- advanced/HKClass#`<init>`().[F][T]
+[47:28..47:29): U <- advanced/HKClass#`<init>`().[F][U]
+[47:36..47:37): U -> advanced/HKClass#`<init>`().[F][U]
+[47:39..47:40): T -> advanced/HKClass#`<init>`().[F][T]
 [48:6..48:9): foo <- advanced/HKClass#foo().
 [48:10..48:11): T <- advanced/HKClass#foo().[T]
 [48:12..48:13): U <- advanced/HKClass#foo().[U]
@@ -210,7 +215,7 @@ Schema => SemanticDB v4
 Uri => Annotations.scala
 Text => empty
 Language => Scala
-Symbols => 22 entries
+Symbols => 24 entries
 Occurrences => 48 entries
 
 Symbols:
@@ -221,11 +226,13 @@ annot/Annotations#S# => type S
 annot/Annotations#[T] => typeparam T 
 annot/Annotations#`<init>`(). => primary ctor <init> [typeparam T ](param x: T): Annotations[T]
 annot/Annotations#`<init>`().(x) => param x: T
+annot/Annotations#`<init>`().(x) => param x: T
 annot/Annotations#field. => val method field Int
 annot/Annotations#method(). => method method => Int
 annot/Annotations#x. => private[this] val method x T
 annot/B# => class B extends Object { self: B => +3 decls }
 annot/B#`<init>`(). => primary ctor <init> (param x: Int): B
+annot/B#`<init>`().(x) => param x: Int
 annot/B#`<init>`().(x) => param x: Int
 annot/B#`<init>`(+1). => ctor <init> (): B
 annot/B#x. => private[this] val method x Int
@@ -378,24 +385,27 @@ Schema => SemanticDB v4
 Uri => Classes.scala
 Text => empty
 Language => Scala
-Symbols => 109 entries
+Symbols => 119 entries
 Occurrences => 113 entries
 
 Symbols:
 classes/C1# => final class C1 extends AnyVal { self: C1 => +2 decls }
-classes/C1#`<init>`(). => primary ctor <init> (val param x1: Int): C1
+classes/C1#`<init>`(). => primary ctor <init> (param x1: Int): C1
 classes/C1#`<init>`().(x1) => val param x1: Int
+classes/C1#`<init>`().(x1) => param x1: Int
 classes/C1#x1. => val method x1 Int
 classes/C1. => final object C1 extends Object { self: C1.type => +2 decls }
 classes/C2# => final class C2 extends AnyVal { self: C2 => +2 decls }
-classes/C2#`<init>`(). => primary ctor <init> (val param x2: Int): C2
+classes/C2#`<init>`(). => primary ctor <init> (param x2: Int): C2
 classes/C2#`<init>`().(x2) => val param x2: Int
+classes/C2#`<init>`().(x2) => param x2: Int
 classes/C2#x2. => val method x2 Int
 classes/C2. => final object C2 extends Object { self: C2.type => +2 decls }
 classes/C3# => case class C3 extends Object with Product with Serializable { self: C3 => +5 decls }
 classes/C3#_1(). => method _1 => Int
-classes/C3#`<init>`(). => primary ctor <init> (val param x: Int): C3
+classes/C3#`<init>`(). => primary ctor <init> (param x: Int): C3
 classes/C3#`<init>`().(x) => val param x: Int
+classes/C3#`<init>`().(x) => param x: Int
 classes/C3#copy$default$1(). => method copy$default$1 => Int @uncheckedVariance
 classes/C3#copy(). => method copy (param x: Int): C3
 classes/C3#copy().(x) => param x: Int
@@ -408,8 +418,9 @@ classes/C3.unapply(). => method unapply (param x$1: C3): C3
 classes/C3.unapply().(x$1) => param x$1: C3
 classes/C4# => case class C4 extends Object with Product with Serializable { self: C4 => +5 decls }
 classes/C4#_1(). => method _1 => Int
-classes/C4#`<init>`(). => primary ctor <init> (val param x: Int): C4
+classes/C4#`<init>`(). => primary ctor <init> (param x: Int): C4
 classes/C4#`<init>`().(x) => val param x: Int
+classes/C4#`<init>`().(x) => param x: Int
 classes/C4#copy$default$1(). => method copy$default$1 => Int @uncheckedVariance
 classes/C4#copy(). => method copy (param x: Int): C4
 classes/C4#copy().(x) => param x: Int
@@ -424,6 +435,7 @@ classes/C6# => case class C6 extends Object with Product with Serializable { sel
 classes/C6#_1(). => method _1 => Int
 classes/C6#`<init>`(). => primary ctor <init> (param x: Int): C6
 classes/C6#`<init>`().(x) => param x: Int
+classes/C6#`<init>`().(x) => param x: Int
 classes/C6#copy$default$1(). => method copy$default$1 => Int @uncheckedVariance
 classes/C6#copy(). => method copy (param x: Int): C6
 classes/C6#copy().(x) => param x: Int
@@ -437,17 +449,21 @@ classes/C6.unapply().(x$1) => param x$1: C6
 classes/C7# => class C7 extends Object { self: C7 => +2 decls }
 classes/C7#`<init>`(). => primary ctor <init> (param x: Int): C7
 classes/C7#`<init>`().(x) => param x: Int
+classes/C7#`<init>`().(x) => param x: Int
 classes/C7#x. => private[this] val method x Int
 classes/C8# => class C8 extends Object { self: C8 => +2 decls }
 classes/C8#`<init>`(). => primary ctor <init> (param x: Int): C8
+classes/C8#`<init>`().(x) => param x: Int
 classes/C8#`<init>`().(x) => param x: Int
 classes/C8#x. => private[this] val method x Int
 classes/C9# => class C9 extends Object { self: C9 => +2 decls }
 classes/C9#`<init>`(). => primary ctor <init> (param x: Int): C9
 classes/C9#`<init>`().(x) => param x: Int
+classes/C9#`<init>`().(x) => param x: Int
 classes/C9#x(). => private[this] var method x Int
 classes/C10# => class C10 extends Object { self: C10 => +2 decls }
 classes/C10#`<init>`(). => primary ctor <init> (param s: => String): C10
+classes/C10#`<init>`().(s) => param s: => String
 classes/C10#`<init>`().(s) => param s: => String
 classes/C10#s. => private[this] val method s => String
 classes/C11# => class C11 extends Object { self: C11 => +2 decls }
@@ -480,6 +496,7 @@ classes/C12#foo2Impl().(y) => param y: context.Expr[String]
 classes/M. => final object M extends Object { self: M.type => +3 decls }
 classes/M.C5# => class C5 extends Object { self: C5 => +2 decls }
 classes/M.C5#`<init>`(). => primary ctor <init> (param x: Int): C5
+classes/M.C5#`<init>`().(x) => param x: Int
 classes/M.C5#`<init>`().(x) => param x: Int
 classes/M.C5#x. => private[this] val method x Int
 classes/M.C5(). => final implicit method C5 (param x: Int): C5
@@ -662,7 +679,7 @@ Schema => SemanticDB v4
 Uri => EndMarkers.scala
 Text => empty
 Language => Scala
-Symbols => 24 entries
+Symbols => 25 entries
 Occurrences => 37 entries
 
 Symbols:
@@ -681,8 +698,9 @@ endmarkers/EndMarkers$package.topLevelVal. => val method topLevelVal Int
 endmarkers/EndMarkers$package.topLevelVar(). => var method topLevelVar String
 endmarkers/EndMarkers$package.topLevelWithLocals(). => method topLevelWithLocals => Unit
 endmarkers/MultiCtor# => class MultiCtor extends Object { self: MultiCtor => +3 decls }
-endmarkers/MultiCtor#`<init>`(). => primary ctor <init> (val param i: Int): MultiCtor
+endmarkers/MultiCtor#`<init>`(). => primary ctor <init> (param i: Int): MultiCtor
 endmarkers/MultiCtor#`<init>`().(i) => val param i: Int
+endmarkers/MultiCtor#`<init>`().(i) => param i: Int
 endmarkers/MultiCtor#`<init>`(+1). => ctor <init> (): MultiCtor
 endmarkers/MultiCtor#i. => val method i Int
 endmarkers/TestObj. => final object TestObj extends Object { self: TestObj.type => +2 decls }
@@ -760,15 +778,16 @@ Schema => SemanticDB v4
 Uri => EnumVal.scala
 Text => empty
 Language => Scala
-Symbols => 16 entries
+Symbols => 17 entries
 Occurrences => 16 entries
 
 Symbols:
 enumVal/A# => trait A extends Object { self: A => +1 decls }
 enumVal/A#`<init>`(). => primary ctor <init> (): A
 enumVal/Color# => abstract sealed enum class Color extends Object with Enum { self: Color => +2 decls }
-enumVal/Color#`<init>`(). => primary ctor <init> (val param rgb: Int): Color
+enumVal/Color#`<init>`(). => primary ctor <init> (param rgb: Int): Color
 enumVal/Color#`<init>`().(rgb) => val param rgb: Int
+enumVal/Color#`<init>`().(rgb) => param rgb: Int
 enumVal/Color#rgb. => val method rgb Int
 enumVal/Color. => final object Color extends Object { self: Color.type => +8 decls }
 enumVal/Color.$values. => private[this] val method $values Array[Color]
@@ -807,13 +826,14 @@ Schema => SemanticDB v4
 Uri => Enums.scala
 Text => empty
 Language => Scala
-Symbols => 181 entries
+Symbols => 185 entries
 Occurrences => 148 entries
 
 Symbols:
 _empty_/Enums. => final object Enums extends Object { self: Enums.type => +30 decls }
 _empty_/Enums.Coin# => abstract sealed enum class Coin extends Object with Enum { self: Coin => +2 decls }
 _empty_/Enums.Coin#`<init>`(). => primary ctor <init> (param value: Int): Coin
+_empty_/Enums.Coin#`<init>`().(value) => param value: Int
 _empty_/Enums.Coin#`<init>`().(value) => param value: Int
 _empty_/Enums.Coin#value. => private[this] val method value Int
 _empty_/Enums.Coin. => final object Coin extends Object { self: Coin.type => +10 decls }
@@ -866,8 +886,9 @@ _empty_/Enums.Maybe. => final object Maybe extends Object { self: Maybe.type => 
 _empty_/Enums.Maybe.Just# => final case enum class Just [covariant typeparam A ] extends Maybe[A] { self: Just[A] => +7 decls }
 _empty_/Enums.Maybe.Just#[A] => covariant typeparam A 
 _empty_/Enums.Maybe.Just#_1(). => method _1 => A
-_empty_/Enums.Maybe.Just#`<init>`(). => primary ctor <init> [covariant typeparam A ](val param value: A): Just[A]
+_empty_/Enums.Maybe.Just#`<init>`(). => primary ctor <init> [covariant typeparam A ](param value: A): Just[A]
 _empty_/Enums.Maybe.Just#`<init>`().(value) => val param value: A
+_empty_/Enums.Maybe.Just#`<init>`().(value) => param value: A
 _empty_/Enums.Maybe.Just#copy$default$1(). => method copy$default$1 [covariant typeparam A ]: A
 _empty_/Enums.Maybe.Just#copy$default$1().[A] => typeparam A 
 _empty_/Enums.Maybe.Just#copy(). => method copy [covariant typeparam A ](param value: A): Just[A]
@@ -890,6 +911,8 @@ _empty_/Enums.Planet# => abstract sealed enum class Planet extends Enum[Planet] 
 _empty_/Enums.Planet#G. => private[this] final val method G 6.673E-11
 _empty_/Enums.Planet#`<init>`(). => primary ctor <init> (param mass: Double, param radius: Double): Planet
 _empty_/Enums.Planet#`<init>`().(mass) => param mass: Double
+_empty_/Enums.Planet#`<init>`().(mass) => param mass: Double
+_empty_/Enums.Planet#`<init>`().(radius) => param radius: Double
 _empty_/Enums.Planet#`<init>`().(radius) => param radius: Double
 _empty_/Enums.Planet#mass. => private[this] val method mass Double
 _empty_/Enums.Planet#radius. => private[this] val method radius Double
@@ -1497,7 +1520,7 @@ Schema => SemanticDB v4
 Uri => ImplicitConversion.scala
 Text => empty
 Language => Scala
-Symbols => 23 entries
+Symbols => 24 entries
 Occurrences => 48 entries
 
 Symbols:
@@ -1518,6 +1541,7 @@ example/ImplicitConversion.newAny2stringadd#[A] => typeparam A
 example/ImplicitConversion.newAny2stringadd#`+`(). => method + (param other: String): String
 example/ImplicitConversion.newAny2stringadd#`+`().(other) => param other: String
 example/ImplicitConversion.newAny2stringadd#`<init>`(). => primary ctor <init> [typeparam A ](param self: A): newAny2stringadd[A]
+example/ImplicitConversion.newAny2stringadd#`<init>`().(self) => param self: A
 example/ImplicitConversion.newAny2stringadd#`<init>`().(self) => param self: A
 example/ImplicitConversion.newAny2stringadd#self. => private val method self A
 example/ImplicitConversion.newAny2stringadd(). => final implicit method newAny2stringadd [typeparam A ](param self: A): newAny2stringadd[A]
@@ -1677,7 +1701,7 @@ Schema => SemanticDB v4
 Uri => InventedNames.scala
 Text => empty
 Language => Scala
-Symbols => 45 entries
+Symbols => 46 entries
 Occurrences => 61 entries
 
 Symbols:
@@ -1700,8 +1724,9 @@ givens/InventedNames$package.given_String. => final implicit lazy val given meth
 givens/InventedNames$package.given_X. => final implicit given object given_X extends Object with X { self: given_X.type => +2 decls }
 givens/InventedNames$package.given_X.doX(). => method doX => Int <: givens/X#doX().
 givens/InventedNames$package.given_Y# => class given_Y extends Object with Y { self: given_Y => +3 decls }
-givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init> ()(implicit val given param x$1: X): given_Y
+givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init> ()(param x$1: X): given_Y
 givens/InventedNames$package.given_Y#`<init>`().(x$1) => implicit val given param x$1: X
+givens/InventedNames$package.given_Y#`<init>`().(x$1) => param x$1: X
 givens/InventedNames$package.given_Y#doY(). => method doY => String <: givens/Y#doY().
 givens/InventedNames$package.given_Y#x$1. => protected implicit val given method x$1 X
 givens/InventedNames$package.given_Y(). => final implicit given method given_Y (implicit given param x$1: X): given_Y
@@ -2332,7 +2357,7 @@ Schema => SemanticDB v4
 Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
-Symbols => 43 entries
+Symbols => 46 entries
 Occurrences => 40 entries
 
 Symbols:
@@ -2341,10 +2366,13 @@ example/NamedApplyBlockCaseClassConstruction.Msg# => case class Msg extends Obje
 example/NamedApplyBlockCaseClassConstruction.Msg#_1(). => method _1 => String
 example/NamedApplyBlockCaseClassConstruction.Msg#_2(). => method _2 => String
 example/NamedApplyBlockCaseClassConstruction.Msg#_3(). => method _3 => String
-example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`(). => primary ctor <init> (val param body: String, val param head: String, val param tail: String): Msg
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`(). => primary ctor <init> (param body: String, param head: String, param tail: String): Msg
 example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(body) => val param body: String
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(body) => param body: String
 example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(head) => val param head: String
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(head) => param head: String
 example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(tail) => val param tail: String
+example/NamedApplyBlockCaseClassConstruction.Msg#`<init>`().(tail) => param tail: String
 example/NamedApplyBlockCaseClassConstruction.Msg#body. => val method body String
 example/NamedApplyBlockCaseClassConstruction.Msg#copy$default$1(). => method copy$default$1 => String @uncheckedVariance
 example/NamedApplyBlockCaseClassConstruction.Msg#copy$default$2(). => method copy$default$2 => String @uncheckedVariance
@@ -2430,15 +2458,16 @@ Schema => SemanticDB v4
 Uri => NamedArguments.scala
 Text => empty
 Language => Scala
-Symbols => 16 entries
+Symbols => 17 entries
 Occurrences => 10 entries
 
 Symbols:
 example/NamedArguments# => class NamedArguments extends Object { self: NamedArguments => +4 decls }
 example/NamedArguments#User# => case class User extends Object with Product with Serializable { self: User => +5 decls }
 example/NamedArguments#User#_1(). => method _1 => String
-example/NamedArguments#User#`<init>`(). => primary ctor <init> (val param name: String): User
+example/NamedArguments#User#`<init>`(). => primary ctor <init> (param name: String): User
 example/NamedArguments#User#`<init>`().(name) => val param name: String
+example/NamedArguments#User#`<init>`().(name) => param name: String
 example/NamedArguments#User#copy$default$1(). => method copy$default$1 => String @uncheckedVariance
 example/NamedArguments#User#copy(). => method copy (param name: String): User
 example/NamedArguments#User#copy().(name) => param name: String
@@ -2645,19 +2674,17 @@ Schema => SemanticDB v4
 Uri => RecOrRefined.scala
 Text => empty
 Language => Scala
-Symbols => 65 entries
-Occurrences => 103 entries
+Symbols => 66 entries
+Occurrences => 110 entries
 
 Symbols:
 example/C# => class C extends Object { self: C => +3 decls }
 example/C#T1# => type T1 
 example/C#T2# => type T2 
 example/C#`<init>`(). => primary ctor <init> (): C
-example/PickOneRefinement_1# => class PickOneRefinement_1 [typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }] extends Object { self: PickOneRefinement_1[S] => +3 decls }
-example/PickOneRefinement_1#[S] => typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }
-example/PickOneRefinement_1#[S](as) => param as: T*
-example/PickOneRefinement_1#[S][T] => typeparam T 
-example/PickOneRefinement_1#`<init>`(). => primary ctor <init> [typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }](): PickOneRefinement_1[S]
+example/PickOneRefinement_1# => class PickOneRefinement_1 [typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] <: example/SpecialRefinement#pickOne(). }] extends Object { self: PickOneRefinement_1[S] => +3 decls }
+example/PickOneRefinement_1#[S] => typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] <: example/SpecialRefinement#pickOne(). }
+example/PickOneRefinement_1#`<init>`(). => primary ctor <init> [typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] <: example/SpecialRefinement#pickOne(). }](): PickOneRefinement_1[S]
 example/PickOneRefinement_1#run(). => method run (param s: S, param as: String*): Option[String]
 example/PickOneRefinement_1#run().(as) => param as: String*
 example/PickOneRefinement_1#run().(s) => param s: S
@@ -2685,6 +2712,7 @@ example/RecOrRefined$package.m6#[X] => typeparam X
 example/Record# => class Record extends Object with Selectable { self: Record => +4 decls }
 example/Record#`<init>`(). => primary ctor <init> (param elems: Tuple2[String, Any]*): Record
 example/Record#`<init>`().(elems) => param elems: Tuple2[String, Any]*
+example/Record#`<init>`().(elems) => param elems: Tuple2[String, Any]*
 example/Record#elems. => private[this] val method elems Tuple2[String, Any]*
 example/Record#fields. => private[this] val method fields Map[String, Any]
 example/Record#selectDynamic(). => method selectDynamic (param name: String): Any
@@ -2694,49 +2722,51 @@ example/SpecialRefinement#`<init>`(). => primary ctor <init> (): SpecialRefineme
 example/SpecialRefinement#pickOne(). => abstract method pickOne [typeparam T ](param as: T*): Option[Any]
 example/SpecialRefinement#pickOne().(as) => param as: T*
 example/SpecialRefinement#pickOne().[T] => typeparam T 
-local0 => abstract method pickOne [typeparam T ](param as: T*): Option[String]
-local1 => abstract val method x Int
-local2 => abstract val method x Int
-local3 => abstract method y => Int
+local0 => typeparam T 
+local1 => param as: T*
+local2 => abstract method pickOne [typeparam T ](param as: T*): Option[String] <: example/SpecialRefinement#pickOne().
+local3 => abstract val method x Int
 local4 => abstract val method x Int
 local5 => abstract method y => Int
-local6 => type z 
-local7 => typeparam T 
-local8 => param t: T
-local9 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
-local10 => typeparam T 
-local11 => param t: T
-local12 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
-local13 => typeparam T 
-local14 => param t: T
-local15 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
-local16 => abstract val method name String
-local17 => abstract val method age Int
-local18 => type T1  <: example/C#T1#
-local19 => type T2  = T1 <: example/C#T2#
+local6 => abstract val method x Int
+local7 => abstract method y => Int
+local8 => type z 
+local9 => typeparam T 
+local10 => param t: T
+local11 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
+local12 => typeparam T 
+local13 => param t: T
+local14 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
+local15 => typeparam T 
+local16 => param t: T
+local17 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
+local18 => abstract val method name String
+local19 => abstract val method age Int
+local20 => type T1  <: example/C#T1#
+local21 => type T2  = T1 <: example/C#T2#
 
 Occurrences:
 [0:8..0:15): example <- example/
 [2:4..2:6): m1 <- example/RecOrRefined$package.m1().
 [2:7..2:8): a <- example/RecOrRefined$package.m1().(a)
 [2:10..2:13): Int -> scala/Int#
-[2:20..2:21): x <- local1
+[2:20..2:21): x <- local3
 [2:23..2:26): Int -> scala/Int#
 [2:32..2:35): ??? -> scala/Predef.`???`().
 [3:4..3:6): m2 <- example/RecOrRefined$package.m2().
 [3:7..3:8): x <- example/RecOrRefined$package.m2().(x)
-[3:16..3:17): x <- local2
+[3:16..3:17): x <- local4
 [3:19..3:22): Int -> scala/Int#
-[3:28..3:29): y <- local3
+[3:28..3:29): y <- local5
 [3:31..3:34): Int -> scala/Int#
 [3:40..3:43): ??? -> scala/Predef.`???`().
 [4:4..4:6): m3 <- example/RecOrRefined$package.m3().
 [4:7..4:8): x <- example/RecOrRefined$package.m3().(x)
-[4:16..4:17): x <- local4
+[4:16..4:17): x <- local6
 [4:19..4:22): Int -> scala/Int#
-[4:28..4:29): y <- local5
+[4:28..4:29): y <- local7
 [4:31..4:34): Int -> scala/Int#
-[4:41..4:42): z <- local6
+[4:41..4:42): z <- local8
 [4:48..4:51): ??? -> scala/Predef.`???`().
 [5:6..5:16): PolyHolder <- example/PolyHolder#
 [6:6..6:9): foo <- example/PolyHolder#foo().
@@ -2747,31 +2777,31 @@ Occurrences:
 [9:4..9:6): m4 <- example/RecOrRefined$package.m4().
 [9:7..9:8): x <- example/RecOrRefined$package.m4().(x)
 [9:10..9:20): PolyHolder -> example/PolyHolder#
-[9:27..9:30): foo <- local9
-[9:31..9:32): T <- local7
-[9:34..9:35): t <- local8
-[9:37..9:38): T -> local7
-[9:41..9:42): T -> local7
+[9:27..9:30): foo <- local11
+[9:31..9:32): T <- local9
+[9:34..9:35): t <- local10
+[9:37..9:38): T -> local9
+[9:41..9:42): T -> local9
 [9:48..9:51): ??? -> scala/Predef.`???`().
 [10:4..10:6): m5 <- example/RecOrRefined$package.m5().
 [10:7..10:8): Z <- example/RecOrRefined$package.m5().[Z]
 [10:10..10:11): x <- example/RecOrRefined$package.m5().(x)
 [10:13..10:16): Int -> scala/Int#
 [10:19..10:29): PolyHolder -> example/PolyHolder#
-[10:36..10:39): foo <- local12
-[10:40..10:41): T <- local10
-[10:43..10:44): t <- local11
-[10:46..10:47): T -> local10
-[10:50..10:51): T -> local10
+[10:36..10:39): foo <- local14
+[10:40..10:41): T <- local12
+[10:43..10:44): t <- local13
+[10:46..10:47): T -> local12
+[10:50..10:51): T -> local12
 [10:56..10:59): ??? -> scala/Predef.`???`().
 [12:5..12:7): m6 <- example/RecOrRefined$package.m6#
 [12:11..12:12): X <- example/RecOrRefined$package.m6#[X]
 [12:18..12:28): PolyHolder -> example/PolyHolder#
-[12:35..12:38): foo <- local15
-[12:39..12:40): T <- local13
-[12:42..12:43): t <- local14
-[12:45..12:46): T -> local13
-[12:49..12:50): T -> local13
+[12:35..12:38): foo <- local17
+[12:39..12:40): T <- local15
+[12:42..12:43): t <- local16
+[12:45..12:46): T -> local15
+[12:49..12:50): T -> local15
 [14:6..14:12): Record <- example/Record#
 [14:13..14:18): elems <- example/Record#elems.
 [14:21..14:27): String -> scala/Predef.String#
@@ -2788,18 +2818,18 @@ Occurrences:
 [16:48..16:52): name -> example/Record#selectDynamic().(name)
 [18:5..18:11): Person <- example/RecOrRefined$package.Person#
 [18:14..18:20): Record -> example/Record#
-[19:6..19:10): name <- local16
+[19:6..19:10): name <- local18
 [19:12..19:18): String -> scala/Predef.String#
-[20:6..20:9): age <- local17
+[20:6..20:9): age <- local19
 [20:11..20:14): Int -> scala/Int#
 [24:6..24:7): C <- example/C#
 [24:15..24:17): T1 <- example/C#T1#
 [24:24..24:26): T2 <- example/C#T2#
 [25:5..25:7): C2 <- example/RecOrRefined$package.C2#
 [25:10..25:11): C -> example/C#
-[25:19..25:21): T1 <- local18
-[25:28..25:30): T2 <- local19
-[25:33..25:35): T1 -> local18
+[25:19..25:21): T1 <- local20
+[25:28..25:30): T2 <- local21
+[25:33..25:35): T1 -> local20
 [27:6..27:23): SpecialRefinement <- example/SpecialRefinement#
 [28:6..28:13): pickOne <- example/SpecialRefinement#pickOne().
 [28:14..28:15): T <- example/SpecialRefinement#pickOne().[T]
@@ -2809,6 +2839,13 @@ Occurrences:
 [28:33..28:36): Any -> scala/Any#
 [31:6..31:25): PickOneRefinement_1 <- example/PickOneRefinement_1#
 [31:26..31:27): S <- example/PickOneRefinement_1#[S]
+[31:31..31:48): SpecialRefinement -> example/SpecialRefinement#
+[31:55..31:62): pickOne <- local2
+[31:63..31:64): T <- local0
+[31:66..31:68): as <- local1
+[31:70..31:71): T -> local0
+[31:75..31:81): Option -> scala/Option#
+[31:82..31:88): String -> scala/Predef.String#
 [32:6..32:9): run <- example/PickOneRefinement_1#run().
 [32:10..32:11): s <- example/PickOneRefinement_1#run().(s)
 [32:13..32:14): S -> example/PickOneRefinement_1#[S]
@@ -2905,7 +2942,7 @@ Schema => SemanticDB v4
 Uri => Synthetic.scala
 Text => empty
 Language => Scala
-Symbols => 40 entries
+Symbols => 41 entries
 Occurrences => 112 entries
 
 Symbols:
@@ -2914,8 +2951,9 @@ example/Synthetic#F# => class F extends Object { self: F => +1 decls }
 example/Synthetic#F#`<init>`(). => primary ctor <init> (): F
 example/Synthetic#J# => class J [typeparam T ] extends Object { self: J[T] => +4 decls }
 example/Synthetic#J#[T] => typeparam T 
-example/Synthetic#J#`<init>`(). => primary ctor <init> [typeparam T ]()(implicit param evidence$1: Manifest[T]): J[T]
+example/Synthetic#J#`<init>`(). => primary ctor <init> [typeparam T ]()(param evidence$1: Manifest[T]): J[T]
 example/Synthetic#J#`<init>`().(evidence$1) => implicit param evidence$1: Manifest[T]
+example/Synthetic#J#`<init>`().(evidence$1) => param evidence$1: Manifest[T]
 example/Synthetic#J#arr. => val method arr Array[T]
 example/Synthetic#J#evidence$1. => private[this] implicit val method evidence$1 Manifest[T]
 example/Synthetic#Name. => val method Name Regex
@@ -3195,7 +3233,7 @@ Schema => SemanticDB v4
 Uri => Vals.scala
 Text => empty
 Language => Scala
-Symbols => 42 entries
+Symbols => 45 entries
 Occurrences => 127 entries
 
 Symbols:
@@ -3203,10 +3241,13 @@ example/ValUsages. => final object ValUsages extends Object { self: ValUsages.ty
 example/ValUsages.v. => val method v Vals
 example/Vals# => abstract class Vals extends Object { self: Vals => +25 decls }
 example/Vals#_explicitSetter(). => private[this] var method _explicitSetter Int
-example/Vals#`<init>`(). => primary ctor <init> (param p: Int, val param xp: Int, var param yp: Int): Vals
+example/Vals#`<init>`(). => primary ctor <init> (param p: Int, param xp: Int, param yp: Int): Vals
+example/Vals#`<init>`().(p) => param p: Int
 example/Vals#`<init>`().(p) => param p: Int
 example/Vals#`<init>`().(xp) => val param xp: Int
+example/Vals#`<init>`().(xp) => param xp: Int
 example/Vals#`<init>`().(yp) => var param yp: Int
+example/Vals#`<init>`().(yp) => param yp: Int
 example/Vals#`explicitSetter_=`(). => method explicitSetter_= (param x: Int): Unit
 example/Vals#`explicitSetter_=`().(x) => param x: Int
 example/Vals#`yam_=`(). => var method yam_= (param x$1: Int): Unit
@@ -3410,7 +3451,7 @@ Schema => SemanticDB v4
 Uri => exports-example-Codec.scala
 Text => empty
 Language => Scala
-Symbols => 21 entries
+Symbols => 23 entries
 Occurrences => 30 entries
 
 Symbols:
@@ -3418,6 +3459,8 @@ exports/example/Codec# => trait Codec [typeparam T ] extends Object with Decoder
 exports/example/Codec#[T] => typeparam T 
 exports/example/Codec#`<init>`(). => primary ctor <init> [typeparam T ](param decode: Decoder[T], param encode: Encoder[T]): Codec[T]
 exports/example/Codec#`<init>`().(decode) => param decode: Decoder[T]
+exports/example/Codec#`<init>`().(decode) => param decode: Decoder[T]
+exports/example/Codec#`<init>`().(encode) => param encode: Encoder[T]
 exports/example/Codec#`<init>`().(encode) => param encode: Encoder[T]
 exports/example/Codec#decode(). => final method decode (param a: Array[Byte]): T <: exports/example/Decoder#decode().
 exports/example/Codec#decode().(a) => param a: Array[Byte]
@@ -3522,12 +3565,13 @@ Schema => SemanticDB v4
 Uri => i9727.scala
 Text => empty
 Language => Scala
-Symbols => 7 entries
+Symbols => 8 entries
 Occurrences => 8 entries
 
 Symbols:
 i9727/Test# => class Test extends Object { self: Test => +2 decls }
 i9727/Test#`<init>`(). => primary ctor <init> (param a: Int): Test
+i9727/Test#`<init>`().(a) => param a: Int
 i9727/Test#`<init>`().(a) => param a: Int
 i9727/Test#a. => private[this] val method a Int
 i9727/i9727$package. => final package object i9727 extends Object { self: i9727.type => +3 decls }
@@ -3553,7 +3597,7 @@ Uri => i9782.scala
 Text => empty
 Language => Scala
 Symbols => 24 entries
-Occurrences => 39 entries
+Occurrences => 49 entries
 
 Symbols:
 _empty_/Copy# => trait Copy [typeparam In  <: Txn[In], typeparam Out  <: Txn[Out]] extends Object { self: Copy[In, Out] => +5 decls }
@@ -3584,15 +3628,25 @@ local2 => val local outObj: Repr[Out] & Obj[Out]
 Occurrences:
 [1:6..1:9): Txn <- _empty_/Txn#
 [1:10..1:11): T <- _empty_/Txn#[T]
+[1:15..1:18): Txn -> _empty_/Txn#
+[1:19..1:20): T -> _empty_/Txn#[T]
 [3:6..3:10): Elem <- _empty_/Elem#
 [3:11..3:12): T <- _empty_/Elem#[T]
+[3:16..3:19): Txn -> _empty_/Txn#
+[3:20..3:21): T -> _empty_/Elem#[T]
 [5:6..5:9): Obj <- _empty_/Obj#
 [5:10..5:11): T <- _empty_/Obj#[T]
+[5:15..5:18): Txn -> _empty_/Txn#
+[5:19..5:20): T -> _empty_/Obj#[T]
 [5:31..5:35): Elem -> _empty_/Elem#
 [5:36..5:37): T -> _empty_/Obj#[T]
 [7:6..7:10): Copy <- _empty_/Copy#
 [7:11..7:13): In <- _empty_/Copy#[In]
+[7:17..7:20): Txn -> _empty_/Txn#
+[7:21..7:23): In -> _empty_/Copy#[In]
 [7:26..7:29): Out <- _empty_/Copy#[Out]
+[7:33..7:36): Txn -> _empty_/Txn#
+[7:37..7:40): Out -> _empty_/Copy#[Out]
 [8:6..8:14): copyImpl <- _empty_/Copy#copyImpl().
 [8:15..8:19): Repr <- _empty_/Copy#copyImpl().[Repr]
 [8:45..8:47): in <- _empty_/Copy#copyImpl().(in)
@@ -3709,7 +3763,7 @@ Uri => nullary.scala
 Text => empty
 Language => Scala
 Symbols => 16 entries
-Occurrences => 28 entries
+Occurrences => 29 entries
 
 Symbols:
 _empty_/Concrete# => class Concrete extends NullaryTest[Int, List] { self: Concrete => +3 decls }
@@ -3719,8 +3773,8 @@ _empty_/Concrete#nullary3(). => method nullary3 => List[Int] <: _empty_/NullaryT
 _empty_/NullaryTest# => abstract class NullaryTest [typeparam T , typeparam m [typeparam s ]] extends Object { self: NullaryTest[T, m] => +9 decls }
 _empty_/NullaryTest#[T] => typeparam T 
 _empty_/NullaryTest#[m] => typeparam m [typeparam s ]
-_empty_/NullaryTest#[m][s] => typeparam s 
 _empty_/NullaryTest#`<init>`(). => primary ctor <init> [typeparam T , typeparam m [typeparam s ]](): NullaryTest[T, m]
+_empty_/NullaryTest#`<init>`().[m][s] => typeparam s 
 _empty_/NullaryTest#nullary(). => method nullary => String
 _empty_/NullaryTest#nullary2(). => abstract method nullary2 => T
 _empty_/NullaryTest#nullary3(). => abstract method nullary3 => m[T]
@@ -3733,6 +3787,7 @@ Occurrences:
 [0:15..0:26): NullaryTest <- _empty_/NullaryTest#
 [0:27..0:28): T <- _empty_/NullaryTest#[T]
 [0:30..0:31): m <- _empty_/NullaryTest#[m]
+[0:32..0:33): s <- _empty_/NullaryTest#`<init>`().[m][s]
 [1:6..1:13): nullary <- _empty_/NullaryTest#nullary().
 [1:15..1:21): String -> scala/Predef.String#
 [2:6..2:7): x <- _empty_/NullaryTest#x.
@@ -3767,8 +3822,8 @@ Schema => SemanticDB v4
 Uri => recursion.scala
 Text => empty
 Language => Scala
-Symbols => 36 entries
-Occurrences => 45 entries
+Symbols => 37 entries
+Occurrences => 46 entries
 
 Symbols:
 local0 => case val method N$1  <: Nat
@@ -3787,8 +3842,9 @@ recursion/Nats.Nat#`<init>`(). => primary ctor <init> (): Nat
 recursion/Nats.Succ# => case class Succ [typeparam N  <: Nat] extends Object with Nat with Product with Serializable { self: Succ[N] => +6 decls }
 recursion/Nats.Succ#[N] => typeparam N  <: Nat
 recursion/Nats.Succ#_1(). => method _1 => N
-recursion/Nats.Succ#`<init>`(). => primary ctor <init> [typeparam N  <: Nat](val param p: N): Succ[N]
+recursion/Nats.Succ#`<init>`(). => primary ctor <init> [typeparam N  <: Nat](param p: N): Succ[N]
 recursion/Nats.Succ#`<init>`().(p) => val param p: N
+recursion/Nats.Succ#`<init>`().(p) => param p: N
 recursion/Nats.Succ#copy$default$1(). => method copy$default$1 [typeparam N  <: Nat]: N
 recursion/Nats.Succ#copy$default$1().[N] => typeparam N  <: Nat
 recursion/Nats.Succ#copy(). => method copy [typeparam N  <: Nat](param p: N): Succ[N]
@@ -3831,6 +3887,7 @@ Occurrences:
 [14:27..14:30): Nat -> recursion/Nats.Nat#
 [15:13..15:17): Succ <- recursion/Nats.Succ#
 [15:18..15:19): N <- recursion/Nats.Succ#[N]
+[15:23..15:26): Nat -> recursion/Nats.Nat#
 [15:28..15:29): p <- recursion/Nats.Succ#p.
 [15:31..15:32): N -> recursion/Nats.Succ#[N]
 [15:42..15:45): Nat -> recursion/Nats.Nat#
@@ -3895,16 +3952,19 @@ Schema => SemanticDB v4
 Uri => semanticdb-Flags.scala
 Text => empty
 Language => Scala
-Symbols => 50 entries
+Symbols => 56 entries
 Occurrences => 73 entries
 
 Symbols:
 flags/p/package. => final package object p extends Object { self: p.type => +23 decls }
 flags/p/package.AA# => class AA extends Object { self: AA => +5 decls }
-flags/p/package.AA#`<init>`(). => primary ctor <init> (param x: Int, val param y: Int, var param z: Int): AA
+flags/p/package.AA#`<init>`(). => primary ctor <init> (param x: Int, param y: Int, param z: Int): AA
+flags/p/package.AA#`<init>`().(x) => param x: Int
 flags/p/package.AA#`<init>`().(x) => param x: Int
 flags/p/package.AA#`<init>`().(y) => val param y: Int
+flags/p/package.AA#`<init>`().(y) => param y: Int
 flags/p/package.AA#`<init>`().(z) => var param z: Int
+flags/p/package.AA#`<init>`().(z) => param z: Int
 flags/p/package.AA#`z_=`(). => var method z_= (param x$1: Int): Unit
 flags/p/package.AA#`z_=`().(x$1) => param x$1: Int
 flags/p/package.AA#x. => private[this] val method x Int
@@ -3916,7 +3976,10 @@ flags/p/package.C#[U] => contravariant typeparam U
 flags/p/package.C#[V] => typeparam V 
 flags/p/package.C#`<init>`(). => primary ctor <init> [covariant typeparam T , contravariant typeparam U , typeparam V ](param x: T, param y: U, param z: V): C[T, U, V]
 flags/p/package.C#`<init>`().(x) => param x: T
+flags/p/package.C#`<init>`().(x) => param x: T
 flags/p/package.C#`<init>`().(y) => param y: U
+flags/p/package.C#`<init>`().(y) => param y: U
+flags/p/package.C#`<init>`().(z) => param z: V
 flags/p/package.C#`<init>`().(z) => param z: V
 flags/p/package.C#`<init>`(+1). => ctor <init> [covariant typeparam T , contravariant typeparam U , typeparam V ](): C[T, U, V]
 flags/p/package.C#`<init>`(+2). => ctor <init> [covariant typeparam T , contravariant typeparam U , typeparam V ](param t: T): C[T, U, V]
@@ -4033,7 +4096,7 @@ Schema => SemanticDB v4
 Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
-Symbols => 144 entries
+Symbols => 147 entries
 Occurrences => 225 entries
 
 Symbols:
@@ -4052,8 +4115,9 @@ types/C# => class C extends Object { self: C => +1 decls }
 types/C#`<init>`(). => primary ctor <init> (): C
 types/Foo# => case class Foo extends Object with Product with Serializable { self: Foo => +5 decls }
 types/Foo#_1(). => method _1 => "abc"
-types/Foo#`<init>`(). => primary ctor <init> (val param s: "abc"): Foo
+types/Foo#`<init>`(). => primary ctor <init> (param s: "abc"): Foo
 types/Foo#`<init>`().(s) => val param s: "abc"
+types/Foo#`<init>`().(s) => param s: "abc"
 types/Foo#copy$default$1(). => method copy$default$1 => "abc" @uncheckedVariance
 types/Foo#copy(). => method copy (param s: "abc"): Foo
 types/Foo#copy().(s) => param s: "abc"
@@ -4105,8 +4169,9 @@ types/Test.C#MethodType.x1(). => method x1 => Int
 types/Test.C#MethodType.x2(). => method x2 => Int
 types/Test.C#RepeatedType# => case class RepeatedType extends Object with Product with Serializable { self: RepeatedType => +4 decls }
 types/Test.C#RepeatedType#_1(). => method _1 => String*
-types/Test.C#RepeatedType#`<init>`(). => primary ctor <init> (val param s: String*): RepeatedType
+types/Test.C#RepeatedType#`<init>`(). => primary ctor <init> (param s: String*): RepeatedType
 types/Test.C#RepeatedType#`<init>`().(s) => val param s: String*
+types/Test.C#RepeatedType#`<init>`().(s) => param s: String*
 types/Test.C#RepeatedType#m1(). => method m1 (param x: Int*): Int
 types/Test.C#RepeatedType#m1().(x) => param x: Int*
 types/Test.C#RepeatedType#s. => val method s String*
@@ -4175,6 +4240,7 @@ types/Test.N#n(). => method n => Int
 types/ann# => class ann [typeparam T ] extends Annotation with StaticAnnotation { self: ann[T] => +3 decls }
 types/ann#[T] => typeparam T 
 types/ann#`<init>`(). => primary ctor <init> [typeparam T ](param x: T): ann[T]
+types/ann#`<init>`().(x) => param x: T
 types/ann#`<init>`().(x) => param x: T
 types/ann#x. => private[this] val method x T
 types/ann1# => class ann1 extends Annotation with StaticAnnotation { self: ann1 => +1 decls }
@@ -4417,15 +4483,16 @@ Schema => SemanticDB v4
 Uri => semanticdb-extract.scala
 Text => empty
 Language => Scala
-Symbols => 18 entries
+Symbols => 19 entries
 Occurrences => 20 entries
 
 Symbols:
 _empty_/AnObject. => final object AnObject extends Object { self: AnObject.type => +6 decls }
 _empty_/AnObject.Foo# => case class Foo extends Object with Product with Serializable { self: Foo => +5 decls }
 _empty_/AnObject.Foo#_1(). => method _1 => Int
-_empty_/AnObject.Foo#`<init>`(). => primary ctor <init> (val param x: Int): Foo
+_empty_/AnObject.Foo#`<init>`(). => primary ctor <init> (param x: Int): Foo
 _empty_/AnObject.Foo#`<init>`().(x) => val param x: Int
+_empty_/AnObject.Foo#`<init>`().(x) => param x: Int
 _empty_/AnObject.Foo#copy$default$1(). => method copy$default$1 => Int @uncheckedVariance
 _empty_/AnObject.Foo#copy(). => method copy (param x: Int): Foo
 _empty_/AnObject.Foo#copy().(x) => param x: Int
