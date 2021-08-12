@@ -24,11 +24,13 @@ object OrderingConstraint {
   type ParamOrdering = ArrayValuedMap[List[TypeParamRef]]
 
   /** A new constraint with given maps */
-  private def newConstraint(boundsMap: ParamBounds, lowerMap: ParamOrdering, upperMap: ParamOrdering)(using Context) : OrderingConstraint = {
-    val result = new OrderingConstraint(boundsMap, lowerMap, upperMap)
-    ctx.run.recordConstraintSize(result, result.boundsMap.size)
-    result
-  }
+  private def newConstraint(boundsMap: ParamBounds, lowerMap: ParamOrdering, upperMap: ParamOrdering)(using Context) : OrderingConstraint =
+    if boundsMap.isEmpty && lowerMap.isEmpty && upperMap.isEmpty then
+      empty
+    else
+      val result = new OrderingConstraint(boundsMap, lowerMap, upperMap)
+      ctx.run.recordConstraintSize(result, result.boundsMap.size)
+      result
 
   /** A lens for updating a single entry array in one of the three constraint maps */
   abstract class ConstraintLens[T <: AnyRef: ClassTag] {

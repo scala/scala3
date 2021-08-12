@@ -6,6 +6,7 @@ import collection.mutable.ListBuffer
  *  It has linear complexity for `apply`, `updated`, and `remove`.
  */
 abstract class SimpleIdentityMap[K <: AnyRef, +V >: Null <: AnyRef] extends (K => V) {
+  final def isEmpty: Boolean = this eq SimpleIdentityMap.myEmpty
   def size: Int
   def apply(k: K): V
   def remove(k: K): SimpleIdentityMap[K, V]
