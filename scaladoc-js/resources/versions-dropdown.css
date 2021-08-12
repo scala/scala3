@@ -1,0 +1,66 @@
+/* The container <div> - needed to position the dropdown content */
+.versions-dropdown {
+  position: relative;
+}
+
+/* Dropdown Button */
+.dropdownbtn {
+  background-color: var(--leftbar-bg);
+  color: white;
+  padding: 4px 12px;
+  border: none;
+}
+
+/* Dropdown button on hover & focus */
+.dropdownbtnactive:hover, .dropdownbtnactive:focus {
+  background-color: var(--leftbar-hover-bg);
+  cursor: pointer;
+}
+
+/* The search field */
+#dropdown-input {
+  box-sizing: border-box;
+  background-image: url('searchicon.png');
+  background-position: 14px 12px;
+  background-repeat: no-repeat;
+  font-size: 16px;
+  padding: 14px 20px 12px 45px;
+  border: none;
+  border-bottom: 1px solid #ddd;
+}
+
+
+/* The search field when it gets focus/clicked on */
+#dropdown-input:focus {outline: 3px solid #ddd;}
+
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f6f6f6;
+  min-width: 230px;
+  border: 1px solid #ddd;
+  z-index: 1;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {background-color: #f1f1f1}
+
+/* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
+.show {
+  display:block;
+}
+
+/* Filtered entries in dropdown menu */
+.dropdown-content a.filtered {
+  display: none;
+}
