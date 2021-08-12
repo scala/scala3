@@ -78,39 +78,7 @@ pre code, pre code.hljs {
   font-size: 1em;
   padding: 0;
 }
-.snippet {
-  padding: 12px 8px 10px 12px;
-  background: var(--code-bg);
-  margin: 1em 0px;
-  border-radius: 2px;
-  box-shadow: 0 0 2px #888;
-}
-.snippet-error {
-  border-bottom: 2px dotted red;
-}
-.snippet-warn {
-  border-bottom: 2px dotted orange;
-}
-.snippet-info {
-  border-bottom: 2px dotted teal;
-}
-.snippet-debug {
-  border-bottom: 2px dotted pink;
-}
-.tooltip {
-  position: relative;
-}
-.tooltip:hover:after {
-  content: attr(label);
-  padding: 4px 8px;
-  color: white;
-  background-color:black;
-  position: absolute;
-  left: 0;
-  z-index:10;
-  box-shadow:0 0 3px #444;
-  opacity: 0.8;
-}
+
 pre, .symbol.monospace {
   font-weight: 500;
   font-size: 12px;
@@ -506,13 +474,6 @@ footer {
   border-top: 1px solid var(--border-light);
   font-size: 14px;
 }
-.theme-dark footer .social-icon {
-  /* "Poor man's dark mode" for images.
-   * This works great with black images,
-   * and just-okay with colored images.
-   */
-  filter: invert(100%) hue-rotate(180deg);
-}
 
 footer .padded-icon {
   padding-left: 0.5em;
@@ -524,6 +485,12 @@ footer .pull-right {
 footer .mode {
   display: flex;
   align-items: center;
+}
+
+@media(max-height:640px) {
+  footer {
+    position: unset;
+  }
 }
 
 /* Theme Toggle */
@@ -851,16 +818,6 @@ footer .socials {
   margin-right: 8px;
 }
 
-.social-icon {
-  padding-right: 5px;
-  padding-left: 5px;
-}
-
-.social-icon img {
-  height: 20px;
-  width: 20px;
-}
-
 #generated-by {
   display: flex;
   align-items: center;
@@ -957,77 +914,8 @@ footer .socials {
   }
 }
 
-/* The container <div> - needed to position the dropdown content */
-.versions-dropdown {
-  position: relative;
-}
-
- /* Dropdown Button */
-.dropdownbtn {
-  background-color: var(--leftbar-bg);
-  color: white;
-  padding: 4px 12px;
-  border: none;
-}
-
-/* Dropdown button on hover & focus */
-.dropdownbtnactive:hover, .dropdownbtnactive:focus {
-  background-color: var(--leftbar-hover-bg);
-  cursor: pointer;
-}
-
-/* The search field */
-#dropdown-input {
-  box-sizing: border-box;
-  background-image: url('searchicon.png');
-  background-position: 14px 12px;
-  background-repeat: no-repeat;
-  font-size: 16px;
-  padding: 14px 20px 12px 45px;
-  border: none;
-  border-bottom: 1px solid #ddd;
-}
-
-/* The search field when it gets focus/clicked on */
-#dropdown-input:focus {outline: 3px solid #ddd;}
 
 
-/* Dropdown Content (Hidden by Default) */
-.dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: #f6f6f6;
-  min-width: 230px;
-  border: 1px solid #ddd;
-  z-index: 1;
-}
-
-/* Links inside the dropdown */
-.dropdown-content a {
-  color: black;
-  padding: 12px 16px;
-  text-decoration: none;
-  display: block;
-}
-
-/* Change color of dropdown links on hover */
-.dropdown-content a:hover {background-color: #f1f1f1}
-
-/* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
-.show {
-  display:block;
-}
-
-/* Filtered entries in dropdown menu */
-.dropdown-content a.filtered {
-  display: none;
-}
-
-@media(max-height:640px) {
-  footer {
-    position: unset;
-  }
-}
 
 /* Breadcrumbs */
 
@@ -1038,3 +926,5 @@ footer .socials {
 .breadcrumbs a:first-child {
   margin: 0 8px 0 0;
 }
+
+

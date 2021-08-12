@@ -127,3 +127,129 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   float: right;
   margin-left: auto !important;
 }
+
+/* button */
+.search span {
+  background: var(--red500);
+  fill: var(--white);
+  cursor: pointer;
+  border: none;
+  padding: 9px;
+  border-radius: 24px;
+  box-shadow: 0 0 16px var(--code-bg);
+}
+.search span:hover {
+  background: var(--red600);
+}
+
+@media(max-width: 576px) {
+  .search span {
+      background: none;
+      fill: var(--icon-color);
+      cursor: pointer;
+      border: none;
+      padding: 0;
+      box-shadow: none;
+      margin-top: 2px;
+  }
+
+  .search span:hover {
+      fill: var(--link-hover-fg);
+  }
+}
+
+#scaladoc-search {
+  margin-top: 16px;
+  cursor: pointer;
+  position: fixed;
+  top: 0;
+  right: 20px;
+  z-index: 5;
+}
+
+#scaladoc-searchbar.hidden {
+  display: none;
+}
+
+#scaladoc-searchbar {
+  position: fixed;
+  top: 50px;
+  left: calc(5% + var(--side-width));
+  z-index: 5;
+  width: calc(90% - var(--side-width));
+  box-shadow: 0 2px 16px 0 rgba(0, 42, 76, 0.15);
+  font-size: 13px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
+  background-color: var(--leftbar-bg);
+  color: var(--leftbar-fg);
+  box-shadow: 0 0 2px var(--shadow);
+}
+
+#scaladoc-searchbar-input {
+  width: 100%;
+  min-height: 32px;
+  border: none;
+  border-bottom: 1px solid #bbb;
+  padding: 10px;
+  background-color: var(--leftbar-bg);
+  color: var(--leftbar-fg);
+}
+
+#scaladoc-searchbar-input:focus {
+  outline: none;
+}
+
+#scaladoc-searchbar-results {
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  overflow: auto;
+}
+
+.scaladoc-searchbar-result {
+  background-color: var(--leftbar-bg);
+  color: var(--leftbar-fg);
+  line-height: 24px;
+  padding: 4px 10px 4px 10px;
+}
+
+.scaladoc-searchbar-result-row {
+  display: flex;
+}
+
+.scaladoc-searchbar-result .micon {
+  height: 16px;
+  width: 16px;
+  margin: 4px 8px 0px 0px;
+}
+
+.scaladoc-searchbar-result:first-of-type {
+  margin-top: 10px;
+}
+
+.scaladoc-searchbar-result[selected] {
+  background-color: var(--leftbar-hover-bg);
+  color: var(--leftbar-hover-fg);
+}
+
+.scaladoc-searchbar-result a {
+  /* for some reason, with display:block if there's a wrap between the
+   * search result text and the location span, the dead space to the
+   * left of the location span doesn't get treated as part of the block,
+   * which defeats the purpose of making the <a> a block element.
+   * But inline-block with width:100% works as desired.
+   */
+  display: inline-block;
+  width: 100%;
+  text-indent: -20px;
+  padding-left: 20px;
+}
+
+#searchBar {
+  display: inline-flex;
+}
+
+.pull-right {
+  float: right;
+  margin-left: auto;
+}
