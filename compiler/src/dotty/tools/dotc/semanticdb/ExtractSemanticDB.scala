@@ -231,6 +231,16 @@ class ExtractSemanticDB extends Phase:
                     registerUseGuarded(None, alt.symbol.companionClass, sel.imported.span, tree.source)
         case tree: Inlined =>
           traverse(tree.call)
+        case tree: TypeTree =>
+          tree.typeOpt match
+            // Any types could be appear inside of `TypeTree`, but
+            // types that precent in source other than TypeRef are traversable and contain Ident tree nodes
+            // (e.g. TypeBoundsTree, AppliedTypeTree)
+            case Types.TypeRef(_, sym: Symbol) if namePresentInSource(sym, tree.span, tree.source) =>
+              registerUseGuarded(None, sym, tree.span, tree.source)
+            case _ => ()
+
+
         case _ =>
           traverseChildren(tree)
 

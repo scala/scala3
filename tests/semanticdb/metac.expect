@@ -2594,7 +2594,7 @@ Uri => Prefixes.scala
 Text => empty
 Language => Scala
 Symbols => 19 entries
-Occurrences => 47 entries
+Occurrences => 48 entries
 
 Symbols:
 prefixes/C# => class C extends Object { self: C => +6 decls }
@@ -2656,6 +2656,7 @@ Occurrences:
 [25:9..25:10): c -> prefixes/Test.c.
 [25:11..25:12): N -> prefixes/C#N.
 [26:6..26:8): k3 <- prefixes/Test.k3().
+[26:10..26:11): U -> prefixes/C#N.U#
 [26:14..26:17): ??? -> scala/Predef.`???`().
 [28:6..28:8): n2 <- prefixes/Test.n2().
 [28:10..28:11): M -> prefixes/M.
