@@ -24,7 +24,7 @@ object Test/*<-prefixes::Test.*/ {
   def m2/*<-prefixes::Test.m2().*/: c/*->prefixes::Test.c.*/.T/*->prefixes::C#T#*/ = ???/*->scala::Predef.`???`().*/
   def k2/*<-prefixes::Test.k2().*/: c/*->prefixes::Test.c.*/.N/*->prefixes::C#N.*/.U/*->prefixes::C#N.U#*/ = ???/*->scala::Predef.`???`().*/
   import c/*->prefixes::Test.c.*/.N/*->prefixes::C#N.*/.*
-  def k3/*<-prefixes::Test.k3().*/: U = ???/*->scala::Predef.`???`().*/
+  def k3/*<-prefixes::Test.k3().*/: U/*->prefixes::C#N.U#*/ = ???/*->scala::Predef.`???`().*/
 
   def n2/*<-prefixes::Test.n2().*/: M/*->prefixes::M.*/.T/*->prefixes::M.T#*/ = ???/*->scala::Predef.`???`().*/
 
