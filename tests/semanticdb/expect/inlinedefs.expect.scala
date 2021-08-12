@@ -12,6 +12,6 @@ object FakePredef/*<-inlinedefs::FakePredef.*/:
    *  sunt in culpa qui officia deserunt mollit anim id est laborum.
    */
   transparent inline final def assert/*<-inlinedefs::FakePredef.assert().*/(inline assertion/*<-inlinedefs::FakePredef.assert().(assertion)*/: Boolean/*->scala::Boolean#*/): Unit/*->scala::Unit#*/ = {
-    if (!assertion/*->inlinedefs::FakePredef.assert().(assertion)*//*->scala::Boolean#`unary_!`().*/)
-      throw new java.lang.AssertionError/*->java::lang::AssertionError#*//*->java::lang::AssertionError#`<init>`(+2).*/("assertion failed")
+    if (!assertion/*->inlinedefs::FakePredef.assert().(assertion)*/)
+      throw new java.lang.AssertionError/*->java::lang::AssertionError#*/("assertion failed")
   }
