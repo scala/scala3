@@ -165,6 +165,18 @@ class SettingsTests {
       assertEquals(expectedErrors, summary.errors)
     }
 
+  @Test def `Allow IntSetting's to be set with a colon`: Unit =
+    object Settings extends SettingGroup:
+      val foo = IntSetting("-foo", "foo", 80)
+    import Settings._
+
+    val args = List("-foo:100")
+    val summary = processArguments(args, processAll = true)
+    assertTrue(s"Setting args errors:\n  ${summary.errors.take(5).mkString("\n  ")}", summary.errors.isEmpty)
+    withProcessedArgs(summary) {
+      assertEquals(100, foo.value)
+    }
+
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
 
   extension [T](setting: Setting[T])
