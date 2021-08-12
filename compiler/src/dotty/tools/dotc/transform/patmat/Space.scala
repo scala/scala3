@@ -500,8 +500,21 @@ class SpaceEngine(using Context) extends SpaceLogic {
     }
   }
 
+  /** Numeric literals, while being constant values of unrelated types (e.g. Char and Int),
+   *  when used in a case may end up matching at runtime, because their equals may returns true.
+   *  Because these are universally available, general purpose types, it would be good to avoid
+   *  returning false positive warnings, such as in `(c: Char) match { case 67 => ... }` emitting a
+   *  reachability warning on the case.  So the type `ConstantType(Constant(67, IntTag))` is
+   *  converted to `ConstantType(Constant(67, CharTag))`.  #12805 */
+  def convertConstantType(tp: Type, pt: Type): Type = tp match
+    case tp @ ConstantType(const) =>
+      val converted = const.convertTo(pt)
+      if converted == null then tp else ConstantType(converted)
+    case _ => tp
+
   /** Is `tp1` a subtype of `tp2`?  */
-  def isSubType(tp1: Type, tp2: Type): Boolean = {
+  def isSubType(_tp1: Type, tp2: Type): Boolean = {
+    val tp1 = convertConstantType(_tp1, tp2)
     debug.println(TypeComparer.explained(_.isSubType(tp1, tp2)))
     val res = if (ctx.explicitNulls) {
       tp1 <:< tp2
@@ -747,6 +760,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
   }
 
   def show(ss: Seq[Space]): String = ss.map(show).mkString(", ")
+
   /** Display spaces */
   def show(s: Space): String = {
     def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
@@ -891,13 +905,15 @@ class SpaceEngine(using Context) extends SpaceLogic {
       else
         project(OrType(selTyp, constantNullType, soft = false))
 
+    debug.println(s"targetSpace: ${show(targetSpace)}")
+
     // in redundancy check, take guard as false in order to soundly approximate
     val spaces = cases.map { x =>
       val res =
         if (x.guard.isEmpty) project(x.pat)
         else Empty
 
-      debug.println(s"${x.pat.show} ====> ${res}")
+      debug.println(s"${x.pat.show} ====> ${show(res)}")
       res
     }
 
@@ -911,12 +927,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
         debug.println(s"---------------reachable? ${show(curr)}")
         debug.println(s"prev: ${show(prevs)}")
 
-        var covered = simplify(intersect(curr, targetSpace))
-        debug.println(s"covered: $covered")
-
-        // `covered == Empty` may happen for primitive types with auto-conversion
-        // see tests/patmat/reader.scala  tests/patmat/byte.scala
-        if (covered == Empty && !isNullLit(pat)) covered = curr
+        val covered = simplify(intersect(curr, targetSpace))
+        debug.println(s"covered: ${show(covered)}")
 
         if (isSubspace(covered, prevs)) {
           if i == cases.length - 1
