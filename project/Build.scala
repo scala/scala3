@@ -1317,6 +1317,26 @@ object Build {
         sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
         Seq(cssDesitnationFile)
       }.taskValue,
+      Compile / resourceGenerators += Def.task {
+        import _root_.scala.sys.process._
+        import _root_.scala.concurrent._
+        import ExecutionContext.Implicits.global
+        val inkuireVersion = "1.0.0-M2"
+        val inkuireLink = s"https://github.com/VirtusLab/Inkuire/releases/download/$inkuireVersion/inkuire.js"
+        val inkuireDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "inkuire.js"
+        sbt.IO.touch(inkuireDestinationFile)
+        val downloadProcess = (new java.net.URL(inkuireLink) #> inkuireDestinationFile).run()
+        val result: Future[Int] = Future(blocking(downloadProcess.exitValue()))
+        val res = try {
+          Await.result(result, duration.Duration(20, "sec"))
+        } catch {
+          case _: TimeoutException =>
+            downloadProcess.destroy()
+            throw new MessageOnlyException(s"Failed to fetch inkuire.js from $inkuireLink: Download timeout")
+        }
+        if(res != 0) throw new MessageOnlyException(s"Failed to fetch inkuire.js from $inkuireLink: Error code $res")
+        Seq(inkuireDestinationFile)
+      }.taskValue,
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.6.7",
         "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site

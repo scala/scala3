@@ -54,10 +54,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   val onlyRenderedResources: Seq[Resource] =
     List(
-      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M2/inkuire.js", "scripts/inkuire.js"),
-    ).map { case (url, path) =>
-      Resource.URLToCopy(url, path)
-    } ++
+      "scripts/inkuire.js"
+    ).map(dottyRes) ++
     List(
       "scripts/inkuire-worker.js"
     ).map(dottyRes)
