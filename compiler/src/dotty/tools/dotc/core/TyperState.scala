@@ -187,11 +187,43 @@ class TyperState() {
    */
   def mergeConstraintWith(that: TyperState)(using Context): Unit =
     that.ensureNotConflicting(constraint)
-    constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
-    for tvar <- constraint.uninstVars do
-      if !isOwnedAnywhere(this, tvar) then includeVar(tvar)
+
+    val comparingCtx =
+      if ctx.typerState == this then ctx
+      else ctx.fresh.setTyperState(this)
+
+    comparing(typeComparer =>
+      val other = that.constraint
+      val res = other.domainLambdas.forall(tl =>
+        // Integrate the type lambdas from `other`
+        constraint.contains(tl) || other.isRemovable(tl) || {
+          val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
+          tvars.foreach(tvar => if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
+          typeComparer.addToConstraint(tl, tvars)
+        }) &&
+        // Integrate the additional constraints on type variables from `other`
+        constraint.uninstVars.forall(tv =>
+          val p = tv.origin
+          val otherLos = other.lower(p)
+          val otherHis = other.upper(p)
+          val otherEntry = other.entry(p)
+          (  (otherLos eq constraint.lower(p)) || otherLos.forall(_ <:< p)) &&
+          (  (otherHis eq constraint.upper(p)) || otherHis.forall(p <:< _)) &&
+          ((otherEntry eq constraint.entry(p)) || otherEntry.match
+            case NoType =>
+              true
+            case tp: TypeBounds =>
+              tp.contains(tv)
+            case tp =>
+              tv =:= tp
+          )
+        )
+      assert(res || ctx.reporter.errorsReported, i"cannot merge $constraint with $other.")
+    )(using comparingCtx)
+
     for tl <- constraint.domainLambdas do
       if constraint.isRemovable(tl) then constraint = constraint.remove(tl)
+  end mergeConstraintWith
 
   /** Take ownership of `tvar`.
    *
