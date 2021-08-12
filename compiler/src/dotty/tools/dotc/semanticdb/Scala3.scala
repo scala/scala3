@@ -36,6 +36,24 @@ object Scala3:
     val (endLine, endCol) = lineCol(span.end)
     Some(Range(startLine, startCol, endLine, endCol))
 
+  def namePresentInSource(sym: Symbol, span: Span, source:SourceFile)(using Context): Boolean =
+    if !span.exists then false
+    else
+      val content = source.content()
+      val (start, end) =
+        if content.lift(span.end - 1).exists(_ == '`') then
+          (span.start + 1, span.end - 1)
+        else (span.start, span.end)
+      val nameInSource = content.slice(start, end).mkString
+      // for secondary constructors `this`
+      if sym.isConstructor && nameInSource == nme.THISkw.toString then
+        true
+      else
+        val target =
+          if sym.isPackageObject then sym.owner
+          else sym
+        nameInSource == target.name.stripModuleClassSuffix.lastPart.toString
+
   sealed trait FakeSymbol {
     private[Scala3] var sname: Option[String] = None
   }
@@ -230,12 +248,6 @@ object Scala3:
       /** Synthetic symbols that are not anonymous or numbered empty ident */
       def isSyntheticWithIdent(using Context): Boolean =
         sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
-
-      /** Check if the symbol is invented by Desugar.inventGivenOrExtensionName
-       *  return true if the symbol is defined as `given Int = ...` and name is invented as "given_Int"
-       */
-      def isInventedGiven(using Context): Boolean =
-        sym.is(Given) && sym.name.startsWith("given_")
 
       /** The semanticdb name of the given symbol */
       def symbolName(using builder: SemanticSymbolBuilder)(using Context): String =
@@ -501,5 +513,17 @@ object Scala3:
     end toDigit
 
   end IdentifierOrdering
+
+  /** Check if the symbol is invented by Desugar.inventGivenOrExtensionName
+   *  return true if the symbol is defined as `given Int = ...` and name is invented as "given_Int"
+   */
+  def isInventedGiven(tree: tpd.Tree)(using Context): Boolean =
+    tree match
+      case tree: tpd.ValDef =>
+        val sym = tree.symbol
+        sym.is(Given) &&
+          sym.name.startsWith("given_") &&
+          !namePresentInSource(sym, tree.nameSpan, tree.source)
+      case _ => false
 
 end Scala3

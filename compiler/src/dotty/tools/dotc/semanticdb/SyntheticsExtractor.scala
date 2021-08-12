@@ -15,7 +15,7 @@ class SyntheticsExtractor:
     extension (synth: s.Synthetic)
       def toOpt: Some[s.Synthetic] = Some(synth)
 
-    if tree.span.isSynthetic || tree.symbol.isInventedGiven then
+    if tree.span.isSynthetic || isInventedGiven(tree) then
       tree match
         case tree: Apply if isForSynthetic(tree) =>
           None // not yet supported (for synthetics)

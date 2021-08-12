@@ -171,11 +171,11 @@ class ExtractSemanticDB extends Phase:
                 // ignore rhs
 
               // `given Int` (syntax sugar of `given given_Int: Int`)
-              case tree: ValDef if tree.symbol.isInventedGiven =>
-                synth.tryFindSynthetic(tree).foreach { synth =>
-                  synthetics += synth
-                }
-                traverse(tree.tpt)
+              case tree: ValDef if isInventedGiven(tree) =>
+                  synth.tryFindSynthetic(tree).foreach { synth =>
+                    synthetics += synth
+                  }
+                  traverse(tree.tpt)
               case PatternValDef(pat, rhs) =>
                 traverse(rhs)
                 PatternValDef.collectPats(pat).foreach(traverse)
@@ -348,24 +348,6 @@ class ExtractSemanticDB extends Phase:
         registerOccurrence(sname, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
       if !sym.is(Package) then
         registerSymbol(sym, symkinds)
-
-    private def namePresentInSource(sym: Symbol, span: Span, source:SourceFile)(using Context): Boolean =
-      if !span.exists then false
-      else
-        val content = source.content()
-        val (start, end) =
-          if content.lift(span.end - 1).exists(_ == '`') then
-            (span.start + 1, span.end - 1)
-          else (span.start, span.end)
-        val nameInSource = content.slice(start, end).mkString
-        // for secondary constructors `this`
-        if sym.isConstructor && nameInSource == nme.THISkw.toString then
-          true
-        else
-          val target =
-            if sym.isPackageObject then sym.owner
-            else sym
-          nameInSource == target.name.stripModuleClassSuffix.lastPart.toString
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
       val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
