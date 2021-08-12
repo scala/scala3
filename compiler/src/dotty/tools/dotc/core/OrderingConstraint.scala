@@ -459,48 +459,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ----------- Joins -----------------------------------------------------
 
-  def & (other: Constraint, otherHasErrors: Boolean)(using Context): OrderingConstraint = {
-
-    def merge[T](m1: ArrayValuedMap[T], m2: ArrayValuedMap[T], join: (T, T) => T): ArrayValuedMap[T] = {
-      var merged = m1
-      def mergeArrays(xs1: Array[T], xs2: Array[T]) = {
-        val xs = xs1.clone
-        for (i <- xs.indices) xs(i) = join(xs1(i), xs2(i))
-        xs
-      }
-      m2.foreachBinding { (poly, xs2) =>
-        merged = merged.updated(poly,
-            if (m1.contains(poly)) mergeArrays(m1(poly), xs2) else xs2)
-      }
-      merged
-    }
-
-    def mergeParams(ps1: List[TypeParamRef], ps2: List[TypeParamRef]) =
-      ps2.foldLeft(ps1)((ps1, p2) => if (ps1.contains(p2)) ps1 else p2 :: ps1)
-
-    // Must be symmetric
-    def mergeEntries(e1: Type, e2: Type): Type =
-      (e1, e2) match {
-        case _ if e1 eq e2 => e1
-        case (e1: TypeBounds, e2: TypeBounds) => e1 & e2
-        case (e1: TypeBounds, _) if e1 contains e2 => e2
-        case (_, e2: TypeBounds) if e2 contains e1 => e1
-        case (tv1: TypeVar, tv2: TypeVar) if tv1 eq tv2 => e1
-        case _ =>
-          if (otherHasErrors)
-            e1
-          else
-            throw new AssertionError(i"cannot merge $this with $other, mergeEntries($e1, $e2) failed")
-      }
-
-    val that = other.asInstanceOf[OrderingConstraint]
-
-    new OrderingConstraint(
-        merge(this.boundsMap, that.boundsMap, mergeEntries),
-        merge(this.lowerMap, that.lowerMap, mergeParams),
-        merge(this.upperMap, that.upperMap, mergeParams))
-  }.showing(i"constraint merge $this with $other = $result", constr)
-
   def hasConflictingTypeVarsFor(tl: TypeLambda, that: Constraint): Boolean =
     contains(tl) && that.contains(tl) &&
     // Since TypeVars are allocated in bulk for each type lambda, we only have
