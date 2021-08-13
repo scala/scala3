@@ -221,7 +221,8 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ‘return’ [Expr]
                     |  ForExpr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr
-                    |  SimpleExpr1 ArgumentExprs ‘=’ Expr
+                    |  PrefixOperator SimpleExpr ‘=’ Expr
+                    |  SimpleExpr ArgumentExprs ‘=’ Expr
                     |  PostfixExpr [Ascription]
                     |  ‘inline’ InfixExpr MatchClause
 Ascription        ::=  ‘:’ InfixType
@@ -232,7 +233,8 @@ InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ <<< CaseClauses >>>
-PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr
+PrefixExpr        ::=  [PrefixOperator] SimpleExpr
+PrefixOperator    ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
 SimpleExpr        ::=  SimpleRef
                     |  Literal
                     |  ‘_’

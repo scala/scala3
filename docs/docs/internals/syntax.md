@@ -223,7 +223,8 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ‘return’ [Expr]                                          Return(expr?)
                     |  ForExpr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
-                    |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
+                    |  PrefixOperator SimpleExpr ‘=’ Expr                       Assign(expr, expr)
+                    |  SimpleExpr ArgumentExprs ‘=’ Expr                        Assign(expr, expr)
                     |  PostfixExpr [Ascription]
                     |  ‘inline’ InfixExpr MatchClause
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
@@ -235,7 +236,8 @@ InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id ‘:’ IndentedExpr
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ <<< CaseClauses >>>                              Match(expr, cases)
-PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
+PrefixExpr        ::=  [PrefixOperator] SimpleExpr                             PrefixOp(expr, op)
+PrefixOperator    ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
 SimpleExpr        ::=  SimpleRef
                     |  Literal
                     |  ‘_’
@@ -250,8 +252,8 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
-                    |  SimpleExpr1 ‘:’ IndentedExpr                             -- under language.experimental.fewerBraces
-                    |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) IndentedExpr        -- under language.experimental.fewerBraces
+                    |  SimpleExpr ‘:’ IndentedExpr                              -- under language.experimental.fewerBraces
+                    |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedExpr         -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr													                        -- to be dropped
 IndentedExpr      ::=  indent CaseClauses | Block outdent
