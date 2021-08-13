@@ -149,7 +149,7 @@ object ErrorReporting {
           "the empty constraint"
         else
           i"""a constraint with:
-             |${c.contentsToString}"""
+             |$c"""
       i"""
         |${TypeComparer.explained(_.isSubType(found, expected), header)}
         |

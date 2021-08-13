@@ -641,49 +641,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     upperMap.foreachBinding((_, paramss) => paramss.foreach(_.foreach(checkClosedType(_, "upper"))))
   end checkClosed
 
-// ---------- toText -----------------------------------------------------
-
-  private def contentsToText(printer: Printer): Text =
-    //Printer.debugPrintUnique = true
-    def entryText(tp: Type) = tp match {
-      case tp: TypeBounds =>
-        tp.toText(printer)
-      case _ =>
-        " := " ~ tp.toText(printer)
-    }
-    val indent = 3
-    val uninstVarsText = " uninstantiated variables: " ~
-      Text(uninstVars.map(_.toText(printer)), ", ")
-    val constrainedText =
-      " constrained types: " ~ Text(domainLambdas map (_.toText(printer)), ", ")
-    val boundsText =
-      " bounds: " ~ {
-        val assocs =
-          for (param <- domainParams)
-          yield (" " * indent) ~ param.toText(printer) ~ entryText(entry(param))
-        Text(assocs, "\n")
-      }
-    val orderingText =
-      " ordering: " ~ {
-        val deps =
-          for {
-            param <- domainParams
-            ups = minUpper(param)
-            if ups.nonEmpty
-          }
-          yield
-            (" " * indent) ~ param.toText(printer) ~ " <: " ~
-              Text(ups.map(_.toText(printer)), ", ")
-        Text(deps, "\n")
-      }
-    //Printer.debugPrintUnique = false
-    Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
+// ---------- Printing -----------------------------------------------------
 
   override def toText(printer: Printer): Text =
-    Text.lines(List("Constraint(", contentsToText(printer), ")"))
-
-  def contentsToString(using Context): String =
-    contentsToText(ctx.printer).show
+    printer.toText(this)
 
   override def toString: String = {
     def entryText(tp: Type): String = tp match {
@@ -692,7 +653,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     }
     val constrainedText =
       " constrained types = " + domainLambdas.mkString("\n")
-    val boundsText = domainLambdas
+    val boundsText =
       " bounds = " + {
         val assocs =
           for (param <- domainParams)

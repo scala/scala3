@@ -154,6 +154,9 @@ abstract class Printer {
   /** Textual representation of info relating to an import clause */
   def toText(result: ImportInfo): Text
 
+  /** Textual representation of a constraint */
+  def toText(c: OrderingConstraint): Text
+
   /** Render element within highest precedence */
   def toTextLocal(elem: Showable): Text =
     atPrec(DotPrec) { elem.toText(this) }
