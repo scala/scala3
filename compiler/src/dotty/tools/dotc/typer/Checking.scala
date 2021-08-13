@@ -70,7 +70,7 @@ object Checking {
         errorTree(arg,
           showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
     }
-    withMode(Mode.RelaxedCapturing) {
+    withMode(Mode.RelaxedCapturing) { // ^^^ todo: remove
       for (arg, which, bound) <- TypeOps.boundsViolations(args, boundss, instantiate, app) do
         report.error(
             showInferred(DoesNotConformToBound(arg.tpe, which, bound),

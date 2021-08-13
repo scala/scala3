@@ -112,7 +112,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   def run(using Context): Unit = unsupported("run")
 }
 
-object  TyperPhase {
+object TyperPhase {
   val name: String = "typer"
 }
 

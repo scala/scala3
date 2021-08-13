@@ -79,6 +79,7 @@ class CheckCaptures extends Recheck:
 
   inline val disallowGlobal = true
 
+  // ^^^ todo: drop wf condition; work into parameter substitution
   def checkWellFormed(whole: Type, pos: SrcPos)(using Context): Unit =
     def checkRelativeVariance(mt: MethodType) = new TypeTraverser:
       def traverse(tp: Type): Unit = tp match

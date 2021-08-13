@@ -3688,13 +3688,11 @@ object Types {
           case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
           case tp: TermParamRef if tp.binder eq thisLambdaType => TrueDeps
           case tp: CapturingType =>
-            var status1 = compute(status, tp.parent, theAcc)
-            for ref <- tp.refs.elems do
-              ref match
-                case tp: TermParamRef if tp.binder eq thisLambdaType =>
-                  status1 = combine(status1, CaptureDeps)
-                case _ =>
-            status1
+            (compute(status, tp.parent, theAcc) /: tp.refs.elems) {
+              (s, ref) => ref match
+                case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, CaptureDeps)
+                case _ => s
+            }
           case _: ThisType | _: BoundType | NoPrefix => status
           case _ =>
             (if theAcc != null then theAcc else DepAcc()).foldOver(status, tp)
@@ -5888,7 +5886,7 @@ object Types {
           else tp.derivedAnnotatedType(underlying, annot)
       }
     override protected def derivedCapturingType(tp: CapturingType, parent: Type, refs: CaptureSet): Type =
-      parent match
+      parent match // ^^^ handle ranges in capture sets as well
         case Range(lo, hi) =>
           range(derivedCapturingType(tp, lo, refs), derivedCapturingType(tp, hi, refs))
         case _ =>

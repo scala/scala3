@@ -4,5 +4,6 @@ package scala.annotation
  *  Example:
  *
  *   @ability erased val canThrow: * = ???
+ *  ^^^ rename to capability
  */
 class ability extends StaticAnnotation

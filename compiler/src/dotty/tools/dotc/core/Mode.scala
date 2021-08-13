@@ -125,5 +125,5 @@ object Mode {
    */
   val ForceInline: Mode = newMode(29, "ForceInline")
 
-  val RelaxedCapturing: Mode = newMode(30, "RelaxedCapturing")
+  val RelaxedCapturing: Mode = newMode(30, "RelaxedCapturing") // ^^^ needed?
 }

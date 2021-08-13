@@ -192,9 +192,11 @@ object CaptureSet:
     override def toString = s"Var$id$elems"
   end Var
 
+  /** The set `Union { f(x) | x <- cv }` */
   class Mapped private[CaptureSet] (cv: Var, f: CaptureRef => CaptureSet) extends Var(cv.elems):
     addSub(cv)
 
+    // ^^^ ???, seems wrong
     override def accountsFor(x: CaptureRef)(using Context): Boolean =
       f(x).elems.forall(super.accountsFor)
 
