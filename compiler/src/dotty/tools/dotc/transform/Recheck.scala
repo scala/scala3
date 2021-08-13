@@ -13,6 +13,7 @@ import NullOpsDecorator.stripNull
 import typer.ErrorReporting.err
 import typer.ProtoTypes.*
 import typer.TypeAssigner.seqLitType
+import typer.ConstFold
 import config.Printers.recheckr
 import util.Property
 import StdNames.nme
@@ -70,6 +71,11 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
           sym.updateInfo(reinferResult(sym.info))
         case _ =>
 
+    def constFold(tree: Tree, tp: Type)(using Context): Type =
+      val tree1 = tree.withType(tp)
+      val tree2 = ConstFold(tree1)
+      if tree2 ne tree1 then tree2.tpe else tp
+
     def recheckIdent(tree: Ident)(using Context): Type =
       tree.tpe
 
@@ -83,7 +89,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
           val mbr = qualType.findMember(name, qualType,
               excluded = if tree.symbol.is(Private) then EmptyFlags else Private
             ).suchThat(tree.symbol ==)
-          qualType.select(name, mbr)
+          constFold(tree, qualType.select(name, mbr))
 
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
@@ -147,14 +153,14 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
               assert(formals.isEmpty)
               Nil
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
-          fntpe.instantiate(argTypes)
+          constFold(tree, fntpe.instantiate(argTypes))
 
     def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       recheck(tree.fun).widen match
         case fntpe: PolyType =>
           assert(sameLength(fntpe.paramInfos, tree.args))
           val argTypes = tree.args.map(recheck(_))
-          fntpe.instantiate(argTypes)
+          constFold(tree, fntpe.instantiate(argTypes))
 
     def recheckTyped(tree: Typed)(using Context): Type =
       val tptType = recheck(tree.tpt)
