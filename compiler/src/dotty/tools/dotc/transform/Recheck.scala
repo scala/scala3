@@ -34,7 +34,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
   def run(using Context): Unit =
     val unit = ctx.compilationUnit
     //println(i"recheck types of $unit")
-    newRechecker().check()
+    newRechecker().checkUnit(unit)
 
   def newRechecker()(using Context): Rechecker
 
@@ -248,7 +248,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
      *  @param locked      the set of type variables of the current typer state that cannot be interpolated
      *                     at the present time
      */
-    def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type = trace(i"rechecking $tree, ${tree.getClass} with $pt", recheckr, show = true) {
+    def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type = trace(i"rechecking $tree with pt = $pt", recheckr, show = true) {
 
       def recheckNamed(tree: NameTree, pt: Type)(using Context): Type =
         val sym = tree.symbol
@@ -305,17 +305,16 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
     def checkConforms(tpe: Type, pt: Type, tree: Tree)(using Context): Unit = tree match
       case _: DefTree | EmptyTree | _: TypeTree =>
       case _ =>
-        val actual = tree.tpe.widenExpr
+        val actual = tpe.widenExpr
         val expected = pt.widenExpr
         val isCompatible =
           actual <:< expected
           || expected.isRepeatedParam
              && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
         if !isCompatible then
-          err.typeMismatch(tree, pt)
+          err.typeMismatch(tree.withType(tpe), pt)
 
-    def check()(using Context): Unit =
-      val unit = ictx.compilationUnit
+    def checkUnit(unit: CompilationUnit)(using Context): Unit =
       recheck(unit.tpdTree)
 
   end Rechecker
