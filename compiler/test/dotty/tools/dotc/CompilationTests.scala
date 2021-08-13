@@ -230,9 +230,11 @@ class CompilationTests {
     ).checkCompile()
 
 
-  /** The purpose of this test is three-fold, being able to compile dotty
-   *  bootstrapped, and making sure that TASTY can link against a compiled
-   *  version of Dotty, and compiling the compiler using the SemanticDB generation
+  /** This test serves several purposes:
+   *   - being able to compile dotty bootstrapped,
+   *   - making sure that TASTY can link against a compiled version of Dotty,
+   *   - compiling the compiler using the SemanticDB generation
+   *   - compiling the compiler under -Yrecheck mode.
    */
   @Test def tastyBootstrap: Unit = {
     implicit val testGroup: TestGroup = TestGroup("tastyBootstrap/tests")
