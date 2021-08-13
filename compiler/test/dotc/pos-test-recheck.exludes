@@ -5,3 +5,4 @@ i6682a.scala
 # Cannot handle closures with skolem types
 i6199b.scala
 i6199c.scala
+i11247.scala
