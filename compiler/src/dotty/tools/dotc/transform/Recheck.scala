@@ -34,9 +34,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
     // One failing test is pos/i583a.scala
 
   def run(using Context): Unit =
-    val unit = ctx.compilationUnit
-    //println(i"recheck types of $unit")
-    newRechecker().checkUnit(unit)
+    newRechecker().checkUnit(ctx.compilationUnit)
 
   def newRechecker()(using Context): Rechecker
 
@@ -94,7 +92,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
         enterDef(tree)
-        val bodyType = recheck(body, pt)
+        recheck(body, pt)
         val sym = tree.symbol
         if sym.isType then sym.typeRef else sym.info
 
@@ -249,11 +247,9 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
       stats.foreach(enterDef)
       stats.foreach(recheck(_))
 
-    /** Typecheck tree without adapting it, returning a recheck tree.
-     *  @param initTree    the unrecheck tree
+    /** Recheck tree without adapting it, returning its new type.
+     *  @param tree        the original tree
      *  @param pt          the expected result type
-     *  @param locked      the set of type variables of the current typer state that cannot be interpolated
-     *                     at the present time
      */
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type = trace(i"rechecking $tree with pt = $pt", recheckr, show = true) {
 
