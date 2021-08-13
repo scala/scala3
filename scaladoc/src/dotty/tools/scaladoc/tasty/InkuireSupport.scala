@@ -147,8 +147,6 @@ trait InkuireSupport:
       case _ =>
   }
 
-  private def hasStaticChild(classDef: ClassDef): Boolean = ???
-
   private def nameAndOwnerName(classDef: ClassDef, symbol: Symbol): (String, String) =
     if classDef.symbol.flags.is(Flags.Module)
       && (classDef.symbol.companionClass != Symbol.noSymbol || (Seq("apply", "unapply").contains(symbol.name))) then

@@ -6,4 +6,6 @@ class DoingStuffOps[A](a: A):
 trait DoingStuffSyntax:
   implicit def toDoingStuffOps[A](a: A): DoingStuffOps[A] = DoingStuffOps(a)
 
-object doingstuff extends DoingStuffSyntax
+trait AllSyntaxes extends DoingStuffSyntax
+
+object doingstuff extends AllSyntaxes
