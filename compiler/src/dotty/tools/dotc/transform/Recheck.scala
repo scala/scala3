@@ -33,6 +33,8 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
     // TODO: investigate what goes wrong we Ycheck directly after rechecking.
     // One failing test is pos/i583a.scala
 
+  override def widenSkolems = true
+
   def run(using Context): Unit =
     newRechecker().checkUnit(ctx.compilationUnit)
 
@@ -315,6 +317,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
           || expected.isRepeatedParam
              && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
         if !isCompatible then
+          println(i"err at ${ctx.phase}")
           err.typeMismatch(tree.withType(tpe), pt)
 
     def checkUnit(unit: CompilationUnit)(using Context): Unit =
