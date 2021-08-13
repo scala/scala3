@@ -183,7 +183,4 @@ abstract class Constraint extends Showable {
    *  of athe type lambda that is associated with the typevar itself.
    */
   def checkConsistentVars()(using Context): Unit
-
-  /** A string describing the constraint's contents without a header or trailer */
-  def contentsToString(using Context): String
 }
