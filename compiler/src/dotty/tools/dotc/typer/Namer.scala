@@ -1156,10 +1156,15 @@ class Namer { typer: Typer =>
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
         val nonContextual = mutable.HashSet(seen: _*)
+        val fromCaseClass = path.tpe.widen.classSymbols.exists(_.is(Case))
+        def isCaseClassSynthesized(mbr: Symbol) =
+          fromCaseClass && defn.caseClassSynthesized.contains(mbr)
         for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
-          if !mbr.symbol.isSuperAccessor then
+          if !mbr.symbol.isSuperAccessor && !isCaseClassSynthesized(mbr.symbol) then
             // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
             // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
+            // Symbols from base traits of case classes that will get synthesized implementations
+            // at PostTyper are also excluded.
             val alias = mbr.name.toTermName
             if mbr.symbol.is(Given) then
               if !seen.contains(alias) && mbr.matchesImportBound(givenBound) then
