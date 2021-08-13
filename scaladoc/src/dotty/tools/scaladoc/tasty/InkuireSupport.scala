@@ -99,6 +99,7 @@ trait InkuireSupport:
               Some(classType)
                 .filter(_ => !isModule)
                 .orElse(methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars).lift(s.tpt)))
+            val (name, ownerName) = nameAndOwnerName(classDef, methodSymbol)
             val sgn = Inkuire.ExternalSignature(
               signature = Inkuire.Signature(
                 receiver = receiver,
@@ -111,8 +112,8 @@ trait InkuireSupport:
                   constraints = Map.empty //TODO [Inkuire] Type bounds
                 )
               ),
-              name = methodSymbol.name,
-              packageName = methodSymbol.dri.location,
+              name = name,
+              packageName = ownerName,
               uri = methodSymbol.dri.externalLink.getOrElse(""),
               entryType = "def"
             )
@@ -128,6 +129,7 @@ trait InkuireSupport:
             val receiver: Option[Inkuire.TypeLike] =
               Some(classType)
                 .filter(_ => !isModule)
+            val (name, ownerName) = nameAndOwnerName(classDef, valSymbol)
             val sgn = Inkuire.ExternalSignature(
               signature = Inkuire.Signature(
                 receiver = receiver,
@@ -138,8 +140,8 @@ trait InkuireSupport:
                   constraints = Map.empty //TODO [Inkuire] Type bounds
                 )
               ),
-              name = valSymbol.name,
-              packageName = valSymbol.dri.location,
+              name = name,
+              packageName = ownerName,
               uri = valSymbol.dri.externalLink.getOrElse(""),
               entryType = "val"
             )
@@ -147,6 +149,26 @@ trait InkuireSupport:
             Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ curriedSgn)
         }
   }
+
+  private def nameAndOwnerName(classDef: ClassDef, symbol: Symbol): (String, String) =
+    if classDef.symbol.flags.is(Flags.Module)
+      && (classDef.symbol.companionClass != Symbol.noSymbol || (Seq("apply", "unapply").contains(symbol.name))) then
+      (
+        symbol.maybeOwner.normalizedName + "." + symbol.name,
+        ownerNameChain(classDef.symbol.maybeOwner).mkString(".")
+      )
+    else
+      (
+        symbol.name,
+        ownerNameChain(classDef.symbol).mkString(".")
+      )
+
+  def ownerNameChain(sym: Symbol): List[String] =
+    if sym.isNoSymbol then List.empty
+    else if sym == defn.EmptyPackageClass then List.empty
+    else if sym == defn.RootPackage then List.empty
+    else if sym == defn.RootClass then List.empty
+    else ownerNameChain(sym.owner) :+ sym.normalizedName
 
   private def paramsForClass(classDef: ClassDef, vars: Set[String]): Seq[Inkuire.Variance] =
     classDef.getTypeParams.map(mkTypeArgumentInkuire)
