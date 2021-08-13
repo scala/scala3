@@ -72,20 +72,20 @@ trait InkuireSupport:
           !s.flags.is(Flags.Override) &&
           !s.flags.is(Flags.Synthetic)
 
+      if classDef.symbol.isImplicitClass then // Implicit classes
+        classDef.symbol.maybeOwner.declarations
+          .filter { methodSymbol =>
+            methodSymbol.name == classDef.symbol.name && methodSymbol.flags.is(Flags.Implicit) && methodSymbol.flags.is(Flags.Method)
+          }
+          .foreach(handleImplicitConversion(_, variableNames))
+
       classDef.symbol.declaredMethods
         .filter(viableSymbol)
         .tap { _.foreach { // Loop for implicit conversions
           case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
                                           && classDef.symbol.flags.is(Flags.Module)
                                           && implicitConversion.owner.fullName == ("scala.Predef$") =>
-            val defdef = implicitConversion.tree.asInstanceOf[DefDef]
-            val to = defdef.returnTpt.asInkuire(variableNames)
-            val from = defdef.paramss.flatMap(_.params).collectFirst {
-              case v: ValDef => v.tpt.asInkuire(variableNames)
-            }
-            (from, to) match
-              case (Some(from: Inkuire.Type), to: Inkuire.Type) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
-              case _ =>
+            handleImplicitConversion(implicitConversion, variableNames)
           case _ =>
         }}
         .tap { _.foreach { // Loop for functions and vals
@@ -150,6 +150,17 @@ trait InkuireSupport:
         }
   }
 
+  private def handleImplicitConversion(implicitConversion: Symbol, variableNames: Set[String]) = {
+    val defdef = implicitConversion.tree.asInstanceOf[DefDef]
+    val to = defdef.returnTpt.asInkuire(variableNames)
+    val from = defdef.paramss.flatMap(_.params).collectFirst {
+      case v: ValDef => v.tpt.asInkuire(variableNames)
+    }
+    (from, to) match
+      case (Some(from: Inkuire.Type), to: Inkuire.Type) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
+      case _ =>
+  }
+
   private def nameAndOwnerName(classDef: ClassDef, symbol: Symbol): (String, String) =
     if classDef.symbol.flags.is(Flags.Module)
       && (classDef.symbol.companionClass != Symbol.noSymbol || (Seq("apply", "unapply").contains(symbol.name))) then
@@ -168,6 +179,7 @@ trait InkuireSupport:
     else if sym == defn.EmptyPackageClass then List.empty
     else if sym == defn.RootPackage then List.empty
     else if sym == defn.RootClass then List.empty
+    else if sym.normalizedName.contains("$package") then ownerNameChain(sym.owner)
     else ownerNameChain(sym.owner) :+ sym.normalizedName
 
   private def paramsForClass(classDef: ClassDef, vars: Set[String]): Seq[Inkuire.Variance] =
