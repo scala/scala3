@@ -53,6 +53,10 @@ clear_out "$OUT"
 ./bin/scalac -decompile -color:never "$OUT/out.jar" > "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
+echo "testing sbt scalac with suspension"
+clear_out "$OUT"
+"$SBT" "scala3-compiler-bootstrapped/scalac -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  > "$tmp"
+
 # echo ":quit" | ./dist/target/pack/bin/scala  # not supported by CI
 
 echo "testing ./bin/scaladoc"
