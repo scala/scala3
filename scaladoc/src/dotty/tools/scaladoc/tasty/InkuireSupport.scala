@@ -22,132 +22,118 @@ trait InkuireSupport:
   def doInkuireStuff(classDef: ClassDef): Unit = {
     val classType: Inkuire.Type = classDef.asInkuire(Set.empty).asInstanceOf[Inkuire.Type]
 
-      def varName(t: Inkuire.TypeLike): Option[String] = t match {
-        case tpe: Inkuire.Type      => Some(tpe.name.name)
-        case tl: Inkuire.TypeLambda => varName(tl.result)
-        case _                      => None
-      }
+    val variableNames: Set[String] = classType.params.map(_.typ)
+      .flatMap(varName(_).toList).toSet
 
-      val variableNames: Set[String] = classType.params.map(_.typ)
-        .flatMap(varName(_).toList).toSet
+    val parents: Seq[Inkuire.Type] = classDef.parents.map(_.asInkuire(variableNames).asInstanceOf[Inkuire.Type])
 
-      val parents: Seq[Inkuire.Type] = classDef.parents.map(_.asInkuire(variableNames).asInstanceOf[Inkuire.Type])
+    val isModule = classDef.symbol.flags.is(Flags.Module)
 
-      val isModule = classDef.symbol.flags.is(Flags.Module)
+    if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
 
-      if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
-
-      classDef.symbol.declaredTypes
-        .filter(viableSymbol)
-        .foreach {
-          case typeSymbol: Symbol if typeSymbol.flags.is(Flags.Opaque) =>
-            val typ = typeSymbol.tree.asInkuire(variableNames)
-            if typ.isInstanceOf[Inkuire.Type] then {
-              val t = typ.asInstanceOf[Inkuire.Type]
-              Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
-            }
-          case typeSymbol: Symbol if !typeSymbol.isClassDef =>
-            val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
-            val typ = typeSymbol.tree.asInkuire(variableNames)
-            if typ.isInstanceOf[Inkuire.Type] then {
-              val t = typ.asInstanceOf[Inkuire.Type]
-              val rhsTypeLike = typeDef.rhs.asInkuire(variableNames)
-              Inkuire.db = Inkuire.db.copy(
-                typeAliases = Inkuire.db.typeAliases.updated(t.itid.get, rhsTypeLike),
-                types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))
-              )
-            }
-            if typeDef.rhs.symbol.flags.is(Flags.JavaDefined) then
-              val typJava = typeDef.rhs.asInkuire(variableNames)
-              if typJava.isInstanceOf[Inkuire.Type] then {
-                val tJava = typJava.asInstanceOf[Inkuire.Type]
-                Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
-              }
-          case _ =>
-      }
-
-      def viableSymbol(s: Symbol): Boolean =
-        !s.flags.is(Flags.Private) &&
-          !s.flags.is(Flags.Protected) &&
-          !s.flags.is(Flags.Override) &&
-          !s.flags.is(Flags.Synthetic)
-
-      if classDef.symbol.isImplicitClass then // Implicit classes
-        classDef.symbol.maybeOwner.declarations
-          .filter { methodSymbol =>
-            methodSymbol.name == classDef.symbol.name && methodSymbol.flags.is(Flags.Implicit) && methodSymbol.flags.is(Flags.Method)
+    classDef.symbol.declaredTypes
+      .filter(viableSymbol)
+      .foreach {
+        case typeSymbol: Symbol if typeSymbol.flags.is(Flags.Opaque) =>
+          val typ = typeSymbol.tree.asInkuire(variableNames)
+          if typ.isInstanceOf[Inkuire.Type] then {
+            val t = typ.asInstanceOf[Inkuire.Type]
+            Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty)))
           }
-          .foreach(handleImplicitConversion(_, variableNames))
-
-      classDef.symbol.declaredMethods
-        .filter(viableSymbol)
-        .tap { _.foreach { // Loop for implicit conversions
-          case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
-                                          && classDef.symbol.flags.is(Flags.Module)
-                                          && implicitConversion.owner.fullName == ("scala.Predef$") =>
-            handleImplicitConversion(implicitConversion, variableNames)
-          case _ =>
-        }}
-        .tap { _.foreach { // Loop for functions and vals
-          case methodSymbol: Symbol =>
-            val defdef = methodSymbol.tree.asInstanceOf[DefDef]
-            val methodVars = defdef.paramss.flatMap(_.params).collect {
-              case TypeDef(name, _) => name
+        case typeSymbol: Symbol if !typeSymbol.isClassDef =>
+          val typeDef = typeSymbol.tree.asInstanceOf[TypeDef]
+          val typ = typeSymbol.tree.asInkuire(variableNames)
+          if typ.isInstanceOf[Inkuire.Type] then {
+            val t = typ.asInstanceOf[Inkuire.Type]
+            val rhsTypeLike = typeDef.rhs.asInkuire(variableNames)
+            Inkuire.db = Inkuire.db.copy(
+              typeAliases = Inkuire.db.typeAliases.updated(t.itid.get, rhsTypeLike),
+              types = Inkuire.db.types.updated(t.itid.get, (t, Seq.empty))
+            )
+          }
+          if typeDef.rhs.symbol.flags.is(Flags.JavaDefined) then
+            val typJava = typeDef.rhs.asInkuire(variableNames)
+            if typJava.isInstanceOf[Inkuire.Type] then {
+              val tJava = typJava.asInstanceOf[Inkuire.Type]
+              Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(tJava.itid.get, (tJava, Seq.empty)))
             }
-            val vars = variableNames ++ methodVars
-            val receiver: Option[Inkuire.TypeLike] =
-              Some(classType)
-                .filter(_ => !isModule)
-                .orElse(methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars).lift(s.tpt)))
-            val (name, ownerName) = nameAndOwnerName(classDef, methodSymbol)
-            val sgn = Inkuire.ExternalSignature(
-              signature = Inkuire.Signature(
-                receiver = receiver,
-                arguments = methodSymbol.nonExtensionTermParamLists.collect {
-                  case tpc@TermParamClause(params) if !tpc.isImplicit && !tpc.isGiven => params //TODO [Inkuire] Implicit parameters
-                }.flatten.map(_.tpt.asInkuire(vars)),
-                result = defdef.returnTpt.asInkuire(vars),
-                context = Inkuire.SignatureContext(
-                  vars = vars.toSet,
-                  constraints = Map.empty //TODO [Inkuire] Type bounds
-                )
-              ),
-              name = name,
-              packageName = ownerName,
-              uri = methodSymbol.dri.externalLink.getOrElse(""),
-              entryType = "def"
-            )
-            val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
-            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ curriedSgn)
-      }}
+        case _ =>
+    }
 
-      classDef.symbol.declaredFields
-        .filter(viableSymbol)
-        .foreach {
-          case valSymbol: Symbol =>
-            val valdef = valSymbol.tree.asInstanceOf[ValDef]
-            val receiver: Option[Inkuire.TypeLike] =
-              Some(classType)
-                .filter(_ => !isModule)
-            val (name, ownerName) = nameAndOwnerName(classDef, valSymbol)
-            val sgn = Inkuire.ExternalSignature(
-              signature = Inkuire.Signature(
-                receiver = receiver,
-                arguments = Seq.empty,
-                result = valdef.tpt.asInkuire(variableNames),
-                context = Inkuire.SignatureContext(
-                  vars = variableNames.toSet,
-                  constraints = Map.empty //TODO [Inkuire] Type bounds
-                )
-              ),
-              name = name,
-              packageName = ownerName,
-              uri = valSymbol.dri.externalLink.getOrElse(""),
-              entryType = "val"
-            )
-            val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
-            Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ curriedSgn)
+    if classDef.symbol.isImplicitClass then // Implicit classes <- synthetic method with the same name
+      classDef.symbol.maybeOwner.declarations
+        .filter { methodSymbol =>
+          methodSymbol.name == classDef.symbol.name && methodSymbol.flags.is(Flags.Implicit) && methodSymbol.flags.is(Flags.Method)
         }
+        .foreach(handleImplicitConversion(_, variableNames))
+
+    classDef.symbol.declaredMethods
+      .filter(viableSymbol)
+      .tap { _.foreach { // Loop for implicit conversions
+        case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit) =>
+          handleImplicitConversion(implicitConversion, variableNames)
+        case _ =>
+      }}
+      .tap { _.foreach { // Loop for functions and vals
+        case methodSymbol: Symbol =>
+          val defdef = methodSymbol.tree.asInstanceOf[DefDef]
+          val methodVars = defdef.paramss.flatMap(_.params).collect {
+            case TypeDef(name, _) => name
+          }
+          val vars = variableNames ++ methodVars
+          val receiver: Option[Inkuire.TypeLike] =
+            Some(classType)
+              .filter(_ => !isModule)
+              .orElse(methodSymbol.extendedSymbol.flatMap(s => partialAsInkuire(vars).lift(s.tpt)))
+          val (name, ownerName) = nameAndOwnerName(classDef, methodSymbol)
+          val sgn = Inkuire.ExternalSignature(
+            signature = Inkuire.Signature(
+              receiver = receiver,
+              arguments = methodSymbol.nonExtensionTermParamLists.collect {
+                case tpc@TermParamClause(params) if !tpc.isImplicit && !tpc.isGiven => params //TODO [Inkuire] Implicit parameters
+              }.flatten.map(_.tpt.asInkuire(vars)),
+              result = defdef.returnTpt.asInkuire(vars),
+              context = Inkuire.SignatureContext(
+                vars = vars.toSet,
+                constraints = Map.empty //TODO [Inkuire] Type bounds
+              )
+            ),
+            name = name,
+            packageName = ownerName,
+            uri = methodSymbol.dri.externalLink.getOrElse(""),
+            entryType = "def"
+          )
+          val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
+          Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ curriedSgn)
+    }}
+
+    classDef.symbol.declaredFields
+      .filter(viableSymbol)
+      .foreach {
+        case valSymbol: Symbol =>
+          val valdef = valSymbol.tree.asInstanceOf[ValDef]
+          val receiver: Option[Inkuire.TypeLike] =
+            Some(classType)
+              .filter(_ => !isModule)
+          val (name, ownerName) = nameAndOwnerName(classDef, valSymbol)
+          val sgn = Inkuire.ExternalSignature(
+            signature = Inkuire.Signature(
+              receiver = receiver,
+              arguments = Seq.empty,
+              result = valdef.tpt.asInkuire(variableNames),
+              context = Inkuire.SignatureContext(
+                vars = variableNames.toSet,
+                constraints = Map.empty //TODO [Inkuire] Type bounds
+              )
+            ),
+            name = name,
+            packageName = ownerName,
+            uri = valSymbol.dri.externalLink.getOrElse(""),
+            entryType = "val"
+          )
+          val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
+          Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ curriedSgn)
+      }
   }
 
   private def handleImplicitConversion(implicitConversion: Symbol, variableNames: Set[String]) = {
@@ -160,6 +146,8 @@ trait InkuireSupport:
       case (Some(from: Inkuire.Type), to: Inkuire.Type) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
       case _ =>
   }
+
+  private def hasStaticChild(classDef: ClassDef): Boolean = ???
 
   private def nameAndOwnerName(classDef: ClassDef, symbol: Symbol): (String, String) =
     if classDef.symbol.flags.is(Flags.Module)
@@ -174,13 +162,25 @@ trait InkuireSupport:
         ownerNameChain(classDef.symbol).mkString(".")
       )
 
-  def ownerNameChain(sym: Symbol): List[String] =
+  private def ownerNameChain(sym: Symbol): List[String] =
     if sym.isNoSymbol then List.empty
     else if sym == defn.EmptyPackageClass then List.empty
     else if sym == defn.RootPackage then List.empty
     else if sym == defn.RootClass then List.empty
     else if sym.normalizedName.contains("$package") then ownerNameChain(sym.owner)
     else ownerNameChain(sym.owner) :+ sym.normalizedName
+
+  private def viableSymbol(s: Symbol): Boolean =
+      !s.flags.is(Flags.Private) &&
+        !s.flags.is(Flags.Protected) &&
+        !s.flags.is(Flags.Override) &&
+        !s.flags.is(Flags.Synthetic)
+
+  private def varName(t: Inkuire.TypeLike): Option[String] = t match {
+    case tpe: Inkuire.Type      => Some(tpe.name.name)
+    case tl: Inkuire.TypeLambda => varName(tl.result)
+    case _                      => None
+  }
 
   private def paramsForClass(classDef: ClassDef, vars: Set[String]): Seq[Inkuire.Variance] =
     classDef.getTypeParams.map(mkTypeArgumentInkuire)
@@ -190,7 +190,7 @@ trait InkuireSupport:
       def asInkuire(vars: Set[String]): Inkuire.TypeLike =
         partialAsInkuire(vars)(tpeTree)
 
-  def partialAsInkuire(vars: Set[String]): PartialFunction[Tree, Inkuire.TypeLike] = {
+  private def partialAsInkuire(vars: Set[String]): PartialFunction[Tree, Inkuire.TypeLike] = {
     case TypeBoundsTree(low, high) => inner(low.tpe, vars) //TODO [Inkuire] Type bounds
     case tpeTree: Applied =>
       inner(tpeTree.tpe, vars)
@@ -201,7 +201,7 @@ trait InkuireSupport:
     case typeDef: TypeDef => mkTypeDef(typeDef)
   }
 
-  def mkTypeDef(typeDef: TypeDef): Inkuire.Type = typeDef.rhs match {
+  private def mkTypeDef(typeDef: TypeDef): Inkuire.Type = typeDef.rhs match {
     case LambdaTypeTree(paramsDefs, _) =>
       val name = typeDef.symbol.normalizedName
       val normalizedName = if name.matches("_\\$\\d*") then "_" else name
@@ -218,7 +218,7 @@ trait InkuireSupport:
       )
   }
 
-  def mkTypeFromClassDef(classDef: ClassDef, vars: Set[String]): Inkuire.Type = {
+  private def mkTypeFromClassDef(classDef: ClassDef, vars: Set[String]): Inkuire.Type = {
     Inkuire.Type(
       name = Inkuire.TypeName(classDef.name),
       itid = classDef.symbol.itid,
@@ -245,7 +245,7 @@ trait InkuireSupport:
       )
     }
 
-  def mkTypeArgumentInkuire(argument: TypeDef): Inkuire.Variance =
+  private def mkTypeArgumentInkuire(argument: TypeDef): Inkuire.Variance =
     //TODO [Inkuire] Type bounds (other than just HKTs)
     val name = argument.symbol.normalizedName
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
@@ -263,7 +263,7 @@ trait InkuireSupport:
     else if argument.symbol.flags.is(Flags.Contravariant) then Inkuire.Contravariance(t)
     else Inkuire.Invariance(t)
 
-  def typeVariableDeclarationParamsNo(argument: TypeDef): Int =
+  private def typeVariableDeclarationParamsNo(argument: TypeDef): Int =
     argument.rhs match
       case t: TypeTree => t.tpe match
         case TypeBounds(_, TypeLambda(names, _, _)) => names.size
@@ -346,5 +346,10 @@ trait InkuireSupport:
       inner(m.paramTypes(i), vars)
     case RecursiveType(tp) =>
       inner(tp, vars)
-    case MethodType(_, params, resType) =>
-      inner(resType, vars) //TODO [Inkuire] Method type
+    case m@MethodType(_, typeList, resType) =>
+      val name = s"Function${typeList.size-1}"
+      Inkuire.Type(
+        name = Inkuire.TypeName(name),
+        params = typeList.map(p => Inkuire.Contravariance(inner(p, vars))) :+ Inkuire.Covariance(inner(resType, vars)),
+        itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
+      )
