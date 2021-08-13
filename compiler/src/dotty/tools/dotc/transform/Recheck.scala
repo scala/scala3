@@ -5,13 +5,14 @@ package transform
 import core.*
 import Symbols.*, Contexts.*, Types.*, ContextOps.*, Decorators.*, SymDenotations.*
 import Flags.*, SymUtils.*, NameKinds.*
+import ast.*
 import Phases.Phase
 import DenotTransformers.IdentityDenotTransformer
 import NamerOps.{methodType, linkConstructorParams}
 import NullOpsDecorator.stripNull
 import typer.ErrorReporting.err
-import ast.*
 import typer.ProtoTypes.*
+import typer.TypeAssigner.seqLitType
 import config.Printers.recheckr
 import util.Property
 import StdNames.nme
@@ -218,7 +219,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
         case elemtp => elemtp
       val declaredElemType = recheck(tree.elemtpt)
       val elemTypes = tree.elems.map(recheck(_, elemProto))
-      TypeComparer.lub(declaredElemType :: elemTypes)
+      seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
 
     def recheckTypeTree(tree: TypeTree)(using Context): Type = tree match
       case tree: InferredTypeTree => reinfer(tree.tpe)
