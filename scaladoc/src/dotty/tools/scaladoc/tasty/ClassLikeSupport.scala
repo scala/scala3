@@ -6,6 +6,7 @@ import dotty.tools.scaladoc.{Signature => DSignature}
 import dotty.tools.scaladoc.Inkuire
 
 import scala.quoted._
+import scala.util.chaining._
 
 import SymOps._
 import NameNormalizer._
@@ -156,7 +157,7 @@ trait ClassLikeSupport:
 
       classDef.symbol.declaredMethods
         .filter(viableSymbol)
-        .foreach {
+        .tap { _.foreach { // Loop for implicit conversions
           case implicitConversion: Symbol if implicitConversion.flags.is(Flags.Implicit)
                                           && classDef.symbol.flags.is(Flags.Module)
                                           && implicitConversion.owner.fullName == ("scala.Predef$") =>
@@ -168,7 +169,9 @@ trait ClassLikeSupport:
             (from, to) match
               case (Some(from: Inkuire.Type), to: Inkuire.Type) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
               case _ =>
-
+          case _ =>
+        }}
+        .tap { _.foreach { // Loop for functions and vals
           case methodSymbol: Symbol =>
             val defdef = methodSymbol.tree.asInstanceOf[DefDef]
             val methodVars = defdef.paramss.flatMap(_.params).collect {
@@ -198,7 +201,7 @@ trait ClassLikeSupport:
             )
             val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
             Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions :+ curriedSgn)
-      }
+      }}
 
       classDef.symbol.declaredFields
         .filter(viableSymbol)
