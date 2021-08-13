@@ -12,6 +12,13 @@ object SymOps:
 
   extension (using Quotes)(sym: reflect.Symbol)
 
+    def isImplicitClass: Boolean =
+      import reflect._
+      sym.maybeOwner != Symbol.noSymbol
+        && sym.maybeOwner.declaredMethods.exists { methodSymbol =>
+          methodSymbol.name == sym.name && methodSymbol.flags.is(Flags.Implicit) && methodSymbol.flags.is(Flags.Method)
+        }
+
     def packageName: String =
       if (sym.isPackageDef) sym.fullName
       else sym.maybeOwner.packageName
@@ -91,7 +98,9 @@ object SymOps:
         Flags.Open -> Modifier.Open,
         Flags.Override -> Modifier.Override,
         Flags.Case -> Modifier.Case,
-      ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
+      ).collect {
+        case (flag, mod) if sym.flags.is(flag) => mod
+      } ++ Seq(Modifier.Implicit).filter(_ => sym.isImplicitClass)
 
     def isHiddenByVisibility(using dctx: DocContext): Boolean =
       import VisibilityScope._
