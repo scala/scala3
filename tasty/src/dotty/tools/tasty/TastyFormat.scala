@@ -39,6 +39,7 @@ Macro-format:
                   SUPERACCESSOR     Length underlying_NameRef                               -- super$A
                   INLINEACCESSOR    Length underlying_NameRef                               -- inline$A
                   OBJECTCLASS       Length underlying_NameRef                               -- A$  (name of the module class for module A)
+                  BODYRETAINER      Length underlying_NameRef                               -- A$retainedBody
 
                   SIGNED            Length original_NameRef resultSig_NameRef ParamSig*     -- name + signature
                   TARGETSIGNED      Length original_NameRef target_NameRef resultSig_NameRef ParamSig*
