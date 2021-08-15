@@ -19,6 +19,7 @@ import typer.ForceDegree
 import typer.Inferencing._
 import typer.IfBottom
 import reporting.TestingReporter
+import CaptureSet.CompareResult
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -169,7 +170,7 @@ object TypeOps:
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
       case tp: CapturingType
-      if !ctx.mode.is(Mode.Type) && tp.refs <:< tp.parent.captureSet =>
+      if !ctx.mode.is(Mode.Type) && tp.refs <:< tp.parent.captureSet == CompareResult.OK =>
         simplify(tp.parent, theMap)
       case tp: MethodicType =>
         tp // See documentation of `Types#simplified`

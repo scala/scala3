@@ -58,7 +58,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
 
     def reinferResult(info: Type)(using Context): Type = info match
       case info: MethodOrPoly =>
-        info.derivedLambdaType(resType = reinferResult(info.resultType))
+        info.derivedLambdaType(resType = reinferResult(info.resType))
       case _ =>
         reinfer(info)
 
@@ -317,7 +317,6 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
           || expected.isRepeatedParam
              && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
         if !isCompatible then
-          println(i"err at ${ctx.phase}")
           err.typeMismatch(tree.withType(tpe), pt)
 
     def checkUnit(unit: CompilationUnit)(using Context): Unit =

@@ -73,6 +73,7 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
     s"""Recursion limit exceeded.
        |Maybe there is an illegal cyclic reference?
        |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
+       |For the unprocessed stack trace, compile with -Yno-decode-stacktraces.
        |A recurring operation is (inner to outer):
        |${opsString(mostCommon)}""".stripMargin
   }

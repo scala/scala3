@@ -192,7 +192,7 @@ trait TypeAssigner {
     else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
 
   def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type =
-    def include(cs: CaptureSet, tp: Type): CaptureSet = tp match
+    def include(cs: CaptureSet, tp: Type): CaptureSet = tp.dealias match
       case ref: CaptureRef =>
         if ref.isTracked then
           if cs.accountsFor(ref) then

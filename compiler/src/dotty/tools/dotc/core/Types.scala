@@ -38,6 +38,7 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
+import CaptureSet.CompareResult
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -1846,7 +1847,10 @@ object Types {
       if captureSet.accountsFor(ref) then this else CapturingType(this, ref.singletonCaptureSet)
 
     def capturing(cs: CaptureSet)(using Context): Type =
-      (this /: cs.elems)(_.capturing(_))
+      if cs.isConst && (cs frozen_<:< captureSet) == CompareResult.OK then this
+      else this match
+        case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
+        case _ => CapturingType(this, cs)
 
     /** The set of distinct symbols referred to by this type, after all aliases are expanded */
     def coveringSet(using Context): Set[Symbol] =
@@ -2029,7 +2033,7 @@ object Types {
   }
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs */
-  trait CaptureRef extends TypeProxy, ValueType:
+  trait CaptureRef extends SingletonType:
     private var myCaptureSet: CaptureSet = _
     private var myCaptureSetRunId: Int = NoRunId
     private var mySingletonCaptureSet: CaptureSet = null
@@ -2111,7 +2115,7 @@ object Types {
 
 // --- NamedTypes ------------------------------------------------------------------
 
-  abstract class NamedType extends CachedProxyType, CaptureRef { self =>
+  abstract class NamedType extends CachedProxyType, ValueType { self =>
 
     type ThisType >: this.type <: NamedType
     type ThisName <: Name
@@ -2387,23 +2391,6 @@ object Types {
       }
       checkDenot()
     }
-
-    /** A reference can be tracked if it is
-     *   (1) a local term ref
-     *   (2) a type parameter,
-     *   (3) a method term parameter
-     *  References to term parameters of classes cannot be tracked individually.
-     *  They are subsumed in the capture sets of the enclosing class.
-     */
-    def canBeTracked(using Context) =
-      if isTerm then (prefix eq NoPrefix) || symbol.hasAnnotation(defn.AbilityAnnot)
-      else symbol.is(TypeParam) || isRootCapability
-
-    override def isRootCapability(using Context): Boolean =
-      name == tpnme.CAPTURE_ROOT && symbol == defn.captureRootType
-
-    override def normalizedRef(using Context): CaptureRef =
-      if canBeTracked then symbol.namedType else this
 
     private def checkDenot()(using Context) = {}
 
@@ -2682,7 +2669,7 @@ object Types {
    */
   abstract case class TermRef(override val prefix: Type,
                               private var myDesignator: Designator)
-    extends NamedType with SingletonType with ImplicitRef {
+    extends NamedType, ImplicitRef, CaptureRef {
 
     type ThisType = TermRef
     type ThisName = TermName
@@ -2706,6 +2693,19 @@ object Types {
 
     def implicitName(using Context): TermName = name
     def underlyingRef: TermRef = this
+
+    /** A term reference can be tracked if it is a local term ref or a method term parameter.
+     *  References to term parameters of classes cannot be tracked individually.
+     *  They are subsumed in the capture sets of the enclosing class.
+     */
+    def canBeTracked(using Context) =
+      (prefix eq NoPrefix) || symbol.hasAnnotation(defn.AbilityAnnot) || isRootCapability
+
+    override def isRootCapability(using Context): Boolean =
+      name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
+
+    override def normalizedRef(using Context): CaptureRef =
+      if canBeTracked then symbol.termRef else this
   }
 
   abstract case class TypeRef(override val prefix: Type,
@@ -2841,7 +2841,7 @@ object Types {
    *  Note: we do not pass a class symbol directly, because symbols
    *  do not survive runs whereas typerefs do.
    */
-  abstract case class ThisType(tref: TypeRef) extends CachedProxyType, SingletonType, CaptureRef {
+  abstract case class ThisType(tref: TypeRef) extends CachedProxyType, CaptureRef {
     def cls(using Context): ClassSymbol = tref.stableInRunSymbol match {
       case cls: ClassSymbol => cls
       case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
@@ -4419,7 +4419,7 @@ object Types {
     override def hashIsStable: Boolean = false
   }
 
-  abstract class ParamRef extends BoundType, CaptureRef {
+  abstract class ParamRef extends BoundType {
     type BT <: LambdaType
     def paramNum: Int
     def paramName: binder.ThisName = binder.paramNames(paramNum)
@@ -4429,8 +4429,6 @@ object Types {
       if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
       else infos(paramNum)
     }
-
-    override def canBeTracked(using Context) = true
 
     override def computeHash(bs: Binders): Int = doHash(paramNum, binder.identityHash(bs))
 
@@ -4453,8 +4451,9 @@ object Types {
   /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
    *  refer to `TermParamRef(binder, paramNum)`.
    */
-  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef with SingletonType {
+  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef, CaptureRef {
     type BT = TermLambda
+    override def canBeTracked(using Context) = true
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
   }
