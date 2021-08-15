@@ -73,6 +73,9 @@ class SymbolInfomationPrinter (symtab: PrinterSymtab):
         case INTERFACE => sb.append("interface ")
         case UNKNOWN_KIND | Unrecognized(_) => sb.append("unknown ")
       sb.append(s"${info.displayName}${info.prefixBeforeTpe}${pprint(info.signature)}")
+      info.overriddenSymbols match
+        case Nil => ()
+        case all => sb.append(s" <: ${all.mkString(", ")}")
       sb.toString
 
     private def pprintDef(info: SymbolInformation) =
