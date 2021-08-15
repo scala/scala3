@@ -191,9 +191,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case CapturingType(parent, refs) =>
         if refs.isConst then
           if Config.printCaptureSetsAsPrefix then
-            changePrec(GlobalPrec)("{" ~ toTextCaptureRef(ref) ~ "} " ~ toText(parent))
+            changePrec(GlobalPrec)("{" ~ Text(refs.elems.toList.map(toTextCaptureRef), ", ") ~ "} " ~ toText(parent))
           else
-            changePrec(InfixPrec)(toText(parent) ~ " retains " ~ toTextCaptureRef(ref))
+            changePrec(InfixPrec)(toText(parent) ~ " retains " ~ toText(refs.toRetainsTypeArg))
         else
           s"$refs " ~ toText(parent) // ^^^ improve
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
@@ -283,7 +283,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** If -uniqid is set, the unique id of symbol, after a # */
   protected def idString(sym: Symbol): String =
-    if (showUniqueIds || Printer.debugPrintUnique) "#" + sym.id else ""
+    if showUniqueIds then "#" + sym.id else ""
 
   def nameString(sym: Symbol): String =
     simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"
@@ -323,7 +323,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp @ ConstantType(value) =>
         toText(value)
       case pref: TermParamRef =>
-        nameString(pref.binder.paramNames(pref.paramNum))
+        nameString(pref.binder.paramNames(pref.paramNum)) ~ lambdaHash(pref.binder)
       case tp: RecThis =>
         val idx = openRecs.reverse.indexOf(tp.binder)
         if (idx >= 0) selfRecName(idx + 1)

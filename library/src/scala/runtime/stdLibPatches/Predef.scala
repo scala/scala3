@@ -51,4 +51,6 @@ object Predef:
   /** type `A` with capture set `B` */
   infix type retains[A, B]
 
+  /** An alternative notation for capturing types. TODO: needed? Or maybe mangle the name? */
+  infix type |> [A, B]
 end Predef

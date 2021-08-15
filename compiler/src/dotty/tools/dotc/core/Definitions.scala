@@ -476,6 +476,7 @@ class Definitions {
     @tu lazy val Predef_identity : Symbol = ScalaPredefModule.requiredMethod(nme.identity)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
     @tu lazy val Predef_retainsType: Symbol = ScalaPredefModule.requiredType(tpnme.retains)
+    @tu lazy val Predef_capturing: Symbol = ScalaPredefModule.requiredType(tpnme.CAPTURING)
   @tu lazy val ScalaPredefModuleClass: ClassSymbol = ScalaPredefModule.moduleClass.asClass
 
   @tu lazy val SubTypeClass: ClassSymbol = requiredClass("scala.<:<")
