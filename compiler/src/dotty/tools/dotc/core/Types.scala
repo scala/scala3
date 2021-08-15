@@ -1190,6 +1190,10 @@ object Types {
     /** Strip TypeVars and Annotation and CapturingType wrappers */
     def stripped(using Context): Type = this
 
+    def strippedDealias(using Context): Type =
+      val tp1 = stripped.dealias
+      if tp1 ne this then tp1.strippedDealias else this
+
     def rewrapAnnots(tp: Type)(using Context): Type = tp.stripTypeVar match {
       case AnnotatedType(tp1, annot) => AnnotatedType(rewrapAnnots(tp1), annot)
       case _ => this

@@ -5,7 +5,7 @@ type Cell[+T] = [K] => (T ==> K) => K
 def cell[T](x: T): Cell[T] =
   [K] => (k: T ==> K) => k(x)
 
-def get[T](c: Cell[T]): T = c[T](identity[T]) // TODO: drop [T]
+def get[T](c: Cell[T]): T = c[T](identity)
 
 def map[A, B](c: Cell[A])(f: A ==> B): Cell[B]
   = c[Cell[B]]((x: A) => cell(f(x)))
@@ -32,7 +32,7 @@ def test(io: {*} IO) =
 
   val r = lazyMap[{io} () => Int, Unit](c)(f => g(f))
   val r2 = lazyMap[{io} () => Int, Unit](c)(g)
-  //  val r3 = lazyMap(c)(g)  not yet
+  // val r3 = lazyMap(c)(g)
   val _ = r()
   val _ = r2()
   // val _ = r3()
