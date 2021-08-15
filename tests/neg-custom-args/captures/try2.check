@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try2.scala:31:32 -----------------------------------------
 31 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)  // error
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                Found:    (() => Nothing) retains x
+   |                                Found:    {x} () => Nothing
    |                                Required: () => Nothing
 
 longer explanation available when compiling with `-explain`

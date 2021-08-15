@@ -15,6 +15,7 @@ import util.SourcePosition
 import java.lang.Integer.toOctalString
 import scala.util.control.NonFatal
 import scala.annotation.switch
+import config.Config
 
 class PlainPrinter(_ctx: Context) extends Printer {
   /** The context of all public methods in Printer and subclasses.
@@ -189,7 +190,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case CapturingType(parent, refs) =>
         if refs.isConst then
-          changePrec(InfixPrec)(toText(parent) ~ " retains " ~ toText(refs.toRetainsTypeArg))
+          if Config.printCaptureSetsAsPrefix then
+            changePrec(GlobalPrec)("{" ~ toTextCaptureRef(ref) ~ "} " ~ toText(parent))
+          else
+            changePrec(InfixPrec)(toText(parent) ~ " retains " ~ toTextCaptureRef(ref))
         else
           s"$refs " ~ toText(parent) // ^^^ improve
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
