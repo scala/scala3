@@ -80,7 +80,7 @@ class CheckCaptures extends Recheck:
     import ast.tpd.*
 
     override def reinfer(tp: Type)(using Context): Type =
-      CapturingType(tp, CaptureSet.Var())
+      CapturingType(tp, CaptureSet.Var()) // ^^^ go deep
 
     private var curEnv: Env = Env(NoSymbol, CaptureSet.empty, false, null)
 
