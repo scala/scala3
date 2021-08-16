@@ -2087,7 +2087,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Unapply` */
     trait UnapplyModule { this: Unapply.type =>
+      /** Create an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
+      def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
+      /** Copy an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
+      /** Matches an `Unapply(fun, implicits, patterns)` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
       def unapply(x: Unapply): (Term, List[Term], List[Tree])
     }
 
@@ -2097,8 +2101,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Unapply` */
     trait UnapplyMethods:
       extension (self: Unapply)
+        /** The extractor function of the pattern.
+         *
+         *  It may be a reference to the `unapply` method of the pattern or may be a
+         *  partially applied tree containing type parameters and leading given parameters.
+         */
         def fun: Term
+        /** Training implicit parameters of the `unapply` method */
         def implicits: List[Term]
+        /** List of nested patterns */
         def patterns: List[Tree]
       end extension
     end UnapplyMethods
