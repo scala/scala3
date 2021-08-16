@@ -197,9 +197,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Alternative(trees: List[Tree])(using Context): Alternative =
     ta.assignType(untpd.Alternative(trees), trees)
 
-  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree], proto: Type)(using Context): UnApply = {
+  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(using Context): UnApply = {
     assert(fun.isInstanceOf[RefTree] || fun.isInstanceOf[GenericApply])
-    ta.assignType(untpd.UnApply(fun, implicits, patterns), proto)
+    ta.assignType(untpd.UnApply(fun, implicits, patterns), defn.NothingType)
   }
 
   def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree)(using Context): ValDef =
