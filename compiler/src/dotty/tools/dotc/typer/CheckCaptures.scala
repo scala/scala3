@@ -95,6 +95,7 @@ class CheckCaptures extends Recheck:
         val ref = sym.termRef
         def recur(env: Env): Unit =
           if env.isOpen && env.owner != sym.enclosure then
+            capt.println(i"Mark $sym free in ${env.owner}")
             checkElem(ref, env.captured, pos)
             recur(env.outer)
         if ref.isTracked then recur(curEnv)
@@ -153,7 +154,7 @@ class CheckCaptures extends Recheck:
 
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       val saved = curEnv
-      if pt.needsBox && !curEnv.isBoxed then
+      if pt.needsBox && !curEnv.isBoxed && false then // ^^^ refine
         curEnv = Env(NoSymbol, CaptureSet.Var(), true, curEnv)
       try
         val res = super.recheck(tree, pt)
@@ -171,15 +172,14 @@ class CheckCaptures extends Recheck:
 
   def checkNotGlobal(tree: Tree, allArgs: Tree*)(using Context): Unit =
     if disallowGlobal then
-      //println(i"checking $arg in $tree: ${arg.tpe.captureSet}")
       tree match
         case LambdaTypeTree(_, restpt) =>
           checkNotGlobal(restpt, allArgs*)
         case _ =>
           for ref <- tree.tpe.captureSet.elems do
             val isGlobal = ref match
-              case ref: TypeRef => ref.isRootCapability
-              case ref: TermRef => ref.prefix != NoPrefix && ref.symbol.hasAnnotation(defn.AbilityAnnot)
+              case ref: TermRef =>
+                ref.isRootCapability || ref.prefix != NoPrefix && ref.symbol.hasAnnotation(defn.AbilityAnnot)
               case _ => false
             val what = if ref.isRootCapability then "universal" else "global"
             if isGlobal then
@@ -196,7 +196,9 @@ class CheckCaptures extends Recheck:
     def traverse(tree: Tree)(using Context) =
       tree match
         case tree1 @ TypeApply(fn, args) if disallowGlobal =>
-          for arg <- args do checkNotGlobal(arg, args*)
+          for arg <- args do
+            //println(i"checking $arg in $tree: ${arg.tpe.captureSet}")
+            checkNotGlobal(arg, args*)
         case _ =>
       traverseChildren(tree)
 
