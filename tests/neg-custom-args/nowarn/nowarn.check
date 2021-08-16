@@ -5,15 +5,15 @@
   |          its body in a block; no exceptions are handled.
 
 longer explanation available when compiling with `-explain`
--- [E000] Syntax Warning: tests/neg-custom-args/nowarn/nowarn.scala:21:26 ----------------------------------------------
-21 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
+-- [E000] Syntax Warning: tests/neg-custom-args/nowarn/nowarn.scala:24:26 ----------------------------------------------
+24 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
    |                          ^^^^^
    |                          A try without catch or finally is equivalent to putting
    |                          its body in a block; no exceptions are handled.
 
 longer explanation available when compiling with `-explain`
--- [E000] Syntax Warning: tests/neg-custom-args/nowarn/nowarn.scala:23:28 ----------------------------------------------
-23 |@nowarn("verbose") def t5 = try 1 // warning with details
+-- [E000] Syntax Warning: tests/neg-custom-args/nowarn/nowarn.scala:26:28 ----------------------------------------------
+26 |@nowarn("verbose") def t5 = try 1 // warning with details
    |                            ^^^^^
    |                            A try without catch or finally is equivalent to putting
    |                            its body in a block; no exceptions are handled.
@@ -33,55 +33,65 @@ longer explanation available when compiling with `-explain`
    |        ^^^^^^
    |        Invalid message filter
    |        unknown filter: wat?
--- Deprecation Warning: tests/neg-custom-args/nowarn/nowarn.scala:27:10 ------------------------------------------------
-27 |def t6a = f // warning (refchecks, deprecation)
+-- [E129] Potential Issue Warning: tests/neg-custom-args/nowarn/nowarn.scala:16:12 -------------------------------------
+16 |def t2a = { 1; 2 } // warning (invalid nowarn doesn't silence)
+   |            ^
+   |            A pure expression does nothing in statement position; you may be omitting necessary parentheses
+
+longer explanation available when compiling with `-explain`
+-- Warning: tests/neg-custom-args/nowarn/nowarn.scala:15:8 -------------------------------------------------------------
+15 |@nowarn(t1a.toString) // warning (typer, argument not a compile-time constant)
+   |        ^^^^^^^^^^^^
+   |        filter needs to be a compile-time constant string
+-- Deprecation Warning: tests/neg-custom-args/nowarn/nowarn.scala:30:10 ------------------------------------------------
+30 |def t6a = f // warning (refchecks, deprecation)
    |          ^
    |          method f is deprecated
--- Deprecation Warning: tests/neg-custom-args/nowarn/nowarn.scala:30:30 ------------------------------------------------
-30 |@nowarn("msg=fish") def t6d = f // error (unused nowarn), warning (deprecation)
+-- Deprecation Warning: tests/neg-custom-args/nowarn/nowarn.scala:33:30 ------------------------------------------------
+33 |@nowarn("msg=fish") def t6d = f // error (unused nowarn), warning (deprecation)
    |                              ^
    |                              method f is deprecated
--- Deprecation Warning: tests/neg-custom-args/nowarn/nowarn.scala:37:10 ------------------------------------------------
-37 |def t7c = f:          // warning (deprecation)
+-- Deprecation Warning: tests/neg-custom-args/nowarn/nowarn.scala:40:10 ------------------------------------------------
+40 |def t7c = f:          // warning (deprecation)
    |          ^
    |          method f is deprecated
--- Unchecked Warning: tests/neg-custom-args/nowarn/nowarn.scala:43:7 ---------------------------------------------------
-43 |  case _: List[Int] => 0 // warning (patmat, unchecked)
+-- Unchecked Warning: tests/neg-custom-args/nowarn/nowarn.scala:46:7 ---------------------------------------------------
+46 |  case _: List[Int] => 0 // warning (patmat, unchecked)
    |       ^
    |       the type test for List[Int] cannot be checked at runtime
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:21:1 ---------------------------------------------------------------
-21 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:24:1 ---------------------------------------------------------------
+24 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
    |^^^^^^^^^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:30:1 ---------------------------------------------------------------
-30 |@nowarn("msg=fish") def t6d = f // error (unused nowarn), warning (deprecation)
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:33:1 ---------------------------------------------------------------
+33 |@nowarn("msg=fish") def t6d = f // error (unused nowarn), warning (deprecation)
    |^^^^^^^^^^^^^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:38:3 ---------------------------------------------------------------
-38 |  @nowarn("msg=fish") // error (unused nowarn)
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:41:3 ---------------------------------------------------------------
+41 |  @nowarn("msg=fish") // error (unused nowarn)
    |  ^^^^^^^^^^^^^^^^^^^
    |  @nowarn annotation does not suppress any warnings
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:50:0 ---------------------------------------------------------------
-50 |@nowarn def t9a = { 1: @nowarn; 2 } // error (outer @nowarn is unused)
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:53:0 ---------------------------------------------------------------
+53 |@nowarn def t9a = { 1: @nowarn; 2 } // error (outer @nowarn is unused)
    |^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:51:27 --------------------------------------------------------------
-51 |@nowarn def t9b = { 1: Int @nowarn; 2 } // error (inner @nowarn is unused, it covers the type, not the expression)
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:54:27 --------------------------------------------------------------
+54 |@nowarn def t9b = { 1: Int @nowarn; 2 } // error (inner @nowarn is unused, it covers the type, not the expression)
    |                           ^^^^^^^
    |                           @nowarn annotation does not suppress any warnings
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:56:0 ---------------------------------------------------------------
-56 |@nowarn @ann(f) def t10b = 0  // error (unused nowarn)
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:59:0 ---------------------------------------------------------------
+59 |@nowarn @ann(f) def t10b = 0  // error (unused nowarn)
    |^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:57:8 ---------------------------------------------------------------
-57 |@ann(f: @nowarn) def t10c = 0 // error (unused nowarn), should be silent
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:60:8 ---------------------------------------------------------------
+60 |@ann(f: @nowarn) def t10c = 0 // error (unused nowarn), should be silent
    |        ^^^^^^^
    |        @nowarn annotation does not suppress any warnings
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:60:0 ---------------------------------------------------------------
-60 |@nowarn class I1a { // error (unused nowarn)
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:63:0 ---------------------------------------------------------------
+63 |@nowarn class I1a { // error (unused nowarn)
    |^^^^^^^
    |@nowarn annotation does not suppress any warnings
--- Error: tests/neg-custom-args/nowarn/nowarn.scala:65:0 ---------------------------------------------------------------
-65 |@nowarn class I1b { // error (unused nowarn)
+-- Error: tests/neg-custom-args/nowarn/nowarn.scala:68:0 ---------------------------------------------------------------
+68 |@nowarn class I1b { // error (unused nowarn)
    |^^^^^^^
    |@nowarn annotation does not suppress any warnings

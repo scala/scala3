@@ -11,7 +11,7 @@ import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
 
 enum MessageFilter:
-  def matches(message: Diagnostic): Boolean = this match {
+  def matches(message: Diagnostic): Boolean = this match
     case Any => true
     case Deprecated => message.isInstanceOf[Diagnostic.DeprecationWarning]
     case Feature => message.isInstanceOf[Diagnostic.FeatureWarning]
@@ -21,7 +21,7 @@ enum MessageFilter:
       pattern.findFirstIn(noHighlight).nonEmpty
     case MessageID(errorId) => message.msg.errorId == errorId
     case None => false
-  }
+
   case Any, Deprecated, Feature, Unchecked, None
   case MessagePattern(pattern: Regex)
   case MessageID(errorId: ErrorMessageID)
@@ -40,21 +40,27 @@ object WConf:
 
   private type Conf = (List[MessageFilter], Action)
 
-  def parseAction(s: String): Either[List[String], Action] = s match {
+  def parseAction(s: String): Either[List[String], Action] = s match
     case "error" | "e"            => Right(Error)
     case "warning" | "w"          => Right(Warning)
     case "verbose" | "v"          => Right(Verbose)
     case "info" | "i"             => Right(Info)
     case "silent" | "s"           => Right(Silent)
     case _                        => Left(List(s"unknown action: `$s`"))
-  }
 
   private def regex(s: String) =
     try Right(s.r)
-    catch { case e: PatternSyntaxException => Left(s"invalid pattern `$s`: ${e.getMessage}") }
+    catch case e: PatternSyntaxException => Left(s"invalid pattern `$s`: ${e.getMessage}")
 
   @sharable val Splitter = raw"([^=]+)=(.+)".r
   @sharable val ErrorId = raw"E?(\d+)".r
+
+  def parseFilters(s: String): Either[List[String], List[MessageFilter]] =
+    // TODO: don't split on escaped \&
+    val (parseErrors, filters) = s.split('&').view.map(parseFilter).toList.partitionMap(identity)
+    if parseErrors.nonEmpty then Left(parseErrors)
+    else if filters.isEmpty then Left(List("no filters or no action defined"))
+    else Right(filters)
 
   def parseFilter(s: String): Either[String, MessageFilter] = s match
     case "any" => Right(Any)
@@ -62,9 +68,9 @@ object WConf:
       case "msg" => regex(conf).map(MessagePattern.apply)
       case "id" => conf match
         case ErrorId(num) =>
-          val n = num.toInt + 2
+          val n = num.toInt
           if n < ErrorMessageID.values.length then
-            Right(MessageID(ErrorMessageID.fromOrdinal(n)))
+            Right(MessageID(ErrorMessageID.fromErrorNumber(n)))
           else
             Left(s"unknonw error message id: E$n")
         case _ =>
@@ -99,25 +105,22 @@ object WConf:
 
   def fromSettings(settings: List[String]): Either[List[String], WConf] =
     if (settings.isEmpty) Right(WConf(Nil))
-    else {
-      val parsedConfs: List[Either[List[String], (List[MessageFilter], Action)]] = settings.map(conf => {
-        val parts = conf.split("[&:]") // TODO: don't split on escaped \&
-        val (ms, fs) = parts.view.init.map(parseFilter).toList.partitionMap(identity)
-        if (ms.nonEmpty) Left(ms)
-        else if (fs.isEmpty) Left(List("no filters or no action defined"))
-        else parseAction(parts.last).map((fs, _))
-      })
-      val (ms, fs) = parsedConfs.partitionMap(identity)
-      if (ms.nonEmpty) Left(ms.flatten)
-      else Right(WConf(fs))
-    }
+    else
+      val parsedConfs: List[Either[List[String], (List[MessageFilter], Action)]] = settings.map(conf =>
+        val filtersAndAction = conf.split(':')
+        if filtersAndAction.length != 2 then Left(List("exactly one `:` expected (<filter>&...&<filter>:<action>)"))
+        else
+          parseFilters(filtersAndAction(0)).flatMap(filters =>
+            parseAction(filtersAndAction(1)).map((filters, _))))
+      val (parseErrorss, configs) = parsedConfs.partitionMap(identity)
+      if (parseErrorss.nonEmpty) Left(parseErrorss.flatten)
+      else Right(WConf(configs))
 
-case class Suppression(annotPos: SourcePosition, filters: List[MessageFilter], start: Int, end: Int, verbose: Boolean):
+class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, end: Int, val verbose: Boolean):
   private[this] var _used = false
   def used: Boolean = _used
-  def markUsed(): Unit = { _used = true }
+  def markUsed(): Unit = _used = true
 
-  def matches(dia: Diagnostic): Boolean = {
+  def matches(dia: Diagnostic): Boolean =
     val pos = dia.pos
-    pos.exists && start <= pos.start && pos.end <= end && (verbose || filters.forall(_.matches(dia)))
-  }
+    pos.exists && start <= pos.start && pos.end <= end && filters.forall(_.matches(dia))

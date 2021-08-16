@@ -2090,27 +2090,30 @@ class Typer extends Namer
     val annot = Annotations.Annotation(tree)
     def argPos = annot.argument(0).getOrElse(tree).sourcePos
     var verbose = false
+    var erroneous = false
     val filters =
       if annot.arguments.isEmpty then List(MessageFilter.Any)
       else annot.argumentConstantString(0) match
         case None => annot.argument(0) match
-          case Some(t: Select) if t.name.is(DefaultGetterName) => List(MessageFilter.Any)
+          case Some(t: Select) if t.name.is(DefaultGetterName) =>
+            // default argument used for `@nowarn` and `@nowarn()`
+            List(MessageFilter.Any)
           case _ =>
             report.warning(s"filter needs to be a compile-time constant string", argPos)
-            Nil
-        case Some("") => Nil
+            List(MessageFilter.None)
+        case Some("") =>
+          List(MessageFilter.Any)
         case Some("verbose") | Some("v") =>
           verbose = true
-          Nil
+          List(MessageFilter.Any)
         case Some(s) =>
-          val (ms, fs) = s.split('&').map(WConf.parseFilter).toList.partitionMap(identity)
-          if ms.nonEmpty then
-            report.warning(s"Invalid message filter\n${ms.mkString("\n")}", argPos)
-            List(MessageFilter.None)
-          else
-            fs
+          WConf.parseFilters(s).fold(parseErrors =>
+            report.warning (s"Invalid message filter\n${parseErrors.mkString ("\n")}", argPos)
+            List(MessageFilter.None),
+          identity)
     val range = mdef.sourcePos
     val sup = Suppression(tree.sourcePos, filters, range.start, range.end, verbose)
+    // invalid suppressions, don't report as unused
     if filters == List(MessageFilter.None) then sup.markUsed()
     ctx.run.suppressions.addSuppression(sup)
 
