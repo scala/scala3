@@ -57,7 +57,7 @@ object WConf:
 
   def parseFilters(s: String): Either[List[String], List[MessageFilter]] =
     // TODO: don't split on escaped \&
-    val (parseErrors, filters) = s.split('&').view.map(parseFilter).toList.partitionMap(identity)
+    val (parseErrors, filters) = s.split('&').toList.partitionMap(parseFilter)
     if parseErrors.nonEmpty then Left(parseErrors)
     else if filters.isEmpty then Left(List("no filters or no action defined"))
     else Right(filters)
@@ -68,11 +68,9 @@ object WConf:
       case "msg" => regex(conf).map(MessagePattern.apply)
       case "id" => conf match
         case ErrorId(num) =>
-          val n = num.toInt
-          if n < ErrorMessageID.values.length then
-            Right(MessageID(ErrorMessageID.fromErrorNumber(n)))
-          else
-            Left(s"unknonw error message id: E$n")
+          ErrorMessageID.fromErrorNumber(num.toInt) match
+            case Some(errId) => Right(MessageID(errId))
+            case _ => Left(s"unknonw error message number: E$num")
         case _ =>
           Left(s"invalid error message id: $conf")
       case "name" =>
@@ -119,7 +117,7 @@ object WConf:
 class Suppression(val annotPos: SourcePosition, filters: List[MessageFilter], val start: Int, end: Int, val verbose: Boolean):
   private[this] var _used = false
   def used: Boolean = _used
-  def markUsed(): Unit = _used = true
+  def markUsed(): Unit = { _used = true }
 
   def matches(dia: Diagnostic): Boolean =
     val pos = dia.pos
