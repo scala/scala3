@@ -230,7 +230,7 @@ trait InkuireSupport:
 
   given SymbolSyntaxInkuire: AnyRef with
     extension (symbol: Symbol)
-      def itid(using dctx: DocContext): Option[Inkuire.ITID] = Some(Inkuire.ITID(symbol.dri.symbolUUID))
+      def itid(using dctx: DocContext): Option[Inkuire.ITID] = Some(Inkuire.ITID(symbol.dri.symbolUUID, isParsed = false))
 
   given TypeSyntaxInkuire: AnyRef with
     extension (tpe: TypeRepr)
@@ -242,7 +242,7 @@ trait InkuireSupport:
       val name = s"X$i"
       Inkuire.Type(
         name = Inkuire.TypeName(name),
-        itid = Some(Inkuire.ITID(uuid)),
+        itid = Some(Inkuire.ITID(uuid, isParsed = false)),
         isVariable = true
       )
     }
@@ -294,7 +294,7 @@ trait InkuireSupport:
       Inkuire.Type(
         name = Inkuire.TypeName(constant.toString),
         params = Seq.empty,
-        itid = Some(Inkuire.ITID(constant.toString))
+        itid = Some(Inkuire.ITID(constant.toString, isParsed = false))
       )
     case ThisType(tpe) => inner(tpe, vars)
     case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedAnnotation(annotation) =>
@@ -314,14 +314,14 @@ trait InkuireSupport:
         Inkuire.Type(
           name = Inkuire.TypeName(name),
           params = typeList.init.map(p => Inkuire.Contravariance(inner(p, vars))) :+ Inkuire.Covariance(inner(typeList.last, vars)),
-          itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]"))
+          itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
         )
       else if t.isTupleN then
         val name = s"Tuple${typeList.size}"
         Inkuire.Type(
           name = Inkuire.TypeName(name),
           params = typeList.map(p => Inkuire.Covariance(inner(p, vars))),
-          itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]"))
+          itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
         )
       else
         inner(tpe, vars).asInstanceOf[Inkuire.Type].copy(
@@ -353,5 +353,5 @@ trait InkuireSupport:
       Inkuire.Type(
         name = Inkuire.TypeName(name),
         params = typeList.map(p => Inkuire.Contravariance(inner(p, vars))) :+ Inkuire.Covariance(inner(resType, vars)),
-        itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]"))
+        itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
       )
