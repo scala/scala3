@@ -189,13 +189,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
       case CapturingType(parent, refs) =>
-        if refs.isConst then
-          if Config.printCaptureSetsAsPrefix then
-            changePrec(GlobalPrec)("{" ~ Text(refs.elems.toList.map(toTextCaptureRef), ", ") ~ "} " ~ toText(parent))
-          else
-            changePrec(InfixPrec)(toText(parent) ~ " retains " ~ toText(refs.toRetainsTypeArg))
+        if printDebug && !refs.isConst then
+          s"$refs " ~ toText(parent)
+        else if refs.elems.isEmpty then
+          toText(parent)
+        else if Config.printCaptureSetsAsPrefix then
+          changePrec(GlobalPrec)("{" ~ Text(refs.elems.toList.map(toTextCaptureRef), ", ") ~ "} " ~ toText(parent))
         else
-          s"$refs " ~ toText(parent) // ^^^ improve
+          changePrec(InfixPrec)(toText(parent) ~ " retains " ~ toText(refs.toRetainsTypeArg))
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
