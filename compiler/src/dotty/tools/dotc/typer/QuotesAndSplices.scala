@@ -400,8 +400,11 @@ trait QuotesAndSplices {
    *          },
    *          true, // If there is at least one type splice. Used to instantiate the context with or without GADT constraints
    *          x$2 // tasty.Reflection instance
-   *        ) => ...
+   *        ): Expr[S & List[t] @unchecked] => ...
    *  ```
+   *
+   *  For a scrutinee of type `S`, the `: Expr[S & List[t] @unchecked]` tells the pattern that if the pattern matched the bound
+   *  scrutinee `x @ '{..}` is of type `Expr[S & List[t] @unchecked]`.
    */
   private def typedQuotePattern(tree: untpd.Quote, pt: Type, qctx: Tree)(using Context): Tree = {
     if tree.quoted.isTerm && !pt.derivesFrom(defn.QuotedExprClass) then
@@ -469,10 +472,12 @@ trait QuotesAndSplices {
     val matchModule = if tree.quoted.isTerm then defn.QuoteMatching_ExprMatch else defn.QuoteMatching_TypeMatch
     val unapplyFun = qctx.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(nme.unapply)
 
-    UnApply(
-      fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
-      implicits = quotedPattern :: Nil,
-      patterns = splicePat :: Nil,
-      proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
+    Typed(
+      UnApply(
+        fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
+        implicits = quotedPattern :: Nil,
+        patterns = splicePat :: Nil),
+      TypeTree(quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
+    ).annotated(New(defn.UncheckedAnnot.typeRef, Nil))
   }
 }
