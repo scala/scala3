@@ -72,6 +72,7 @@ class Jar(file: File) {
     case null   => errorFn("No such entry: " + entry) ; null
     case x      => x
   }
+
   override def toString: String = "" + file
 }
 
