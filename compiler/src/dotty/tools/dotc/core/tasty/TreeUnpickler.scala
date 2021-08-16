@@ -1365,7 +1365,9 @@ class TreeUnpickler(reader: TastyReader,
     def readLaterWithOwner[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Symbol => Trees.Lazy[T] = {
       val localReader = fork
       goto(end)
-      owner => new LazyReader(localReader, owner, ctx.mode, ctx.source, op)
+      val mode = ctx.mode
+      val source = ctx.source
+      owner => new LazyReader(localReader, owner, mode, source, op)
     }
 
 // ------ Setting positions ------------------------------------------------
