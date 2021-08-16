@@ -1,3 +1,4 @@
+// Retains syntax for classes not (yet?) supported
 import language.experimental.erasedDefinitions
 import annotation.ability
 

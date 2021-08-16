@@ -1,11 +1,11 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:3:2 ------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:3:5 ------------------------------------------
 3 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |  Found:    {x} () => C
   |  Required: () => C
 
 longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:6:2 ------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:6:5 ------------------------------------------
 6 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |  Found:    {x} () => C
@@ -19,24 +19,24 @@ longer explanation available when compiling with `-explain`
    |  Required: Any
 
 longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:23:3 -----------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:23:2 -----------------------------------------
 23 |  F(22)  // error
    |  ^^^^^
-   |  Found:    {x} F
+   |  Found:    {x} A
    |  Required: A
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:27:40 ----------------------------------------
 27 |    def m() = if x == null then y else y  // error
    |                                        ^
-   |                                        Found:    {x} A {...}
+   |                                        Found:    {x} A
    |                                        Required: A
 
 longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:32:24 ----------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:32:27 ----------------------------------------
 32 |  val z2 = h[() => Cap](() => x)(() => C())  // error
    |                        ^^^^^^^
-   |                        Found:    (() => Cap) retains x
+   |                        Found:    {x} () => Cap
    |                        Required: () => Cap
 
 longer explanation available when compiling with `-explain`
