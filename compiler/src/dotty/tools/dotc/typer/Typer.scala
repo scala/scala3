@@ -2090,27 +2090,24 @@ class Typer extends Namer
     val annot = Annotations.Annotation(tree)
     def argPos = annot.argument(0).getOrElse(tree).sourcePos
     var verbose = false
-    var erroneous = false
-    val filters =
-      if annot.arguments.isEmpty then List(MessageFilter.Any)
-      else annot.argumentConstantString(0) match
-        case None => annot.argument(0) match
-          case Some(t: Select) if t.name.is(DefaultGetterName) =>
-            // default argument used for `@nowarn` and `@nowarn()`
-            List(MessageFilter.Any)
-          case _ =>
-            report.warning(s"filter needs to be a compile-time constant string", argPos)
+    val filters = annot.argumentConstantString(0) match
+      case None => annot.argument(0) match
+        case Some(t: Select) if t.name.is(DefaultGetterName) =>
+          // default argument used for `@nowarn` and `@nowarn()`
+          List(MessageFilter.Any)
+        case _ =>
+          report.warning(s"filter needs to be a compile-time constant string", argPos)
+          List(MessageFilter.None)
+      case Some("") =>
+        List(MessageFilter.Any)
+      case Some("verbose") | Some("v") =>
+        verbose = true
+        List(MessageFilter.Any)
+      case Some(s) =>
+        WConf.parseFilters(s).left.map(parseErrors =>
+          report.warning (s"Invalid message filter\n${parseErrors.mkString ("\n")}", argPos)
             List(MessageFilter.None)
-        case Some("") =>
-          List(MessageFilter.Any)
-        case Some("verbose") | Some("v") =>
-          verbose = true
-          List(MessageFilter.Any)
-        case Some(s) =>
-          WConf.parseFilters(s).fold(parseErrors =>
-            report.warning (s"Invalid message filter\n${parseErrors.mkString ("\n")}", argPos)
-            List(MessageFilter.None),
-          identity)
+        ).merge
     val range = mdef.sourcePos
     val sup = Suppression(tree.sourcePos, filters, range.start, range.end, verbose)
     // invalid suppressions, don't report as unused

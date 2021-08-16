@@ -15,6 +15,13 @@ def t2 = { 1; 2 } // warning (the invalid nowarn doesn't silence anything)
 @nowarn(t1a.toString) // warning (typer, argument not a compile-time constant)
 def t2a = { 1; 2 } // warning (invalid nowarn doesn't silence)
 
+object o:
+  final val const = "msg=try"
+  inline def inl = "msg=try"
+
+@nowarn(o.const) def t2c = try 1 // no warning
+@nowarn(o.inl) def t2d = try 1   // two warnings (`inl` is not a compile-time constant)
+
 @nowarn("id=E129") def t3a = { 1; 2 }
 @nowarn("name=PureExpressionInStatementPosition") def t3b = { 1; 2 }
 

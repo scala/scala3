@@ -179,4 +179,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID]:
   def errorNumber = ordinal - 2
 
 object ErrorMessageID:
-  def fromErrorNumber(n: Int) = fromOrdinal(n + 2)
+  def fromErrorNumber(n: Int): Option[ErrorMessageID] =
+    val enumId = n + 2
+    if enumId >= 2 && enumId < ErrorMessageID.values.length then Some(fromOrdinal(enumId))
+    else None
