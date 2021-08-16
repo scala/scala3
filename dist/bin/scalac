@@ -45,7 +45,7 @@ case "$1" in
                while [[ $# -gt 0 ]]; do addScript "$1" && shift ; done ;;
      -compile) PROG_NAME="$CompilerMain" && shift ;;
    -decompile) PROG_NAME="$DecompilerMain" && shift ;;
- -print-tasty) PROG_NAME="$DecompilerMain" && addScala "-print-tasty" && shift ;;
+ -print-tasty) PROG_NAME="$TastyPrinterMain" && shift ;;
          -run) PROG_NAME="$ReplMain" && shift ;;
       -colors) colors=true && shift ;;
    -no-colors) unset colors && shift ;;

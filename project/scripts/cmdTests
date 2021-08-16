@@ -23,10 +23,16 @@ clear_out "$OUT"
 "$SBT" ";scalac $SOURCE ; scala $MAIN" > "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
+echo "testing sbt scalac -print-tasty"
+clear_out "$OUT"
+"$SBT" ";scalac $SOURCE -d $OUT ;scalac -print-tasty -color:never $TASTY" > "$tmp"
+grep -qe "0: ASTs" "$tmp"
+grep -qe "0: tests/pos/HelloWorld.scala" "$tmp"
+
 echo "testing that paths SourceFile annotations are relativized"
 clear_out "$OUT"
 "$SBT" "scalac -d $OUT/out.jar -sourceroot tests/pos $(pwd)/tests/pos/i10430/lib.scala $(pwd)/tests/pos/i10430/app.scala"
-"$SBT" "scalac -decompile -print-tasty -color:never $OUT/out.jar" > "$tmp"
+"$SBT" "scalac -print-tasty -color:never $OUT/out.jar" > "$tmp"
 cat "$tmp" # for debugging
 grep -q ": i10430/lib.scala" "$tmp"
 grep -q ": i10430/app.scala" "$tmp"
@@ -82,3 +88,5 @@ clear_out "$OUT"
 #     fi
 #   fi
 # done 3<"$tmp1" 4<"./tests/vulpix-tests/meta/sbt-output.check"
+
+echo "cmdTests successful"
