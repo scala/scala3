@@ -6,6 +6,8 @@ type Cell[+T <: Top] = [K] => (T ==> K) => K
 def cell[T <: Top](x: T): Cell[T] =
   [K] => (k: T ==> K) => k(x)
 
+def identity[T <: Top](x: T): T = x
+
 def get[T <: Top](c: Cell[T]): T = c[T](identity)
 
 def map[A <: Top, B <: Top](c: Cell[A])(f: A ==> B): Cell[B]

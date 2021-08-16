@@ -19,6 +19,6 @@ def foo(c: {*} Cap) =
   def f(x: String retains c.type, y: String retains c.type) =
     cons(x, cons(y, nil))
   def g(x: String retains c.type, y: Any) =
-    cons(x, cons(y, nil))
+    cons[{c} Any](x, cons[Any](y, nil))  // TODO: drop type arguments
   def h(x: String, y: Any retains c.type) =
     cons(x, cons(y, nil))

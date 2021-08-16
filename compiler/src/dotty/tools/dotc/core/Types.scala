@@ -1514,7 +1514,14 @@ object Types {
 
     def captureSet(using Context): CaptureSet = CaptureSet.ofType(this)
     def noCaptures(using Context): Boolean =
-      ctx.mode.is(Mode.RelaxedCapturing) || captureSet.isEmpty
+      ctx.mode.is(Mode.RelaxedCapturing) || allCaptures.isEmpty
+
+    def allCaptures(using Context): CaptureSet = this match // ^^^^ optimize, relate with boxedCaptures?
+      case tp: CapturingType => tp.refs
+      case tp: TypeProxy => tp.superType.allCaptures
+      case tp: AndType => tp.tp1.allCaptures ++ tp.tp2.allCaptures
+      case tp: OrType => tp.tp1.allCaptures ** tp.tp2.allCaptures
+      case _ => CaptureSet.empty
 
     // ----- Normalizing typerefs over refined types ----------------------------
 
