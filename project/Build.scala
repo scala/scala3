@@ -640,7 +640,7 @@ object Build {
         val printTasty = args0.contains("-print-tasty")
         val debugFromTasty = args0.contains("-Ythrough-tasty")
         val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
-            arg != "-with-compiler" && arg != "-Ythrough-tasty")
+            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
 
         val main =
           if (decompile) "dotty.tools.dotc.decompiler.Main"
