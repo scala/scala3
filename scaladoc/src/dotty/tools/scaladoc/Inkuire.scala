@@ -41,7 +41,7 @@ object Inkuire {
     typeAliases:         Map[ITID, TypeLike]
   )
 
-  case class ITID(uuid: String, isParsed: Boolean)
+  case class ITID(uuid: String)
 
   case class Signature(
     receiver:  Option[Contravariance],
@@ -87,7 +87,7 @@ object Inkuire {
       val uuid = s"external-type-lambda-arg-$name"
       Inkuire.Type(
         name = Inkuire.TypeName(name),
-        itid = Some(Inkuire.ITID(uuid, isParsed = false)),
+        itid = Some(Inkuire.ITID(uuid)),
         isVariable = true
       )
   }
@@ -98,8 +98,7 @@ object Inkuire {
         name = TypeName("<unresolved>"),
         itid = Some(
           ITID(
-            uuid = "<unresolved>",
-            isParsed = false
+            uuid = "<unresolved>"
           )
         )
       )
@@ -107,7 +106,7 @@ object Inkuire {
     def StarProjection: Type =
       Type(
         name = TypeName("_"),
-        itid = Some(ITID("_", isParsed = false)),
+        itid = Some(ITID("_")),
         isStarProjection = true
       )
   }
@@ -192,7 +191,7 @@ object Inkuire {
     }
 
     private def serializeAsKey(itid: ITID): String = {
-      s"""${itid.isParsed}=${itid.uuid}"""
+      s"${itid.uuid}"
     }
 
     private def serialize(v: (Type, Seq[Type])): JSON = {
@@ -242,8 +241,7 @@ object Inkuire {
 
     private def serialize(itid: ITID): JSON = {
       jsonObject(
-        ("uuid", serialize(itid.uuid)),
-        ("isParsed", serialize(itid.isParsed))
+        ("uuid", serialize(itid.uuid))
       )
     }
 
