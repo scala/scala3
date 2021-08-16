@@ -1,19 +1,20 @@
-infix type ==> [A, B] = (A => B) retains *
+type Top = {*} Any retains *
+infix type ==> [A, B] = {*} (A => B)
 
-type Cell[+T] = [K] => (T ==> K) => K
+type Cell[+T <: Top] = [K] => (T ==> K) => K
 
-def cell[T](x: T): Cell[T] =
+def cell[T <: Top](x: T): Cell[T] =
   [K] => (k: T ==> K) => k(x)
 
-def get[T](c: Cell[T]): T = c[T](identity)
+def get[T <: Top](c: Cell[T]): T = c[T](identity)
 
-def map[A, B](c: Cell[A])(f: A ==> B): Cell[B]
+def map[A <: Top, B <: Top](c: Cell[A])(f: A ==> B): Cell[B]
   = c[Cell[B]]((x: A) => cell(f(x)))
 
-def pureMap[A, B](c: Cell[A])(f: A => B): Cell[B]
+def pureMap[A <: Top, B <: Top](c: Cell[A])(f: A => B): Cell[B]
   = c[Cell[B]]((x: A) => cell(f(x)))
 
-def lazyMap[A, B](c: Cell[A])(f: A ==> B): {f} () => Cell[B]
+def lazyMap[A <: Top, B <: Top](c: Cell[A])(f: A ==> B): {f} () => Cell[B]
   = () => c[Cell[B]]((x: A) => cell(f(x)))
 
 trait IO:
@@ -32,7 +33,7 @@ def test(io: {*} IO) =
 
   val r = lazyMap[{io} () => Int, Unit](c)(f => g(f))
   val r2 = lazyMap[{io} () => Int, Unit](c)(g)
-  // val r3 = lazyMap(c)(g)
+  val r3 = lazyMap(c)(g)
   val _ = r()
   val _ = r2()
-  // val _ = r3()
+  val _ = r3()
