@@ -138,12 +138,16 @@ trait InkuireSupport:
 
   private def handleImplicitConversion(implicitConversion: Symbol, variableNames: Set[String]) = {
     val defdef = implicitConversion.tree.asInstanceOf[DefDef]
-    val to = defdef.returnTpt.asInkuire(variableNames)
+    val methodVars = defdef.paramss.flatMap(_.params).collect {
+      case TypeDef(name, _) => name
+    }
+    val vars = variableNames ++ methodVars
+    val to = defdef.returnTpt.asInkuire(vars)
     val from = defdef.paramss.flatMap(_.params).collectFirst {
-      case v: ValDef => v.tpt.asInkuire(variableNames)
+      case v: ValDef => v.tpt.asInkuire(vars)
     }
     (from, to) match
-      case (Some(from: Inkuire.Type), to: Inkuire.Type) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from.itid.get -> to))
+      case (Some(from), to: Inkuire.Type) => Inkuire.db = Inkuire.db.copy(implicitConversions = Inkuire.db.implicitConversions :+ (from -> to))
       case _ =>
   }
 

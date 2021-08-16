@@ -10,7 +10,7 @@ object Inkuire {
     db = db.copy(
       functions = db.functions.sortBy(_.hashCode),
       types = db.types.toSeq.sortBy(_._1.uuid).toMap,
-      implicitConversions = db.implicitConversions.sortBy(_._1.uuid)
+      implicitConversions = db.implicitConversions.sortBy(_._1.hashCode)
     )
   }
 
@@ -37,7 +37,7 @@ object Inkuire {
   case class InkuireDb(
     functions:           Seq[ExternalSignature],
     types:               Map[ITID, (Type, Seq[Type])],
-    implicitConversions: Seq[(ITID, Type)],
+    implicitConversions: Seq[(TypeLike, Type)],
     typeAliases:         Map[ITID, TypeLike]
   )
 
@@ -163,7 +163,7 @@ object Inkuire {
       )
     }
 
-    private def serializeConversion(conversion: (ITID, Type)): JSON = {
+    private def serializeConversion(conversion: (TypeLike, Type)): JSON = {
       jsonList(
         Seq(
           serialize(conversion._1),
