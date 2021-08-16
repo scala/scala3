@@ -35,8 +35,8 @@ object TastyPrinter:
       println(showContents(bytes, noColor))
       println()
       printLastLine = true
-    for arg <- args if arg != "-print-tasty" do
-      if arg == "-print-tasty" || arg == "-color:never" then () // skip
+    for arg <- args do
+      if arg == "-color:never" then () // skip
       else if arg.startsWith("-") then println(s"bad option '$arg' was ignored")
       else if arg.endsWith(".tasty") then {
         val path = Paths.get(arg)
