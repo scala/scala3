@@ -310,7 +310,9 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
     end recheck
 
     def checkConforms(tpe: Type, pt: Type, tree: Tree)(using Context): Unit = tree match
-      case _: DefTree | EmptyTree | _: TypeTree =>
+      case _: DefTree | EmptyTree | _: TypeTree | _: Closure =>
+        // Don't report closure nodes, since their span is a point; wait instead
+        // for enclosing block to preduce an error
       case _ =>
         val actual = tpe.widenExpr
         val expected = pt.widenExpr
