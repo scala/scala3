@@ -622,6 +622,7 @@ footer .mode {
 .signature.monospace {
   padding: 8px;
   display: flex;
+  border-radius: 3px;
 }
 
 .signature.monospace .modifiers {
@@ -636,6 +637,10 @@ footer .mode {
   display: table-cell;
 }
 
+.documentableFilter {
+  border-radius: 3px;
+}
+
 .documentableElement {
   color: var(--symbol-fg);
   white-space: normal;
@@ -646,6 +651,7 @@ footer .mode {
   background: var(--documentable-bg);
   border-left: 0.25em solid transparent;
   margin: 0.5em 0;
+  border-radius: 3px;
 }
 
 .documentableElement>div {
