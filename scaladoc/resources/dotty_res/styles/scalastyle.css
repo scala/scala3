@@ -602,7 +602,7 @@ footer .mode {
 }
 
 .kind {
-  margin-left: 0.5em;
+  font-weight: bold;
 }
 
 .other-modifiers a, .other-modifiers a:visited, .other-modifiers span[data-unresolved-link] {
@@ -610,7 +610,7 @@ footer .mode {
 }
 
 .documentableElement.expand .modifiers {
-  display: inline-table;
+  display: table-cell;
   min-width: 7em;
 }
 
@@ -629,7 +629,7 @@ footer .mode {
 }
 
 .expand .signature {
-  display: inline;
+  display: table-cell;
 }
 
 .documentableElement {
@@ -653,9 +653,7 @@ footer .mode {
 }
 
 .expand.documentableElement>div.header {
-  display: block;
-  padding-left: 4.5em;
-  text-indent: -4.5em;
+  display: inline-table;
 }
 
 .documentableElement>div .cover {
