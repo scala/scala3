@@ -693,13 +693,17 @@ footer .mode {
   display: none;
 }
 
+.documentableElement:hover .documentableAnchor:before {
+  display: flex;
+}
+
 .documentableAnchor:before {
   content: "\e901"; /* arrow down */
   font-family: "dotty-icons" !important;
-  transform: rotate(45deg);
+  transform: rotate(-45deg);
   font-size: 20px;
   color: var(--icon-color);
-  display: flex;
+  display: none;
   flex-direction: row;
   align-items: center;
   justify-content: center;
