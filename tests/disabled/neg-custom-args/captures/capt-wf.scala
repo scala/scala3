@@ -1,3 +1,4 @@
+// No longer valid
 class C
 type Cap = C retains *
 type Top = Any retains *

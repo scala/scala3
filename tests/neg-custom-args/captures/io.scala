@@ -3,7 +3,7 @@ sealed trait IO:
 
 def test1 =
   val IO : IO retains * = new IO {}
-  def foo = IO.puts("hello")
+  def foo = {IO; IO.puts("hello") }
   val x : () => Unit = () => foo  // error: Found: (() => Unit) retains IO; Required: () => Unit
 
 def test2 =
@@ -19,3 +19,4 @@ def test3 =
   def puts(msg: Any, io: Capability[IO]) = println(msg)
   def foo() = puts("hello", IO)
   val x : () => Unit = () => foo()  // error: Found: (() => Unit) retains IO; Required: () => Unit
+

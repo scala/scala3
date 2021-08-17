@@ -1513,8 +1513,8 @@ object Types {
     }
 
     def captureSet(using Context): CaptureSet = CaptureSet.ofType(this)
-    def noCaptures(using Context): Boolean =
-      ctx.mode.is(Mode.RelaxedCapturing) || allCaptures.isEmpty
+    def noCaptures(using Context): Boolean = // ^^^ drop
+      ctx.mode.is(Mode.RelaxedCapturing) || !ctx.settings.Ycc.value || allCaptures.isEmpty
 
     def allCaptures(using Context): CaptureSet = this match // ^^^^ optimize, relate with boxedCaptures?
       case tp: CapturingType => tp.refs
@@ -2709,7 +2709,7 @@ object Types {
      *  References to term parameters of classes cannot be tracked individually.
      *  They are subsumed in the capture sets of the enclosing class.
      */
-    def canBeTracked(using Context) =
+    def canBeTracked(using Context) = // ^^^ exclude methods
       (prefix eq NoPrefix) || symbol.hasAnnotation(defn.AbilityAnnot) || isRootCapability
 
     override def isRootCapability(using Context): Boolean =

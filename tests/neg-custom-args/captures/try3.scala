@@ -1,7 +1,8 @@
 import java.io.IOException
 
-class CanThrow[E] extends Retains[*]
-type Top  = Any retains *
+class CT[E]
+type CanThrow[E] = {*} CT[E]
+type Top  = {*} Any
 
 def handle[E <: Exception, T <: Top](op: CanThrow[E] ?=> T)(handler: E => T): T =
   val x: CanThrow[E] = ???
@@ -13,9 +14,9 @@ def raise[E <: Exception](ex: E)(using CanThrow[E]): Nothing =
 
 @main def Test: Int =
   def f(a: Boolean) =
-    handle { // error
+    handle {
       if !a then raise(IOException())
-      (b: Boolean) =>
+      (b: Boolean) => // error
         if !b then raise(IOException())
         0
     } {

@@ -95,10 +95,21 @@ class CheckCaptures extends Recheck:
         val ref = sym.termRef
         def recur(env: Env): Unit =
           if env.isOpen && env.owner != sym.enclosure then
-            capt.println(i"Mark $sym free in ${env.owner}")
+            capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
             checkElem(ref, env.captured, pos)
             recur(env.outer)
         if ref.isTracked then recur(curEnv)
+
+    def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
+      if curEnv.isOpen then
+        val ownEnclosure = ctx.owner.enclosingMethodOrClass
+        var targetSet = capturedVars(sym)
+        if !targetSet.isEmpty && sym.enclosure == ownEnclosure then
+          targetSet = targetSet.filter {
+            case ref: TermRef => ref.symbol.enclosure != ownEnclosure
+            case _ => true
+          }
+        checkSubset(targetSet, curEnv.captured, pos)
 
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
       assert((cs1 <:< cs2) == CompareResult.OK, i"$cs1 is not a subset of $cs2")
@@ -121,6 +132,7 @@ class CheckCaptures extends Recheck:
 
     override def recheckIdent(tree: Ident)(using Context): Type =
       markFree(tree.symbol, tree.srcPos)
+      if tree.symbol.is(Method) then includeCallCaptures(tree.symbol, tree.srcPos)
       super.recheckIdent(tree)
 
     override def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
@@ -138,17 +150,8 @@ class CheckCaptures extends Recheck:
       finally curEnv = saved
 
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      if curEnv.isOpen then
-        val ownEnclosure = ctx.owner.enclosingMethodOrClass
-        var targetSet = capturedVars(tree.symbol)
-        if !targetSet.isEmpty && tree.symbol.enclosure == ownEnclosure then
-          targetSet = targetSet.filter {
-            case ref: TermRef => ref.symbol.enclosure != ownEnclosure
-            case _ => true
-          }
-
-        checkSubset(targetSet, curEnv.captured, tree.srcPos)
       val sym = tree.symbol
+      includeCallCaptures(sym, tree.srcPos)
       val cs = if sym.isConstructor then capturedVars(sym.owner) else CaptureSet.empty
       super.recheckApply(tree, pt).capturing(cs)
 
