@@ -262,6 +262,7 @@ th {
   padding-left: calc(1.015 * var(--side-width));
   padding-right: calc(0.15 * var(--side-width));
   box-sizing: border-box;
+  text-decoration: none;
 }
 
 #sideMenu2 a span:not(.micon) {
@@ -582,13 +583,12 @@ footer .mode {
 
 .documentableElement .modifiers {
   display: table-cell;
-  padding-right: 0.5em;
   min-width: 10em;
   max-width: 10em;
   width: 10em;
   overflow: hidden;
-  direction: rtl;
-  white-space: nowrap;
+  text-align: right;
+  white-space: break-spaces;
   text-indent: 0em;
 }
 
@@ -611,7 +611,6 @@ footer .mode {
 
 .documentableElement.expand .modifiers {
   display: table-cell;
-  min-width: 7em;
 }
 
 .documentableElement .signature {
@@ -622,6 +621,11 @@ footer .mode {
 
 .signature.monospace {
   padding: 8px;
+  display: flex;
+}
+
+.signature.monospace .modifiers {
+  white-space: break-spaces;
 }
 
 .signature a, .signature a:visited, .signature span[data-unresolved-link] {
@@ -648,10 +652,6 @@ footer .mode {
   display: table;
 }
 
-.documentableElement>div {
-  display: block;
-}
-
 .expand.documentableElement>div.header {
   display: inline-table;
 }
@@ -662,10 +662,6 @@ footer .mode {
 
 .documentableElement.expand>div .cover {
   display: block;
-}
-
-.doc {
-  margin-left: 6.5em;
 }
 
 .doc code {
@@ -682,6 +678,7 @@ footer .mode {
 }
 .documentableElement .annotations {
   color: var(--grey600);
+  margin-left: 10em;
   display: none;
 }
 

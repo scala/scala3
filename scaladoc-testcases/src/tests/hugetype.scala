@@ -5,10 +5,6 @@ import compiletime.ops.int._
 import scala.annotation.experimental
 
 /**
- * type
- *
- * noun
- *
  * a particular group of people or things that share similar characteristics and form a smaller division of a larger set:
  * - There were so many different types of bread that I didn't know which to buy.
  * - What type of clothes does she wear?
@@ -38,3 +34,9 @@ type Take[T <: Tuple, N <: Int] <: Tuple = N match {
 @experimental
 @deprecated
 implicit transparent inline def same[A](a: A): A = ???
+
+trait Parent[X, A[_], B[_, _]]
+
+trait HugeTrait[X] extends Parent[X, HugeTrait, Map]
+
+trait EvenBiggerTrait[X, Y] extends Parent[X, Seq, EvenBiggerTrait]
