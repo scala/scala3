@@ -75,6 +75,7 @@ object Scala3:
               displayName = Symbols.displaySymbol(s),
               signature = signature,
               access = s.symbolAccess(kind),
+              overriddenSymbols = s.overriddenSymbols,
             )
           case s: WildcardTypeSymbol =>
             SymbolInformation(
@@ -324,6 +325,9 @@ object Scala3:
               val ssym = sym.privateWithin.symbolName
               if (sym.is(Protected)) ProtectedWithinAccess(ssym)
               else PrivateWithinAccess(ssym)
+
+      def overriddenSymbols(using Context, SemanticSymbolBuilder): List[String] =
+        sym.allOverriddenSymbols.map(_.symbolName).toList
   end SymbolOps
 
   object LocalSymbol:

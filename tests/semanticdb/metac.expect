@@ -403,7 +403,7 @@ classes/C3#x. => val method x Int
 classes/C3. => final object C3 extends Object { self: C3.type => +4 decls }
 classes/C3.apply(). => method apply (param x: Int): C3
 classes/C3.apply().(x) => param x: Int
-classes/C3.toString(). => method toString => String
+classes/C3.toString(). => method toString => String <: scala/Any#toString().
 classes/C3.unapply(). => method unapply (param x$1: C3): C3
 classes/C3.unapply().(x$1) => param x$1: C3
 classes/C4# => case class C4 extends Object with Product with Serializable { self: C4 => +5 decls }
@@ -417,7 +417,7 @@ classes/C4#x. => val method x Int
 classes/C4. => final object C4 extends Object { self: C4.type => +4 decls }
 classes/C4.apply(). => method apply (param x: Int): C4
 classes/C4.apply().(x) => param x: Int
-classes/C4.toString(). => method toString => String
+classes/C4.toString(). => method toString => String <: scala/Any#toString().
 classes/C4.unapply(). => method unapply (param x$1: C4): C4
 classes/C4.unapply().(x$1) => param x$1: C4
 classes/C6# => case class C6 extends Object with Product with Serializable { self: C6 => +5 decls }
@@ -431,7 +431,7 @@ classes/C6#x. => private val method x Int
 classes/C6. => final object C6 extends Object { self: C6.type => +4 decls }
 classes/C6.apply(). => method apply (param x: Int): C6
 classes/C6.apply().(x) => param x: Int
-classes/C6.toString(). => method toString => String
+classes/C6.toString(). => method toString => String <: scala/Any#toString().
 classes/C6.unapply(). => method unapply (param x$1: C6): C6
 classes/C6.unapply().(x$1) => param x$1: C6
 classes/C7# => class C7 extends Object { self: C7 => +2 decls }
@@ -873,13 +873,13 @@ _empty_/Enums.Maybe.Just#copy$default$1().[A] => typeparam A
 _empty_/Enums.Maybe.Just#copy(). => method copy [covariant typeparam A ](param value: A): Just[A]
 _empty_/Enums.Maybe.Just#copy().(value) => param value: A
 _empty_/Enums.Maybe.Just#copy().[A] => typeparam A 
-_empty_/Enums.Maybe.Just#ordinal(). => method ordinal => Int
+_empty_/Enums.Maybe.Just#ordinal(). => method ordinal => Int <: scala/reflect/Enum#ordinal().
 _empty_/Enums.Maybe.Just#value. => val method value A
 _empty_/Enums.Maybe.Just. => final object Just extends Object { self: Just.type => +4 decls }
 _empty_/Enums.Maybe.Just.apply(). => method apply [typeparam A ](param value: A): Just[A]
 _empty_/Enums.Maybe.Just.apply().(value) => param value: A
 _empty_/Enums.Maybe.Just.apply().[A] => typeparam A 
-_empty_/Enums.Maybe.Just.toString(). => method toString => String
+_empty_/Enums.Maybe.Just.toString(). => method toString => String <: scala/Any#toString().
 _empty_/Enums.Maybe.Just.unapply(). => method unapply [typeparam A ](param x$1: Just[A]): Just[A]
 _empty_/Enums.Maybe.Just.unapply().(x$1) => param x$1: Just[A]
 _empty_/Enums.Maybe.Just.unapply().[A] => typeparam A 
@@ -973,11 +973,11 @@ _empty_/Enums.`<:<`.Refl#[C] => typeparam C
 _empty_/Enums.`<:<`.Refl#`<init>`(). => primary ctor <init> [typeparam C ](): Refl[C]
 _empty_/Enums.`<:<`.Refl#copy(). => method copy [typeparam C ](): Refl[C]
 _empty_/Enums.`<:<`.Refl#copy().[C] => typeparam C 
-_empty_/Enums.`<:<`.Refl#ordinal(). => method ordinal => Int
+_empty_/Enums.`<:<`.Refl#ordinal(). => method ordinal => Int <: scala/reflect/Enum#ordinal().
 _empty_/Enums.`<:<`.Refl. => final object Refl extends Object { self: Refl.type => +4 decls }
 _empty_/Enums.`<:<`.Refl.apply(). => method apply [typeparam C ](): Refl[C]
 _empty_/Enums.`<:<`.Refl.apply().[C] => typeparam C 
-_empty_/Enums.`<:<`.Refl.toString(). => method toString => String
+_empty_/Enums.`<:<`.Refl.toString(). => method toString => String <: scala/Any#toString().
 _empty_/Enums.`<:<`.Refl.unapply(). => method unapply [typeparam C ](param x$1: Refl[C]): true
 _empty_/Enums.`<:<`.Refl.unapply().(x$1) => param x$1: Refl[C]
 _empty_/Enums.`<:<`.Refl.unapply().[C] => typeparam C 
@@ -1407,10 +1407,10 @@ a/b/Givens.foo(). => method foo [typeparam A ](implicit given param A: Monoid[A]
 a/b/Givens.foo().(A) => implicit given param A: Monoid[A]
 a/b/Givens.foo().[A] => typeparam A 
 a/b/Givens.given_Monoid_String. => final implicit given object given_Monoid_String extends Object with Monoid[String] { self: given_Monoid_String.type => +3 decls }
-a/b/Givens.given_Monoid_String.combine(). => method combine (param x: String)(param y: String): String
+a/b/Givens.given_Monoid_String.combine(). => method combine (param x: String)(param y: String): String <: a/b/Givens.Monoid#combine().
 a/b/Givens.given_Monoid_String.combine().(x) => param x: String
 a/b/Givens.given_Monoid_String.combine().(y) => param y: String
-a/b/Givens.given_Monoid_String.empty(). => method empty => String
+a/b/Givens.given_Monoid_String.empty(). => method empty => String <: a/b/Givens.Monoid#empty().
 a/b/Givens.goodbye1. => val method goodbye1 String
 a/b/Givens.hello1. => val method hello1 String
 a/b/Givens.int2String(). => final implicit given inline macro int2String => Conversion[Int, String]
@@ -1698,18 +1698,18 @@ givens/InventedNames$package.given_List_T(). => final implicit given method give
 givens/InventedNames$package.given_List_T().[T] => typeparam T 
 givens/InventedNames$package.given_String. => final implicit lazy val given method given_String String
 givens/InventedNames$package.given_X. => final implicit given object given_X extends Object with X { self: given_X.type => +2 decls }
-givens/InventedNames$package.given_X.doX(). => method doX => Int
+givens/InventedNames$package.given_X.doX(). => method doX => Int <: givens/X#doX().
 givens/InventedNames$package.given_Y# => class given_Y extends Object with Y { self: given_Y => +3 decls }
 givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init> ()(implicit val given param x$1: X): given_Y
 givens/InventedNames$package.given_Y#`<init>`().(x$1) => implicit val given param x$1: X
-givens/InventedNames$package.given_Y#doY(). => method doY => String
+givens/InventedNames$package.given_Y#doY(). => method doY => String <: givens/Y#doY().
 givens/InventedNames$package.given_Y#x$1. => protected implicit val given method x$1 X
 givens/InventedNames$package.given_Y(). => final implicit given method given_Y (implicit given param x$1: X): given_Y
 givens/InventedNames$package.given_Y().(x$1) => implicit given param x$1: X
 givens/InventedNames$package.given_Z_T# => class given_Z_T [typeparam T ] extends Object with Z[T] { self: given_Z_T[T] => +3 decls }
 givens/InventedNames$package.given_Z_T#[T] => typeparam T 
 givens/InventedNames$package.given_Z_T#`<init>`(). => primary ctor <init> [typeparam T ](): given_Z_T[T]
-givens/InventedNames$package.given_Z_T#doZ(). => method doZ => List[T]
+givens/InventedNames$package.given_Z_T#doZ(). => method doZ => List[T] <: givens/Z#doZ().
 givens/InventedNames$package.given_Z_T(). => final implicit given method given_Z_T [typeparam T ]: given_Z_T[T]
 givens/InventedNames$package.given_Z_T().[T] => typeparam T 
 givens/InventedNames$package.intValue. => final implicit lazy val given method intValue Int
@@ -2361,7 +2361,7 @@ example/NamedApplyBlockCaseClassConstruction.Msg.apply(). => method apply (param
 example/NamedApplyBlockCaseClassConstruction.Msg.apply().(body) => param body: String
 example/NamedApplyBlockCaseClassConstruction.Msg.apply().(head) => param head: String
 example/NamedApplyBlockCaseClassConstruction.Msg.apply().(tail) => param tail: String
-example/NamedApplyBlockCaseClassConstruction.Msg.toString(). => method toString => String
+example/NamedApplyBlockCaseClassConstruction.Msg.toString(). => method toString => String <: scala/Any#toString().
 example/NamedApplyBlockCaseClassConstruction.Msg.unapply(). => method unapply (param x$1: Msg): Msg
 example/NamedApplyBlockCaseClassConstruction.Msg.unapply().(x$1) => param x$1: Msg
 example/NamedApplyBlockCaseClassConstruction.bodyText. => val method bodyText String
@@ -2446,7 +2446,7 @@ example/NamedArguments#User#name. => val method name String
 example/NamedArguments#User. => final object User extends Object { self: User.type => +4 decls }
 example/NamedArguments#User.apply(). => method apply (param name: String): User
 example/NamedArguments#User.apply().(name) => param name: String
-example/NamedArguments#User.toString(). => method toString => String
+example/NamedArguments#User.toString(). => method toString => String <: scala/Any#toString().
 example/NamedArguments#User.unapply(). => method unapply (param x$1: User): User
 example/NamedArguments#User.unapply().(x$1) => param x$1: User
 example/NamedArguments#`<init>`(). => primary ctor <init> (): NamedArguments
@@ -2544,7 +2544,7 @@ example/A#`<init>`(). => primary ctor <init> (): A
 example/A#foo(). => abstract method foo => Int
 example/B# => class B extends Object with A { self: B => +2 decls }
 example/B#`<init>`(). => primary ctor <init> (): B
-example/B#foo(). => method foo => Int
+example/B#foo(). => method foo => Int <: example/A#foo().
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -2667,7 +2667,7 @@ example/PolyHolder#foo(). => abstract method foo [typeparam T ](param t: T): Any
 example/PolyHolder#foo().(t) => param t: T
 example/PolyHolder#foo().[T] => typeparam T 
 example/RecOrRefined$package. => final package object example extends Object { self: example.type => +9 decls }
-example/RecOrRefined$package.C2# => type C2  = C { type T2  = T1; type T1  }
+example/RecOrRefined$package.C2# => type C2  = C { type T2  = T1 <: example/C#T2#; type T1  <: example/C#T1# }
 example/RecOrRefined$package.Person# => type Person  = Record { abstract val method age Int; abstract val method name String }
 example/RecOrRefined$package.m1(). => method m1 (param a: Int { abstract val method x Int }): Nothing
 example/RecOrRefined$package.m1().(a) => param a: Int { abstract val method x Int }
@@ -2675,12 +2675,12 @@ example/RecOrRefined$package.m2(). => method m2 (param x: Object { abstract meth
 example/RecOrRefined$package.m2().(x) => param x: Object { abstract method y => Int; abstract val method x Int }
 example/RecOrRefined$package.m3(). => method m3 (param x: Object { type z ; abstract method y => Int; abstract val method x Int }): Nothing
 example/RecOrRefined$package.m3().(x) => param x: Object { type z ; abstract method y => Int; abstract val method x Int }
-example/RecOrRefined$package.m4(). => method m4 (param x: PolyHolder { abstract method foo [typeparam T ](param t: T): T }): Nothing
-example/RecOrRefined$package.m4().(x) => param x: PolyHolder { abstract method foo [typeparam T ](param t: T): T }
-example/RecOrRefined$package.m5(). => method m5 [typeparam Z ](param x: Int): PolyHolder { abstract method foo [typeparam T ](param t: T): T }
+example/RecOrRefined$package.m4(). => method m4 (param x: PolyHolder { abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo(). }): Nothing
+example/RecOrRefined$package.m4().(x) => param x: PolyHolder { abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo(). }
+example/RecOrRefined$package.m5(). => method m5 [typeparam Z ](param x: Int): PolyHolder { abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo(). }
 example/RecOrRefined$package.m5().(x) => param x: Int
 example/RecOrRefined$package.m5().[Z] => typeparam Z 
-example/RecOrRefined$package.m6# => type m6 [typeparam X ] = PolyHolder { abstract method foo [typeparam T ](param t: T): T }
+example/RecOrRefined$package.m6# => type m6 [typeparam X ] = PolyHolder { abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo(). }
 example/RecOrRefined$package.m6#[X] => typeparam X 
 example/Record# => class Record extends Object with Selectable { self: Record => +4 decls }
 example/Record#`<init>`(). => primary ctor <init> (param elems: Tuple2[String, Any]*): Record
@@ -2703,17 +2703,17 @@ local5 => abstract method y => Int
 local6 => type z 
 local7 => typeparam T 
 local8 => param t: T
-local9 => abstract method foo [typeparam T ](param t: T): T
+local9 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
 local10 => typeparam T 
 local11 => param t: T
-local12 => abstract method foo [typeparam T ](param t: T): T
+local12 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
 local13 => typeparam T 
 local14 => param t: T
-local15 => abstract method foo [typeparam T ](param t: T): T
+local15 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
 local16 => abstract val method name String
 local17 => abstract val method age Int
-local18 => type T1 
-local19 => type T2  = T1
+local18 => type T1  <: example/C#T1#
+local19 => type T2  = T1 <: example/C#T2#
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -2933,7 +2933,7 @@ example/Synthetic#s.Bar#`<init>`(). => primary ctor <init> (): Bar
 example/Synthetic#s.Bar#copy(). => method copy (): Bar
 example/Synthetic#s.Bar. => final object Bar extends Object { self: Bar.type => +4 decls }
 example/Synthetic#s.Bar.apply(). => method apply (): Bar
-example/Synthetic#s.Bar.toString(). => method toString => String
+example/Synthetic#s.Bar.toString(). => method toString => String <: scala/Any#toString().
 example/Synthetic#s.Bar.unapply(). => method unapply (param x$1: Bar): true
 example/Synthetic#s.Bar.unapply().(x$1) => param x$1: Bar
 example/Synthetic#s.apply(). => method apply (): Int
@@ -3419,10 +3419,10 @@ exports/example/Codec#[T] => typeparam T
 exports/example/Codec#`<init>`(). => primary ctor <init> [typeparam T ](param decode: Decoder[T], param encode: Encoder[T]): Codec[T]
 exports/example/Codec#`<init>`().(decode) => param decode: Decoder[T]
 exports/example/Codec#`<init>`().(encode) => param encode: Encoder[T]
-exports/example/Codec#decode(). => final method decode (param a: Array[Byte]): T
+exports/example/Codec#decode(). => final method decode (param a: Array[Byte]): T <: exports/example/Decoder#decode().
 exports/example/Codec#decode().(a) => param a: Array[Byte]
 exports/example/Codec#decode. => private[this] val method decode Decoder[T]
-exports/example/Codec#encode(). => final method encode (param t: T): Array[Byte]
+exports/example/Codec#encode(). => final method encode (param t: T): Array[Byte] <: exports/example/Encoder#encode().
 exports/example/Codec#encode().(t) => param t: T
 exports/example/Codec#encode. => private[this] val method encode Encoder[T]
 exports/example/Decoder# => trait Decoder [covariant typeparam T ] extends Object { self: Decoder[T] => +3 decls }
@@ -3714,8 +3714,8 @@ Occurrences => 28 entries
 Symbols:
 _empty_/Concrete# => class Concrete extends NullaryTest[Int, List] { self: Concrete => +3 decls }
 _empty_/Concrete#`<init>`(). => primary ctor <init> (): Concrete
-_empty_/Concrete#nullary2(). => method nullary2 => Int
-_empty_/Concrete#nullary3(). => method nullary3 => List[Int]
+_empty_/Concrete#nullary2(). => method nullary2 => Int <: _empty_/NullaryTest#nullary2().
+_empty_/Concrete#nullary3(). => method nullary3 => List[Int] <: _empty_/NullaryTest#nullary3().
 _empty_/NullaryTest# => abstract class NullaryTest [typeparam T , typeparam m [typeparam s ]] extends Object { self: NullaryTest[T, m] => +9 decls }
 _empty_/NullaryTest#[T] => typeparam T 
 _empty_/NullaryTest#[m] => typeparam m [typeparam s ]
@@ -3799,7 +3799,7 @@ recursion/Nats.Succ. => final object Succ extends Object { self: Succ.type => +4
 recursion/Nats.Succ.apply(). => method apply [typeparam N  <: Nat](param p: N): Succ[N]
 recursion/Nats.Succ.apply().(p) => param p: N
 recursion/Nats.Succ.apply().[N] => typeparam N  <: Nat
-recursion/Nats.Succ.toString(). => method toString => String
+recursion/Nats.Succ.toString(). => method toString => String <: scala/Any#toString().
 recursion/Nats.Succ.unapply(). => method unapply [typeparam N  <: Nat](param x$1: Succ[N]): Succ[N]
 recursion/Nats.Succ.unapply().(x$1) => param x$1: Succ[N]
 recursion/Nats.Succ.unapply().[N] => typeparam N  <: Nat
@@ -4061,7 +4061,7 @@ types/Foo#s. => val method s "abc"
 types/Foo. => final object Foo extends Object { self: Foo.type => +6 decls }
 types/Foo.apply(). => method apply (param s: "abc"): Foo
 types/Foo.apply().(s) => param s: "abc"
-types/Foo.toString(). => method toString => String
+types/Foo.toString(). => method toString => String <: scala/Any#toString().
 types/Foo.unapply(). => method unapply (param x$1: Foo): Foo
 types/Foo.unapply().(x$1) => param x$1: Foo
 types/Foo.x. => val method x "abc" @deprecated
@@ -4113,7 +4113,7 @@ types/Test.C#RepeatedType#s. => val method s String*
 types/Test.C#RepeatedType. => final object RepeatedType extends Object { self: RepeatedType.type => +4 decls }
 types/Test.C#RepeatedType.apply(). => method apply (param s: String*): RepeatedType
 types/Test.C#RepeatedType.apply().(s) => param s: String*
-types/Test.C#RepeatedType.toString(). => method toString => String
+types/Test.C#RepeatedType.toString(). => method toString => String <: scala/Any#toString().
 types/Test.C#RepeatedType.unapplySeq(). => method unapplySeq (param x$1: RepeatedType): RepeatedType
 types/Test.C#RepeatedType.unapplySeq().(x$1) => param x$1: RepeatedType
 types/Test.C#TypeType. => final object TypeType extends Object { self: TypeType.type => +6 decls }
@@ -4433,7 +4433,7 @@ _empty_/AnObject.Foo#x. => val method x Int
 _empty_/AnObject.Foo. => final object Foo extends Object { self: Foo.type => +4 decls }
 _empty_/AnObject.Foo.apply(). => method apply (param x: Int): Foo
 _empty_/AnObject.Foo.apply().(x) => param x: Int
-_empty_/AnObject.Foo.toString(). => method toString => String
+_empty_/AnObject.Foo.toString(). => method toString => String <: scala/Any#toString().
 _empty_/AnObject.Foo.unapply(). => method unapply (param x$1: Foo): Foo
 _empty_/AnObject.Foo.unapply().(x$1) => param x$1: Foo
 _empty_/AnObject.foo(). => method foo (param x: Int): Unit
