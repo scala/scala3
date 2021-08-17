@@ -738,6 +738,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
         compareClassInfo
+      case tp2: SkolemType =>
+        ctx.phase.widenSkolems && recur(tp1, tp2.info) || fourthTry
       case _ =>
         fourthTry
     }
