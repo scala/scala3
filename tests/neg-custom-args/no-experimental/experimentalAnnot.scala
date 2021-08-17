@@ -1,7 +1,10 @@
 import scala.annotation.experimental
 
-@experimental // error
-class myExperimentalAnnot extends scala.annotation.Annotation
+@experimental class myExperimentalAnnot extends scala.annotation.Annotation
 
 @myExperimentalAnnot // error
-def test: Unit = ()
+def test1: Unit = ()
+
+@experimental
+@myExperimentalAnnot
+def test2: Unit = ()

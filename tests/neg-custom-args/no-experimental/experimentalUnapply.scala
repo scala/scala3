@@ -1,13 +1,13 @@
 import scala.annotation.experimental
 
-@experimental // error
+@experimental
 class A
 
 object Extractor1:
   def unapply(s: Any): Option[A] = ??? // error
 
 object Extractor2:
-  @experimental // error
+  @experimental
   def unapply(s: Any): Option[Int] = ???
 
 def test: Unit =
