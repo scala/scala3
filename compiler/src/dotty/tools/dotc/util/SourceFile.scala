@@ -145,7 +145,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
       lineIndicesCache = calculateLineIndicesFromContents()
     lineIndicesCache
 
-  def initizlized = lineIndicesCache != null
+  def initialized = lineIndicesCache != null
 
   def setLineIndicesFromLineSizes(sizes: Array[Int]): Unit =
     val lines = sizes.length
