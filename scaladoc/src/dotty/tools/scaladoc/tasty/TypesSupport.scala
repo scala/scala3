@@ -80,7 +80,7 @@ trait TypesSupport:
       case _ => false
 
   // TODO #23 add support for all types signatures that makes sense
-  private def inner(using Quotes)(tp: reflect.TypeRepr): DocSignature =
+  private def inner(using Quotes)(tp: reflect.TypeRepr)(using indent: Int = 0): DocSignature =
     import reflect._
     def noSupported(name: String): DocSignature =
       println(s"WARN: Unsupported type: $name: ${tp.show}")
@@ -251,13 +251,15 @@ trait TypesSupport:
       case NoPrefix() => Nil
 
       case MatchType(bond, sc, cases) =>
+        val caseSpaces = " " * (indent + 2)
+        val spaces = " " * (indent)
         val casesTexts = cases.flatMap {
           case MatchCase(from, to) =>
-            texts("  case ") ++ inner(from) ++ texts(" => ") ++ inner(to) ++ texts("\n")
+            texts(caseSpaces + "case ") ++ inner(from) ++ texts(" => ") ++ inner(to)(using indent = indent + 2) ++ texts("\n")
           case TypeLambda(_, _, MatchCase(from, to)) =>
-            texts("  case ") ++ inner(from) ++ texts(" => ") ++ inner(to) ++ texts("\n")
+            texts(caseSpaces + "case ") ++ inner(from) ++ texts(" => ") ++ inner(to)(using indent = indent + 2) ++ texts("\n")
         }
-        inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts("}")
+        inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts(spaces + "}")
 
       case ParamRef(TypeLambda(names, _, _), i) => texts(names.apply(i))
 
