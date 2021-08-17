@@ -54,8 +54,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Emits an error and throws if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
      */
-    // TODO: deprecate in 3.1.0 and remove @experimental from valueOrAbort
-    // @deprecated("Use valueOrThrow", "3.1.0")
+    // TODO: deprecate after 3.1.x
+    // @deprecated("Use valueOrAbort", "3.2.0")
     def valueOrError(using FromExpr[T]): T =
       val fromExpr = summon[FromExpr[T]]
       def reportError =
@@ -69,7 +69,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Emits an error and aborts if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
      */
-    @experimental
     def valueOrAbort(using FromExpr[T]): T
 
   end extension
@@ -4192,30 +4191,27 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def error(msg: String, pos: Position): Unit
 
       /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
-      @experimental
       def errorAndAbort(msg: String): Nothing
 
       /** Report an error at the position of `expr` and throw a StopMacroExpansion */
-      @experimental
       def errorAndAbort(msg: String, expr: Expr[Any]): Nothing
 
       /** Report an error message at the given position and throw a StopMacroExpansion */
-      @experimental
       def errorAndAbort(msg: String, pos: Position): Nothing
 
       /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
-      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
-      // @deprecated("Use errorAndAbort", "3.1.0")
+      // TODO: deprecate after 3.1.x
+      // @deprecated("Use errorAndAbort", "3.2.0")
       def throwError(msg: String): Nothing
 
       /** Report an error at the position of `expr` and throw a StopMacroExpansion */
-      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
-      // @deprecated("Use errorAndAbort", "3.1.0")
+      // TODO: deprecate after 3.1.x
+      // @deprecated("Use errorAndAbort", "3.2.0")
       def throwError(msg: String, expr: Expr[Any]): Nothing
 
       /** Report an error message at the given position and throw a StopMacroExpansion */
-      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
-      // @deprecated("Use errorAndAbort", "3.1.0")
+      // TODO: deprecate after 3.1.x
+      // @deprecated("Use errorAndAbort", "3.2.0")
       def throwError(msg: String, pos: Position): Nothing
 
       /** Report a warning at the position of the macro expansion */
