@@ -3588,21 +3588,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredFields: List[Symbol]
 
         /** Get named non-private fields declared or inherited */
-        // TODO: deprecate in 3.1.0 and remove @experimental from fieldMember
-        // @deprecated("Use fieldMember", "3.1")
+        // TODO: deprecate after 3.1.x
+        // @deprecated("Use fieldMember", "3.2.0")
         def memberField(name: String): Symbol
 
         /** Get named non-private fields declared or inherited */
-        @experimental
         def fieldMember(name: String): Symbol
 
         /** Get all non-private fields declared or inherited */
-        // TODO: deprecate in 3.1.0 and remove @experimental from fieldMembers
-        // @deprecated("Use fieldMembers", "3.1")
+        // TODO: deprecate after 3.1.x
+        // @deprecated("Use fieldMembers", "3.2.0")
         def memberFields: List[Symbol]
 
         /** Get all non-private fields declared or inherited */
-        @experimental
         def fieldMembers: List[Symbol]
 
         /** Get non-private named methods defined directly inside the class */
@@ -3612,21 +3610,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredMethods: List[Symbol]
 
         /** Get named non-private methods declared or inherited */
-        // TODO: deprecate in 3.1.0 and remove @experimental from methodMember
-        // @deprecated("Use methodMember", "3.1")
+        // TODO: deprecate after 3.1.x
+        // @deprecated("Use methodMember", "3.2.0")
         def memberMethod(name: String): List[Symbol]
 
         /** Get named non-private methods declared or inherited */
-        @experimental
         def methodMember(name: String): List[Symbol]
 
         /** Get all non-private methods declared or inherited */
-        // TODO: deprecate in 3.1.0 and remove @experimental from methodMembers
-        // @deprecated("Use methodMembers", "3.1")
+        // TODO: deprecate after 3.1.x
+        // @deprecated("Use methodMembers", "3.2.0")
         def memberMethods: List[Symbol]
 
         /** Get all non-private methods declared or inherited */
-        @experimental
         def methodMembers: List[Symbol]
 
         /** Get non-private named methods defined directly inside the class */
@@ -3636,21 +3632,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
-        // TODO: deprecate in 3.1.0 and remove @experimental from typeMember
-        // @deprecated("Use typeMember", "3.1")
+        // TODO: deprecate after 3.1.x
+        // @deprecated("Use typeMember", "3.2.0")
         def memberType(name: String): Symbol
 
         /** Type member with the given name directly declared in the class */
-        @experimental
         def typeMember(name: String): Symbol
 
         /** Type member directly declared in the class */
-        // TODO: deprecate in 3.1.0 and remove @experimental from typeMembers
-        // @deprecated("Use typeMembers", "3.1")
+        // TODO: deprecate after 3.1.x
+        // @deprecated("Use typeMembers", "3.2.0")
         def memberTypes: List[Symbol]
 
         /** Type member directly declared in the class */
-        @experimental
         def typeMembers: List[Symbol]
 
         /** All members directly declared in the class */
