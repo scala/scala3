@@ -221,20 +221,9 @@ class CompilationTests {
     ).checkCompile()
   }
 
-  @Test def recheck: Unit =
-    given TestGroup = TestGroup("recheck")
-    aggregateTests(
-      compileFilesInDir("tests/new", recheckOptions),
-      compileFilesInDir("tests/pos", recheckOptions, FileFilter.exclude(TestSources.posTestRecheckExcluded)),
-      compileFilesInDir("tests/run", recheckOptions, FileFilter.exclude(TestSources.runTestRecheckExcluded))
-    ).checkCompile()
-
-
-  /** This test serves several purposes:
-   *   - being able to compile dotty bootstrapped,
-   *   - making sure that TASTY can link against a compiled version of Dotty,
-   *   - compiling the compiler using the SemanticDB generation
-   *   - compiling the compiler under -Yrecheck mode.
+  /** The purpose of this test is three-fold, being able to compile dotty
+   *  bootstrapped, and making sure that TASTY can link against a compiled
+   *  version of Dotty, and compiling the compiler using the SemanticDB generation
    */
   @Test def tastyBootstrap: Unit = {
     implicit val testGroup: TestGroup = TestGroup("tastyBootstrap/tests")
@@ -258,7 +247,7 @@ class CompilationTests {
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
       ).mkString(File.pathSeparator),
-      Array("-Ycheck-reentrant", "-Yrecheck", "-language:postfixOps", "-Xsemanticdb")
+      Array("-Ycheck-reentrant", "-language:postfixOps", "-Xsemanticdb")
     )
 
     val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))
@@ -266,7 +255,7 @@ class CompilationTests {
 
     val lib =
       compileList("lib", librarySources,
-        defaultOptions.and("-Ycheck-reentrant", "-Yrecheck",
+        defaultOptions.and("-Ycheck-reentrant",
           "-language:experimental.erasedDefinitions", // support declaration of scala.compiletime.erasedValue
           //  "-source", "future",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
           ))(libGroup)

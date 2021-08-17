@@ -27,12 +27,11 @@ object Test {
   def castTest5a(e1: ExprBase)(e2: LitU with e1.type)(x: e2.A): e1.A = x
   def castTest5b(e1: ExprBase)(e2: LitL with e1.type)(x: e2.A): e1.A = x
 
+  //fail:
   def castTestFail1(e1: ExprBase)(e2: Lit with e1.type)(x: e2.A): e1.A = x // this is like castTest5a/b, but with Lit instead of LitU/LitL
-
-  // The next example fails rechecking. It is repeated in i6635a.scala
-  // def castTestFail2a(e1: ExprBase)(e2: Lit with e1.type)(x: e1.A): e2.A = x
+  // the other direction never works:
+  def castTestFail2a(e1: ExprBase)(e2: Lit with e1.type)(x: e1.A): e2.A = x
   def castTestFail2b(e1: ExprBase)(e2: LitL with e1.type)(x: e1.A): e2.A = x
-
   def castTestFail2c(e1: ExprBase)(e2: LitU with e1.type)(x: e1.A): e2.A = x
 
   // the problem isn't about order of intersections.
