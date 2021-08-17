@@ -6,6 +6,7 @@ import scala.annotation.experimental
 
 /**
  * type
+ *
  * noun
  *
  * a particular group of people or things that share similar characteristics and form a smaller division of a larger set:

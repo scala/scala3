@@ -40,6 +40,7 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Erased extends Modifier("erased", true)
   case Opaque extends Modifier("opaque", true)
   case Open extends Modifier("open", true)
+  case Transparent extends Modifier("transparent", true)
 
 case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)

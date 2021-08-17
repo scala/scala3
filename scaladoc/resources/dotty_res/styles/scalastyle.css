@@ -648,7 +648,7 @@ footer .mode {
   display: table;
 }
 
-.expand.documentableElement>div {
+.documentableElement>div {
   display: block;
 }
 
@@ -664,7 +664,7 @@ footer .mode {
   display: block;
 }
 
-.expand .doc {
+.doc {
   margin-left: 6.5em;
 }
 
