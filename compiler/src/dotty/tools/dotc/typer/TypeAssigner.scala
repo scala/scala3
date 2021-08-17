@@ -13,7 +13,8 @@ import reporting._
 import Checking.checkNoPrivateLeaks
 
 trait TypeAssigner {
-  import tpd._
+  import tpd.*
+  import TypeAssigner.*
 
   /** The qualifying class of a this or super with prefix `qual` (which might be empty).
    *  @param packageOk   The qualifier may refer to a package.
@@ -444,13 +445,8 @@ trait TypeAssigner {
     if (cases.isEmpty) tree.withType(expr.tpe)
     else tree.withType(TypeComparer.lub(expr.tpe :: cases.tpes))
 
-  def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral = {
-    val ownType = tree match {
-      case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemtpt.tpe)
-      case _ => if (ctx.erasedTypes) defn.SeqType else defn.SeqType.appliedTo(elemtpt.tpe)
-    }
-    tree.withType(ownType)
-  }
+  def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral =
+    tree.withType(seqLitType(tree, elemtpt.tpe))
 
   def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(using Context): SingletonTypeTree =
     tree.withType(ref.tpe)
@@ -545,5 +541,9 @@ trait TypeAssigner {
 
 }
 
+object TypeAssigner extends TypeAssigner:
+  def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
+    case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)
+    case _ => if ctx.erasedTypes then defn.SeqType else defn.SeqType.appliedTo(elemType)
 
-object TypeAssigner extends TypeAssigner
+

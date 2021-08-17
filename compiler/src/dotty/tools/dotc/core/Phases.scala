@@ -298,6 +298,9 @@ object Phases {
     /** If set, implicit search is enabled */
     def allowsImplicitSearch: Boolean = false
 
+    /** If set equate Skolem types with underlying types */
+    def widenSkolems: Boolean = false
+
     /** List of names of phases that should precede this phase */
     def runsAfter: Set[String] = Set.empty
 
