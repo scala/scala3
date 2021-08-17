@@ -233,6 +233,14 @@ class CompilationTests {
     ).checkCompile()
   }
 
+  @Test def recheck: Unit =
+    given TestGroup = TestGroup("recheck")
+    aggregateTests(
+      compileFilesInDir("tests/new", recheckOptions),
+      compileFilesInDir("tests/pos", recheckOptions, FileFilter.exclude(TestSources.posTestRecheckExcluded)),
+      compileFilesInDir("tests/run", recheckOptions, FileFilter.exclude(TestSources.runTestRecheckExcluded))
+    ).checkCompile()
+
   // Explicit nulls tests
   @Test def explicitNullsNeg: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
