@@ -177,24 +177,4 @@ object NamerOps:
     cls.registeredCompanion = modcls
     modcls.registeredCompanion = cls
 
-  /** For secondary constructors, make it known in the context that their type parameters
-   *  are aliases of the class type parameters. This is done by (ab?)-using GADT constraints.
-   *  See pos/i941.scala
-   */
-  def linkConstructorParams(sym: Symbol)(using Context): Context =
-    if sym.isConstructor && !sym.isPrimaryConstructor then
-      sym.rawParamss match
-        case (tparams @ (tparam :: _)) :: _ if tparam.isType =>
-          val rhsCtx = ctx.fresh.setFreshGADTBounds
-          rhsCtx.gadt.addToConstraint(tparams)
-          tparams.lazyZip(sym.owner.typeParams).foreach { (psym, tparam) =>
-            val tr = tparam.typeRef
-            rhsCtx.gadt.addBound(psym, tr, isUpper = false)
-            rhsCtx.gadt.addBound(psym, tr, isUpper = true)
-          }
-          rhsCtx
-        case _ =>
-          ctx
-    else ctx
-
 end NamerOps
