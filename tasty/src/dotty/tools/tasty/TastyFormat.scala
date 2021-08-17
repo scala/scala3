@@ -328,29 +328,12 @@ object TastyFormat {
    * with an unstable TASTy version.
    *
    * We follow the given algorithm:
+   *
    * ```
-   * if file.major != compiler.major then
-   *   return incompatible
-   * if compiler.experimental == 0 then
-   *   if file.experimental != 0 then
-   *     return incompatible
-   *   if file.minor > compiler.minor then
-   *     return incompatible
-   *   else
-   *     return compatible
-   * else invariant[compiler.experimental != 0]
-   *   if file.experimental == compiler.experimental then
-   *     if file.minor == compiler.minor then
-   *       return compatible (all fields equal)
-   *     else
-   *       return incompatible
-   *   else if file.experimental == 0,
-   *     if file.minor < compiler.minor then
-   *       return compatible (an experimental version can read a previous released version)
-   *     else
-   *       return incompatible (an experimental version cannot read its own minor version or any later version)
-   *   else invariant[file.experimental is non-0 and different than compiler.experimental]
-   *     return incompatible
+   * (fileMajor, fileMinor, fileExperimental) match
+   *   case (`compilerMajor`, `compilerMinor`, `compilerExperimental`) => true // full equality
+   *   case (`compilerMajor`, minor, 0) if minor < compilerMinor       => true // stable backwards compatibility
+   *   case _                                                          => false
    * ```
    * @syntax markdown
    */
@@ -362,18 +345,9 @@ object TastyFormat {
     compilerMinor: Int,
     compilerExperimental: Int
   ): Boolean = (
-    fileMajor == compilerMajor && (
-      if (fileExperimental == compilerExperimental) {
-        if (compilerExperimental == 0) {
-          fileMinor <= compilerMinor
-        }
-        else {
-          fileMinor == compilerMinor
-        }
-      }
-      else {
-        fileExperimental == 0 && fileMinor < compilerMinor
-      }
+    fileMajor == compilerMajor &&
+      (  fileMinor == compilerMinor && fileExperimental == compilerExperimental // full equality
+      || fileMinor <  compilerMinor && fileExperimental == 0 // stable backwards compatibility
     )
   )
 
