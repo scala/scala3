@@ -2747,6 +2747,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given SourceFileMethods: SourceFileMethods with
       extension (self: SourceFile)
         def jpath: java.nio.file.Path = self.file.jpath
+        def getJPath: Option[java.nio.file.Path] = Option(self.file.jpath)
+        def name: String = self.name
+        def path: String = self.path
         def content: Option[String] =
           // TODO detect when we do not have a source and return None
           Some(new String(self.content()))
