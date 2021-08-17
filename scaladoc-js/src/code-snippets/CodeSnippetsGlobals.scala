@@ -7,4 +7,5 @@ import scala.scalajs.js.annotation.JSGlobalScope
 @JSGlobalScope
 object CodeSnippetsGlobals extends js.Object {
   val scastie: Scastie = js.native
+  val scastieConfiguration: String = js.native
 }

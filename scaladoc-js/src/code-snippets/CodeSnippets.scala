@@ -7,6 +7,13 @@ import org.scalajs.dom.ext._
 import CodeSnippetsGlobals._
 
 class CodeSnippets:
+  lazy val scastieConfig = getScastieConfiguration
+
+  private def getScastieConfiguration: js.Dynamic =
+    js.Dynamic.literal(
+      sbtConfig = scastieConfiguration,
+      targetType = "scala3"
+    )
 
   private def getButtonsSection(snippet: html.Element): Option[html.Div] = snippet.querySelector("div.buttons") match {
     case div: html.Div => Some(div)
@@ -109,44 +116,70 @@ class CodeSnippets:
       div
     }
     def runButton = {
-      val div = document.createElement("div")
-      val button = document.createElement("button").asInstanceOf[html.Button]
-      val icon = document.createElement("i")
-      def initialState() = {
-        icon.classList.add("fas")
-        icon.classList.add("fa-play")
-        button.setAttribute("state", "run")
-      }
-      def toggleState() = {
-        icon.classList.toggle("fa-play")
-        icon.classList.toggle("fa-times")
-        if button.getAttribute("state") == "run" then button.setAttribute("state", "exit")
-        else button.setAttribute("state", "run")
-      }
-      initialState()
-      button.appendChild(icon)
-      button.classList.add("run-button")
-      button.addEventListener("click", _ =>
-        if button.getAttribute("state") == "run" then
-          scastie.Embedded(snippet.querySelector("pre"))
-        else
-          snippet.querySelector("pre") match {
-            case p: html.Element => p.style = ""
-            case _ =>
-          }
-          snippet.querySelector(".scastie.embedded") match {
-            case s: html.Element => snippet.removeChild(s)
-            case _ =>
-          }
-        toggleState()
+      val div = document.createElement("div").asInstanceOf[html.Div]
+      val runButton = document.createElement("button").asInstanceOf[html.Button]
+      val runIcon = document.createElement("i")
+      runIcon.classList.add("fas")
+      runIcon.classList.add("fa-play")
+      runButton.classList.add("run-button")
+      runButton.appendChild(runIcon)
+
+      runButton.addEventListener("click", _ =>
+        if !runButton.hasAttribute("opened") then {
+          scastie.Embedded(snippet.querySelector("pre"), scastieConfig)
+          runButton.setAttribute("opened", "opened")
+        }
+        snippet.querySelector(".scastie .embedded-menu .run-button") match {
+          case btn: html.Element =>
+            btn.style = "display:none;"
+            btn.click()
+          case _ =>
+        }
+        snippet.querySelector(".buttons .exit-button") match {
+          case btn: html.Element => btn.parentElement.style = ""
+          case _ =>
+        }
       )
-      div.appendChild(button)
+
+      div.appendChild(runButton)
+      div
+    }
+    def exitButton = {
+      val div = document.createElement("div").asInstanceOf[html.Div]
+      val exitButton = document.createElement("button").asInstanceOf[html.Element]
+      val exitIcon = document.createElement("i")
+      exitIcon.classList.toggle("fas")
+      exitIcon.classList.toggle("fa-times")
+      exitButton.classList.add("exit-button")
+      div.style = "display:none;"
+      exitButton.appendChild(exitIcon)
+
+      exitButton.addEventListener("click", _ =>
+        snippet.querySelector("pre") match {
+          case p: html.Element => p.style = ""
+          case _ =>
+        }
+        snippet.querySelector(".scastie.embedded") match {
+          case s: html.Element => snippet.removeChild(s)
+          case _ =>
+        }
+        snippet.querySelector(".buttons .run-button") match {
+          case btn: html.Element => btn.removeAttribute("opened")
+          case _ =>
+        }
+        div.style = "display:none;"
+      )
+
+      div.appendChild(exitButton)
       div
     }
     val buttonsSection = getButtonsSection(snippet)
     buttonsSection.foreach(s =>
       s.appendChild(copyButton)
-      if !snippet.hasAttribute("hasContext") then s.appendChild(runButton)
+      if !snippet.hasAttribute("hasContext") then {
+        s.appendChild(runButton)
+        s.appendChild(exitButton)
+      }
     )
   }
 

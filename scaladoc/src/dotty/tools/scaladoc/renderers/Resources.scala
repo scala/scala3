@@ -45,7 +45,6 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       val end = if param < 0 then url.length else param
       val point = url.lastIndexOf('.', end)
       url.substring(point+1, end)
-
     for res <- resources yield
       fileExtension(res) match
         case "css" => link(rel := "stylesheet", href := resolveLink(dri, res))
@@ -121,7 +120,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
 
   val searchDataPath = "scripts/searchData.js"
-  val memberResourcesPaths = Seq(searchDataPath) ++ memberResources.map(_.path)
+  val scastieConfigurationPath = "scripts/scastieConfiguration.js"
+  val memberResourcesPaths = Seq(searchDataPath) ++ Seq(scastieConfigurationPath) ++ memberResources.map(_.path)
   val earlyMemberResourcePaths = earlyMemberResources.map(_.path)
 
   def searchData(pages: Seq[Page]) =
@@ -161,6 +161,11 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     val entries = pages.flatMap(processPage)
     Resource.Text(searchDataPath, s"pages = ${jsonList(entries)};")
 
+  def scastieConfiguration() =
+    Resource.Text(scastieConfigurationPath, s"scastieConfiguration = \"${
+      ctx.args.scastieConfiguration.replace('"'.toString, """\"""")
+    }\"")
+
 
   def allResources(pages: Seq[Page]): Seq[Resource] = earlyMemberResources ++ memberResources ++ Seq(
     dottyRes("favicon.ico"),
@@ -190,7 +195,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     dottyRes("images/twitter-icon-white.png"),
     dottyRes("images/gitter-icon-black.png"),
     dottyRes("images/gitter-icon-white.png"),
-    searchData(pages)
+    searchData(pages),
+    scastieConfiguration(),
   )
 
   def renderResource(resource: Resource): Seq[String] =
