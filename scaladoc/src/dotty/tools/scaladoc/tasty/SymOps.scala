@@ -88,6 +88,7 @@ object SymOps:
         Flags.Open -> Modifier.Open,
         Flags.Override -> Modifier.Override,
         Flags.Case -> Modifier.Case,
+        Flags.Transparent -> Modifier.Transparent,
       ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
 
     def isHiddenByVisibility(using dctx: DocContext): Boolean =
