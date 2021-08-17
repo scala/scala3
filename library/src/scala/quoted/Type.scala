@@ -50,7 +50,6 @@ object Type:
    *  ```
    *  @syntax markdown
    */
-  @experimental
   def valueOfTuple[T <: Tuple](using Type[T])(using Quotes): Option[T] =
     valueOfTuple(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]
 
