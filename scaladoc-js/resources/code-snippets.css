@@ -160,8 +160,8 @@ input:checked + .slider:before {
 }
 
 
-.snippet .buttons>:not(:last-child) {
-  border-left: 2px solid var(--inactive-bg);
+.snippet .buttons>:not(:first-child) {
+  border-right: 2px solid var(--inactive-bg);
 }
 
 .snippet .buttons>* {
@@ -219,35 +219,36 @@ input:checked + .slider:before {
   height:unset;
 }
 
-.snippet .scastie.embedded .editor-container .code .CodeMirror-scroll {
-  height:unset !important;
-  min-height: 50px !important;
+.snippet .scastie.embedded .app.light .editor-container .code .CodeMirror-scroll {
+  height:unset;
+  min-height: 50px;
 }
 
-.snippet .scastie .editor-container .console-container .console {
-  height: unset !important;
+.snippet .scastie .app.light .editor-container .console-container .console {
+  height: unset;
 }
 
-.snippet .scastie .CodeMirror-gutters {
+.snippet .scastie .app.light .CodeMirror-gutters {
   background-color: var(--code-bg) !important;
+  border-color: var(--code-bg) !important;
 }
 
-.snippet .scastie .CodeMirror {
-  color: var(--code-fg) !important;
-  background-color: var(--code-bg) !important;
+.snippet .scastie .app.light .CodeMirror {
+  color: var(--code-fg);
+  background-color: var(--code-bg);
 }
 
-.snippet .scastie .embedded-menu > * {
-  background-color: transparent !important;
-  color: var(--active-fg) !important;
+.snippet .scastie .app.light .embedded-menu > * {
+  background-color: transparent;
+  color: var(--active-fg);
   width: 64px;
   font-size: 1em;
   padding: 8px;
   position: unset;
 }
 
-.snippet .scastie .embedded-menu li:hover {
-  background-color: var(--active-bg) !important;
+.snippet .scastie .app.light .embedded-menu li:hover {
+  background-color: var(--active-bg);
 }
 
 .snippet .scastie .embedded-menu {
@@ -269,21 +270,37 @@ input:checked + .slider:before {
 }
 
 
-.snippet .scastie .output-console pre {
+.snippet .scastie .app.light .output-console pre {
   color: white;
   background-color: rgb(0, 43, 54);
 }
 
 .snippet .scastie .app.light .editor-container .handler {
-  background-color: var(--code-bg) !important;
+  background-color: var(--code-bg);
 }
 
 .snippet .scastie .console-container {
   margin-left: 30px;
 }
 
-.snippet .scastie .main-panel {
-  background-color: unset !important;
+.snippet .scastie .app.light .main-panel {
+  background-color: unset;
+}
+
+.snippet .scastie .cm-s-solarized.cm-s-light .CodeMirror-widget .fold,
+.snippet .scastie .cm-s-solarized.cm-s-light .CodeMirror-linewidget .compilation-info,
+.snippet .scastie .cm-s-solarized.cm-s-light .CodeMirror-linewidget .runtime-error,
+.snippet .scastie .cm-s-solarized.cm-s-light .CodeMirror-linewidget .line,
+.snippet .scastie .cm-s-solarized.cm-s-light .CodeMirror-linewidget .inline {
+  background-color: var(--code-bg);
+}
+
+.snippet .scastie .ansi-color-yellow {
+  color: #b58900;
+}
+
+.snippet .fa-warning:before, .fa-exclamation-triangle:before {
+  color: #b58900;
 }
 
 @media(max-width: 576px) {

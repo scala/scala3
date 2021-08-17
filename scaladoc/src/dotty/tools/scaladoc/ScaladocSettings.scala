@@ -120,5 +120,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val apiSubdirectory: Setting[Boolean] =
     BooleanSetting("-Yapi-subdirectory", "Put the API documentation pages inside a directory `api/`", false)
 
+  val scastieConfiguration: Setting[String] =
+    StringSetting("-scastie-configuration", "Scastie configuration", "Additional configuration passed to Scastie in code snippets", "")
+
   def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire)
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, scastieConfiguration)
