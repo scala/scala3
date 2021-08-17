@@ -1,4 +1,4 @@
-type F <: F = 1 match { // error: Recursion limit exceeded.
-  case _ => foo.foo // error: Recursion limit exceeded.
+type F <: F = 1 match { // error
+  case _ => foo.foo // error // error
 }
 def foo(a: Int): Unit = ???
