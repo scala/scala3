@@ -1,19 +1,27 @@
 import scala.annotation.experimental
 
-@experimental // error
+@experimental
 val x = ()
 
-@experimental // error
+@experimental
 def f() = ()
 
-@experimental // error
+@experimental
 object X:
   def fx() = 1
 
-def test: Unit =
-  f() // error
-  x // error
-  X.fx() // error
+def test1: Unit =
+  f() // error: def f is marked @experimental and therefore ...
+  x // error: value x is marked @experimental and therefore ...
+  X.fx() // error: object X is marked @experimental and therefore ...
   import X.fx
-  fx() // error
-  ()
+  fx() // error: object X is marked @experimental and therefore ...
+
+@experimental
+def test2: Unit =
+  // references to f, x and X are ok because `test2` is experimental
+  f()
+  x
+  X.fx()
+  import X.fx
+  fx()

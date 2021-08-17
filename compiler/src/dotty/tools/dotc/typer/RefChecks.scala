@@ -948,27 +948,23 @@ object RefChecks {
         report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
 
   private def checkExperimental(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    if sym.isExperimental
-    && !sym.isConstructor // already reported on the class
-    && !ctx.owner.isExperimental // already reported on the @experimental of the owner
-    && !sym.is(ModuleClass) // already reported on the module
-    && (sym.span.exists || sym != defn.ExperimentalAnnot) // already reported on inferred annotations
-    then
+    if sym.isExperimental && !ctx.owner.isInExperimentalScope then
       Feature.checkExperimentalDef(sym, pos)
 
   private def checkExperimentalSignature(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    val checker = new TypeTraverser:
+    class Checker extends TypeTraverser:
       def traverse(tp: Type): Unit =
         if tp.typeSymbol.isExperimental then
           Feature.checkExperimentalDef(tp.typeSymbol, pos)
         else
           traverseChildren(tp)
-    if !sym.owner.isExperimental && !pos.span.isSynthetic then // avoid double errors
-      checker.traverse(sym.info)
+    if !sym.isInExperimentalScope then
+      new Checker().traverse(sym.info)
 
   private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
-    for annot <- sym.annotations if annot.symbol.isExperimental && annot.tree.span.exists do
-      Feature.checkExperimentalDef(annot.symbol, annot.tree)
+    if !sym.isExperimental then
+      for annot <- sym.annotations if annot.symbol.isExperimental && annot.tree.span.exists do
+        Feature.checkExperimentalDef(annot.symbol, annot.tree)
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
@@ -1344,7 +1340,6 @@ class RefChecks extends MiniPhase { thisPhase =>
   }
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
-    checkExperimental(tree.symbol, tree.srcPos)
     checkExperimentalAnnots(tree.symbol)
     tree
   }

@@ -1,31 +1,22 @@
 import scala.annotation.experimental
 
-@experimental // error
+@experimental
 class A
 
-@experimental // error
+@experimental
 class B extends A
 
 @experimental
-type X // error
+type X
 
 @experimental
-type Y = Int // error
+type Y = Int
 
 @experimental
-opaque type Z = Int // error
+opaque type Z = Int
 
-type W = Z // error
-
-def test(
-  p1: A, // error
-  p2: List[A], // error
-  p3: X, // error
-  p4: Y, // error
-  p5: Z, // error
-): Unit =
-  new A // error
-  new B // error
-  val i1 = identity[X] // error // error
-  val i2 = identity[A] // error // error
-  ()
+type AA = A // error
+type BB = Z // error
+type XX = Z // error
+type YY = Z // error
+type ZZ = Z // error

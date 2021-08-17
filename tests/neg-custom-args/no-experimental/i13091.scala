@@ -1,5 +1,5 @@
 import annotation.experimental
 
-@experimental class Foo // error: use of @experimental is experimental ...
+@experimental class Foo
 
 def test: Unit = new Foo // error: class Foo is marked @experimental ...
