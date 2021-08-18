@@ -36,9 +36,6 @@ class Parser extends Phase {
           firstXmlPos = p.firstXmlPos
         tree
       }
-
-    val printer = if (ctx.settings.Xprint.value.contains(Parser.name)) default else typr
-    printer.println("parsed:\n" + unit.untpdTree.show)
     if (Config.checkPositions)
       unit.untpdTree.checkPos(nonOverlapping = !unit.isJava && !ctx.reporter.hasErrors)
   }
