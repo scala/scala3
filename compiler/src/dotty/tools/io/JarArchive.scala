@@ -3,7 +3,6 @@ package dotty.tools.io
 import java.nio.file.{FileSystemAlreadyExistsException, FileSystems}
 
 import scala.jdk.CollectionConverters._
-import java.util.jar.JarFile
 
 /**
  * This class implements an [[AbstractFile]] backed by a jar
