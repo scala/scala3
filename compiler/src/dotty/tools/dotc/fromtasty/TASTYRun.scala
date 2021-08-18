@@ -4,6 +4,7 @@ package fromtasty
 
 import io.{JarArchive, AbstractFile, Path}
 import core.Contexts._
+import java.io.File
 
 class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
   override def compile(files: List[AbstractFile]): Unit = {
@@ -17,9 +18,10 @@ class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
     val classNames = files.flatMap { file =>
       file.extension match
         case "jar" =>
-          JarArchive.open(Path(file.path), create = false).iterator()
-            .filter(e => e.extension == "tasty" && !fromTastyIgnoreList(e.name))
-            .map(e => e.name.stripSuffix(".tasty").replace("/", "."))
+          JarArchive.open(Path(file.path), create = false).allFileNames()
+            .map(_.stripPrefix(File.separator)) // change paths from absolute to relative
+            .filter(e => Path.extension(e) == "tasty" && !fromTastyIgnoreList(e))
+            .map(e => e.stripSuffix(".tasty").replace(File.separator, "."))
             .toList
         case "tasty" => TastyFileUtil.getClassName(file)
         case _ =>
