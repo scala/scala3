@@ -8,7 +8,7 @@ object Inkuire {
 
   def beforeSave(): Unit = {
     db = db.copy(
-      functions = db.functions.sortBy(_.hashCode),
+      functions = functions.sortBy(_.hashCode),
       types = db.types.toSeq.sortBy(_._1.uuid).toMap,
       implicitConversions = db.implicitConversions.sortBy(_._1.hashCode)
     )
@@ -32,6 +32,48 @@ object Inkuire {
           )
         )
       case _ => e
+  }
+
+  def functions: Seq[ExternalSignature] = Inkuire.db.functions.flatMap { func =>
+    val fromConversions = Inkuire.db.implicitConversions.filter { ic =>
+      func.signature.receiver.nonEmpty && matchingICTypes(ic._2, func.signature.receiver.get.typ)
+    }.map { ic =>
+      func.copy(
+        signature = func.signature.copy(
+          receiver = func.signature.receiver.map { rcvr =>
+            Contravariance(
+              newReceiver(rcvr.typ, ic._2, ic._1)
+            )
+          }
+        )
+      )
+    }
+    Seq(func) ++ fromConversions
+  }
+  .distinct
+
+  def matchingICTypes(a: TypeLike, b: TypeLike): Boolean = (a, b) match {
+    case (a: Type, b: Type) if a.params.size == 0 && b.params.size == 0 && a.itid == b.itid => true
+    case (a: Type, b: Type) if a.params.size == 1 && b.params.size == 1 && a.itid == b.itid =>
+      a.params.head.typ.isInstanceOf[Type] && a.params.head.typ.asInstanceOf[Type].isVariable &&
+        b.params.head.typ.isInstanceOf[Type] && b.params.head.typ.asInstanceOf[Type].isVariable
+    case _ => false
+  }
+
+  def newReceiver(old: TypeLike, to: TypeLike, from: TypeLike): TypeLike = (old, to) match {
+    case (a: Type, b: Type) if a.params.size == 0 && b.params.size == 0 && a.itid == b.itid => from
+    case (a: Type, b: Type) if a.params.size == 1 && b.params.size == 1 && a.itid == b.itid
+      && a.params.head.typ.isInstanceOf[Type] && a.params.head.typ.asInstanceOf[Type].isVariable &&
+        b.params.head.typ.isInstanceOf[Type] && b.params.head.typ.asInstanceOf[Type].isVariable =>
+      if from.isInstanceOf[Type] && from.asInstanceOf[Type].params.size == 1 && from.asInstanceOf[Type].params.head.typ.isInstanceOf[Type] && from.asInstanceOf[Type].params.head.typ.asInstanceOf[Type].isVariable then
+        from.asInstanceOf[Type].copy(
+          params = Seq(Contravariance(a.params.head.typ.asInstanceOf[Type]))
+        )
+      else if from.isInstanceOf[Type] && from.asInstanceOf[Type].isVariable then
+        a.params.head.typ.asInstanceOf[Type]
+      else
+        from
+    case _ => old
   }
 
   case class InkuireDb(
