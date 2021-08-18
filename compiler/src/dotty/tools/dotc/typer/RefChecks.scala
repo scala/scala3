@@ -1039,7 +1039,7 @@ object RefChecks {
             val what =
               if tpe.paramNames.isEmpty then "empty parameter list.\n\nPossible fix: remove the `()` arguments."
               else "parameters"
-            report.warning(s"Unary method cannot take $what", sym.sourcePos)
+            report.warning(s"unary_<op> method cannot take $what", sym.sourcePos)
         case tpe: PolyType =>
           checkParameters(tpe.resType)
         case _ =>
@@ -1057,7 +1057,13 @@ object RefChecks {
         case tpe: PolyType =>
           checkExtensionParameters(tpe.resType)
 
-    if sym.name.startsWith(nme.UNARY_PREFIX.toString) then
+    def isUnaryPrefixName(name: Name) = name match
+      case name: SimpleName =>
+        name.startsWith("unary_") && nme.raw.isUnary(name.drop(6))
+      case _ =>
+        false
+
+    if isUnaryPrefixName(sym.name) then
       if sym.is(Extension) || sym.name.is(ExtMethName) then
         // if is method from `extension` or value class
         checkExtensionParameters(sym.info)
