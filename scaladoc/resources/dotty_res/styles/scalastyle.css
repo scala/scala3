@@ -588,8 +588,15 @@ footer .mode {
   width: 10em;
   overflow: hidden;
   text-align: right;
-  white-space: break-spaces;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   text-indent: 0em;
+  padding-right: 0.5em;
+}
+
+.documentableElement.expand .modifiers {
+  white-space: break-spaces;
+  text-overflow: unset;
 }
 
 .documentableElement .docs {

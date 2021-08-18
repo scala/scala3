@@ -25,15 +25,21 @@ type Take[T <: Tuple, N <: Int] <: Tuple = N match {
   }
 }
 
-/**
- * Some important information :o
- *
- * @param a any value of type forall a. a
- * @return Nothing, because I haven't implemented it yet ^^
- */
-@experimental
-@deprecated
-implicit transparent inline def same[A](a: A): A = ???
+trait E:
+  @experimental
+  @deprecated
+  protected implicit def same[A](a: A): A
+
+trait XD extends E:
+  /**
+   * Some important information :o
+   *
+   * @param a any value of type forall a. a
+   * @return Nothing, because I haven't implemented it yet ^^
+   */
+  @experimental
+  @deprecated
+  protected override final implicit transparent inline abstract infix def same[A](a: A): A = a
 
 trait Parent[X, A[_], B[_, _]]
 

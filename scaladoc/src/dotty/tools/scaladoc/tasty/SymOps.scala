@@ -70,6 +70,7 @@ object SymOps:
         case (None, None, (false, true, true)) => Visibility.Protected(ThisScope)
         case (None, None, (false, true, false)) => Visibility.Protected(implicitScope(sym.owner))
         case (None, None, (false, false, false)) => Visibility.Unrestricted
+        case (None, None, (true, true, false)) => Visibility.Protected(ThisScope)
         case _ => throw new Exception(s"Visibility for symbol $sym cannot be determined")
 
 
@@ -83,12 +84,13 @@ object SymOps:
         Flags.Abstract -> Modifier.Abstract,
         Flags.Deferred -> Modifier.Deferred,
         Flags.Implicit -> Modifier.Implicit,
+        Flags.Infix -> Modifier.Infix,
+        Flags.Transparent -> Modifier.Transparent,
         Flags.Inline -> Modifier.Inline,
         Flags.Lazy -> Modifier.Lazy,
         Flags.Open -> Modifier.Open,
         Flags.Override -> Modifier.Override,
         Flags.Case -> Modifier.Case,
-        Flags.Transparent -> Modifier.Transparent,
       ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
 
     def isHiddenByVisibility(using dctx: DocContext): Boolean =
