@@ -598,6 +598,47 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case _ => "{...}"
     s"import $exprStr.$selectorStr"
 
+  def toText(c: OrderingConstraint): Text =
+    val savedConstraint = ctx.typerState.constraint
+    try
+      // The current TyperState constraint determines how type variables are printed
+      ctx.typerState.constraint = c
+      def entryText(tp: Type) = tp match {
+        case tp: TypeBounds =>
+          toText(tp)
+        case _ =>
+          " := " ~ toText(tp)
+      }
+      val indent = 3
+      val uninstVarsText = " uninstantiated variables: " ~
+        Text(c.uninstVars.map(toText), ", ")
+      val constrainedText =
+        " constrained types: " ~ Text(c.domainLambdas.map(toText), ", ")
+      val boundsText =
+        " bounds: " ~ {
+          val assocs =
+            for (param <- c.domainParams)
+            yield (" " * indent) ~ toText(param) ~ entryText(c.entry(param))
+          Text(assocs, "\n")
+        }
+      val orderingText =
+        " ordering: " ~ {
+          val deps =
+            for {
+              param <- c.domainParams
+              ups = c.minUpper(param)
+              if ups.nonEmpty
+            }
+            yield
+              (" " * indent) ~ toText(param) ~ " <: " ~
+                Text(ups.map(toText), ", ")
+          Text(deps, "\n")
+        }
+      //Printer.debugPrintUnique = false
+      Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
+    finally
+      ctx.typerState.constraint = savedConstraint
+
   def plain: PlainPrinter = this
 
   protected def keywordStr(text: String): String = coloredStr(text, SyntaxHighlighting.KeywordColor)
