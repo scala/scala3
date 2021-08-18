@@ -9,6 +9,7 @@ import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
 import util.Stats
+import scala.util.DynamicVariable
 import config.Config
 import config.Feature.migrateTo3
 import config.Printers.{constr, subtyping, gadts, matchTypes, noPrinter}
@@ -59,6 +60,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Indicates whether the subtype check used GADT bounds */
   private var GADTused: Boolean = false
+
+  /** Indicates whether we have touched HKT GADT bounds */
+  private val touchedHKGADT: DynamicVariable[Boolean] = new DynamicVariable(false)
+
+  private def HKGADTtouched[T](body: => T): T = touchedHKGADT.withValue(true) { body }
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -1092,6 +1098,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     val tyconIsInjective =
                       (tycon1sym.isClass || tycon2sym.isClass)
                       && (!touchedGADTs || gadtIsInstantiated)
+                      && !touchedHKGADT.value
 
                     inFrozenGadtIf(!tyconIsInjective) {
                       if tycon1sym == tycon2sym && tycon1sym.isAliasType then
@@ -1173,7 +1180,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case tycon2: TypeRef =>
               val tycon2sym = tycon2.symbol
               tycon2sym.onGadtBounds { bounds2 =>
-                compareLower(bounds2, tyconIsTypeRef = false)
+                HKGADTtouched { compareLower(bounds2, tyconIsTypeRef = false) }
               }
             case _ => false
         } && { GADTused = true; true }
