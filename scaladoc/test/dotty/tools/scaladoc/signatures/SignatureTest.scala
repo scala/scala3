@@ -119,7 +119,7 @@ abstract class SignatureTest(
         val sigPrefix = elem.select(".header .signature").textNodes match
           case list if list.size > 0 && list.get(0).getWholeText().startsWith(" ") => " "
           case _ => ""
-        val all = s"$annotations$other $kind $name$sigPrefix$signature".trim()
+        val all = s"$annotations$other $sigPrefix$signature".trim()
         signatures += all
       }
 
