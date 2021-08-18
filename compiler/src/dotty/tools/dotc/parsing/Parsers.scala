@@ -1886,6 +1886,7 @@ object Parsers {
      *                      |  `return' [Expr]
      *                      |  ForExpr
      *                      |  [SimpleExpr `.'] id `=' Expr
+     *                      |  PrefixOperator SimpleExpr `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
      *                      |  ‘inline’ InfixExpr MatchClause
@@ -2206,8 +2207,9 @@ object Parsers {
         isOperator = !(location.inArgs && followingIsVararg()),
         maybePostfix = true)
 
-    /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
-    */
+    /** PrefixExpr       ::= [PrefixOperator'] SimpleExpr
+     *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
+     */
     val prefixExpr: Location => Tree = location =>
       if isIdent && nme.raw.isUnary(in.name)
          && in.canStartExprTokens.contains(in.lookahead.token)
