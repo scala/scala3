@@ -359,19 +359,6 @@ object JavaParsers {
       * but instead we skip entire annotation silently.
       */
     def annotation(): Option[Tree] = {
-      object LiteralT:
-        def unapply(token: Token) = Option(token match {
-          case TRUE      => true
-          case FALSE     => false
-          case CHARLIT   => in.name(0)
-          case INTLIT    => in.intVal(false).toInt
-          case LONGLIT   => in.intVal(false)
-          case FLOATLIT  => in.floatVal(false).toFloat
-          case DOUBLELIT => in.floatVal(false)
-          case STRINGLIT => in.name.toString
-          case _         => null
-        }).map(Constant(_))
-
       def classOrId(): Tree =
         val id = qualId()
         if in.lookaheadToken == CLASS then
@@ -398,17 +385,17 @@ object JavaParsers {
         }
 
       def argValue(): Option[Tree] =
-        val tree = in.token match {
-          case LiteralT(c) =>
-            val tree = atSpan(in.offset)(Literal(c))
-            in.nextToken()
-            Some(tree)
-          case AT =>
-            in.nextToken()
-            annotation()
-          case IDENTIFIER => Some(classOrId())
-          case LBRACE => array()
-          case _ => None
+        val tree = tryConstant match {
+          case Some(c) =>
+            Some(atSpan(in.offset)(Literal(c)))
+          case _ => in.token match {
+            case AT =>
+              in.nextToken()
+              annotation()
+            case IDENTIFIER => Some(classOrId())
+            case LBRACE => array()
+            case _ => None
+          }
         }
         if in.token == COMMA || in.token == RBRACE || in.token == RPAREN then
           tree
@@ -716,11 +703,7 @@ object JavaParsers {
 
         in.nextToken() // EQUALS
         if (mods.is(Flags.JavaStatic) && mods.is(Flags.Final)) {
-          val neg = in.token match {
-            case MINUS | BANG => in.nextToken(); true
-            case _ => false
-          }
-          tryLiteral(neg).map(forConst).getOrElse(tpt1)
+          tryConstant.map(forConst).getOrElse(tpt1)
         }
         else tpt1
       }
@@ -976,7 +959,11 @@ object JavaParsers {
       case _         => in.nextToken(); syntaxError("illegal start of type declaration", skipIt = true); List(errorTypeTree)
     }
 
-    def tryLiteral(negate: Boolean = false): Option[Constant] = {
+    def tryConstant: Option[Constant] = {
+      val negate = in.token match {
+        case MINUS | BANG => in.nextToken(); true
+        case _ => false
+      }
       val l = in.token match {
         case TRUE      => !negate
         case FALSE     => negate
