@@ -1,0 +1,11 @@
+J:
+new java.lang.SuppressWarnings(value = "a")
+new java.lang.SuppressWarnings(value = "b")
+new java.lang.SuppressWarnings(value = _root_.scala.Array.apply[java.lang.String]("c", "d")(scala.reflect.ClassTag.apply[java.lang.String](classOf[java.lang.String])))
+JOtherTypes:
+new Annot(value = 1, _, _)
+new Annot(value = -2, _, _)
+new Annot(_, m = false, _)
+new Annot(_, m = true, _)
+new Annot(_, _, n = 1.1)
+new Annot(_, _, n = -2.1)
