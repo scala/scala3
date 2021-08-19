@@ -1061,6 +1061,8 @@ class ClassfileParser(
           }
         else if (sym == classRoot.symbol)
           instanceScope.lookup(name)
+        else if (sym == classRoot.symbol.owner && name == classRoot.name)
+          classRoot.symbol
         else
           sym.info.member(name).symbol
 
