@@ -1,0 +1,17 @@
+.theme-dark footer .social-icon {
+  /* "Poor man's dark mode" for images.
+   * This works great with black images,
+   * and just-okay with colored images.
+   */
+  filter: invert(100%) hue-rotate(180deg);
+}
+
+.social-icon {
+  padding-right: 5px;
+  padding-left: 5px;
+}
+
+.social-icon img {
+  height: 20px;
+  width: 20px;
+}

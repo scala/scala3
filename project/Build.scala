@@ -1313,10 +1313,12 @@ object Build {
         Seq(jsDestinationFile)
       }.taskValue,
       Compile / resourceGenerators += Def.task {
-        val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "scaladoc-searchbar.css"
-        val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / "scaladoc-searchbar.css"
-        sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
-        Seq(cssDesitnationFile)
+        Seq("code-snippets.css", "searchbar.css", "social-links.css", "ux.css", "versions-dropdown.css").map { file =>
+          val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / file
+          val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / file
+          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
+          cssDesitnationFile
+        }
       }.taskValue,
       Compile / resourceGenerators += Def.task {
         import _root_.scala.sys.process._
