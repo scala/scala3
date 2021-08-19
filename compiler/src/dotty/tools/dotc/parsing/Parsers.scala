@@ -2604,7 +2604,7 @@ object Parsers {
       })
     }
 
-    /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [nl]
+    /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [semi]
      */
     def typeCaseClause(): CaseDef = atSpan(in.offset) {
       val pat = inSepRegion(InCase) {
@@ -2613,6 +2613,7 @@ object Parsers {
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
         val t = typ()
+        if in.token == SEMI then in.nextToken()
         newLinesOptWhenFollowedBy(CASE)
         t
       })
