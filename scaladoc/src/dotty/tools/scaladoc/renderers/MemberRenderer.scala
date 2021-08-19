@@ -134,16 +134,17 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val rawBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())
     val inlineBuilder = rawBuilder.asInstanceOf[InlineSignatureBuilder]
-    if inlineBuilder.preName.isEmpty then println(member)
     val kind :: modifiersRevered = inlineBuilder.preName
     val signature = inlineBuilder.names.reverse
     Seq(
       span(cls := "modifiers")(
         span(cls := "other-modifiers")(modifiersRevered.reverse.map(renderElement)),
-        span(cls := "kind")(renderElement(kind)),
       ),
-      renderLink(member.name, member.dri, nameClasses),
-      span(cls := "signature")(signature.map(renderElement)),
+      div(cls := "signature")(
+        span(cls := "kind")(renderElement(kind)),
+        renderLink(member.name, member.dri, nameClasses),
+        span(signature.map(renderElement))
+      ),
     )
 
   def memberIcon(member: Member) = member.kind match {

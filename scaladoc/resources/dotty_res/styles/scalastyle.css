@@ -262,6 +262,7 @@ th {
   padding-left: calc(1.015 * var(--side-width));
   padding-right: calc(0.15 * var(--side-width));
   box-sizing: border-box;
+  text-decoration: none;
 }
 
 #sideMenu2 a span:not(.micon) {
@@ -582,14 +583,20 @@ footer .mode {
 
 .documentableElement .modifiers {
   display: table-cell;
-  padding-right: 0.5em;
   min-width: 10em;
   max-width: 10em;
   width: 10em;
   overflow: hidden;
-  direction: rtl;
+  text-align: right;
   white-space: nowrap;
+  text-overflow: ellipsis;
   text-indent: 0em;
+  padding-right: 0.5em;
+}
+
+.documentableElement.expand .modifiers {
+  white-space: break-spaces;
+  text-overflow: unset;
 }
 
 .documentableElement .docs {
@@ -602,7 +609,7 @@ footer .mode {
 }
 
 .kind {
-  margin-left: 0.5em;
+  font-weight: bold;
 }
 
 .other-modifiers a, .other-modifiers a:visited, .other-modifiers span[data-unresolved-link] {
@@ -610,8 +617,7 @@ footer .mode {
 }
 
 .documentableElement.expand .modifiers {
-  display: inline-table;
-  min-width: 7em;
+  display: table-cell;
 }
 
 .documentableElement .signature {
@@ -622,6 +628,12 @@ footer .mode {
 
 .signature.monospace {
   padding: 8px;
+  display: flex;
+  border-radius: 3px;
+}
+
+.signature.monospace .modifiers {
+  white-space: break-spaces;
 }
 
 .signature a, .signature a:visited, .signature span[data-unresolved-link] {
@@ -629,7 +641,11 @@ footer .mode {
 }
 
 .expand .signature {
-  display: inline;
+  display: table-cell;
+}
+
+.documentableFilter {
+  border-radius: 3px;
 }
 
 .documentableElement {
@@ -642,20 +658,15 @@ footer .mode {
   background: var(--documentable-bg);
   border-left: 0.25em solid transparent;
   margin: 0.5em 0;
+  border-radius: 3px;
 }
 
 .documentableElement>div {
   display: table;
 }
 
-.expand.documentableElement>div {
-  display: block;
-}
-
 .expand.documentableElement>div.header {
-  display: block;
-  padding-left: 4.5em;
-  text-indent: -4.5em;
+  display: inline-table;
 }
 
 .documentableElement>div .cover {
@@ -664,10 +675,6 @@ footer .mode {
 
 .documentableElement.expand>div .cover {
   display: block;
-}
-
-.expand .doc {
-  margin-left: 6.5em;
 }
 
 .doc code {
@@ -684,6 +691,7 @@ footer .mode {
 }
 .documentableElement .annotations {
   color: var(--grey600);
+  margin-left: 10em;
   display: none;
 }
 
@@ -695,13 +703,17 @@ footer .mode {
   display: none;
 }
 
+.documentableElement:hover .documentableAnchor:before {
+  display: flex;
+}
+
 .documentableAnchor:before {
   content: "\e901"; /* arrow down */
   font-family: "dotty-icons" !important;
-  transform: rotate(45deg);
+  transform: rotate(-45deg);
   font-size: 20px;
   color: var(--icon-color);
-  display: flex;
+  display: none;
   flex-direction: row;
   align-items: center;
   justify-content: center;

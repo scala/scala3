@@ -603,20 +603,20 @@ trait ClassLikeSupport:
     graph: HierarchyGraph = HierarchyGraph.empty,
     deprecated: Option[Annotation] = None,
   ) = Member(
-      name = symbol.normalizedName,
-      dri = symbol.dri,
-      kind = kind,
-      visibility = symbol.getVisibility(),
-      modifiers = modifiers,
-      annotations = symbol.getAnnotations(),
-      signature = signature,
-      sources = symbol.source,
-      origin = origin,
-      inheritedFrom = inheritedFrom,
-      graph = graph,
-      docs = symbol.documentation,
-      deprecated = deprecated
-    )
+    name = symbol.normalizedName,
+    dri = symbol.dri,
+    kind = kind,
+    visibility = symbol.getVisibility(),
+    modifiers = modifiers,
+    annotations = symbol.getAnnotations(),
+    signature = signature,
+    sources = symbol.source,
+    origin = origin,
+    inheritedFrom = inheritedFrom,
+    graph = graph,
+    docs = symbol.documentation,
+    deprecated = deprecated
+  )
 
   object EvidenceOnlyParameterList
   type RegularParameterList = Map[String, TypeRepr]
