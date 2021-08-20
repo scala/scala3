@@ -178,10 +178,6 @@ class ExtractSemanticDB extends Phase:
               registerSymbol(tree.symbol, symbolKinds(tree))
         case tree: Template =>
           val ctorSym = tree.constr.symbol
-          if !excludeDef(ctorSym) then
-            traverseAnnotsOfDefinition(ctorSym)
-            registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
-            ctorParams(tree.constr.termParamss, tree.constr.leadingTypeParams, tree.body)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
           val selfSpan = tree.self.span
@@ -191,6 +187,10 @@ class ExtractSemanticDB extends Phase:
             tree.body.foreachUntilImport(traverse).foreach(traverse) // the first import statement
           else
             tree.body.foreach(traverse)
+          if !excludeDef(ctorSym) then
+            traverseAnnotsOfDefinition(ctorSym)
+            ctorParams(tree.constr.termParamss, tree.constr.leadingTypeParams, tree.body)
+            registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
         case tree: Apply =>
           @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
