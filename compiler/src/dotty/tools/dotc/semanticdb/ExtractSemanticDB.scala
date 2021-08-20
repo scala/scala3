@@ -163,6 +163,8 @@ class ExtractSemanticDB extends Phase:
               case PatternValDef(pat, rhs) =>
                 traverse(rhs)
                 PatternValDef.collectPats(pat).foreach(traverse)
+              case tree: TypeDef =>
+                traverseChildren(tree)
               case tree =>
                 if !excludeChildren(tree.symbol) then
                   traverseChildren(tree)

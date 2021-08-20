@@ -3598,7 +3598,7 @@ Uri => i9782.scala
 Text => empty
 Language => Scala
 Symbols => 24 entries
-Occurrences => 49 entries
+Occurrences => 59 entries
 
 Symbols:
 _empty_/Copy# => trait Copy [typeparam In  <: Txn[In], typeparam Out  <: Txn[Out]] extends Object { self: Copy[In, Out] => +5 decls }
@@ -3650,6 +3650,11 @@ Occurrences:
 [7:37..7:40): Out -> _empty_/Copy#[Out]
 [8:6..8:14): copyImpl <- _empty_/Copy#copyImpl().
 [8:15..8:19): Repr <- _empty_/Copy#copyImpl().[Repr]
+[8:20..8:21): ~ <- _empty_/Copy#copyImpl().[Repr][`~`]
+[8:25..8:28): Txn -> _empty_/Txn#
+[8:29..8:30): ~ -> _empty_/Copy#copyImpl().[Repr][`~`]
+[8:36..8:40): Elem -> _empty_/Elem#
+[8:41..8:42): ~ -> _empty_/Copy#copyImpl().[Repr][`~`]
 [8:45..8:47): in <- _empty_/Copy#copyImpl().(in)
 [8:49..8:53): Repr -> _empty_/Copy#copyImpl().[Repr]
 [8:54..8:56): In -> _empty_/Copy#[In]
@@ -3657,6 +3662,11 @@ Occurrences:
 [8:65..8:68): Out -> _empty_/Copy#[Out]
 [10:6..10:11): apply <- _empty_/Copy#apply().
 [10:12..10:16): Repr <- _empty_/Copy#apply().[Repr]
+[10:17..10:18): ~ <- _empty_/Copy#apply().[Repr][`~`]
+[10:22..10:25): Txn -> _empty_/Txn#
+[10:26..10:27): ~ -> _empty_/Copy#apply().[Repr][`~`]
+[10:33..10:37): Elem -> _empty_/Elem#
+[10:38..10:39): ~ -> _empty_/Copy#apply().[Repr][`~`]
 [10:42..10:44): in <- _empty_/Copy#apply().(in)
 [10:46..10:50): Repr -> _empty_/Copy#apply().[Repr]
 [10:51..10:53): In -> _empty_/Copy#[In]
