@@ -3588,16 +3588,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredFields: List[Symbol]
 
         /** Get named non-private fields declared or inherited */
-        // TODO: deprecate after 3.1.x
-        // @deprecated("Use fieldMember", "3.2.0")
+        @deprecated("Use fieldMember", "3.1.0")
         def memberField(name: String): Symbol
 
         /** Get named non-private fields declared or inherited */
         def fieldMember(name: String): Symbol
 
         /** Get all non-private fields declared or inherited */
-        // TODO: deprecate after 3.1.x
-        // @deprecated("Use fieldMembers", "3.2.0")
+        @deprecated("Use fieldMembers", "3.1.0")
         def memberFields: List[Symbol]
 
         /** Get all non-private fields declared or inherited */
@@ -3610,16 +3608,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredMethods: List[Symbol]
 
         /** Get named non-private methods declared or inherited */
-        // TODO: deprecate after 3.1.x
-        // @deprecated("Use methodMember", "3.2.0")
+        @deprecated("Use methodMember", "3.1.0")
         def memberMethod(name: String): List[Symbol]
 
         /** Get named non-private methods declared or inherited */
         def methodMember(name: String): List[Symbol]
 
         /** Get all non-private methods declared or inherited */
-        // TODO: deprecate after 3.1.x
-        // @deprecated("Use methodMembers", "3.2.0")
+        @deprecated("Use methodMembers", "3.1.0")
         def memberMethods: List[Symbol]
 
         /** Get all non-private methods declared or inherited */
@@ -3632,16 +3628,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
-        // TODO: deprecate after 3.1.x
-        // @deprecated("Use typeMember", "3.2.0")
+        @deprecated("Use typeMember", "3.1.0")
         def memberType(name: String): Symbol
 
         /** Type member with the given name directly declared in the class */
         def typeMember(name: String): Symbol
 
         /** Type member directly declared in the class */
-        // TODO: deprecate after 3.1.x
-        // @deprecated("Use typeMembers", "3.2.0")
+        @deprecated("Use typeMembers", "3.1.0")
         def memberTypes: List[Symbol]
 
         /** Type member directly declared in the class */
