@@ -48,8 +48,8 @@ Schema => SemanticDB v4
 Uri => Advanced.scala
 Text => empty
 Language => Scala
-Symbols => 46 entries
-Occurrences => 101 entries
+Symbols => 48 entries
+Occurrences => 105 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
@@ -60,6 +60,8 @@ advanced/HKClass# => class HKClass [typeparam F [typeparam T ] <: <?>] extends O
 advanced/HKClass#[F] => typeparam F [typeparam T ] <: <?>
 advanced/HKClass#[F][T] => typeparam T 
 advanced/HKClass#`<init>`(). => primary ctor <init> [typeparam F [typeparam T ] <: <?>](): HKClass[F]
+advanced/HKClass#`<init>`().[F][T] => typeparam T 
+advanced/HKClass#`<init>`().[F][U] => typeparam U 
 advanced/HKClass#foo(). => method foo [typeparam T , typeparam U ](param x: F[T, U]): String
 advanced/HKClass#foo().(x) => param x: F[T, U]
 advanced/HKClass#foo().[T] => typeparam T 
@@ -191,6 +193,10 @@ Occurrences:
 [39:21..39:25): head -> scala/collection/IterableOps#head().
 [47:6..47:13): HKClass <- advanced/HKClass#
 [47:14..47:15): F <- advanced/HKClass#[F]
+[47:20..47:21): T <- advanced/HKClass#`<init>`().[F][T]
+[47:28..47:29): U <- advanced/HKClass#`<init>`().[F][U]
+[47:36..47:37): U -> advanced/HKClass#`<init>`().[F][U]
+[47:39..47:40): T -> advanced/HKClass#`<init>`().[F][T]
 [48:6..48:9): foo <- advanced/HKClass#foo().
 [48:10..48:11): T <- advanced/HKClass#foo().[T]
 [48:12..48:13): U <- advanced/HKClass#foo().[U]
@@ -2565,7 +2571,7 @@ Uri => Prefixes.scala
 Text => empty
 Language => Scala
 Symbols => 19 entries
-Occurrences => 47 entries
+Occurrences => 48 entries
 
 Symbols:
 prefixes/C# => class C extends Object { self: C => +6 decls }
@@ -2627,6 +2633,7 @@ Occurrences:
 [25:9..25:10): c -> prefixes/Test.c.
 [25:11..25:12): N -> prefixes/C#N.
 [26:6..26:8): k3 <- prefixes/Test.k3().
+[26:10..26:11): U -> prefixes/C#N.U#
 [26:14..26:17): ??? -> scala/Predef.`???`().
 [28:6..28:8): n2 <- prefixes/Test.n2().
 [28:10..28:11): M -> prefixes/M.
@@ -2645,8 +2652,8 @@ Schema => SemanticDB v4
 Uri => RecOrRefined.scala
 Text => empty
 Language => Scala
-Symbols => 65 entries
-Occurrences => 103 entries
+Symbols => 68 entries
+Occurrences => 110 entries
 
 Symbols:
 example/C# => class C extends Object { self: C => +3 decls }
@@ -2695,48 +2702,51 @@ example/SpecialRefinement#pickOne(). => abstract method pickOne [typeparam T ](p
 example/SpecialRefinement#pickOne().(as) => param as: T*
 example/SpecialRefinement#pickOne().[T] => typeparam T 
 local0 => abstract method pickOne [typeparam T ](param as: T*): Option[String]
-local1 => abstract val method x Int
-local2 => abstract val method x Int
-local3 => abstract method y => Int
+local1 => typeparam T 
+local2 => param as: T*
+local3 => abstract method pickOne [typeparam T ](param as: T*): Option[String] <: example/SpecialRefinement#pickOne().
 local4 => abstract val method x Int
-local5 => abstract method y => Int
-local6 => type z 
-local7 => typeparam T 
-local8 => param t: T
-local9 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
+local5 => abstract val method x Int
+local6 => abstract method y => Int
+local7 => abstract val method x Int
+local8 => abstract method y => Int
+local9 => type z 
 local10 => typeparam T 
 local11 => param t: T
 local12 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
 local13 => typeparam T 
 local14 => param t: T
 local15 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
-local16 => abstract val method name String
-local17 => abstract val method age Int
-local18 => type T1  <: example/C#T1#
-local19 => type T2  = T1 <: example/C#T2#
+local16 => typeparam T 
+local17 => param t: T
+local18 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
+local19 => abstract val method name String
+local20 => abstract val method age Int
+local21 => type T1  <: example/C#T1#
+local22 => type T2  = T1 <: example/C#T2#
 
 Occurrences:
 [0:8..0:15): example <- example/
 [2:4..2:6): m1 <- example/RecOrRefined$package.m1().
 [2:7..2:8): a <- example/RecOrRefined$package.m1().(a)
 [2:10..2:13): Int -> scala/Int#
-[2:20..2:21): x <- local1
+[2:20..2:21): x <- local4
 [2:23..2:26): Int -> scala/Int#
 [2:32..2:35): ??? -> scala/Predef.`???`().
 [3:4..3:6): m2 <- example/RecOrRefined$package.m2().
 [3:7..3:8): x <- example/RecOrRefined$package.m2().(x)
-[3:16..3:17): x <- local2
+[3:16..3:17): x <- local5
 [3:19..3:22): Int -> scala/Int#
-[3:28..3:29): y <- local3
+[3:28..3:29): y <- local6
 [3:31..3:34): Int -> scala/Int#
 [3:40..3:43): ??? -> scala/Predef.`???`().
 [4:4..4:6): m3 <- example/RecOrRefined$package.m3().
 [4:7..4:8): x <- example/RecOrRefined$package.m3().(x)
-[4:16..4:17): x <- local4
+[4:16..4:17): x <- local7
 [4:19..4:22): Int -> scala/Int#
-[4:28..4:29): y <- local5
+[4:28..4:29): y <- local8
 [4:31..4:34): Int -> scala/Int#
-[4:41..4:42): z <- local6
+[4:41..4:42): z <- local9
 [4:48..4:51): ??? -> scala/Predef.`???`().
 [5:6..5:16): PolyHolder <- example/PolyHolder#
 [6:6..6:9): foo <- example/PolyHolder#foo().
@@ -2747,31 +2757,31 @@ Occurrences:
 [9:4..9:6): m4 <- example/RecOrRefined$package.m4().
 [9:7..9:8): x <- example/RecOrRefined$package.m4().(x)
 [9:10..9:20): PolyHolder -> example/PolyHolder#
-[9:27..9:30): foo <- local9
-[9:31..9:32): T <- local7
-[9:34..9:35): t <- local8
-[9:37..9:38): T -> local7
-[9:41..9:42): T -> local7
+[9:27..9:30): foo <- local12
+[9:31..9:32): T <- local10
+[9:34..9:35): t <- local11
+[9:37..9:38): T -> local10
+[9:41..9:42): T -> local10
 [9:48..9:51): ??? -> scala/Predef.`???`().
 [10:4..10:6): m5 <- example/RecOrRefined$package.m5().
 [10:7..10:8): Z <- example/RecOrRefined$package.m5().[Z]
 [10:10..10:11): x <- example/RecOrRefined$package.m5().(x)
 [10:13..10:16): Int -> scala/Int#
 [10:19..10:29): PolyHolder -> example/PolyHolder#
-[10:36..10:39): foo <- local12
-[10:40..10:41): T <- local10
-[10:43..10:44): t <- local11
-[10:46..10:47): T -> local10
-[10:50..10:51): T -> local10
+[10:36..10:39): foo <- local15
+[10:40..10:41): T <- local13
+[10:43..10:44): t <- local14
+[10:46..10:47): T -> local13
+[10:50..10:51): T -> local13
 [10:56..10:59): ??? -> scala/Predef.`???`().
 [12:5..12:7): m6 <- example/RecOrRefined$package.m6#
 [12:11..12:12): X <- example/RecOrRefined$package.m6#[X]
 [12:18..12:28): PolyHolder -> example/PolyHolder#
-[12:35..12:38): foo <- local15
-[12:39..12:40): T <- local13
-[12:42..12:43): t <- local14
-[12:45..12:46): T -> local13
-[12:49..12:50): T -> local13
+[12:35..12:38): foo <- local18
+[12:39..12:40): T <- local16
+[12:42..12:43): t <- local17
+[12:45..12:46): T -> local16
+[12:49..12:50): T -> local16
 [14:6..14:12): Record <- example/Record#
 [14:13..14:18): elems <- example/Record#elems.
 [14:21..14:27): String -> scala/Predef.String#
@@ -2788,18 +2798,18 @@ Occurrences:
 [16:48..16:52): name -> example/Record#selectDynamic().(name)
 [18:5..18:11): Person <- example/RecOrRefined$package.Person#
 [18:14..18:20): Record -> example/Record#
-[19:6..19:10): name <- local16
+[19:6..19:10): name <- local19
 [19:12..19:18): String -> scala/Predef.String#
-[20:6..20:9): age <- local17
+[20:6..20:9): age <- local20
 [20:11..20:14): Int -> scala/Int#
 [24:6..24:7): C <- example/C#
 [24:15..24:17): T1 <- example/C#T1#
 [24:24..24:26): T2 <- example/C#T2#
 [25:5..25:7): C2 <- example/RecOrRefined$package.C2#
 [25:10..25:11): C -> example/C#
-[25:19..25:21): T1 <- local18
-[25:28..25:30): T2 <- local19
-[25:33..25:35): T1 -> local18
+[25:19..25:21): T1 <- local21
+[25:28..25:30): T2 <- local22
+[25:33..25:35): T1 -> local21
 [27:6..27:23): SpecialRefinement <- example/SpecialRefinement#
 [28:6..28:13): pickOne <- example/SpecialRefinement#pickOne().
 [28:14..28:15): T <- example/SpecialRefinement#pickOne().[T]
@@ -2809,6 +2819,13 @@ Occurrences:
 [28:33..28:36): Any -> scala/Any#
 [31:6..31:25): PickOneRefinement_1 <- example/PickOneRefinement_1#
 [31:26..31:27): S <- example/PickOneRefinement_1#[S]
+[31:31..31:48): SpecialRefinement -> example/SpecialRefinement#
+[31:55..31:62): pickOne <- local3
+[31:63..31:64): T <- local1
+[31:66..31:68): as <- local2
+[31:70..31:71): T -> local1
+[31:75..31:81): Option -> scala/Option#
+[31:82..31:88): String -> scala/Predef.String#
 [32:6..32:9): run <- example/PickOneRefinement_1#run().
 [32:10..32:11): s <- example/PickOneRefinement_1#run().(s)
 [32:13..32:14): S -> example/PickOneRefinement_1#[S]
@@ -3553,7 +3570,7 @@ Uri => i9782.scala
 Text => empty
 Language => Scala
 Symbols => 24 entries
-Occurrences => 39 entries
+Occurrences => 59 entries
 
 Symbols:
 _empty_/Copy# => trait Copy [typeparam In  <: Txn[In], typeparam Out  <: Txn[Out]] extends Object { self: Copy[In, Out] => +5 decls }
@@ -3584,17 +3601,32 @@ local2 => val local outObj: Repr[Out] & Obj[Out]
 Occurrences:
 [1:6..1:9): Txn <- _empty_/Txn#
 [1:10..1:11): T <- _empty_/Txn#[T]
+[1:15..1:18): Txn -> _empty_/Txn#
+[1:19..1:20): T -> _empty_/Txn#[T]
 [3:6..3:10): Elem <- _empty_/Elem#
 [3:11..3:12): T <- _empty_/Elem#[T]
+[3:16..3:19): Txn -> _empty_/Txn#
+[3:20..3:21): T -> _empty_/Elem#[T]
 [5:6..5:9): Obj <- _empty_/Obj#
 [5:10..5:11): T <- _empty_/Obj#[T]
+[5:15..5:18): Txn -> _empty_/Txn#
+[5:19..5:20): T -> _empty_/Obj#[T]
 [5:31..5:35): Elem -> _empty_/Elem#
 [5:36..5:37): T -> _empty_/Obj#[T]
 [7:6..7:10): Copy <- _empty_/Copy#
 [7:11..7:13): In <- _empty_/Copy#[In]
+[7:17..7:20): Txn -> _empty_/Txn#
+[7:21..7:23): In -> _empty_/Copy#[In]
 [7:26..7:29): Out <- _empty_/Copy#[Out]
+[7:33..7:36): Txn -> _empty_/Txn#
+[7:37..7:40): Out -> _empty_/Copy#[Out]
 [8:6..8:14): copyImpl <- _empty_/Copy#copyImpl().
 [8:15..8:19): Repr <- _empty_/Copy#copyImpl().[Repr]
+[8:20..8:21): ~ <- _empty_/Copy#copyImpl().[Repr][`~`]
+[8:25..8:28): Txn -> _empty_/Txn#
+[8:29..8:30): ~ -> _empty_/Copy#copyImpl().[Repr][`~`]
+[8:36..8:40): Elem -> _empty_/Elem#
+[8:41..8:42): ~ -> _empty_/Copy#copyImpl().[Repr][`~`]
 [8:45..8:47): in <- _empty_/Copy#copyImpl().(in)
 [8:49..8:53): Repr -> _empty_/Copy#copyImpl().[Repr]
 [8:54..8:56): In -> _empty_/Copy#[In]
@@ -3602,6 +3634,11 @@ Occurrences:
 [8:65..8:68): Out -> _empty_/Copy#[Out]
 [10:6..10:11): apply <- _empty_/Copy#apply().
 [10:12..10:16): Repr <- _empty_/Copy#apply().[Repr]
+[10:17..10:18): ~ <- _empty_/Copy#apply().[Repr][`~`]
+[10:22..10:25): Txn -> _empty_/Txn#
+[10:26..10:27): ~ -> _empty_/Copy#apply().[Repr][`~`]
+[10:33..10:37): Elem -> _empty_/Elem#
+[10:38..10:39): ~ -> _empty_/Copy#apply().[Repr][`~`]
 [10:42..10:44): in <- _empty_/Copy#apply().(in)
 [10:46..10:50): Repr -> _empty_/Copy#apply().[Repr]
 [10:51..10:53): In -> _empty_/Copy#[In]
@@ -3708,8 +3745,8 @@ Schema => SemanticDB v4
 Uri => nullary.scala
 Text => empty
 Language => Scala
-Symbols => 16 entries
-Occurrences => 28 entries
+Symbols => 17 entries
+Occurrences => 29 entries
 
 Symbols:
 _empty_/Concrete# => class Concrete extends NullaryTest[Int, List] { self: Concrete => +3 decls }
@@ -3721,6 +3758,7 @@ _empty_/NullaryTest#[T] => typeparam T
 _empty_/NullaryTest#[m] => typeparam m [typeparam s ]
 _empty_/NullaryTest#[m][s] => typeparam s 
 _empty_/NullaryTest#`<init>`(). => primary ctor <init> [typeparam T , typeparam m [typeparam s ]](): NullaryTest[T, m]
+_empty_/NullaryTest#`<init>`().[m][s] => typeparam s 
 _empty_/NullaryTest#nullary(). => method nullary => String
 _empty_/NullaryTest#nullary2(). => abstract method nullary2 => T
 _empty_/NullaryTest#nullary3(). => abstract method nullary3 => m[T]
@@ -3733,6 +3771,7 @@ Occurrences:
 [0:15..0:26): NullaryTest <- _empty_/NullaryTest#
 [0:27..0:28): T <- _empty_/NullaryTest#[T]
 [0:30..0:31): m <- _empty_/NullaryTest#[m]
+[0:32..0:33): s <- _empty_/NullaryTest#`<init>`().[m][s]
 [1:6..1:13): nullary <- _empty_/NullaryTest#nullary().
 [1:15..1:21): String -> scala/Predef.String#
 [2:6..2:7): x <- _empty_/NullaryTest#x.
@@ -3768,7 +3807,7 @@ Uri => recursion.scala
 Text => empty
 Language => Scala
 Symbols => 36 entries
-Occurrences => 45 entries
+Occurrences => 46 entries
 
 Symbols:
 local0 => case val method N$1  <: Nat
@@ -3831,6 +3870,7 @@ Occurrences:
 [14:27..14:30): Nat -> recursion/Nats.Nat#
 [15:13..15:17): Succ <- recursion/Nats.Succ#
 [15:18..15:19): N <- recursion/Nats.Succ#[N]
+[15:23..15:26): Nat -> recursion/Nats.Nat#
 [15:28..15:29): p <- recursion/Nats.Succ#p.
 [15:31..15:32): N -> recursion/Nats.Succ#[N]
 [15:42..15:45): Nat -> recursion/Nats.Nat#

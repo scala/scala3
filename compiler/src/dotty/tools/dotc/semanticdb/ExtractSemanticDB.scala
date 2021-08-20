@@ -163,6 +163,8 @@ class ExtractSemanticDB extends Phase:
               case PatternValDef(pat, rhs) =>
                 traverse(rhs)
                 PatternValDef.collectPats(pat).foreach(traverse)
+              case tree: TypeDef =>
+                traverseChildren(tree)
               case tree =>
                 if !excludeChildren(tree.symbol) then
                   traverseChildren(tree)
@@ -187,7 +189,7 @@ class ExtractSemanticDB extends Phase:
             tree.body.foreach(traverse)
           if !excludeDef(ctorSym) then
             traverseAnnotsOfDefinition(ctorSym)
-            ctorParams(tree.constr.termParamss, tree.body)
+            ctorParams(tree.constr.termParamss, tree.constr.leadingTypeParams, tree.body)
             registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
         case tree: Apply =>
           @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
@@ -231,6 +233,16 @@ class ExtractSemanticDB extends Phase:
                     registerUseGuarded(None, alt.symbol.companionClass, sel.imported.span, tree.source)
         case tree: Inlined =>
           traverse(tree.call)
+        case tree: TypeTree =>
+          tree.typeOpt match
+            // Any types could be appear inside of `TypeTree`, but
+            // types that precent in source other than TypeRef are traversable and contain Ident tree nodes
+            // (e.g. TypeBoundsTree, AppliedTypeTree)
+            case Types.TypeRef(_, sym: Symbol) if namePresentInSource(sym, tree.span, tree.source) =>
+              registerUseGuarded(None, sym, tree.span, tree.source)
+            case _ => ()
+
+
         case _ =>
           traverseChildren(tree)
 
@@ -426,7 +438,7 @@ class ExtractSemanticDB extends Phase:
         symkinds.toSet
 
     private def ctorParams(
-      vparamss: List[List[ValDef]], body: List[Tree])(using Context): Unit =
+      vparamss: List[List[ValDef]], tparams: List[TypeDef], body: List[Tree])(using Context): Unit =
       @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
       for
         vparams <- vparamss
@@ -439,6 +451,9 @@ class ExtractSemanticDB extends Phase:
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
           registerSymbol(vparam.symbol, symkinds)
+        traverse(vparam.tpt)
+      tparams.foreach(tp => traverse(tp.rhs))
+
 
 object ExtractSemanticDB:
   import java.nio.file.Path
