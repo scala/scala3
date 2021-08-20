@@ -31,3 +31,7 @@ def clo1[T]: T = j.g1[T]()  // error
 def clo2[T <: AnyRef]: T = j.g1[T | Null]()  // error
 
 def clo3[T >: Null <: AnyRef | Null]: T = j.g1[T]()
+
+def testJ2[T]: T =
+  val j2: J2[T] = new J2
+  j2.x // error
