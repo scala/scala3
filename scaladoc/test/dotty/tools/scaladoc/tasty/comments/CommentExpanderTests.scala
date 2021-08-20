@@ -12,7 +12,7 @@ import dotty.tools.scaladoc.tasty.TastyParser
 class CommentExpanderTests {
   def check(using Quotes)(): Unit =
     assertCommentEquals(
-      reflect.Symbol.requiredClass("tests.B").memberMethod("otherMethod").head,
+      reflect.Symbol.requiredClass("tests.B").methodMember("otherMethod").head,
       "/** This is my foo: Bar, actually. */",
     )
     assertCommentEquals(
@@ -20,7 +20,7 @@ class CommentExpanderTests {
       "/** This is foo: Foo expanded. */",
     )
     assertCommentEquals(
-      reflect.Symbol.requiredModule("tests.O").memberMethod("method").head,
+      reflect.Symbol.requiredModule("tests.O").methodMember("method").head,
       "/** This is foo: O's foo. */",
     )
 
