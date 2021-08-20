@@ -3765,7 +3765,7 @@ class Typer extends Namer
       // if unsafeNulls is enabled, try to strip nulls from Java function calls
       if Nullables.unsafeNullsEnabled then
         tree match
-          case _: Apply if tree.symbol.is(JavaDefined) =>
+          case _: Apply | _: Select if tree.symbol.is(JavaDefined) =>
             wtp match
               case OrNull(wtp1) => return readapt(tree.cast(wtp1))
               case _ =>

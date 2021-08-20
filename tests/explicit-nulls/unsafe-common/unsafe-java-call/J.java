@@ -11,3 +11,7 @@ public class J {
     return null;
   }
 }
+
+class J2<T> {
+  public T x = null;
+}
