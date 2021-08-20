@@ -272,7 +272,7 @@ trait ClassLikeSupport:
         }
       // TODO check given methods?
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven && !dd.symbol.isArtifact =>
-        Some(dd.symbol.owner.memberType(dd.name))
+        Some(dd.symbol.owner.typeMember(dd.name))
           .filterNot(_.exists)
           .map { _ =>
             parseMethod(c, dd.symbol, specificKind =
@@ -312,7 +312,7 @@ trait ClassLikeSupport:
       case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
         Some(parseValDef(c, vd))
 
-      case c: ClassDef if c.symbol.owner.memberMethod(c.name).exists(_.flags.is(Flags.Given)) =>
+      case c: ClassDef if c.symbol.owner.methodMember(c.name).exists(_.flags.is(Flags.Given)) =>
         Some(parseGivenClasslike(c))
 
       case c: ClassDef if c.symbol.shouldDocumentClasslike &&  !c.symbol.isGiven =>
@@ -348,7 +348,7 @@ trait ClassLikeSupport:
     def inheritance = Some(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.dri))
     processTreeOpt(s)(s match
       case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
-      case c: ClassDef if c.symbol.owner.memberMethod(c.name).exists(_.flags.is(Flags.Given)) => Some(parseGivenClasslike(c))
+      case c: ClassDef if c.symbol.owner.methodMember(c.name).exists(_.flags.is(Flags.Given)) => Some(parseGivenClasslike(c))
       case other => {
         val parsed = parseMember(c)(other)
         parsed.map(p =>
