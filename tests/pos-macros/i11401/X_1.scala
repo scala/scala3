@@ -53,7 +53,7 @@ object X:
        val nFun = processLambda[T](fun)
        Apply(Apply(TypeApply(Select.unique(x,"fold_async"),targs),List(state)),List(nFun))
      case Apply(TypeApply(Ident("await"),targs),List(body)) => body
-     case Typed(x,tp) => Typed(processTree(x), Inferred(TypeRepr.of[Future].appliedTo(tp.tpe)) )
+     case TypedTree(x: Term,tp) => Typed(processTree(x), Inferred(TypeRepr.of[Future].appliedTo(tp.tpe)) )
      case _ => throw new RuntimeException(s"tree not recoginized: $t")
    val checker = new TreeMap() {}
    checker.transformTerm(r)(Symbol.spliceOwner)

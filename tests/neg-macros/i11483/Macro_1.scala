@@ -51,7 +51,7 @@ object X {
           )
      case Apply(f,List()) =>
           Apply(TypeApply(Select.unique(m,"pure"),List(Inferred(t.tpe.widen))),List(t))
-     case Typed(x,tp) => Typed(processTree(x,m), Inferred(TypeRepr.of[F].appliedTo(tp.tpe)) )
+     case Typed(x: Term,tp) => Typed(processTree(x,m), Inferred(TypeRepr.of[F].appliedTo(tp.tpe)) )
      case _ => throw new RuntimeException(s"tree not recoginized: $t")
    r
 

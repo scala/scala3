@@ -48,7 +48,7 @@ object X:
         case Inlined(x,bindings,body) => transform(body) match
                       case Left(unchanged) => Left(term)
                       case Right(changed) => Right(Inlined(x,bindings,changed))
-        case Typed(arg,tp) => transform(arg)
+        case TypedTree(arg: Term,tp) => transform(arg)
         case Ident(x) => Left(term)
         case l@Literal(x) => Left(l)
         case other =>

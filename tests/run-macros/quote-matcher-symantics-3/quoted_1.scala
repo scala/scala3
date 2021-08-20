@@ -132,7 +132,7 @@ object Const {
           case NullConstant() | UnitConstant() | ClassOfConstant(_) => None
           case _ => Some(c.value.asInstanceOf[T])
       case Block(Nil, e) => rec(e)
-      case Typed(e, _) => rec(e)
+      case TypedTree(e: Term, _) => rec(e)
       case Inlined(_, Nil, e) => rec(e)
       case _  => None
     }

@@ -19,13 +19,13 @@ ConstantType(StringConstant("abc"))
 Inlined(None, Nil, Apply(Ident("println"), List(Literal(StringConstant("abc")))))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Typed(Literal(IntConstant(8)), TypeIdent("Int")))
+Inlined(None, Nil, TypedTree(Literal(IntConstant(8)), TypeIdent("Int")))
 TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
-Inlined(None, Nil, Typed(Literal(ByteConstant(8)), TypeIdent("Byte")))
+Inlined(None, Nil, TypedTree(Literal(ByteConstant(8)), TypeIdent("Byte")))
 TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Byte")
 
-Inlined(None, Nil, Typed(Literal(ShortConstant(8)), TypeIdent("Short")))
+Inlined(None, Nil, TypedTree(Literal(ShortConstant(8)), TypeIdent("Short")))
 TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Short")
 
 Inlined(None, Nil, Literal(CharConstant('a')))
@@ -34,7 +34,7 @@ ConstantType(CharConstant('a'))
 Inlined(None, Nil, Block(List(Literal(IntConstant(1)), Literal(IntConstant(2))), Literal(IntConstant(3))))
 ConstantType(IntConstant(3))
 
-Inlined(None, Nil, If(Typed(Literal(BooleanConstant(true)), TypeIdent("Boolean")), Literal(IntConstant(1)), Literal(IntConstant(2))))
+Inlined(None, Nil, If(TypedTree(Literal(BooleanConstant(true)), TypeIdent("Boolean")), Literal(IntConstant(1)), Literal(IntConstant(2))))
 OrType(ConstantType(IntConstant(1)), ConstantType(IntConstant(2)))
 
 Inlined(None, Nil, Match(Literal(StringConstant("a")), List(CaseDef(Literal(StringConstant("a")), None, Block(Nil, Literal(UnitConstant()))))))
@@ -52,7 +52,7 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 Inlined(None, Nil, Match(Literal(StringConstant("f")), List(CaseDef(TypedTree(WildcardPattern(), TypeIdent("String")), None, Block(Nil, Literal(UnitConstant()))))))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Match(Typed(Literal(StringConstant("g")), TypeIdent("Any")), List(CaseDef(Alternatives(List(TypedTree(WildcardPattern(), TypeIdent("String")), TypedTree(WildcardPattern(), TypeIdent("Int")))), None, Block(Nil, Literal(UnitConstant()))))))
+Inlined(None, Nil, Match(TypedTree(Literal(StringConstant("g")), TypeIdent("Any")), List(CaseDef(Alternatives(List(TypedTree(WildcardPattern(), TypeIdent("String")), TypedTree(WildcardPattern(), TypeIdent("Int")))), None, Block(Nil, Literal(UnitConstant()))))))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Match(Literal(StringConstant("h")), List(CaseDef(WildcardPattern(), Some(Literal(BooleanConstant(false))), Block(Nil, Literal(UnitConstant()))))))
@@ -112,7 +112,7 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 Inlined(None, Nil, Block(List(DefDef("f7", List(TypeParamClause(List(TypeDef("T", TypeBoundsTree(Inferred(), Inferred())))), TermParamClause(List(ValDef("x", TypeIdent("T"), None)))), Singleton(Ident("x")), Some(Ident("x")))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f8", List(TermParamClause(List(ValDef("i", Annotated(Applied(Inferred(), List(TypeIdent("Int"))), Apply(Select(New(Inferred()), "<init>"), Nil)), None)))), TypeIdent("Int"), Some(Literal(IntConstant(9))))), Apply(Ident("f8"), List(Typed(Repeated(List(Literal(IntConstant(1)), Literal(IntConstant(2)), Literal(IntConstant(3))), Inferred()), Inferred())))))
+Inlined(None, Nil, Block(List(DefDef("f8", List(TermParamClause(List(ValDef("i", Annotated(Applied(Inferred(), List(TypeIdent("Int"))), Apply(Select(New(Inferred()), "<init>"), Nil)), None)))), TypeIdent("Int"), Some(Literal(IntConstant(9))))), Apply(Ident("f8"), List(TypedTree(Repeated(List(Literal(IntConstant(1)), Literal(IntConstant(2)), Literal(IntConstant(3))), Inferred()), Inferred())))))
 TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
 Inlined(None, Nil, Block(List(DefDef("f9", List(TermParamClause(List(ValDef("i", ByName(TypeIdent("Int")), None)))), TypeIdent("Int"), Some(Ident("i")))), Literal(UnitConstant())))

@@ -42,7 +42,7 @@ object Varargs {
     import quotes.reflect._
     def rec(tree: Term): Option[Seq[Expr[T]]] = tree match {
       case Repeated(elems, _) => Some(elems.map(x => x.asExpr.asInstanceOf[Expr[T]]))
-      case Typed(e, _) => rec(e)
+      case TypedTree(e: Term, _) => rec(e)
       case Block(Nil, e) => rec(e)
       case Inlined(_, Nil, e) => rec(e)
       case _  => None

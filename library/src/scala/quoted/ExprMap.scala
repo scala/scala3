@@ -56,12 +56,12 @@ trait ExprMap:
           tree
         case New(tpt) =>
           New.copy(tree)(transformTypeTree(tpt)(owner))
-        case Typed(expr, tpt) =>
+        case TypedTree(expr: Term, tpt) =>
           val tp = tpt.tpe match
             case AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "<repeated>"), List(tp0: TypeRepr)) =>
               TypeRepr.of[Seq].appliedTo(tp0)
             case tp => tp
-          Typed.copy(tree)(transformTerm(expr, tp)(owner), transformTypeTree(tpt)(owner))
+          TypedTree.copy(tree)(transformTerm(expr, tp)(owner), transformTypeTree(tpt)(owner))
         case tree: NamedArg =>
           NamedArg.copy(tree)(tree.name, transformTerm(tree.value, tpe)(owner))
         case Assign(lhs, rhs) =>

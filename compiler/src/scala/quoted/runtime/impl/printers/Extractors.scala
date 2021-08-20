@@ -88,8 +88,8 @@ object Extractors {
         this += "Literal(" += const += ")"
       case New(tpt) =>
         this += "New(" += tpt += ")"
-      case Typed(expr, tpt) =>
-        this += "Typed(" += expr += ", "  += tpt += ")"
+      case TypedTree(tree, tpt) =>
+        this += "TypedTree(" += tree += ", "  += tpt += ")"
       case NamedArg(name, arg) =>
         this += "NamedArg(\"" += name += "\", " += arg += ")"
       case Assign(lhs, rhs) =>
@@ -174,8 +174,6 @@ object Extractors {
         this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
       case Alternatives(patterns) =>
         this += "Alternatives(" ++= patterns += ")"
-      case TypedTree(tree, tpt) =>
-        this += "TypedTree(" += tree += ", " += tpt += ")"
     }
 
     def visitConstant(x: Constant): this.type = x match {

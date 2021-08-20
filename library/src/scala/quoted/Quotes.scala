@@ -145,7 +145,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |                             +- Inlined
    *           |                             +- SelectOuter
    *           |                             +- While
-   *           |                             +---+- Typed
+   *           |                             +---+- Typed (deprecated)
    *           |                                /
    *           +- TypedTree +------------------·
    *           +- WildcardPattern
@@ -1119,6 +1119,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end SuperMethods
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Typed` */
+    @deprecated("Use TypedTree", "3.1.0")
     given TypedTypeTest: TypeTest[Tree, Typed]
 
     /** Tree representing a type ascription `x: T` in the source code.
@@ -1126,12 +1127,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Also represents a pattern that contains a term `x`.
      *  Other `: T` patterns use the more general `TypedTree`.
      */
+    @deprecated("Use TypedTree", "3.1.0")
     type Typed <: Term & TypedTree
 
     /** Module object of `type Typed`  */
+    @deprecated("Use TypedTree", "3.1.0")
     val Typed: TypedModule
 
     /** Methods of the module object `val Typed` */
+    @deprecated("Use TypedTree", "3.1.0")
     trait TypedModule { this: Typed.type =>
 
       /** Create a type ascription `<x: Term>: <tpt: TypeTree>` */
@@ -1144,9 +1148,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Typed` available without any imports */
+    @deprecated("Use TypedTree", "3.1.0")
     given TypedMethods: TypedMethods
 
     /** Extension methods of `Typed` */
+    @deprecated("Use TypedTree", "3.1.0")
     trait TypedMethods:
       extension (self: Typed)
         def expr: Term
@@ -4336,7 +4342,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             x
           case New(tpt) =>
             foldTree(x, tpt)(owner)
-          case Typed(expr, tpt) =>
+          case TypedTree(expr, tpt) =>
             foldTree(foldTree(x, expr)(owner), tpt)(owner)
           case NamedArg(_, arg) =>
             foldTree(x, arg)(owner)
@@ -4400,7 +4406,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case Bind(_, body) => foldTree(x, body)(owner)
           case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun)(owner), implicits)(owner), patterns)(owner)
           case Alternatives(patterns) => foldTrees(x, patterns)(owner)
-          case TypedTree(tree1, tpt) => foldTree(foldTree(x, tree1)(owner), tpt)(owner)
         }
       }
     end TreeAccumulator
@@ -4516,8 +4521,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             tree
           case New(tpt) =>
             New.copy(tree)(transformTypeTree(tpt)(owner))
-          case Typed(expr, tpt) =>
-            Typed.copy(tree)(transformTerm(expr)(owner), transformTypeTree(tpt)(owner))
+          case TypedTree(expr: Term, tpt) =>
+            TypedTree.copy(tree)(transformTerm(expr)(owner), transformTypeTree(tpt)(owner))
           case tree: NamedArg =>
             NamedArg.copy(tree)(tree.name, transformTerm(tree.value)(owner))
           case Assign(lhs, rhs) =>

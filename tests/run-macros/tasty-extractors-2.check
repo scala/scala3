@@ -4,22 +4,22 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 Inlined(None, Nil, Block(List(DefDef("$anonfun", List(TermParamClause(List(ValDef("x", TypeIdent("Int"), None)))), Inferred(), Some(Ident("x")))), Closure(Ident("$anonfun"), None)))
 AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Function1"), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
 
-Inlined(None, Nil, Typed(Ident("???"), Inferred()))
+Inlined(None, Nil, TypedTree(Ident("???"), Inferred()))
 AnnotatedType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Any"), Apply(Select(New(Inferred()), "<init>"), Nil))
 
 Inlined(None, Nil, Literal(IntConstant(1)))
 ConstantType(IntConstant(1))
 
-Inlined(None, Nil, Typed(Literal(IntConstant(1)), TypeIdent("Int")))
+Inlined(None, Nil, TypedTree(Literal(IntConstant(1)), TypeIdent("Int")))
 TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
-Inlined(None, Nil, Typed(Ident("Nil"), Applied(TypeIdent("List"), List(TypeIdent("Int")))))
+Inlined(None, Nil, TypedTree(Ident("Nil"), Applied(TypeIdent("List"), List(TypeIdent("Int")))))
 AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "immutable")), "List"), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
 
-Inlined(None, Nil, Typed(Apply(Select(New(TypeIdent("Baz")), "<init>"), Nil), Applied(TypeIdent("&"), List(TypeIdent("Foo"), TypeIdent("Bar")))))
+Inlined(None, Nil, TypedTree(Apply(Select(New(TypeIdent("Baz")), "<init>"), Nil), Applied(TypeIdent("&"), List(TypeIdent("Foo"), TypeIdent("Bar")))))
 AndType(TypeRef(ThisType(TypeRef(NoPrefix(), "<empty>")), "Foo"), TypeRef(ThisType(TypeRef(NoPrefix(), "<empty>")), "Bar"))
 
-Inlined(None, Nil, Typed(Literal(IntConstant(1)), Applied(TypeIdent("|"), List(TypeIdent("Int"), TypeIdent("String")))))
+Inlined(None, Nil, TypedTree(Literal(IntConstant(1)), Applied(TypeIdent("|"), List(TypeIdent("Int"), TypeIdent("String")))))
 OrType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "String"))
 
 Inlined(None, Nil, Block(List(ClassDef("Foo", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), None, Nil)), Literal(UnitConstant())))

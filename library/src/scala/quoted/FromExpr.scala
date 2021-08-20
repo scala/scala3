@@ -86,7 +86,7 @@ object FromExpr {
       def rec(tree: Term): Option[T] = tree match {
         case Block(stats, e) => if stats.isEmpty then rec(e) else None
         case Inlined(_, bindings, e) => if bindings.isEmpty then rec(e) else None
-        case Typed(e, _) => rec(e)
+        case TypedTree(e: Term, _) => rec(e)
         case _ =>
           tree.tpe.widenTermRefByName match
             case ConstantType(c) => Some(c.value.asInstanceOf[T])

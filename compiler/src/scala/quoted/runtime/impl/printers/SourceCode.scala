@@ -399,7 +399,7 @@ object SourceCode {
           case _ => printQualTree(fn)
         }
         val args1 = args match {
-          case init :+ Typed(Repeated(Nil, _), _) => init // drop empty var args at the end
+          case init :+ TypedTree(Repeated(Nil, _), _) => init // drop empty var args at the end
           case _ => args
         }
 
@@ -428,7 +428,7 @@ object SourceCode {
           inSquare(this += id)
         this
 
-      case Typed(term, tpt) =>
+      case TypedTree(term: Term, tpt) =>
         tpt.tpe match {
           case Types.Repeated(_) =>
             printTree(term)
@@ -623,7 +623,7 @@ object SourceCode {
           case Select(qual, _) => rec(qual)
           case Apply(fn, _) => rec(fn)
           case TypeApply(fn, _) => rec(fn)
-          case Typed(_, _) => this += doubleLineBreak()
+          case TypedTree(_, _) => this += doubleLineBreak()
           case _ => this += lineBreak()
         }
         next match {
