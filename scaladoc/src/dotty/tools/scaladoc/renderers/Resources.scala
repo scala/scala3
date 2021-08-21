@@ -105,7 +105,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/components/Input.js",
       "scripts/components/FilterGroup.js",
       "scripts/components/Filter.js",
-      "scripts/searchbar.js"
+      "scripts/scaladoc-scalajs.js"
     ).map(dottyRes)
 
     val urls = List(

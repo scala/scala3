@@ -24,6 +24,7 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+import org.scalajs.linker.interface.ModuleInitializer
 
 object DottyJSPlugin extends AutoPlugin {
   import Build._
@@ -1246,6 +1247,7 @@ object Build {
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
+  val renderScaladocScalajsToFile = inputKey[Unit]("Copy the output of the scaladoc js files")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
@@ -1254,8 +1256,12 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
+      Compile / scalaJSMainModuleInitializer := (sys.env.get("scaladoc.projectFormat") match {
+        case Some("md") => Some(ModuleInitializer.mainMethod("dotty.tools.scaladoc.Main", "markdownMain"))
+        case _ => Some(ModuleInitializer.mainMethod("dotty.tools.scaladoc.Main", "main"))
+      }),
       Test / fork := false,
-      scalaJSUseMainModuleInitializer := true,
+      Compile / scalaJSUseMainModuleInitializer := true,
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
     )
 
@@ -1309,7 +1315,7 @@ object Build {
     ).
     settings(
       Compile / resourceGenerators += Def.task {
-        val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "searchbar.js"
+        val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "scaladoc-scalajs.js"
         sbt.IO.copyFile((`scaladoc-js` / Compile / fullOptJS).value.data, jsDestinationFile)
         Seq(jsDestinationFile)
       }.taskValue,
@@ -1438,6 +1444,23 @@ object Build {
           Seq("-usejavacp", "-snippet-compiler:scaladoc-testcases/docs=compile", "-siteroot", "scaladoc-testcases/docs")
         )
       }.value,
+
+      renderScaladocScalajsToFile := Def.inputTask {
+        val extraArgs = spaceDelimited("<arg>").parsed
+        val (destJS, destCSS, csses) = extraArgs match {
+          case js :: css :: tail => (js, css, tail)
+          case js :: Nil => (js, "", Nil)
+          case _ => throw new IllegalArgumentException("No js destination provided")
+        }
+        val jsDestinationFile: File = Paths.get(destJS).toFile
+        sbt.IO.copyFile((`scaladoc-js` / Compile / fullOptJS).value.data, jsDestinationFile)
+        csses.map { file =>
+          val cssDesitnationFile = Paths.get(destCSS).toFile / file
+          val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / file
+          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
+          cssDesitnationFile
+        }
+      }.evaluated,
 
       Test / buildInfoKeys := Seq[BuildInfoKey](
         (Test / Build.testcasesOutputDir),

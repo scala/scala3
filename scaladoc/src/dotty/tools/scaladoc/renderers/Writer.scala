@@ -18,8 +18,8 @@ trait Writer(using ctx: DocContext) extends Locations:
     if !Files.exists(absPath.getParent) then Files.createDirectories(absPath.getParent)
     absPath
 
-  def write(dri: DRI, content: AppliedTag): String =
-    val path = absolutePath(dri)
+  def write(dri: DRI, content: AppliedTag, extension: String = "html"): String =
+    val path = absolutePath(dri, extension)
     Files.write(dest(path), content.toString.getBytes)
     path
 
