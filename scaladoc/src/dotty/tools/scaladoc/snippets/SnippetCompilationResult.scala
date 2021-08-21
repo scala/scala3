@@ -2,14 +2,11 @@ package dotty.tools.scaladoc
 package snippets
 
 import dotty.tools.io.{ AbstractFile }
+import dotty.tools.dotc.util.{ SourcePosition, SrcPos }
 
-case class Position(line: Int, column: Int, sourceLine: String, relativeLine: Int)
+case class Position(srcPos: SourcePosition, relativeLine: Int)
 
-case class SnippetCompilerMessage(position: Option[Position], message: String, level: MessageLevel):
-  def getSummary: String =
-    position.fold(s"${level.text}: ${message}") { pos =>
-      s"At ${pos.line}:${pos.column}:\n${pos.sourceLine}${level.text}: ${message}"
-    }
+case class SnippetCompilerMessage(position: Option[Position], message: String, level: MessageLevel)
 
 case class SnippetCompilationResult(
   wrappedSnippet: WrappedSnippet,
@@ -17,7 +14,16 @@ case class SnippetCompilationResult(
   result: Option[AbstractFile],
   messages: Seq[SnippetCompilerMessage]
 ):
-  def getSummary: String = messages.map(_.getSummary).mkString("\n")
+  def reportMessages()(using CompilerContext) = messages.foreach {
+    case SnippetCompilerMessage(posOpt, msg, level) =>
+      val pos: SrcPos = posOpt.fold(dotty.tools.dotc.util.NoSourcePosition)(_.srcPos)
+      level match {
+        case MessageLevel.Info => report.log(msg, pos)
+        case MessageLevel.Warning => report.warning(msg, pos)
+        case MessageLevel.Error => report.error(msg, pos)
+        case MessageLevel.Debug => report.log(msg, pos)
+      }
+  }
 
 enum MessageLevel(val text: String):
   case Info extends MessageLevel("Info")

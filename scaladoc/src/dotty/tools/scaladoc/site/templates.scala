@@ -68,6 +68,7 @@ case class TemplateFile(
     lazy val snippetCheckingFunc: SnippetChecker.SnippetCheckingFunc =
       val path = Some(Paths.get(file.getAbsolutePath))
       val pathBasedArg = ssctx.snippetCompilerArgs.get(path)
+      val sourceFile = dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(path.get), scala.io.Codec.UTF8)
       (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
           val compilerData = SnippetCompilerData(
@@ -76,10 +77,9 @@ case class TemplateFile(
             Nil,
             SnippetCompilerData.Position(configOffset - 1, 0)
           )
-          ssctx.snippetChecker.checkSnippet(str, Some(compilerData), arg, lineOffset).collect {
+          ssctx.snippetChecker.checkSnippet(str, Some(compilerData), arg, lineOffset, sourceFile).collect {
               case r: SnippetCompilationResult if !r.isSuccessful =>
-                val msg = s"In static site (${file.getAbsolutePath}):\n${r.getSummary}"
-                report.error(msg)(using ssctx.outerCtx)
+                r.reportMessages()(using ssctx.outerCtx)
                 r
               case r => r
           }

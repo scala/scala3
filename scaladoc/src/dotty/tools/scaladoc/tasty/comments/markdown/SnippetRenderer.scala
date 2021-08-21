@@ -125,7 +125,7 @@ object SnippetRenderer:
       else
         val content = messages
           .map { msg =>
-            s"""<span class="${compileMessageCSSClass(msg)}">${msg.getSummary}</span>"""
+            s"""<span class="${compileMessageCSSClass(msg)}">${msg.message}</span>"""
           }
           .mkString("<br>")
         s"""<hr>$content"""
