@@ -38,6 +38,7 @@ body, button, input {
   display: flex;
   flex-direction: column;
   z-index: 5;
+  border-right: solid var(--leftbar-border);
 }
 main {
   min-height: calc(100vh - var(--footer-height) - 24px);
