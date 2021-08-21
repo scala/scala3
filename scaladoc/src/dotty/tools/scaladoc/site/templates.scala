@@ -14,6 +14,7 @@ import com.vladsch.flexmark.ext.yaml.front.matter.{AbstractYamlFrontMatterVisito
 import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
 import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.html.HtmlRenderer
+import com.vladsch.flexmark.formatter.Formatter
 import liqp.Template
 import scala.collection.JavaConverters._
 
@@ -88,7 +89,7 @@ case class TemplateFile(
     if (ctx.resolving.contains(file.getAbsolutePath))
       throw new RuntimeException(s"Cycle in templates involving $file: ${ctx.resolving}")
 
-    val layoutTemplate = layout.map(name =>
+    val layoutTemplate = layout.filter(_ => ssctx.args.projectFormat == "html").map(name =>
       ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}")))
 
     def asJavaElement(o: Object): Object = o match
@@ -107,9 +108,15 @@ case class TemplateFile(
       val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
       val parsedMd = parser.parse(rendered)
       val processed = FlexmarkSnippetProcessor.processSnippets(parsedMd, None, snippetCheckingFunc, withContext = false)(using ssctx.outerCtx)
-      HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
 
-    layoutTemplate match
-      case None => ResolvedPage(code, resources ++ ctx.resources)
-      case Some(layoutTemplate) =>
-        layoutTemplate.resolveInner(ctx.nest(code, file, resources))
+      ssctx.args.projectFormat match
+        case "html" => HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
+        case "md" =>
+          FrontMatterRenderer.render(settings) +
+          Formatter.builder(defaultMarkdownOptions).build().render(processed)
+
+
+    if layoutTemplate.isEmpty || ssctx.args.projectFormat == "md" then
+      ResolvedPage(code, resources ++ ctx.resources)
+    else
+      layoutTemplate.get.resolveInner(ctx.nest(code, file, resources))
