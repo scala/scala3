@@ -67,9 +67,14 @@ object FlexmarkSnippetProcessor:
 
         val fullSnippet = Seq(snippetImports, snippet).mkString("\n").trim
         val snippetCompilationResult = cf(fullSnippet, lineOffset, argOverride) match {
-          case result if !withContext =>
+          case Some(result @ SnippetCompilationResult(wrapped, _, _, messages)) if !withContext =>
             node.setContentString(fullSnippet)
-            result
+            val innerLineOffset = wrapped.innerLineOffset
+            Some(result.copy(messages = result.messages.map {
+              case m @ SnippetCompilerMessage(Some(pos), _, _) =>
+                m.copy(position = Some(pos.copy(relativeLine = pos.relativeLine - innerLineOffset)))
+              case m => m
+            }))
           case result@Some(SnippetCompilationResult(wrapped, _, _, _)) =>
             node.setContentString(wrapped.snippet)
             result
