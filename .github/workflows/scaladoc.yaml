@@ -52,6 +52,9 @@ jobs:
       - name: Generate testcases documentation
         run: ./project/scripts/sbt scaladoc/generateTestcasesDocumentation
 
+      - name: Copy docs
+        run: ./bin/scala project/scripts/processDocs.sc 
+
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
