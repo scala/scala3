@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Extension Methods"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/extension-methods.html
+type: section
+num: 19
+previous-page: /scala3/reference/contextual/given-imports
+next-page: /scala3/reference/contextual/type-classes
 ---
 
 Extension methods allow one to add methods to a type after the type is defined. Example:
@@ -61,7 +63,7 @@ the right-associative operator `+:` to an extension method. This is analogous
 to the implementation of right binding operators as normal methods. The Scala
 compiler preprocesses an infix operation `x +: xs` to `xs.+:(x)`, so the extension
 method ends up being applied to the sequence as first argument (in other words, the
-two swaps cancel each other out). See [here for details](./right-associative-extension-methods.md).
+two swaps cancel each other out). See [here for details](./right-associative-extension-methods.html).
 
 ### Generic Extensions
 
@@ -283,9 +285,9 @@ def position(s: String)(ch: Char, n: Int): Int =
 ### Syntax
 
 Here are the syntax changes for extension methods and collective extensions relative
-to the [current syntax](../syntax.md).
+to the [current syntax](../syntax.html).
 
-```ebnf
+```
 BlockStat         ::=  ... | Extension
 TemplateStat      ::=  ... | Extension
 TopStat           ::=  ... | Extension

@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Type Class Derivation"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/derivation.html
+type: section
+num: 21
+previous-page: /scala3/reference/contextual/type-classes
+next-page: /scala3/reference/contextual/multiversal-equality
 ---
 
 Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple
@@ -336,7 +338,7 @@ inline def derived[A](using gen: K0.Generic[A]): Eq[A] =
 The framework described here enables all three of these approaches without mandating any of them.
 
 For a brief discussion on how to use macros to write a type class `derived`
-method please read more at [How to write a type class `derived` method using macros](./derivation-macro.md).
+method please read more at [How to write a type class `derived` method using macros](./derivation-macro.html).
 
 ### Deriving instances elsewhere
 
@@ -354,7 +356,7 @@ hand side of this definition in the same way as an instance defined in ADT compa
 
 ### Syntax
 
-```ebnf
+```
 Template          ::=  InheritClauses [TemplateBody]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]

@@ -1,8 +1,10 @@
 ---
-title: Scaladoc settings
+layout: multipage-overview
+title: Settings
+partof: scala3-scaladoc
+num: 8
+previous-page: search-engine
 ---
-
-# {{page.title}}
 
 This chapter lists the configuration options that can be used when calling scaladoc. Some of the information shown here can be found by calling scaladoc with the `-help` flag.
 
@@ -77,7 +79,7 @@ In such case paths used in templates will be relativized against `<sub-path>`
 Mapping between regexes matching classpath entries and external documentation.
 
 Example external mapping is:
-`-external-mappings:.*scala.*::scaladoc3::http://dotty.epfl.ch/api/,.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/`
+`-external-mappings:.*scala.*::scaladoc3::https://scala-lang.org/api/3.x/,.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/`
 
 A mapping is of the form '\<regex>::\[scaladoc3|scaladoc|javadoc]::\<path>'. You can supply several mappings, separated by commas, as shown in the example.
 
@@ -158,7 +160,7 @@ compile - Enables snippet checking.
 nocompile - Disables snippet checking.
 fail - Enables snippet checking, asserts that snippet doesn't compile.
 
-The fail flag comes in handy for snippets that present that some action would eventually fail during compilation, e. g. [Opaques page](docs/reference/other-new-features/opaques.html)
+The fail flag comes in handy for snippets that present that some action would eventually fail during compilation, e. g. [Opaques page]({% link _scala3-reference/other-new-features/opaques.md %})
 
 Example usage:
 

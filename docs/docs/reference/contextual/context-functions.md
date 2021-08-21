@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Context Functions"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/context-functions.html
+type: section
+num: 23
+previous-page: /scala3/reference/contextual/multiversal-equality
+next-page: /scala3/reference/contextual/conversions
 ---
 
 _Context functions_ are functions with (only) context parameters.
@@ -151,4 +153,4 @@ val s =
 For more information, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
 (which uses a different syntax that has been superseded).
 
-[More details](./context-functions-spec.md)
+[More details](./context-functions-spec.html)

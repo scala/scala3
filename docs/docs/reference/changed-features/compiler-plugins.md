@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Changes in Compiler Plugins"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/compiler-plugins.html
+type: section
+num: 67
+previous-page: /scala3/reference/changed-features/eta-expansion
+next-page: /scala3/reference/changed-features/lazy-vals-init
 ---
 
 Compiler plugins are supported by Dotty (and Scala 3) since 0.9. There are two notable changes

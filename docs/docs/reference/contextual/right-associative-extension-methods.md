@@ -1,7 +1,7 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "Right-Associative Extension Methods: Details"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/right-associative-extension-methods.html
 ---
 
 The most general form of leading parameters of an extension method is as follows:

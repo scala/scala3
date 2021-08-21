@@ -1,8 +1,11 @@
 ---
+layout: multipage-overview
 title: Linking documentation
+partof: scala3-scaladoc
+num: 3
+previous-page: docstrings
+next-page: static-site
 ---
-
-# {{ page.title }}
 
 Scaladoc's main feature is creating API documentation from code comments.
 

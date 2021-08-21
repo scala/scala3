@@ -1,8 +1,11 @@
 ---
+layout: multipage-overview
 title: Site versioning
+partof: scala3-scaladoc
+num: 6
+previous-page: blog
+next-page: search-engine
 ---
-
-# {{ page.title }}
 
 Scaladoc provides a convenient way to switch between different versions of the documentation. The feature is useful if we want to expose older docs for users that didn't migrate to the new version of our library.
 
@@ -33,4 +36,4 @@ doc / scalacOptions ++= Seq("-versions-dictionary-url", "https://dotty.epfl.ch/v
 
 Providing a JSON file via `-versions-dictionary-url` enables scaladoc to link between versions. It is also convenient to be able to change the revision label in the drop-down menu. Everything will change automatically.
 
-![](images/scaladoc/nightly.gif)
+![]({{ site.baseurl }}/resources/images/scala3/scaladoc/nightly.gif)

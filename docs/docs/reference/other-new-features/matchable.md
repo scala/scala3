@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "The Matchable Trait"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/matchable.html
+type: section
+num: 43
+previous-page: /scala3/reference/other-new-features/kind-polymorphism
+next-page: /scala3/reference/other-new-features/threadUnsafe-annotation
 ---
 
 A new trait `Matchable` controls the ability to pattern match.
@@ -132,7 +134,7 @@ Here, universal `equals` will return true for
   Meter(10).equals(Second(10))
 ```
 
-even though this is clearly false mathematically. With [multiversal equality](../contextual/multiversal-equality.md) one can mitigate that problem somewhat by turning
+even though this is clearly false mathematically. With [multiversal equality](../contextual/multiversal-equality.html) one can mitigate that problem somewhat by turning
 
 ```scala
   Meter(10) == Second(10)

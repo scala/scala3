@@ -1,7 +1,7 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "Context Functions - More Details"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/context-functions-spec.html
 ---
 
 ## Syntax
@@ -66,7 +66,7 @@ itself a context function literal. This is analogous to the automatic
 insertion of `scala.Function0` around expressions in by-name argument position.
 
 Context function types generalize to `N > 22` in the same way that function types do, see [the corresponding
-documentation](../dropped-features/limit22.md).
+documentation](../dropped-features/limit22.html).
 
 ## Examples
 

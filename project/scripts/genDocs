@@ -19,7 +19,7 @@ mkdir -pv "$PREVIOUS_SNAPSHOTS_DIR"
 git remote add doc-remote "https://github.com/lampepfl/dotty-website.git"
 git fetch doc-remote gh-pages
 git checkout gh-pages
-(cp -vr [03].*/ "$PREVIOUS_SNAPSHOTS_DIR"; true)  # Don't fail if no `3.*` found to copy
+(cp -vr 3.*/ 0.*/ docs/ blog/ index.html "$PREVIOUS_SNAPSHOTS_DIR"; true)  # Don't fail if no `3.*` found to copy
 git checkout "$GIT_HEAD"
 
 ### Generate the current snapshot of the website ###
@@ -34,5 +34,5 @@ if [ ! -d "$SITE_OUT_DIR" ]; then
 fi
 
 ### Move previous versions' snapshots to _site ###
-mv -v "$PREVIOUS_SNAPSHOTS_DIR"/* "$SITE_OUT_DIR"
+mv -vf "$PREVIOUS_SNAPSHOTS_DIR"/* "$SITE_OUT_DIR"
 rm -rf "$PREVIOUS_SNAPSHOTS_DIR"

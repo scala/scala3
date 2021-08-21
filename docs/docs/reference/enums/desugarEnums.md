@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Translation of Enums and ADTs"
-movedTo: https://docs.scala-lang.org/scala3/reference/enums/desugarEnums.html
+type: section
+num: 12
+previous-page: /scala3/reference/enums/adts
+next-page: /scala3/reference/contextual
 ---
 
 The compiler expands enums and their cases to code that only uses
@@ -155,7 +157,7 @@ map into `case class`es or `val`s.
    case C(ps) extends P1, ..., Pn
    ```
    are treated specially. A call `C(ts)` of the apply method is ascribed the underlying type
-   `P1 & ... & Pn` (dropping any [transparent traits](../other-new-features/transparent-traits.md))
+   `P1 & ... & Pn` (dropping any [transparent traits](../other-new-features/transparent-traits.html))
    as long as that type is still compatible with the expected type at the point of application.
    A call `t.copy(ts)` of `C`'s `copy` method is treated in the same way.
 

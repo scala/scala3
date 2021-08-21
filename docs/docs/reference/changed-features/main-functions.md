@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Main Methods"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/main-functions.html
+type: section
+num: 69
+previous-page: /scala3/reference/changed-features/lazy-vals-init
+next-page: /scala3/reference/dropped-features
 ---
 
 Scala 3 offers a new way to define programs that can be invoked from the command line:
@@ -57,7 +59,7 @@ The Scala compiler generates a program from a `@main` method `f` as follows:
  - The class has a static method `main` with the usual signature. It takes an `Array[String]`
    as argument and returns `Unit`.
  - The generated `main` method calls method `f` with arguments converted using
-   methods in the [`scala.util.CommandLineParser`](https://dotty.epfl.ch/api/scala/util/CommandLineParser$.html) object.
+   methods in the [`scala.util.CommandLineParser`](https://scala-lang.org/api/3.x/scala/util/CommandLineParser$.html) object.
 
 For instance, the `happyBirthDay` method above would generate additional code equivalent to the following class:
 
@@ -85,5 +87,5 @@ object happyBirthday extends App:
   ...
 ```
 
-The previous functionality of `App`, which relied on the "magic" [`DelayedInit`](../dropped-features/delayed-init.md) trait, is no longer available. [`App`](https://dotty.epfl.ch/api/scala/App.html) still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build
+The previous functionality of `App`, which relied on the "magic" [`DelayedInit`]({% link _scala3-reference/dropped-features/delayed-init.md %}) trait, is no longer available. [`App`](https://scala-lang.org/api/3.x/scala/App.html) still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build
 between Scala 2 and Scala 3, it is recommended to use an explicit `main` method with an `Array[String]` argument instead.

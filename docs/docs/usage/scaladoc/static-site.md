@@ -1,8 +1,11 @@
 ---
+layout: multipage-overview
 title: Static documentation
+partof: scala3-scaladoc
+num: 4
+previous-page: linking
+next-page: blog
 ---
-
-# {{ page.title }}
 
 Scaladoc can generate static sites, known from [Jekyll](http://jekyllrb.com/) or [Docusaurus](https://docusaurus.io/).
 Having a combined tool allows providing interaction between static documentation and API, thus allowing the two to blend naturally.
@@ -41,6 +44,7 @@ In Scaladoc, all templates can contain YAML front-matter. The front-matter
 is parsed and put into the `page` variable available in templates via Liquid.
 
 Example front-matter
+
 ```
 ---
 title: My custom title
@@ -51,10 +55,10 @@ Scaladoc uses some predefined properties to controls some aspects of page.
 
 Predefined properties:
 
- - **title** provide page title that will be used in navigation and HTML metadata.
- - **extraCss** additional `.css` files that will be included in this page. Paths should be relative to the documentation root. **This setting is not exported to the template engine.**
- - **extraJs** additional `.js` files that will be included in this page. Paths should be relative to the documentation root. **This setting is not exported to the template engine.**
- - **hasFrame** when set to `false` page will not include default layout (navigation, breadcrumbs, etc.) but only token HTML wrapper to provide metadata and resources (js and css files). **This setting is not exported to the template engine.**
+- **title** provide page title that will be used in navigation and HTML metadata.
+- **extraCss** additional `.css` files that will be included in this page. Paths should be relative to the documentation root. **This setting is not exported to the template engine.**
+- **extraJs** additional `.js` files that will be included in this page. Paths should be relative to the documentation root. **This setting is not exported to the template engine.**
+- **hasFrame** when set to `false` page will not include default layout (navigation, breadcrumbs, etc.) but only token HTML wrapper to provide metadata and resources (js and css files). **This setting is not exported to the template engine.**
 - **layout** - predefined layout to use, see below. **This setting is not exported to the template engine.**
 
 
@@ -105,26 +109,26 @@ Scaladoc by default uses layout of files in `docs` directory to create table of 
 
 ```yaml
 sidebar:
-    - title: Blog
-    - title: My title
-      page: my-page1.md
-    - page: my-page2.md
-    - page: my-page3/subsection
-    - title: Reference
-      subsection:
-        - page: my-page3.md
-    - index: my-page4/index.md
-      subsection:
-        - page: my-page4/my-page4.md
-    - title: My subsection
-      index: my-page5/index.md
-      subsection:
-        - page: my-page5/my-page5.md
-    - index: my-page6/index.md
-      subsection:
-        - index: my-page6/my-page6/index.md
-          subsection:
-            - page: my-page6/my-page6/my-page6.md
+  - title: Blog
+  - title: My title
+    page: my-page1.md
+  - page: my-page2.md
+  - page: my-page3/subsection
+  - title: Reference
+    subsection:
+      - page: my-page3.md
+  - index: my-page4/index.md
+    subsection:
+      - page: my-page4/my-page4.md
+  - title: My subsection
+    index: my-page5/index.md
+    subsection:
+      - page: my-page5/my-page5.md
+  - index: my-page6/index.md
+    subsection:
+      - index: my-page6/my-page6/index.md
+        subsection:
+          - page: my-page6/my-page6/my-page6.md
 ```
 
 The `sidebar` key is mandatory.
@@ -134,16 +138,14 @@ On each level, you can have three different types of entries: `page`, `blog` or 
 - `title` (optional) - title of the page
 - `page` (mandatory) - path to the file that will represent the page, it can be either html or markdown file to be rendered, there is also the possibility to pass the `directory` path. If so, the scaladoc will render the directory and all its content as if there were no `sidebar.yml` basing on its tree structure and index files.
 
-The `page` property
-
-`subsection` accepts nested nodes, these can be either pages or subsections, which allow you to create tree-like navigation. The attributes are:
+The `page` property `subsection` accepts nested nodes, these can be either pages or subsections, which allow you to create tree-like navigation. The attributes are:
 - `title` (optional) - title of the page
 - `index` (optional) - path to the file that will represent the index file of the subsection, it can be either html or markdown file to be rendered
 - `subsection` (mandatory) - nested nodes, can be either pages or subsections
 
 In `subsection`s, you can omit `title` or `index`, however not specifying any of these properties prevents you from specifying the title of the section.
 
-`blog` is a special node represented by simple entry `- title: Blog` with no other attributes. All your blog posts will be automatically linked under this section. You can read more about the blog [here](blog.md).
+`blog` is a special node represented by simple entry `- title: Blog` with no other attributes. All your blog posts will be automatically linked under this section. You can read more about the blog [here]({% link _overviews/scala3-scaladoc/blog.md %}).
 
 ```
 ├── blog
@@ -198,5 +200,4 @@ For example, consider the following situation:
 You can refer to the assets from within any of the files using markdown links:
 
 ```
-This is my blog post. Here is the image ![](my_image.png) and here is my [pdf](my_file.pdf)
-```
+This is my blog post. Here is the image ![](my_image.png) and here is my [pdf](my_file.pdf)```

@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Context Bounds"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/context-bounds.html
+type: section
+num: 17
+previous-page: /scala3/reference/contextual/using-clauses
+next-page: /scala3/reference/contextual/given-imports
 ---
 
 A context bound is a shorthand for expressing the common pattern of a context parameter that depends on a type parameter. Using a context bound, the `maximum` function of the last section can be written like this:
