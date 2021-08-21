@@ -14,13 +14,14 @@ import com.vladsch.flexmark.ext.yaml.front.matter.{AbstractYamlFrontMatterVisito
 import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
 import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
+import com.vladsch.flexmark.formatter.Formatter
 
 import scala.collection.JavaConverters._
 
 val docsRootDRI: DRI = DRI(location = "docs/index", symbolUUID = staticFileSymbolUUID)
 val apiPageDRI: DRI = DRI(location = "api/index")
 
-val defaultMarkdownOptions: DataHolder =
+def defaultMarkdownOptions(using ctx: StaticSiteContext): DataHolder =
   new MutableDataSet()
     .setFrom(ParserEmulationProfile.COMMONMARK.getOptions)
     .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
@@ -36,7 +37,10 @@ val defaultMarkdownOptions: DataHolder =
       YamlFrontMatterExtension.create(),
       StrikethroughExtension.create(),
       WikiLinkExtension.create(),
-      tasty.comments.markdown.SnippetRenderingExtension
+      (ctx.args.projectFormat match
+        case "html" => tasty.comments.markdown.SnippetRenderingExtension
+        case "md" => tasty.comments.markdown.SnippetFormattingExtension
+      ),
     ))
 
 def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
@@ -55,9 +59,9 @@ def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
 final val ConfigSeparator = "---"
 final val LineSeparator = "\n"
 
-val yamlParser: Parser = Parser.builder(defaultMarkdownOptions).build()
+def yamlParser(using ctx: StaticSiteContext): Parser = Parser.builder(defaultMarkdownOptions).build()
 
-def loadTemplateFile(file: File): TemplateFile = {
+def loadTemplateFile(file: File)(using ctx: StaticSiteContext): TemplateFile = {
   val lines = Files.readAllLines(file.toPath).asScala.toList
 
   val (config, content) = if (lines.head == ConfigSeparator) {
@@ -77,7 +81,7 @@ def loadTemplateFile(file: File): TemplateFile = {
   val globalKeys = Set("extraJS", "extraCSS", "layout", "hasFrame", "name", "title")
   val allSettings = yamlCollector.getData.asScala.toMap.transform(getSettingValue)
   val (global, inner) = allSettings.partition((k,_) => globalKeys.contains(k))
-  val settings = Map("page" -> inner)
+  val settings = Map("page" -> inner) ++ global
 
   def stringSetting(settings: Map[String, Object], name: String): Option[String] = settings.get(name).map {
     case List(elem: String) => elem

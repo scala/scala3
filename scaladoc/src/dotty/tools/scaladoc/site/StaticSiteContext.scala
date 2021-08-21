@@ -40,7 +40,7 @@ class StaticSiteContext(
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
     val dirs: Array[File] = Option(layoutRoot.listFiles()).getOrElse(Array())
-    dirs.map { it => loadTemplateFile(it) }.map { it => it.name -> it }.toMap
+    dirs.map { it => loadTemplateFile(it)(using this) }.map { it => it.name -> it }.toMap
 
   lazy val sideBarConfig =
     val sidebarFile = root.toPath.resolve("sidebar.yml")
@@ -96,7 +96,7 @@ class StaticSiteContext(
               val msg = s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}"
               throw new java.lang.RuntimeException(msg)
 
-        val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)
+        val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)(using this)
 
         def dateFrom(p: LoadedTemplate, default: String = "1900-01-01"): String =
           val pageSettings = p.templateFile.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
