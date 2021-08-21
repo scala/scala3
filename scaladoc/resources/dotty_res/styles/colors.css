@@ -14,7 +14,9 @@
   --grey600: hsl(193, 14%, 52%);
   --grey700: hsl(193, 14%, 42%);
   --grey800: hsl(193, 12%, 28%);
+  --grey850: hsl(193, 12%, 22%);
   --grey900: hsl(193, 12%, 16%);
+  --grey930: hsl(193, 11%, 14%);
 
   /* Blue */
   --blue100: hsl(200, 64%, 92%);
@@ -73,6 +75,7 @@
   --leftbar-current-fg: var(--blue500);
   --leftbar-hover-bg: var(--blue100);
   --leftbar-hover-fg: var(--grey900);
+  --leftbar-border: var(--grey200);
 
   --footer-bg: var(--white);
   --footer-fg: var(--grey700);
@@ -90,43 +93,44 @@
 :root.theme-dark {
   color-scheme: dark;
 
-  --border-light: var(--blue800);
-  --border-medium: var(--blue700);
+  --border-light: var(--grey800);
+  --border-medium: var(--grey700);
 
-  --body-bg: var(--blue900);
+  --body-bg: var(--grey930);
   --body-fg: var(--grey300);
-  --title-fg: var(--blue200);
+  --title-fg: var(--grey200);
 
   --active-bg: var(--blue500);
   --active-bg-shadow: var(--blue400);
   --active-fg: var(--grey300);
 
-  --inactive-bg: var(--grey800);
-  --inactive-bg-shadow: var(--grey600);
-  --inactive-fg: var(--grey600);
+  --inactive-bg: var(--grey700);
+  --inactive-bg-shadow: var(--grey500);
+  --inactive-fg: var(--grey500);
 
-  --code-bg: var(--blue800);
+  --code-bg: var(--grey850);
   --code-fg: var(--grey400);
   --symbol-fg: var(--grey300);
-  --documentable-bg: var(--blue800);
+  --documentable-bg: var(--grey850);
 
   --link-fg: var(--blue400);
   --link-hover-fg: var(--blue300);
   --link-sig-fg: var(--blue400);
 
-  --leftbar-bg: var(--black);
+  --leftbar-bg: var(--grey930);
   --leftbar-fg: var(--grey300);
-  --leftbar-current-bg: var(--blue700);
+  --leftbar-current-bg: var(--grey700);
   --leftbar-current-fg: var(--white);
-  --leftbar-hover-bg: var(--blue800);
+  --leftbar-hover-bg: var(--grey800);
   --leftbar-hover-fg: var(--grey300);
+  --leftbar-border: var(--grey800);
 
-  --footer-bg: var(--blue900);
+  --footer-bg: var(--grey930);
   --footer-fg: var(--grey400);
 
   --icon-color: var(--grey600);
-  --selected-fg: var(--blue800);
-  --selected-bg: var(--blue200);
+  --selected-fg: var(--grey800);
+  --selected-bg: var(--grey200);
 
   --tab-selected: var(--white);
   --tab-default: var(--grey300);
