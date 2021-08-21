@@ -18,14 +18,14 @@ class SnippetCompilerTest {
     0
   )
 
-  def runTest(str: String) = compiler.compile(wrapFn(str), SnippetCompilerArg(SCFlags.Compile))
+  def runTest(str: String) = compiler.compile(wrapFn(str), SnippetCompilerArg(SCFlags.Compile), dotty.tools.dotc.util.SourceFile.virtual("test", str))
 
   private def assertSuccessfulCompilation(res: SnippetCompilationResult): Unit = res match {
-    case r @ SnippetCompilationResult(_, isSuccessful, _, messages) => assert(isSuccessful, r.getSummary)
+    case r @ SnippetCompilationResult(_, isSuccessful, _, messages) => assert(isSuccessful, r.messages.map(_.message).mkString("\n"))
   }
 
   private def assertFailedCompilation(res: SnippetCompilationResult): Unit = res match {
-    case r @ SnippetCompilationResult(_, isSuccessful, _, messages) => assert(!isSuccessful, r.getSummary)
+    case r @ SnippetCompilationResult(_, isSuccessful, _, messages) => assert(!isSuccessful, r.messages.map(_.message).mkString("\n"))
   }
 
   def assertSuccessfulCompilation(str: String): Unit = assertSuccessfulCompilation(runTest(str))
@@ -36,7 +36,7 @@ class SnippetCompilerTest {
 
   def assertMessageLevelPresent(res: SnippetCompilationResult, level: MessageLevel): Unit = res match {
     case r @ SnippetCompilationResult(_, isSuccessful, _, messages) => assertTrue(
-      s"Expected message with level: ${level.text}. Got result ${r.getSummary}",
+      s"Expected message with level: ${level.text}. Got result ${r.messages.map(_.message).mkString("\n")}",
       messages.exists(_.level == level)
     )
   }

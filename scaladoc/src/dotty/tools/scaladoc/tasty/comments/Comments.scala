@@ -128,17 +128,14 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
     (s: qctx.reflect.Symbol) => {
       val path = s.source.map(_.path)
       val pathBasedArg = dctx.snippetCompilerArgs.get(path)
-      val data = SnippetCompilerDataCollector[qctx.type](qctx).getSnippetCompilerData(s, s)
+      val scDataCollector = SnippetCompilerDataCollector[qctx.type](qctx)
+      val data = scDataCollector.getSnippetCompilerData(s, s)
+      val sourceFile = scDataCollector.getSourceFile(s)
       (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
-
-          snippetChecker.checkSnippet(str, Some(data), arg, lineOffset).collect {
-              case r: SnippetCompilationResult if !r.isSuccessful =>
-                val msg = s"In member ${s.name} (${s.dri.location}):\n${r.getSummary}"
-                report.error(msg)(using dctx.compilerContext)
-                r
-              case r => r
-          }
+          val res = snippetChecker.checkSnippet(str, Some(data), arg, lineOffset, sourceFile)
+          res.filter(r => !r.isSuccessful).foreach(_.reportMessages()(using compilerContext))
+          res
       }
     }
 

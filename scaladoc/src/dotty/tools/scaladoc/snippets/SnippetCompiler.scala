@@ -6,7 +6,7 @@ import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.config.Settings.Setting._
-import dotty.tools.dotc.interfaces.SourcePosition
+import dotty.tools.dotc.interfaces.{ SourcePosition => ISourcePosition }
 import dotty.tools.dotc.ast.Trees.Tree
 import dotty.tools.dotc.interfaces.{SourceFile => ISourceFile}
 import dotty.tools.dotc.reporting.{ Diagnostic, StoreReporter }
@@ -14,8 +14,9 @@ import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.{ Compiler, Run }
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
-import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.interfaces.Diagnostic._
+import dotty.tools.dotc.util.{ SourcePosition, NoSourcePosition, SourceFile, NoSource }
 
 import scala.util.{ Try, Success, Failure }
 
@@ -49,7 +50,7 @@ class SnippetCompiler(
   private def nullableMessage(msgOrNull: String): String =
     if (msgOrNull == null) "" else msgOrNull
 
-  private def createReportMessage(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, diagnostics: Seq[Diagnostic]): Seq[SnippetCompilerMessage] = {
+  private def createReportMessage(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, diagnostics: Seq[Diagnostic], sourceFile: SourceFile): Seq[SnippetCompilerMessage] = {
     val line = wrappedSnippet.outerLineOffset
     val column = wrappedSnippet.outerColumnOffset
     val innerLineOffset = wrappedSnippet.innerLineOffset
@@ -57,9 +58,16 @@ class SnippetCompiler(
     val infos = diagnostics.toSeq.sortBy(_.pos.source.path)
     val errorMessages = infos.map {
       case diagnostic if diagnostic.position.isPresent =>
-        val diagPos = diagnostic.position.get
+        val diagPos = diagnostic.position.get match
+          case s: SourcePosition => s
+          case _ => NoSourcePosition
+        val offsetFromLine = sourceFile match
+          case NoSource => 0
+          case sf: SourceFile => sf.lineToOffset(diagPos.line + line - innerLineOffset - 1)
+        val offsetFromColumn = diagPos.column + column - innerColumnOffset
+        val span = Span(offsetFromLine + offsetFromColumn, offsetFromLine + offsetFromColumn)
         val pos = Some(
-          Position(diagPos.line + line - innerLineOffset, diagPos.column + column - innerColumnOffset, diagPos.lineContent, diagPos.line)
+          Position(dotty.tools.dotc.util.SourcePosition(sourceFile, span), diagPos.line)
         )
         val dmsg = Try(diagnostic.message) match {
           case Success(msg) => msg
@@ -75,7 +83,7 @@ class SnippetCompiler(
     errorMessages
   }
 
-  private def additionalMessages(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, context: Context): Seq[SnippetCompilerMessage] = {
+  private def additionalMessages(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, sourceFile: SourceFile, context: Context): Seq[SnippetCompilerMessage] = {
       Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
         SnippetCompilerMessage(None, "Snippet should not compile but compiled succesfully", MessageLevel.Error)
       ).toList
@@ -88,7 +96,8 @@ class SnippetCompiler(
 
   def compile(
     wrappedSnippet: WrappedSnippet,
-    arg: SnippetCompilerArg
+    arg: SnippetCompilerArg,
+    sourceFile: SourceFile
   ): SnippetCompilationResult = {
     val context = SnippetDriver.currentCtx.fresh
       .setSetting(
@@ -100,8 +109,8 @@ class SnippetCompiler(
     run.compileFromStrings(List(wrappedSnippet.snippet))
 
     val messages =
-      createReportMessage(wrappedSnippet, arg, context.reporter.pendingMessages(using context)) ++
-      additionalMessages(wrappedSnippet, arg, context)
+      createReportMessage(wrappedSnippet, arg, context.reporter.pendingMessages(using context), sourceFile) ++
+      additionalMessages(wrappedSnippet, arg, sourceFile, context)
 
     val t = Option.when(!context.reporter.hasErrors)(target)
     SnippetCompilationResult(wrappedSnippet, isSuccessful(arg, context), t, messages)
