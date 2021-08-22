@@ -744,7 +744,10 @@ trait Applications extends Compatibility {
       typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
     }
 
-    def harmonizeArgs(args: List[TypedArg]): List[Tree] = harmonize(args)
+    def harmonizeArgs(args: List[TypedArg]): List[Tree] =
+      // harmonize args only if resType depends on parameter types
+      if (isFullyDefined(methodType.resType, ForceDegree.none)) args
+      else harmonize(args)
 
     override def appPos: SrcPos = app.srcPos
 

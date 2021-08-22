@@ -10,6 +10,7 @@ object Test {
     println(f"integer: ${5}%d")
     println(f"string: ${"l"}%s")
     println(f"${5}%s, ${6}%d, ${"hello"}%s")
+    println(f"${3.14}%.2f rounds to ${3}%d")
 
     val x = 5
     println(f"$x%d")
