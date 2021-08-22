@@ -59,8 +59,8 @@ sealed abstract class GadtConstraint extends Showable {
 
 final class ProperGadtConstraint private(
   private var myConstraint: Constraint,
-  private var mapping: SimpleIdentityMap[Symbol, TypeVar],
-  private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
+  private var mapping: SimpleIdentityMap[TypeRef, TypeVar],
+  private var reverseMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
@@ -97,7 +97,7 @@ final class ProperGadtConstraint private(
             case tp: NamedType =>
               params.indexOf(tp.symbol) match {
                 case -1 =>
-                  mapping(tp.symbol) match {
+                  mapping(tp.symbol.typeRef) match {
                     case tv: TypeVar => tv.origin
                     case null => tp
                   }
@@ -118,8 +118,8 @@ final class ProperGadtConstraint private(
 
     val tvars = params.lazyZip(poly1.paramRefs).map { (sym, paramRef) =>
       val tv = TypeVar(paramRef, creatorState = null)
-      mapping = mapping.updated(sym, tv)
-      reverseMapping = reverseMapping.updated(tv.origin, sym)
+      mapping = mapping.updated(sym.typeRef, tv)
+      reverseMapping = reverseMapping.updated(tv.origin, sym.typeRef)
       tv
     }
 
@@ -145,7 +145,7 @@ final class ProperGadtConstraint private(
 
     val internalizedBound = bound match {
       case nt: NamedType =>
-        val ntTvar = mapping(nt.symbol)
+        val ntTvar = mapping(nt.symbol.typeRef)
         if (ntTvar ne null) stripInternalTypeVar(ntTvar) else bound
       case _ => bound
     }
@@ -169,7 +169,7 @@ final class ProperGadtConstraint private(
     constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
 
   override def fullBounds(sym: Symbol)(using Context): TypeBounds =
-    mapping(sym) match {
+    mapping(sym.typeRef) match {
       case null => null
       case tv =>
         fullBounds(tv.origin)
@@ -177,13 +177,13 @@ final class ProperGadtConstraint private(
     }
 
   override def bounds(sym: Symbol)(using Context): TypeBounds =
-    mapping(sym) match {
+    mapping(sym.typeRef) match {
       case null => null
       case tv =>
         def retrieveBounds: TypeBounds =
           bounds(tv.origin) match {
             case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
-              TypeAlias(reverseMapping(tpr).typeRef)
+              TypeAlias(reverseMapping(tpr))
             case tb => tb
           }
         retrieveBounds
@@ -191,7 +191,7 @@ final class ProperGadtConstraint private(
           //.ensuring(containsNoInternalTypes(_))
     }
 
-  override def contains(sym: Symbol)(using Context): Boolean = mapping(sym) ne null
+  override def contains(sym: Symbol)(using Context): Boolean = mapping(sym.typeRef) ne null
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = {
     val res = approximation(tvarOrError(sym).origin, fromBelow = fromBelow)
@@ -249,12 +249,12 @@ final class ProperGadtConstraint private(
 
   private def externalize(param: TypeParamRef)(using Context): Type =
     reverseMapping(param) match {
-      case sym: Symbol => sym.typeRef
+      case tpr: TypeRef => tpr
       case null => param
     }
 
   private def tvarOrError(sym: Symbol)(using Context): TypeVar =
-    mapping(sym).ensuring(_ ne null, i"not a constrainable symbol: $sym")
+    mapping(sym.typeRef).ensuring(_ ne null, i"not a constrainable symbol: $sym")
 
   private def containsNoInternalTypes(
     tp: Type,
@@ -280,8 +280,8 @@ final class ProperGadtConstraint private(
     val sb = new mutable.StringBuilder
     sb ++= constraint.show
     sb += '\n'
-    mapping.foreachBinding { case (sym, _) =>
-      sb ++= i"$sym: ${fullBounds(sym)}\n"
+    mapping.foreachBinding { case (tpr, _) =>
+      sb ++= i"$tpr: ${fullBounds(tpr.symbol)}\n"
     }
     sb.result
   }
