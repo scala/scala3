@@ -45,7 +45,8 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
           if (argType.isBottomType) argType = formal.widenExpr
           def wrap(arg: Tree) =
             ref(defn.cbnArg).appliedToType(argType).appliedTo(arg).withSpan(arg.span)
-          arg match {
+          def unTyped(t: Tree): Tree = t match { case Typed(expr, _) => unTyped(expr) case _ => t }
+          unTyped(arg) match {
             case Apply(Select(qual, nme.apply), Nil)
             if qual.tpe.derivesFrom(defn.Function0) && (isPureExpr(qual) || qual.symbol.isAllOf(Inline | Param)) =>
               wrap(qual)
