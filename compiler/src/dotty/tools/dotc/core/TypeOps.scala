@@ -818,4 +818,7 @@ object TypeOps:
   def nestedPairs(ts: List[Type])(using Context): Type =
     ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 
+  def abstractTypeMemberSymbols(tp: Type)(using Context): List[Symbol] =
+    tp.abstractTypeMembers.toList map (_.symbol)
+
 end TypeOps
