@@ -62,9 +62,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var GADTused: Boolean = false
 
   /** Indicates whether we have touched HKT GADT bounds */
-  private val touchedHKGADT: DynamicVariable[Boolean] = new DynamicVariable(false)
+  private var HKGADTtouched: Boolean = false
 
-  private def HKGADTtouched[T](body: => T): T = touchedHKGADT.withValue(true) { body }
+  private def touchHKGadt[T](body: => T): T =
+    val savedHKGADTtouched = HKGADTtouched
+    val res = body
+    HKGADTtouched = savedHKGADTtouched
+    res
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -1098,7 +1102,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     val tyconIsInjective =
                       (tycon1sym.isClass || tycon2sym.isClass)
                       && (!touchedGADTs || gadtIsInstantiated)
-                      && !touchedHKGADT.value
+                      && !HKGADTtouched
 
                     inFrozenGadtIf(!tyconIsInjective) {
                       if tycon1sym == tycon2sym && tycon1sym.isAliasType then
@@ -1180,7 +1184,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case tycon2: TypeRef =>
               val tycon2sym = tycon2.symbol
               tycon2sym.onGadtBounds { bounds2 =>
-                HKGADTtouched { compareLower(bounds2, tyconIsTypeRef = false) }
+                touchHKGadt { compareLower(bounds2, tyconIsTypeRef = false) }
               }
             case _ => false
         } && { GADTused = true; true }
