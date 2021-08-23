@@ -267,10 +267,22 @@ object SymUtils:
 
     /** Is symbol declared or inherits @experimental? */
     def isExperimental(using Context): Boolean =
-      // TODO should be add `@experimental` to `class experimental` in PostTyper?
-      self.eq(defn.ExperimentalAnnot)
-      || self.hasAnnotation(defn.ExperimentalAnnot)
+      self.hasAnnotation(defn.ExperimentalAnnot)
       || (self.maybeOwner.isClass && self.owner.hasAnnotation(defn.ExperimentalAnnot))
+
+    def isInExperimentalScope(using Context): Boolean =
+      def isDefaultArgumentOfExperimentalMethod =
+        self.name.is(DefaultGetterName)
+        && self.owner.isClass
+        && {
+          val overloads = self.owner.asClass.membersNamed(self.name.firstPart)
+          overloads.filterWithFlags(HasDefaultParams, EmptyFlags) match
+            case denot: SymDenotation => denot.symbol.isExperimental
+            case _ => false
+        }
+      self.hasAnnotation(defn.ExperimentalAnnot)
+      || isDefaultArgumentOfExperimentalMethod
+      || (!self.is(Package) && self.owner.isInExperimentalScope)
 
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.

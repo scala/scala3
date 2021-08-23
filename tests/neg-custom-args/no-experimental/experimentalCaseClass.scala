@@ -1,9 +1,9 @@
 import scala.annotation.experimental
 
-@experimental // error
+@experimental
 case class Foo(a: Int)
 
-@experimental // error
+@experimental
 case class Bar(a: Int)
 
 object Bar:

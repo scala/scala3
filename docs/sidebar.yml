@@ -67,6 +67,7 @@ sidebar:
           - page: docs/reference/other-new-features/explicit-nulls.md
           - page: docs/reference/other-new-features/safe-initialization.md
           - page: docs/reference/other-new-features/type-test.md
+          - page: docs/reference/other-new-features/experimental-defs.md
       - title: Other Changed Features
         subsection:
           - page: docs/reference/changed-features/numeric-literals.md
