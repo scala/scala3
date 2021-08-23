@@ -963,7 +963,7 @@ object RefChecks {
 
   private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
     if !sym.isExperimental then
-      for annot <- sym.annotations if annot.symbol.isExperimental && annot.tree.span.exists do
+      for annot <- sym.annotations if annot.symbol.isExperimental do
         Feature.checkExperimentalDef(annot.symbol, annot.tree)
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
