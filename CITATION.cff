@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Dotty (Scala 3 compiler)"
+version: 3.0.0
+date-released: 2021-05-13
+url: https://github.com/lampepfl/dotty
+license: Apache-2.0
+keywords:
+- scala
+- compiler
