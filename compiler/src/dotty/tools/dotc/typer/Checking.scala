@@ -861,22 +861,13 @@ trait Checking {
   /** If `sym` is an old-style implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(GivenOrImplicit)
    */
-  def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = {
-    def check(): Unit =
+  def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit =
+    if sym.isOldStyleImplicitConversion(directOnly = true) then
       checkFeature(
         nme.implicitConversions,
         i"Definition of implicit conversion $sym",
         ctx.owner.topLevelClass,
         sym.srcPos)
-
-    sym.info.stripPoly match {
-      case mt @ MethodType(_ :: Nil)
-      if !mt.isImplicitMethod && !sym.isCoDefinedGiven(mt.finalResultType.typeSymbol) =>
-        // it's an old-style conversion
-        check()
-      case _ =>
-    }
-  }
 
   /** If `tree` is an application of a new-style implicit conversion (using the apply
    *  method of a `scala.Conversion` instance), check that implicit conversions are
