@@ -350,14 +350,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val (getter, setters) = alts.partition(_.info.paramInfoss.head.isEmpty)
 
     // We can have at most one getter
-    if (getter.sizeIs > 1) {
-      /* Member export of properties should be caught earlier, so if we get
-       * here with a non-static export, something went horribly wrong.
-       */
-      assert(static, s"Found more than one instance getter to export for name $jsName.")
-      for (duplicate <- getter.tail)
-        report.error(s"Duplicate static getter export with name '${jsName.displayName}'", duplicate)
-    }
+    if (getter.sizeIs > 1)
+      reportCannotDisambiguateError(jsName, alts)
 
     val getterBody = getter.headOption.map { getterSym =>
       genApplyForSingleExported(new FormalArgsRegistry(0, false), new ExportedSymbol(getterSym, static), static)
@@ -535,7 +529,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       // 2. The optional argument count restriction has triggered
       // 3. We only have (more than once) repeated parameters left
       // Therefore, we should fail
-      reportCannotDisambiguateError(jsName, alts)
+      reportCannotDisambiguateError(jsName, alts.map(_.sym))
       js.Undefined()
     } else {
       val altsByTypeTest = groupByWithoutHashCode(alts) { exported =>
@@ -597,7 +591,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     }
   }
 
-  private def reportCannotDisambiguateError(jsName: JSName, alts: List[Exported]): Unit = {
+  private def reportCannotDisambiguateError(jsName: JSName, alts: List[Symbol]): Unit = {
     val currentClass = currentClassSym.get
 
     /* Find a position that is in the current class for decent error reporting.
@@ -606,21 +600,26 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
      * same error in all compilers.
      */
     val validPositions = alts.collect {
-      case alt if alt.sym.owner == currentClass => alt.pos
+      case alt if alt.owner == currentClass => alt.sourcePos
     }
     val pos: SourcePosition =
       if (validPositions.isEmpty) currentClass.sourcePos
       else validPositions.maxBy(_.point)
 
     val kind =
-      if (currentClass.isJSType) "method"
-      else "exported method"
+      if (alts.head.isJSGetter) "getter"
+      else if (alts.head.isJSSetter) "setter"
+      else "method"
+
+    val fullKind =
+      if (currentClass.isJSType) kind
+      else "exported " + kind
 
     val displayName = jsName.displayName
-    val altsTypesInfo = alts.map(_.typeInfo).mkString("\n  ")
+    val altsTypesInfo = alts.map(_.info.show).sorted.mkString("\n  ")
 
     report.error(
-        s"Cannot disambiguate overloads for $kind $displayName with types\n  $altsTypesInfo",
+        s"Cannot disambiguate overloads for $fullKind $displayName with types\n  $altsTypesInfo",
         pos)
   }
 

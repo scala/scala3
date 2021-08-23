@@ -1,0 +1,12 @@
+-- Error: tests/neg-scalajs/js-non-native-members-conflicts.scala:7:6 --------------------------------------------------
+7 |  def b: Unit = () // error
+  |      ^
+  |      Cannot disambiguate overloads for getter a with types
+  |        (): Unit
+  |        (): Unit
+-- Error: tests/neg-scalajs/js-non-native-members-conflicts.scala:10:2 -------------------------------------------------
+10 |  object B1 // error
+   |  ^
+   |  Cannot disambiguate overloads for getter B1 with types
+   |    (): A.this.B1
+   |    (): Object
