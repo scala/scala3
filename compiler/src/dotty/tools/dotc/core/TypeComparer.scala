@@ -787,7 +787,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp1.info match {
           case TypeBounds(_, hi1) =>
             def compareGADT =
-              tp1.symbol.onGadtBounds(gbounds1 =>
+              tp1.onGadtBounds(gbounds1 =>
                 isSubTypeWhenFrozen(gbounds1.hi, tp2)
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
