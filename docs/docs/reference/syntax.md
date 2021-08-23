@@ -279,7 +279,7 @@ CaseClauses       ::=  CaseClause { CaseClause }
 CaseClause        ::=  ‘case’ Pattern [Guard] ‘=>’ Block
 ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
 TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
-TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [nl]
+TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [semi]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }
 Pattern1          ::=  Pattern2 [‘:’ RefinedType]
