@@ -52,6 +52,10 @@ sealed abstract class GadtConstraint extends Showable {
    */
   def isConstrainablePDT(tp: Type)(using Context): Boolean
 
+  /** Add path-dependent type to constraint.
+   */
+  def addPDT(tp: Type)(using Context): Boolean
+
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
 
@@ -102,6 +106,12 @@ final class ProperGadtConstraint private(
     case path: TermRef if !path.symbol.is(Flags.Package) && !path.symbol.is(Flags.Module) => true
     case _ => false
 
+  override def addPDT(tp: Type)(using Context): Boolean =
+    assert(isConstrainablePDT(tp), i"Type $tp is not a constrainable path-dependent type.")
+    tp match
+      case TypeRef(prefix: TermRef, _) => addTypeMembersOf(prefix, isUnamedPattern = false).nonEmpty
+      case _ => false
+
   /** Find all constrainable type member symbols of the given type.
    *
    * All abstract but not opaque type members are returned.
@@ -117,6 +127,8 @@ final class ProperGadtConstraint private(
 
     val pathType = if isUnamedPattern then path else path.widen
     val typeMembers = constrainableTypeMemberSymbols(pathType)
+
+    if typeMembers.isEmpty then return Some(Map.empty)
 
     val poly1 = PolyType(typeMembers map { s => DepParamName.fresh(s.name.toTypeName) })(
       pt => typeMembers map { typeMember =>
@@ -390,7 +402,7 @@ final class ProperGadtConstraint private(
     sb ++= constraint.show
     sb += '\n'
     mapping.foreachBinding { case (tpr, _) =>
-      sb ++= i"$tpr: ${fullBounds(tpr.symbol)}\n"
+      sb ++= i"$tpr: ${fullBounds(tpr)}\n"
     }
     sb.result
   }
@@ -409,6 +421,7 @@ final class ProperGadtConstraint private(
   override def contains(sym: Symbol)(using Context) = false
   override def contains(tp: TypeRef)(using Context) = false
   override def isConstrainablePDT(tp: Type)(using Context): Boolean = false
+  override def addPDT(tp: Type)(using Context): Boolean = false
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
   override def addBound(tpr: TypeRef, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")

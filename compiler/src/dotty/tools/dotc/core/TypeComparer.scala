@@ -182,6 +182,22 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private inline def inFrozenGadtAndConstraint[T](inline op: T): T =
     inFrozenGadtIf(true)(inFrozenConstraint(op))
 
+  private def canRegisterPDT: Boolean =
+    ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint
+
+  private def tryRegisterPDT(tpr: TypeRef): Boolean =
+    canRegisterPDT
+    && ctx.gadt.isConstrainablePDT(tpr)
+    && ctx.gadt.addPDT(tpr)
+
+  extension (tpr: TypeRef)
+    private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
+      def useGadtBounds =
+        val bounds = gadtBounds(tpr)
+        bounds != null && op(bounds)
+
+      useGadtBounds || { tryRegisterPDT(tpr) && useGadtBounds }
+
   extension (sym: Symbol)
     private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
       val bounds = gadtBounds(sym)
@@ -503,20 +519,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def thirdTryNamed(tp2: NamedType): Boolean = tp2.info match {
       case info2: TypeBounds =>
-        def compareGADT: Boolean =
-          tp2.symbol.onGadtBounds(gbounds2 =>
-            isSubTypeWhenFrozen(tp1, gbounds2.lo)
-            || tp1.match
-                case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
-                  // Note: since we approximate constrained types only with their non-param bounds,
-                  // we need to manually handle the case when we're comparing two constrained types,
-                  // one of which is constrained to be a subtype of another.
-                  // We do not need similar code in fourthTry, since we only need to care about
-                  // comparing two constrained types, and that case will be handled here first.
-                  ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
-                case _ => false
-            || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
-          && (isBottom(tp1) || GADTusage(tp2.symbol))
+        def compareGADT: Boolean = tp2 match
+          case tp2: TypeRef =>
+            tp2.onGadtBounds(gbounds2 =>
+              isSubTypeWhenFrozen(tp1, gbounds2.lo)
+              || tp1.match
+                  case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
+                    // Note: since we approximate constrained types only with their non-param bounds,
+                    // we need to manually handle the case when we're comparing two constrained types,
+                    // one of which is constrained to be a subtype of another.
+                    // We do not need similar code in fourthTry, since we only need to care about
+                    // comparing two constrained types, and that case will be handled here first.
+                    ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
+                  case _ => false
+              || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
+            && (isBottom(tp1) || GADTusage(tp2.symbol))
+          case _ => false
+        end compareGADT
 
         isSubApproxHi(tp1, info2.lo) || compareGADT || tryLiftedToThis2 || fourthTry
 
@@ -1881,14 +1900,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  `bound` as an upper or lower bound (which depends on `isUpper`).
    *  Test that the resulting bounds are still satisfiable.
    */
-  private def narrowGADTBounds(tr: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
+  private def narrowGADTBounds(tr: TypeRef, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
     val boundImprecise = approx.high || approx.low
     ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
       val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
-      else if (isUpper) gadtAddUpperBound(tparam, bound)
-      else gadtAddLowerBound(tparam, bound)
+      else if (isUpper) gadtAddUpperBound(tr, bound)
+      else gadtAddLowerBound(tr, bound)
     }
   }
 
