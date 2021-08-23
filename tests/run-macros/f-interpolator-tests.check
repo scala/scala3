@@ -1,6 +1,7 @@
 integer: 5
 string: l
 5, 6, hello
+3.14 rounds to 3
 5
 6
 Bob is  1 years old
