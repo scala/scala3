@@ -26,10 +26,12 @@ object CanEqual {
   given canEqualNumber: CanEqual[Number, Number] = derived
   given canEqualString: CanEqual[String, String] = derived
 
-  // The next five definitions can go into the companion objects of their corresponding
+  // The next 6 definitions can go into the companion objects of their corresponding
   // classes. For now they are here in order not to have to touch the
   // source code of these classes
-  given canEqualSeq[T, U](using eq: CanEqual[T, U]): CanEqual[Seq[T], Seq[U]] = derived
+  given canEqualSeqs[T, U](using eq: CanEqual[T, U]): CanEqual[Seq[T], Seq[U]] = derived
+  given canEqualSeq[T](using eq: CanEqual[T, T]): CanEqual[Seq[T], Seq[T]] = derived // for `case Nil` in pattern matching
+
   given canEqualSet[T, U](using eq: CanEqual[T, U]): CanEqual[Set[T], Set[U]] = derived
 
   given canEqualOptions[T, U](using eq: CanEqual[T, U]): CanEqual[Option[T], Option[U]] = derived
