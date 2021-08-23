@@ -16,7 +16,6 @@ final class Baz private (val x: Int) extends AnyVal {
   def unary_- : Baz = ???
   def unary_+[T] : Baz = ???
   def unary_!() : Baz = ??? // error
-  def `unary_!_=`() : Baz = ??? // ok
   def unary_~(using Int) : Baz = ???
 }
 
