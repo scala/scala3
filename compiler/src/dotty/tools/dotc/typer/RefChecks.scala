@@ -962,7 +962,7 @@ object RefChecks {
       new Checker().traverse(sym.info)
 
   private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
-    if !sym.isExperimental then
+    if !sym.isInExperimentalScope then
       for annot <- sym.annotations if annot.symbol.isExperimental do
         Feature.checkExperimentalDef(annot.symbol, annot.tree)
 
