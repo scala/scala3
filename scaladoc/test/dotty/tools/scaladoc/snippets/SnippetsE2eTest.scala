@@ -78,19 +78,19 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
       case m @ SnippetCompilerMessage(Some(_), _, _) => m
     }.toList
     def isSamePosition(msg: Message, cmsg: SnippetCompilerMessage): Boolean =
-      cmsg.level == msg.level && cmsg.position.get.line == msg.offset.line && cmsg.position.get.column == msg.offset.column
+      cmsg.level == msg.level && (cmsg.position.get.srcPos.line + 1) == msg.offset.line && cmsg.position.get.srcPos.column == msg.offset.column
 
     def checkRelativeLines(msg: Message, cmsg: SnippetCompilerMessage): Seq[String] =
       val pos = cmsg.position.get
-      if !(pos.relativeLine == pos.line - ws.outerLineOffset + ws.innerLineOffset) then Seq(
-        s"Expected ${msg.level.text} message at relative line: ${pos.line - ws.outerLineOffset + ws.innerLineOffset} " +
+      if !(pos.relativeLine == pos.srcPos.line + ws.innerLineOffset - ws.outerLineOffset + 1) then Seq(
+        s"Expected ${msg.level.text} message at relative line: ${pos.srcPos.line + ws.innerLineOffset - ws.outerLineOffset + 1} " +
           s"but found at ${pos.relativeLine}"
       ) else Nil
 
     val mResult = compilationMessagesWithPos.flatMap { cmsg =>
       messages
         .find(msg => isSamePosition(msg, cmsg))
-        .fold(Seq(s"Unexpected compilation message: ${cmsg.message} at relative line: ${cmsg.position.fold(-1)(_.line)}"))(_ => Seq())
+        .fold(Seq(s"Unexpected compilation message: ${cmsg.message} at relative line: ${cmsg.position.fold(-1)(_.relativeLine)}"))(_ => Seq())
     }
 
     val result = mResult ++ messages.flatMap { msg =>
@@ -103,7 +103,7 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
 
     if !result.isEmpty then {
       val errors = result.mkString("\n")
-      val foundMessages = compilationMessages.map(m => s"${m.level} at ${m.position.get.line}:${m.position.get.column}").mkString("\n")
+      val foundMessages = compilationMessages.map(m => s"${m.level} at ${m.position.get.srcPos.line}:${m.position.get.srcPos.column}").mkString("\n")
       throw AssertionError(Seq("Errors:", errors,"Found:", foundMessages).mkString("\n", "\n", "\n"))
     }
   }
