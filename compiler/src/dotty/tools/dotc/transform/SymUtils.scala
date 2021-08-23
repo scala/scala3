@@ -100,6 +100,17 @@ object SymUtils:
         case _ =>
           false
 
+    def isGivenInstanceSummoner(using Context): Boolean =
+      def isCodefined(info: Type): Boolean = info.stripPoly match
+        case mt: MethodType =>
+          // given summoner can only have contextual params
+          mt.isImplicitMethod && isCodefined(mt.resultType)
+        case mt: ExprType =>
+          isCodefined(mt.resultType)
+        case res =>
+          self.isCoDefinedGiven(res.typeSymbol)
+      self.isAllOf(Given | Method) && isCodefined(self.info)
+
     def useCompanionAsMirror(using Context): Boolean = self.linkedClass.exists && !self.is(Scala2x)
 
     /** Is this a sealed class or trait for which a sum mirror is generated?

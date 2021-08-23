@@ -1684,7 +1684,7 @@ Uri => InventedNames.scala
 Text => empty
 Language => Scala
 Symbols => 45 entries
-Occurrences => 62 entries
+Occurrences => 61 entries
 
 Symbols:
 givens/InventedNames$package. => final package object givens extends Object { self: givens.type => +24 decls }
@@ -1767,7 +1767,6 @@ Occurrences:
 [24:17..24:18): Y -> givens/Y#
 [25:6..25:9): doY <- givens/InventedNames$package.given_Y#doY().
 [27:7..27:8): T <- givens/InventedNames$package.given_Z_T#[T]
-[27:7..27:8): T <- givens/InventedNames$package.given_Z_T().[T]
 [27:11..27:12): Z -> givens/Z#
 [27:13..27:14): T -> givens/InventedNames$package.given_Z_T#[T]
 [28:6..28:9): doZ <- givens/InventedNames$package.given_Z_T#doZ().

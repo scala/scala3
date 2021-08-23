@@ -80,6 +80,7 @@ class ExtractSemanticDB extends Phase:
       || sym.is(Synthetic)
       || sym.isSetter
       || sym.isOldStyleImplicitConversion(forImplicitClassOnly = true)
+      || sym.owner.isGivenInstanceSummoner
       || excludeDefOrUse(sym)
 
     private def excludeDefOrUse(sym: Symbol)(using Context): Boolean =
