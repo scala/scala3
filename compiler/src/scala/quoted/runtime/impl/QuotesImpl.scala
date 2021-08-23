@@ -448,6 +448,20 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end IdentMethods
 
+    type Wildcard = tpd.Ident
+
+    object WildcardTypeTest extends TypeTest[Tree, Wildcard]:
+      def unapply(x: Tree): Option[Wildcard & x.type] = x match
+        case x: (tpd.Ident & x.type) if x.name == nme.WILDCARD => Some(x)
+        case _ => None
+    end WildcardTypeTest
+
+    object Wildcard extends WildcardModule:
+      def apply(): Wildcard =
+        withDefaultPos(untpd.Ident(nme.WILDCARD).withType(dotc.core.Symbols.defn.AnyType))
+      def unapply(pattern: Wildcard): true = true
+    end Wildcard
+
     type Select = tpd.Select
 
     object SelectTypeTest extends TypeTest[Tree, Select]:

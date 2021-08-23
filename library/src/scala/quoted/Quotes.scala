@@ -121,7 +121,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |             |               +- DefDef
    *           |             |               +- ValDef
    *           |             |
-   *           |             +- Term --------+- Ref -+- Ident
+   *           |             +- Term --------+- Ref -+- Ident -+- Wildcard
    *           |                             |       +- Select
    *           |                             |
    *           |                             +- Literal
@@ -781,6 +781,23 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def name: String
       end extension
     end IdentMethods
+
+    /** Pattern representing a `_` wildcard. */
+    type Wildcard <: Ident
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Wildcard` */
+    given WildcardTypeTest: TypeTest[Tree, Wildcard]
+
+    /** Module object of `type Wildcard`  */
+    val Wildcard: WildcardModule
+
+    /** Methods of the module object `val Wildcard` */
+    trait WildcardModule { this: Wildcard.type =>
+      /** Create a tree representing a `_` wildcard. */
+      def apply(): Wildcard
+      /** Match a tree representing a `_` wildcard. */
+      def unapply(wildcard: Wildcard): true
+    }
 
     /** Tree representing a selection of definition with a given name on a given prefix */
     type Select <: Ref
