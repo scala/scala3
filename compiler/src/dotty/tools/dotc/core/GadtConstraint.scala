@@ -9,6 +9,7 @@ import Symbols._
 import util.SimpleIdentityMap
 import collection.mutable
 import printing._
+import TypeOps.abstractTypeMemberSymbols
 
 import scala.annotation.internal.sharable
 
@@ -16,6 +17,7 @@ import scala.annotation.internal.sharable
 sealed abstract class GadtConstraint extends Showable {
   /** Immediate bounds of `sym`. Does not contain lower/upper symbols (see [[fullBounds]]). */
   def bounds(sym: Symbol)(using Context): TypeBounds
+  def bounds(tp: TypeRef)(using Context): TypeBounds
 
   /** Full bounds of `sym`, including TypeRefs to other lower/upper symbols.
    *
@@ -23,6 +25,7 @@ sealed abstract class GadtConstraint extends Showable {
    *       Using this in isSubType can lead to infinite recursion. Consider `bounds` instead.
    */
   def fullBounds(sym: Symbol)(using Context): TypeBounds
+  def fullBounds(tp: TypeRef)(using Context): TypeBounds
 
   /** Is `sym1` ordered to be less than `sym2`? */
   def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean
@@ -36,12 +39,18 @@ sealed abstract class GadtConstraint extends Showable {
 
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
+  def addBound(tpr: TypeRef, bound: Type, isUpper: Boolean)(using Context): Boolean
 
   /** Is the symbol registered in the constraint?
    *
    * @note this is true even if the symbol is constrained to be equal to another type, unlike [[Constraint.contains]].
    */
   def contains(sym: Symbol)(using Context): Boolean
+  def contains(tp: TypeRef)(using Context): Boolean
+
+  /** Is the type a constrainable path-dependent type?
+   */
+  def isConstrainablePDT(tp: Type)(using Context): Boolean
 
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
@@ -61,13 +70,15 @@ final class ProperGadtConstraint private(
   private var myConstraint: Constraint,
   private var mapping: SimpleIdentityMap[TypeRef, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
+  private var tempMapping: SimpleIdentityMap[Symbol, TypeVar]
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
   def this() = this(
     myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty),
     mapping = SimpleIdentityMap.empty,
-    reverseMapping = SimpleIdentityMap.empty
+    reverseMapping = SimpleIdentityMap.empty,
+    tempMapping =  SimpleIdentityMap.empty
   )
 
   /** Exposes ConstraintHandling.subsumes */
@@ -78,6 +89,92 @@ final class ProperGadtConstraint private(
     }
     subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
   }
+
+  override def isConstrainablePDT(tp: Type)(using Context): Boolean = tp match
+    case tp @ TypeRef(prefix, des) => isConstrainablePath(prefix) && ! tp.symbol.is(Flags.Opaque)
+    case _ => false
+
+  /** Whether type members of the given path is constrainable?
+   *
+   * Package's and module's type members will not be constrained.
+   */
+  private def isConstrainablePath(path: Type)(using Context): Boolean = path match
+    case path: TermRef if !path.symbol.is(Flags.Package) && !path.symbol.is(Flags.Module) => true
+    case _ => false
+
+  /** Find all constrainable type member symbols of the given type.
+   *
+   * All abstract but not opaque type members are returned.
+   */
+  private def constrainableTypeMemberSymbols(tp: Type)(using Context) =
+    abstractTypeMemberSymbols(tp) filterNot (_.is(Flags.Opaque))
+
+  private def addTypeMembersOf(path: Type, isUnamedPattern: Boolean)(using Context): Option[Map[Symbol, TypeVar]] =
+    import NameKinds.DepParamName
+
+    /** Should not place constraints on type members defined in modules. */
+    if !isUnamedPattern && !isConstrainablePath(path) then return None
+
+    val pathType = if isUnamedPattern then path else path.widen
+    val typeMembers = constrainableTypeMemberSymbols(pathType)
+
+    val poly1 = PolyType(typeMembers map { s => DepParamName.fresh(s.name.toTypeName) })(
+      pt => typeMembers map { typeMember =>
+        def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
+          def loop(tp: Type): Type = tp match
+            case tp @ AndType(tp1, tp2) if !isUpper =>
+              tp.derivedAndOrType(loop(tp1), loop(tp2))
+            case tp @ OrType(tp1, tp2) if isUpper =>
+              tp.derivedOrType(loop(tp1), loop(tp2))
+            case tp @ TypeRef(prefix, des) if prefix == pathType =>
+              typeMembers indexOf tp.symbol match
+                case -1 => tp
+                case idx => pt.paramRefs(idx)
+            case tp @ TypeRef(_: RecThis, des) =>
+              typeMembers indexOf tp.symbol match
+                case -1 => tp
+                case idx => pt.paramRefs(idx)
+            case tp: TypeRef =>
+              mapping(tp) match {
+                case tv: TypeVar => tv.origin
+                case null => tp
+              }
+            case tp => tp
+
+          loop(tp)
+        }
+
+        val tb = typeMember.info.bounds
+        tb.derivedTypeBounds(
+          lo = substDependentSyms(tb.lo, isUpper = false),
+          hi = substDependentSyms(tb.hi, isUpper = true)
+        )
+      },
+      pt => defn.AnyType
+    )
+
+    val tvars = typeMembers lazyZip poly1.paramRefs map { (sym, paramRef) =>
+      val tv = TypeVar(paramRef, creatorState = null)
+
+      if isUnamedPattern then
+        tempMapping = tempMapping.updated(sym, tv)
+      else
+        val externalType = TypeRef(path, sym)
+        mapping = mapping.updated(externalType, tv)
+        reverseMapping = reverseMapping.updated(tv.origin, externalType)
+
+      tv
+    }
+
+    def register =
+      addToConstraint(poly1, tvars)
+        .showing(i"added to constraint: [$poly1] $typeMembers%, %\n$debugBoundsDescription", gadts)
+
+    if register then
+      Some(Map.from(typeMembers lazyZip tvars))
+    else
+      None
+  end addTypeMembersOf
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = {
     import NameKinds.DepParamName
@@ -128,7 +225,7 @@ final class ProperGadtConstraint private(
       .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
-  override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
+  override def addBound(tpr: TypeRef, bound: Type, isUpper: Boolean)(using Context): Boolean = {
     @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
       case tv: TypeVar =>
         val inst = constraint.instType(tv)
@@ -136,10 +233,10 @@ final class ProperGadtConstraint private(
       case _ => tp
     }
 
-    val symTvar: TypeVar = stripInternalTypeVar(tvarOrError(sym)) match {
+    val symTvar: TypeVar = stripInternalTypeVar(tvarOrError(tpr)) match {
       case tv: TypeVar => tv
       case inst =>
-        gadts.println(i"instantiated: $sym -> $inst")
+        gadts.println(i"instantiated: $tpr -> $inst")
         return if (isUpper) isSub(inst, bound) else isSub(bound, inst)
     }
 
@@ -161,23 +258,28 @@ final class ProperGadtConstraint private(
     ).showing({
       val descr = if (isUpper) "upper" else "lower"
       val op = if (isUpper) "<:" else ">:"
-      i"adding $descr bound $sym $op $bound = $result"
+      i"adding $descr bound $tpr $op $bound = $result"
     }, gadts)
   }
+
+  override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean =
+    addBound(sym.typeRef, bound, isUpper)
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
     constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
 
-  override def fullBounds(sym: Symbol)(using Context): TypeBounds =
-    mapping(sym.typeRef) match {
+  override def fullBounds(tp: TypeRef)(using Context): TypeBounds =
+    mapping(tp) match {
       case null => null
       case tv =>
         fullBounds(tv.origin)
           // .ensuring(containsNoInternalTypes(_))
     }
 
-  override def bounds(sym: Symbol)(using Context): TypeBounds =
-    mapping(sym.typeRef) match {
+  override def fullBounds(sym: Symbol)(using Context): TypeBounds = fullBounds(sym.typeRef)
+
+  override def bounds(tp: TypeRef)(using Context): TypeBounds =
+    mapping(tp) match {
       case null => null
       case tv =>
         def retrieveBounds: TypeBounds =
@@ -191,7 +293,10 @@ final class ProperGadtConstraint private(
           //.ensuring(containsNoInternalTypes(_))
     }
 
-  override def contains(sym: Symbol)(using Context): Boolean = mapping(sym.typeRef) ne null
+  override def bounds(sym: Symbol)(using Context): TypeBounds = bounds(sym.typeRef)
+
+  override def contains(tp: TypeRef)(using Context): Boolean = mapping(tp) ne null
+  override def contains(sym: Symbol)(using Context): Boolean = contains(sym.typeRef)
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = {
     val res = approximation(tvarOrError(sym).origin, fromBelow = fromBelow)
@@ -202,7 +307,8 @@ final class ProperGadtConstraint private(
   override def fresh: GadtConstraint = new ProperGadtConstraint(
     myConstraint,
     mapping,
-    reverseMapping
+    reverseMapping,
+    tempMapping
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -210,6 +316,7 @@ final class ProperGadtConstraint private(
       this.myConstraint = other.myConstraint
       this.mapping = other.mapping
       this.reverseMapping = other.reverseMapping
+      this.tempMapping = other.tempMapping
     case _ => ;
   }
 
@@ -253,8 +360,10 @@ final class ProperGadtConstraint private(
       case null => param
     }
 
-  private def tvarOrError(sym: Symbol)(using Context): TypeVar =
-    mapping(sym.typeRef).ensuring(_ ne null, i"not a constrainable symbol: $sym")
+  private def tvarOrError(tpr: TypeRef)(using Context): TypeVar =
+    mapping(tpr).ensuring(_ ne null, i"not a constrainable type: $tpr")
+
+  private def tvarOrError(sym: Symbol)(using Context): TypeVar = tvarOrError(sym.typeRef)
 
   private def containsNoInternalTypes(
     tp: Type,
@@ -290,14 +399,19 @@ final class ProperGadtConstraint private(
 @sharable object EmptyGadtConstraint extends GadtConstraint {
   override def bounds(sym: Symbol)(using Context): TypeBounds = null
   override def fullBounds(sym: Symbol)(using Context): TypeBounds = null
+  override def bounds(tp: TypeRef)(using Context): TypeBounds = null
+  override def fullBounds(tp: TypeRef)(using Context): TypeBounds = null
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
 
   override def isEmpty: Boolean = true
 
   override def contains(sym: Symbol)(using Context) = false
+  override def contains(tp: TypeRef)(using Context) = false
+  override def isConstrainablePDT(tp: Type)(using Context): Boolean = false
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
+  override def addBound(tpr: TypeRef, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")

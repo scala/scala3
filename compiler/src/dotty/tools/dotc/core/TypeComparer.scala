@@ -117,6 +117,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
   protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
   protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
+  protected def gadtBounds(tpr: TypeRef)(using Context) = ctx.gadt.bounds(tpr)
+  protected def gadtAddLowerBound(tpr: TypeRef, b: Type): Boolean = ctx.gadt.addBound(tpr, b, isUpper = false)
+  protected def gadtAddUpperBound(tpr: TypeRef, b: Type): Boolean = ctx.gadt.addBound(tpr, b, isUpper = true)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
 
