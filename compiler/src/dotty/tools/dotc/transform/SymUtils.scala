@@ -87,6 +87,19 @@ object SymUtils:
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
 
+    /** Is this the an old style implicit conversion?
+     *  @param directOnly            only consider explicitly written methods
+     *  @param forImplicitClassOnly  only consider methods generated from implicit classes
+     */
+    def isOldStyleImplicitConversion(directOnly: Boolean = false, forImplicitClassOnly: Boolean = false)(using Context): Boolean =
+      self.is(Implicit) && self.info.stripPoly.match
+        case mt @ MethodType(_ :: Nil) if !mt.isImplicitMethod =>
+          if self.isCoDefinedGiven(mt.finalResultType.typeSymbol)
+          then !directOnly
+          else !forImplicitClassOnly
+        case _ =>
+          false
+
     def useCompanionAsMirror(using Context): Boolean = self.linkedClass.exists && !self.is(Scala2x)
 
     /** Is this a sealed class or trait for which a sum mirror is generated?

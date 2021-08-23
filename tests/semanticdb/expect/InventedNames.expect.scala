@@ -25,7 +25,7 @@ given X/*->givens::X#*/ with
 given (using X/*->givens::X#*/): Y/*->givens::Y#*/ with
   def doY/*<-givens::InventedNames$package.given_Y#doY().*/ = "7"
 
-given [T/*<-givens::InventedNames$package.given_Z_T#[T]*/]: Z/*->givens::Z#*/[T/*->givens::InventedNames$package.given_Z_T#[T]*/] with
+given [T/*<-givens::InventedNames$package.given_Z_T#[T]*//*<-givens::InventedNames$package.given_Z_T().[T]*/]: Z/*->givens::Z#*/[T/*->givens::InventedNames$package.given_Z_T#[T]*/] with
   def doZ/*<-givens::InventedNames$package.given_Z_T#doZ().*/: List/*->scala::package.List#*/[T/*->givens::InventedNames$package.given_Z_T#[T]*/] = Nil/*->scala::package.Nil.*/
 
 

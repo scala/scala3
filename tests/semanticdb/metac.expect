@@ -484,7 +484,7 @@ classes/C12#foo2Impl().(context) => param context: Context
 classes/C12#foo2Impl().(x) => param x: context.Expr[Int]
 classes/C12#foo2Impl().(y) => param y: context.Expr[String]
 classes/M. => final object M extends Object { self: M.type => +3 decls }
-classes/M.C5# => class C5 extends Object { self: C5 => +2 decls }
+classes/M.C5# => implicit class C5 extends Object { self: C5 => +2 decls }
 classes/M.C5#`<init>`(). => primary ctor <init> (param x: Int): C5
 classes/M.C5#`<init>`().(x) => param x: Int
 classes/M.C5#x. => private[this] val method x Int
@@ -1519,7 +1519,7 @@ example/ImplicitConversion#string2Number().(string) => param string: String
 example/ImplicitConversion#tuple. => val method tuple Tuple2[Int, Int]
 example/ImplicitConversion#x. => val method x Int
 example/ImplicitConversion. => final object ImplicitConversion extends Object { self: ImplicitConversion.type => +6 decls }
-example/ImplicitConversion.newAny2stringadd# => final class newAny2stringadd [typeparam A ] extends AnyVal { self: newAny2stringadd[A] => +4 decls }
+example/ImplicitConversion.newAny2stringadd# => final implicit class newAny2stringadd [typeparam A ] extends AnyVal { self: newAny2stringadd[A] => +4 decls }
 example/ImplicitConversion.newAny2stringadd#[A] => typeparam A 
 example/ImplicitConversion.newAny2stringadd#`+`(). => method + (param other: String): String
 example/ImplicitConversion.newAny2stringadd#`+`().(other) => param other: String
@@ -1684,7 +1684,7 @@ Uri => InventedNames.scala
 Text => empty
 Language => Scala
 Symbols => 45 entries
-Occurrences => 61 entries
+Occurrences => 62 entries
 
 Symbols:
 givens/InventedNames$package. => final package object givens extends Object { self: givens.type => +24 decls }
@@ -1705,14 +1705,14 @@ givens/InventedNames$package.given_List_T().[T] => typeparam T
 givens/InventedNames$package.given_String. => final implicit lazy val given method given_String String
 givens/InventedNames$package.given_X. => final implicit given object given_X extends Object with X { self: given_X.type => +2 decls }
 givens/InventedNames$package.given_X.doX(). => method doX => Int <: givens/X#doX().
-givens/InventedNames$package.given_Y# => class given_Y extends Object with Y { self: given_Y => +3 decls }
+givens/InventedNames$package.given_Y# => implicit given class given_Y extends Object with Y { self: given_Y => +3 decls }
 givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init> ()(implicit val given param x$1: X): given_Y
 givens/InventedNames$package.given_Y#`<init>`().(x$1) => implicit val given param x$1: X
 givens/InventedNames$package.given_Y#doY(). => method doY => String <: givens/Y#doY().
 givens/InventedNames$package.given_Y#x$1. => protected implicit val given method x$1 X
 givens/InventedNames$package.given_Y(). => final implicit given method given_Y (implicit given param x$1: X): given_Y
 givens/InventedNames$package.given_Y().(x$1) => implicit given param x$1: X
-givens/InventedNames$package.given_Z_T# => class given_Z_T [typeparam T ] extends Object with Z[T] { self: given_Z_T[T] => +3 decls }
+givens/InventedNames$package.given_Z_T# => implicit given class given_Z_T [typeparam T ] extends Object with Z[T] { self: given_Z_T[T] => +3 decls }
 givens/InventedNames$package.given_Z_T#[T] => typeparam T 
 givens/InventedNames$package.given_Z_T#`<init>`(). => primary ctor <init> [typeparam T ](): given_Z_T[T]
 givens/InventedNames$package.given_Z_T#doZ(). => method doZ => List[T] <: givens/Z#doZ().
@@ -1767,6 +1767,7 @@ Occurrences:
 [24:17..24:18): Y -> givens/Y#
 [25:6..25:9): doY <- givens/InventedNames$package.given_Y#doY().
 [27:7..27:8): T <- givens/InventedNames$package.given_Z_T#[T]
+[27:7..27:8): T <- givens/InventedNames$package.given_Z_T().[T]
 [27:11..27:12): Z -> givens/Z#
 [27:13..27:14): T -> givens/InventedNames$package.given_Z_T#[T]
 [28:6..28:9): doZ <- givens/InventedNames$package.given_Z_T#doZ().
