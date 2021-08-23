@@ -177,7 +177,7 @@ trait Test1(
 
 </details>
 
-(3.) The extension clause of an experimental `class`, `trait`, `object` are experimental scopes.
+(3.) The `extends` clause of an experimental `class`, `trait` or `object` is an experimental scope.
 
 <details>
 <summary>Examples</summary>
@@ -200,7 +200,7 @@ class C2 extends A2(x) // error def x is marked @experimental and therefore
 
 </details>
 
-(4.) Members of an experimental `class`, `trait` or `object` are in experimental scopes.
+(4.) The body of an experimental `class`, `trait` or `object` is an experimental scope.
 
 <details>
 <summary>Examples</summary>
