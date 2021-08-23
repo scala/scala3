@@ -49,7 +49,7 @@ class ExtractSemanticDB extends Phase:
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:
-    given builder: s.SemanticSymbolBuilder = s.SemanticSymbolBuilder()
+    given s.SemanticSymbolBuilder = s.SemanticSymbolBuilder()
     val synth = SyntheticsExtractor()
     given converter: s.TypeOps = s.TypeOps()
 
@@ -156,26 +156,18 @@ class ExtractSemanticDB extends Phase:
               case tree: DefDef if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
                 tree.trailingParamss.foreach(_.foreach(traverse))
                 traverse(tree.rhs)
-              case tree: (DefDef | ValDef) if tree.symbol.isSyntheticWithIdent =>
+              case tree: (DefDef | ValDef) if tree.symbol.isSyntheticWithIdent || isInventedGiven(tree) =>
                 tree match
                   case tree: DefDef =>
                     tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
                   case tree: ValDef if tree.symbol.is(Given) =>
-                    synth.tryFindSynthetic(tree).foreach { synth =>
-                      synthetics += synth
-                    }
+                    synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
                     traverse(tree.tpt)
                   case _ =>
                 if !tree.symbol.isGlobal then
                   localBodies(tree.symbol) = tree.rhs
                 // ignore rhs
 
-              // `given Int` (syntax sugar of `given given_Int: Int`)
-              case tree: ValDef if isInventedGiven(tree) =>
-                  synth.tryFindSynthetic(tree).foreach { synth =>
-                    synthetics += synth
-                  }
-                  traverse(tree.tpt)
               case PatternValDef(pat, rhs) =>
                 traverse(rhs)
                 PatternValDef.collectPats(pat).foreach(traverse)
@@ -210,10 +202,7 @@ class ExtractSemanticDB extends Phase:
         case tree: Apply =>
           @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
-          synth.tryFindSynthetic(tree).foreach { synth =>
-            synthetics += synth
-          }
-
+          synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
           for arg <- tree.args do
             arg match
               case tree @ NamedArg(name, arg) =>
