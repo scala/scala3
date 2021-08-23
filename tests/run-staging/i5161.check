@@ -1,6 +1,6 @@
 run : Some(2)
 show : scala.Tuple2.apply[scala.Option[scala.Int], scala.Option[scala.Int]](scala.Some.apply[scala.Int](1), scala.Some.apply[scala.Int](1)) match {
-  case scala.Tuple2((scala.Some(x): scala.Some[scala.Int]), (scala.Some(y): scala.Some[scala.Int])) =>
+  case scala.Tuple2(scala.Some(x), scala.Some(y)) =>
     scala.Some.apply[scala.Int](x.+(y))
   case _ =>
     scala.None

@@ -131,7 +131,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |                             +- Apply
    *           |                             +- TypeApply
    *           |                             +- Super
-   *           |                             +- Typed
    *           |                             +- Assign
    *           |                             +- Block
    *           |                             +- Closure
@@ -144,7 +143,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |                             +- Inlined
    *           |                             +- SelectOuter
    *           |                             +- While
+   *           |                             +---+- Typed
+   *           |                                /
+   *           +- TypedOrTest +----------------·
+   *           +- Bind
+   *           +- Unapply
+   *           +- Alternatives
    *           |
+   *           +- CaseDef
+   *           +- TypeCaseDef
    *           |
    *           +- TypeTree ----+- Inferred
    *           |               +- TypeIdent
@@ -162,13 +169,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |
    *           +- TypeBoundsTree
    *           +- WildcardTypeTree
-   *           |
-   *           +- CaseDef
-   *           |
-   *           +- TypeCaseDef
-   *           +- Bind
-   *           +- Unapply
-   *           +- Alternatives
    *
    *  +- ParamClause -+- TypeParamClause
    *                  +- TermParamClause
@@ -1135,8 +1135,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Typed` */
     given TypedTypeTest: TypeTest[Tree, Typed]
 
-    /** Tree representing a type ascription `x: T` in the source code */
-    type Typed <: Term
+    /** Tree representing a type ascription `x: T` in the source code.
+     *
+     *  Also represents a pattern that contains a term `x`.
+     *  Other `: T` patterns use the more general `TypedOrTest`.
+     */
+    type Typed <: Term & TypedOrTest
 
     /** Module object of `type Typed`  */
     val Typed: TypedModule
@@ -1582,6 +1586,38 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def body: Term
       end extension
     end WhileMethods
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypedOrTest` */
+    given TypedOrTestTypeTest: TypeTest[Tree, TypedOrTest]
+
+    /** Tree representing a type ascription or type test pattern `x: T` in the source code. */
+    type TypedOrTest <: Tree
+
+    /** Module object of `type TypedOrTest`  */
+    val TypedOrTest: TypedOrTestModule
+
+    /** Methods of the module object `val TypedOrTest` */
+    trait TypedOrTestModule { this: TypedOrTest.type =>
+
+      /** Create a type ascription `<x: Tree>: <tpt: TypeTree>` */
+      def apply(expr: Tree, tpt: TypeTree): TypedOrTest
+
+      def copy(original: Tree)(expr: Tree, tpt: TypeTree): TypedOrTest
+
+      /** Matches `<expr: Tree>: <tpt: TypeTree>` */
+      def unapply(x: TypedOrTest): (Tree, TypeTree)
+    }
+
+    /** Makes extension methods on `TypedOrTest` available without any imports */
+    given TypedOrTestMethods: TypedOrTestMethods
+
+    /** Extension methods of `TypedOrTest` */
+    trait TypedOrTestMethods:
+      extension (self: TypedOrTest)
+        def tree: Tree
+        def tpt: TypeTree
+      end extension
+    end TypedOrTestMethods
 
     // ----- TypeTrees ------------------------------------------------
 
@@ -4414,6 +4450,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             Unapply.copy(pattern)(transformTerm(pattern.fun)(owner), transformSubTrees(pattern.implicits)(owner), transformTrees(pattern.patterns)(owner))
           case pattern: Alternatives =>
             Alternatives.copy(pattern)(transformTrees(pattern.patterns)(owner))
+          case TypedOrTest(inner, tpt) =>
+            TypedOrTest.copy(tree)(transformTree(inner)(owner), transformTypeTree(tpt)(owner))
         }
       }
 
@@ -4464,7 +4502,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case New(tpt) =>
             New.copy(tree)(transformTypeTree(tpt)(owner))
           case Typed(expr, tpt) =>
-            Typed.copy(tree)(/*FIXME #12222: transformTerm(expr)(owner)*/transformTree(expr)(owner).asInstanceOf[Term], transformTypeTree(tpt)(owner))
+            Typed.copy(tree)(transformTerm(expr)(owner), transformTypeTree(tpt)(owner))
           case tree: NamedArg =>
             NamedArg.copy(tree)(tree.name, transformTerm(tree.value)(owner))
           case Assign(lhs, rhs) =>

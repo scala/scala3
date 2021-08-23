@@ -15,5 +15,8 @@ object MiMaFilters {
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.path"),
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#UnapplyModule.apply"),
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#UnapplyModule.apply"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTestTypeTest"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTest"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTestMethods"),
   )
 }

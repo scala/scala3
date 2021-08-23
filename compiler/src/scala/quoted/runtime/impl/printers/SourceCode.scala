@@ -928,9 +928,13 @@ object SourceCode {
       case Alternatives(trees) =>
         inParens(printPatterns(trees, " | "))
 
-      case Typed(Wildcard(), tpt) =>
-        this += "_: "
-        printTypeTree(tpt)
+      case TypedOrTest(tree1, tpt) =>
+        tree1 match
+          case Wildcard() =>
+            this += "_: "
+            printTypeTree(tpt)
+          case _ =>
+            printPattern(tree1)
 
       case v: Term =>
         printTree(v)
