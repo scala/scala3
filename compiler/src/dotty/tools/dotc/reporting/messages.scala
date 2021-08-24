@@ -280,12 +280,12 @@ import transform.SymUtils._
       val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)(using printCtx)
       s"""|Found:    $foundStr
           |Required: $expectedStr""".stripMargin
-        + whereSuffix + postScript 
+        + whereSuffix + postScript
 
-    override def explain = 
+    override def explain =
       val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
       treeStr + "\n" + super.explain
-      
+
 
   end TypeMismatch
 
@@ -300,14 +300,14 @@ import transform.SymUtils._
 
       // The names of all non-synthetic, non-private members of `site`
       // that are of the same type/term kind as the missing member.
-      def candidates: Set[String] =
+      def candidates: Set[Symbol] =
         for
           bc <- site.widen.baseClasses.toSet
           sym <- bc.info.decls.filter(sym =>
             sym.isType == name.isTypeName
             && !sym.isConstructor
             && !sym.flagsUNSAFE.isOneOf(Synthetic | Private))
-        yield sym.name.show
+        yield sym
 
       // Calculate Levenshtein distance
       def distance(s1: String, s2: String): Int =
@@ -325,11 +325,11 @@ import transform.SymUtils._
 
       // A list of possible candidate strings with their Levenstein distances
       // to the name of the missing member
-      def closest: List[(Int, String)] = candidates
+      def closest: List[(Int, Symbol)] = candidates
         .toList
-        .map(n => (distance(n, missing), n))
-        .filter((d, n) => d <= maxDist && d < missing.length && d < n.length)
-        .sorted  // sort by distance first, alphabetically second
+        .map(n => (distance(n.name.show, missing), n))
+        .filter((d, n) => d <= maxDist && d < missing.length && d < n.name.show.length)
+        .sortBy((d, n) => (d, n.name.show))  // sort by distance first, alphabetically second
 
       val enumClause =
         if ((name eq nme.values) || (name eq nme.valueOf)) && site.classSymbol.companionClass.isEnumClass then
@@ -352,7 +352,11 @@ import transform.SymUtils._
             val siteName = site match
               case site: NamedType => site.name.show
               case site => i"$site"
-            s" - did you mean $siteName.$n?$enumClause"
+            val showName =
+              // Add .type to the name if it is a module
+              if n.isClass && n.is(Module) then s"${n.name.show}.type"
+              else n.name.show
+            s" - did you mean $siteName.$showName?$enumClause"
           case Nil => prefixEnumClause("")
 
       ex"$selected $name is not a member of ${site.widen}$finalAddendum"
