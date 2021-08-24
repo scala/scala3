@@ -8,3 +8,5 @@ package internal
  *  It may accidentally be visible while compiling the non-bootstrapped library.
  */
 @experimental def testExperimental = 4
+
+// def test = testExperimental // This should fail if un-commented
