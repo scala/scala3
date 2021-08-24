@@ -92,7 +92,14 @@ object Completion {
         }.getOrElse("")
 
       case (ref: untpd.RefTree) :: _ =>
-        if (ref.name == nme.ERROR) ""
+        if (ref.name == nme.ERROR) {
+          val content = ref.source.content()
+          // if the error resulted from unclosed back tick
+          if content(ref.span.start) == '`' then
+            content.slice(ref.span.start, ref.span.end).mkString
+          else
+            ""
+        }
         else ref.name.toString.take(pos.span.point - ref.span.point)
 
       case _ =>
@@ -109,7 +116,9 @@ object Completion {
   private def computeCompletions(pos: SourcePosition, path: List[Tree])(using Context): (Int, List[Completion]) = {
     val mode = completionMode(path, pos)
     val prefix = completionPrefix(path, pos)
-    val completer = new Completer(mode, prefix, pos)
+    val startsWithBacktick = prefix.headOption.exists(_ == '`')
+    val cleanPrefix = if (startsWithBacktick) prefix.drop(1) else prefix
+    val completer = new Completer(mode, cleanPrefix, pos)
 
     val completions = path match {
         // Ignore synthetic select from `This` because in code it was `Ident`
@@ -121,7 +130,7 @@ object Completion {
         case _                                                       => completer.scopeCompletions
       }
 
-    val describedCompletions = describeCompletions(completions)
+    val describedCompletions = describeCompletions(completions, startsWithBacktick)
     val offset = completionOffset(path)
 
     interactiv.println(i"""completion with pos     = $pos,
@@ -136,12 +145,14 @@ object Completion {
    * Return the list of code completions with descriptions based on a mapping from names to the denotations they refer to.
    * If several denotations share the same name, each denotation will be transformed into a separate completion item.
    */
-  def describeCompletions(completions: CompletionMap)(using Context): List[Completion] =
+  def describeCompletions(completions: CompletionMap, backtick: Boolean)(using Context): List[Completion] =
     for
       (name, denots) <- completions.toList
       denot <- denots
-    yield
-      Completion(name.show, description(denot), List(denot.symbol))
+    yield {
+      val completionName =  if (backtick) s"`${name.show}`" else name.show
+      Completion(completionName, description(denot), List(denot.symbol))
+    }
 
   def description(denot: SingleDenotation)(using Context): String =
     if denot.isType then denot.symbol.showFullName

@@ -138,4 +138,8 @@ class TabcompleteTests extends ReplTest {
       tabComplete("import quoted.* ; def fooImpl(using Quotes): Expr[Int] = { import quotes.reflect.* ; TypeRepr.of[Int].s"))
   }
 
+  @Test def wrongAnyMember: Unit =  fromInitialState { implicit s =>
+    assertEquals(List("`scalaUtilChainingOps`", "`synchronized`"), tabComplete("import scala.util.chaining.`s"))
+    assertEquals(List("`scalaUtilChainingOps`"), tabComplete("import scala.util.chaining.`sc"))
+  }
 }

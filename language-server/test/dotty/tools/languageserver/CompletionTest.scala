@@ -887,4 +887,38 @@ class CompletionTest {
           )
         )
   }
+
+  @Test def wrongAnyMember: Unit = {
+    code"""|import scala.util.chaining.`sc${m1}
+           |""".withSource
+      .completion(m1, Set(("`scalaUtilChainingOps`",Method,"[A](a: A): scala.util.ChainingOps[A]")))
+  }
+
+  @Test def importBackticked: Unit = {
+    code"""|object O{
+           | val `extends` = ""
+           |}
+           |import O.`extends`${m1}
+           |""".withSource
+      .completion(m1, Set(("extends",Field,"String")))
+  }
+
+  @Test def importBacktickedUnclosed: Unit = {
+    code"""|object O{
+           | val `extends` = ""
+           |}
+           |import O.`extends${m1}
+           |""".withSource
+      .completion(m1, Set(("`extends`",Field,"String")))
+  }
+
+
+  @Test def importBacktickedUnclosedSpace: Unit = {
+  code"""|object O{
+         | val `extends ` = ""
+         |}
+         |import O.`extends ${m1}
+         |""".withSource
+    .completion(m1, Set(("`extends `",Field,"String")))
+  }
 }
