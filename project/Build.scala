@@ -63,7 +63,7 @@ object DottyJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.0.0"
+  val referenceVersion = "3.1.0-RC1-bin-20210823-dd7a07a-NIGHTLY"
 
   val baseVersion = "3.1.0-RC1"
 
@@ -1740,7 +1740,10 @@ object Build {
       val base =
         project.withCommonSettings.
           settings(
-            libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion
+            libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
+            // Make sure we do not refer to experimental features outside an experimental scope.
+            // In other words, disable NIGHTLY/SNAPSHOT experimental scope.
+            scalacOptions += "-Yno-experimental",
           ).
           settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {
