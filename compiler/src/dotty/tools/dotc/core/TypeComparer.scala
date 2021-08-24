@@ -66,6 +66,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   private def touchHKGadt[T](body: => T): T =
     val savedHKGADTtouched = HKGADTtouched
+    HKGADTtouched = true
     val res = body
     HKGADTtouched = savedHKGADTtouched
     res
