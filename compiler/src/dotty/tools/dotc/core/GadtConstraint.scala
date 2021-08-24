@@ -122,7 +122,6 @@ final class ProperGadtConstraint private(
   private def addTypeMembersOf(path: Type, isUnamedPattern: Boolean)(using Context): Option[Map[Symbol, TypeVar]] =
     import NameKinds.DepParamName
 
-    /** Should not place constraints on type members defined in modules. */
     if !isUnamedPattern && !isConstrainablePath(path) then return None
 
     val pathType = if isUnamedPattern then path else path.widen

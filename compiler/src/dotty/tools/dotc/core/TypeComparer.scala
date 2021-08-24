@@ -192,11 +192,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   extension (tpr: TypeRef)
     private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
-      def useGadtBounds =
-        val bounds = gadtBounds(tpr)
-        bounds != null && op(bounds)
+      val gbounds =
+        gadtBounds(tpr) match
+          case null =>
+            if tryRegisterPDT(tpr) then gadtBounds(tpr) else null
+          case gbounds => gbounds
 
-      useGadtBounds || { tryRegisterPDT(tpr) && useGadtBounds }
+      gbounds != null && op(gbounds)
 
   extension (sym: Symbol)
     private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
