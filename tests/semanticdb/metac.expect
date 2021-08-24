@@ -368,7 +368,6 @@ Text => empty
 Language => Scala
 Symbols => 5 entries
 Occurrences => 4 entries
-Synthetics => 1 entries
 
 Symbols:
 angiven/AnonymousGiven$package. => final package object angiven extends Object { self: angiven.type => +2 decls }
@@ -382,9 +381,6 @@ Occurrences:
 [2:6..2:9): Foo <- angiven/Foo#
 [4:4..4:7): bar <- angiven/AnonymousGiven$package.bar().
 [4:14..4:17): Foo -> angiven/Foo#
-
-Synthetics:
-[4:14..4:17):Foo => x$1
 
 expect/Classes.scala
 --------------------
@@ -1238,7 +1234,7 @@ Text => empty
 Language => Scala
 Symbols => 26 entries
 Occurrences => 50 entries
-Synthetics => 2 entries
+Synthetics => 1 entries
 
 Symbols:
 ext/Extension$package. => final package object ext extends Object { self: ext.type => +6 decls }
@@ -1321,7 +1317,6 @@ Occurrences:
 [17:50..17:51): U -> ext/Functor#map().[U]
 
 Synthetics:
-[14:24..14:31):Read[T] => x$2
 [14:46..14:61):summon[Read[T]] => *(x$2)
 
 expect/ForComprehension.scala
@@ -1711,7 +1706,7 @@ Text => empty
 Language => Scala
 Symbols => 45 entries
 Occurrences => 61 entries
-Synthetics => 5 entries
+Synthetics => 2 entries
 
 Symbols:
 givens/InventedNames$package. => final package object givens extends Object { self: givens.type => +24 decls }
@@ -1824,9 +1819,6 @@ Occurrences:
 [41:18..41:24): String -> scala/Predef.String#
 
 Synthetics:
-[14:0..14:20):given String = "str" => given_String
-[15:13..15:16):Int => x$1
-[24:13..24:14):X => x$1
 [34:8..34:20):given_Double => *(intValue)
 [40:8..40:15):given_Y => *(given_X)
 
@@ -2972,7 +2964,7 @@ Text => empty
 Language => Scala
 Symbols => 52 entries
 Occurrences => 133 entries
-Synthetics => 24 entries
+Synthetics => 21 entries
 
 Symbols:
 example/Synthetic# => class Synthetic extends Object { self: Synthetic => +23 decls }
@@ -3181,12 +3173,9 @@ Synthetics:
 [32:35..32:49):Array.empty[T] => *(evidence$1)
 [36:22..36:27):new F => orderingToOrdered[F](*)
 [36:22..36:27):new F => *(ordering)
-[50:26..50:29):Int => x$2
-[51:17..51:20):Int => x$1
 [51:24..51:30):foo(0) => *(x$1)
 [52:27..52:33):foo(0) => *(x)
 [55:6..55:12):foo(x) => *(x)
-[57:6..57:19):given Int = 1 => given_Int
 [58:6..58:12):foo(0) => *(given_Int)
 
 expect/Traits.scala
