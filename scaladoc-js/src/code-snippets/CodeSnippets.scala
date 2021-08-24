@@ -129,13 +129,20 @@ class CodeSnippets:
           scastie.Embedded(snippet.querySelector("pre"), scastieConfig)
           runButton.setAttribute("opened", "opened")
         }
-        snippet.querySelector(".scastie .embedded-menu .run-button") match {
+        snippet.querySelector(".scastie .embedded-menu") match {
           case btn: html.Element =>
             btn.style = "display:none;"
-            btn.click()
+          case _ =>
+        }
+        snippet.querySelector(".scastie .embedded-menu .run-button") match {
+          case btn: html.Element => btn.click()
           case _ =>
         }
         snippet.querySelector(".buttons .exit-button") match {
+          case btn: html.Element => btn.parentElement.style = ""
+          case _ =>
+        }
+        snippet.querySelector(".buttons .to-scastie-button") match {
           case btn: html.Element => btn.parentElement.style = ""
           case _ =>
         }
@@ -167,16 +174,42 @@ class CodeSnippets:
           case btn: html.Element => btn.removeAttribute("opened")
           case _ =>
         }
+        snippet.querySelector(".buttons .to-scastie-button") match {
+          case btn: html.Element => btn.parentElement.style = "display:none;"
+          case _ =>
+        }
         div.style = "display:none;"
       )
 
       div.appendChild(exitButton)
       div
     }
+    def toScastieButton = {
+      val div = document.createElement("div").asInstanceOf[html.Div]
+      val toScastieButton = document.createElement("button").asInstanceOf[html.Element]
+      val toScastieIcon = document.createElement("i").asInstanceOf[html.Image]
+
+      toScastieIcon.classList.add("fas")
+      toScastieIcon.classList.add("fa-external-link-alt")
+      toScastieButton.classList.add("to-scastie-button")
+      div.style = "display:none;"
+      toScastieButton.appendChild(toScastieIcon)
+
+      toScastieButton.addEventListener("click", _ =>
+        snippet.querySelector(".embedded-menu li.logo") match {
+          case toScastie: html.Element => toScastie.click()
+          case _ =>
+        }
+      )
+
+      div.appendChild(toScastieButton)
+      div
+    }
     val buttonsSection = getButtonsSection(snippet)
     buttonsSection.foreach(s =>
       s.appendChild(copyButton)
       if !snippet.hasAttribute("hasContext") then {
+        s.appendChild(toScastieButton)
         s.appendChild(runButton)
         s.appendChild(exitButton)
       }

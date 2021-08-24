@@ -46,7 +46,7 @@
   --slider-diameter: calc(var(--slider-height) - 4px);
 }
 
-.snippet-showhide p {
+.buttons p {
   margin-left: 4px;
   margin-bottom: 0;
   margin-top: 0;
@@ -211,7 +211,6 @@ input:checked + .slider:before {
 }
 
 .snippet .scastie.embedded .editor-container .editor-wrapper {
-  padding-top: 48px;
   height: unset;
 }
 
@@ -236,37 +235,6 @@ input:checked + .slider:before {
 .snippet .scastie .app.light .CodeMirror {
   color: var(--code-fg);
   background-color: var(--code-bg);
-}
-
-.snippet .scastie .app.light .embedded-menu > * {
-  background-color: transparent;
-  color: var(--active-fg);
-  width: 64px;
-  font-size: 1em;
-  padding: 8px;
-  position: unset;
-}
-
-.snippet .scastie .app.light .embedded-menu li:hover {
-  background-color: var(--active-bg);
-}
-
-.snippet .scastie .embedded-menu {
-  margin: 15px;
-  display: block;
-}
-
-.snippet .scastie .embedded-menu > li {
-  display: unset;
-  border: unset;
-  transition-duration: 0.4s;
-}
-
-:root.theme-dark .snippet .scastie .embedded-menu > .logo img {
-  filter: unset;
-}
-:root .snippet .scastie .embedded-menu > .logo img {
-  filter: invert(100%) hue-rotate(180deg);
 }
 
 
@@ -299,8 +267,24 @@ input:checked + .slider:before {
   color: #b58900;
 }
 
+.snippet .scastie .ansi-color-magenta {
+  color: var(--red500);
+}
+
 .snippet .fa-warning:before, .fa-exclamation-triangle:before {
   color: #b58900;
+}
+
+@media(max-width: 836px) {
+  .snippet .buttons {
+    --icon-size: 16px;
+    font-size: 0px;
+  }
+
+  .snippet .buttons p {
+    --icon-size: 16px;
+    font-size: 0px;
+  }
 }
 
 @media(max-width: 576px) {
@@ -308,12 +292,6 @@ input:checked + .slider:before {
       --slider-width: 32px;
       --slider-height: 16px;
   }
-
-  .snippet .buttons {
-      --icon-size: 16px;
-      font-size: 16px;
-  }
-
 }
 
 @media(max-width: 360px) {
@@ -321,21 +299,11 @@ input:checked + .slider:before {
       --slider-width: 32px;
       --slider-height: 16px;
   }
-
-  .snippet .buttons {
-      --icon-size: 16px;
-      font-size: 0px;
-  }
 }
 
 @media(max-width: 240px) {
   .snippet-showhide {
       --slider-width: 24px;
       --slider-height: 10px;
-  }
-
-  .snippet .buttons {
-      --icon-size: 16px;
-      font-size: 0px;
   }
 }
