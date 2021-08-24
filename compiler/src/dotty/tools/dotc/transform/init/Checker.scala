@@ -17,6 +17,7 @@ import Phases._
 
 
 import scala.collection.mutable
+import util.EqHashMap
 
 
 class Checker extends Phase {
@@ -78,11 +79,24 @@ class Checker extends Phase {
 
       val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
 
-      given Promoted = Promoted.empty
-      given Trace = Trace.empty
-      given Env = Env(paramValues)
+      // A wrapper for eval that uses two-cache method to compute fix-point after evaluating a class body
+      def fixPointEval(expr: Tree, thisV: Addr, klass: ClassSymbol, inputCache: evalCache, outputCache: evalCache): Result = {
+        import semantic.Heap._
+        given Promoted = Promoted.empty
+        given Trace = Trace.empty
+        given Env = Env(paramValues)
+        given (evalCache, evalCache) = (inputCache, outputCache)
+        val res = eval(expr, thisV, klass)
+        if !res.errors.isEmpty then res
+        else if inputCache.equal(outputCache) then
+          inputCache.commitEvalCache(thisV)
+          res
+        else
+          thisV.emptyField()
+          fixPointEval(expr, thisV, klass, outputCache, new evalCache)
+      }
 
-      val res = eval(tpl, thisRef, cls)
+      val res = fixPointEval(tpl, thisRef, cls, new evalCache, new evalCache)
       res.errors.foreach(_.issue)
     }
 

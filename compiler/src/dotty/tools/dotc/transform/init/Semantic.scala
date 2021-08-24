@@ -124,7 +124,7 @@ class Semantic {
        */
       def updateField(field: Symbol, value: Value): Contextual[Unit] =
         val fields = heap(ref).fields
-        assert(!fields.contains(field), field.show + " already init, new = " + value + ", ref =" + ref)
+        // assert(!fields.contains(field), field.show + " already init, new = " + value + ", ref =" + ref)
         fields(field) = value
 
       /** Update the immediate outer of the given `klass` of the abstract object
@@ -133,6 +133,11 @@ class Semantic {
        */
       def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] =
         heap(ref).outers(klass) = value
+
+      /** Eliminate the field is necessary when computing fix-point
+        * 
+        */
+      def emptyField(): Contextual[Unit] = heap(ref).fields.clear()
     end extension
   }
   type Heap = Heap.Heap
@@ -268,7 +273,7 @@ class Semantic {
   }
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Env, Context, Trace, Promoted) ?=> T
+  type Contextual[T] = (Env, (evalCache, evalCache), Context, Trace, Promoted) ?=> T
 
 // ----- Error Handling -----------------------------------
 
@@ -337,7 +342,7 @@ class Semantic {
           if target.is(Flags.Lazy) then
             given Trace = trace1
             val rhs = target.defTree.asInstanceOf[ValDef].rhs
-            eval(rhs, addr, target.owner.asClass, cacheResult = true)
+            eval(rhs, addr, target.owner.asClass)
           else
             val obj = heap(addr)
             if obj.fields.contains(target) then
@@ -351,7 +356,7 @@ class Semantic {
                 Result(Hot, Nil)
               else if target.hasSource then
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-                eval(rhs, addr, target.owner.asClass, cacheResult = true)
+                eval(rhs, addr, target.owner.asClass)
               else
                 val error = CallUnknown(field, source, trace.toVector)
                 Result(Hot, error :: Nil)
@@ -404,15 +409,15 @@ class Semantic {
               if target.isPrimaryConstructor then
                 given Env = env2
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                val res = withTrace(trace.add(cls.defTree)) { eval(tpl, addr, cls, cacheResult = true) }
+                val res = withTrace(trace.add(cls.defTree)) { eval(tpl, addr, cls) }
                 Result(addr, res.errors)
               else if target.isConstructor then
                 given Env = env2
-                eval(ddef.rhs, addr, cls, cacheResult = true)
+                eval(ddef.rhs, addr, cls)
               else
                 // normal method call
                 withEnv(if isLocal then env else Env.empty) {
-                  eval(ddef.rhs, addr, cls, cacheResult = true) ++ checkArgs
+                  eval(ddef.rhs, addr, cls) ++ checkArgs
                 }
             else if addr.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
@@ -433,7 +438,7 @@ class Semantic {
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
           else
             withEnv(env) {
-              eval(body, thisV, klass, cacheResult = true) ++ checkArgs
+              eval(body, thisV, klass) ++ checkArgs
             }
 
         case RefSet(refs) =>
@@ -702,19 +707,30 @@ class Semantic {
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Addr, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
+
+  type evalCache = EqHashMap[Tree, Result]
+  def inputCache(using caches: (evalCache, evalCache)) = caches._1
+  def outputCache(using caches: (evalCache, evalCache)) = caches._2
+  extension (evalcache: evalCache)
+    def equal(evalcache2: evalCache): Boolean =
+      evalcache.toSeq.forall((key, result) => evalcache2.contains(key) && evalcache2(key) == result)
+
+    def commitEvalCache(thisV: Addr): Unit =
+      val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
+      evalcache.toSeq.foreach((key, result) => innerMap(key) = result.value)
+  end extension
+  
+  def eval(expr: Tree, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
     val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
-    if (innerMap.contains(expr)) Result(innerMap(expr), Errors.empty)
-    else {
-      // no need to compute fix-point, because
-      // 1. the result is decided by `cfg` for a legal program
-      //    (heap change is irrelevant thanks to monotonicity)
-      // 2. errors will have been reported for an illegal program
-      innerMap(expr) = Hot
+    if innerMap.contains(expr) then Result(innerMap(expr), Errors.empty)
+    else if outputCache.contains(expr) then outputCache(expr)
+    else
+      // need to compute fix-point for soundness
+      if !inputCache.contains(expr) then inputCache(expr) = Result(Hot, Errors.empty)
+      outputCache(expr) = inputCache(expr)
       val res = cases(expr, thisV, klass)
-      if cacheResult then innerMap(expr) = res.value else innerMap.remove(expr)
+      outputCache(expr) = res
       res
-    }
   }
 
   /** Evaluate a list of expressions */
@@ -889,7 +905,7 @@ class Semantic {
       case vdef : ValDef =>
         // local val definition
         // TODO: support explicit @cold annotation for local definitions
-        eval(vdef.rhs, thisV, klass, cacheResult = true)
+        eval(vdef.rhs, thisV, klass)
 
       case ddef : DefDef =>
         // local method
@@ -1109,7 +1125,7 @@ class Semantic {
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         given Env = Env.empty
-        val res = eval(vdef.rhs, thisV, klass, cacheResult = true)
+        val res = eval(vdef.rhs, thisV, klass)
         errorBuffer ++= res.errors
         thisV.updateField(vdef.symbol, res.value)
         fieldsChanged = true
