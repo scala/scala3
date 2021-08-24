@@ -852,7 +852,7 @@ class CompletionTest {
         |    val msg = Expr(str)
         |    val printHello = '{ print("sdsd") }
         |    val tree = printHello.asTerm
-        |    tree.sh${m1}@@ // doesn't work
+        |    tree.sh${m1}
         |  }
         |}""".withSource
       .completion(m1, Set(("show",Method, "(using x$2: x$1.reflect.Printer[x$1.reflect.Tree]): String")))
