@@ -3649,7 +3649,7 @@ object Parsers {
           in.observeIndented()
           newLineOptWhenFollowedBy(LBRACE)
           if in.isNestedStart then inDefScopeBraces(extMethods(nparams))
-          else { syntaxError("Extension without extension methods"); Nil }
+          else { syntaxErrorOrIncomplete("Extension without extension methods") ; Nil }
       val result = atSpan(start)(ExtMethods(joinParams(tparams, leadParamss.toList), methods))
       val comment = in.getDocComment(start)
       if comment.isDefined then
@@ -3671,10 +3671,15 @@ object Parsers {
     def extMethods(numLeadParams: Int): List[DefDef] = checkNoEscapingPlaceholders {
       val meths = new ListBuffer[DefDef]
       while
-        meths += extMethod(numLeadParams)
-        statSepOrEnd(meths, what = "extension method")
+        val start = in.offset
+        val mods = defAnnotsMods(modifierTokens)
+        in.token != EOF && {
+          accept(DEF)
+          meths += defDefOrDcl(start, mods, numLeadParams)
+          in.token != EOF && statSepOrEnd(meths, what = "extension method")
+        }
       do ()
-      if meths.isEmpty then syntaxError("`def` expected")
+      if meths.isEmpty then syntaxErrorOrIncomplete("`def` expected")
       meths.toList
     }
 
