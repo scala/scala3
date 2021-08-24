@@ -842,4 +842,19 @@ class CompletionTest {
           |object Main { "abc".xx${m1} }""".withSource
       .completion(m1, Set())
   }
+
+  @Test def i13365: Unit = {
+    code"""|import scala.quoted._
+        |
+        |object Test {
+        |  def test(using Quotes)(str: String) = {
+        |    import quotes.reflect._
+        |    val msg = Expr(str)
+        |    val printHello = '{ print("sdsd") }
+        |    val tree = printHello.asTerm
+        |    tree.sh${m1}
+        |  }
+        |}""".withSource
+      .completion(m1, Set(("show",Method, "(using x$2: x$1.reflect.Printer[x$1.reflect.Tree]): String")))
+  }
 }
