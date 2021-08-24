@@ -2164,6 +2164,8 @@ class Typer extends Namer
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
     if sym.isConstructor then
+      if sym.is(Inline) then
+        report.error("constructors cannot be `inline`", ddef)
       if sym.isPrimaryConstructor then
         if sym.owner.is(Case) then
           for

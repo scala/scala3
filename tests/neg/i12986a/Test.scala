@@ -1,0 +1,1 @@
+val bar = new Bar()
