@@ -1013,7 +1013,9 @@ object JavaParsers {
       }
       val unit = atSpan(start) { PackageDef(pkg, buf.toList) }
       accept(EOF)
-      unit
+      unit match
+        case PackageDef(Ident(nme.EMPTY_PACKAGE), Nil) => EmptyTree
+        case _ => unit
     }
   }
 
