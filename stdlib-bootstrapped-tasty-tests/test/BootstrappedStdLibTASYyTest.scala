@@ -109,8 +109,8 @@ object BootstrappedStdLibTASYyTest:
         ()
     }
     val tastyFiles = scalaLibTastyPaths.filterNot(blacklisted)
-    val hasErrors = TastyInspector.inspectTastyFiles(tastyFiles.map(x => scalaLibClassesPath.resolve(x).toString))(inspector)
-    assert(!hasErrors, "Errors reported while loading from TASTy")
+    val isSuccess = TastyInspector.inspectTastyFiles(tastyFiles.map(x => scalaLibClassesPath.resolve(x).toString))(inspector)
+    assert(isSuccess, "Errors reported while loading from TASTy")
 
   def compileFromTastyInJar(blacklisted: Set[String]): Unit = {
     val driver = new dotty.tools.dotc.Driver
