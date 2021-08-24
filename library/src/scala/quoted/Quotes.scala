@@ -2199,7 +2199,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isGiven: Boolean
         /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
-        @experimental
         def isErased: Boolean
     end TermParamClauseMethods
 
