@@ -97,6 +97,8 @@ object Inliner {
     if tree.symbol.isExperimental then
       Feature.checkExperimentalDef(tree.symbol, tree)
 
+    if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
+
     /** Set the position of all trees logically contained in the expansion of
      *  inlined call `call` to the position of `call`. This transform is necessary
      *  when lifting bindings from the expansion to the outside of the call.
