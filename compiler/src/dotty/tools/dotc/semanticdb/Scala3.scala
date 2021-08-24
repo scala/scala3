@@ -514,16 +514,4 @@ object Scala3:
 
   end IdentifierOrdering
 
-  /** Check if the symbol is invented by Desugar.inventGivenOrExtensionName
-   *  return true if the symbol is defined as `given Int = ...` and name is invented as "given_Int"
-   */
-  def isInventedGiven(tree: tpd.Tree)(using Context): Boolean =
-    tree match
-      case tree: tpd.ValDef =>
-        val sym = tree.symbol
-        sym.is(Given) &&
-          sym.name.startsWith("given_") &&
-          !namePresentInSource(sym, tree.nameSpan, tree.source)
-      case _ => false
-
 end Scala3

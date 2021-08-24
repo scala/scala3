@@ -156,12 +156,11 @@ class ExtractSemanticDB extends Phase:
               case tree: DefDef if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
                 tree.trailingParamss.foreach(_.foreach(traverse))
                 traverse(tree.rhs)
-              case tree: (DefDef | ValDef) if tree.symbol.isSyntheticWithIdent || isInventedGiven(tree) =>
+              case tree: (DefDef | ValDef) if tree.symbol.isSyntheticWithIdent =>
                 tree match
                   case tree: DefDef =>
                     tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
                   case tree: ValDef if tree.symbol.is(Given) =>
-                    synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
                     traverse(tree.tpt)
                   case _ =>
                 if !tree.symbol.isGlobal then
