@@ -72,10 +72,14 @@ object Extractors {
     def result(): String = sb.result()
 
     def visitTree(x: Tree): this.type = x match {
-      case Ident(name) =>
-        this += "Ident(\"" += name += "\")"
-      case Select(qualifier, name) =>
-        this += "Select(" += qualifier += ", \"" += name += "\")"
+      case tree: Ref =>
+        tree match
+          case Wildcard() =>
+            this += "Wildcard()"
+          case Ident(name) =>
+            this += "Ident(\"" += name += "\")"
+          case Select(qualifier, name) =>
+            this += "Select(" += qualifier += ", \"" += name += "\")"
       case This(qual) =>
         this += "This(" += qual += ")"
       case Super(qual, mix) =>
