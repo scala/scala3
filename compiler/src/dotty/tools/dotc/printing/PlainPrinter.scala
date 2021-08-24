@@ -348,15 +348,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case None => "?"
   }
 
-  protected def decomposeLambdas(bounds: TypeBounds): (String, TypeBounds) =
-    def decompose(tp: Type) = tp.stripTypeVar match
+  protected def decomposeLambdas(bounds: TypeBounds): (Text, TypeBounds) =
+    def decompose(tp: Type): (Text, Type) = tp.stripTypeVar match
       case lam: HKTypeLambda =>
         val names =
           if lam.isDeclaredVarianceLambda then
             lam.paramNames.lazyZip(lam.declaredVariances).map((name, v) =>
               varianceSign(v) + name)
-          else lam.paramNames
-        (names.mkString("[", ", ", "]"), lam.resType)
+          else lam.paramNames.map(_.toString)
+        val infos = lam.paramInfos.map(toText)
+        val tparams = names.zip(infos).map(_ ~ _)
+        ("[" ~ Text(tparams, ",") ~ "]", lam.resType)
       case _ =>
         ("", tp)
     bounds match

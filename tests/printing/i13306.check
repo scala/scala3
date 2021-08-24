@@ -1,0 +1,14 @@
+[[syntax trees at end of                     typer]] // tests/printing/i13306.scala
+package example {
+  class MyClass() extends Object() {}
+  class MembersContainer() extends Object() {
+    type MyType[T >: Nothing <: example.MyClass] = Comparable[T]
+  }
+  final lazy module val Exports: example.Exports = new example.Exports()
+  final module class Exports() extends Object() { this: example.Exports.type =>
+    val instance: example.MembersContainer = new example.MembersContainer()
+    export example.Exports.instance.*
+    final type MyType[T <: example.MyClass] = Comparable[T]
+  }
+}
+
