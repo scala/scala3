@@ -4607,16 +4607,14 @@ Schema => SemanticDB v4
 Uri => toplevel.scala
 Text => empty
 Language => Scala
-Symbols => 19 entries
-Occurrences => 34 entries
-Synthetics => 2 entries
+Symbols => 18 entries
+Occurrences => 42 entries
+Synthetics => 1 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram extends Object { self: MyProgram => +2 decls }
-_empty_/MyProgram#`<init>`(). => primary ctor <init> (): MyProgram
-_empty_/MyProgram#main(). => static method main (param args: Array[String]): Unit
-_empty_/MyProgram#main().(args) => param args: Array[String]
-_empty_/toplevel$package. => final package object _empty_ extends Object { self: _empty_.type => +8 decls }
+_empty_/readInts# => final class readInts extends Object { self: readInts => +2 decls }
+_empty_/toplevel$package. => final package object _empty_ extends Object { self: _empty_.type => +9 decls }
 _empty_/toplevel$package.MyProgram(). => method MyProgram (param times: Int): Unit
 _empty_/toplevel$package.MyProgram().(times) => param times: Int
 _empty_/toplevel$package.a. => val inline method a ""
@@ -4630,7 +4628,8 @@ _empty_/toplevel$package.combine(+1).(z) => param z: Int
 _empty_/toplevel$package.combine(+2). => method combine => Int
 _empty_/toplevel$package.foo(). => method foo => String
 _empty_/toplevel$package.fooRef(). => method fooRef => String
-local0 => val local error: ParseError
+_empty_/toplevel$package.readInts(). => method readInts (param ints: Int*): Unit
+_empty_/toplevel$package.readInts().(ints) => param ints: Int*
 
 Occurrences:
 [0:11..0:12): a <- _empty_/toplevel$package.a.
@@ -4665,10 +4664,17 @@ Occurrences:
 [5:46..5:51): times -> _empty_/toplevel$package.MyProgram().(times)
 [5:53..5:60): foreach -> scala/collection/immutable/Range#foreach().
 [5:67..5:74): println -> scala/Predef.println(+1).
-[6:4..6:10): fooRef <- _empty_/toplevel$package.fooRef().
-[6:30..6:33): foo -> _empty_/toplevel$package.foo().
+[6:1..6:5): main -> scala/main#
+[6:10..6:18): readInts <- _empty_/toplevel$package.readInts().
+[6:19..6:23): ints <- _empty_/toplevel$package.readInts().(ints)
+[6:25..6:28): Int -> scala/Int#
+[6:32..6:36): Unit -> scala/Unit#
+[6:39..6:46): println -> scala/Predef.println(+1).
+[6:47..6:51): ints -> _empty_/toplevel$package.readInts().(ints)
+[6:52..6:60): mkString -> scala/collection/IterableOnceOps#mkString(+1).
+[7:4..7:10): fooRef <- _empty_/toplevel$package.fooRef().
+[7:30..7:33): foo -> _empty_/toplevel$package.foo().
 
 Synthetics:
-[5:0..5:0): => *(given_FromString_Int)
 [5:41..5:42):1 => intWrapper(*)
 
