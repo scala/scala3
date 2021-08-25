@@ -22,7 +22,8 @@ class InkuireJSSearchEngine {
       d.functionName.asInstanceOf[String],
       d.packageLocation.asInstanceOf[String],
       d.pageLocation.asInstanceOf[String],
-      d.entryType.asInstanceOf[String]
+      d.entryType.asInstanceOf[String],
+      d.mq.asInstanceOf[Int]
     )
   }
 
