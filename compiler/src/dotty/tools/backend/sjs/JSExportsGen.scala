@@ -745,11 +745,14 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         } else {
           assert(captures.sizeIs == 1, "expected exactly one capture")
 
-          // Find the module accessor.
+          // Find the module accessor. We cannot use memberBasedOnFlags because of scala-js/scala-js#4526.
           val outer = targetSym.originalOwner
           val name = atPhase(typerPhase)(targetSym.name.unexpandedName).sourceModuleName
-          val modAccessor = outer.info.memberBasedOnFlags(name, required = Module).symbol
-          assert(modAccessor.exists, i"could not find module accessor for ${targetSym.fullName} at $pos")
+          val modAccessor = outer.info.allMembers.find { denot =>
+            denot.symbol.is(Module) && denot.name.unexpandedName == name
+          }.getOrElse {
+            throw new AssertionError(i"could not find module accessor for ${targetSym.fullName} at $pos")
+          }.symbol
 
           val receiver = captures.head
           if (outer.isJSType)
