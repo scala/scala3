@@ -40,6 +40,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
       wrapper.classList.add("scaladoc-searchbar-result")
       wrapper.classList.add("monospace")
+      wrapper.setAttribute("mq", m.mq.toString)
 
       val resultDiv = document.createElement("div").asInstanceOf[html.Div]
       resultDiv.classList.add("scaladoc-searchbar-result-row")
@@ -132,7 +133,19 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
           loading.appendChild(animation)
           properResultsDiv.appendChild(loading)
           inkuireEngine.query(query) { (m: InkuireMatch) =>
-            properResultsDiv.appendChild(m.toHTML)
+            var next: Option[Element] = None
+            0.until(properResultsDiv.children.length).foreach { i =>
+              val child = properResultsDiv.children(i)
+              val attr = child.getAttribute("mq")
+              if attr != null && attr != "" && Integer.parseInt(attr) > m.mq && next.isEmpty then {
+                next = Some(child)
+              }
+            }
+            next.fold{
+              properResultsDiv.appendChild(m.toHTML)
+            } { next =>
+              properResultsDiv.insertBefore(m.toHTML, next)
+            }
           } { (s: String) =>
             animation.classList.remove("loading")
             properResultsDiv.appendChild(s.toHTMLError)
