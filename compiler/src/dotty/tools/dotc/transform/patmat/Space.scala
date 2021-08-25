@@ -919,10 +919,13 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
     (1 until cases.length).foreach { i =>
       val pat = cases(i).pat
-
-      if (pat != EmptyTree) { // rethrow case of catch uses EmptyTree
-        val prevs = Or(spaces.take(i))
-        val curr = project(pat)
+      val prevs = Or(spaces.take(i))
+      if (pat != EmptyTree // rethrow case of catch uses EmptyTree
+        && simplify(intersect(prevs, targetSpace)) != Empty
+        // it's required that at one of the previous cases is reachable (its intersected Space isn't Empty)
+        // because if all the previous cases are unreachable then case i can't be unreachable
+      ) {
+        val curr = project(pat) // TODO(dnw) reuse `spaces(i)` & avoid re-computing? Or is mutability present?
 
         debug.println(s"---------------reachable? ${show(curr)}")
         debug.println(s"prev: ${show(prevs)}")
