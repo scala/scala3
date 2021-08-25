@@ -13,6 +13,7 @@ import Denotations._
 import Flags._
 import Names._
 import NameKinds.DefaultGetterName
+import NameOps._
 import Periods._
 import Phases._
 import StdNames._
@@ -681,7 +682,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val varDefs = new mutable.ListBuffer[js.VarDef]
 
     for ((param, i) <- exported.params.zipWithIndex) {
-      val rhs = genScalaArg(exported, i, formalArgsRegistry, param, static)(
+      val rhs = genScalaArg(exported, i, formalArgsRegistry, param, static, captures = Nil)(
           prevArgsCount => varDefs.take(prevArgsCount).toList.map(_.ref))
 
       varDefs += js.VarDef(freshLocalIdent("prep" + i), NoOriginalName, rhs.tpe, mutable = false, rhs)
@@ -698,7 +699,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
    *  (unboxing and default parameter handling).
    */
   def genScalaArg(exported: Exported, paramIndex: Int, formalArgsRegistry: FormalArgsRegistry,
-      param: JSParamInfo, static: Boolean)(
+      param: JSParamInfo, static: Boolean, captures: List[js.Tree])(
       previousArgsValues: Int => List[js.Tree])(
       implicit pos: SourcePosition): js.Tree = {
 
@@ -713,7 +714,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       if (exported.hasDefaultAt(paramIndex)) {
         // If argument is undefined and there is a default getter, call it
         js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()), {
-          genCallDefaultGetter(exported.sym, paramIndex, static)(previousArgsValues)
+          genCallDefaultGetter(exported.sym, paramIndex, static, captures)(previousArgsValues)
         }, {
           unboxedArg
         })(unboxedArg.tpe)
@@ -724,7 +725,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     }
   }
 
-  private def genCallDefaultGetter(sym: Symbol, paramIndex: Int, static: Boolean)(
+  private def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
+      static: Boolean, captures: List[js.Tree])(
       previousArgsValues: Int => List[js.Tree])(
       implicit pos: SourcePosition): js.Tree = {
 
@@ -735,9 +737,30 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     assert(!defaultGetterDenot.isOverloaded, i"found overloaded default getter $defaultGetterDenot")
     val defaultGetter = defaultGetterDenot.symbol
 
-    val targetTree =
-      if (sym.isClassConstructor || static) genLoadModule(targetSym)
-      else js.This()(encodeClassType(targetSym))
+    val targetTree = {
+      if (sym.isClassConstructor || static) {
+        if (targetSym.isStatic) {
+          assert(captures.isEmpty, i"expected empty captures for ${targetSym.fullName} at $pos")
+          genLoadModule(targetSym)
+        } else {
+          assert(captures.sizeIs == 1, "expected exactly one capture")
+
+          // Find the module accessor.
+          val outer = targetSym.originalOwner
+          val name = atPhase(typerPhase)(targetSym.name.unexpandedName).sourceModuleName
+          val modAccessor = outer.info.memberBasedOnFlags(name, required = Module).symbol
+          assert(modAccessor.exists, i"could not find module accessor for ${targetSym.fullName} at $pos")
+
+          val receiver = captures.head
+          if (outer.isJSType)
+            genApplyJSClassMethod(receiver, modAccessor, Nil)
+          else
+            genApplyMethodMaybeStatically(receiver, modAccessor, Nil)
+        }
+      } else {
+        js.This()(encodeClassType(targetSym))
+      }
+    }
 
     // Pass previous arguments to defaultGetter
     val defaultGetterArgs = previousArgsValues(defaultGetter.info.paramInfoss.head.size)
