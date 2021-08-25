@@ -61,16 +61,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** Indicates whether the subtype check used GADT bounds */
   private var GADTused: Boolean = false
 
-  /** Indicates whether we have touched HKT GADT bounds */
-  private var HKGADTtouched: Boolean = false
-
-  private def touchHKGadt[T](body: => T): T =
-    val savedHKGADTtouched = HKGADTtouched
-    HKGADTtouched = true
-    val res = body
-    HKGADTtouched = savedHKGADTtouched
-    res
-
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
 
@@ -1103,7 +1093,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     val tyconIsInjective =
                       (tycon1sym.isClass || tycon2sym.isClass)
                       && (!touchedGADTs || gadtIsInstantiated)
-                      && !HKGADTtouched
+                      && !frozenGadt
 
                     inFrozenGadtIf(!tyconIsInjective) {
                       if tycon1sym == tycon2sym && tycon1sym.isAliasType then
@@ -1185,7 +1175,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case tycon2: TypeRef =>
               val tycon2sym = tycon2.symbol
               tycon2sym.onGadtBounds { bounds2 =>
-                touchHKGadt { compareLower(bounds2, tyconIsTypeRef = false) }
+                inFrozenGadt { compareLower(bounds2, tyconIsTypeRef = false) }
               }
             case _ => false
         } && { GADTused = true; true }
