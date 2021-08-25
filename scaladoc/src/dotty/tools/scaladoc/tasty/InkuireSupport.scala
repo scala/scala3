@@ -152,8 +152,7 @@ trait InkuireSupport:
   }
 
   private def nameAndOwnerName(classDef: ClassDef, symbol: Symbol): (String, String) =
-    if classDef.symbol.flags.is(Flags.Module)
-      && (classDef.symbol.companionClass != Symbol.noSymbol || (Seq("apply", "unapply").contains(symbol.name))) then
+    if classDef.symbol.flags.is(Flags.Module) || Seq("apply", "unapply").contains(symbol.name) then
       (
         symbol.maybeOwner.normalizedName + "." + symbol.name,
         ownerNameChain(classDef.symbol.maybeOwner).mkString(".")
