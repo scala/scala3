@@ -1,0 +1,4 @@
+-- Error: tests/init/neg/unsound1.scala:2:35 ---------------------------------------------------------------------------
+2 |  if (m > 0) println(foo(m - 1).a2.n) // error
+  |                     ^^^^^^^^^^^^^^^
+  |                     Access field A.this.foo(A.this.m.-(1)).a2.n on a value with an unknown initialization status.
