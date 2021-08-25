@@ -1,7 +1,7 @@
 -- [E057] Type Mismatch Error: tests/neg-custom-args/i11637.scala:11:33 ------------------------------------------------
 11 |  var h = new HKT3_1[FunctorImpl]();  // error // error
    |                                 ^
-   |                 Type argument test2.FunctorImpl does not conform to upper bound [Generic2[T] <: Set[T]] =>> Any
+   |       Type argument test2.FunctorImpl does not conform to upper bound [Generic2[T <: String] <: Set[T]] =>> Any
 
 Explanation
 ===========
@@ -9,13 +9,13 @@ Explanation
 I tried to show that
   test2.FunctorImpl
 conforms to
-  [Generic2[T] <: Set[T]] =>> Any
+  [Generic2[T <: String] <: Set[T]] =>> Any
 but the comparison trace ended with `false`:
           
-  ==> test2.FunctorImpl  <:  [Generic2[T] <: Set[T]] =>> Any
-    ==> test2.FunctorImpl  <:  [Generic2[T] <: Set[T]] =>> Any (recurring)
-      ==> type bounds [[T] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
-        ==> type bounds [[T] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring)
+  ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any
+    ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any (recurring)
+      ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
+        ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring)
           ==> [T <: String] =>> Set[T]  <:  Iterable
             ==> [T <: String] =>> Set[T]  <:  Iterable (recurring)
               ==> type bounds []  <:  type bounds [ <: String]
@@ -30,17 +30,17 @@ but the comparison trace ended with `false`:
               <== type bounds []  <:  type bounds [ <: String] = false
             <== [T <: String] =>> Set[T]  <:  Iterable (recurring) = false
           <== [T <: String] =>> Set[T]  <:  Iterable = false
-        <== type bounds [[T] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring) = false
-      <== type bounds [[T] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
-    <== test2.FunctorImpl  <:  [Generic2[T] <: Set[T]] =>> Any (recurring) = false
-  <== test2.FunctorImpl  <:  [Generic2[T] <: Set[T]] =>> Any = false
+        <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring) = false
+      <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
+    <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any (recurring) = false
+  <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any = false
 
 The tests were made under the empty constraint
 
 -- [E057] Type Mismatch Error: tests/neg-custom-args/i11637.scala:11:21 ------------------------------------------------
 11 |  var h = new HKT3_1[FunctorImpl]();  // error // error
    |                     ^
-   |                 Type argument test2.FunctorImpl does not conform to upper bound [Generic2[T] <: Set[T]] =>> Any
+   |       Type argument test2.FunctorImpl does not conform to upper bound [Generic2[T <: String] <: Set[T]] =>> Any
 
 Explanation
 ===========
@@ -48,13 +48,13 @@ Explanation
 I tried to show that
   test2.FunctorImpl
 conforms to
-  [Generic2[T] <: Set[T]] =>> Any
+  [Generic2[T <: String] <: Set[T]] =>> Any
 but the comparison trace ended with `false`:
           
-  ==> test2.FunctorImpl  <:  [Generic2[T] <: Set[T]] =>> Any
-    ==> test2.FunctorImpl  <:  [Generic2[T] <: Set[T]] =>> Any (recurring)
-      ==> type bounds [[T] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
-        ==> type bounds [[T] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring)
+  ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any
+    ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any (recurring)
+      ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
+        ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring)
           ==> [T <: String] =>> Set[T]  <:  Iterable
             ==> [T <: String] =>> Set[T]  <:  Iterable (recurring)
               ==> type bounds []  <:  type bounds [ <: String]
@@ -69,9 +69,9 @@ but the comparison trace ended with `false`:
               <== type bounds []  <:  type bounds [ <: String] = false
             <== [T <: String] =>> Set[T]  <:  Iterable (recurring) = false
           <== [T <: String] =>> Set[T]  <:  Iterable = false
-        <== type bounds [[T] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring) = false
-      <== type bounds [[T] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
-    <== test2.FunctorImpl  <:  [Generic2[T] <: Set[T]] =>> Any (recurring) = false
-  <== test2.FunctorImpl  <:  [Generic2[T] <: Set[T]] =>> Any = false
+        <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring) = false
+      <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
+    <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any (recurring) = false
+  <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any = false
 
 The tests were made under the empty constraint
