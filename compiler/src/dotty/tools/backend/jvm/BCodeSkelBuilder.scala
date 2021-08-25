@@ -139,6 +139,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         // See `tests/run/given-var.scala`
         //
 
+        // !!! Part of this logic is duplicated in JSCodeGen.genCompilationUnit
         claszSymbol.info.decls.foreach { f =>
           if f.isField && !f.name.is(LazyBitMapName) then
             f.setFlag(JavaStatic)

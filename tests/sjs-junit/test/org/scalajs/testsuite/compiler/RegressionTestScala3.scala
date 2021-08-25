@@ -39,6 +39,11 @@ class RegressionTestScala3 {
   @Test def defaultAccessorBridgesIssue12572(): Unit = {
     new MyPromiseIssue12572[Int](5)
   }
+
+  @Test def desugarIdentCrashIssue13221(): Unit = {
+    assertEquals(1, X_Issue13221.I.i)
+    assertEquals(1, X_Issue13221.blah)
+  }
 }
 
 object RegressionTestScala3 {
@@ -75,6 +80,17 @@ object RegressionTestScala3 {
         onRejected: js.UndefOr[js.Function1[scala.Any, S | js.Thenable[S]]] = js.undefined): js.Promise[S] = {
       ???
     }
+  }
+
+  object X_Issue13221 extends Y_Issue13221 {
+    object I {
+      def i = 1
+    }
+  }
+
+  abstract class Y_Issue13221 { self: X_Issue13221.type =>
+    import I._
+    def blah = i
   }
 }
 
