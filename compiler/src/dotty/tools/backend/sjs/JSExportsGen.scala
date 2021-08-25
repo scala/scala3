@@ -725,7 +725,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     }
   }
 
-  private def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
+  def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
       static: Boolean, captures: List[js.Tree])(
       previousArgsValues: Int => List[js.Tree])(
       implicit pos: SourcePosition): js.Tree = {
