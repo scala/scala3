@@ -9,7 +9,6 @@ import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
 import util.Stats
-import scala.util.DynamicVariable
 import config.Config
 import config.Feature.migrateTo3
 import config.Printers.{constr, subtyping, gadts, matchTypes, noPrinter}
