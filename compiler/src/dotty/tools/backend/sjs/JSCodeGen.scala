@@ -3192,7 +3192,7 @@ class JSCodeGen()(using genCtx: Context) {
       case resType           => resType
     }
 
-    var clauses: List[(List[js.Tree], js.Tree)] = Nil
+    var clauses: List[(List[js.MatchableLiteral], js.Tree)] = Nil
     var optDefaultClause: Option[js.Tree] = None
 
     for (caze @ CaseDef(pat, guard, body) <- cases) {
@@ -3201,19 +3201,29 @@ class JSCodeGen()(using genCtx: Context) {
 
       val genBody = genStatOrExpr(body, isStat)
 
+      def invalidCase(): Nothing =
+        abortMatch("Invalid case")
+
+      def genMatchableLiteral(tree: Literal): js.MatchableLiteral = {
+        genExpr(tree) match {
+          case matchableLiteral: js.MatchableLiteral => matchableLiteral
+          case otherExpr                             => invalidCase()
+        }
+      }
+
       pat match {
         case lit: Literal =>
-          clauses = (List(genExpr(lit)), genBody) :: clauses
+          clauses = (List(genMatchableLiteral(lit)), genBody) :: clauses
         case Ident(nme.WILDCARD) =>
           optDefaultClause = Some(genBody)
         case Alternative(alts) =>
           val genAlts = alts.map {
-            case lit: Literal => genExpr(lit)
-            case _            => abortMatch("Invalid case in alternative")
+            case lit: Literal => genMatchableLiteral(lit)
+            case _            => invalidCase()
           }
           clauses = (genAlts, genBody) :: clauses
         case _ =>
-          abortMatch("Invalid case pattern")
+          invalidCase()
       }
     }
 
@@ -3228,10 +3238,6 @@ class JSCodeGen()(using genCtx: Context) {
      * case is a typical product of `match`es that are full of
      * `case n if ... =>`, which are used instead of `if` chains for
      * convenience and/or readability.
-     *
-     * When no optimization applies, and any of the case values is not a
-     * literal int, we emit a series of `if..else` instead of a `js.Match`.
-     * This became necessary in 2.13.2 with strings and nulls.
      */
     def isInt(tree: js.Tree): Boolean = tree.tpe == jstpe.IntType
 
@@ -3251,32 +3257,8 @@ class JSCodeGen()(using genCtx: Context) {
         js.If(js.BinaryOp(op, genSelector, uniqueAlt), caseRhs, defaultClause)(resultType)
 
       case _ =>
-        if (isInt(genSelector) &&
-            clauses.forall(_._1.forall(_.isInstanceOf[js.IntLiteral]))) {
-          // We have int literals only: use a js.Match
-          val intClauses = clauses.asInstanceOf[List[(List[js.IntLiteral], js.Tree)]]
-          js.Match(genSelector, intClauses, defaultClause)(resultType)
-        } else {
-          // We have other stuff: generate an if..else chain
-          val (tempSelectorDef, tempSelectorRef) = genSelector match {
-            case varRef: js.VarRef =>
-              (js.Skip(), varRef)
-            case _ =>
-              val varDef = js.VarDef(freshLocalIdent(), NoOriginalName,
-                  genSelector.tpe, mutable = false, genSelector)
-              (varDef, varDef.ref)
-          }
-          val ifElseChain = clauses.foldRight(defaultClause) { (caze, elsep) =>
-            val conds = caze._1.map { caseValue =>
-              js.BinaryOp(js.BinaryOp.===, tempSelectorRef, caseValue)
-            }
-            val cond = conds.reduceRight[js.Tree] { (left, right) =>
-              js.If(left, js.BooleanLiteral(true), right)(jstpe.BooleanType)
-            }
-            js.If(cond, caze._2, elsep)(resultType)
-          }
-          js.Block(tempSelectorDef, ifElseChain)
-        }
+        // We have more than one case: use a js.Match
+        js.Match(genSelector, clauses, defaultClause)(resultType)
     }
   }
 
