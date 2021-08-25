@@ -198,6 +198,23 @@ class JSCodeGen()(using genCtx: Context) {
     }
     val allTypeDefs = collectTypeDefs(cunit.tpdTree)
 
+    /* #13221 Set JavaStatic on all the Module fields of static module classes.
+     * This is necessary for `desugarIdent` not to crash in some obscure
+     * scenarios.
+     *
+     * !!! Part of this logic is duplicated in BCodeSkelBuilder.genPlainClass
+     *
+     * However, here we only do this for Module fields, not all fields.
+     */
+    for (typeDef <- allTypeDefs) {
+      if (typeDef.symbol.is(ModuleClass)) {
+        typeDef.symbol.info.decls.foreach { f =>
+          if (f.isField && f.is(Module))
+            f.setFlag(JavaStatic)
+        }
+      }
+    }
+
     val (anonJSClassTypeDefs, otherTypeDefs) =
       allTypeDefs.partition(td => td.symbol.isAnonymousClass && td.symbol.isJSType)
 
@@ -1957,12 +1974,7 @@ class JSCodeGen()(using genCtx: Context) {
     val args = tree.args
     val sym = tree.fun.symbol
 
-    val fun = tree.fun match {
-      case fun: Ident => desugarIdent(fun)
-      case fun => fun
-    }
-
-    fun match {
+    tree.fun match {
       case _ if sym.isJSDefaultParam =>
         js.Transient(UndefinedParam)
 
