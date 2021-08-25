@@ -134,7 +134,15 @@ object SymOps:
       import reflect._
       sym.flags.is(Flags.Artifact)
 
+    def isOpaque: Boolean =
+      import reflect._
+      sym.flags.is(Flags.Opaque)
+
     def isLeftAssoc: Boolean = !sym.name.endsWith(":")
+
+    def isSyntheticField =
+      import reflect._
+      sym.flags.is(Flags.CaseAccessor) || (sym.flags.is(Flags.Module) && !sym.flags.is(Flags.Given))
 
     def extendedSymbol: Option[reflect.ValDef] =
       import reflect.*
@@ -190,6 +198,13 @@ object SymOps:
       sym.nonExtensionParamLists.collectFirst {
         case TypeParamClause(params) => params
       }.toList.flatten
+
+    def getAllMembers: List[reflect.Symbol] = sym.methodMembers ++ sym.allTypeMembers ++ sym.fieldMembers
+
+    def isSyntheticFunc: Boolean =
+      import reflect._
+      /* Most of flag getters have Synthetic flag set but there are some exceptions which need to be filtered by name */
+      sym.flags.is(Flags.Synthetic) || sym.flags.is(Flags.FieldAccessor) || sym.isSuperAccessor || sym.name.contains("default$")
 
   end extension
 

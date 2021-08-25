@@ -10,7 +10,6 @@ import scala.quoted._
 
 import SymOps._
 import NameNormalizer._
-import SyntheticsSupport._
 
 trait InkuireSupport:
   self: TastyParser =>

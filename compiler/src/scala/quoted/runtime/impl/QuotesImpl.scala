@@ -246,6 +246,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           optional(self.rhs.asInstanceOf[tpd.Template].self)
         def body: List[Statement] =
           self.rhs.asInstanceOf[tpd.Template].body
+        def tpe: TypeRepr =
+          self.symbol.typeRef.appliedTo(self.symbol.typeParams.map(_.typeRef))
+        def supertypes: List[TypeRepr] = self.symbol match
+          case cls: dotc.core.Symbols.ClassSymbol =>
+            val ref = cls.classDenot.classInfo.appliedRef
+            ref.baseClasses.map(ref.baseType(_))
+          case _ => List()
       end extension
     end ClassDefMethods
 
@@ -1694,11 +1701,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           val tpNoRefinement = self.dropDependentRefinement
           tpNoRefinement != self
           && dotc.core.Symbols.defn.isNonRefinedFunction(tpNoRefinement)
+        def isTupleType: Boolean =
+          dotc.core.Symbols.defn.isTupleType(self)
+        def isCompiletimeAppliedType: Boolean =
+          dotc.core.Symbols.defn.isCompiletimeAppliedType(self.typeSymbol)
         def select(sym: Symbol): TypeRepr = self.select(sym)
         def appliedTo(targ: TypeRepr): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
+        def memberInfo(sym: Symbol): TypeRepr =
+          self.memberInfo(sym)
       end extension
     end TypeReprMethods
 
@@ -2465,6 +2478,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isAnonymousFunction: Boolean = self.denot.isAnonymousFunction
         def isAbstractType: Boolean = self.denot.isAbstractType
         def isClassConstructor: Boolean = self.denot.isClassConstructor
+        def isSuperAccessor = self.name.is(dotc.core.NameKinds.SuperAccessorName)
         def isType: Boolean = self.isType
         def isTerm: Boolean = self.isTerm
         def isPackageDef: Boolean = self.is(dotc.core.Flags.Package)
@@ -2543,6 +2557,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def memberTypes: List[Symbol] = typeMembers
         def typeMembers: List[Symbol] =
           self.unforcedDecls.filter(_.isType)
+
+        def allTypeMembers: List[Symbol] =
+          lookupPrefix.allMembers.iterator.map(_.symbol).collect {
+            case sym if sym.isType => sym.asType
+          }.toList
 
         def declarations: List[Symbol] =
           self.typeRef.info.decls.toList
@@ -2733,6 +2752,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def sourceCode: Option[String] =
           // TODO detect when we do not have a source and return None
           Some(new String(self.source.content(), self.start, self.end - self.start))
+        def exists: Boolean = self.exists
       end extension
     end PositionMethods
 

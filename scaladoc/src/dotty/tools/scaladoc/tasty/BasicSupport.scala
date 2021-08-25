@@ -36,6 +36,19 @@ trait BasicSupport:
 
     Annotation(dri, params)
 
+  def isValidPos(using Quotes)(pos: reflect.Position) =
+    if pos.exists then pos.start != pos.end else false
+
+  /* Heuristics solving a problem if the constructor of class in source code contains param clauses or not.
+  It seems that this information is lost during source code processing */
+  def constructorWithoutParamLists(using Quotes)(c: reflect.ClassDef): Boolean =
+    !isValidPos(c.constructor.pos)  || {
+      val end = c.constructor.pos.end
+      val typesEnd =  c.constructor.leadingTypeParams.lastOption.fold(end - 1)(_.pos.end)
+      val classDefTree = c.constructor.show
+      c.constructor.leadingTypeParams.nonEmpty && end <= typesEnd + 1
+    }
+
   extension (using Quotes)(sym: reflect.Symbol)
     def documentation = sym.docstring.map(parseComment(_, sym.tree))
 

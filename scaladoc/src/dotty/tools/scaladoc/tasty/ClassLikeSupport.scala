@@ -9,7 +9,6 @@ import scala.quoted._
 
 import SymOps._
 import NameNormalizer._
-import SyntheticsSupport._
 import dotty.tools.dotc.core.NameKinds
 
 trait ClassLikeSupport:
@@ -79,7 +78,10 @@ trait ClassLikeSupport:
         Seq(link -> superLink) ++ getSupertypesGraph(tree, superLink)
       }
 
-    val supertypes = getSupertypes(using qctx)(classDef).map {
+    val supertypes = classDef.supertypes
+    .tail
+    .map(t => t.typeSymbol -> t)
+    .map {
       case (symbol, tpe) =>
         LinkToType(tpe.asSignature, symbol.dri, bareClasslikeKind(symbol))
     }
@@ -88,7 +90,7 @@ trait ClassLikeSupport:
       val tpe = valdef.tpt.tpe
       LinkToType(tpe.asSignature, symbol.dri, Kind.Type(false, false, Seq.empty))
     }
-    val selfSignature: DSignature = typeForClass(classDef).asSignature
+    val selfSignature: DSignature = classDef.tpe.asSignature
 
     val graph = HierarchyGraph.withEdges(
       getSupertypesGraph(classDef, LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)))
@@ -303,13 +305,13 @@ trait ClassLikeSupport:
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
         Some(parseTypeDef(td))
 
-      case vd: ValDef if !isSyntheticField(vd.symbol)
+      case vd: ValDef if !vd.symbol.isSyntheticField
         && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
         && vd.symbol.isGiven =>
           val classDef = Some(vd.tpt.tpe).flatMap(_.classSymbol.map(_.tree.asInstanceOf[ClassDef]))
           Some(classDef.filter(_.symbol.flags.is(Flags.Module)).fold[Member](parseValDef(c, vd))(parseGivenClasslike(_)))
 
-      case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
+      case vd: ValDef if !vd.symbol.isSyntheticField && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
         Some(parseValDef(c, vd))
 
       case c: ClassDef if c.symbol.owner.methodMember(c.name).exists(_.flags.is(Flags.Given)) =>
@@ -368,14 +370,14 @@ trait ClassLikeSupport:
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
     def getNonTrivialInheritedMemberTrees =
-      c.symbol.getmembers.filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
+      c.symbol.getAllMembers.filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
         .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
         .map(_.tree)
 
   extension (c: ClassDef)
     def extractMembers: Seq[Member] = {
       val inherited = c.getNonTrivialInheritedMemberTrees.collect {
-        case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
+        case dd: DefDef if !dd.symbol.isClassConstructor && !dd.symbol.isSyntheticFunc => dd
         case other => other
       }
       c.membersToDocument.flatMap(parseMember(c)) ++
@@ -458,7 +460,7 @@ trait ClassLikeSupport:
     val companion = classDef.symbol.getCompanionSymbol.map(_.tree.asInstanceOf[ClassDef]).get
 
     val enumVals = companion.membersToDocument.collect {
-      case vd: ValDef if !isSyntheticField(vd.symbol) && vd.symbol.flags.is(Flags.Enum) && vd.symbol.flags.is(Flags.Case) => vd
+      case vd: ValDef if !vd.symbol.isSyntheticField && vd.symbol.flags.is(Flags.Enum) && vd.symbol.flags.is(Flags.Case) => vd
     }.toList.map(parseValDef(classDef, _))
 
     val enumTypes = companion.membersToDocument.collect {
@@ -631,7 +633,7 @@ trait ClassLikeSupport:
 
 
   def unwrapMemberInfo(c: ClassDef, symbol: Symbol): MemberInfo =
-    val baseTypeRepr = memberInfo(c, symbol)
+    val baseTypeRepr = c.tpe.memberInfo(symbol)
 
     def isSyntheticEvidence(name: String) =
       if !name.startsWith(NameKinds.EvidenceParamName.separator) then false else

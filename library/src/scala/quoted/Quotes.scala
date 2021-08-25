@@ -490,6 +490,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  @syntax markdown
          */
         def body: List[Statement]
+        /** Type of the class */
+        def tpe: TypeRepr
+        /** Supertypes of the class */
+        def supertypes: List[TypeRepr]
       end extension
     end ClassDefMethods
 
@@ -2473,6 +2477,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         */
         def isDependentFunctionType: Boolean
 
+        /** Is this type a tuple type?
+        *
+        * @return true if the dealiased type of `self` without refinement is `TupleN[T1, T2, ..., Tn]`
+        */
+        def isTupleType: Boolean
+
+        /** Is this type a compile-time applied type?
+        *
+        */
+        def isCompiletimeAppliedType: Boolean
+
         /** The type <this . sym>, reduced if possible */
         def select(sym: Symbol): TypeRepr
 
@@ -2481,6 +2496,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
         def appliedTo(targs: List[TypeRepr]): TypeRepr
+
+        /** Member info of `sym` as seen from the TypeRepr */
+        def memberInfo(sym: Symbol): TypeRepr
 
       end extension
     }
@@ -3559,6 +3577,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this the constructor of a class? */
         def isClassConstructor: Boolean
 
+        /* Is this the super accessor? */
+        def isSuperAccessor: Boolean
+
         /** Is this the definition of a type? */
         def isType: Boolean
 
@@ -3648,6 +3669,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Type member directly declared in the class */
         def typeMembers: List[Symbol]
+
+        /** All type members declared or inherited */
+        def allTypeMembers: List[Symbol]
 
         /** All members directly declared in the class */
         def declarations: List[Symbol]
@@ -4125,6 +4149,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Source code within the position */
         def sourceCode: Option[String]
+
+        /** Does the position exist? */
+        def exists: Boolean
 
       end extension
     }
