@@ -172,7 +172,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   private inline def inFrozenGadtIf[T](cond: Boolean)(inline op: T): T = {
     val savedFrozenGadt = frozenGadt
-    frozenGadt = cond
+    frozenGadt ||= cond
     try op finally frozenGadt = savedFrozenGadt
   }
 
