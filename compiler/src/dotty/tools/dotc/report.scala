@@ -21,15 +21,7 @@ object report:
     ctx.reporter.report(new Info(msg, pos.sourcePos))
 
   private def issueWarning(warning: Warning)(using Context): Unit =
-    if (!ctx.settings.silentWarnings.value)
-      if (ctx.settings.XfatalWarnings.value)
-        warning match {
-          case warning: ConditionalWarning if !warning.enablingOption.value =>
-            ctx.reporter.report(warning) // conditional warnings that are not enabled are not fatal
-          case _ =>
-            ctx.reporter.report(warning.toError)
-        }
-      else ctx.reporter.report(warning)
+    ctx.reporter.report(warning)
 
   def deprecationWarning(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     issueWarning(new DeprecationWarning(msg, pos.sourcePos))

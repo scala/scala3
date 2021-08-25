@@ -22,6 +22,10 @@
 42 |  @JSName(new NamesClass().a) // error
    |          ^^^^^^^^^^^^^^^^^^
    |          A js.Symbol argument to JSName must be a static, stable identifier
+-- Warning: tests/neg-scalajs/jsname-argument.scala:49:10 --------------------------------------------------------------
+49 |  @JSName(a) // warning, untested
+   |          ^
+   |This symbol is defined in the same object as the annotation's target. This will cause a stackoverflow at runtime
 -- Error: tests/neg-scalajs/jsname-argument.scala:57:3 -----------------------------------------------------------------
 57 |  @JSName(Names.sym) // error
    |  ^^^^^^^^^^^^^^^^^^

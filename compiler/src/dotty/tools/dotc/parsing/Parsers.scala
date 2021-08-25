@@ -1158,10 +1158,11 @@ object Parsers {
           }
           else
             if !in.featureEnabled(Feature.symbolLiterals) then
+              val name = in.name // capture name (not `in`) in the warning message closure
               report.errorOrMigrationWarning(
-                em"""symbol literal '${in.name} is no longer supported,
-                    |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
-                    |or enclose in braces '{${in.name}} if you want a quoted expression.
+                em"""symbol literal '$name is no longer supported,
+                    |use a string literal "$name" or an application Symbol("$name") instead,
+                    |or enclose in braces '{$name} if you want a quoted expression.
                     |For now, you can also `import language.deprecated.symbolLiterals` to accept
                     |the idiom, but this possibility might no longer be available in the future.""",
                 in.sourcePos())

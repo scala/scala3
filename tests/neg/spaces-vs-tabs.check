@@ -28,3 +28,9 @@
    |	  The start of this line does not match any of the previous indentation widths.
    |	  Indentation width of current line : 1 tab, 2 spaces
    |	  This falls between previous widths: 1 tab and 1 tab, 4 spaces
+-- [E129] Potential Issue Warning: tests/neg/spaces-vs-tabs.scala:13:6 -------------------------------------------------
+13 |	      1
+   |	      ^
+   |	      A pure expression does nothing in statement position; you may be omitting necessary parentheses
+
+longer explanation available when compiling with `-explain`

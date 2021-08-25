@@ -16,7 +16,9 @@ import io.{AbstractFile, PlainFile, VirtualFile}
 import Phases.unfusedPhases
 
 import util._
-import reporting.Reporter
+import reporting.{Reporter, Suppression, Action}
+import reporting.Diagnostic
+import reporting.Diagnostic.Warning
 import rewrites.Rewrites
 
 import profile.Profiler
@@ -95,6 +97,60 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var myUnits: List[CompilationUnit] = _
   private var myUnitsCached: List[CompilationUnit] = _
   private var myFiles: Set[AbstractFile] = _
+
+  // `@nowarn` annotations by source file, populated during typer
+  private val mySuppressions: mutable.LinkedHashMap[SourceFile, mutable.ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
+  // source files whose `@nowarn` annotations are processed
+  private val mySuppressionsComplete: mutable.Set[SourceFile] = mutable.Set.empty
+  // warnings issued before a source file's `@nowarn` annotations are processed, suspended so that `@nowarn` can filter them
+  private val mySuspendedMessages: mutable.LinkedHashMap[SourceFile, mutable.LinkedHashSet[Warning]] = mutable.LinkedHashMap.empty
+
+  object suppressions:
+    // When the REPL creates a new run (ReplDriver.compile), parsing is already done in the old context, with the
+    // previous Run. Parser warnings were suspended in the old run and need to be copied over so they are not lost.
+    // Same as scala/scala/commit/79ca1408c7.
+    def initSuspendedMessages(oldRun: Run) = if oldRun != null then
+      mySuspendedMessages.clear()
+      mySuspendedMessages ++= oldRun.mySuspendedMessages
+
+    def suppressionsComplete(source: SourceFile) = source == NoSource || mySuppressionsComplete(source)
+
+    def addSuspendedMessage(warning: Warning) =
+      mySuspendedMessages.getOrElseUpdate(warning.pos.source, mutable.LinkedHashSet.empty) += warning
+
+    def nowarnAction(dia: Diagnostic): Action.Warning.type | Action.Verbose.type | Action.Silent.type =
+      mySuppressions.getOrElse(dia.pos.source, Nil).find(_.matches(dia)) match {
+        case Some(s) =>
+          s.markUsed()
+          if (s.verbose) Action.Verbose
+          else Action.Silent
+        case _ =>
+          Action.Warning
+      }
+
+    def addSuppression(sup: Suppression): Unit =
+      val source = sup.annotPos.source
+      mySuppressions.getOrElseUpdate(source, mutable.ListBuffer.empty) += sup
+
+    def reportSuspendedMessages(source: SourceFile)(using Context): Unit = {
+      // sort suppressions. they are not added in any particular order because of lazy type completion
+      for (sups <- mySuppressions.get(source))
+        mySuppressions(source) = sups.sortBy(sup => 0 - sup.start)
+      mySuppressionsComplete += source
+      mySuspendedMessages.remove(source).foreach(_.foreach(ctx.reporter.issueIfNotSuppressed))
+    }
+
+    def runFinished(hasErrors: Boolean): Unit =
+      // report suspended messages (in case the run finished before typer)
+      mySuspendedMessages.keysIterator.toList.foreach(reportSuspendedMessages)
+      // report unused nowarns only if all all phases are done
+      if !hasErrors && ctx.settings.WunusedHas.nowarn then
+        for {
+          source <- mySuppressions.keysIterator.toList
+          sups   <- mySuppressions.remove(source)
+          sup    <- sups.reverse
+        } if (!sup.used)
+          report.warning("@nowarn annotation does not suppress any warnings", sup.annotPos)
 
   /** The compilation units currently being compiled, this may return different
    *  results over time.
@@ -222,7 +278,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runCtx.setProfiler(Profiler())
     unfusedPhases.foreach(_.initContext(runCtx))
     runPhases(using runCtx)
-    if (!ctx.reporter.hasErrors) Rewrites.writeBack()
+    if (!ctx.reporter.hasErrors)
+      Rewrites.writeBack()
+    suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)
     while (finalizeActions.nonEmpty) {
       val action = finalizeActions.remove(0)
       action()

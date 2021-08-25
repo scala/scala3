@@ -142,22 +142,43 @@ trait MessageRendering {
     sb.toString
   }
 
+  def appendFilterHelp(dia: Diagnostic, sb: mutable.StringBuilder): Unit =
+    import dia._
+    val hasId = msg.errorId.errorNumber >= 0
+    val category = dia match {
+      case _: UncheckedWarning => "unchecked"
+      case _: DeprecationWarning => "deprecation"
+      case _: FeatureWarning => "feature"
+      case _ => ""
+    }
+    if (hasId || category.nonEmpty)
+      sb.append(EOL).append("Matching filters for @nowarn or -Wconf:")
+      if (hasId)
+        sb.append(EOL).append("  - id=E").append(msg.errorId.errorNumber)
+        sb.append(EOL).append("  - name=").append(msg.errorId.productPrefix.stripSuffix("ID"))
+      if (category.nonEmpty)
+        sb.append(EOL).append("  - cat=").append(category)
+
   /** The whole message rendered from `msg` */
-  def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(using Context): String = {
+  def messageAndPos(dia: Diagnostic)(using Context): String = {
+    import dia._
+    val levelString = diagnosticLevel(dia)
     val sb = mutable.StringBuilder()
-    val posString = posStr(pos, diagnosticLevel, msg)
+    val posString = posStr(pos, levelString, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
     if (pos.exists) {
       val pos1 = pos.nonInlined
       if (pos1.exists && pos1.source.file.exists) {
-        val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
-        val marker = columnMarker(pos1, offset, diagnosticLevel)
+        val (srcBefore, srcAfter, offset) = sourceLines(pos1, levelString)
+        val marker = columnMarker(pos1, offset, levelString)
         val err = errorMsg(pos1, msg.message, offset)
         sb.append((srcBefore ::: marker :: err :: outer(pos, " " * (offset - 1)) ::: srcAfter).mkString(EOL))
       }
       else sb.append(msg.message)
     }
     else sb.append(msg.message)
+    if (dia.isVerbose)
+      appendFilterHelp(dia, sb)
     sb.toString
   }
 
