@@ -176,6 +176,8 @@ object Extractors {
         this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
       case Alternatives(patterns) =>
         this += "Alternatives(" ++= patterns += ")"
+      case TypedOrTest(tree, tpt) =>
+        this += "TypedOrTest(" += tree += ", " += tpt += ")"
     }
 
     def visitConstant(x: Constant): this.type = x match {
