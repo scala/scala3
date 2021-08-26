@@ -1092,7 +1092,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     val tyconIsInjective =
                       (tycon1sym.isClass || tycon2sym.isClass)
                       && (!touchedGADTs || gadtIsInstantiated)
-                      && !frozenGadt
 
                     inFrozenGadtIf(!tyconIsInjective) {
                       if tycon1sym == tycon2sym && tycon1sym.isAliasType then
