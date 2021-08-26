@@ -45,7 +45,7 @@ class PatmatExhaustivityTest {
     val baseFilePath  = path.toString.stripSuffix(".scala")
     val checkFilePath = baseFilePath + ".check"
 
-    FileDiff.checkAndDump(path.toString, actualLines, checkFilePath)
+    FileDiff.checkAndDumpOrUpdate(path.toString, actualLines, checkFilePath)
   }
 
   /** A single test with multiple files grouped in a folder */
@@ -57,13 +57,17 @@ class PatmatExhaustivityTest {
     val actualLines   = compile(files)
     val checkFilePath = s"${path}${File.separator}expected.check"
 
-    FileDiff.checkAndDump(path.toString, actualLines, checkFilePath)
+    FileDiff.checkAndDumpOrUpdate(path.toString, actualLines, checkFilePath)
   }
 
   @Test
   def patmatExhaustivity: Unit = {
     val res = Directory(testsDir).list.toList
       .filter(f => f.extension == "scala" || f.isDirectory)
+      .filter { f =>
+        val path = if f.isDirectory then f.path + "/" else f.path
+        path.contains(Properties.testsFilter.getOrElse(""))
+      }
       .map(f => if f.isDirectory then compileDir(f.jpath) else compileFile(f.jpath))
 
     val failed = res.filter(!_)
