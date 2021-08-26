@@ -2777,6 +2777,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def sourceCode: Option[String] =
           // TODO detect when we do not have a source and return None
           Some(new String(self.source.content(), self.start, self.end - self.start))
+        def exists: Boolean =
+          self.exists
       end extension
     end PositionMethods
 

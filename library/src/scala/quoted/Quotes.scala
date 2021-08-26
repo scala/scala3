@@ -4179,6 +4179,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Source code within the position */
         def sourceCode: Option[String]
 
+        /** Does the position exist? */
+        def exists: Boolean
+
       end extension
     }
 
