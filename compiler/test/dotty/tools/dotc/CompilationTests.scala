@@ -42,6 +42,7 @@ class CompilationTests {
       compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init")),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
+      compileFilesInDir("tests/pos-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
       compileFile(
         // succeeds despite -Xfatal-warnings because of -nowarn
@@ -178,7 +179,7 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/matchable.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
       compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
       compileFile("tests/neg-custom-args/feature-shadowing.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
-      compileDir("tests/neg-custom-args/hidden-type-errors",  defaultOptions.and("-explain")),
+      compileDir("tests/neg-custom-args/hidden-type-errors", defaultOptions.and("-explain")),
     ).checkExpectedErrors()
   }
 

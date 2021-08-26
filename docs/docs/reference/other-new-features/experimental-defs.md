@@ -276,6 +276,7 @@ class A:
 class B extends A:
 -  @experimental def f: Int = 2
 ```
+
 ### Test frameworks
 
 Tests can be defined as experimental. Tests frameworks can execute tests using reflection even if they are in an experimental class, object or method.

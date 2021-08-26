@@ -1,0 +1,20 @@
+---
+layout: doc-page
+title: Experimental language features
+author: Nicolas Stucki
+---
+
+### Experimental language features
+
+All experimental language features can be found under the `scala.language.experimental` package.
+They are enabled by importing the feature or using the `-language` compiler flag.
+
+* [`erasedDefinitions`](./erased-defs.md): Enable support for `erased` modifier.
+* `fewerBraces`: Enable support for using indentation for arguments.
+* [`genericNumberLiterals`](../changed-features/numeric-literals.md): Enable support for generic number literals.
+* [`namedTypeArguments`](../changed-features/named-typeargs.md): Enable support for named type arguments
+
+### Experimental language imports
+
+In general, experimental language features can be imported in an experimental scope (see [experimental definitions](../other-new-features/experimental-defs.md).
+They can be imported at the top-level if all top-level definitions are @experimental.

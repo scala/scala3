@@ -721,6 +721,50 @@ object Checking {
         checkValue(tree)
       case _ =>
     tree
+
+  /** Check that experimental language imports in `trees`
+   *  are done only in experimental scopes, or in a top-level
+   *  scope with only @experimental definitions.
+   */
+  def checkExperimentalImports(trees: List[Tree])(using Context): Unit =
+
+    def nonExperimentalStat(trees: List[Tree]): Tree = trees match
+      case (_: Import | EmptyTree) :: rest =>
+        nonExperimentalStat(rest)
+      case (tree @ TypeDef(_, impl: Template)) :: rest if tree.symbol.isPackageObject =>
+        nonExperimentalStat(impl.body).orElse(nonExperimentalStat(rest))
+      case (tree: PackageDef) :: rest =>
+        nonExperimentalStat(tree.stats).orElse(nonExperimentalStat(rest))
+      case (tree: MemberDef) :: rest =>
+        if tree.symbol.isExperimental || tree.symbol.is(Synthetic) then
+          nonExperimentalStat(rest)
+        else
+          tree
+      case tree :: rest =>
+        tree
+      case Nil =>
+        EmptyTree
+
+    for case imp @ Import(qual, selectors) <- trees do
+      def isAllowedImport(sel: untpd.ImportSelector) =
+        val name = Feature.experimental(sel.name)
+        name == Feature.scala2macros || name == Feature.erasedDefinitions
+
+      languageImport(qual) match
+        case Some(nme.experimental)
+        if !ctx.owner.isInExperimentalScope && !selectors.forall(isAllowedImport) =>
+          def check(stable: => String) =
+            Feature.checkExperimentalFeature("features", imp.srcPos,
+              s"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
+          if ctx.owner.is(Package) then
+            // allow top-level experimental imports if all definitions are @experimental
+            nonExperimentalStat(trees) match
+              case EmptyTree =>
+              case tree: MemberDef => check(i"${tree.symbol}")
+              case tree => check(i"expression ${tree}")
+          else Feature.checkExperimentalFeature("features", imp.srcPos)
+        case _ =>
+  end checkExperimentalImports
 }
 
 trait Checking {
