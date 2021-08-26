@@ -2526,6 +2526,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         */
         def isDependentFunctionType: Boolean
 
+        /** Is this type a tuple type?
+        *
+        * @return true if the dealiased type of `self` without refinement is `TupleN[T1, T2, ..., Tn]`
+        */
+        def isTupleType: Boolean
+
         /** The type <this . sym>, reduced if possible */
         def select(sym: Symbol): TypeRepr
 
