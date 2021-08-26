@@ -87,7 +87,7 @@ object SymUtils:
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
 
-    /** Is this the an old style implicit conversion?
+    /** Is this an old style implicit conversion?
      *  @param directOnly            only consider explicitly written methods
      *  @param forImplicitClassOnly  only consider methods generated from implicit classes
      */
@@ -100,6 +100,7 @@ object SymUtils:
         case _ =>
           false
 
+    /** Is this the method that summons a structural given instance? */
     def isGivenInstanceSummoner(using Context): Boolean =
       def isCodefined(info: Type): Boolean = info.stripPoly match
         case mt: MethodType =>

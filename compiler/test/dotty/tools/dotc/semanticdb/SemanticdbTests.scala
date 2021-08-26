@@ -25,6 +25,30 @@ import dotty.tools.dotc.util.SourceFile
 @main def updateExpect =
   SemanticdbTests().runExpectTest(updateExpectFiles = true)
 
+/** Useful for printing semanticdb metac output for one file
+ *
+ *  @param root the output directory containing semanticdb output,
+ *  only 1 semanticdb file should be present
+ *  @param source the single source file producing the semanticdb
+ */
+@main def metac(root: String, source: String) =
+  val rootSrc = Paths.get(root)
+  val sourceSrc = Paths.get(source)
+  val semanticFile = FileSystems.getDefault.getPathMatcher("glob:**.semanticdb")
+  def inputFile(): Path =
+    val ls = Files.walk(rootSrc.resolve("META-INF").resolve("semanticdb"))
+    val files =
+      try ls.filter(p => semanticFile.matches(p)).collect(Collectors.toList).asScala
+      finally ls.close()
+    require(files.sizeCompare(1) == 0, s"No semanticdb files! $rootSrc")
+    files.head
+  val metacSb: StringBuilder = StringBuilder(5000)
+  val semanticdbPath = inputFile()
+  val doc = Tools.loadTextDocumentUnsafe(sourceSrc.toAbsolutePath, semanticdbPath)
+  Tools.metac(doc, Paths.get(doc.uri))(using metacSb)
+  Files.write(rootSrc.resolve("metac.expect"), metacSb.toString.getBytes(StandardCharsets.UTF_8))
+
+
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class SemanticdbTests:
   val javaFile = FileSystems.getDefault.getPathMatcher("glob:**.java")
