@@ -106,7 +106,7 @@ case class TemplateFile(
       // Snippet compiler currently supports markdown only
       val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
       val parsedMd = parser.parse(rendered)
-      val processed = FlexmarkSnippetProcessor.processSnippets(parsedMd, snippetCheckingFunc, false)(using ssctx.outerCtx)
+      val processed = FlexmarkSnippetProcessor.processSnippets(parsedMd, snippetCheckingFunc, withContext = false)(using ssctx.outerCtx)
       HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
 
     layoutTemplate match
