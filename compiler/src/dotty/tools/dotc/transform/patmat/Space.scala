@@ -165,7 +165,7 @@ trait SpaceLogic {
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `a - b == Empty`, but faster */
-  def isSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"${show(a)} < ${show(b)}", debug) {
+  def isSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"isSubspace(${show(a)}, ${show(b)})", debug) {
     def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
 
@@ -512,15 +512,22 @@ class SpaceEngine(using Context) extends SpaceLogic {
       if converted == null then tp else ConstantType(converted)
     case _ => tp
 
+  /** Adapt types by performing primitive value boxing.  #12805 */
+  def maybeBox(tp1: Type, tp2: Type): Type =
+    if tp1.classSymbol.isPrimitiveValueClass && !tp2.classSymbol.isPrimitiveValueClass then
+      defn.boxedType(tp1).narrow
+    else tp1
+
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(_tp1: Type, tp2: Type): Boolean = {
-    val tp1 = convertConstantType(_tp1, tp2)
-    debug.println(TypeComparer.explained(_.isSubType(tp1, tp2)))
+    val tp1 = maybeBox(convertConstantType(_tp1, tp2), tp2)
+    //debug.println(TypeComparer.explained(_.isSubType(tp1, tp2)))
     val res = if (ctx.explicitNulls) {
       tp1 <:< tp2
     } else {
       (tp1 != constantNullType || tp2 == constantNullType) && tp1 <:< tp2
     }
+    debug.println(i"$tp1 <:< $tp2 = $res")
     res
   }
 
@@ -660,7 +667,6 @@ class SpaceEngine(using Context) extends SpaceLogic {
         parts.map(Typ(_, true))
     }
 
-
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean =
     val res = tp.dealias match
@@ -676,7 +682,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         || cls.isAllOf(JavaEnumTrait)
         || tp.isRef(defn.BooleanClass)
         || tp.isRef(defn.UnitClass)
-    debug.println(s"decomposable: ${tp.show} = $res")
+    //debug.println(s"decomposable: ${tp.show} = $res")
     res
 
   /** Show friendly type name with current scope in mind
