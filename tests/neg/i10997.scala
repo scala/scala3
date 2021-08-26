@@ -1,3 +1,4 @@
+
 sealed trait Parent
 
 trait Wrapper {
@@ -15,4 +16,4 @@ class ClassWrapper {
 
 @main def Test =
   val cw = new ClassWrapper()
-  val mirrorParent = summon[deriving.Mirror.Of[cw.Base]] // error: code gen for Mirror can not access each case
+  val mirrorParent = summon[deriving.Mirror.Of[cw.Base]] // ok

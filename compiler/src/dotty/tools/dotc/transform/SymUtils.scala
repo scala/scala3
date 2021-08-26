@@ -81,14 +81,16 @@ object SymUtils:
     *  Excluded are value classes, abstract classes and case classes with more than one
     *  parameter section.
     */
-    def whyNotGenericProduct(using Context): String =
+    def whyNotGenericProduct(pre: Type)(using Context): String =
       if (!self.is(CaseClass)) "it is not a case class"
       else if (self.is(Abstract)) "it is an abstract class"
       else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
       else if (isDerivedValueClass(self)) "it is a value class"
+      else if (self.is(Scala2x) && !(pre == NoPrefix || pre.typeSymbol.isStaticOwner)) then
+        "it is not accessible in a static context"
       else ""
 
-    def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
+    def isGenericProduct(pre: Type)(using Context): Boolean = whyNotGenericProduct(pre: Type).isEmpty
 
     /** Is this an old style implicit conversion?
      *  @param directOnly            only consider explicitly written methods
@@ -145,7 +147,7 @@ object SymUtils:
     *     and also the location of the generated mirror.
     *   - all of its children are generic products, singletons, or generic sums themselves.
     */
-    def whyNotGenericSum(declScope: Symbol)(using Context): String =
+    def whyNotGenericSum(pre: Type, declScope: Symbol)(using Context): String =
       if (!self.is(Sealed))
         s"it is not a sealed ${self.kindString}"
       else if (!self.isOneOf(AbstractOrTrait))
@@ -157,17 +159,19 @@ object SymUtils:
         def problem(child: Symbol) = {
 
           def isAccessible(sym: Symbol): Boolean =
-            (self.isContainedIn(sym) && (companionMirror || declScope.isContainedIn(sym)))
+            def declRef = if declScope.isTerm then declScope.termRef else declScope.typeRef
+            self.isContainedIn(sym) &&
+              (companionMirror || sym.isAccessibleFrom(declRef))
             || sym.is(Module) && isAccessible(sym.owner)
 
           if (child == self) "it has anonymous or inaccessible subclasses"
           else if (!isAccessible(child.owner)) i"its child $child is not accessible"
           else if (!child.isClass) ""
           else {
-            val s = child.whyNotGenericProduct
+            val s = child.whyNotGenericProduct(pre)
             if (s.isEmpty) s
             else if (child.is(Sealed)) {
-              val s = child.whyNotGenericSum(if child.useCompanionAsSumMirror then child.linkedClass else ctx.owner)
+              val s = child.whyNotGenericSum(pre, if child.useCompanionAsSumMirror then child.linkedClass else ctx.owner)
               if (s.isEmpty) s
               else i"its child $child is not a generic sum because $s"
             } else i"its child $child is not a generic product because $s"
@@ -177,7 +181,8 @@ object SymUtils:
         else children.map(problem).find(!_.isEmpty).getOrElse("")
       }
 
-    def isGenericSum(declScope: Symbol)(using Context): Boolean = whyNotGenericSum(declScope).isEmpty
+    def isGenericSum(pre: Type, declScope: Symbol)(using Context): Boolean =
+      whyNotGenericSum(pre, declScope).isEmpty
 
     /** If this is a constructor, its owner: otherwise this. */
     final def skipConstructor(using Context): Symbol =
@@ -285,6 +290,9 @@ object SymUtils:
     /** The reachable typeRef with wildcard arguments for each type parameter */
     def reachableRawTypeRef(using Context) =
       self.reachableTypeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
+
+    def rawTypeRef(using Context) =
+      self.typeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
 
     /** Is symbol a quote operation? */
     def isQuote(using Context): Boolean =

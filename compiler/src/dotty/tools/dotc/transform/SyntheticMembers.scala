@@ -15,6 +15,7 @@ import SymUtils._
 import util.Property
 import config.Printers.derive
 import NullOpsDecorator._
+import dotty.tools.dotc.util.SrcPos
 
 object SyntheticMembers {
 
@@ -26,6 +27,8 @@ object SyntheticMembers {
 
   /** Attachment recording that an anonymous class should extend Mirror.Sum */
   val ExtendsSumMirror: Property.StickyKey[Unit] = new Property.StickyKey
+
+  val AnonymousMirrorPrefix: Property.StickyKey[Type] = new Property.StickyKey
 }
 
 /** Synthetic method implementations for case classes, case objects,
@@ -526,12 +529,16 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *  a wildcard for each type parameter. The normalized type of an object
    *  O is O.type.
    */
-  def ordinalBody(cls: Symbol, param: Tree)(using Context): Tree =
+  def ordinalBody(cls: Symbol, param: Tree, pre: Type, pos: SrcPos)(using Context): Tree =
     if (cls.is(Enum)) param.select(nme.ordinal).ensureApplied
     else {
       val cases =
         for ((child, idx) <- cls.children.zipWithIndex) yield {
-          val patType = if (child.isTerm) child.reachableTermRef else child.reachableRawTypeRef
+          val patType0 = if child.isTerm then child.termRef else child.rawTypeRef
+          def toErr(err: String) =
+            report.error(err, pos)
+            ErrorType(err)
+          val patType: Type = TypeOps.healPrefix(patType0, pre).fold(toErr, identity)
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))
         }
@@ -568,12 +575,20 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       }
     }
     val linked = clazz.linkedClass
+
+    lazy val pre = impl.removeAttachment(AnonymousMirrorPrefix).getOrElse(NoPrefix)
+
     lazy val monoType = {
       val existing = clazz.info.member(tpnme.MirroredMonoType).symbol
       if (existing.exists && !existing.is(Deferred)) existing
       else {
         val monoType =
-          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.reachableRawTypeRef), coord = clazz.coord)
+          val rawRef = linked.rawTypeRef
+          def toErr(err: String) =
+            report.error(err, impl.srcPos)
+            ErrorType(err)
+          val monoType = TypeOps.healPrefix(rawRef, pre).fold(toErr, identity)
+          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(monoType), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
         monoType.enteredAfter(thisPhase)
       }
@@ -585,25 +600,26 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
         fromProductBody(_, _).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
     }
-    def makeSumMirror(cls: Symbol) = {
+    def makeSumMirror(cls: Symbol, pre: Type, pos: SrcPos) = {
       addParent(defn.Mirror_SumClass.typeRef)
       addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
-        ordinalBody(_, _))
+        ordinalBody(_, _, pre, pos))
     }
 
     if (clazz.is(Module)) {
       if (clazz.is(Case)) makeSingletonMirror()
-      else if (linked.isGenericProduct) makeProductMirror(linked)
-      else if (linked.isGenericSum(clazz)) makeSumMirror(linked)
-      else if (linked.is(Sealed))
-        derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum(clazz)}")
+      else if linked.exists then
+        if (linked.isGenericProduct(pre)) makeProductMirror(linked)
+        else if (linked.isGenericSum(pre, clazz)) makeSumMirror(linked, pre, impl.srcPos)
+        else if (linked.is(Sealed))
+          derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum(pre, clazz)}")
     }
     else if (impl.removeAttachment(ExtendsSingletonMirror).isDefined)
       makeSingletonMirror()
     else if (impl.removeAttachment(ExtendsProductMirror).isDefined)
       makeProductMirror(monoType.typeRef.dealias.classSymbol)
     else if (impl.removeAttachment(ExtendsSumMirror).isDefined)
-      makeSumMirror(monoType.typeRef.dealias.classSymbol)
+      makeSumMirror(monoType.typeRef.dealias.classSymbol, pre, impl.srcPos)
 
     cpy.Template(impl)(parents = newParents, body = newBody)
   }

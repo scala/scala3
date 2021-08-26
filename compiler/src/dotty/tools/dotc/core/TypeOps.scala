@@ -842,11 +842,99 @@ object TypeOps:
   def nestedPairs(ts: List[Type])(using Context): Type =
     ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 
+
   class StripTypeVarsMap(using Context) extends TypeMap:
     def apply(tp: Type) = mapOver(tp).stripTypeVar
 
   /** Apply [[Type.stripTypeVar]] recursively. */
   def stripTypeVars(tp: Type)(using Context): Type =
     new StripTypeVarsMap().apply(tp)
+
+  /** Converts the type into a form reachable from with the given `prefix` */
+  def healPrefix(tpe: Type, prefix: Type)(using Context): Either[String, Type] =
+
+    final class HealPrefixUnwind(val error: String) extends scala.util.control.ControlThrowable
+
+    final class HealPrefixMap(splice: PrefixSplice)(using Context) extends TypeMap {
+      def apply(tpe: Type): Type = healPrefixImpl(tpe, splice, this)(using mapCtx)
+    }
+
+    case class PrefixSplice(val prefix: Type):
+      def spliceThisType(cls: Symbol): Option[Type] = PrefixSplice.loopThisType(cls, prefix)
+      def isEmpty: Boolean = prefix eq NoPrefix
+
+    object PrefixSplice:
+
+      private def loopThisType(cls: Symbol, pre: Type): Option[Type] = pre match
+        case outer: ThisType =>
+          if outer.cls.isSubClass(cls) then Some(pre)
+          else loopThisType(cls, outer.tref.prefix)
+
+        case term: TermRef =>
+          if term.widen.classSymbol eq cls then Some(pre)
+          else loopThisType(cls, term.prefix)
+
+        case supTpe: SuperType =>
+          if supTpe.thistpe.classSymbol.isSubClass(cls) then Some(pre)
+          else None
+
+        case _ => None
+
+    end PrefixSplice
+
+    def healPrefixImpl(tpe: Type, splice: PrefixSplice, theMap: HealPrefixMap | Null)(using Context): Type = tpe match {
+      case tpe: ThisType =>
+        val cls = tpe.cls
+        splice.spliceThisType(cls) match
+          case Some(spliced) =>
+            spliced
+          case _ if cls.is(Module) =>
+            val pre = healPrefixImpl(tpe.tref.prefix, splice, theMap)
+            TermRef(pre, cls.sourceModule)
+          case _ if cls.is(Package) || splice.isEmpty =>
+            tpe
+          case _ =>
+            throw HealPrefixUnwind(
+              i"prefix $tpe references a non-enclosing class, can not be healed to ${splice.prefix}")
+      case tpe =>
+        (if (theMap != null) theMap else new HealPrefixMap(splice))
+          .mapOver(tpe)
+    }
+
+    try
+      Right(healPrefixImpl(tpe, PrefixSplice(prefix), null))
+    catch
+      case unwind: HealPrefixUnwind => Left(unwind.error)
+
+  end healPrefix
+
+  /** lift the prefix of a type */
+  def extractPrefix(tpe: Type)(using Context): Type = tpe match
+    case tpe: TypeRef =>
+      val tryDealias = tpe.dealias
+      if tryDealias ne tpe then extractPrefix(tryDealias)
+      else tpe.prefix
+    case tpe: TermRef       => tpe.prefix
+    case tpe: ThisType      => extractPrefix(tpe.tref)
+    case tpe: SingletonType => NoPrefix
+    case tpe: TypeProxy     => extractPrefix(tpe.underlying)
+    case tpe: AndOrType     =>
+      val p1 = extractPrefix(tpe.tp1)
+      if p1.exists then
+        val p2 = extractPrefix(tpe.tp2)
+        if p2.exists then
+          if p1.frozen_=:=(p2) then p1
+          else
+            def history(pre: Type, acc: List[Type]): List[Type] = pre match
+              case tpe: NamedType => history(tpe.prefix, tpe :: acc)
+              case tpe: ThisType => history(tpe.tref, tpe :: acc)
+              case tpe => tpe :: acc
+            val h1 = history(p1, Nil)
+            val h2 = history(p2, Nil)
+            val (common, _) = h1.lazyZip(h2).takeWhile((p1, p2) => p1.frozen_=:=(p2)).last
+            common
+        else NoType
+      else NoType
+    case _ => NoType
 
 end TypeOps

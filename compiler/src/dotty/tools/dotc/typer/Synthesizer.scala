@@ -26,7 +26,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   /** Handlers to synthesize implicits for special types */
   type SpecialHandler = (Type, Span) => Context ?=> TreeWithErrors
   private type SpecialHandlers = List[(ClassSymbol, SpecialHandler)]
-  
+
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
     formal.argInfos match
       case arg :: Nil =>
@@ -223,16 +223,16 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   /** Create an anonymous class `new Object { type MirroredMonoType = ... }`
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
    */
-  private def anonymousMirror(monoType: Type, attachment: Property.StickyKey[Unit], span: Span)(using Context) =
+  private def anonymousMirror(monoType: Type, mirroredType: Type, attachment: Property.StickyKey[Unit], pre: Type, span: Span)(using Context) =
     if ctx.isAfterTyper then ctx.compilationUnit.needsMirrorSupport = true
     val monoTypeDef = untpd.TypeDef(tpnme.MirroredMonoType, untpd.TypeTree(monoType))
-    val newImpl = untpd.Template(
+    var newImpl = untpd.Template(
       constr = untpd.emptyConstructor,
       parents = untpd.TypeTree(defn.ObjectType) :: Nil,
       derived = Nil,
       self = EmptyValDef,
       body = monoTypeDef :: Nil
-    ).withAttachment(attachment, ())
+    ).withAttachment(attachment, ()).withAttachment(AnonymousMirrorPrefix, pre)
     typer.typed(untpd.New(newImpl).withSpan(span))
 
   /** The mirror type
@@ -250,9 +250,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       .refinedWith(tpnme.MirroredLabel, TypeAlias(ConstantType(Constant(label.toString))))
 
   /** A path referencing the companion of class type `clsType` */
-  private def companionPath(clsType: Type, span: Span)(using Context) =
-    val ref = pathFor(clsType.mirrorCompanionRef)
-    assert(ref.symbol.is(Module) && (clsType.classSymbol.is(ModuleClass) || (ref.symbol.companionClass == clsType.classSymbol)))
+  private def companionPath(mirroredType: Type, cls: Symbol, span: Span)(using Context) =
+    val clsType = mirroredType.mirrorCompanionRef
+    val ref = pathFor(clsType)
+    assert(ref.symbol.is(Module) && (cls.is(ModuleClass) || (ref.symbol.companionClass == cls)))
     ref.withSpan(span)
 
   private def checkFormal(formal: Type)(using Context): Boolean =
@@ -277,6 +278,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     monoMap(mirroredType.resultType)
 
   private def productMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
+    val pre = TypeOps.extractPrefix(mirroredType) match
+      case pre if pre.exists => pre
+      case _                 => return EmptyTreeNoError
 
     /** do all parts match the class symbol? */
     def acceptable(tp: Type, cls: Symbol): Boolean = tp match
@@ -318,17 +322,19 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
       val mirrorRef =
-        if (genAnonyousMirror(cls)) anonymousMirror(monoType, ExtendsProductMirror, span)
-        else companionPath(mirroredType, span)
+        if (genAnonyousMirror(cls))
+          // TODO: scan for problematic prefix
+          anonymousMirror(monoType, mirroredType, ExtendsProductMirror, pre, span)
+        else companionPath(mirroredType, cls, span)
       withNoErrors(mirrorRef.cast(mirrorType))
     end makeProductMirror
 
-    def getError(cls: Symbol): String = 
-      val reason = if !cls.isGenericProduct then
-        i"because ${cls.whyNotGenericProduct}"
+    def getError(cls: Symbol): String =
+      val reason = if !cls.isGenericProduct(pre) then
+        i"because ${cls.whyNotGenericProduct(pre)}"
       else if !canAccessCtor(cls) then
         i"because the constructor of $cls is innaccessible from the calling scope."
-      else 
+      else
         ""
       i"$cls is not a generic product $reason"
     end getError
@@ -350,7 +356,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         else
           val cls = mirroredType.classSymbol
           if acceptable(mirroredType, cls)
-            && cls.isGenericProduct
+            && cls.isGenericProduct(pre)
             && canAccessCtor(cls)
           then
             makeProductMirror(cls)
@@ -359,11 +365,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): TreeWithErrors =
-
+    val pre = TypeOps.extractPrefix(mirroredType) match
+      case pre if pre.exists => pre
+      case _                 => return EmptyTreeNoError
     val cls = mirroredType.classSymbol
     val useCompanion = cls.useCompanionAsSumMirror
     val declScope = if useCompanion then cls.linkedClass else ctx.owner
-    val clsIsGenericSum = cls.isGenericSum(declScope)
 
     def acceptable(tp: Type): Boolean = tp match
       case tp: TermRef => false
@@ -372,63 +379,79 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case OrType(tp1, tp2) => acceptable(tp1) && acceptable(tp2)
       case _            => tp.classSymbol eq cls
 
-    if acceptable(mirroredType) && clsIsGenericSum then
+    if acceptable(mirroredType) && cls.isGenericSum(pre, if useCompanion then cls.linkedClass else ctx.owner) then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
-      def solve(sym: Symbol): Type = sym match
-        case childClass: ClassSymbol =>
-          assert(childClass.isOneOf(Case | Sealed))
-          if childClass.is(Module) then
-            childClass.sourceModule.termRef
-          else
-            childClass.primaryConstructor.info match
-              case info: PolyType =>
-                // Compute the the full child type by solving the subtype constraint
-                // `C[X1, ..., Xn] <: P`, where
-                //
-                //   - P is the current `mirroredType`
-                //   - C is the child class, with type parameters X1, ..., Xn
-                //
-                // Contravariant type parameters are minimized, all other type parameters are maximized.
-                def instantiate(using Context) =
-                  val poly = constrained(info, untpd.EmptyTree)._1
-                  val resType = poly.finalResultType
-                  val target = mirroredType match
-                    case tp: HKTypeLambda => tp.resultType
-                    case tp => tp
-                  resType <:< target
-                  val tparams = poly.paramRefs
-                  val variances = childClass.typeParams.map(_.paramVarianceSign)
-                  val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
-                    TypeComparer.instanceType(tparam, fromBelow = variance < 0))
-                  resType.substParams(poly, instanceTypes)
-                instantiate(using ctx.fresh.setExploreTyperState().setOwner(childClass))
-              case _ =>
-                childClass.typeRef
-        case child => child.termRef
-      end solve
+      // def solveInner(sym: Symbol): Type = sym match
+      //   case childClass: ClassSymbol =>
+      //     assert(childClass.isOneOf(Case | Sealed))
+      //     if childClass.is(Module) then
+      //       childClass.sourceModule.termRef
+      //     else
+      //       childClass.primaryConstructor.info match
+      //         case info: PolyType =>
+      //           // Compute the the full child type by solving the subtype constraint
+      //           // `C[X1, ..., Xn] <: P`, where
+      //           //
+      //           //   - P is the current `mirroredType`
+      //           //   - C is the child class, with type parameters X1, ..., Xn
+      //           //
+      //           // Contravariant type parameters are minimized, all other type parameters are maximized.
+      //           def instantiate(using Context) =
+      //             val poly = constrained(info, untpd.EmptyTree)._1
+      //             val resType = poly.finalResultType
+      //             val target = mirroredType match
+      //               case tp: HKTypeLambda => tp.resultType
+      //               case tp => tp
+      //             resType <:< target
+      //             val tparams = poly.paramRefs
+      //             val variances = childClass.typeParams.map(_.paramVarianceSign)
+      //             val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
+      //               TypeComparer.instanceType(tparam, fromBelow = variance < 0))
+      //             resType.substParams(poly, instanceTypes)
+      //           instantiate(using ctx.fresh.setExploreTyperState().setOwner(childClass))
+      //         case _ =>
+      //           childClass.typeRef
+      //   case child => child.termRef
+      // end solveInner
 
-      val (monoType, elemsType) = mirroredType match
-        case mirroredType: HKTypeLambda =>
-          val elems = mirroredType.derivedLambdaType(
-            resType = TypeOps.nestedPairs(cls.children.map(solve))
-          )
-          (mkMirroredMonoType(mirroredType), elems)
-        case _ =>
-          val elems = TypeOps.nestedPairs(cls.children.map(solve))
-          (mirroredType, elems)
+      def solve(sym: Symbol): Either[String, Type] =
+        // val typeAtDefinition = solveInner(sym)
+        // val Right(mine) = TypeOps.healPrefix(typeAtDefinition, pre): @unchecked
 
-      val mirrorType =
-        mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, formal)
-            .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-            .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
-      val mirrorRef =
-        if useCompanion then companionPath(mirroredType, span)
-        else anonymousMirror(monoType, ExtendsSumMirror, span)
-      withNoErrors(mirrorRef.cast(mirrorType))
-    else if !clsIsGenericSum then
-      (EmptyTree, List(i"$cls is not a generic sum because ${cls.whyNotGenericSum(declScope)}"))
-    else 
+        val refinedType = TypeOps.refineUsingParent(mirroredType, sym)
+        // if !(mine =:= refinedType) then
+        // report.error(i"wow: ${mirroredType}: pre: $pre [raw: ${typeAtDefinition}, mine: $mine, alt: ${refinedType}]")
+        if refinedType.exists && refinedType <:< mirroredType then Right(refinedType) // TODO: refine isGenericSum so we don't use `<:<`
+        else Left(i"could not instantiate child $sym at $mirroredType")
+
+
+      val (errors, resolvedChildren) = cls.children.map(solve).partitionMap(identity)
+      if errors.nonEmpty then
+        (EmptyTree, errors)
+      else
+        val (monoType, elemsType) = mirroredType match
+          case mirroredType: HKTypeLambda =>
+            val elems = mirroredType.derivedLambdaType(
+              resType = TypeOps.nestedPairs(resolvedChildren)
+            )
+            (mkMirroredMonoType(mirroredType), elems)
+          case _ =>
+            val elems = TypeOps.nestedPairs(resolvedChildren)
+            (mirroredType, elems)
+
+        val mirrorType =
+          mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, formal)
+              .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
+              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+        val mirrorRef =
+          if useCompanion then companionPath(mirroredType, cls, span)
+          else anonymousMirror(monoType, mirroredType, ExtendsSumMirror, pre, span)
+        withNoErrors(mirrorRef.cast(mirrorType))
+    else if !cls.isGenericSum(pre, if useCompanion then cls.linkedClass else ctx.owner) then
+      val whyNot = cls.whyNotGenericSum(pre, if useCompanion then cls.linkedClass else ctx.owner)
+      (EmptyTree, List(em"$cls is not a generic sum because $whyNot"))
+    else
       EmptyTreeNoError
   end sumMirror
 
@@ -595,7 +618,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             tp.baseType(cls)
         val base = baseWithRefinements(formal)
         val result =
-          if (base <:< formal.widenExpr)  
+          if (base <:< formal.widenExpr)
             // With the subtype test we enforce that the searched type `formal` is of the right form
             handler(base, span)
           else EmptyTreeNoError
@@ -609,19 +632,19 @@ end Synthesizer
 
 object Synthesizer:
 
-  /** Tuple used to store the synthesis result with a list of errors.  */ 
+  /** Tuple used to store the synthesis result with a list of errors.  */
   type TreeWithErrors = (Tree, List[String])
   private def withNoErrors(tree: Tree): TreeWithErrors = (tree, List.empty)
 
   private val EmptyTreeNoError: TreeWithErrors = withNoErrors(EmptyTree)
 
   private def orElse(treeWithErrors1: TreeWithErrors, treeWithErrors2: => TreeWithErrors): TreeWithErrors = treeWithErrors1 match
-    case (tree, errors) if tree eq genericEmptyTree => 
+    case (tree, errors) if tree eq genericEmptyTree =>
       val (tree2, errors2) = treeWithErrors2
       (tree2, errors ::: errors2)
     case _ => treeWithErrors1
 
-  private def clearErrorsIfNotEmpty(treeWithErrors: TreeWithErrors) = treeWithErrors match 
+  private def clearErrorsIfNotEmpty(treeWithErrors: TreeWithErrors) = treeWithErrors match
     case (tree, _) if tree eq genericEmptyTree => treeWithErrors
     case (tree, _)                             => withNoErrors(tree)
 
