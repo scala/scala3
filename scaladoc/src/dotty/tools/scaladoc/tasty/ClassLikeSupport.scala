@@ -205,7 +205,8 @@ trait ClassLikeSupport:
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
     def getNonTrivialInheritedMemberTrees =
-      c.symbol.getmembers.filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
+      reflect.ClassDef.copy(c)(c.name, c.constructor, c.parents, None, c.body).symbol.allMembers
+        .filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
         .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
         .map(_.tree)
 
