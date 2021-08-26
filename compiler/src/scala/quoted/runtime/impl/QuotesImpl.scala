@@ -2603,6 +2603,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def declarations: List[Symbol] =
           self.typeRef.info.decls.toList
 
+        def allMembers: List[Symbol] =
+          lookupPrefix.allMembers.iterator.map(_.symbol).collect {
+            case sym if sym.isType => sym.asType
+            case sym if isMethod(sym) => sym.asTerm
+            case sym if isField(sym) => sym.asTerm
+          }.toList
+
         def paramSymss: List[List[Symbol]] = self.denot.paramSymss
         def primaryConstructor: Symbol = self.denot.primaryConstructor
         def allOverriddenSymbols: Iterator[Symbol] = self.denot.allOverriddenSymbols

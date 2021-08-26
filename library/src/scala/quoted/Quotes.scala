@@ -3756,6 +3756,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** All members directly declared in the class */
         def declarations: List[Symbol]
 
+        /** All members declared or inherited */
+        def allMembers: List[Symbol]
+
         /** The symbols of each type parameter list and value parameter list of this
           *  method, or Nil if this isn't a method.
           */
