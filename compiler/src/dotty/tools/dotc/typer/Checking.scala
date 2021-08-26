@@ -727,7 +727,7 @@ object Checking {
   def checkExperimentalImports(trees: List[Tree])(using Context): Unit =
     def onlyExperimentalDefs = trees.forall {
       case _: Import | EmptyTree => true
-      case stat: MemberDef => stat.symbol.isExperimental
+      case stat: MemberDef => stat.symbol.isExperimental || stat.symbol.is(Synthetic)
       case _ => false
     }
     for case imp @ Import(qual, selectors) <- trees do
