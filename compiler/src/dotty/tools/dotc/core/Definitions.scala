@@ -246,6 +246,9 @@ class Definitions {
   @tu lazy val CompiletimeOpsPackage: Symbol = requiredPackage("scala.compiletime.ops")
     @tu lazy val CompiletimeOpsAnyModuleClass: Symbol = requiredModule("scala.compiletime.ops.any").moduleClass
     @tu lazy val CompiletimeOpsIntModuleClass: Symbol = requiredModule("scala.compiletime.ops.int").moduleClass
+    @tu lazy val CompiletimeOpsLongModuleClass: Symbol = requiredModule("scala.compiletime.ops.long").moduleClass
+    @tu lazy val CompiletimeOpsFloatModuleClass: Symbol = requiredModule("scala.compiletime.ops.float").moduleClass
+    @tu lazy val CompiletimeOpsDoubleModuleClass: Symbol = requiredModule("scala.compiletime.ops.double").moduleClass
     @tu lazy val CompiletimeOpsStringModuleClass: Symbol = requiredModule("scala.compiletime.ops.string").moduleClass
     @tu lazy val CompiletimeOpsBooleanModuleClass: Symbol = requiredModule("scala.compiletime.ops.boolean").moduleClass
 
@@ -1078,19 +1081,40 @@ class Definitions {
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass
 
-  private val compiletimePackageAnyTypes: Set[Name] = Set(tpnme.Equals, tpnme.NotEquals)
-  private val compiletimePackageIntTypes: Set[Name] = Set(
+  private val compiletimePackageAnyTypes: Set[Name] = Set(
+    tpnme.Equals, tpnme.NotEquals, tpnme.IsConst, tpnme.ToString
+  )
+  private val compiletimePackageNumericTypes: Set[Name] = Set(
     tpnme.Plus, tpnme.Minus, tpnme.Times, tpnme.Div, tpnme.Mod,
     tpnme.Lt, tpnme.Gt, tpnme.Ge, tpnme.Le,
-    tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max, tpnme.ToString,
+    tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max
+  )
+  private val compiletimePackageIntTypes: Set[Name] = compiletimePackageNumericTypes ++ Set[Name](
+    tpnme.ToString, //ToString is moved to ops.any and deprecated for ops.int
+    tpnme.NumberOfLeadingZeros, tpnme.ToLong, tpnme.ToFloat, tpnme.ToDouble,
     tpnme.Xor, tpnme.BitwiseAnd, tpnme.BitwiseOr, tpnme.ASR, tpnme.LSL, tpnme.LSR
   )
+  private val compiletimePackageLongTypes: Set[Name] = compiletimePackageNumericTypes ++ Set[Name](
+    tpnme.NumberOfLeadingZeros, tpnme.ToInt, tpnme.ToFloat, tpnme.ToDouble,
+    tpnme.Xor, tpnme.BitwiseAnd, tpnme.BitwiseOr, tpnme.ASR, tpnme.LSL, tpnme.LSR
+  )
+  private val compiletimePackageFloatTypes: Set[Name] = compiletimePackageNumericTypes ++ Set[Name](
+    tpnme.ToInt, tpnme.ToLong, tpnme.ToDouble
+  )
+  private val compiletimePackageDoubleTypes: Set[Name] = compiletimePackageNumericTypes ++ Set[Name](
+    tpnme.ToInt, tpnme.ToLong, tpnme.ToFloat
+  )
   private val compiletimePackageBooleanTypes: Set[Name] = Set(tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or)
-  private val compiletimePackageStringTypes: Set[Name] = Set(tpnme.Plus)
+  private val compiletimePackageStringTypes: Set[Name] = Set(
+    tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches
+  )
   private val compiletimePackageOpTypes: Set[Name] =
     Set(tpnme.S)
     ++ compiletimePackageAnyTypes
     ++ compiletimePackageIntTypes
+    ++ compiletimePackageLongTypes
+    ++ compiletimePackageFloatTypes
+    ++ compiletimePackageDoubleTypes
     ++ compiletimePackageBooleanTypes
     ++ compiletimePackageStringTypes
 
@@ -1100,6 +1124,9 @@ class Definitions {
          isCompiletime_S(sym)
       || sym.owner == CompiletimeOpsAnyModuleClass && compiletimePackageAnyTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsIntModuleClass && compiletimePackageIntTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsLongModuleClass && compiletimePackageLongTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsFloatModuleClass && compiletimePackageFloatTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsDoubleModuleClass && compiletimePackageDoubleTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsBooleanModuleClass && compiletimePackageBooleanTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsStringModuleClass && compiletimePackageStringTypes.contains(sym.name)
     )

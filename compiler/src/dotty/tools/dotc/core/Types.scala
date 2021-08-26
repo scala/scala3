@@ -4206,36 +4206,75 @@ object Types {
 
     def tryCompiletimeConstantFold(using Context): Type = tycon match {
       case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
-        def constValue(tp: Type): Option[Any] = tp.dealias match {
+        extension (tp : Type) def fixForEvaluation : Type =
+          tp.normalized.dealias match {
+            case tp : TermRef => tp.underlying
+            case tp => tp
+          }
+
+        def constValue(tp: Type): Option[Any] = tp.fixForEvaluation match {
           case ConstantType(Constant(n)) => Some(n)
           case _ => None
         }
 
-        def boolValue(tp: Type): Option[Boolean] = tp.dealias match {
+        def boolValue(tp: Type): Option[Boolean] = tp.fixForEvaluation match {
           case ConstantType(Constant(n: Boolean)) => Some(n)
           case _ => None
         }
 
-        def intValue(tp: Type): Option[Int] = tp.dealias match {
+        def intValue(tp: Type): Option[Int] = tp.fixForEvaluation match {
           case ConstantType(Constant(n: Int)) => Some(n)
           case _ => None
         }
 
-        def stringValue(tp: Type): Option[String] = tp.dealias match {
-          case ConstantType(Constant(n: String)) => Some(n)
+        def longValue(tp: Type): Option[Long] = tp.fixForEvaluation match {
+          case ConstantType(Constant(n: Long)) => Some(n)
           case _ => None
         }
 
+        def floatValue(tp: Type): Option[Float] = tp.fixForEvaluation match {
+          case ConstantType(Constant(n: Float)) => Some(n)
+          case _ => None
+        }
+
+        def doubleValue(tp: Type): Option[Double] = tp.fixForEvaluation match {
+          case ConstantType(Constant(n: Double)) => Some(n)
+          case _ => None
+        }
+
+        def stringValue(tp: Type): Option[String] = tp.fixForEvaluation match {
+          case ConstantType(Constant(n: String)) => Some(n)
+          case _ => None
+        }
+        def isConst : Option[Type] = args.head.fixForEvaluation match {
+          case ConstantType(_) => Some(ConstantType(Constant(true)))
+          case _ => Some(ConstantType(Constant(false)))
+        }
         def natValue(tp: Type): Option[Int] = intValue(tp).filter(n => n >= 0 && n < Int.MaxValue)
 
         def constantFold1[T](extractor: Type => Option[T], op: T => Any): Option[Type] =
-          extractor(args.head.normalized).map(a => ConstantType(Constant(op(a))))
+          extractor(args.head).map(a => ConstantType(Constant(op(a))))
 
         def constantFold2[T](extractor: Type => Option[T], op: (T, T) => Any): Option[Type] =
+          constantFold2AB(extractor, extractor, op)
+
+        def constantFold2AB[TA, TB](extractorA: Type => Option[TA], extractorB: Type => Option[TB], op: (TA, TB) => Any): Option[Type] =
           for {
-            a <- extractor(args.head.normalized)
-            b <- extractor(args.tail.head.normalized)
+            a <- extractorA(args.head)
+            b <- extractorB(args.last)
           } yield ConstantType(Constant(op(a, b)))
+
+        def constantFold3[TA, TB, TC](
+          extractorA: Type => Option[TA],
+          extractorB: Type => Option[TB],
+          extractorC: Type => Option[TC],
+          op: (TA, TB, TC) => Any
+        ): Option[Type] =
+          for {
+            a <- extractorA(args.head)
+            b <- extractorB(args(1))
+            c <- extractorC(args.last)
+          } yield ConstantType(Constant(op(a, b, c)))
 
         trace(i"compiletime constant fold $this", typr, show = true) {
           val name = tycon.symbol.name
@@ -4248,10 +4287,13 @@ object Types {
             } else if (owner == defn.CompiletimeOpsAnyModuleClass) name match {
               case tpnme.Equals    if nArgs == 2 => constantFold2(constValue, _ == _)
               case tpnme.NotEquals if nArgs == 2 => constantFold2(constValue, _ != _)
+              case tpnme.ToString if nArgs == 1 => constantFold1(constValue, _.toString)
+              case tpnme.IsConst if nArgs == 1 => isConst
               case _ => None
             } else if (owner == defn.CompiletimeOpsIntModuleClass) name match {
               case tpnme.Abs      if nArgs == 1 => constantFold1(intValue, _.abs)
               case tpnme.Negate   if nArgs == 1 => constantFold1(intValue, x => -x)
+              //ToString is deprecated for ops.int, and moved to ops.any
               case tpnme.ToString if nArgs == 1 => constantFold1(intValue, _.toString)
               case tpnme.Plus     if nArgs == 2 => constantFold2(intValue, _ + _)
               case tpnme.Minus    if nArgs == 2 => constantFold2(intValue, _ - _)
@@ -4276,9 +4318,85 @@ object Types {
               case tpnme.LSR if nArgs == 2 => constantFold2(intValue, _ >>> _)
               case tpnme.Min if nArgs == 2 => constantFold2(intValue, _ min _)
               case tpnme.Max if nArgs == 2 => constantFold2(intValue, _ max _)
+              case tpnme.NumberOfLeadingZeros if nArgs == 1 => constantFold1(intValue, Integer.numberOfLeadingZeros(_))
+              case tpnme.ToLong if nArgs == 1 => constantFold1(intValue, _.toLong)
+              case tpnme.ToFloat if nArgs == 1 => constantFold1(intValue, _.toFloat)
+              case tpnme.ToDouble if nArgs == 1 => constantFold1(intValue, _.toDouble)
+              case _ => None
+            } else if (owner == defn.CompiletimeOpsLongModuleClass) name match {
+              case tpnme.Abs      if nArgs == 1 => constantFold1(longValue, _.abs)
+              case tpnme.Negate   if nArgs == 1 => constantFold1(longValue, x => -x)
+              case tpnme.Plus     if nArgs == 2 => constantFold2(longValue, _ + _)
+              case tpnme.Minus    if nArgs == 2 => constantFold2(longValue, _ - _)
+              case tpnme.Times    if nArgs == 2 => constantFold2(longValue, _ * _)
+              case tpnme.Div if nArgs == 2 => constantFold2(longValue, {
+                case (_, 0L) => throw new TypeError("Division by 0")
+                case (a, b) => a / b
+              })
+              case tpnme.Mod if nArgs == 2 => constantFold2(longValue, {
+                case (_, 0L) => throw new TypeError("Modulo by 0")
+                case (a, b) => a % b
+              })
+              case tpnme.Lt  if nArgs == 2 => constantFold2(longValue, _ < _)
+              case tpnme.Gt  if nArgs == 2 => constantFold2(longValue, _ > _)
+              case tpnme.Ge  if nArgs == 2 => constantFold2(longValue, _ >= _)
+              case tpnme.Le  if nArgs == 2 => constantFold2(longValue, _ <= _)
+              case tpnme.Xor if nArgs == 2 => constantFold2(longValue, _ ^ _)
+              case tpnme.BitwiseAnd if nArgs == 2 => constantFold2(longValue, _ & _)
+              case tpnme.BitwiseOr  if nArgs == 2 => constantFold2(longValue, _ | _)
+              case tpnme.ASR if nArgs == 2 => constantFold2(longValue, _ >> _)
+              case tpnme.LSL if nArgs == 2 => constantFold2(longValue, _ << _)
+              case tpnme.LSR if nArgs == 2 => constantFold2(longValue, _ >>> _)
+              case tpnme.Min if nArgs == 2 => constantFold2(longValue, _ min _)
+              case tpnme.Max if nArgs == 2 => constantFold2(longValue, _ max _)
+              case tpnme.NumberOfLeadingZeros if nArgs == 1 =>
+                constantFold1(longValue, java.lang.Long.numberOfLeadingZeros(_))
+              case tpnme.ToInt if nArgs == 1 => constantFold1(longValue, _.toInt)
+              case tpnme.ToFloat if nArgs == 1 => constantFold1(longValue, _.toFloat)
+              case tpnme.ToDouble if nArgs == 1 => constantFold1(longValue, _.toDouble)
+              case _ => None
+            } else if (owner == defn.CompiletimeOpsFloatModuleClass) name match {
+              case tpnme.Abs      if nArgs == 1 => constantFold1(floatValue, _.abs)
+              case tpnme.Negate   if nArgs == 1 => constantFold1(floatValue, x => -x)
+              case tpnme.Plus     if nArgs == 2 => constantFold2(floatValue, _ + _)
+              case tpnme.Minus    if nArgs == 2 => constantFold2(floatValue, _ - _)
+              case tpnme.Times    if nArgs == 2 => constantFold2(floatValue, _ * _)
+              case tpnme.Div if nArgs == 2 => constantFold2(floatValue, _ / _)
+              case tpnme.Mod if nArgs == 2 => constantFold2(floatValue, _ % _)
+              case tpnme.Lt  if nArgs == 2 => constantFold2(floatValue, _ < _)
+              case tpnme.Gt  if nArgs == 2 => constantFold2(floatValue, _ > _)
+              case tpnme.Ge  if nArgs == 2 => constantFold2(floatValue, _ >= _)
+              case tpnme.Le  if nArgs == 2 => constantFold2(floatValue, _ <= _)
+              case tpnme.Min if nArgs == 2 => constantFold2(floatValue, _ min _)
+              case tpnme.Max if nArgs == 2 => constantFold2(floatValue, _ max _)
+              case tpnme.ToInt if nArgs == 1 => constantFold1(floatValue, _.toInt)
+              case tpnme.ToLong if nArgs == 1 => constantFold1(floatValue, _.toLong)
+              case tpnme.ToDouble if nArgs == 1 => constantFold1(floatValue, _.toDouble)
+              case _ => None
+            } else if (owner == defn.CompiletimeOpsDoubleModuleClass) name match {
+              case tpnme.Abs      if nArgs == 1 => constantFold1(doubleValue, _.abs)
+              case tpnme.Negate   if nArgs == 1 => constantFold1(doubleValue, x => -x)
+              case tpnme.Plus     if nArgs == 2 => constantFold2(doubleValue, _ + _)
+              case tpnme.Minus    if nArgs == 2 => constantFold2(doubleValue, _ - _)
+              case tpnme.Times    if nArgs == 2 => constantFold2(doubleValue, _ * _)
+              case tpnme.Div if nArgs == 2 => constantFold2(doubleValue, _ / _)
+              case tpnme.Mod if nArgs == 2 => constantFold2(doubleValue, _ % _)
+              case tpnme.Lt  if nArgs == 2 => constantFold2(doubleValue, _ < _)
+              case tpnme.Gt  if nArgs == 2 => constantFold2(doubleValue, _ > _)
+              case tpnme.Ge  if nArgs == 2 => constantFold2(doubleValue, _ >= _)
+              case tpnme.Le  if nArgs == 2 => constantFold2(doubleValue, _ <= _)
+              case tpnme.Min if nArgs == 2 => constantFold2(doubleValue, _ min _)
+              case tpnme.Max if nArgs == 2 => constantFold2(doubleValue, _ max _)
+              case tpnme.ToInt if nArgs == 1 => constantFold1(doubleValue, _.toInt)
+              case tpnme.ToLong if nArgs == 1 => constantFold1(doubleValue, _.toLong)
+              case tpnme.ToFloat if nArgs == 1 => constantFold1(doubleValue, _.toFloat)
               case _ => None
             } else if (owner == defn.CompiletimeOpsStringModuleClass) name match {
               case tpnme.Plus if nArgs == 2 => constantFold2(stringValue, _ + _)
+              case tpnme.Length if nArgs == 1 => constantFold1(stringValue, _.length)
+              case tpnme.Matches if nArgs == 2 => constantFold2(stringValue, _ matches _)
+              case tpnme.Substring if nArgs == 3 =>
+                constantFold3(stringValue, intValue, intValue, (s, b, e) => s.substring(b, e))
               case _ => None
             } else if (owner == defn.CompiletimeOpsBooleanModuleClass) name match {
               case tpnme.Not if nArgs == 1 => constantFold1(boolValue, x => !x)
