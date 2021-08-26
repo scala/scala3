@@ -1180,7 +1180,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 compareLower(info2, tyconIsTypeRef = true)
               case info2: ClassInfo =>
                 tycon2.name.startsWith("Tuple") &&
-                  defn.isTupleType(tp2) && recur(tp1, tp2.toNestedPairs) ||
+                  defn.isTupleNType(tp2) && recur(tp1, tp2.toNestedPairs) ||
                 tryBaseType(info2.cls)
               case _ =>
                 fourthTry
@@ -2620,9 +2620,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         fullyInstantiated(tp2) && !tp1.classSymbols.exists(_.derivesFrom(tp2.symbol))
       case (tp1: TypeRef, tp2: TermRef) if isEnumValue(tp2) =>
         fullyInstantiated(tp1) && !tp2.classSymbols.exists(_.derivesFrom(tp1.symbol))
-      case (tp1: Type, tp2: Type) if defn.isTupleType(tp1) =>
+      case (tp1: Type, tp2: Type) if defn.isTupleNType(tp1) =>
         provablyDisjoint(tp1.toNestedPairs, tp2)
-      case (tp1: Type, tp2: Type) if defn.isTupleType(tp2) =>
+      case (tp1: Type, tp2: Type) if defn.isTupleNType(tp2) =>
         provablyDisjoint(tp1, tp2.toNestedPairs)
       case (tp1: TypeProxy, tp2: TypeProxy) =>
         provablyDisjoint(tp1.superType, tp2) || provablyDisjoint(tp1, tp2.superType)

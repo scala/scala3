@@ -1738,8 +1738,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           val tpNoRefinement = self.dropDependentRefinement
           tpNoRefinement != self
           && dotc.core.Symbols.defn.isNonRefinedFunction(tpNoRefinement)
-        def isTupleType: Boolean =
-          dotc.core.Symbols.defn.isTupleType(self)
+        def isTupleNType: Boolean =
+          dotc.core.Symbols.defn.isTupleNType(self)
         def select(sym: Symbol): TypeRepr = self.select(sym)
         def appliedTo(targ: TypeRepr): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
