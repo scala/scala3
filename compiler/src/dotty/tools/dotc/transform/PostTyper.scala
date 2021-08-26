@@ -13,6 +13,7 @@ import Decorators._
 import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
+import config.Feature
 import reporting._
 
 object PostTyper {
@@ -447,6 +448,31 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           println(i"error while transforming $tree")
           throw ex
       }
+
+    /** In addition to normal processing, check that experimental language
+     *  imports are done only in experimental scopes, or in scopes where
+     *  all statements are @experimental definitions.
+     */
+    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
+
+      def onlyExperimentalDefs = trees.forall {
+        case _: Import | EmptyTree => true
+        case stat: MemberDef => stat.symbol.isExperimental
+        case _ => false
+      }
+
+      def checkExperimentalImports =
+        for case imp @ Import(qual, selectors) <- trees do
+          languageImport(qual) match
+            case Some(nme.experimental)
+            if !ctx.owner.isInExperimentalScope && !onlyExperimentalDefs
+               && selectors.exists(sel => Feature.experimental(sel.name) != Feature.scala2macros) =>
+              Feature.checkExperimentalFeature("features", imp.srcPos)
+            case _ =>
+
+      try super.transformStats(trees, exprOwner)
+      finally checkExperimentalImports
+    end transformStats
 
     /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
      *  Performed to shrink the tree that is known to be erased later.
