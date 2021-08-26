@@ -17,6 +17,7 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.float$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.long"),
     ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.long$"),
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.allMembers"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#CompilationInfoModule.XmacroSettings"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#CompilationInfoModule.XmacroSettings"),
 
