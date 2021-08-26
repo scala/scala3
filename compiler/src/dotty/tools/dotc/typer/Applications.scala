@@ -1363,7 +1363,7 @@ trait Applications extends Compatibility {
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
-            if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled && defn.isTupleType(argType)) untpd.Tuple(args) :: Nil
+            if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled && defn.isTupleNType(argType)) untpd.Tuple(args) :: Nil
             else args
           case _ => args
         }

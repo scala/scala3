@@ -14,7 +14,7 @@ object SyntheticsSupport:
       import dotty.tools.dotc
       given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
-      ctx.definitions.isTupleType(tpe)
+      ctx.definitions.isTupleNType(tpe)
 
     private def hackIsCompiletimeAppliedType(rtpe: reflect.TypeRepr): Boolean =
       import dotty.tools.dotc

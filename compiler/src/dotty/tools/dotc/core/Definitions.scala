@@ -1466,7 +1466,7 @@ class Definitions {
    *
    * @return true if the dealiased type of `self` is `TupleN[T1, T2, ..., Tn]`
    */
-  def isTupleType(tp: Type)(using Context): Boolean = {
+  def isTupleNType(tp: Type)(using Context): Boolean = {
     val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && TupleType(arity) != null && tp.isRef(TupleType(arity).symbol)
   }
