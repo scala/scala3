@@ -5,12 +5,15 @@ import dotty.tools.scaladoc.util._
 object Inkuire {
 
   var db = InkuireDb(Seq.empty, Map.empty, Seq.empty, Map.empty)
+  var implicitConversions: Seq[(Option[TypeLike], Type)] = Seq.empty
 
   def beforeSave(): Unit = {
     db = db.copy(
       functions = functions.sortBy(_.hashCode),
       types = db.types.toSeq.sortBy(_._1.uuid).toMap,
-      implicitConversions = db.implicitConversions.sortBy(_._1.hashCode)
+      implicitConversions = implicitConversions.collect {
+        case (Some(from), to) => from -> to
+      }.sortBy(_._1.hashCode)
     )
   }
 
@@ -35,18 +38,25 @@ object Inkuire {
   }
 
   def functions: Seq[ExternalSignature] = Inkuire.db.functions.flatMap { func =>
-    val fromConversions = Inkuire.db.implicitConversions.filter { ic =>
+    val fromConversions = Inkuire.implicitConversions.filter { ic =>
       func.signature.receiver.nonEmpty && matchingICTypes(ic._2, func.signature.receiver.get.typ)
-    }.map { ic =>
-      func.copy(
-        signature = func.signature.copy(
-          receiver = func.signature.receiver.map { rcvr =>
-            Contravariance(
-              newReceiver(rcvr.typ, ic._2, ic._1)
-            )
-          }
+    }.map {
+      case (Some(from), to) =>
+        func.copy(
+          signature = func.signature.copy(
+            receiver = func.signature.receiver.map { rcvr =>
+              Contravariance(
+                newReceiver(rcvr.typ, to, from)
+              )
+            }
+          )
         )
-      )
+      case (None, to) =>
+        func.copy(
+          signature = func.signature.copy(
+            receiver = None
+          )
+        )
     }
     Seq(func) ++ fromConversions
   }
