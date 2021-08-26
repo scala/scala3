@@ -2530,7 +2530,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          * @return true if the dealiased type of `self` is `TupleN[T1, T2, ..., Tn]`
          */
-        def isTupleNType: Boolean
+        def isTupleN: Boolean
 
         /** The type <this . sym>, reduced if possible */
         def select(sym: Symbol): TypeRepr
