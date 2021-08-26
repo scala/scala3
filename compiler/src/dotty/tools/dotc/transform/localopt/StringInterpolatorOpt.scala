@@ -117,55 +117,57 @@ class StringInterpolatorOpt extends MiniPhase {
   }
 
   override def transformApply(tree: Apply)(using Context): Tree = {
+    def mkConcat(strs: List[Literal], elems: List[Tree]): Tree =
+      val stri = strs.iterator
+      val elemi = elems.iterator
+      var result: Tree = stri.next
+      def concat(tree: Tree): Unit =
+        result = result.select(defn.String_+).appliedTo(tree).withSpan(tree.span)
+      while elemi.hasNext
+      do
+        concat(elemi.next)
+        val str = stri.next
+        if !str.const.stringValue.isEmpty then concat(str)
+      result
+    end mkConcat
     val sym = tree.symbol
-    val isInterpolatedMethod = // Test names first to avoid loading scala.StringContext if not used
-      (sym.name == nme.raw_ && sym.eq(defn.StringContext_raw)) ||
-      (sym.name == nme.f && sym.eq(defn.StringContext_f)) ||
-      (sym.name == nme.s && sym.eq(defn.StringContext_s))
+    // Test names first to avoid loading scala.StringContext if not used, and common names first
+    val isInterpolatedMethod =
+      sym.name match
+        case nme.s    => sym eq defn.StringContext_s
+        case nme.raw_ => sym eq defn.StringContext_raw
+        case nme.f    => sym eq defn.StringContext_f
+        case _        => false
     def transformF(fun: Tree, args: Tree): Tree =
       val (parts1, args1) = FormatInterpolatorTransform.checked(fun, args)
       resolveConstructor(defn.StringOps.typeRef, List(parts1))
         .select(nme.format)
         .appliedTo(args1)
-    if (isInterpolatedMethod)
-      (tree: @unchecked) match {
-        case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
-          val stri = strs.iterator
-          val elemi = elems.iterator
-          var result: Tree = stri.next
-          def concat(tree: Tree): Unit = {
-            result = result.select(defn.String_+).appliedTo(tree).withSpan(tree.span)
-          }
-          while (elemi.hasNext) {
-            concat(elemi.next)
-            val str = stri.next
-            if (!str.const.stringValue.isEmpty) concat(str)
-          }
-          result
-        case Apply(intp, args :: Nil) if sym.eq(defn.StringContext_f) =>
-          transformF(intp, args)
-        // Starting with Scala 2.13, s and raw are macros in the standard
-        // library, so we need to expand them manually.
-        // sc.s(args)    -->   standardInterpolator(processEscapes, args, sc.parts)
-        // sc.raw(args)  -->   standardInterpolator(x => x,         args, sc.parts)
-        case Apply(intp, args :: Nil) =>
-          val pre = intp match {
-            case Select(pre, _) => pre
-            case intp: Ident => tpd.desugarIdentPrefix(intp)
-          }
-          val isRaw = sym eq defn.StringContext_raw
-          val stringToString = defn.StringContextModule_processEscapes.info.asInstanceOf[MethodType]
-
-          val process = tpd.Lambda(stringToString, args =>
-            if (isRaw) args.head else ref(defn.StringContextModule_processEscapes).appliedToTermArgs(args))
-
-          evalOnce(pre) { sc =>
-            val parts = sc.select(defn.StringContext_parts)
-
-            ref(defn.StringContextModule_standardInterpolator)
-              .appliedToTermArgs(List(process, args, parts))
-          }
+    // Starting with Scala 2.13, s and raw are macros in the standard
+    // library, so we need to expand them manually.
+    // sc.s(args)    -->   standardInterpolator(processEscapes, args, sc.parts)
+    // sc.raw(args)  -->   standardInterpolator(x => x,         args, sc.parts)
+    def transformS(fun: Tree, args: Tree, isRaw: Boolean): Tree =
+      val pre = fun match
+        case Select(pre, _) => pre
+        case intp: Ident    => tpd.desugarIdentPrefix(intp)
+      val stringToString = defn.StringContextModule_processEscapes.info.asInstanceOf[MethodType]
+      val process = tpd.Lambda(stringToString, args =>
+        if isRaw then args.head else ref(defn.StringContextModule_processEscapes).appliedToTermArgs(args)
+      )
+      evalOnce(pre) { sc =>
+        val parts = sc.select(defn.StringContext_parts)
+        ref(defn.StringContextModule_standardInterpolator)
+          .appliedToTermArgs(List(process, args, parts))
       }
+    end transformS
+    if isInterpolatedMethod then
+      (tree: @unchecked) match
+        case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
+          mkConcat(strs, elems)
+        case Apply(intp, args :: Nil) =>
+          if sym eq defn.StringContext_f then transformF(intp, args)
+          else transformS(intp, args, isRaw = sym eq defn.StringContext_raw)
     else
       tree.tpe match
         case _: ConstantType => tree
