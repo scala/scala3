@@ -719,6 +719,24 @@ object Checking {
         checkValue(tree)
       case _ =>
     tree
+
+  /** Check that experimental language imports in `trees`
+   *  are done only in experimental scopes, or in scopes where
+   *  all statements are @experimental definitions.
+   */
+  def checkExperimentalImports(trees: List[Tree])(using Context): Unit =
+    def onlyExperimentalDefs = trees.forall {
+      case _: Import | EmptyTree => true
+      case stat: MemberDef => stat.symbol.isExperimental
+      case _ => false
+    }
+    for case imp @ Import(qual, selectors) <- trees do
+      languageImport(qual) match
+        case Some(nme.experimental)
+        if !ctx.owner.isInExperimentalScope && !onlyExperimentalDefs
+            && selectors.exists(sel => experimental(sel.name) != scala2macros) =>
+          checkExperimentalFeature("features", imp.srcPos)
+        case _ =>
 }
 
 trait Checking {
@@ -829,6 +847,7 @@ trait Checking {
       report.error(
         em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix " +
           "for a wildcard export, as it is a package.", path.srcPos)
+
 
   /** Check that module `sym` does not clash with a class of the same name
    *  that is concurrently compiled in another source file.
