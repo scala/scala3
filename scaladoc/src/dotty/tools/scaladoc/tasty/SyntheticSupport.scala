@@ -43,7 +43,7 @@ object SyntheticsSupport:
   end extension
 
   def isValidPos(using Quotes)(pos: reflect.Position) =
-    if hackExists(pos) then pos.start != pos.end else false
+    if pos.exists then pos.start != pos.end else false
 
   def isSyntheticField(using Quotes)(c: reflect.Symbol) =
     import reflect._
