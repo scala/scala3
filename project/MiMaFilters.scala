@@ -18,5 +18,8 @@ object MiMaFilters {
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTestTypeTest"),
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTest"),
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTestMethods"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.memberInfo"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.tpe"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.typeParams"),
   )
 }
