@@ -725,15 +725,20 @@ object Checking {
    *  all statements are @experimental definitions.
    */
   def checkExperimentalImports(trees: List[Tree])(using Context): Unit =
-    def onlyExperimentalDefs = trees.forall {
-      case _: Import | EmptyTree => true
-      case stat: MemberDef => stat.symbol.isExperimental || stat.symbol.is(Synthetic)
-      case _ => false
+    def onlyExperimentalDefs(trees: List[Tree]): Boolean = trees.forall {
+      case _: Import | EmptyTree =>
+        true
+      case tree @ TypeDef(_, impl: Template) if tree.symbol.isPackageObject =>
+        onlyExperimentalDefs(impl.body)
+      case stat: MemberDef =>
+        stat.symbol.isExperimental || stat.symbol.is(Synthetic)
+      case _ =>
+        false
     }
     for case imp @ Import(qual, selectors) <- trees do
       languageImport(qual) match
         case Some(nme.experimental)
-        if !ctx.owner.isInExperimentalScope && !onlyExperimentalDefs
+        if !ctx.owner.isInExperimentalScope && !onlyExperimentalDefs(trees)
             && selectors.exists(sel => experimental(sel.name) != scala2macros) =>
           checkExperimentalFeature("features", imp.srcPos)
         case _ =>
