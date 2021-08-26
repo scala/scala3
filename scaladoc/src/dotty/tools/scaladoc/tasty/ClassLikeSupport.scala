@@ -88,7 +88,9 @@ trait ClassLikeSupport:
       val tpe = valdef.tpt.tpe
       LinkToType(tpe.asSignature, symbol.dri, Kind.Type(false, false, Seq.empty))
     }
-    val selfSignature: DSignature = typeForClass(classDef).asSignature
+    val selfSignature: DSignature = classDef.symbol.tpe
+      .appliedTo(classDef.symbol.typeParams.map(_.tpe))
+      .asSignature
 
     val graph = HierarchyGraph.withEdges(
       getSupertypesGraph(classDef, LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)))
@@ -631,7 +633,7 @@ trait ClassLikeSupport:
 
 
   def unwrapMemberInfo(c: ClassDef, symbol: Symbol): MemberInfo =
-    val baseTypeRepr = memberInfo(c, symbol)
+    val baseTypeRepr = c.symbol.tpe.memberInfo(symbol)
 
     def isSyntheticEvidence(name: String) =
       if !name.startsWith(NameKinds.EvidenceParamName.separator) then false else
