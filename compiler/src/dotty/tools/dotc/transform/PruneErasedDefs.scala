@@ -12,6 +12,8 @@ import typer.RefChecks
 import MegaPhase.MiniPhase
 import StdNames.nme
 import ast.tpd
+import SymUtils._
+import config.Feature
 
 /** This phase makes all erased term members of classes private so that they cannot
  *  conflict with non-erased members. This is needed so that subsequent phases like
@@ -39,13 +41,22 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
     else cpy.Apply(tree)(tree.fun, tree.args.map(trivialErasedTree))
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
+    checkErasedInExperimental(tree.symbol)
     if !tree.symbol.isEffectivelyErased || tree.rhs.isEmpty then tree
     else cpy.ValDef(tree)(rhs = trivialErasedTree(tree.rhs))
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
+    checkErasedInExperimental(tree.symbol)
     if !tree.symbol.isEffectivelyErased || tree.rhs.isEmpty then tree
     else cpy.DefDef(tree)(rhs = trivialErasedTree(tree.rhs))
 
+  override def transformTypeDef(tree: TypeDef)(using Context): Tree =
+    checkErasedInExperimental(tree.symbol)
+    tree
+
+  def checkErasedInExperimental(sym: Symbol)(using Context): Unit =
+    if sym.is(Erased) && sym != defn.Compiletime_erasedValue && !sym.isInExperimentalScope then
+      Feature.checkExperimentalFeature("erased", sym.sourcePos)
 }
 
 object PruneErasedDefs {
