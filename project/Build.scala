@@ -1417,7 +1417,7 @@ object Build {
           "scaladoc testcases",
           "scaladoc/output/testcases",
           "master",
-          Seq("-usejavacp")
+          Seq("-usejavacp", "-snippet-compiler:scaladoc-testcases/docs=compile", "-siteroot", "scaladoc-testcases/docs")
         )
       }.value,
 
