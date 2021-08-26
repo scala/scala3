@@ -181,4 +181,43 @@ object int:
    *  ```
    *  @syntax markdown
    */
+  @deprecated("Use compiletime.ops.any.ToString instead.","3.1.0")
   type ToString[X <: Int] <: String
+
+  /** Long conversion of an `Int` singleton type.
+   *  ```scala
+   *  val x: ToLong[1] = 1L
+   *  ```
+   *  @syntax markdown
+   */
+  type ToLong[X <: Int] <: Long
+
+  /** Float conversion of an `Int` singleton type.
+   *  ```scala
+   *  val x: ToFloat[1] = 1.0f
+   *  ```
+   *  @syntax markdown
+   */
+  type ToFloat[X <: Int] <: Float
+
+  /** Double conversion of an `Int` singleton type.
+   *  ```scala
+   *  val x: ToDouble[1] = 1.0
+   *  ```
+   *  @syntax markdown
+   */
+  type ToDouble[X <: Int] <: Double
+
+  /** Number of zero bits preceding the highest-order ("leftmost")
+   * one-bit in the two's complement binary representation of the specified `Int` singleton type.
+   * Returns 32 if the specified singleton type has no one-bits in its two's complement representation,
+   * in other words if it is equal to zero.
+   *  ```scala
+   *  val zero_lzc: NumberOfLeadingZeros[0] = 32
+   *  val eight_lzc: NumberOfLeadingZeros[8] = 28
+   *  type Log2[N <: Int] = 31 - NumberOfLeadingZeros[N]
+   *  val log2of8: Log2[8] = 3
+   *  ```
+   *  @syntax markdown
+   */
+  type NumberOfLeadingZeros[X <: Int] <: Int
