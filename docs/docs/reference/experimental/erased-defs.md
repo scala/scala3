@@ -9,6 +9,8 @@ title: "Erased Definitions"
 import scala.language.experimental.erasedDefinitions
 ```
 or by setting the command line option `-language:experimental.erasedDefinitions`.
+Erased definitions must be in an experimental scope (see [../other-new-features/experimental-defs.md]).
+
 ## Why erased terms?
 
 Let's describe the motivation behind erased terms with an example. In the

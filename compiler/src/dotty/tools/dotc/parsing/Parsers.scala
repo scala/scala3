@@ -3115,7 +3115,7 @@ object Parsers {
         case Some(prefix) =>
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
           if prefix == nme.experimental
-             && selectors.exists(sel => Feature.experimental(sel.name) != Feature.scala2macros)
+             && selectors.exists(sel => Feature.experimental(sel.name) != Feature.scala2macros && Feature.experimental(sel.name) != Feature.erasedDefinitions)
           then
             Feature.checkExperimentalFeature("features", imp.srcPos)
           for
