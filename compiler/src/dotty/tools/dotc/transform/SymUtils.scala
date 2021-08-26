@@ -109,7 +109,11 @@ object SymUtils:
         def problem(child: Symbol) = {
 
           def isAccessible(sym: Symbol): Boolean =
-            (self.isContainedIn(sym) && (companionMirror || declScope.isContainedIn(sym)))
+            self.isContainedIn(sym) &&
+              (companionMirror
+              || declScope.isContainedIn(sym)
+              || declScope.ownersIterator.exists(_.isSubClass(sym))
+              )
             || sym.is(Module) && isAccessible(sym.owner)
 
           if (child == self) "it has anonymous or inaccessible subclasses"
