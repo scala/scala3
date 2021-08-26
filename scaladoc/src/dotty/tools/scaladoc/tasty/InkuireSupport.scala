@@ -150,7 +150,7 @@ trait InkuireSupport:
           params = typeList.init.map(p => Inkuire.Contravariance(inner(p, vars))) :+ Inkuire.Covariance(inner(typeList.last, vars)),
           itid = Some(Inkuire.ITID(s"${name}scala.${name}//[]", isParsed = false))
         )
-      else if t.isTupleType then
+      else if t.isTupleN then
         val name = s"Tuple${typeList.size}"
         Inkuire.Type(
           name = Inkuire.TypeName(name),
