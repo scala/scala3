@@ -834,6 +834,7 @@ class Definitions {
       CanEqualClass.companionModule.requiredMethod(methodName)
 
   @tu lazy val CanThrowClass: ClassSymbol = requiredClass("scala.CanThrow")
+  @tu lazy val throwsAlias: Symbol = ScalaRuntimePackageVal.requiredType(tpnme.THROWS)
 
   @tu lazy val TypeBoxClass: ClassSymbol = requiredClass("scala.runtime.TypeBox")
     @tu lazy val TypeBox_CAP: TypeSymbol = TypeBoxClass.requiredType(tpnme.CAP)
