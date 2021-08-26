@@ -162,9 +162,9 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     Resource.Text(searchDataPath, s"pages = ${jsonList(entries)};")
 
   def scastieConfiguration() =
-    Resource.Text(scastieConfigurationPath, s"scastieConfiguration = \"${
+    Resource.Text(scastieConfigurationPath, s"""scastieConfiguration = "${
       ctx.args.scastieConfiguration.replace('"'.toString, """\"""")
-    }\"")
+    }"""")
 
 
   def allResources(pages: Seq[Page]): Seq[Resource] = earlyMemberResources ++ memberResources ++ Seq(
