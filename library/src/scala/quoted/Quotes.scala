@@ -2535,6 +2535,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
         def appliedTo(targs: List[TypeRepr]): TypeRepr
 
+        /** Member info of `sym` as seen from the TypeRepr */
+        def memberInfo(sym: Symbol): TypeRepr
+
       end extension
     }
 
@@ -3741,6 +3744,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Case class or case object children of a sealed trait or cases of an `enum`. */
         def children: List[Symbol]
+
+        /** Type of the symbol */
+        def tpe: TypeRepr
+
+        /** Type parameters of the symbol */
+        def typeParams: List[Symbol]
       end extension
     }
 

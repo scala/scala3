@@ -1743,6 +1743,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
+        def memberInfo(sym: Symbol): TypeRepr =
+          self.memberInfo(sym)
       end extension
     end TypeReprMethods
 
@@ -2610,6 +2612,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def companionClass: Symbol = self.denot.companionClass
         def companionModule: Symbol = self.denot.companionModule
         def children: List[Symbol] = self.denot.children
+        def tpe: TypeRepr = self.typeRef
+        def typeParams: List[Symbol] = self.denot.typeParams
 
         def show(using printer: Printer[Symbol]): String = printer.show(self)
 
