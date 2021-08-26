@@ -1464,7 +1464,7 @@ class Definitions {
 
   /** Is this type a `TupleN` type?
    *
-   * @return true if the dealiased type of `self` is `TupleN[T1, T2, ..., Tn]`
+   * @return true if the dealiased type of `tp` is `TupleN[T1, T2, ..., Tn]`
    */
   def isTupleNType(tp: Type)(using Context): Boolean = {
     val arity = tp.dealias.argInfos.length
