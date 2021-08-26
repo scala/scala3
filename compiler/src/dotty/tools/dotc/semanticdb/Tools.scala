@@ -41,6 +41,11 @@ object Tools:
         document.copy(text = text)
   end loadTextDocument
 
+  def loadTextDocumentUnsafe(scalaAbsolutePath: Path, semanticdbAbsolutePath: Path): TextDocument =
+    val docs = parseTextDocuments(semanticdbAbsolutePath).documents
+    assert(docs.length == 1)
+    docs.head.copy(text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8))
+
   /** Parses SemanticDB text documents from an absolute path to a `*.semanticdb` file. */
   private def parseTextDocuments(path: Path): TextDocuments =
     val bytes = Files.readAllBytes(path) // NOTE: a semanticdb file is a TextDocuments message, not TextDocument
