@@ -725,23 +725,38 @@ object Checking {
    *  all statements are @experimental definitions.
    */
   def checkExperimentalImports(trees: List[Tree])(using Context): Unit =
-    def onlyExperimentalDefs(trees: List[Tree]): Boolean = trees.forall {
-      case _: Import | EmptyTree =>
-        true
-      case tree @ TypeDef(_, impl: Template) if tree.symbol.isPackageObject =>
-        onlyExperimentalDefs(impl.body)
-      case stat: MemberDef =>
-        stat.symbol.isExperimental || stat.symbol.is(Synthetic)
-      case _ =>
-        false
-    }
+
+    def nonExperimentalStat(trees: List[Tree]): Tree = trees match
+      case (_: Import | EmptyTree) :: rest =>
+        nonExperimentalStat(rest)
+      case (tree @ TypeDef(_, impl: Template)) :: rest if tree.symbol.isPackageObject =>
+        nonExperimentalStat(impl.body).orElse(nonExperimentalStat(rest))
+      case (tree: PackageDef) :: rest =>
+        nonExperimentalStat(tree.stats).orElse(nonExperimentalStat(rest))
+      case (tree: MemberDef) :: rest =>
+        if tree.symbol.isExperimental || tree.symbol.is(Synthetic) then
+          nonExperimentalStat(rest)
+        else
+          tree
+      case tree :: rest =>
+        tree
+      case Nil =>
+        EmptyTree
+
     for case imp @ Import(qual, selectors) <- trees do
       languageImport(qual) match
         case Some(nme.experimental)
-        if !ctx.owner.isInExperimentalScope && !onlyExperimentalDefs(trees)
+        if !ctx.owner.isInExperimentalScope
             && selectors.exists(sel => experimental(sel.name) != scala2macros) =>
-          checkExperimentalFeature("features", imp.srcPos)
+          def check(stable: => String) =
+            checkExperimentalFeature("features", imp.srcPos,
+              s"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
+          nonExperimentalStat(trees) match
+            case EmptyTree =>
+            case tree: MemberDef => check(i"${tree.symbol}")
+            case tree => check(i"expression ${tree}")
         case _ =>
+  end checkExperimentalImports
 }
 
 trait Checking {
