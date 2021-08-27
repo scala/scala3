@@ -1706,7 +1706,7 @@ Text => empty
 Language => Scala
 Symbols => 45 entries
 Occurrences => 61 entries
-Synthetics => 2 entries
+Synthetics => 3 entries
 
 Symbols:
 givens/InventedNames$package. => final package object givens extends Object { self: givens.type => +24 decls }
@@ -1819,6 +1819,7 @@ Occurrences:
 [41:18..41:24): String -> scala/Predef.String#
 
 Synthetics:
+[24:0..24:0): => *(x$1)
 [34:8..34:20):given_Double => *(intValue)
 [40:8..40:15):given_Y => *(given_X)
 
