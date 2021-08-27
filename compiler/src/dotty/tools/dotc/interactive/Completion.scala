@@ -323,7 +323,7 @@ object Completion {
       val extMethodsFromImplicitScope = extractMemberExtensionMethods(implicitScopeCompanions)
 
       // 4. The reference is of the form r.m and the extension method is defined in some given instance in the implicit scope of the type of r.
-      val givensInImplicitScope = implicitScopeCompanions.flatMap(_.membersBasedOnFlags(required = Given, excluded = EmptyFlags)).map(_.info)
+      val givensInImplicitScope = implicitScopeCompanions.flatMap(_.membersBasedOnFlags(required = GivenVal, excluded = EmptyFlags)).map(_.info)
       val extMethodsFromGivensInImplicitScope = extractMemberExtensionMethods(givensInImplicitScope)
 
       val availableExtMethods = extMethodsFromGivensInImplicitScope ++ extMethodsFromImplicitScope ++ extMethodsFromGivensInScope ++ extMethodsInScope

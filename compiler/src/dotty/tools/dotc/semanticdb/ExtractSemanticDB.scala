@@ -79,6 +79,8 @@ class ExtractSemanticDB extends Phase:
       || sym.isLocalDummy
       || sym.is(Synthetic)
       || sym.isSetter
+      || sym.isOldStyleImplicitConversion(forImplicitClassOnly = true)
+      || sym.owner.isGivenInstanceSummoner
       || excludeDefOrUse(sym)
 
     private def excludeDefOrUse(sym: Symbol)(using Context): Boolean =
@@ -102,6 +104,7 @@ class ExtractSemanticDB extends Phase:
     private def excludeChildren(sym: Symbol)(using Context): Boolean =
       !sym.exists
       || sym.is(Param) && sym.info.bounds.hi.isInstanceOf[Types.HKTypeLambda]
+      || sym.isOldStyleImplicitConversion(forImplicitClassOnly = true)
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
     private def excludeUse(qualifier: Option[Symbol], sym: Symbol)(using Context): Boolean =

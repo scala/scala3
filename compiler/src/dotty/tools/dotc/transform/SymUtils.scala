@@ -87,6 +87,31 @@ object SymUtils:
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
 
+    /** Is this an old style implicit conversion?
+     *  @param directOnly            only consider explicitly written methods
+     *  @param forImplicitClassOnly  only consider methods generated from implicit classes
+     */
+    def isOldStyleImplicitConversion(directOnly: Boolean = false, forImplicitClassOnly: Boolean = false)(using Context): Boolean =
+      self.is(Implicit) && self.info.stripPoly.match
+        case mt @ MethodType(_ :: Nil) if !mt.isImplicitMethod =>
+          if self.isCoDefinedGiven(mt.finalResultType.typeSymbol)
+          then !directOnly
+          else !forImplicitClassOnly
+        case _ =>
+          false
+
+    /** Is this the method that summons a structural given instance? */
+    def isGivenInstanceSummoner(using Context): Boolean =
+      def isCodefined(info: Type): Boolean = info.stripPoly match
+        case mt: MethodType =>
+          // given summoner can only have contextual params
+          mt.isImplicitMethod && isCodefined(mt.resultType)
+        case mt: ExprType =>
+          isCodefined(mt.resultType)
+        case res =>
+          self.isCoDefinedGiven(res.typeSymbol)
+      self.isAllOf(Given | Method) && isCodefined(self.info)
+
     def useCompanionAsMirror(using Context): Boolean = self.linkedClass.exists && !self.is(Scala2x)
 
     /** Is this a sealed class or trait for which a sum mirror is generated?

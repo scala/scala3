@@ -711,6 +711,19 @@ object SymDenotations {
          }
       )
 
+    /** Do this symbol and `cls` represent a pair of a given or implicit method and
+     *  its associated class that were defined by a single definition?
+     *  This can mean one of two things:
+     *   - the method and class are defined in a structural given instance, or
+     *   - the class is an implicit class and the method is its implicit conversion.
+	 */
+    final def isCoDefinedGiven(cls: Symbol)(using Context): Boolean =
+      is(Method) && isOneOf(GivenOrImplicit)
+      && ( is(Synthetic)                 // previous scheme used in 3.0
+         || cls.isOneOf(GivenOrImplicit) // new scheme from 3.1
+         )
+      && name == cls.name.toTermName && owner == cls.owner
+
     /** Is this a denotation of a stable term (or an arbitrary type)?
       * Terms are stable if they are idempotent (as in TreeInfo.Idempotent): that is, they always return the same value,
       * if any.
@@ -2231,7 +2244,7 @@ object SymDenotations {
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
               // implicits in package objects are added by the overriding `memberNames` in `PackageClassDenotation`
-            else info.decls.iterator.filter(_.isOneOf(GivenOrImplicit))
+            else info.decls.iterator.filter(_.isOneOf(GivenOrImplicitVal))
           else info.decls.iterator
         for (sym <- ownSyms) maybeAdd(sym.name)
         names
