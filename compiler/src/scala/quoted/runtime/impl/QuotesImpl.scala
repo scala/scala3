@@ -1484,7 +1484,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Unapply extends UnapplyModule:
       def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-        withDefaultPos(tpd.UnApply(fun, implicits, patterns, dotc.core.Symbols.defn.NothingType))
+        withDefaultPos(tpd.UnApply(fun, implicits, patterns))
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
         withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
       def unapply(x: Unapply): (Term, List[Term], List[Tree]) =

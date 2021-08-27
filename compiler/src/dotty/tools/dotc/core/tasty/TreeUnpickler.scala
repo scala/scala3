@@ -1248,9 +1248,9 @@ class TreeUnpickler(reader: TastyReader,
                   readByte()
                   readTerm()
                 }
-              val patType = readType()
+              val patType = readType() // IGNORED // TODO remove when we can break TASTy compat.
               val argPats = until(end)(readTerm())
-              UnApply(fn, implicitArgs, argPats, patType)
+              UnApply(fn, implicitArgs, argPats)
             case REFINEDtpt =>
               val refineCls = symAtAddr.getOrElse(start,
                 newRefinedClassSymbol(coordAt(start))).asClass
