@@ -162,6 +162,7 @@ class TyperState() {
         targetState.mergeConstraintWith(this)
     targetState.gc()
     isCommitted = true
+    ownedVars = SimpleIdentitySet.empty
   }
 
   /** Ensure that this constraint does not associate different TypeVars for the
