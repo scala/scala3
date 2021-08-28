@@ -858,14 +858,27 @@ class SpaceEngine(using Context) extends SpaceLogic {
       }
     }.apply(false, tp)
 
+  /** Return the underlying type of non-module, non-constant, non-enum case singleton types.
+   *  Also widen ExprType to its result type, and rewrap any annotation wrappers.
+   *  For example, with `val opt = None`, widen `opt.type` to `None.type`. */
+  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp)", show = true)(tp match {
+    case _: ConstantType                            => tp
+    case tp: TermRef if tp.symbol.is(Module)        => tp
+    case tp: TermRef if tp.symbol.isAllOf(EnumCase) => tp
+    case tp: SingletonType                          => toUnderlying(tp.underlying)
+    case tp: ExprType                               => toUnderlying(tp.resultType)
+    case AnnotatedType(tp, annot)                   => AnnotatedType(toUnderlying(tp), annot)
+    case _                                          => tp
+  })
+
   def checkExhaustivity(_match: Match): Unit = {
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.dealias
+    debug.println(i"checking exhaustivity of ${_match}")
 
     if (!exhaustivityCheckable(sel)) return
 
-    debug.println("checking " + _match.show)
-    debug.println("selTyp = " + selTyp.show)
+    val selTyp = toUnderlying(sel.tpe).dealias
+    debug.println(i"selTyp = $selTyp")
 
     val patternSpace = Or(cases.foldLeft(List.empty[Space]) { (acc, x) =>
       val space = if (x.guard.isEmpty) project(x.pat) else Empty
@@ -898,12 +911,13 @@ class SpaceEngine(using Context) extends SpaceLogic {
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
   def checkRedundancy(_match: Match): Unit = {
-    debug.println(s"---------------checking redundant patterns ${_match.show}")
-
     val Match(sel, cases) = _match
-    val selTyp = sel.tpe.widen.dealias
+    debug.println(i"checking redundancy in $_match")
 
     if (!redundancyCheckable(sel)) return
+
+    val selTyp = toUnderlying(sel.tpe).dealias
+    debug.println(i"selTyp = $selTyp")
 
     val isNullable = selTyp.classSymbol.isNullableClass
     val targetSpace = if isNullable
