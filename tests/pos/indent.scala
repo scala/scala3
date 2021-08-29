@@ -82,6 +82,14 @@ object Test:
     x < 10
   do ()
 
+  def sign(x: Int): Int =
+    if (x > 0) 1
+    else if (x < 0) - 1        // was: value - is not a member of Boolean
+    else 0
+  def lessPersuasively(x: Int): Unit =
+    while (x < 0) - 42         // was: value - is not a member of Boolean
+end Test
+
 class Test2:
   self =>
   def foo(x: Int) =
