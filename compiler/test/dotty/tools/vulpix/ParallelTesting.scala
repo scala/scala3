@@ -441,14 +441,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           throw e
 
     protected def compile(files0: Array[JFile], flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
-      val flags = flags0.and("-d", targetDir.getPath)
-        .withClasspath(targetDir.getPath)
-
       def flattenFiles(f: JFile): Array[JFile] =
         if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
         else Array(f)
 
       val files: Array[JFile] = files0.flatMap(flattenFiles)
+
+      val flags = flags0
+        .and(toolArgsFor(files.toList.map(_.toPath))(using getCodecFromEncodingOpt(flags0)): _*)
+        .and("-d", targetDir.getPath)
+        .withClasspath(targetDir.getPath)
 
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
@@ -1358,6 +1360,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
   }
+
+  private def getCodecFromEncodingOpt(flags: TestFlags) =
+    flags.options.sliding(2).collectFirst {
+      case Array("-encoding", encoding) => scala.io.Codec(encoding)
+    }.getOrElse(scala.io.Codec.UTF8)
 }
 
 object ParallelTesting {

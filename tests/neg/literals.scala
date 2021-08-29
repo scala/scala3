@@ -2,7 +2,7 @@ trait RejectedLiterals {
   def missingHex: Int    = { 0x }        // error: invalid literal number
 }
 /*
-// scalac: -Ywarn-octal-literal -Xfatal-warnings -deprecation
+// nsc: -Ywarn-octal-literal -Xfatal-warnings -deprecation
 trait RejectedLiterals {
 
   def missingHex: Int    = { 0x }        // line 4: was: not reported, taken as zero
