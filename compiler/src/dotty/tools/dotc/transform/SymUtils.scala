@@ -246,6 +246,10 @@ object SymUtils:
     def hasAnonymousChild(using Context): Boolean =
       self.children.exists(_ `eq` self)
 
+    /** Can we enumerate all instantiations of this type? */
+    def isClosedSum(using Context): Boolean =
+      self.is(Sealed) && self.isOneOf(AbstractOrTrait) && !self.hasAnonymousChild
+
     /** Is this symbol directly owner by a term symbol, i.e., is it local to a block? */
     def isLocalToBlock(using Context): Boolean =
       self.owner.isTerm

@@ -79,9 +79,9 @@ object Test:
     val d         = D()
     val e         = E()
 
-    assertEq(List(d, e).map(m.ordinal), List(0, 0))
+    assertEq(List(d, e).map(m.ordinal), List(0, 1))
     assertShow[A](d, "[0] [0] D")
-    assertShow[A](e, "[0] [1] E")
+    assertShow[A](e, "[1] [1] E")
   end testFromAkkaCB
 
   def testFromAkkaCB2() =

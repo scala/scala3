@@ -2526,10 +2526,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case _ => false
       })
 
-    /** Can we enumerate all instantiations of this type? */
-    def isClosedSum(tp: Symbol): Boolean =
-      tp.is(Sealed) && tp.isOneOf(AbstractOrTrait) && !tp.hasAnonymousChild
-
     /** Splits a closed type into a disjunction of smaller types.
      *  It should hold that `tp` and `decompose(tp).reduce(_ or _)`
      *  denote the same set of values.
@@ -2570,9 +2566,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // subtype, so they must be unrelated by single inheritance
             // of classes.
             true
-          else if (isClosedSum(cls1))
+          else if (cls1.isClosedSum)
             decompose(cls1, tp1).forall(x => provablyDisjoint(x, tp2))
-          else if (isClosedSum(cls2))
+          else if (cls2.isClosedSum)
             decompose(cls2, tp2).forall(x => provablyDisjoint(x, tp1))
           else
             false
