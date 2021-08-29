@@ -1073,12 +1073,10 @@ class TreeUnpickler(reader: TastyReader,
       def makeSelect(qual: Tree, name: Name, denot: Denotation): Select =
         var qualType = qual.tpe.widenIfUnstable
         val owner = denot.symbol.maybeOwner
-        if (owner.isPackageObject && qualType.termSymbol.is(Package))
-          qualType = qualType.select(owner.sourceModule)
-        val tpe = name match {
+        val tpe0 = name match
           case name: TypeName => TypeRef(qualType, name, denot)
           case name: TermName => TermRef(qualType, name, denot)
-        }
+        val tpe = TypeOps.makePackageObjPrefixExplicit(tpe0)
         ConstFold.Select(untpd.Select(qual, name).withType(tpe))
 
       def completeSelect(name: Name, sig: Signature, target: Name): Select =
