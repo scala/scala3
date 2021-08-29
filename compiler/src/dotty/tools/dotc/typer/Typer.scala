@@ -3591,6 +3591,7 @@ class Typer extends Namer
             gadts.println(i"insert GADT cast from $tree to $target")
             tree.cast(target)
           case _ =>
+            //typr.println(i"OK ${tree.tpe}\n${TypeComparer.explained(_.isSubType(tree.tpe, pt))}") // uncomment for unexpected successes
             tree
     }
 
