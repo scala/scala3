@@ -1830,14 +1830,14 @@ object Parsers {
      *  the initially parsed (...) region?
      */
     def toBeContinued(altToken: Token): Boolean =
-      if in.isNewLine || migrateTo3 then
-        false // a newline token means the expression is finished
-      else if !in.canStartStatTokens.contains(in.token)
-              || in.isLeadingInfixOperator(inConditional = true)
-      then
-        true
-      else
-        followedByToken(altToken) // scan ahead to see whether we find a `then` or `do`
+      inline def canContinue =
+        !in.canStartStatTokens.contains(in.token)  // not statement, so take as continued expr
+      || followedByToken(altToken)                 // scan ahead to see whether we find a `then` or `do`
+
+      !in.isNewLine       // a newline token means the expression is finished
+      && !migrateTo3      // old syntax
+      && canContinue
+    end toBeContinued
 
     def condExpr(altToken: Token): Tree =
       val t: Tree =
