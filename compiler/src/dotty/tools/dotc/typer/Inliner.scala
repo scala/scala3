@@ -1487,6 +1487,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       super.ensureAccessible(tpe, superAccess, pos)
     }
 
+    /** Enter implicits in scope so that they can be found in implicit search.
+     *  This is important for non-transparent inlines
+     */
+    override def index(trees: List[untpd.Tree])(using Context): Context =
+      for case tree: untpd.MemberDef <- trees do
+        if tree.symbol.isOneOf(Flags.GivenOrImplicit) then
+          ctx.scope.openForMutations.enter(tree.symbol)
+      ctx
+
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
       inlineIfNeeded(tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
 
