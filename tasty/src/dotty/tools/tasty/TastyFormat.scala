@@ -272,34 +272,34 @@ object TastyFormat {
     */
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
 
-  /**Natural number. Each increment of the `MajorVersion` begins a
-   * new series of backward compatible TASTy versions.
+  /** Natural number. Each increment of the `MajorVersion` begins a
+   *  new series of backward compatible TASTy versions.
    *
-   * A TASTy file in either the preceeding or succeeding series is
-   * incompatible with the current value.
+   *  A TASTy file in either the preceeding or succeeding series is
+   *  incompatible with the current value.
    */
   final val MajorVersion: Int = 28
 
-  /**Natural number. Each increment of the `MinorVersion`, within
-   * a series declared by the `MajorVersion`, breaks forward
-   * compatibility, but remains backwards compatible, with all
-   * preceeding `MinorVersion`.
+  /** Natural number. Each increment of the `MinorVersion`, within
+   *  a series declared by the `MajorVersion`, breaks forward
+   *  compatibility, but remains backwards compatible, with all
+   *  preceeding `MinorVersion`.
    */
-  final val MinorVersion: Int = 1
+  final val MinorVersion: Int = 2
 
-  /**Natural Number. The `ExperimentalVersion` allows for
-   * experimentation with changes to TASTy without committing
-   * to any guarantees of compatibility.
+  /** Natural Number. The `ExperimentalVersion` allows for
+   *  experimentation with changes to TASTy without committing
+   *  to any guarantees of compatibility.
    *
-   * A zero value indicates that the TASTy version is from a
-   * stable, final release.
+   *  A zero value indicates that the TASTy version is from a
+   *  stable, final release.
    *
-   * A strictly positive value indicates that the TASTy
-   * version is experimental. An experimental TASTy file
-   * can only be read by a tool with the same version.
-   * However, tooling with an experimental TASTy version
-   * is able to read final TASTy documents if the file's
-   * `MinorVersion` is strictly less than the current value.
+   *  A strictly positive value indicates that the TASTy
+   *  version is experimental. An experimental TASTy file
+   *  can only be read by a tool with the same version.
+   *  However, tooling with an experimental TASTy version
+   *  is able to read final TASTy documents if the file's
+   *  `MinorVersion` is strictly less than the current value.
    */
   final val ExperimentalVersion: Int = 1
 
