@@ -4,15 +4,15 @@ object scalax:
   erased class CanThrow[E <: Exception]
   type CTF = CanThrow[Fail]
 
-  infix type throws[R, E <: Exception] = CanThrow[E] ?=> R
+  infix type raises[R, E <: Exception] = CanThrow[E] ?=> R
 
   class Fail extends Exception
 
-  def raise[E <: Exception](e: E): Nothing throws E = throw e
+  def raise[E <: Exception](e: E): Nothing raises E = throw e
 
 import scalax._
 
-def foo(x: Boolean, y: CanThrow[Fail]): Int throws Fail =
+def foo(x: Boolean, y: CanThrow[Fail]): Int raises Fail =
   if x then 1 else raise(Fail())
 
 def bar(x: Boolean)(using CanThrow[Fail]): Int =

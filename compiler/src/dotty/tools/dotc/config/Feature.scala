@@ -27,6 +27,7 @@ object Feature:
   val erasedDefinitions = experimental("erasedDefinitions")
   val symbolLiterals = deprecated("symbolLiterals")
   val fewerBraces = experimental("fewerBraces")
+  val saferExceptions = experimental("saferExceptions")
 
   /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
