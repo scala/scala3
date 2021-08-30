@@ -187,7 +187,7 @@ trait TypesSupport:
               partOfSignature ++ texts(" => ") ++ inner(rtpe)
             case args =>
               texts("(") ++ commas(args.init.map(inner)) ++ texts(") => ") ++ inner(args.last)
-        else if t.isTupleType then
+        else if t.isTupleN then
           typeList match
             case Nil =>
               Nil

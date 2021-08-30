@@ -768,7 +768,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
         val sym = tp.classSymbol
 
-        if (ctx.definitions.isTupleType(tp))
+        if (ctx.definitions.isTupleNType(tp))
           params(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (scalaListType.isRef(sym))
           if (flattenList) "_*" else "_: List"
@@ -782,7 +782,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         else if (decomposed) "_: " + showType(tp, showTypeArgs = true)
         else "_"
       case Prod(tp, fun, params) =>
-        if (ctx.definitions.isTupleType(tp))
+        if (ctx.definitions.isTupleNType(tp))
           "(" + params.map(doShow(_)).mkString(", ") + ")"
         else if (tp.isRef(scalaConsType.symbol))
           if (flattenList) params.map(doShow(_, flattenList)).filter(_.nonEmpty).mkString(", ")
