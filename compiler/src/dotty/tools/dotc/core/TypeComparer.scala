@@ -1227,19 +1227,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           val sym = tycon1.symbol
 
           def byGadtBounds: Boolean =
-            {
-              sym.onGadtBounds { bounds1 =>
-                inFrozenGadt { isSubType(bounds1.hi.applyIfParameterized(args1), tp2, approx.addLow) }
-              }
+            sym.onGadtBounds { bounds1 =>
+              inFrozenGadt { isSubType(bounds1.hi.applyIfParameterized(args1), tp2, approx.addLow) }
             } && { GADTused = true; true }
 
-          {
-            !sym.isClass && {
-              defn.isCompiletimeAppliedType(sym) && compareCompiletimeAppliedType(tp1, tp2, fromBelow = false) ||
-              recur(tp1.superType, tp2) ||
-              tryLiftedToThis1
-            }
-          } || byGadtBounds
+
+          !sym.isClass && {
+            defn.isCompiletimeAppliedType(sym) && compareCompiletimeAppliedType(tp1, tp2, fromBelow = false) ||
+            recur(tp1.superType, tp2) ||
+            tryLiftedToThis1
+          }|| byGadtBounds
         case tycon1: TypeProxy =>
           recur(tp1.superType, tp2)
         case _ =>
