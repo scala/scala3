@@ -905,50 +905,36 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
     if (!redundancyCheckable(sel)) return
 
-    val targetSpace =
-      if !selTyp.classSymbol.isNullableClass then
-        project(selTyp)
-      else
-        project(OrType(selTyp, constantNullType, soft = false))
-
+    val isNullable = selTyp.classSymbol.isNullableClass
+    val targetSpace = if isNullable
+      then project(OrType(selTyp, constantNullType, soft = false))
+      else project(selTyp)
     debug.println(s"targetSpace: ${show(targetSpace)}")
 
-    // in redundancy check, take guard as false in order to soundly approximate
-    val spaces = cases.map { x =>
-      val res =
-        if (x.guard.isEmpty) project(x.pat)
-        else Empty
+    cases.iterator.zipWithIndex.foldLeft(Nil: List[Space]) { case (prevs, (CaseDef(pat, guard, _), i)) =>
+      debug.println(i"case pattern: $pat")
 
-      debug.println(s"${x.pat.show} ====> ${show(res)}")
-      res
-    }
+      val curr = project(pat)
+      debug.println(i"reachable? ${show(curr)}")
 
-    (1 until cases.length).foreach { i =>
-      val pat = cases(i).pat
-      val prevs = Or(spaces.take(i))
-      if (pat != EmptyTree // rethrow case of catch uses EmptyTree
-        && simplify(intersect(prevs, targetSpace)) != Empty
-        // it's required that at one of the previous cases is reachable (its intersected Space isn't Empty)
-        // because if all the previous cases are unreachable then case i can't be unreachable
-      ) {
-        val curr = project(pat) // TODO(dnw) reuse `spaces(i)` & avoid re-computing? Or is mutability present?
+      val prev = simplify(Or(prevs))
+      debug.println(s"prev: ${show(prev)}")
 
-        debug.println(s"---------------reachable? ${show(curr)}")
-        debug.println(s"prev: ${show(prevs)}")
+      val covered = simplify(intersect(curr, targetSpace))
+      debug.println(s"covered: ${show(covered)}")
 
-        val covered = simplify(intersect(curr, targetSpace))
-        debug.println(s"covered: ${show(covered)}")
-
-        if (isSubspace(covered, prevs)) {
-          if i == cases.length - 1
-             && isWildcardArg(pat)
-             && pat.tpe.classSymbol.isNullableClass
-          then
-            report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
-          else
-            report.warning(MatchCaseUnreachable(), pat.srcPos)
-        }
+      if pat != EmptyTree // rethrow case of catch uses EmptyTree
+        && prev != Empty // avoid isSubspace(Empty, Empty) - one of the previous cases much be reachable
+        && isSubspace(covered, prev)
+      then {
+        if isNullable && i == cases.length - 1 && isWildcardArg(pat) then
+          report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
+        else
+          report.warning(MatchCaseUnreachable(), pat.srcPos)
       }
+
+      // in redundancy check, take guard as false in order to soundly approximate
+      (if guard.isEmpty then covered else Empty) :: prevs
     }
   }
 }
