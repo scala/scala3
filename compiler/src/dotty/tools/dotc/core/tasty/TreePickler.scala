@@ -538,8 +538,7 @@ class TreePickler(pickler: TastyPickler) {
               writeByte(IMPLICITarg)
               pickleTree(implicitArg)
             }
-            // TODO write a dummy type that takes less space?
-            pickleType(tree.tpe) // IGNORED // TODO remove when we can break TASTy compat.
+            pickleType(tree.tpe)
             patterns.foreach(pickleTree)
           }
         case tree: ValDef =>
