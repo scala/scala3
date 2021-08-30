@@ -165,7 +165,7 @@ trait SpaceLogic {
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `a - b == Empty`, but faster */
-  def isSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"${show(a)} < ${show(b)}", debug) {
+  def isSubspace(a: Space, b: Space)(using Context): Boolean = trace(s"isSubspace(${show(a)}, ${show(b)})", debug) {
     def tryDecompose1(tp: Type) = canDecompose(tp) && isSubspace(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = canDecompose(tp) && isSubspace(a, Or(decompose(tp)))
 
@@ -212,14 +212,14 @@ trait SpaceLogic {
         if (isSubType(tp2, tp1)) b
         else if (canDecompose(tp1)) tryDecompose1(tp1)
         else if (isSubType(tp1, tp2)) a // problematic corner case: inheriting a case class
-        else Empty
+        else intersectUnrelatedAtomicTypes(tp1, tp2)
       case (Prod(tp1, fun, ss), Typ(tp2, _)) =>
         if (isSubType(tp1, tp2)) a
         else if (canDecompose(tp2)) tryDecompose2(tp2)
         else if (isSubType(tp2, tp1)) a  // problematic corner case: inheriting a case class
-        else Empty
+        else intersectUnrelatedAtomicTypes(tp1, tp2)
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-        if (!isSameUnapply(fun1, fun2)) Empty
+        if (!isSameUnapply(fun1, fun2)) intersectUnrelatedAtomicTypes(tp1, tp2)
         else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) Empty
         else Prod(tp1, fun1, ss1.zip(ss2).map((intersect _).tupled))
     }
@@ -500,14 +500,34 @@ class SpaceEngine(using Context) extends SpaceLogic {
     }
   }
 
+  /** Numeric literals, while being constant values of unrelated types (e.g. Char and Int),
+   *  when used in a case may end up matching at runtime, because their equals may returns true.
+   *  Because these are universally available, general purpose types, it would be good to avoid
+   *  returning false positive warnings, such as in `(c: Char) match { case 67 => ... }` emitting a
+   *  reachability warning on the case.  So the type `ConstantType(Constant(67, IntTag))` is
+   *  converted to `ConstantType(Constant(67, CharTag))`.  #12805 */
+  def convertConstantType(tp: Type, pt: Type): Type = tp match
+    case tp @ ConstantType(const) =>
+      val converted = const.convertTo(pt)
+      if converted == null then tp else ConstantType(converted)
+    case _ => tp
+
+  /** Adapt types by performing primitive value boxing.  #12805 */
+  def maybeBox(tp1: Type, tp2: Type): Type =
+    if tp1.classSymbol.isPrimitiveValueClass && !tp2.classSymbol.isPrimitiveValueClass then
+      defn.boxedType(tp1).narrow
+    else tp1
+
   /** Is `tp1` a subtype of `tp2`?  */
-  def isSubType(tp1: Type, tp2: Type): Boolean = {
-    debug.println(TypeComparer.explained(_.isSubType(tp1, tp2)))
+  def isSubType(_tp1: Type, tp2: Type): Boolean = {
+    val tp1 = maybeBox(convertConstantType(_tp1, tp2), tp2)
+    //debug.println(TypeComparer.explained(_.isSubType(tp1, tp2)))
     val res = if (ctx.explicitNulls) {
       tp1 <:< tp2
     } else {
       (tp1 != constantNullType || tp2 == constantNullType) && tp1 <:< tp2
     }
+    debug.println(i"$tp1 <:< $tp2 = $res")
     res
   }
 
@@ -647,7 +667,6 @@ class SpaceEngine(using Context) extends SpaceLogic {
         parts.map(Typ(_, true))
     }
 
-
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
   def canDecompose(tp: Type): Boolean =
     val res = tp.dealias match
@@ -663,7 +682,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         || cls.isAllOf(JavaEnumTrait)
         || tp.isRef(defn.BooleanClass)
         || tp.isRef(defn.UnitClass)
-    debug.println(s"decomposable: ${tp.show} = $res")
+    //debug.println(s"decomposable: ${tp.show} = $res")
     res
 
   /** Show friendly type name with current scope in mind
@@ -747,6 +766,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
   }
 
   def show(ss: Seq[Space]): String = ss.map(show).mkString(", ")
+
   /** Display spaces */
   def show(s: Space): String = {
     def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
@@ -885,49 +905,36 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
     if (!redundancyCheckable(sel)) return
 
-    val targetSpace =
-      if !selTyp.classSymbol.isNullableClass then
-        project(selTyp)
-      else
-        project(OrType(selTyp, constantNullType, soft = false))
+    val isNullable = selTyp.classSymbol.isNullableClass
+    val targetSpace = if isNullable
+      then project(OrType(selTyp, constantNullType, soft = false))
+      else project(selTyp)
+    debug.println(s"targetSpace: ${show(targetSpace)}")
 
-    // in redundancy check, take guard as false in order to soundly approximate
-    val spaces = cases.map { x =>
-      val res =
-        if (x.guard.isEmpty) project(x.pat)
-        else Empty
+    cases.iterator.zipWithIndex.foldLeft(Nil: List[Space]) { case (prevs, (CaseDef(pat, guard, _), i)) =>
+      debug.println(i"case pattern: $pat")
 
-      debug.println(s"${x.pat.show} ====> ${res}")
-      res
-    }
+      val curr = project(pat)
+      debug.println(i"reachable? ${show(curr)}")
 
-    (1 until cases.length).foreach { i =>
-      val pat = cases(i).pat
+      val prev = simplify(Or(prevs))
+      debug.println(s"prev: ${show(prev)}")
 
-      if (pat != EmptyTree) { // rethrow case of catch uses EmptyTree
-        val prevs = Or(spaces.take(i))
-        val curr = project(pat)
+      val covered = simplify(intersect(curr, targetSpace))
+      debug.println(s"covered: ${show(covered)}")
 
-        debug.println(s"---------------reachable? ${show(curr)}")
-        debug.println(s"prev: ${show(prevs)}")
-
-        var covered = simplify(intersect(curr, targetSpace))
-        debug.println(s"covered: $covered")
-
-        // `covered == Empty` may happen for primitive types with auto-conversion
-        // see tests/patmat/reader.scala  tests/patmat/byte.scala
-        if (covered == Empty && !isNullLit(pat)) covered = curr
-
-        if (isSubspace(covered, prevs)) {
-          if i == cases.length - 1
-             && isWildcardArg(pat)
-             && pat.tpe.classSymbol.isNullableClass
-          then
-            report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
-          else
-            report.warning(MatchCaseUnreachable(), pat.srcPos)
-        }
+      if pat != EmptyTree // rethrow case of catch uses EmptyTree
+        && prev != Empty // avoid isSubspace(Empty, Empty) - one of the previous cases much be reachable
+        && isSubspace(covered, prev)
+      then {
+        if isNullable && i == cases.length - 1 && isWildcardArg(pat) then
+          report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
+        else
+          report.warning(MatchCaseUnreachable(), pat.srcPos)
       }
+
+      // in redundancy check, take guard as false in order to soundly approximate
+      (if guard.isEmpty then covered else Empty) :: prevs
     }
   }
 }
