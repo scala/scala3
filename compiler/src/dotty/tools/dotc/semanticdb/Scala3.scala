@@ -10,6 +10,10 @@ import core.Flags._
 import core.NameKinds
 import core.StdNames.nme
 import SymbolInformation.{Kind => k}
+import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.{semanticdb => s}
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 
@@ -25,6 +29,30 @@ object Scala3:
   @sharable private val ctor          = raw"[^;].*`<init>`\((?:\+\d+)?\)\.".r
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
+
+  def range(span: Span, treeSource: SourceFile)(using Context): Option[Range] =
+    def lineCol(offset: Int) = (treeSource.offsetToLine(offset), treeSource.column(offset))
+    val (startLine, startCol) = lineCol(span.start)
+    val (endLine, endCol) = lineCol(span.end)
+    Some(Range(startLine, startCol, endLine, endCol))
+
+  def namePresentInSource(sym: Symbol, span: Span, source:SourceFile)(using Context): Boolean =
+    if !span.exists then false
+    else
+      val content = source.content()
+      val (start, end) =
+        if content.lift(span.end - 1).exists(_ == '`') then
+          (span.start + 1, span.end - 1)
+        else (span.start, span.end)
+      val nameInSource = content.slice(start, end).mkString
+      // for secondary constructors `this`
+      if sym.isConstructor && nameInSource == nme.THISkw.toString then
+        true
+      else
+        val target =
+          if sym.isPackageObject then sym.owner
+          else sym
+        nameInSource == target.name.stripModuleClassSuffix.lastPart.toString
 
   sealed trait FakeSymbol {
     private[Scala3] var sname: Option[String] = None
@@ -423,9 +451,7 @@ object Scala3:
       def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
   end RangeOps
 
-  /** Sort symbol occurrences by their start position. */
-  given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>
-    x.range -> y.range match
+  private def compareRange(x: Option[Range], y: Option[Range]): Int = x -> y match
     case None -> _ | _ -> None => 0
     case Some(a) -> Some(b) =>
       val byLine = Integer.compare(a.startLine, b.startLine)
@@ -433,9 +459,13 @@ object Scala3:
         byLine
       else // byCharacter
         Integer.compare(a.startCharacter, b.startCharacter)
-  end OccurrenceOrdering
+
+  /** Sort symbol occurrences by their start position. */
+  given Ordering[SymbolOccurrence] = (x, y) => compareRange(x.range, y.range)
 
   given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(IdentifierOrdering())
+
+  given Ordering[Synthetic] = (x, y) => compareRange(x.range, y.range)
 
   /**
     * A comparator for identifier like "Predef" or "Function10".
