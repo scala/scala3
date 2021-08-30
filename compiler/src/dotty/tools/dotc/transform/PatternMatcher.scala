@@ -719,16 +719,19 @@ object PatternMatcher {
           val expectedTp = tpt.tpe
 
           // An outer test is needed in a situation like  `case x: y.Inner => ...`
-          def outerTestNeeded: Boolean =
-            // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
-            // generates an outer test based on `patType.prefix` with automatically dealises.
-            expectedTp.dealias match {
+          def outerTestNeeded: Boolean = {
+            def go(expected: Type): Boolean = expected match {
               case tref @ TypeRef(pre: SingletonType, _) =>
                 tref.symbol.isClass &&
                 ExplicitOuter.needsOuterIfReferenced(tref.symbol.asClass)
+              case AppliedType(tpe, _) => go(tpe)
               case _ =>
                 false
             }
+            // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
+            // generates an outer test based on `patType.prefix` with automatically dealises.
+            go(expectedTp.dealias)
+          }
 
           def outerTest: Tree = thisPhase.transformFollowingDeep {
             val expectedOuter = singleton(expectedTp.normalizedPrefix)
