@@ -926,6 +926,8 @@ trait Implicits:
           apply(t.widen)
         case t: RefinedType =>
           apply(t.parent)
+        case t: LazyRef =>
+          t
         case _ =>
           if (variance > 0) mapOver(t) else t
       }
