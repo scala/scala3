@@ -183,9 +183,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         val annotSym = annot.symbol
         annotSym.hasAnnotation(metaAnnotSym)
           || annotSym.hasAnnotation(metaAnnotSymBackup)
-          || (keepIfNoRelevantAnnot && {
-            !annotSym.annotations.exists(metaAnnot => defn.FieldAccessorMetaAnnots.contains(metaAnnot.symbol))
-          })
+          || keepIfNoRelevantAnnot
+              && !annotSym.annotations.exists(metaAnnot => defn.FieldAccessorMetaAnnots.contains(metaAnnot.symbol))
+          || annotSym == defn.TransientAnnot && metaAnnotSym == defn.ParamMetaAnnot
+             // exception: @transient is marked as @field in Scala 2, but is also usable on class parameters
       if sym.annotations.nonEmpty then
         sym.filterAnnotations(shouldKeep(_))
 

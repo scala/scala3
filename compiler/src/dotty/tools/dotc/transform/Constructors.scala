@@ -16,6 +16,7 @@ import Decorators._
 import DenotTransformers._
 import Constants.Constant
 import collection.mutable
+import config.Feature
 
 object Constructors {
   val name: String = "constructors"
@@ -244,6 +245,36 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     }
     splitStats(tree.body)
 
+    // Check that the pair of parameter `param` and parameter accessor `acc`
+    // does not have a `constructorOnly` or `transient` annotation. A `transient`
+    // annotation is allowed if the parameter is declared as a `val`. In that case
+    // the `@transient` has the meaning of Java's transient modifier.
+    def checkNotTransient(param: Symbol, acc: Symbol) =
+
+      // Is parameter accessor `acc` a `private[this] val` parameter? Unlike other `val`
+      // parameters these do not have the Accessor flag set, in fact they are indistinguishable
+      // in their flags from simple non-val parameters. To find out, we look instead at the
+      // definition ValDef and check whether it has an explicit `Private` modifier.
+      def isPrivateThisVal(acc: Symbol) =
+        clsStats.exists {
+          case stat: DefTree =>
+            stat.symbol == acc && stat.mods.mods.exists(_.flags.is(Private))
+          case _ =>
+            false
+        }
+
+      def msg(annot: String) =
+        em"${acc.name} is marked `$annot` but it is retained as a field in ${acc.owner}"
+
+      if param.hasAnnotation(defn.ConstructorOnlyAnnot) then
+        report.error(msg("@constructorOnly"), acc.srcPos)
+      else if param.hasAnnotation(defn.TransientAnnot) && !acc.is(Accessor) && !isPrivateThisVal(acc) then
+        if Feature.migrateTo3 then
+          report.migrationWarning(msg("@transient") + em"\nYou can avoid the error by declaring the parameter as a `private val`.", acc.srcPos)
+        else
+          report.error(msg("@transient"), acc.srcPos)
+    end checkNotTransient
+
     // The initializers for the retained accessors */
     val copyParams = accessors flatMap { acc =>
       if (!isRetained(acc)) {
@@ -256,8 +287,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
       else {
         val param = acc.subst(accessors, paramSyms)
-        if (param.hasAnnotation(defn.ConstructorOnlyAnnot))
-          report.error(em"${acc.name} is marked `@constructorOnly` but it is retained as a field in ${acc.owner}", acc.srcPos)
+        checkNotTransient(param, acc)
         val target = if (acc.is(Method)) acc.field else acc
         if (!target.exists) Nil // this case arises when the parameter accessor is an alias
         else {
