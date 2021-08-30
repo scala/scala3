@@ -1175,7 +1175,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case UNAPPLYtree =>
         val fun = readTreeRef()
         val args = until(end, () => readTreeRef())
-        UnApply(fun, Nil, args)
+        UnApply(fun, Nil, args, defn.AnyType) // !!! this is wrong in general
 
       case ARRAYVALUEtree =>
         val elemtpt = readTreeRef()
