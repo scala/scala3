@@ -107,6 +107,9 @@ sidebar:
           - page: docs/reference/dropped-features/nonlocal-returns.md
           - page: docs/reference/dropped-features/this-qualifier.md
           - page: docs/reference/dropped-features/wildcard-init.md
+      - title: Experimental Features
+        subsection:
+          - page: docs/reference/experimental/overview.md
       - page: docs/reference/syntax.md
   - title: Contributing
     subsection:
