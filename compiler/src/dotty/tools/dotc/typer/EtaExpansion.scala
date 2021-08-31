@@ -88,8 +88,10 @@ abstract class Lifter {
     methRef.widen match {
       case mt: MethodType =>
         args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map { (arg, name, tp) =>
-          val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
-          lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
+          if tp.hasAnnotation(defn.InlineParamAnnot) then arg
+          else
+            val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
+            lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
       case _ =>
         args.mapConserve(liftArg(defs, _))
