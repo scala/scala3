@@ -98,9 +98,9 @@ object Feature:
     else
       false
 
-  def checkExperimentalFeature(which: String, srcPos: SrcPos)(using Context) =
+  def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
     if !isExperimentalEnabled then
-      report.error(i"Experimental $which may only be used with a nightly or snapshot version of the compiler", srcPos)
+      report.error(i"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     if !isExperimentalEnabled then
