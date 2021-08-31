@@ -1167,6 +1167,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         else
           fallback(tycon2bounds.lo)
 
+      def byGadtBounds: Boolean =
+        {
+          tycon2 match
+            case tycon2: TypeRef =>
+              val tycon2sym = tycon2.symbol
+              tycon2sym.onGadtBounds { bounds2 =>
+                inFrozenGadt { compareLower(bounds2, tyconIsTypeRef = false) }
+              }
+            case _ => false
+        } && { GADTused = true; true }
+
       tycon2 match {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
@@ -1174,6 +1185,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           compareLower(bounds(param2), tyconIsTypeRef = false)
         case tycon2: TypeRef =>
           isMatchingApply(tp1) ||
+          byGadtBounds ||
           defn.isCompiletimeAppliedType(tycon2.symbol) && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true) || {
             tycon2.info match {
               case info2: TypeBounds =>
@@ -1213,11 +1225,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             isSubType(bounds(param1).hi.applyIfParameterized(args1), tp2, approx.addLow)
         case tycon1: TypeRef =>
           val sym = tycon1.symbol
+
+          def byGadtBounds: Boolean =
+            sym.onGadtBounds { bounds1 =>
+              inFrozenGadt { isSubType(bounds1.hi.applyIfParameterized(args1), tp2, approx.addLow) }
+            } && { GADTused = true; true }
+
+
           !sym.isClass && {
             defn.isCompiletimeAppliedType(sym) && compareCompiletimeAppliedType(tp1, tp2, fromBelow = false) ||
             recur(tp1.superType, tp2) ||
             tryLiftedToThis1
-          }
+          }|| byGadtBounds
         case tycon1: TypeProxy =>
           recur(tp1.superType, tp2)
         case _ =>
