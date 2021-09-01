@@ -29,6 +29,7 @@ sealed abstract class GadtConstraint extends Showable {
 
   /** Is `sym1` ordered to be less than `sym2`? */
   def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean
+  def isLess(tpr1: TypeRef, tpr2: TypeRef)(using Context): Boolean
 
   /** Add symbols to constraint, correctly handling inter-dependencies.
    *
@@ -277,7 +278,10 @@ final class ProperGadtConstraint private(
     addBound(sym.typeRef, bound, isUpper)
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
-    constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
+    isLess(sym1.typeRef, sym2.typeRef)
+
+  override def isLess(tp1: TypeRef, tp2: TypeRef)(using Context): Boolean =
+    constraint.isLess(tvarOrError(tp1).origin, tvarOrError(tp2).origin)
 
   override def fullBounds(tp: TypeRef)(using Context): TypeBounds =
     mapping(tp) match {
@@ -414,6 +418,7 @@ final class ProperGadtConstraint private(
   override def fullBounds(tp: TypeRef)(using Context): TypeBounds = null
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
+  override def isLess(tp1: TypeRef, tp2: TypeRef)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
 
   override def isEmpty: Boolean = true
 

@@ -526,13 +526,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             tp2.onGadtBounds(gbounds2 =>
               isSubTypeWhenFrozen(tp1, gbounds2.lo)
               || tp1.match
-                  case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
+                  case tp1: TypeRef if ctx.gadt.contains(tp1) =>
                     // Note: since we approximate constrained types only with their non-param bounds,
                     // we need to manually handle the case when we're comparing two constrained types,
                     // one of which is constrained to be a subtype of another.
                     // We do not need similar code in fourthTry, since we only need to care about
                     // comparing two constrained types, and that case will be handled here first.
-                    ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
+                    ctx.gadt.isLess(tp1, tp2) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
                   case _ => false
               || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
             && (isBottom(tp1) || GADTusage(tp2.symbol))
