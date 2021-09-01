@@ -31,6 +31,19 @@ import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Te
 
 class SelfTypePrinter(using _ctx: Context) extends RefinedPrinter(_ctx):
 
+  private def refinementChain(tp: Type): List[Type] =
+    tp :: (tp match {
+      case tp: RefinedType => refinementChain(tp.parent.stripTypeVar)
+      case _ => Nil
+    })
+
+  override def toText(tp: Type): Text = tp match
+    case tp: RefinedType =>
+      val parent :: (refined: List[RefinedType @unchecked]) =
+        refinementChain(tp).reverse
+      toTextLocal(parent)
+    case tp => super.toText(tp)
+
   override def toTextSingleton(tp: SingletonType): Text =
       tp match
         case ConstantType(value) =>
