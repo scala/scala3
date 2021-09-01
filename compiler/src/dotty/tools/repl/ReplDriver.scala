@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import java.io.{File => JFile, PrintStream}
+import java.io.{File => JFile, PrintStream, PrintWriter}
 import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
@@ -17,9 +17,10 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
-import dotty.tools.dotc.reporting.{MessageRendering, StoreReporter}
+import dotty.tools.dotc.reporting.{ConsoleReporter, MessageRendering, StoreReporter}
 import dotty.tools.dotc.reporting.{Message, Diagnostic}
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
@@ -261,7 +262,6 @@ class ReplDriver(settings: Array[String],
 
             val warnings = newState.context.reporter
               .removeBufferedMessages(using newState.context)
-              .map(rendering.formatError)
 
             inContext(newState.context) {
               val (updatedState, definitions) =
@@ -278,8 +278,7 @@ class ReplDriver(settings: Array[String],
 
               (definitions ++ warnings)
                 .sorted
-                .map(_.msg)
-                .foreach(out.println)
+                .foreach(printDiagnostic)
 
               updatedState
             }
@@ -422,7 +421,20 @@ class ReplDriver(settings: Array[String],
 
   /** shows all errors nicely formatted */
   private def displayErrors(errs: Seq[Diagnostic])(implicit state: State): State = {
-    errs.map(rendering.formatError).map(_.msg).foreach(out.println)
+    errs.foreach(printDiagnostic)
     state
   }
+
+  /** Like ConsoleReporter, but without file paths or real -Xprompt'ing */
+  private object ReplConsoleReporter extends ConsoleReporter(
+    reader = null, // this short-circuits the -Xprompt display from waiting for an input
+    writer = new PrintWriter(out, /* autoFlush = */ true), // write to out, not Console.err
+  ) {
+    override def posFileStr(pos: SourcePosition) = "" // omit file paths
+  }
+
+  /** Print warnings & errors using ReplConsoleReporter, and info straight to out */
+  private def printDiagnostic(dia: Diagnostic)(implicit state: State) = dia.level match
+    case interfaces.Diagnostic.INFO => out.println(dia.msg) // print REPL's special info diagnostics directly to out
+    case _                          => ReplConsoleReporter.doReport(dia)(using state.context)
 }
