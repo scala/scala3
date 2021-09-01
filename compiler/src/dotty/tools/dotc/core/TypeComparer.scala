@@ -1906,8 +1906,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     val boundImprecise = approx.high || approx.low
     ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
       val tparam = tr.symbol
-      gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
-      if (bound.isRef(tparam)) false
+      gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam) && !ctx.gadt.isConstrainablePDT(bound)}")
+
+      def registerPDTBound(): Boolean = bound match
+        case bound: TypeRef =>
+          ctx.gadt.isConstrainablePDT(bound) && !ctx.gadt.contains(bound) && tryRegisterPDT(bound)
+        case _ => false
+
+      registerPDTBound()
+
+      if (bound.isRef(tparam) && !ctx.gadt.isConstrainablePDT(bound)) false
       else if (isUpper) gadtAddUpperBound(tr, bound)
       else gadtAddLowerBound(tr, bound)
     }
