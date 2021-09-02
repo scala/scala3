@@ -135,10 +135,13 @@ object Scanners {
       */
     protected def putChar(c: Char): Unit = litBuf.append(c)
 
-    /** Clear buffer and set name and token
-     *  If `target` is different from `this`, don't treat identifiers as end tokens
+    /** Finish an IDENTIFIER with `this.name`. */
+    inline def finishNamed(): Unit = finishNamedToken(IDENTIFIER, this)
+
+    /** Clear buffer and set name and token.
+     *  If `target` is different from `this`, don't treat identifiers as end tokens.
      */
-    def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit =
+    def finishNamedToken(idtoken: Token, target: TokenData): Unit =
       target.name = termName(litBuf.chars, 0, litBuf.length)
       litBuf.clear()
       target.token = idtoken
@@ -996,7 +999,7 @@ object Scanners {
       getLitChars('`')
       if (ch == '`') {
         nextChar()
-        finishNamed(BACKQUOTED_IDENT)
+        finishNamedToken(BACKQUOTED_IDENT, target = this)
         if (name.length == 0)
           error("empty quoted identifier")
         else if (name == nme.WILDCARD)
@@ -1162,7 +1165,7 @@ object Scanners {
             nextRawChar()
             ch != SU && Character.isUnicodeIdentifierPart(ch)
           do ()
-          finishNamed(target = next)
+          finishNamedToken(IDENTIFIER, target = next)
         }
         else
           error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected")
