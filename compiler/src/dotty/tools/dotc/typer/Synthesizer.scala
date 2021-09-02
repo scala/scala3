@@ -50,7 +50,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     (formal, span) => formal.argInfos match {
       case arg1 :: arg2 :: Nil if !defn.isBottomClass(arg2.typeSymbol) =>
         val tp1 = fullyDefinedType(arg1, "TypeTest argument", span)
-        val tp2 = fullyDefinedType(arg2, "TypeTest argument", span)
+        val tp2 = fullyDefinedType(arg2, "TypeTest argument", span).normalized
         val sym2 = tp2.typeSymbol
         if tp1 <:< tp2 then
           // optimization when we know the typetest will always succeed
