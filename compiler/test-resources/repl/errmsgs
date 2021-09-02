@@ -51,19 +51,19 @@ scala> abstract class C { type T; val x: T; val s: Unit = { type T = String; var
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
   |                                                                                  ^
   |Found:    (C.this.x : C.this.T)
-  |Required: T?
+  |Required: T²
   |
   |where:    T  is a type in class C
-  |          T? is a type in the initializer of value s which is an alias of String
+  |          T² is a type in the initializer of value s which is an alias of String
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: -------------------------------------------------
 1 | abstract class C { type T; val x: T; val s: Unit = { type T = String; var y: T = x; locally { def f() = { type T = Int; val z: T = y }; f() } }; }
   |                                                                                                                                    ^
   |Found:    (y : T)
-  |Required: T?
+  |Required: T²
   |
   |where:    T  is a type in the initializer of value s which is an alias of String
-  |          T? is a type in method f which is an alias of Int
+  |          T² is a type in method f which is an alias of Int
 longer explanation available when compiling with `-explain`
 2 errors found
 scala> class Foo() { def bar: Int = 1 }; val foo = new Foo(); foo.barr
