@@ -1334,7 +1334,7 @@ object Build {
         val downloadProcess = (new java.net.URL(inkuireLink) #> inkuireDestinationFile).run()
         val result: Future[Int] = Future(blocking(downloadProcess.exitValue()))
         val res = try {
-          Await.result(result, duration.Duration(20, "sec"))
+          Await.result(result, duration.Duration(60, "sec"))
         } catch {
           case _: TimeoutException =>
             downloadProcess.destroy()
