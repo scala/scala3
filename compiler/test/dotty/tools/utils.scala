@@ -1,4 +1,5 @@
-package dotty.tools
+package dotty
+package tools
 
 import java.io.File
 import java.nio.charset.StandardCharsets.UTF_8
@@ -12,7 +13,10 @@ import scala.util.control.{ControlThrowable, NonFatal}
 def scripts(path: String): Array[File] = {
   val dir = new File(getClass.getResource(path).getPath)
   assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
-  dir.listFiles
+  dir.listFiles.filter { f =>
+    val path = if f.isDirectory then f.getPath + "/" else f.getPath
+    path.contains(Properties.testsFilter.getOrElse(""))
+  }
 }
 
 extension (f: File) def absPath =
