@@ -1327,7 +1327,7 @@ object Build {
         import _root_.scala.sys.process._
         import _root_.scala.concurrent._
         import ExecutionContext.Implicits.global
-        val inkuireVersion = "1.0.0-M2"
+        val inkuireVersion = "1.0.0-M3"
         val inkuireLink = s"https://github.com/VirtusLab/Inkuire/releases/download/$inkuireVersion/inkuire.js"
         val inkuireDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "inkuire.js"
         sbt.IO.touch(inkuireDestinationFile)
