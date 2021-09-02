@@ -192,7 +192,7 @@ class TyperState() {
 
     val comparingCtx = ctx.withTyperState(this)
 
-    comparing(typeComparer =>
+    inContext(comparingCtx)(comparing(typeComparer =>
       val other = that.constraint
       val res = other.domainLambdas.forall(tl =>
         // Integrate the type lambdas from `other`
@@ -219,7 +219,7 @@ class TyperState() {
           )
         )
       assert(res || ctx.reporter.errorsReported, i"cannot merge $constraint with $other.")
-    )(using comparingCtx)
+    ))
 
     for tl <- constraint.domainLambdas do
       if constraint.isRemovable(tl) then constraint = constraint.remove(tl)
