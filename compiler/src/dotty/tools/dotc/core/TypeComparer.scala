@@ -2829,8 +2829,8 @@ object TypeComparer {
   def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
     comparing(_.dropTransparentTraits(tp, bound))
 
-  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false)(using Context): Boolean =
-    comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement))
+  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false, typeMemberReasoning: Boolean = false)(using Context): Boolean =
+    comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement, typeMemberReasoning))
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
     comparing(_.explained(op, header))

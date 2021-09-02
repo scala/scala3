@@ -73,7 +73,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false, typeMemberReasoning: Boolean = false): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
 
     def classesMayBeCompatible: Boolean = {
       import Flags._
@@ -114,38 +114,43 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         }
       }
 
-      scrut match {
-        case scrut: TypeRef if scrut.symbol.isClass =>
-          // consider all parents
-          val parents = scrut.parents
-          val andType = buildAndType(parents)
-          !andType.exists || constrainPatternType(pat, andType)
-        case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
-          val patCls = pat.classSymbol
-          // find all shared parents in the inheritance hierarchy between pat and scrut
-          def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
-            var parents = tpClassSym.info.parents
-            if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
-              parents = parents.tail
-            parents flatMap { tp =>
-              val sym = tp.classSymbol.asClass
-              if patCls.derivesFrom(sym) then List(sym)
-              else allParentsSharedWithPat(tp, sym)
+      def constrainTypeParams =
+        scrut match {
+          case scrut: TypeRef if scrut.symbol.isClass =>
+            // consider all parents
+            val parents = scrut.parents
+            val andType = buildAndType(parents)
+            !andType.exists || constrainPatternType(pat, andType)
+          case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
+            val patCls = pat.classSymbol
+            // find all shared parents in the inheritance hierarchy between pat and scrut
+            def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
+              var parents = tpClassSym.info.parents
+              if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
+                parents = parents.tail
+              parents flatMap { tp =>
+                val sym = tp.classSymbol.asClass
+                if patCls.derivesFrom(sym) then List(sym)
+                else allParentsSharedWithPat(tp, sym)
+              }
             }
-          }
-          val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
-          val baseClasses = allSyms map scrut.baseType
-          val andType = buildAndType(baseClasses)
-          !andType.exists || constrainPatternType(pat, andType)
-        case _ =>
-          val upcasted: Type = scrut match {
-            case scrut: TypeProxy => scrut.superType
-            case _ => NoType
-          }
-          if (upcasted.exists)
-            tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
-          else true
-      }
+            val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
+            val baseClasses = allSyms map scrut.baseType
+            val andType = buildAndType(baseClasses)
+            !andType.exists || constrainPatternType(pat, andType)
+          case _ =>
+            val upcasted: Type = scrut match {
+              case scrut: TypeProxy => scrut.superType
+              case _ => NoType
+            }
+            if (upcasted.exists)
+              tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
+            else true
+        }
+
+      def constrainTypeMembers = true
+
+      constrainTypeMembers && (!typeMemberReasoning || constrainTypeMembers)
     }
 
     def dealiasDropNonmoduleRefs(tp: Type) = tp.dealias match {

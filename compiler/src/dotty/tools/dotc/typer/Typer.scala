@@ -863,7 +863,7 @@ class Typer extends Namer
         val tpt1 = typedTpt
         if !ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef then
           withMode(Mode.GadtConstraintInference) {
-            TypeComparer.constrainPatternType(tpt1.tpe, pt)
+            TypeComparer.constrainPatternType(tpt1.tpe, pt, typeMemberReasoning = true)
           }
         val matched = ascription(tpt1, isWildcard = true)
         // special case for an abstract type that comes with a class tag
