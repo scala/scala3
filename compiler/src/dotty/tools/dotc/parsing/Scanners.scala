@@ -242,24 +242,17 @@ object Scanners {
     /** A buffer for comments */
     private val commentBuf = CharBuffer()
 
-    private def handleMigration(keyword: Token): Token =
-      if scala3keywords.contains(keyword) && migrateTo3 then treatAsIdent()
-      else keyword
-
-    private def treatAsIdent(): Token =
-      val name0 = name  // don't capture the `name` var in the message closure, it may be null later
-      report.errorOrMigrationWarning(
-        i"$name0 is now a keyword, write `$name0` instead of $name0 to keep it as an identifier",
-        sourcePos())
-      patch(source, Span(offset), "`")
-      patch(source, Span(offset + name.length), "`")
-      IDENTIFIER
-
-    def toToken(name: SimpleName): Token = {
-      val idx = name.start
+    def toToken(identifier: SimpleName): Token =
+      def handleMigration(keyword: Token): Token =
+        if scala3keywords.contains(keyword) && migrateTo3 then
+          report.errorOrMigrationWarning(i"$identifier is now a keyword, write `$identifier` instead of $identifier to keep it as an identifier", sourcePos())
+          patch(source, Span(offset), "`")
+          patch(source, Span(offset + identifier.length), "`")
+          IDENTIFIER
+        else keyword
+      val idx = identifier.start
       if (idx >= 0 && idx <= lastKeywordStart) handleMigration(kwArray(idx))
       else IDENTIFIER
-    }
 
     def newTokenData: TokenData = new TokenData {}
 
