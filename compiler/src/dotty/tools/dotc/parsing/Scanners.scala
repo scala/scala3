@@ -245,7 +245,8 @@ object Scanners {
     def toToken(identifier: SimpleName): Token =
       def handleMigration(keyword: Token): Token =
         if scala3keywords.contains(keyword) && migrateTo3 then
-          report.errorOrMigrationWarning(i"$identifier is now a keyword, write `$identifier` instead of $identifier to keep it as an identifier", sourcePos())
+          val what = tokenString(keyword)
+          report.errorOrMigrationWarning(i"$what is now a keyword, write `$what` instead of $what to keep it as an identifier", sourcePos())
           patch(source, Span(offset), "`")
           patch(source, Span(offset + identifier.length), "`")
           IDENTIFIER
