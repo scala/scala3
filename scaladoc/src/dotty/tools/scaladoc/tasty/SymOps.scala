@@ -14,7 +14,7 @@ object SymOps:
 
     def isImplicitClass: Boolean =
       import reflect._
-      sym.maybeOwner != Symbol.noSymbol
+      sym.isClassDef && sym.maybeOwner != Symbol.noSymbol
         && sym.maybeOwner.declaredMethods.exists { methodSymbol =>
           methodSymbol.name == sym.name && methodSymbol.flags.is(Flags.Implicit) && methodSymbol.flags.is(Flags.Method)
         }
