@@ -57,6 +57,10 @@ sealed abstract class GadtConstraint extends Showable {
    */
   def addPDT(tp: Type)(using Context): Boolean
 
+  /** Supplies the singleton type of the scrutinee when typechecking pattern-matches.
+    */
+  def withScrutinee[T](path: TermRef)(body: T): T
+
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
 
@@ -75,7 +79,8 @@ final class ProperGadtConstraint private(
   private var myConstraint: Constraint,
   private var mapping: SimpleIdentityMap[TypeRef, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
-  private var tempMapping: SimpleIdentityMap[Symbol, TypeVar]
+  private var tempMapping: SimpleIdentityMap[Symbol, TypeVar],
+  private var scrutinee: TermRef,
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
@@ -83,7 +88,8 @@ final class ProperGadtConstraint private(
     myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty),
     mapping = SimpleIdentityMap.empty,
     reverseMapping = SimpleIdentityMap.empty,
-    tempMapping =  SimpleIdentityMap.empty
+    tempMapping =  SimpleIdentityMap.empty,
+    scrutinee = null
   )
 
   /** Whether `left` subsumes `right`?
@@ -200,6 +206,12 @@ final class ProperGadtConstraint private(
     tp match
       case TypeRef(prefix: TermRef, _) => addTypeMembersOf(prefix, isUnamedPattern = false).nonEmpty
       case _ => false
+
+  override def withScrutinee[T](path: TermRef)(body: T): T =
+    val saved = this.scrutinee
+    this.scrutinee = path
+
+    try body finally this.scrutinee = saved
 
   /** Find all constrainable type member symbols of the given type.
    *
@@ -411,7 +423,8 @@ final class ProperGadtConstraint private(
     myConstraint,
     mapping,
     reverseMapping,
-    tempMapping
+    tempMapping,
+    scrutinee
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -420,6 +433,7 @@ final class ProperGadtConstraint private(
       this.mapping = other.mapping
       this.reverseMapping = other.reverseMapping
       this.tempMapping = other.tempMapping
+      this.scrutinee = other.scrutinee
     case _ => ;
   }
 
@@ -518,6 +532,7 @@ final class ProperGadtConstraint private(
   override def contains(tp: TypeRef)(using Context) = false
   override def isConstrainablePDT(tp: Type)(using Context): Boolean = false
   override def addPDT(tp: Type)(using Context): Boolean = false
+  override def withScrutinee[T](path: TermRef)(body: T): T = body
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
   override def addBound(tpr: TypeRef, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
