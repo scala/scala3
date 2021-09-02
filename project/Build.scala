@@ -63,9 +63,9 @@ object DottyJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.1.0-RC1-bin-20210823-dd7a07a-NIGHTLY"
+  val referenceVersion = "3.1.0-RC1"
 
-  val baseVersion = "3.1.0-RC1"
+  val baseVersion = "3.1.1-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.

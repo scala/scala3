@@ -28,5 +28,24 @@ object MiMaFilters {
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTest"),
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTestMethods"),
     exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.isTupleN"),
+
+    // TODO: Remove those filters after releasing 3.1.0:
+    exclude[DirectMissingMethodProblem]("scala.CanEqual.canEqualSeqs"),
+    exclude[DirectMissingMethodProblem]("scala.CanEqual.canEqualOptions"),
+    exclude[DirectMissingMethodProblem]("scala.CanEqual.canEqualOption"),
+    exclude[DirectMissingMethodProblem]("scala.CanEqual.canEqualEither"),
+    exclude[DirectMissingMethodProblem]("scala.Tuple.canEqualEmptyTuple"),
+    exclude[DirectMissingMethodProblem]("scala.Tuple.canEqualTuple"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.WildcardTypeTest"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.Wildcard"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTestTypeTest"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTest"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedOrTestMethods"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.isTupleN"),
+    exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$TypedOrTestMethods"),
+    exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$TypedOrTestModule"),
+    exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$WildcardModule"),
+    exclude[MissingClassProblem]("scala.runtime.$throws$package"),
+    exclude[MissingClassProblem]("scala.runtime.$throws$package$"),
   )
 }
