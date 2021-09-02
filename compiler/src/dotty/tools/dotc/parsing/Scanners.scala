@@ -247,8 +247,9 @@ object Scanners {
       else keyword
 
     private def treatAsIdent(): Token =
+      val name0 = name  // don't capture the `name` var in the message closure, it may be null later
       report.errorOrMigrationWarning(
-        i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier",
+        i"$name0 is now a keyword, write `$name0` instead of $name0 to keep it as an identifier",
         sourcePos())
       patch(source, Span(offset), "`")
       patch(source, Span(offset + name.length), "`")

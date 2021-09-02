@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/fatal-warnings/i13440.scala:3:13 -------------------------------------------------------
+3 |case class A(enum: List[Int] = Nil) // error
+  |             ^
+  |             enum is now a keyword, write `enum` instead of enum to keep it as an identifier
