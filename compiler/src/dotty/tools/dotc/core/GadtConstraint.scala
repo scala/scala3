@@ -86,13 +86,101 @@ final class ProperGadtConstraint private(
     tempMapping =  SimpleIdentityMap.empty
   )
 
-  /** Exposes ConstraintHandling.subsumes */
+  /** Whether `left` subsumes `right`?
+    *
+    * `left` and `right` both stem from the constraint `pre`, with different type reasoning performed,
+    * during which new types might be registered in GadtConstraint. This function will take such newly
+    * registered types into consideration.
+    */
   def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
+    // When new types are registered after pre, for left to subsume right, it should contain all types
+    // newly registered in right.
+    def checkSubsumes(c1: Constraint, c2: Constraint, pre: Constraint): Boolean = {
+      if (c2 eq pre) true
+      else if (c1 eq pre) false
+      else {
+        val saved = constraint
+
+        /** Compute type parameters in c1 added after `pre`
+          */
+        val params1 = c1.domainParams.toSet
+        val params2 = c2.domainParams.toSet
+        val preParams = pre.domainParams.toSet
+        val newParams1 = params1.diff(preParams)
+        val newParams2 = params2.diff(preParams)
+
+        def checkNewParams: Boolean = (left, right) match {
+          case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
+            newParams2 forall { p2 =>
+              val tp2 = right.externalize(p2)
+              left.tvarOfType(tp2) != null
+            }
+          case _ => true
+        }
+
+        // bridge between the newly-registered types in c2 and c1
+        val (bridge1, bridge2) = {
+          var bridge1: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
+          var bridge2: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
+
+          (left, right) match {
+            // only meaningful when both constraints are proper
+            case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
+              newParams1 foreach { p1 =>
+                val tp1 = left.externalize(p1)
+                right.tvarOfType(tp1) match {
+                  case null =>
+                  case tvar2 =>
+                    bridge1 = bridge1.updated(p1, tvar2.origin)
+                    bridge2 = bridge2.updated(tvar2.origin, p1)
+                }
+              }
+            case _ =>
+          }
+
+          (bridge1, bridge2)
+        }
+
+        def bridgeParam(bridge: SimpleIdentityMap[TypeParamRef, TypeParamRef])(tpr: TypeParamRef): TypeParamRef = bridge(tpr) match {
+          case null => tpr
+          case tpr1 => tpr1
+        }
+        val bridgeParam1 = bridgeParam(bridge1)
+        val bridgeParam2 = bridgeParam(bridge2)
+
+        try {
+          // checks existing type parameters in `pre`
+          def existing: Boolean = pre.forallParams { p =>
+            c1.contains(p) &&
+              c2.upper(p).forall { q =>
+                c1.isLess(p, bridgeParam2(q))
+              } && isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p))
+          }
+
+          // checks new type parameters in `c1`
+          def added: Boolean = newParams1 forall { p1 =>
+            bridge1(p1) match {
+              case null =>
+                // p1 is in `left` but not in `right`
+                true
+              case p2 =>
+                c2.upper(p2).forall { q =>
+                  c1.isLess(p1, bridgeParam2(q))
+                } && isSubTypeWhenFrozen(c1.nonParamBounds(p1), c2.nonParamBounds(p2))
+            }
+          }
+
+          existing && checkNewParams && added
+        } finally constraint = saved
+      }
+    }
+
     def extractConstraint(g: GadtConstraint) = g match {
       case s: ProperGadtConstraint => s.constraint
       case EmptyGadtConstraint => OrderingConstraint.empty
     }
-    subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
+
+    checkSubsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
   }
 
   override def isConstrainablePDT(tp: Type)(using Context): Boolean = tp match
@@ -374,6 +462,10 @@ final class ProperGadtConstraint private(
       case tpr: TypeRef => tpr
       case null => param
     }
+
+  private def tvarOfType(tp: Type)(using Context): TypeVar = tp match
+    case tp: TypeRef => mapping(tp)
+    case _ => null
 
   private def tvarOrError(tpr: TypeRef)(using Context): TypeVar =
     mapping(tpr).ensuring(_ ne null, i"not a constrainable type: $tpr")
