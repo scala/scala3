@@ -103,11 +103,12 @@ class TyperState() {
     this
 
   /** A fresh typer state with the same constraint as this one. */
-  def fresh(reporter: Reporter = StoreReporter(this.reporter)): TyperState =
+  def fresh(reporter: Reporter = StoreReporter(this.reporter),
+      committable: Boolean = this.isCommittable): TyperState =
     util.Stats.record("TyperState.fresh")
     TyperState().init(this, this.constraint)
       .setReporter(reporter)
-      .setCommittable(this.isCommittable)
+      .setCommittable(committable)
 
   /** The uninstantiated variables */
   def uninstVars: collection.Seq[TypeVar] = constraint.uninstVars
@@ -189,9 +190,7 @@ class TyperState() {
   def mergeConstraintWith(that: TyperState)(using Context): Unit =
     that.ensureNotConflicting(constraint)
 
-    val comparingCtx =
-      if ctx.typerState == this then ctx
-      else ctx.fresh.setTyperState(this)
+    val comparingCtx = ctx.withTyperState(this)
 
     comparing(typeComparer =>
       val other = that.constraint

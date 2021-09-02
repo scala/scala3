@@ -526,9 +526,11 @@ object Contexts {
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
 
+    final def withTyperState(typerState: TyperState): Context =
+      if typerState ne this.typerState then fresh.setTyperState(typerState) else this
+
     final def withUncommittedTyperState: Context =
-      val ts = typerState.uncommittedAncestor
-      if ts ne typerState then fresh.setTyperState(ts) else this
+      withTyperState(typerState.uncommittedAncestor)
 
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
@@ -599,8 +601,8 @@ object Contexts {
       this.scope = newScope
       this
     def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
-    def setNewTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(true))
-    def setExploreTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(false))
+    def setNewTyperState(): this.type = setTyperState(typerState.fresh(committable = true))
+    def setExploreTyperState(): this.type = setTyperState(typerState.fresh(committable = false))
     def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setGadt(gadt: GadtConstraint): this.type =
