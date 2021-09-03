@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import java.io.{BufferedWriter, File => JFile, OutputStreamWriter, PrintStream, PrintWriter}
+import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
@@ -20,7 +20,7 @@ import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
-import dotty.tools.dotc.reporting.{ConsoleReporter, MessageRendering, StoreReporter}
+import dotty.tools.dotc.reporting.{AbstractReporter, MessageRendering, StoreReporter}
 import dotty.tools.dotc.reporting.{Message, Diagnostic}
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
@@ -426,10 +426,18 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Like ConsoleReporter, but without file paths or real -Xprompt'ing */
-  private object ReplConsoleReporter extends ConsoleReporter(
-    reader = null, // this short-circuits the -Xprompt display from waiting for an input
-    writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8)), /* autoFlush = */ true), // write to out, not Console.err
-  ) {
+  private object ReplConsoleReporter extends AbstractReporter {
+    def printMessage(msg: String): Unit = out.println(msg)
+
+    def doReport(dia: Diagnostic)(using Context): Unit = {
+      printMessage(messageAndPos(dia))
+
+      if Diagnostic.shouldExplain(dia) then
+        printMessage(explanation(dia.msg))
+      else if dia.msg.canExplain then
+        printMessage("\nlonger explanation available when compiling with `-explain`")
+    }
+
     override def posFileStr(pos: SourcePosition) = "" // omit file paths
   }
 
