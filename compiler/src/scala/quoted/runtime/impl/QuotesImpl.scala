@@ -1375,10 +1375,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def tpe: TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
         def low: TypeTree = self match
           case self: tpd.TypeBoundsTree => self.lo
-          case self: tpd.TypeTree => tpd.TypeTree(self.tpe.asInstanceOf[Types.TypeBounds].lo).withSpan(self.span)
+          case self: tpd.TypeTree => makeTypeDef(self.tpe.asInstanceOf[Types.TypeBounds].lo)
         def hi: TypeTree = self match
           case self: tpd.TypeBoundsTree => self.hi
-          case self: tpd.TypeTree => tpd.TypeTree(self.tpe.asInstanceOf[Types.TypeBounds].hi).withSpan(self.span)
+          case self: tpd.TypeTree => makeTypeDef(self.tpe.asInstanceOf[Types.TypeBounds].hi)
+        private def makeTypeDef(tpe: Types.Type) =
+          tpd.TypeTree(tpe)(using ctx.withSource(self.source)).withSpan(self.span)
       end extension
     end TypeBoundsTreeMethods
 
