@@ -117,7 +117,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
   protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
   protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
-  protected def gadtBounds(tpr: TypeRef)(using Context) = ctx.gadt.bounds(tpr)
+  protected def gadtBounds(tpr: TypeRef)(using Context) = trace.force(i"gadtBounds($tpr ${tpr.toString})") { ctx.gadt.bounds(tpr) }
   protected def gadtAddLowerBound(tpr: TypeRef, b: Type): Boolean = ctx.gadt.addBound(tpr, b, isUpper = false)
   protected def gadtAddUpperBound(tpr: TypeRef, b: Type): Boolean = ctx.gadt.addBound(tpr, b, isUpper = true)
 
@@ -192,11 +192,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   extension (tpr: TypeRef)
     private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
-      val gbounds =
-        gadtBounds(tpr) match
-          case null =>
-            if tryRegisterPDT(tpr) then gadtBounds(tpr) else null
-          case gbounds => gbounds
+      val gbounds = gadtBounds(tpr) match
+        case null =>
+          if tryRegisterPDT(tpr) then gadtBounds(tpr) else null
+        case gbounds => gbounds
 
       gbounds != null && op(gbounds)
 
@@ -242,7 +241,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  code would have two extra parameters for each of the many calls that go from
    *  one sub-part of isSubType to another.
    */
-  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)}${approx.show}", subtyping) {
+  protected def recur(tp1: Type, tp2: Type): Boolean = trace.force(s"isSubType ${traceInfo(tp1, tp2)}${approx.show}", subtyping) {
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
@@ -523,9 +522,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case info2: TypeBounds =>
         def compareGADT: Boolean = tp2 match
           case tp2: TypeRef =>
-            tp2.onGadtBounds(gbounds2 =>
-              isSubTypeWhenFrozen(tp1, gbounds2.lo)
-              || tp1.match
+            tp2.onGadtBounds { gbounds2 =>
+              println(i"using GADT bounds for $tp2: bounds = $gbounds2")
+
+              trace.force(i"isSubTypeWhenFrozen(tp1, ${gbounds2.lo})", subtyping) { isSubTypeWhenFrozen(tp1, gbounds2.lo) }
+              || trace.force(i"gadtOrdering $tp1 <: $tp2") {
+                tp1.match
                   case tp1: TypeRef if ctx.gadt.contains(tp1) =>
                     // Note: since we approximate constrained types only with their non-param bounds,
                     // we need to manually handle the case when we're comparing two constrained types,
@@ -534,12 +536,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     // comparing two constrained types, and that case will be handled here first.
                     ctx.gadt.isLess(tp1, tp2) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
                   case _ => false
-              || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
-            && (isBottom(tp1) || GADTusage(tp2.symbol))
+              } || trace.force(i"narrowGadtBounds($tp2, $tp1, $approx, isUpper = false)", subtyping) { narrowGADTBounds(tp2, tp1, approx, isUpper = false) }
+            } && (isBottom(tp1) || GADTusage(tp2.symbol))
           case _ => false
         end compareGADT
 
-        isSubApproxHi(tp1, info2.lo) || compareGADT || tryLiftedToThis2 || fourthTry
+        isSubApproxHi(tp1, info2.lo) || trace.force(i"compareGADT $tp1 <: [[$tp2]]", subtyping) { compareGADT } || tryLiftedToThis2 || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -1903,10 +1905,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  Test that the resulting bounds are still satisfiable.
    */
   private def narrowGADTBounds(tr: TypeRef, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = {
+    val tparam = tr.symbol
     val boundImprecise = approx.high || approx.low
     ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
       val tparam = tr.symbol
-      gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam) && !ctx.gadt.isConstrainablePDT(bound)}")
+      gadts.println(i"narrowing gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam) && !ctx.gadt.isConstrainablePDT(bound)}")
 
       def registerPDTBound(): Boolean = bound match
         case bound: TypeRef =>

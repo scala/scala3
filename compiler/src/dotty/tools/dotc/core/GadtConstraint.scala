@@ -57,6 +57,10 @@ sealed abstract class GadtConstraint extends Showable {
    */
   def addPDT(tp: Type)(using Context): Boolean
 
+  /** All all constrainable path-dependent type originating from the given path to constraint.
+    */
+  def addAllPDTsFrom(path: Type)(using Context): List[TypeRef]
+
   /** Supplies the singleton type of the scrutinee when typechecking pattern-matches.
     */
   def withScrutinee[T](path: TermRef)(body: T): T
@@ -199,6 +203,7 @@ final class ProperGadtConstraint private(
    */
   private def isConstrainablePath(path: Type)(using Context): Boolean = path match
     case path: TermRef if !path.symbol.is(Flags.Package) && !path.symbol.is(Flags.Module) => true
+    case _: SkolemType => true
     case _ => false
 
   override def addPDT(tp: Type)(using Context): Boolean =
@@ -206,6 +211,14 @@ final class ProperGadtConstraint private(
     tp match
       case TypeRef(prefix: TermRef, _) => addTypeMembersOf(prefix, isUnamedPattern = false).nonEmpty
       case _ => false
+
+  override def addAllPDTsFrom(path: Type)(using Context): List[TypeRef] =
+    addTypeMembersOf(path, isUnamedPattern = false) match {
+      case None => null
+      case Some(m) =>
+        m.values.toList map { tv => externalize(tv.origin).asInstanceOf[TypeRef] }
+        // m.keys.toList map { sym => TypeRef(path, sym) }
+    }
 
   override def withScrutinee[T](path: TermRef)(body: T): T =
     val saved = this.scrutinee
@@ -225,8 +238,17 @@ final class ProperGadtConstraint private(
 
     if !isUnamedPattern && !isConstrainablePath(path) then return None
 
-    val pathType = if isUnamedPattern then path else path.widen
+    val pathType =
+      path match
+        case _: (TermRef | SkolemType) => path.widen
+        case _ => path
     val typeMembers = constrainableTypeMemberSymbols(pathType)
+
+    println(i"*** all type members of $pathType ${pathType.toString} ***")
+    pathType.typeMembers foreach { member =>
+      val sym = member.symbol
+      println(i"$sym: ${sym.info} ${sym.info.toString}")
+    }
 
     if typeMembers.isEmpty then return Some(Map.empty)
 
@@ -338,6 +360,8 @@ final class ProperGadtConstraint private(
   }
 
   override def addBound(tpr: TypeRef, bound: Type, isUpper: Boolean)(using Context): Boolean = {
+    println(i"adding GADT bound $tpr ${if isUpper then "<:" else ":>"} $bound")
+
     @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
       case tv: TypeVar =>
         val inst = constraint.instType(tv)
@@ -348,16 +372,20 @@ final class ProperGadtConstraint private(
     val symTvar: TypeVar = stripInternalTypeVar(tvarOrError(tpr)) match {
       case tv: TypeVar => tv
       case inst =>
-        gadts.println(i"instantiated: $tpr -> $inst")
+        println(i"*** instantiated: $tpr -> $inst")
         return if (isUpper) isSub(inst, bound) else isSub(bound, inst)
     }
 
     val internalizedBound = bound match {
-      case nt: NamedType =>
-        val ntTvar = mapping(nt.symbol.typeRef)
+      case tpr: TypeRef =>
+        val ntTvar = mapping(tpr)
         if (ntTvar ne null) stripInternalTypeVar(ntTvar) else bound
       case _ => bound
     }
+
+    println(i"*** symTvar = $symTvar")
+    println(i"*** internalizedBound = $internalizedBound")
+
     (
       internalizedBound match {
         case boundTvar: TypeVar =>
@@ -395,7 +423,9 @@ final class ProperGadtConstraint private(
 
   override def bounds(tp: TypeRef)(using Context): TypeBounds =
     mapping(tp) match {
-      case null => null
+      case null =>
+        println(i"bounds of $tp ${tp.toString} is null, gadt = $mapping")
+        null
       case tv =>
         def retrieveBounds: TypeBounds =
           bounds(tv.origin) match {
@@ -532,6 +562,7 @@ final class ProperGadtConstraint private(
   override def contains(tp: TypeRef)(using Context) = false
   override def isConstrainablePDT(tp: Type)(using Context): Boolean = false
   override def addPDT(tp: Type)(using Context): Boolean = false
+  override def addAllPDTsFrom(path: Type)(using Context): List[TypeRef] = null
   override def withScrutinee[T](path: TermRef)(body: T): T = body
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")

@@ -114,43 +114,38 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         }
       }
 
-      def constrainTypeParams =
-        scrut match {
-          case scrut: TypeRef if scrut.symbol.isClass =>
-            // consider all parents
-            val parents = scrut.parents
-            val andType = buildAndType(parents)
-            !andType.exists || constrainPatternType(pat, andType)
-          case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
-            val patCls = pat.classSymbol
-            // find all shared parents in the inheritance hierarchy between pat and scrut
-            def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
-              var parents = tpClassSym.info.parents
-              if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
-                parents = parents.tail
-              parents flatMap { tp =>
-                val sym = tp.classSymbol.asClass
-                if patCls.derivesFrom(sym) then List(sym)
-                else allParentsSharedWithPat(tp, sym)
-              }
+      scrut match {
+        case scrut: TypeRef if scrut.symbol.isClass =>
+          // consider all parents
+          val parents = scrut.parents
+          val andType = buildAndType(parents)
+          !andType.exists || constrainPatternType(pat, andType)
+        case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
+          val patCls = pat.classSymbol
+          // find all shared parents in the inheritance hierarchy between pat and scrut
+          def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
+            var parents = tpClassSym.info.parents
+            if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
+              parents = parents.tail
+            parents flatMap { tp =>
+              val sym = tp.classSymbol.asClass
+              if patCls.derivesFrom(sym) then List(sym)
+              else allParentsSharedWithPat(tp, sym)
             }
-            val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
-            val baseClasses = allSyms map scrut.baseType
-            val andType = buildAndType(baseClasses)
-            !andType.exists || constrainPatternType(pat, andType)
-          case _ =>
-            val upcasted: Type = scrut match {
-              case scrut: TypeProxy => scrut.superType
-              case _ => NoType
-            }
-            if (upcasted.exists)
-              tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
-            else true
-        }
-
-      def constrainTypeMembers = true
-
-      constrainTypeMembers && (!typeMemberReasoning || constrainTypeMembers)
+          }
+          val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
+          val baseClasses = allSyms map scrut.baseType
+          val andType = buildAndType(baseClasses)
+          !andType.exists || constrainPatternType(pat, andType)
+        case _ =>
+          val upcasted: Type = scrut match {
+            case scrut: TypeProxy => scrut.superType
+            case _ => NoType
+          }
+          if (upcasted.exists)
+            tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
+          else true
+      }
     }
 
     def dealiasDropNonmoduleRefs(tp: Type) = tp.dealias match {
@@ -165,25 +160,85 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case tp => tp
     }
 
-    dealiasDropNonmoduleRefs(scrut) match {
-      case OrType(scrut1, scrut2) =>
-        either(constrainPatternType(pat, scrut1), constrainPatternType(pat, scrut2))
-      case AndType(scrut1, scrut2) =>
-        constrainPatternType(pat, scrut1) && constrainPatternType(pat, scrut2)
-      case scrut: RefinedOrRecType =>
-        constrainPatternType(pat, stripRefinement(scrut))
-      case scrut => dealiasDropNonmoduleRefs(pat) match {
-        case OrType(pat1, pat2) =>
-          either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
-        case AndType(pat1, pat2) =>
-          constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
-        case pat: RefinedOrRecType =>
-          constrainPatternType(stripRefinement(pat), scrut)
-        case pat =>
-          tryConstrainSimplePatternType(pat, scrut)
-          || classesMayBeCompatible && constrainUpcasted(scrut)
+    def constrainTypeParams =
+      dealiasDropNonmoduleRefs(scrut) match {
+        case OrType(scrut1, scrut2) =>
+          either(constrainPatternType(pat, scrut1), constrainPatternType(pat, scrut2))
+        case AndType(scrut1, scrut2) =>
+          constrainPatternType(pat, scrut1) && constrainPatternType(pat, scrut2)
+        case scrut: RefinedOrRecType =>
+          constrainPatternType(pat, stripRefinement(scrut))
+        case scrut => dealiasDropNonmoduleRefs(pat) match {
+          case OrType(pat1, pat2) =>
+            either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
+          case AndType(pat1, pat2) =>
+            constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
+          case pat: RefinedOrRecType =>
+            constrainPatternType(stripRefinement(pat), scrut)
+          case pat =>
+            tryConstrainSimplePatternType(pat, scrut)
+            || classesMayBeCompatible && constrainUpcasted(scrut)
+        }
       }
+
+    def constrainTypeMembers = {
+      val scrutPath = SkolemType(scrut)
+      val patPath = SkolemType(pat)
+
+      println(i"*** scrut path = $scrutPath")
+      println(i"*** pat path = $patPath")
+
+      val scrutPDTs = ctx.gadt.addAllPDTsFrom(scrutPath)
+
+      scrutPDTs match
+        case null => println("*** scrut path is not constrainable")
+        case tps =>
+          println("*** PDTs from scrutinee")
+          tps foreach { tp => println(tp.show) }
+
+      val patPDTs = ctx.gadt.addAllPDTsFrom(patPath)
+
+      patPDTs match
+        case null => println("*** pattern path is not constrainable")
+        case tps =>
+          println("*** PDTs from scrutinee")
+          tps foreach { tp => println(tp.show) }
+
+      println(ctx.gadt.debugBoundsDescription)
+
+      val scrutSyms = Map.from {
+        scrutPDTs map { pdt => pdt.symbol.name -> pdt }
+      }
+
+      println(scrutSyms)
+
+      val patSyms = Map.from {
+        patPDTs map { pdt => pdt.symbol.name -> pdt }
+      }
+
+      println(patSyms)
+
+      val shared = scrutSyms.keySet intersect patSyms.keySet
+
+      println(shared)
+
+      shared foreach { name =>
+        val tprS = scrutSyms(name)
+        val tprP = patSyms(name)
+
+        println(i"$tprS <: $tprP = ${isSubType(tprS, tprP)}")
+
+        println(ctx.gadt.debugBoundsDescription)
+
+        println(i"$tprP <: $tprS = ${isSubType(tprP, tprS)}")
+
+        println(ctx.gadt.debugBoundsDescription)
+      }
+
+      true
     }
+
+    constrainTypeParams && (!typeMemberReasoning || constrainTypeMembers)
   }
 
   /** Constrain "simple" patterns (see `constrainPatternType`).
