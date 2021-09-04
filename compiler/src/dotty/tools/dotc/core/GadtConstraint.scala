@@ -12,6 +12,7 @@ import printing._
 import TypeOps.abstractTypeMemberSymbols
 
 import scala.annotation.internal.sharable
+import dotty.tools.dotc.core.Denotations.Denotation
 
 /** Represents GADT constraints currently in scope */
 sealed abstract class GadtConstraint extends Showable {
@@ -217,7 +218,6 @@ final class ProperGadtConstraint private(
       case None => null
       case Some(m) =>
         m.values.toList map { tv => externalize(tv.origin).asInstanceOf[TypeRef] }
-        // m.keys.toList map { sym => TypeRef(path, sym) }
     }
 
   override def withScrutinee[T](path: TermRef)(body: T): T =
@@ -226,12 +226,17 @@ final class ProperGadtConstraint private(
 
     try body finally this.scrutinee = saved
 
-  /** Find all constrainable type member symbols of the given type.
+  /** Find all constrainable type member denotations of the given type.
    *
    * All abstract but not opaque type members are returned.
+   * Note that we return denotation here, since the bounds of the type member
+   * depend on the context (e.g. applied type parameters).
    */
-  private def constrainableTypeMemberSymbols(tp: Type)(using Context) =
-    abstractTypeMemberSymbols(tp) filterNot (_.is(Flags.Opaque))
+  private def constrainableTypeMembers(tp: Type)(using Context): List[Denotation] =
+    tp.typeMembers.toList filter { denot =>
+      val denot1 = tp.nonPrivateMember(denot.name)
+      denot1.symbol.is(Flags.Deferred) && !denot1.symbol.is(Flags.Opaque)
+    }
 
   private def addTypeMembersOf(path: Type, isUnamedPattern: Boolean)(using Context): Option[Map[Symbol, TypeVar]] =
     import NameKinds.DepParamName
@@ -242,17 +247,13 @@ final class ProperGadtConstraint private(
       path match
         case _: (TermRef | SkolemType) => path.widen
         case _ => path
-    val typeMembers = constrainableTypeMemberSymbols(pathType)
-
-    println(i"*** all type members of $pathType ${pathType.toString} ***")
-    pathType.typeMembers foreach { member =>
-      val sym = member.symbol
-      println(i"$sym: ${sym.info} ${sym.info.toString}")
-    }
+    val typeMembers = constrainableTypeMembers(pathType)
 
     if typeMembers.isEmpty then return Some(Map.empty)
 
-    val poly1 = PolyType(typeMembers map { s => DepParamName.fresh(s.name.toTypeName) })(
+    val typeMemberSyms: List[Symbol] = typeMembers map (_.symbol)
+
+    val poly1 = PolyType(typeMembers map { d => DepParamName.fresh(d.name.toTypeName) })(
       pt => typeMembers map { typeMember =>
         def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
           def loop(tp: Type): Type = tp match
@@ -261,11 +262,11 @@ final class ProperGadtConstraint private(
             case tp @ OrType(tp1, tp2) if isUpper =>
               tp.derivedOrType(loop(tp1), loop(tp2))
             case tp @ TypeRef(prefix, des) if prefix == pathType =>
-              typeMembers indexOf tp.symbol match
+              typeMemberSyms indexOf tp.symbol match
                 case -1 => tp
                 case idx => pt.paramRefs(idx)
             case tp @ TypeRef(_: RecThis, des) =>
-              typeMembers indexOf tp.symbol match
+              typeMemberSyms indexOf tp.symbol match
                 case -1 => tp
                 case idx => pt.paramRefs(idx)
             case tp: TypeRef =>
@@ -287,7 +288,7 @@ final class ProperGadtConstraint private(
       pt => defn.AnyType
     )
 
-    val tvars = typeMembers lazyZip poly1.paramRefs map { (sym, paramRef) =>
+    val tvars = typeMemberSyms lazyZip poly1.paramRefs map { (sym, paramRef) =>
       val tv = TypeVar(paramRef, creatorState = null)
 
       if isUnamedPattern then
@@ -305,7 +306,7 @@ final class ProperGadtConstraint private(
         .showing(i"added to constraint: [$poly1] $typeMembers%, %\n$debugBoundsDescription", gadts)
 
     if register then
-      Some(Map.from(typeMembers lazyZip tvars))
+      Some(Map.from(typeMemberSyms lazyZip tvars))
     else
       None
   end addTypeMembersOf
@@ -360,8 +361,6 @@ final class ProperGadtConstraint private(
   }
 
   override def addBound(tpr: TypeRef, bound: Type, isUpper: Boolean)(using Context): Boolean = {
-    println(i"adding GADT bound $tpr ${if isUpper then "<:" else ":>"} $bound")
-
     @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
       case tv: TypeVar =>
         val inst = constraint.instType(tv)
@@ -372,7 +371,7 @@ final class ProperGadtConstraint private(
     val symTvar: TypeVar = stripInternalTypeVar(tvarOrError(tpr)) match {
       case tv: TypeVar => tv
       case inst =>
-        println(i"*** instantiated: $tpr -> $inst")
+        gadts.println(i"*** instantiated: $tpr -> $inst")
         return if (isUpper) isSub(inst, bound) else isSub(bound, inst)
     }
 
@@ -382,9 +381,6 @@ final class ProperGadtConstraint private(
         if (ntTvar ne null) stripInternalTypeVar(ntTvar) else bound
       case _ => bound
     }
-
-    println(i"*** symTvar = $symTvar")
-    println(i"*** internalizedBound = $internalizedBound")
 
     (
       internalizedBound match {
@@ -423,9 +419,7 @@ final class ProperGadtConstraint private(
 
   override def bounds(tp: TypeRef)(using Context): TypeBounds =
     mapping(tp) match {
-      case null =>
-        println(i"bounds of $tp ${tp.toString} is null, gadt = $mapping")
-        null
+      case null => null
       case tv =>
         def retrieveBounds: TypeBounds =
           bounds(tv.origin) match {
