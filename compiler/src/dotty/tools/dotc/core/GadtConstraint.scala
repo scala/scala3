@@ -212,7 +212,7 @@ final class ProperGadtConstraint private(
       case _ => false
 
   override def addAllPDTsFrom(path: Type)(using Context): List[TypeRef] =
-    addTypeMembersOf(path, isUnamedPattern = false) match {
+    addTypeMembersOf(path) match {
       case None => null
       case Some(m) =>
         m.values.toList map { tv => externalize(tv.origin).asInstanceOf[TypeRef] }
@@ -248,7 +248,7 @@ final class ProperGadtConstraint private(
     if !isConstrainablePath(path) then return None
 
     val pathType = path.widen
-    val typeMembers = constrainableTypeMember(pathType)
+    val typeMembers = constrainableTypeMembers(pathType)
 
     if typeMembers.isEmpty then return Some(Map.empty)
 
