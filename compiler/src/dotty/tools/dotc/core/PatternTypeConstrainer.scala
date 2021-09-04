@@ -181,61 +181,30 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         }
       }
 
-    def constrainTypeMembers = {
+    /** Derive GADT bounds on type members of the scrutinee and the pattern. */
+    def constrainTypeMembers = trace(i"constraining type members $scrut >:< $pat", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
       val scrutPath = SkolemType(scrut)
       val patPath = SkolemType(pat)
 
-      println(i"*** scrut path = $scrutPath")
-      println(i"*** pat path = $patPath")
-
       val scrutPDTs = ctx.gadt.addAllPDTsFrom(scrutPath)
-
-      scrutPDTs match
-        case null => println("*** scrut path is not constrainable")
-        case tps =>
-          println("*** PDTs from scrutinee")
-          tps foreach { tp => println(tp.show) }
-
       val patPDTs = ctx.gadt.addAllPDTsFrom(patPath)
-
-      patPDTs match
-        case null => println("*** pattern path is not constrainable")
-        case tps =>
-          println("*** PDTs from scrutinee")
-          tps foreach { tp => println(tp.show) }
-
-      println(ctx.gadt.debugBoundsDescription)
 
       val scrutSyms = Map.from {
         scrutPDTs map { pdt => pdt.symbol.name -> pdt }
       }
-
-      println(scrutSyms)
-
       val patSyms = Map.from {
         patPDTs map { pdt => pdt.symbol.name -> pdt }
       }
 
-      println(patSyms)
-
       val shared = scrutSyms.keySet intersect patSyms.keySet
 
-      println(shared)
-
-      shared foreach { name =>
+      val result = shared forall { name =>
         val tprS = scrutSyms(name)
         val tprP = patSyms(name)
-
-        println(i"$tprS <: $tprP = ${isSubType(tprS, tprP)}")
-
-        println(ctx.gadt.debugBoundsDescription)
-
-        println(i"$tprP <: $tprS = ${isSubType(tprP, tprS)}")
-
-        println(ctx.gadt.debugBoundsDescription)
+        isSubType(tprS, tprP) && isSubType(tprP, tprS)
       }
 
-      true
+      result
     }
 
     constrainTypeParams && (!typeMemberReasoning || constrainTypeMembers)

@@ -235,7 +235,13 @@ final class ProperGadtConstraint private(
   private def constrainableTypeMembers(tp: Type)(using Context): List[Denotation] =
     tp.typeMembers.toList filter { denot =>
       val denot1 = tp.nonPrivateMember(denot.name)
-      denot1.symbol.is(Flags.Deferred) && !denot1.symbol.is(Flags.Opaque)
+      val tb = denot.info.bounds
+
+      def isConstrainableAlias: Boolean = tb match
+        case TypeAlias(tpr: TypeRef) => contains(tpr)
+        case _ => false
+
+      denot1.symbol.is(Flags.Deferred) || isConstrainableAlias && !denot1.symbol.is(Flags.Opaque)
     }
 
   private def addTypeMembersOf(path: Type, isUnamedPattern: Boolean)(using Context): Option[Map[Symbol, TypeVar]] =
