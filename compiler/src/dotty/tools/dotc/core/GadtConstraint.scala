@@ -248,7 +248,7 @@ final class ProperGadtConstraint private(
     if !isConstrainablePath(path) then return None
 
     val pathType = path.widen
-    val typeMembers = constrainableTypeMembers(pathType)
+    val typeMembers = constrainableTypeMembers(path)
 
     if typeMembers.isEmpty then return Some(Map.empty)
 
