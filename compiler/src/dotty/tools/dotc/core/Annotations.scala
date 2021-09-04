@@ -48,7 +48,7 @@ object Annotations {
     /** The tree evaluation has finished. */
     def isEvaluated: Boolean = true
 
-    /** Normally, map type map over all tree nodes of this annotation, but can
+    /** Normally, type map over all tree nodes of this annotation, but can
      *  be overridden. Returns EmptyAnnotation if type type map produces a range
      *  type, since ranges cannot be types of trees.
      */
@@ -67,9 +67,7 @@ object Annotations {
         else if diff.exists then derivedAnnotation(tm.mapOver(tree))
         else this
 
-    /** Does this annotation refer to a parameter of `tl`?
-     *  Overridden in ConcreteAnnotation
-     */
+    /** Does this annotation refer to a parameter of `tl`? */
     def refersToParamOf(tl: TermLambda)(using Context): Boolean =
       val args = arguments
       if args.isEmpty then false
