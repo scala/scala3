@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import java.io.{File => JFile, PrintStream, PrintWriter}
+import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
@@ -425,12 +425,12 @@ class ReplDriver(settings: Array[String],
     state
   }
 
-  /** Like ConsoleReporter, but without file paths or real -Xprompt'ing */
-  private object ReplConsoleReporter extends ConsoleReporter(
-    reader = null, // this short-circuits the -Xprompt display from waiting for an input
-    writer = new PrintWriter(out, /* autoFlush = */ true), // write to out, not Console.err
-  ) {
+  /** Like ConsoleReporter, but without file paths, -Xprompt displaying,
+   *  and using a PrintStream rather than a PrintWriter so messages aren't re-encoded. */
+  private object ReplConsoleReporter extends ConsoleReporter.AbstractConsoleReporter {
     override def posFileStr(pos: SourcePosition) = "" // omit file paths
+    override def printMessage(msg: String): Unit = out.println(msg)
+    override def flush()(using Context): Unit    = out.flush()
   }
 
   /** Print warnings & errors using ReplConsoleReporter, and info straight to out */
