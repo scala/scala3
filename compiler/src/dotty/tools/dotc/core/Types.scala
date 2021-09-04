@@ -5379,6 +5379,8 @@ object Types {
       variance = saved
       derivedLambdaType(tp)(ptypes1, this(restpe))
 
+    def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
+
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
       record(s"TypeMap mapOver ${getClass}")
@@ -5422,8 +5424,9 @@ object Types {
 
         case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
-          if (underlying1 eq underlying) tp
-          else derivedAnnotatedType(tp, underlying1, mapOver(annot))
+          val annot1 = annot.mapWith(this)
+          if annot1 eq EmptyAnnotation then underlying1
+          else derivedAnnotatedType(tp, underlying1, annot1)
 
         case _: ThisType
           | _: BoundType
@@ -5495,9 +5498,6 @@ object Types {
       else newScopeWith(elems1: _*)
     }
 
-    def mapOver(annot: Annotation): Annotation =
-      annot.derivedAnnotation(mapOver(annot.tree))
-
     def mapOver(tree: Tree): Tree = treeTypeMap(tree)
 
     /** Can be overridden. By default, only the prefix is mapped. */
@@ -5543,8 +5543,6 @@ object Types {
       else Range(lower(lo), upper(hi))
 
     protected def emptyRange = range(defn.NothingType, defn.AnyType)
-
-    protected def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
 
     protected def lower(tp: Type): Type = tp match {
       case tp: Range => tp.lo
