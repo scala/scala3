@@ -75,15 +75,13 @@ final class ProperGadtConstraint private(
   private var myConstraint: Constraint,
   private var mapping: SimpleIdentityMap[TypeRef, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
-  private var tempMapping: SimpleIdentityMap[Symbol, TypeVar]
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
   def this() = this(
     myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty),
     mapping = SimpleIdentityMap.empty,
-    reverseMapping = SimpleIdentityMap.empty,
-    tempMapping =  SimpleIdentityMap.empty
+    reverseMapping = SimpleIdentityMap.empty
   )
 
   /** Whether `left` subsumes `right`?
@@ -198,7 +196,7 @@ final class ProperGadtConstraint private(
   override def addPDT(tp: Type)(using Context): Boolean =
     assert(isConstrainablePDT(tp), i"Type $tp is not a constrainable path-dependent type.")
     tp match
-      case TypeRef(prefix: TermRef, _) => addTypeMembersOf(prefix, isUnamedPattern = false).nonEmpty
+      case TypeRef(prefix: TermRef, _) => addTypeMembersOf(prefix).nonEmpty
       case _ => false
 
   /** Find all constrainable type member symbols of the given type.
@@ -208,12 +206,12 @@ final class ProperGadtConstraint private(
   private def constrainableTypeMemberSymbols(tp: Type)(using Context) =
     abstractTypeMemberSymbols(tp) filterNot (_.is(Flags.Opaque))
 
-  private def addTypeMembersOf(path: Type, isUnamedPattern: Boolean)(using Context): Option[Map[Symbol, TypeVar]] =
+  private def addTypeMembersOf(path: Type)(using Context): Option[Map[Symbol, TypeVar]] =
     import NameKinds.DepParamName
 
-    if !isUnamedPattern && !isConstrainablePath(path) then return None
+    if !isConstrainablePath(path) then return None
 
-    val pathType = if isUnamedPattern then path else path.widen
+    val pathType = path.widen
     val typeMembers = constrainableTypeMemberSymbols(pathType)
 
     if typeMembers.isEmpty then return Some(Map.empty)
@@ -256,12 +254,9 @@ final class ProperGadtConstraint private(
     val tvars = typeMembers lazyZip poly1.paramRefs map { (sym, paramRef) =>
       val tv = TypeVar(paramRef, creatorState = null)
 
-      if isUnamedPattern then
-        tempMapping = tempMapping.updated(sym, tv)
-      else
-        val externalType = TypeRef(path, sym)
-        mapping = mapping.updated(externalType, tv)
-        reverseMapping = reverseMapping.updated(tv.origin, externalType)
+      val externalType = TypeRef(path, sym)
+      mapping = mapping.updated(externalType, tv)
+      reverseMapping = reverseMapping.updated(tv.origin, externalType)
 
       tv
     }
@@ -410,8 +405,7 @@ final class ProperGadtConstraint private(
   override def fresh: GadtConstraint = new ProperGadtConstraint(
     myConstraint,
     mapping,
-    reverseMapping,
-    tempMapping
+    reverseMapping
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -419,7 +413,6 @@ final class ProperGadtConstraint private(
       this.myConstraint = other.myConstraint
       this.mapping = other.mapping
       this.reverseMapping = other.reverseMapping
-      this.tempMapping = other.tempMapping
     case _ => ;
   }
 
