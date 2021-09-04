@@ -44,6 +44,15 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Unit = {
     val prompt = "scala>"
 
+    val state0   = initialState
+    val opts     = toolArgsParse(lines.take(1))
+    val optsLine = if opts.isEmpty then Nil else lines.take(1)
+    val state    = if opts.isEmpty then state0 else {
+      setup(opts.toArray, state0.context) match
+        case Some((_, ctx)) => state0.copy(context = ctx)
+        case _              => fail(s"Error in script $name, setup failed with options $options"); ???
+    }
+
     def evaluate(state: State, input: String) =
       try {
         val nstate = run(input.drop(prompt.length))(state)
@@ -66,17 +75,17 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
     val actualOutput = {
       resetToInitial()
 
-      assert(lines.head.startsWith(prompt),
+      assert((if optsLine.isEmpty then lines else lines.drop(1)).head.startsWith(prompt),
         s"""Each script must start with the prompt: "$prompt"""")
       val inputRes = lines.filter(_.startsWith(prompt))
 
       val buf = new ArrayBuffer[String]
-      inputRes.foldLeft(initialState) { (state, input) =>
+      inputRes.foldLeft(state) { (state, input) =>
         val (out, nstate) = evaluate(state, input)
         out.linesIterator.foreach(buf.append)
         nstate
       }
-      buf.toList.flatMap(filterEmpties)
+      optsLine ::: buf.toList.flatMap(filterEmpties)
     }
 
     if !FileDiff.matches(actualOutput, expectedOutput) then

@@ -181,7 +181,7 @@ class ReplDriver(settings: Array[String],
   }
 
   private def newRun(state: State, reporter: StoreReporter = newStoreReporter) = {
-    val run = compiler.newRun(rootCtx.fresh.setReporter(reporter), state)
+    val run = compiler.newRun(state.context.fresh.setReporter(reporter), state)
     state.copy(context = run.runContext)
   }
 
