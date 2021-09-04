@@ -33,33 +33,38 @@ class Checker extends Phase {
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     units.foreach { unit => traverser.traverse(unit.tpdTree) }
+    semantic.check()
     super.runOn(units)
+
+  def run(using Context): Unit = {
+    // ignore, we already called `semantic.check()` in `runOn`
+  }
 
   val traverser = new TreeTraverser {
     override def traverse(tree: Tree)(using Context): Unit =
       traverseChildren(tree)
       tree match {
-        case tdef: MemberDef =>
+        case mdef: MemberDef =>
           // self-type annotation ValDef has no symbol
-          if tdef.name != nme.WILDCARD then
-            tdef.symbol.defTree = tree
+          if mdef.name != nme.WILDCARD then
+            mdef.symbol.defTree = tree
+
+          mdef match
+          case tdef: TypeDef if tdef.isClassDef =>
+            import semantic._
+            val cls = tdef.symbol.asClass
+            val ctor = cls.primaryConstructor
+            val args = ctor.defTree.asInstanceOf[DefDef].termParamss.flatten.map(_ => Hot)
+            val outer = Hot
+            val thisRef = ThisRef(cls, outer, ctor, args)
+            if shouldCheckClass(cls) then semantic.addTask(thisRef)(using Trace.empty)
+          case _ =>
+
         case _ =>
       }
   }
 
-  override def run(using Context): Unit = {
-    val unit = ctx.compilationUnit
-    unit.tpdTree.foreachSubTree {
-      case tdef: TypeDef if tdef.isClassDef =>
-        transformTypeDef(tdef)
-
-      case _ =>
-    }
-  }
-
-
-  private def transformTypeDef(tree: TypeDef)(using Context): tpd.Tree = {
-    val cls = tree.symbol.asClass
+  private def shouldCheckClass(cls: ClassSymbol)(using Context) = {
     val instantiable: Boolean =
       cls.is(Flags.Module) ||
       !cls.isOneOf(Flags.AbstractOrTrait) && {
@@ -71,21 +76,6 @@ class Checker extends Phase {
       }
 
     // A concrete class may not be instantiated if the self type is not satisfied
-    if (instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass) {
-      import semantic._
-      val tpl = tree.rhs.asInstanceOf[Template]
-      val thisRef = ThisRef(cls).ensureExists
-
-      val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
-
-      given Promoted = Promoted.empty
-      given Trace = Trace.empty
-      given Env = Env(paramValues)
-
-      val res = eval(tpl, thisRef, cls)
-      res.errors.foreach(_.issue)
-    }
-
-    tree
+    instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass
   }
 }
