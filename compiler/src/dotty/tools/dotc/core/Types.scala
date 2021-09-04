@@ -3601,6 +3601,9 @@ object Types {
           case tp: AppliedType => tp.fold(status, compute(_, _, theAcc))
           case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
           case tp: TermParamRef if tp.binder eq thisLambdaType => TrueDeps
+          case AnnotatedType(parent, ann) =>
+            if ann.refersToParamOf(thisLambdaType) then TrueDeps
+            else compute(status, parent, theAcc)
           case _: ThisType | _: BoundType | NoPrefix => status
           case _ =>
             (if theAcc != null then theAcc else DepAcc()).foldOver(status, tp)
@@ -3653,8 +3656,10 @@ object Types {
       if (isResultDependent) {
         val dropDependencies = new ApproximatingTypeMap {
           def apply(tp: Type) = tp match {
-            case tp @ TermParamRef(thisLambdaType, _) =>
+            case tp @ TermParamRef(`thisLambdaType`, _) =>
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
+            case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
+              mapOver(parent)
             case _ => mapOver(tp)
           }
         }
