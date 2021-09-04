@@ -7,6 +7,8 @@ import StdNames._
 import dotty.tools.dotc.ast.tpd
 import scala.util.Try
 import util.Spans.Span
+import printing.{Showable, Printer}
+import printing.Texts.Text
 
 object Annotations {
 
@@ -14,7 +16,7 @@ object Annotations {
     if (tree.symbol.isConstructor) tree.symbol.owner
     else tree.tpe.typeSymbol
 
-  abstract class Annotation {
+  abstract class Annotation extends Showable {
     def tree(using Context): Tree
 
     def symbol(using Context): Symbol = annotClass(tree)
@@ -44,15 +46,18 @@ object Annotations {
     /** The tree evaluation has finished. */
     def isEvaluated: Boolean = true
 
+    /** A string representation of the annotation. Overridden in BodyAnnotation.
+     */
+    def toText(printer: Printer): Text = printer.annotText(this)
+
     def ensureCompleted(using Context): Unit = tree
 
     def sameAnnotation(that: Annotation)(using Context): Boolean =
       symbol == that.symbol && tree.sameTree(that.tree)
   }
 
-  case class ConcreteAnnotation(t: Tree) extends Annotation {
+  case class ConcreteAnnotation(t: Tree) extends Annotation:
     def tree(using Context): Tree = t
-  }
 
   abstract class LazyAnnotation extends Annotation {
     protected var mySym: Symbol | (Context ?=> Symbol)
@@ -98,6 +103,7 @@ object Annotations {
       if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
     override def arguments(using Context): List[Tree] = Nil
     override def ensureCompleted(using Context): Unit = ()
+    override def toText(printer: Printer): Text = "@Body"
   }
 
   class ConcreteBodyAnnotation(body: Tree) extends BodyAnnotation {
