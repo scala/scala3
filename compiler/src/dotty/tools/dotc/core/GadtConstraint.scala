@@ -262,7 +262,7 @@ final class ProperGadtConstraint private(
               tp.derivedAndOrType(loop(tp1), loop(tp2))
             case tp @ OrType(tp1, tp2) if isUpper =>
               tp.derivedOrType(loop(tp1), loop(tp2))
-            case tp @ TypeRef(prefix, des) if prefix == pathType =>
+            case tp @ TypeRef(prefix, des) if prefix eq path =>
               typeMemberSyms indexOf tp.symbol match
                 case -1 => tp
                 case idx => pt.paramRefs(idx)
@@ -281,6 +281,7 @@ final class ProperGadtConstraint private(
         }
 
         val tb = typeMember.info.bounds
+
         tb.derivedTypeBounds(
           lo = substDependentSyms(tb.lo, isUpper = false),
           hi = substDependentSyms(tb.hi, isUpper = true)
