@@ -19,8 +19,7 @@ import Errors._
 import scala.collection.mutable
 import scala.annotation.tailrec
 
-class Semantic {
-  import Semantic._
+object Semantic {
 
 // ----- Domain definitions --------------------------------
 
@@ -93,10 +92,10 @@ class Semantic {
    *
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
-  case class Warm(klass: ClassSymbol, outer: Value, args: List[Value]) extends Ref {
+  case class Warm(klass: ClassSymbol, outer: Value, args: List[Value])(using Heap) extends Ref {
     val objekt = getCachedObject()
 
-    private def getCachedObject() =
+    private def getCachedObject()(using Heap) =
       if heap.contains(this) then heap(this)
       else {
         val obj = Objekt(this.klass, fields = mutable.Map.empty, outers = mutable.Map(this.klass -> this.outer))
@@ -149,7 +148,7 @@ class Semantic {
     opaque type Heap = mutable.Map[Warm, Objekt]
 
     /** Note: don't use `val` to avoid incorrect sharing */
-    def empty: Heap = mutable.Map.empty
+    private[Semantic] def empty: Heap = mutable.Map.empty
 
     extension (heap: Heap)
       def contains(ref: Warm): Boolean = heap.contains(ref)
@@ -160,8 +159,9 @@ class Semantic {
   }
   type Heap = Heap.Heap
 
+  inline def heap(using h: Heap): Heap = h
+
   import Heap._
-  private val heap: Heap = Heap.empty
 
   /** The environment for method parameters
    *
@@ -205,7 +205,7 @@ class Semantic {
   }
 
   type Env = Env.Env
-  def env(using env: Env) = env
+  inline def env(using env: Env) = env
   inline def withEnv[T](env: Env)(op: Env ?=> T): T = op(using env)
 
   import Env._
@@ -233,7 +233,7 @@ class Semantic {
   type Promoted = Promoted.Promoted
 
   import Promoted._
-  def promoted(using p: Promoted): Promoted = p
+  inline def promoted(using p: Promoted): Promoted = p
 
   /** Interpreter configuration
    *
@@ -290,8 +290,15 @@ class Semantic {
       value.instantiate(klass, ctor, args, source) ++ errors
   }
 
+// ----- State --------------------------------------------
+  /** Global state of the checker */
+  class State(val heap: Heap, val workList: WorkList)
+
+  given (using s: State): Heap = s.heap
+  given (using s: State): WorkList = s.workList
+
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Env, Context, Trace, Promoted) ?=> T
+  type Contextual[T] = (Env, Context, Trace, Promoted, State) ?=> T
 
 // ----- Error Handling -----------------------------------
 
@@ -704,7 +711,7 @@ class Semantic {
 // ----- Work list ---------------------------------------------------
   case class Task(value: ThisRef)(val trace: Trace)
 
-  private class WorkList {
+  class WorkList private[Semantic]() {
     private var checkedTasks: Set[Task] = Set.empty
     private var pendingTasks: List[Task] = Nil
 
@@ -713,7 +720,7 @@ class Semantic {
 
     /** Process the worklist until done */
     @tailrec
-    final def work()(using Context): Unit =
+    final def work()(using State, Context): Unit =
       pendingTasks match
       case task :: rest =>
         pendingTasks = rest
@@ -726,7 +733,7 @@ class Semantic {
      *
      *  This method should only be called from the work list scheduler.
      */
-    private def doTask(task: Task)(using Context): Unit = {
+    private def doTask(task: Task)(using State, Context): Unit = {
       val thisRef = task.value
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
@@ -738,14 +745,31 @@ class Semantic {
       res.errors.foreach(_.issue)
     }
   }
+  inline def workList(using wl: WorkList): WorkList = wl
 
-  private val workList = new WorkList
+// ----- API --------------------------------
 
   /** Add a checking task to the work list */
-  def addTask(task: ThisRef)(using Trace) = workList.addTask(Task(task)(trace))
+  def addTask(task: ThisRef)(using WorkList, Trace) = workList.addTask(Task(task)(trace))
 
-  /** Perform check on the work list until it becomes empty */
-  def check()(using Context) = workList.work()
+  /** Perform check on the work list until it becomes empty
+   *
+   *  Should only be called once from the checker.
+   */
+  def check()(using State, Context) = workList.work()
+
+  /** Perform actions with initial checking state.
+   *
+   *      Semantic.withInitialState {
+   *         Semantic.addTask(...)
+   *         ...
+   *         Semantic.check()
+   *      }
+   */
+  def withInitialState[T](work: State ?=> T): T = {
+    val initialState = State(Heap.empty, new WorkList)
+    work(using initialState)
+  }
 
 // ----- Semantic definition --------------------------------
 
@@ -1209,10 +1233,6 @@ class Semantic {
     }
     traverser.traverse(tpt.tpe)
     buf.toList
-
-}
-
-object Semantic {
 
 // ----- Utility methods and extractors --------------------------------
 

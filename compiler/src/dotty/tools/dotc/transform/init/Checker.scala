@@ -5,6 +5,7 @@ package init
 
 import dotty.tools.dotc._
 import ast.tpd
+import tpd._
 
 import dotty.tools.dotc.core._
 import Contexts._
@@ -15,16 +16,13 @@ import StdNames._
 import dotty.tools.dotc.transform._
 import Phases._
 
-
 import scala.collection.mutable
 
+import Semantic._
 
 class Checker extends Phase {
-  import tpd._
 
   val phaseName = "initChecker"
-
-  private val semantic = new Semantic
 
   override val runsAfter = Set(Pickler.name)
 
@@ -32,15 +30,18 @@ class Checker extends Phase {
     super.isEnabled && ctx.settings.YcheckInit.value
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    units.foreach { unit => traverser.traverse(unit.tpdTree) }
-    semantic.check()
-    super.runOn(units)
+    Semantic.withInitialState {
+      val traverser = new InitTreeTraverser()
+      units.foreach { unit => traverser.traverse(unit.tpdTree) }
+      Semantic.check()
+      super.runOn(units)
+    }
 
   def run(using Context): Unit = {
-    // ignore, we already called `semantic.check()` in `runOn`
+    // ignore, we already called `Semantic.check()` in `runOn`
   }
 
-  val traverser = new TreeTraverser {
+  class InitTreeTraverser(using State) extends TreeTraverser {
     override def traverse(tree: Tree)(using Context): Unit =
       traverseChildren(tree)
       tree match {
@@ -51,13 +52,13 @@ class Checker extends Phase {
 
           mdef match
           case tdef: TypeDef if tdef.isClassDef =>
-            import semantic._
             val cls = tdef.symbol.asClass
             val ctor = cls.primaryConstructor
             val args = ctor.defTree.asInstanceOf[DefDef].termParamss.flatten.map(_ => Hot)
             val outer = Hot
             val thisRef = ThisRef(cls, outer, ctor, args)
-            if shouldCheckClass(cls) then semantic.addTask(thisRef)(using Trace.empty)
+            given Trace = Trace.empty
+            if shouldCheckClass(cls) then Semantic.addTask(thisRef)
           case _ =>
 
         case _ =>
