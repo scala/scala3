@@ -432,19 +432,10 @@ object Semantic {
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
               val env2 = Env(ddef, args.map(_.value).widenArgs)
-              if target.isPrimaryConstructor then
-                given Env = env2
-                val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                val res = withTrace(trace.add(cls.defTree)) { eval(tpl, ref, cls, cacheResult = true) }
-                Result(ref, res.errors)
-              else if target.isConstructor then
-                given Env = env2
-                eval(ddef.rhs, ref, cls, cacheResult = true)
-              else
-                // normal method call
-                withEnv(if isLocal then env else Env.empty) {
-                  eval(ddef.rhs, ref, cls, cacheResult = true) ++ checkArgs
-                }
+              // normal method call
+              withEnv(if isLocal then env else Env.empty) {
+                eval(ddef.rhs, ref, cls, cacheResult = true) ++ checkArgs
+              }
             else if ref.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
             else
@@ -475,6 +466,37 @@ object Semantic {
       }
     }
 
+    def callConstructor(ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("call " + ctor.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
+      value match {
+        case Hot | Cold | _: RefSet | _: Fun =>
+          report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, source)
+          Result(Hot, Nil)
+
+        case ref: Ref =>
+            val trace1 = trace.add(source)
+            if ctor.hasSource then
+              given Trace = trace1
+              val cls = ctor.owner.enclosingClass.asClass
+              val ddef = ctor.defTree.asInstanceOf[DefDef]
+              val env2 = Env(ddef, args.map(_.value).widenArgs)
+              if ctor.isPrimaryConstructor then
+                given Env = env2
+                val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+                val res = withTrace(trace.add(cls.defTree)) { eval(tpl, ref, cls, cacheResult = true) }
+                Result(ref, res.errors)
+              else
+                given Env = env2
+                eval(ddef.rhs, ref, cls, cacheResult = true)
+            else if ref.canIgnoreMethodCall(ctor) then
+              Result(Hot, Nil)
+            else
+              // no source code available
+              val error = CallUnknown(ctor, source, trace.toVector)
+              Result(Hot, error :: Nil)
+      }
+
+    }
+
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, (_: Result).show) {
       val trace1 = trace.add(source)
@@ -493,10 +515,10 @@ object Semantic {
             Result(Hot, Errors.empty)
           else
             val outer = Hot
-            val value = Warm(klass, outer, ctor, args2)
-            val task = ThisRef(klass, outer, ctor, args2)
-            this.addTask(task)
-            Result(value, Errors.empty)
+            val warm = Warm(klass, outer, ctor, args2)
+            val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
+            val res = warm.callConstructor(ctor, argInfos2, source)
+            Result(warm, res.errors)
 
         case Cold =>
           val error = CallCold(ctor, source, trace1.toVector)
@@ -510,10 +532,10 @@ object Semantic {
             case _ => ref
 
           val argsWidened = args.map(_.value).widenArgs
-          val value = Warm(klass, outer, ctor, argsWidened)
-          val task = ThisRef(klass, outer, ctor, argsWidened)
-          this.addTask(task)
-          Result(value, Errors.empty)
+          val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
+          val warm = Warm(klass, outer, ctor, argsWidened)
+          val res = warm.callConstructor(ctor, argInfos2, source)
+          Result(warm, res.errors)
 
         case Fun(body, thisV, klass, env) =>
           report.error("unexpected tree in instantiating a function, fun = " + body.show, source)
@@ -1132,7 +1154,7 @@ object Semantic {
       if cls.hasSource then
         tasks.append { () =>
           printer.println("init super class " + cls.show)
-          val res2 = thisV.call(ctor, args, superType = NoType, source)
+          val res2 = thisV.callConstructor(ctor, args, source)
           errorBuffer ++= res2.errors
           ()
         }
