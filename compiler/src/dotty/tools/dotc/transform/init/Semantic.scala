@@ -65,28 +65,43 @@ object Semantic {
   sealed abstract class Ref extends Value {
     def klass: ClassSymbol
     def outer: Value
-    def objekt: Objekt
+    def objekt(using Heap): Objekt = heap(this)
+
+    def ensureObjectExists()(using Heap) =
+      if heap.contains(this) then heap(this)
+      else {
+        val obj = Objekt(this.klass, fields = Map.empty, outers = Map(this.klass -> this.outer))
+        heap.update(this, obj)
+        obj
+      }
+
 
     /** Update field value of the abstract object
      *
      *  Invariant: fields are immutable and only set once
      */
-    def updateField(field: Symbol, value: Value)(using Context): Unit =
-      objekt.updateField(field, value)
+    def updateField(field: Symbol, value: Value)(using Heap, Context): Unit =
+      val obj = objekt
+      assert(!obj.hasField(field), field.show + " already init, new = " + value + ", old = " + obj.field(field))
+      val obj2 = obj.copy(fields = obj.fields.updated(field, value))
+      heap.update(this, obj2)
 
     /** Update the immediate outer of the given `klass` of the abstract object
      *
      *  Invariant: outers are immutable and only set once
      */
-    def updateOuter(klass: ClassSymbol, value: Value)(using Context): Unit =
-      objekt.updateOuter(klass, value)
+    def updateOuter(klass: ClassSymbol, value: Value)(using Heap, Context): Unit =
+      val obj = objekt
+      assert(!obj.hasOuter(klass), klass.show + " already init, new = " + value + ", old = " + obj.outer(klass))
+      val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
+      heap.update(this, obj2)
   }
 
   /** A reference to the object under initialization pointed by `this` */
-  case class ThisRef(klass: ClassSymbol) extends Ref {
+  case class ThisRef(klass: ClassSymbol)(using Heap) extends Ref {
     val outer = Hot
-    /** Caches initialized fields */
-    val objekt = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outer))
+
+    ensureObjectExists()
   }
 
   /** An object with all fields initialized but reaches objects under initialization
@@ -94,15 +109,7 @@ object Semantic {
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
   case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using Heap) extends Ref {
-    val objekt = getCachedObject()
-
-    private def getCachedObject()(using Heap) =
-      if heap.contains(this) then heap(this)
-      else {
-        val obj = Objekt(this.klass, fields = mutable.Map.empty, outers = mutable.Map(this.klass -> this.outer))
-        heap.update(this, obj)
-        obj
-      }
+    ensureObjectExists()
   }
 
   /** A function value */
@@ -123,7 +130,7 @@ object Semantic {
    *
    *  Note: Object is NOT a value.
    */
-  class Objekt(val klass: ClassSymbol, fields: mutable.Map[Symbol, Value], outers: mutable.Map[ClassSymbol, Value]) {
+  case class Objekt(val klass: ClassSymbol, val fields: Map[Symbol, Value], val outers: Map[ClassSymbol, Value]) {
     def field(f: Symbol): Value = fields(f)
 
     def outer(klass: ClassSymbol) = outers(klass)
@@ -131,14 +138,6 @@ object Semantic {
     def hasOuter(klass: ClassSymbol) = outers.contains(klass)
 
     def hasField(f: Symbol) = fields.contains(f)
-
-    def updateField(field: Symbol, value: Value)(using Context): Unit =
-      assert(!fields.contains(field), field.show + " already init, new = " + value + ", old = " + fields(field))
-      fields(field) = value
-
-    def updateOuter(klass: ClassSymbol, value: Value)(using Context): Unit =
-      assert(!outers.contains(klass), klass.show + " already init, new = " + value + ", old = " + outers(klass))
-      outers(klass) = value
   }
 
   /** Abstract heap stores abstract warm objects
@@ -146,17 +145,18 @@ object Semantic {
    *  The heap serves as cache of summaries for warm objects and is shared for checking all classes.
    */
   object Heap {
-    opaque type Heap = mutable.Map[Warm, Objekt]
+    class Heap(private var map: Map[Ref, Objekt]) {
+      def contains(ref: Ref): Boolean = map.contains(ref)
+      def apply(ref: Ref): Objekt = map(ref)
+      def update(ref: Ref, obj: Objekt): Unit =
+        map = map.updated(ref, obj)
+
+      def snapshot(): Heap = new Heap(map)
+      def restore(h: Heap) = this.map = h.map
+    }
 
     /** Note: don't use `val` to avoid incorrect sharing */
-    private[Semantic] def empty: Heap = mutable.Map.empty
-
-    extension (heap: Heap)
-      def contains(ref: Warm): Boolean = heap.contains(ref)
-      def apply(ref: Warm): Objekt = heap(ref)
-      def update(ref: Warm, obj: Objekt): Unit =
-        heap(ref) = obj
-    end extension
+    private[Semantic] def empty: Heap = new Heap(Map.empty)
   }
   type Heap = Heap.Heap
 
@@ -784,12 +784,15 @@ object Semantic {
         val res = doTask(task)
         res.errors.foreach(_.issue)
 
+        val heapBefore = heap.snapshot()
+
         if res.errors.nonEmpty then
           pendingTasks = rest
           checkedTasks = checkedTasks + task
         else
           // discard heap changes and copy cache.out to cache.in
           cache.update()
+          heap.restore(heapBefore)
 
         work()
       case _ =>
