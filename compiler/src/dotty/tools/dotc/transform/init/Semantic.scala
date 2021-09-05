@@ -781,14 +781,15 @@ object Semantic {
     final def work()(using State, Context): Unit =
       pendingTasks match
       case task :: rest =>
-        doTask(task)
+        val res = doTask(task)
+        res.errors.foreach(_.issue)
 
-        if cache.changed then
-          // discard heap changes and copy cache.out to cache.in
-          cache.update()
-        else
+        if res.errors.nonEmpty then
           pendingTasks = rest
           checkedTasks = checkedTasks + task
+        else
+          // discard heap changes and copy cache.out to cache.in
+          cache.update()
 
         work()
       case _ =>
@@ -797,7 +798,7 @@ object Semantic {
      *
      *  This method should only be called from the work list scheduler.
      */
-    private def doTask(task: Task)(using State, Context): Unit = {
+    private def doTask(task: Task)(using State, Context): Result = {
       val thisRef = task
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
@@ -807,8 +808,7 @@ object Semantic {
       given Trace = Trace.empty
       given Env = Env(paramValues)
 
-      val res = init(tpl, thisRef, thisRef.klass)
-      res.errors.foreach(_.issue)
+      init(tpl, thisRef, thisRef.klass)
     }
   }
   inline def workList(using wl: WorkList): WorkList = wl
