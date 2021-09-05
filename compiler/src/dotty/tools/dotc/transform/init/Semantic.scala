@@ -83,7 +83,8 @@ object Semantic {
   }
 
   /** A reference to the object under initialization pointed by `this` */
-  case class ThisRef(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref {
+  case class ThisRef(klass: ClassSymbol) extends Ref {
+    val outer = Hot
     /** Caches initialized fields */
     val objekt = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outer))
   }
@@ -709,7 +710,7 @@ object Semantic {
       cls == defn.ObjectClass
 
 // ----- Work list ---------------------------------------------------
-  case class Task(value: ThisRef)(val trace: Trace)
+  type Task = ThisRef
 
   class WorkList private[Semantic]() {
     private var checkedTasks: Set[Task] = Set.empty
@@ -734,12 +735,14 @@ object Semantic {
      *  This method should only be called from the work list scheduler.
      */
     private def doTask(task: Task)(using State, Context): Unit = {
-      val thisRef = task.value
+      val thisRef = task
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
+      val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
+
       given Promoted = Promoted.empty
-      given Trace = task.trace
-      given Env = Env(thisRef.ctor.defTree.asInstanceOf[DefDef], thisRef.args)
+      given Trace = Trace.empty
+      given Env = Env(paramValues)
 
       val res = init(tpl, thisRef, thisRef.klass)
       res.errors.foreach(_.issue)
@@ -750,7 +753,7 @@ object Semantic {
 // ----- API --------------------------------
 
   /** Add a checking task to the work list */
-  def addTask(task: ThisRef)(using WorkList, Trace) = workList.addTask(Task(task)(trace))
+  def addTask(task: ThisRef)(using WorkList) = workList.addTask(task)
 
   /** Perform check on the work list until it becomes empty
    *
