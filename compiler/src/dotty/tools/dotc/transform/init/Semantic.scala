@@ -92,7 +92,7 @@ object Semantic {
    *
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
-  case class Warm(klass: ClassSymbol, outer: Value, args: List[Value])(using Heap) extends Ref {
+  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using Heap) extends Ref {
     val objekt = getCachedObject()
 
     private def getCachedObject()(using Heap) =
@@ -492,7 +492,7 @@ object Semantic {
             Result(Hot, Errors.empty)
           else
             val outer = Hot
-            val value = Warm(klass, outer, args2)
+            val value = Warm(klass, outer, ctor, args2)
             val task = ThisRef(klass, outer, ctor, args2)
             this.addTask(task)
             Result(value, Errors.empty)
@@ -505,11 +505,11 @@ object Semantic {
           given Trace = trace1
           // widen the outer to finitize addresses
           val outer = ref match
-            case Warm(_, _: Warm, _) => Cold
+            case Warm(_, _: Warm, _, _) => Cold
             case _ => ref
 
           val argsWidened = args.map(_.value).widenArgs
-          val value = Warm(klass, outer, argsWidened)
+          val value = Warm(klass, outer, ctor, argsWidened)
           val task = ThisRef(klass, outer, ctor, argsWidened)
           this.addTask(task)
           Result(value, Errors.empty)
@@ -1192,6 +1192,7 @@ object Semantic {
 
       // initialize super classes after outers are set
       tasks.foreach(task => task())
+    end if
 
     var fieldsChanged = true
 
