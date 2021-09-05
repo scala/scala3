@@ -82,7 +82,7 @@ object Semantic {
      */
     def updateField(field: Symbol, value: Value)(using Heap, Context): Unit =
       val obj = objekt
-      assert(!obj.hasField(field), field.show + " already init, new = " + value + ", old = " + obj.field(field))
+      assert(!obj.hasField(field), field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + this)
       val obj2 = obj.copy(fields = obj.fields.updated(field, value))
       heap.update(this, obj2)
 
@@ -92,7 +92,7 @@ object Semantic {
      */
     def updateOuter(klass: ClassSymbol, value: Value)(using Heap, Context): Unit =
       val obj = objekt
-      assert(!obj.hasOuter(klass), klass.show + " already init, new = " + value + ", old = " + obj.outer(klass))
+      assert(!obj.hasOuter(klass), klass.show + " already has outer, new = " + value + ", old = " + obj.outer(klass) + ", ref = " + this)
       val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
       heap.update(this, obj2)
   }
@@ -292,6 +292,7 @@ object Semantic {
     extension (cache: CacheIn | CacheOut)
       def contains(value: Value, expr: Tree): Boolean = cache.contains(value) && cache(value).contains(expr)
       def get(value: Value, expr: Tree): Value = cache(value)(expr)
+      def remove(value: Value, expr: Tree) = cache(value).remove(expr)
       def put(value: Value, expr: Tree, result: Value): Unit = {
         val innerMap = cache.getOrElseUpdate(value, new EqHashMap[Tree, Value])
         innerMap(expr) = result
@@ -403,7 +404,7 @@ object Semantic {
           if target.is(Flags.Lazy) then
             given Trace = trace1
             val rhs = target.defTree.asInstanceOf[ValDef].rhs
-            eval(rhs, ref, target.owner.asClass)
+            eval(rhs, ref, target.owner.asClass, cacheResult = true)
           else
             val obj = ref.objekt
             if obj.hasField(target) then
@@ -417,7 +418,7 @@ object Semantic {
                 Result(Hot, Nil)
               else if target.hasSource then
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-                eval(rhs, ref, target.owner.asClass)
+                eval(rhs, ref, target.owner.asClass, cacheResult = true)
               else
                 val error = CallUnknown(field, source, trace.toVector)
                 Result(Hot, error :: Nil)
@@ -469,7 +470,7 @@ object Semantic {
               val env2 = Env(ddef, args.map(_.value).widenArgs)
               // normal method call
               withEnv(if isLocal then env else Env.empty) {
-                eval(ddef.rhs, ref, cls) ++ checkArgs
+                eval(ddef.rhs, ref, cls, cacheResult = true) ++ checkArgs
               }
             else if ref.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
@@ -490,7 +491,7 @@ object Semantic {
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
           else
             withEnv(env) {
-              eval(body, thisV, klass) ++ checkArgs
+              eval(body, thisV, klass, cacheResult = true) ++ checkArgs
             }
 
         case RefSet(refs) =>
@@ -517,11 +518,11 @@ object Semantic {
               if ctor.isPrimaryConstructor then
                 given Env = env2
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                val res = withTrace(trace.add(cls.defTree)) { eval(tpl, ref, cls) }
+                val res = withTrace(trace.add(cls.defTree)) { eval(tpl, ref, cls, cacheResult = true) }
                 Result(ref, res.errors)
               else
                 given Env = env2
-                eval(ddef.rhs, ref, cls)
+                eval(ddef.rhs, ref, cls, cacheResult = true)
             else if ref.canIgnoreMethodCall(ctor) then
               Result(Hot, Nil)
             else
@@ -770,25 +771,22 @@ object Semantic {
   type Task = ThisRef
 
   class WorkList private[Semantic]() {
-    private var checkedTasks: Set[Task] = Set.empty
     private var pendingTasks: List[Task] = Nil
 
     def addTask(task: Task): Unit =
-      if !checkedTasks.contains(task) then pendingTasks = task :: pendingTasks
+      pendingTasks = task :: pendingTasks
 
     /** Process the worklist until done */
     @tailrec
     final def work()(using State, Context): Unit =
       pendingTasks match
       case task :: rest =>
+        val heapBefore = heap.snapshot()
         val res = doTask(task)
         res.errors.foreach(_.issue)
 
-        val heapBefore = heap.snapshot()
-
-        if res.errors.nonEmpty then
+        if res.errors.nonEmpty || !cache.changed then
           pendingTasks = rest
-          checkedTasks = checkedTasks + task
         else
           // discard heap changes and copy cache.out to cache.in
           cache.update()
@@ -811,7 +809,7 @@ object Semantic {
       given Trace = Trace.empty
       given Env = Env(paramValues)
 
-      init(tpl, thisRef, thisRef.klass)
+      eval(tpl, thisRef, thisRef.klass)
     }
   }
   inline def workList(using wl: WorkList): WorkList = wl
@@ -862,7 +860,7 @@ object Semantic {
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, (_: Result).show) {
+  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, (_: Result).show) {
     if (cache.out.contains(thisV, expr)) Result(cache.out.get(thisV, expr), Errors.empty)
     else {
       val assumeValue = if (cache.in.contains(thisV, expr)) cache.in.get(thisV, expr) else Hot
@@ -870,7 +868,9 @@ object Semantic {
       val res = cases(expr, thisV, klass)
       if res.value != assumeValue then
         cache.changed = true
-        cache.out.put(thisV, expr, res.value)
+        cache.out.put(thisV, expr, res.value) // must put in cache for termination
+      else
+        if !cacheResult then cache.out.remove(thisV, expr)
       res
     }
   }
@@ -1058,6 +1058,9 @@ object Semantic {
         if tdef.isClassDef then Result(Hot, Errors.empty)
         else Result(Hot, checkTermUsage(tdef.rhs, thisV, klass))
 
+      case tpl: Template =>
+        init(tpl, thisV, klass)
+
       case _: Import | _: Export =>
         Result(Hot, Errors.empty)
 
@@ -1102,8 +1105,8 @@ object Semantic {
     else
       thisV match
         case Hot => Hot
-        case thisRef: ThisRef =>
-          val obj = thisRef.objekt
+        case ref: Ref =>
+          val obj = ref.objekt
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !obj.hasOuter(klass) then
             val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass, source, trace.toVector)
@@ -1111,8 +1114,6 @@ object Semantic {
             Hot
           else
             resolveThis(target, obj.outer(klass), outerCls, source)
-        case warm: Warm =>
-          ???
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass, source)).join
         case fun: Fun =>
@@ -1168,7 +1169,7 @@ object Semantic {
       else cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
-  def init(tpl: Template, thisV: ThisRef, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, (_: Result).show) {
+  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, (_: Result).show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
@@ -1275,8 +1276,11 @@ object Semantic {
       case _: MemberDef =>
 
       case tree =>
-        if fieldsChanged then thisV.tryPromoteCurrentObject
-        fieldsChanged = false
+        thisV match
+        case thisRef: ThisRef =>
+          if fieldsChanged then thisRef.tryPromoteCurrentObject
+          fieldsChanged = false
+        case _ =>
 
         given Env = Env.empty
         errorBuffer ++= eval(tree, thisV, klass).errors
