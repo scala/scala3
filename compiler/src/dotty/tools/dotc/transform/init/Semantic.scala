@@ -268,13 +268,24 @@ object Semantic {
    *
    */
 
-  class Cache(val in: Cache.CacheIn, var out: Cache.CacheOut) {
-    var changed: Boolean = false
-  }
-
   object Cache {
     opaque type CacheIn = mutable.Map[Value, EqHashMap[Tree, Value]]
     opaque type CacheOut = mutable.Map[Value, EqHashMap[Tree, Value]]
+
+    class Cache(val in: CacheIn, var out: CacheOut) {
+      var changed: Boolean = false
+
+      /** Copy out to in and reset out to empty */
+      def update() = {
+        out.foreach { (v, m) =>
+          m.iterator.foreach { (e, res) =>
+            in.put(v, e, res)
+          }
+        }
+
+        out = mutable.Map.empty
+      }
+    }
 
     val empty: Cache = new Cache(mutable.Map.empty, mutable.Map.empty)
 
@@ -770,9 +781,15 @@ object Semantic {
     final def work()(using State, Context): Unit =
       pendingTasks match
       case task :: rest =>
-        pendingTasks = rest
-        checkedTasks = checkedTasks + task
         doTask(task)
+
+        if cache.changed then
+          // discard heap changes and copy cache.out to cache.in
+          cache.update()
+        else
+          pendingTasks = rest
+          checkedTasks = checkedTasks + task
+
         work()
       case _ =>
 
