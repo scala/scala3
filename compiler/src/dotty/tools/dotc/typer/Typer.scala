@@ -1648,17 +1648,20 @@ class Typer extends Namer
 
     val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
 
-    println(i"*** typed a match case ***")
     val scrutType = sel.tpe.widen
     val patType = pat1.tpe.widen match
       case AndType(tp1, tp2) => tp2
       case tp => tp
-    println(i"scrutinee: ${scrutType} ${scrutType.toString}")
-    println(i"pat: ${patType} ${patType.toString}")
+    val scrutPath = sel.tpe match
+      case tp: TermRef => tp
+      case _ => null
+    val patPath = pat1.tpe match
+      case tp: TermRef => tp
+      case _ => null
 
-    withMode(Mode.GadtConstraintInference) {
-      TypeComparer.constrainTypeMembers(scrutType, patType)(using gadtCtx)
-    }
+    withMode(Mode.GadtConstraintInference)
+            (TypeComparer.constrainTypeMembers(scrutType, patType, scrutPath, patPath))
+            (using gadtCtx)
 
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(

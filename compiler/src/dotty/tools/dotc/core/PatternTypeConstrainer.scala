@@ -284,7 +284,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
   }
 
   /** Derive GADT bounds on type members of the scrutinee and the pattern. */
-  def constrainTypeMembers(scrut: Type, pat: Type) = trace.force(i"constraining type members $scrut >:< $pat", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
+  def constrainTypeMembers(scrut: Type, pat: Type, realScrutPath: TermRef, realPatPath: TermRef) = trace(i"constraining type members $scrut >:< $pat", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
     val saved = state.constraint
     val savedGadt = ctx.gadt.fresh
 
@@ -293,10 +293,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     val scrutPDTs = ctx.gadt.addAllPDTsFrom(scrutPath)
     val patPDTs = ctx.gadt.addAllPDTsFrom(patPath)
-
-    println(i"scrut pdts: $scrutPDTs")
-    println(i"pat pdts: $patPDTs")
-    println(i"after adding PDTs: gadt = ${ctx.gadt.debugBoundsDescription}")
 
     val scrutSyms = Map.from {
       scrutPDTs map { pdt => pdt.symbol.name -> pdt }
@@ -316,6 +312,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     if !result then
       constraint = saved
       ctx.gadt.restore(savedGadt)
+    else
+      if realScrutPath ne null then ctx.gadt.replacePath(scrutPath, realScrutPath)
+      if realPatPath ne null then ctx.gadt.replacePath(patPath, realPatPath)
 
     result
   }

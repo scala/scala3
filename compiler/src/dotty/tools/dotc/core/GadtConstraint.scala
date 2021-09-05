@@ -62,6 +62,8 @@ sealed abstract class GadtConstraint extends Showable {
     */
   def addAllPDTsFrom(path: Type)(using Context): List[TypeRef]
 
+  def replacePath(from: Type, to: Type)(using Context): Unit
+
   /** Supplies the singleton type of the scrutinee when typechecking pattern-matches.
     */
   def withScrutinee[T](path: TermRef)(body: T): T
@@ -216,6 +218,17 @@ final class ProperGadtConstraint private(
       case None => null
       case Some(m) =>
         m.values.toList map { tv => externalize(tv.origin).asInstanceOf[TypeRef] }
+    }
+
+  override def replacePath(from: Type, to: Type)(using Context): Unit =
+    val originalPairs = mapping.toList
+
+    originalPairs foreach { (tpr, tvar) =>
+      if tpr.prefix eq from then
+        val extType = TypeRef(to, tpr.symbol)
+        mapping = mapping.updated(extType, tvar)
+        mapping = mapping.remove(tpr)
+        reverseMapping = reverseMapping.updated(tvar.origin, extType)
     }
 
   override def withScrutinee[T](path: TermRef)(body: T): T =
@@ -554,6 +567,7 @@ final class ProperGadtConstraint private(
   override def isConstrainablePDT(tp: Type)(using Context): Boolean = false
   override def addPDT(tp: Type)(using Context): Boolean = false
   override def addAllPDTsFrom(path: Type)(using Context): List[TypeRef] = null
+  override def replacePath(from: Type, to: Type)(using Context): Unit = ()
   override def withScrutinee[T](path: TermRef)(body: T): T = body
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")

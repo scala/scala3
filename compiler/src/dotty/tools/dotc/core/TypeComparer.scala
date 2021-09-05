@@ -241,7 +241,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  code would have two extra parameters for each of the many calls that go from
    *  one sub-part of isSubType to another.
    */
-  protected def recur(tp1: Type, tp2: Type): Boolean = trace.force(s"isSubType ${traceInfo(tp1, tp2)}${approx.show}", subtyping) {
+  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)}${approx.show}", subtyping) {
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
@@ -2831,8 +2831,8 @@ object TypeComparer {
   def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false)(using Context): Boolean =
     comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement))
 
-  def constrainTypeMembers(scrut: Type, pat: Type)(using Context): Boolean =
-    comparing(_.constrainTypeMembers(scrut, pat))
+  def constrainTypeMembers(scrut: Type, pat: Type, scrutPath: TermRef, patPath: TermRef)(using Context): Boolean =
+    comparing(_.constrainTypeMembers(scrut, pat, scrutPath, patPath))
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
     comparing(_.explained(op, header))
