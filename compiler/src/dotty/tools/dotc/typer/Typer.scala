@@ -863,7 +863,7 @@ class Typer extends Namer
         val tpt1 = typedTpt
         if !ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef then
           withMode(Mode.GadtConstraintInference) {
-            TypeComparer.constrainPatternType(tpt1.tpe, pt, typeMemberReasoning = true)
+            TypeComparer.constrainPatternType(tpt1.tpe, pt)
           }
         val matched = ascription(tpt1, isWildcard = true)
         // special case for an abstract type that comes with a class tag
@@ -1647,6 +1647,19 @@ class Typer extends Namer
     }
 
     val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
+
+    println(i"*** typed a match case ***")
+    val scrutType = sel.tpe.widen
+    val patType = pat1.tpe.widen match
+      case AndType(tp1, tp2) => tp2
+      case tp => tp
+    println(i"scrutinee: ${scrutType} ${scrutType.toString}")
+    println(i"pat: ${patType} ${patType.toString}")
+
+    withMode(Mode.GadtConstraintInference) {
+      TypeComparer.constrainTypeMembers(scrutType, patType)(using gadtCtx)
+    }
+
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(
         using gadtCtx.fresh.setNewScope))
