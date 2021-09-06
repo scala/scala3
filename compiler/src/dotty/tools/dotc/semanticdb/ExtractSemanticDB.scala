@@ -251,6 +251,11 @@ class ExtractSemanticDB extends Phase:
 
         case tree: Inlined =>
           traverse(tree.call)
+
+        case tree: TypeApply =>
+          synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
+          traverseChildren(tree)
+
         case tree: TypeTree =>
           tree.typeOpt match
             // Any types could be appear inside of `TypeTree`, but
