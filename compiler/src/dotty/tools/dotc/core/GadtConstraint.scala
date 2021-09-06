@@ -203,8 +203,16 @@ final class ProperGadtConstraint private(
    * Package's and module's type members will not be constrained.
    */
   private def isConstrainablePath(path: Type)(using Context): Boolean = path match
-    case path: TermRef if !path.symbol.is(Flags.Package) && !path.symbol.is(Flags.Module) => true
-    case _: SkolemType => true
+    case path: TermRef 
+      if !path.symbol.is(Flags.Package) 
+         && !path.symbol.is(Flags.Module) 
+         && !path.classSymbol.is(Flags.Package)
+         && !path.classSymbol.is(Flags.Module)
+      => true
+    case _: SkolemType 
+      if !path.classSymbol.is(Flags.Package)
+         && !path.classSymbol.is(Flags.Module)
+      => true
     case _ => false
 
   override def addPDT(tp: Type)(using Context): Boolean =
@@ -249,10 +257,12 @@ final class ProperGadtConstraint private(
       val tb = denot.info
 
       def isConstrainableAlias: Boolean = tb match
-        case TypeAlias(tpr: TypeRef) => contains(tpr)
+        case TypeAlias(_) => true
         case _ => false
 
-      denot1.symbol.is(Flags.Deferred) || isConstrainableAlias && !denot1.symbol.is(Flags.Opaque)
+      (denot1.symbol.is(Flags.Deferred) || isConstrainableAlias)
+      && !denot1.symbol.is(Flags.Opaque)
+      && !denot1.symbol.isClass
     }
 
   private def addTypeMembersOf(path: Type)(using Context): Option[Map[Symbol, TypeVar]] =
