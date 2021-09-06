@@ -911,7 +911,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
   def checkRedundancy(_match: Match): Unit = {
-    val Match(sel, cases) = _match
+    val Match(sel, _) = _match
+    val cases = _match.cases.toIndexedSeq
     debug.println(i"checking redundancy in $_match")
 
     if (!redundancyCheckable(sel)) return
@@ -925,7 +926,14 @@ class SpaceEngine(using Context) extends SpaceLogic {
       else project(selTyp)
     debug.println(s"targetSpace: ${show(targetSpace)}")
 
-    cases.iterator.zipWithIndex.foldLeft(Nil: List[Space]) { case (prevs, (CaseDef(pat, guard, _), i)) =>
+    var i        = 0
+    val len      = cases.length
+    var prevs    = List.empty[Space]
+    var deferred = List.empty[Tree]
+
+    while (i < len) {
+      val CaseDef(pat, guard, _) = cases(i)
+
       debug.println(i"case pattern: $pat")
 
       val curr = project(pat)
@@ -937,18 +945,24 @@ class SpaceEngine(using Context) extends SpaceLogic {
       val covered = simplify(intersect(curr, targetSpace))
       debug.println(s"covered: ${show(covered)}")
 
-      if pat != EmptyTree // rethrow case of catch uses EmptyTree
-        && prev != Empty // avoid isSubspace(Empty, Empty) - one of the previous cases much be reachable
-        && isSubspace(covered, prev)
-      then {
-        if isNullable && i == cases.length - 1 && isWildcardArg(pat) then
-          report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
-        else
+      if prev == Empty && covered == Empty then // defer until a case is reachable
+        deferred ::= pat
+      else {
+        for (pat <- deferred.reverseIterator)
           report.warning(MatchCaseUnreachable(), pat.srcPos)
+        if pat != EmptyTree // rethrow case of catch uses EmptyTree
+            && isSubspace(covered, prev)
+        then {
+          val nullOnly = isNullable && i == len - 1 && isWildcardArg(pat)
+          val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
+          report.warning(msg, pat.srcPos)
+        }
+        deferred = Nil
       }
 
       // in redundancy check, take guard as false in order to soundly approximate
-      (if guard.isEmpty then covered else Empty) :: prevs
+      prevs ::= (if guard.isEmpty then covered else Empty)
+      i += 1
     }
   }
 }
