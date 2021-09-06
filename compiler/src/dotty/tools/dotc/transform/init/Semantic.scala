@@ -272,11 +272,45 @@ object Semantic {
    */
 
   object Cache {
-    opaque type CacheIn = mutable.Map[Value, EqHashMap[Tree, Value]]
-    opaque type CacheOut = mutable.Map[Value, EqHashMap[Tree, Value]]
+    opaque type CacheStore = mutable.Map[Value, EqHashMap[Tree, Value]]
 
-    class Cache(val in: CacheIn, var out: CacheOut) {
+    class Cache {
+      private val in: CacheStore =  mutable.Map.empty
+      private var out: CacheStore = mutable.Map.empty
+      private val global: CacheStore = mutable.Map.empty
       var changed: Boolean = false
+
+      def contains(value: Value, expr: Tree) =
+        out.contains(value, expr) || global.contains(value, expr)
+
+      def apply(value: Value, expr: Tree) =
+        if out.contains(value, expr) then out(value)(expr)
+        else global(value)(expr)
+
+      def assume(value: Value, expr: Tree) =
+        val assumeValue = if (in.contains(value, expr)) in.get(value, expr) else Hot
+        out.put(value, expr, assumeValue)
+        assumeValue
+
+      def update(value: Value, expr: Tree, result: Value) =
+        out.put(value, expr, result)
+
+      def remove(value: Value, expr: Tree) =
+        out.remove(value, expr)
+
+      /** Commit out cache to global cache.
+       *
+       *  Precondition: the out cache reaches fixed point.
+       */
+      def commit() = {
+        out.foreach { (v, m) =>
+          m.iterator.foreach { (e, res) =>
+            global.put(v, e, res)
+          }
+        }
+
+        out = mutable.Map.empty
+      }
 
       /** Copy out to in and reset out to empty */
       def update() = {
@@ -290,10 +324,10 @@ object Semantic {
       }
     }
 
-    val empty: Cache = new Cache(mutable.Map.empty, mutable.Map.empty)
+    val empty: Cache = new Cache()
 
-    extension (cache: CacheIn | CacheOut)
-      def contains(value: Value, expr: Tree): Boolean = cache.contains(value) && cache(value).contains(expr)
+    extension (cache: CacheStore)
+      def contains(value: Value, expr: Tree) = cache.contains(value) && cache(value).contains(expr)
       def get(value: Value, expr: Tree): Value = cache(value)(expr)
       def remove(value: Value, expr: Tree) = cache(value).remove(expr)
       def put(value: Value, expr: Tree, result: Value): Unit = {
@@ -793,6 +827,7 @@ object Semantic {
 
         if res.errors.nonEmpty || !cache.changed then
           pendingTasks = rest
+          cache.commit()
         else
           // discard heap changes and copy cache.out to cache.in
           cache.update()
@@ -808,7 +843,7 @@ object Semantic {
      *
      *  This method should only be called from the work list scheduler.
      */
-    private def doTask(task: Task)(using State, Context): Result = {
+    private def doTask(task: Task)(using State, Context): Result = log("checking " + task) {
       val thisRef = task
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
@@ -870,17 +905,16 @@ object Semantic {
    *  This method only handles cache logic and delegates the work to `cases`.
    */
   def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, (_: Result).show) {
-    if (cache.out.contains(thisV, expr)) Result(cache.out.get(thisV, expr), Errors.empty)
+    if (cache.contains(thisV, expr)) Result(cache(thisV, expr), Errors.empty)
     else {
-      val assumeValue = if (cache.in.contains(thisV, expr)) cache.in.get(thisV, expr) else Hot
-      cache.out.put(thisV, expr, assumeValue)
+      val assumeValue = cache.assume(thisV, expr)
       val res = cases(expr, thisV, klass)
       if res.value != assumeValue then
         // println("changed: old = " + assumeValue + ", res = " + res.value)
         cache.changed = true
-        cache.out.put(thisV, expr, res.value) // must put in cache for termination
+        cache.update(thisV, expr, res.value) // must put in cache for termination
       else
-        if !cacheResult then cache.out.remove(thisV, expr)
+        if !cacheResult then cache.remove(thisV, expr)
       res
     }
   }
