@@ -321,7 +321,7 @@ class Semantic {
     def widenArgs: List[Value] = values.map(_.widenArg).toList
 
   extension (value: Value)
-    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show, printer, res => res.asInstanceOf[Result].show) {
+    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show, printer, (_: Result).show) {
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
         case Hot  =>
@@ -371,7 +371,7 @@ class Semantic {
       }
     }
 
-    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
+    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, (_: Result).show) {
       def checkArgs = args.flatMap(_.promote)
 
       // fast track if the current object is already initialized
@@ -445,7 +445,7 @@ class Semantic {
     }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, (_: Result).show) {
       val trace1 = trace.add(source)
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
@@ -702,7 +702,7 @@ class Semantic {
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Addr, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
+  def eval(expr: Tree, thisV: Addr, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, (_: Result).show) {
     val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
     if (innerMap.contains(expr)) Result(innerMap(expr), Errors.empty)
     else {
@@ -911,7 +911,7 @@ class Semantic {
     }
 
   /** Handle semantics of leaf nodes */
-  def cases(tp: Type, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
+  def cases(tp: Type, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, (_: Result).show) {
     tp match {
       case _: ConstantType =>
         Result(Hot, Errors.empty)
@@ -941,7 +941,7 @@ class Semantic {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
     if target == klass then thisV
     else if target.is(Flags.Package) then Hot
     else
@@ -969,7 +969,7 @@ class Semantic {
    *
    *  See `tpd.outerSelect` and `ElimOuterSelect`.
    */
-  def resolveOuterSelect(target: ClassSymbol, thisV: Value, hops: Int, source: Tree): Contextual[Value] = log("resolving outer " + target.show + ", this = " + thisV.show + ", hops = " + hops, printer, res => res.asInstanceOf[Value].show) {
+  def resolveOuterSelect(target: ClassSymbol, thisV: Value, hops: Int, source: Tree): Contextual[Value] = log("resolving outer " + target.show + ", this = " + thisV.show + ", hops = " + hops, printer, (_: Value).show) {
     // Is `target` reachable from `cls` with the given `hops`?
     def reachable(cls: ClassSymbol, hops: Int): Boolean =
       if hops == 0 then cls == target
@@ -1011,7 +1011,7 @@ class Semantic {
       else cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
-  def init(tpl: Template, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
+  def init(tpl: Template, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, (_: Result).show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>

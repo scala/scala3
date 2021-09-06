@@ -114,7 +114,7 @@ trait SpaceLogic {
   def show(sp: Space): String
 
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
-  def simplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, x => show(x.asInstanceOf[Space]))(space match {
+  def simplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, show)(space match {
     case Prod(tp, fun, spaces) =>
       val sps = spaces.map(simplify(_))
       if (sps.contains(Empty)) Empty
@@ -194,7 +194,7 @@ trait SpaceLogic {
   }
 
   /** Intersection of two spaces  */
-  def intersect(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} & ${show(b)}", debug, x => show(x.asInstanceOf[Space])) {
+  def intersect(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} & ${show(b)}", debug, show) {
     def tryDecompose1(tp: Type) = intersect(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = intersect(a, Or(decompose(tp)))
 
@@ -226,7 +226,7 @@ trait SpaceLogic {
   }
 
   /** The space of a not covered by b */
-  def minus(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} - ${show(b)}", debug, x => show(x.asInstanceOf[Space])) {
+  def minus(a: Space, b: Space)(using Context): Space = trace(s"${show(a)} - ${show(b)}", debug, show) {
     def tryDecompose1(tp: Type) = minus(Or(decompose(tp)), b)
     def tryDecompose2(tp: Type) = minus(a, Or(decompose(tp)))
 
