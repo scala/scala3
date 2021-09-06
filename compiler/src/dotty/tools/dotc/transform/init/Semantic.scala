@@ -798,6 +798,9 @@ object Semantic {
           cache.update()
           heap.restore(heapBefore)
 
+        // reset change
+        cache.changed = false
+
         work()
       case _ =>
 
@@ -873,6 +876,7 @@ object Semantic {
       cache.out.put(thisV, expr, assumeValue)
       val res = cases(expr, thisV, klass)
       if res.value != assumeValue then
+        // println("changed: old = " + assumeValue + ", res = " + res.value)
         cache.changed = true
         cache.out.put(thisV, expr, res.value) // must put in cache for termination
       else
