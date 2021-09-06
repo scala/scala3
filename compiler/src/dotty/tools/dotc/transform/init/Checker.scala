@@ -30,9 +30,11 @@ class Checker extends Phase {
     super.isEnabled && ctx.settings.YcheckInit.value
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    val checkCtx = ctx.fresh.setPhase(this.start)
     Semantic.withInitialState {
       val traverser = new InitTreeTraverser()
       units.foreach { unit => traverser.traverse(unit.tpdTree) }
+      given Context = checkCtx
       Semantic.check()
       super.runOn(units)
     }
