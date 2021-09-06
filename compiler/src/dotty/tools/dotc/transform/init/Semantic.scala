@@ -140,9 +140,12 @@ object Semantic {
     def hasField(f: Symbol) = fields.contains(f)
   }
 
-  /** Abstract heap stores abstract warm objects
+  /** Abstract heap stores abstract objects
    *
    *  The heap serves as cache of summaries for warm objects and is shared for checking all classes.
+   *
+   *  The fact that objects of `ThisRef` are stored in heap is just an engineering convenience.
+   *  Technically, we can also store the object directly in `ThisRef`.
    */
   object Heap {
     class Heap(private var map: Map[Ref, Objekt]) {
@@ -321,6 +324,9 @@ object Semantic {
 
     def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree): Contextual[Result] =
       value.call(meth, args, superType, source) ++ errors
+
+    def callConstructor(ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] =
+      value.callConstructor(ctor, args, source) ++ errors
 
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] =
       value.instantiate(klass, ctor, args, source) ++ errors
@@ -934,7 +940,10 @@ object Semantic {
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ errors
-          res.call(ref.symbol, args, superType = NoType, source = expr)
+          if ref.symbol.isConstructor then
+            res.callConstructor(ref.symbol, args, source = expr)
+          else
+            res.call(ref.symbol, args, superType = NoType, source = expr)
 
         case id: Ident =>
           id.tpe match
@@ -946,7 +955,10 @@ object Semantic {
             thisValue2.call(id.symbol, args, superType = NoType, expr, needResolve = false)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ errors
-            res.call(id.symbol, args, superType = NoType, source = expr)
+            if id.symbol.isConstructor then
+              res.callConstructor(id.symbol, args, source = expr)
+            else
+              res.call(id.symbol, args, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
         val qualRes = eval(qualifier, thisV, klass)
