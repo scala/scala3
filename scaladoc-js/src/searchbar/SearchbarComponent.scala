@@ -1,6 +1,7 @@
 package dotty.tools.scaladoc
 
 import org.scalajs.dom._
+import org.scalajs.dom.ext._
 import org.scalajs.dom.html.Input
 import scala.scalajs.js.timers._
 import scala.concurrent.duration._
@@ -133,15 +134,12 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
           loading.appendChild(animation)
           properResultsDiv.appendChild(loading)
           inkuireEngine.query(query) { (m: InkuireMatch) =>
-            var next: Option[Element] = None
-            0.until(properResultsDiv.children.length).foreach { i =>
-              val child = properResultsDiv.children(i)
-              val attr = child.getAttribute("mq")
-              if attr != null && attr != "" && Integer.parseInt(attr) > m.mq && next.isEmpty then {
-                next = Some(child)
-              }
+            val next = properResultsDiv.children.foldLeft[Option[Element]](None) {
+              case (acc, child) if !acc.isEmpty => acc
+              case (_, child) =>
+                Option.when(child.hasAttribute("mq") && Integer.parseInt(child.getAttribute("mq")) > m.mq)(child)
             }
-            next.fold{
+            next.fold {
               properResultsDiv.appendChild(m.toHTML)
             } { next =>
               properResultsDiv.insertBefore(m.toHTML, next)
