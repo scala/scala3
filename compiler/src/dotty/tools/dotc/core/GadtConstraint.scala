@@ -59,13 +59,12 @@ sealed abstract class GadtConstraint extends Showable {
   def addPDT(tp: Type)(using Context): Boolean
 
   /** All all constrainable path-dependent type originating from the given path to constraint.
-    */
+   */
   def addAllPDTsFrom(path: Type)(using Context): List[TypeRef]
 
+  /** Replace all paths of PDTs with a specific path to another type.
+   */
   def replacePath(from: Type, to: Type)(using Context): Unit
-
-  /** Supplies the singleton type of the scrutinee when typechecking pattern-matches.
-    */
 
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
