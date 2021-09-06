@@ -1387,9 +1387,10 @@ object Semantic {
   extension (symbol: Symbol) def hasSource(using Context): Boolean =
     !symbol.defTree.isEmpty
 
-  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol =
+  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, _.asInstanceOf[Symbol].show) {
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.appliedRef)
+  }
 
   def resolveSuper(cls: ClassSymbol, superType: Type, sym: Symbol)(using Context): Symbol = {
     import annotation.tailrec
