@@ -542,7 +542,7 @@ object Semantic {
       }
     }
 
-    def callConstructor(ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("call " + ctor.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
+    def callConstructor(ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("call " + ctor.show + ", args = " + args, printer, (_: Result).show) {
       value match {
         case Hot | Cold | _: RefSet | _: Fun =>
           report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, source)
@@ -1421,7 +1421,7 @@ object Semantic {
   extension (symbol: Symbol) def hasSource(using Context): Boolean =
     !symbol.defTree.isEmpty
 
-  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, _.asInstanceOf[Symbol].show) {
+  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show) {
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.appliedRef)
   }
