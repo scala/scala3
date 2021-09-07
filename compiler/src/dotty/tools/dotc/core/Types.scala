@@ -4109,18 +4109,17 @@ object Types {
 
     override def underlying(using Context): Type = tycon
 
-    override def superType(using Context): Type = {
-      if (ctx.period != validSuper) {
-        cachedSuper = tycon match {
+    override def superType(using Context): Type =
+      if ctx.period != validSuper then
+        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
+        cachedSuper = tycon match
           case tycon: HKTypeLambda => defn.AnyType
           case tycon: TypeRef if tycon.symbol.isClass => tycon
-          case tycon: TypeProxy => tycon.superType.applyIfParameterized(args).normalized
+          case tycon: TypeProxy =>
+            if isMatchAlias then validSuper = Nowhere
+            tycon.superType.applyIfParameterized(args).normalized
           case _ => defn.AnyType
-        }
-        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
-      }
       cachedSuper
-    }
 
     override def translucentSuperType(using Context): Type = tycon match {
       case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
