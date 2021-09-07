@@ -1,6 +1,7 @@
 package dotty.tools.scaladoc
 
 import org.scalajs.dom._
+import org.scalajs.dom.ext._
 import org.scalajs.dom.html.Input
 import scala.scalajs.js.timers._
 import scala.concurrent.duration._
@@ -40,6 +41,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
       wrapper.classList.add("scaladoc-searchbar-result")
       wrapper.classList.add("monospace")
+      wrapper.setAttribute("mq", m.mq.toString)
 
       val resultDiv = document.createElement("div").asInstanceOf[html.Div]
       resultDiv.classList.add("scaladoc-searchbar-result-row")
@@ -132,7 +134,16 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
           loading.appendChild(animation)
           properResultsDiv.appendChild(loading)
           inkuireEngine.query(query) { (m: InkuireMatch) =>
-            properResultsDiv.appendChild(m.toHTML)
+            val next = properResultsDiv.children.foldLeft[Option[Element]](None) {
+              case (acc, child) if !acc.isEmpty => acc
+              case (_, child) =>
+                Option.when(child.hasAttribute("mq") && Integer.parseInt(child.getAttribute("mq")) > m.mq)(child)
+            }
+            next.fold {
+              properResultsDiv.appendChild(m.toHTML)
+            } { next =>
+              properResultsDiv.insertBefore(m.toHTML, next)
+            }
           } { (s: String) =>
             animation.classList.remove("loading")
             properResultsDiv.appendChild(s.toHTMLError)
