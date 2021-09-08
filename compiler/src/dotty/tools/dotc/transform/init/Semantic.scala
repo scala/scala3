@@ -289,8 +289,7 @@ object Semantic {
         if out.contains(value, expr) then out(value)(expr)
         else stable(value)(expr)
 
-      def assume(value: Value, expr: Tree) =
-
+      def assume(value: Value, expr: Tree)(fun: => Result): Result =
         val assumeValue =
           if in.contains(value, expr) then
             in.get(value, expr)
@@ -298,12 +297,14 @@ object Semantic {
             in.put(value, expr, Hot)
             Hot
         out.put(value, expr, assumeValue)
-        assumeValue
 
-      def update(value: Value, expr: Tree, result: Value) =
-        this.changed = true
-        in.put(value, expr, result)
-        out.put(value, expr, result)
+        val actual = fun
+        if actual.value != assumeValue then
+          this.changed = true
+          in.put(value, expr, actual.value)
+          out.put(value, expr, actual.value)
+
+        actual
 
       def remove(value: Value, expr: Tree) =
         out.remove(value, expr)
@@ -910,16 +911,7 @@ object Semantic {
    */
   def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, (_: Result).show) {
     if (cache.contains(thisV, expr)) Result(cache(thisV, expr), Errors.empty)
-    else {
-      val assumeValue = cache.assume(thisV, expr)
-      val res = cases(expr, thisV, klass)
-      if res.value != assumeValue then
-        // println("changed: old = " + assumeValue + ", res = " + res.value)
-        cache.update(thisV, expr, res.value) // must put in cache for termination
-      else
-        if !cacheResult then cache.remove(thisV, expr)
-      res
-    }
+    else cache.assume(thisV, expr) { cases(expr, thisV, klass) }
   }
 
   /** Evaluate a list of expressions */
