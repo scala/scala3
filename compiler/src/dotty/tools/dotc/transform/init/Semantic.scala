@@ -314,29 +314,24 @@ object Semantic {
         end if
 
         actual
+      end assume
 
-      def remove(value: Value, expr: Tree) =
-        current.remove(value, expr)
+      /** Commit current cache to stable cache. */
+      def commit() =
+        current.foreach { (v, m) =>
+          m.iterator.foreach { (e, res) =>
+            stable.put(v, e, res)
+          }
+        }
+        current = mutable.Map.empty
 
       /** Prepare cache for the next iteration
        *
-       *  - Commit current cache to stable cache if unchanged.
        *  - Reset changed flag
        *  - Reset current cache (last cache already synced in `assume`)
-       *
-       *  Precondition: the current cache reaches fixed point.
        */
       def iterate() = {
-        if !changed then
-          current.foreach { (v, m) =>
-            m.iterator.foreach { (e, res) =>
-              stable.put(v, e, res)
-            }
-          }
-        end if
-
         changed = false
-
         current = mutable.Map.empty
       }
     }
@@ -846,6 +841,7 @@ object Semantic {
           // discard heap changes
           heap.restore(heapBefore)
         else
+          cache.commit()
           pendingTasks = rest
 
         cache.iterate()
