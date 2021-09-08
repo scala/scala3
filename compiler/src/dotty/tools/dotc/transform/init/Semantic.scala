@@ -290,13 +290,17 @@ object Semantic {
         if current.contains(value, expr) then current(value)(expr)
         else stable(value)(expr)
 
-      def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result): Result =
-        val assumeValue =
+      def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result)(using Heap): Result =
+        val assumeValue: Value =
           if last.contains(value, expr) then
-            last.get(value, expr)
+            // Due to heap reverting, the object corresponding to a reference may not exist in the heap.
+            last.get(value, expr) match
+            case ref: Ref => ref.ensureObjectExists(); ref
+            case v => v
           else
             last.put(value, expr, Hot)
             Hot
+          end if
         current.put(value, expr, assumeValue)
 
         val actual = fun
@@ -316,7 +320,10 @@ object Semantic {
         actual
       end assume
 
-      /** Commit current cache to stable cache. */
+      /** Commit current cache to stable cache.
+       *
+       *  TODO: It's useless to cache value for ThisRef.
+       */
       def commit() =
         current.foreach { (v, m) =>
           m.iterator.foreach { (e, res) =>
