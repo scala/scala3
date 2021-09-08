@@ -277,17 +277,17 @@ object Semantic {
     class Cache {
       private val in: CacheStore =  mutable.Map.empty
       private var out: CacheStore = mutable.Map.empty
-      private val global: CacheStore = mutable.Map.empty
+      private val stable: CacheStore = mutable.Map.empty
       private var changed: Boolean = false
 
       def hasChanged = changed
 
       def contains(value: Value, expr: Tree) =
-        out.contains(value, expr) || global.contains(value, expr)
+        out.contains(value, expr) || stable.contains(value, expr)
 
       def apply(value: Value, expr: Tree) =
         if out.contains(value, expr) then out(value)(expr)
-        else global(value)(expr)
+        else stable(value)(expr)
 
       def assume(value: Value, expr: Tree) =
 
@@ -310,7 +310,7 @@ object Semantic {
 
       /** Prepare cache for the next iteration
        *
-       *  - Commit out cache to global cache if unchanged.
+       *  - Commit out cache to stable cache if unchanged.
        *  - Reset changed flag
        *  - Reset out cache
        *
@@ -320,7 +320,7 @@ object Semantic {
         if !changed then
           out.foreach { (v, m) =>
             m.iterator.foreach { (e, res) =>
-              global.put(v, e, res)
+              stable.put(v, e, res)
             }
           }
         end if
