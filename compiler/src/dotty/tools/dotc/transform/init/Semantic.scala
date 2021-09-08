@@ -18,6 +18,7 @@ import Errors._
 
 import scala.collection.mutable
 import scala.annotation.tailrec
+import scala.annotation.constructorOnly
 
 object Semantic {
 
@@ -98,7 +99,7 @@ object Semantic {
   }
 
   /** A reference to the object under initialization pointed by `this` */
-  case class ThisRef(klass: ClassSymbol)(using Heap) extends Ref {
+  case class ThisRef(klass: ClassSymbol)(using @constructorOnly h: Heap) extends Ref {
     val outer = Hot
 
     ensureObjectExists()
@@ -108,7 +109,7 @@ object Semantic {
    *
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
-  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using Heap) extends Ref {
+  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using @constructorOnly h: Heap) extends Ref {
     ensureObjectExists()
   }
 
