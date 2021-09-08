@@ -275,51 +275,51 @@ object Semantic {
     opaque type CacheStore = mutable.Map[Value, EqHashMap[Tree, Value]]
 
     class Cache {
-      private val in: CacheStore =  mutable.Map.empty
-      private var out: CacheStore = mutable.Map.empty
+      private val last: CacheStore =  mutable.Map.empty
+      private var current: CacheStore = mutable.Map.empty
       private val stable: CacheStore = mutable.Map.empty
       private var changed: Boolean = false
 
       def hasChanged = changed
 
       def contains(value: Value, expr: Tree) =
-        out.contains(value, expr) || stable.contains(value, expr)
+        current.contains(value, expr) || stable.contains(value, expr)
 
       def apply(value: Value, expr: Tree) =
-        if out.contains(value, expr) then out(value)(expr)
+        if current.contains(value, expr) then current(value)(expr)
         else stable(value)(expr)
 
-      def assume(value: Value, expr: Tree)(fun: => Result): Result =
+      def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result): Result =
         val assumeValue =
-          if in.contains(value, expr) then
-            in.get(value, expr)
+          if last.contains(value, expr) then
+            last.get(value, expr)
           else
-            in.put(value, expr, Hot)
+            last.put(value, expr, Hot)
             Hot
-        out.put(value, expr, assumeValue)
+        current.put(value, expr, assumeValue)
 
         val actual = fun
         if actual.value != assumeValue then
           this.changed = true
-          in.put(value, expr, actual.value)
-          out.put(value, expr, actual.value)
+          last.put(value, expr, actual.value)
+          current.put(value, expr, actual.value)
 
         actual
 
       def remove(value: Value, expr: Tree) =
-        out.remove(value, expr)
+        current.remove(value, expr)
 
       /** Prepare cache for the next iteration
        *
-       *  - Commit out cache to stable cache if unchanged.
+       *  - Commit current cache to stable cache if unchanged.
        *  - Reset changed flag
-       *  - Reset out cache
+       *  - Reset current cache (last cache already synced in `assume`)
        *
-       *  Precondition: the out cache reaches fixed point.
+       *  Precondition: the current cache reaches fixed point.
        */
       def iterate() = {
         if !changed then
-          out.foreach { (v, m) =>
+          current.foreach { (v, m) =>
             m.iterator.foreach { (e, res) =>
               stable.put(v, e, res)
             }
@@ -328,7 +328,7 @@ object Semantic {
 
         changed = false
 
-        out = mutable.Map.empty
+        current = mutable.Map.empty
       }
     }
 
@@ -834,7 +834,7 @@ object Semantic {
         res.errors.foreach(_.issue)
 
         if cache.hasChanged && res.errors.isEmpty then
-          // discard heap changes and copy cache.out to cache.in
+          // discard heap changes
           heap.restore(heapBefore)
         else
           pendingTasks = rest
@@ -911,7 +911,7 @@ object Semantic {
    */
   def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, (_: Result).show) {
     if (cache.contains(thisV, expr)) Result(cache(thisV, expr), Errors.empty)
-    else cache.assume(thisV, expr) { cases(expr, thisV, klass) }
+    else cache.assume(thisV, expr, cacheResult) { cases(expr, thisV, klass) }
   }
 
   /** Evaluate a list of expressions */
