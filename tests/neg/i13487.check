@@ -1,0 +1,4 @@
+-- Error: tests/neg/i13487.scala:6:32 ----------------------------------------------------------------------------------
+6 |case class Foo[A](a: A) derives TC // error
+  |                                ^^
+  |                                Foo cannot be unified with the type argument of TC
