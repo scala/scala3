@@ -1731,20 +1731,6 @@ class Definitions {
     else sys.error(s"Not a primitive value type: $tp")
   }.typeRef
 
-  def unboxedType(tp: Type)(using Context): TypeRef = {
-    val cls = tp.classSymbol
-    if (cls eq BoxedByteClass)         ByteType
-    else if (cls eq BoxedShortClass)   ShortType
-    else if (cls eq BoxedCharClass)    CharType
-    else if (cls eq BoxedIntClass)     IntType
-    else if (cls eq BoxedLongClass)    LongType
-    else if (cls eq BoxedFloatClass)   FloatType
-    else if (cls eq BoxedDoubleClass)  DoubleType
-    else if (cls eq BoxedUnitClass)    UnitType
-    else if (cls eq BoxedBooleanClass) BooleanType
-    else sys.error(s"Not a boxed primitive value type: $tp")
-  }
-
   /** The JVM tag for `tp` if it's a primitive, `java.lang.Object` otherwise. */
   def typeTag(tp: Type)(using Context): Name = typeTags(scalaClassName(tp))
 

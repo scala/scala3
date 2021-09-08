@@ -15,5 +15,5 @@ class SpaceEngineTest extends DottyTest:
 
     val BoxedIntType = BoxedIntClass.typeRef
 
-    assertEquals(BoxedIntType, e.adaptType(IntType, BoxedIntType).widenSingleton)
-    assertEquals(IntType,      e.adaptType(BoxedIntType, IntType).widenSingleton)
+    assertTrue(e.isPrimToBox(IntType, BoxedIntType))
+    assertFalse(e.isPrimToBox(BoxedIntType, IntType))
