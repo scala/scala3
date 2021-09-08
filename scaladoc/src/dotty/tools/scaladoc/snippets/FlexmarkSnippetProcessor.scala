@@ -11,14 +11,24 @@ import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 import dotty.tools.scaladoc.tasty.comments.PreparsedComment
 
 object FlexmarkSnippetProcessor:
+  extension (n: mdu.ContentNode)
+    def setContentString(str: String): Unit =
+      val s = sequence.BasedSequence.EmptyBasedSequence()
+        .append(str)
+        .append(sequence.BasedSequence.EOL)
+      val content = mdu.BlockContent()
+      content.add(s, 0)
+      n.setContent(content)
+
   def processSnippets(root: mdu.Node, preparsed: Option[PreparsedComment], checkingFunc: => SnippetChecker.SnippetCheckingFunc, withContext: Boolean)(using CompilerContext): mdu.Node = {
+    import SnippetChecker.Import
     lazy val cf: SnippetChecker.SnippetCheckingFunc = checkingFunc
 
     val nodes = root.getDescendants().asScala.collect {
       case fcb: mda.FencedCodeBlock => fcb
     }.toList
 
-    nodes.foldLeft[Map[String, String]](Map()) { (snippetMap, node) =>
+    nodes.foldLeft[Map[String, Seq[Import]]](Map()) { (importMap, node) =>
       val lineOffset = node.getStartLineNumber + preparsed.fold(0)(_.strippedLinesBeforeNo)
       val info = node.getInfo.toString.split(" ")
       if info.contains("scala") then {
@@ -26,15 +36,15 @@ object FlexmarkSnippetProcessor:
           .find(_.startsWith("sc:"))
           .map(_.stripPrefix("sc:"))
           .map(SCFlagsParser.parse)
-          .flatMap(_ match {
+          .flatMap {
             case Right(flags) => Some(flags)
             case Left(error) =>
               report.warning(
-                s"""|Error occured during parsing flags in snippet:
+                s"""Error occured during parsing flags in snippet:
                     |$error""".stripMargin
               )
               None
-          })
+          }
         val id = info
           .find(_.startsWith("sc-name:"))
           .map(_.stripPrefix("sc-name:"))
@@ -45,55 +55,43 @@ object FlexmarkSnippetProcessor:
           .map(_.stripPrefix("sc-compile-with:"))
           .flatMap(_.split(","))
           .flatMap { id =>
-            val snippet = snippetMap.get(id)
+            val snippet = importMap.get(id)
             if snippet.isEmpty then
               report.warning(
-                s"""|Error occured during parsing compile-with in snippet:
+                s"""Error occured during parsing compile-with in snippet:
                     |Snippet with id: $id not found.
                     |Remember that you cannot use forward reference to snippets""".stripMargin
               )
             snippet
-          }.mkString("\n")
+          }
+          .flatten
 
-        val snippet = node.getContentChars.toString
+        val snippet = node.getContentChars.toString.trim
 
-        extension (n: mdu.Node)
-          def setContentString(str: String): Unit =
-            val s = sequence.BasedSequence.EmptyBasedSequence()
-              .append(str)
-              .append(sequence.BasedSequence.EOL)
-            val content = mdu.BlockContent()
-            content.add(s, 0)
-            node.setContent(content)
-
-        val fullSnippet = Seq(snippetImports, snippet).mkString("\n").trim
-        val snippetCompilationResult = cf(fullSnippet, lineOffset, argOverride) match {
+        val snippetCompilationResult = cf(snippet, snippetImports, lineOffset, argOverride) match {
           case Some(result @ SnippetCompilationResult(wrapped, _, _, messages)) if !withContext =>
-            node.setContentString(fullSnippet)
+            node.setContentString(wrapped.original)
             val innerLineOffset = wrapped.innerLineOffset
             Some(result.copy(messages = result.messages.map {
               case m @ SnippetCompilerMessage(Some(pos), _, _) =>
                 m.copy(position = Some(pos.copy(relativeLine = pos.relativeLine - innerLineOffset)))
               case m => m
             }))
-          case result@Some(SnippetCompilationResult(wrapped, _, _, _)) =>
+          case result @ Some(SnippetCompilationResult(wrapped, _, _, _)) =>
             node.setContentString(wrapped.snippet)
             result
           case result =>
-            node.setContentString(fullSnippet)
+            node.setContentString(snippet)
             result
         }
 
         node.insertBefore(ExtendedFencedCodeBlock(id, node, snippetCompilationResult, withContext))
         node.unlink()
-        id.fold(snippetMap)(id =>
-          val snippetAsImport = s"""|//{i:$id
-                                    |$snippet
-                                    |//i}""".stripMargin
-          val entry = (id, Seq(snippetImports, snippetAsImport).mkString("\n"))
-          snippetMap + entry
+        id.fold(importMap)(id =>
+          val entry = (id, snippetImports :+ Import(id, snippet))
+          importMap + entry
         )
-      } else snippetMap
+      } else importMap
     }
 
     root

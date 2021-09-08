@@ -4,7 +4,7 @@ package snippets
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 
-case class WrappedSnippet(snippet: String, outerLineOffset: Int, outerColumnOffset: Int, innerLineOffset: Int, innerColumnOffset: Int)
+case class WrappedSnippet(snippet: String, original: String, outerLineOffset: Int, outerColumnOffset: Int, innerLineOffset: Int, innerColumnOffset: Int)
 
 object WrappedSnippet:
 
@@ -21,7 +21,7 @@ object WrappedSnippet:
     ps.startHide()
     ps.println("}")
     ps.endHide()
-    WrappedSnippet(baos.toString, 0, 0, indent + 2 /*Hide tokens*/, indent)
+    WrappedSnippet(baos.toString, str, 0, 0, indent + 2 /*Hide tokens*/, indent)
 
   def apply(
     str: String,
@@ -50,6 +50,7 @@ object WrappedSnippet:
     ps.endHide()
     WrappedSnippet(
       baos.toString,
+      str,
       outerLineOffset,
       outerColumnOffset,
       notEmptyClassInfos.size + notEmptyClassInfos.flatMap(_.names).size + packageName.size + 2 /*Hide tokens*/,

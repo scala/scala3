@@ -12,6 +12,7 @@ import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.ScalaSettings
 
 class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
+  import SnippetChecker._
 
 // (val classpath: String, val bootclasspath: String, val tastyFiles: Seq[File], isScalajs: Boolean, useJavaCp: Boolean):
   private val sep = System.getProperty("path.separator")
@@ -38,14 +39,16 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
 
   def checkSnippet(
     snippet: String,
+    snippetImports: Seq[Import],
     data: Option[SnippetCompilerData],
     arg: SnippetCompilerArg,
     lineOffset: SnippetChecker.LineOffset,
     sourceFile: SourceFile
   ): Option[SnippetCompilationResult] = {
+    val mergedSnippet = mergeSnippets(snippet, snippetImports)
     if arg.flag != SCFlags.NoCompile then
       val wrapped = WrappedSnippet(
-        snippet,
+        mergedSnippet,
         data.map(_.packageName),
         data.fold(Nil)(_.classInfos),
         data.map(_.imports).getOrElse(Nil),
@@ -57,6 +60,17 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     else None
   }
 
+  private def mergeSnippets(snippet: String, snippetImports: Seq[Import]) = {
+    val wrappedImports: Seq[String] = snippetImports.map {
+      case Import(id, s) =>
+        s"""//{i:$id
+          |$s
+          |//i}""".stripMargin
+    }
+    wrappedImports :+ snippet
+  }.mkString("\n")
+
 object SnippetChecker:
+  case class Import(id: String, snippet: String)
   type LineOffset = Int
-  type SnippetCheckingFunc = (String, LineOffset, Option[SCFlags]) => Option[SnippetCompilationResult]
+  type SnippetCheckingFunc = (String, Seq[Import], LineOffset, Option[SCFlags]) => Option[SnippetCompilationResult]
