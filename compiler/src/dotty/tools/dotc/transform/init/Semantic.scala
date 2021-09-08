@@ -72,12 +72,12 @@ object Semantic {
     def outer: Value
     def objekt(using Heap): Objekt = heap(this)
 
-    def ensureObjectExists()(using Heap) =
-      if heap.contains(this) then heap(this)
+    def ensureObjectExists()(using Heap): this.type =
+      if heap.contains(this) then this
       else {
         val obj = Objekt(this.klass, fields = Map.empty, outers = Map(this.klass -> this.outer))
         heap.update(this, obj)
-        obj
+        this
       }
 
 
@@ -113,6 +113,22 @@ object Semantic {
    */
   case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using @constructorOnly h: Heap) extends Ref {
     ensureObjectExists()
+
+    /** Ensure that outers and class parameters are initialized.
+     *
+     *  Fields in class body are not initialized.
+     */
+    def ensureInit(): Contextual[this.type] =
+      // Somehow Dotty uses the one in the class parameters
+      given Heap = state.heap
+      if objekt.outers.size <= 1 then
+        val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+        val termParamss = ctor.defTree.asInstanceOf[DefDef].termParamss
+        val paramValues = termParamss.flatten.zip(args).map((param, v) => param.symbol -> v).toMap
+        given Env = Env(paramValues)
+        init(tpl, this, klass)
+      end if
+      this
   }
 
   /** A function value */
@@ -292,12 +308,13 @@ object Semantic {
         if current.contains(value, expr) then current(value)(expr)
         else stable(value)(expr)
 
-      def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result)(using Heap): Result =
+      def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result): Contextual[Result] =
         val assumeValue: Value =
           if last.contains(value, expr) then
             // Due to heap reverting, the object corresponding to a reference may not exist in the heap.
             last.get(value, expr) match
-            case ref: Ref => ref.ensureObjectExists(); ref
+            case ref: ThisRef => ref.ensureObjectExists()
+            case ref: Warm => ref.ensureObjectExists().ensureInit()
             case v => v
           else
             last.put(value, expr, Hot)
@@ -394,6 +411,8 @@ object Semantic {
   given (using s: State): Heap = s.heap
   given (using s: State): Cache = s.cache
   given (using s: State): WorkList = s.workList
+
+  inline def state(using s: State) = s
 
   /** The state that threads through the interpreter */
   type Contextual[T] = (Env, Context, Trace, Promoted, State) ?=> T
@@ -631,12 +650,11 @@ object Semantic {
             Result(Hot, Errors.empty)
           else
             val outer = Hot
-            val warm = Warm(klass, outer, ctor, args2)
+            val warm = Warm(klass, outer, ctor, args2).ensureInit()
             val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
-            val res = warm.callConstructor(ctor, argInfos2, source)
             val task = ThisRef(klass, outer, ctor, args2)
             this.addTask(task)
-            Result(warm, res.errors)
+            Result(warm, Errors.empty)
 
         case Cold =>
           val error = CallCold(ctor, source, trace1.toVector)
@@ -651,11 +669,10 @@ object Semantic {
 
           val argsWidened = args.map(_.value).widenArgs
           val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
-          val warm = Warm(klass, outer, ctor, argsWidened)
-          val res = warm.callConstructor(ctor, argInfos2, source)
+          val warm = Warm(klass, outer, ctor, argsWidened).ensureInit()
           val task = ThisRef(klass, outer, ctor, argsWidened)
           this.addTask(task)
-          Result(warm, res.errors)
+          Result(warm, Errors.empty)
 
         case Fun(body, thisV, klass, env) =>
           report.error("unexpected tree in instantiating a function, fun = " + body.show, source)
@@ -1280,7 +1297,7 @@ object Semantic {
       thisV.updateOuter(cls, res.value)
 
       // follow constructor
-      if cls.hasSource && !thisV.isWarm then
+      if cls.hasSource then
         tasks.append { () =>
           printer.println("init super class " + cls.show)
           val res2 = thisV.callConstructor(ctor, args, source)
