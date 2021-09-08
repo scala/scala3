@@ -512,41 +512,13 @@ class SpaceEngine(using Context) extends SpaceLogic {
       if converted == null then tp else ConstantType(converted)
     case _ => tp
 
-  private lazy val defn         = ctx.definitions
-  private lazy val ByteClass    = defn.ByteClass
-  private lazy val ShortClass   = defn.ShortClass
-  private lazy val CharClass    = defn.CharClass
-  private lazy val IntClass     = defn.IntClass
-  private lazy val LongClass    = defn.LongClass
-  private lazy val FloatClass   = defn.FloatClass
-  private lazy val DoubleClass  = defn.DoubleClass
-  private lazy val UnitClass    = defn.UnitClass
-  private lazy val BooleanClass = defn.BooleanClass
-
-  /** Adapt types by performing primitive value unboxing or boxing, or numeric constant conversion.  #12805 */
-  def adaptType(tp1: Type, tp2: Type): Type = trace(i"adaptType($tp1, $tp2)", show = true)((tp1.classSymbol, tp2.classSymbol) match {
-    case (   ByteClass,    defn.BoxedByteClass) =>    defn.BoxedByteClass.typeRef.narrow
-    case (  ShortClass,   defn.BoxedShortClass) =>   defn.BoxedShortClass.typeRef.narrow
-    case (   CharClass,    defn.BoxedCharClass) =>    defn.BoxedCharClass.typeRef.narrow
-    case (    IntClass,     defn.BoxedIntClass) =>     defn.BoxedIntClass.typeRef.narrow // 1 <:< Integer => (<skolem> : Integer) <:< Integer = true
-    case (   LongClass,    defn.BoxedLongClass) =>    defn.BoxedLongClass.typeRef.narrow
-    case (  FloatClass,   defn.BoxedFloatClass) =>   defn.BoxedFloatClass.typeRef.narrow
-    case ( DoubleClass,  defn.BoxedDoubleClass) =>  defn.BoxedDoubleClass.typeRef.narrow
-    case (   UnitClass,    defn.BoxedUnitClass) =>    defn.BoxedUnitClass.typeRef.narrow
-    case (BooleanClass, defn.BoxedBooleanClass) => defn.BoxedBooleanClass.typeRef.narrow
-
-    case (   defn.BoxedByteClass,    ByteClass) =>    defn.ByteType.narrow
-    case (  defn.BoxedShortClass,   ShortClass) =>   defn.ShortType.narrow
-    case (   defn.BoxedCharClass,    CharClass) =>    defn.CharType.narrow
-    case (    defn.BoxedIntClass,     IntClass) =>     defn.IntType.narrow // ONE <:< Int => (<skolem> : Int) <:< Int = true
-    case (   defn.BoxedLongClass,    LongClass) =>    defn.LongType.narrow
-    case (  defn.BoxedFloatClass,   FloatClass) =>   defn.FloatType.narrow
-    case ( defn.BoxedDoubleClass,  DoubleClass) =>  defn.DoubleType.narrow
-    case (   defn.BoxedUnitClass,    UnitClass) =>    defn.UnitType.narrow
-    case (defn.BoxedBooleanClass, BooleanClass) => defn.BooleanType.narrow
-
-    case _ => convertConstantType(tp1, tp2)
-  })
+  def adaptType(tp1: Type, tp2: Type): Type = trace(i"adaptType($tp1, $tp2)", show = true) {
+    def isPrimToBox(tp: Type, pt: Type) =
+      tp.classSymbol.isPrimitiveValueClass && (defn.boxedType(tp).classSymbol eq pt.classSymbol)
+    if      isPrimToBox(tp1, tp2) then defn.boxedType(tp1).narrow   //  1  <:< Integer => (<skolem> : Integer) <:< Integer = true
+    else if isPrimToBox(tp2, tp1) then defn.unboxedType(tp1).narrow // ONE <:< Int     => (<skolem> : Int)     <:< Int     = true
+    else convertConstantType(tp1, tp2)
+  }
 
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
