@@ -174,7 +174,28 @@ object Semantic {
         map = map.updated(ref, obj)
 
       def snapshot(): Heap = new Heap(map)
-      def restore(h: Heap) = this.map = h.map
+
+      /** Recompute the newly created warm objects with the updated cache.
+       *
+       *  The computation only covers class parameters and outers. Class fields are ignored and
+       *  are lazily evaluated and cached.
+       *
+       *  The method must be called after the call `Cache.prepare()`.
+       */
+      def prepare(heapBefore: Heap)(using State, Context) =
+        this.map.keys.foreach {
+          case thisRef: ThisRef =>
+            this.map = this.map - thisRef
+          case warm: Warm if !heapBefore.contains(warm) =>
+            this.map = this.map - warm
+            given Env = Env.empty
+            given Trace = Trace.empty
+            given Promoted = Promoted.empty
+            warm.ensureObjectExists().ensureInit()
+          case _ =>
+        }
+
+      override def toString() = map.toString()
     }
 
     /** Note: don't use `val` to avoid incorrect sharing */
@@ -311,10 +332,9 @@ object Semantic {
       def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result): Contextual[Result] =
         val assumeValue: Value =
           if last.contains(value, expr) then
-            // Due to heap reverting, the object corresponding to a reference may not exist in the heap.
+            // The object corresponding to ThisRef may not exist in the heap. See `Heap.prepare`.
             last.get(value, expr) match
             case ref: ThisRef => ref.ensureObjectExists()
-            case ref: Warm => ref.ensureObjectExists().ensureInit()
             case v => v
           else
             last.put(value, expr, Hot)
@@ -356,7 +376,7 @@ object Semantic {
        *  - Reset changed flag
        *  - Reset current cache (last cache already synced in `assume`)
        */
-      def iterate() = {
+      def prepare() = {
         changed = false
         current = mutable.Map.empty
       }
@@ -885,18 +905,20 @@ object Semantic {
       case task :: rest =>
         checkedTasks = checkedTasks + task
 
+        // must be before heap snapshot
+        task.value.ensureObjectExists()
         val heapBefore = heap.snapshot()
         val res = doTask(task)
         res.errors.foreach(_.issue)
 
         if cache.hasChanged && res.errors.isEmpty then
-          // discard heap changes
-          heap.restore(heapBefore)
+          // must call cache.prepare() first
+          cache.prepare()
+          heap.prepare(heapBefore)
         else
           cache.commit()
           pendingTasks = rest
-
-        cache.iterate()
+          cache.prepare()
 
         work()
       case _ =>
@@ -907,7 +929,6 @@ object Semantic {
      */
     private def doTask(task: Task)(using State, Context): Result = log("checking " + task) {
       val thisRef = task.value
-      thisRef.ensureObjectExists()
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
       val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
