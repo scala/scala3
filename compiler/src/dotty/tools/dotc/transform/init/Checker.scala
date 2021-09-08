@@ -55,7 +55,10 @@ class Checker extends Phase {
           mdef match
           case tdef: TypeDef if tdef.isClassDef =>
             val cls = tdef.symbol.asClass
-            val thisRef = ThisRef(cls)
+            val ctor = cls.primaryConstructor
+            val args = ctor.defTree.asInstanceOf[DefDef].termParamss.flatten.map(_ => Hot)
+            val outer = Hot
+            val thisRef = ThisRef(cls, outer, ctor, args)
             given Trace = Trace.empty
             if shouldCheckClass(cls) then Semantic.addTask(thisRef)
           case _ =>
