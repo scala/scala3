@@ -4,7 +4,7 @@ package transform
 
 import org.junit.*, Assert.*
 
-import core.*, Contexts.*, Decorators.*, Symbols.*, Types.*
+import core.*, Constants.*, Contexts.*, Decorators.*, Symbols.*, Types.*
 
 class SpaceEngineTest extends DottyTest:
   @Test def testAdaptTest(): Unit =
@@ -14,6 +14,12 @@ class SpaceEngineTest extends DottyTest:
     val e = patmat.SpaceEngine()
 
     val BoxedIntType = BoxedIntClass.typeRef
+    val ConstOneType = ConstantType(Constant(1))
 
     assertTrue(e.isPrimToBox(IntType, BoxedIntType))
     assertFalse(e.isPrimToBox(BoxedIntType, IntType))
+    assertTrue(e.isPrimToBox(ConstOneType, BoxedIntType))
+
+    assertEquals(BoxedIntType, e.adaptType(IntType, BoxedIntType).widenSingleton)
+    assertEquals(IntType,      e.adaptType(BoxedIntType, IntType).widenSingleton)
+    assertEquals(IntType,      e.adaptType(BoxedIntType, ConstOneType).widenSingleton)
