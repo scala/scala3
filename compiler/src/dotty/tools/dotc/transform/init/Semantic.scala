@@ -569,7 +569,26 @@ object Semantic {
           report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, source)
           Result(Hot, Nil)
 
-        case ref: Ref =>
+        case ref: Warm =>
+            val trace1 = trace.add(source)
+            if ctor.hasSource then
+              given Trace = trace1
+              val cls = ctor.owner.enclosingClass.asClass
+              val ddef = ctor.defTree.asInstanceOf[DefDef]
+              given Env = Env(ddef, args.map(_.value).widenArgs)
+              if ctor.isPrimaryConstructor then
+                val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+                init(tpl, ref, cls)
+              else
+                val initCall = ddef.rhs match
+                  case Block(call :: _, _) => call
+                  case call => call
+                eval(initCall, ref, cls)
+              end if
+            else
+              Result(Hot, Nil)
+
+        case ref: ThisRef =>
             val trace1 = trace.add(source)
             if ctor.hasSource then
               given Trace = trace1
@@ -871,6 +890,7 @@ object Semantic {
      */
     private def doTask(task: Task)(using State, Context): Result = log("checking " + task) {
       val thisRef = task.value
+      thisRef.ensureObjectExists()
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
       val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
@@ -1260,7 +1280,7 @@ object Semantic {
       thisV.updateOuter(cls, res.value)
 
       // follow constructor
-      if cls.hasSource then
+      if cls.hasSource && !thisV.isWarm then
         tasks.append { () =>
           printer.println("init super class " + cls.show)
           val res2 = thisV.callConstructor(ctor, args, source)
@@ -1331,7 +1351,7 @@ object Semantic {
     var fieldsChanged = true
 
     // class body
-    tpl.body.foreach {
+    if (!thisV.isWarm) tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         given Env = Env.empty
         val res = eval(vdef.rhs, thisV, klass)
@@ -1342,11 +1362,8 @@ object Semantic {
       case _: MemberDef =>
 
       case tree =>
-        thisV match
-        case thisRef: ThisRef =>
-          if fieldsChanged then thisRef.tryPromoteCurrentObject
-          fieldsChanged = false
-        case _ =>
+        if fieldsChanged then thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject
+        fieldsChanged = false
 
         given Env = Env.empty
         errorBuffer ++= eval(tree, thisV, klass).errors
