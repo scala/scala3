@@ -304,6 +304,14 @@ object Semantic {
           this.changed = true
           last.put(value, expr, actual.value)
           current.put(value, expr, actual.value)
+        else
+          // It's tempting to cache the value in stable, but it's unsound.
+          // The reason is that the current value may depend on other values
+          // which might change.
+          //
+          // stable.put(value, expr, actual)
+          ()
+        end if
 
         actual
 
