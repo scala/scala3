@@ -515,12 +515,25 @@ class SpaceEngine(using Context) extends SpaceLogic {
   def isPrimToBox(tp: Type, pt: Type) =
     tp.classSymbol.isPrimitiveValueClass && (defn.boxedType(tp).classSymbol eq pt.classSymbol)
 
+  /** Adapt types by performing primitive value unboxing or boxing, or numeric constant conversion.  #12805
+   *
+   *  This makes these isSubType cases work like this:
+   *  {{{
+   *   1      <:< Integer  => (<skolem> : Integer) <:< Integer  = true
+   *  ONE     <:< Int      => (<skolem> : Int)     <:< Int      = true
+   *  Integer <:< (1: Int) => (<skolem> : Int)     <:< (1: Int) = false
+   *  }}}
+   */
+  def adaptType(tp1: Type, tp2: Type): Type = trace(i"adaptType($tp1, $tp2)", show = true) {
+    if      isPrimToBox(tp1, tp2) then defn.boxedType(tp1).narrow
+    else if isPrimToBox(tp2, tp1) then defn.unboxedType(tp1).narrow
+    else convertConstantType(tp1, tp2)
+  }
+
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
     if tp1 == constantNullType && !ctx.explicitNulls then tp2 == constantNullType
-    else
-      isPrimToBox(tp1, tp2) || isPrimToBox(tp2, tp1) ||
-      convertConstantType(tp1, tp2) <:< tp2
+    else adaptType(tp1, tp2) <:< tp2
   }
 
   def isSameUnapply(tp1: TermRef, tp2: TermRef): Boolean =
