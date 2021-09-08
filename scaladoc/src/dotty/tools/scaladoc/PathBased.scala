@@ -7,7 +7,7 @@ case class PathBased[T](entries: List[PathBased.Entry[T]], projectRoot: Path):
     if path.isAbsolute then
       if path.startsWith(projectRoot) then get(projectRoot.relativize(path))
       else None
-    else entries.find(_.path.forall(p => path.startsWith(p))).map(entry =>
+    else entries.filter(_.path.forall(p => path.startsWith(p))).maxByOption(_.path.map(_.toString.length)).map(entry =>
       PathBased.Result(entry.path.fold(path)(_.relativize(path)), entry.elem)
     )
 
