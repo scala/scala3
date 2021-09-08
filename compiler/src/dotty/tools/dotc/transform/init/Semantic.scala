@@ -290,7 +290,13 @@ object Semantic {
         else global(value)(expr)
 
       def assume(value: Value, expr: Tree) =
-        val assumeValue = if (in.contains(value, expr)) in.get(value, expr) else Hot
+
+        val assumeValue =
+          if in.contains(value, expr) then
+            in.get(value, expr)
+          else
+            in.put(value, expr, Hot)
+            Hot
         out.put(value, expr, assumeValue)
         assumeValue
 
