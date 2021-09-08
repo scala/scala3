@@ -67,9 +67,12 @@ object FileDiff {
     val outFilePath = checkFilePath + ".out"
     FileDiff.check(sourceTitle, actualLines, checkFilePath) match {
       case Some(msg) if dotty.Properties.testsUpdateCheckfile =>
-        FileDiff.dump(checkFilePath, actualLines)
+        Files.deleteIfExists(Paths.get(outFilePath))
+        if actualLines.isEmpty
+          then Files.deleteIfExists(Paths.get(checkFilePath))
+          else FileDiff.dump(checkFilePath, actualLines)
         println("Updated checkfile: " + checkFilePath)
-        false
+        true
       case Some(msg) =>
         FileDiff.dump(outFilePath, actualLines)
         println(msg)
