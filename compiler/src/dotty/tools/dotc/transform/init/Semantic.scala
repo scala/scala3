@@ -913,7 +913,7 @@ object Semantic {
       val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
 
       given Promoted = Promoted.empty
-      given Trace = Trace.empty
+      given Trace = task.trace
       given Env = Env(paramValues)
 
       eval(tpl, thisRef, thisRef.klass)
