@@ -55,6 +55,10 @@ object Semantic {
    */
   sealed abstract class Value {
     def show: String = this.toString()
+
+    def isHot = this == Hot
+    def isCold = this == Cold
+    def isWarm = this.isInstanceOf[Warm]
   }
 
   /** A transitively initialized object */
@@ -99,9 +103,7 @@ object Semantic {
   }
 
   /** A reference to the object under initialization pointed by `this` */
-  case class ThisRef(klass: ClassSymbol)(using @constructorOnly h: Heap) extends Ref {
-    val outer = Hot
-
+  case class ThisRef(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using @constructorOnly h: Heap) extends Ref {
     ensureObjectExists()
   }
 
@@ -447,7 +449,7 @@ object Semantic {
     def widenArgs: List[Value] = values.map(_.widenArg).toList
 
   extension (value: Value)
-    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show, printer, (_: Result).show) {
+    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show + ", this = " + value, printer, (_: Result).show) {
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
         case Hot  =>
@@ -613,6 +615,8 @@ object Semantic {
             val warm = Warm(klass, outer, ctor, args2)
             val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
             val res = warm.callConstructor(ctor, argInfos2, source)
+            val task = ThisRef(klass, outer, ctor, args2)
+            this.addTask(task)
             Result(warm, res.errors)
 
         case Cold =>
@@ -630,6 +634,8 @@ object Semantic {
           val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
           val warm = Warm(klass, outer, ctor, argsWidened)
           val res = warm.callConstructor(ctor, argInfos2, source)
+          val task = ThisRef(klass, outer, ctor, argsWidened)
+          this.addTask(task)
           Result(warm, res.errors)
 
         case Fun(body, thisV, klass, env) =>
@@ -827,19 +833,22 @@ object Semantic {
       cls == defn.ObjectClass
 
 // ----- Work list ---------------------------------------------------
-  type Task = ThisRef
+  case class Task(value: ThisRef)(val trace: Trace)
 
   class WorkList private[Semantic]() {
     private var pendingTasks: List[Task] = Nil
+    private var checkedTasks: Set[Task] = Set.empty
 
     def addTask(task: Task): Unit =
-      pendingTasks = task :: pendingTasks
+      if !checkedTasks.contains(task) then pendingTasks = task :: pendingTasks
 
     /** Process the worklist until done */
     @tailrec
     final def work()(using State, Context): Unit =
       pendingTasks match
       case task :: rest =>
+        checkedTasks = checkedTasks + task
+
         val heapBefore = heap.snapshot()
         val res = doTask(task)
         res.errors.foreach(_.issue)
@@ -861,7 +870,7 @@ object Semantic {
      *  This method should only be called from the work list scheduler.
      */
     private def doTask(task: Task)(using State, Context): Result = log("checking " + task) {
-      val thisRef = task
+      val thisRef = task.value
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
       val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
@@ -878,7 +887,7 @@ object Semantic {
 // ----- API --------------------------------
 
   /** Add a checking task to the work list */
-  def addTask(task: ThisRef)(using WorkList) = workList.addTask(task)
+  def addTask(thisRef: ThisRef)(using WorkList, Trace) = workList.addTask(Task(thisRef)(trace))
 
   /** Perform check on the work list until it becomes empty
    *
