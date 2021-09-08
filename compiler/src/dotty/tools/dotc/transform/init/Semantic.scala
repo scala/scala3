@@ -278,7 +278,9 @@ object Semantic {
       private val in: CacheStore =  mutable.Map.empty
       private var out: CacheStore = mutable.Map.empty
       private val global: CacheStore = mutable.Map.empty
-      var changed: Boolean = false
+      private var changed: Boolean = false
+
+      def hasChanged = changed
 
       def contains(value: Value, expr: Tree) =
         out.contains(value, expr) || global.contains(value, expr)
@@ -293,32 +295,31 @@ object Semantic {
         assumeValue
 
       def update(value: Value, expr: Tree, result: Value) =
+        this.changed = true
+        in.put(value, expr, result)
         out.put(value, expr, result)
 
       def remove(value: Value, expr: Tree) =
         out.remove(value, expr)
 
-      /** Commit out cache to global cache.
+      /** Prepare cache for the next iteration
+       *
+       *  - Commit out cache to global cache if unchanged.
+       *  - Reset changed flag
+       *  - Reset out cache
        *
        *  Precondition: the out cache reaches fixed point.
        */
-      def commit() = {
-        out.foreach { (v, m) =>
-          m.iterator.foreach { (e, res) =>
-            global.put(v, e, res)
+      def iterate() = {
+        if !changed then
+          out.foreach { (v, m) =>
+            m.iterator.foreach { (e, res) =>
+              global.put(v, e, res)
+            }
           }
-        }
+        end if
 
-        out = mutable.Map.empty
-      }
-
-      /** Copy out to in and reset out to empty */
-      def update() = {
-        out.foreach { (v, m) =>
-          m.iterator.foreach { (e, res) =>
-            in.put(v, e, res)
-          }
-        }
+        changed = false
 
         out = mutable.Map.empty
       }
@@ -825,16 +826,13 @@ object Semantic {
         val res = doTask(task)
         res.errors.foreach(_.issue)
 
-        if res.errors.nonEmpty || !cache.changed then
-          pendingTasks = rest
-          cache.commit()
-        else
+        if cache.hasChanged && res.errors.isEmpty then
           // discard heap changes and copy cache.out to cache.in
-          cache.update()
           heap.restore(heapBefore)
+        else
+          pendingTasks = rest
 
-        // reset change
-        cache.changed = false
+        cache.iterate()
 
         work()
       case _ =>
@@ -911,7 +909,6 @@ object Semantic {
       val res = cases(expr, thisV, klass)
       if res.value != assumeValue then
         // println("changed: old = " + assumeValue + ", res = " + res.value)
-        cache.changed = true
         cache.update(thisV, expr, res.value) // must put in cache for termination
       else
         if !cacheResult then cache.remove(thisV, expr)
@@ -1336,7 +1333,8 @@ object Semantic {
         errorBuffer ++= eval(tree, thisV, klass).errors
     }
 
-    Result(thisV, errorBuffer.toList)
+    // The result value is ignored, use Hot to avoid futile fixed point computation
+    Result(Hot, errorBuffer.toList)
   }
 
   /** Check that path in path-dependent types are initialized
