@@ -6,7 +6,7 @@ import scala.reflect.TypeTest
 /** Current Quotes in scope
  *
  *  Usage:
- *  ```scala
+ *  ```scala sc:nocompile
  *  def myExpr[T](using Quotes): Expr[T] = {
  *     import quotes.reflect._
  *     ...
@@ -31,7 +31,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
     *  It does the equivalent of
-    *  ```scala
+    *  ```scala sc:nocompile
     *  this match
     *    case '{...} => true // where the contents of the pattern are the contents of `that`
     *    case _ => false
@@ -91,7 +91,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *  def f(expr: Expr[Int])(using Quotes) =
    *    import quotes.reflect._
    *    val ast: Term = expr.asTerm
-   *    ...
+   *    ???
    *  ```
    *
    *  See `reflectModule` for full API.
@@ -294,15 +294,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Tree representing a package clause in the source code
      *
-     *  ```scala
+     *  ```scala sc:nocompile
      *  package foo {
-     *     // package stats
+     *    // package stats
      *  }
      *  ```
      *
      *  or
      *
-     *  ```scala
+     *  ```scala sc:nocompile
      *  package foo.bar
      *  // package stats
      *  ```
@@ -473,8 +473,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Self-type of the class
          *
          *  ```scala
+         *  //{
+         *  type T
+         *  //}
          *  class C { self: T =>
-         *     ...
+         *    ???
          *  }
          *  ```
          *  @syntax markdown
@@ -484,7 +487,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  ```scala
          *  class C {
-         *     ... // statements
+         *    ??? // statements
          *  }
          *  ```
          *  @syntax markdown
@@ -532,7 +535,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  Note: Non leading type parameters can be found in extension methods such as
          *  ```scala
-         *  extension (a: A) def f[T]() = ...
+         *  //{
+         *  type A
+         *  type T
+         *  //}
+         *  extension (a: A) def f[T]() = ???
          *  ```
          *  @syntax markdown
          */
@@ -543,7 +550,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  Non leading type parameters can be found in extension methods such as
          *  ```scala
-         *  extension (a: A) def f[T]() = ...
+         *  //{
+         *  type T
+         *  type A
+         *  //}
+         *  extension (a: A) def f[T]() = ???
          *  ```
          *  @syntax markdown
          */
@@ -1014,7 +1025,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  It may be a partially applied method:
          *  ```scala
-         *  def f(x1: Int)(x2: Int) = ...
+         *  def f(x1: Int)(x2: Int) = ???
          *  f(1)(2)
          *  ```
          *  - `fun` is `f(1)` in the `Apply` of `f(1)(2)`
@@ -1026,7 +1037,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  The `Apply` may be a partially applied method:
          *  ```scala
-         *  def f(x1: Int)(x2: Int) = ...
+         *  def f(x1: Int)(x2: Int) = ???
          *  f(1)(2)
          *  ```
          *  - `args` is `(2)` in the `Apply` of `f(1)(2)`
@@ -1068,9 +1079,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  It may be a partially applied method:
          *  ```scala
-         *  extension (x: Int) def f[T](y: T) = ...
+         *  //{
+         *  type T
+         *  //}
+         *  extension (x: Int) def f[T](y: T) = ???
          *  // represented as
-         *  // def f(x: Int)[T](y: T) = ...
+         *  // def f(x: Int)[T](y: T) = ???
          *
          *  1.f[Int](2)
          *  // represented as
@@ -1084,9 +1098,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  The `TypeApply` may be a partially applied method:
          *  ```scala
-         *  extension (x: Int) def f[T](y: T) = ...
+         *  //{
+         *  type T
+         *  //}
+         *  extension (x: Int) def f[T](y: T) = ???
          *  // represented as
-         *  // def f(x: Int)[T](y: T) = ...
+         *  // def f(x: Int)[T](y: T) = ???
          *
          *  1.f[Int](2)
          *  // represented as
@@ -1273,7 +1290,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** A lambda `(...) => ...` in the source code is represented as
      *  a local method and a closure:
      *
-     *  ```scala
+     *  ```scala sc:nocompile
      *  {
      *    def m(...) = ...
      *    closure(m)
@@ -1289,7 +1306,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Lambda` */
     trait LambdaModule { this: Lambda.type =>
       /** Matches a lambda definition of the form
-       *  ```scala
+       *  ```scala sc:nocompile
        *  Block((DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
        *  ```
        *  Extracts the parameter definitions and body.
@@ -1298,7 +1315,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(tree: Block): Option[(List[ValDef], Term)]
 
       /** Generates a lambda with the given method type.
-       *  ```scala
+       *  ```scala sc:nocompile
        *  Block((DefDef(_, _, params :: Nil, _, Some(rhsFn(meth, paramRefs)))) :: Nil, Closure(meth, _))
        *  ```
        *  @param owner: owner of the generated `meth` symbol
@@ -2432,9 +2449,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *
         *  Usage:
         *  ```scala
+        *  //{
+        *  def f(using Quotes) = {
+        *  val typeRepr: TypeRepr = ???
+        *  //}
         *  typeRepr.asType match
         *    case '[t] =>
-        *      '{ val x: t = ... }
+        *      '{ val x: t = ??? }
+        *  //{
+        *  }
+        *  //}
         *  ```
         *  @syntax markdown
         */
@@ -2809,12 +2833,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *
      *  May represent by-name parameter such as `thunk` in
      *  ```scala
-     *    def log[T](thunk: =>T): T = ...
+     *  //{
+     *  type T
+     *  //}
+     *  def log[T](thunk: => T): T = ???
      *  ```
      *
      *  May also represent a the return type of a parameterless method definition such as
      *  ```scala
-     *    def foo: Int = ...
+     *    def foo: Int = ???
      *  ```
      *  @syntax markdown
      */
@@ -3451,7 +3478,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Symbol of the definition that encloses the current splicing context.
        *
        *  For example, the following call to `spliceOwner` would return the symbol `x`.
-       *  ```scala
+       *  ```scala sc:nocompile
        *  val x = ${ ... Symbol.spliceOwner ... }
        *  ```
        *
@@ -4298,9 +4325,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  import quotes.reflect._
-    *  class MyTreeAccumulator extends TreeAccumulator[X] {
-    *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ...
+    *  class MyTreeAccumulator[X] extends TreeAccumulator[X] {
+    *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ???
     *  }
     *  ```
     *  @syntax markdown
@@ -4402,9 +4428,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  import quotes.reflect._
     *  class MyTraverser extends TreeTraverser {
-    *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ...
+    *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ???
     *  }
     *  ```
     *  @syntax markdown
@@ -4423,9 +4448,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  import quotes.reflect._
     *  class MyTreeMap extends TreeMap {
-    *    override def transformTree(tree: Tree)(owner: Symbol): Tree = ...
+    *    override def transformTree(tree: Tree)(owner: Symbol): Tree = ???
     *  }
     *  ```
     *  @syntax markdown
