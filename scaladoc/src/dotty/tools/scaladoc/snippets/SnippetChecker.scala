@@ -11,11 +11,20 @@ import dotty.tools.dotc.fromtasty.TastyFileUtil
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.ScalaSettings
 
+import com.virtuslab.using_directives._
+import com.virtuslab.using_directives.custom.model._
+
 class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
   import SnippetChecker._
 
 // (val classpath: String, val bootclasspath: String, val tastyFiles: Seq[File], isScalajs: Boolean, useJavaCp: Boolean):
   private val sep = System.getProperty("path.separator")
+
+  private val usingDirectivesProcessor = {
+    val processor = UsingDirectivesProcessor()
+    // TODO: Implement custom reporter
+    processor
+  }
 
   private val fullClasspath = List(
     args.tastyFiles
@@ -45,7 +54,18 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     lineOffset: SnippetChecker.LineOffset,
     sourceFile: SourceFile
   ): Option[SnippetCompilationResult] = {
-    val mergedSnippet = mergeSnippets(snippet, snippetImports)
+    val importsWithUsingDirectives: Seq[(Import, UsingDirectives)] = snippetImports.map(i => i -> extractUsingDirectives(i.snippet))
+    val truncatedImports = importsWithUsingDirectives.map {
+      case (i: Import, ud: UsingDirectives) => i.copy(snippet = i.snippet.substring(ud.getCodeOffset()))
+    }
+    val importUds = importsWithUsingDirectives.map(_(1))
+    val snippetUd = extractUsingDirectives(snippet)
+    val truncatedSnippet = snippet.substring(snippetUd.getCodeOffset())
+    val mergedUsingDirectives = mergeUsingDirectives(importUds :+ snippetUd)
+
+    val compilerSettings = UsingDirectivesSettingsExtractor.process(mergedUsingDirectives)
+
+    val mergedSnippet = mergeSnippets(truncatedSnippet, truncatedImports)
     if arg.flag != SCFlags.NoCompile then
       val wrapped = WrappedSnippet(
         mergedSnippet,
@@ -69,6 +89,17 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     }
     wrappedImports :+ snippet
   }.mkString("\n")
+
+  private def mergeUsingDirectives(uds: Seq[UsingDirectives]): Map[Path, Value[_]] = {
+    import collection.JavaConverters._
+    val maps = uds.map(_.getFlattenedMap.asScala.toMap)
+    maps.reduceLeft {
+      case (map1, map2) => map1 ++ map2
+    }
+  }
+
+  private def extractUsingDirectives(snippet: String): UsingDirectives =
+    usingDirectivesProcessor.extract(snippet.toCharArray)
 
 object SnippetChecker:
   case class Import(id: String, snippet: String)

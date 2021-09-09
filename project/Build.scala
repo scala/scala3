@@ -1310,6 +1310,7 @@ object Build {
       SourceLinksIntegrationTest / test:= ((SourceLinksIntegrationTest / test) dependsOn generateScalaDocumentation.toTask("")).value,
     ).
     settings(
+      resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
       Compile / resourceGenerators += Def.task {
         val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "searchbar.js"
         sbt.IO.copyFile((`scaladoc-js` / Compile / fullOptJS).value.data, jsDestinationFile)
@@ -1363,6 +1364,7 @@ object Build {
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.6.7",
         "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site
+        "org.virtuslab" % "using_directives" % "0.0.5-2e8ad0f-SNAPSHOT",
         Dependencies.`jackson-dataformat-yaml`,
 
         "com.novocode" % "junit-interface" % "0.11" % "test",
