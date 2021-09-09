@@ -204,9 +204,6 @@ object Semantic {
 
       override def toString() = map.toString()
     }
-
-    /** Note: don't use `val` to avoid incorrect sharing */
-    private[Semantic] def empty: Heap = new Heap(Map.empty)
   }
   type Heap = Heap.Heap
 
@@ -388,8 +385,6 @@ object Semantic {
         current = mutable.Map.empty
       }
     }
-
-    val empty: Cache = new Cache()
 
     extension (cache: CacheStore)
       def contains(value: Value, expr: Tree) = cache.contains(value) && cache(value).contains(expr)
@@ -975,7 +970,7 @@ object Semantic {
    *      }
    */
   def withInitialState[T](work: State ?=> T): T = {
-    val initialState = State(Cache.empty, Heap.empty, new WorkList)
+    val initialState = State(new Cache, new Heap(Map.empty), new WorkList)
     work(using initialState)
   }
 
