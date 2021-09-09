@@ -304,8 +304,9 @@ object Inliner {
    */
   def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(using Context): Tree = {
     assert(ctx.source == pos.source)
-    if (callSym.is(Macro)) ref(callSym.topLevelClass.owner).select(callSym.topLevelClass.name).withSpan(pos.span)
-    else Ident(callSym.topLevelClass.typeRef).withSpan(pos.span)
+    val topLevelCls = callSym.topLevelClass
+    if (callSym.is(Macro)) ref(topLevelCls.owner).select(topLevelCls.name)(using ctx.withOwner(topLevelCls.owner)).withSpan(pos.span)
+    else Ident(topLevelCls.typeRef).withSpan(pos.span)
   }
 
   object Intrinsics {
