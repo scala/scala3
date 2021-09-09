@@ -26,6 +26,19 @@ import dotty.tools.dotc.transform.TreeMapWithStages._
 object PrepareInlineable {
   import tpd._
 
+  private val InlineAccessorsKey = new Property.Key[InlineAccessors]
+
+  def initContext(ctx: Context): Context =
+    ctx.fresh.setProperty(InlineAccessorsKey, new InlineAccessors)
+
+  def makeInlineable(tree: Tree)(using Context): Tree =
+    ctx.property(InlineAccessorsKey).get.makeInlineable(tree)
+
+  def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] =
+    ctx.property(InlineAccessorsKey) match
+      case Some(inlineAccessors) => inlineAccessors.addAccessorDefs(cls, body)
+      case _ => body
+
   class InlineAccessors extends AccessProxies {
 
     /** If an inline accessor name wraps a unique inline name, this is taken as indication
@@ -251,7 +264,7 @@ object PrepareInlineable {
             if inlined.isInlineMethod then
               inlinedBody = dropInlineIfError(inlined,
                 checkInlineMethod(inlined,
-                  ctx.compilationUnit.inlineAccessors.makeInlineable(inlinedBody)))
+                  PrepareInlineable.makeInlineable(inlinedBody)))
             inlining.println(i"Body to inline for $inlined: $inlinedBody")
             inlinedBody
           })

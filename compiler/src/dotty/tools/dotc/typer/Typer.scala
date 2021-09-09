@@ -2461,7 +2461,7 @@ class Typer extends Namer
       // 4. Polymorphic type defs override nothing.
 
   protected def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] =
-    ctx.compilationUnit.inlineAccessors.addAccessorDefs(cls, body)
+    PrepareInlineable.addAccessorDefs(cls, body)
 
   /** If this is a real class, make sure its first parent is a
    *  constructor call. Cannot simply use a type. Overridden in ReTyper.

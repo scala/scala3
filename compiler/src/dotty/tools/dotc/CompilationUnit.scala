@@ -56,9 +56,6 @@ class CompilationUnit protected (val source: SourceFile) {
    */
   var needsQuotePickling: Boolean = false
 
-  /** A structure containing a temporary map for generating inline accessors */
-  val inlineAccessors: InlineAccessors = new InlineAccessors
-
   var suspended: Boolean = false
   var suspendedAtInliningPhase: Boolean = false
 
