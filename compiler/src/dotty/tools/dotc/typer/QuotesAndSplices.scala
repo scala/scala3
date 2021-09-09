@@ -70,7 +70,7 @@ trait QuotesAndSplices {
   }
 
   private def makeInlineable(tree: Tree)(using Context): Tree =
-    ctx.compilationUnit.inlineAccessors.makeInlineable(tree)
+    PrepareInlineable.makeInlineable(tree)
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
