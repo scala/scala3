@@ -122,11 +122,10 @@ object Semantic {
       // Somehow Dotty uses the one in the class parameters
       given Heap = state.heap
       if objekt.outers.size <= 1 then
-        val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-        val termParamss = ctor.defTree.asInstanceOf[DefDef].termParamss
-        val paramValues = termParamss.flatten.zip(args).map((param, v) => param.symbol -> v).toMap
-        given Env = Env(paramValues)
-        init(tpl, this, klass)
+        state.populateWarm {
+          val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+          this.callConstructor(ctor, args.map(arg => ArgInfo(arg, EmptyTree)), tpl)
+        }
       end if
       this
   }
@@ -184,14 +183,19 @@ object Semantic {
        */
       def prepare(heapBefore: Heap)(using State, Context) =
         this.map.keys.foreach {
-          case thisRef: ThisRef =>
-            this.map = this.map - thisRef
           case warm: Warm if !heapBefore.contains(warm) =>
             this.map = this.map - warm
             given Env = Env.empty
             given Trace = Trace.empty
             given Promoted = Promoted.empty
             warm.ensureObjectExists().ensureInit()
+          case _ =>
+        }
+
+        // ThisRef might be used in `ensureInit`
+        this.map.keys.foreach {
+          case thisRef: ThisRef =>
+            this.map = this.map - thisRef
           case _ =>
         }
 
@@ -426,7 +430,16 @@ object Semantic {
 
 // ----- State --------------------------------------------
   /** Global state of the checker */
-  class State(val cache: Cache, val heap: Heap, val workList: WorkList)
+  class State(val cache: Cache, val heap: Heap, val workList: WorkList, var isPopulatingWarm: Boolean = false) {
+    // TODO: problematic for nested `init`.
+    def populateWarm[T](fun: State ?=> T) = {
+      val last = isPopulatingWarm
+      isPopulatingWarm = true
+      val res = fun(using this)
+      isPopulatingWarm = last
+      res
+    }
+  }
 
   given (using s: State): Heap = s.heap
   given (using s: State): Cache = s.cache
@@ -608,7 +621,7 @@ object Semantic {
           report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, source)
           Result(Hot, Nil)
 
-        case ref: Warm =>
+        case ref: Warm if state.isPopulatingWarm =>
             val trace1 = trace.add(source)
             if ctor.hasSource then
               given Trace = trace1
@@ -627,20 +640,18 @@ object Semantic {
             else
               Result(Hot, Nil)
 
-        case ref: ThisRef =>
+        case ref: Ref =>
             val trace1 = trace.add(source)
             if ctor.hasSource then
               given Trace = trace1
               val cls = ctor.owner.enclosingClass.asClass
               val ddef = ctor.defTree.asInstanceOf[DefDef]
-              val env2 = Env(ddef, args.map(_.value).widenArgs)
+              given Env= Env(ddef, args.map(_.value).widenArgs)
               if ctor.isPrimaryConstructor then
-                given Env = env2
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
                 val res = withTrace(trace.add(cls.defTree)) { eval(tpl, ref, cls, cacheResult = true) }
                 Result(ref, res.errors)
               else
-                given Env = env2
                 eval(ddef.rhs, ref, cls, cacheResult = true)
             else if ref.canIgnoreMethodCall(ctor) then
               Result(Hot, Nil)
@@ -670,11 +681,10 @@ object Semantic {
             Result(Hot, Errors.empty)
           else
             val outer = Hot
-            val warm = Warm(klass, outer, ctor, args2).ensureInit()
+            val warm = Warm(klass, outer, ctor, args2)
             val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
-            val task = ThisRef(klass, outer, ctor, args2)
-            this.addTask(task)
-            Result(warm, Errors.empty)
+            val res = warm.callConstructor(ctor, argInfos2, source)
+            Result(warm, res.errors)
 
         case Cold =>
           val error = CallCold(ctor, source, trace1.toVector)
@@ -682,17 +692,18 @@ object Semantic {
 
         case ref: Ref =>
           given Trace = trace1
-          // widen the outer to finitize addresses
+          // widen the outer to finitize the domain
           val outer = ref match
-            case Warm(_, _: Warm, _, _) => Cold
+            case warm @ Warm(_, _: Ref, _, _) =>
+              // the widened warm object might not exist in the heap
+              warm.copy(outer = Cold).ensureObjectExists().ensureInit()
             case _ => ref
 
           val argsWidened = args.map(_.value).widenArgs
           val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
-          val warm = Warm(klass, outer, ctor, argsWidened).ensureInit()
-          val task = ThisRef(klass, outer, ctor, argsWidened)
-          this.addTask(task)
-          Result(warm, Errors.empty)
+          val warm = Warm(klass, outer, ctor, argsWidened)
+          val res = warm.callConstructor(ctor, argInfos2, source)
+          Result(warm, res.errors)
 
         case Fun(body, thisV, klass, env) =>
           report.error("unexpected tree in instantiating a function, fun = " + body.show, source)
@@ -1389,7 +1400,7 @@ object Semantic {
     var fieldsChanged = true
 
     // class body
-    if (!thisV.isWarm) tpl.body.foreach {
+    if !state.isPopulatingWarm then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         given Env = Env.empty
         val res = eval(vdef.rhs, thisV, klass)
@@ -1400,7 +1411,7 @@ object Semantic {
       case _: MemberDef =>
 
       case tree =>
-        if fieldsChanged then thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject
+        if fieldsChanged && !thisV.isWarm then thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject
         fieldsChanged = false
 
         given Env = Env.empty
