@@ -80,6 +80,10 @@ object Semantic {
         this
       }
 
+    def ensureFresh()(using Heap): this.type =
+      val obj = Objekt(this.klass, fields = Map.empty, outers = Map(this.klass -> this.outer))
+      heap.update(this, obj)
+      this
 
     /** Update field value of the abstract object
      *
@@ -681,7 +685,7 @@ object Semantic {
             Result(Hot, Errors.empty)
           else
             val outer = Hot
-            val warm = Warm(klass, outer, ctor, args2)
+            val warm = Warm(klass, outer, ctor, args2).ensureFresh()
             val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
             val res = warm.callConstructor(ctor, argInfos2, source)
             Result(warm, res.errors)
@@ -701,7 +705,7 @@ object Semantic {
 
           val argsWidened = args.map(_.value).widenArgs
           val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
-          val warm = Warm(klass, outer, ctor, argsWidened)
+          val warm = Warm(klass, outer, ctor, argsWidened).ensureFresh()
           val res = warm.callConstructor(ctor, argInfos2, source)
           Result(warm, res.errors)
 
@@ -916,8 +920,7 @@ object Semantic {
       case task :: rest =>
         checkedTasks = checkedTasks + task
 
-        // must be before heap snapshot
-        task.value.ensureObjectExists()
+        task.value.ensureFresh()
         val heapBefore = heap.snapshot()
         val res = doTask(task)
         res.errors.foreach(_.issue)
