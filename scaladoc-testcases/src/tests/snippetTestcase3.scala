@@ -52,3 +52,12 @@ class SnippetTestcase3:
     *
     */
   def bar: Int = 0
+  /**
+    * SNIPPET(OUTERLINEOFFSET:59,OUTERCOLUMNOFFSET:6,INNERLINEOFFSET:5,INNERCOLUMNOFFSET:2)
+    * WARNING(LINE:59,COLUMN:0)
+    * ```scala sc:compile
+    * @using compiler.setting "-totally-random-setting"
+    * val a = 2 + 2
+    * ```
+    */
+  def bazz: Int = 0

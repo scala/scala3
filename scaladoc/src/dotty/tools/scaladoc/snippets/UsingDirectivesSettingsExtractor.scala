@@ -12,7 +12,7 @@ import com.virtuslab.using_directives.custom.model._
 
 object UsingDirectivesSettingsExtractor:
   // Probably in the future we need to support more settings
-  def process(uds: Map[Path, Value[_]]): Seq[SnippetCompilerSetting[_]] = uds.flatMap {
+  def process(uds: Map[Path, Value[_]]): (Seq[SnippetCompilerSetting[_]], Seq[String]) = uds.flatMap {
     case (path, value) if path.getPath.asScala.toList == List("compiler", "setting") => Seq(value)
     case (path, value) => Nil
   }.flatMap(processValue).toList.pipe { settings =>
@@ -22,8 +22,7 @@ object UsingDirectivesSettingsExtractor:
     val nonDefaultSettings = allScalaSettings.allSettings
       .filter(s => !s.isDefaultIn(settingsState))
 
-    // TODO: Report warnings and errors in args summary
-    nonDefaultSettings.map(s => SnippetCompilerSetting(s, s.valueIn(settingsState)))
+    (nonDefaultSettings.map(s => SnippetCompilerSetting(s, s.valueIn(settingsState))), argsSummary.warnings ++ argsSummary.errors)
   }
 
   def processValue(v: Value[_]): List[String] = v match {

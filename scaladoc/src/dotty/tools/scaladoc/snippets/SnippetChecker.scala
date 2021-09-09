@@ -13,6 +13,7 @@ import dotty.tools.dotc.config.ScalaSettings
 
 import com.virtuslab.using_directives._
 import com.virtuslab.using_directives.custom.model._
+import scala.util.chaining._
 
 class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
   import SnippetChecker._
@@ -54,6 +55,8 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     lineOffset: SnippetChecker.LineOffset,
     sourceFile: SourceFile
   ): Option[SnippetCompilationResult] = {
+    val outerLineOffset = lineOffset + data.fold(0)(_.position.line) + constantLineOffset
+    val outerColumnOffset = data.fold(0)(_.position.column) + constantColumnOffset
     val importsWithUsingDirectives: Seq[(Import, UsingDirectives)] = snippetImports.map(i => i -> extractUsingDirectives(i.snippet))
     val truncatedImports = importsWithUsingDirectives.map {
       case (i: Import, ud: UsingDirectives) => i.copy(snippet = i.snippet.substring(ud.getCodeOffset()))
@@ -63,7 +66,7 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     val truncatedSnippet = snippet.substring(snippetUd.getCodeOffset())
     val mergedUsingDirectives = mergeUsingDirectives(importUds :+ snippetUd)
 
-    val additionalCompilerSettings = UsingDirectivesSettingsExtractor.process(mergedUsingDirectives)
+    val (additionalCompilerSettings, parsingArgsMessages) = UsingDirectivesSettingsExtractor.process(mergedUsingDirectives)
 
     val mergedSnippet = mergeSnippets(truncatedSnippet, truncatedImports)
     if arg.flag != SCFlags.NoCompile then
@@ -72,11 +75,13 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
         data.map(_.packageName),
         data.fold(Nil)(_.classInfos),
         data.map(_.imports).getOrElse(Nil),
-        lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
-        data.fold(0)(_.position.column) + constantColumnOffset,
+        outerLineOffset,
+        outerColumnOffset,
         additionalCompilerSettings
       )
-      val res = compiler.compile(wrapped, arg, sourceFile)
+      val additionalMessage = Option.when(!parsingArgsMessages.isEmpty)(createParsingReportMessage(parsingArgsMessages, outerLineOffset, wrapped.innerLineOffset, sourceFile))
+
+      val res = compiler.compile(wrapped, arg, sourceFile).pipe(result => result.copy(messages = result.messages ++ additionalMessage))
       Some(res)
     else None
   }
@@ -101,6 +106,14 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
 
   private def extractUsingDirectives(snippet: String): UsingDirectives =
     usingDirectivesProcessor.extract(snippet.toCharArray)
+
+  private def createParsingReportMessage(msgs: Seq[String], lineOffset: Int, relativeLine: Int, sourceFile: SourceFile): SnippetCompilerMessage = {
+    import dotty.tools.dotc.util.Spans._
+    val offsetFromLine = sourceFile.lineToOffset(lineOffset - 1)
+    val span = Span(offsetFromLine, offsetFromLine)
+    val pos = Some(Position(dotty.tools.dotc.util.SourcePosition(sourceFile, span), relativeLine))
+    SnippetCompilerMessage(pos, msgs.mkString("\n"), MessageLevel.Warning)
+  }
 
 object SnippetChecker:
   case class Import(id: String, snippet: String)

@@ -106,9 +106,9 @@ class SnippetCompiler(
       )
       .setReporter(new StoreReporter)
 
-      val context = wrappedSnippet.compilerSettings.foldLeft(ctx1.fresh) { (ctx, setting) =>
-        ctx.setSetting(setting.setting, setting.value)
-      }
+    val context = wrappedSnippet.compilerSettings.foldLeft(ctx1.fresh) { (ctx, setting) =>
+      ctx.setSetting(setting.setting, setting.value)
+    }
 
     val run = newRun(using context)
     run.compileFromStrings(List(wrappedSnippet.snippet))
