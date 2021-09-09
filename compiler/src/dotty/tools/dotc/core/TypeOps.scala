@@ -701,7 +701,7 @@ object TypeOps:
     // `this`. We perform the following operations to approximate the parameters:
     //
     // 1. Replace type parameters in T with tvars
-    // 2. Replace `A.this.C` with `A#C` (see tests/patmat/i12681.scala)
+    // 2. Replace non-class applied types with a tvar, bounded by its type constructor's underlying type
     // 3. Replace non-reducing MatchType with its bound
     //
     val approximateParent = new TypeMap {
@@ -714,9 +714,6 @@ object TypeOps:
           else mapOver(tp.bound) // if the match type doesn't statically reduce
                                  // then to avoid it failing the <:<
                                  // we'll approximate by widening to its bounds
-
-        case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
-          tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
           def lo = LazyRef.of(apply(tp.underlying.loBound))
@@ -794,9 +791,12 @@ object TypeOps:
       }
     }
 
-    val inferThisMap = new InferPrefixMap
-    val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
-    val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
+    def inferPrefix(tp: Type) =
+      val inferThisMap = new InferPrefixMap
+      val tvars = tp.typeParams.map(tparam => newTypeVar(tparam.paramInfo.bounds))
+      inferThisMap(tp).appliedTo(tvars)
+
+    val protoTp1 = inferPrefix(tp1)
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
@@ -814,7 +814,7 @@ object TypeOps:
 
     if (protoTp1 <:< tp2) instantiate()
     else {
-      val approxTp2 = approximateParent(tp2)
+      val approxTp2 = inferPrefix(approximateParent(tp2))
       if (protoTp1 <:< approxTp2 || parentQualify(protoTp1, approxTp2)) instantiate()
       else NoType
     }
