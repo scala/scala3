@@ -9,6 +9,7 @@ import core.Decorators._
 import core.Names.TermName
 import MegaPhase.MiniPhase
 import config.Printers.transforms
+import dotty.tools.dotc.util.Property
 
 /** Add accessors for all protected accesses. An accessor is needed if
  *  according to the rules of the JVM a protected class member is not accessible
@@ -50,7 +51,15 @@ class ProtectedAccessors extends MiniPhase {
 
   override def phaseName: String = ProtectedAccessors.name
 
-  object Accessors extends AccessProxies {
+  private val AccessorsKey = new Property.Key[Accessors]
+
+  private def accessors(using Context): Accessors =
+   ctx.property(AccessorsKey).get
+
+  override def prepareForUnit(tree: Tree)(using Context): Context =
+    ctx.fresh.setProperty(AccessorsKey, new Accessors)
+
+  private class Accessors extends AccessProxies {
     val insert: Insert = new Insert {
       def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName = ProtectedAccessorName(name)
       def needsAccessor(sym: Symbol)(using Context) = ProtectedAccessors.needsAccessor(sym)
@@ -66,19 +75,20 @@ class ProtectedAccessors extends MiniPhase {
   }
 
   override def transformIdent(tree: Ident)(using Context): Tree =
-    Accessors.insert.accessorIfNeeded(tree)
+    accessors.insert.accessorIfNeeded(tree)
 
   override def transformSelect(tree: Select)(using Context): Tree =
-    Accessors.insert.accessorIfNeeded(tree)
+    accessors.insert.accessorIfNeeded(tree)
 
   override def transformAssign(tree: Assign)(using Context): Tree =
     tree.lhs match {
       case lhs: RefTree if lhs.name.is(ProtectedAccessorName) =>
-        cpy.Apply(tree)(Accessors.insert.useSetter(lhs), tree.rhs :: Nil)
+        cpy.Apply(tree)(accessors.insert.useSetter(lhs), tree.rhs :: Nil)
       case _ =>
         tree
     }
 
   override def transformTemplate(tree: Template)(using Context): Tree =
-    cpy.Template(tree)(body = Accessors.addAccessorDefs(tree.symbol.owner, tree.body))
+    cpy.Template(tree)(body = accessors.addAccessorDefs(tree.symbol.owner, tree.body))
+
 }
