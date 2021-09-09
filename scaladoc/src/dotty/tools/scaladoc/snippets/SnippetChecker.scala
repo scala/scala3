@@ -63,7 +63,7 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     val truncatedSnippet = snippet.substring(snippetUd.getCodeOffset())
     val mergedUsingDirectives = mergeUsingDirectives(importUds :+ snippetUd)
 
-    val compilerSettings = UsingDirectivesSettingsExtractor.process(mergedUsingDirectives)
+    val additionalCompilerSettings = UsingDirectivesSettingsExtractor.process(mergedUsingDirectives)
 
     val mergedSnippet = mergeSnippets(truncatedSnippet, truncatedImports)
     if arg.flag != SCFlags.NoCompile then
@@ -73,7 +73,8 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
         data.fold(Nil)(_.classInfos),
         data.map(_.imports).getOrElse(Nil),
         lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
-        data.fold(0)(_.position.column) + constantColumnOffset
+        data.fold(0)(_.position.column) + constantColumnOffset,
+        additionalCompilerSettings
       )
       val res = compiler.compile(wrapped, arg, sourceFile)
       Some(res)

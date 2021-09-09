@@ -4,7 +4,7 @@ package snippets
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 
-case class WrappedSnippet(snippet: String, original: String, outerLineOffset: Int, outerColumnOffset: Int, innerLineOffset: Int, innerColumnOffset: Int)
+case class WrappedSnippet(snippet: String, original: String, outerLineOffset: Int, outerColumnOffset: Int, innerLineOffset: Int, innerColumnOffset: Int, compilerSettings: Seq[SnippetCompilerSetting[_]])
 
 object WrappedSnippet:
 
@@ -21,7 +21,7 @@ object WrappedSnippet:
     ps.startHide()
     ps.println("}")
     ps.endHide()
-    WrappedSnippet(baos.toString, str, 0, 0, indent + 2 /*Hide tokens*/, indent)
+    WrappedSnippet(baos.toString, str, 0, 0, indent + 2 /*Hide tokens*/, indent, Seq())
 
   def apply(
     str: String,
@@ -29,7 +29,8 @@ object WrappedSnippet:
     classInfos: Seq[SnippetCompilerData.ClassInfo],
     imports: List[String],
     outerLineOffset: Int,
-    outerColumnOffset: Int
+    outerColumnOffset: Int,
+    compilerSettings: Seq[SnippetCompilerSetting[_]] = Seq()
   ): WrappedSnippet =
     val baos = new ByteArrayOutputStream()
     val ps = new PrintStream(baos)
@@ -54,7 +55,8 @@ object WrappedSnippet:
       outerLineOffset,
       outerColumnOffset,
       notEmptyClassInfos.size + notEmptyClassInfos.flatMap(_.names).size + packageName.size + 2 /*Hide tokens*/,
-      notEmptyClassInfos.size * indent
+      notEmptyClassInfos.size * indent,
+      compilerSettings
     )
 
   extension (ps: PrintStream)

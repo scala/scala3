@@ -99,12 +99,17 @@ class SnippetCompiler(
     arg: SnippetCompilerArg,
     sourceFile: SourceFile
   ): SnippetCompilationResult = {
-    val context = SnippetDriver.currentCtx.fresh
+    val ctx1 = SnippetDriver.currentCtx.fresh
       .setSetting(
         SnippetDriver.currentCtx.settings.outputDir,
         target
       )
       .setReporter(new StoreReporter)
+
+      val context = wrappedSnippet.compilerSettings.foldLeft(ctx1.fresh) { (ctx, setting) =>
+        ctx.setSetting(setting.setting, setting.value)
+      }
+
     val run = newRun(using context)
     run.compileFromStrings(List(wrappedSnippet.snippet))
 

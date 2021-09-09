@@ -13,8 +13,8 @@ import com.virtuslab.using_directives.custom.model._
 object UsingDirectivesSettingsExtractor:
   // Probably in the future we need to support more settings
   def process(uds: Map[Path, Value[_]]): Seq[SnippetCompilerSetting[_]] = uds.flatMap {
-    case (path, value) if path.getPath.asScala.toList == List("compiler", "settings") => Seq(value)
-    case _ => Nil
+    case (path, value) if path.getPath.asScala.toList == List("compiler", "setting") => Seq(value)
+    case (path, value) => Nil
   }.flatMap(processValue).toList.pipe { settings =>
     val allScalaSettings = new SettingGroup with AllScalaSettings
     val argsSummary = allScalaSettings.processArguments(settings, true)
