@@ -188,11 +188,10 @@ object Semantic {
       def prepare(heapBefore: Heap)(using State, Context) =
         this.map.keys.foreach {
           case warm: Warm if !heapBefore.contains(warm) =>
-            this.map = this.map - warm
             given Env = Env.empty
             given Trace = Trace.empty
             given Promoted = Promoted.empty
-            warm.ensureObjectExists().ensureInit()
+            warm.ensureFresh().ensureInit()
           case _ =>
         }
 
@@ -698,7 +697,7 @@ object Semantic {
           given Trace = trace1
           // widen the outer to finitize the domain
           val outer = ref match
-            case warm @ Warm(_, _: Ref, _, _) =>
+            case warm @ Warm(_, _: Warm, _, _) =>
               // the widened warm object might not exist in the heap
               warm.copy(outer = Cold).ensureObjectExists().ensureInit()
             case _ => ref
