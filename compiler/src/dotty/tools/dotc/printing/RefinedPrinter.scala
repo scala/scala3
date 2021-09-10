@@ -607,7 +607,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree: Template =>
         toTextTemplate(tree)
       case Annotated(arg, annot) =>
-        toTextLocal(arg) ~~ toText(annot)
+        toTextLocal(arg) ~~ annotText(annot.symbol.enclosingClass, annot)
       case EmptyTree =>
         "<empty>"
       case TypedSplice(t) =>
