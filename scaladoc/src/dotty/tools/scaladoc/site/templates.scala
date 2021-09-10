@@ -78,8 +78,8 @@ case class TemplateFile(
             SnippetCompilerData.Position(configOffset - 1, 0)
           )
           ssctx.snippetChecker.checkSnippet(str, snippetImports, Some(compilerData), arg, lineOffset, sourceFile).collect {
-              case r: SnippetCompilationResult if !r.isSuccessful =>
-                r.reportMessages()(using ssctx.outerCtx)
+              case r: SnippetCompilationResult =>
+                r.reportMessages(!r.isSuccessful)(using ssctx.outerCtx)
                 r
               case r => r
           }

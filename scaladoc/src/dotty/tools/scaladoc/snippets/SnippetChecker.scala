@@ -13,6 +13,8 @@ import dotty.tools.dotc.config.ScalaSettings
 
 import com.virtuslab.using_directives._
 import com.virtuslab.using_directives.custom.model._
+import com.virtuslab.using_directives.custom.utils.{ Position => UDPosition }
+import com.virtuslab.using_directives.reporter._
 import scala.util.chaining._
 
 class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
@@ -57,6 +59,10 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
   ): Option[SnippetCompilationResult] = {
     val outerLineOffset = lineOffset + data.fold(0)(_.position.line) + constantLineOffset
     val outerColumnOffset = data.fold(0)(_.position.column) + constantColumnOffset
+
+    val udReporter = CustomUsingDirectivesReporter(sourceFile, outerLineOffset, outerColumnOffset)
+    usingDirectivesProcessor.getContext.setReporter(udReporter)
+
     val importsWithUsingDirectives: Seq[(Import, UsingDirectives)] = snippetImports.map(i => i -> extractUsingDirectives(i.snippet))
     val truncatedImports = importsWithUsingDirectives.map {
       case (i: Import, ud: UsingDirectives) => i.copy(snippet = i.snippet.substring(ud.getCodeOffset()))
@@ -67,6 +73,9 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     val mergedUsingDirectives = mergeUsingDirectives(importUds :+ snippetUd)
 
     val (additionalCompilerSettings, parsingArgsMessages) = UsingDirectivesSettingsExtractor.process(mergedUsingDirectives)
+
+    // We can provide more accurate position of error by looking for error in AST
+    val additionalMessage = Option.when(!parsingArgsMessages.isEmpty)(createParsingReportMessage(parsingArgsMessages, outerLineOffset, sourceFile))
 
     val mergedSnippet = mergeSnippets(truncatedSnippet, truncatedImports)
     if arg.flag != SCFlags.NoCompile then
@@ -79,9 +88,8 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
         outerColumnOffset,
         additionalCompilerSettings
       )
-      val additionalMessage = Option.when(!parsingArgsMessages.isEmpty)(createParsingReportMessage(parsingArgsMessages, outerLineOffset, wrapped.innerLineOffset, sourceFile))
 
-      val res = compiler.compile(wrapped, arg, sourceFile).pipe(result => result.copy(messages = result.messages ++ additionalMessage))
+      val res = compiler.compile(wrapped, arg, sourceFile).pipe(result => result.copy(messages = result.messages ++ additionalMessage ++ udReporter.getMessages))
       Some(res)
     else None
   }
@@ -107,13 +115,47 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
   private def extractUsingDirectives(snippet: String): UsingDirectives =
     usingDirectivesProcessor.extract(snippet.toCharArray)
 
-  private def createParsingReportMessage(msgs: Seq[String], lineOffset: Int, relativeLine: Int, sourceFile: SourceFile): SnippetCompilerMessage = {
+  private def createParsingReportMessage(msgs: Seq[String], lineOffset: Int, sourceFile: SourceFile): SnippetCompilerMessage = {
     import dotty.tools.dotc.util.Spans._
     val offsetFromLine = sourceFile.lineToOffset(lineOffset - 1)
     val span = Span(offsetFromLine, offsetFromLine)
-    val pos = Some(Position(dotty.tools.dotc.util.SourcePosition(sourceFile, span), relativeLine))
+    val pos = Some(Position(dotty.tools.dotc.util.SourcePosition(sourceFile, span), 0))
     SnippetCompilerMessage(pos, msgs.mkString("\n"), MessageLevel.Warning)
   }
+
+  private class CustomUsingDirectivesReporter(sourceFile: SourceFile, outerLineOffset: Int, outerColumnOffset: Int) extends Reporter:
+    import dotty.tools.dotc.util.Spans._
+
+    private val builder = Seq.newBuilder[SnippetCompilerMessage]
+
+    private def buildMessage(level: MessageLevel, msg: String, position: Option[UDPosition] = None) = {
+      val pos = position.map { p =>
+        val offsetFromLine = sourceFile.lineToOffset(p.getLine() + outerLineOffset - 1)
+        val offsetFromColumn = p.getColumn()
+        val span = Span(
+          offsetFromLine + offsetFromColumn + outerColumnOffset,
+          offsetFromLine + offsetFromColumn + outerColumnOffset
+        )
+        Position(dotty.tools.dotc.util.SourcePosition(sourceFile, span), 0)
+      }
+      SnippetCompilerMessage(pos, msg, level)
+    }
+
+    def getMessages: Seq[SnippetCompilerMessage] =
+      builder.result()
+
+    override def error(msg: String) = builder += buildMessage(MessageLevel.Warning, msg)
+
+    override def warning(msg: String) = builder += buildMessage(MessageLevel.Warning, msg)
+
+    override def error(pos: UDPosition, msg: String) = builder += buildMessage(MessageLevel.Warning, msg, Some(pos))
+
+    override def warning(pos: UDPosition, msg: String) = builder += buildMessage(MessageLevel.Warning, msg, Some(pos))
+
+    override def hasErrors(): Boolean = builder.knownSize != 0
+
+    override def reset(): Unit = { } // We recreate reporter each time so its not needed to reset anything
+
 
 object SnippetChecker:
   case class Import(id: String, snippet: String)

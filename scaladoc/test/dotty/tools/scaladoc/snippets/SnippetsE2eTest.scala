@@ -73,7 +73,7 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
     )
   }
 
-  private def checkMessages(compilationMessages: Seq[SnippetCompilerMessage], messages: Seq[Message], ws: WrappedSnippet) = {
+  private def checkMessages(compilationMessages: Seq[SnippetCompilerMessage], messages: Seq[Message], ws: WrappedSnippet, si: SnippetInfo) = {
     val compilationMessagesWithPos = compilationMessages.collect {
       case m @ SnippetCompilerMessage(Some(_), _, _) => m
     }.toList
@@ -82,7 +82,7 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
 
     def checkRelativeLines(msg: Message, cmsg: SnippetCompilerMessage): Seq[String] =
       val pos = cmsg.position.get
-      if !(pos.relativeLine == pos.srcPos.line + ws.innerLineOffset - ws.outerLineOffset + 1) then Seq(
+      if si.checkRelative && !(pos.relativeLine == pos.srcPos.line + ws.innerLineOffset - ws.outerLineOffset + 1) then Seq(
         s"Expected ${msg.level.text} message at relative line: ${pos.srcPos.line + ws.innerLineOffset - ws.outerLineOffset + 1} " +
           s"but found at ${pos.relativeLine}"
       ) else Nil
@@ -132,7 +132,7 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
       }
       val wrappedSnippet = compilationResult.wrappedSnippet
       checkWrappedSnippet(wrappedSnippet, info)
-      checkMessages(compilationResult.messages, messages, wrappedSnippet)
+      checkMessages(compilationResult.messages, messages, wrappedSnippet, info)
     }
   }
 
@@ -143,13 +143,14 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
 
 object SnippetsE2eTest:
   case class Offset(line: Int, column: Int)
-  case class SnippetInfo(outerOffset: Offset, innerOffset: Offset)
+  case class SnippetInfo(outerOffset: Offset, innerOffset: Offset, checkRelative: Boolean)
   case class Message(level: MessageLevel, offset: Offset)
   object SnippetInfo:
     def apply(str: String): SnippetInfo = str match {
-      case snippetInfoRegex(ol, oc, il, ic) => SnippetInfo(
+      case snippetInfoRegex(ol, oc, il, ic, cr) => SnippetInfo(
         Offset(ol.toInt, oc.toInt),
-        Offset(il.toInt, ic.toInt)
+        Offset(il.toInt, ic.toInt),
+        cr.toInt != 0
       )
     }
 
@@ -160,7 +161,7 @@ object SnippetsE2eTest:
     }
   val snippetInfoRegex = (raw"SNIPPET\(" +
     raw"OUTERLINEOFFSET:(\d+),OUTERCOLUMNOFFSET:(\d+)," +
-    raw"INNERLINEOFFSET:(\d+),INNERCOLUMNOFFSET:(\d+)\)").r
+    raw"INNERLINEOFFSET:(\d+),INNERCOLUMNOFFSET:(\d+),CHECKRELATIVE:(\d)\)").r
 
   val warningRegex = raw"WARNING\(LINE:(\d+),COLUMN:(\d+)\)".r
   val errorRegex = raw"ERROR\(LINE:(\d+),COLUMN:(\d+)\)".r

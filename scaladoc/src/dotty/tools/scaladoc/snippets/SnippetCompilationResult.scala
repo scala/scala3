@@ -14,14 +14,15 @@ case class SnippetCompilationResult(
   result: Option[AbstractFile],
   messages: Seq[SnippetCompilerMessage]
 ):
-  def reportMessages()(using CompilerContext) = messages.foreach {
+  def reportMessages(withErrors: Boolean)(using CompilerContext) = messages.foreach {
     case SnippetCompilerMessage(posOpt, msg, level) =>
       val pos: SrcPos = posOpt.fold(dotty.tools.dotc.util.NoSourcePosition)(_.srcPos)
       level match {
         case MessageLevel.Info => report.log(msg, pos)
         case MessageLevel.Warning => report.warning(msg, pos)
-        case MessageLevel.Error => report.error(msg, pos)
+        case MessageLevel.Error if withErrors => report.error(msg, pos)
         case MessageLevel.Debug => report.log(msg, pos)
+        case _ =>
       }
   }
 

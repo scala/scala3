@@ -135,7 +135,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
       (str: String, imports: Seq[SnippetChecker.Import], lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
           val res = snippetChecker.checkSnippet(str, imports, Some(data), arg, lineOffset, sourceFile)
-          res.filter(r => !r.isSuccessful).foreach(_.reportMessages()(using compilerContext))
+          res.foreach(r => r.reportMessages(!r.isSuccessful)(using compilerContext))
           res
       }
     }
