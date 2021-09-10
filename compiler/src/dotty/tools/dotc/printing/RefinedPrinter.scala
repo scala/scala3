@@ -974,7 +974,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val explicitArgs = args.filterNot(_.symbol.name.is(DefaultGetterName))
         recur(fn) ~ "(" ~ toTextGlobal(explicitArgs, ", ") ~ ")"
       case TypeApply(fn, args) => recur(fn) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
-      case _ => s"@${sym.orElse(tree.symbol).name}"
+      case Select(qual, nme.CONSTRUCTOR) => recur(qual)
+      case New(tpt) => recur(tpt)
+      case _ =>
+        val annotSym = sym.orElse(tree.symbol.enclosingClass)
+        s"@${if annotSym.exists then annotSym.name.toString else t.show}"
     recur(tree)
 
   protected def modText(mods: untpd.Modifiers, sym: Symbol, kw: String, isType: Boolean): Text = { // DD
