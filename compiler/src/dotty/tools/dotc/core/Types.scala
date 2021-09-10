@@ -6093,7 +6093,7 @@ object Types {
   }
 
   object takeAllFilter extends NameFilter {
-    def apply(pre: Type, name: Name)(using Context): Boolean = true
+    def apply(pre: Type, name: Name)(using Context): Boolean = name != nme.CONSTRUCTOR
     def isStable = true
   }
 
