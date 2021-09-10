@@ -473,7 +473,10 @@ object Build {
 
   lazy val `scala3-interfaces` = project.in(file("interfaces")).
     settings(commonJavaSettings).
-    settings(commonMiMaSettings)
+    settings(commonMiMaSettings).
+    settings(
+      versionScheme := Some("semver-spec")
+    )
 
   /** Find an artifact with the given `name` in `classpath` */
   def findArtifact(classpath: Def.Classpath, name: String): File = classpath
@@ -1787,7 +1790,10 @@ object Build {
     def asTastyCore(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyLibrary).
       settings(tastyCoreSettings).
-      settings(disableDocSetting)
+      settings(disableDocSetting).
+      settings(
+        versionScheme := Some("semver-spec")
+      )
 
     def asTastyCoreScala2: Project = project.settings(commonScala2Settings)
 
