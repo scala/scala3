@@ -158,7 +158,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEREFin      Length NameRef qual_Type namespace_Type           -- A reference `qual.name` to a non-local member that's private in `namespace`.
                   RECtype               parent_Type                                -- A wrapper for recursive refined types
                   SUPERtype      Length this_Type underlying_Type                  -- A super type reference to `underlying`
-                  REFINEDtype    Length underlying_Type refinement_NameRef info_Type -- underlying { refinement_name : info }
+                  REFINEDtype    Length refinement_NameRef underlying_Type info_Type -- underlying { refinement_name : info }
                   APPLIEDtype    Length tycon_Type arg_Type*                       -- tycon[args]
                   TYPEBOUNDS     Length lowOrAlias_Type high_Type? Variance*       -- = alias or >: low <: high, possibly with variances of lambda parameters
                   ANNOTATEDtype  Length underlying_Type annotation_Term            -- underlying @ annotation
