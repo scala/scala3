@@ -11,7 +11,7 @@ import StdNames._
 import collection.mutable
 import ast.tpd._
 import reporting.{trace, Message}
-import config.Printers.{gadts, typr}
+import config.Printers.{exhaustivity, gadts, typr}
 import config.Feature
 import typer.Applications._
 import typer.ProtoTypes._
@@ -694,6 +694,8 @@ object TypeOps:
    *  Otherwise, return NoType.
    */
   private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
+    exhaustivity.println(i"instantiate $tp1 to a subtype of $tp2")
+
     // In order for a child type S to qualify as a valid subtype of the parent
     // T, we need to test whether it is possible S <: T.
     //
@@ -783,7 +785,7 @@ object TypeOps:
             this(tref)
           else {
             prefixTVar = WildcardType  // prevent recursive call from assigning it
-            val tref2 = this(tref.applyIfParameterized(tref.typeParams.map(_ => TypeBounds.empty)))
+            val tref2 = inferPrefix(tref.applyIfParameterized(tref.typeParams.map(_ => TypeBounds.empty)))
             prefixTVar = newTypeVar(TypeBounds.upper(tref2))
             prefixTVar
           }
@@ -791,10 +793,13 @@ object TypeOps:
       }
     }
 
-    def inferPrefix(tp: Type) =
+    def inferPrefix(tp: Type): Type =
       val inferThisMap = new InferPrefixMap
       val tvars = tp.typeParams.map(tparam => newTypeVar(tparam.paramInfo.bounds))
-      inferThisMap(tp).appliedTo(tvars)
+      val pt = inferThisMap(tp).appliedTo(tvars)
+      if tp ne pt then
+        exhaustivity.println(i"inferPrefix: $tp -> $pt")
+      pt
 
     val protoTp1 = inferPrefix(tp1)
 
@@ -807,15 +812,41 @@ object TypeOps:
       parent.argInfos.nonEmpty && approximateParent(parent) <:< tp2
     }
 
-    def instantiate(): Type = {
+    def maximizeLoop(): Type =
       maximizeType(protoTp1, NoSpan, fromScala2x = false)
-      wildApprox(protoTp1)
+      exhaustivity.println(i"maximized protoTp1, now: $protoTp1")
+      if variances(protoTp1).forallBinding((tvar, _) => tvar.isInstantiated) then protoTp1
+      else maximizeLoop()
+
+    def instantiate(): Type = {
+      maximizeLoop()
+      val res = wildApprox(protoTp1)
+      exhaustivity.println(i"approximated wildcards in protoTp1, now: $res")
+      res
     }
 
-    if (protoTp1 <:< tp2) instantiate()
-    else {
-      val approxTp2 = inferPrefix(approximateParent(tp2))
-      if (protoTp1 <:< approxTp2 || parentQualify(protoTp1, approxTp2)) instantiate()
+    exhaustivity.println(TypeComparer.explained(_.isSubType(protoTp1, tp2)))
+
+    val isSub = protoTp1 <:< tp2
+    exhaustivity.println(i"$protoTp1 <:< $tp2 = $isSub")
+    if (isSub) {
+      instantiate()
+    } else {
+      val approxTp2E = approximateParent(tp2)
+      val approxTp2  = inferPrefix(approxTp2E)
+      if tp2 ne approxTp2 then
+        exhaustivity.println(i"approximateParent: $tp2 -> $approxTp2E -> $approxTp2")
+        exhaustivity.println(i"      tp2 =${tp2.toString}")
+        exhaustivity.println(i"approxTp2E=${approxTp2E.toString}")
+        exhaustivity.println(i"approxTp2 =${approxTp2.toString}")
+      exhaustivity.println(TypeComparer.explained(_.isSubType(protoTp1, approxTp2)))
+      val isSub2 = protoTp1 <:< approxTp2
+      exhaustivity.println(i"$protoTp1 <:< $approxTp2 = $isSub2")
+      if (isSub2 || {
+        val qual = parentQualify(protoTp1, approxTp2)
+        exhaustivity.println(i"parentQualify($protoTp1, $approxTp2) = $qual")
+        qual
+      }) instantiate()
       else NoType
     }
   }

@@ -21,7 +21,7 @@ object Printers {
   val derive = noPrinter
   val desugar = noPrinter
   val scaladoc = noPrinter
-  val exhaustivity = noPrinter
+  val exhaustivity = default
   val gadts = noPrinter
   val gadtsConstr = noPrinter
   val hk = noPrinter
