@@ -331,7 +331,6 @@ class TreePickler(pickler: TastyPickler) {
       tpt match {
         case _: Template | _: Literal | _: Hole => pickleTree(tpt)
         case _ if tpt.isType => pickleTpt(tpt)
-        case _ => //do nothing
       }
       pickleTreeUnlessEmpty(rhs)
       pickleModifiers(sym, mdef)
