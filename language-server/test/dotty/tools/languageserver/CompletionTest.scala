@@ -857,4 +857,17 @@ class CompletionTest {
         |}""".withSource
       .completion(m1, Set(("show",Method, "(using x$2: x$1.reflect.Printer[x$1.reflect.Tree]): String")))
   }
+
+  @Test def syntheticThis: Unit = {
+    code"""|class Y() {
+           |  def bar: Unit = 
+           |    val argument: Int = ???
+           |    arg${m1}
+           |
+           |  def arg: String = ???
+           |}
+           |""".withSource
+      .completion(m1, Set(("arg", Method, "=> String"),
+                          ("argument", Field, "Int")))
+  }
 }
