@@ -3876,6 +3876,8 @@ object Types {
                   x.declaredVariance == y.declaredVariance))
         && {
           val bs1 = new BinderPairs(this, that, bs)
+          // `paramInfos` and `resType` might still be uninstantiated at this point
+          paramInfos != null && resType != null &&
           paramInfos.equalElements(that.paramInfos, bs1) &&
           resType.equals(that.resType, bs1)
         }
