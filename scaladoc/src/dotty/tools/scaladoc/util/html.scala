@@ -53,6 +53,7 @@ object HTML:
   val span = Tag("span")
   val a = Tag("a")
   val p = Tag("p")
+  val b = Tag("b")
   val h1 = Tag("h1")
   val h2 = Tag("h2")
   val h3 = Tag("h3")

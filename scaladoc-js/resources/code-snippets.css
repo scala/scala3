@@ -176,12 +176,12 @@ input:checked + .slider:before {
   user-select: none;
 }
 
-.included-section {
+.included-section, .using-section {
   display: flex;
   flex-direction: column;
 }
 
-.included-section a {
+.included-section a, .using-section span {
   color: var(--inactive-fg) !important;
   font-size: 0.75em;
 }
@@ -189,6 +189,7 @@ input:checked + .slider:before {
 .included-section b {
   font-weight: bold;
 }
+
 
 .hideable.hidden {
   display: none;
