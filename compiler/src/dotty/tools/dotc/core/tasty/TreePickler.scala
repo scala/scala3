@@ -329,7 +329,7 @@ class TreePickler(pickler: TastyPickler) {
       pickleName(sym.name)
       pickleParams
       tpt match {
-        case _: Template | _: Hole => pickleTree(tpt)
+        case _: Template | _: Literal | _: Hole => pickleTree(tpt)
         case _ if tpt.isType => pickleTpt(tpt)
         case _ => //do nothing
       }
