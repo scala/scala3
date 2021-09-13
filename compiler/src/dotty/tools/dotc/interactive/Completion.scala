@@ -112,10 +112,13 @@ object Completion {
     val completer = new Completer(mode, prefix, pos)
 
     val completions = path match {
-        case Select(qual, _) :: _                              => completer.selectionCompletions(qual)
-        case Import(expr, _) :: _                              => completer.directMemberCompletions(expr)
-        case (_: untpd.ImportSelector) :: Import(expr, _) :: _ => completer.directMemberCompletions(expr)
-        case _                                                 => completer.scopeCompletions
+        // Ignore synthetic select from `This` because in code it was `Ident`
+        // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
+        case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic => completer.scopeCompletions
+        case Select(qual, _) :: _                                    => completer.selectionCompletions(qual)
+        case Import(expr, _) :: _                                    => completer.directMemberCompletions(expr)
+        case (_: untpd.ImportSelector) :: Import(expr, _) :: _       => completer.directMemberCompletions(expr)
+        case _                                                       => completer.scopeCompletions
       }
 
     val describedCompletions = describeCompletions(completions)
