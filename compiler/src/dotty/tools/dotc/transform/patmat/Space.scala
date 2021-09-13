@@ -512,23 +512,28 @@ class SpaceEngine(using Context) extends SpaceLogic {
       if converted == null then tp else ConstantType(converted)
     case _ => tp
 
-  /** Adapt types by performing primitive value boxing.  #12805 */
-  def maybeBox(tp1: Type, tp2: Type): Type =
-    if tp1.classSymbol.isPrimitiveValueClass && !tp2.classSymbol.isPrimitiveValueClass then
-      defn.boxedType(tp1).narrow
-    else tp1
+  def isPrimToBox(tp: Type, pt: Type) =
+    tp.classSymbol.isPrimitiveValueClass && (defn.boxedType(tp).classSymbol eq pt.classSymbol)
+
+  /** Adapt types by performing primitive value unboxing or boxing, or numeric constant conversion.  #12805
+   *
+   *  This makes these isSubType cases work like this:
+   *  {{{
+   *   1      <:< Integer  => (<skolem> : Integer) <:< Integer  = true
+   *  ONE     <:< Int      => (<skolem> : Int)     <:< Int      = true
+   *  Integer <:< (1: Int) => (<skolem> : Int)     <:< (1: Int) = false
+   *  }}}
+   */
+  def adaptType(tp1: Type, tp2: Type): Type = trace(i"adaptType($tp1, $tp2)", show = true) {
+    if      isPrimToBox(tp1, tp2) then defn.boxedType(tp1).narrow
+    else if isPrimToBox(tp2, tp1) then defn.unboxedType(tp1).narrow
+    else convertConstantType(tp1, tp2)
+  }
 
   /** Is `tp1` a subtype of `tp2`?  */
-  def isSubType(_tp1: Type, tp2: Type): Boolean = {
-    val tp1 = maybeBox(convertConstantType(_tp1, tp2), tp2)
-    //debug.println(TypeComparer.explained(_.isSubType(tp1, tp2)))
-    val res = if (ctx.explicitNulls) {
-      tp1 <:< tp2
-    } else {
-      (tp1 != constantNullType || tp2 == constantNullType) && tp1 <:< tp2
-    }
-    debug.println(i"$tp1 <:< $tp2 = $res")
-    res
+  def isSubType(tp1: Type, tp2: Type): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
+    if tp1 == constantNullType && !ctx.explicitNulls then tp2 == constantNullType
+    else adaptType(tp1, tp2) <:< tp2
   }
 
   def isSameUnapply(tp1: TermRef, tp2: TermRef): Boolean =
@@ -911,7 +916,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
   def checkRedundancy(_match: Match): Unit = {
-    val Match(sel, cases) = _match
+    val Match(sel, _) = _match
+    val cases = _match.cases.toIndexedSeq
     debug.println(i"checking redundancy in $_match")
 
     if (!redundancyCheckable(sel)) return
@@ -925,7 +931,14 @@ class SpaceEngine(using Context) extends SpaceLogic {
       else project(selTyp)
     debug.println(s"targetSpace: ${show(targetSpace)}")
 
-    cases.iterator.zipWithIndex.foldLeft(Nil: List[Space]) { case (prevs, (CaseDef(pat, guard, _), i)) =>
+    var i        = 0
+    val len      = cases.length
+    var prevs    = List.empty[Space]
+    var deferred = List.empty[Tree]
+
+    while (i < len) {
+      val CaseDef(pat, guard, _) = cases(i)
+
       debug.println(i"case pattern: $pat")
 
       val curr = project(pat)
@@ -937,18 +950,24 @@ class SpaceEngine(using Context) extends SpaceLogic {
       val covered = simplify(intersect(curr, targetSpace))
       debug.println(s"covered: ${show(covered)}")
 
-      if pat != EmptyTree // rethrow case of catch uses EmptyTree
-        && prev != Empty // avoid isSubspace(Empty, Empty) - one of the previous cases much be reachable
-        && isSubspace(covered, prev)
-      then {
-        if isNullable && i == cases.length - 1 && isWildcardArg(pat) then
-          report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
-        else
+      if prev == Empty && covered == Empty then // defer until a case is reachable
+        deferred ::= pat
+      else {
+        for (pat <- deferred.reverseIterator)
           report.warning(MatchCaseUnreachable(), pat.srcPos)
+        if pat != EmptyTree // rethrow case of catch uses EmptyTree
+            && isSubspace(covered, prev)
+        then {
+          val nullOnly = isNullable && i == len - 1 && isWildcardArg(pat)
+          val msg = if nullOnly then MatchCaseOnlyNullWarning() else MatchCaseUnreachable()
+          report.warning(msg, pat.srcPos)
+        }
+        deferred = Nil
       }
 
       // in redundancy check, take guard as false in order to soundly approximate
-      (if guard.isEmpty then covered else Empty) :: prevs
+      prevs ::= (if guard.isEmpty then covered else Empty)
+      i += 1
     }
   }
 }
