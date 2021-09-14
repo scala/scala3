@@ -66,7 +66,7 @@ object FlexmarkSnippetProcessor:
           }
           .flatten
 
-        val snippet = node.getContentChars.toString.trim
+        val snippet = node.getContentChars.toString
 
         val snippetCompilationResult = cf(snippet, snippetImports, lineOffset, argOverride) match {
           case Some(result @ SnippetCompilationResult(wrapped, _, _, messages)) if !withContext =>

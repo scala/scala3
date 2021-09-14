@@ -60,12 +60,5 @@ class SnippetTestcase3:
     * val a = 2 + 2
     * ```
     *
-    * SNIPPET(OUTERLINEOFFSET:66,OUTERCOLUMNOFFSET:6,INNERLINEOFFSET:5,INNERCOLUMNOFFSET:2,CHECKRELATIVE:0)
-    * WARNING(LINE:66,COLUMN:13)
-    * ```scala sc:compile
-    * @using 123
-    * val a = 2 + 2
-    * ```
-    *
     */
   def bazz: Int = 0

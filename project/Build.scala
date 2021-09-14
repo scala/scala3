@@ -1364,7 +1364,7 @@ object Build {
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.6.7",
         "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site
-        "org.virtuslab" % "using_directives" % "0.0.5-2e8ad0f-SNAPSHOT",
+        "org.virtuslab" % "using_directives" % "0.0.6",
         Dependencies.`jackson-dataformat-yaml`,
 
         "com.novocode" % "junit-interface" % "0.11" % "test",
