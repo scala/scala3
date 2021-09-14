@@ -1,8 +1,8 @@
 -- Error: tests/neg/i10666.scala:8:6 -----------------------------------------------------------------------------------
 8 |class Bar extends Foo { // error
   |      ^
-  |      class Bar needs to be abstract, since def foo: [T <: B](tx: T): Unit in trait Foo is not defined 
+  |      class Bar needs to be abstract, since def foo[T <: B](tx: T): Unit in trait Foo is not defined 
   |      (Note that
-  |       parameter T in def foo: [T <: B](tx: T): Unit in trait Foo does not match
-  |       parameter T in def foo: [T <: A](tx: T): Unit in class Bar
+  |       parameter T in def foo[T <: B](tx: T): Unit in trait Foo does not match
+  |       parameter T in def foo[T <: A](tx: T): Unit in class Bar
   |       class B is a subclass of class A, but method parameter types must match exactly.)

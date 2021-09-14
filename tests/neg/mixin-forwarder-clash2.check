@@ -4,7 +4,7 @@
   |      ^
   |      Name clash between inherited members:
   |      def concat(suffix: Int): X in trait One at line 4 and
-  |      def concat: [Dummy](suffix: Int): Y in trait Two at line 8
+  |      def concat[Dummy](suffix: Int): Y in trait Two at line 8
   |      have the same type after erasure.
   |
   |      Consider adding a @targetName annotation to one of the conflicting definitions

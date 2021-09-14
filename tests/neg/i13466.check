@@ -1,0 +1,11 @@
+-- Error: tests/neg/i13466.scala:9:6 -----------------------------------------------------------------------------------
+9 |given none: SomeTrait[Finally] with {} // error
+  |      ^
+  |      object creation impossible, since:
+  |      it has 3 unimplemented members.
+  |      /** As seen from module class none$, the missing signatures are as follows.
+  |       *  For convenience, these are usable as stub implementations.
+  |       */
+  |        def foo: Finally[Unit] = ???
+  |        def withTV[A]: Finally[A] = ???
+  |        def withTV2[A, B]: Finally[(A, B)] = ???
