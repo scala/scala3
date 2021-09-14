@@ -7,10 +7,17 @@ import annotation.compileTimeOnly
  *  pattern match on it. For example, given a type `Tup <: Tuple`, one can
  *  pattern-match on it as follows:
  *  ```scala
+ *  //{
+ *  type Tup
+ *  inline def f = {
+ *  //}
  *  inline erasedValue[Tup] match {
- *    case _: EmptyTuple => ...
- *    case _: h *: t => ...
+ *    case _: EmptyTuple => ???
+ *    case _: (h *: t) => ???
  *  }
+ *  //{
+ *  }
+ *  //}
  *  ```
  *  This value can only be used in an inline match and the value cannot be used in
  *  the branches.
@@ -21,7 +28,12 @@ def erasedValue[T]: T = ???
 
 /** Used as the initializer of a mutable class or object field, like this:
  *
- *    var x: T = uninitialized
+ *  ```scala
+ *  //{
+ *  type T
+ *  //}
+ *  var x: T = uninitialized
+ *  ```
  *
  *  This signifies that the field is not initialized on its own. It is still initialized
  *  as part of the bulk initialization of the object it belongs to, which assigns zero
@@ -33,7 +45,7 @@ def uninitialized: Nothing = ???
 /** The error method is used to produce user-defined compile errors during inline expansion.
  *  If an inline expansion results in a call error(msgStr) the compiler produces an error message containing the given msgStr.
  *
- *  ```scala
+ *  ```scala sc:fail
  *  error("My error message")
  *  ```
  *  or
@@ -71,13 +83,13 @@ transparent inline def codeOf(arg: Any): String =
  *  inlining and constant folding.
  *
  *  Usage:
- *  ```scala
+ *  ```scala sc:fail
  *  inline def twice(inline n: Int): Int =
  *    requireConst(n) // compile-time assertion that the parameter `n` is a constant
  *    n + n
  *
  *  twice(1)
- *  val m: Int = ...
+ *  val m: Int = ???
  *  twice(m) // error: expected a constant value but found: m
  *  ```
  *  @syntax markdown
@@ -116,7 +128,13 @@ end constValueTuple
 /** Summons first given matching one of the listed cases. E.g. in
  *
  *  ```scala
- *  given B { ... }
+ *  //{
+ *  type A
+ *  trait B
+ *  type C
+ *  inline def f = {
+ *  //}
+ *  given B with { }
  *
  *  summonFrom {
  *    case given A => 1
@@ -124,6 +142,9 @@ end constValueTuple
  *    case given C => 3
  *    case _ => 4
  *  }
+ *  //{
+ *  }
+ *  //}
  *  ```
  *  the returned value would be `2`.
  *  @syntax markdown
