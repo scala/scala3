@@ -1,0 +1,10 @@
+-- Error: tests/neg/i13076.scala:6:6 -----------------------------------------------------------------------------------
+6 |class C[X, Y] extends T[X, Y] {} // error
+  |      ^
+  |      class C needs to be abstract, since:
+  |      it has 2 unimplemented members.
+  |      /** As seen from class C, the missing signatures are as follows.
+  |       *  For convenience, these are usable as stub implementations.
+  |       */
+  |        def f(a: X): Y = ???
+  |        def g(a: X, b: Y): Unit = ???

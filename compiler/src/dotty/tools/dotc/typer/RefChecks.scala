@@ -589,7 +589,7 @@ object RefChecks {
           // Grouping missing methods by the declaring class
           val regrouped = missingMethods.groupBy(_.owner).toList
           def membersStrings(members: List[Symbol]) =
-            members.sortBy(_.name.toString).map(_.showDcl + " = ???")
+            members.sortBy(_.name.toString).map(_.asSeenFrom(clazz.thisType).showDcl + " = ???")
 
           if (regrouped.tail.isEmpty)
             membersStrings(regrouped.head._2)
