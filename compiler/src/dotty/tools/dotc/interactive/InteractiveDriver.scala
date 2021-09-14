@@ -167,6 +167,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       cleanup(t)
       myOpenedTrees(uri) = topLevelTrees(t, source)
       myCompilationUnits(uri) = unit
+      myCtx = myCtx.fresh.setPhase(myInitCtx.base.typerPhase)
 
       reporter.removeBufferedMessages
     }
