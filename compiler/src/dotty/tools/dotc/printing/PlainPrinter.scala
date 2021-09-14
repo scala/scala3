@@ -404,6 +404,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: ExprType =>
         // parameterless methods require special treatment, see #11201
         (if (isParameter) ": => " else ": ") ~ toTextGlobal(tp.widenExpr)
+      case tp: PolyType =>
+        "[" ~ paramsText(tp) ~ "]"
+        ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodType])
+        ~ toTextGlobal(tp.resultType)
       case tp =>
         ": " ~ toTextGlobal(tp)
     }
