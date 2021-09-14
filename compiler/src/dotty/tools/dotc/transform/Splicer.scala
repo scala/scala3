@@ -422,6 +422,10 @@ object Splicer {
         case _: NoSuchMethodException =>
           val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
           throw new StopInterpretation(msg, pos)
+        case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
+            if (ctx.settings.XprintSuspension.value)
+              report.echo(i"suspension triggered by a dependency on $sym", pos)
+            ctx.compilationUnit.suspend() // this throws a SuspendException
       }
 
     private def stopIfRuntimeException[T](thunk: => T, method: JLRMethod): T =
