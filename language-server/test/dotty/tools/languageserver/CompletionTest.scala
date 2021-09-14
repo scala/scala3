@@ -857,4 +857,20 @@ class CompletionTest {
         |}""".withSource
       .completion(m1, Set(("show",Method, "(using x$2: x$1.reflect.Printer[x$1.reflect.Tree]): String")))
   }
+
+  @Test def concatMethodWithImplicits: Unit = {
+    code"""|object A {
+           |  Array.concat${m1}
+           |}""".withSource
+      .completion(
+          m1,
+          Set(
+            (
+              "concat",
+              Method,
+              "[T](xss: Array[T]*)(implicit evidence$11: scala.reflect.ClassTag[T]): Array[T]"
+            )
+          )
+        )
+  }
 }
