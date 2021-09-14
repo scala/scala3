@@ -298,7 +298,7 @@ import transform.SymUtils._
       val maxDist = 3  // maximal number of differences to be considered for a hint
       val missing = name.show
 
-      // The names of all non-synthetic, non-private members of `site`
+      // The symbols of all non-synthetic, non-private members of `site`
       // that are of the same type/term kind as the missing member.
       def candidates: Set[Symbol] =
         for
@@ -323,13 +323,13 @@ import transform.SymUtils._
             else (dist(j - 1)(i) min dist(j)(i - 1) min dist(j - 1)(i - 1)) + 1
         dist(s2.length)(s1.length)
 
-      // A list of possible candidate strings with their Levenstein distances
+      // A list of possible candidate symbols with their Levenstein distances
       // to the name of the missing member
       def closest: List[(Int, Symbol)] = candidates
         .toList
-        .map(n => (distance(n.name.show, missing), n))
-        .filter((d, n) => d <= maxDist && d < missing.length && d < n.name.show.length)
-        .sortBy((d, n) => (d, n.name.show))  // sort by distance first, alphabetically second
+        .map(sym => (distance(sym.name.show, missing), sym))
+        .filter((d, sym) => d <= maxDist && d < missing.length && d < sym.name.show.length)
+        .sortBy((d, sym) => (d, sym.name.show))  // sort by distance first, alphabetically second
 
       val enumClause =
         if ((name eq nme.values) || (name eq nme.valueOf)) && site.classSymbol.companionClass.isEnumClass then
@@ -348,14 +348,14 @@ import transform.SymUtils._
       val finalAddendum =
         if addendum.nonEmpty then prefixEnumClause(addendum)
         else closest match
-          case (d, n) :: _ =>
+          case (d, sym) :: _ =>
             val siteName = site match
               case site: NamedType => site.name.show
               case site => i"$site"
             val showName =
               // Add .type to the name if it is a module
-              if n.isClass && n.is(Module) then s"${n.name.show}.type"
-              else n.name.show
+              if sym.is(ModuleClass) then s"${sym.name.show}.type"
+              else sym.name.show
             s" - did you mean $siteName.$showName?$enumClause"
           case Nil => prefixEnumClause("")
 

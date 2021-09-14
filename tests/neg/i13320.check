@@ -1,0 +1,12 @@
+-- [E008] Not Found Error: tests/neg/i13320.scala:8:24 -----------------------------------------------------------------
+8 |    type t = Option[Foo.Boo] // error
+  |                    ^^^^^^^
+  |                    type Boo is not a member of object Foo - did you mean Foo.Boo.type?
+-- [E008] Not Found Error: tests/neg/i13320.scala:4:11 -----------------------------------------------------------------
+4 |var x: Foo.Booo = Foo.Booo // error // error
+  |       ^^^^^^^^
+  |       type Booo is not a member of object Foo - did you mean Foo.Boo.type?
+-- [E008] Not Found Error: tests/neg/i13320.scala:4:22 -----------------------------------------------------------------
+4 |var x: Foo.Booo = Foo.Booo // error // error
+  |                  ^^^^^^^^
+  |                  value Booo is not a member of object Foo - did you mean Foo.Boo?
