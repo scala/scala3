@@ -3,7 +3,7 @@ package dotty.tools
 
 import scala.annotation.tailrec
 import scala.io.Source
-import scala.util.Try
+import scala.util.{ Try, Success, Failure }
 import java.net.URLClassLoader
 import sys.process._
 import java.io.File
@@ -21,6 +21,7 @@ enum ExecuteMode:
   case Script
   case Repl
   case Run
+  case PossibleRun
 
 case class Settings(
   verbose: Boolean = false,
@@ -30,19 +31,22 @@ case class Settings(
   javaArgs: List[String] = List.empty,
   scalaArgs: List[String] = List.empty,
   residualArgs: List[String] = List.empty,
+  possibleEntryPaths: List[String] = List.empty,
   scriptArgs: List[String] = List.empty,
   targetScript: String = "",
+  targetFqName: String = "",
   save: Boolean = false,
+  modeShouldBePossibleRun: Boolean = false,
   modeShouldBeRun: Boolean = false,
   compiler: Boolean = false,
 ) {
-  def withExecuteMode(em: ExecuteMode): Settings = this.executeMode match
-    case ExecuteMode.Guess =>
-      this.copy(executeMode = em)
-    case _ =>
-      println(s"execute_mode==[$executeMode], attempted overwrite by [$em]")
-      this.copy(exitCode = 1)
-  end withExecuteMode
+  def withExecuteMode(em: ExecuteMode): Settings = //this.executeMode match
+    // case ExecuteMode.Guess =>
+    this.copy(executeMode = em)
+  //   case _ =>
+  //     println(s"execute_mode==[$executeMode], attempted overwrite by [$em]")
+  //     this.copy(exitCode = 1)
+  // end withExecuteMode
 
   def withScalaArgs(args: String*): Settings =
     this.copy(scalaArgs = scalaArgs.appendedAll(args.toList))
@@ -52,6 +56,9 @@ case class Settings(
 
   def withResidualArgs(args: String*): Settings =
     this.copy(residualArgs = residualArgs.appendedAll(args.toList))
+
+  def withPossibleEntryPaths(args: String*): Settings =
+    this.copy(possibleEntryPaths = possibleEntryPaths.appendedAll(args.toList))
 
   def withScriptArgs(args: String*): Settings =
     this.copy(scriptArgs = scriptArgs.appendedAll(args.toList))
@@ -64,8 +71,14 @@ case class Settings(
         this.copy(exitCode = 2)
   end withTargetScript
 
+  def withTargetFqName(targetFqName: String): Settings =
+    this.copy(targetFqName = targetFqName)
+
   def withSave: Settings =
     this.copy(save = true)
+
+  def withModeShouldBePossibleRun: Settings =
+    this.copy(modeShouldBePossibleRun = true)
 
   def withModeShouldBeRun: Settings =
     this.copy(modeShouldBeRun = true)
@@ -85,8 +98,8 @@ object MainGenericRunner {
   def process(args: List[String], settings: Settings): Settings = args match
     case Nil =>
       settings
-    case "-run" :: tail =>
-      process(tail, settings.withExecuteMode(ExecuteMode.Run))
+    case "-run" :: fqName :: tail =>
+      process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetFqName(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
       process(tail, settings.copy(classPath = settings.classPath.appended(cp)))
     case ("-version" | "--version") :: _ =>
@@ -120,7 +133,7 @@ object MainGenericRunner {
           .withTargetScript(arg)
           .withScriptArgs(tail*)
       else
-        val newSettings = if arg.startsWith("-") then settings else settings.withModeShouldBeRun
+        val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
 
   def main(args: Array[String]): Unit =
@@ -129,12 +142,24 @@ object MainGenericRunner {
     val settings = process(allArgs.toList, Settings())
     if settings.exitCode != 0 then System.exit(settings.exitCode)
 
-    def run(mode: ExecuteMode): Unit = mode match
+    def run(settings: Settings): Unit = settings.executeMode match
       case ExecuteMode.Repl =>
         val properArgs =
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs
         repl.Main.main(properArgs.toArray)
+
+      case ExecuteMode.PossibleRun =>
+        val targetFqName = settings.possibleEntryPaths.find { entryPath =>
+          Try(Thread.currentThread().getContextClassLoader.loadClass(entryPath)) match
+            case Failure(_) => false
+            case Success(_) => true
+        }
+        targetFqName match
+          case Some(fqName) =>
+            run(settings.withTargetFqName(fqName).withResidualArgs(settings.residualArgs.filter { _ != fqName }*).withExecuteMode(ExecuteMode.Run))
+          case None =>
+            run(settings.withExecuteMode(ExecuteMode.Repl))
       case ExecuteMode.Run =>
         val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
 
@@ -146,7 +171,7 @@ object MainGenericRunner {
             cp
         val newClasspath = (settings.classPath ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
 
-        val res = ObjectRunner.runAndCatch(newClasspath, settings.residualArgs.head, settings.residualArgs.drop(1)).flatMap {
+        val res = ObjectRunner.runAndCatch(newClasspath, settings.targetFqName, settings.residualArgs).flatMap {
           case ex: ClassNotFoundException if ex.getMessage == settings.residualArgs.head =>
             val file = settings.residualArgs.head
             Jar(file).mainClass match
@@ -167,12 +192,14 @@ object MainGenericRunner {
             ++ settings.scriptArgs
         scripting.Main.main(properArgs.toArray)
       case ExecuteMode.Guess =>
-        if settings.modeShouldBeRun then
-          run(ExecuteMode.Run)
+        if settings.modeShouldBePossibleRun then
+          run(settings.withExecuteMode(ExecuteMode.PossibleRun))
+        else if settings.modeShouldBeRun then
+          run(settings.withExecuteMode(ExecuteMode.Run))
         else
-          run(ExecuteMode.Repl)
+          run(settings.withExecuteMode(ExecuteMode.Repl))
 
-    run(settings.executeMode)
+    run(settings)
 
 
   def errorFn(str: String, e: Option[Throwable] = None, isFailure: Boolean = true): Boolean = {
