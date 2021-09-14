@@ -33,7 +33,7 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
 
   // These constants were found empirically to make snippet compiler
   // report errors in the same position as main compiler.
-  private val constantLineOffset = 3
+  private val constantLineOffset = 2
   private val constantColumnOffset = 4
 
   def checkSnippet(

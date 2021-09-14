@@ -67,6 +67,7 @@ case class PreparsedComment(
   hideImplicitConversions: List[String],
   shortDescription:        List[String],
   syntax:                  List[String],
+  strippedLinesBeforeNo:   Int,
 )
 
 case class DokkaCommentBody(summary: Option[DocPart], body: DocPart)
@@ -78,7 +79,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
   protected def markupToDokkaCommentBody(t: T): DokkaCommentBody
   protected def filterEmpty(xs: List[String]): List[T]
   protected def filterEmpty(xs: SortedMap[String, String]): SortedMap[String, T]
-  protected def processSnippets(t: T): T
+  protected def processSnippets(t: T, preparsed: PreparsedComment): T
 
   lazy val snippetChecker = dctx.snippetChecker
 
@@ -141,7 +142,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
 
   final def parse(preparsed: PreparsedComment): Comment =
     val markup = stringToMarkup(preparsed.body)
-    val body = markupToDokkaCommentBody(processSnippets(markup))
+    val body = markupToDokkaCommentBody(processSnippets(markup, preparsed))
     Comment(
       body                    = body.body,
       short                   = body.summary,
@@ -193,8 +194,8 @@ class MarkdownCommentParser(repr: Repr)(using dctx: DocContext)
       .filterNot { case (_, v) => v.isEmpty }
       .mapValues(stringToMarkup).to(SortedMap)
 
-  def processSnippets(root: mdu.Node): mdu.Node =
-    FlexmarkSnippetProcessor.processSnippets(root, snippetCheckingFunc(owner), withContext = true)
+  def processSnippets(root: mdu.Node, preparsed: PreparsedComment): mdu.Node =
+    FlexmarkSnippetProcessor.processSnippets(root, Some(preparsed), snippetCheckingFunc(owner), withContext = true)
 }
 
 class WikiCommentParser(repr: Repr)(using DocContext)
@@ -249,6 +250,6 @@ class WikiCommentParser(repr: Repr)(using DocContext)
     xs.view.mapValues(stringToMarkup).to(SortedMap)
       .filterNot { case (_, v) => v.blocks.isEmpty }
 
-  def processSnippets(root: wiki.Body): wiki.Body =
+  def processSnippets(root: wiki.Body, preparsed: PreparsedComment): wiki.Body =
     // Currently not supported
     root

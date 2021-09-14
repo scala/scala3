@@ -8,9 +8,10 @@ import com.vladsch.flexmark.util.options.MutableDataSet
 import collection.JavaConverters._
 
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
+import dotty.tools.scaladoc.tasty.comments.PreparsedComment
 
 object FlexmarkSnippetProcessor:
-  def processSnippets(root: mdu.Node, checkingFunc: => SnippetChecker.SnippetCheckingFunc, withContext: Boolean)(using CompilerContext): mdu.Node = {
+  def processSnippets(root: mdu.Node, preparsed: Option[PreparsedComment], checkingFunc: => SnippetChecker.SnippetCheckingFunc, withContext: Boolean)(using CompilerContext): mdu.Node = {
     lazy val cf: SnippetChecker.SnippetCheckingFunc = checkingFunc
 
     val nodes = root.getDescendants().asScala.collect {
@@ -18,7 +19,7 @@ object FlexmarkSnippetProcessor:
     }.toList
 
     nodes.foldLeft[Map[String, String]](Map()) { (snippetMap, node) =>
-      val lineOffset = node.getStartLineNumber
+      val lineOffset = node.getStartLineNumber + preparsed.fold(0)(_.strippedLinesBeforeNo)
       val info = node.getInfo.toString.split(" ")
       if info.contains("scala") then {
         val argOverride = info
