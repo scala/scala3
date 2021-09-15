@@ -2790,27 +2790,7 @@ class JSCodeGen()(using genCtx: Context) {
       args: List[Tree]): js.Tree = {
     implicit val pos = tree.span
 
-    val arg = args.head
-
-    /* Primitive number types such as scala.Int have a
-     *   def +(s: String): String
-     * method, which is why we have to box the lhs sometimes.
-     * Otherwise, both lhs and rhs are already reference types (Any or String)
-     * so boxing is not necessary (in particular, rhs is never a primitive).
-     */
-    assert(!isPrimitiveValueType(receiver.tpe) || arg.tpe.isRef(defn.StringClass))
-    assert(!isPrimitiveValueType(arg.tpe))
-
-    val genLhs = {
-      val genLhs0 = genExpr(receiver)
-      // Box the receiver if it is a primitive value
-      if (!isPrimitiveValueType(receiver.tpe)) genLhs0
-      else makePrimitiveBox(genLhs0, receiver.tpe)
-    }
-
-    val genRhs = genExpr(arg)
-
-    js.BinaryOp(js.BinaryOp.String_+, genLhs, genRhs)
+    js.BinaryOp(js.BinaryOp.String_+, genExpr(receiver), genExpr(args.head))
   }
 
   /** Gen JS code for a call to Any.## */

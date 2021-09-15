@@ -44,6 +44,14 @@ class RegressionTestScala3 {
     assertEquals(1, X_Issue13221.I.i)
     assertEquals(1, X_Issue13221.blah)
   }
+
+  @Test def primitivePlusStringThatIsATermRefIssue13518(): Unit = {
+    def charPlusString(x: String): String = 'a' + x
+    assertEquals("abc", charPlusString("bc"))
+
+    def intPlusString(x: String): String = 5 + x
+    assertEquals("5bc", intPlusString("bc"))
+  }
 }
 
 object RegressionTestScala3 {
