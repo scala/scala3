@@ -20,6 +20,8 @@ window.addEventListener("DOMContentLoaded", () => {
     $(this).parent().toggleClass("expanded")
   });
 
+  document.querySelectorAll("#sideMenu2 a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
+
   $('.names .tab').on('click', function() {
     parent = $(this).parents(".tabs").first()
     shown = $(this).hasClass('selected')

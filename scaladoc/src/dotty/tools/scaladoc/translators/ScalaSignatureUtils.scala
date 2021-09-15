@@ -75,8 +75,9 @@ trait SignatureBuilder extends ScalaSignatureUtils {
   def modifiersAndVisibility(t: Member, kind: String) =
     val (prefixMods, suffixMods) = t.modifiers.partition(_.prefix)
     val all = prefixMods.map(_.name) ++ Seq(t.visibility.asSignature) ++ suffixMods.map(_.name)
-
-    text(all.toSignatureString()).text(kind + " ")
+    val filtered = all.filter(_.trim.nonEmpty)
+    val intermediate = if filtered.nonEmpty then text(filtered.toSignatureString()) else this
+    intermediate.text(kind + " ")
 
   def generics(on: Seq[TypeParameter]) = list(on.toList, "[", "]"){ (bdr, e) =>
     bdr.annotationsInline(e).text(e.variance).memberName(e.name, e.dri).signature(e.signature)
