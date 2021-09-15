@@ -15,6 +15,7 @@ import dotty.tools.dotc.config.Properties.envOrNone
 import java.util.jar._
 import java.util.jar.Attributes.Name
 import dotty.tools.io.Jar
+import dotty.tools.runner.ScalaClassLoader
 
 enum ExecuteMode:
   case Guess
@@ -34,19 +35,19 @@ case class Settings(
   possibleEntryPaths: List[String] = List.empty,
   scriptArgs: List[String] = List.empty,
   targetScript: String = "",
-  targetFqName: String = "",
+  targetToRun: String = "",
   save: Boolean = false,
   modeShouldBePossibleRun: Boolean = false,
   modeShouldBeRun: Boolean = false,
   compiler: Boolean = false,
 ) {
-  def withExecuteMode(em: ExecuteMode): Settings = //this.executeMode match
-    // case ExecuteMode.Guess =>
-    this.copy(executeMode = em)
-  //   case _ =>
-  //     println(s"execute_mode==[$executeMode], attempted overwrite by [$em]")
-  //     this.copy(exitCode = 1)
-  // end withExecuteMode
+  def withExecuteMode(em: ExecuteMode): Settings = this.executeMode match
+    case ExecuteMode.Guess | ExecuteMode.PossibleRun =>
+      this.copy(executeMode = em)
+    case _ =>
+      println(s"execute_mode==[$executeMode], attempted overwrite by [$em]")
+      this.copy(exitCode = 1)
+  end withExecuteMode
 
   def withScalaArgs(args: String*): Settings =
     this.copy(scalaArgs = scalaArgs.appendedAll(args.toList))
@@ -71,8 +72,8 @@ case class Settings(
         this.copy(exitCode = 2)
   end withTargetScript
 
-  def withTargetFqName(targetFqName: String): Settings =
-    this.copy(targetFqName = targetFqName)
+  def withTargetToRun(targetToRun: String): Settings =
+    this.copy(targetToRun = targetToRun)
 
   def withSave: Settings =
     this.copy(save = true)
@@ -99,7 +100,7 @@ object MainGenericRunner {
     case Nil =>
       settings
     case "-run" :: fqName :: tail =>
-      process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetFqName(fqName))
+      process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
       process(tail, settings.copy(classPath = settings.classPath.appended(cp)))
     case ("-version" | "--version") :: _ =>
@@ -150,14 +151,17 @@ object MainGenericRunner {
         repl.Main.main(properArgs.toArray)
 
       case ExecuteMode.PossibleRun =>
-        val targetFqName = settings.possibleEntryPaths.find { entryPath =>
-          Try(Thread.currentThread().getContextClassLoader.loadClass(entryPath)) match
-            case Failure(_) => false
-            case Success(_) => true
+        val newClasspath = (settings.classPath :+ ".").map(File(_).toURI.toURL)
+        import dotty.tools.runner.RichClassLoader._
+        val newClassLoader = ScalaClassLoader.fromURLsParallelCapable(newClasspath)
+        val targetToRun = settings.possibleEntryPaths.to(LazyList).find { entryPath =>
+          newClassLoader.tryToLoadClass(entryPath).orElse {
+            Option.when(Jar.isJarOrZip(dotty.tools.io.Path(entryPath)))(Jar(entryPath).mainClass).flatten
+          }.isDefined
         }
-        targetFqName match
+        targetToRun match
           case Some(fqName) =>
-            run(settings.withTargetFqName(fqName).withResidualArgs(settings.residualArgs.filter { _ != fqName }*).withExecuteMode(ExecuteMode.Run))
+            run(settings.withTargetToRun(fqName).withResidualArgs(settings.residualArgs.filter { _ != fqName }*).withExecuteMode(ExecuteMode.Run))
           case None =>
             run(settings.withExecuteMode(ExecuteMode.Repl))
       case ExecuteMode.Run =>
@@ -171,9 +175,9 @@ object MainGenericRunner {
             cp
         val newClasspath = (settings.classPath ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
 
-        val res = ObjectRunner.runAndCatch(newClasspath, settings.targetFqName, settings.residualArgs).flatMap {
-          case ex: ClassNotFoundException if ex.getMessage == settings.residualArgs.head =>
-            val file = settings.residualArgs.head
+        val res = ObjectRunner.runAndCatch(newClasspath, settings.targetToRun, settings.residualArgs).flatMap {
+          case ex: ClassNotFoundException if ex.getMessage == settings.targetToRun =>
+            val file = settings.targetToRun
             Jar(file).mainClass match
               case Some(mc) =>
                 ObjectRunner.runAndCatch(newClasspath :+ File(file).toURI.toURL, mc, settings.residualArgs)
