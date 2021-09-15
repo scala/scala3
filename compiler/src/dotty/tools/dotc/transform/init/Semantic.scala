@@ -74,11 +74,7 @@ object Semantic {
 
     def ensureObjectExists()(using Heap): this.type =
       if heap.contains(this) then this
-      else {
-        val obj = Objekt(this.klass, fields = Map.empty, outers = Map(this.klass -> this.outer))
-        heap.update(this, obj)
-        this
-      }
+      else ensureFresh()
 
     def ensureFresh()(using Heap): this.type =
       val obj = Objekt(this.klass, fields = Map.empty, outers = Map(this.klass -> this.outer))
@@ -107,31 +103,40 @@ object Semantic {
   }
 
   /** A reference to the object under initialization pointed by `this` */
-  case class ThisRef(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using @constructorOnly h: Heap) extends Ref {
-    ensureObjectExists()
-  }
+  case class ThisRef(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref
 
   /** An object with all fields initialized but reaches objects under initialization
    *
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
-  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value])(using @constructorOnly h: Heap) extends Ref {
-    ensureObjectExists()
+  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref {
+
+    /** If a warm value is in the process of populating parameters, class bodies are not executed. */
+    private var populatingParams: Boolean = false
+
+    def isPopulatingParams = populatingParams
 
     /** Ensure that outers and class parameters are initialized.
      *
      *  Fields in class body are not initialized.
      */
-    def ensureInit(): Contextual[this.type] =
+    def populateParams(): Contextual[this.type] = log("populating parameters", printer, (_: Warm).objekt.toString) {
+      assert(!populatingParams, "the object is already populating parameters")
       // Somehow Dotty uses the one in the class parameters
+      populatingParams = true
       given Heap = state.heap
-      if objekt.outers.size <= 1 then
-        state.populateWarm {
-          val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-          this.callConstructor(ctor, args.map(arg => ArgInfo(arg, EmptyTree)), tpl)
-        }
-      end if
+      val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+      this.callConstructor(ctor, args.map(arg => ArgInfo(arg, EmptyTree)), tpl)
+      populatingParams = false
       this
+    }
+
+    def ensureObjectExistsAndPopulated(): Contextual[this.type] =
+      if heap.contains(this) then this
+      else ensureFresh().populateParams()
+
+    def ensureObjectFreshAndPopulated(): Contextual[this.type] =
+      ensureFresh().populateParams()
   }
 
   /** A function value */
@@ -187,15 +192,20 @@ object Semantic {
        */
       def prepare(heapBefore: Heap)(using State, Context) =
         this.map.keys.foreach {
-          case warm: Warm if !heapBefore.contains(warm) =>
-            given Env = Env.empty
-            given Trace = Trace.empty
-            given Promoted = Promoted.empty
-            warm.ensureFresh().ensureInit()
+          case warm: Warm =>
+            if heapBefore.contains(warm) then
+              assert(heapBefore(warm) == this(warm))
+            else
+              // We cannot simply remove the object, as the values in the
+              // updated cache may refer to the warm object.
+              given Env = Env.empty
+              given Trace = Trace.empty
+              given Promoted = Promoted.empty
+              warm.ensureObjectFreshAndPopulated()
           case _ =>
         }
 
-        // ThisRef might be used in `ensureInit`
+        // ThisRef might be used in `populateParams`
         this.map.keys.foreach {
           case thisRef: ThisRef =>
             this.map = this.map - thisRef
@@ -336,10 +346,7 @@ object Semantic {
       def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result): Contextual[Result] =
         val assumeValue: Value =
           if last.contains(value, expr) then
-            // The object corresponding to ThisRef may not exist in the heap. See `Heap.prepare`.
-            last.get(value, expr) match
-            case ref: ThisRef => ref.ensureObjectExists()
-            case v => v
+            last.get(value, expr)
           else
             last.put(value, expr, Hot)
             Hot
@@ -428,16 +435,7 @@ object Semantic {
 
 // ----- State --------------------------------------------
   /** Global state of the checker */
-  class State(val cache: Cache, val heap: Heap, val workList: WorkList, var isPopulatingWarm: Boolean = false) {
-    // TODO: problematic for nested `init`.
-    def populateWarm[T](fun: State ?=> T) = {
-      val last = isPopulatingWarm
-      isPopulatingWarm = true
-      val res = fun(using this)
-      isPopulatingWarm = last
-      res
-    }
-  }
+  class State(val cache: Cache, val heap: Heap, val workList: WorkList)
 
   given (using s: State): Heap = s.heap
   given (using s: State): Cache = s.cache
@@ -619,44 +617,44 @@ object Semantic {
           report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, source)
           Result(Hot, Nil)
 
-        case ref: Warm if state.isPopulatingWarm =>
-            val trace1 = trace.add(source)
-            if ctor.hasSource then
-              given Trace = trace1
-              val cls = ctor.owner.enclosingClass.asClass
-              val ddef = ctor.defTree.asInstanceOf[DefDef]
-              given Env = Env(ddef, args.map(_.value).widenArgs)
-              if ctor.isPrimaryConstructor then
-                val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                init(tpl, ref, cls)
-              else
-                val initCall = ddef.rhs match
-                  case Block(call :: _, _) => call
-                  case call => call
-                eval(initCall, ref, cls)
-              end if
+        case ref: Warm if ref.isPopulatingParams =>
+          val trace1 = trace.add(source)
+          if ctor.hasSource then
+            given Trace = trace1
+            val cls = ctor.owner.enclosingClass.asClass
+            val ddef = ctor.defTree.asInstanceOf[DefDef]
+            given Env = Env(ddef, args.map(_.value).widenArgs)
+            if ctor.isPrimaryConstructor then
+              val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+              init(tpl, ref, cls)
             else
-              Result(Hot, Nil)
+              val initCall = ddef.rhs match
+                case Block(call :: _, _) => call
+                case call => call
+              eval(initCall, ref, cls)
+            end if
+          else
+            Result(Hot, Nil)
 
         case ref: Ref =>
-            val trace1 = trace.add(source)
-            if ctor.hasSource then
-              given Trace = trace1
-              val cls = ctor.owner.enclosingClass.asClass
-              val ddef = ctor.defTree.asInstanceOf[DefDef]
-              given Env= Env(ddef, args.map(_.value).widenArgs)
-              if ctor.isPrimaryConstructor then
-                val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                val res = withTrace(trace.add(cls.defTree)) { eval(tpl, ref, cls, cacheResult = true) }
-                Result(ref, res.errors)
-              else
-                eval(ddef.rhs, ref, cls, cacheResult = true)
-            else if ref.canIgnoreMethodCall(ctor) then
-              Result(Hot, Nil)
+          val trace1 = trace.add(source)
+          if ctor.hasSource then
+            given Trace = trace1
+            val cls = ctor.owner.enclosingClass.asClass
+            val ddef = ctor.defTree.asInstanceOf[DefDef]
+            given Env= Env(ddef, args.map(_.value).widenArgs)
+            if ctor.isPrimaryConstructor then
+              val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+              val res = withTrace(trace.add(cls.defTree)) { eval(tpl, ref, cls, cacheResult = true) }
+              Result(ref, res.errors)
             else
-              // no source code available
-              val error = CallUnknown(ctor, source, trace.toVector)
-              Result(Hot, error :: Nil)
+              eval(ddef.rhs, ref, cls, cacheResult = true)
+          else if ref.canIgnoreMethodCall(ctor) then
+            Result(Hot, Nil)
+          else
+            // no source code available
+            val error = CallUnknown(ctor, source, trace.toVector)
+            Result(Hot, error :: Nil)
       }
 
     }
@@ -694,7 +692,7 @@ object Semantic {
           val outer = ref match
             case warm @ Warm(_, _: Warm, _, _) =>
               // the widened warm object might not exist in the heap
-              warm.copy(outer = Cold).ensureObjectExists().ensureInit()
+              warm.copy(outer = Cold).ensureObjectExistsAndPopulated()
             case _ => ref
 
           val argsWidened = args.map(_.value).widenArgs
@@ -1397,7 +1395,7 @@ object Semantic {
     var fieldsChanged = true
 
     // class body
-    if !state.isPopulatingWarm then tpl.body.foreach {
+    if !thisV.isWarm || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         given Env = Env.empty
         val res = eval(vdef.rhs, thisV, klass)
