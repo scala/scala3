@@ -198,7 +198,8 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
     def renderNested(nav: Page, toplevel: Boolean = false): (Boolean, AppliedTag) =
       val isSelected = nav.link.dri == pageLink.dri
-      def linkHtml(expanded: Boolean = false) =
+
+      def linkHtml(expanded: Boolean = false, withArrow: Boolean = false) =
         val attrs: Seq[String] = Seq(
           Option.when(isSelected)("selected"),
           Option.when(expanded)("expanded")
@@ -207,19 +208,23 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           case m: Member => navigationIcon(m)
           case _ => Nil
         }
-        Seq(a(href := pathToPage(pageLink.dri, nav.link.dri), cls := attrs.mkString(" "))(icon, span(nav.link.name)))
+        Seq(
+          span(cls := "nav-header " + attrs.mkString(" "))(
+            if withArrow then Seq(span(cls := "ar")) else Nil,
+            a(href := pathToPage(pageLink.dri, nav.link.dri))(icon, span(nav.link.name))
+          )
+        )
 
       nav.children match
-        case Nil => isSelected -> div(linkHtml())
+        case Nil => isSelected -> div(cls := s"nav-item ${if isSelected then "expanded" else ""}")(linkHtml())
         case children =>
           val nested = children.map(renderNested(_))
-          val expanded = nested.exists(_._1) || nav.link == pageLink
+          val expanded = nested.exists(_._1) || isSelected
           val attr =
-            if expanded || isSelected || toplevel then Seq(cls := "expanded") else Nil
+            if expanded || isSelected || toplevel then Seq(cls := "nav-item expanded") else Seq(cls := "nav-item")
           (isSelected || expanded) -> div(attr)(
-            linkHtml(expanded),
-            if toplevel then Nil else span(cls := "ar"),
-            nested.map(_._2)
+            linkHtml(expanded, true),
+            div(cls := "content")(nested.map(_._2))
           )
 
     renderNested(navigablePage, toplevel = true)._2
@@ -295,10 +300,8 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
         ),
         div(id := "scaladoc-searchBar"),
         main(
-          div(id := "content")(
-            parentsHtml,
-            div(content),
-          )
+          parentsHtml,
+          div(id := "content")(content),
         ),
         footer(
           div(id := "generated-by")(

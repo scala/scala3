@@ -34,19 +34,25 @@ body, button, input {
   width: var(--side-width);
   height: 100%;
   border-right: none;
-  background: var(--leftbar-bg);
+  background: var(--body-bg);
   display: flex;
   flex-direction: column;
   z-index: 5;
-  border-right: solid var(--leftbar-border);
+  border-right: solid 1px var(--leftbar-border);
 }
 main {
   min-height: calc(100vh - var(--footer-height) - 24px);
-}
-#content {
   margin-left: var(--side-width);
   padding: var(--content-padding);
   padding-bottom: calc(24px + var(--footer-height));
+
+  display:flex;
+  flex-direction: column;
+  align-items: center;
+}
+#content {
+  max-width: 1100px;
+  width: 100%;
 }
 
 /* Text */
@@ -97,7 +103,6 @@ a, a:visited, span[data-unresolved-link] {
 }
 a:hover, a:active {
   color: var(--link-hover-fg);
-  text-decoration: underline;
 }
 
 /* Tables */
@@ -144,7 +149,6 @@ th {
 }
 
 #logo .projectVersion {
-  color: var(--grey600);
   font-size: 12px;
   display: flex;
   padding-left: 2px;
@@ -186,19 +190,35 @@ th {
 }
 
 /* divs in sidebar represent entry and its children */
-#sideMenu2 div {
-  position: relative;
-  display: none;
+#sideMenu2 .content {
   padding-left: 0.8em;
 }
 
-#sideMenu2 div.expanded {
+#sideMenu2 > div {
+  padding-left: 0em;
+}
+
+#sideMenu2 .nav-item {
+  display: none;
+}
+
+#sideMenu2 > .nav-item {
   display: block;
 }
 
-/* hide children of hidden entries even if are expanded */
-#sideMenu2 div>div.expanded {
-  display: none;
+#sideMenu2 .nav-header a:only-child {
+  padding-left: 20px;
+}
+
+#sideMenu2 .nav-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-radius: 3px;
+}
+
+#sideMenu2 .nav-item.expanded > .content > .nav-item {
+  display: block;
 }
 
 /* show direct children of currently exmanded node*/
@@ -220,18 +240,11 @@ th {
 #sideMenu2 a {
   display: flex;
   align-items: center;
-  flex: 1;
   overflow-wrap: anywhere;
   color: var(--leftbar-fg);
-  width: calc(2 * var(--side-width));
-  margin-right: .5rem;
-  margin-left: calc(0px - var(--side-width));
   padding-top: 2%;
   padding-bottom: 2%;
-  padding-left: calc(1.015 * var(--side-width));
-  padding-right: calc(0.15 * var(--side-width));
   box-sizing: border-box;
-  text-decoration: none;
 }
 
 #sideMenu2 a span:not(.micon) {
@@ -244,24 +257,20 @@ th {
   margin-right: 0.5ex;
 }
 
-#sideMenu2 a.selected {
+#sideMenu2 .nav-header.selected {
   background: var(--leftbar-current-bg);
   color: var(--leftbar-current-fg);
   font-weight: bold;
 }
 
-#sideMenu2 a:hover {
+#sideMenu2 .nav-header:hover {
   color: var(--leftbar-hover-fg);
   background: var(--leftbar-hover-bg);
+  cursor: pointer;
 }
-
 /* spans represent a expand button */
 span.ar {
-  align-items: center;
   cursor: pointer;
-  position: absolute;
-  right: 0.6em;
-  top: calc(0.01 * var(--side-width));
 }
 
 span.ar::before {
@@ -597,6 +606,7 @@ footer .mode {
 .signature.monospace {
   padding: 8px;
   display: flex;
+  flex-direction: column;
   border-radius: 3px;
 }
 
@@ -606,6 +616,10 @@ footer .mode {
 
 .signature a, .signature a:visited, .signature span[data-unresolved-link] {
   color: var(--link-sig-fg);
+}
+
+.signature a:hover {
+  color: var(--link-hover-fg);
 }
 
 .expand .signature {
@@ -926,6 +940,10 @@ footer .socials {
 
 .breadcrumbs a:first-child {
   margin: 0 8px 0 0;
+}
+
+.breadcrumbs {
+  align-self: flex-start;
 }
 
 

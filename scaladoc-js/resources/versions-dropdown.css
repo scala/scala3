@@ -5,8 +5,6 @@
 
 /* Dropdown Button */
 .dropdownbtn {
-  background-color: var(--leftbar-bg);
-  color: white;
   padding: 4px 12px;
   border: none;
 }
