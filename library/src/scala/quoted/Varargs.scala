@@ -7,7 +7,8 @@ package scala.quoted
  */
 object Varargs {
 
-  /** Lifts this sequence of expressions into an expression of a sequence
+  /**
+   *  Lifts this sequence of expressions into an expression of a sequence
    *
    *  Transforms a sequence of expression
    *    `Seq(e1, e2, ...)` where `ei: Expr[T]`
@@ -16,7 +17,14 @@ object Varargs {
    *
    *  Usage:
    *  ```scala
-   *  '{ List(${Varargs(List(1, 2, 3))}: _*) } // equivalent to '{ List(1, 2, 3) }
+   *  //{
+   *  def f(using Quotes) = {
+   *  import quotes.reflect.*
+   *  //}
+   *  '{ List(${Varargs(List('{1}, '{2}, '{3}))}: _*) } // equivalent to '{ List(1, 2, 3) }
+   *  //{
+   *  }
+   *  //}
    *  ```
    *  @syntax markdown
    */
@@ -28,13 +36,18 @@ object Varargs {
   /** Matches a literal sequence of expressions and return a sequence of expressions.
    *
    *  Usage:
-   *  ```scala
+   *  ```scala sc:nocompile
+   *  //{
+   *  object O {
+   *  //}
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
    *    case Varargs(argVarargs) =>
    *      // argVarargs: Seq[Expr[Int]]
-   *      ...
+   *      ???
+   *  //{
    *  }
+   *  //}
    *  ```
    *  @syntax markdown
    */
