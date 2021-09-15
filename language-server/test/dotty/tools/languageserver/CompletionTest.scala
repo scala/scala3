@@ -860,7 +860,7 @@ class CompletionTest {
 
   @Test def syntheticThis: Unit = {
     code"""|class Y() {
-           |  def bar: Unit = 
+           |  def bar: Unit =
            |    val argument: Int = ???
            |    arg${m1}
            |
@@ -869,5 +869,21 @@ class CompletionTest {
            |""".withSource
       .completion(m1, Set(("arg", Method, "=> String"),
                           ("argument", Field, "Int")))
+  }
+
+  @Test def concatMethodWithImplicits: Unit = {
+    code"""|object A {
+           |  Array.concat${m1}
+           |}""".withSource
+      .completion(
+          m1,
+          Set(
+            (
+              "concat",
+              Method,
+              "[T](xss: Array[T]*)(implicit evidence$11: scala.reflect.ClassTag[T]): Array[T]"
+            )
+          )
+        )
   }
 }
