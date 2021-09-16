@@ -299,7 +299,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           span(cls := "icon-toggler")
         ),
         div(id := "scaladoc-searchBar"),
-        main(
+        main(id := "main-content")(
           parentsHtml,
           div(id := "content")(content),
         ),
