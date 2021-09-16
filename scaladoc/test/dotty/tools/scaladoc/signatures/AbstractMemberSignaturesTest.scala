@@ -33,7 +33,7 @@ class AbstractMembers extends ScaladocTest("abstractmembersignatures"):
       val content = document.select(".documentableList").forEach { elem =>
         val group = elem.select(".groupHeader").eachText.asScala.mkString("")
         elem.select(".documentableElement").forEach { elem =>
-          val modifiers = elem.select(".header .other-modifiers").eachText.asScala.mkString("")
+          val modifiers = elem.select(".header .modifiers").eachText.asScala.mkString("")
           val name = elem.select(".header .documentableName").eachText.asScala.mkString("")
           signatures += group -> (modifiers, name)
         }
