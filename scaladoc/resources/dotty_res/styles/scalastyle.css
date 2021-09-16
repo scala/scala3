@@ -40,7 +40,7 @@ body, button, input {
   z-index: 5;
   border-right: solid 1px var(--leftbar-border);
 }
-main {
+#main-content {
   min-height: calc(100vh - var(--footer-height) - 24px);
   margin-left: var(--side-width);
   padding: var(--content-padding);
@@ -176,17 +176,12 @@ th {
 
 /* Navigation */
 #sideMenu2 {
-  overflow: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
+
   height: 100%;
   font-size: var(--leftbar-font-size);
   margin-top: 8px;
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;
-}
-
-#sideMenu2::-webkit-scrollbar {
-  display: none;
 }
 
 /* divs in sidebar represent entry and its children */
@@ -247,6 +242,10 @@ th {
   box-sizing: border-box;
 }
 
+#sideMenu2 a:hover {
+  color: var(--link-hover-fg);
+}
+
 #sideMenu2 a span:not(.micon) {
   margin-right: 0.75ex;
   text-indent: -1.5em;
@@ -274,7 +273,7 @@ span.ar {
 }
 
 span.ar::before {
-  content: "\e903"; /* arrow down */
+  content: "\e904"; /* arrow right */
   font-family: "dotty-icons" !important;
   font-size: 20px;
   color: var(--icon-color);
@@ -283,8 +282,8 @@ span.ar::before {
   align-items: center;
   justify-content: center;
 }
-.expanded>span.ar::before {
-  content: "\e905"; /* arrow up */
+.nav-item.expanded > .nav-header > span.ar::before {
+  content: "\e903"; /* arrow down */
 }
 
 .div:hover>span.ar::before {
@@ -599,7 +598,7 @@ footer .mode {
 
 .documentableElement .signature {
   color: var(--code-fg);
-  display: table-cell;
+  display: table-row;
   white-space: pre-wrap;
 }
 
@@ -623,7 +622,7 @@ footer .mode {
 }
 
 .expand .signature {
-  display: table-cell;
+  display: table-row;
 }
 
 .documentableFilter {
@@ -685,7 +684,20 @@ footer .mode {
   display: none;
 }
 
+.documentableElement:before {
+  content: ' ';
+  position: absolute;
+  width: 32px;
+  height: 100%;
+  top: 0px;
+  left: -32px;
+}
+
 .documentableElement:hover .documentableAnchor:before {
+  display: flex;
+}
+
+.documentableElement::before:hover .documentableAnchor:before {
   display: flex;
 }
 
@@ -701,7 +713,7 @@ footer .mode {
   justify-content: center;
   position: absolute;
   top: 6px;
-  margin-left: 0.2em;
+  left: -32px;
 }
 
 .memberDocumentation {
@@ -836,6 +848,41 @@ footer .socials {
 #generated-by {
   display: flex;
   align-items: center;
+}
+
+/* Scrollbars */
+
+:root {
+  --scrollbar-bg-color: var(--border-light);
+  --scrollbar-fg-color: var(--border-medium);
+  --scrollbar-fg-hover-color: var(--grey500);
+}
+
+/*   For Firefox */
+#sideMenu2 {
+  scrollbar-color: var(--scrollbar-fg-color) var(--scrollbar-bg-color);
+  scrollbar-width: thin;
+}
+
+/*   For Chrome */
+
+#sideMenu2::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-bg-color);
+  border-radius: 3px;
+}
+
+#sideMenu2::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-fg-color);
+  border-radius: 3px;
+}
+
+#sideMenu2::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-fg-hover-color);
+}
+
+#sideMenu2::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
 /* Large Screens */

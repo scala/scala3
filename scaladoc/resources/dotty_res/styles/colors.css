@@ -75,7 +75,7 @@
   --leftbar-current-fg: var(--blue500);
   --leftbar-hover-bg: var(--blue100);
   --leftbar-hover-fg: var(--grey900);
-  --leftbar-border: var(--grey200);
+  --leftbar-border: var(--grey300);
 
   --footer-bg: var(--white);
   --footer-fg: var(--grey700);
@@ -94,7 +94,7 @@
   color-scheme: dark;
 
   --border-light: var(--grey800);
-  --border-medium: var(--grey700);
+  --border-medium: var(--grey600);
 
   --body-bg: var(--grey930);
   --body-fg: var(--grey300);
