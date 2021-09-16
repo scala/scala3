@@ -706,7 +706,7 @@ footer .mode {
   font-family: "dotty-icons" !important;
   transform: rotate(-45deg);
   font-size: 20px;
-  color: var(--icon-color);
+  color: var(--link-fg);
   display: none;
   flex-direction: row;
   align-items: center;
@@ -714,6 +714,15 @@ footer .mode {
   position: absolute;
   top: 6px;
   left: -32px;
+}
+
+.documentableAnchor:hover:before {
+  color: var(--link-hover-fg);
+}
+
+.documentableAnchor:active:before {
+  color: var(--link-hover-fg);
+  top: 8px;
 }
 
 .memberDocumentation {
