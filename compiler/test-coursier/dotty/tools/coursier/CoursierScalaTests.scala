@@ -71,7 +71,7 @@ class CoursierScalaTests:
     emptyArgsEqualsRepl()
 
     def run() =
-      val output = CoursierScalaTests.csScalaCmd("-run", "-classpath", scripts("/run").head.getParentFile.getParent, "run.myfile")
+      val output = CoursierScalaTests.csScalaCmd("-classpath", scripts("/run").head.getParentFile.getParent, "-run", "run.myfile")
       assertEquals(output.mkString("\n"), "Hello")
     run()
 
@@ -116,6 +116,11 @@ class CoursierScalaTests:
       val output4 = CoursierScalaTests.csScalaCmd(o2source)
       assertEquals(output4.mkString("\n"), "Hello")
     compileFilesToJarAndRun()
+
+    def replWithArgs() =
+      val output = CoursierScalaTests.csScalaCmd("-source", "3.0-migration")
+      assertTrue(output.mkString("\n").contains("Unable to create a system terminal")) // Scala attempted to create REPL so we can assume it is working
+    replWithArgs()
 
 object CoursierScalaTests:
 
