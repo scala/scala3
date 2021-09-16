@@ -103,11 +103,12 @@ class TyperState() {
     this
 
   /** A fresh typer state with the same constraint as this one. */
-  def fresh(reporter: Reporter = StoreReporter(this.reporter)): TyperState =
+  def fresh(reporter: Reporter = StoreReporter(this.reporter),
+      committable: Boolean = this.isCommittable): TyperState =
     util.Stats.record("TyperState.fresh")
     TyperState().init(this, this.constraint)
       .setReporter(reporter)
-      .setCommittable(this.isCommittable)
+      .setCommittable(committable)
 
   /** The uninstantiated variables */
   def uninstVars: collection.Seq[TypeVar] = constraint.uninstVars
@@ -182,24 +183,25 @@ class TyperState() {
 
   /** Integrate the constraints from `that` into this TyperState.
    *
-   *  @pre If `that` is committable, it must not contain any type variable which
+   *  @pre If `this` and `that` are committable, `that` must not contain any type variable which
    *       does not exist in `this` (in other words, all its type variables must
    *       be owned by a common parent of `this` and `that`).
    */
-  def mergeConstraintWith(that: TyperState)(using Context): Unit =
+  def mergeConstraintWith(that: TyperState)(using Context): this.type =
+    if this eq that then return this
+
     that.ensureNotConflicting(constraint)
 
-    val comparingCtx =
-      if ctx.typerState == this then ctx
-      else ctx.fresh.setTyperState(this)
+    val comparingCtx = ctx.withTyperState(this)
 
-    comparing(typeComparer =>
+    inContext(comparingCtx)(comparing(typeComparer =>
       val other = that.constraint
       val res = other.domainLambdas.forall(tl =>
         // Integrate the type lambdas from `other`
         constraint.contains(tl) || other.isRemovable(tl) || {
           val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
-          tvars.foreach(tvar => if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
+          if this.isCommittable then
+            tvars.foreach(tvar => if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
           typeComparer.addToConstraint(tl, tvars)
         }) &&
         // Integrate the additional constraints on type variables from `other`
@@ -220,10 +222,11 @@ class TyperState() {
           )
         )
       assert(res || ctx.reporter.errorsReported, i"cannot merge $constraint with $other.")
-    )(using comparingCtx)
+    ))
 
     for tl <- constraint.domainLambdas do
       if constraint.isRemovable(tl) then constraint = constraint.remove(tl)
+    this
   end mergeConstraintWith
 
   /** Take ownership of `tvar`.
