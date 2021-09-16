@@ -672,7 +672,7 @@ footer .mode {
 }
 .documentableElement .annotations {
   color: var(--grey600);
-  margin-left: 10em;
+  margin-left: 10.5em;
   display: none;
 }
 
@@ -883,6 +883,35 @@ footer .socials {
 #sideMenu2::-webkit-scrollbar {
   width: 8px;
   height: 8px;
+}
+
+/* Signature coloring */
+
+:root {
+  --type-link: var(--blue500);
+  --type: var(--grey700);
+  --keyword: var(--red500);
+}
+
+:root.theme-dark {
+  --type-link: var(--blue400);
+  --keyword: var(--red400);
+}
+
+.signature *[t="t"]:not([href]) { /* Types without links */
+  color: var(--type);
+}
+
+.signature *[t="t"] { /* Types with links */
+  color: var(--type-link);
+}
+
+.signature *[t="k"] { /* Keywords */
+  color: var(--keyword);
+}
+
+.signature *:not[t] { /* Plain text */
+
 }
 
 /* Large Screens */

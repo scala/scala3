@@ -35,7 +35,7 @@ object ScalaSignatureProvider:
       case tpe: Kind.Type =>
         typeSignature(tpe, documentable, builder)
       case Kind.Package =>
-        builder.text("package ").name(documentable.name, documentable.dri)
+        builder.keyword("package ").name(documentable.name, documentable.dri)
       case Kind.RootPackage =>
         builder
       case Kind.Unknown =>
@@ -43,7 +43,7 @@ object ScalaSignatureProvider:
 
   private def enumEntrySignature(member: Member, cls: Kind.Class, bdr: SignatureBuilder): SignatureBuilder =
     val withPrefixes: SignatureBuilder = bdr
-      .text("case ")
+      .keyword("case ")
       .name(member.name, member.dri)
       .generics(cls.typeParams)
 
@@ -52,22 +52,22 @@ object ScalaSignatureProvider:
 
   private def enumPropertySignature(entry: Member, builder: SignatureBuilder): SignatureBuilder =
     val modifiedType = entry.signature.map {
-      case " & " => " with "
+      case Keyword(" & ") => Keyword(" with ")
       case o => o
     }
 
     builder
-      .text("case ")
+      .keyword("case ")
       .name(entry.name, entry.dri)
-      .text(" extends ")
+      .keyword(" extends ")
       .signature(modifiedType)
 
   private def parentsSignature(member: Member, builder: SignatureBuilder): SignatureBuilder =
     member.directParents match
       case Nil => builder
       case extendType :: withTypes =>
-        val extendPart = builder.text(" extends ").signature(extendType.signature)
-        withTypes.foldLeft(extendPart)((bdr, tpe) => bdr.text(" with ").signature(tpe.signature))
+        val extendPart = builder.keyword(" extends ").signature(extendType.signature)
+        withTypes.foldLeft(extendPart)((bdr, tpe) => bdr.keyword(" with ").signature(tpe.signature))
 
   private def givenClassSignature(member: Member, cls: Kind.Class, builder: SignatureBuilder): SignatureBuilder =
     val prefixes = builder
@@ -78,7 +78,7 @@ object ScalaSignatureProvider:
 
     member.kind match
       case Kind.Given(_, Some(instance), _) => prefixes
-        .text(": ")
+        .plain(": ")
         .signature(instance)
       case _ => prefixes
 
@@ -123,16 +123,16 @@ object ScalaSignatureProvider:
       .generics(fun.typeParams)
       .functionParameters(fun.argsLists)
 
-      withSignature.text(":").text(" ").signature(extension.signature)
+      withSignature.plain(":").plain(" ").signature(extension.signature)
 
   private def givenMethodSignature(method: Member, body: Kind.Def, builder: SignatureBuilder): SignatureBuilder = method.kind match
     case Kind.Given(_, Some(instance), _) =>
-      builder.text("given ")
+      builder.keyword("given ")
         .name(method.name, method.dri)
-        .text(": ")
+        .plain(": ")
         .signature(instance)
     case _ =>
-      builder.text("given ").name(method.name, method.dri)
+      builder.keyword("given ").name(method.name, method.dri)
 
   private def methodSignature(method: Member, cls: Kind.Def, builder: SignatureBuilder): SignatureBuilder =
     val bdr = builder
@@ -141,7 +141,7 @@ object ScalaSignatureProvider:
     .generics(cls.typeParams)
     .functionParameters(cls.argsLists)
     if !method.kind.isInstanceOf[Kind.Constructor] then
-      bdr.text(": ").signature(method.signature)
+      bdr.plain(": ").signature(method.signature)
     else bdr
 
   private def typeSignature(tpe: Kind.Type, typeDef: Member, builder: SignatureBuilder): SignatureBuilder =
@@ -150,25 +150,25 @@ object ScalaSignatureProvider:
       .name(typeDef.name, typeDef.dri)
       .generics(tpe.typeParams)
     if(!tpe.opaque){
-      (if tpe.concreate then bdr.text(" = ") else bdr)
+      (if tpe.concreate then bdr.plain(" = ") else bdr)
         .signature(typeDef.signature)
     } else bdr
 
 
   private def givenPropertySignature(property: Member, builder: SignatureBuilder): SignatureBuilder =
     val bdr = builder
-      .text("given ")
+      .keyword("given ")
       .name(property.name, property.dri)
 
     property.kind match
       case Kind.Given(_, Some(instance), _) =>
-         bdr.text(" as ").signature(instance)
+         bdr.keyword(" as ").signature(instance)
       case _ => bdr
 
   private def fieldSignature(member: Member, kind: String, builder: SignatureBuilder): SignatureBuilder =
     builder
       .modifiersAndVisibility(member, kind)
       .name(member.name, member.dri)
-      .text(":")
-      .text(" ")
+      .plain(":")
+      .plain(" ")
       .signature(member.signature)
