@@ -972,11 +972,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         }
         // Usually `error` is called from within a rewrite method. In this
         // case we need to report the error at the point of the outermost enclosing inline
-        // call. This way, a defensively written rewrite methid can always
+        // call. This way, a defensively written rewrite method can always
         // report bad inputs at the point of call instead of revealing its internals.
         val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
         val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
-        inContext(ctxToReport) {
+        // The context in which we report should still use the existing context reporter
+        val ctxOrigReporter = ctxToReport.fresh.setReporter(ctx.reporter)
+        inContext(ctxOrigReporter) {
           report.error(message, callToReport.srcPos)
         }
       case _ =>
