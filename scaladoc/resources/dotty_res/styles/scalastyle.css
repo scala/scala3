@@ -416,7 +416,6 @@ dl > div > ol {
 dl.attributes > dt {
   display: block;
   float: left;
-  font-style: italic;
   font-weight: bold;
 }
 dl.attributes > dt.implicit {
@@ -425,9 +424,8 @@ dl.attributes > dt.implicit {
 }
 dl.attributes > dd {
   display: block;
-  padding-left: 4em;
-  margin-bottom: 5px;
-  min-height: 15px;
+  padding-left: 7em;
+  min-height: 24px;
 }
 
 /* params list documentation */
@@ -584,10 +582,6 @@ footer .mode {
   color: var(--grey600);
 }
 
-.kind {
-  font-weight: bold;
-}
-
 .other-modifiers a, .other-modifiers a:visited, .other-modifiers span[data-unresolved-link] {
   color: var(--link-sig-fg);
 }
@@ -600,6 +594,15 @@ footer .mode {
   color: var(--code-fg);
   display: table-row;
   white-space: pre-wrap;
+  font-size: 14px;
+}
+
+.docs .modifiers {
+  font-size: 14px;
+}
+
+.signature, .documentableElement {
+  font-weight: 500;
 }
 
 .signature.monospace {
@@ -634,7 +637,6 @@ footer .mode {
   white-space: normal;
   position: relative;
   padding: 8px;
-  font-weight: 500;
   font-size: 12px;
   background: var(--documentable-bg);
   border-left: 0.25em solid transparent;
@@ -673,6 +675,7 @@ footer .mode {
 .documentableElement .annotations {
   color: var(--grey600);
   margin-left: 10.5em;
+  font-size: 14px;
   display: none;
 }
 
@@ -726,7 +729,8 @@ footer .mode {
 }
 
 .memberDocumentation {
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .memberDocumentation>p{
