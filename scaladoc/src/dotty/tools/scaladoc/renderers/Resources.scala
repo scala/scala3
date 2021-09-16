@@ -127,8 +127,9 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
   def searchData(pages: Seq[Page]) =
     def flattenToText(signature: Signature): String =
       signature.map {
-        case Link(name, dri) => name
-        case s: String => s
+        case Type(name, dri) => name
+        case Plain(s) => s
+        case Keyword(s) => s
       }.mkString
 
     def mkEntry(dri: DRI, name: String, text: String, descr: String, kind: String) = jsonObject(
@@ -145,7 +146,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
           val descr = m.dri.asFileLocation
           def processMember(member: Member): Seq[JSON] =
             val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
-            val sig = Signature(member.kind.name, " ") ++ Seq(Link(member.name, member.dri)) ++ signatureBuilder.names.reverse
+            val sig = Signature(Plain(s"${member.kind.name} "), Plain(member.name)) ++ signatureBuilder.names.reverse
             val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr, member.kind.name)
             val children = member
                 .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])

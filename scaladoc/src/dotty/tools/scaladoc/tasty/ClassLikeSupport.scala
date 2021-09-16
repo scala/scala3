@@ -435,7 +435,7 @@ trait ClassLikeSupport:
     val signature = contextBounds.get(name) match
       case None => boundsSignature
       case Some(contextBoundsSignature) =>
-        boundsSignature ++ DSignature(" : ") ++ contextBoundsSignature
+        boundsSignature ++ DSignature(Plain(" : ")) ++ contextBoundsSignature
 
     TypeParameter(
       argument.symbol.getAnnotations(),
@@ -546,8 +546,8 @@ trait ClassLikeSupport:
               case Nil => Left((name, original))
               case typeParam :: _ =>
                 val name = nameForRef(typeParam)
-                val signature = Seq(s"([$name] =>> ") ++ original.asSignature ++ Seq(")")
-                Right(name -> signature)
+                val signature = Seq(Plain("(["), dotty.tools.scaladoc.Type(name, None), Plain("]"), Keyword(" =>> ")) ++ original.asSignature ++ Seq(Plain(")"))
+                Right(name -> signature.toList)
         }
 
       val newParams = notEvidences ++ paramsThatLookLikeContextBounds
