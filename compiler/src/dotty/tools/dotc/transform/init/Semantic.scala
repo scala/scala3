@@ -70,36 +70,6 @@ object Semantic {
   sealed abstract class Ref extends Value {
     def klass: ClassSymbol
     def outer: Value
-    def objekt(using Heap): Objekt = heap(this)
-
-    def ensureObjectExists()(using Heap): this.type =
-      if heap.contains(this) then this
-      else ensureFresh()
-
-    def ensureFresh()(using Heap): this.type =
-      val obj = Objekt(this.klass, fields = Map.empty, outers = Map(this.klass -> this.outer))
-      heap.update(this, obj)
-      this
-
-    /** Update field value of the abstract object
-     *
-     *  Invariant: fields are immutable and only set once
-     */
-    def updateField(field: Symbol, value: Value)(using Heap, Context): Unit =
-      val obj = objekt
-      assert(!obj.hasField(field), field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + this)
-      val obj2 = obj.copy(fields = obj.fields.updated(field, value))
-      heap.update(this, obj2)
-
-    /** Update the immediate outer of the given `klass` of the abstract object
-     *
-     *  Invariant: outers are immutable and only set once
-     */
-    def updateOuter(klass: ClassSymbol, value: Value)(using Heap, Context): Unit =
-      val obj = objekt
-      assert(!obj.hasOuter(klass), klass.show + " already has outer, new = " + value + ", old = " + obj.outer(klass) + ", ref = " + this)
-      val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
-      heap.update(this, obj2)
   }
 
   /** A reference to the object under initialization pointed by `this` */
@@ -122,9 +92,7 @@ object Semantic {
      */
     def populateParams(): Contextual[this.type] = log("populating parameters", printer, (_: Warm).objekt.toString) {
       assert(!populatingParams, "the object is already populating parameters")
-      // Somehow Dotty uses the one in the class parameters
       populatingParams = true
-      given Heap = state.heap
       val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
       this.callConstructor(ctor, args.map(arg => ArgInfo(arg, EmptyTree)), tpl)
       populatingParams = false
@@ -132,11 +100,11 @@ object Semantic {
     }
 
     def ensureObjectExistsAndPopulated(): Contextual[this.type] =
-      if heap.contains(this) then this
-      else ensureFresh().populateParams()
+      if cache.containsObject(this) then this
+      else this.ensureFresh().populateParams()
 
     def ensureObjectFreshAndPopulated(): Contextual[this.type] =
-      ensureFresh().populateParams()
+      this.ensureFresh().populateParams()
   }
 
   /** A function value */
@@ -166,60 +134,6 @@ object Semantic {
 
     def hasField(f: Symbol) = fields.contains(f)
   }
-
-  /** Abstract heap stores abstract objects
-   *
-   *  The heap serves as cache of summaries for warm objects and is shared for checking all classes.
-   *
-   *  The fact that objects of `ThisRef` are stored in heap is just an engineering convenience.
-   *  Technically, we can also store the object directly in `ThisRef`.
-   */
-  object Heap {
-    class Heap(private var map: Map[Ref, Objekt]) {
-      def contains(ref: Ref): Boolean = map.contains(ref)
-      def apply(ref: Ref): Objekt = map(ref)
-      def update(ref: Ref, obj: Objekt): Unit =
-        map = map.updated(ref, obj)
-
-      def snapshot(): Heap = new Heap(map)
-
-      /** Recompute the newly created warm objects with the updated cache.
-       *
-       *  The computation only covers class parameters and outers. Class fields are ignored and
-       *  are lazily evaluated and cached.
-       *
-       *  The method must be called after the call `Cache.prepare()`.
-       */
-      def prepare(heapBefore: Heap)(using State, Context) =
-        this.map.keys.foreach {
-          case warm: Warm =>
-            if heapBefore.contains(warm) then
-              assert(heapBefore(warm) == this(warm))
-            else
-              // We cannot simply remove the object, as the values in the
-              // updated cache may refer to the warm object.
-              given Env = Env.empty
-              given Trace = Trace.empty
-              given Promoted = Promoted.empty
-              warm.ensureObjectFreshAndPopulated()
-          case _ =>
-        }
-
-        // ThisRef might be used in `populateParams`
-        this.map.keys.foreach {
-          case thisRef: ThisRef =>
-            this.map = this.map - thisRef
-          case _ =>
-        }
-
-      override def toString() = map.toString()
-    }
-  }
-  type Heap = Heap.Heap
-
-  inline def heap(using h: Heap): Heap = h
-
-  import Heap._
 
   /** The environment for method parameters
    *
@@ -327,12 +241,25 @@ object Semantic {
 
   object Cache {
     opaque type CacheStore = mutable.Map[Value, EqHashMap[Tree, Value]]
+    private type Heap = Map[Ref, Objekt]
 
     class Cache {
       private val last: CacheStore =  mutable.Map.empty
       private var current: CacheStore = mutable.Map.empty
       private val stable: CacheStore = mutable.Map.empty
       private var changed: Boolean = false
+
+      /** Abstract heap stores abstract objects
+       *
+       *  The heap serves as cache of summaries for warm objects and is shared for checking all classes.
+       *
+       *  The fact that objects of `ThisRef` are stored in heap is just an engineering convenience.
+       *  Technically, we can also store the object directly in `ThisRef`.
+       */
+      private var heap: Heap = Map.empty
+
+      /** Used to easily revert heap changes. */
+      private var heapBefore: Heap = Map.empty
 
       def hasChanged = changed
 
@@ -370,13 +297,11 @@ object Semantic {
         actual
       end assume
 
-      /** Commit current cache to stable cache.
-       *
-       *  TODO: It's useless to cache value for ThisRef.
-       */
-      def commit() =
+      /** Commit current cache to stable cache. */
+      private def commitToStableCache() =
         current.foreach { (v, m) =>
-          m.iterator.foreach { (e, res) =>
+          // It's useless to cache value for ThisRef.
+          if v.isWarm then m.iterator.foreach { (e, res) =>
             stable.put(v, e, res)
           }
         }
@@ -384,13 +309,53 @@ object Semantic {
 
       /** Prepare cache for the next iteration
        *
-       *  - Reset changed flag
-       *  - Reset current cache (last cache already synced in `assume`)
+       *  1. Reset changed flag
+       *
+       *  2. Reset current cache (last cache already synced in `assume`)
+       *
+       *  3. Recompute the newly created warm objects with the updated cache.
+       *
+       *     The computation only covers class parameters and outers. Class
+       *     fields are ignored and are lazily evaluated and cached.
+       *
+       *     This step should be after the first two steps so that the populated
+       *     parameter are re-computed from the updated input cache.
+       *
        */
-      def prepare() = {
+      def prepareForNextIteration(isStable: Boolean)(using State, Context) =
+        if isStable then this.commitToStableCache()
+
         changed = false
         current = mutable.Map.empty
-      }
+
+        if !isStable then revertHeapChanges()
+        heapBefore = this.heap
+
+      def revertHeapChanges()(using State, Context) =
+        this.heap.keys.foreach {
+          case warm: Warm =>
+            if heapBefore.contains(warm) then
+              this.heap = heap.updated(warm, heapBefore(warm))
+            else
+              // We cannot simply remove the object, as the values in the
+              // updated cache may refer to the warm object.
+              given Env = Env.empty
+              given Trace = Trace.empty
+              given Promoted = Promoted.empty
+              warm.ensureObjectFreshAndPopulated()
+          case _ =>
+        }
+
+        // ThisRef objects are not reachable, thus it's fine to leave them in
+        // the heap
+      end revertHeapChanges
+
+      def updateObject(ref: Ref, obj: Objekt) =
+        this.heap = this.heap.updated(ref, obj)
+
+      def containsObject(ref: Ref) = heap.contains(ref)
+
+      def getObject(ref: Ref) = heap(ref)
     }
 
     extension (cache: CacheStore)
@@ -407,7 +372,6 @@ object Semantic {
   import Cache._
 
   inline def cache(using c: Cache): Cache = c
-
 
   /** Result of abstract interpretation */
   case class Result(value: Value, errors: Seq[Error]) {
@@ -435,9 +399,8 @@ object Semantic {
 
 // ----- State --------------------------------------------
   /** Global state of the checker */
-  class State(val cache: Cache, val heap: Heap, val workList: WorkList)
+  class State(val cache: Cache, val workList: WorkList)
 
-  given (using s: State): Heap = s.heap
   given (using s: State): Cache = s.cache
   given (using s: State): WorkList = s.workList
 
@@ -495,6 +458,40 @@ object Semantic {
       else values.reduce { (v1, v2) => v1.join(v2) }
 
     def widenArgs: List[Value] = values.map(_.widenArg).toList
+
+
+  extension (ref: Ref)
+    def objekt(using Cache): Objekt = cache.getObject(ref)
+
+    def ensureObjectExists()(using Cache): ref.type =
+      if cache.containsObject(ref) then ref
+      else ensureFresh()
+
+    def ensureFresh()(using Cache): ref.type =
+      val obj = Objekt(ref.klass, fields = Map.empty, outers = Map(ref.klass -> ref.outer))
+      cache.updateObject(ref, obj)
+      ref
+
+    /** Update field value of the abstract object
+     *
+     *  Invariant: fields are immutable and only set once
+     */
+    def updateField(field: Symbol, value: Value)(using Cache, Context): Unit =
+      val obj = objekt
+      assert(!obj.hasField(field), field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + ref)
+      val obj2 = obj.copy(fields = obj.fields.updated(field, value))
+      cache.updateObject(ref, obj2)
+
+    /** Update the immediate outer of the given `klass` of the abstract object
+     *
+     *  Invariant: outers are immutable and only set once
+     */
+    def updateOuter(klass: ClassSymbol, value: Value)(using Cache, Context): Unit =
+      val obj = objekt
+      assert(!obj.hasOuter(klass), klass.show + " already has outer, new = " + value + ", old = " + obj.outer(klass) + ", ref = " + ref)
+      val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
+      cache.updateObject(ref, obj2)
+  end extension
 
   extension (value: Value)
     def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show + ", this = " + value, printer, (_: Result).show) {
@@ -913,18 +910,14 @@ object Semantic {
         checkedTasks = checkedTasks + task
 
         task.value.ensureFresh()
-        val heapBefore = heap.snapshot()
         val res = doTask(task)
         res.errors.foreach(_.issue)
 
         if cache.hasChanged && res.errors.isEmpty then
-          // must call cache.prepare() first
-          cache.prepare()
-          heap.prepare(heapBefore)
+          cache.prepareForNextIteration(isStable = false)
         else
-          cache.commit()
+          cache.prepareForNextIteration(isStable = true)
           pendingTasks = rest
-          cache.prepare()
 
         work()
       case _ =>
@@ -968,7 +961,7 @@ object Semantic {
    *      }
    */
   def withInitialState[T](work: State ?=> T): T = {
-    val initialState = State(new Cache, new Heap(Map.empty), new WorkList)
+    val initialState = State(new Cache, new WorkList)
     work(using initialState)
   }
 
