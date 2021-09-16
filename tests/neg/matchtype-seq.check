@@ -1,35 +1,19 @@
--- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:9:18 ------------------------------------------------------
+-- Error: tests/neg/matchtype-seq.scala:9:11 ---------------------------------------------------------------------------
 9 |  identity[T1[3]]("") // error
-  |                  ^^
-  |                  Found:    ("" : String)
-  |                  Required: Test.T1[(3 : Int)]
+  |           ^
+  |           Match type reduction failed since selector  (3 : Int)
+  |           matches none of the cases
   |
-  |                  Note: a match type could not be fully reduced:
-  |
-  |                    trying to reduce  Test.T1[(3 : Int)]
-  |                    failed since selector  (3 : Int)
-  |                    matches none of the cases
-  |
-  |                      case (1 : Int) => Int
-  |                      case (2 : Int) => String
-
-longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:10:18 -----------------------------------------------------
+  |               case (1 : Int) => Int
+  |               case (2 : Int) => String
+-- Error: tests/neg/matchtype-seq.scala:10:11 --------------------------------------------------------------------------
 10 |  identity[T1[3]](1) // error
-   |                  ^
-   |                  Found:    (1 : Int)
-   |                  Required: Test.T1[(3 : Int)]
+   |           ^
+   |           Match type reduction failed since selector  (3 : Int)
+   |           matches none of the cases
    |
-   |                  Note: a match type could not be fully reduced:
-   |
-   |                    trying to reduce  Test.T1[(3 : Int)]
-   |                    failed since selector  (3 : Int)
-   |                    matches none of the cases
-   |
-   |                      case (1 : Int) => Int
-   |                      case (2 : Int) => String
-
-longer explanation available when compiling with `-explain`
+   |               case (1 : Int) => Int
+   |               case (2 : Int) => String
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:11:20 -----------------------------------------------------
 11 |  identity[T1[Int]]("") // error
    |                    ^^

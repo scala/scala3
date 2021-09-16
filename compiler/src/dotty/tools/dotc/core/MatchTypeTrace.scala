@@ -102,12 +102,22 @@ object MatchTypeTrace:
       i"""  failed since selector  $scrut
          |  is uninhabited (there are no values of that type)."""
     case Stuck(scrut, stuckCase, otherCases) =>
-      i"""  failed since selector  $scrut
-         |  does not match  ${caseText(stuckCase)}
-         |  and cannot be shown to be disjoint from it either.
-         |  Therefore, reduction cannot advance to the remaining case${if otherCases.length == 1 then "" else "s"}
-         |
-         |    ${casesText(otherCases)}"""
+      val msg =
+        i"""  failed since selector  $scrut
+           |  does not match  ${caseText(stuckCase)}
+           |  and cannot be shown to be disjoint from it either."""
+      if otherCases.length == 0 then msg
+      else
+        val s = if otherCases.length == 1 then "" else "s"
+        i"""$msg
+           |  Therefore, reduction cannot advance to the remaining case$s
+           |
+           |    ${casesText(otherCases)}"""
+
+  def noMatchesText(scrut: Type, cases: List[Type])(using Context): String =
+    i"""failed since selector  $scrut
+       |matches none of the cases
+       |
+       |    ${casesText(cases)}"""
 
 end MatchTypeTrace
-
