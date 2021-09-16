@@ -58,6 +58,19 @@ window.addEventListener("DOMContentLoaded", () => {
       window.location = pathToRoot; // global variable pathToRoot is created by the html renderer
     };
   }
+
+  document.querySelectorAll('.documentableAnchor').forEach(elem => {
+    elem.addEventListener('click', event => {
+      var $temp = $("<input>")
+      $("body").append($temp)
+      var a = document.createElement('a')
+      a.href = $(elem).attr("link")
+      $temp.val(a.href).select();
+      document.execCommand("copy")
+      $temp.remove();
+    })
+  })
+
   hljs.registerLanguage("scala", highlightDotty);
   hljs.registerAliases(["dotty", "scala3"], "scala");
   hljs.initHighlighting();

@@ -165,7 +165,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 
     div(topLevelAttr:_*)(
-      a(href := (if member.needsOwnPage then link(member.dri).getOrElse("#") else s"#${member.dri.anchor}"), cls := "documentableAnchor"),
+      if !member.needsOwnPage then a(Attr("link") := link(member.dri).getOrElse("#"), cls := "documentableAnchor") else Nil,
       div(annotations(member)),
       div(cls := "header monospace")(memberSignature(member)),
       div(cls := "docs")(
