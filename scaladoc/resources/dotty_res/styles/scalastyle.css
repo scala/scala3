@@ -185,34 +185,34 @@ th {
 }
 
 /* divs in sidebar represent entry and its children */
-#sideMenu2 .content {
+#sideMenu2 .ni {
   padding-left: 0.8em;
 }
 
-#sideMenu2 > div {
+#sideMenu2 > .ni {
   padding-left: 0em;
 }
 
-#sideMenu2 .nav-item {
+#sideMenu2 .ni {
   display: none;
 }
 
-#sideMenu2 > .nav-item {
+#sideMenu2 > .ni {
   display: block;
 }
 
-#sideMenu2 .nav-header a:only-child {
+#sideMenu2 .nh a:only-child {
   padding-left: 20px;
 }
 
-#sideMenu2 .nav-header {
+#sideMenu2 .nh {
   display: flex;
   flex-direction: row;
   align-items: center;
   border-radius: 3px;
 }
 
-#sideMenu2 .nav-item.expanded > .content > .nav-item {
+#sideMenu2 .ni.expanded > .ni {
   display: block;
 }
 
@@ -256,13 +256,13 @@ th {
   margin-right: 0.5ex;
 }
 
-#sideMenu2 .nav-header.selected {
+#sideMenu2 .nh.selected {
   background: var(--leftbar-current-bg);
   color: var(--leftbar-current-fg);
   font-weight: bold;
 }
 
-#sideMenu2 .nav-header:hover {
+#sideMenu2 .nh:hover {
   color: var(--leftbar-hover-fg);
   background: var(--leftbar-hover-bg);
   cursor: pointer;
@@ -282,7 +282,7 @@ span.ar::before {
   align-items: center;
   justify-content: center;
 }
-.nav-item.expanded > .nav-header > span.ar::before {
+.ni.expanded > .nh > span.ar::before {
   content: "\e903"; /* arrow down */
 }
 

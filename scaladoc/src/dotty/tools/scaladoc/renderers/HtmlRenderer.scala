@@ -209,22 +209,22 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           case _ => Nil
         }
         Seq(
-          span(cls := "nav-header " + attrs.mkString(" "))(
+          span(cls := "nh " + attrs.mkString(" "))(
             if withArrow then Seq(span(cls := "ar")) else Nil,
             a(href := pathToPage(pageLink.dri, nav.link.dri))(icon, span(nav.link.name))
           )
         )
 
       nav.children match
-        case Nil => isSelected -> div(cls := s"nav-item ${if isSelected then "expanded" else ""}")(linkHtml())
+        case Nil => isSelected -> div(cls := s"ni ${if isSelected then "expanded" else ""}")(linkHtml())
         case children =>
           val nested = children.map(renderNested(_))
           val expanded = nested.exists(_._1) || isSelected
           val attr =
-            if expanded || isSelected || toplevel then Seq(cls := "nav-item expanded") else Seq(cls := "nav-item")
+            if expanded || isSelected || toplevel then Seq(cls := "ni expanded") else Seq(cls := "ni")
           (isSelected || expanded) -> div(attr)(
             linkHtml(expanded, true),
-            div(cls := "content")(nested.map(_._2))
+            nested.map(_._2)
           )
 
     renderNested(navigablePage, toplevel = true)._2
