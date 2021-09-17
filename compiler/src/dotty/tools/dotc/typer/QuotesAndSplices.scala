@@ -70,7 +70,11 @@ trait QuotesAndSplices {
   }
 
   private def makeInlineable(tree: Tree)(using Context): Tree =
-    PrepareInlineable.makeInlineable(tree)
+    def quoteOwner(sym: Symbol): Symbol =
+      if sym.owner.isClass then sym else quoteOwner(sym.owner)
+    inContext(ctx.withOwner(quoteOwner(ctx.owner))) {
+      PrepareInlineable.makeInlineable(tree)
+    }
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
