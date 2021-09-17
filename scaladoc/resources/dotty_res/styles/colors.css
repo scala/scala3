@@ -77,6 +77,8 @@
   --leftbar-hover-fg: var(--grey900);
   --leftbar-border: var(--grey300);
 
+  --leftbar-dropdown-bg: var(--grey200);
+
   --footer-bg: var(--white);
   --footer-fg: var(--grey700);
 
@@ -124,6 +126,8 @@
   --leftbar-hover-bg: var(--grey800);
   --leftbar-hover-fg: var(--grey300);
   --leftbar-border: var(--grey800);
+
+  --leftbar-dropdown-bg: var(--grey850);
 
   --footer-bg: var(--grey930);
   --footer-fg: var(--grey400);
