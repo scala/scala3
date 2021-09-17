@@ -278,10 +278,10 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           div(id := "version")(
             div(cls := "versions-dropdown")(
               div(onclick := "dropdownHandler()", id := "dropdown-button", cls := "dropdownbtn dropdownbtnactive")(
-                args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
-              ),
-              div(id := "dropdown-content", cls := "dropdown-content")(
-                input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
+                args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse(""),
+                div(id := "dropdown-content", cls := "dropdown-content")(
+                  input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
+                ),
               ),
             )
           ),
