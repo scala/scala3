@@ -16,6 +16,9 @@ import java.util.jar._
 import java.util.jar.Attributes.Name
 import dotty.tools.io.Jar
 import dotty.tools.runner.ScalaClassLoader
+import java.nio.file.{Files, Paths, Path}
+import scala.collection.JavaConverters._
+import dotty.tools.dotc.config.CommandLineParser
 
 enum ExecuteMode:
   case Guess
@@ -123,7 +126,8 @@ object MainGenericRunner {
     case (o @ javaOption(striped)) :: tail =>
       process(tail, settings.withJavaArgs(striped).withScalaArgs(o))
     case (o @ scalaOption(_*)) :: tail =>
-      process(tail, settings.withScalaArgs(o))
+      val remainingArgs = (expandArg(o) ++ tail).toList
+      process(remainingArgs, settings)
     case (o @ colorOption(_*)) :: tail =>
       process(tail, settings.withScalaArgs(o))
     case arg :: tail =>
@@ -136,6 +140,19 @@ object MainGenericRunner {
       else
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
+
+  // copy of method private to dotty.tools.dotc.config.CliCommand.distill()
+  // TODO: make it available as a public method and remove this copy?
+  def expandArg(arg: String): List[String] =
+    def stripComment(s: String) = s takeWhile (_ != '#')
+    val path = Paths.get(arg stripPrefix "@")
+    if (!Files.exists(path))
+      System.err.println(s"Argument file ${path.getFileName} could not be found")
+      Nil
+    else
+      val lines = Files.readAllLines(path) // default to UTF-8 encoding
+      val params = lines.asScala map stripComment mkString " "
+      CommandLineParser.tokenize(params)
 
   def main(args: Array[String]): Unit =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" "))
