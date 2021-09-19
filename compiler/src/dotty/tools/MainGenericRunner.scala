@@ -208,8 +208,8 @@ object MainGenericRunner {
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs
             ++ (if settings.save then List("-save") else Nil)
-            ++ List("-script", settings.targetScript)
             ++ settings.scalaArgs
+            ++ List("-script", settings.targetScript)
             ++ settings.scriptArgs
         scripting.Main.main(properArgs.toArray)
       case ExecuteMode.Guess =>
