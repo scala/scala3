@@ -84,12 +84,12 @@ class BashScriptsTests:
   @Test def verifyScriptPathProperty =
     val scriptFile = testFiles.find(_.getName == "scriptPath.sc").get
     val expected = s"/${scriptFile.getName}"
-    printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
+    System.err.printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
     val (exitCode, stdout, stderr) = bashCommand(scriptFile.absPath)
     if exitCode == 0 && ! stderr.exists(_.contains("Permission denied")) then
       // var cmd = Array(bashExe, "-c", scriptFile.absPath)
       // val stdout = Process(cmd).lazyLines_!
-      stdout.foreach { printf("######### [%s]\n", _) }
+      stdout.foreach { System.err.printf("######### [%s]\n", _) }
       val valid = stdout.exists { _.endsWith(expected) }
       if valid then printf("# valid script.path reported by [%s]\n", scriptFile.getName)
       assert(valid, s"script ${scriptFile.absPath} did not report valid script.path value")
@@ -99,35 +99,39 @@ class BashScriptsTests:
    */
   @Test def verifyScalaOpts =
     val scriptFile = testFiles.find(_.getName == "classpathReport.sc").get
-    printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
+    printf("===> verify SCALA_OPTS -classpath setting in argument file seen by script [%s]\n", scriptFile.getName)
     val argsfile = createArgsFile() // avoid problems caused by drive letter
     val envPairs = List(("SCALA_OPTS", s"@$argsfile"))
     val (exitCode, stdout, stderr) = bashCommand(scriptFile.absPath, envPairs:_*)
+    printf("\n")
     if exitCode != 0 || stderr.exists(_.contains("Permission denied")) then
       stderr.foreach { System.err.printf("stderr [%s]\n", _) }
       printf("unable to execute script, return value is %d\n", exitCode)
     else
-      // val stdout: Seq[String] = Process(cmd, cwd, envPairs:_*).lazyLines_!.toList
-      val expected = s"${cwd.toString}"
+      val expected = cwd
       val List(line1: String, line2: String) = stdout.take(2)
+      printf("line1 [%s]\n", line1)
       val valid = line2.dropWhile( _ != ' ').trim.startsWith(expected)
+      val psep = if osname.startsWith("Windows") then ';' else ':'
+      printf("line2 start [%s]\n", line2.take(100))
       if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", cwd, scriptFile.getName)
-      assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
+      assert(valid, s"script ${scriptFile.getName} did not report valid java.class.path first entry")
 
-  lazy val cwd = Paths.get(dotty.tools.dotc.config.Properties.userDir).toFile
+  lazy val cwd: String = Paths.get(".").toAbsolutePath.normalize.toString.norm
 
   def createArgsFile(): String =
     val utfCharset = java.nio.charset.StandardCharsets.UTF_8.name
-    val text = s"-classpath ${cwd.absPath}"
+    val text = s"-classpath $cwd"
     val path = Files.createTempFile("scriptingTest", ".args")
     Files.write(path, text.getBytes(utfCharset))
-    path.toFile.getAbsolutePath.replace('\\', '/')
+    path.toFile.getAbsolutePath.norm
 
-  extension (str: String) def dropExtension: String =
-    str.reverse.dropWhile(_ != '.').drop(1).reverse
+  extension(str: String)
+    def norm: String = str.replace('\\', '/')
+    def dropExtension: String = str.reverse.dropWhile(_ != '.').drop(1).reverse
 
   extension(f: File) def absPath: String =
-    f.getAbsolutePath.replace('\\', '/')
+    f.getAbsolutePath.norm
 
   lazy val osname = Option(sys.props("os.name")).getOrElse("").toLowerCase
 

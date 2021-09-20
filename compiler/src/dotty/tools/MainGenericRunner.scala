@@ -126,7 +126,7 @@ object MainGenericRunner {
     case (o @ javaOption(striped)) :: tail =>
       process(tail, settings.withJavaArgs(striped).withScalaArgs(o))
     case (o @ scalaOption(_*)) :: tail =>
-      val remainingArgs = (expandArg(o) ++ tail).toList
+      val remainingArgs = (CommandLineParser.expandArg(o) ++ tail).toList
       process(remainingArgs, settings)
     case (o @ colorOption(_*)) :: tail =>
       process(tail, settings.withScalaArgs(o))
@@ -140,19 +140,6 @@ object MainGenericRunner {
       else
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
-
-  // copy of method private to dotty.tools.dotc.config.CliCommand.distill()
-  // TODO: make it available as a public method and remove this copy?
-  def expandArg(arg: String): List[String] =
-    def stripComment(s: String) = s takeWhile (_ != '#')
-    val path = Paths.get(arg stripPrefix "@")
-    if (!Files.exists(path))
-      System.err.println(s"Argument file ${path.getFileName} could not be found")
-      Nil
-    else
-      val lines = Files.readAllLines(path) // default to UTF-8 encoding
-      val params = lines.asScala map stripComment mkString " "
-      CommandLineParser.tokenize(params)
 
   def main(args: Array[String]): Unit =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" "))
@@ -204,6 +191,8 @@ object MainGenericRunner {
         }
         errorFn("", res)
       case ExecuteMode.Script =>
+        val targetScriptPath: String = settings.targetScript.toString.replace('\\', '/')
+        System.setProperty("script.path", targetScriptPath)
         val properArgs =
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs

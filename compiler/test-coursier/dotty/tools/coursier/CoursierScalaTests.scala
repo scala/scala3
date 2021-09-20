@@ -122,6 +122,15 @@ class CoursierScalaTests:
       assertTrue(output.mkString("\n").contains("Unable to create a system terminal")) // Scala attempted to create REPL so we can assume it is working
     replWithArgs()
 
+    def argumentFile() =
+      // verify that an arguments file is accepted
+      // verify that setting a user classpath does not remove compiler libraries from the classpath.
+      // arguments file contains "-classpath .", adding current directory to classpath.
+      val source = new File(getClass.getResource("/run/myfile.scala").getPath)
+      val argsFile = new File(getClass.getResource("/run/myargs.txt").getPath)
+      val output = CoursierScalaTests.csScalaCmd(s"@$argsFile", source.absPath)
+      assertEquals(output.mkString("\n"), "Hello")
+
 object CoursierScalaTests:
 
   def execCmd(command: String, options: String*): List[String] =
