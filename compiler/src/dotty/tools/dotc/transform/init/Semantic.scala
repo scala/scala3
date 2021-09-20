@@ -332,6 +332,7 @@ object Semantic {
         heapBefore = this.heap
 
       def revertHeapChanges()(using State, Context) =
+        printer.println("reverting heap changes")
         this.heap.keys.foreach {
           case warm: Warm =>
             if heapBefore.contains(warm) then
@@ -342,6 +343,7 @@ object Semantic {
               given Env = Env.empty
               given Trace = Trace.empty
               given Promoted = Promoted.empty
+              printer.println("resetting " + warm)
               warm.ensureObjectFreshAndPopulated()
           case _ =>
         }
@@ -469,6 +471,7 @@ object Semantic {
 
     def ensureFresh()(using Cache): ref.type =
       val obj = Objekt(ref.klass, fields = Map.empty, outers = Map(ref.klass -> ref.outer))
+      printer.println("reset object " + ref)
       cache.updateObject(ref, obj)
       ref
 
@@ -476,21 +479,23 @@ object Semantic {
      *
      *  Invariant: fields are immutable and only set once
      */
-    def updateField(field: Symbol, value: Value)(using Cache, Context): Unit =
+    def updateField(field: Symbol, value: Value)(using Cache, Context): Unit = log("set field " + field + " of " + ref + " to " + value) {
       val obj = objekt
       assert(!obj.hasField(field), field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + ref)
       val obj2 = obj.copy(fields = obj.fields.updated(field, value))
       cache.updateObject(ref, obj2)
+    }
 
     /** Update the immediate outer of the given `klass` of the abstract object
      *
      *  Invariant: outers are immutable and only set once
      */
-    def updateOuter(klass: ClassSymbol, value: Value)(using Cache, Context): Unit =
+    def updateOuter(klass: ClassSymbol, value: Value)(using Cache, Context): Unit = log("set outer " + klass + " of " + ref + " to " + value) {
       val obj = objekt
       assert(!obj.hasOuter(klass), klass.show + " already has outer, new = " + value + ", old = " + obj.outer(klass) + ", ref = " + ref)
       val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
       cache.updateObject(ref, obj2)
+    }
   end extension
 
   extension (value: Value)
