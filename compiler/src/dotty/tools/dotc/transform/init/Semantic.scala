@@ -312,13 +312,7 @@ object Semantic {
        *
        *  2. Reset current cache (last cache already synced in `assume`)
        *
-       *  3. Recompute the newly created warm objects with the updated cache.
-       *
-       *     The computation only covers class parameters and outers. Class
-       *     fields are ignored and are lazily evaluated and cached.
-       *
-       *     This step should be after the first two steps so that the populated
-       *     parameter are re-computed from the updated input cache.
+       *  3. Revert heap if instable.
        *
        */
       def prepareForNextIteration(isStable: Boolean)(using State, Context) =
@@ -470,6 +464,12 @@ object Semantic {
      */
     def updateField(field: Symbol, value: Value): Contextual[Unit] = log("set field " + field + " of " + ref + " to " + value) {
       val obj = objekt
+      // We may reset the outers or params of a populated warm object.
+      // This is the case if we need access the field of a warm object, which
+      // requires population of parameters and outers; and later create an
+      // instance of the exact warm object, which requires initialization check.
+      //
+      // See tests/init/neg/unsound1.scala
       assert(!obj.hasField(field) || field.is(Flags.ParamAccessor) && obj.field(field) == value, field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + ref)
       val obj2 = obj.copy(fields = obj.fields.updated(field, value))
       cache.updateObject(ref, obj2)
@@ -481,6 +481,7 @@ object Semantic {
      */
     def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] = log("set outer " + klass + " of " + ref + " to " + value) {
       val obj = objekt
+      // See the comment in `updateField` for setting the value twice.
       assert(!obj.hasOuter(klass) || obj.outer(klass) == value, klass.show + " already has outer, new = " + value + ", old = " + obj.outer(klass) + ", ref = " + ref)
       val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
       cache.updateObject(ref, obj2)
