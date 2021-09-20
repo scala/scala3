@@ -1,10 +1,11 @@
-#!/usr/bin/env scala
+#!dist/target/pack/bin/scala
 
   def main(args: Array[String]): Unit =
     args.zipWithIndex.foreach { case (arg,i) => printf("arg %d: [%s]\n",i,arg) }
 
     Option(sys.props("script.path")) match {
     case Some(path) =>
+<<<<<<< HEAD
       if ! path.endsWith("scriptPath.sc") then
         printf( s"incorrect script.path defined as [$path]")
       else
@@ -16,4 +17,11 @@
       val pathEntries = System.getenv("PATH").split(psep).toList
       System.err.printf("sun.java.command: %s\n", sys.props("sun.java.command"))
       System.err.printf("first 5 PATH entries:\n%s\n",pathEntries.take(5).mkString("\n"))
+=======
+      printf("script.path: %s\n",path.norm)
+      assert(path.endsWith("scriptPath.sc"),s"actual path [$path]")
+>>>>>>> refactor CliCommand.expandArg method; fix script.path regression, Windows classpath regression
     }
+
+  extension(s: String)
+    def norm: String = s.replace('\\', '/')

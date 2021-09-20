@@ -7,8 +7,7 @@ import Settings._
 import core.Contexts._
 import Properties._
 
- import scala.PartialFunction.cond
- import scala.collection.JavaConverters._
+import scala.PartialFunction.cond
 
 trait CliCommand:
 
@@ -42,24 +41,10 @@ trait CliCommand:
 
   /** Distill arguments into summary detailing settings, errors and files to main */
   def distill(args: Array[String], sg: Settings.SettingGroup)(ss: SettingsState = sg.defaultState)(using Context): ArgsSummary =
-    /**
-     * Expands all arguments starting with @ to the contents of the
-     * file named like each argument.
-     */
-    def expandArg(arg: String): List[String] =
-      def stripComment(s: String) = s takeWhile (_ != '#')
-      val path = Paths.get(arg stripPrefix "@")
-      if (!Files.exists(path))
-        report.error(s"Argument file ${path.getFileName} could not be found")
-        Nil
-      else
-        val lines = Files.readAllLines(path) // default to UTF-8 encoding
-        val params = lines.asScala map stripComment mkString " "
-        CommandLineParser.tokenize(params)
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
-      case x if x startsWith "@"  => expandArg(x)
+      case x if x startsWith "@"  => CommandLineParser.expandArg(x)
       case x                      => List(x)
     }
 
