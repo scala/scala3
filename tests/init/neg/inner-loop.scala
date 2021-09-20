@@ -1,6 +1,6 @@
 class Outer { outer =>
   class Inner extends Outer {
-    val x = 5 + outer.n         // error
+    val x = 5 + outer.n
   }
   val inner = new Inner
   val n = 6               // error
