@@ -90,7 +90,7 @@ object Semantic {
      *
      *  Fields in class body are not initialized.
      */
-    def populateParams(): Contextual[this.type] = log("populating parameters", printer, (_: Warm).objekt.toString) {
+    private def populateParams(): Contextual[this.type] = log("populating parameters", printer, (_: Warm).objekt.toString) {
       assert(!populatingParams, "the object is already populating parameters")
       populatingParams = true
       val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -244,7 +244,7 @@ object Semantic {
     private type Heap = Map[Ref, Objekt]
 
     class Cache {
-      private val last: CacheStore =  mutable.Map.empty
+      private var last: CacheStore =  mutable.Map.empty
       private var current: CacheStore = mutable.Map.empty
       private val stable: CacheStore = mutable.Map.empty
       private var changed: Boolean = false
@@ -258,8 +258,8 @@ object Semantic {
        */
       private var heap: Heap = Map.empty
 
-      /** Used to easily revert heap changes. */
-      private var heapBefore: Heap = Map.empty
+      /** Used to revert heap to last stable heap. */
+      private var heapStable: Heap = Map.empty
 
       def hasChanged = changed
 
@@ -305,7 +305,6 @@ object Semantic {
             stable.put(v, e, res)
           }
         }
-        current = mutable.Map.empty
 
       /** Prepare cache for the next iteration
        *
@@ -323,34 +322,16 @@ object Semantic {
        *
        */
       def prepareForNextIteration(isStable: Boolean)(using State, Context) =
-        if isStable then this.commitToStableCache()
+        if isStable then
+          this.commitToStableCache()
+          this.heapStable = this.heap
+          // If the current iteration is not stable, we need to use `last` for the next iteration,
+          // which already contains the updated value from the current iteration.
+          this.last = mutable.Map.empty
 
-        changed = false
-        current = mutable.Map.empty
-
-        if !isStable then revertHeapChanges()
-        heapBefore = this.heap
-
-      def revertHeapChanges()(using State, Context) =
-        printer.println("reverting heap changes")
-        this.heap.keys.foreach {
-          case warm: Warm =>
-            if heapBefore.contains(warm) then
-              this.heap = heap.updated(warm, heapBefore(warm))
-            else
-              // We cannot simply remove the object, as the values in the
-              // updated cache may refer to the warm object.
-              given Env = Env.empty
-              given Trace = Trace.empty
-              given Promoted = Promoted.empty
-              printer.println("resetting " + warm)
-              warm.ensureObjectFreshAndPopulated()
-          case _ =>
-        }
-
-        // ThisRef objects are not reachable, thus it's fine to leave them in
-        // the heap
-      end revertHeapChanges
+        this.changed = false
+        this.current = mutable.Map.empty
+        this.heap = this.heapStable
 
       def updateObject(ref: Ref, obj: Objekt) =
         this.heap = this.heap.updated(ref, obj)
@@ -463,11 +444,19 @@ object Semantic {
 
 
   extension (ref: Ref)
-    def objekt(using Cache): Objekt = cache.getObject(ref)
+    def objekt: Contextual[Objekt] =
+      // TODO: improve performance
+      ref match
+        case warm: Warm => warm.ensureObjectExistsAndPopulated()
+        case _ =>
+      cache.getObject(ref)
 
     def ensureObjectExists()(using Cache): ref.type =
-      if cache.containsObject(ref) then ref
-      else ensureFresh()
+      if cache.containsObject(ref) then
+        printer.println("object " + ref + " already exists")
+        ref
+      else
+        ensureFresh()
 
     def ensureFresh()(using Cache): ref.type =
       val obj = Objekt(ref.klass, fields = Map.empty, outers = Map(ref.klass -> ref.outer))
@@ -479,9 +468,9 @@ object Semantic {
      *
      *  Invariant: fields are immutable and only set once
      */
-    def updateField(field: Symbol, value: Value)(using Cache, Context): Unit = log("set field " + field + " of " + ref + " to " + value) {
+    def updateField(field: Symbol, value: Value): Contextual[Unit] = log("set field " + field + " of " + ref + " to " + value) {
       val obj = objekt
-      assert(!obj.hasField(field), field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + ref)
+      assert(!obj.hasField(field) || field.is(Flags.ParamAccessor) && obj.field(field) == value, field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + ref)
       val obj2 = obj.copy(fields = obj.fields.updated(field, value))
       cache.updateObject(ref, obj2)
     }
@@ -490,9 +479,9 @@ object Semantic {
      *
      *  Invariant: outers are immutable and only set once
      */
-    def updateOuter(klass: ClassSymbol, value: Value)(using Cache, Context): Unit = log("set outer " + klass + " of " + ref + " to " + value) {
+    def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] = log("set outer " + klass + " of " + ref + " to " + value) {
       val obj = objekt
-      assert(!obj.hasOuter(klass), klass.show + " already has outer, new = " + value + ", old = " + obj.outer(klass) + ", ref = " + ref)
+      assert(!obj.hasOuter(klass) || obj.outer(klass) == value, klass.show + " already has outer, new = " + value + ", old = " + obj.outer(klass) + ", ref = " + ref)
       val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
       cache.updateObject(ref, obj2)
     }
@@ -679,7 +668,7 @@ object Semantic {
             Result(Hot, Errors.empty)
           else
             val outer = Hot
-            val warm = Warm(klass, outer, ctor, args2).ensureFresh()
+            val warm = Warm(klass, outer, ctor, args2).ensureObjectExists()
             val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
             val res = warm.callConstructor(ctor, argInfos2, source)
             Result(warm, res.errors)
@@ -699,7 +688,7 @@ object Semantic {
 
           val argsWidened = args.map(_.value).widenArgs
           val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
-          val warm = Warm(klass, outer, ctor, argsWidened).ensureFresh()
+          val warm = Warm(klass, outer, ctor, argsWidened).ensureObjectExists()
           val res = warm.callConstructor(ctor, argInfos2, source)
           Result(warm, res.errors)
 
