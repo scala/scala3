@@ -292,7 +292,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 
       if (!isCZStaticModule && !isCZParcelable) {
-        val skipStaticForwarders = (claszSymbol.isInterface || claszSymbol.is(Module) || ctx.settings.XnoForwarders.value)
+        val skipStaticForwarders = (claszSymbol.is(Module) || ctx.settings.XnoForwarders.value)
         if (!skipStaticForwarders) {
           val lmoc = claszSymbol.companionModule
           // add static forwarders if there are no name conflicts; see bugs #363 and #1735
