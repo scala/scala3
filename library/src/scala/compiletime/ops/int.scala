@@ -9,7 +9,7 @@ object int:
    *    case 0 => 1
    *    case 1 => 2
    *    case 2 => 3
-   *    ...
+   *    // ...
    *    case 2147483646 => 2147483647
    *  }
    *  ```
@@ -152,8 +152,8 @@ object int:
 
   /** Negation of an `Int` singleton type.
    *  ```scala
-   *  val neg1: Neg[-1] = 1
-   *  val neg2: Neg[1] = -1
+   *  val neg1: Negate[-1] = 1
+   *  val neg2: Negate[1] = -1
    *  ```
    *  @syntax markdown
    */
