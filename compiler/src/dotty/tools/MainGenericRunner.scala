@@ -105,7 +105,17 @@ object MainGenericRunner {
     case "-run" :: fqName :: tail =>
       process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      process(tail, settings.copy(classPath = settings.classPath.appended(cp)))
+      val (tailargs, cpstr) = if classpathSeparator != ';' || cp.contains(classpathSeparator) then
+        (tail, cp)
+      else
+        val globdir = cp.replace('\\', '/').replaceAll("/[^/]*$","")
+        val jarfiles = cp :: tail
+        val cpfiles = jarfiles.takeWhile( f => f.startsWith(globdir) && ((f.toLowerCase.endsWith(".jar") || f.endsWith(".zip"))) )
+        val tailargs = jarfiles.drop(cpfiles.size)
+        (tailargs, cpfiles.mkString(classpathSeparator))
+        
+      process(tailargs, settings.copy(classPath = settings.classPath.appended(cpstr)))
+
     case ("-version" | "--version") :: _ =>
       settings.copy(
         executeMode = ExecuteMode.Repl,
@@ -141,6 +151,13 @@ object MainGenericRunner {
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
 
+  // collect globbed classpath entries
+  def collectGlobbedEntries(entries: List[String]): (List[String], List[String]) = {
+    val cpfiles = entries.takeWhile( f => (f.toLowerCase.endsWith(".jar") || f.endsWith(".zip")) )
+    val remainder = entries.drop(cpfiles.size)
+    (cpfiles, remainder)
+  }
+
   def main(args: Array[String]): Unit =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" "))
     val allArgs = scalaOpts ++ args
@@ -155,7 +172,7 @@ object MainGenericRunner {
         repl.Main.main(properArgs.toArray)
 
       case ExecuteMode.PossibleRun =>
-        val newClasspath = (settings.classPath :+ ".").map(File(_).toURI.toURL)
+        val newClasspath = (settings.classPath :+ ".").flatMap(_.split(classpathSeparator).filter(_.nonEmpty)).map(File(_).toURI.toURL)
         import dotty.tools.runner.RichClassLoader._
         val newClassLoader = ScalaClassLoader.fromURLsParallelCapable(newClasspath)
         val targetToRun = settings.possibleEntryPaths.to(LazyList).find { entryPath =>
@@ -177,8 +194,7 @@ object MainGenericRunner {
             cp.filterNot(c => compilerLibs.exists(c.contains))
           else
             cp
-        val newClasspath = (settings.classPath ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
-
+        val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
         val res = ObjectRunner.runAndCatch(newClasspath, settings.targetToRun, settings.residualArgs).flatMap {
           case ex: ClassNotFoundException if ex.getMessage == settings.targetToRun =>
             val file = settings.targetToRun
@@ -192,7 +208,6 @@ object MainGenericRunner {
         errorFn("", res)
       case ExecuteMode.Script =>
         val targetScriptPath: String = settings.targetScript.toString.replace('\\', '/')
-        System.setProperty("script.path", targetScriptPath)
         val properArgs =
           List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
             ++ settings.residualArgs

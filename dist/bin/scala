@@ -28,39 +28,10 @@ fi
 
 source "$PROG_HOME/bin/common"
 
-case `uname` in
-CYG*|MINGW*|MSYS*) PSEP=';' ;;
-*) PSEP=':' ;;
-esac
-
-ARGS=()
-while [ $# -gt 0 ]; do
-  case "$1" in
-  -cp | -classpath) # partial fix for #10761
-    # passed as two arguments, e.g. '-classpath' 'lib/*'
-    ARGS+=($1)
-    ARGS+=("$2${PSEP}")
-    shift
-    shift
-    ;;
-  -cp*|-classpath*) # partial fix for #10761
-    # passed as a single argument, e.g. '-classpath lib/*'
-    # (hashbang line can glom args together)
-    ARGS+=('-classpath')
-    ARGS+=("\"${1#* *}${PSEP}\"")
-    shift
-    ;;
-  *)
-    ARGS+=($1)
-    shift
-    ;;
-  esac
-done
-
 # exec here would prevent onExit from being called, leaving terminal in unusable state
 compilerJavaClasspathArgs
 [ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405
-eval "\"$JAVACMD\"" "-classpath \"$jvm_cp_args\"" "dotty.tools.MainGenericRunner" "-classpath \"$jvm_cp_args\"" "${ARGS[@]}"
+eval "\"$JAVACMD\"" "-classpath \"$jvm_cp_args\"" "dotty.tools.MainGenericRunner" "-classpath \"$jvm_cp_args\"" "$@"
 scala_exit_status=$?
 
 

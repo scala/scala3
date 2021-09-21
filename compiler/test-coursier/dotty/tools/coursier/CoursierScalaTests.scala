@@ -130,6 +130,7 @@ class CoursierScalaTests:
       val argsFile = new File(getClass.getResource("/run/myargs.txt").getPath)
       val output = CoursierScalaTests.csScalaCmd(s"@$argsFile", source.absPath)
       assertEquals(output.mkString("\n"), "Hello")
+    argumentFile()
 
 object CoursierScalaTests:
 

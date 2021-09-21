@@ -76,7 +76,9 @@ lazy val env:Map[String, String] = System.getenv.asScala.toMap
 // script output expected as "<tag>: <value>"
 def findTaggedLine(tag: String, lines: Seq[String]): String =
   lines.find { _.startsWith(tag) } match
-    case None => sys.error(s"no $tag: found in script output")
+    case None =>
+      lines.foreach { System.err.printf("line[%s]\n", _) }
+      sys.error(s"no $tag: found in script output")
     case Some(cwd) => cwd.dropWhile( _ != ' ').trim // discard tag
 
 def exec(cmd: String *): Seq[String] = Process(cmd).lazyLines_!.toList
