@@ -1,0 +1,13 @@
+[[syntax trees at end of                    parser]] // tests/printing/untyped/dependent-annot.scala
+package <empty> {
+  class C {}
+  class ann(private[this] val x: Any *) extends annotation.Annotation {}
+  def f(y: C, z: C) = 
+    {
+      def g(): C @ann(y, z) = ???
+      val ac: ((x: C) => Array[String @ann(x)]) = ???
+      val dc = ac(g())
+      <empty>
+    }
+}
+

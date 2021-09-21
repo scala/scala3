@@ -1,0 +1,25 @@
+[[syntax trees at end of                     typer]] // tests/printing/dependent-annot.scala
+package <empty> {
+  class C() extends Object() {}
+  class ann(x: Seq[Any] @Repeated) extends annotation.Annotation() {
+    private[this] val x: Seq[Any] @Repeated
+  }
+  final lazy module val dependent-annot$package: dependent-annot$package = 
+    new dependent-annot$package()
+  final module class dependent-annot$package() extends Object() { 
+    this: dependent-annot$package.type =>
+    def f(y: C, z: C): Unit = 
+      {
+        def g(): C @ann([y,z : Any]*) = ???
+        val ac: 
+          (C => Array[String]) 
+            {
+              def apply(x: C): Array[String @ann([x : Any]*)]
+            }
+         = ???
+        val dc: Array[String] = ac.apply(g())
+        ()
+      }
+  }
+}
+
