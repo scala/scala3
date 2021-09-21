@@ -414,12 +414,20 @@ object Semantic {
       case (Cold, _) => Cold
       case (_, Cold) => Cold
 
-      case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) => RefSet(a :: b :: Nil)
+      case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) =>
+        if a == b then a else RefSet(a :: b :: Nil)
 
-      case (a: (Fun | Warm | ThisRef), RefSet(refs))    => RefSet(a :: refs)
-      case (RefSet(refs), b: (Fun | Warm | ThisRef))    => RefSet(b :: refs)
+      case (a: (Fun | Warm | ThisRef), RefSet(refs)) =>
+        if refs.exists(_ == a) then b
+        else RefSet(a :: refs)
 
-      case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
+      case (RefSet(refs), b: (Fun | Warm | ThisRef)) =>
+        if refs.exists(_ == b) then a
+        else RefSet(b :: refs)
+
+      case (RefSet(refs1), RefSet(refs2)) =>
+        val diff = refs2.filter(ref => refs1.forall(_ != ref))
+        RefSet(refs1 ++ diff)
 
     /** Conservatively approximate the value with `Cold` or `Hot` */
     def widenArg: Value =
