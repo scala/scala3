@@ -103,7 +103,7 @@ if defined _TARGET_SCRIPT (
 ) else if "%__ARG%"=="-run" ( set _PROG_NAME=%_REPL_MAIN%
 ) else if "%__ARG%"=="-colors" ( set _COLORS=true
 ) else if "%__ARG%"=="-no-colors" ( set _COLORS=
-) else if "%__ARG%"=="-with-compiler" ( set _JVM_CP_ARGS=%_PSEP%%_SCALA3_COMP%%_PSEP%%_TASTY_CORE%
+) else if "%__ARG%"=="-with-compiler" ( set "_JVM_CP_ARGS=%_PSEP%%_SCALA3_COMP%%_PSEP%%_TASTY_CORE%"
 @rem break out -D and -J options and add them to JAVA_OPTS as well
 @rem so they reach the JVM in time to do some good. The -D options
 @rem will be available as system properties.
@@ -146,21 +146,21 @@ goto :eof
 @rem echo scala-lib: %_SCALA_LIB%
 @rem echo sbt-intface: %_SBT_INTF%
 
-set __TOOLCHAIN=%_SCALA_LIB%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_LIB%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_SCALA_ASM%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_SBT_INTF%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_INTF%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_COMP%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_TASTY_CORE%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_STAGING%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_TASTY_INSPECTOR%%_PSEP%
+set "__TOOLCHAIN=%_SCALA_LIB%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_LIB%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA_ASM%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_SBT_INTF%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_INTF%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_COMP%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_TASTY_CORE%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_STAGING%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_SCALA3_TASTY_INSPECTOR%%_PSEP%"
 
 @rem # jline
-set __TOOLCHAIN=%__TOOLCHAIN%%_JLINE_READER%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_JLINE_TERMINAL%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_JLINE_TERMINAL_JNA%%_PSEP%
-set __TOOLCHAIN=%__TOOLCHAIN%%_JNA%
+set "__TOOLCHAIN=%__TOOLCHAIN%%_JLINE_READER%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_JLINE_TERMINAL%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_JLINE_TERMINAL_JNA%%_PSEP%"
+set "__TOOLCHAIN=%__TOOLCHAIN%%_JNA%
 
 set _JVM_CP_ARGS=-classpath "%__TOOLCHAIN%"
 goto :eof
