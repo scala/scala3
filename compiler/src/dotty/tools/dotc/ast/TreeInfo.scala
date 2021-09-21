@@ -569,6 +569,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  This avoids the situation where we have a Select node that does not have a symbol.
    */
   def constToLiteral(tree: Tree)(using Context): Tree = {
+    assert(!tree.isType)
     val tree1 = ConstFold(tree)
     tree1.tpe.widenTermRefExpr.dealias.normalized match {
       case ConstantType(Constant(_: Type)) if tree.isInstanceOf[Block] =>

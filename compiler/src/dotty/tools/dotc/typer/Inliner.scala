@@ -1514,13 +1514,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
       val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
-      val resMaybeReduced = constToLiteral(reducer.reduceProjection(resNoReduce))
-      if (resNoReduce ne resMaybeReduced)
-        typed(resMaybeReduced, pt) // redo typecheck if reduction changed something
+      val reducedProjection = reducer.reduceProjection(resNoReduce)
+      if (reducedProjection.isType)
+        //in case the projection leads to a typed tree, then there is nothing to reduce
+        resNoReduce
       else
-        val res = resMaybeReduced
-        ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.srcPos)
-        inlineIfNeeded(res)
+        val resMaybeReduced = constToLiteral(reducedProjection)
+        if (resNoReduce ne resMaybeReduced)
+          typed(resMaybeReduced, pt) // redo typecheck if reduction changed something
+        else
+          val res = resMaybeReduced
+          ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.srcPos)
+          inlineIfNeeded(res)
     }
 
     override def typedIf(tree: untpd.If, pt: Type)(using Context): Tree =
