@@ -109,7 +109,7 @@ object MainGenericRunner {
         (tail, cp)
       else
         // combine globbed classpath entries into a classpath
-        val globdir = cp.replace('\\', '/').replaceAll("/[^/]*$","")
+        val globdir = cp.replaceAll("[\\/][^\\/]*$","") // must be forward-backward-slash-agnostic
         val jarfiles = cp :: tail
         val cpfiles = jarfiles.takeWhile( f => f.startsWith(globdir) && ((f.toLowerCase.endsWith(".jar") || f.endsWith(".zip"))) )
         val tailargs = jarfiles.drop(cpfiles.size)
