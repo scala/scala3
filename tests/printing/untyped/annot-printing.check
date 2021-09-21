@@ -1,0 +1,9 @@
+[[syntax trees at end of                    parser]] // tests/printing/untyped/annot-printing.scala
+package <empty> {
+  import scala.annotation.*
+  class Foo() extends Annotation {}
+  class Bar(private[this] val s: String) extends Annotation {}
+  class Xyz(private[this] val i: Int = 23) extends Annotation {}
+  def x: Int @nowarn @main @Xyz @Foo @Bar("hello") = ???
+}
+

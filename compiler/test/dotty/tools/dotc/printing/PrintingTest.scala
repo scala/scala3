@@ -19,17 +19,18 @@ import scala.io.Source
 import org.junit.Test
 
 class PrintingTest {
-  val testsDir = "tests/printing"
-  val options = List("-Xprint:typer", "-color:never", "-classpath", TestConfiguration.basicClasspath)
 
-  private def compileFile(path: JPath): Boolean = {
+  def options(phase: String) =
+    List(s"-Xprint:$phase", "-color:never", "-classpath", TestConfiguration.basicClasspath)
+
+  private def compileFile(path: JPath, phase: String): Boolean = {
     val baseFilePath  = path.toString.stripSuffix(".scala")
     val checkFilePath = baseFilePath + ".check"
     val byteStream    = new ByteArrayOutputStream()
     val reporter = TestReporter.reporter(new PrintStream(byteStream), INFO)
 
     try {
-      Main.process((path.toString::options).toArray, reporter, null)
+      Main.process((path.toString::options(phase)).toArray, reporter, null)
     } catch {
       case e: Throwable =>
         println(s"Compile $path exception:")
@@ -40,11 +41,10 @@ class PrintingTest {
     FileDiff.checkAndDump(path.toString, actualLines.toIndexedSeq, checkFilePath)
   }
 
-  @Test
-  def printing: Unit = {
+  def testIn(testsDir: String, phase: String) =
     val res = Directory(testsDir).list.toList
       .filter(f => f.extension == "scala")
-      .map { f => compileFile(f.jpath) }
+      .map { f => compileFile(f.jpath, phase) }
 
     val failed = res.filter(!_)
 
@@ -53,5 +53,12 @@ class PrintingTest {
     assert(failed.length == 0, msg)
 
     println(msg)
-  }
+
+  end testIn
+
+  @Test
+  def printing: Unit = testIn("tests/printing", "typer")
+
+  @Test
+  def untypedPrinting: Unit = testIn("tests/printing/untyped", "parser")
 }

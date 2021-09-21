@@ -1,0 +1,22 @@
+[[syntax trees at end of                     typer]] // tests/printing/annot-printing.scala
+package <empty> {
+  import scala.annotation.*
+  class Foo() extends annotation.Annotation() {}
+  class Bar(s: String) extends annotation.Annotation() {
+    private[this] val s: String
+  }
+  class Xyz(i: Int) extends annotation.Annotation() {
+    private[this] val i: Int
+  }
+  final lazy module val Xyz: Xyz = new Xyz()
+  final module class Xyz() extends AnyRef() { this: Xyz.type =>
+    def $lessinit$greater$default$1: Int @uncheckedVariance = 23
+  }
+  final lazy module val annot-printing$package: annot-printing$package = 
+    new annot-printing$package()
+  final module class annot-printing$package() extends Object() { 
+    this: annot-printing$package.type =>
+    def x: Int @nowarn() @main @Xyz() @Foo @Bar("hello") = ???
+  }
+}
+
