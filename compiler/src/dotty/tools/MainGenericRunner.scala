@@ -105,9 +105,10 @@ object MainGenericRunner {
     case "-run" :: fqName :: tail =>
       process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val (tailargs, cpstr) = if classpathSeparator != ';' || cp.contains(classpathSeparator) then
+      val (tailargs, cpstr) = if classpathSeparator != ";" || cp.contains(classpathSeparator) then
         (tail, cp)
       else
+        // combine globbed classpath entries into a classpath
         val globdir = cp.replace('\\', '/').replaceAll("/[^/]*$","")
         val jarfiles = cp :: tail
         val cpfiles = jarfiles.takeWhile( f => f.startsWith(globdir) && ((f.toLowerCase.endsWith(".jar") || f.endsWith(".zip"))) )
@@ -150,13 +151,6 @@ object MainGenericRunner {
       else
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
-
-  // collect globbed classpath entries
-  def collectGlobbedEntries(entries: List[String]): (List[String], List[String]) = {
-    val cpfiles = entries.takeWhile( f => (f.toLowerCase.endsWith(".jar") || f.endsWith(".zip")) )
-    val remainder = entries.drop(cpfiles.size)
-    (cpfiles, remainder)
-  }
 
   def main(args: Array[String]): Unit =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" "))
