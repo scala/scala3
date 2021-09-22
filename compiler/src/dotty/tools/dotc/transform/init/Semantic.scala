@@ -745,7 +745,7 @@ object Semantic {
 
               case Cold => Result(Cold, Nil)
 
-              case ref: Ref => eval(vdef.rhs, ref, klass)
+              case ref: Ref => eval(vdef.rhs, ref, enclosingClass)
 
               case _ =>
                  report.error("unexpected defTree when accessing local variable, sym = " + sym.show + ", defTree = " + sym.defTree.show, source)
@@ -992,7 +992,7 @@ object Semantic {
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, (_: Result).show) {
+  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Result).show) {
     if (cache.contains(thisV, expr)) Result(cache(thisV, expr), Errors.empty)
     else cache.assume(thisV, expr, cacheResult) { cases(expr, thisV, klass) }
   }
@@ -1237,7 +1237,7 @@ object Semantic {
           val obj = ref.objekt
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !obj.hasOuter(klass) then
-            val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass, source, trace.toVector)
+            val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj, source, trace.toVector)
             report.error(error.show + error.stacktrace, source)
             Hot
           else
