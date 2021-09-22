@@ -1,0 +1,22 @@
+-- [E008] Not Found Error: tests/neg/i13558.scala:23:14 ----------------------------------------------------------------
+23 |    println(a.id) // error
+   |            ^^^^
+   |            value id is not a member of testcode.A.
+   |            An extension method was tried, but could not be fully constructed:
+   |
+   |                testcode.ExtensionA.id(a)    failed with
+   |
+   |                    Reference to id is ambiguous,
+   |                    it is both imported by import testcode.ExtensionB._
+   |                    and imported subsequently by import testcode.ExtensionA._
+-- [E008] Not Found Error: tests/neg/i13558.scala:29:14 ----------------------------------------------------------------
+29 |    println(a.id) // error
+   |            ^^^^
+   |            value id is not a member of testcode.A.
+   |            An extension method was tried, but could not be fully constructed:
+   |
+   |                testcode.ExtensionB.id(a)    failed with
+   |
+   |                    Reference to id is ambiguous,
+   |                    it is both imported by import testcode.ExtensionA._
+   |                    and imported subsequently by import testcode.ExtensionB._
