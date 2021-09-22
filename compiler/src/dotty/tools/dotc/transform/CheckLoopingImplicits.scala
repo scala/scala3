@@ -71,7 +71,7 @@ class CheckLoopingImplicits extends MiniPhase:
       case SeqLiteral(elems, _) =>
         elems.foreach(checkNotLooping)
       case t: ValDef =>
-        checkNotLooping(t.rhs)
+        if !t.symbol.is(Lazy) then checkNotLooping(t.rhs)
       case _ =>
 
     if sym.isOneOf(GivenOrImplicit) then
