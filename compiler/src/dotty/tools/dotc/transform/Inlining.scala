@@ -15,6 +15,7 @@ import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd
 import typer.Implicits.SearchFailureType
+import typer.PrepareInlineable
 
 import scala.collection.mutable
 import dotty.tools.dotc.core.Annotations._
