@@ -418,11 +418,11 @@ object Semantic {
         if a == b then a else RefSet(a :: b :: Nil)
 
       case (a: (Fun | Warm | ThisRef), RefSet(refs)) =>
-        if refs.exists(_ == a) then b
+        if refs.exists(_ == a) then b: Value // fix pickling test
         else RefSet(a :: refs)
 
       case (RefSet(refs), b: (Fun | Warm | ThisRef)) =>
-        if refs.exists(_ == b) then a
+        if refs.exists(_ == b) then a: Value // fix pickling test
         else RefSet(b :: refs)
 
       case (RefSet(refs1), RefSet(refs2)) =>
