@@ -73,7 +73,9 @@ object Semantic {
   }
 
   /** A reference to the object under initialization pointed by `this` */
-  case class ThisRef(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref
+  case class ThisRef(klass: ClassSymbol) extends Ref {
+    val outer = Hot
+  }
 
   /** An object with all fields initialized but reaches objects under initialization
    *
