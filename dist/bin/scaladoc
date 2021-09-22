@@ -95,7 +95,8 @@ classpathArgs () {
   CLASS_PATH+="$(find_lib "*flexmark-ext-ins*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-ext-superscript*")$PSEP"
   CLASS_PATH+="$(find_lib "*antlr-runtime*")$PSEP"
-  CLASS_PATH+="$(find_lib "*ST4*")"
+  CLASS_PATH+="$(find_lib "*ST4*")$PSEP"
+  CLASS_PATH+="$(find_lib "*using_directives*")"
 
   jvm_cp_args="-classpath \"$CLASS_PATH\""
 }
