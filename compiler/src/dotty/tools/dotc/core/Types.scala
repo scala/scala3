@@ -1779,15 +1779,21 @@ object Types {
      *  @pre this is a method type without parameter dependencies.
      *  @param dropLast  The number of trailing parameters that should be dropped
      *                   when forming the function type.
+     *  @param unitToWildcard  If true and the result type is Unit, use a
+     *                         wildcard as the function result type instead.
+     *                         Useful when checking if a function literal can
+     *                         be converted into this function type.
      */
-    def toFunctionType(isJava: Boolean, dropLast: Int = 0)(using Context): Type = this match {
+    def toFunctionType(isJava: Boolean, dropLast: Int = 0, unitToWildcard: Boolean = false)(using Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isContextual = mt.isContextualMethod && !ctx.erasedTypes
         val isErased = mt.isErasedMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
-          case res: MethodType => res.toFunctionType(isJava)
-          case res => res
+          case res: MethodType => res.toFunctionType(isJava, unitToWildcard = unitToWildcard)
+          case res =>
+            if unitToWildcard && res.isRef(defn.UnitClass) then WildcardType
+            else res
         }
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
