@@ -11,10 +11,9 @@ import SyntheticsSupport._
 trait TypesSupport:
   self: TastyParser =>
 
-  type DocSignaturePart = String | Link
-  type DocSignature = List[DocSignaturePart]
+  type SSignature = List[SignaturePart]
 
-  def getGivenInstance(method: qctx.reflect.DefDef): Option[DocSignature] =
+  def getGivenInstance(method: qctx.reflect.DefDef): Option[SSignature] =
     import qctx.reflect._
     given qctx.type = qctx
 
@@ -39,7 +38,7 @@ trait TypesSupport:
 
   given TreeSyntax: AnyRef with
     extension (using Quotes)(tpeTree: reflect.Tree)
-      def asSignature: DocSignature =
+      def asSignature: SSignature =
         import reflect._
         tpeTree match
           case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe)
@@ -48,20 +47,26 @@ trait TypesSupport:
 
   given TypeSyntax: AnyRef with
     extension (using Quotes)(tpe: reflect.TypeRepr)
-      def asSignature: DocSignature = inner(tpe)
+      def asSignature: SSignature = inner(tpe)
 
 
-  private def text(str: String): DocSignaturePart = str
+  private def plain(str: String): SignaturePart = Plain(str)
 
-  private def texts(str: String): DocSignature = List(text(str))
+  private def keyword(str: String): SignaturePart = Keyword(str)
 
-  private def link(using Quotes)(symbol: reflect.Symbol): DocSignature =
-    val suffix = if symbol.isValDef then texts(".type") else Nil
-    Link(symbol.normalizedName, symbol.dri) :: suffix
+  private def tpe(str: String, dri: DRI): SignaturePart = dotty.tools.scaladoc.Type(str, Some(dri))
 
-  private def commas(lists: List[DocSignature]) = lists match
+  private def tpe(str: String): SignaturePart = dotty.tools.scaladoc.Type(str, None)
+
+  extension (on: SignaturePart) def l: List[SignaturePart] = List(on)
+
+  private def tpe(using Quotes)(symbol: reflect.Symbol): SSignature =
+    val suffix = if symbol.isValDef then plain(".type").l else Nil
+    dotty.tools.scaladoc.Type(symbol.normalizedName, Some(symbol.dri)) :: suffix
+
+  private def commas(lists: List[SSignature]) = lists match
     case List(single) => single
-    case other => other.reduce((r, e) => r ++ texts(", ") ++ e)
+    case other => other.reduce((r, e) => r ++ plain(", ").l ++ e)
 
   private def isRepeatedAnnotation(using Quotes)(term: reflect.Term) =
     import reflect._
@@ -80,34 +85,34 @@ trait TypesSupport:
       case _ => false
 
   // TODO #23 add support for all types signatures that makes sense
-  private def inner(using Quotes)(tp: reflect.TypeRepr)(using indent: Int = 0): DocSignature =
+  private def inner(using Quotes)(tp: reflect.TypeRepr)(using indent: Int = 0): SSignature =
     import reflect._
-    def noSupported(name: String): DocSignature =
+    def noSupported(name: String): SSignature =
       println(s"WARN: Unsupported type: $name: ${tp.show}")
-      List(text(s"Unsupported[$name]"))
+      plain(s"Unsupported[$name]").l
 
     tp match
-      case OrType(left, right) => inner(left) ++ texts(" | ") ++ inner(right)
-      case AndType(left, right) => inner(left) ++ texts(" & ") ++ inner(right)
-      case ByNameType(tpe) => text("=> ") :: inner(tpe)
+      case OrType(left, right) => inner(left) ++ keyword(" | ").l ++ inner(right)
+      case AndType(left, right) => inner(left) ++ keyword(" & ").l ++ inner(right)
+      case ByNameType(tpe) => keyword("=> ") :: inner(tpe)
       case ConstantType(constant) =>
-        texts(constant.show)
+        plain(constant.show).l
       case ThisType(tpe) => inner(tpe)
       case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedAnnotation(annotation) =>
-        inner(tpe) :+ text("*")
+        inner(tpe) :+ plain("*")
       case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
-        inner(tpe) :+ text("*")
+        inner(tpe) :+ plain("*")
       case AnnotatedType(tpe, _) =>
         inner(tpe)
       case tl @ TypeLambda(params, paramBounds, resType@AppliedType(tpe, args))
         if paramBounds.map(inner).forall(_.isEmpty) && params.zip(args.map(inner)).forall(List(_) == _) =>
         inner(tpe)
       case tl @ TypeLambda(params, paramBounds, resType) =>
-        texts("[") ++ commas(params.zip(paramBounds).map { (name, typ) =>
+        plain("[").l ++ commas(params.zip(paramBounds).map { (name, typ) =>
           val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-          texts(normalizedName) ++ inner(typ)
-        }) ++ texts("]")
-        ++ texts(" =>> ")
+          tpe(normalizedName).l ++ inner(typ)
+        }) ++ plain("]").l
+        ++ keyword(" =>> ").l
         ++ inner(resType)
 
 
@@ -117,91 +122,91 @@ trait TypesSupport:
           case t => List(t)
         }
 
-        def getParamBounds(t: PolyType): DocSignature = commas(
+        def getParamBounds(t: PolyType): SSignature = commas(
           t.paramNames.zip(t.paramBounds.map(inner(_)))
-            .map(b => texts(b(0)) ++ b(1))
+            .map(b => tpe(b(0)).l ++ b(1))
         )
 
-        def getParamList(m: MethodType): DocSignature =
-          texts("(")
-          ++ m.paramNames.zip(m.paramTypes).map{ case (name, tp) => texts(s"$name: ") ++ inner(tp)}
-            .reduceLeftOption((acc: DocSignature, elem: DocSignature) => acc ++ texts(", ") ++ elem).getOrElse(List())
-          ++ texts(")")
+        def getParamList(m: MethodType): SSignature =
+          plain("(").l
+          ++ m.paramNames.zip(m.paramTypes).map{ case (name, tp) => plain(s"$name: ").l ++ inner(tp)}
+            .reduceLeftOption((acc: SSignature, elem: SSignature) => acc ++ plain(", ").l ++ elem).getOrElse(List())
+          ++ plain(")").l
 
-        def parseRefinedElem(name: String, info: TypeRepr, polyTyped: DocSignature = Nil): DocSignature = ( info match {
+        def parseRefinedElem(name: String, info: TypeRepr, polyTyped: SSignature = Nil): SSignature = ( info match {
           case m: MethodType => {
             val paramList = getParamList(m)
-            texts(s"def $name") ++ polyTyped ++ paramList ++ texts(": ") ++ inner(m.resType)
+            keyword("def ").l ++ plain(name).l ++ polyTyped ++ paramList ++ plain(": ").l ++ inner(m.resType)
           }
           case t: PolyType => {
             val paramBounds = getParamBounds(t)
             val parsedMethod = parseRefinedElem(name, t.resType)
             if (!paramBounds.isEmpty){
-              parseRefinedElem(name, t.resType, texts("[") ++ paramBounds ++ texts("]"))
+              parseRefinedElem(name, t.resType, plain("[").l ++ paramBounds ++ plain("]").l)
             } else parseRefinedElem(name, t.resType)
           }
-          case ByNameType(tp) => texts(s"def $name: ") ++ inner(tp)
-          case t: TypeBounds => texts(s"type $name") ++ inner(t)
-          case t: TypeRef => texts(s"val $name: ") ++ inner(t)
-          case t: TermRef => texts(s"val $name: ") ++ inner(t)
+          case ByNameType(tp) => keyword("def ").l ++ plain(s"$name: ").l ++ inner(tp)
+          case t: TypeBounds => keyword("type ").l ++ plain(name).l ++ inner(t)
+          case t: TypeRef => keyword("val ").l ++ plain(s"$name: ").l ++ inner(t)
+          case t: TermRef => keyword("val ").l ++ plain(s"$name: ").l ++ inner(t)
           case other => noSupported(s"Not supported type in refinement $info")
-        } ) ++ texts("; ")
+        } ) ++ plain("; ").l
 
-        def parsePolyFunction(info: TypeRepr): DocSignature = info match {
+        def parsePolyFunction(info: TypeRepr): SSignature = info match {
           case t: PolyType =>
             val paramBounds = getParamBounds(t)
             val method = t.resType.asInstanceOf[MethodType]
             val paramList = getParamList(method)
             val resType = inner(method.resType)
-            texts("[") ++ paramBounds ++ texts("] => ") ++ paramList ++ texts(" => ") ++ resType
+            plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(" => ").l ++ paramList ++ keyword(" => ").l ++ resType
           case other => noSupported(s"Not supported type in refinement $info")
         }
         val refinementInfo = getRefinementInformation(r)
         val refinedType = refinementInfo.head
         val refinedElems = refinementInfo.tail.collect{ case r: Refinement => r }.toList
-        val prefix = if refinedType.typeSymbol != defn.ObjectClass then inner(refinedType) ++ texts(" ") else Nil
+        val prefix = if refinedType.typeSymbol != defn.ObjectClass then inner(refinedType) ++ plain(" ").l else Nil
         if (refinedType.typeSymbol.fullName == "scala.PolyFunction" && refinedElems.size == 1) {
           parsePolyFunction(refinedElems.head.info)
         } else {
-          prefix ++ texts("{ ") ++ refinedElems.flatMap(e => parseRefinedElem(e.name, e.info)) ++ texts(" }")
+          prefix ++ plain("{ ").l ++ refinedElems.flatMap(e => parseRefinedElem(e.name, e.info)) ++ plain(" }").l
         }
       }
       case t @ AppliedType(tpe, typeList) =>
         import dotty.tools.dotc.util.Chars._
         if !t.typeSymbol.name.forall(isIdentifierPart) && typeList.size == 2 then
           inner(typeList.head)
-          ++ texts(" ")
+          ++ plain(" ").l
           ++ inner(tpe)
-          ++ texts(" ")
+          ++ plain(" ").l
           ++ inner(typeList.last)
         else if t.isFunctionType then
           typeList match
             case Nil =>
               Nil
             case Seq(rtpe) =>
-              text("() => ") :: inner(rtpe)
+              plain("()").l ++ keyword(" => ").l ++ inner(rtpe)
             case Seq(arg, rtpe) =>
               val partOfSignature = arg match
-                case byName: ByNameType => texts("(") ++ inner(byName) ++ texts(")")
+                case byName: ByNameType => plain("(").l ++ inner(byName) ++ plain(")").l
                 case _ => inner(arg)
-              partOfSignature ++ texts(" => ") ++ inner(rtpe)
+              partOfSignature ++ keyword(" => ").l ++ inner(rtpe)
             case args =>
-              texts("(") ++ commas(args.init.map(inner)) ++ texts(") => ") ++ inner(args.last)
+              plain("(").l ++ commas(args.init.map(inner)) ++ plain(")").l ++ keyword(" => ").l ++ inner(args.last)
         else if t.isTupleN then
           typeList match
             case Nil =>
               Nil
             case args =>
-              texts("(") ++ commas(args.map(inner)) ++ texts(")")
-        else inner(tpe) ++ texts("[") ++ commas(typeList.map { t => t match
-          case _: TypeBounds => texts("_") ++ inner(t)
+              plain("(").l ++ commas(args.map(inner)) ++ plain(")").l
+        else inner(tpe) ++ plain("[").l ++ commas(typeList.map { t => t match
+          case _: TypeBounds => keyword("_").l ++ inner(t)
           case _ => inner(t)
-        }) ++ texts("]")
+        }) ++ plain("]").l
 
       case tp @ TypeRef(qual, typeName) =>
         qual match {
-          case r: RecursiveThis => texts(s"this.$typeName")
-          case _: TypeRepr => link(tp.typeSymbol)
+          case r: RecursiveThis => tpe(s"this.$typeName").l
+          case _: TypeRepr => tpe(tp.typeSymbol)
         }
         // convertTypeOrBoundsToReference(reflect)(qual) match {
         //     case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true)
@@ -233,7 +238,7 @@ trait TypesSupport:
       case tr @ TermRef(qual, typeName) =>
         tr.termSymbol.tree match
           case vd: ValDef => inner(vd.tpt.tpe)
-          case _          => link(tr.termSymbol)
+          case _          => tpe(tr.termSymbol)
 
 
         // convertTypeOrBoundsToReference(reflect)(qual) match {
@@ -248,7 +253,7 @@ trait TypesSupport:
       // }
       // case _ => throw Exception("No match for type in conversion to Reference. This should not happen, please open an issue. " + tp)
       case TypeBounds(low, hi) =>
-        if(low == hi) texts(" = ") ++ inner(low)
+        if(low == hi) keyword(" = ").l ++ inner(low)
         else typeBoundsTreeOfHigherKindedType(low, hi)
 
       case NoPrefix() => Nil
@@ -258,25 +263,25 @@ trait TypesSupport:
         val spaces = " " * (indent)
         val casesTexts = cases.flatMap {
           case MatchCase(from, to) =>
-            texts(caseSpaces + "case ") ++ inner(from) ++ texts(" => ") ++ inner(to)(using indent = indent + 2) ++ texts("\n")
+            keyword(caseSpaces + "case ").l ++ inner(from) ++ keyword(" => ").l ++ inner(to)(using indent = indent + 2) ++ plain("\n").l
           case TypeLambda(_, _, MatchCase(from, to)) =>
-            texts(caseSpaces + "case ") ++ inner(from) ++ texts(" => ") ++ inner(to)(using indent = indent + 2) ++ texts("\n")
+            keyword(caseSpaces + "case ").l ++ inner(from) ++ keyword(" => ").l ++ inner(to)(using indent = indent + 2) ++ plain("\n").l
         }
-        inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts(spaces + "}")
+        inner(sc) ++ keyword(" match ").l ++ plain("{\n").l ++ casesTexts ++ plain(spaces + "}").l
 
-      case ParamRef(TypeLambda(names, _, _), i) => texts(names.apply(i))
+      case ParamRef(TypeLambda(names, _, _), i) => tpe(names.apply(i)).l
 
-      case ParamRef(m: MethodType, i) => texts(m.paramNames(i))
+      case ParamRef(m: MethodType, i) => tpe(m.paramNames(i)).l
 
       case RecursiveType(tp) => inner(tp)
 
       case MatchCase(pattern, rhs) =>
-        texts("case ") ++ inner(pattern) ++ texts(" => ") ++ inner(rhs)
+        keyword("case ").l ++ inner(pattern) ++ keyword(" => ").l ++ inner(rhs)
 
       case t: dotty.tools.dotc.core.Types.LazyRef => try {
         inner(t.ref(using ctx.compilerContext).asInstanceOf[TypeRepr])
       } catch {
-        case e: AssertionError => texts("LazyRef(...)")
+        case e: AssertionError => tpe("LazyRef(...)").l
       }
 
       case tpe =>
@@ -287,9 +292,9 @@ trait TypesSupport:
   private def typeBound(using Quotes)(t: reflect.TypeRepr, low: Boolean) =
     import reflect._
     val ignore = if (low) t.typeSymbol == defn.NothingClass else t.typeSymbol == defn.AnyClass
-    val prefix = text(if low then " >: " else " <: ")
+    val prefix = keyword(if low then " >: " else " <: ")
     t match {
-      case l: TypeLambda => prefix :: texts("(") ++ inner(l) ++ texts(")")
+      case l: TypeLambda => prefix :: plain("(").l ++ inner(l) ++ plain(")").l
       case p: ParamRef => prefix :: inner(p)
       case other if !ignore => prefix :: inner(other)
       case _ => Nil
@@ -302,10 +307,10 @@ trait TypesSupport:
     high.match
       case TypeLambda(params, paramBounds, resType) =>
         if resType.typeSymbol == defn.AnyClass then
-          texts("[") ++ commas(params.zip(paramBounds).map { (name, typ) =>
+          plain("[").l ++ commas(params.zip(paramBounds).map { (name, typ) =>
             val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-            texts(normalizedName) ++ inner(typ)
-          }) ++ texts("]")
+            tpe(normalizedName).l ++ inner(typ)
+          }) ++ plain("]").l
         else
           regularTypeBounds(low, high)
       case _ => regularTypeBounds(low, high)

@@ -31,12 +31,9 @@ abstract class AccessProxies {
    */
   protected def passReceiverAsArg(accessorName: Name)(using Context): Boolean = false
 
-  /** The accessor definitions that need to be added to class `cls`
-   *  As a side-effect, this method removes entries from the `accessedBy` map.
-   *  So a second call of the same method will yield the empty list.
-   */
+  /** The accessor definitions that need to be added to class `cls` */
   private def accessorDefs(cls: Symbol)(using Context): Iterator[DefDef] =
-    for (accessor <- cls.info.decls.iterator; accessed <- accessedBy.remove(accessor).toOption) yield
+    for accessor <- cls.info.decls.iterator; accessed <- accessedBy.get(accessor) yield
       DefDef(accessor.asTerm, prefss => {
         def numTypeParams = accessed.info match {
           case info: PolyType => info.paramNames.length
