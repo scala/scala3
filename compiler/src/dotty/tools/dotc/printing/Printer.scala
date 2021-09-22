@@ -119,6 +119,9 @@ abstract class Printer {
   /** A description of sym's location */
   def extendedLocationText(sym: Symbol): Text
 
+  /** Textual description of regular annotation in terms of its tree */
+  def annotText(annot: Annotation): Text
+
   /** Textual representation of denotation */
   def toText(denot: Denotation): Text
 

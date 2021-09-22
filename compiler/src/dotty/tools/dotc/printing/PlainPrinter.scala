@@ -543,7 +543,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case _ => literalText(String.valueOf(const.value))
   }
 
-  def toText(annot: Annotation): Text = s"@${annot.symbol.name}" // for now
+  /** Usual target for `Annotation#toText`, overridden in RefinedPrinter */
+  def annotText(annot: Annotation): Text = s"@${annot.symbol.name}"
+
+  def toText(annot: Annotation): Text = annot.toText(this)
 
   def toText(param: LambdaParam): Text =
     varianceSign(param.paramVariance)
@@ -574,7 +577,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         Text()
 
     nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided printDebug)
-  }.close // todo: override in refined printer
+  }.close
 
   def toText(pos: SourcePosition): Text =
     if (!pos.exists) "<no position>"
