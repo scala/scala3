@@ -1546,6 +1546,13 @@ class Typer extends Namer
                 val Typed(_, tpt) = tpd.unbind(tpd.unsplice(pat1))
                 instantiateMatchTypeProto(pat1, pt) match {
                   case defn.MatchCase(patternTp, _) => tpt.tpe frozen_=:= patternTp
+                  case MatchType.WildcardPattern(_) => tpt.tpe frozen_=:= defn.AnyType
+                  case _ => false
+                }
+              case (id @ Ident(nme.WILDCARD), pt) =>
+                pt match {
+                  case defn.MatchCase(patternTp, _) => defn.AnyType frozen_=:= patternTp
+                  case MatchType.WildcardPattern(_) => true
                   case _ => false
                 }
               case _ => false
@@ -1657,6 +1664,7 @@ class Typer extends Namer
     def caseRest(pat: Tree)(using Context) = {
       val pt1 = instantiateMatchTypeProto(pat, pt) match {
         case defn.MatchCase(_, bodyPt) => bodyPt
+        case MatchType.WildcardPattern(bodyPt) => bodyPt
         case pt => pt
       }
       val pat1 = indexPattern(tree).transform(pat)
