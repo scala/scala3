@@ -1208,6 +1208,7 @@ object Types {
         if tp.isOverloaded then tp else tp.underlying.widen
       case tp: SingletonType => tp.underlying.widen
       case tp: ExprType => tp.resultType.widen
+      case tp: AndType => tp.derivedAndType(tp.tp1.widen, tp.tp2.widen)
       case tp =>
         val tp1 = tp.stripped
         if tp1 eq tp then tp
