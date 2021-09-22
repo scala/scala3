@@ -240,6 +240,8 @@ object Extractors {
         this += "NoPrefix()"
       case MatchCase(pat, rhs) =>
         this += "MatchCase(" += pat += ", " += rhs += ")"
+      case SkolemType(info) =>
+        this += "SkolemType(" += info += ")"
     }
 
     def visitSignature(sig: Signature): this.type = {

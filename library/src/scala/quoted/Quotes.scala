@@ -3163,6 +3163,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(x: NoPrefix): true
     }
 
+    // ----- SkolemType -----------------------------------------------
+
+    /** SkolemType for a type selection */
+    type SkolemType <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `SkolemType` */
+    given SkolemTypeTypeTest: TypeTest[TypeRepr, SkolemType]
+
+    /** Module object of `type SkolemType`  */
+    val SkolemType: SkolemTypeModule
+
+    /** Methods of the module object `val SkolemType` */
+    trait SkolemTypeModule { this: SkolemType.type =>
+      def unapply(x: SkolemType): Some[TypeRepr]
+    }
+
     ///////////////
     // CONSTANTS //
     ///////////////

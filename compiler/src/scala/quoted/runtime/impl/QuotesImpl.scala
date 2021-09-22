@@ -2216,6 +2216,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(x: NoPrefix): true = true
     end NoPrefix
 
+    type SkolemType = dotc.core.Types.SkolemType
+
+    object SkolemTypeTypeTest extends TypeTest[TypeRepr, SkolemType]:
+      def unapply(x: TypeRepr): Option[SkolemType & x.type] = x match
+        case tpe: (Types.SkolemType & x.type) => Some(tpe)
+        case _ => None
+    end SkolemTypeTypeTest
+
+    object SkolemType extends SkolemTypeModule:
+      def unapply(x : SkolemType) : Some[TypeRepr] = Some(x.info)
+    end SkolemType
+
     type Constant = dotc.core.Constants.Constant
 
     object Constant extends ConstantModule

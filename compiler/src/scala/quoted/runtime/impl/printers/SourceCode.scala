@@ -1234,6 +1234,11 @@ object SourceCode {
         this += " => "
         printType(rhs)
 
+      case SkolemType(info) =>
+        this += "$skolem["
+        printType(info)
+        this += "]"
+
       case _ =>
         throw new MatchError(tpe.show(using Printer.TypeReprStructure))
     }
