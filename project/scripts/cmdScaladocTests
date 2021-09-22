@@ -26,7 +26,7 @@ dist/target/pack/bin/scaladoc \
   -source-links:out/bootstrap/stdlib-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/scala-library-src=github://scala/scala/v"${STDLIB_VERSION}"#src/library \
   -source-links:out/bootstrap/stdlib-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/dotty-library-src=github://"${GITHUB_REPOSITORY}"/"${GITHUB_SHA}"\#library/src \
   -source-links:github://"${GITHUB_REPOSITORY}"/"${GITHUB_SHA}" \
-  "-external-mappings:.*scala.*::scaladoc3::https://dotty.epfl.ch/api/,.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/" \
+  "-external-mappings:.*scala/.*::scaladoc3::https://dotty.epfl.ch/api/,.*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/" \
   "-skip-by-regex:.+\.internal($|\..+)" \
   "-skip-by-regex:.+\.impl($|\..+)" \
   -project-logo docs/logo.svg \
