@@ -32,5 +32,19 @@ val x4 =
     repIdentity(bar.toFoo)  // error
   val foo: Foo = Bar(1)
 
+val x5 =
+  implicit def barToFoo4(bar: Bar): Foo =
+    val y = bar.toFoo  // error
+    y
+  val foo: Foo = Bar(1)
+
+val x6 =
+  implicit def barToFoo4(bar: Bar): Foo =
+    lazy val y = bar.toFoo  // OK
+    if false then y else ???
+  val foo: Foo = Bar(1)
+
+
+
 
 
