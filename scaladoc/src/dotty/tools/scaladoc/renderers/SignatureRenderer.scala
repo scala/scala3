@@ -15,7 +15,7 @@ trait SignatureRenderer:
   def currentDri: DRI
   def link(dri: DRI): Option[String]
 
-  def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
+  def renderElement(e: SignaturePart) = renderElementWith(e)
 
   def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
     renderLinkContent(name, dri, modifiers:_*)
@@ -28,7 +28,10 @@ trait SignatureRenderer:
       case Some(link) => a(href := link, modifiers)(content)
       case _ => unresolvedLink(content, modifiers:_*)
 
-  def renderElementWith(e: String | (String, DRI) | Link, modifiers: AppliedAttr*) = e match
-    case (name, dri) => renderLink(name, dri, modifiers:_*)
-    case name: String => raw(name)
-    case Link(name, dri) => renderLink(name, dri, modifiers:_*)
+  def renderElementWith(e: SignaturePart, modifiers: AppliedAttr*) = e match
+    case Type(name, Some(dri)) =>
+      val attrs = Seq(Attr("t") := "t") ++ modifiers
+      renderLink(name, dri, attrs:_*)
+    case Type(name, None) => span(Attr("t") := "t")(name)
+    case Keyword(name) => span(Attr("t") := "k")(name)
+    case Plain(name) => raw(name)
