@@ -13,6 +13,7 @@ import Flags._
 import Names.Name
 import StdNames.nme
 import NameOps._
+import Denotations.StaleSymbol
 import util.Spans.Span
 import util.{SourceFile, SourcePosition}
 import transform.SymUtils._
@@ -241,8 +242,13 @@ class ExtractSemanticDB extends Phase:
               if imported != nme.WILDCARD then
                 for alt <- tree.expr.tpe.member(imported).alternatives do
                   registerUseGuarded(None, alt.symbol, sel.imported.span, tree.source)
-                  if (alt.symbol.companionClass.exists)
-                    registerUseGuarded(None, alt.symbol.companionClass, sel.imported.span, tree.source)
+                  try
+                    if (alt.symbol.companionClass.isDefinedInCurrentRun)
+                      registerUseGuarded(None, alt.symbol.companionClass, sel.imported.span, tree.source)
+                  catch case ex: StaleSymbol =>
+                    // can happen for constructor proxies. Test case is pos-macros/i13532.
+                    ()
+
         case tree: Inlined =>
           traverse(tree.call)
         case tree: TypeTree =>
