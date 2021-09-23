@@ -1,0 +1,9 @@
+-- Error: tests/neg/i13570.scala:8:5 -----------------------------------------------------------------------------------
+8 |  jim(Seq(1,2)) // error
+  |  ^^^^^^^^^^^^^
+  |  cannot reduce inline match with
+  |   scrutinee:  seq$proxy1 : (seq$proxy1 : Seq[Int])
+  |   patterns :  case s @ _:Seq[Int] if s.isEmpty
+  |               case s @ _:Seq[Int]
+  |               case _
+  | This location contains code that was inlined from i13570.scala:3
