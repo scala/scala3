@@ -1,6 +1,9 @@
-trait ToString[A] {
-  def print(a: A): Unit
-}
+package toString:
+  trait ToString[A] {
+    def print(a: A): Unit
+  }
+
+import toString._
 
 package A {
   case class AA(text: String)

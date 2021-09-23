@@ -1,3 +1,5 @@
+package i0239
+
 package p {
   class C[A] {
     implicit def foo: M[A] = ???

@@ -153,19 +153,28 @@ class Typer extends Namer
       if !suppressErrors then report.error(msg, pos)
 
     /** A symbol qualifies if it really exists and is not a package class.
-     *  In addition, if we are in a constructor of a pattern, we ignore all definitions
-     *  which are methods and not accessors (note: if we don't do that
-     *  case x :: xs in class List would return the :: method).
-     *
      *  Package classes are part of their parent's scope, because otherwise
      *  we could not reload them via `_.member`. On the other hand, accessing a
      *  package as a type from source is always an error.
+
+     *  In addition:
+     *    - if we are in a constructor of a pattern, we ignore all definitions
+     *      which are methods and not accessors (note: if we don't do that
+     *      case x :: xs in class List would return the :: method).
+     *    - Members of the empty package can be accessed only from within the empty package.
+     *      Note: it would be cleaner to never nest package definitions in empty package definitions,
+     *      but then we'd have to give up the fiction that a compilation unit consists of
+     *      a single tree (because a source file may have both toplevel classes which go
+     *      into the empty package and package definitions, which would have to stay outside).
+     *      Since the concept of a single tree per compilation unit is known to many
+     *      tools, we did not want to take that step.
      */
     def qualifies(denot: Denotation): Boolean =
       reallyExists(denot)
       && (!pt.isInstanceOf[UnapplySelectionProto]
           || denot.hasAltWith(sd => !sd.symbol.is(Method, butNot = Accessor)))
       && !denot.symbol.is(PackageClass)
+      && (!denot.symbol.maybeOwner.isEmptyPackage || ctx.owner.enclosingPackageClass.isEmptyPackage)
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
      *  @param previous    A denotation that was found in a more deeply nested scope,
