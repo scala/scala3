@@ -1419,7 +1419,7 @@ object Build {
               "https://scala-lang.org/api/versions.json",
               "-Ydocument-synthetic-types",
               s"-snippet-compiler:${dottyLibRoot}/scala/quoted=compile,${dottyLibRoot}/scala/compiletime=compile"
-            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")))
+            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs-for-dotty-page", "-Yapi-subdirectory")))
 
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
         else if (justAPI) generateDocTask

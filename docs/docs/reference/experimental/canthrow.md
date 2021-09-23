@@ -1,7 +1,7 @@
 ---
 layout: singlepage-overview
 scala3: true
-title: CanThrow Abilities
+title: "CanThrow Abilities"
 author: Martin Odersky
 ---
 
