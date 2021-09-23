@@ -1704,15 +1704,6 @@ class Namer { typer: Typer =>
     // it would be erased to BoxedUnit.
     def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-    // Approximate a type `tp` with a type that does not contain skolem types.
-    val deskolemize = new ApproximatingTypeMap {
-      def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
-        tp match {
-          case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
-          case _ => mapOver(tp)
-        }
-    }
-
     def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
