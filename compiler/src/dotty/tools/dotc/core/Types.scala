@@ -1208,7 +1208,6 @@ object Types {
         if tp.isOverloaded then tp else tp.underlying.widen
       case tp: SingletonType => tp.underlying.widen
       case tp: ExprType => tp.resultType.widen
-      case tp: AndType => tp.derivedAndType(tp.tp1.widen, tp.tp2.widen)
       case tp =>
         val tp1 = tp.stripped
         if tp1 eq tp then tp
@@ -1389,6 +1388,17 @@ object Types {
 
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(using Context): Type = dealias1(keepIfRefining)
+
+    /** Approximate this type with a type that does not contain skolem types. */
+    final def deskolemized(using Context): Type =
+      val deskolemizer = new ApproximatingTypeMap {
+        def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
+          tp match {
+            case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
+            case _ => mapOver(tp)
+          }
+      }
+      deskolemizer(this)
 
     /** The result of normalization using `tryNormalize`, or the type itself if
      *  tryNormlize yields NoType

@@ -1713,7 +1713,7 @@ class Namer { typer: Typer =>
         }
     }
 
-    def cookedRhsType = deskolemize(dealiasIfUnit(rhsType))
+    def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
