@@ -2526,17 +2526,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case _ => false
       })
 
-    /** Can we enumerate all instantiations of this type? */
-    def isClosedSum(tp: Symbol): Boolean =
-      tp.is(Sealed) && !tp.hasAnonymousChild
-
-    /** Splits a closed type into a disjunction of smaller types.
-     *  It should hold that `tp` and `decompose(tp).reduce(_ or _)`
-     *  denote the same set of values.
-     */
-    def decompose(sym: Symbol, tp: Type): List[Type] =
-      sym.children.map(x => refineUsingParent(tp, x)).filter(_.exists)
-
     def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
       override def apply(x: Boolean, t: Type) =
         x && {
@@ -2558,6 +2547,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol.isClass && tp2.symbol.isClass =>
         val cls1 = tp1.classSymbol
         val cls2 = tp2.classSymbol
+        def isDecomposable(tp: Symbol): Boolean =
+           tp.is(Sealed) && !tp.hasAnonymousChild
+        def decompose(sym: Symbol, tp: Type): List[Type] =
+          sym.children.map(x => refineUsingParent(tp, x)).filter(_.exists)
         if (cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1))
           false
         else
@@ -2570,9 +2563,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // subtype, so they must be unrelated by single inheritance
             // of classes.
             true
-          else if (isClosedSum(cls1))
+          else if (isDecomposable(cls1))
+            // At this point, !cls1.derivesFrom(cls2): we know that `new cls2`
+            // is disjoint from `tp2`. Therefore, we can safely decompose
+            // `cls1` using `.children`, even if `cls1` is non abstract.
             decompose(cls1, tp1).forall(x => provablyDisjoint(x, tp2))
-          else if (isClosedSum(cls2))
+          else if (isDecomposable(cls2))
             decompose(cls2, tp2).forall(x => provablyDisjoint(x, tp1))
           else
             false
