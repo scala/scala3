@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
@@ -340,12 +341,16 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     else DependencyByInheritance
 
   private def ignoreDependency(sym: Symbol)(using Context) =
-    !sym.exists ||
-    sym.isAbsent(canForce = false) || // ignore dependencies that have a symbol but do not exist.
-                                      // e.g. java.lang.Object companion object
-    sym.isEffectiveRoot ||
-    sym.isAnonymousFunction ||
-    sym.isAnonymousClass
+    try
+      !sym.exists ||
+      sym.isAbsent(canForce = false) || // ignore dependencies that have a symbol but do not exist.
+                                        // e.g. java.lang.Object companion object
+      sym.isEffectiveRoot ||
+      sym.isAnonymousFunction ||
+      sym.isAnonymousClass
+    catch case ex: StaleSymbol =>
+      true
+
 
   /** Traverse the tree of a source file and record the dependencies and used names which
    *  can be retrieved using `dependencies` and`usedNames`.
