@@ -1,0 +1,5 @@
+scala> val Some((res40, res41)) = Option((1, 0))
+val res40: Int = 1
+val res41: Int = 0
+scala> res40
+val res42: Int = 1

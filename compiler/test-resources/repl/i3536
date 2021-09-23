@@ -1,0 +1,19 @@
+scala> val res0 = 1
+val res0: Int = 1
+
+scala> res0
+val res1: Int = 1
+
+
+scala> val res99 = 9
+val res99: Int = 9
+
+scala> res99
+val res100: Int = 9
+
+
+scala> val res50 = 5
+val res50: Int = 5
+
+scala> res50
+val res101: Int = 5

@@ -1,0 +1,4 @@
+scala> val res10 @ Some(_) = Option(1)
+val res10: Some[Int] = Some(1)
+scala> res10
+val res11: Some[Int] = Some(1)

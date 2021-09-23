@@ -1,0 +1,4 @@
+scala> var res60 = 1
+var res60: Int = 1
+scala> res60
+val res61: Int = 1

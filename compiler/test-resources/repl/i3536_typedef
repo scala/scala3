@@ -1,0 +1,4 @@
+scala> type res50 = Int
+// defined alias type res50 = Int
+scala> 1
+val res51: Int = 1

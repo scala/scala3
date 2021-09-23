@@ -1,0 +1,4 @@
+scala> def res20 = 1
+def res20: Int
+scala> res20
+val res21: Int = 1
