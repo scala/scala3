@@ -547,7 +547,8 @@ class CompletionTest {
   }
 
   @Test def completeFromPackageObjectWithInheritance: Unit = {
-    code"""trait Foo[A] { def xxxx(a: A) = a }
+    code"""package test
+          |trait Foo[A] { def xxxx(a: A) = a }
           |package object foo extends Foo[Int] {}
           |object Test {
           |  foo.xx$m1
