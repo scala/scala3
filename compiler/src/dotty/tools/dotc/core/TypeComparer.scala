@@ -2564,9 +2564,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // of classes.
             true
           else if (isDecomposable(cls1))
-            // At this point, !cls1.derivesFrom(cls2): we know that `cls1`
-            // is disjoint from `tp2`. Therefore, we can safely decompose
-            // `cls1` using `.children`, even if `cls1` is non abstract.
+            // At this point, !cls1.derivesFrom(cls2): we know that direct
+            // instantiations of `cls1` (terms of the form `new cls1`) are not
+            // of type `tp2`. Therefore, we can safely decompose `cls1` using
+            // `.children`, even if `cls1` is non abstract.
             decompose(cls1, tp1).forall(x => provablyDisjoint(x, tp2))
           else if (isDecomposable(cls2))
             decompose(cls2, tp2).forall(x => provablyDisjoint(x, tp1))
