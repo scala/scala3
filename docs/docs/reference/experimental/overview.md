@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Experimental language features
+title: "Experimental language features"
 author: Nicolas Stucki
 ---
 
