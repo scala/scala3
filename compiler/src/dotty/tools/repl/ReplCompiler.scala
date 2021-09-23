@@ -88,6 +88,17 @@ class ReplCompiler extends Compiler {
     var valIdx = state.valIndex
     val defs = new mutable.ListBuffer[Tree]
 
+    /** If the user inputs a definition whose name is of the form REPL_RES_PREFIX and a number,
+     *  such as `val res9 = 1`, we bump `valIdx` to avoid name clashes.  lampepfl/dotty#3536 */
+    def maybeBumpValIdx(tree: Tree): Unit = tree match
+      case apply: Apply   => for a <- apply.args  do maybeBumpValIdx(a)
+      case tuple: Tuple   => for t <- tuple.trees do maybeBumpValIdx(t)
+      case patDef: PatDef => for p <- patDef.pats do maybeBumpValIdx(p)
+      case tree: NameTree => tree.name.show.stripPrefix(str.REPL_RES_PREFIX).toIntOption match
+        case Some(n) if n >= valIdx => valIdx = n + 1
+        case _                      =>
+      case _              =>
+
     flattened.foreach {
       case expr @ Assign(id: Ident, _) =>
         // special case simple reassignment (e.g. x = 3)
@@ -101,6 +112,7 @@ class ReplCompiler extends Compiler {
         val vd = ValDef(resName, TypeTree(), expr).withSpan(expr.span)
         defs += vd
       case other =>
+        maybeBumpValIdx(other)
         defs += other
     }
 
