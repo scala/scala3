@@ -349,6 +349,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       sym.isAnonymousFunction ||
       sym.isAnonymousClass
     catch case ex: StaleSymbol =>
+      // can happen for constructor proxies. Test case is pos-macros/i13532.
       true
 
 

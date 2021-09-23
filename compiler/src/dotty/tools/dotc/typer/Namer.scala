@@ -691,7 +691,8 @@ class Namer { typer: Typer =>
               for moduleSym <- companionVals do
                 if moduleSym.is(Module) && !moduleSym.isDefinedInCurrentRun then
                   val companion =
-                    if needsConstructorProxies(classSym) then classConstructorCompanion(classSym.asClass)
+                    if needsConstructorProxies(classSym) then
+                      classConstructorCompanion(classSym.asClass)
                     else newModuleSymbol(
                       ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
                   enterSymbol(companion)
