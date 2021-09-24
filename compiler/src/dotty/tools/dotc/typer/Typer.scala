@@ -1134,8 +1134,8 @@ class Typer extends Namer
    */
   private def decomposeProtoFunction(pt: Type, defaultArity: Int, pos: SrcPos)(using Context): (List[Type], untpd.Tree) = {
     def typeTree(tp: Type) = tp match {
-      case _: WildcardType => untpd.TypeTree()
-      case _ => untpd.TypeTree(tp)
+      case _: WildcardType => new untpd.InferredTypeTree()
+      case _ => untpd.InferredTypeTree(tp)
     }
     def interpolateWildcards = new TypeMap {
       def apply(t: Type): Type = t match
