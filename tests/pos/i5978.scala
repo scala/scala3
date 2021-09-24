@@ -1,3 +1,4 @@
+package test
 import scala.language.implicitConversions
 
 opaque type Position[Buffer] = Int
