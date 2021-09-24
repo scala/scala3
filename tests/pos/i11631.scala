@@ -1,9 +1,9 @@
 trait MyTrait:
   def a(): String = ""
 
-class Nul
+class Nulll
 
-extension [T](x: T | Nul) inline def nnn: x.type & T = ???
+extension [T](x: T | Nulll) inline def nnn: x.type & T = ???
 
 class MyClass:
   var myTrait: MyTrait|Null = null
