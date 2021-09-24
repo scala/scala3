@@ -81,7 +81,8 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val unitContexts =
       for unit <- units yield
-        val newCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
+        val newCtx0 = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
+        val newCtx = PrepareInlineable.initContext(newCtx0)
         report.inform(s"typing ${unit.source}")
         if (addRootImports)
           newCtx.withRootImports

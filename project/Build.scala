@@ -325,8 +325,8 @@ object Build {
 
   lazy val scalacOptionsDocSettings = Seq(
       "-external-mappings:" +
-        ".*scala.*::scaladoc3::https://dotty.epfl.ch/api/," +
-        ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
+        ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/," +
+        ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
       "-skip-by-regex:.+\\.internal($|\\..+)",
       "-skip-by-regex:.+\\.impl($|\\..+)",
       "-project-logo", "docs/logo.svg",
@@ -1418,7 +1418,7 @@ object Build {
               "-versions-dictionary-url",
               "https://scala-lang.org/api/versions.json",
               "-Ydocument-synthetic-types",
-              s"-snippet-compiler:${dottyLibRoot}/scala/quoted=compile"
+              s"-snippet-compiler:${dottyLibRoot}/scala/quoted=compile,${dottyLibRoot}/scala/compiletime=compile"
             ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")))
 
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }

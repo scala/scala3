@@ -455,7 +455,7 @@ object GenericSignatures {
   private class NeedsSigCollector(using Context) extends TypeAccumulator[Boolean] {
     override def apply(x: Boolean, tp: Type): Boolean =
       if (!x)
-        tp match {
+        tp.dealias match {
           case RefinedType(parent, refinedName, refinedInfo) =>
             val sym = parent.typeSymbol
             if (sym == defn.ArrayClass) foldOver(x, refinedInfo)
@@ -471,9 +471,7 @@ object GenericSignatures {
             foldOver(tp.typeParams.nonEmpty, parents)
           case AnnotatedType(tpe, _) =>
             foldOver(x, tpe)
-          case proxy: TypeProxy =>
-            foldOver(x, proxy)
-          case _ =>
+          case tp =>
             foldOver(x, tp)
         }
       else x

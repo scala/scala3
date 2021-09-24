@@ -164,9 +164,13 @@ object TypeOps:
         // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
-      case AnnotatedType(parent, annot)
-      if annot.symbol == defn.UncheckedVarianceAnnot && !ctx.mode.is(Mode.Type) && !theMap.isInstanceOf[SimplifyKeepUnchecked] =>
-        simplify(parent, theMap)
+      case tp @ AnnotatedType(parent, annot) =>
+        val parent1 = simplify(parent, theMap)
+        if annot.symbol == defn.UncheckedVarianceAnnot
+            && !ctx.mode.is(Mode.Type)
+            && !theMap.isInstanceOf[SimplifyKeepUnchecked]
+        then parent1
+        else tp.derivedAnnotatedType(parent1, annot)
       case _: MatchType =>
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver

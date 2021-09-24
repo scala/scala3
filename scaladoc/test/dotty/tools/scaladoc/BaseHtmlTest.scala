@@ -47,7 +47,7 @@ class BaseHtmlTest:
     def niceMsg(msg: String) = s"$msg in $path (body):\n ${d.html()}:\n"
 
     def assertTextsIn(selector: String, expected: String*) =
-      assertFalse(niceMsg("Selector not found"), d.select(selector).isEmpty)
+      assertFalse(niceMsg(s"Selector not found for '$selector'"), d.select(selector).isEmpty)
       val found = d.select(selector).eachText.asScala
       assertEquals(niceMsg(s"Context does not match for '$selector'"), expected.toList, found.toList)
 

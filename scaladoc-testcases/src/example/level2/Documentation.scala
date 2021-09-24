@@ -134,6 +134,21 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
   def useOfOutsideTypeInsideObject(): ReturnObjectWithType.returnType = ???
   def useOfSameLevelOutsideType(): SameLevelTypeLinking = ???
 
+  /** Lorem ipsum
+    *
+    *
+    *
+    * Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur scelerisque facilisis sapien a lobortis. Fusce ultricies erat ante, sit amet bibendum orci commodo in. Sed elementum tempus ipsum id sodales. Ut quis nisi vitae turpis lacinia mattis id nec orci. Nullam tincidunt accumsan nisl, ac maximus quam eleifend tincidunt. Nunc ipsum nulla, mattis vitae auctor blandit, euismod sit amet elit. Proin sed porttitor nisi. Curabitur tristique pretium nisi. Vestibulum sagittis condimentum blandit. In ac consequat odio, in fermentum turpis. In hac habitasse platea dictumst.
+    * Proin scelerisque est sed magna fermentum, at ullamcorper purus porta. Aliquam posuere arcu elit, molestie fermentum justo malesuada non. In eget massa risus. Proin rutrum maximus arcu, et lacinia est suscipit nec. Morbi varius odio pretium turpis ornare, ut sollicitudin nunc egestas. Aliquam pulvinar massa odio, id tempor purus suscipit id. Nunc imperdiet sapien ligula, ut pretium lacus efficitur sit amet. Sed sed urna sed erat tempus sagittis quis eget elit. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Duis accumsan hendrerit nunc, in sagittis tellus. Vivamus mattis ligula sed dolor lacinia iaculis. Pellentesque vel turpis est. Nam pellentesque diam id arcu pharetra, et consectetur eros facilisis. Aliquam erat volutpat.
+    *
+    * Phasellus ac quam pretium, convallis dui id, vestibulum nibh. Fusce vulputate interdum ullamcorper. Sed nec erat varius, sagittis ipsum eget, interdum ex. Ut sed leo sit amet ligula ullamcorper facilisis et convallis tellus. Nullam consectetur vitae lorem vel mattis. Suspendisse ultrices ornare leo, ut porttitor est finibus vel. Ut faucibus arcu eget sapien lobortis, a luctus arcu posuere. Vivamus faucibus mauris facilisis enim ornare dapibus.
+    *
+    * Quisque pharetra et orci non aliquet. Sed urna ipsum, commodo et ultricies sed, volutpat at nunc. Cras non lectus ac mauris lobortis efficitur vel ac ante. Mauris vestibulum risus at mauris pretium, vel iaculis dolor pretium. Nam fringilla fermentum lacus et varius. Nulla pulvinar maximus tortor, et venenatis ipsum luctus id. Integer hendrerit tellus felis, eget hendrerit dolor aliquam sit amet.
+    *
+    * Aenean elementum risus sed enim egestas, vitae imperdiet urna eleifend. Donec elementum leo neque, eu consequat eros placerat vel. Integer pulvinar sem feugiat, tincidunt erat a, porta nulla. Mauris eu urna egestas, facilisis ex sodales, sollicitudin quam. Integer porta metus et nunc blandit lacinia. Integer posuere mauris et dui ornare, a finibus neque tristique. Cras sit amet lectus nunc. Nam facilisis tincidunt efficitur.
+    */
+  def loremIpsum[T](a: T): Map[T, T] = ???
+
   protected[example] val valWithScopeModifier = ???
   protected[this] val valWithScopeModifierThis = ???
 

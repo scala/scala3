@@ -9,16 +9,15 @@ class NavigationTest extends BaseHtmlTest:
 
   def testNavMenu(page: String, topLevel: NavMenuTestEntry)(using ProjectContext): Unit =
     withHtmlFile(page){ content  =>
-      def flatten(l: NavMenuTestEntry): Seq[NavMenuTestEntry] = l +: l.nested.flatMap(flatten)
 
       def test(query: String, el: Seq[NavMenuTestEntry]) =
         content.assertTextsIn(query, el.map(_.name):_*)
         content.assertAttr(query,"href", el.map(_.link):_*)
 
-      test("#sideMenu2 a", flatten(topLevel))
-      test("#sideMenu2>div>div>a", topLevel.nested)
-      test("#sideMenu2>div>div>div>a", topLevel.nested.flatMap(_.nested))
-      test("#sideMenu2>div>div>div>div>a", topLevel.nested.flatMap(_.nested.flatMap(_.nested)))
+      test("#sideMenu2>div>span>a", topLevel :: Nil)
+      test("#sideMenu2>div>div>span>a", topLevel.nested)
+      test("#sideMenu2>div>div>div>span>a", topLevel.nested.flatMap(_.nested))
+      test("#sideMenu2>div>div>div>div>span>a", topLevel.nested.flatMap(_.nested.flatMap(_.nested)))
     }
 
 
