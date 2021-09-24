@@ -58,12 +58,9 @@ class BashScriptsTests:
 
   /* verify `dist/bin/scala` non-interference with command line args following script name */
   @Test def verifyScalaArgs =
-    val commandline = (Seq("SCALA_OPTS= ",scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
-    if bashPath.toFile.exists then
-      var cmd = Array(bashExe, "-c", commandline)
-      val output = for {
-        line <- Process(cmd).lazyLines_!
-      } yield line
+    val commandline = (Seq("SCALA_OPTS= ", scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
+    val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
+    if validTest then
       var fail = false
       printf("\n")
       var mismatches = List.empty[(String, String)]
@@ -81,13 +78,13 @@ class BashScriptsTests:
    */
   @Test def verifyScriptPathProperty =
     val scriptFile = testFiles.find(_.getName == "scriptPath.sc").get
-    val expected = s"/${scriptFile.getName}"
-    System.err.printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
-    val (exitCode, stdout, stderr) = bashCommand(scriptFile.absPath)
-    if exitCode == 0 && ! stderr.exists(_.contains("Permission denied")) then
-      // var cmd = Array(bashExe, "-c", scriptFile.absPath)
-      // val stdout = Process(cmd).lazyLines_!
-      stdout.foreach { System.err.printf("######### [%s]\n", _) }
+    val expected = s"${scriptFile.getName}"
+    printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
+    printf("calling scriptFile: %s\n", scriptFile)
+    val (validTest, exitCode, stdout, stderr) = bashCommand(scriptFile.absPath)
+    if validTest then
+      stdout.foreach { printf("stdout: [%s]\n", _) }
+      stderr.foreach { printf("stderr: [%s]\n", _) }
       val valid = stdout.exists { _.endsWith(expected) }
       if valid then printf("# valid script.path reported by [%s]\n", scriptFile.getName)
       assert(valid, s"script ${scriptFile.absPath} did not report valid script.path value")
@@ -115,7 +112,9 @@ class BashScriptsTests:
       if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", cwd, scriptFile.getName)
       assert(valid, s"script ${scriptFile.getName} did not report valid java.class.path first entry")
 
-  lazy val cwd: String = Paths.get(".").toAbsolutePath.normalize.toString.norm
+  def existingPath: String = envOrElse("PATH", "").norm
+  def adjustedPath = s"$javaHome/bin$psep$scalaHome/bin$psep$existingPath"
+  def pathEntries = adjustedPath.split(psep).toList
 
   lazy val argsfile = createArgsFile() // avoid problems caused by drive letter
   def createArgsFile(): String =
@@ -126,9 +125,40 @@ class BashScriptsTests:
     Files.write(path, text.getBytes(utfCharset))
     path.toFile.getAbsolutePath.norm
 
-  extension(str: String)
-    def norm: String = str.replace('\\', '/')
-    def dropExtension: String = str.reverse.dropWhile(_ != '.').drop(1).reverse
+  def fixHome(s: String): String =
+    s.startsWith("~") match {
+    case false => s
+    case true => s.replaceFirst("~", userHome)
+    }
+
+  extension(s: String) {
+    def toPath: Path = Paths.get(fixHome(s)) // .toAbsolutePath
+    def toFile: File = s.toPath.toFile
+    def absPath: String = s.toFile.absPath
+    def norm: String = s.replace('\\', '/') // bash expects forward slash
+    def isFile: Boolean = s.toFile.isFile
+    def exists: Boolean = s.toPath.toFile.exists
+    def name: String = s.toFile.getName
+    def dropExtension: String = s.reverse.dropWhile(_ != '.').drop(1).reverse
+  }
+
+  extension(p: Path) {
+    def listFiles: Seq[File] = p.toFile.listFiles.toList
+    def norm: String = p.normalize.toString.replace('\\', '/')
+    def name: String = p.toFile.getName
+  }
+
+  extension(f: File) {
+    def name = f.getName
+    def norm: String = f.toPath.normalize.norm
+    def absPath: String = f.getAbsolutePath.norm
+  }
+
+  lazy val psep: String = propOrElse("path.separator", "")
+  lazy val osname = propOrElse("os.name", "").toLowerCase
+
+  lazy val scalacPath = s"$workingDirectory/dist/target/pack/bin/scalac".norm
+  lazy val scalaPath = s"$workingDirectory/dist/target/pack/bin/scala".norm
 
   extension(f: File) def absPath: String =
     f.getAbsolutePath.norm
@@ -141,7 +171,7 @@ class BashScriptsTests:
   //    else, SCALA_HOME if defined
   //    else, not defined
   lazy val scalaHome =
-    if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac","")
+    if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
     else envOrElse("SCALA_HOME", "").norm
 
   lazy val javaHome = envOrElse("JAVA_HOME", "").norm
@@ -150,7 +180,7 @@ class BashScriptsTests:
     ("JAVA_HOME", javaHome),
     ("SCALA_HOME", scalaHome),
     ("PATH", adjustedPath),
-  ).filter { case (name,valu) => valu.nonEmpty }
+  ).filter { case (name, valu) => valu.nonEmpty }
 
   lazy val whichBash: String =
     var whichBash = ""
@@ -161,7 +191,7 @@ class BashScriptsTests:
 
     whichBash
 
-  def bashCommand(cmdstr: String, additionalEnvPairs:List[(String, String)] = Nil): (Boolean, Int, Seq[String], Seq[String]) = {
+  def bashCommand(cmdstr: String, additionalEnvPairs: List[(String, String)] = Nil): (Boolean, Int, Seq[String], Seq[String]) = {
     var (stdout, stderr) = (List.empty[String], List.empty[String])
     if bashExe.toFile.exists then
       val cmd = Seq(bashExe, "-c", cmdstr)
