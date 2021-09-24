@@ -61,7 +61,7 @@ class BashScriptsTests:
 
   /* verify `dist/bin/scala` */
   @Test def verifyScalaArgs =
-    val commandline = (Seq(scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
+    val commandline = (Seq("SCALA_OPTS= ",scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
     if bashPath.toFile.exists then
       var cmd = Array(bashExe, "-c", commandline)
       val output = for {
