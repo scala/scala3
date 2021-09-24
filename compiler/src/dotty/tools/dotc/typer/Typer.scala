@@ -166,7 +166,7 @@ class Typer extends Namer
      *      but then we'd have to give up the fiction that a compilation unit consists of
      *      a single tree (because a source file may have both toplevel classes which go
      *      into the empty package and package definitions, which would have to stay outside).
-     *      Since the concept of a single tree per compilation unit is known to many
+     *      Since the principle of a single tree per compilation unit is assumed by many
      *      tools, we did not want to take that step.
      */
     def qualifies(denot: Denotation): Boolean =
@@ -174,7 +174,11 @@ class Typer extends Namer
       && (!pt.isInstanceOf[UnapplySelectionProto]
           || denot.hasAltWith(sd => !sd.symbol.is(Method, butNot = Accessor)))
       && !denot.symbol.is(PackageClass)
-      && (!denot.symbol.maybeOwner.isEmptyPackage || ctx.owner.enclosingPackageClass.isEmptyPackage)
+      && {
+        var owner = denot.symbol.maybeOwner
+        if owner.isPackageObject then owner = owner.owner
+        !owner.isEmptyPackage || ctx.owner.enclosingPackageClass.isEmptyPackage
+      }
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
      *  @param previous    A denotation that was found in a more deeply nested scope,
