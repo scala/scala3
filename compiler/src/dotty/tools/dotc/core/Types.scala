@@ -1389,6 +1389,17 @@ object Types {
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(using Context): Type = dealias1(keepIfRefining)
 
+    /** Approximate this type with a type that does not contain skolem types. */
+    final def deskolemized(using Context): Type =
+      val deskolemizer = new ApproximatingTypeMap {
+        def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
+          tp match {
+            case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
+            case _ => mapOver(tp)
+          }
+      }
+      deskolemizer(this)
+
     /** The result of normalization using `tryNormalize`, or the type itself if
      *  tryNormlize yields NoType
      */
