@@ -29,8 +29,7 @@ def strictMap[A <: Top, B <: Top](xs: List[A])(f: {*} A => B): List[B] =
 def strictMap2[A <: Top, B <: Top](f: {*} A => B): {f} List[A] => List[B] =
   (xs: List[A]) => xs[List[B]]((hd: A) => (tl: List[B]) => cons(f(hd), tl))(nil)
 
-// The syntax `{} A => B` no longer parses, using @retains() instead.
-def pureMap[A <: Top, B <: Top](xs: List[A])(f: A => B @retains()): List[B] =
+def pureMap[A <: Top, B <: Top](xs: List[A])(f: A => B): List[B] =
   xs[List[B]]((hd: A) => (tl: List[B]) => cons(f(hd), tl))(nil)
 
 class Unit
@@ -50,12 +49,12 @@ def lazyMap
 def lazyPureMap
   [A <: Top, B <: Top]
   (xs: List[Unit => A])
-  (f: A => B @retains()):
-  List[Unit => B @retains()] =
+  (f: A => B):
+  List[Unit => B] =
 
-    xs[List[Unit => B @retains()]]
+    xs[List[Unit => B]]
       ((hd: Unit => A) =>
-        (tl: List[Unit => B @retains()]) =>
+        (tl: List[Unit => B]) =>
           cons((u: Unit) => f(hd(unit)), tl))(nil)
 
 def force[A](thunk: Unit=>A): A = thunk(unit)
