@@ -105,7 +105,7 @@ object MainGenericRunner {
     case "-run" :: fqName :: tail =>
       process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val globdir = cp.replaceAll("[\\/][^\\/]*$","") // slash/backslash agnostic
+      val globdir = cp.replaceAll("[\\/][^\\/]*$", "") // slash/backslash agnostic
       val (tailargs, cpstr) = if globdir.nonEmpty && classpathSeparator != ";" || cp.contains(classpathSeparator) then
         (tail, cp)
       else
@@ -201,24 +201,21 @@ object MainGenericRunner {
         }
         errorFn("", res)
       case ExecuteMode.Script =>
-        val targetScript = Paths.get(settings.targetScript)
-        val targetJar = settings.targetScript.replaceAll("[.][^\\/]*$","")+".jar"
-        val precompiledJar = Paths.get(targetJar)
-        def mainClass = Jar(targetJar).mainClass match
-          case Some(mc) =>
-            mc
-          case None =>
-            ""
-        if precompiledJar.toFile.isFile && mainClass.nonEmpty && precompiledJar.toFile.lastModified >= targetScript.toFile.lastModified then
-          // precompiledJar is newer than targetScript
-          sys.props("script.path") = targetScript.toAbsolutePath.normalize.toString
+        val targetScript = Paths.get(settings.targetScript).toFile
+        val targetJar = settings.targetScript.replaceAll("[.][^\\/]*$", "")+".jar"
+        val precompiledJar = Paths.get(targetJar).toFile
+        def mainClass = Jar(targetJar).mainClass.getOrElse("") // throws exception if file not found
+        val jarIsValid = precompiledJar.isFile && mainClass.nonEmpty && precompiledJar.lastModified >= targetScript.lastModified
+        if jarIsValid then
+          // precompiledJar exists, is newer than targetScript, and manifest defines a mainClass
+          sys.props("script.path") = targetScript.toPath.toAbsolutePath.normalize.toString
           val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
           val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
-          Jar(targetJar).mainClass match
-            case Some(mc) =>
-              ObjectRunner.runAndCatch(newClasspath :+ File(targetJar).toURI.toURL, mc, settings.residualArgs)
-            case None =>
-              Some(IllegalArgumentException(s"No main class defined in manifest in jar: $precompiledJar"))
+          val mc = mainClass
+          if mc.nonEmpty then
+            ObjectRunner.runAndCatch(newClasspath :+ File(targetJar).toURI.toURL, mc, settings.scriptArgs)
+          else
+            Some(IllegalArgumentException(s"No main class defined in manifest in jar: $precompiledJar"))
         else
           val properArgs =
             List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
