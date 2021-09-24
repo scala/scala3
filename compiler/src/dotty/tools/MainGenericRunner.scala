@@ -158,6 +158,13 @@ object MainGenericRunner {
     val settings = process(allArgs.toList, Settings())
     if settings.exitCode != 0 then System.exit(settings.exitCode)
 
+    def removeCompiler(cp: Array[String]) =
+      if (!settings.compiler) then // Let's remove compiler from the classpath
+        val compilerLibs = Seq("scala3-compiler", "scala3-interfaces", "tasty-core", "scala-asm", "scala3-staging", "scala3-tasty-inspector")
+        cp.filterNot(c => compilerLibs.exists(c.contains))
+      else
+        cp
+
     def run(settings: Settings): Unit = settings.executeMode match
       case ExecuteMode.Repl =>
         val properArgs =
@@ -181,13 +188,6 @@ object MainGenericRunner {
             run(settings.withExecuteMode(ExecuteMode.Repl))
       case ExecuteMode.Run =>
         val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
-
-        def removeCompiler(cp: Array[String]) =
-          if (!settings.compiler) then // Let's remove compiler from the classpath
-            val compilerLibs = Seq("scala3-compiler", "scala3-interfaces", "tasty-core", "scala-asm", "scala3-staging", "scala3-tasty-inspector")
-            cp.filterNot(c => compilerLibs.exists(c.contains))
-          else
-            cp
         val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
         val res = ObjectRunner.runAndCatch(newClasspath, settings.targetToRun, settings.residualArgs).flatMap {
           case ex: ClassNotFoundException if ex.getMessage == settings.targetToRun =>
@@ -201,14 +201,33 @@ object MainGenericRunner {
         }
         errorFn("", res)
       case ExecuteMode.Script =>
-        val properArgs =
-          List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
-            ++ settings.residualArgs
-            ++ (if settings.save then List("-save") else Nil)
-            ++ settings.scalaArgs
-            ++ List("-script", settings.targetScript)
-            ++ settings.scriptArgs
-        scripting.Main.main(properArgs.toArray)
+        val targetScript = Paths.get(settings.targetScript)
+        val targetJar = settings.targetScript.replaceAll("[.][^\\/]*$","")+".jar"
+        val precompiledJar = Paths.get(targetJar)
+        def mainClass = Jar(targetJar).mainClass match
+          case Some(mc) =>
+            mc
+          case None =>
+            ""
+        if precompiledJar.toFile.isFile && mainClass.nonEmpty && precompiledJar.toFile.lastModified >= targetScript.toFile.lastModified then
+          // precompiledJar is newer than targetScript
+          sys.props("script.path") = targetScript.toAbsolutePath.normalize.toString
+          val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
+          val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
+          Jar(targetJar).mainClass match
+            case Some(mc) =>
+              ObjectRunner.runAndCatch(newClasspath :+ File(targetJar).toURI.toURL, mc, settings.residualArgs)
+            case None =>
+              Some(IllegalArgumentException(s"No main class defined in manifest in jar: $precompiledJar"))
+        else
+          val properArgs =
+            List("-classpath", settings.classPath.mkString(classpathSeparator)).filter(Function.const(settings.classPath.nonEmpty))
+              ++ settings.residualArgs
+              ++ (if settings.save then List("-save") else Nil)
+              ++ settings.scalaArgs
+              ++ List("-script", settings.targetScript)
+              ++ settings.scriptArgs
+          scripting.Main.main(properArgs.toArray)
       case ExecuteMode.Guess =>
         if settings.modeShouldBePossibleRun then
           run(settings.withExecuteMode(ExecuteMode.PossibleRun))

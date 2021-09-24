@@ -58,9 +58,12 @@ class BashScriptsTests:
 
   /* verify `dist/bin/scala` non-interference with command line args following script name */
   @Test def verifyScalaArgs =
-    val commandline = (Seq(scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
-    val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
-    if validTest then
+    val commandline = (Seq("SCALA_OPTS= ",scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
+    if bashPath.toFile.exists then
+      var cmd = Array(bashExe, "-c", commandline)
+      val output = for {
+        line <- Process(cmd).lazyLines_!
+      } yield line
       var fail = false
       printf("\n")
       var mismatches = List.empty[(String, String)]
