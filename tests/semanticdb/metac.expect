@@ -1408,7 +1408,7 @@ Uri => Givens.scala
 Text => empty
 Language => Scala
 Symbols => 29 entries
-Occurrences => 62 entries
+Occurrences => 65 entries
 
 Symbols:
 a/b/Givens. => final object Givens extends Object { self: Givens.type => +12 decls }
@@ -1450,6 +1450,7 @@ Occurrences:
 [5:21..5:22): A -> a/b/Givens.sayHello().[A]
 [6:8..6:16): sayHello <- a/b/Givens.sayHello().
 [6:34..6:37): any -> a/b/Givens.sayHello().(any)
+[6:37..6:38): " -> scala/StringContext#s().
 [8:13..8:14): B <- a/b/Givens.sayGoodbye().[B]
 [8:13..8:14): B <- a/b/Givens.saySoLong().[B]
 [8:16..8:19): any <- a/b/Givens.sayGoodbye().(any)
@@ -1458,8 +1459,10 @@ Occurrences:
 [8:21..8:22): B -> a/b/Givens.saySoLong().[B]
 [9:8..9:18): sayGoodbye <- a/b/Givens.sayGoodbye().
 [9:38..9:41): any -> a/b/Givens.sayGoodbye().(any)
+[9:41..9:42): " -> scala/StringContext#s().
 [10:8..10:17): saySoLong <- a/b/Givens.saySoLong().
 [10:37..10:40): any -> a/b/Givens.saySoLong().(any)
+[10:40..10:41): " -> scala/StringContext#s().
 [12:6..12:12): hello1 <- a/b/Givens.hello1.
 [12:17..12:25): sayHello -> a/b/Givens.sayHello().
 [13:6..13:14): goodbye1 <- a/b/Givens.goodbye1.
@@ -1514,7 +1517,7 @@ Uri => ImplicitConversion.scala
 Text => empty
 Language => Scala
 Symbols => 23 entries
-Occurrences => 48 entries
+Occurrences => 50 entries
 Synthetics => 6 entries
 
 Symbols:
@@ -1567,8 +1570,10 @@ Occurrences:
 [20:15..20:22): message -> example/ImplicitConversion#message.
 [23:11..23:18): message -> example/ImplicitConversion#message.
 [23:20..23:26): number -> example/ImplicitConversion#number.
+[23:26..23:27): " -> scala/StringContext#s().
 [25:7..25:14): message -> example/ImplicitConversion#message.
 [26:7..26:13): number -> example/ImplicitConversion#number.
+[26:15..26:16): " -> scala/StringContext#s().
 [26:17..26:28): stripMargin -> scala/collection/StringOps#stripMargin(+1).
 [28:6..28:7): a <- example/ImplicitConversion#a.
 [28:9..28:12): Int -> scala/Int#
@@ -1610,16 +1615,30 @@ Schema => SemanticDB v4
 Uri => Imports.scala
 Text => empty
 Language => Scala
-Symbols => 0 entries
-Occurrences => 4 entries
+Symbols => 2 entries
+Occurrences => 16 entries
 
 Symbols:
+_empty_/Imports$package. => final package object _empty_ extends Object { self: _empty_.type => +2 decls }
+_empty_/Imports$package.m. => val method m HashMap[Int, Int]
 
 Occurrences:
 [0:7..0:12): scala -> scala/
 [0:13..0:17): util -> scala/util/
 [0:18..0:25): control -> scala/util/control/
 [0:26..0:34): NonFatal -> scala/util/control/NonFatal.
+[1:7..1:12): scala -> scala/
+[1:13..1:23): collection -> scala/collection/
+[1:24..1:33): immutable -> scala/collection/immutable/
+[1:35..1:42): HashMap -> scala/collection/immutable/HashMap.
+[1:35..1:42): HashMap -> scala/collection/immutable/HashMap#
+[3:4..3:5): m <- _empty_/Imports$package.m.
+[3:7..3:9): HM -> scala/collection/immutable/HashMap#
+[3:10..3:13): Int -> scala/Int#
+[3:15..3:18): Int -> scala/Int#
+[3:22..3:24): HM -> scala/collection/immutable/HashMap.
+[3:25..3:28): Int -> scala/Int#
+[3:30..3:33): Int -> scala/Int#
 
 expect/InstrumentTyper.scala
 ----------------------------
@@ -2964,7 +2983,7 @@ Uri => Synthetic.scala
 Text => empty
 Language => Scala
 Symbols => 52 entries
-Occurrences => 133 entries
+Occurrences => 132 entries
 Synthetics => 21 entries
 
 Symbols:
@@ -3093,7 +3112,6 @@ Occurrences:
 [32:35..32:40): Array -> scala/Array.
 [32:41..32:46): empty -> scala/Array.empty().
 [32:47..32:48): T -> example/Synthetic#J#[T]
-[32:49..32:49): -> example/Synthetic#J#evidence$1.
 [34:8..34:9): F <- example/Synthetic#F#
 [35:15..35:23): ordering <- example/Synthetic#ordering.
 [35:25..35:33): Ordering -> scala/package.Ordering#
@@ -3311,7 +3329,7 @@ Uri => Vals.scala
 Text => empty
 Language => Scala
 Symbols => 42 entries
-Occurrences => 127 entries
+Occurrences => 128 entries
 
 Symbols:
 example/ValUsages. => final object ValUsages extends Object { self: ValUsages.type => +2 decls }
@@ -3485,6 +3503,7 @@ Occurrences:
 [48:18..48:19): v -> example/ValUsages.v.
 [48:20..48:23): yim -> example/Vals#yim().
 [49:2..49:3): v -> example/ValUsages.v.
+[49:3..49:18): .explicitSetter -> example/Vals#`explicitSetter_=`().
 
 expect/Vararg.scala
 -------------------
@@ -4609,7 +4628,7 @@ Uri => toplevel.scala
 Text => empty
 Language => Scala
 Symbols => 18 entries
-Occurrences => 42 entries
+Occurrences => 43 entries
 Synthetics => 1 entries
 
 Symbols:
@@ -4674,6 +4693,7 @@ Occurrences:
 [6:47..6:51): ints -> _empty_/toplevel$package.readInts().(ints)
 [6:52..6:60): mkString -> scala/collection/IterableOnceOps#mkString(+1).
 [7:4..7:10): fooRef <- _empty_/toplevel$package.fooRef().
+[7:13..7:29): toplevel$package -> _empty_/toplevel$package.
 [7:30..7:33): foo -> _empty_/toplevel$package.foo().
 
 Synthetics:
