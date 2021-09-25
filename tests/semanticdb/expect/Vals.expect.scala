@@ -47,5 +47,5 @@ object ValUsages/*<-example::ValUsages.*/ {
   println/*->scala::Predef.println(+1).*/(v/*->example::ValUsages.v.*/.xzm/*->example::Vals#xzm.*/)
   v/*->example::ValUsages.v.*/.yfm/*->example::Vals#`yfm_=`().*/ = v/*->example::ValUsages.v.*/.xfm/*->example::Vals#xfm.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yfm/*->example::Vals#yfm().*/
   v/*->example::ValUsages.v.*/.yim/*->example::Vals#`yim_=`().*/ = v/*->example::ValUsages.v.*/.xim/*->example::Vals#xim.*/ +/*->scala::Int#`+`(+4).*/ v/*->example::ValUsages.v.*/.yim/*->example::Vals#yim().*/
-  v/*->example::ValUsages.v.*/.explicitSetter = 25
+  v/*->example::ValUsages.v.*/.explicitSetter/*->example::Vals#`explicitSetter_=`().*/ = 25
 }
