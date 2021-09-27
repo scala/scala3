@@ -1,4 +1,4 @@
-#!/usr/bin/env scala
+#!dist/target/pack/bin/scala
 
   def main(args: Array[String]): Unit =
     args.zipWithIndex.foreach { case (arg,i) => printf("arg %d: [%s]\n",i,arg) }
@@ -17,3 +17,6 @@
       System.err.printf("sun.java.command: %s\n", sys.props("sun.java.command"))
       System.err.printf("first 5 PATH entries:\n%s\n",pathEntries.take(5).mkString("\n"))
     }
+
+  extension(s: String)
+    def norm: String = s.replace('\\', '/')

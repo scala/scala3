@@ -3,6 +3,8 @@ package dotty.tools.dotc.config
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import java.lang.Character.isWhitespace
+import java.nio.file.{Files, Paths}
+import scala.collection.JavaConverters._
 
 /** A simple enough command line parser.
  */
@@ -92,5 +94,20 @@ object CommandLineParser:
   end tokenize
 
   def tokenize(line: String): List[String] = tokenize(line, x => throw new ParseException(x))
+
+  /**
+   * Expands all arguments starting with @ to the contents of the
+   * file named like each argument.
+   */
+  def expandArg(arg: String): List[String] =
+    def stripComment(s: String) = s takeWhile (_ != '#')
+    val path = Paths.get(arg stripPrefix "@")
+    if (!Files.exists(path))
+      System.err.println(s"Argument file ${path.getFileName} could not be found")
+      Nil
+    else
+      val lines = Files.readAllLines(path) // default to UTF-8 encoding
+      val params = lines.asScala map stripComment mkString " "
+      tokenize(params)
 
   class ParseException(msg: String) extends RuntimeException(msg)

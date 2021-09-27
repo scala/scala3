@@ -58,7 +58,7 @@ class BashScriptsTests:
 
   /* verify `dist/bin/scala` non-interference with command line args following script name */
   @Test def verifyScalaArgs =
-    val commandline = (Seq(scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
+    val commandline = (Seq("SCALA_OPTS= ", scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
     if validTest then
       var fail = false
@@ -78,7 +78,7 @@ class BashScriptsTests:
    */
   @Test def verifyScriptPathProperty =
     val scriptFile = testFiles.find(_.getName == "scriptPath.sc").get
-    val expected = s"/${scriptFile.getName}"
+    val expected = s"${scriptFile.getName}"
     printf("===> verify valid system property script.path is reported by script [%s]\n", scriptFile.getName)
     printf("calling scriptFile: %s\n", scriptFile)
     val (validTest, exitCode, stdout, stderr) = bashCommand(scriptFile.absPath)
@@ -100,11 +100,12 @@ class BashScriptsTests:
     if validTest then
       val expected = s"${workingDirectory.toString}"
       val List(line1: String, line2: String) = stdout.take(2)
+      printf("line1 [%s]\n", line1)
       val valid = line2.dropWhile( _ != ' ').trim.startsWith(expected)
       if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", workingDirectory, scriptFile.getName)
       assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
 
-  def existingPath: String = envOrElse("PATH","").norm
+  def existingPath: String = envOrElse("PATH", "").norm
   def adjustedPath = s"$javaHome/bin$psep$scalaHome/bin$psep$existingPath"
   def pathEntries = adjustedPath.split(psep).toList
 
@@ -114,12 +115,12 @@ class BashScriptsTests:
     val path = Files.createTempFile("scriptingTest", ".args")
     val text = s"-classpath ${workingDirectory.absPath}"
     Files.write(path, text.getBytes(utfCharset))
-    path.toFile.getAbsolutePath.replace('\\', '/')
+    path.toFile.getAbsolutePath.norm
 
   def fixHome(s: String): String =
     s.startsWith("~") match {
     case false => s
-    case true => s.replaceFirst("~",userHome)
+    case true => s.replaceFirst("~", userHome)
     }
 
   extension(s: String) {
@@ -145,7 +146,7 @@ class BashScriptsTests:
     def absPath: String = f.getAbsolutePath.norm
   }
 
-  lazy val psep: String = propOrElse("path.separator","")
+  lazy val psep: String = propOrElse("path.separator", "")
   lazy val osname = propOrElse("os.name", "").toLowerCase
 
   lazy val scalacPath = s"$workingDirectory/dist/target/pack/bin/scalac".norm
@@ -162,7 +163,7 @@ class BashScriptsTests:
   //    else, SCALA_HOME if defined
   //    else, not defined
   lazy val scalaHome =
-    if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac","")
+    if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
     else envOrElse("SCALA_HOME", "").norm
 
   lazy val javaHome = envOrElse("JAVA_HOME", "").norm
@@ -171,7 +172,7 @@ class BashScriptsTests:
     ("JAVA_HOME", javaHome),
     ("SCALA_HOME", scalaHome),
     ("PATH", adjustedPath),
-  ).filter { case (name,valu) => valu.nonEmpty }
+  ).filter { case (name, valu) => valu.nonEmpty }
 
   lazy val whichBash: String =
     var whichBash = ""
@@ -182,7 +183,7 @@ class BashScriptsTests:
 
     whichBash
 
-  def bashCommand(cmdstr: String, additionalEnvPairs:List[(String, String)] = Nil): (Boolean, Int, Seq[String], Seq[String]) = {
+  def bashCommand(cmdstr: String, additionalEnvPairs: List[(String, String)] = Nil): (Boolean, Int, Seq[String], Seq[String]) = {
     var (stdout, stderr) = (List.empty[String], List.empty[String])
     if bashExe.toFile.exists then
       val cmd = Seq(bashExe, "-c", cmdstr)
