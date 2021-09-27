@@ -102,3 +102,6 @@ cs
 
 # Coursier test product
 compiler/test-coursier/run/*.jar
+
+# Docs
+docs-for-dotty-page/*
