@@ -243,7 +243,7 @@ class ExtractSemanticDB extends Phase:
                 for alt <- tree.expr.tpe.member(imported).alternatives do
                   registerUseGuarded(None, alt.symbol, sel.imported.span, tree.source)
                   try
-                    if (alt.symbol.companionClass.isDefinedInCurrentRun)
+                    if (alt.symbol.companionClass.exists)
                       registerUseGuarded(None, alt.symbol.companionClass, sel.imported.span, tree.source)
                   catch case ex: StaleSymbol =>
                     // can happen for constructor proxies. Test case is pos-macros/i13532.
