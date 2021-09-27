@@ -1388,7 +1388,7 @@ object Build {
         val dest = file(extraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
         val justAPI = extraArgs.drop(1).headOption == Some("--justAPI")
         val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
-
+        CopyDocs.copyDocs() // invoke copying function form `project/CopyDocs.scala`
         val dottyJars: Seq[java.io.File] = Seq(
           (`stdlib-bootstrapped`/Compile/products).value,
           (`scala3-interfaces`/Compile/products).value,
