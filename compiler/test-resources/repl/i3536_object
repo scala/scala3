@@ -1,0 +1,4 @@
+scala> object res30 { override def toString = "res30" }
+// defined object res30
+scala> res30
+val res31: res30.type = res30
