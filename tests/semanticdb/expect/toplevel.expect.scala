@@ -5,4 +5,4 @@ def combine/*<-_empty_::toplevel$package.combine(+2).*/ = 0
 def foo/*<-_empty_::toplevel$package.foo().*/ = "foo"
 @main/*->scala::main#*/ def MyProgram/*<-_empty_::toplevel$package.MyProgram().*/(times/*<-_empty_::toplevel$package.MyProgram().(times)*/: Int/*->scala::Int#*/): Unit/*->scala::Unit#*/ = (1 to/*->scala::runtime::RichInt#to().*/ times/*->_empty_::toplevel$package.MyProgram().(times)*/) foreach/*->scala::collection::immutable::Range#foreach().*/ (_ => println/*->scala::Predef.println(+1).*/("hello"))
 @main/*->scala::main#*/ def readInts/*<-_empty_::toplevel$package.readInts().*/(ints/*<-_empty_::toplevel$package.readInts().(ints)*/: Int/*->scala::Int#*/*): Unit/*->scala::Unit#*/ = println/*->scala::Predef.println(+1).*/(ints/*->_empty_::toplevel$package.readInts().(ints)*/.mkString/*->scala::collection::IterableOnceOps#mkString(+1).*/(","))
-def fooRef/*<-_empty_::toplevel$package.fooRef().*/ = toplevel$package.foo/*->_empty_::toplevel$package.foo().*/
+def fooRef/*<-_empty_::toplevel$package.fooRef().*/ = toplevel$package/*->_empty_::toplevel$package.*/.foo/*->_empty_::toplevel$package.foo().*/

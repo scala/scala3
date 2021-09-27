@@ -21,10 +21,10 @@ class ImplicitConversion/*<-example::ImplicitConversion#*/ {
   val x/*<-example::ImplicitConversion#x.*/: Int/*->scala::Int#*/ = message/*->example::ImplicitConversion#message.*/
 
   // interpolators
-  s"Hello $message/*->example::ImplicitConversion#message.*/ $number/*->example::ImplicitConversion#number.*/"
+  s"Hello $message/*->example::ImplicitConversion#message.*/ $number/*->example::ImplicitConversion#number.*/"/*->scala::StringContext#s().*/
   s"""Hello
      |$message/*->example::ImplicitConversion#message.*/
-     |$number/*->example::ImplicitConversion#number.*/""".stripMargin/*->scala::collection::StringOps#stripMargin(+1).*/
+     |$number/*->example::ImplicitConversion#number.*/"""/*->scala::StringContext#s().*/.stripMargin/*->scala::collection::StringOps#stripMargin(+1).*/
 
   val a/*<-example::ImplicitConversion#a.*/: Int/*->scala::Int#*/ = char/*->example::ImplicitConversion#char.*/
   val b/*<-example::ImplicitConversion#b.*/: Long/*->scala::Long#*/ = char/*->example::ImplicitConversion#char.*/
