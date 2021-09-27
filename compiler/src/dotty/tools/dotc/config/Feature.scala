@@ -91,7 +91,7 @@ object Feature:
   def warnOnMigration(msg: Message, pos: SrcPos,
       version: SourceVersion = defaultSourceVersion)(using Context): Boolean =
     if sourceVersion.isMigrating && sourceVersion.stable == version
-       || version == `3.0` && migrateTo3
+       || (version == `3.0` || version == `3.1`) && migrateTo3
     then
       report.migrationWarning(msg, pos)
       true
