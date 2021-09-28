@@ -191,12 +191,14 @@ final class ProperGadtConstraint private(
    */
   private def isConstrainablePath(path: Type)(using Context): Boolean = path match
     case path: TermRef if !path.symbol.is(Flags.Package) && !path.symbol.is(Flags.Module) => true
+    case path: ThisType if !path.cls.is(Flags.Package) && !path.cls.is(Flags.Module) => true
     case _ => false
 
   override def addPDT(tp: Type)(using Context): Boolean =
     assert(isConstrainablePDT(tp), i"Type $tp is not a constrainable path-dependent type.")
     tp match
       case TypeRef(prefix: TermRef, _) => addTypeMembersOf(prefix).nonEmpty
+      case TypeRef(prefix: ThisType, _) => addTypeMembersOf(prefix).nonEmpty
       case _ => false
 
   /** Find all constrainable type member symbols of the given type.
