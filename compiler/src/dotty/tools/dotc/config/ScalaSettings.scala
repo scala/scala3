@@ -52,7 +52,7 @@ trait AllScalaSettings extends CommonScalaSettings, VerboseSettings, WarningSett
     // it is otherwise subsumed by -explain, and should be dropped as soon as we can.
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
-  val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
+  val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "3.1", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
   val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
   val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.", aliases = List("--language"))
