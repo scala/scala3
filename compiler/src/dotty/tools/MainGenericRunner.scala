@@ -106,14 +106,14 @@ object MainGenericRunner {
       process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
       val globdir = cp.replaceAll("[\\\\/][^\\\\/]*$", "") // slash/backslash agnostic
-      val (tailargs, cpstr) = if globdir.nonEmpty && classpathSeparator != ";" || cp.contains(classpathSeparator) then
-        (tail, cp)
-      else
-        // combine globbed classpath entries into a classpath
+      val (tailargs, cpstr) = if globdir.nonEmpty && !cp.contains(classpathSeparator) then
+        // globdir is wildcard directory for globbed jar files, reconstruct the intended classpath
         val jarfiles = cp :: tail
         val cpfiles = jarfiles.takeWhile( f => f.startsWith(globdir) && ((f.toLowerCase.endsWith(".jar") || f.endsWith(".zip"))) )
         val tailargs = jarfiles.drop(cpfiles.size)
         (tailargs, cpfiles.mkString(classpathSeparator))
+      else
+        (tail, cp)
         
       process(tailargs, settings.copy(classPath = settings.classPath ++ cpstr.split(classpathSeparator).filter(_.nonEmpty)))
 
