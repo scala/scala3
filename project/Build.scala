@@ -1365,7 +1365,7 @@ object Build {
         Seq(inkuireDestinationFile)
       }.taskValue,
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
-        "nl.big-o" % "liqp" % "0.6.7",
+        "nl.big-o" % "liqp" % "0.6.8",
         "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site
         Dependencies.`jackson-dataformat-yaml`,
 

@@ -16,6 +16,9 @@ import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.formatter.Formatter
 import liqp.Template
+import liqp.TemplateContext
+import liqp.tags.Tag
+import liqp.nodes.LNode
 import scala.collection.JavaConverters._
 
 import scala.io.Source
@@ -101,7 +104,17 @@ case class TemplateFile(
 
     // Library requires mutable maps..
     val mutableProperties = new JHashMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
-    val rendered = Template.parse(this.rawCode).render(mutableProperties)
+
+    // Register escaping {% link ... %} in markdown
+    val tag = new Tag("link"):
+      override def render(context: TemplateContext, nodes: Array[? <: LNode]): Object =
+        val link = super.asString(nodes(0).render(context))
+        s"{% link $link %}"
+
+    val rendered = ssctx.args.projectFormat match
+        case "html" => Template.parse(this.rawCode).`with`(tag).render(mutableProperties)
+        case "md" => this.rawCode
+        
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
       // Snippet compiler currently supports markdown only
