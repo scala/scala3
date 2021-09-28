@@ -1605,10 +1605,10 @@ object SymDenotations {
         // children that are defined in the same file as their parents.
         def maybeChild(sym: Symbol) =
           (sym.isClass && !this.is(JavaDefined) || sym.originDenotation.is(EnumVal))
-          && !owner.is(Package)
+          && (!owner.is(Package)
              || sym.originDenotation.infoOrCompleter.match
                   case _: SymbolLoaders.SecondCompleter => sym.associatedFile == this.symbol.associatedFile
-                  case _ => false
+                  case _ => false)
 
         if owner.isClass then
           for c <- owner.info.decls.toList if maybeChild(c) do
