@@ -2890,6 +2890,42 @@ object Parsers {
 
  /* -------- PARAMETERS ------------------------------------------- */
 
+    def typeOrTermParamClause(nparams: Int,                            // number of parameters preceding this clause
+//                    ofClass: Boolean = false,                // owner is a class
+//                    ofCaseClass: Boolean = false,            // owner is a case class
+//                    prefix: Boolean = false,                 // clause precedes name of an extension method
+//                    givenOnly: Boolean = false,              // only given parameters allowed
+                    firstClause: Boolean = false,             // clause is the first in regular list of clauses
+                    ownerKind: ParamOwner.Value
+                   ): List[TypeDef] | List[ValDef] = {
+      if(in.token == LPAREN){
+        paramClause(nparams, firstClause = firstClause)
+      }else if(in.token == LBRACKET){
+        typeParamClause(ownerKind)
+      }else{
+        Nil
+      }
+    }
+
+    def typeOrTermParamClauses(nparams: Int,                            // number of parameters preceding this clause
+//                    ofClass: Boolean = false,                // owner is a class
+//                    ofCaseClass: Boolean = false,            // owner is a case class
+//                    prefix: Boolean = false,                 // clause precedes name of an extension method
+//                    givenOnly: Boolean = false,              // only given parameters allowed
+                    firstClause: Boolean = false,             // clause is the first in regular list of clauses
+                    ownerKind: ParamOwner.Value
+                   ): List[List[TypeDef] | List[ValDef]] = {
+      def rec(): List[List[TypeDef] | List[ValDef]] = {
+        val curr = typeOrTermParamClause(nparams,firstClause,ownerKind)
+        curr match {
+          case Nil => Nil
+          case l => curr :: rec()
+        }
+      }
+      rec()
+    }
+
+
     /** ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
      *  ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]
      *                         id [HkTypeParamClause] TypeParamBounds
@@ -3348,8 +3384,9 @@ object Parsers {
         val mods1 = addFlag(mods, Method)
         val ident = termIdent()
         var name = ident.name.asTermName
-        val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses(numLeadParams = numLeadParams)
+        val paramss = typeOrTermParamClauses(nparams = numLeadParams, ownerKind = ParamOwner.Def)
+        //val tparams = typeParamClauseOpt(ParamOwner.Def)
+        //val vparamss = paramClauses(numLeadParams = numLeadParams)
         var tpt = fromWithinReturnType { typedOpt() }
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
@@ -3367,7 +3404,8 @@ object Parsers {
             accept(EQUALS)
             expr()
 
-        val ddef = DefDef(name, joinParams(tparams, vparamss), tpt, rhs)
+        //val ddef = DefDef(name, joinParams(tparams, vparamss), tpt, rhs)
+        val ddef = DefDef(name, paramss, tpt, rhs)
         if (isBackquoted(ident)) ddef.pushAttachment(Backquoted, ())
         finalizeDef(ddef, mods1, start)
       }
