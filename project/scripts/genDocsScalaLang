@@ -19,7 +19,7 @@ git clone "https://github.com/scala/docs.scala-lang.git" $DOCS_SCALA_LANG_DIR
 SBT="$SCRIPT_DIR/sbt"
 mkdir -pv $SITE_OUT_DIR
 env "scaladoc.projectFormat=md" "$SBT" "scaladoc/renderScaladocScalajsToFile $DOCS_SCALA_LANG_DIR/scripts/scaladoc-scalajs.js $DOCS_SCALA_LANG_DIR/resources/css code-snippets.css"
-"dist/target/pack/bin/scaladoc" "-d" "$SITE_OUT_DIR" "-format" "md" "-siteroot" "docs" "/dev/null"
+"bin/scaladoc" "-d" "$SITE_OUT_DIR" "-format" "md" "-siteroot" "docs" "/dev/null"
 
 if [ ! -d "$SITE_OUT_DIR" ]; then
   echo "Output directory did not exist: $SITE_OUT_DIR" 1>&2
@@ -30,12 +30,9 @@ fi
 cp -rf "$SITE_OUT_DIR/docs/reference"/* "$DOCS_SCALA_LANG_DIR/_scala3-reference"
 cp -rf "$SITE_OUT_DIR/docs/usage/scaladoc"/* "$DOCS_SCALA_LANG_DIR/_overviews/scala3-scaladoc"
 
-cp -rf "$SITE_OUT_DIR/docs/reference/contextual/motivation.md" "$DOCS_SCALA_LANG_DIR/_scala3-reference/contextual.md"
-cp -rf "$SITE_OUT_DIR/docs/reference/metaprogramming/toc.md" "$DOCS_SCALA_LANG_DIR/_scala3-reference/metaprogramming.md"
 cp -rf "$SITE_OUT_DIR/docs/resources/talks.md" "$DOCS_SCALA_LANG_DIR/scala3/talks.md"
 cp -rf "$SITE_OUT_DIR/docs/usage/getting-started.md" "$DOCS_SCALA_LANG_DIR/scala3/getting-started.md"
-cp -rf "$SITE_OUT_DIR/docs/usage/language-versions.md" "$DOCS_SCALA_LANG_DIR/_scala3-reference/language-versions.md"
-cp -rf "$SITE_OUT_DIR/docs/usage/worksheet-mode.md" "$DOCS_SCALA_LANG_DIR/_overviews/scala3-book/tools-worksheets.md"
+cp -rf "$SITE_OUT_DIR/docs/usage/tools-worksheets.md" "$DOCS_SCALA_LANG_DIR/_overviews/scala3-book/tools-worksheets.md"
 
 
 # Copy csses and html importing these assets
@@ -44,3 +41,10 @@ cp -f "$PWD/docs/docsScalaLangResources/scaladoc-assets.html" "$DOCS_SCALA_LANG_
 
 # Hack inclusion of these assests by the docs.scala-lang jekyll builder
 echo "{% include scaladoc-assets.html %}" >> "$DOCS_SCALA_LANG_DIR/_layouts/inner-page-parent-dropdown.html"
+
+# Push changes to fork branch
+cd $DOCS_SCALA_LANG_DIR
+git remote add barkingbad git@github.com:BarkingBad/docs.scala-lang.git
+git add .
+git commit -m "Update docs from dotty repo"
+git push -f barkingbad main:pregenerated-page
