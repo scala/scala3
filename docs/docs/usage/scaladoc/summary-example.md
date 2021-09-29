@@ -36,14 +36,14 @@ Generated docs are store at `target/scala-<version>` directory. Let's change tar
 
 ```scala
 lazy val docSettings: Seq[Setting[_]] = Seq(
+  Compile / doc / target := file("generated-docs"),
   Compile / doc / scalacOptions ++= Seq(
-    Compile / doc / target := file("generated-docs"),
     "-project", "scaladoc example",
   )
 )
 ```
 
-However, so generated documentation is missing a single entry point. 
+However, in scaladoc `3.2.0` and earlier, so generated documentation is missing a single entry point. This is no longer case in `3.1.x` and hence `"-siteroot", "docs"` is not needed anymore.
 ```
 generated-docs
 ├── api
