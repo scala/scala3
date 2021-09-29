@@ -24,6 +24,7 @@ import config.Config
 import reporting._
 import collection.mutable
 import transform.TypeUtils._
+import cc.{CapturingType, derivedCapturingType}
 
 import scala.annotation.internal.sharable
 
@@ -224,6 +225,8 @@ object SymDenotations {
     final def annotations(using Context): List[Annotation] = {
       ensureCompleted(); myAnnotations
     }
+
+    final def annotationsUNSAFE(using Context): List[Annotation] = myAnnotations
 
     /** Update the annotations of this denotation */
     final def annotations_=(annots: List[Annotation]): Unit =
@@ -1507,8 +1510,7 @@ object SymDenotations {
       case tp: ExprType => hasSkolems(tp.resType)
       case tp: AppliedType => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
-      case tp: AndType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
-      case tp: OrType  => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
+      case tp: AndOrType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
       case tp: AnnotatedType => hasSkolems(tp.parent)
       case _ => false
     }
@@ -2163,6 +2165,9 @@ object SymDenotations {
 
           case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
             recur(TypeComparer.bounds(tp).hi)
+
+          case CapturingType(parent, refs, _) =>
+            tp.derivedCapturingType(recur(parent), refs)
 
           case tp: TypeProxy =>
             def computeTypeProxy = {
