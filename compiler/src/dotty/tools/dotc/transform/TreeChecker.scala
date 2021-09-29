@@ -374,14 +374,14 @@ class TreeChecker extends Phase with SymTransformer {
       val tpe = tree.typeOpt
 
       // Polymorphic apply methods stay structural until Erasure
-      val isPolyFunctionApply = (tree.name eq nme.apply) && (tree.qualifier.typeOpt <:< defn.PolyFunctionType)
+      val isPolyFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.PolyFunctionClass)
       // Outer selects are pickled specially so don't require a symbol
       val isOuterSelect = tree.name.is(OuterSelectName)
       val isPrimitiveArrayOp = ctx.erasedTypes && nme.isPrimitiveName(tree.name)
       if !(tree.isType || isPolyFunctionApply || isOuterSelect || isPrimitiveArrayOp) then
         val denot = tree.denot
         assert(denot.exists, i"Selection $tree with type $tpe does not have a denotation")
-        assert(denot.symbol.exists, i"Denotation $denot of selection $tree with type $tpe does not have a symbol")
+        assert(denot.symbol.exists, i"Denotation $denot of selection $tree with type $tpe does not have a symbol, qualifier type = ${tree.qualifier.typeOpt}")
 
       val sym = tree.symbol
       val symIsFixed = tpe match {
