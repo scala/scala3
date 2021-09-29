@@ -1658,7 +1658,7 @@ object Parsers {
           def fail(): Tree = {
             syntaxError(
               "λ requires a single argument of the form X => ... or (X, Y) => ...",
-              Span(t.span.start, in.lastOffset)
+              Span(startOffset(t), in.lastOffset)
             )
             AppliedTypeTree(applied, args)
           }
@@ -2111,14 +2111,14 @@ object Parsers {
     /**    MatchClause ::= `match' `{' CaseClauses `}'
      */
     def matchClause(t: Tree): Match =
-      atSpan(t.span.start, in.skipToken()) {
+      atSpan(startOffset(t), in.skipToken()) {
         Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
       }
 
     /**    `match' `{' TypeCaseClauses `}'
      */
     def matchType(t: Tree): MatchTypeTree =
-      atSpan(t.span.start, accept(MATCH)) {
+      atSpan(startOffset(t), accept(MATCH)) {
         MatchTypeTree(EmptyTree, t, inBracesOrIndented(caseClauses(typeCaseClause)))
       }
 
