@@ -15,6 +15,7 @@ import Decorators._
 import Denotations._, SymDenotations._
 import TypeErasure.erasure
 import DenotTransformers._
+import NullOpsDecorator._
 
 object ElimRepeated {
   val name: String = "elimRepeated"
@@ -335,6 +336,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     val array = tp.translateFromRepeated(toArray = true) // Array[? <: T]
     val element = array.elemType.hiBound // T
 
-    if element <:< defn.AnyRefType || element.typeSymbol.isPrimitiveValueClass then array
+
+    if element <:< defn.AnyRefType
+      || ctx.mode.is(Mode.SafeNulls) && element.stripNull <:< defn.AnyRefType
+      || element.typeSymbol.isPrimitiveValueClass then array
     else defn.ArrayOf(TypeBounds.upper(AndType(element, defn.AnyRefType))) // Array[? <: T & AnyRef]
 }
