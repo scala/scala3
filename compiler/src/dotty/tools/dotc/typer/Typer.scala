@@ -3163,7 +3163,10 @@ class Typer extends Namer
       if !app.isEmpty && !nestedCtx.reporter.hasErrors then
         nestedCtx.typerState.commit()
         return app
-      for err <- nestedCtx.reporter.allErrors.take(1) do
+      val errs = nestedCtx.reporter.allErrors
+      val remembered = // report AmbiguousReferences as priority, otherwise last error
+        (errs.filter(_.msg.isInstanceOf[AmbiguousReference]) ++ errs).take(1)
+      for err <- remembered do
         rememberSearchFailure(qual,
           SearchFailure(app.withType(FailedExtension(app, selectionProto, err.msg))))
     catch case ex: TypeError => nestedFailure(ex)
