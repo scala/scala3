@@ -955,6 +955,24 @@ object Parsers {
         isArrowIndent()
       else false
 
+    def followingIsCaptureSet(): Boolean =
+      val lookahead = in.LookaheadScanner()
+      def recur(): Boolean =
+        (lookahead.isIdent || lookahead.token == THIS) && {
+          lookahead.nextToken()
+          if lookahead.token == COMMA then
+            lookahead.nextToken()
+            recur()
+          else
+            lookahead.token == RBRACE && {
+              lookahead.nextToken()
+              canStartInfixTypeTokens.contains(lookahead.token)
+              || lookahead.token == LBRACKET
+            }
+        }
+      lookahead.nextToken()
+      recur()
+
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
@@ -1405,17 +1423,25 @@ object Parsers {
       case _ => false
     }
 
+    /** CaptureRef  ::=  ident | `this`
+     */
+    def captureRef(): Tree =
+      if in.token == THIS then simpleRef() else termIdent()
+
     /** Type           ::=  FunType
      *                   |  HkTypeParamClause ‘=>>’ Type
      *                   |  FunParamClause ‘=>>’ Type
      *                   |  MatchType
      *                   |  InfixType
+     *                   |  CaptureSet Type
      *  FunType        ::=  (MonoFunType | PolyFunType)
      *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
+     *  CaptureSet     ::=  `{` CaptureRef {`,` CaptureRef} `}`
+     *  CaptureRef     ::=  Ident
      */
     def typ(): Tree = {
       val start = in.offset
@@ -1515,6 +1541,10 @@ object Parsers {
           }
           else { accept(TLARROW); typ() }
         }
+        else if in.token == LBRACE && followingIsCaptureSet() then
+          val refs = inBraces { commaSeparated(captureRef) }
+          val t = typ()
+          CapturingTypeTree(refs, t)
         else if (in.token == INDENT) enclosed(INDENT, typ())
         else infixType()
 
@@ -1583,7 +1613,7 @@ object Parsers {
     def infixType(): Tree = infixTypeRest(refinedType())
 
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
+      infixOps(t, canStartInfixTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg())
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
@@ -3256,7 +3286,7 @@ object Parsers {
         ImportSelector(
           atSpan(in.skipToken()) { Ident(nme.EMPTY) },
           bound =
-            if canStartTypeTokens.contains(in.token) then rejectWildcardType(infixType())
+            if canStartInfixTypeTokens.contains(in.token) then rejectWildcardType(infixType())
             else EmptyTree)
 
       /** id [‘as’ (id | ‘_’) */

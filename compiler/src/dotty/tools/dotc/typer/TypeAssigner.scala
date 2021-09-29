@@ -10,7 +10,8 @@ import util.SrcPos
 import NameOps._
 import collection.mutable
 import reporting._
-import Checking.checkNoPrivateLeaks
+import Checking.{checkNoPrivateLeaks, checkNoWildcard}
+import cc.CaptureSet
 
 trait TypeAssigner {
   import tpd.*
@@ -187,6 +188,14 @@ trait TypeAssigner {
     if tpe.isError then tpe
     else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
 
+  def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type = tp match
+    case AppliedType(tycon, args) =>
+      val constr = tycon.typeSymbol
+      if constr == defn.andType then AndType(args(0), args(1))
+      else if constr == defn.orType then OrType(args(0), args(1), soft = false)
+      else tp
+    case _ => tp
+
   /** Type assignment method. Each method takes as parameters
    *   - an untpd.Tree to which it assigns a type,
    *   - typed child trees it needs to access to cpmpute that type,
@@ -288,7 +297,10 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
         if (fntpe.paramInfos.hasSameLengthAs(args) || ctx.phase.prev.relaxedTyping)
-          safeSubstMethodParams(fntpe, args.tpes)
+          if fntpe.isCaptureDependent then
+            fntpe.resultType.substParams(fntpe, args.tpes)
+          else
+            safeSubstMethodParams(fntpe, args.tpes)
         else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
       case t =>
@@ -470,11 +482,10 @@ trait TypeAssigner {
     assert(!hasNamedArg(args) || ctx.reporter.errorsReported, tree)
     val tparams = tycon.tpe.typeParams
     val ownType =
-      if (tparams.hasSameLengthAs(args))
-        if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
-        else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe, soft = false)
-        else tycon.tpe.appliedTo(args.tpes)
-      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
+      if tparams.hasSameLengthAs(args) then
+        processAppliedType(tree, tycon.tpe.appliedTo(args.tpes))
+      else
+        wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)
   }
 

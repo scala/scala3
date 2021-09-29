@@ -235,4 +235,8 @@ object Config {
   inline val checkLevelsOnConstraints = false
   inline val checkLevelsOnInstantiation = true
 
+  /** If true, print capturing types in the form `{c} T`.
+   *  If false, print them in the form `T @retains(c)`.
+   */
+  inline val printCaptureSetsAsPrefix = true
 }

@@ -295,7 +295,6 @@ import transform.SymUtils._
       val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
       treeStr + "\n" + super.explain
 
-
   end TypeMismatch
 
   class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)

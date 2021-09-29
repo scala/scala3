@@ -4,6 +4,7 @@ package core
 import Types._, Contexts._, Flags._, Symbols._, Annotations._
 import TypeApplications.TypeParamInfo
 import Decorators._
+import cc.CapturingType
 
 object Variances {
 
