@@ -289,7 +289,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 tree.fun,
                 tree.args.mapConserve(arg =>
                   if (methType.isImplicitMethod && arg.span.isSynthetic)
-                    PruneErasedDefs.trivialErasedTree(arg)
+                    arg match
+                      case _: RefTree | _: Apply | _: TypeApply if arg.symbol.is(Erased) =>
+                        dropInlines.transform(arg)
+                      case _ =>
+                        PruneErasedDefs.trivialErasedTree(arg)
                   else dropInlines.transform(arg)))
             else
               tree
