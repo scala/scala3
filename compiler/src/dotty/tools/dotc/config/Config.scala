@@ -227,4 +227,9 @@ object Config {
    *  reduces the number of allocated denotations by ~50%.
    */
   inline val reuseSymDenotations = true
+
+  /** If true, print capturing types in the form `{c} T`.
+   *  If false, print them in the form `T @retains(c)`.
+   */
+  inline val printCaptureSetsAsPrefix = true
 }

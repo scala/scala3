@@ -148,7 +148,7 @@ object TypeTestsCasts {
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
-      case AnnotatedType(t, _)  => recur(X, t)
+      case tp: AnnotatedType    => recur(X, tp.parent)
       case _: RefinedType       => false
       case _                    => true
     })
@@ -217,7 +217,7 @@ object TypeTestsCasts {
            *  can be true in some cases. Issues a warning or an error otherwise.
            */
           def checkSensical(foundClasses: List[Symbol])(using Context): Boolean =
-            def exprType = i"type ${expr.tpe.widen.stripAnnots}"
+            def exprType = i"type ${expr.tpe.widen.stripped}"
             def check(foundCls: Symbol): Boolean =
               if (!isCheckable(foundCls)) true
               else if (!foundCls.derivesFrom(testCls)) {
