@@ -14,13 +14,16 @@ import Variances.varianceSign
 import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
+import config.Config
+import cc.{CapturingType, CaptureSet}
 
 class PlainPrinter(_ctx: Context) extends Printer {
+
   /** The context of all public methods in Printer and subclasses.
    *  Overridden in RefinedPrinter.
    */
-  protected def curCtx: Context = _ctx.addMode(Mode.Printing)
-  protected given [DummyToEnforceDef]: Context = curCtx
+  def printerContext: Context = _ctx.addMode(Mode.Printing)
+  protected given [DummyToEnforceDef]: Context = printerContext
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
@@ -194,6 +197,22 @@ class PlainPrinter(_ctx: Context) extends Printer {
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
+      case CapturingType(parent, refs, boxed) =>
+        def box = Str("box ") provided boxed
+        if printDebug && !refs.isConst then
+          changePrec(GlobalPrec)(box ~ s"$refs " ~ toText(parent))
+        else if ctx.settings.YccDebug.value then
+          changePrec(GlobalPrec)(box ~ refs.toText(this) ~ " " ~ toText(parent))
+        else if !refs.isConst && refs.elems.isEmpty then
+          changePrec(GlobalPrec)("?" ~ " " ~ toText(parent))
+        else if Config.printCaptureSetsAsPrefix then
+          changePrec(GlobalPrec)(
+            box ~ "{"
+            ~ Text(refs.elems.toList.map(toTextCaptureRef), ", ")
+            ~ "} "
+            ~ toText(parent))
+        else
+          changePrec(InfixPrec)(toText(parent) ~ " retains " ~ box ~ toText(refs.toRetainsTypeArg))
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
@@ -345,6 +364,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp => trimPrefix(toTextLocal(tp)) ~ "#"
     }
   }
+
+  def toTextCaptureRef(tp: Type): Text =
+    homogenize(tp) match
+      case tp: SingletonType => toTextRef(tp)
+      case _ => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
     defn.unqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)

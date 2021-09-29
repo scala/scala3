@@ -1810,6 +1810,9 @@ object desugar {
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
       case ext: ExtMethods =>
         Block(List(ext), Literal(Constant(())).withSpan(ext.span))
+      case CapturingTypeTree(refs, parent) =>
+        val annot = New(scalaDot(tpnme.retains), List(refs))
+        Annotated(parent, annot)
     }
     desugared.withSpan(tree.span)
   }
@@ -1946,6 +1949,8 @@ object desugar {
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)
+      case CapturingTypeTree(refs, parent) =>
+        collect(parent)
       case _ =>
     }
     collect(tree)

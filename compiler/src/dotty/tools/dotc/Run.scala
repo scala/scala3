@@ -19,7 +19,6 @@ import reporting.{Suppression, Action, Profile, ActiveProfile, NoProfile}
 import reporting.Diagnostic
 import reporting.Diagnostic.Warning
 import rewrites.Rewrites
-
 import profile.Profiler
 import printing.XprintMode
 import typer.ImplicitRunInfo
@@ -294,7 +293,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     val fusedPhase = ctx.phase.prevMega
     val echoHeader = f"[[syntax trees at end of $fusedPhase%25s]] // ${unit.source}"
     val tree = if ctx.isAfterTyper then unit.tpdTree else unit.untpdTree
-    val treeString = tree.show(using ctx.withProperty(XprintMode, Some(())))
+    val treeString = fusedPhase.show(tree)
 
     last match {
       case SomePrintedTree(phase, lastTreeString) if lastTreeString == treeString =>

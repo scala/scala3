@@ -214,7 +214,7 @@ object TypeTestsCasts {
            *  can be true in some cases. Issues a warning or an error otherwise.
            */
           def checkSensical(foundClasses: List[Symbol])(using Context): Boolean =
-            def exprType = i"type ${expr.tpe.widen.stripAnnots}"
+            def exprType = i"type ${expr.tpe.widen.stripped}"
             def check(foundCls: Symbol): Boolean =
               if (!isCheckable(foundCls)) true
               else if (!foundCls.derivesFrom(testCls)) {

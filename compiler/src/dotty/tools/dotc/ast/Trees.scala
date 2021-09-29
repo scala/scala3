@@ -253,16 +253,10 @@ object Trees {
   /** Tree's denotation can be derived from its type */
   abstract class DenotingTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends Tree[T] {
     type ThisTree[-T >: Untyped] <: DenotingTree[T]
-    override def denot(using Context): Denotation = typeOpt match {
+    override def denot(using Context): Denotation = typeOpt.stripped match
       case tpe: NamedType => tpe.denot
       case tpe: ThisType => tpe.cls.denot
-      case tpe: AnnotatedType => tpe.stripAnnots match {
-        case tpe: NamedType => tpe.denot
-        case tpe: ThisType => tpe.cls.denot
-        case _ => NoDenotation
-      }
       case _ => NoDenotation
-    }
   }
 
   /** Tree's denot/isType/isTerm properties come from a subtree

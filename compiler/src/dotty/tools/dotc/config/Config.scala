@@ -232,4 +232,9 @@ object Config {
    *  regressions that should be fixed before turning this on.
    */
   inline val checkLevels = false
+
+  /** If true, print capturing types in the form `{c} T`.
+   *  If false, print them in the form `T @retains(c)`.
+   */
+  inline val printCaptureSetsAsPrefix = true
 }
