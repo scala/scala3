@@ -146,10 +146,16 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     //  (2) If the parameter accessor reference was to an alias getter,
     //      drop the () when replacing by the parameter.
     object intoConstr extends TreeMap {
+      private var isSuperCall = false
       override def transform(tree: Tree)(using Context): Tree = tree match {
         case Ident(_) | Select(This(_), _) =>
           var sym = tree.symbol
-          if (sym.is(ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
+          if sym.is(ParamAccessor) && (!sym.is(Mutable) || isSuperCall)
+            // Variables need to go through the getter since they might have been updated,
+            // except if we are in a super call, since then the virtual getter call would
+            // be illegal.
+          then
+            sym = sym.subst(accessors, paramSyms)
           if (sym.maybeOwner.isConstructor) ref(sym).withSpan(tree.span) else tree
         case Apply(fn, Nil) =>
           val fn1 = transform(fn)
@@ -161,6 +167,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
 
       def apply(tree: Tree, prevOwner: Symbol)(using Context): Tree =
+        isSuperCall = isSuperConstrCall(tree)
         transform(tree).changeOwnerAfter(prevOwner, constr.symbol, thisPhase)
     }
 
