@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/boxmap.scala:14:2 ----------------------------------------
+14 |  () => b[Box[B]]((x: A) => box(f(x)))  // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Found:    {f} () => ? Box[B]
+   |  Required: () => Box[B]
+
+longer explanation available when compiling with `-explain`
