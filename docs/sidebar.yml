@@ -5,7 +5,7 @@ sidebar:
       - page: docs/usage/getting-started.md
       - page: docs/usage/sbt-projects.md
       - page: docs/usage/ide-support.md
-      - page: docs/usage/worksheet-mode.md
+      - page: docs/usage/tools-worksheets.md
       - page: docs/usage/cbt-projects.md
       - page: docs/usage/scaladoc
   - title: Reference

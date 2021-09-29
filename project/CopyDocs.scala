@@ -32,25 +32,37 @@ object CopyDocs {
 
   case class MyParams(newPath: String)
 
+  val commonTransformations: Set[(String, MyParams => String)] = Set(
+    jekyllLinkPattern -> jekyllLinkSubstitution,
+    jekyllLinkPattern2 -> jekyllLinkSubstitution2,
+    localLinkPattern -> localLinkSubstitution,
+  )
+
   /**
    * Structure for holding which transformations should be applied to which directories.
    * The outer map is holding morphism `directory prefix` -> `set of transformations`.
    * The inner set is a collection of pairs `regex pattern` -> `substitution value`.
    */
   val transformationMap: Map[String, Set[(String, MyParams => String)]] = Map(
-    "docs/docs/reference/" -> Set(
-      titlePattern -> ((p) => s"---\nlayout: doc-page\ntitle: $$1\nmovedTo: https://docs.scala-lang.org/scala3/reference/${p.newPath}.html\n---"),
-      jekyllLinkPattern -> jekyllLinkSubstitution,
-      jekyllLinkPattern2 -> jekyllLinkSubstitution2,
-      localLinkPattern -> localLinkSubstitution,
+    "docs/docs/reference/" -> (commonTransformations +
+      (titlePattern -> ((p) => s"---\nlayout: doc-page\ntitle: $$1\nmovedTo: https://docs.scala-lang.org/scala3/reference/${p.newPath}.html\n---")),
     ),
 
-    "docs/docs/usage/scaladoc/" -> Set(
-      titlePattern -> s"---\ntitle: $$1\n---",
-      jekyllLinkPattern -> jekyllLinkSubstitution,
-      jekyllLinkPattern2 -> jekyllLinkSubstitution2,
-      localLinkPattern -> localLinkSubstitution,
+    "docs/docs/usage/scaladoc/" -> (commonTransformations +
+      (titlePattern -> s"---\ntitle: $$1\n---"),
     ),
+
+    "docs/docs/usage/getting-started" -> (commonTransformations +
+      (titlePattern -> "---\nlayout: doc-page\ntitle: Getting Started: Users\nmovedTo: https://docs.scala-lang.org/scala3/getting-started.html\n---"),
+    ),
+
+    "docs/docs/usage/tools-worksheets" -> (commonTransformations +
+      (titlePattern -> "---\nlayout: doc-page\ntitle: \"Worksheet mode with Dotty IDE\"\nmovedTo: https://docs.scala-lang.org/scala3/book/tools-worksheets.html\n---")
+    ),
+
+    "docs/docs/resources/talks" -> (commonTransformations +
+      (titlePattern -> "---\nlayout: doc-page\ntitle: Talks\nmovedTo: https://docs.scala-lang.org/scala3/talks.html\n---")
+    )
   )
 
   def copyDocs() = {
