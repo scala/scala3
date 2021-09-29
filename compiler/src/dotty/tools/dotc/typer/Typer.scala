@@ -49,6 +49,7 @@ import transform.TypeUtils._
 import reporting._
 import Nullables._
 import NullOpsDecorator._
+import cc.CheckCaptures
 import config.Config
 
 object Typer {
@@ -1158,7 +1159,7 @@ class Typer extends Namer
         case _ => mapOver(t)
     }
 
-    val pt1 = pt.stripTypeVar.dealias.normalized
+    val pt1 = pt.strippedDealias.normalized
     if (pt1 ne pt1.dropDependentRefinement)
        && defn.isContextFunctionType(pt1.nonPrivateMember(nme.apply).info.finalResultType)
     then
@@ -2576,6 +2577,8 @@ class Typer extends Namer
       registerNowarn(annot1, tree)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
+      if annot1.symbol.maybeOwner == defn.RetainsAnnot then
+        CheckCaptures.checkWellformed(annot1)
       if arg1.isType then
         assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
       else

@@ -230,8 +230,8 @@ object Tokens extends TokensCommon {
 
   final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
-  final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
-    THIS, SUPER, USCORE, LPAREN, AT)
+  final val canStartInfixTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
+    THIS, SUPER, USCORE, LPAREN, LBRACE, AT)
 
   final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 

@@ -14,6 +14,7 @@ import Decorators._
 import config.Printers.{gadts, typr, debug}
 import annotation.tailrec
 import reporting._
+import cc.{CapturingType, derivedCapturingType}
 import collection.mutable
 
 import scala.annotation.internal.sharable
@@ -130,8 +131,8 @@ object Inferencing {
       couldInstantiateTypeVar(parent, applied)
     case tp: AndOrType =>
       couldInstantiateTypeVar(tp.tp1, applied) || couldInstantiateTypeVar(tp.tp2, applied)
-    case AnnotatedType(tp, _) =>
-      couldInstantiateTypeVar(tp, applied)
+    case tp: AnnotatedType =>
+      couldInstantiateTypeVar(tp.parent, applied)
     case _ =>
       false
 
@@ -531,6 +532,7 @@ object Inferencing {
     case tp: RefinedType => tp.derivedRefinedType(captureWildcards(tp.parent), tp.refinedName, tp.refinedInfo)
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
+    case CapturingType(parent, refs, _) => tp.derivedCapturingType(captureWildcards(parent), refs)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
     case _ => tp
   }
@@ -700,6 +702,7 @@ trait Inferencing { this: Typer =>
           if !argType.isSingleton then argType = SkolemType(argType)
           argType <:< tvar
       case _ =>
+        () // scala-meta complains if this is missing, but I could not mimimize further
   end constrainIfDependentParamRef
 }
 
@@ -714,4 +717,3 @@ trait Inferencing { this: Typer =>
 
 enum IfBottom:
   case ok, fail, flip
-

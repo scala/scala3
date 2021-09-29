@@ -19,6 +19,8 @@ import typer.ForceDegree
 import typer.Inferencing._
 import typer.IfBottom
 import reporting.TestingReporter
+import cc.{CapturingType, derivedCapturingType, CaptureSet}
+import CaptureSet.CompareResult
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -164,6 +166,12 @@ object TypeOps:
         // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
+      case CapturingType(parent, refs, _) =>
+        if !ctx.mode.is(Mode.Type)
+            && refs.subCaptures(parent.captureSet, frozen = true).isOK then
+          simplify(parent, theMap)
+        else
+          mapOver
       case tp @ AnnotatedType(parent, annot) =>
         val parent1 = simplify(parent, theMap)
         if annot.symbol == defn.UncheckedVarianceAnnot
@@ -273,15 +281,23 @@ object TypeOps:
         case _ => false
       }
 
-      // Step 1: Get RecTypes and ErrorTypes out of the way,
+      // Step 1: Get RecTypes and ErrorTypes and CapturingTypes out of the way,
       tp1 match {
-        case tp1: RecType => return tp1.rebind(approximateOr(tp1.parent, tp2))
-        case err: ErrorType => return err
+        case tp1: RecType =>
+          return tp1.rebind(approximateOr(tp1.parent, tp2))
+        case CapturingType(parent1, refs1, _) =>
+          return tp1.derivedCapturingType(approximateOr(parent1, tp2), refs1)
+        case err: ErrorType =>
+          return err
         case _ =>
       }
       tp2 match {
-        case tp2: RecType => return tp2.rebind(approximateOr(tp1, tp2.parent))
-        case err: ErrorType => return err
+        case tp2: RecType =>
+          return tp2.rebind(approximateOr(tp1, tp2.parent))
+        case CapturingType(parent2, refs2, _) =>
+          return tp2.derivedCapturingType(approximateOr(tp1, parent2), refs2)
+        case err: ErrorType =>
+          return err
         case _ =>
       }
 

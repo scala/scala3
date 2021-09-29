@@ -12,6 +12,7 @@ import config.Printers.constr
 import reflect.ClassTag
 import annotation.tailrec
 import annotation.internal.sharable
+import cc.{CapturingType, derivedCapturingType}
 
 object OrderingConstraint {
 
@@ -328,6 +329,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       case tp: TypeVar =>
         val underlying1 = recur(tp.underlying, fromBelow)
         if underlying1 ne tp.underlying then underlying1 else tp
+      case CapturingType(parent, refs, _) =>
+        val parent1 = recur(parent, fromBelow)
+        if parent1 ne parent then tp.derivedCapturingType(parent1, refs) else tp
       case tp: AnnotatedType =>
         val parent1 = recur(tp.parent, fromBelow)
         if parent1 ne tp.parent then tp.derivedAnnotatedType(parent1, tp.annot) else tp

@@ -284,6 +284,7 @@ object StdNames {
 
     // Compiler-internal
     val ANYname: N                  = "<anyname>"
+    val CAPTURE_ROOT: N             = "*"
     val COMPANION: N                = "<companion>"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
@@ -371,6 +372,7 @@ object StdNames {
     val AppliedTypeTree: N      = "AppliedTypeTree"
     val ArrayAnnotArg: N        = "ArrayAnnotArg"
     val CAP: N                  = "CAP"
+    val ClassManifestFactory: N = "ClassManifestFactory"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"
     val Eql: N                  = "Eql"
@@ -448,7 +450,6 @@ object StdNames {
     val canEqualAny : N         = "canEqualAny"
     val cbnArg: N               = "<cbn-arg>"
     val checkInitialized: N     = "checkInitialized"
-    val ClassManifestFactory: N = "ClassManifestFactory"
     val classOf: N              = "classOf"
     val classType: N            = "classType"
     val clone_ : N              = "clone"
@@ -580,6 +581,7 @@ object StdNames {
     val reflectiveSelectable: N = "reflectiveSelectable"
     val reify : N               = "reify"
     val releaseFence : N        = "releaseFence"
+    val retains: N              = "retains"
     val rootMirror : N          = "rootMirror"
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
