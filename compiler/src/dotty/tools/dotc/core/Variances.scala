@@ -4,6 +4,7 @@ package core
 import Types._, Contexts._, Flags._, Symbols._, Annotations._
 import TypeApplications.TypeParamInfo
 import Decorators._
+import cc.CapturingType
 
 object Variances {
 
@@ -99,6 +100,8 @@ object Variances {
             v
         }
       varianceInArgs(varianceInType(tycon)(tparam), args, tycon.typeParams)
+    case CapturingType(tp, _, _) =>
+      varianceInType(tp)(tparam)
     case AnnotatedType(tp, annot) =>
       varianceInType(tp)(tparam) & varianceInAnnot(annot)(tparam)
     case AndType(tp1, tp2) =>

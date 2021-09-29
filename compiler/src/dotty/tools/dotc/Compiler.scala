@@ -4,6 +4,7 @@ package dotc
 import core._
 import Contexts._
 import typer.{TyperPhase, RefChecks}
+import cc.CheckCaptures
 import parsing.Parser
 import Phases.Phase
 import transform._
@@ -79,6 +80,8 @@ class Compiler {
          new RefChecks,              // Various checks mostly related to abstract members and overriding
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher) ::      // Compile pattern matches
+    List(new PreRecheck) ::          // Preparations for check captures phase, enabled under -Ycc
+    List(new CheckCaptures) ::       // Check captures, enabled under -Ycc
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
@@ -102,8 +105,6 @@ class Compiler {
          new TupleOptimizations,     // Optimize generic operations on tuples
          new LetOverApply,           // Lift blocks from receivers of applications
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
-    List(new PreRecheck) ::          // Preparations for recheck phase, enabled under -Yrecheck
-    List(new TestRecheck) ::         // Test rechecking, enabled under -Yrecheck
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new PureStats,              // Remove pure stats from blocks

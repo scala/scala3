@@ -147,6 +147,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case Floating
   }
 
+  /** {x1, ..., xN} T   (only relevant under -Ycc) */
+  case class CapturingTypeTree(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
+
   /** Short-lived usage in typer, does not need copy/transform/fold infrastructure */
   case class DependentTypeTree(tp: List[Symbol] => Type)(implicit @constructorOnly src: SourceFile) extends Tree
 
@@ -650,6 +653,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Number if (digits == tree.digits) && (kind == tree.kind) => tree
       case _ => finalize(tree, untpd.Number(digits, kind))
     }
+    def CapturingTypeTree(tree: Tree)(refs: List[Tree], parent: Tree)(using Context): Tree = tree match
+      case tree: CapturingTypeTree if (refs eq tree.refs) && (parent eq tree.parent) => tree
+      case _ => finalize(tree, untpd.CapturingTypeTree(refs, parent))
+
     def TypedSplice(tree: Tree)(splice: tpd.Tree)(using Context): ProxyTree = tree match {
       case tree: TypedSplice if splice `eq` tree.splice => tree
       case _ => finalize(tree, untpd.TypedSplice(splice)(using ctx))
@@ -715,6 +722,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         tree
       case MacroTree(expr) =>
         cpy.MacroTree(tree)(transform(expr))
+      case CapturingTypeTree(refs, parent) =>
+        cpy.CapturingTypeTree(tree)(transform(refs), transform(parent))
       case _ =>
         super.transformMoreCases(tree)
     }
@@ -776,6 +785,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, splice)
       case MacroTree(expr) =>
         this(x, expr)
+      case CapturingTypeTree(refs, parent) =>
+        this(this(x, refs), parent)
       case _ =>
         super.foldMoreCases(x, tree)
     }

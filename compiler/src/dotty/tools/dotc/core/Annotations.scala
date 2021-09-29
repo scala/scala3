@@ -48,7 +48,7 @@ object Annotations {
     /** The tree evaluation has finished. */
     def isEvaluated: Boolean = true
 
-    /** Normally, type map over all tree nodes of this annotation, but can
+    /** Normally, applies a type map to all tree nodes of this annotation, but can
      *  be overridden. Returns EmptyAnnotation if type type map produces a range
      *  type, since ranges cannot be types of trees.
      */
@@ -86,6 +86,10 @@ object Annotations {
 
     def sameAnnotation(that: Annotation)(using Context): Boolean =
       symbol == that.symbol && tree.sameTree(that.tree)
+
+    /** Operations for hash-consing, can be overridden */
+    def hash: Int = System.identityHashCode(this)
+    def eql(that: Annotation) = this eq that
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
