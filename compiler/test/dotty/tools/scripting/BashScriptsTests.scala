@@ -97,20 +97,16 @@ class BashScriptsTests:
     printf("===> verify SCALA_OPTS -classpath setting in argument file seen by script [%s]\n", scriptFile.getName)
     val argsfile = createArgsFile() // avoid problems caused by drive letter
     val envPairs = List(("SCALA_OPTS", s"@$argsfile"))
-    val (exitCode, stdout, stderr) = bashCommand(scriptFile.absPath, envPairs:_*)
-    printf("\n")
-    if exitCode != 0 || stderr.exists(_.contains("Permission denied")) then
-      stderr.foreach { System.err.printf("stderr [%s]\n", _) }
-      printf("unable to execute script, return value is %d\n", exitCode)
-    else
-      val expected = cwd
-      val List(line1: String, line2: String) = stdout.take(2)
-      printf("line1 [%s]\n", line1)
-      val valid = line2.dropWhile( _ != ' ').trim.startsWith(expected)
-      val psep = if osname.startsWith("Windows") then ';' else ':'
-      printf("line2 start [%s]\n", line2.take(100))
-      if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", cwd, scriptFile.getName)
-      assert(valid, s"script ${scriptFile.getName} did not report valid java.class.path first entry")
+    val (validTest, exitCode, stdout, stderr) = bashCommand(scriptFile.absPath, envPairs)
+    printf("stdout: %s\n", stdout.mkString("\n","\n",""))
+    if validTest then
+      val expected = s"${workingDirectory.norm}"
+      val output = stdout.find( _.trim.startsWith("cwd") ).getOrElse("").dropWhile(_!=' ').trim
+      printf("output  [%s]\n", output)
+      printf("expected[%s]\n", expected)
+      val valid = output.startsWith(expected)
+      if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", workingDirectory, scriptFile.getName)
+      assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
 
   def existingPath: String = envOrElse("PATH", "").norm
   def adjustedPath = s"$javaHome/bin$psep$scalaHome/bin$psep$existingPath"
