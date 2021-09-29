@@ -846,7 +846,7 @@ class TreeUnpickler(reader: TastyReader,
       def TypeDef(rhs: Tree) =
         ta.assignType(untpd.TypeDef(sym.name.asTypeName, rhs), sym)
 
-      def ta =  ctx.typeAssigner
+      def ta = ctx.typeAssigner
 
       val name = readName()
       pickling.println(s"reading def of $name at $start")
@@ -1330,11 +1330,9 @@ class TreeUnpickler(reader: TastyReader,
               // types. This came up in #137 of collection strawman.
               val tycon = readTpt()
               val args = until(end)(readTpt())
-              val ownType =
-                if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
-                else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe, soft = false)
-                else tycon.tpe.safeAppliedTo(args.tpes)
-              untpd.AppliedTypeTree(tycon, args).withType(ownType)
+              val tree = untpd.AppliedTypeTree(tycon, args)
+              val ownType = ctx.typeAssigner.processAppliedType(tree, tycon.tpe.safeAppliedTo(args.tpes))
+              tree.withType(ownType)
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTerm())
             case LAMBDAtpt =>

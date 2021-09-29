@@ -14,6 +14,7 @@ import Comments.CommentsContext
 import Comments.Comment
 import util.Spans.NoSpan
 import Symbols.requiredModuleRef
+import cc.{CapturingType, CaptureSet}
 
 import scala.annotation.tailrec
 
@@ -146,11 +147,13 @@ class Definitions {
   private def enterMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
     newMethod(cls, name, info, flags).entered
 
-  private def enterAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol = {
-    val sym = newPermanentSymbol(ScalaPackageClass, name, flags, TypeAlias(tpe))
+  private def enterPermanentSymbol(name: Name, info: Type, flags: FlagSet = EmptyFlags): Symbol =
+    val sym = newPermanentSymbol(ScalaPackageClass, name, flags, info)
     ScalaPackageClass.currentPackageDecls.enter(sym)
     sym
-  }
+
+  private def enterAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol =
+    enterPermanentSymbol(name, TypeAlias(tpe), flags).asType
 
   private def enterBinaryAlias(name: TypeName, op: (Type, Type) => Type): TypeSymbol =
     enterAliasType(name,
@@ -446,6 +449,7 @@ class Definitions {
 
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
+  @tu lazy val captureRoot: TermSymbol = enterPermanentSymbol(nme.CAPTURE_ROOT, AnyType).asTerm
 
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
@@ -989,6 +993,8 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val SinceAnnot: ClassSymbol = requiredClass("scala.annotation.since")
+  @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.retains")
+  @tu lazy val AbilityAnnot: ClassSymbol = requiredClass("scala.annotation.ability")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
@@ -1587,6 +1593,9 @@ class Definitions {
   def isFunctionType(tp: Type)(using Context): Boolean =
     isNonRefinedFunction(tp.dropDependentRefinement)
 
+  def isFunctionOrPolyType(tp: RefinedType)(using Context): Boolean =
+    isFunctionType(tp) || (tp.parent.typeSymbol eq defn.PolyFunctionClass)
+
   // Specialized type parameters defined for scala.Function{0,1,2}.
   @tu lazy val Function1SpecializedParamTypes: collection.Set[TypeRef] =
     Set(IntType, LongType, FloatType, DoubleType)
@@ -1890,7 +1899,7 @@ class Definitions {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
+      val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() ++ List(JavaEnumClass, captureRoot)
 
       isInitialized = true
     }
