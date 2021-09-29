@@ -194,6 +194,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
   private val byNameMarker = marker("ByName")
   private val matchMarker = marker("Match")
   private val superMarker = marker("Super")
+  private val retainsMarker = marker("Retains")
 
   /** Extract the API representation of a source file */
   def apiSource(tree: Tree): Seq[api.ClassLike] = {

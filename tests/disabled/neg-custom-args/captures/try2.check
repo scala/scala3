@@ -1,0 +1,38 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try2.scala:31:32 -----------------------------------------
+31 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)  // error
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                Found:    {x} () => Nothing
+   |                                Required: () => Nothing
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try2.scala:45:2 ------------------------------------------
+45 |  yy  // error
+   |  ^^
+   |  Found:    (yy : List[(xx : (() => Int) retains canThrow)])
+   |  Required: List[() => Int]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try2.scala:52:2 ------------------------------------------
+47 |val global = handle {
+48 |  (x: CanThrow[Exception]) =>
+49 |    () =>
+50 |      raise(new Exception)(using x)
+51 |      22
+52 |} {  // error
+   |             ^
+   |             Found:    (() => Int) retains canThrow
+   |             Required: () => Int
+53 |  (ex: Exception) => () => 22
+54 |}
+
+longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/try2.scala:24:28 --------------------------------------------------------------
+24 |  val a = handle[Exception, CanThrow[Exception]] { // error
+   |                            ^^^^^^^^^^^^^^^^^^^
+   |                            type argument is not allowed to capture the global capability (canThrow : *)
+-- Error: tests/neg-custom-args/captures/try2.scala:36:11 --------------------------------------------------------------
+36 |  val xx = handle { // error
+   |           ^^^^^^
+   |inferred type argument ((() => Int) retains canThrow) is not allowed to capture the global capability (canThrow : *)
+   |
+   |The inferred arguments are: [Exception, ((() => Int) retains canThrow)]
