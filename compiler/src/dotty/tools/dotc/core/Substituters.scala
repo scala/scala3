@@ -161,8 +161,9 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final class SubstBindingMap(from: BindingType, to: BindingType)(using Context) extends DeepTypeMap {
+  final class SubstBindingMap(from: BindingType, to: BindingType)(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
+    def inverse(tp: Type): Type = tp.subst(to, from)
   }
 
   final class Subst1Map(from: Symbol, to: Type)(using Context) extends DeepTypeMap {
@@ -177,8 +178,9 @@ object Substituters:
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap {
+  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
+    def inverse(tp: Type) = tp.substSym(to, from)
   }
 
   final class SubstThisMap(from: ClassSymbol, to: Type)(using Context) extends DeepTypeMap {
