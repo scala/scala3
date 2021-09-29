@@ -1,0 +1,42 @@
+-- [E163] Declaration Error: tests/neg-custom-args/captures/lazylist.scala:22:6 ----------------------------------------
+22 |  def tail: {*} LazyList[Nothing] = ???  // error overriding
+   |      ^
+   |      error overriding method tail in class LazyList of type => lazylists.LazyList[Nothing];
+   |        method tail of type => {*} lazylists.LazyList[Nothing] has incompatible type
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:35:29 -------------------------------------
+35 |  val ref1c: LazyList[Int] = ref1 // error
+   |                             ^^^^
+   |                 Found:    (ref1 : {cap1} lazylists.LazyCons[Int]{xs: {cap1} () => {*} lazylists.LazyList[Int]})
+   |                 Required: lazylists.LazyList[Int]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:37:36 -------------------------------------
+37 |  val ref2c: {ref1} LazyList[Int] = ref2 // error
+   |                                    ^^^^
+   |                                    Found:    (ref2 : {cap2, ref1} lazylists.LazyList[Int])
+   |                                    Required: {ref1} lazylists.LazyList[Int]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:39:36 -------------------------------------
+39 |  val ref3c: {cap2} LazyList[Int] = ref3 // error
+   |                                    ^^^^
+   |                                    Found:    (ref3 : {cap2, ref1} lazylists.LazyList[Int])
+   |                                    Required: {cap2} lazylists.LazyList[Int]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:41:48 -------------------------------------
+41 |  val ref4c: {cap1, ref3, cap3} LazyList[Int] = ref4 // error
+   |                                                ^^^^
+   |                                             Found:    (ref4 : {cap3, cap2, ref1, cap1} lazylists.LazyList[Int])
+   |                                             Required: {cap1, ref3, cap3} lazylists.LazyList[Int]
+
+longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/lazylist.scala:17:6 -----------------------------------------------------------
+17 |  def tail = xs() // error: cannot have an inferred type
+   |  ^^^^^^^^^^^^^^^
+   |  Non-local method tail cannot have an inferred result type
+   |  {*} lazylists.LazyList[T]
+   |  with non-empty capture set {*}.
+   |  The type needs to be declared explicitly.
