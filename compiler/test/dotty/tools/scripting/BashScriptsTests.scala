@@ -97,11 +97,13 @@ class BashScriptsTests:
     printf("===> verify SCALA_OPTS='@argsfile' is properly handled by `dist/bin/scala`\n")
     val envPairs = List(("SCALA_OPTS", s"@$argsfile"))
     val (validTest, exitCode, stdout, stderr) = bashCommand(scriptFile.absPath, envPairs)
+    printf("stdout: %s\n", stdout.mkString("\n","\n",""))
     if validTest then
-      val expected = s"${workingDirectory.toString}"
-      val List(line1: String, line2: String) = stdout.take(2)
-      printf("line1 [%s]\n", line1)
-      val valid = line2.dropWhile( _ != ' ').trim.startsWith(expected)
+      val expected = s"${workingDirectory.norm}"
+      val output = stdout.find( _.trim.startsWith("cwd") ).getOrElse("").dropWhile(_!=' ').trim
+      printf("output  [%s]\n", output)
+      printf("expected[%s]\n", expected)
+      val valid = output.startsWith(expected)
       if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", workingDirectory, scriptFile.getName)
       assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
 

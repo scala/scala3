@@ -105,17 +105,20 @@ object MainGenericRunner {
     case "-run" :: fqName :: tail =>
       process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val globdir = cp.replaceAll("[\\\\/][^\\\\/]*$", "") // slash/backslash agnostic
-      val (tailargs, cpstr) = if globdir.nonEmpty && !cp.contains(classpathSeparator) then
+      val cpEntries = cp.split(classpathSeparator).toList
+      val singleEntryClasspath: Boolean = cpEntries.nonEmpty && cpEntries.drop(1).isEmpty
+      val globdir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
+      def validGlobbedJar(s: String): Boolean = s.startsWith(globdir) && ((s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip")))
+      val (tailargs, newEntries) = if singleEntryClasspath && validGlobbedJar(cpEntries.head) then
+        // reassemble globbed wildcard classpath
         // globdir is wildcard directory for globbed jar files, reconstruct the intended classpath
-        val jarfiles = cp :: tail
-        val cpfiles = jarfiles.takeWhile( f => f.startsWith(globdir) && ((f.toLowerCase.endsWith(".jar") || f.endsWith(".zip"))) )
-        val tailargs = jarfiles.drop(cpfiles.size)
-        (tailargs, cpfiles.mkString(classpathSeparator))
+        val cpJars = tail.takeWhile( f => validGlobbedJar(f) )
+        val remainingArgs = tail.drop(cpJars.size)
+        (remainingArgs, cpEntries ++ cpJars)
       else
-        (tail, cp)
-        
-      process(tailargs, settings.copy(classPath = settings.classPath ++ cpstr.split(classpathSeparator).filter(_.nonEmpty)))
+        (tail, cpEntries)
+
+      process(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
 
     case ("-version" | "--version") :: _ =>
       settings.copy(
@@ -240,4 +243,22 @@ object MainGenericRunner {
     e.foreach(_.printStackTrace())
     !isFailure
   }
+
+  def display(settings: Settings)= Seq(
+    s"verbose: ${settings.verbose}",
+    s"classPath: ${settings.classPath.mkString("\n  ","\n  ","")}",
+    s"executeMode: ${settings.executeMode}",
+    s"exitCode: ${settings.exitCode}",
+    s"javaArgs: ${settings.javaArgs}",
+    s"scalaArgs: ${settings.scalaArgs}",
+    s"residualArgs: ${settings.residualArgs}",
+    s"possibleEntryPaths: ${settings.possibleEntryPaths}",
+    s"scriptArgs: ${settings.scriptArgs}",
+    s"targetScript: ${settings.targetScript}",
+    s"targetToRun: ${settings.targetToRun}",
+    s"save: ${settings.save}",
+    s"modeShouldBePossibleRun: ${settings.modeShouldBePossibleRun}",
+    s"modeShouldBeRun: ${settings.modeShouldBeRun}",
+    s"compiler: ${settings.compiler}",
+  )
 }
