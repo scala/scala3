@@ -232,6 +232,11 @@ object Tuple {
 
   def fromProductTyped[P <: Product](p: P)(using m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
     runtime.Tuples.fromProduct(p).asInstanceOf[m.MirroredElemTypes]
+
+  given canEqualEmptyTuple: CanEqual[EmptyTuple, EmptyTuple] = CanEqual.derived
+  given canEqualTuple[H1, T1 <: Tuple, H2, T2 <: Tuple](
+    using eqHead: CanEqual[H1, H2], eqTail: CanEqual[T1, T2]
+  ): CanEqual[H1 *: T1, H2 *: T2] = CanEqual.derived
 }
 
 /** A tuple of 0 elements */

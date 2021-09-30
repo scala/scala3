@@ -16,12 +16,9 @@ class LoadTests extends ReplTest {
                  |""".stripMargin,
     defs    = """|Hello, World!
                  |def helloWorld: String
-                 |
-                 |
                  |""".stripMargin,
     runCode = "helloWorld",
     output  = """|val res0: String = Hello, World!
-                 |
                  |""".stripMargin
   )
 
@@ -29,12 +26,9 @@ class LoadTests extends ReplTest {
     file    = """|@main def helloWorld = println("Hello, World!")
                  |""".stripMargin,
     defs    = """|def helloWorld: Unit
-                 |
-                 |
                  |""".stripMargin,
     runCode = "helloWorld",
     output  = """|Hello, World!
-                 |
                  |""".stripMargin
   )
 
@@ -44,13 +38,10 @@ class LoadTests extends ReplTest {
                  |""".stripMargin,
     defs    = """|def helloWorld: Unit
                  |def helloTo(name: String): Unit
-                 |
-                 |
                  |""".stripMargin,
     runCode = """helloWorld; helloTo("Scala")""",
     output  = """|Hello, World!
                  |Hello, Scala!
-                 |
                  |""".stripMargin
   )
 

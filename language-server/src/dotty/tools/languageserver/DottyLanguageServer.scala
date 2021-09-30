@@ -306,7 +306,9 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val items = driver.compilationUnits.get(uri) match {
-      case Some(unit) => Completion.completions(pos)(using ctx.fresh.setCompilationUnit(unit))._2
+      case Some(unit) =>
+        val freshCtx = ctx.fresh.setCompilationUnit(unit)
+        Completion.completions(pos)(using freshCtx)._2
       case None => Nil
     }
 

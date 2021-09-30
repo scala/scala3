@@ -860,14 +860,24 @@ class TreeUnpickler(reader: TastyReader,
             sym.info = TypeBounds.empty // needed to avoid cyclic references when unpickling rhs, see i3816.scala
             sym.setFlag(Provisional)
             val rhs = readTpt()(using localCtx)
-            sym.info = new NoCompleter {
+
+            sym.info = new NoCompleter:
               override def completerTypeParams(sym: Symbol)(using Context) =
                 rhs.tpe.typeParams
-            }
-            sym.info = sym.opaqueToBounds(
-              checkNonCyclic(sym, rhs.tpe.toBounds, reportErrors = false),
-              rhs, rhs.tpe.typeParams)
-            if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
+
+            def opaqueToBounds(info: Type): Type =
+              val tparamSyms = rhs match
+                case LambdaTypeTree(tparams, body) => tparams.map(_.symbol.asType)
+                case _ => Nil
+              sym.opaqueToBounds(info, rhs, tparamSyms)
+
+            val info = checkNonCyclic(sym, rhs.tpe.toBounds, reportErrors = false)
+            if sym.isOpaqueAlias then
+              sym.info = opaqueToBounds(info)
+              sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
+            else
+              sym.info = info
+
             sym.resetFlag(Provisional)
             TypeDef(rhs)
           }
@@ -1063,12 +1073,10 @@ class TreeUnpickler(reader: TastyReader,
       def makeSelect(qual: Tree, name: Name, denot: Denotation): Select =
         var qualType = qual.tpe.widenIfUnstable
         val owner = denot.symbol.maybeOwner
-        if (owner.isPackageObject && qualType.termSymbol.is(Package))
-          qualType = qualType.select(owner.sourceModule)
-        val tpe = name match {
+        val tpe0 = name match
           case name: TypeName => TypeRef(qualType, name, denot)
           case name: TermName => TermRef(qualType, name, denot)
-        }
+        val tpe = TypeOps.makePackageObjPrefixExplicit(tpe0)
         ConstFold.Select(untpd.Select(qual, name).withType(tpe))
 
       def completeSelect(name: Name, sig: Signature, target: Name): Select =
@@ -1280,7 +1288,7 @@ class TreeUnpickler(reader: TastyReader,
               val idx = readNat()
               val tpe = readType()
               val args = until(end)(readTerm())
-              TreePickler.Hole(true, idx, args).withType(tpe)
+              Hole(true, idx, args).withType(tpe)
             case _ =>
               readPathTerm()
           }
@@ -1316,7 +1324,7 @@ class TreeUnpickler(reader: TastyReader,
           val idx = readNat()
           val tpe = readType()
           val args = until(end)(readTerm())
-          TreePickler.Hole(false, idx, args).withType(tpe)
+          Hole(false, idx, args).withType(tpe)
         case _ =>
           if (isTypeTreeTag(nextByte)) readTerm()
           else {
@@ -1355,7 +1363,9 @@ class TreeUnpickler(reader: TastyReader,
     def readLaterWithOwner[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Symbol => Trees.Lazy[T] = {
       val localReader = fork
       goto(end)
-      owner => new LazyReader(localReader, owner, ctx.mode, ctx.source, op)
+      val mode = ctx.mode
+      val source = ctx.source
+      owner => new LazyReader(localReader, owner, mode, source, op)
     }
 
 // ------ Setting positions ------------------------------------------------
@@ -1399,7 +1409,7 @@ class TreeUnpickler(reader: TastyReader,
       if (path.nonEmpty) {
         val sourceFile = ctx.getSource(path)
         posUnpicklerOpt match
-          case Some(posUnpickler) =>
+          case Some(posUnpickler) if !sourceFile.initialized =>
             sourceFile.setLineIndicesFromLineSizes(posUnpickler.lineSizes)
           case _ =>
         pickling.println(i"source change at $addr: $path")

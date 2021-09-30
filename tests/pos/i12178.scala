@@ -20,5 +20,5 @@ extension[TLabel <: Singleton & String, TValue] (labelTagged: LabelTagged[TLabel
 @main def hello(): Unit = {
   val foo: LabelTagged["foo", Int] = LabelTagged("foo", 10)
   println(label(foo))  // OK
-  //println(foo.label)   // not OK
+  println(foo.label)   // was error, now OK
 }

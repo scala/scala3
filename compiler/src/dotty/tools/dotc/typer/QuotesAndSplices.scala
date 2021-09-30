@@ -66,8 +66,11 @@ trait QuotesAndSplices {
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_of.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
       else
         typedApply(untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.quoted), pt)(using pushQuotes(qctx)).select(nme.apply).appliedTo(qctx)
-    tree1.withSpan(tree.span)
+    makeInlineable(tree1.withSpan(tree.span))
   }
+
+  private def makeInlineable(tree: Tree)(using Context): Tree =
+    PrepareInlineable.makeInlineable(tree)
 
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
@@ -323,7 +326,7 @@ trait QuotesAndSplices {
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
-        val sym = newPatternBoundSymbol(nameOfSyntheticGiven, bindingTypeTpe, tdef.span, flags = ImplicitTerm)(using ctx0)
+        val sym = newPatternBoundSymbol(nameOfSyntheticGiven, bindingTypeTpe, tdef.span, flags = ImplicitVal)(using ctx0)
         buff += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingTypeTpe)).withSpan(tdef.span)
         super.transform(tdef)
       }

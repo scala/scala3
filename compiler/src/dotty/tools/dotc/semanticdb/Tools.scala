@@ -41,14 +41,22 @@ object Tools:
         document.copy(text = text)
   end loadTextDocument
 
+  def loadTextDocumentUnsafe(scalaAbsolutePath: Path, semanticdbAbsolutePath: Path): TextDocument =
+    val docs = parseTextDocuments(semanticdbAbsolutePath).documents
+    assert(docs.length == 1)
+    docs.head.copy(text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8))
+
   /** Parses SemanticDB text documents from an absolute path to a `*.semanticdb` file. */
   private def parseTextDocuments(path: Path): TextDocuments =
     val bytes = Files.readAllBytes(path) // NOTE: a semanticdb file is a TextDocuments message, not TextDocument
     TextDocuments.parseFrom(bytes)
 
   def metac(doc: TextDocument, realPath: Path)(using sb: StringBuilder): StringBuilder =
+    val symtab = PrinterSymtab.fromTextDocument(doc)
+    val symPrinter = SymbolInformationPrinter(symtab)
     val realURI = realPath.toString
-    given SourceFile = SourceFile.virtual(doc.uri, doc.text)
+    given sourceFile: SourceFile = SourceFile.virtual(doc.uri, doc.text)
+    val synthPrinter = SyntheticPrinter(symtab, sourceFile)
     sb.append(realURI).nl
     sb.append("-" * realURI.length).nl
     sb.nl
@@ -59,13 +67,20 @@ object Tools:
     sb.append("Language => ").append(languageString(doc.language)).nl
     sb.append("Symbols => ").append(doc.symbols.length).append(" entries").nl
     sb.append("Occurrences => ").append(doc.occurrences.length).append(" entries").nl
+    if doc.synthetics.nonEmpty then
+      sb.append("Synthetics => ").append(doc.synthetics.length).append(" entries").nl
     sb.nl
     sb.append("Symbols:").nl
-    doc.symbols.sorted.foreach(processSymbol)
+    doc.symbols.sorted.foreach(s => processSymbol(s, symPrinter))
     sb.nl
     sb.append("Occurrences:").nl
     doc.occurrences.sorted.foreach(processOccurrence)
     sb.nl
+    if doc.synthetics.nonEmpty then
+      sb.append("Synthetics:").nl
+      doc.synthetics.sorted.foreach(s => processSynth(s, synthPrinter))
+      sb.nl
+    sb
   end metac
 
   private def schemaString(schema: Schema) =
@@ -85,66 +100,16 @@ object Tools:
     case UNKNOWN_LANGUAGE | Unrecognized(_) => "unknown"
   end languageString
 
-  private def accessString(access: Access): String =
-    access match
-      case Access.Empty => ""
-      case _: PublicAccess => ""
-      case _: PrivateAccess => "private "
-      case _: ProtectedAccess => "protected "
-      case _: PrivateThisAccess => "private[this] "
-      case _: ProtectedThisAccess => "protected[this] "
-      case PrivateWithinAccess(ssym) =>
-        s"private[${ssym}] "
-      case ProtectedWithinAccess(ssym) =>
-        s"protected[${ssym}] "
+  private def processSymbol(info: SymbolInformation, printer: SymbolInformationPrinter)(using sb: StringBuilder): Unit =
+    sb.append(printer.pprintSymbolInformation(info)).nl
 
-
-  private def processSymbol(info: SymbolInformation)(using sb: StringBuilder): Unit =
-    import SymbolInformation.Kind._
-    sb.append(info.symbol).append(" => ")
-    sb.append(accessString(info.access))
-    if info.isAbstract then sb.append("abstract ")
-    if info.isFinal then sb.append("final ")
-    if info.isSealed then sb.append("sealed ")
-    if info.isImplicit then sb.append("implicit ")
-    if info.isLazy then sb.append("lazy ")
-    if info.isCase then sb.append("case ")
-    if info.isCovariant then sb.append("covariant ")
-    if info.isContravariant then sb.append("contravariant ")
-    if info.isVal then sb.append("val ")
-    if info.isVar then sb.append("var ")
-    if info.isStatic then sb.append("static ")
-    if info.isPrimary then sb.append("primary ")
-    if info.isEnum then sb.append("enum ")
-    if info.isDefault then sb.append("default ")
-    info.kind match
-      case LOCAL => sb.append("local ")
-      case FIELD => sb.append("field ")
-      case METHOD => sb.append("method ")
-      case CONSTRUCTOR => sb.append("ctor ")
-      case MACRO => sb.append("macro ")
-      case TYPE => sb.append("type ")
-      case PARAMETER => sb.append("param ")
-      case SELF_PARAMETER => sb.append("selfparam ")
-      case TYPE_PARAMETER => sb.append("typeparam ")
-      case OBJECT => sb.append("object ")
-      case PACKAGE => sb.append("package ")
-      case PACKAGE_OBJECT => sb.append("package object ")
-      case CLASS => sb.append("class ")
-      case TRAIT => sb.append("trait ")
-      case INTERFACE => sb.append("interface ")
-      case UNKNOWN_KIND | Unrecognized(_) => sb.append("unknown ")
-    sb.append(info.displayName).nl
-  end processSymbol
+  private def processSynth(synth: Synthetic, printer: SyntheticPrinter)(using sb: StringBuilder): Unit =
+    sb.append(printer.pprint(synth)).nl
 
   private def processOccurrence(occ: SymbolOccurrence)(using sb: StringBuilder, sourceFile: SourceFile): Unit =
     occ.range match
     case Some(range) =>
-      sb.append('[')
-        .append(range.startLine).append(':').append(range.startCharacter)
-        .append("..")
-        .append(range.endLine).append(':').append(range.endCharacter)
-        .append("):")
+      processRange(sb, range)
       if range.endLine == range.startLine
       && range.startCharacter != range.endCharacter
       && !(occ.symbol.isConstructor && occ.role.isDefinition) then

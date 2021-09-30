@@ -2,30 +2,25 @@ package dotty.tools
 package dotc
 package reporting
 
+import dotty.tools.dotc.ast.{Trees, tpd}
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Mode
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
+import dotty.tools.dotc.reporting.Diagnostic._
+import dotty.tools.dotc.reporting.Message._
+import dotty.tools.dotc.util.NoSourcePosition
+
+import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
-
-import core.Contexts._
-import core.Decorators._
-import collection.mutable
-import core.Mode
-import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
-import Diagnostic._
-import ast.{tpd, Trees}
-import Message._
-import core.Decorators._
-import util.NoSourcePosition
-
-import java.io.{ BufferedReader, PrintWriter }
+import scala.collection.mutable
+import scala.util.chaining._
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
   def fromSimpleReporter(simple: interfaces.SimpleReporter): Reporter =
     new Reporter with UniqueMessagePositions with HideNonSensicalMessages {
-      override def doReport(dia: Diagnostic)(using Context): Unit = dia match {
-        case dia: ConditionalWarning if !dia.enablingOption.value =>
-        case _ =>
-          simple.report(dia)
-      }
+      override def doReport(dia: Diagnostic)(using Context): Unit = simple.report(dia)
     }
 
   /** A reporter that ignores reports, and doesn't record errors */
@@ -95,6 +90,8 @@ abstract class Reporter extends interfaces.ReporterResult {
     finally incompleteHandler = saved
   }
 
+  private def isIncompleteChecking = incompleteHandler ne defaultIncompleteHandler
+
   private var _errorCount = 0
   private var _warningCount = 0
 
@@ -140,25 +137,63 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   var unreportedWarnings: Map[String, Int] = Map.empty
 
-  def report(dia: Diagnostic)(using Context): Unit =
-    val isSummarized = dia match
-      case dia: ConditionalWarning => !dia.enablingOption.value
-      case _ => false
-    if isSummarized  // avoid isHidden test for summarized warnings so that message is not forced
-       || !isHidden(dia)
-    then
-      withMode(Mode.Printing)(doReport(dia))
-      dia match
-        case dia: ConditionalWarning if !dia.enablingOption.value =>
-          val key = dia.enablingOption.name
+  def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
+    def go() =
+      import Action._
+
+      val toReport = dia match
+        case w: Warning =>
+          def fatal(w: Warning) = if ctx.settings.XfatalWarnings.value && !w.isSummarizedConditional then Some(w.toError) else Some(w)
+          if ctx.settings.silentWarnings.value then None
+          else WConf.parsed.action(dia) match
+            case Silent  => None
+            case Info    => Some(w.toInfo)
+            case Warning => fatal(w)
+            case Verbose => fatal(w).tap(_.foreach(_.setVerbose()))
+            case Error   => Some(w.toError)
+        case _ => Some(dia)
+
+      toReport foreach {
+        case cw: ConditionalWarning if cw.isSummarizedConditional =>
+          val key = cw.enablingOption.name
           unreportedWarnings =
             unreportedWarnings.updated(key, unreportedWarnings.getOrElse(key, 0) + 1)
-        case dia: Warning => _warningCount += 1
-        case dia: Error =>
-          errors = dia :: errors
-          _errorCount += 1
-        case dia: Info => // nothing to do here
-        // match error if d is something else
+        case d if !isHidden(d) =>
+          withMode(Mode.Printing)(doReport(d))
+          d match {
+            case _: Warning => _warningCount += 1
+            case e: Error =>
+              errors = e :: errors
+              _errorCount += 1
+              if ctx.typerState.isGlobalCommittable then
+                ctx.base.errorsToBeReported = true
+            case _: Info => // nothing to do here
+            // match error if d is something else
+          }
+        case _ => // hidden
+      }
+    end go
+
+    // `ctx.run` can be null in test, also in the repl when parsing the first line. The parser runs early, the Run is
+    // only created in ReplDriver.compile when a line is submitted. This means that `@nowarn` doesnt work on parser
+    // warnings in the first line.
+    dia match
+      case w: Warning if ctx.run != null =>
+        val sup = ctx.run.suppressions
+        if sup.suppressionsComplete(w.pos.source) then sup.nowarnAction(w) match
+          case Action.Warning => go()
+          case Action.Verbose => w.setVerbose(); go()
+          case Action.Silent =>
+        else
+          // ParseResult.isIncomplete creates a new source file and reporter to check if the input is complete.
+          // The reporter's warnings are discarded, and we should not add them to the run's suspended messages,
+          // otherwise they are later reported.
+          if !isIncompleteChecking then
+            sup.addSuspendedMessage(w)
+      case _ => go()
+  end issueIfNotSuppressed
+
+  def report(dia: Diagnostic)(using Context): Unit = issueIfNotSuppressed(dia)
 
   def incomplete(dia: Diagnostic)(using Context): Unit =
     incompleteHandler(dia, ctx)

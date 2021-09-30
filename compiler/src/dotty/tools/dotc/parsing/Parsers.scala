@@ -1158,10 +1158,11 @@ object Parsers {
           }
           else
             if !in.featureEnabled(Feature.symbolLiterals) then
+              val name = in.name // capture name (not `in`) in the warning message closure
               report.errorOrMigrationWarning(
-                em"""symbol literal '${in.name} is no longer supported,
-                    |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
-                    |or enclose in braces '{${in.name}} if you want a quoted expression.
+                em"""symbol literal '$name is no longer supported,
+                    |use a string literal "$name" or an application Symbol("$name") instead,
+                    |or enclose in braces '{$name} if you want a quoted expression.
                     |For now, you can also `import language.deprecated.symbolLiterals` to accept
                     |the idiom, but this possibility might no longer be available in the future.""",
                 in.sourcePos())
@@ -1609,8 +1610,6 @@ object Parsers {
       else if isIdent(nme.?) then
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
-      else if isIdent(nme.*) && !ctx.settings.YkindProjector.isDefault then
-        typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
           if in.token == LPAREN && in.featureEnabled(Feature.dependent)
@@ -1659,7 +1658,7 @@ object Parsers {
           def fail(): Tree = {
             syntaxError(
               "λ requires a single argument of the form X => ... or (X, Y) => ...",
-              Span(t.span.start, in.lastOffset)
+              Span(startOffset(t), in.lastOffset)
             )
             AppliedTypeTree(applied, args)
           }
@@ -1831,14 +1830,14 @@ object Parsers {
      *  the initially parsed (...) region?
      */
     def toBeContinued(altToken: Token): Boolean =
-      if in.isNewLine || migrateTo3 then
-        false // a newline token means the expression is finished
-      else if !in.canStartStatTokens.contains(in.token)
-              || in.isLeadingInfixOperator(inConditional = true)
-      then
-        true
-      else
-        followedByToken(altToken) // scan ahead to see whether we find a `then` or `do`
+      inline def canContinue =
+        !in.canStartStatTokens.contains(in.token)  // not statement, so take as continued expr
+      || followedByToken(altToken)                 // scan ahead to see whether we find a `then` or `do`
+
+      !in.isNewLine       // a newline token means the expression is finished
+      && !migrateTo3      // old syntax
+      && canContinue
+    end toBeContinued
 
     def condExpr(altToken: Token): Tree =
       val t: Tree =
@@ -1888,6 +1887,7 @@ object Parsers {
      *                      |  `return' [Expr]
      *                      |  ForExpr
      *                      |  [SimpleExpr `.'] id `=' Expr
+     *                      |  PrefixOperator SimpleExpr `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
      *                      |  ‘inline’ InfixExpr MatchClause
@@ -2047,7 +2047,7 @@ object Parsers {
     def expr1Rest(t: Tree, location: Location): Tree = in.token match
       case EQUALS =>
         t match
-          case Ident(_) | Select(_, _) | Apply(_, _) =>
+          case Ident(_) | Select(_, _) | Apply(_, _) | PrefixOp(_, _) =>
             atSpan(startOffset(t), in.skipToken()) {
               val loc = if location.inArgs then location else Location.ElseWhere
               Assign(t, subPart(() => expr(loc)))
@@ -2111,14 +2111,14 @@ object Parsers {
     /**    MatchClause ::= `match' `{' CaseClauses `}'
      */
     def matchClause(t: Tree): Match =
-      atSpan(t.span.start, in.skipToken()) {
+      atSpan(startOffset(t), in.skipToken()) {
         Match(t, inBracesOrIndented(caseClauses(() => caseClause())))
       }
 
     /**    `match' `{' TypeCaseClauses `}'
      */
     def matchType(t: Tree): MatchTypeTree =
-      atSpan(t.span.start, accept(MATCH)) {
+      atSpan(startOffset(t), accept(MATCH)) {
         MatchTypeTree(EmptyTree, t, inBracesOrIndented(caseClauses(typeCaseClause)))
       }
 
@@ -2208,8 +2208,9 @@ object Parsers {
         isOperator = !(location.inArgs && followingIsVararg()),
         maybePostfix = true)
 
-    /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
-    */
+    /** PrefixExpr       ::= [PrefixOperator'] SimpleExpr
+     *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
+     */
     val prefixExpr: Location => Tree = location =>
       if isIdent && nme.raw.isUnary(in.name)
          && in.canStartExprTokens.contains(in.lookahead.token)
@@ -2606,7 +2607,7 @@ object Parsers {
       })
     }
 
-    /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [nl]
+    /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [semi]
      */
     def typeCaseClause(): CaseDef = atSpan(in.offset) {
       val pat = inSepRegion(InCase) {
@@ -2615,6 +2616,7 @@ object Parsers {
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
         val t = typ()
+        if in.token == SEMI then in.nextToken()
         newLinesOptWhenFollowedBy(CASE)
         t
       })
@@ -3112,10 +3114,6 @@ object Parsers {
       languageImport(tree) match
         case Some(prefix) =>
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
-          if prefix == nme.experimental
-             && selectors.exists(sel => Feature.experimental(sel.name) != Feature.scala2macros)
-          then
-            Feature.checkExperimentalFeature("features", imp.srcPos)
           for
             case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
             if allSourceVersionNames.contains(imported)
@@ -3627,7 +3625,7 @@ object Parsers {
       finalizeDef(gdef, mods1, start)
     }
 
-    /** Extension  ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
+    /** Extension  ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause} ‘(’ DefParam ‘)’
      *                  {UsingParamClause} ExtMethods
      */
     def extension(): ExtMethods =

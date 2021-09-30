@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Parameter Untupling"
+type: section
+num: 41
+previous-page: /scala3/reference/other-new-features/open-classes
+next-page: /scala3/reference/other-new-features/kind-polymorphism
 ---
 
 Say you have a list of pairs
@@ -41,5 +44,5 @@ function type of the form `((T_1, ..., T_n)) => U`.
 
 For more information see:
 
-* [More details](./parameter-untupling-spec.md)
+* [More details](./parameter-untupling-spec.html)
 * [Issue #897](https://github.com/lampepfl/dotty/issues/897).

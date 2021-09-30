@@ -657,8 +657,11 @@ class Definitions {
 
   // in scalac modified to have Any as parent
 
-  @tu lazy val ThrowableType: TypeRef          = requiredClassRef("java.lang.Throwable")
-  def ThrowableClass(using Context): ClassSymbol = ThrowableType.symbol.asClass
+  @tu lazy val ThrowableType: TypeRef             = requiredClassRef("java.lang.Throwable")
+  def ThrowableClass(using Context): ClassSymbol  = ThrowableType.symbol.asClass
+  @tu lazy val ExceptionClass: ClassSymbol        = requiredClass("java.lang.Exception")
+  @tu lazy val RuntimeExceptionClass: ClassSymbol = requiredClass("java.lang.RuntimeException")
+
   @tu lazy val SerializableType: TypeRef       = JavaSerializableClass.typeRef
   def SerializableClass(using Context): ClassSymbol = SerializableType.symbol.asClass
 
@@ -764,6 +767,12 @@ class Definitions {
   @tu lazy val SelectableClass: ClassSymbol = requiredClass("scala.Selectable")
   @tu lazy val WithoutPreciseParameterTypesClass: Symbol = requiredClass("scala.Selectable.WithoutPreciseParameterTypes")
 
+  @tu lazy val ManifestClass: ClassSymbol = requiredClass("scala.reflect.Manifest")
+  @tu lazy val ManifestFactoryModule: Symbol = requiredModule("scala.reflect.ManifestFactory")
+  @tu lazy val ClassManifestFactoryModule: Symbol = requiredModule("scala.reflect.ClassManifestFactory")
+  @tu lazy val OptManifestClass: ClassSymbol = requiredClass("scala.reflect.OptManifest")
+  @tu lazy val NoManifestModule: Symbol = requiredModule("scala.reflect.NoManifest")
+
   @tu lazy val ReflectPackageClass: Symbol = requiredPackage("scala.reflect.package").moduleClass
   @tu lazy val ClassTagClass: ClassSymbol = requiredClass("scala.reflect.ClassTag")
   @tu lazy val ClassTagModule: Symbol = ClassTagClass.companionModule
@@ -823,6 +832,9 @@ class Definitions {
     def CanEqual_canEqualAny(using Context): TermSymbol =
       val methodName = if CanEqualClass.name == tpnme.Eql then nme.eqlAny else nme.canEqualAny
       CanEqualClass.companionModule.requiredMethod(methodName)
+
+  @tu lazy val CanThrowClass: ClassSymbol = requiredClass("scala.CanThrow")
+  @tu lazy val throwsAlias: Symbol = ScalaRuntimePackageVal.requiredType(tpnme.THROWS)
 
   @tu lazy val TypeBoxClass: ClassSymbol = requiredClass("scala.runtime.TypeBox")
     @tu lazy val TypeBox_CAP: TypeSymbol = TypeBoxClass.requiredType(tpnme.CAP)
@@ -897,6 +909,7 @@ class Definitions {
   @tu lazy val InvariantBetweenAnnot: ClassSymbol = requiredClass("scala.annotation.internal.InvariantBetween")
   @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.main")
   @tu lazy val MigrationAnnot: ClassSymbol = requiredClass("scala.annotation.migration")
+  @tu lazy val NowarnAnnot: ClassSymbol = requiredClass("scala.annotation.nowarn")
   @tu lazy val TransparentTraitAnnot: ClassSymbol = requiredClass("scala.annotation.transparentTrait")
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
@@ -1012,6 +1025,7 @@ class Definitions {
       else ArrayType.appliedTo(elem :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp.dealias match {
       case AppliedType(at, arg :: Nil) if at.isRef(ArrayType.symbol) => Some(arg)
+      case JavaArrayType(tp) if ctx.erasedTypes => Some(tp)
       case _ => None
     }
   }
@@ -1203,6 +1217,10 @@ class Definitions {
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
+
+  @tu lazy val caseClassSynthesized: List[Symbol] = List(
+    Any_hashCode, Any_equals, Any_toString, Product_canEqual, Product_productArity,
+    Product_productPrefix, Product_productElement, Product_productElementName)
 
   val LazyHolder: PerRun[Map[Symbol, Symbol]] = new PerRun({
     def holderImpl(holderType: String) = requiredClass("scala.runtime." + holderType)
@@ -1433,6 +1451,8 @@ class Definitions {
 
   @tu lazy val SpecialClassTagClasses: Set[Symbol] = Set(UnitClass, AnyClass, AnyValClass)
 
+  @tu lazy val SpecialManifestClasses: Set[Symbol] = Set(AnyClass, AnyValClass, ObjectClass, NullClass, NothingClass)
+
   /** Classes that are known not to have an initializer irrespective of
    *  whether NoInits is set. Note: FunctionXXLClass is in this set
    *  because if it is compiled by Scala2, it does not get a NoInit flag.
@@ -1448,7 +1468,11 @@ class Definitions {
   def isPolymorphicAfterErasure(sym: Symbol): Boolean =
      (sym eq Any_isInstanceOf) || (sym eq Any_asInstanceOf) || (sym eq Object_synchronized)
 
-  def isTupleType(tp: Type)(using Context): Boolean = {
+  /** Is this type a `TupleN` type?
+   *
+   * @return true if the dealiased type of `tp` is `TupleN[T1, T2, ..., Tn]`
+   */
+  def isTupleNType(tp: Type)(using Context): Boolean = {
     val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && TupleType(arity) != null && tp.isRef(TupleType(arity).symbol)
   }
@@ -1706,6 +1730,20 @@ class Definitions {
     else if (cls eq BooleanClass) BoxedBooleanClass
     else sys.error(s"Not a primitive value type: $tp")
   }.typeRef
+
+  def unboxedType(tp: Type)(using Context): TypeRef = {
+    val cls = tp.classSymbol
+    if (cls eq BoxedByteClass)         ByteType
+    else if (cls eq BoxedShortClass)   ShortType
+    else if (cls eq BoxedCharClass)    CharType
+    else if (cls eq BoxedIntClass)     IntType
+    else if (cls eq BoxedLongClass)    LongType
+    else if (cls eq BoxedFloatClass)   FloatType
+    else if (cls eq BoxedDoubleClass)  DoubleType
+    else if (cls eq BoxedUnitClass)    UnitType
+    else if (cls eq BoxedBooleanClass) BooleanType
+    else sys.error(s"Not a boxed primitive value type: $tp")
+  }
 
   /** The JVM tag for `tp` if it's a primitive, `java.lang.Object` otherwise. */
   def typeTag(tp: Type)(using Context): Name = typeTags(scalaClassName(tp))

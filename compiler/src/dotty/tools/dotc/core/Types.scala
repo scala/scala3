@@ -427,10 +427,7 @@ object Types {
     def isMatch(using Context): Boolean = stripped match {
       case _: MatchType => true
       case tp: HKTypeLambda => tp.resType.isMatch
-      case tp: AppliedType =>
-        tp.tycon match
-          case tycon: TypeRef => tycon.info.isInstanceOf[MatchAlias]
-          case _ => false
+      case tp: AppliedType => tp.isMatchAlias
       case _ => false
     }
 
@@ -1392,6 +1389,17 @@ object Types {
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(using Context): Type = dealias1(keepIfRefining)
 
+    /** Approximate this type with a type that does not contain skolem types. */
+    final def deskolemized(using Context): Type =
+      val deskolemizer = new ApproximatingTypeMap {
+        def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
+          tp match {
+            case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
+            case _ => mapOver(tp)
+          }
+      }
+      deskolemizer(this)
+
     /** The result of normalization using `tryNormalize`, or the type itself if
      *  tryNormlize yields NoType
      */
@@ -2257,7 +2265,7 @@ object Types {
       if (!d.exists && !allowPrivate && ctx.mode.is(Mode.Interactive))
         // In the IDE we might change a public symbol to private, and would still expect to find it.
         d = memberDenot(prefix, name, true)
-      if (!d.exists && ctx.phaseId > FirstPhaseId && lastDenotation.isInstanceOf[SymDenotation])
+      if (!d.exists && ctx.isAfterTyper && lastDenotation.isInstanceOf[SymDenotation])
         // name has changed; try load in earlier phase and make current
         d = atPhase(ctx.phaseId - 1)(memberDenot(name, allowPrivate)).current
       if (d.isOverloaded)
@@ -3604,6 +3612,9 @@ object Types {
           case tp: AppliedType => tp.fold(status, compute(_, _, theAcc))
           case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
           case tp: TermParamRef if tp.binder eq thisLambdaType => TrueDeps
+          case AnnotatedType(parent, ann) =>
+            if ann.refersToParamOf(thisLambdaType) then TrueDeps
+            else compute(status, parent, theAcc)
           case _: ThisType | _: BoundType | NoPrefix => status
           case _ =>
             (if theAcc != null then theAcc else DepAcc()).foldOver(status, tp)
@@ -3656,8 +3667,10 @@ object Types {
       if (isResultDependent) {
         val dropDependencies = new ApproximatingTypeMap {
           def apply(tp: Type) = tp match {
-            case tp @ TermParamRef(thisLambdaType, _) =>
+            case tp @ TermParamRef(`thisLambdaType`, _) =>
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
+            case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
+              mapOver(parent)
             case _ => mapOver(tp)
           }
         }
@@ -3879,6 +3892,8 @@ object Types {
                   x.declaredVariance == y.declaredVariance))
         && {
           val bs1 = new BinderPairs(this, that, bs)
+          // `paramInfos` and `resType` might still be uninstantiated at this point
+          paramInfos != null && resType != null &&
           paramInfos.equalElements(that.paramInfos, bs1) &&
           resType.equals(that.resType, bs1)
         }
@@ -4039,7 +4054,7 @@ object Types {
   // ----- Type application: LambdaParam, AppliedType ---------------------
 
   /** The parameter of a type lambda */
-  case class LambdaParam(tl: TypeLambda, n: Int) extends ParamInfo {
+  case class LambdaParam(tl: TypeLambda, n: Int) extends ParamInfo, printing.Showable {
     type ThisName = TypeName
 
     def isTypeParam(using Context): Boolean = tl.paramNames.head.isTypeName
@@ -4084,6 +4099,8 @@ object Types {
           case _ =>
             myVariance = Invariant
       myVariance
+
+    def toText(printer: Printer): Text = printer.toText(this)
   }
 
   /** A type application `C[T_1, ..., T_n]` */
@@ -4103,18 +4120,17 @@ object Types {
 
     override def underlying(using Context): Type = tycon
 
-    override def superType(using Context): Type = {
-      if (ctx.period != validSuper) {
-        cachedSuper = tycon match {
+    override def superType(using Context): Type =
+      if ctx.period != validSuper then
+        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
+        cachedSuper = tycon match
           case tycon: HKTypeLambda => defn.AnyType
           case tycon: TypeRef if tycon.symbol.isClass => tycon
-          case tycon: TypeProxy => tycon.superType.applyIfParameterized(args)
+          case tycon: TypeProxy =>
+            if isMatchAlias then validSuper = Nowhere
+            tycon.superType.applyIfParameterized(args).normalized
           case _ => defn.AnyType
-        }
-        validSuper = if (tycon.isProvisional) Nowhere else ctx.period
-      }
       cachedSuper
-    }
 
     override def translucentSuperType(using Context): Type = tycon match {
       case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
@@ -4417,6 +4433,8 @@ object Types {
 
   private final class RecThisImpl(binder: RecType) extends RecThis(binder)
 
+  // @sharable private var skid: Int = 0
+
   // ----- Skolem types -----------------------------------------------
 
   /** A skolem type reference with underlying type `info`.
@@ -4433,6 +4451,10 @@ object Types {
     override def equals(that: Any): Boolean = this.eq(that.asInstanceOf[AnyRef])
 
     def withName(name: Name): this.type = { myRepr = name; this }
+
+    //skid += 1
+    //val id = skid
+    //assert(id != 10)
 
     private var myRepr: Name = null
     def repr(using Context): Name = {
@@ -5372,6 +5394,8 @@ object Types {
       variance = saved
       derivedLambdaType(tp)(ptypes1, this(restpe))
 
+    def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
+
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
       record(s"TypeMap mapOver ${getClass}")
@@ -5415,8 +5439,9 @@ object Types {
 
         case tp @ AnnotatedType(underlying, annot) =>
           val underlying1 = this(underlying)
-          if (underlying1 eq underlying) tp
-          else derivedAnnotatedType(tp, underlying1, mapOver(annot))
+          val annot1 = annot.mapWith(this)
+          if annot1 eq EmptyAnnotation then underlying1
+          else derivedAnnotatedType(tp, underlying1, annot1)
 
         case _: ThisType
           | _: BoundType
@@ -5488,9 +5513,6 @@ object Types {
       else newScopeWith(elems1: _*)
     }
 
-    def mapOver(annot: Annotation): Annotation =
-      annot.derivedAnnotation(mapOver(annot.tree))
-
     def mapOver(tree: Tree): Tree = treeTypeMap(tree)
 
     /** Can be overridden. By default, only the prefix is mapped. */
@@ -5536,8 +5558,6 @@ object Types {
       else Range(lower(lo), upper(hi))
 
     protected def emptyRange = range(defn.NothingType, defn.AnyType)
-
-    protected def isRange(tp: Type): Boolean = tp.isInstanceOf[Range]
 
     protected def lower(tp: Type): Type = tp match {
       case tp: Range => tp.lo
@@ -6085,7 +6105,7 @@ object Types {
   }
 
   object takeAllFilter extends NameFilter {
-    def apply(pre: Type, name: Name)(using Context): Boolean = true
+    def apply(pre: Type, name: Name)(using Context): Boolean = name != nme.CONSTRUCTOR
     def isStable = true
   }
 

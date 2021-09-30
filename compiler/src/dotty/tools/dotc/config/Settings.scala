@@ -56,7 +56,7 @@ object Settings:
     description: String,
     default: T,
     helpArg: String = "",
-    choices: Option[Seq[T]] = None,
+    choices: Option[Seq[?]] = None,
     prefix: String = "",
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
@@ -115,7 +115,13 @@ object Settings:
           update(Some(propertyClass.get.getConstructor().newInstance()), args)
         case (ListTag, _) =>
           if (argRest.isEmpty) missingArg
-          else update((argRest split ",").toList, args)
+          else
+            val strings = argRest.split(",").toList
+            choices match
+              case Some(valid) => strings.filterNot(valid.contains) match
+                case Nil => update(strings, args)
+                case invalid => fail(s"invalid choice(s) for $name: ${invalid.mkString(",")}", args)
+              case _ => update(strings, args)
         case (StringTag, _) if argRest.nonEmpty || choices.exists(_.contains("")) =>
           setString(argRest, args)
         case (StringTag, arg2 :: args2) =>
@@ -130,7 +136,8 @@ object Settings:
             val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
             update(output, args)
           }
-        case (IntTag, arg2 :: args2) =>
+        case (IntTag, _) =>
+          val arg2 :: args2 = if (argRest == "") args else argRest :: args
           try {
             val x = arg2.toInt
             choices match {
@@ -250,14 +257,17 @@ object Settings:
     def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
 
+    def MultiChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: List[String], aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
+
     def IntSetting(name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
       publish(Setting(name, descr, default, aliases = aliases))
 
     def IntChoiceSetting(name: String, descr: String, choices: Seq[Int], default: Int): Setting[Int] =
       publish(Setting(name, descr, default, choices = Some(choices)))
 
-    def MultiStringSetting(name: String, helpArg: String, descr: String, aliases: List[String] = Nil): Setting[List[String]] =
-      publish(Setting(name, descr, Nil, helpArg, aliases = aliases))
+    def MultiStringSetting(name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, default, helpArg, aliases = aliases))
 
     def OutputSetting(name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
       publish(Setting(name, descr, default, helpArg))

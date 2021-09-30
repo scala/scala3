@@ -22,21 +22,10 @@ import annotation.constructorOnly
 import collection.mutable
 import dotty.tools.tasty.TastyFormat.ASTsSection
 
-object TreePickler {
-
-  case class Hole(isTermHole: Boolean, idx: Int, args: List[tpd.Tree])(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
-    override def isTerm: Boolean = isTermHole
-    override def isType: Boolean = !isTermHole
-    override def fallbackToText(printer: Printer): Text =
-      if isTermHole then s"{{{ $idx |" ~~ printer.toTextGlobal(tpe) ~~ "|" ~~ printer.toTextGlobal(args, ", ") ~~ "}}}"
-      else s"[[[ $idx |" ~~ printer.toTextGlobal(tpe) ~~ "|" ~~ printer.toTextGlobal(args, ", ") ~~ "]]]"
-  }
-}
 
 class TreePickler(pickler: TastyPickler) {
   val buf: TreeBuffer = new TreeBuffer
   pickler.newSection(ASTsSection, buf)
-  import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex
   import tpd._
@@ -411,7 +400,7 @@ class TreePickler(pickler: TastyPickler) {
               var ename = tree.symbol.targetName
               val selectFromQualifier =
                 name.isTypeName
-                || qual.isInstanceOf[TreePickler.Hole] // holes have no symbol
+                || qual.isInstanceOf[Hole] // holes have no symbol
                 || sig == Signature.NotAMethod // no overload resolution necessary
                 || !tree.denot.symbol.exists // polymorphic function type
                 || tree.denot.asSingleDenotation.isRefinedMethod // refined methods have no defining class symbol
@@ -732,9 +721,9 @@ class TreePickler(pickler: TastyPickler) {
     if flags.is(Invisible) then writeModTag(INVISIBLE)
     if (flags.is(Erased)) writeModTag(ERASED)
     if (flags.is(Exported)) writeModTag(EXPORTED)
+    if (flags.is(Given)) writeModTag(GIVEN)
+    if (flags.is(Implicit)) writeModTag(IMPLICIT)
     if (isTerm) {
-      if (flags.is(Implicit)) writeModTag(IMPLICIT)
-      if (flags.is(Given)) writeModTag(GIVEN)
       if (flags.is(Lazy, butNot = Module)) writeModTag(LAZY)
       if (flags.is(AbsOverride)) { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
       if (flags.is(Mutable)) writeModTag(MUTABLE)

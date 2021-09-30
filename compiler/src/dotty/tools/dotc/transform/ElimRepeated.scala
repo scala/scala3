@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -76,16 +77,32 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.is(Method)
 
-  private def overridesJava(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(_.is(JavaDefined))
+  /** Does `sym` override a symbol defined in a Java class? One might think that
+   *  this can be expressed as
+   *
+   *      sym.allOverriddenSymbols.exists(_.is(JavaDefined))
+   *
+   *  but that does not work, since `allOverriddenSymbols` gets confused because the
+   *  signatures of a Java varargs method and a Scala varargs override are not the same.
+   */
+  private def overridesJava(sym: Symbol)(using Context) =
+    sym.owner.info.baseClasses.drop(1).exists { bc =>
+      bc.is(JavaDefined) && {
+        val other = bc.info.nonPrivateDecl(sym.name)
+        other.hasAltWith { alt =>
+          sym.owner.thisType.memberInfo(alt.symbol).matchesLoosely(sym.info)
+        }
+      }
+    }
 
   private def hasVarargsAnnotation(sym: Symbol)(using Context) = sym.hasAnnotation(defn.VarargsAnnot)
 
   private def parentHasVarargsAnnotation(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(hasVarargsAnnotation)
 
   private def isVarargsMethod(sym: Symbol)(using Context) =
-    hasVarargsAnnotation(sym) ||
-      hasRepeatedParams(sym) &&
-      (sym.allOverriddenSymbols.exists(s => s.is(JavaDefined) || hasVarargsAnnotation(s)))
+    hasVarargsAnnotation(sym)
+    || hasRepeatedParams(sym)
+        && (overridesJava(sym) || sym.allOverriddenSymbols.exists(hasVarargsAnnotation))
 
   /** Eliminate repeated parameters from method types. */
   private def elimRepeated(tp: Type, isJava: Boolean)(using Context): Type = tp.stripTypeVar match
@@ -292,6 +309,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         report.error(s"$src produces a forwarder method that conflicts with ${conflict.showDcl}", original.srcPos)
       case Nil =>
         forwarder.enteredAfter(thisPhase)
+  end addVarArgsForwarder
 
   /** Convert type from Scala to Java varargs method */
   private def toJavaVarArgs(tp: Type)(using Context): Type = tp match

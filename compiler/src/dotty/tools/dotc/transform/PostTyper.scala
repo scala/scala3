@@ -289,7 +289,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 tree.fun,
                 tree.args.mapConserve(arg =>
                   if (methType.isImplicitMethod && arg.span.isSynthetic)
-                    PruneErasedDefs.trivialErasedTree(arg)
+                    arg match
+                      case _: RefTree | _: Apply | _: TypeApply if arg.symbol.is(Erased) =>
+                        dropInlines.transform(arg)
+                      case _ =>
+                        PruneErasedDefs.trivialErasedTree(arg)
                   else dropInlines.transform(arg)))
             else
               tree
@@ -447,6 +451,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           println(i"error while transforming $tree")
           throw ex
       }
+
+    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
+      try super.transformStats(trees, exprOwner)
+      finally Checking.checkExperimentalImports(trees)
 
     /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
      *  Performed to shrink the tree that is known to be erased later.

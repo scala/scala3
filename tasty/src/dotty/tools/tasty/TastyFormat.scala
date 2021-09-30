@@ -39,6 +39,7 @@ Macro-format:
                   SUPERACCESSOR     Length underlying_NameRef                               -- super$A
                   INLINEACCESSOR    Length underlying_NameRef                               -- inline$A
                   OBJECTCLASS       Length underlying_NameRef                               -- A$  (name of the module class for module A)
+                  BODYRETAINER      Length underlying_NameRef                               -- A$retainedBody
 
                   SIGNED            Length original_NameRef resultSig_NameRef ParamSig*     -- name + signature
                   TARGETSIGNED      Length original_NameRef target_NameRef resultSig_NameRef ParamSig*
@@ -157,7 +158,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   TYPEREFin      Length NameRef qual_Type namespace_Type           -- A reference `qual.name` to a non-local member that's private in `namespace`.
                   RECtype               parent_Type                                -- A wrapper for recursive refined types
                   SUPERtype      Length this_Type underlying_Type                  -- A super type reference to `underlying`
-                  REFINEDtype    Length underlying_Type refinement_NameRef info_Type -- underlying { refinement_name : info }
+                  REFINEDtype    Length refinement_NameRef underlying_Type info_Type -- underlying { refinement_name : info }
                   APPLIEDtype    Length tycon_Type arg_Type*                       -- tycon[args]
                   TYPEBOUNDS     Length lowOrAlias_Type high_Type? Variance*       -- = alias or >: low <: high, possibly with variances of lambda parameters
                   ANNOTATEDtype  Length underlying_Type annotation_Term            -- underlying @ annotation
@@ -271,34 +272,34 @@ object TastyFormat {
     */
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
 
-  /**Natural number. Each increment of the `MajorVersion` begins a
-   * new series of backward compatible TASTy versions.
+  /** Natural number. Each increment of the `MajorVersion` begins a
+   *  new series of backward compatible TASTy versions.
    *
-   * A TASTy file in either the preceeding or succeeding series is
-   * incompatible with the current value.
+   *  A TASTy file in either the preceeding or succeeding series is
+   *  incompatible with the current value.
    */
   final val MajorVersion: Int = 28
 
-  /**Natural number. Each increment of the `MinorVersion`, within
-   * a series declared by the `MajorVersion`, breaks forward
-   * compatibility, but remains backwards compatible, with all
-   * preceeding `MinorVersion`.
+  /** Natural number. Each increment of the `MinorVersion`, within
+   *  a series declared by the `MajorVersion`, breaks forward
+   *  compatibility, but remains backwards compatible, with all
+   *  preceeding `MinorVersion`.
    */
-  final val MinorVersion: Int = 1
+  final val MinorVersion: Int = 2
 
-  /**Natural Number. The `ExperimentalVersion` allows for
-   * experimentation with changes to TASTy without committing
-   * to any guarantees of compatibility.
+  /** Natural Number. The `ExperimentalVersion` allows for
+   *  experimentation with changes to TASTy without committing
+   *  to any guarantees of compatibility.
    *
-   * A zero value indicates that the TASTy version is from a
-   * stable, final release.
+   *  A zero value indicates that the TASTy version is from a
+   *  stable, final release.
    *
-   * A strictly positive value indicates that the TASTy
-   * version is experimental. An experimental TASTy file
-   * can only be read by a tool with the same version.
-   * However, tooling with an experimental TASTy version
-   * is able to read final TASTy documents if the file's
-   * `MinorVersion` is strictly less than the current value.
+   *  A strictly positive value indicates that the TASTy
+   *  version is experimental. An experimental TASTy file
+   *  can only be read by a tool with the same version.
+   *  However, tooling with an experimental TASTy version
+   *  is able to read final TASTy documents if the file's
+   *  `MinorVersion` is strictly less than the current value.
    */
   final val ExperimentalVersion: Int = 1
 
@@ -327,29 +328,12 @@ object TastyFormat {
    * with an unstable TASTy version.
    *
    * We follow the given algorithm:
+   *
    * ```
-   * if file.major != compiler.major then
-   *   return incompatible
-   * if compiler.experimental == 0 then
-   *   if file.experimental != 0 then
-   *     return incompatible
-   *   if file.minor > compiler.minor then
-   *     return incompatible
-   *   else
-   *     return compatible
-   * else invariant[compiler.experimental != 0]
-   *   if file.experimental == compiler.experimental then
-   *     if file.minor == compiler.minor then
-   *       return compatible (all fields equal)
-   *     else
-   *       return incompatible
-   *   else if file.experimental == 0,
-   *     if file.minor < compiler.minor then
-   *       return compatible (an experimental version can read a previous released version)
-   *     else
-   *       return incompatible (an experimental version cannot read its own minor version or any later version)
-   *   else invariant[file.experimental is non-0 and different than compiler.experimental]
-   *     return incompatible
+   * (fileMajor, fileMinor, fileExperimental) match
+   *   case (`compilerMajor`, `compilerMinor`, `compilerExperimental`) => true // full equality
+   *   case (`compilerMajor`, minor, 0) if minor < compilerMinor       => true // stable backwards compatibility
+   *   case _                                                          => false
    * ```
    * @syntax markdown
    */
@@ -361,18 +345,9 @@ object TastyFormat {
     compilerMinor: Int,
     compilerExperimental: Int
   ): Boolean = (
-    fileMajor == compilerMajor && (
-      if (fileExperimental == compilerExperimental) {
-        if (compilerExperimental == 0) {
-          fileMinor <= compilerMinor
-        }
-        else {
-          fileMinor == compilerMinor
-        }
-      }
-      else {
-        fileExperimental == 0 && fileMinor < compilerMinor
-      }
+    fileMajor == compilerMajor &&
+      (  fileMinor == compilerMinor && fileExperimental == compilerExperimental // full equality
+      || fileMinor <  compilerMinor && fileExperimental == 0 // stable backwards compatibility
     )
   )
 

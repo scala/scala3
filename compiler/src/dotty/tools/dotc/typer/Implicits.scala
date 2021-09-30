@@ -562,7 +562,6 @@ trait ImplicitRunInfo:
 
     object collectParts extends TypeTraverser:
 
-      private var provisional: Boolean = _
       private var parts: mutable.LinkedHashSet[Type] = _
       private val partSeen = util.HashSet[Type]()
 
@@ -587,19 +586,18 @@ trait ImplicitRunInfo:
             case t: ConstantType =>
               traverse(t.underlying)
             case t: TypeParamRef =>
+              assert(!ctx.typerState.constraint.contains(t), i"`wildApprox` failed to remove uninstantiated $t")
               traverse(t.underlying)
-              if ctx.typerState.constraint.contains(t) then provisional = true
             case t: TermParamRef =>
               traverse(t.underlying)
             case t =>
               traverseChildren(t)
 
-      def apply(tp: Type): (collection.Set[Type], Boolean) =
-        provisional = false
+      def apply(tp: Type): collection.Set[Type] =
         parts = mutable.LinkedHashSet()
         partSeen.clear()
         traverse(tp)
-        (parts, provisional)
+        parts
     end collectParts
 
     val seen = util.HashSet[Type]()
@@ -674,12 +672,11 @@ trait ImplicitRunInfo:
     end collectCompanions
 
     def recur(tp: Type): OfTypeImplicits =
-      val (parts, provisional) = collectParts(tp)
+      val parts = collectParts(tp)
       val companions = collectCompanions(tp, parts)
       val result = OfTypeImplicits(tp, companions)(runContext)
       if Config.cacheImplicitScopes
         && tp.hash != NotCached
-        && !provisional
         && (tp eq rootTp)              // first type traversed is always cached
            || !incomplete.contains(tp) // other types are cached if they are not incomplete
       then implicitScopeCache(tp) = result
@@ -929,6 +926,8 @@ trait Implicits:
           apply(t.widen)
         case t: RefinedType =>
           apply(t.parent)
+        case t: LazyRef =>
+          t
         case _ =>
           if (variance > 0) mapOver(t) else t
       }
@@ -1178,7 +1177,29 @@ trait Implicits:
             // compare the extension methods instead of their wrappers.
             def stripExtension(alt: SearchSuccess) = methPart(stripApply(alt.tree)).tpe
             (stripExtension(alt1), stripExtension(alt2)) match
-              case (ref1: TermRef, ref2: TermRef) => diff = compare(ref1, ref2)
+              case (ref1: TermRef, ref2: TermRef) =>
+                // ref1 and ref2 might refer to type variables owned by
+                // alt1.tstate and alt2.tstate respectively, to compare the
+                // alternatives correctly we need a TyperState that includes
+                // constraints from both sides, see
+                // tests/*/extension-specificity2.scala for test cases.
+                val constraintsIn1 = alt1.tstate.constraint ne ctx.typerState.constraint
+                val constraintsIn2 = alt2.tstate.constraint ne ctx.typerState.constraint
+                def exploreState(alt: SearchSuccess): TyperState =
+                  alt.tstate.fresh(committable = false)
+                val comparisonState =
+                  if constraintsIn1 && constraintsIn2 then
+                    exploreState(alt1).mergeConstraintWith(alt2.tstate)
+                  else if constraintsIn1 then
+                    exploreState(alt1)
+                  else if constraintsIn2 then
+                    exploreState(alt2)
+                  else
+                    ctx.typerState
+
+                diff = inContext(ctx.withTyperState(comparisonState)) {
+                  compare(ref1, ref2)
+                }
               case _ =>
           if diff < 0 then alt2
           else if diff > 0 then alt1

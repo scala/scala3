@@ -27,10 +27,19 @@ object Type:
    *
    *  Example usage:
    *  ```scala
-   *  ... match
+   *  //{
+   *  import scala.deriving.*
+   *  def f(using Quotes) = {
+   *  import quotes.reflect.*
+   *  val expr: Expr[Any] = ???
+   *  //}
+   *  expr match {
    *    case '{ $mirrorExpr : Mirror.Sum { type MirroredLabel = label } } =>
    *      Type.valueOfConstant[label] // Option[String]
    *  }
+   *  //{
+   *  }
+   *  //}
    *  ```
    *  @syntax markdown
    */
@@ -43,14 +52,22 @@ object Type:
    *
    *  Example usage:
    *  ```scala
-   *  ... match
-   *    case '{ $mirrorExpr : Mirror.Sum { type MirroredElemLabels = label } } =>
+   *  //{
+   *  import scala.deriving.*
+   *  def f(using Quotes) = {
+   *  import quotes.reflect.*
+   *  val expr: Expr[Any] = ???
+   *  //}
+   *  expr match {
+   *    case '{ type label <: Tuple; $mirrorExpr : Mirror.Sum { type MirroredElemLabels = `label` } } =>
    *      Type.valueOfTuple[label] // Option[Tuple]
    *  }
+   *  //{
+   *  }
+   *  //}
    *  ```
    *  @syntax markdown
    */
-  @experimental
   def valueOfTuple[T <: Tuple](using Type[T])(using Quotes): Option[T] =
     valueOfTuple(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]
 

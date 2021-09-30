@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "The @targetName annotation"
+type: section
+num: 45
+previous-page: /scala3/reference/other-new-features/threadUnsafe-annotation
+next-page: /scala3/reference/other-new-features/control-syntax
 ---
 
 A `@targetName` annotation on a definition defines an alternate name for the implementation of that definition. Example:

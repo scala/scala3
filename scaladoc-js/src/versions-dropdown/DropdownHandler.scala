@@ -60,14 +60,11 @@ class DropdownHandler:
         addVersionsList(json)
 
   document.addEventListener("click", (e: Event) => {
-    if e.target.asInstanceOf[html.Element].id != "dropdown-button" then
-      document.getElementById("dropdown-content").classList.remove("show")
-      document.getElementById("dropdown-button").classList.remove("expanded")
+    document.getElementById("dropdown-content").classList.remove("show")
+    document.getElementById("dropdown-button").classList.remove("expanded")
   })
 
-  document.getElementById("version").asInstanceOf[html.Span].onclick = (e: Event) => {
-    e.stopPropagation
-  }
+  document.getElementById("version").asInstanceOf[html.Span].addEventListener("click", (e: Event) => e.stopPropagation())
 end DropdownHandler
 
 @JSExportTopLevel("dropdownHandler")
@@ -76,6 +73,7 @@ def dropdownHandler() =
      window.getSelection.toString.length == 0 then
     document.getElementById("dropdown-content").classList.toggle("show")
     document.getElementById("dropdown-button").classList.toggle("expanded")
+    document.getElementById("dropdown-input").asInstanceOf[html.Input].focus()
 
 @JSExportTopLevel("filterFunction")
 def filterFunction() =

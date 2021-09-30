@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.transform.{PostTyper, Staging}
 import dotty.tools.dotc.typer.ImportInfo._
+import dotty.tools.dotc.typer.TyperPhase
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.{ParsedComment, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
@@ -32,39 +33,41 @@ import scala.collection.mutable
 class ReplCompiler extends Compiler {
 
   override protected def frontendPhases: List[List[Phase]] = List(
-    List(new REPLFrontEnd),
+    List(new TyperPhase(addRootImports = false)),
     List(new CollectTopLevelImports),
     List(new PostTyper),
   )
 
-  def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
+  def newRun(initCtx: Context, state: State): Run =
+    val run = new Run(this, initCtx) {
+      /** Import previous runs and user defined imports */
+      override protected def rootContext(using Context): Context = {
+        def importContext(imp: tpd.Import)(using Context) =
+          ctx.importContext(imp, imp.symbol)
 
-    /** Import previous runs and user defined imports */
-    override protected def rootContext(using Context): Context = {
-      def importContext(imp: tpd.Import)(using Context) =
-        ctx.importContext(imp, imp.symbol)
+        def importPreviousRun(id: Int)(using Context) = {
+          // we first import the wrapper object id
+          val path = nme.REPL_PACKAGE ++ "." ++ objectNames(id)
+          val ctx0 = ctx.fresh
+            .setNewScope
+            .withRootImports(RootRef(() => requiredModuleRef(path)) :: Nil)
 
-      def importPreviousRun(id: Int)(using Context) = {
-        // we first import the wrapper object id
-        val path = nme.REPL_PACKAGE ++ "." ++ objectNames(id)
-        val ctx0 = ctx.fresh
-          .setNewScope
-          .withRootImports(RootRef(() => requiredModuleRef(path)) :: Nil)
+          // then its user defined imports
+          val imports = state.imports.getOrElse(id, Nil)
+          if imports.isEmpty then ctx0
+          else imports.foldLeft(ctx0.fresh.setNewScope)((ctx, imp) =>
+            importContext(imp)(using ctx))
+        }
 
-        // then its user defined imports
-        val imports = state.imports.getOrElse(id, Nil)
-        if imports.isEmpty then ctx0
-        else imports.foldLeft(ctx0.fresh.setNewScope)((ctx, imp) =>
-          importContext(imp)(using ctx))
+        val rootCtx = super.rootContext
+          .withRootImports   // default root imports
+          .withRootImports(RootRef(() => defn.EmptyPackageVal.termRef) :: Nil)
+        (1 to state.objectIndex).foldLeft(rootCtx)((ctx, id) =>
+          importPreviousRun(id)(using ctx))
       }
-
-      val rootCtx = super.rootContext
-        .withRootImports   // default root imports
-        .withRootImports(RootRef(() => defn.EmptyPackageVal.termRef) :: Nil)
-      (1 to state.objectIndex).foldLeft(rootCtx)((ctx, id) =>
-        importPreviousRun(id)(using ctx))
     }
-  }
+    run.suppressions.initSuspendedMessages(state.context.run)
+    run
 
   private val objectNames = mutable.Map.empty[Int, TermName]
 
@@ -85,6 +88,17 @@ class ReplCompiler extends Compiler {
     var valIdx = state.valIndex
     val defs = new mutable.ListBuffer[Tree]
 
+    /** If the user inputs a definition whose name is of the form REPL_RES_PREFIX and a number,
+     *  such as `val res9 = 1`, we bump `valIdx` to avoid name clashes.  lampepfl/dotty#3536 */
+    def maybeBumpValIdx(tree: Tree): Unit = tree match
+      case apply: Apply   => for a <- apply.args  do maybeBumpValIdx(a)
+      case tuple: Tuple   => for t <- tuple.trees do maybeBumpValIdx(t)
+      case patDef: PatDef => for p <- patDef.pats do maybeBumpValIdx(p)
+      case tree: NameTree => tree.name.show.stripPrefix(str.REPL_RES_PREFIX).toIntOption match
+        case Some(n) if n >= valIdx => valIdx = n + 1
+        case _                      =>
+      case _              =>
+
     flattened.foreach {
       case expr @ Assign(id: Ident, _) =>
         // special case simple reassignment (e.g. x = 3)
@@ -98,6 +112,7 @@ class ReplCompiler extends Compiler {
         val vd = ValDef(resName, TypeTree(), expr).withSpan(expr.span)
         defs += vd
       case other =>
+        maybeBumpValIdx(other)
         defs += other
     }
 
@@ -150,6 +165,7 @@ class ReplCompiler extends Compiler {
   private def runCompilationUnit(unit: CompilationUnit, state: State): Result[(CompilationUnit, State)] = {
     val ctx = state.context
     ctx.run.compileUnits(unit :: Nil)
+    ctx.run.printSummary() // this outputs "2 errors found" like normal - but we might decide that's needlessly noisy for the REPL
 
     if (!ctx.reporter.hasErrors) (unit, state).result
     else ctx.reporter.removeBufferedMessages(using ctx).errors
@@ -237,7 +253,7 @@ class ReplCompiler extends Compiler {
       }
 
       ParseResult(sourceFile)(state) match {
-        case Parsed(_, trees) =>
+        case Parsed(_, trees, _) =>
           wrap(trees).result
         case SyntaxErrors(_, reported, trees) =>
           if (errorsAllowed) wrap(trees).result

@@ -63,9 +63,9 @@ object DottyJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.0.0"
+  val referenceVersion = "3.1.0-RC1"
 
-  val baseVersion = "3.0.2-RC1"
+  val baseVersion = "3.1.1-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -81,7 +81,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.0.1"
+  val previousDottyVersion = "3.0.2"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -150,6 +150,8 @@ object Build {
   // Used to run binaries similar to ./bin/scala script
   val scala = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
+  val repl = taskKey[Unit]("spawns a repl with the correct classpath")
+
   // Compiles the documentation and static site
   val genDocs = inputKey[Unit]("run scaladoc to generate static documentation site")
 
@@ -196,9 +198,7 @@ object Build {
 
     // enable verbose exception messages for JUnit
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
-  ) ++
-    // Spawns a repl with the correct classpath
-    addCommandAlias("repl", "scala3-compiler-bootstrapped/console")
+  )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
   lazy val globalSettings = Def.settings(
@@ -325,8 +325,8 @@ object Build {
 
   lazy val scalacOptionsDocSettings = Seq(
       "-external-mappings:" +
-        ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
-        ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
+        ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/," +
+        ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
       "-skip-by-regex:.+\\.internal($|\\..+)",
       "-skip-by-regex:.+\\.impl($|\\..+)",
       "-project-logo", "docs/logo.svg",
@@ -640,16 +640,17 @@ object Build {
         val printTasty = args0.contains("-print-tasty")
         val debugFromTasty = args0.contains("-Ythrough-tasty")
         val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
-            arg != "-with-compiler" && arg != "-Ythrough-tasty")
+            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
 
         val main =
-          if (decompile || printTasty) "dotty.tools.dotc.decompiler.Main"
+          if (decompile) "dotty.tools.dotc.decompiler.Main"
+          else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
           else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
           else "dotty.tools.dotc.Main"
 
         var extraClasspath = Seq(scalaLib, dottyLib)
 
-        if ((decompile || printTasty) && !args.contains("-classpath"))
+        if (decompile && !args.contains("-classpath"))
           extraClasspath ++= Seq(".")
 
         if (args0.contains("-with-compiler")) {
@@ -664,7 +665,7 @@ object Build {
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore)
         }
 
-        val fullArgs = main :: insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+        val fullArgs = main :: (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator)))
 
         (Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,
@@ -752,14 +753,33 @@ object Build {
         "scala3-tasty-inspector"  -> (LocalProject("scala3-tasty-inspector") / Compile / packageBin).value.getAbsolutePath,
         "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
       )
-    }
+    },
+    repl := (Compile / console).value,
+    Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
   )
 
   def dottyCompilerSettings(implicit mode: Mode): sbt.Def.SettingsDefinition =
     if (mode == NonBootstrapped) nonBootstrapedDottyCompilerSettings else bootstrapedDottyCompilerSettings
 
   lazy val `scala3-compiler` = project.in(file("compiler")).asDottyCompiler(NonBootstrapped)
+
+  lazy val Scala3CompilerCoursierTest = config("scala3CompilerCoursierTest") extend Test
   lazy val `scala3-compiler-bootstrapped` = project.in(file("compiler")).asDottyCompiler(Bootstrapped)
+    .configs(Scala3CompilerCoursierTest)
+    .settings(
+      inConfig(Scala3CompilerCoursierTest)(Defaults.testSettings),
+      Scala3CompilerCoursierTest / scalaSource := baseDirectory.value / "test-coursier",
+      Scala3CompilerCoursierTest / fork := true,
+      Scala3CompilerCoursierTest / envVars := Map("DOTTY_BOOTSTRAPPED_VERSION" -> dottyVersion),
+      Scala3CompilerCoursierTest / unmanagedClasspath += (Scala3CompilerCoursierTest / scalaSource).value,
+      Scala3CompilerCoursierTest / test := ((Scala3CompilerCoursierTest / test) dependsOn (
+          publishLocal, // Had to enumarate all deps since calling `scala3-bootstrap` / publishLocal will lead to recursive dependency => stack overflow
+          `scala3-interfaces` / publishLocal,
+          dottyLibrary(Bootstrapped) / publishLocal,
+          tastyCore(Bootstrapped) / publishLocal,
+        ),
+      ).value,
+    )
 
   def dottyCompiler(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-compiler`
@@ -1142,7 +1162,8 @@ object Build {
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
             "strictFloats" -> sems.strictFloats,
             "productionMode" -> sems.productionMode,
-            "es2015" -> linkerConfig.esFeatures.useECMAScript2015,
+            "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
+            "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
         )
       }.taskValue,
 
@@ -1245,7 +1266,7 @@ object Build {
       val distLocation = (dist / pack).value
       val projectVersion = version.value
       IO.createDirectory(file(outDir))
-      val stdLibVersion = stdlibVersion(Bootstrapped)
+      val stdLibVersion = stdlibVersion(NonBootstrapped)
       val scalaLib = findArtifactPath(externalCompilerClasspathTask.value, "scala-library")
       val dottyLib = (`scala3-library` / Compile / classDirectory).value
       // TODO add versions etc.
@@ -1267,7 +1288,8 @@ object Build {
         scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
         dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
         dottySrcLink(referenceVersion),
-      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets ++ Seq("-Ygenerate-inkuire")
+        "-Ygenerate-inkuire",
+      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
       import _root_.scala.sys.process._
       val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
       Def.task {
@@ -1294,10 +1316,49 @@ object Build {
         Seq(jsDestinationFile)
       }.taskValue,
       Compile / resourceGenerators += Def.task {
-        val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "scaladoc-searchbar.css"
-        val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / "scaladoc-searchbar.css"
-        sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
-        Seq(cssDesitnationFile)
+        Seq("code-snippets.css", "searchbar.css", "social-links.css", "ux.css", "versions-dropdown.css").map { file =>
+          val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / file
+          val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / file
+          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
+          cssDesitnationFile
+        }
+      }.taskValue,
+      Compile / resourceGenerators += Def.task {
+        import _root_.scala.sys.process._
+        import _root_.scala.concurrent._
+        import _root_.scala.concurrent.duration.Duration
+        import ExecutionContext.Implicits.global
+        val inkuireVersion = "1.0.0-M3"
+        val inkuireLink = s"https://github.com/VirtusLab/Inkuire/releases/download/$inkuireVersion/inkuire.js"
+        val inkuireDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "inkuire.js"
+        sbt.IO.touch(inkuireDestinationFile)
+
+        def tryFetch(retries: Int, timeout: Duration): Unit = {
+          val downloadProcess = (new java.net.URL(inkuireLink) #> inkuireDestinationFile).run()
+          val result: Future[Int] = Future(blocking(downloadProcess.exitValue()))
+          try {
+            Await.result(result, timeout) match {
+              case 0 =>
+              case res if retries > 0 =>
+                println(s"Failed to fetch inkuire.js from $inkuireLink: Error code $res. $retries retries left")
+                tryFetch(retries - 1, timeout)
+              case res => throw new MessageOnlyException(s"Failed to fetch inkuire.js from $inkuireLink: Error code $res")
+            }
+          } catch {
+            case e: TimeoutException =>
+              downloadProcess.destroy()
+              if (retries > 0) {
+                println(s"Failed to fetch inkuire.js from $inkuireLink: Download timeout. $retries retries left")
+                tryFetch(retries - 1, timeout)
+              }
+              else {
+                throw new MessageOnlyException(s"Failed to fetch inkuire.js from $inkuireLink: Download timeout")
+              }
+          }
+        }
+
+        tryFetch(5, Duration(60, "s"))
+        Seq(inkuireDestinationFile)
       }.taskValue,
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.6.7",
@@ -1325,8 +1386,9 @@ object Build {
       generateScalaDocumentation := Def.inputTaskDyn {
         val extraArgs = spaceDelimited("[output]").parsed
         val dest = file(extraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
+        val justAPI = extraArgs.drop(1).headOption == Some("--justAPI")
         val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
-
+        CopyDocs.copyDocs() // invoke copying function form `project/CopyDocs.scala`
         val dottyJars: Seq[java.io.File] = Seq(
           (`stdlib-bootstrapped`/Compile/products).value,
           (`scala3-interfaces`/Compile/products).value,
@@ -1346,21 +1408,27 @@ object Build {
 
         val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
 
+        def generateDocTask =
+          generateDocumentation(
+            roots, "Scala 3", dest.getAbsolutePath, "master",
+            Seq(
+              "-comment-syntax", "wiki",
+              s"-source-links:docs=github://lampepfl/dotty/master#docs",
+              "-doc-root-content", docRootFile.toString,
+              "-versions-dictionary-url",
+              "https://scala-lang.org/api/versions.json",
+              "-Ydocument-synthetic-types",
+              s"-snippet-compiler:${dottyLibRoot}/scala/quoted=compile,${dottyLibRoot}/scala/compiletime=compile"
+            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs-for-dotty-page", "-Yapi-subdirectory")))
+
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
+        else if (justAPI) generateDocTask
         else Def.task{
           IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
 
           // This file is used by GitHub Pages when the page is available in a custom domain
           IO.write(dest / "CNAME", "dotty.epfl.ch")
-        }.dependsOn(generateDocumentation(
-          roots, "Scala 3", dest.getAbsolutePath, "master",
-          Seq(
-            "-comment-syntax", "wiki",
-            "-siteroot", "docs",
-            s"-source-links:docs=github://lampepfl/dotty/master#docs",
-            "-doc-root-content", docRootFile.toString,
-            "-Ydocument-synthetic-types"
-          )))
+        }.dependsOn(generateDocTask)
       }.evaluated,
 
       generateTestcasesDocumentation := Def.taskDyn {
@@ -1369,7 +1437,7 @@ object Build {
           "scaladoc testcases",
           "scaladoc/output/testcases",
           "master",
-          Seq("-usejavacp")
+          Seq("-usejavacp", "-snippet-compiler:scaladoc-testcases/docs=compile", "-siteroot", "scaladoc-testcases/docs")
         )
       }.value,
 
@@ -1677,6 +1745,7 @@ object Build {
         // non-bootstrapped compiler), so publish the bootstrapped one by
         // default.
         addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
+        repl := (`scala3-compiler-bootstrapped` / repl).value,
       ).
       settings(
         publish / skip := true
@@ -1692,7 +1761,10 @@ object Build {
       val base =
         project.withCommonSettings.
           settings(
-            libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion
+            libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
+            // Make sure we do not refer to experimental features outside an experimental scope.
+            // In other words, disable NIGHTLY/SNAPSHOT experimental scope.
+            scalacOptions += "-Yno-experimental",
           ).
           settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {

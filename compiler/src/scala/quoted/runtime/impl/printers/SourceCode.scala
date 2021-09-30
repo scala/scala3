@@ -328,7 +328,7 @@ object SourceCode {
         }
         this
 
-      case Ident("_") =>
+      case Wildcard() =>
         this += "_"
 
       case tree: Ident =>
@@ -896,13 +896,13 @@ object SourceCode {
     }
 
     private def printPattern(pattern: Tree): this.type = pattern match {
-      case Ident("_") =>
+      case Wildcard() =>
         this += "_"
 
-      case Bind(name, Ident("_")) =>
+      case Bind(name, Wildcard()) =>
         this += name
 
-      case Bind(name, Typed(Ident("_"), tpt)) =>
+      case Bind(name, Typed(Wildcard(), tpt)) =>
         this += highlightValDef(name) += ": "
         printTypeTree(tpt)
 
@@ -928,9 +928,13 @@ object SourceCode {
       case Alternatives(trees) =>
         inParens(printPatterns(trees, " | "))
 
-      case Typed(Ident("_"), tpt) =>
-        this += "_: "
-        printTypeTree(tpt)
+      case TypedOrTest(tree1, tpt) =>
+        tree1 match
+          case Wildcard() =>
+            this += "_: "
+            printTypeTree(tpt)
+          case _ =>
+            printPattern(tree1)
 
       case v: Term =>
         printTree(v)
@@ -1224,6 +1228,12 @@ object SourceCode {
         this += " <: "
         printType(hi)
 
+      case MatchCase(pat, rhs) =>
+        this += "case "
+        printType(pat)
+        this += " => "
+        printType(rhs)
+
       case _ =>
         throw new MatchError(tpe.show(using Printer.TypeReprStructure))
     }
@@ -1413,7 +1423,7 @@ object SourceCode {
       case '"' => "\\\""
       case '\'' => "\\\'"
       case '\\' => "\\\\"
-      case _ => if (ch.isControl) "\\0" + Integer.toOctalString(ch) else String.valueOf(ch)
+      case _ => if (ch.isControl) f"\u${ch.toInt}%04x" else String.valueOf(ch)
     }
 
     private def escapedString(str: String): String = str flatMap escapedChar

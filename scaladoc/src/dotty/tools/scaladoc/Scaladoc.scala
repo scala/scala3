@@ -55,10 +55,11 @@ object Scaladoc:
     docCanonicalBaseUrl: String = "",
     documentSyntheticTypes: Boolean = false,
     snippetCompiler: List[String] = Nil,
-    snippetCompilerDebug: Boolean = false,
     noLinkWarnings: Boolean = false,
     versionsDictionaryUrl: Option[String] = None,
-    generateInkuire : Boolean = false
+    generateInkuire : Boolean = false,
+    apiSubdirectory : Boolean = false,
+    scastieConfiguration: String = ""
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -191,7 +192,7 @@ object Scaladoc:
       val destFile = outputDir.nonDefault.fold(defaultDest())(_.file)
       val printableProjectName = projectName.nonDefault.fold("")("for " + _ )
       report.inform(
-        s"Generating documenation $printableProjectName in $destFile")
+        s"Generating documentation $printableProjectName in $destFile")
 
       if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
 
@@ -221,9 +222,10 @@ object Scaladoc:
         YdocumentSyntheticTypes.get,
         snippetCompiler.get,
         noLinkWarnings.get,
-        snippetCompilerDebug.get,
         versionsDictionaryUrl.nonDefault,
-        generateInkuire.get
+        generateInkuire.get,
+        apiSubdirectory.get,
+        scastieConfiguration.get
       )
       (Some(docArgs), newContext)
     }

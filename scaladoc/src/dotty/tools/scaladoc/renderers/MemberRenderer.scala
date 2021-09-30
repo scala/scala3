@@ -29,7 +29,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case _ => Nil
 
   def inheritedFrom(m: Member) = m.inheritedFrom match
-    case Some(InheritedFrom(name, dri)) => tableRow("Inherited from", signatureRenderer.renderLink(name, dri))
+    case Some(InheritedFrom(name, dri)) => tableRow("Inherited from:", signatureRenderer.renderLink(name, dri))
     case _ => Nil
 
   def docAttributes(m: Member): Seq[AppliedTag] =
@@ -46,31 +46,31 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     def opt(name: String, on: Option[DocPart]): Seq[AppliedTag] =
       if on.isEmpty then Nil else tableRow(name, renderDocPart(on.get))
 
-    def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors", authors) else Nil
+    def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors:", authors) else Nil
 
     m.docs.fold(Nil)(d =>
-      nested("Type Params", d.typeParams) ++
-      nested("Value Params", d.valueParams) ++
-      opt("Returns", d.result) ++
-      nested("Throws", d.throws) ++
-      opt("Constructor", d.constructor) ++
+      nested("Type parameters:", d.typeParams) ++
+      nested("Value parameters:", d.valueParams) ++
+      opt("Returns:", d.result) ++
+      nested("Throws:", d.throws) ++
+      opt("Constructor:", d.constructor) ++
       authors(d.authors) ++
-      list("See also", d.see) ++
-      opt("Version", d.version) ++
-      opt("Since", d.since) ++
-      list("Todo", d.todo) ++
-      list("Note", d.note) ++
-      list("Example", d.example)
+      list("See also:", d.see) ++
+      opt("Version:", d.version) ++
+      opt("Since:", d.since) ++
+      list("Todo:", d.todo) ++
+      list("Note:", d.note) ++
+      list("Example:", d.example)
     )
 
   def companion(m: Member): Seq[AppliedTag] = m.companion.fold(Nil){dri =>
     val kindName = if m.kind == Kind.Object then "class" else "object"
-    tableRow("Companion", signatureRenderer.renderLink(kindName, dri))
+    tableRow("Companion:", signatureRenderer.renderLink(kindName, dri))
   }
 
   def source(m: Member): Seq[AppliedTag] =
     summon[DocContext].sourceLinks.pathTo(m).fold(Nil){ link =>
-      tableRow("Source", a(href := link)(m.sources.fold("(source)")(_.path.getFileName().toString())))
+      tableRow("Source:", a(href := link)(m.sources.fold("(source)")(_.path.getFileName().toString())))
     }
 
   def deprecation(m: Member): Seq[AppliedTag] = m.deprecated.fold(Nil){ a =>
@@ -134,16 +134,15 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val rawBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())
     val inlineBuilder = rawBuilder.asInstanceOf[InlineSignatureBuilder]
-    if inlineBuilder.preName.isEmpty then println(member)
     val kind :: modifiersRevered = inlineBuilder.preName
     val signature = inlineBuilder.names.reverse
     Seq(
-      span(cls := "modifiers")(
-        span(cls := "other-modifiers")(modifiersRevered.reverse.map(renderElement)),
+      div(cls := "signature")(
+        span(cls := "modifiers")(modifiersRevered.reverse.map(renderElement)),
         span(cls := "kind")(renderElement(kind)),
+        renderLink(member.name, member.dri, nameClasses),
+        span(signature.map(renderElement))
       ),
-      renderLink(member.name, member.dri, nameClasses),
-      span(cls := "signature")(signature.map(renderElement)),
     )
 
   def memberIcon(member: Member) = member.kind match {
@@ -166,7 +165,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 
     div(topLevelAttr:_*)(
-      a(href := (if member.needsOwnPage then link(member.dri).getOrElse("#") else s"#${member.dri.anchor}"), cls := "documentableAnchor"),
+      if !member.needsOwnPage then a(Attr("link") := link(member.dri).getOrElse("#"), cls := "documentableAnchor") else Nil,
       div(annotations(member)),
       div(cls := "header monospace")(memberSignature(member)),
       div(cls := "docs")(
@@ -280,7 +279,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         case _ => None
       }.collect {
         case (Some(on), members) =>
-          val sig = Signature(s"extension (${on.name}: ") ++ on.signature ++ Signature(")")
+          val typeSig = InlineSignatureBuilder()
+            .keyword("extension ")
+            .generics(on.typeParams)
+            .asInstanceOf[InlineSignatureBuilder].names.reverse
+          val argsSig = InlineSignatureBuilder()
+            .functionParameters(on.argsLists)
+            .asInstanceOf[InlineSignatureBuilder].names.reverse
+          val sig = typeSig ++ Signature(Plain(s"(${on.name}: ")) ++ on.signature ++ Signature(Plain(")")) ++ argsSig
           MGroup(span(sig.map(renderElement)), members.sortBy(_.name).toSeq, on.name)
       }.toSeq
 
@@ -349,14 +355,22 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           div(link.kind.name," ", link.signature.map(renderElement))
         )))
 
+      def selfTypeList(list: List[LinkToType]): Seq[AppliedTag] =
+        if list.isEmpty then Nil
+        else Seq(div(cls := "symbol monospace") { list.map { link =>
+          div(link.signature.map(renderElement))
+        }})
+
       val supertypes = signatureList(m.parents)
       val subtypes = signatureList(m.knownChildren)
+      val selfType = selfTypeList(m.selfType.toList)
 
       renderTabs(
         singleSelection = true,
         Tab("Graph", "graph", graphHtml, "showGraph"),
         Tab("Supertypes", "supertypes", supertypes),
         Tab("Known subtypes", "subtypes", subtypes),
+        Tab("Self type", "selftype", selfType)
       )
 
   private def buildDocumentableFilter = div(cls := "documentableFilter")(

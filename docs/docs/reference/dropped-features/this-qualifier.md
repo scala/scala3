@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Dropped: private[this] and protected[this]"
+type: section
+num: 85
+previous-page: /scala3/reference/dropped-features/weak-conformance
+next-page: /scala3/reference/dropped-features/wildcard-init
 ---
 
 The `private[this]` and `protected[this]` access modifiers are deprecated and will be phased out.

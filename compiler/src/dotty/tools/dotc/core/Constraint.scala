@@ -152,16 +152,6 @@ abstract class Constraint extends Showable {
    */
   def uninstVars: collection.Seq[TypeVar]
 
-  /** The weakest constraint that subsumes both this constraint and `other`.
-   *  The constraints should be _compatible_, meaning that a type lambda
-   *  occurring in both constraints is associated with the same typevars in each.
-   *
-   *  @param otherHasErrors    If true, handle incompatible constraints by
-   *                           returning an approximate constraint, instead of
-   *                           failing with an exception
-   */
-  def & (other: Constraint, otherHasErrors: Boolean)(using Context): Constraint
-
   /** Whether `tl` is present in both `this` and `that` but is associated with
    *  different TypeVars there, meaning that the constraints cannot be merged.
    */
@@ -183,7 +173,4 @@ abstract class Constraint extends Showable {
    *  of athe type lambda that is associated with the typevar itself.
    */
   def checkConsistentVars()(using Context): Unit
-
-  /** A string describing the constraint's contents without a header or trailer */
-  def contentsToString(using Context): String
 }

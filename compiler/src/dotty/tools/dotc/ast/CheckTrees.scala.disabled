@@ -217,7 +217,7 @@ object CheckTrees {
                 optionArg.argTypesHi match {
                   case Nil =>
                     optionArg :: Nil
-                  case tupleArgs if defn.isTupleType(optionArg) =>
+                  case tupleArgs if defn.isTupleNType(optionArg) =>
                     tupleArgs
                 }
               case _ =>

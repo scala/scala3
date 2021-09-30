@@ -499,28 +499,30 @@ object Inferencing {
     propagate(accu(SimpleIdentityMap.empty, tp))
   }
 
+  /** Run the transformation after dealiasing but return the original type if it was a no-op. */
+  private def derivedOnDealias(tp: Type)(transform: Type => Type)(using Context) = {
+    val dealiased = tp.dealias
+    val transformed = transform(dealiased)
+    if transformed eq dealiased then tp // return the original type, not the result of dealiasing
+    else transformed
+  }
+
   /** Replace every top-level occurrence of a wildcard type argument by
     *  a fresh skolem type. The skolem types are of the form $i.CAP, where
     *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
     *  type member. See the documentation of `TypeBox` for a rationale why we do this.
     */
-  def captureWildcards(tp: Type)(using Context): Type = tp match {
+  def captureWildcards(tp: Type)(using Context): Type = derivedOnDealias(tp) {
     case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
-      tycon.typeParams match {
-        case tparams @ ((_: Symbol) :: _) =>
-          val boundss = tparams.map(_.paramInfo.substApprox(tparams.asInstanceOf[List[TypeSymbol]], args))
-          val args1 = args.zipWithConserve(boundss) { (arg, bounds) =>
-            arg match {
-              case TypeBounds(lo, hi) =>
-                val skolem = SkolemType(defn.TypeBoxClass.typeRef.appliedTo(lo | bounds.loBound, hi & bounds.hiBound))
-                TypeRef(skolem, defn.TypeBox_CAP)
-              case arg => arg
-            }
-          }
-          tp.derivedAppliedType(tycon, args1)
-        case _ =>
-          tp
+      val tparams = tycon.typeParamSymbols
+      val args1 = args.zipWithConserve(tparams.map(_.paramInfo.substApprox(tparams, args))) {
+        case (TypeBounds(lo, hi), bounds) =>
+          val skolem = SkolemType(defn.TypeBoxClass.typeRef.appliedTo(lo | bounds.loBound, hi & bounds.hiBound))
+          TypeRef(skolem, defn.TypeBox_CAP)
+        case (arg, _) =>
+          arg
       }
+      if tparams.isEmpty then tp else tp.derivedAppliedType(tycon, args1)
     case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
     case tp: RefinedType => tp.derivedRefinedType(captureWildcards(tp.parent), tp.refinedName, tp.refinedInfo)
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
@@ -601,24 +603,20 @@ trait Inferencing { this: Typer =>
         def constraint = state.constraint
         type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
         val toInstantiate = new InstantiateQueue
-        for (tvar <- qualifying)
-          if (!tvar.isInstantiated && constraint.contains(tvar)) {
+        for tvar <- qualifying do
+          if !tvar.isInstantiated && constraint.contains(tvar) then
             constrainIfDependentParamRef(tvar, tree)
-
             // Needs to be checked again, since previous interpolations could already have
             // instantiated `tvar` through unification.
             val v = vs(tvar)
-            if (v == null) {
+            if v == null then
               typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
               toInstantiate += ((tvar, tvar.hasLowerBound))
-            }
+            else if v.intValue != 0 then
+              typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
+              toInstantiate += ((tvar, v.intValue == 1))
             else
-              if (v.intValue != 0) {
-                typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
-                toInstantiate += ((tvar, v.intValue == 1))
-              }
-              else typr.println(i"no interpolation for nonvariant $tvar in $state")
-          }
+              typr.println(i"no interpolation for nonvariant $tvar in $state")
 
         /** Instantiate all type variables in `buf` in the indicated directions.
          *  If a type variable A is instantiated from below, and there is another
@@ -694,7 +692,7 @@ trait Inferencing { this: Typer =>
 
         val arg = findArg(call)
         if !arg.isEmpty then
-          var argType = arg.tpe.widenExpr.widenTermRefExpr
+          var argType = arg.tpe.widenIfUnstable
           if !argType.isSingleton then argType = SkolemType(argType)
           argType <:< tvar
       case _ =>

@@ -48,7 +48,7 @@ abstract class Lifter {
     else {
       val name = UniqueName.fresh(prefix)
       // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
-      var liftedType = expr.tpe.widen
+      var liftedType = expr.tpe.widen.deskolemized
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
       val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span))
       defs += liftedDef(lifted, expr)
@@ -88,8 +88,10 @@ abstract class Lifter {
     methRef.widen match {
       case mt: MethodType =>
         args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map { (arg, name, tp) =>
-          val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
-          lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
+          if tp.hasAnnotation(defn.InlineParamAnnot) then arg
+          else
+            val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
+            lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
       case _ =>
         args.mapConserve(liftArg(defs, _))

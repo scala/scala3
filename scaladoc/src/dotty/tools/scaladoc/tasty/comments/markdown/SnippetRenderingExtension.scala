@@ -19,8 +19,10 @@ object SnippetRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
     override def render(node: ExtendedFencedCodeBlock, c: NodeRendererContext, html: HtmlWriter): Unit =
       html.raw(
         SnippetRenderer.renderSnippetWithMessages(
+          node.name,
           node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
-          node.compilationResult.toSeq.flatMap(_.messages)
+          node.compilationResult.toSeq.flatMap(_.messages),
+          node.hasContext
         )
       )
 

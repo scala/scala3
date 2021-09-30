@@ -1,12 +1,13 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "Union Types - More Details"
 ---
 
 ## Syntax
 
 Syntactically, unions follow the same rules as intersections, but have a lower precedence, see
-[Intersection Types - More Details](./intersection-types-spec.md).
+[Intersection Types - More Details](./intersection-types-spec.html).
 
 ### Interaction with pattern matching syntax
 `|` is also used in pattern matching to separate pattern alternatives and has

@@ -4,10 +4,19 @@ package snippets
 import scala.quoted._
 import dotty.tools.scaladoc.tasty.SymOps._
 import dotty.tools.dotc.core._
+import dotty.tools.dotc.util.{ SourceFile => CSourceFile, NoSource }
 
 class SnippetCompilerDataCollector[Q <: Quotes](val qctx: Q):
   import qctx.reflect._
   given qctx.type = qctx
+
+  def getSourceFile(sym: Symbol): CSourceFile =
+    given ctx: Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    sym match
+      case csym: Symbols.Symbol => csym.source(using ctx)
+      case _ =>
+        report.warning(s"Can't cast symbol $sym to compiler symbol. This is a bug of snippet compiler, please create an issue on dotty repository.")
+        NoSource
 
   def getSnippetCompilerData(sym: Symbol, originalSym: Symbol): SnippetCompilerData =
     val packageName = sym.packageName

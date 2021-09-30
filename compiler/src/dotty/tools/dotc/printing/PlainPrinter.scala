@@ -12,7 +12,6 @@ import typer.Implicits._
 import typer.ImportInfo
 import Variances.varianceSign
 import util.SourcePosition
-import java.lang.Integer.toOctalString
 import scala.util.control.NonFatal
 import scala.annotation.switch
 
@@ -349,15 +348,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case None => "?"
   }
 
-  protected def decomposeLambdas(bounds: TypeBounds): (String, TypeBounds) =
-    def decompose(tp: Type) = tp.stripTypeVar match
+  protected def decomposeLambdas(bounds: TypeBounds): (Text, TypeBounds) =
+    def decompose(tp: Type): (Text, Type) = tp.stripTypeVar match
       case lam: HKTypeLambda =>
         val names =
           if lam.isDeclaredVarianceLambda then
             lam.paramNames.lazyZip(lam.declaredVariances).map((name, v) =>
               varianceSign(v) + name)
-          else lam.paramNames
-        (names.mkString("[", ", ", "]"), lam.resType)
+          else lam.paramNames.map(_.toString)
+        val infos = lam.paramInfos.map(toText)
+        val tparams = names.zip(infos).map(_ ~ _)
+        ("[" ~ Text(tparams, ",") ~ "]", lam.resType)
       case _ =>
         ("", tp)
     bounds match
@@ -403,6 +404,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: ExprType =>
         // parameterless methods require special treatment, see #11201
         (if (isParameter) ": => " else ": ") ~ toTextGlobal(tp.widenExpr)
+      case tp: PolyType =>
+        "[" ~ paramsText(tp) ~ "]"
+        ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodType])
+        ~ toTextGlobal(tp.resultType)
       case tp =>
         ": " ~ toTextGlobal(tp)
     }
@@ -525,7 +530,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case '"' => "\\\""
     case '\'' => "\\\'"
     case '\\' => "\\\\"
-    case _ => if (ch.isControl) "\\0" + toOctalString(ch) else String.valueOf(ch)
+    case _ => if (ch.isControl) f"\u${ch.toInt}%04x" else String.valueOf(ch)
   }
 
   def toText(const: Constant): Text = const.tag match {
@@ -538,7 +543,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case _ => literalText(String.valueOf(const.value))
   }
 
-  def toText(annot: Annotation): Text = s"@${annot.symbol.name}" // for now
+  /** Usual target for `Annotation#toText`, overridden in RefinedPrinter */
+  def annotText(annot: Annotation): Text = s"@${annot.symbol.name}"
+
+  def toText(annot: Annotation): Text = annot.toText(this)
+
+  def toText(param: LambdaParam): Text =
+    varianceSign(param.paramVariance)
+    ~ toText(param.paramName)
+    ~ (if param.isTypeParam then "" else ": ")
+    ~ toText(param.paramInfo)
 
   protected def escapedString(str: String): String = str flatMap escapedChar
 
@@ -563,7 +577,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         Text()
 
     nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ (Str(tree.sourcePos.toString) provided printDebug)
-  }.close // todo: override in refined printer
+  }.close
 
   def toText(pos: SourcePosition): Text =
     if (!pos.exists) "<no position>"
@@ -592,6 +606,47 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if sel.isGiven then "given" else sel.name.show
       case _ => "{...}"
     s"import $exprStr.$selectorStr"
+
+  def toText(c: OrderingConstraint): Text =
+    val savedConstraint = ctx.typerState.constraint
+    try
+      // The current TyperState constraint determines how type variables are printed
+      ctx.typerState.constraint = c
+      def entryText(tp: Type) = tp match {
+        case tp: TypeBounds =>
+          toText(tp)
+        case _ =>
+          " := " ~ toText(tp)
+      }
+      val indent = 3
+      val uninstVarsText = " uninstantiated variables: " ~
+        Text(c.uninstVars.map(toText), ", ")
+      val constrainedText =
+        " constrained types: " ~ Text(c.domainLambdas.map(toText), ", ")
+      val boundsText =
+        " bounds: " ~ {
+          val assocs =
+            for (param <- c.domainParams)
+            yield (" " * indent) ~ toText(param) ~ entryText(c.entry(param))
+          Text(assocs, "\n")
+        }
+      val orderingText =
+        " ordering: " ~ {
+          val deps =
+            for {
+              param <- c.domainParams
+              ups = c.minUpper(param)
+              if ups.nonEmpty
+            }
+            yield
+              (" " * indent) ~ toText(param) ~ " <: " ~
+                Text(ups.map(toText), ", ")
+          Text(deps, "\n")
+        }
+      //Printer.debugPrintUnique = false
+      Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
+    finally
+      ctx.typerState.constraint = savedConstraint
 
   def plain: PlainPrinter = this
 

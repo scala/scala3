@@ -137,6 +137,8 @@ object TypeOps:
             tp2
           case tp1 => tp1
         }
+      case defn.MatchCase(pat, body) =>
+        defn.MatchCase(simplify(pat, theMap), body)
       case tp: AppliedType =>
         tp.tycon match
           case tycon: TypeRef if tycon.info.isInstanceOf[MatchAlias] =>
@@ -162,9 +164,13 @@ object TypeOps:
         // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
-      case AnnotatedType(parent, annot)
-      if annot.symbol == defn.UncheckedVarianceAnnot && !ctx.mode.is(Mode.Type) && !theMap.isInstanceOf[SimplifyKeepUnchecked] =>
-        simplify(parent, theMap)
+      case tp @ AnnotatedType(parent, annot) =>
+        val parent1 = simplify(parent, theMap)
+        if annot.symbol == defn.UncheckedVarianceAnnot
+            && !ctx.mode.is(Mode.Type)
+            && !theMap.isInstanceOf[SimplifyKeepUnchecked]
+        then parent1
+        else tp.derivedAnnotatedType(parent1, annot)
       case _: MatchType =>
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
@@ -485,7 +491,7 @@ object TypeOps:
           tp
         else tryWiden(tp, tp.prefix).orElse {
           if (tp.isTerm && variance > 0 && !pre.isSingleton)
-          	apply(tp.info.widenExpr)
+            apply(tp.info.widenExpr)
           else if (upper(pre).member(tp.name).exists)
             super.derivedSelect(tp, pre)
           else
@@ -702,13 +708,18 @@ object TypeOps:
     //
     // 1. Replace type parameters in T with tvars
     // 2. Replace `A.this.C` with `A#C` (see tests/patmat/i12681.scala)
+    // 3. Replace non-reducing MatchType with its bound
     //
     val approximateParent = new TypeMap {
       val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
 
       def apply(tp: Type): Type = tp.dealias match {
-        case _: MatchType =>
-          tp // break cycles
+        case tp: MatchType =>
+          val reduced = tp.reduced
+          if reduced.exists then tp // break cycles
+          else mapOver(tp.bound) // if the match type doesn't statically reduce
+                                 // then to avoid it failing the <:<
+                                 // we'll approximate by widening to its bounds
 
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
           tref
@@ -729,7 +740,7 @@ object TypeOps:
             tv
           end if
 
-        case AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass =>
+        case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
 
           // In tests/patmat/i3645g.scala, we need to tell whether it's possible
           // that K1 <: K[Foo]. If yes, we issue a warning; otherwise, no

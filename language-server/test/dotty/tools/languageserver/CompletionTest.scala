@@ -547,7 +547,8 @@ class CompletionTest {
   }
 
   @Test def completeFromPackageObjectWithInheritance: Unit = {
-    code"""trait Foo[A] { def xxxx(a: A) = a }
+    code"""package test
+          |trait Foo[A] { def xxxx(a: A) = a }
           |package object foo extends Foo[Int] {}
           |object Test {
           |  foo.xx$m1
@@ -841,5 +842,49 @@ class CompletionTest {
     code"""extension (i: Int) def xxxx = i
           |object Main { "abc".xx${m1} }""".withSource
       .completion(m1, Set())
+  }
+
+  @Test def i13365: Unit = {
+    code"""|import scala.quoted._
+        |
+        |object Test {
+        |  def test(using Quotes)(str: String) = {
+        |    import quotes.reflect._
+        |    val msg = Expr(str)
+        |    val printHello = '{ print("sdsd") }
+        |    val tree = printHello.asTerm
+        |    tree.sh${m1}
+        |  }
+        |}""".withSource
+      .completion(m1, Set(("show",Method, "(using x$2: x$1.reflect.Printer[x$1.reflect.Tree]): String")))
+  }
+
+  @Test def syntheticThis: Unit = {
+    code"""|class Y() {
+           |  def bar: Unit =
+           |    val argument: Int = ???
+           |    arg${m1}
+           |
+           |  def arg: String = ???
+           |}
+           |""".withSource
+      .completion(m1, Set(("arg", Method, "=> String"),
+                          ("argument", Field, "Int")))
+  }
+
+  @Test def concatMethodWithImplicits: Unit = {
+    code"""|object A {
+           |  Array.concat${m1}
+           |}""".withSource
+      .completion(
+          m1,
+          Set(
+            (
+              "concat",
+              Method,
+              "[T](xss: Array[T]*)(implicit evidence$11: scala.reflect.ClassTag[T]): Array[T]"
+            )
+          )
+        )
   }
 }

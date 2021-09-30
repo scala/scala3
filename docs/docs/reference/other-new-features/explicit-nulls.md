@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Explicit Nulls"
+type: section
+num: 48
+previous-page: /scala3/reference/other-new-features/indentation
+next-page: /scala3/reference/other-new-features/safe-initialization
 ---
 
 Explicit nulls is an opt-in feature that modifies the Scala type system, which makes reference types
@@ -12,7 +15,7 @@ This means the following code will no longer typecheck:
 val x: String = null // error: found `Null`, but required `String`
 ```
 
-Instead, to mark a type as nullable we use a [union type](../new-types/union-types.md)
+Instead, to mark a type as nullable we use a [union type](../new-types/union-types.html)
 
 ```scala
 val x: String | Null = null // ok
@@ -35,7 +38,7 @@ When explicit nulls are enabled, the type hierarchy changes so that `Null` is on
 
 This is the new type hierarchy:
 
-!["Type Hierarchy for Explicit Nulls"](/images/explicit-nulls/explicit-nulls-type-hierarchy.png)
+!["Type Hierarchy for Explicit Nulls"](/resources/images/scala3/explicit-nulls/explicit-nulls-type-hierarchy.png)
 
 After erasure, `Null` remains a subtype of all reference types (as forced by the JVM).
 
@@ -80,7 +83,7 @@ val c = new C()
 ```
 
 The unsoundness above can be caught by the compiler with the option `-Ysafe-init`.
-More details can be found in [safe initialization](./safe-initialization.md).
+More details can be found in [safe initialization](./safe-initialization.html).
 
 ## Equality
 
@@ -534,4 +537,4 @@ Our strategy for binary compatibility with Scala binaries that predate explicit 
 and new libraries compiled without `-Yexplicit-nulls` is to leave the types unchanged
 and be compatible but unsound.
 
-[More details](../../internals/explicit-nulls.md)
+[More details](https://dotty.epfl.ch/docs/internals/explicit-nulls.html)

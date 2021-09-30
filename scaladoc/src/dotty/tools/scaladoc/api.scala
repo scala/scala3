@@ -40,13 +40,15 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Erased extends Modifier("erased", true)
   case Opaque extends Modifier("opaque", true)
   case Open extends Modifier("open", true)
+  case Transparent extends Modifier("transparent", true)
+  case Infix extends Modifier("infix", true)
 
-case class ExtensionTarget(name: String, signature: Signature, dri: DRI, position: Long)
+case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
 trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
 trait Classlike
 
-enum Kind(val name: String){
+enum Kind(val name: String):
   case RootPackage extends Kind("")
   case Package extends Kind("package")
   case Class(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
@@ -55,7 +57,7 @@ enum Kind(val name: String){
   case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("trait") with Classlike
   case Enum(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList]) extends Kind("enum") with Classlike
-  case EnumCase(kind: Object.type | Type | Val.type | Class) extends Kind("case")
+  case EnumCase(kind: Object.type | Kind.Type | Val.type | Class) extends Kind("case")
   case Def(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("def")
   case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
@@ -70,7 +72,6 @@ enum Kind(val name: String){
   case Implicit(kind: Kind.Def | Kind.Val.type, conversion: Option[ImplicitConversion])
     extends Kind(kind.name)  with ImplicitConversionProvider
   case Unknown extends Kind("Unknown")
-}
 
 enum Origin:
   case ImplicitlyAddedBy(name: String, dri: DRI)
@@ -116,15 +117,19 @@ case class TypeParameter(
   signature: Signature
 )
 
-// TODO (longterm) properly represent signatures
 case class Link(name: String, dri: DRI)
-type Signature = Seq[String | Link]
+
+sealed trait SignaturePart
+
+// TODO (longterm) properly represent signatures
+case class Type(name: String, dri: Option[DRI]) extends SignaturePart
+case class Keyword(name: String) extends SignaturePart
+case class Plain(txt: String) extends SignaturePart
+
+type Signature = List[SignaturePart]
 
 object Signature:
-  def apply(names: (String | Link)*): Signature = names // TO batter dotty shortcommings in union types
-
-extension (s: Signature)
-  def join(a: Signature): Signature = s ++ a
+  def apply(names: (SignaturePart)*): Signature = names.toList
 
 case class LinkToType(signature: Signature, dri: DRI, kind: Kind)
 
@@ -155,6 +160,7 @@ case class Member(
   members : Seq[Member] = Nil,
   directParents: Seq[LinkToType] = Nil,
   parents: Seq[LinkToType] = Nil,
+  selfType: Option[LinkToType] = None,
   knownChildren: Seq[LinkToType] = Nil,
   companion: Option[DRI] = None,
   deprecated: Option[Annotation] = None,
@@ -228,8 +234,9 @@ extension (m: Module)
 extension (s: Signature)
   def getName: String =
     s.map {
-      case s: String => s
-      case l: Link => l.name
+      case Plain(s) => s
+      case Type(s, _) => s
+      case Keyword(s) => s
     }.mkString
 
 case class TastyMemberSource(path: java.nio.file.Path, lineNumber: Int)

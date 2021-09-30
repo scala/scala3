@@ -1,11 +1,13 @@
 package dotty.tools.dotc
 package config
 
+import dotty.tools.dotc.config.PathResolver.Defaults
+import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.io.{ Directory, PlainDirectory, AbstractFile, JDK9Reflectors }
-import PathResolver.Defaults
-import rewrites.Rewrites
-import Settings.{ Setting, SettingGroup }
+import dotty.tools.dotc.rewrites.Rewrites
+import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
+
+import scala.util.chaining._
 
 class ScalaSettings extends SettingGroup with AllScalaSettings
 
@@ -50,9 +52,8 @@ trait AllScalaSettings extends CommonScalaSettings, VerboseSettings, WarningSett
     // it is otherwise subsumed by -explain, and should be dropped as soon as we can.
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
-  val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", ScalaSettings.supportedReleaseVersions, "", aliases = List("--release"))
-  val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
-  val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.", aliases = List("--unchecked"))
+  val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "3.1", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
+  val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
   val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.", aliases = List("--language"))
   val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.", aliases = List("--rewrite"))
@@ -87,6 +88,7 @@ trait CommonScalaSettings extends PluginSettings:
   self: SettingGroup =>
 
   /* Path related settings */
+  val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", ScalaSettings.supportedReleaseVersions, "", aliases = List("--release"))
   val bootclasspath: Setting[String] = PathSetting("-bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath, aliases = List("--boot-class-path"))
   val extdirs: Setting[String] = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs, aliases = List("--extension-directories"))
   val javabootclasspath: Setting[String] = PathSetting("-javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath, aliases = List("--java-boot-class-path"))
@@ -133,6 +135,64 @@ private sealed trait WarningSettings:
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
 
+  val Wunused: Setting[List[String]] = MultiChoiceSetting(
+    name = "-Wunused",
+    helpArg = "warning",
+    descr = "Enable or disable specific `unused` warnings",
+    choices = List("nowarn", "all"),
+    default = Nil
+  )
+  object WunusedHas:
+    def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
+    def nowarn(using Context) = allOr("nowarn")
+
+  val Wconf: Setting[List[String]] = MultiStringSetting(
+    "-Wconf",
+    "patterns",
+    default = List(),
+    descr =
+      s"""Configure compiler warnings.
+         |Syntax: -Wconf:<filters>:<action>,<filters>:<action>,...
+         |multiple <filters> are combined with &, i.e., <filter>&...&<filter>
+         |
+         |<filter>
+         |  - Any message: any
+         |
+         |  - Message categories: cat=deprecation, cat=feature, cat=unchecked
+         |
+         |  - Message content: msg=regex
+         |    The regex need only match some part of the message, not all of it.
+         |
+         |  - Message id: id=E129
+         |    The message id is printed with the warning.
+         |
+         |  - Message name: name=PureExpressionInStatementPosition
+         |    The message name is printed with the warning in verbose warning mode.
+         |
+         |In verbose warning mode the compiler prints matching filters for warnings.
+         |Verbose mode can be enabled globally using `-Wconf:any:verbose`, or locally
+         |using the @nowarn annotation (example: `@nowarn("v") def test = try 1`).
+         |
+         |<action>
+         |  - error / e
+         |  - warning / w
+         |  - verbose / v (emit warning, show additional help for writing `-Wconf` filters)
+         |  - info / i    (infos are not counted as warnings and not affected by `-Werror`)
+         |  - silent / s
+         |
+         |The default configuration is empty.
+         |
+         |User-defined configurations are added to the left. The leftmost rule matching
+         |a warning message defines the action.
+         |
+         |Examples:
+         |  - change every warning into an error: -Wconf:any:error
+         |  - silence deprecations: -Wconf:cat=deprecation:s
+         |
+         |Note: on the command-line you might need to quote configurations containing `*` or `&`
+         |to prevent the shell from expanding patterns.""".stripMargin,
+  )
+
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
   self: SettingGroup =>
@@ -156,6 +216,7 @@ private sealed trait XSettings:
   val Xsemanticdb: Setting[Boolean] = BooleanSetting("-Xsemanticdb", "Store information in SemanticDB.", aliases = List("-Ysemanticdb"))
   val Xtarget: Setting[String] = ChoiceSetting("-Xtarget", "target", "Emit bytecode for the specified version of the Java platform. This might produce bytecode that will break at runtime. When on JDK 9+, consider -release as a safer alternative.", ScalaSettings.supportedTargetVersions, "", aliases = List("--Xtarget"))
   val XcheckMacros: Setting[Boolean] = BooleanSetting("-Xcheck-macros", "Check some invariants of macro generated code while expanding macros", aliases = List("--Xcheck-macros"))
+  val XmainClass: Setting[String] = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
 
   val XmixinForceForwarders = ChoiceSetting(
     name    = "-Xmixin-force-forwarders",

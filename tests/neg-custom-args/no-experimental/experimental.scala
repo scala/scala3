@@ -7,7 +7,7 @@ class Test0 {
 }
 
 class Test1 {
-  import scala.language.experimental.erasedDefinitions  // error
+  import scala.language.experimental.erasedDefinitions
   import scala.compiletime.erasedValue
   type UnivEq[A]
   object UnivEq:
@@ -25,10 +25,4 @@ class Test2 {
 
 class Test6 {
   import scala.language.experimental  // ok
-}
-
-class Test7 {
-  import scala.language.experimental
-  import experimental.genericNumberLiterals // error: no aliases can be used to refer to a language import
-  val x: BigInt = 13232202002020202020202   // error
 }

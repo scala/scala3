@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.{unfusedPhases, typerPhase}
 import dotty.tools.dotc.core.Denotations.Denotation
@@ -16,9 +17,10 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
-import dotty.tools.dotc.reporting.MessageRendering
+import dotty.tools.dotc.reporting.{ConsoleReporter, MessageRendering, StoreReporter}
 import dotty.tools.dotc.reporting.{Message, Diagnostic}
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
@@ -124,6 +126,10 @@ class ReplDriver(settings: Array[String],
   final def runUntilQuit(initialState: State = initialState): State = {
     val terminal = new JLineTerminal
 
+    out.println(
+      s"""Welcome to Scala $simpleVersionString ($javaVersion, Java $javaVmName).
+         |Type in expressions for evaluation. Or try :help.""".stripMargin)
+
     /** Blockingly read a line, getting back a parse result */
     def readLine(state: State): ParseResult = {
       val completer: Completer = { (_, line, candidates) =>
@@ -174,8 +180,8 @@ class ReplDriver(settings: Array[String],
     }
   }
 
-  private def newRun(state: State) = {
-    val run = compiler.newRun(rootCtx.fresh.setReporter(newStoreReporter), state)
+  private def newRun(state: State, reporter: StoreReporter = newStoreReporter) = {
+    val run = compiler.newRun(rootCtx.fresh.setReporter(reporter), state)
     state.copy(context = run.runContext)
   }
 
@@ -208,7 +214,7 @@ class ReplDriver(settings: Array[String],
   }
 
   private def interpret(res: ParseResult)(implicit state: State): State = {
-    val newState = res match {
+    res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
         compile(parsed, state)
 
@@ -225,11 +231,6 @@ class ReplDriver(settings: Array[String],
       case _ => // new line, empty tree
         state
     }
-    inContext(newState.context) {
-      if (!ctx.settings.XreplDisableDisplay.value)
-        out.println()
-      newState
-    }
   }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
@@ -243,7 +244,7 @@ class ReplDriver(settings: Array[String],
       unfusedPhases(using ctx).collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
     implicit val state = {
-      val state0 = newRun(istate)
+      val state0 = newRun(istate, parsed.reporter)
       state0.copy(context = state0.context.withSource(parsed.source))
     }
     compiler
@@ -261,7 +262,6 @@ class ReplDriver(settings: Array[String],
 
             val warnings = newState.context.reporter
               .removeBufferedMessages(using newState.context)
-              .map(rendering.formatError)
 
             inContext(newState.context) {
               val (updatedState, definitions) =
@@ -278,8 +278,7 @@ class ReplDriver(settings: Array[String],
 
               (definitions ++ warnings)
                 .sorted
-                .map(_.msg)
-                .foreach(out.println)
+                .foreach(printDiagnostic)
 
               updatedState
             }
@@ -422,7 +421,20 @@ class ReplDriver(settings: Array[String],
 
   /** shows all errors nicely formatted */
   private def displayErrors(errs: Seq[Diagnostic])(implicit state: State): State = {
-    errs.map(rendering.formatError).map(_.msg).foreach(out.println)
+    errs.foreach(printDiagnostic)
     state
   }
+
+  /** Like ConsoleReporter, but without file paths, -Xprompt displaying,
+   *  and using a PrintStream rather than a PrintWriter so messages aren't re-encoded. */
+  private object ReplConsoleReporter extends ConsoleReporter.AbstractConsoleReporter {
+    override def posFileStr(pos: SourcePosition) = "" // omit file paths
+    override def printMessage(msg: String): Unit = out.println(msg)
+    override def flush()(using Context): Unit    = out.flush()
+  }
+
+  /** Print warnings & errors using ReplConsoleReporter, and info straight to out */
+  private def printDiagnostic(dia: Diagnostic)(implicit state: State) = dia.level match
+    case interfaces.Diagnostic.INFO => out.println(dia.msg) // print REPL's special info diagnostics directly to out
+    case _                          => ReplConsoleReporter.doReport(dia)(using state.context)
 }

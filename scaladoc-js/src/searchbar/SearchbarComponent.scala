@@ -1,6 +1,7 @@
 package dotty.tools.scaladoc
 
 import org.scalajs.dom._
+import org.scalajs.dom.ext._
 import org.scalajs.dom.html.Input
 import scala.scalajs.js.timers._
 import scala.concurrent.duration._
@@ -8,9 +9,10 @@ import scala.concurrent.duration._
 class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val resultsChunkSize = 100
   extension (p: PageEntry)
-    def toHTML(inkuire: Boolean = false) =
+    def toHTML =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
       wrapper.classList.add("scaladoc-searchbar-result")
+      wrapper.classList.add("scaladoc-searchbar-result-row")
       wrapper.classList.add("monospace")
 
       val icon = document.createElement("span").asInstanceOf[html.Span]
@@ -18,7 +20,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       icon.classList.add(p.kind.take(2))
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href = if inkuire then p.location else Globals.pathToRoot + p.location
+      resultA.href = Globals.pathToRoot + p.location
       resultA.text = s"${p.fullName}"
 
       val location = document.createElement("span")
@@ -34,8 +36,53 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       })
       wrapper
 
+  extension (m: InkuireMatch)
+    def toHTML =
+      val wrapper = document.createElement("div").asInstanceOf[html.Div]
+      wrapper.classList.add("scaladoc-searchbar-result")
+      wrapper.classList.add("monospace")
+      wrapper.setAttribute("mq", m.mq.toString)
+
+      val resultDiv = document.createElement("div").asInstanceOf[html.Div]
+      resultDiv.classList.add("scaladoc-searchbar-result-row")
+
+      val icon = document.createElement("span").asInstanceOf[html.Span]
+      icon.classList.add("micon")
+      icon.classList.add(m.entryType.take(2))
+
+      val resultA = document.createElement("a").asInstanceOf[html.Anchor]
+      resultA.href = m.pageLocation
+      resultA.text = m.functionName
+
+      val packageDiv = document.createElement("div").asInstanceOf[html.Div]
+      packageDiv.classList.add("scaladoc-searchbar-inkuire-package")
+
+      val packageIcon = document.createElement("span").asInstanceOf[html.Span]
+      packageIcon.classList.add("micon")
+      packageIcon.classList.add("pa")
+
+      val packageSpan = document.createElement("span").asInstanceOf[html.Span]
+      packageSpan.textContent = m.packageLocation
+
+      val signature = document.createElement("span")
+      signature.classList.add("pull-right")
+      signature.classList.add("scaladoc-searchbar-inkuire-signature")
+      signature.textContent = m.prettifiedSignature
+
+      wrapper.appendChild(resultDiv)
+      resultDiv.appendChild(icon)
+      resultDiv.appendChild(resultA)
+      resultA.appendChild(signature)
+      wrapper.appendChild(packageDiv)
+      packageDiv.appendChild(packageIcon)
+      packageDiv.appendChild(packageSpan)
+      wrapper.addEventListener("mouseover", {
+        case e: MouseEvent => handleHover(wrapper)
+      })
+      wrapper
+
   def handleNewFluffQuery(matchers: List[Matchers]) =
-    val result = engine.query(matchers).map(_.toHTML(inkuire = false))
+    val result = engine.query(matchers).map(_.toHTML)
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
@@ -86,8 +133,17 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
           animation.classList.add("loading")
           loading.appendChild(animation)
           properResultsDiv.appendChild(loading)
-          inkuireEngine.query(query) { (p: PageEntry) =>
-            properResultsDiv.appendChild(p.toHTML(inkuire = true))
+          inkuireEngine.query(query) { (m: InkuireMatch) =>
+            val next = properResultsDiv.children.foldLeft[Option[Element]](None) {
+              case (acc, child) if !acc.isEmpty => acc
+              case (_, child) =>
+                Option.when(child.hasAttribute("mq") && Integer.parseInt(child.getAttribute("mq")) > m.mq)(child)
+            }
+            next.fold {
+              properResultsDiv.appendChild(m.toHTML)
+            } { next =>
+              properResultsDiv.insertBefore(m.toHTML, next)
+            }
           } { (s: String) =>
             animation.classList.remove("loading")
             properResultsDiv.appendChild(s.toHTMLError)
@@ -167,7 +223,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     if selectedElement != null then {
       selectedElement.removeAttribute("selected")
       val sibling = selectedElement.previousElementSibling
-      if sibling != null then {
+      if sibling != null && sibling.classList.contains("scaladoc-searchbar-result") then {
         sibling.setAttribute("selected", "")
         resultsDiv.scrollTop = sibling.asInstanceOf[html.Element].offsetTop - (2 * sibling.asInstanceOf[html.Element].clientHeight)
       }
@@ -184,9 +240,14 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       }
     } else {
       val firstResult = resultsDiv.firstElementChild
-      if firstResult != null then {
+      if firstResult != null && firstResult.classList.contains("scaladoc-searchbar-result") then {
         firstResult.setAttribute("selected", "")
         resultsDiv.scrollTop = firstResult.asInstanceOf[html.Element].offsetTop - (2 * firstResult.asInstanceOf[html.Element].clientHeight)
+      } else if firstResult != null && firstResult.firstElementChild != null && firstResult.firstElementChild.nextElementSibling != null then {
+        // for Inkuire there is another wrapper to avoid displaying old results + the first (child) div is a loading animation wrapper | should be resolved in #12995
+        val properFirstResult = firstResult.firstElementChild.nextElementSibling
+        properFirstResult.setAttribute("selected", "")
+        resultsDiv.scrollTop = properFirstResult.asInstanceOf[html.Element].offsetTop - (2 * properFirstResult.asInstanceOf[html.Element].clientHeight)
       }
     }
   }

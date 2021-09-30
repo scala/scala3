@@ -118,6 +118,28 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  @Test def switchOnStrings = {
+    val source =
+      """
+        |object Foo {
+        |  import scala.annotation.switch
+        |  def foo(s: String) = s match {
+        |    case "AaAa" => println(3)
+        |    case "BBBB" | "c" => println(2)
+        |    case "D" | "E" => println(1)
+        |    case _ => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
   @Test def matchWithDefaultNoThrowMatchError = {
     val source =
       """class Test {
@@ -759,17 +781,14 @@ class TestBCode extends DottyBytecodeTest {
         FrameEntry(1, List(1), List()),
         VarOp(Opcodes.ILOAD, 1),
         Op(Opcodes.ICONST_5),
-        Jump(Opcodes.IF_ICMPGT, Label(16)),
+        Jump(Opcodes.IF_ICMPGT, Label(13)),
         Field(Opcodes.GETSTATIC, "scala/Predef$", "MODULE$", "Lscala/Predef$;"),
         VarOp(Opcodes.ILOAD, 1),
         Invoke(Opcodes.INVOKESTATIC, "scala/runtime/BoxesRunTime", "boxToInteger", "(I)Ljava/lang/Integer;", false),
         Invoke(Opcodes.INVOKEVIRTUAL, "scala/Predef$", "println", "(Ljava/lang/Object;)V", false),
-        VarOp(Opcodes.ILOAD, 1),
-        Op(Opcodes.ICONST_1),
-        Op(Opcodes.IADD),
-        VarOp(Opcodes.ISTORE, 1),
+        Incr(Opcodes.IINC, 1, 1),
         Jump(Opcodes.GOTO, Label(2)),
-        Label(16),
+        Label(13),
         FrameEntry(3, List(), List()),
         Op(Opcodes.RETURN))
 

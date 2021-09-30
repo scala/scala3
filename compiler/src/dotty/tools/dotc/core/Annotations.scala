@@ -7,6 +7,9 @@ import StdNames._
 import dotty.tools.dotc.ast.tpd
 import scala.util.Try
 import util.Spans.Span
+import printing.{Showable, Printer}
+import printing.Texts.Text
+import annotation.internal.sharable
 
 object Annotations {
 
@@ -14,7 +17,7 @@ object Annotations {
     if (tree.symbol.isConstructor) tree.symbol.owner
     else tree.tpe.typeSymbol
 
-  abstract class Annotation {
+  abstract class Annotation extends Showable {
     def tree(using Context): Tree
 
     def symbol(using Context): Symbol = annotClass(tree)
@@ -26,7 +29,8 @@ object Annotations {
     def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
-    def arguments(using Context): List[Tree] = ast.tpd.arguments(tree)
+    /** All arguments to this annotation in a single flat list */
+    def arguments(using Context): List[Tree] = ast.tpd.allArguments(tree)
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
@@ -44,15 +48,48 @@ object Annotations {
     /** The tree evaluation has finished. */
     def isEvaluated: Boolean = true
 
+    /** Normally, type map over all tree nodes of this annotation, but can
+     *  be overridden. Returns EmptyAnnotation if type type map produces a range
+     *  type, since ranges cannot be types of trees.
+     */
+    def mapWith(tm: TypeMap)(using Context) =
+      val args = arguments
+      if args.isEmpty then this
+      else
+        val findDiff = new TreeAccumulator[Type]:
+          def apply(x: Type, tree: Tree)(using Context): Type =
+            if tm.isRange(x) then x
+            else
+              val tp1 = tm(tree.tpe)
+              foldOver(if tp1 =:= tree.tpe then x else tp1, tree)
+        val diff = findDiff(NoType, args)
+        if tm.isRange(diff) then EmptyAnnotation
+        else if diff.exists then derivedAnnotation(tm.mapOver(tree))
+        else this
+
+    /** Does this annotation refer to a parameter of `tl`? */
+    def refersToParamOf(tl: TermLambda)(using Context): Boolean =
+      val args = arguments
+      if args.isEmpty then false
+      else tree.existsSubTree {
+        case id: Ident => id.tpe match
+          case TermParamRef(tl1, _) => tl eq tl1
+          case _ => false
+        case _ => false
+      }
+
+    /** A string representation of the annotation. Overridden in BodyAnnotation.
+     */
+    def toText(printer: Printer): Text = printer.annotText(this)
+
     def ensureCompleted(using Context): Unit = tree
 
     def sameAnnotation(that: Annotation)(using Context): Boolean =
       symbol == that.symbol && tree.sameTree(that.tree)
   }
 
-  case class ConcreteAnnotation(t: Tree) extends Annotation {
+  case class ConcreteAnnotation(t: Tree) extends Annotation:
     def tree(using Context): Tree = t
-  }
 
   abstract class LazyAnnotation extends Annotation {
     protected var mySym: Symbol | (Context ?=> Symbol)
@@ -98,6 +135,7 @@ object Annotations {
       if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
     override def arguments(using Context): List[Tree] = Nil
     override def ensureCompleted(using Context): Unit = ()
+    override def toText(printer: Printer): Text = "@Body"
   }
 
   class ConcreteBodyAnnotation(body: Tree) extends BodyAnnotation {
@@ -193,6 +231,8 @@ object Annotations {
     def makeSourceFile(path: String)(using Context): Annotation =
       apply(defn.SourceFileAnnot, Literal(Constant(path)))
   }
+
+  @sharable val EmptyAnnotation = Annotation(EmptyTree)
 
   def ThrowsAnnotation(cls: ClassSymbol)(using Context): Annotation = {
     val tref = cls.typeRef

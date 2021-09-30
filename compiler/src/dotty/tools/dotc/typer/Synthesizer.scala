@@ -39,9 +39,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               if defn.SpecialClassTagClasses.contains(sym) then
                 classTag.select(sym.name.toTermName)
               else
-                val clsOfType = erasure(tp) match
-                  case JavaArrayType(elemType) => defn.ArrayOf(elemType)
-                  case etp => etp
+                val clsOfType = escapeJavaArray(erasure(tp))
                 classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(clsOfType))
             tag.withSpan(span)
           case tp => EmptyTree
@@ -287,12 +285,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
-        case caseClass: ClassSymbol =>
-          assert(caseClass.is(Case))
-          if caseClass.is(Module) then
-            caseClass.sourceModule.termRef
+        case childClass: ClassSymbol =>
+          assert(childClass.isOneOf(Case | Sealed))
+          if childClass.is(Module) then
+            childClass.sourceModule.termRef
           else
-            caseClass.primaryConstructor.info match
+            childClass.primaryConstructor.info match
               case info: PolyType =>
                 // Compute the the full child type by solving the subtype constraint
                 // `C[X1, ..., Xn] <: P`, where
@@ -309,13 +307,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                     case tp => tp
                   resType <:< target
                   val tparams = poly.paramRefs
-                  val variances = caseClass.typeParams.map(_.paramVarianceSign)
+                  val variances = childClass.typeParams.map(_.paramVarianceSign)
                   val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
                     TypeComparer.instanceType(tparam, fromBelow = variance < 0))
                   resType.substParams(poly, instanceTypes)
-                instantiate(using ctx.fresh.setExploreTyperState().setOwner(caseClass))
+                instantiate(using ctx.fresh.setExploreTyperState().setOwner(childClass))
               case _ =>
-                caseClass.typeRef
+                childClass.typeRef
         case child => child.termRef
       end solve
 
@@ -330,9 +328,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           (mirroredType, elems)
 
       val mirrorType =
-          mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, formal)
-          .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-          .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+        mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, formal)
+            .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
+            .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
       val mirrorRef =
         if useCompanion then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsSumMirror, span)
@@ -375,6 +373,119 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           synthesizedSumMirror(formal, span)
       case _ => EmptyTree
 
+  private def escapeJavaArray(tp: Type)(using Context): Type = tp match
+    case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
+    case _                     => tp
+
+  private enum ManifestKind:
+    case Full, Opt, Clss
+
+    /** The kind that should be used for an array element, if we are `OptManifest` then this
+     *  prevents wildcards arguments of Arrays being converted to `NoManifest`
+     */
+    def arrayElem = if this == Full then this else Clss
+
+  end ManifestKind
+
+  /** Manifest factory that does enough to satisfy the equality semantics for
+   *  - `scala.reflect.OptManifest` (only runtime class is recorded)
+   *  - `scala.reflect.Manifest` (runtime class of arguments are recorded, with wildcard upper bounds wrapped)
+   *  however,`toString` may be different.
+   *
+   * There are some differences to `ClassTag`,
+   *  e.g. in Scala 2 `manifest[Int @unchecked]` will fail, but `classTag[Int @unchecked]` succeeds.
+   */
+  private def manifestFactoryOf(kind: ManifestKind): SpecialHandler = (formal, span) =>
+    import ManifestKind.*
+
+    /* Creates a tree that calls the factory method called constructor in object scala.reflect.Manifest */
+    def factoryManifest(constructor: TermName, tparg: Type, args: Tree*): Tree =
+      if args.contains(EmptyTree) then
+        EmptyTree
+      else
+        val factory = if kind == Full then defn.ManifestFactoryModule else defn.ClassManifestFactoryModule
+        applyOverloaded(ref(factory), constructor, args.toList, tparg :: Nil, Types.WildcardType).withSpan(span)
+
+    /* Creates a tree representing one of the singleton manifests.*/
+    def singletonManifest(name: TermName) =
+      ref(defn.ManifestFactoryModule).select(name).ensureApplied.withSpan(span)
+
+    def synthArrayManifest(elemTp: Type, kind: ManifestKind, topLevel: Boolean): Tree =
+      factoryManifest(nme.arrayType, elemTp, synthesize(elemTp, kind.arrayElem, topLevel))
+
+    /** manifests generated from wildcards can not equal Int,Long,Any,AnyRef,AnyVal etc,
+     *  so we wrap their upper bound.
+     */
+    def synthWildcardManifest(tp: Manifestable, hi: Type, topLevel: Boolean): Tree =
+      factoryManifest(nme.wildcardType, tp, singletonManifest(nme.Nothing), synthesize(hi, Full, topLevel))
+
+    /** `Nil` if not full manifest */
+    def synthArgManifests(tp: Manifestable): List[Tree] = tp match
+      case AppliedType(_, args) if kind == Full && tp.typeSymbol.isClass =>
+        args.map(synthesize(_, Full, topLevel = false))
+      case _ =>
+        Nil
+
+    /** This type contains all top-level types supported by Scala 2's algorithm */
+    type Manifestable =
+      ThisType | TermRef | ConstantType | TypeRef | AppliedType | TypeBounds | RecType | RefinedType | AndType
+
+    def canManifest(tp: Manifestable, topLevel: Boolean) =
+      val sym = tp.typeSymbol
+      !sym.isAbstractType
+      && hasStableErasure(tp)
+      && !(topLevel && defn.isBottomClassAfterErasure(sym))
+
+    /** adapted from `syntheticClassTag` */
+    def synthManifest(tp: Manifestable, kind: ManifestKind, topLevel: Boolean) = tp match
+      case defn.ArrayOf(elemTp)              => synthArrayManifest(elemTp, kind, topLevel)
+      case TypeBounds(_, hi) if kind == Full => synthWildcardManifest(tp, hi, topLevel)
+
+      case tp if canManifest(tp, topLevel) =>
+        val sym = tp.typeSymbol
+        if sym.isPrimitiveValueClass || defn.SpecialManifestClasses.contains(sym) then
+          singletonManifest(sym.name.toTermName)
+        else
+          erasure(tp) match
+            case JavaArrayType(elemTp) =>
+              synthArrayManifest(escapeJavaArray(elemTp), kind, topLevel)
+
+            case etp =>
+              val clsArg = clsOf(etp).asInstance(defn.ClassType(tp)) // cast needed to resolve overloading
+              factoryManifest(nme.classType, tp, (clsArg :: synthArgManifests(tp))*)
+
+      case _ =>
+        EmptyTree
+
+    end synthManifest
+
+    def manifestOfType(tp0: Type, kind: ManifestKind, topLevel: Boolean): Tree = tp0.dealiasKeepAnnots match
+      case tp1: Manifestable => synthManifest(tp1, kind, topLevel)
+      case tp1               => EmptyTree
+
+    def synthesize(tp: Type, kind: ManifestKind, topLevel: Boolean): Tree =
+      manifestOfType(tp, kind, topLevel) match
+        case EmptyTree if kind == Opt => ref(defn.NoManifestModule)
+        case result                   => result
+
+    formal.argInfos match
+      case arg :: Nil =>
+        val manifest = synthesize(fullyDefinedType(arg, "Manifest argument", span), kind, topLevel = true)
+        if manifest != EmptyTree then
+          report.deprecationWarning(
+            i"""Compiler synthesis of Manifest and OptManifest is deprecated, instead
+               |replace with the type `scala.reflect.ClassTag[$arg]`.
+               |Alternatively, consider using the new metaprogramming features of Scala 3,
+               |see https://docs.scala-lang.org/scala3/reference/metaprogramming.html""", ctx.source.atSpan(span))
+        manifest
+      case _ =>
+        EmptyTree
+
+  end manifestFactoryOf
+
+  val synthesizedManifest: SpecialHandler = manifestFactoryOf(ManifestKind.Full)
+  val synthesizedOptManifest: SpecialHandler = manifestFactoryOf(ManifestKind.Opt)
+
   val specialHandlers = List(
     defn.ClassTagClass        -> synthesizedClassTag,
     defn.TypeTestClass        -> synthesizedTypeTest,
@@ -382,7 +493,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     defn.ValueOfClass         -> synthesizedValueOf,
     defn.Mirror_ProductClass  -> synthesizedProductMirror,
     defn.Mirror_SumClass      -> synthesizedSumMirror,
-    defn.MirrorClass          -> synthesizedMirror)
+    defn.MirrorClass          -> synthesizedMirror,
+    defn.ManifestClass        -> synthesizedManifest,
+    defn.OptManifestClass     -> synthesizedOptManifest,
+  )
 
   def tryAll(formal: Type, span: Span)(using Context): Tree =
     def recur(handlers: SpecialHandlers): Tree = handlers match

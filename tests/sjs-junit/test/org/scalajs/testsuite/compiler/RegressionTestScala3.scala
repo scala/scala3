@@ -39,6 +39,19 @@ class RegressionTestScala3 {
   @Test def defaultAccessorBridgesIssue12572(): Unit = {
     new MyPromiseIssue12572[Int](5)
   }
+
+  @Test def desugarIdentCrashIssue13221(): Unit = {
+    assertEquals(1, X_Issue13221.I.i)
+    assertEquals(1, X_Issue13221.blah)
+  }
+
+  @Test def primitivePlusStringThatIsATermRefIssue13518(): Unit = {
+    def charPlusString(x: String): String = 'a' + x
+    assertEquals("abc", charPlusString("bc"))
+
+    def intPlusString(x: String): String = 5 + x
+    assertEquals("5bc", intPlusString("bc"))
+  }
 }
 
 object RegressionTestScala3 {
@@ -75,6 +88,17 @@ object RegressionTestScala3 {
         onRejected: js.UndefOr[js.Function1[scala.Any, S | js.Thenable[S]]] = js.undefined): js.Promise[S] = {
       ???
     }
+  }
+
+  object X_Issue13221 extends Y_Issue13221 {
+    object I {
+      def i = 1
+    }
+  }
+
+  abstract class Y_Issue13221 { self: X_Issue13221.type =>
+    import I._
+    def blah = i
   }
 }
 

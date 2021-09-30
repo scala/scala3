@@ -350,12 +350,18 @@ object Splicer {
 
     private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol)(implicit env: Env): List[Object] => Object = {
       val (inst, clazz) =
-        if (moduleClass.name.startsWith(str.REPL_SESSION_LINE))
-          (null, loadReplLineClass(moduleClass))
-        else {
-          val inst = loadModule(moduleClass)
-          (inst, inst.getClass)
-        }
+        try
+          if (moduleClass.name.startsWith(str.REPL_SESSION_LINE))
+            (null, loadReplLineClass(moduleClass))
+          else {
+            val inst = loadModule(moduleClass)
+            (inst, inst.getClass)
+          }
+        catch
+          case MissingClassDefinedInCurrentRun(sym)  if ctx.compilationUnit.isSuspendable =>
+            if (ctx.settings.XprintSuspension.value)
+              report.echo(i"suspension triggered by a dependency on $sym", pos)
+            ctx.compilationUnit.suspend() // this throws a SuspendException
 
       val name = fn.name.asTermName
       val method = getMethod(clazz, name, paramsSig(fn))
@@ -416,6 +422,10 @@ object Splicer {
         case _: NoSuchMethodException =>
           val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
           throw new StopInterpretation(msg, pos)
+        case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
+            if (ctx.settings.XprintSuspension.value)
+              report.echo(i"suspension triggered by a dependency on $sym", pos)
+            ctx.compilationUnit.suspend() // this throws a SuspendException
       }
 
     private def stopIfRuntimeException[T](thunk: => T, method: JLRMethod): T =

@@ -7,7 +7,7 @@ import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags
 import Symbols._, StdNames._, Trees._, Phases._, ContextOps._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
-import typer.{FrontEnd, Namer, Checking}
+import typer.{TyperPhase, Namer, Checking}
 import util.{Property, SourceFile, SourcePosition}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
@@ -783,7 +783,7 @@ object desugar {
         DefDef(
           className.toTermName, joinParams(constrTparams, defParamss),
           classTypeRef, creatorExpr)
-          .withMods(companionMods | mods.flags.toTermFlags & GivenOrImplicit | Synthetic | Final)
+          .withMods(companionMods | mods.flags.toTermFlags & GivenOrImplicit | Final)
           .withSpan(cdef.span) :: Nil
       }
 
@@ -809,7 +809,7 @@ object desugar {
             Nil
         }
       }
-      val classMods = if mods.is(Given) then mods &~ Given | Synthetic else mods
+      val classMods = if mods.is(Given) then mods | Synthetic else mods
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
@@ -1261,6 +1261,16 @@ object desugar {
       makeOp(left, right, Span(left.span.start, op.span.end, op.span.start))
   }
 
+  /** Translate throws type `A throws E1 | ... | En` to
+   *  $throws[... $throws[A, E1] ... , En].
+   */
+  def throws(tpt: Tree, op: Ident, excepts: Tree)(using Context): AppliedTypeTree = excepts match
+    case InfixOp(l, bar @ Ident(tpnme.raw.BAR), r) =>
+      throws(throws(tpt, op, l), bar, r)
+    case e =>
+      AppliedTypeTree(
+        TypeTree(defn.throwsAlias.typeRef).withSpan(op.span), tpt :: excepts :: Nil)
+
   /** Translate tuple expressions of arity <= 22
    *
    *     ()             ==>   ()
@@ -1412,7 +1422,7 @@ object desugar {
   def makeAnnotated(fullName: String, tree: Tree)(using Context): Annotated = {
     val parts = fullName.split('.')
     val ttree = typerPhase match {
-      case phase: FrontEnd if phase.stillToBeEntered(parts.last) =>
+      case phase: TyperPhase if phase.stillToBeEntered(parts.last) =>
         val prefix =
           parts.init.foldLeft(Ident(nme.ROOTPKG): Tree)((qual, name) =>
             Select(qual, name.toTermName))

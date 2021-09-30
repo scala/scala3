@@ -63,4 +63,24 @@ object FileDiff {
     }
   }
 
+  def checkAndDumpOrUpdate(sourceTitle: String, actualLines: Seq[String], checkFilePath: String): Boolean = {
+    val outFilePath = checkFilePath + ".out"
+    FileDiff.check(sourceTitle, actualLines, checkFilePath) match {
+      case Some(msg) if dotty.Properties.testsUpdateCheckfile =>
+        Files.deleteIfExists(Paths.get(outFilePath))
+        if actualLines.isEmpty
+          then Files.deleteIfExists(Paths.get(checkFilePath))
+          else FileDiff.dump(checkFilePath, actualLines)
+        println("Updated checkfile: " + checkFilePath)
+        true
+      case Some(msg) =>
+        FileDiff.dump(outFilePath, actualLines)
+        println(msg)
+        println(FileDiff.diffMessage(checkFilePath, outFilePath))
+        false
+      case _ =>
+        Files.deleteIfExists(Paths.get(outFilePath))
+        true
+    }
+  }
 }

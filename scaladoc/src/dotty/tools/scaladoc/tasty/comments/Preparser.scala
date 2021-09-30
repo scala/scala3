@@ -32,14 +32,16 @@ object Preparser {
       tags: Map[TagKey, List[String]],
       lastTagKey: Option[TagKey],
       remaining: List[String],
-      inCodeBlock: Boolean
-    ): PreparsedComment = remaining match {
+      inCodeBlock: Boolean,
+    )(using strippedLinesBeforeNo: Int = 0): PreparsedComment = remaining match {
       case CodeBlockStartRegex(before, marker, after) :: ls if !inCodeBlock =>
-        if (!before.trim.isEmpty && !after.trim.isEmpty)
+        if (!before.trim.isEmpty && !after.trim.isEmpty && marker == "```")
+          go(docBody, tags, lastTagKey, before :: (marker + after) :: ls, inCodeBlock = false)
+        else if (!before.trim.isEmpty && !after.trim.isEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: after :: ls, inCodeBlock = false)
         else if (!before.trim.isEmpty)
           go(docBody, tags, lastTagKey, before :: marker :: ls, inCodeBlock = false)
-        else if (!after.trim.isEmpty)
+        else if (!after.trim.isEmpty && marker != "```")
           go(docBody, tags, lastTagKey, marker :: after :: ls, inCodeBlock = true)
         else lastTagKey match {
           case Some(key) =>
@@ -50,7 +52,7 @@ object Preparser {
               }
             go(docBody, tags + (key -> value), lastTagKey, ls, inCodeBlock = true)
           case None =>
-            go(docBody append endOfLine append marker, tags, lastTagKey, ls, inCodeBlock = true)
+            go(docBody append endOfLine append (marker + after), tags, lastTagKey, ls, inCodeBlock = true)
         }
 
       case CodeBlockEndRegex(before, marker, after) :: ls =>
@@ -106,7 +108,7 @@ object Preparser {
       case line :: ls =>
         if docBody.length > 0 then docBody.append(endOfLine)
         docBody.append(line)
-        go(docBody, tags, lastTagKey, ls, inCodeBlock)
+        go(docBody, tags, lastTagKey, ls, inCodeBlock)(using strippedLinesBeforeNo + (if line.isEmpty && docBody.length == 0 then 1 else 0))
 
 
       case Nil =>
@@ -175,6 +177,7 @@ object Preparser {
           hideImplicitConversions = allTags(SimpleTagKey("hideImplicitConversion")),
           shortDescription        = allTags(SimpleTagKey("shortDescription")),
           syntax                  = allTags(SimpleTagKey("syntax")),
+          strippedLinesBeforeNo   = strippedLinesBeforeNo
         )
 
         cmt

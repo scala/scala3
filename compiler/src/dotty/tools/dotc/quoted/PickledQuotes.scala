@@ -11,7 +11,6 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
@@ -175,7 +174,7 @@ object PickledQuotes {
       positionWarnings.foreach(report.warning(_))
 
     val pickled = pickler.assembleParts()
-    quotePickling.println(s"**** pickled quote\n${TastyPrinter.show(pickled)}")
+    quotePickling.println(s"**** pickled quote\n${TastyPrinter.showContents(pickled, ctx.settings.color.value == "never")}")
     pickled
   }
 
@@ -196,7 +195,7 @@ object PickledQuotes {
           case pickled: String => TastyString.unpickle(pickled)
           case pickled: List[String] => TastyString.unpickle(pickled)
 
-        quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.show(bytes)}")
+        quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never")}")
 
         val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
         val unpickler = new DottyUnpickler(bytes, mode)

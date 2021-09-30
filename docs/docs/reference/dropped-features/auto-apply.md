@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Dropped: Auto-Application"
+type: section
+num: 83
+previous-page: /scala3/reference/dropped-features/symlits
+next-page: /scala3/reference/dropped-features/weak-conformance
 ---
 
 Previously an empty argument list `()` was implicitly inserted when

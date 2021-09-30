@@ -241,7 +241,7 @@ class Namer { typer: Typer =>
 
     tree match {
       case tree: TypeDef if tree.isClassDef =>
-        val flags = checkFlags(tree.mods.flags &~ Implicit)
+        val flags = checkFlags(tree.mods.flags)
         val name = checkNoConflict(tree.name, flags.is(Private), tree.span).asTypeName
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
@@ -425,7 +425,7 @@ class Namer { typer: Typer =>
    * is still missing its parents. Parents are set to Nil when completion starts and are
    * set to the actual parents later. If a superclass completes a subclass in one
    * of its parents, the parents of the superclass or some intervening class might
-   * not yet be set. This situation can be detected by asking for the baseType of Any - 
+   * not yet be set. This situation can be detected by asking for the baseType of Any -
    * if that type does not exist, one of the base classes of this class misses its parents.
    * If this situation arises, the computation of the superclass might be imprecise.
    * For instance, in i12722.scala, the superclass of `IPersonalCoinOps` is computed
@@ -691,7 +691,8 @@ class Namer { typer: Typer =>
               for moduleSym <- companionVals do
                 if moduleSym.is(Module) && !moduleSym.isDefinedInCurrentRun then
                   val companion =
-                    if needsConstructorProxies(classSym) then classConstructorCompanion(classSym.asClass)
+                    if needsConstructorProxies(classSym) then
+                      classConstructorCompanion(classSym.asClass)
                     else newModuleSymbol(
                       ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
                   enterSymbol(companion)
@@ -988,9 +989,12 @@ class Namer { typer: Typer =>
       val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
 
       def opaqueToBounds(info: Type): Type =
-        if sym.isOpaqueAlias && info.typeParams.nonEmpty && info.hkResult.typeParams.nonEmpty then
-          report.error(em"opaque type alias cannot have multiple type parameter lists", rhs.srcPos)
-        sym.opaqueToBounds(info, rhs1, tparamSyms)
+        if sym.isOpaqueAlias then
+          if info.typeParams.nonEmpty && info.hkResult.typeParams.nonEmpty then
+            report.error(em"opaque type alias cannot have multiple type parameter lists", rhs.srcPos)
+          sym.opaqueToBounds(info, rhs1, tparamSyms)
+        else
+          info
 
       if (isDerived) sym.info = unsafeInfo
       else {
@@ -1153,10 +1157,15 @@ class Namer { typer: Typer =>
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
         val nonContextual = mutable.HashSet(seen: _*)
+        val fromCaseClass = path.tpe.widen.classSymbols.exists(_.is(Case))
+        def isCaseClassSynthesized(mbr: Symbol) =
+          fromCaseClass && defn.caseClassSynthesized.contains(mbr)
         for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
-          if !mbr.symbol.isSuperAccessor then
+          if !mbr.symbol.isSuperAccessor && !isCaseClassSynthesized(mbr.symbol) then
             // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
             // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
+            // Symbols from base traits of case classes that will get synthesized implementations
+            // at PostTyper are also excluded.
             val alias = mbr.name.toTermName
             if mbr.symbol.is(Given) then
               if !seen.contains(alias) && mbr.matchesImportBound(givenBound) then
@@ -1696,16 +1705,7 @@ class Namer { typer: Typer =>
     // it would be erased to BoxedUnit.
     def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
-    // Approximate a type `tp` with a type that does not contain skolem types.
-    val deskolemize = new ApproximatingTypeMap {
-      def apply(tp: Type) = /*trace(i"deskolemize($tp) at $variance", show = true)*/
-        tp match {
-          case tp: SkolemType => range(defn.NothingType, atVariance(1)(apply(tp.info)))
-          case _ => mapOver(tp)
-        }
-    }
-
-    def cookedRhsType = deskolemize(dealiasIfUnit(rhsType))
+    def cookedRhsType = dealiasIfUnit(rhsType).deskolemized
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)

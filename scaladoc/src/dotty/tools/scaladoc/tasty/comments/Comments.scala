@@ -67,6 +67,7 @@ case class PreparsedComment(
   hideImplicitConversions: List[String],
   shortDescription:        List[String],
   syntax:                  List[String],
+  strippedLinesBeforeNo:   Int,
 )
 
 case class DokkaCommentBody(summary: Option[DocPart], body: DocPart)
@@ -78,7 +79,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
   protected def markupToDokkaCommentBody(t: T): DokkaCommentBody
   protected def filterEmpty(xs: List[String]): List[T]
   protected def filterEmpty(xs: SortedMap[String, String]): SortedMap[String, T]
-  protected def processSnippets(t: T): T
+  protected def processSnippets(t: T, preparsed: PreparsedComment): T
 
   lazy val snippetChecker = dctx.snippetChecker
 
@@ -128,23 +129,20 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
     (s: qctx.reflect.Symbol) => {
       val path = s.source.map(_.path)
       val pathBasedArg = dctx.snippetCompilerArgs.get(path)
-      val data = SnippetCompilerDataCollector[qctx.type](qctx).getSnippetCompilerData(s, s)
+      val scDataCollector = SnippetCompilerDataCollector[qctx.type](qctx)
+      val data = scDataCollector.getSnippetCompilerData(s, s)
+      val sourceFile = scDataCollector.getSourceFile(s)
       (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
-
-          snippetChecker.checkSnippet(str, Some(data), arg, lineOffset).collect {
-              case r: SnippetCompilationResult if !r.isSuccessful =>
-                val msg = s"In member ${s.name} (${s.dri.location}):\n${r.getSummary}"
-                report.error(msg)(using dctx.compilerContext)
-                r
-              case r => r
-          }
+          val res = snippetChecker.checkSnippet(str, Some(data), arg, lineOffset, sourceFile)
+          res.filter(r => !r.isSuccessful).foreach(_.reportMessages()(using compilerContext))
+          res
       }
     }
 
   final def parse(preparsed: PreparsedComment): Comment =
     val markup = stringToMarkup(preparsed.body)
-    val body = markupToDokkaCommentBody(processSnippets(markup))
+    val body = markupToDokkaCommentBody(processSnippets(markup, preparsed))
     Comment(
       body                    = body.body,
       short                   = body.summary,
@@ -196,8 +194,8 @@ class MarkdownCommentParser(repr: Repr)(using dctx: DocContext)
       .filterNot { case (_, v) => v.isEmpty }
       .mapValues(stringToMarkup).to(SortedMap)
 
-  def processSnippets(root: mdu.Node): mdu.Node =
-    FlexmarkSnippetProcessor.processSnippets(root, dctx.snippetCompilerArgs.debug, snippetCheckingFunc(owner))
+  def processSnippets(root: mdu.Node, preparsed: PreparsedComment): mdu.Node =
+    FlexmarkSnippetProcessor.processSnippets(root, Some(preparsed), snippetCheckingFunc(owner), withContext = true)
 }
 
 class WikiCommentParser(repr: Repr)(using DocContext)
@@ -213,7 +211,7 @@ class WikiCommentParser(repr: Repr)(using DocContext)
   private def flatten(b: wiki.Inline): String = b match
     case wiki.Text(t) => t
     case wiki.Italic(t) => flatten(t)
-    case wiki.Bold(t) =>flatten(t)
+    case wiki.Bold(t) => flatten(t)
     case wiki.Underline(t) => flatten(t)
     case wiki.Superscript(t) => flatten(t)
     case wiki.Subscript(t) => flatten(t)
@@ -252,6 +250,6 @@ class WikiCommentParser(repr: Repr)(using DocContext)
     xs.view.mapValues(stringToMarkup).to(SortedMap)
       .filterNot { case (_, v) => v.blocks.isEmpty }
 
-  def processSnippets(root: wiki.Body): wiki.Body =
+  def processSnippets(root: wiki.Body, preparsed: PreparsedComment): wiki.Body =
     // Currently not supported
     root

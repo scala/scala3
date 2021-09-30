@@ -180,6 +180,9 @@
 [submodule "community-build/community-projects/protoquill"]
 	path = community-build/community-projects/protoquill
 	url = https://github.com/dotty-staging/protoquill.git
+[submodule "community-build/community-projects/Monocle"]
+	path = community-build/community-projects/Monocle
+	url = https://github.com/dotty-staging/Monocle.git
 [submodule "community-build/community-projects/onnx-scala"]
 	path = community-build/community-projects/onnx-scala
 	url = https://github.com/dotty-staging/onnx-scala.git
@@ -204,3 +207,9 @@
 [submodule "community-build/community-projects/libretto"]
 	path = community-build/community-projects/libretto
 	url = https://github.com/dotty-staging/libretto.git
+[submodule "community-build/community-projects/jackson-module-scala"]
+	path = community-build/community-projects/jackson-module-scala
+	url = https://github.com/dotty-staging/jackson-module-scala.git
+[submodule "community-build/community-projects/scala-java8-compat"]
+	path = community-build/community-projects/scala-java8-compat
+	url = https://github.com/dotty-staging/scala-java8-compat.git

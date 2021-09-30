@@ -112,10 +112,13 @@ object Completion {
     val completer = new Completer(mode, prefix, pos)
 
     val completions = path match {
-        case Select(qual, _) :: _                              => completer.selectionCompletions(qual)
-        case Import(expr, _) :: _                              => completer.directMemberCompletions(expr)
-        case (_: untpd.ImportSelector) :: Import(expr, _) :: _ => completer.directMemberCompletions(expr)
-        case _                                                 => completer.scopeCompletions
+        // Ignore synthetic select from `This` because in code it was `Ident`
+        // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
+        case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic => completer.scopeCompletions
+        case Select(qual, _) :: _                                    => completer.selectionCompletions(qual)
+        case Import(expr, _) :: _                                    => completer.directMemberCompletions(expr)
+        case (_: untpd.ImportSelector) :: Import(expr, _) :: _       => completer.directMemberCompletions(expr)
+        case _                                                       => completer.scopeCompletions
       }
 
     val describedCompletions = describeCompletions(completions)
@@ -300,7 +303,8 @@ object Completion {
               case name: TermName if include(denot, name) => Some((denot, name))
               case _ => None
 
-        types.flatMap { tpe =>
+        types.flatMap { tp =>
+          val tpe = tp.widenExpr
           tpe.membersBasedOnFlags(required = ExtensionMethod, excluded = EmptyFlags)
             .collect { case DenotWithMatchingName(denot, name) => TermRef(tpe, denot.symbol) -> name }
         }
@@ -322,7 +326,7 @@ object Completion {
       val extMethodsFromImplicitScope = extractMemberExtensionMethods(implicitScopeCompanions)
 
       // 4. The reference is of the form r.m and the extension method is defined in some given instance in the implicit scope of the type of r.
-      val givensInImplicitScope = implicitScopeCompanions.flatMap(_.membersBasedOnFlags(required = Given, excluded = EmptyFlags)).map(_.info)
+      val givensInImplicitScope = implicitScopeCompanions.flatMap(_.membersBasedOnFlags(required = GivenVal, excluded = EmptyFlags)).map(_.info)
       val extMethodsFromGivensInImplicitScope = extractMemberExtensionMethods(givensInImplicitScope)
 
       val availableExtMethods = extMethodsFromGivensInImplicitScope ++ extMethodsFromImplicitScope ++ extMethodsFromGivensInScope ++ extMethodsInScope

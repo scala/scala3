@@ -3,6 +3,7 @@ package backend
 package jvm
 
 import scala.annotation.switch
+import scala.collection.mutable.SortedMap
 
 import scala.tools.asm
 import scala.tools.asm.{Handle, Label, Opcodes}
@@ -88,9 +89,23 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case Assign(lhs, rhs) =>
           val s = lhs.symbol
           val Local(tk, _, idx, _) = locals.getOrMakeLocal(s)
-          genLoad(rhs, tk)
-          lineNumber(tree)
-          bc.store(idx, tk)
+
+          rhs match {
+            case Apply(Select(larg: Ident, nme.ADD), Literal(x) :: Nil)
+            if larg.symbol == s && tk.isIntSizedType && x.isShortRange =>
+              lineNumber(tree)
+              bc.iinc(idx, x.intValue)
+
+            case Apply(Select(larg: Ident, nme.SUB), Literal(x) :: Nil)
+            if larg.symbol == s && tk.isIntSizedType && Constant(-x.intValue).isShortRange =>
+              lineNumber(tree)
+              bc.iinc(idx, -x.intValue)
+
+            case _ =>
+              genLoad(rhs, tk)
+              lineNumber(tree)
+              bc.store(idx, tk)
+          }
 
         case _ =>
           genLoad(tree, UNIT)
@@ -826,61 +841,170 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       generatedType
     }
 
-    /*
-     * A Match node contains one or more case clauses,
-     * each case clause lists one or more Int values to use as keys, and a code block.
-     * Except the "default" case clause which (if it exists) doesn't list any Int key.
-     *
-     * On a first pass over the case clauses, we flatten the keys and their targets (the latter represented with asm.Labels).
-     * That representation allows JCodeMethodV to emit a lookupswitch or a tableswitch.
-     *
-     * On a second pass, we emit the switch blocks, one for each different target.
+    /* A Match node contains one or more case clauses, each case clause lists one or more
+     * Int/String values to use as keys, and a code block. The exception is the "default" case
+     * clause which doesn't list any key (there is exactly one of these per match).
      */
     private def genMatch(tree: Match): BType = tree match {
       case Match(selector, cases) =>
       lineNumber(tree)
-      genLoad(selector, INT)
       val generatedType = tpeTK(tree)
-
-      var flatKeys: List[Int]       = Nil
-      var targets:  List[asm.Label] = Nil
-      var default:  asm.Label       = null
-      var switchBlocks: List[(asm.Label, Tree)] = Nil
-
-      // collect switch blocks and their keys, but don't emit yet any switch-block.
-      for (caze @ CaseDef(pat, guard, body) <- cases) {
-        assert(guard == tpd.EmptyTree, guard)
-        val switchBlockPoint = new asm.Label
-        switchBlocks ::= (switchBlockPoint, body)
-        pat match {
-          case Literal(value) =>
-            flatKeys ::= value.intValue
-            targets  ::= switchBlockPoint
-          case Ident(nme.WILDCARD) =>
-            assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
-            default = switchBlockPoint
-          case Alternative(alts) =>
-            alts foreach {
-              case Literal(value) =>
-                flatKeys ::= value.intValue
-                targets  ::= switchBlockPoint
-              case _ =>
-                abort(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
-            }
-          case _ =>
-            abort(s"Invalid pattern in Match node: $tree at: ${tree.span}")
-        }
-      }
-
-      bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default, MIN_SWITCH_DENSITY)
-
-      // emit switch-blocks.
       val postMatch = new asm.Label
-      for (sb <- switchBlocks.reverse) {
-        val (caseLabel, caseBody) = sb
-        markProgramPoint(caseLabel)
-        genLoad(caseBody, generatedType)
-        bc goTo postMatch
+
+      // Only two possible selector types exist in `Match` trees at this point: Int and String
+      if (tpeTK(selector) == INT) {
+
+        /* On a first pass over the case clauses, we flatten the keys and their
+         * targets (the latter represented with asm.Labels). That representation
+         * allows JCodeMethodV to emit a lookupswitch or a tableswitch.
+         *
+         * On a second pass, we emit the switch blocks, one for each different target.
+         */
+
+        var flatKeys: List[Int]       = Nil
+        var targets:  List[asm.Label] = Nil
+        var default:  asm.Label       = null
+        var switchBlocks: List[(asm.Label, Tree)] = Nil
+
+        genLoad(selector, INT)
+
+        // collect switch blocks and their keys, but don't emit yet any switch-block.
+        for (caze @ CaseDef(pat, guard, body) <- cases) {
+          assert(guard == tpd.EmptyTree, guard)
+          val switchBlockPoint = new asm.Label
+          switchBlocks ::= (switchBlockPoint, body)
+          pat match {
+            case Literal(value) =>
+              flatKeys ::= value.intValue
+              targets  ::= switchBlockPoint
+            case Ident(nme.WILDCARD) =>
+              assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
+              default = switchBlockPoint
+            case Alternative(alts) =>
+              alts foreach {
+                case Literal(value) =>
+                  flatKeys ::= value.intValue
+                  targets  ::= switchBlockPoint
+                case _ =>
+                  abort(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
+              }
+            case _ =>
+              abort(s"Invalid pattern in Match node: $tree at: ${tree.span}")
+          }
+        }
+
+        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default, MIN_SWITCH_DENSITY)
+
+        // emit switch-blocks.
+        for (sb <- switchBlocks.reverse) {
+          val (caseLabel, caseBody) = sb
+          markProgramPoint(caseLabel)
+          genLoad(caseBody, generatedType)
+          bc goTo postMatch
+        }
+      } else {
+
+        /* Since the JVM doesn't have a way to switch on a string, we  switch
+         * on the `hashCode` of the string then do an `equals` check (with a
+         * possible second set of jumps if blocks can be reach from multiple
+         * string alternatives).
+         *
+         * This mirrors the way that Java compiles `switch` on Strings.
+         */
+
+        var default:  asm.Label       = null
+        var indirectBlocks: List[(asm.Label, Tree)] = Nil
+
+        import scala.collection.mutable
+
+        // Cases grouped by their hashCode
+        val casesByHash = SortedMap.empty[Int, List[(String, Either[asm.Label, Tree])]]
+        var caseFallback: Tree = null
+
+        for (caze @ CaseDef(pat, guard, body) <- cases) {
+          assert(guard == tpd.EmptyTree, guard)
+          pat match {
+            case Literal(value) =>
+              val strValue = value.stringValue
+              casesByHash.updateWith(strValue.##) { existingCasesOpt =>
+                val newCase = (strValue, Right(body))
+                Some(newCase :: existingCasesOpt.getOrElse(Nil))
+              }
+            case Ident(nme.WILDCARD) =>
+              assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
+              default = new asm.Label
+              indirectBlocks ::= (default, body)
+            case Alternative(alts) =>
+              // We need an extra basic block since multiple strings can lead to this code
+              val indirectCaseGroupLabel = new asm.Label
+              indirectBlocks ::= (indirectCaseGroupLabel, body)
+              alts foreach {
+                case Literal(value) =>
+                  val strValue = value.stringValue
+                  casesByHash.updateWith(strValue.##) { existingCasesOpt =>
+                    val newCase = (strValue, Left(indirectCaseGroupLabel))
+                    Some(newCase :: existingCasesOpt.getOrElse(Nil))
+                  }
+                case _ =>
+                  abort(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
+              }
+
+            case _ =>
+              abort(s"Invalid pattern in Match node: $tree at: ${tree.span}")
+          }
+        }
+
+        // Organize the hashCode options into switch cases
+        var flatKeys: List[Int]       = Nil
+        var targets:  List[asm.Label] = Nil
+        var hashBlocks: List[(asm.Label, List[(String, Either[asm.Label, Tree])])] = Nil
+        for ((hashValue, hashCases) <- casesByHash) {
+          val switchBlockPoint = new asm.Label
+          hashBlocks ::= (switchBlockPoint, hashCases)
+          flatKeys ::= hashValue
+          targets  ::= switchBlockPoint
+        }
+
+        // Push the hashCode of the string (or `0` it is `null`) onto the stack and switch on it
+        genLoadIf(
+          If(
+            tree.selector.select(defn.Any_==).appliedTo(nullLiteral),
+            Literal(Constant(0)),
+            tree.selector.select(defn.Any_hashCode).appliedToNone
+          ),
+          INT
+        )
+        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default, MIN_SWITCH_DENSITY)
+
+        // emit blocks for each hash case
+        for ((hashLabel, caseAlternatives) <- hashBlocks.reverse) {
+          markProgramPoint(hashLabel)
+          for ((caseString, indirectLblOrBody) <- caseAlternatives) {
+            val comparison = if (caseString == null) defn.Any_== else defn.Any_equals
+            val condp = Literal(Constant(caseString)).select(defn.Any_==).appliedTo(tree.selector)
+            val keepGoing = new asm.Label
+            indirectLblOrBody match {
+              case Left(jump) =>
+                genCond(condp, jump, keepGoing, targetIfNoJump = keepGoing)
+
+              case Right(caseBody) =>
+                val thisCaseMatches = new asm.Label
+                genCond(condp, thisCaseMatches, keepGoing, targetIfNoJump = thisCaseMatches)
+                markProgramPoint(thisCaseMatches)
+                genLoad(caseBody, generatedType)
+                bc goTo postMatch
+            }
+            markProgramPoint(keepGoing)
+          }
+          bc goTo default
+        }
+
+        // emit blocks for common patterns
+        for ((caseLabel, caseBody) <- indirectBlocks.reverse) {
+          markProgramPoint(caseLabel)
+          genLoad(caseBody, generatedType)
+          bc goTo postMatch
+        }
       }
 
       markProgramPoint(postMatch)
@@ -1063,30 +1187,109 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
+    /* Generate string concatenation
+     *
+     * On JDK 8: create and append using `StringBuilder`
+     * On JDK 9+: use `invokedynamic` with `StringConcatFactory`
+     */
     def genStringConcat(tree: Tree): BType = {
       lineNumber(tree)
       liftStringConcat(tree) match {
-        // Optimization for expressions of the form "" + x.  We can avoid the StringBuilder.
+        // Optimization for expressions of the form "" + x
         case List(Literal(Constant("")), arg) =>
           genLoad(arg, ObjectReference)
           genCallMethod(defn.String_valueOf_Object, InvokeStyle.Static)
 
         case concatenations =>
-          bc.genStartConcat
-          for (elem <- concatenations) {
-            val loadedElem = elem match {
+          val concatArguments = concatenations.view
+            .filter {
+              case Literal(Constant("")) => false // empty strings are no-ops in concatenation
+              case _ => true
+            }
+            .map {
               case Apply(boxOp, value :: Nil) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
-
-              case _ => elem
+              case other => other
             }
-            val elemType = tpeTK(loadedElem)
-            genLoad(loadedElem, elemType)
-            bc.genConcat(elemType)
+            .toList
+
+          // `StringConcatFactory` only got added in JDK 9, so use `StringBuilder` for lower
+          if (classfileVersion < asm.Opcodes.V9) {
+
+            // Estimate capacity needed for the string builder
+            val approxBuilderSize = concatArguments.view.map {
+              case Literal(Constant(s: String)) => s.length
+              case Literal(c @ Constant(_)) if c.isNonUnitAnyVal => String.valueOf(c).length
+              case _ => 0
+            }.sum
+            bc.genNewStringBuilder(approxBuilderSize)
+
+            for (elem <- concatArguments) {
+              val elemType = tpeTK(elem)
+              genLoad(elem, elemType)
+              bc.genStringBuilderAppend(elemType)
+            }
+            bc.genStringBuilderEnd
+          } else {
+
+            /* `StringConcatFactory#makeConcatWithConstants` accepts max 200 argument slots. If
+             * the string concatenation is longer (unlikely), we spill into multiple calls
+             */
+            val MaxIndySlots = 200
+            val TagArg = '\u0001'    // indicates a hole (in the recipe string) for an argument
+            val TagConst = '\u0002'  // indicates a hole (in the recipe string) for a constant
+
+            val recipe = new StringBuilder()
+            val argTypes = Seq.newBuilder[asm.Type]
+            val constVals = Seq.newBuilder[String]
+            var totalArgSlots = 0
+            var countConcats = 1     // ie. 1 + how many times we spilled
+
+            for (elem <- concatArguments) {
+              val tpe = tpeTK(elem)
+              val elemSlots = tpe.size
+
+              // Unlikely spill case
+              if (totalArgSlots + elemSlots >= MaxIndySlots) {
+                bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
+                countConcats += 1
+                totalArgSlots = 0
+                recipe.setLength(0)
+                argTypes.clear()
+                constVals.clear()
+              }
+
+              elem match {
+                case Literal(Constant(s: String)) =>
+                  if (s.contains(TagArg) || s.contains(TagConst)) {
+                    totalArgSlots += elemSlots
+                    recipe.append(TagConst)
+                    constVals += s
+                  } else {
+                    recipe.append(s)
+                  }
+
+                case other =>
+                  totalArgSlots += elemSlots
+                  recipe.append(TagArg)
+                  val tpe = tpeTK(elem)
+                  argTypes += tpe.toASMType
+                  genLoad(elem, tpe)
+              }
+            }
+            bc.genIndyStringConcat(recipe.toString, argTypes.result(), constVals.result())
+
+            // If we spilled, generate one final concat
+            if (countConcats > 1) {
+              bc.genIndyStringConcat(
+                TagArg.toString * countConcats,
+                Seq.fill(countConcats)(StringRef.toASMType),
+                Seq.empty
+              )
+            }
           }
-          bc.genEndConcat
       }
       StringRef
     }

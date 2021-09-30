@@ -7,7 +7,7 @@ class A(b: B, x: Int) {
     Inner().foo()
 
     val f = () => new A(b, 3)
-    f() // ok
+    f()
   }
 }
 

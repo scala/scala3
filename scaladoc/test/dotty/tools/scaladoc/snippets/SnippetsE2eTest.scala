@@ -18,7 +18,7 @@ import collection.JavaConverters._
 
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 
-abstract class SnippetsE2eTest(testName: String, flag: SCFlags, debug: Boolean) extends ScaladocTest(testName):
+abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends ScaladocTest(testName):
 
   import SnippetsE2eTest._
 
@@ -29,16 +29,13 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags, debug: Boolean) 
   def report(str: String) = s"""|In test $testName:
                                 |$str""".stripMargin
 
-  println(BuildInfo.test_testcasesOutputDir.map(_ + s"/tests/$testName"))
-
   override def args = Scaladoc.Args(
       name = "test",
       tastyDirs = BuildInfo.test_testcasesOutputDir.map(java.io.File(_)).toSeq,
       tastyFiles = tastyFiles(testName),
       output = getTempDir().getRoot,
       projectVersion = Some("1.0"),
-      snippetCompiler = List(s"${BuildInfo.test_testcasesSourceRoot}/tests=${flag.flagName}"),
-      snippetCompilerDebug = debug
+      snippetCompiler = List(s"${BuildInfo.test_testcasesSourceRoot}/tests=${flag.flagName}")
     )
 
   override def withModule(op: DocContext ?=> Module => Unit) =
@@ -81,23 +78,22 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags, debug: Boolean) 
       case m @ SnippetCompilerMessage(Some(_), _, _) => m
     }.toList
     def isSamePosition(msg: Message, cmsg: SnippetCompilerMessage): Boolean =
-      cmsg.level == msg.level && cmsg.position.get.line == msg.offset.line && cmsg.position.get.column == msg.offset.column
+      cmsg.level == msg.level && (cmsg.position.get.srcPos.line + 1) == msg.offset.line && cmsg.position.get.srcPos.column == msg.offset.column
 
     def checkRelativeLines(msg: Message, cmsg: SnippetCompilerMessage): Seq[String] =
       val pos = cmsg.position.get
-      if debug then {
-        if !(pos.relativeLine == pos.line - ws.outerLineOffset + ws.innerLineOffset) then Seq(
-          s"Expected ${msg.level.text} message at relative line: ${pos.line - ws.outerLineOffset + ws.innerLineOffset} " +
-            s"but found at ${pos.relativeLine}"
-        ) else Nil
-      } else {
-        if !(pos.relativeLine == pos.line - ws.outerLineOffset) then Seq(
-          s"Expected ${msg.level.text} message at relative line: ${pos.line - ws.outerLineOffset} " +
-            s"but found at ${pos.relativeLine}"
-        ) else Nil
-      }
+      if !(pos.relativeLine == pos.srcPos.line + ws.innerLineOffset - ws.outerLineOffset + 1) then Seq(
+        s"Expected ${msg.level.text} message at relative line: ${pos.srcPos.line + ws.innerLineOffset - ws.outerLineOffset + 1} " +
+          s"but found at ${pos.relativeLine}"
+      ) else Nil
 
-    val result = messages.flatMap { msg =>
+    val mResult = compilationMessagesWithPos.flatMap { cmsg =>
+      messages
+        .find(msg => isSamePosition(msg, cmsg))
+        .fold(Seq(s"Unexpected compilation message: ${cmsg.message} at relative line: ${cmsg.position.fold(-1)(_.relativeLine)}"))(_ => Seq())
+    }
+
+    val result = mResult ++ messages.flatMap { msg =>
       compilationMessagesWithPos
         .find(cmsg => isSamePosition(msg, cmsg))
         .fold(Seq(s"Expected ${msg.level.text} message at ${msg.offset.line}:${msg.offset.column}.")) { resp =>
@@ -107,7 +103,7 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags, debug: Boolean) 
 
     if !result.isEmpty then {
       val errors = result.mkString("\n")
-      val foundMessages = compilationMessages.map(m => s"${m.level} at ${m.position.get.line}:${m.position.get.column}").mkString("\n")
+      val foundMessages = compilationMessages.map(m => s"${m.level} at ${m.position.get.srcPos.line}:${m.position.get.srcPos.column}").mkString("\n")
       throw AssertionError(Seq("Errors:", errors,"Found:", foundMessages).mkString("\n", "\n", "\n"))
     }
   }

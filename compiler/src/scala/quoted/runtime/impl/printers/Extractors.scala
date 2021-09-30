@@ -72,10 +72,14 @@ object Extractors {
     def result(): String = sb.result()
 
     def visitTree(x: Tree): this.type = x match {
-      case Ident(name) =>
-        this += "Ident(\"" += name += "\")"
-      case Select(qualifier, name) =>
-        this += "Select(" += qualifier += ", \"" += name += "\")"
+      case tree: Ref =>
+        tree match
+          case Wildcard() =>
+            this += "Wildcard()"
+          case Ident(name) =>
+            this += "Ident(\"" += name += "\")"
+          case Select(qualifier, name) =>
+            this += "Select(" += qualifier += ", \"" += name += "\")"
       case This(qual) =>
         this += "This(" += qual += ")"
       case Super(qual, mix) =>
@@ -172,6 +176,8 @@ object Extractors {
         this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
       case Alternatives(patterns) =>
         this += "Alternatives(" ++= patterns += ")"
+      case TypedOrTest(tree, tpt) =>
+        this += "TypedOrTest(" += tree += ", " += tpt += ")"
     }
 
     def visitConstant(x: Constant): this.type = x match {
@@ -232,6 +238,8 @@ object Extractors {
         this += "TypeBounds(" += lo += ", " += hi += ")"
       case NoPrefix() =>
         this += "NoPrefix()"
+      case MatchCase(pat, rhs) =>
+        this += "MatchCase(" += pat += ", " += rhs += ")"
     }
 
     def visitSignature(sig: Signature): this.type = {

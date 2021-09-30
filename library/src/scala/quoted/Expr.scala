@@ -40,7 +40,7 @@ object Expr {
    *  Otherwise returns `None`.
    *
    *  Usage:
-   *  ```scala
+   *  ```scala sc:nocompile
    *  case '{ ... ${expr @ Expr(value)}: T ...} =>
    *    // expr: Expr[T]
    *    // value: T

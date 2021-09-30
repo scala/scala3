@@ -1,0 +1,2 @@
+scala> scala.compiletime.codeOf(1+2)
+val res0: String = 1.+(2)

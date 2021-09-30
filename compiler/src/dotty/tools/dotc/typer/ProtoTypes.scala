@@ -376,6 +376,7 @@ object ProtoTypes {
     def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree = sameTree)(using Context): List[Tree] =
       if state.typedArgs.size == args.length then state.typedArgs
       else
+        val passedCtx = ctx
         val passedTyperState = ctx.typerState
         inContext(protoCtx.withUncommittedTyperState) {
           val protoTyperState = ctx.typerState
@@ -393,7 +394,10 @@ object ProtoTypes {
             // `protoTyperState` committable we must ensure that it does not
             // contain any type variable which don't already exist in the passed
             // TyperState. This is achieved by instantiating any such type
-            // variable.
+            // variable. NOTE: this does not suffice to discard type variables
+            // in ancestors of `protoTyperState`, if this situation ever
+            // comes up, an assertion in TyperState will trigger and this code
+            // will need to be generalized.
             if protoTyperState.isCommittable then
               val passedConstraint = passedTyperState.constraint
               val newLambdas = newConstraint.domainLambdas.filter(tl =>
@@ -409,8 +413,7 @@ object ProtoTypes {
                   tvar.instantiate(fromBelow = false)
                 case _ =>
               }
-
-            passedTyperState.mergeConstraintWith(protoTyperState)
+            passedTyperState.mergeConstraintWith(protoTyperState)(using passedCtx)
           end if
           args1
         }
@@ -822,6 +825,17 @@ object ProtoTypes {
       tp.derivedViewProto(
           wildApprox(tp.argType, theMap, seen, internal),
           wildApprox(tp.resultType, theMap, seen, internal))
+    case tp: FunProto =>
+      val args = tp.args.mapconserve(arg =>
+        val argTp = tp.typeOfArg(arg) match
+          case NoType => WildcardType
+          case tp => wildApprox(tp, theMap, seen, internal)
+        arg.withType(argTp))
+      val resTp = wildApprox(tp.resultType, theMap, seen, internal)
+      if (args eq tp.args) && (resTp eq tp.resultType) then
+        tp
+      else
+        FunProtoTyped(args, resTp)(ctx.typer, tp.applyKind)
     case tp: IgnoredProto =>
       WildcardType
     case  _: ThisType | _: BoundType => // default case, inlined for speed

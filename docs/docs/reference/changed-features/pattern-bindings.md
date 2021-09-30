@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Pattern Bindings"
+type: section
+num: 64
+previous-page: /scala3/reference/changed-features/vararg-splices
+next-page: /scala3/reference/changed-features/pattern-matching
 ---
 
 In Scala 2, pattern bindings in `val` definitions and `for` expressions are

@@ -1,24 +1,25 @@
 scala> xml"
--- Error:
+-- Error: ----------------------------------------------------------------------
 1 | xml"
   |    ^
   |    unclosed string literal
 scala> xml""
--- Error:
+-- [E008] Not Found Error: -----------------------------------------------------
 1 | xml""
   | ^^^^^
   | value xml is not a member of StringContext
+1 error found
 scala> xml"""
--- Error:
+-- Error: ----------------------------------------------------------------------
 1 | xml"""
   |    ^
   |    unclosed multi-line string literal
--- Error:
+-- Error: ----------------------------------------------------------------------
 1 | xml"""
   |       ^
   |       unclosed multi-line string literal
 scala> s"
--- Error:
+-- Error: ----------------------------------------------------------------------
 1 | s"
   |  ^
   |  unclosed string literal

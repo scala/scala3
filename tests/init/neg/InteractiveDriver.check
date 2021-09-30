@@ -1,5 +1,0 @@
--- Error: tests/init/neg/InteractiveDriver.scala:22:71 -----------------------------------------------------------------
-22 |    val l2: Seq[C[?]] = l.collect{ case x: InteractiveDriver[?] => h(x) } // error
-   |                                                                       ^
-   |Calling the external method constructor $anon may cause initialization errors. Calling trace:
-   | -> val l2: Seq[C[?]] = l.collect{ case x: InteractiveDriver[?] => h(x) } // error	[ InteractiveDriver.scala:22 ]

@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Opaque Type Aliases"
+type: section
+num: 39
+previous-page: /scala3/reference/other-new-features/export
+next-page: /scala3/reference/other-new-features/open-classes
 ---
 
 Opaque types aliases provide type abstraction without any overhead. Example:
@@ -163,4 +166,4 @@ l1.mul(x, z) // error: found l2.Logarithm, required l1.Logarithm
 ```
 In general, one can think of an opaque type as being only transparent in the scope of `private[this]`.
 
-[More details](opaques-details.md)
+[More details](opaques-details.html)

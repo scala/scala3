@@ -10,6 +10,8 @@ import scala.jdk.CollectionConverters._
  */
 class JarArchive private (root: Directory) extends PlainDirectory(root) {
   def close(): Unit = jpath.getFileSystem().close()
+  def allFileNames(): Iterator[String] = 
+    java.nio.file.Files.walk(jpath).iterator().asScala.map(_.toString)
 }
 
 object JarArchive {

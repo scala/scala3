@@ -9,7 +9,7 @@ object AnObject/*<-_empty_::AnObject.*/ {
   "".substring/*->java::lang::String#substring().*/(1)
   "".substring/*->java::lang::String#substring(+1).*/(1, 2)
 
-  List/*->scala::package.List.*//*->scala::collection::IterableFactory#apply().*/(1, 2)
+  List/*->scala::package.List.*/(1, 2)
   List/*->scala::package.List.*/.apply/*->scala::collection::IterableFactory#apply().*/()
   List/*->scala::package.List.*/.`apply`/*->scala::collection::IterableFactory#apply().*/()
   println/*->scala::Predef.println(+1).*/(1 +/*->scala::Int#`+`(+4).*/ 2)

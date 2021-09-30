@@ -63,9 +63,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   private def initSymbols(using Context) =
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
-      myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual,
-        defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement,
-        defn.Product_productElementName)
+      myCaseSymbols = defn.caseClassSynthesized
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myEnumValueSymbols = List(defn.Product_productPrefix)
       myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString
@@ -525,7 +523,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))
         }
-      Match(param, cases)
+      Match(param.annotated(New(defn.UncheckedAnnot.typeRef, Nil)), cases)
     }
 
   /** - If `impl` is the companion of a generic sum, add `deriving.Mirror.Sum` parent

@@ -13,10 +13,12 @@ class Structural {
   def s1: { val x: Int } = ???
   def s2: { val x: Int } = new { val x: Int = ??? }
   def s3: { def m(x: Int): Int } = new { def m(x: Int): Int = ??? }
+  def s4(a: Int): { val x: Int } = ???
 }
 
 class Wildcards {
   def e1: List[_] = ???
+  def e2: List[_ <: Int] = ???
 }
 
 object Test {
@@ -39,4 +41,10 @@ object Test {
         ()
     }
   }
+}
+
+
+// Curried Type Application
+class HKClass[F <: [T] =>> [U] =>> (U, T)] {
+  def foo[T,U](x: F[T][U]): String = x.toString()
 }

@@ -12,32 +12,30 @@ import Diagnostic.{ Error, ConditionalWarning }
 class ConsoleReporter(
   reader: BufferedReader = Console.in,
   writer: PrintWriter = new PrintWriter(Console.err, true)
-) extends AbstractReporter {
+) extends ConsoleReporter.AbstractConsoleReporter {
+  override def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
+  override def flush()(using Context): Unit    = writer.flush()
 
-  import Diagnostic._
-
-  /** Prints the message. */
-  def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
-
-  /** Prints the message with the given position indication. */
-  def doReport(dia: Diagnostic)(using Context): Unit = {
-    val didPrint = dia match {
-      case dia: Error =>
-        printMessage(messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia)))
-        if (ctx.settings.Xprompt.value) Reporter.displayPrompt(reader, writer)
-        true
-      case dia: ConditionalWarning if !dia.enablingOption.value =>
-        false
-      case dia =>
-        printMessage(messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia)))
-        true
-    }
-
-    if (didPrint && shouldExplain(dia))
-      printMessage(explanation(dia.msg))
-    else if (didPrint && dia.msg.canExplain)
-      printMessage("\nlonger explanation available when compiling with `-explain`")
+  override def doReport(dia: Diagnostic)(using Context): Unit = {
+    super.doReport(dia)
+    dia match
+      case dia: Error if ctx.settings.Xprompt.value => Reporter.displayPrompt(reader, writer)
+      case _                                        =>
   }
+}
 
-  override def flush()(using Context): Unit = { writer.flush() }
+object ConsoleReporter {
+  abstract class AbstractConsoleReporter extends AbstractReporter {
+    /** Prints the message. */
+    def printMessage(msg: String): Unit
+
+    /** Prints the message with the given position indication. */
+    def doReport(dia: Diagnostic)(using Context): Unit = {
+      printMessage(messageAndPos(dia))
+      if Diagnostic.shouldExplain(dia) then
+        printMessage(explanation(dia.msg))
+      else if dia.msg.canExplain then
+        printMessage("\nlonger explanation available when compiling with `-explain`")
+    }
+  }
 }

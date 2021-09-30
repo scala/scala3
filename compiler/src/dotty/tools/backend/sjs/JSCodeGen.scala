@@ -104,6 +104,17 @@ class JSCodeGen()(using genCtx: Context) {
     }
   }
 
+  private def withPerMethodBodyState[A](methodSym: Symbol)(body: => A): A = {
+    withScopedVars(
+        currentMethodSym := methodSym,
+        thisLocalVarIdent := None,
+        isModuleInitialized := new ScopedVar.VarBox(false),
+        undefinedDefaultParams := mutable.Set.empty,
+    ) {
+      body
+    }
+  }
+
   private def acquireContextualJSClassValue[A](f: Option[js.Tree] => A): A = {
     val jsClassValue = contextualJSClassValue.get
     withScopedVars(
@@ -186,6 +197,23 @@ class JSCodeGen()(using genCtx: Context) {
       }
     }
     val allTypeDefs = collectTypeDefs(cunit.tpdTree)
+
+    /* #13221 Set JavaStatic on all the Module fields of static module classes.
+     * This is necessary for `desugarIdent` not to crash in some obscure
+     * scenarios.
+     *
+     * !!! Part of this logic is duplicated in BCodeSkelBuilder.genPlainClass
+     *
+     * However, here we only do this for Module fields, not all fields.
+     */
+    for (typeDef <- allTypeDefs) {
+      if (typeDef.symbol.is(ModuleClass)) {
+        typeDef.symbol.info.decls.foreach { f =>
+          if (f.isField && f.is(Module))
+            f.setFlag(JavaStatic)
+        }
+      }
+    }
 
     val (anonJSClassTypeDefs, otherTypeDefs) =
       allTypeDefs.partition(td => td.symbol.isAnonymousClass && td.symbol.isJSType)
@@ -456,6 +484,13 @@ class JSCodeGen()(using genCtx: Context) {
         i"genNonNativeJSClass() must be called only for non-native JS classes: $sym")
     assert(sym.superClass != NoSymbol, sym)
 
+    if (hasDefaultCtorArgsAndJSModule(sym)) {
+      report.error(
+          "Implementation restriction: " +
+          "constructors of non-native JS classes cannot have default parameters if their companion module is JS native.",
+          td)
+    }
+
     val classIdent = encodeClassNameIdent(sym)
     val originalName = originalNameOfClass(sym)
 
@@ -522,14 +557,25 @@ class JSCodeGen()(using genCtx: Context) {
 
     val topLevelExports = jsExportsGen.genTopLevelExports(sym)
 
-    val (jsClassCaptures, generatedConstructor) =
-      genJSClassCapturesAndConstructor(sym, constructorTrees.toList)
+    val (generatedConstructor, jsClassCaptures) = withNewLocalNameScope {
+      val isNested = sym.isNestedJSClass
 
-    /* If there is one, the JS super class value is always the first JS class
-     * capture. This is a JSCodeGen-specific invariant (the IR does not rely
-     * on this) enforced in genJSClassCapturesAndConstructor.
-     */
-    val jsSuperClass = jsClassCaptures.map(_.head.ref)
+      if (isNested)
+        localNames.reserveLocalName(JSSuperClassParamName)
+
+      val (captures, ctor) = genJSClassCapturesAndConstructor(constructorTrees.toList)
+
+      val jsClassCaptures = if (isNested) {
+        val superParam = js.ParamDef(js.LocalIdent(JSSuperClassParamName),
+            NoOriginalName, jstpe.AnyType, mutable = false)
+        Some(superParam :: captures)
+      } else {
+        assert(captures.isEmpty, s"found non nested JS class with captures $captures at $pos")
+        None
+      }
+
+      (ctor, jsClassCaptures)
+    }
 
     // Generate fields (and add to methods + ctors)
     val generatedMembers = {
@@ -555,7 +601,7 @@ class JSCodeGen()(using genCtx: Context) {
         jsClassCaptures,
         Some(encodeClassNameIdent(sym.superClass)),
         genClassInterfaces(sym, forJSClass = true),
-        jsSuperClass,
+        jsSuperClass = jsClassCaptures.map(_.head.ref),
         None,
         hashedMemberDefs,
         topLevelExports)(
@@ -960,47 +1006,361 @@ class JSCodeGen()(using genCtx: Context) {
 
   // Constructor of a non-native JS class ------------------------------------
 
-  def genJSClassCapturesAndConstructor(classSym: Symbol,
-      constructorTrees: List[DefDef]): (Option[List[js.ParamDef]], js.JSMethodDef) = {
-    implicit val pos = classSym.span
+  def genJSClassCapturesAndConstructor(constructorTrees: List[DefDef])(
+      implicit pos: SourcePosition): (List[js.ParamDef], js.JSMethodDef) = {
+    /* We need to merge all Scala constructors into a single one because the
+     * IR, like JavaScript, only allows a single one.
+     *
+     * We do this by applying:
+     * 1. Applying runtime type based dispatch, just like exports.
+     * 2. Splitting secondary ctors into parts before and after the `this` call.
+     * 3. Topo-sorting all constructor statements and including/excluding
+     *    them based on the overload that was chosen.
+     */
 
-    if (hasDefaultCtorArgsAndJSModule(classSym)) {
-      report.error(
-          "Implementation restriction: " +
-          "constructors of non-native JS classes cannot have default parameters if their companion module is JS native.",
-          classSym.srcPos)
-      val ctorDef = js.JSMethodDef(js.MemberFlags.empty,
-          js.StringLiteral("constructor"), Nil, None, js.Skip())(
-          OptimizerHints.empty, None)
-      (None, ctorDef)
-    } else {
-      withNewLocalNameScope {
-        localNames.reserveLocalName(JSSuperClassParamName)
+    val (primaryTree :: Nil, secondaryTrees) =
+      constructorTrees.partition(_.symbol.isPrimaryConstructor)
 
-        val ctors: List[js.MethodDef] = constructorTrees.flatMap { tree =>
-          genMethodWithCurrentLocalNameScope(tree)
-        }
+    val primaryCtor = genPrimaryJSClassCtor(primaryTree)
+    val secondaryCtors = secondaryTrees.map(genSecondaryJSClassCtor(_))
 
-        val (captureParams, dispatch) =
-          jsExportsGen.genJSConstructorDispatch(constructorTrees.map(_.symbol))
+    // VarDefs for the parameters of all constructors.
+    val paramVarDefs = for {
+      vparam <- constructorTrees.flatMap(_.paramss.flatten)
+    } yield {
+      val sym = vparam.symbol
+      val tpe = toIRType(sym.info)
+      js.VarDef(encodeLocalSym(sym), originalNameOfLocal(sym), tpe, mutable = true, jstpe.zeroOf(tpe))(vparam.span)
+    }
 
-        /* Ensure that the first JS class capture is a reference to the JS super class value.
-         * genNonNativeJSClass and genNewAnonJSClass rely on this.
-         */
-        val captureParamsWithJSSuperClass = captureParams.map { params =>
-          val jsSuperClassParam = js.ParamDef(
-              js.LocalIdent(JSSuperClassParamName), NoOriginalName,
-              jstpe.AnyType, mutable = false)
-          jsSuperClassParam :: params
-        }
+    /* organize constructors in a called-by tree
+     * (the implicit root is the primary constructor)
+     */
+    val ctorTree = {
+      val ctorToChildren = secondaryCtors
+        .groupBy(_.targetCtor)
+        .withDefaultValue(Nil)
 
-        val ctorDef = JSConstructorGen.buildJSConstructorDef(dispatch, ctors, freshLocalIdent("overload")) {
-          msg => report.error(msg, classSym.srcPos)
-        }
+      /* when constructing the call-by tree, we use pre-order traversal to
+       * assign overload numbers.
+       * this puts all descendants of a ctor in a range of overloads numbers.
+       *
+       * this property is useful, later, when we need to make statements
+       * conditional based on the chosen overload.
+       */
+      var nextOverloadNum = 0
+      def subTree[T <: JSCtor](ctor: T): ConstructorTree[T] = {
+        val overloadNum = nextOverloadNum
+        nextOverloadNum += 1
+        val subtrees = ctorToChildren(ctor.sym).map(subTree(_))
+        new ConstructorTree(overloadNum, ctor, subtrees)
+      }
 
-        (captureParamsWithJSSuperClass, ctorDef)
+      subTree(primaryCtor)
+    }
+
+    /* prepare overload dispatch for all constructors.
+     * as a side-product, we retrieve the capture parameters.
+     */
+    val (exports, jsClassCaptures) = {
+      val exports = List.newBuilder[jsExportsGen.Exported]
+      val jsClassCaptures = List.newBuilder[js.ParamDef]
+
+      def add(tree: ConstructorTree[_ <: JSCtor]): Unit = {
+        val (e, c) = genJSClassCtorDispatch(tree.ctor.sym,
+            tree.ctor.paramsAndInfo, tree.overloadNum)
+        exports += e
+        jsClassCaptures ++= c
+        tree.subCtors.foreach(add(_))
+      }
+
+      add(ctorTree)
+
+      (exports.result(), jsClassCaptures.result())
+    }
+
+    val (formalArgs, restParam, overloadDispatchBody) =
+      jsExportsGen.genOverloadDispatch(JSName.Literal("constructor"), exports, jstpe.IntType)
+
+    val overloadVar = js.VarDef(freshLocalIdent("overload"), NoOriginalName,
+        jstpe.IntType, mutable = false, overloadDispatchBody)
+
+    val ctorStats = genJSClassCtorStats(overloadVar.ref, ctorTree)
+
+    val constructorBody = js.Block(
+        paramVarDefs ::: List(overloadVar, ctorStats, js.Undefined()))
+
+    val constructorDef = js.JSMethodDef(
+        js.MemberFlags.empty,
+        js.StringLiteral("constructor"),
+        formalArgs, restParam, constructorBody)(OptimizerHints.empty, None)
+
+    (jsClassCaptures, constructorDef)
+  }
+
+  private def genPrimaryJSClassCtor(dd: DefDef): PrimaryJSCtor = {
+    val sym = dd.symbol
+    val Block(stats, _) = dd.rhs
+    assert(sym.isPrimaryConstructor, s"called with non-primary ctor: $sym")
+
+    var jsSuperCall: Option[js.JSSuperConstructorCall] = None
+    val jsStats = List.newBuilder[js.Tree]
+
+    /* Move all statements after the super constructor call since JS
+     * cannot access `this` before the super constructor call.
+     *
+     * dotc inserts statements before the super constructor call for param
+     * accessor initializers (including val's and var's declared in the
+     * params). We move those after the super constructor call, and are
+     * therefore executed later than for a Scala class.
+     */
+    withPerMethodBodyState(sym) {
+      stats.foreach {
+        case tree @ Apply(fun @ Select(Super(This(_), _), _), args)
+            if fun.symbol.isClassConstructor =>
+          assert(jsSuperCall.isEmpty, s"Found 2 JS Super calls at ${dd.sourcePos}")
+          implicit val pos: Position = tree.span
+          jsSuperCall = Some(js.JSSuperConstructorCall(genActualJSArgs(fun.symbol, args)))
+
+        case stat =>
+          val jsStat = genStat(stat)
+          assert(jsSuperCall.isDefined || !jsStat.isInstanceOf[js.VarDef],
+              "Trying to move a local VarDef after the super constructor call of a non-native JS class at " +
+              dd.sourcePos)
+          jsStats += jsStat
       }
     }
+
+    assert(jsSuperCall.isDefined,
+        s"Did not find Super call in primary JS construtor at ${dd.sourcePos}")
+
+    new PrimaryJSCtor(sym, genParamsAndInfo(sym, dd.paramss), jsSuperCall.get :: jsStats.result())
+  }
+
+  private def genSecondaryJSClassCtor(dd: DefDef): SplitSecondaryJSCtor = {
+    val sym = dd.symbol
+    assert(!sym.isPrimaryConstructor, s"called with primary ctor $sym")
+
+    def flattenBlocks(t: Tree): List[Tree] = t match {
+      case Block(stats, expr) => (stats :+ expr).flatMap(flattenBlocks)
+      case _                  => t :: Nil
+    }
+    val stats = flattenBlocks(dd.rhs)
+
+    val beforeThisCall = List.newBuilder[js.Tree]
+    var thisCall: Option[(Symbol, List[js.Tree])] = None
+    val afterThisCall = List.newBuilder[js.Tree]
+
+    withPerMethodBodyState(sym) {
+      stats.foreach {
+        case tree @ Apply(fun @ Select(This(_), _), args)
+            if fun.symbol.isClassConstructor =>
+          assert(thisCall.isEmpty,
+              s"duplicate this() call in secondary JS constructor at ${dd.sourcePos}")
+
+          implicit val pos: Position = tree.span
+          val sym = fun.symbol
+          thisCall = Some((sym, genActualArgs(sym, args)))
+
+        case stat =>
+          val jsStat = genStat(stat)
+          if (thisCall.isEmpty)
+            beforeThisCall += jsStat
+          else
+            afterThisCall += jsStat
+      }
+    }
+
+    assert(thisCall.isDefined,
+        i"could not find the this() call in secondary JS constructor at ${dd.sourcePos}:\n${stats.map(_.show).mkString("\n")}")
+    val Some((targetCtor, ctorArgs)) = thisCall
+
+    new SplitSecondaryJSCtor(sym, genParamsAndInfo(sym, dd.paramss),
+        beforeThisCall.result(), targetCtor, ctorArgs, afterThisCall.result())
+  }
+
+  private def genParamsAndInfo(ctorSym: Symbol,
+      vparamss: List[ParamClause]): List[(Symbol, JSParamInfo)] = {
+    implicit val pos: SourcePosition = ctorSym.sourcePos
+
+    val paramSyms = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
+    paramSyms.zip(ctorSym.jsParamInfos)
+  }
+
+  private def genJSClassCtorDispatch(ctorSym: Symbol,
+      allParamsAndInfos: List[(Symbol, JSParamInfo)],
+      overloadNum: Int): (jsExportsGen.Exported, List[js.ParamDef]) = {
+
+    implicit val pos: SourcePosition = ctorSym.sourcePos
+
+    /* `allParams` are the parameters as seen from inside the constructor body,
+     * i.e., the ones generated by the trees in the constructor body.
+     */
+    val (captureParamsAndInfos, normalParamsAndInfos) =
+      allParamsAndInfos.partition(_._2.capture)
+
+    /* For class captures, we need to generate different names than the ones
+     * used by the constructor body. This is necessary so that we can forward
+     * captures properly between constructor delegation calls.
+     */
+    val (jsClassCaptures, captureAssigns) = (for {
+      (param, info) <- captureParamsAndInfos
+    } yield {
+      val ident = freshLocalIdent(param.name.toTermName)
+      val jsClassCapture =
+        js.ParamDef(ident, originalNameOfLocal(param), toIRType(info.info), mutable = false)
+      val captureAssign =
+        js.Assign(genVarRef(param), jsClassCapture.ref)
+      (jsClassCapture, captureAssign)
+    }).unzip
+
+    val normalInfos = normalParamsAndInfos.map(_._2).toIndexedSeq
+
+    val jsExport = new jsExportsGen.Exported(ctorSym, normalInfos) {
+      def genBody(formalArgsRegistry: jsExportsGen.FormalArgsRegistry): js.Tree = {
+        val paramAssigns = for {
+          ((param, info), i) <- normalParamsAndInfos.zipWithIndex
+        } yield {
+          val rhs = jsExportsGen.genScalaArg(this, i, formalArgsRegistry, info, static = true,
+              captures = captureParamsAndInfos.map(pi => genVarRef(pi._1)))(
+              prevArgsCount => normalParamsAndInfos.take(prevArgsCount).map(pi => genVarRef(pi._1)))
+
+          js.Assign(genVarRef(param), rhs)
+        }
+
+        js.Block(captureAssigns ::: paramAssigns, js.IntLiteral(overloadNum))
+      }
+    }
+
+    (jsExport, jsClassCaptures)
+  }
+
+  /** generates a sequence of JS constructor statements based on a constructor tree. */
+  private def genJSClassCtorStats(overloadVar: js.VarRef,
+      ctorTree: ConstructorTree[PrimaryJSCtor])(implicit pos: Position): js.Tree = {
+
+    /* generates a statement that conditionally executes body iff the chosen
+     * overload is any of the descendants of `tree` (including itself).
+     *
+     * here we use the property from building the trees, that a set of
+     * descendants always has a range of overload numbers.
+     */
+    def ifOverload(tree: ConstructorTree[_], body: js.Tree): js.Tree = body match {
+      case js.Skip() => js.Skip()
+
+      case body =>
+        val x = overloadVar
+        val cond = {
+          import tree.{lo, hi}
+
+          if (lo == hi) {
+            js.BinaryOp(js.BinaryOp.Int_==, js.IntLiteral(lo), x)
+          } else {
+            val lhs = js.BinaryOp(js.BinaryOp.Int_<=, js.IntLiteral(lo), x)
+            val rhs = js.BinaryOp(js.BinaryOp.Int_<=, x, js.IntLiteral(hi))
+            js.If(lhs, rhs, js.BooleanLiteral(false))(jstpe.BooleanType)
+          }
+        }
+
+        js.If(cond, body, js.Skip())(jstpe.NoType)
+    }
+
+    /* preStats / postStats use pre/post order traversal respectively to
+     * generate a topo-sorted sequence of statements.
+     */
+
+    def preStats(tree: ConstructorTree[SplitSecondaryJSCtor],
+        nextParamsAndInfo: List[(Symbol, JSParamInfo)]): js.Tree = {
+      val inner = tree.subCtors.map(preStats(_, tree.ctor.paramsAndInfo))
+
+      assert(tree.ctor.ctorArgs.size == nextParamsAndInfo.size, "param count mismatch")
+      val paramsInfosAndArgs = nextParamsAndInfo.zip(tree.ctor.ctorArgs)
+
+      val (captureParamsInfosAndArgs, normalParamsInfosAndArgs) =
+        paramsInfosAndArgs.partition(_._1._2.capture)
+
+      val captureAssigns = for {
+        ((param, _), arg) <- captureParamsInfosAndArgs
+      } yield {
+        js.Assign(genVarRef(param), arg)
+      }
+
+      val normalAssigns = for {
+        (((param, info), arg), i) <- normalParamsInfosAndArgs.zipWithIndex
+      } yield {
+        val newArg = arg match {
+          case js.Transient(UndefinedParam) =>
+            /* Go full circle: We have ignored the default param getter for
+             * this, we'll create it again.
+             *
+             * This seems not optimal: We could simply not ignore the calls to
+             * default param getters in the first place.
+             *
+             * However, this proves to be difficult: Because of translations in
+             * earlier phases, calls to default param getters may be assigned
+             * to temporary variables first (see the undefinedDefaultParams
+             * ScopedVar). If this happens, it becomes increasingly difficult
+             * to distinguish a default param getter call for a constructor
+             * call of *this* instance (in which case we would want to keep
+             * the default param getter call) from one for a *different*
+             * instance (in which case we would want to discard the default
+             * param getter call)
+             *
+             * Because of this, it ends up being easier to just re-create the
+             * default param getter call if necessary.
+             */
+            implicit val pos: SourcePosition = tree.ctor.sym.sourcePos
+            jsExportsGen.genCallDefaultGetter(tree.ctor.sym, i, static = false,
+                captures = captureParamsInfosAndArgs.map(p => genVarRef(p._1._1)))(
+                prevArgsCount => normalParamsInfosAndArgs.take(prevArgsCount).map(p => genVarRef(p._1._1)))
+
+          case arg => arg
+        }
+
+        js.Assign(genVarRef(param), newArg)
+      }
+
+      ifOverload(tree, js.Block(
+          inner ++ tree.ctor.beforeCall ++ captureAssigns ++ normalAssigns))
+    }
+
+    def postStats(tree: ConstructorTree[SplitSecondaryJSCtor]): js.Tree = {
+      val inner = tree.subCtors.map(postStats(_))
+      ifOverload(tree, js.Block(tree.ctor.afterCall ++ inner))
+    }
+
+    val primaryCtor = ctorTree.ctor
+    val secondaryCtorTrees = ctorTree.subCtors
+
+    js.Block(
+        secondaryCtorTrees.map(preStats(_, primaryCtor.paramsAndInfo)) ++
+        primaryCtor.body ++
+        secondaryCtorTrees.map(postStats(_))
+    )
+  }
+
+  private sealed trait JSCtor {
+    val sym: Symbol
+    val paramsAndInfo: List[(Symbol, JSParamInfo)]
+  }
+
+  private class PrimaryJSCtor(val sym: Symbol,
+      val paramsAndInfo: List[(Symbol, JSParamInfo)],
+      val body: List[js.Tree]) extends JSCtor
+
+  private class SplitSecondaryJSCtor(val sym: Symbol,
+      val paramsAndInfo: List[(Symbol, JSParamInfo)],
+      val beforeCall: List[js.Tree],
+      val targetCtor: Symbol, val ctorArgs: List[js.Tree],
+      val afterCall: List[js.Tree]) extends JSCtor
+
+  private class ConstructorTree[Ctor <: JSCtor](
+      val overloadNum: Int, val ctor: Ctor,
+      val subCtors: List[ConstructorTree[SplitSecondaryJSCtor]]) {
+    val lo: Int = overloadNum
+    val hi: Int = subCtors.lastOption.fold(lo)(_.hi)
+
+    assert(lo <= hi, "bad overload range")
   }
 
   // Generate a method -------------------------------------------------------
@@ -1043,12 +1403,7 @@ class JSCodeGen()(using genCtx: Context) {
     val vparamss = dd.termParamss
     val rhs = dd.rhs
 
-    withScopedVars(
-        currentMethodSym       := sym,
-        undefinedDefaultParams := mutable.Set.empty,
-        thisLocalVarIdent      := None,
-        isModuleInitialized    := new ScopedVar.VarBox(false)
-    ) {
+    withPerMethodBodyState(sym) {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
       val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
@@ -1104,15 +1459,9 @@ class JSCodeGen()(using genCtx: Context) {
 
         val methodDef = {
           if (sym.isClassConstructor) {
-            val body0 = genStat(rhs)
-            val body1 = {
-              val needsMove = currentClassSym.isNonNativeJSClass && sym.isPrimaryConstructor
-              if (needsMove) moveAllStatementsAfterSuperConstructorCall(body0)
-              else body0
-            }
             val namespace = js.MemberNamespace.Constructor
             js.MethodDef(js.MemberFlags.empty.withNamespace(namespace),
-                methodName, originalName, jsParams, jstpe.NoType, Some(body1))(
+                methodName, originalName, jsParams, jstpe.NoType, Some(genStat(rhs)))(
                 optimizerHints, None)
           } else {
             val namespace = if (isMethodStaticInIR(sym)) {
@@ -1177,53 +1526,6 @@ class JSCodeGen()(using genCtx: Context) {
             optimizerHints, None)
       }
     }
-  }
-
-  /** Moves all statements after the super constructor call.
-   *
-   *  This is used for the primary constructor of a non-native JS class,
-   *  because those cannot access `this` before the super constructor call.
-   *
-   *  Normally, in Scala, param accessors (i.e., fields declared directly in
-   *  constructor parameters) are initialized *before* the super constructor
-   *  call. This is important for cases like
-   *
-   *    abstract class A {
-   *      def a: Int
-   *      println(a)
-   *    }
-   *    class B(val a: Int) extends A
-   *
-   *  where `a` is supposed to be correctly initialized by the time `println`
-   *  is executed.
-   *
-   *  However, in a JavaScript class, this is forbidden: it is not allowed to
-   *  read the `this` value in a constructor before the super constructor call.
-   *
-   *  Therefore, for JavaScript classes, we specifically move all those early
-   *  assignments after the super constructor call, to comply with JavaScript
-   *  limitations. This clearly introduces a semantic difference in
-   *  initialization order between Scala classes and JavaScript classes, but
-   *  there is nothing we can do about it. That difference in behavior is
-   *  basically spec'ed in Scala.js the language, since specifying it any other
-   *  way would prevent JavaScript classes from ever having constructor
-   *  parameters.
-   *
-   *  We do the same thing in Scala 2, obviously.
-   */
-  private def moveAllStatementsAfterSuperConstructorCall(body: js.Tree): js.Tree = {
-    val bodyStats = body match {
-      case js.Block(stats) => stats
-      case _               => body :: Nil
-    }
-
-    val (beforeSuper, superCall :: afterSuper) =
-      bodyStats.span(!_.isInstanceOf[js.JSSuperConstructorCall])
-
-    assert(!beforeSuper.exists(_.isInstanceOf[js.VarDef]),
-        s"Trying to move a local VarDef after the super constructor call of a non-native JS class at ${body.pos}")
-
-    js.Block(superCall :: beforeSuper ::: afterSuper)(body.pos)
   }
 
   // ParamDefs ---------------------------------------------------------------
@@ -1370,8 +1672,12 @@ class JSCodeGen()(using genCtx: Context) {
         }
 
       case If(cond, thenp, elsep) =>
+        val tpe =
+          if (isStat) jstpe.NoType
+          else toIRType(tree.tpe)
+
         js.If(genExpr(cond), genStatOrExpr(thenp, isStat),
-            genStatOrExpr(elsep, isStat))(toIRType(tree.tpe))
+            genStatOrExpr(elsep, isStat))(tpe)
 
       case Labeled(bind, expr) =>
         js.Labeled(encodeLabelSym(bind.symbol), toIRType(tree.tpe), genStatOrExpr(expr, isStat))
@@ -1439,7 +1745,7 @@ class JSCodeGen()(using genCtx: Context) {
              */
             js.Transient(UndefinedParam)
           } else {
-            js.VarRef(encodeLocalSym(sym))(toIRType(sym.info))
+            genVarRef(sym)
           }
         } { select =>
           genStatOrExpr(select, isStat)
@@ -1524,9 +1830,7 @@ class JSCodeGen()(using genCtx: Context) {
             }
 
           case _ =>
-            js.Assign(
-                js.VarRef(encodeLocalSym(sym))(toIRType(sym.info)),
-                genRhs)
+            js.Assign(genVarRef(sym), genRhs)
         }
 
       /** Array constructor */
@@ -1608,7 +1912,10 @@ class JSCodeGen()(using genCtx: Context) {
     val Try(block, catches, finalizer) = tree
 
     val blockAST = genStatOrExpr(block, isStat)
-    val resultType = toIRType(tree.tpe)
+
+    val resultType =
+      if (isStat) jstpe.NoType
+      else toIRType(tree.tpe)
 
     val handled =
       if (catches.isEmpty) blockAST
@@ -1701,12 +2008,7 @@ class JSCodeGen()(using genCtx: Context) {
     val args = tree.args
     val sym = tree.fun.symbol
 
-    val fun = tree.fun match {
-      case fun: Ident => desugarIdent(fun)
-      case fun => fun
-    }
-
-    fun match {
+    tree.fun match {
       case _ if sym.isJSDefaultParam =>
         js.Transient(UndefinedParam)
 
@@ -2377,7 +2679,10 @@ class JSCodeGen()(using genCtx: Context) {
               js.UnaryOp(IntToLong, intValue)
           }
         case jstpe.FloatType =>
-          js.UnaryOp(js.UnaryOp.DoubleToFloat, doubleValue)
+          if (from == jstpe.LongType)
+            js.UnaryOp(js.UnaryOp.LongToFloat, value)
+          else
+            js.UnaryOp(js.UnaryOp.DoubleToFloat, doubleValue)
         case jstpe.DoubleType =>
           doubleValue
       }
@@ -2485,27 +2790,7 @@ class JSCodeGen()(using genCtx: Context) {
       args: List[Tree]): js.Tree = {
     implicit val pos = tree.span
 
-    val arg = args.head
-
-    /* Primitive number types such as scala.Int have a
-     *   def +(s: String): String
-     * method, which is why we have to box the lhs sometimes.
-     * Otherwise, both lhs and rhs are already reference types (Any or String)
-     * so boxing is not necessary (in particular, rhs is never a primitive).
-     */
-    assert(!isPrimitiveValueType(receiver.tpe) || arg.tpe.isRef(defn.StringClass))
-    assert(!isPrimitiveValueType(arg.tpe))
-
-    val genLhs = {
-      val genLhs0 = genExpr(receiver)
-      // Box the receiver if it is a primitive value
-      if (!isPrimitiveValueType(receiver.tpe)) genLhs0
-      else makePrimitiveBox(genLhs0, receiver.tpe)
-    }
-
-    val genRhs = genExpr(arg)
-
-    js.BinaryOp(js.BinaryOp.String_+, genLhs, genRhs)
+    js.BinaryOp(js.BinaryOp.String_+, genExpr(receiver), genExpr(args.head))
   }
 
   /** Gen JS code for a call to Any.## */
@@ -2804,9 +3089,8 @@ class JSCodeGen()(using genCtx: Context) {
             s"Trying to call the super constructor of Object in a non-native JS class at $pos")
         genApplyMethod(genReceiver, sym, genScalaArgs)
       } else if (sym.isClassConstructor) {
-        assert(genReceiver.isInstanceOf[js.This],
-            s"Trying to call a JS super constructor with a non-`this` receiver at $pos")
-        js.JSSuperConstructorCall(genJSArgs)
+        throw new AssertionError(
+            s"calling a JS super constructor should have happened in genPrimaryJSClassCtor at $pos")
       } else if (sym.owner.isNonNativeJSClass && !sym.isJSExposed) {
         // Reroute to the static method
         genApplyJSClassMethod(genReceiver, sym, genScalaArgs)
@@ -2872,12 +3156,6 @@ class JSCodeGen()(using genCtx: Context) {
     def abortMatch(msg: String): Nothing =
       throw new FatalError(s"$msg in switch-like pattern match at ${tree.span}: $tree")
 
-    /* Although GenBCode adapts the scrutinee and the cases to `int`, only
-     * true `int`s can reach the back-end, as asserted by the String-switch
-     * transformation in `cleanup`. Therefore, we do not adapt, preserving
-     * the `string`s and `null`s that come out of the pattern matching in
-     * Scala 2.13.2+.
-     */
     val genSelector = genExpr(selector)
 
     // Sanity check: we can handle Ints and Strings (including `null`s), but nothing else
@@ -2894,7 +3172,7 @@ class JSCodeGen()(using genCtx: Context) {
       case resType           => resType
     }
 
-    var clauses: List[(List[js.Tree], js.Tree)] = Nil
+    var clauses: List[(List[js.MatchableLiteral], js.Tree)] = Nil
     var optDefaultClause: Option[js.Tree] = None
 
     for (caze @ CaseDef(pat, guard, body) <- cases) {
@@ -2903,19 +3181,29 @@ class JSCodeGen()(using genCtx: Context) {
 
       val genBody = genStatOrExpr(body, isStat)
 
+      def invalidCase(): Nothing =
+        abortMatch("Invalid case")
+
+      def genMatchableLiteral(tree: Literal): js.MatchableLiteral = {
+        genExpr(tree) match {
+          case matchableLiteral: js.MatchableLiteral => matchableLiteral
+          case otherExpr                             => invalidCase()
+        }
+      }
+
       pat match {
         case lit: Literal =>
-          clauses = (List(genExpr(lit)), genBody) :: clauses
+          clauses = (List(genMatchableLiteral(lit)), genBody) :: clauses
         case Ident(nme.WILDCARD) =>
           optDefaultClause = Some(genBody)
         case Alternative(alts) =>
           val genAlts = alts.map {
-            case lit: Literal => genExpr(lit)
-            case _            => abortMatch("Invalid case in alternative")
+            case lit: Literal => genMatchableLiteral(lit)
+            case _            => invalidCase()
           }
           clauses = (genAlts, genBody) :: clauses
         case _ =>
-          abortMatch("Invalid case pattern")
+          invalidCase()
       }
     }
 
@@ -2930,15 +3218,6 @@ class JSCodeGen()(using genCtx: Context) {
      * case is a typical product of `match`es that are full of
      * `case n if ... =>`, which are used instead of `if` chains for
      * convenience and/or readability.
-     *
-     * When no optimization applies, and any of the case values is not a
-     * literal int, we emit a series of `if..else` instead of a `js.Match`.
-     * This became necessary in 2.13.2 with strings and nulls.
-     *
-     * Note that dotc has not adopted String-switch-Matches yet, so these code
-     * paths are dead code at the moment. However, they already existed in the
-     * scalac, so were ported, to be immediately available and working when
-     * dotc starts emitting switch-Matches on Strings.
      */
     def isInt(tree: js.Tree): Boolean = tree.tpe == jstpe.IntType
 
@@ -2958,32 +3237,8 @@ class JSCodeGen()(using genCtx: Context) {
         js.If(js.BinaryOp(op, genSelector, uniqueAlt), caseRhs, defaultClause)(resultType)
 
       case _ =>
-        if (isInt(genSelector) &&
-            clauses.forall(_._1.forall(_.isInstanceOf[js.IntLiteral]))) {
-          // We have int literals only: use a js.Match
-          val intClauses = clauses.asInstanceOf[List[(List[js.IntLiteral], js.Tree)]]
-          js.Match(genSelector, intClauses, defaultClause)(resultType)
-        } else {
-          // We have other stuff: generate an if..else chain
-          val (tempSelectorDef, tempSelectorRef) = genSelector match {
-            case varRef: js.VarRef =>
-              (js.Skip(), varRef)
-            case _ =>
-              val varDef = js.VarDef(freshLocalIdent(), NoOriginalName,
-                  genSelector.tpe, mutable = false, genSelector)
-              (varDef, varDef.ref)
-          }
-          val ifElseChain = clauses.foldRight(defaultClause) { (caze, elsep) =>
-            val conds = caze._1.map { caseValue =>
-              js.BinaryOp(js.BinaryOp.===, tempSelectorRef, caseValue)
-            }
-            val cond = conds.reduceRight[js.Tree] { (left, right) =>
-              js.If(left, js.BooleanLiteral(true), right)(jstpe.BooleanType)
-            }
-            js.If(cond, caze._2, elsep)(resultType)
-          }
-          js.Block(tempSelectorDef, ifElseChain)
-        }
+        // We have more than one case: use a js.Match
+        js.Match(genSelector, clauses, defaultClause)(resultType)
     }
   }
 
@@ -3252,7 +3507,7 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   /** Gen a statically linked call to an instance method. */
-  private def genApplyMethodMaybeStatically(receiver: js.Tree, method: Symbol,
+  def genApplyMethodMaybeStatically(receiver: js.Tree, method: Symbol,
       arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
     if (method.isPrivate || method.isClassConstructor)
       genApplyMethodStatically(receiver, method, arguments)
@@ -3436,6 +3691,15 @@ class JSCodeGen()(using genCtx: Context) {
       case UNITVAL =>
         // BoxedUnit.UNIT, which is the boxed version of ()
         js.Undefined()
+
+      case JS_IMPORT =>
+        // js.import(arg)
+        val arg = genArgs1
+        js.JSImportCall(arg)
+
+      case JS_IMPORT_META =>
+        // js.import.meta
+        js.JSImportMeta()
 
       case JS_NATIVE =>
         // js.native
@@ -3727,46 +3991,24 @@ class JSCodeGen()(using genCtx: Context) {
   private def genActualJSArgs(sym: Symbol, args: List[Tree])(
       implicit pos: Position): List[js.TreeOrJSSpread] = {
 
-    def paramNamesAndTypes(using Context): List[(Names.TermName, Type)] =
-      sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
-
-    val wereRepeated = atPhase(elimRepeatedPhase) {
-      val list =
-        for ((name, tpe) <- paramNamesAndTypes)
-        yield (name -> tpe.isRepeatedParam)
-      list.toMap
-    }
-
-    val paramTypes = atPhase(elimErasedValueTypePhase) {
-      paramNamesAndTypes.toMap
-    }
-
     var reversedArgs: List[js.TreeOrJSSpread] = Nil
 
-    val argsParamNamesAndTypes = args.zip(paramNamesAndTypes)
-    for ((arg, (paramName, paramType)) <- argsParamNamesAndTypes) {
-      val wasRepeated = wereRepeated.get(paramName)
-
-      wasRepeated match {
-        case Some(true) =>
-          reversedArgs = genJSRepeatedParam(arg) reverse_::: reversedArgs
-
-        case Some(false) =>
-          val unboxedArg = genExpr(arg)
-          val boxedArg = unboxedArg match {
-            case js.Transient(UndefinedParam) =>
-              unboxedArg
-            case _ =>
-              val tpe = paramTypes.getOrElse(paramName, paramType)
-              box(unboxedArg, tpe)
-          }
-          reversedArgs ::= boxedArg
-
-        case None =>
-          // This is a parameter introduced by erasure or lambdalift, which we ignore.
-          assert(sym.isClassConstructor,
-              i"Found an unknown param $paramName in method " +
-              i"${sym.fullName}, which is not a class constructor, at $pos")
+    for ((arg, info) <- args.zip(sym.jsParamInfos)) {
+      if (info.repeated) {
+        reversedArgs = genJSRepeatedParam(arg) reverse_::: reversedArgs
+      } else if (info.capture) {
+        // Ignore captures
+        assert(sym.isClassConstructor,
+            i"Found a capture param in method ${sym.fullName}, which is not a class constructor, at $pos")
+      } else {
+        val unboxedArg = genExpr(arg)
+        val boxedArg = unboxedArg match {
+          case js.Transient(UndefinedParam) =>
+            unboxedArg
+          case _ =>
+            box(unboxedArg, info.info)
+        }
+        reversedArgs ::= boxedArg
       }
     }
 
@@ -3898,6 +4140,9 @@ class JSCodeGen()(using genCtx: Context) {
       genExpr(arg)
     }
   }
+
+  private def genVarRef(sym: Symbol)(implicit pos: Position): js.VarRef =
+    js.VarRef(encodeLocalSym(sym))(toIRType(sym.info))
 
   private def genAssignableField(sym: Symbol, qualifier: Tree)(implicit pos: SourcePosition): (js.AssignLhs, Boolean) = {
     def qual = genExpr(qualifier)

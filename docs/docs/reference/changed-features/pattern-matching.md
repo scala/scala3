@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Option-less pattern matching"
+type: section
+num: 65
+previous-page: /scala3/reference/changed-features/pattern-bindings
+next-page: /scala3/reference/changed-features/eta-expansion
 ---
 
 The implementation of pattern matching in Scala 3 was greatly simplified compared to Scala 2. From a user perspective, this means that Scala 3 generated patterns are a *lot* easier to debug, as variables all show up in debug modes and positions are correctly preserved.
@@ -240,4 +243,4 @@ Abstract type testing with `ClassTag` is replaced with `TypeTest` or the alias `
 - pattern `_: X` for an abstract type requires a `TypeTest` in scope
 - pattern `x @ X()` for an unapply that takes an abstract type requires a `TypeTest` in scope
 
-[More details on `TypeTest`](../other-new-features/type-test.md)
+[More details on `TypeTest`](../other-new-features/type-test.html)

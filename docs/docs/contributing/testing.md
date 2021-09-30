@@ -164,3 +164,10 @@ The test suite will create a new file if it detects any difference, which can be
 original expect file, or if the user wants to globally replace all expect files for semanticdb they can use
 `scala3-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect`, and compare the changes via version
 control.
+
+## Troubleshooting
+
+Some of the tests depend on temporary state stored in the `out` directory. In rare cases, that directory
+can enter an inconsistent state and cause spurious test failures. If you suspect a spurious test failure,
+you can run `rm -rf out/*` from the root of the repository and run your tests again. If that fails, you
+can try `git clean -xfd`.

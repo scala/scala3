@@ -1,5 +1,6 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "Dropped: Class Shadowing - More Details"
 ---
 

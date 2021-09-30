@@ -5,6 +5,7 @@ import dotty.tools.scaladoc.DocContext
 import java.nio.file.Paths
 import java.io.File
 
+import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.fromtasty.TastyFileUtil
 import dotty.tools.dotc.config.Settings._
@@ -32,14 +33,15 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
 
   // These constants were found empirically to make snippet compiler
   // report errors in the same position as main compiler.
-  private val constantLineOffset = 3
+  private val constantLineOffset = 2
   private val constantColumnOffset = 4
 
   def checkSnippet(
     snippet: String,
     data: Option[SnippetCompilerData],
     arg: SnippetCompilerArg,
-    lineOffset: SnippetChecker.LineOffset
+    lineOffset: SnippetChecker.LineOffset,
+    sourceFile: SourceFile
   ): Option[SnippetCompilationResult] = {
     if arg.flag != SCFlags.NoCompile then
       val wrapped = WrappedSnippet(
@@ -50,7 +52,7 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
         lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
         data.fold(0)(_.position.column) + constantColumnOffset
       )
-      val res = compiler.compile(wrapped, arg)
+      val res = compiler.compile(wrapped, arg, sourceFile)
       Some(res)
     else None
   }

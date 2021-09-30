@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "TASTy Inspection"
+type: section
+num: 33
+previous-page: /scala3/reference/metaprogramming/reflection
+next-page: /scala3/reference/other-new-features
 ---
 
 ```scala

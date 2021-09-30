@@ -9,7 +9,7 @@ import core.Decorators.{_, given}
 import util.Property
 
 enum SourceVersion:
-  case `3.0-migration`, `3.0`, `future-migration`, `future`
+  case `3.0-migration`, `3.0`, `3.1`, `future-migration`, `future`
 
   val isMigrating: Boolean = toString.endsWith("-migration")
 

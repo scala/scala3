@@ -458,7 +458,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def AppliedTypeTree(tpt: Tree, arg: Tree)(implicit src: SourceFile): AppliedTypeTree =
     AppliedTypeTree(tpt, arg :: Nil)
 
-  def TypeTree(tpe: Type)(using Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
+  def TypeTree(tpe: Type)(using Context): TypedSplice =
+    TypedSplice(TypeTree().withTypeUnchecked(tpe))
+
+  def InferredTypeTree(tpe: Type)(using Context): TypedSplice =
+    TypedSplice(new InferredTypeTree().withTypeUnchecked(tpe))
 
   def unitLiteral(implicit src: SourceFile): Literal = Literal(Constant(()))
 

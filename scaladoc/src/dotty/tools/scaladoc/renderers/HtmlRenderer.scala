@@ -64,13 +64,19 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           children = Nil
         ))
       case Some(siteContext) =>
-        (siteContext.orphanedTemplates :+ siteContext.indexTemplate()).map(templateToPage(_, siteContext))
+        // In case that we do not have an index page and we do not have any API entries
+        // we want to create empty index page, so there is one
+        val actualIndexTemplate = siteContext.indexTemplate() match {
+            case None if effectiveMembers.isEmpty => Seq(siteContext.emptyIndexTemplate)
+            case templates => templates.toSeq
+          }
+
+          (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
 
   /**
    * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
    */
-  private def getAllPages: Seq[Page] =
-
+  val allPages: Seq[Page] =
     def traversePages(page: Page): (Page, Seq[Page]) =
       val (newChildren, newPagesToRemove): (Seq[Page], Seq[Page]) = page.children.map(traversePages(_)).foldLeft((Seq[Page](), Seq[Page]())) {
         case ((pAcc, ptrAcc), (p, ptr)) => (pAcc :+ p, ptrAcc ++ ptr)
@@ -83,9 +89,22 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
     val (newNavigablePage, pagesToRemove) = traversePages(navigablePage)
 
-    newNavigablePage +: hiddenPages.filterNot(pagesToRemove.contains)
+    val all = newNavigablePage +: hiddenPages.filterNot(pagesToRemove.contains)
+    // We need to check for conflicts only if we have top-level member called blog or docs
+    val hasPotentialConflict =
+      rootPackage.members.exists(m => m.name.startsWith("docs") || m.name.startsWith("blog"))
 
-  val allPages = getAllPages
+    if hasPotentialConflict then
+      def walk(page: Page): Unit =
+        if page.link.dri.isStaticFile then
+          val dest = absolutePath(page.link.dri)
+          if apiPaths.contains(dest) then
+            report.error(s"Conflict between static page and API member for $dest. $pathsConflictResoultionMsg")
+          page.children.foreach(walk)
+
+      all.foreach (walk)
+
+    all
 
   def renderContent(page: Page) = page.content match
     case m: Member =>
@@ -135,7 +154,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
     val siteResourcesPaths = allPages.toSet.flatMap(specificResources) ++ staticResources
 
-    val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(allPages)
+    val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(allPages) ++ onlyRenderedResources
     resources.flatMap(renderResource)
 
   def render(): Unit =
@@ -179,7 +198,8 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
     def renderNested(nav: Page, toplevel: Boolean = false): (Boolean, AppliedTag) =
       val isSelected = nav.link.dri == pageLink.dri
-      def linkHtml(expanded: Boolean = false) =
+
+      def linkHtml(expanded: Boolean = false, withArrow: Boolean = false) =
         val attrs: Seq[String] = Seq(
           Option.when(isSelected)("selected"),
           Option.when(expanded)("expanded")
@@ -188,18 +208,22 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           case m: Member => navigationIcon(m)
           case _ => Nil
         }
-        Seq(a(href := pathToPage(pageLink.dri, nav.link.dri), cls := attrs.mkString(" "))(icon, span(nav.link.name)))
+        Seq(
+          span(cls := "nh " + attrs.mkString(" "))(
+            if withArrow then Seq(span(cls := "ar")) else Nil,
+            a(href := pathToPage(pageLink.dri, nav.link.dri))(icon, span(nav.link.name))
+          )
+        )
 
       nav.children match
-        case Nil => isSelected -> div(linkHtml())
+        case Nil => isSelected -> div(cls := s"ni ${if isSelected then "expanded" else ""}")(linkHtml())
         case children =>
           val nested = children.map(renderNested(_))
-          val expanded = nested.exists(_._1) || nav.link == pageLink
+          val expanded = nested.exists(_._1) || isSelected
           val attr =
-            if expanded || isSelected || toplevel then Seq(cls := "expanded") else Nil
+            if expanded || isSelected || toplevel then Seq(cls := "ni expanded") else Seq(cls := "ni")
           (isSelected || expanded) -> div(attr)(
-            linkHtml(expanded),
-            if toplevel then Nil else span(cls := "ar"),
+            linkHtml(expanded, true),
             nested.map(_._2)
           )
 
@@ -254,10 +278,10 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           div(id := "version")(
             div(cls := "versions-dropdown")(
               div(onclick := "dropdownHandler()", id := "dropdown-button", cls := "dropdownbtn dropdownbtnactive")(
-                args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
-              ),
-              div(id := "dropdown-content", cls := "dropdown-content")(
-                input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
+                args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse(""),
+                div(id := "dropdown-content", cls := "dropdown-content")(
+                  input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
+                ),
               ),
             )
           ),
@@ -275,11 +299,9 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           span(cls := "icon-toggler")
         ),
         div(id := "scaladoc-searchBar"),
-        main(
-          div(id := "content")(
-            parentsHtml,
-            div(content),
-          )
+        main(id := "main-content")(
+          parentsHtml,
+          div(id := "content")(content),
         ),
         footer(
           div(id := "generated-by")(

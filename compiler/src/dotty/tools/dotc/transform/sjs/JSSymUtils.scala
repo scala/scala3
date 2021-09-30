@@ -92,6 +92,24 @@ object JSSymUtils {
     }
   }
 
+  /** Info about a Scala method param when called as JS method.
+   *
+   *  @param info
+   *    Parameter type (type of a single element if repeated).
+   *  @param repeated
+   *    Whether the parameter is repeated.
+   *  @param capture
+   *    Whether the parameter is a capture.
+   */
+  final class JSParamInfo(
+    val info: Type,
+    val repeated: Boolean = false,
+    val capture: Boolean = false
+  ) {
+    override def toString(): String =
+      s"ParamSpec($info, repeated = $repeated, capture = $capture)"
+  }
+
   extension (sym: Symbol) {
     /** Is this symbol a JavaScript type? */
     def isJSType(using Context): Boolean =
@@ -190,6 +208,43 @@ object JSSymUtils {
     def defaultJSName(using Context): String =
       if (sym.isTerm) sym.asTerm.name.unexpandedName.getterName.toString()
       else sym.name.unexpandedName.stripModuleClassSuffix.toString()
+
+    def jsParamInfos(using Context): List[JSParamInfo] = {
+      assert(sym.is(Method), s"trying to take JS param info of non-method: $sym")
+
+      def paramNamesAndTypes(using Context): List[(Names.TermName, Type)] =
+        sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
+
+      val paramInfosAtElimRepeated = atPhase(elimRepeatedPhase) {
+        val list =
+          for ((name, info) <- paramNamesAndTypes) yield {
+            val v =
+              if (info.isRepeatedParam) Some(info.repeatedToSingle.widenDealias)
+              else None
+            name -> v
+          }
+        list.toMap
+      }
+
+      val paramInfosAtElimEVT = atPhase(elimErasedValueTypePhase) {
+        paramNamesAndTypes.toMap
+      }
+
+      for ((paramName, paramInfoNow) <- paramNamesAndTypes) yield {
+        paramInfosAtElimRepeated.get(paramName) match {
+          case None =>
+            // This is a capture parameter introduced by erasure or lambdalift
+            new JSParamInfo(paramInfoNow, capture = true)
+
+          case Some(Some(info)) =>
+            new JSParamInfo(info, repeated = true)
+
+          case Some(None) =>
+            val info = paramInfosAtElimEVT.getOrElse(paramName, paramInfoNow)
+            new JSParamInfo(info)
+        }
+      }
+    }
   }
 
   private object JSUnaryOpMethodName {

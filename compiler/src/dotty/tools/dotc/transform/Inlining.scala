@@ -11,11 +11,11 @@ import Constants._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
 import util.Spans._
-import tasty.TreePickler.Hole
 import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd
 import typer.Implicits.SearchFailureType
+import typer.PrepareInlineable
 
 import scala.collection.mutable
 import dotty.tools.dotc.core.Annotations._

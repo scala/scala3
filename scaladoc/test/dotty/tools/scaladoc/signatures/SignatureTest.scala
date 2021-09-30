@@ -50,6 +50,7 @@ abstract class SignatureTest(
       (s"Not documented signatures:\n${expectedButNotFound.mkString("\n")}")
     val unexpectedReport = Option.when(!unexpected.isEmpty)
       (s"Unexpectedly documented signatures:\n${unexpected.mkString("\n")}")
+
     val reports = missingReport ++ unexpectedReport
 
     if !reports.isEmpty then
@@ -104,7 +105,7 @@ abstract class SignatureTest(
         }
 
   private def signaturesFromDocumentation()(using DocContext): Seq[String] =
-    val output = summon[DocContext].args.output.toPath.resolve("api")
+    val output = summon[DocContext].args.output.toPath
     val signatures = List.newBuilder[String]
 
     def processFile(path: Path): Unit = if filterFunc(path) then
@@ -118,7 +119,7 @@ abstract class SignatureTest(
         val sigPrefix = elem.select(".header .signature").textNodes match
           case list if list.size > 0 && list.get(0).getWholeText().startsWith(" ") => " "
           case _ => ""
-        val all = s"$annotations$other $kind $name$sigPrefix$signature".trim()
+        val all = s"$annotations$other $sigPrefix$signature".trim()
         signatures += all
       }
 

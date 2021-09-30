@@ -10,7 +10,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (elements) {
     for (i = 0; i < elements.length; i++) {
       elements[i].onclick = function(e) {
-        if(!$(e.target).is("a"))
+        if(!$(e.target).is("a") && e.fromSnippet !== true)
           this.classList.toggle("expand")
       }
     }
@@ -19,6 +19,8 @@ window.addEventListener("DOMContentLoaded", () => {
   $("#sideMenu2 span").on('click', function(){
     $(this).parent().toggleClass("expanded")
   });
+
+  document.querySelectorAll("#sideMenu2 a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
   $('.names .tab').on('click', function() {
     parent = $(this).parents(".tabs").first()
@@ -56,6 +58,19 @@ window.addEventListener("DOMContentLoaded", () => {
       window.location = pathToRoot; // global variable pathToRoot is created by the html renderer
     };
   }
+
+  document.querySelectorAll('.documentableAnchor').forEach(elem => {
+    elem.addEventListener('click', event => {
+      var $temp = $("<input>")
+      $("body").append($temp)
+      var a = document.createElement('a')
+      a.href = $(elem).attr("link")
+      $temp.val(a.href).select();
+      document.execCommand("copy")
+      $temp.remove();
+    })
+  })
+
   hljs.registerLanguage("scala", highlightDotty);
   hljs.registerAliases(["dotty", "scala3"], "scala");
   hljs.initHighlighting();

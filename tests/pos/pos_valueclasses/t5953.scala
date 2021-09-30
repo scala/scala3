@@ -1,3 +1,5 @@
+package t5953
+
 trait CBF[-F, -A, +C]
 trait GenTraversable[+A]
 trait Traversable[+A] extends GenTraversable[A]

@@ -91,7 +91,7 @@ class Pickler extends Phase {
           if pickling ne noPrinter then
             pickling.synchronized {
               println(i"**** pickled info of $cls")
-              println(TastyPrinter.show(pickled))
+              println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
             }
           pickled
         }(using ExecutionContext.global)
@@ -113,7 +113,7 @@ class Pickler extends Phase {
       val ctx2 = ctx.fresh.setSetting(ctx.settings.YreadComments, true)
       testUnpickler(
         using ctx2
-            .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
+            .setPeriod(Period(ctx.runId + 1, ctx.base.typerPhase.id))
             .setReporter(new ThrowingReporter(ctx.reporter))
             .addMode(Mode.ReadPositions)
             .addMode(Mode.PrintShowExceptions))

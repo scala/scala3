@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Programmatic Structural Types"
+type: section
+num: 53
+previous-page: /scala3/reference/changed-features/numeric-literals
+next-page: /scala3/reference/changed-features/operators
 ---
 
 ## Motivation
@@ -188,4 +191,4 @@ differences.
   `java.lang.Class` arguments indicating the method's formal parameter types.
   `Dynamic` comes with `updateDynamic`.
 
-[More details](structural-types-spec.md)
+[More details](structural-types-spec.html)

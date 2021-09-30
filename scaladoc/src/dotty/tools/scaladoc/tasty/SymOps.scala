@@ -12,6 +12,13 @@ object SymOps:
 
   extension (using Quotes)(sym: reflect.Symbol)
 
+    def isImplicitClass: Boolean =
+      import reflect._
+      sym.isClassDef && sym.maybeOwner != Symbol.noSymbol
+        && sym.maybeOwner.declaredMethods.exists { methodSymbol =>
+          methodSymbol.name == sym.name && methodSymbol.flags.is(Flags.Implicit) && methodSymbol.flags.is(Flags.Method)
+        }
+
     def packageName: String =
       if (sym.isPackageDef) sym.fullName
       else sym.maybeOwner.packageName
@@ -40,7 +47,7 @@ object SymOps:
       else None
 
     def source =
-      val path = sym.pos.map(_.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath)
+      val path = sym.pos.flatMap(_.sourceFile.getJPath).map(_.toAbsolutePath)
       path.map(TastyMemberSource(_, sym.pos.get.startLine))
 
     //TODO: Retrieve string that will match scaladoc anchors
@@ -70,6 +77,7 @@ object SymOps:
         case (None, None, (false, true, true)) => Visibility.Protected(ThisScope)
         case (None, None, (false, true, false)) => Visibility.Protected(implicitScope(sym.owner))
         case (None, None, (false, false, false)) => Visibility.Unrestricted
+        case (None, None, (true, true, false)) => Visibility.Protected(ThisScope)
         case _ => throw new Exception(s"Visibility for symbol $sym cannot be determined")
 
 
@@ -83,12 +91,16 @@ object SymOps:
         Flags.Abstract -> Modifier.Abstract,
         Flags.Deferred -> Modifier.Deferred,
         Flags.Implicit -> Modifier.Implicit,
+        Flags.Infix -> Modifier.Infix,
+        Flags.Transparent -> Modifier.Transparent,
         Flags.Inline -> Modifier.Inline,
         Flags.Lazy -> Modifier.Lazy,
         Flags.Open -> Modifier.Open,
         Flags.Override -> Modifier.Override,
         Flags.Case -> Modifier.Case,
-      ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
+      ).collect {
+        case (flag, mod) if sym.flags.is(flag) => mod
+      } ++ Seq(Modifier.Implicit).filter(_ => sym.isImplicitClass)
 
     def isHiddenByVisibility(using dctx: DocContext): Boolean =
       import VisibilityScope._
@@ -141,14 +153,52 @@ object SymOps:
         else termParamss(1).params(0)
       }
 
-    def nonExtensionParamLists: List[reflect.TermParamClause] =
+    def extendedTypeParams: List[reflect.TypeDef] =
+      import reflect.*
+      val method = sym.tree.asInstanceOf[DefDef]
+      method.leadingTypeParams
+
+    def extendedTermParamLists: List[reflect.TermParamClause] =
+      import reflect.*
+      if sym.nonExtensionLeadingTypeParams.nonEmpty then
+        sym.nonExtensionParamLists.takeWhile {
+          case _: TypeParamClause => false
+          case _ => true
+        }.collect {
+          case tpc: TermParamClause => tpc
+        }
+      else
+        List.empty
+
+    def nonExtensionTermParamLists: List[reflect.TermParamClause] =
+      import reflect.*
+      if sym.nonExtensionLeadingTypeParams.nonEmpty then
+        sym.nonExtensionParamLists.dropWhile {
+          case _: TypeParamClause => false
+          case _ => true
+        }.drop(1).collect {
+          case tpc: TermParamClause => tpc
+        }
+      else
+        sym.nonExtensionParamLists.collect {
+          case tpc: TermParamClause => tpc
+        }
+
+    def nonExtensionParamLists: List[reflect.ParamClause] =
       import reflect.*
       val method = sym.tree.asInstanceOf[DefDef]
       if sym.isExtensionMethod then
-        val params = method.termParamss
-        if sym.isLeftAssoc || params.size == 1 then params.tail
-        else params.head :: params.tail.drop(1)
-      else method.termParamss
+        val params = method.paramss
+        val toDrop = if method.leadingTypeParams.nonEmpty then 2 else 1
+        if sym.isLeftAssoc || params.size == 1 then params.drop(toDrop)
+        else params.head :: params.tail.drop(toDrop)
+      else method.paramss
+
+    def nonExtensionLeadingTypeParams: List[reflect.TypeDef] =
+      import reflect.*
+      sym.nonExtensionParamLists.collectFirst {
+        case TypeParamClause(params) => params
+      }.toList.flatten
 
   end extension
 
@@ -218,13 +268,15 @@ class SymOpsWithLinkCache:
             import dotty.tools.dotc
             given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-            val extLink = if externalLinkCache.contains(csym.associatedFile) then externalLinkCache(csym.associatedFile)
-            else {
-              val calculatedLink = Option(csym.associatedFile).map(_.path).flatMap( path =>
-               dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path))))
-              externalLinkCache += (csym.associatedFile -> calculatedLink)
-              calculatedLink
-            }
+            val extLink = if externalLinkCache.contains(csym.associatedFile)
+              then externalLinkCache(csym.associatedFile)
+              else {
+                val calculatedLink = Option(csym.associatedFile).map(_.path).flatMap { path =>
+                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
+                }
+                externalLinkCache += (csym.associatedFile -> calculatedLink)
+                calculatedLink
+              }
             extLink.map(link => sym.constructPath(location, anchor, link))
         }
 

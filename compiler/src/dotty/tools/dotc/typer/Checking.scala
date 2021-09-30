@@ -34,8 +34,10 @@ import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import transform.patmat.SpaceEngine.isIrrefutable
-import config.Feature._
+import config.Feature
+import config.Feature.sourceVersion
 import config.SourceVersion._
+import transform.TypeUtils.*
 
 import collection.mutable
 import reporting._
@@ -473,7 +475,7 @@ object Checking {
     if (sym.is(Implicit)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
-      if (sym.isType)
+      if sym.isType && (!sym.isClass || sym.is(Trait)) then
         fail(TypesAndTraitsCantBeImplicit())
     }
     if sym.is(Transparent) then
@@ -719,6 +721,50 @@ object Checking {
         checkValue(tree)
       case _ =>
     tree
+
+  /** Check that experimental language imports in `trees`
+   *  are done only in experimental scopes, or in a top-level
+   *  scope with only @experimental definitions.
+   */
+  def checkExperimentalImports(trees: List[Tree])(using Context): Unit =
+
+    def nonExperimentalStat(trees: List[Tree]): Tree = trees match
+      case (_: Import | EmptyTree) :: rest =>
+        nonExperimentalStat(rest)
+      case (tree @ TypeDef(_, impl: Template)) :: rest if tree.symbol.isPackageObject =>
+        nonExperimentalStat(impl.body).orElse(nonExperimentalStat(rest))
+      case (tree: PackageDef) :: rest =>
+        nonExperimentalStat(tree.stats).orElse(nonExperimentalStat(rest))
+      case (tree: MemberDef) :: rest =>
+        if tree.symbol.isExperimental || tree.symbol.is(Synthetic) then
+          nonExperimentalStat(rest)
+        else
+          tree
+      case tree :: rest =>
+        tree
+      case Nil =>
+        EmptyTree
+
+    for case imp @ Import(qual, selectors) <- trees do
+      def isAllowedImport(sel: untpd.ImportSelector) =
+        val name = Feature.experimental(sel.name)
+        name == Feature.scala2macros || name == Feature.erasedDefinitions
+
+      languageImport(qual) match
+        case Some(nme.experimental)
+        if !ctx.owner.isInExperimentalScope && !selectors.forall(isAllowedImport) =>
+          def check(stable: => String) =
+            Feature.checkExperimentalFeature("features", imp.srcPos,
+              s"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
+          if ctx.owner.is(Package) then
+            // allow top-level experimental imports if all definitions are @experimental
+            nonExperimentalStat(trees) match
+              case EmptyTree =>
+              case tree: MemberDef => check(i"${tree.symbol}")
+              case tree => check(i"expression ${tree}")
+          else Feature.checkExperimentalFeature("features", imp.srcPos)
+        case _ =>
+  end checkExperimentalImports
 }
 
 trait Checking {
@@ -861,21 +907,13 @@ trait Checking {
   /** If `sym` is an old-style implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(GivenOrImplicit)
    */
-  def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = {
-    def check(): Unit =
+  def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit =
+    if sym.isOldStyleImplicitConversion(directOnly = true) then
       checkFeature(
         nme.implicitConversions,
         i"Definition of implicit conversion $sym",
         ctx.owner.topLevelClass,
         sym.srcPos)
-
-    sym.info.stripPoly match {
-      case mt @ MethodType(_ :: Nil)
-      if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's an old-styleconversion
-        check()
-      case _ =>
-    }
-  }
 
   /** If `tree` is an application of a new-style implicit conversion (using the apply
    *  method of a `scala.Conversion` instance), check that implicit conversions are
@@ -938,7 +976,7 @@ trait Checking {
                    description: => String,
                    featureUseSite: Symbol,
                    pos: SrcPos)(using Context): Unit =
-    if !enabled(name) then
+    if !Feature.enabled(name) then
       report.featureWarning(name.toString, description, featureUseSite, required = false, pos)
 
   /** Check that `tp` is a class type and that any top-level type arguments in this type
@@ -1320,6 +1358,10 @@ trait Checking {
     if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`future-migration`) then
       val kind = if pattern then "pattern selector" else "value"
       report.warning(MatchableWarning(tp, pattern), pos)
+
+  def checkCanThrow(tp: Type, span: Span)(using Context): Unit =
+    if Feature.enabled(Feature.saferExceptions) && tp.isCheckedException then
+      ctx.typer.implicitArgTree(defn.CanThrowClass.typeRef.appliedTo(tp), span)
 }
 
 trait ReChecking extends Checking {
@@ -1332,6 +1374,7 @@ trait ReChecking extends Checking {
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
+  override def checkCanThrow(tp: Type, span: Span)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {

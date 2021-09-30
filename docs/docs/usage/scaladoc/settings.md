@@ -1,8 +1,10 @@
 ---
-title: Scaladoc settings
+layout: multipage-overview
+title: "Settings"
+partof: scala3-scaladoc
+num: 8
+previous-page: search-engine
 ---
-
-# {{page.title}}
 
 This chapter lists the configuration options that can be used when calling scaladoc. Some of the information shown here can be found by calling scaladoc with the `-help` flag.
 
@@ -13,8 +15,12 @@ If you want to know what is current state of compatibility with scaladoc old fla
 
 ## Providing settings
 
-Supply scaladoc settings as command-line arguments, e.g., `scaladoc -d output -project my-project target/scala-3.0.0-RC2/classes`. If called from sbt,
-update the value of `Compile / doc / scalacOptions`, e. g. `Compile / doc / scalacOptions ++= Seq("-d", "output", "-project", "my-project")`
+Supply scaladoc settings as command-line arguments, e.g., `scaladoc -d output -project my-project target/scala-3.0.0-RC2/classes`. If called from sbt, update the value of `Compile / doc / scalacOptions` and `Compile / doc / target` respectively, e. g.
+
+```
+Compile / doc / target ++= Seq("-d", "output")
+Compile / doc / scalacOptions ++= Seq("-project", "my-project")
+```
 
 ## Overview of all available settings
 
@@ -73,7 +79,7 @@ In such case paths used in templates will be relativized against `<sub-path>`
 Mapping between regexes matching classpath entries and external documentation.
 
 Example external mapping is:
-`-external-mappings:.*scala.*::scaladoc3::http://dotty.epfl.ch/api/,.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/`
+`-external-mappings:.*scala.*::scaladoc3::https://scala-lang.org/api/3.x/,.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/`
 
 A mapping is of the form '\<regex>::\[scaladoc3|scaladoc|javadoc]::\<path>'. You can supply several mappings, separated by commas, as shown in the example.
 
@@ -118,6 +124,10 @@ A base URL to use as prefix and add `canonical` URLs to all pages. The canonical
 
 A directory containing static files from which to generate documentation. Default directory is `./docs`
 
+##### -no-link-warnings
+
+Suppress warnings for ambiguous or incorrect links in members’ lookup. Doesn't affect warnings for incorrect links of assets etc.
+
 ##### -versions-dictionary-url
 
 A URL pointing to a JSON document containing a dictionary: `version label -> documentation location`.
@@ -134,3 +144,39 @@ Example JSON file:
 }
 ```
 
+##### -snippet-compiler
+
+Snippet compiler arguments provide a way to configure snippet type checking.
+
+This setting accepts a list of arguments in the format:
+args := arg{,arg}
+arg := [path=]flag
+where `path` is a prefix of the path to source files where snippets are located and `flag` is the mode in which snippets will be type checked.
+
+If the path is not present, the argument will be used as the default for all unmatched paths.
+
+Available flags:
+compile - Enables snippet checking.
+nocompile - Disables snippet checking.
+fail - Enables snippet checking, asserts that snippet doesn't compile.
+
+The fail flag comes in handy for snippets that present that some action would eventually fail during compilation, e. g. [Opaques page]({% link _scala3-reference/other-new-features/opaques.md %})
+
+Example usage:
+
+`-snippet-compiler:my/path/nc=nocompile,my/path/f=fail,compile`
+
+Which means:
+
+all snippets in files under directory `my/path/nc` should not be compiled at all
+all snippets in files under directory `my/path/f` should fail during compilation
+all other snippets should compile successfully
+
+##### -Ysnippet-compiler-debug
+
+Setting this option makes snippet compiler print the snippet as it is compiled (after wrapping).
+
+##### -Ydocument-synthetic-types
+
+Include pages providing documentation for the intrinsic types (e. g. Any, Nothing) to the docs. The setting is useful only for stdlib because scaladoc for Scala 3 relies on TASTy files, but we cannot provide them for intrinsic types since they are embedded in the compiler.
+All other users should not concern with this setting.

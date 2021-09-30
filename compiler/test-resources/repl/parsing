@@ -9,7 +9,7 @@ scala> 1;; 2
 val res3: Int = 1
 val res4: Int = 2
 scala> }
--- Error:
+-- [E040] Syntax Error: --------------------------------------------------------
 1 | }
   | ^
   | eof expected, but '}' found

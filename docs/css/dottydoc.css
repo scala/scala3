@@ -193,8 +193,8 @@ aside {
 }
 
 aside.warning {
-  border-left: 3px solid #d62c2c;
-  background-color: #ffe4e4;
+  border-left: 3px solid var(--red500);
+  background-color: var(--aside-warning-bg);
 }
 
 aside.notice {

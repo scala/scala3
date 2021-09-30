@@ -38,8 +38,9 @@ class RemoteLinksTest:
   def runTest =
     assertTrue(mtslAll.nonEmpty)
     val mtsl = randomGenerator.shuffle(mtslAll).take(80) // take 80 random entries
-    val pageToMtsl: Map[String, List[(String, String)]] = mtsl.groupMap(_._2.split("#L").head)(v => (v._1, v._2.split("#L").last))
-    pageToMtsl.foreach { case (link, members) =>
+    val pageToMtsl: Map[String, List[(String, Int)]] =
+      mtsl.groupMap(_._2.split("#L").head)(v => (v._1, v._2.split("#L").last.toInt))
+    pageToMtsl.toSeq.sortBy(_._1).foreach { case (link, members) =>
       try
         val doc = getDocumentFromUrl(link)
         println(s"Checking $link")
@@ -47,7 +48,7 @@ class RemoteLinksTest:
           if !member.startsWith("given_") then // TODO: handle synthetic givens, for now we disable them from testing
             val toLine = expectedLine + 3
             val memberToMatch = member.replace("`", "")
-            val lineCorrectlyDefined = (expectedLine.toInt until toLine.toInt).exists{ line =>
+            val lineCorrectlyDefined = (expectedLine until toLine).exists{ line =>
               val loc = doc.select(s"#LC$line").text
 
               loc.contains(memberToMatch)

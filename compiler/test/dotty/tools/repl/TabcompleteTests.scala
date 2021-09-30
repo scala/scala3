@@ -132,4 +132,10 @@ class TabcompleteTests extends ReplTest {
   @Test def i6415 = fromInitialState { implicit s =>
     assertEquals(List("Predef"), tabComplete("object Foo { opaque type T = Pre"))
   }
+
+  @Test def i12600 = fromInitialState { implicit s =>
+    assertEquals(List("select", "show", "simplified"),
+      tabComplete("import quoted.* ; def fooImpl(using Quotes): Expr[Int] = { import quotes.reflect.* ; TypeRepr.of[Int].s"))
+  }
+
 }

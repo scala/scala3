@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Dropped: Wildcard Initializer"
+type: section
+num: 86
+previous-page: /scala3/reference/dropped-features/this-qualifier
+next-page: /scala3/reference/syntax
 ---
 
 The syntax

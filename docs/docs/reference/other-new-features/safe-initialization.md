@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Safe Initialization"
+type: section
+num: 49
+previous-page: /scala3/reference/other-new-features/explicit-nulls
+next-page: /scala3/reference/other-new-features/type-test
 ---
 
 Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ysafe-init`.

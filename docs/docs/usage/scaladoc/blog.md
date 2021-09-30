@@ -1,8 +1,11 @@
 ---
-title: Built-in blog
+layout: multipage-overview
+title: "Built-in blog"
+partof: scala3-scaladoc
+num: 5
+previous-page: static-site
+next-page: site-versioning
 ---
-
-# {{page.title}}
 
 Scaladoc allows you to include a simple blog in your documentation. For now, it
 provides only basic features. In the future, we plan to include more advanced
@@ -22,7 +25,7 @@ All your blogposts must be put under `blog/_posts` directory.
 │   └── index.html
 ```
 
-If you are using yaml [sidebar](./staticSite.html#sidebar) don't forget to place
+If you are using yaml [sidebar]({% link _overviews/scala3-scaladoc/static-site.md %}#sidebar) don't forget to place
 
 ```
 sidebar:

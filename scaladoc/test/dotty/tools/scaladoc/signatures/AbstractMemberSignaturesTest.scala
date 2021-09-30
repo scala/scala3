@@ -26,14 +26,14 @@ class AbstractMembers extends ScaladocTest("abstractmembersignatures"):
   }
 
   private def signaturesFromDocumentation()(using DocContext): Map[String, List[(String, String)]] =
-    val output = summon[DocContext].args.output.toPath.resolve("api")
+    val output = summon[DocContext].args.output.toPath
     val signatures = List.newBuilder[(String, (String, String))]
     def processFile(path: Path): Unit =
       val document = Jsoup.parse(IO.read(path))
       val content = document.select(".documentableList").forEach { elem =>
         val group = elem.select(".groupHeader").eachText.asScala.mkString("")
         elem.select(".documentableElement").forEach { elem =>
-          val modifiers = elem.select(".header .other-modifiers").eachText.asScala.mkString("")
+          val modifiers = elem.select(".header .modifiers").eachText.asScala.mkString("")
           val name = elem.select(".header .documentableName").eachText.asScala.mkString("")
           signatures += group -> (modifiers, name)
         }

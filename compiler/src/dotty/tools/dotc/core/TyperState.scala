@@ -103,11 +103,12 @@ class TyperState() {
     this
 
   /** A fresh typer state with the same constraint as this one. */
-  def fresh(reporter: Reporter = StoreReporter(this.reporter)): TyperState =
+  def fresh(reporter: Reporter = StoreReporter(this.reporter),
+      committable: Boolean = this.isCommittable): TyperState =
     util.Stats.record("TyperState.fresh")
     TyperState().init(this, this.constraint)
       .setReporter(reporter)
-      .setCommittable(this.isCommittable)
+      .setCommittable(committable)
 
   /** The uninstantiated variables */
   def uninstVars: collection.Seq[TypeVar] = constraint.uninstVars
@@ -143,7 +144,15 @@ class TyperState() {
     reporter.flush()
     setCommittable(false)
     val targetState = ctx.typerState
-    assert(!targetState.isCommitted, s"Attempt to commit $this into already committed $targetState")
+
+    // Committing into an already committed TyperState usually doesn't make
+    // sense since it means the constraints we're committing won't be propagated
+    // further, but it can happen if the targetState gets captured in a reported
+    // Message, because forcing that Message might involve creating and
+    // committing new TyperStates into the captured one after its been committed.
+    assert(!targetState.isCommitted || targetState.reporter.hasErrors || targetState.reporter.hasWarnings,
+      s"Attempt to commit $this into already committed $targetState")
+
     if constraint ne targetState.constraint then
       Stats.record("typerState.commit.new constraint")
       constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
@@ -154,6 +163,7 @@ class TyperState() {
         targetState.mergeConstraintWith(this)
     targetState.gc()
     isCommitted = true
+    ownedVars = SimpleIdentitySet.empty
   }
 
   /** Ensure that this constraint does not associate different TypeVars for the
@@ -173,17 +183,51 @@ class TyperState() {
 
   /** Integrate the constraints from `that` into this TyperState.
    *
-   *  @pre If `that` is committable, it must not contain any type variable which
+   *  @pre If `this` and `that` are committable, `that` must not contain any type variable which
    *       does not exist in `this` (in other words, all its type variables must
    *       be owned by a common parent of `this` and `that`).
    */
-  def mergeConstraintWith(that: TyperState)(using Context): Unit =
+  def mergeConstraintWith(that: TyperState)(using Context): this.type =
+    if this eq that then return this
+
     that.ensureNotConflicting(constraint)
-    constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
-    for tvar <- constraint.uninstVars do
-      if !isOwnedAnywhere(this, tvar) then includeVar(tvar)
+
+    val comparingCtx = ctx.withTyperState(this)
+
+    inContext(comparingCtx)(comparing(typeComparer =>
+      val other = that.constraint
+      val res = other.domainLambdas.forall(tl =>
+        // Integrate the type lambdas from `other`
+        constraint.contains(tl) || other.isRemovable(tl) || {
+          val tvars = tl.paramRefs.map(other.typeVarOfParam(_)).collect { case tv: TypeVar => tv }
+          if this.isCommittable then
+            tvars.foreach(tvar => if !tvar.inst.exists && !isOwnedAnywhere(this, tvar) then includeVar(tvar))
+          typeComparer.addToConstraint(tl, tvars)
+        }) &&
+        // Integrate the additional constraints on type variables from `other`
+        constraint.uninstVars.forall(tv =>
+          val p = tv.origin
+          val otherLos = other.lower(p)
+          val otherHis = other.upper(p)
+          val otherEntry = other.entry(p)
+          (  (otherLos eq constraint.lower(p)) || otherLos.forall(_ <:< p)) &&
+          (  (otherHis eq constraint.upper(p)) || otherHis.forall(p <:< _)) &&
+          ((otherEntry eq constraint.entry(p)) || otherEntry.match
+            case NoType =>
+              true
+            case tp: TypeBounds =>
+              tp.contains(tv)
+            case tp =>
+              tv =:= tp
+          )
+        )
+      assert(res || ctx.reporter.errorsReported, i"cannot merge $constraint with $other.")
+    ))
+
     for tl <- constraint.domainLambdas do
       if constraint.isRemovable(tl) then constraint = constraint.remove(tl)
+    this
+  end mergeConstraintWith
 
   /** Take ownership of `tvar`.
    *

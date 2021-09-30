@@ -1,5 +1,6 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "Macros Spec"
 ---
 
@@ -7,7 +8,7 @@ title: "Macros Spec"
 
 ### Syntax
 
-Compared to the [Scala 3 reference grammar](../syntax.md)
+Compared to the [Scala 3 reference grammar](../syntax.html)
 there are the following syntax changes:
 ```
 SimpleExpr      ::=  ...
@@ -158,7 +159,7 @@ environments and terms.
                        Es |- 't: expr T
 ```
 The meta theory of a slightly simplified 2-stage variant of this calculus
-is studied [separately](./simple-smp.md).
+is studied [separately](./simple-smp.html).
 
 ## Going Further
 

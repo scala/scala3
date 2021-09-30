@@ -49,6 +49,5 @@ object Selectable:
    *  the additional restriction that the signatures of the refinement and
    *  the definition that implements the refinment must match.
    */
-  @experimental
   trait WithoutPreciseParameterTypes extends Selectable
 end Selectable

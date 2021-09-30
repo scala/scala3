@@ -160,7 +160,7 @@ trait Deriving {
         val clsParamInfos = clsType.typeParams
         val clsArity = clsParamInfos.length
         val alignedClsParamInfos = clsParamInfos.takeRight(instanceArity)
-        val alignedTypeClassParamInfos = typeClassParamInfos.take(alignedClsParamInfos.length)
+        val alignedTypeClassParamInfos = typeClassParamInfos.takeRight(alignedClsParamInfos.length)
 
 
         if ((instanceArity == clsArity || instanceArity > 0) && sameParamKinds(alignedClsParamInfos, alignedTypeClassParamInfos)) {

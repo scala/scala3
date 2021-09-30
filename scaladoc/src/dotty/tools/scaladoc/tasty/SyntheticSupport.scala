@@ -6,15 +6,8 @@ import scala.quoted._
 object SyntheticsSupport:
 
   extension (using Quotes)(t: reflect.TypeRepr)
-    def isTupleType: Boolean = t.hackIsTupleType(t)
 
     def isCompiletimeAppliedType: Boolean = t.hackIsCompiletimeAppliedType(t)
-
-    private def hackIsTupleType(rtpe: reflect.TypeRepr): Boolean =
-      import dotty.tools.dotc
-      given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-      val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
-      ctx.definitions.isTupleType(tpe)
 
     private def hackIsCompiletimeAppliedType(rtpe: reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
@@ -74,13 +67,7 @@ object SyntheticsSupport:
     import dotty.tools.dotc
     given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
-    // `lookupPrefix` is private in `QuotesImpl#SymbolMethods`
-    val lookupPrefix =
-      if sym.isClass then
-        sym.thisType
-      else
-        sym.namedType
-    lookupPrefix.allMembers.iterator.map(_.symbol)
+    sym.namedType.allMembers.iterator.map(_.symbol)
       .collect {
          case sym if
           (!sym.is(dotc.core.Flags.ModuleVal) || sym.is(dotc.core.Flags.Given)) &&

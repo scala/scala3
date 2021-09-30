@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Macros"
+type: section
+num: 30
+previous-page: /scala3/reference/metaprogramming/compiletime-ops
+next-page: /scala3/reference/metaprogramming/staging
 ---
 
 > When developing macros enable `-Xcheck-macros` scalac option flag to have extra runtime checks.
@@ -17,7 +20,7 @@ schemes with the familiar string interpolation syntax.
 println(s"Hello, $name, here is the result of 1 + 1 = ${1 + 1}")
 ```
 
-In string interpolation we _quoted_ a string and then we _spliced_ into it, two others. The first, `name`, is a reference to a value of type [`String`](https://dotty.epfl.ch/api/scala/Predef$.html#String), and the second is an arithmetic expression that will be _evaluated_ followed by the splicing of its string representation.
+In string interpolation we _quoted_ a string and then we _spliced_ into it, two others. The first, `name`, is a reference to a value of type [`String`](https://scala-lang.org/api/3.x/scala/Predef$.html#String-0), and the second is an arithmetic expression that will be _evaluated_ followed by the splicing of its string representation.
 
 Quotes and splices in this section allow us to treat code in a similar way,
 effectively supporting macros. The entry point for macros is an inline method
@@ -82,7 +85,7 @@ and it takes types `T` to expressions of type `Type[T]`. Splicing
 takes expressions of type `Expr[T]` to expressions of type `T` and it
 takes expressions of type `Type[T]` to types `T`.
 
-The two types can be defined in package [`scala.quoted`](https://dotty.epfl.ch/api/scala/quoted.html) as follows:
+The two types can be defined in package [`scala.quoted`](https://scala-lang.org/api/3.x/scala/quoted.html) as follows:
 
 ```scala
 package scala.quoted
@@ -502,7 +505,7 @@ and allow for undefined compiler behavior if they are not. This is analogous to
 the status of pattern guards in Scala, which are also required, but not
 verified, to be pure.
 
-[Multi-Stage Programming](./staging.md) introduces one additional method where
+[Multi-Stage Programming](./staging.html) introduces one additional method where
 you can expand code at runtime with a method `run`. There is also a problem with
 that invocation of `run` in splices. Consider the following expression:
 
@@ -624,7 +627,7 @@ def setForExpr[T: Type](using Quotes): Expr[Set[T]] =
 
 ## Relationship with Transparent Inline
 
-[Inline](./inline.md) documents inlining. The code below introduces a transparent
+[Inline](./inline.html) documents inlining. The code below introduces a transparent
 inline method that can calculate either a value of type `Int` or a value of type
 `String`.
 
@@ -819,4 +822,4 @@ To match an actual application we can use braces on the function part `${b}(a1, 
 
 ## More details
 
-[More details](./macros-spec.md)
+[More details](./macros-spec.html)

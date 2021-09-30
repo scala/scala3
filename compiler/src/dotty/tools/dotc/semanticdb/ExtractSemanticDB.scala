@@ -13,16 +13,17 @@ import Flags._
 import Names.Name
 import StdNames.nme
 import NameOps._
+import Denotations.StaleSymbol
 import util.Spans.Span
 import util.{SourceFile, SourcePosition}
 import transform.SymUtils._
-import SymbolInformation.{Kind => k}
 
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
 import scala.PartialFunction.condOpt
 
+import dotty.tools.dotc.{semanticdb => s}
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
@@ -43,24 +44,18 @@ class ExtractSemanticDB extends Phase:
 
   override def run(using Context): Unit =
     val unit = ctx.compilationUnit
-    val extract = Extractor()
-    extract.traverse(unit.tpdTree)
-    ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbolInfos.toList)
+    val extractor = Extractor()
+    extractor.extract(unit.tpdTree)
+    ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList, extractor.synthetics.toList)
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:
-
-    private var nextLocalIdx: Int = 0
-
-    /** The index of a local symbol */
-    private val locals = mutable.HashMap[Symbol, Int]()
+    given s.SemanticSymbolBuilder = s.SemanticSymbolBuilder()
+    val synth = SyntheticsExtractor()
+    given converter: s.TypeOps = s.TypeOps()
 
     /** The bodies of synthetic locals */
     private val localBodies = mutable.HashMap[Symbol, Tree]()
-
-    /** The local symbol(s) starting at given offset */
-    private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]():
-      override def default(key: Int) = Set[Symbol]()
 
     /** The extracted symbol occurrences */
     val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
@@ -68,11 +63,18 @@ class ExtractSemanticDB extends Phase:
     /** The extracted symbol infos */
     val symbolInfos = new mutable.ListBuffer[SymbolInformation]()
 
+    val synthetics = new mutable.ListBuffer[s.Synthetic]()
+
     /** A cache of localN names */
     val localNames = new mutable.HashSet[String]()
 
     /** The symbol occurrences generated so far, as a set */
     private val generated = new mutable.HashSet[SymbolOccurrence]
+
+    def extract(tree: Tree)(using Context): Unit =
+      traverse(tree)
+      val fakeSyms = converter.fakeSymbols.map(_.symbolInfo(Set.empty)(using LinkMode.SymlinkChildren, converter))
+      symbolInfos.appendAll(fakeSyms)
 
     /** Definitions of this symbol should be excluded from semanticdb */
     private def excludeDef(sym: Symbol)(using Context): Boolean =
@@ -80,6 +82,8 @@ class ExtractSemanticDB extends Phase:
       || sym.isLocalDummy
       || sym.is(Synthetic)
       || sym.isSetter
+      || sym.isOldStyleImplicitConversion(forImplicitClassOnly = true)
+      || sym.owner.isGivenInstanceSummoner
       || excludeDefOrUse(sym)
 
     private def excludeDefOrUse(sym: Symbol)(using Context): Boolean =
@@ -103,6 +107,7 @@ class ExtractSemanticDB extends Phase:
     private def excludeChildren(sym: Symbol)(using Context): Boolean =
       !sym.exists
       || sym.is(Param) && sym.info.bounds.hi.isInstanceOf[Types.HKTypeLambda]
+      || sym.isOldStyleImplicitConversion(forImplicitClassOnly = true)
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
     private def excludeUse(qualifier: Option[Symbol], sym: Symbol)(using Context): Boolean =
@@ -131,61 +136,60 @@ class ExtractSemanticDB extends Phase:
 
       tree match
         case tree: PackageDef =>
-          if !excludeDef(tree.pid.symbol)
-          && tree.pid.span.hasLength then
-            tree.pid match
-            case tree: Select =>
-              registerDefinition(tree.symbol, selectSpan(tree), Set.empty, tree.source)
-              traverse(tree.qualifier)
-            case tree => registerDefinition(tree.symbol, tree.span, Set.empty, tree.source)
           tree.stats.foreach(traverse)
+          if !excludeDef(tree.pid.symbol) && tree.pid.span.hasLength then
+            tree.pid match
+              case tree: Select =>
+                traverse(tree.qualifier)
+                registerDefinition(tree.symbol, selectSpan(tree), Set.empty, tree.source)
+              case tree => registerDefinition(tree.symbol, tree.span, Set.empty, tree.source)
         case tree: NamedDefTree =>
           if !tree.symbol.isAllOf(ModuleValCreationFlags) then
-            if !excludeDef(tree.symbol)
-            && tree.span.hasLength then
+            tree match {
+              case tree: ValDef if tree.symbol.isAllOf(EnumValue) =>
+                tree.rhs match
+                case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
+                  template.parents.filter(!_.span.isZeroExtent).foreach(traverse)
+                case _ => // calls $new
+              case tree: ValDef if tree.symbol.isSelfSym =>
+                if tree.tpt.span.hasLength then
+                  traverse(tree.tpt)
+              case tree: DefDef if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
+                tree.trailingParamss.foreach(_.foreach(traverse))
+                traverse(tree.rhs)
+              case tree: (DefDef | ValDef) if tree.symbol.isSyntheticWithIdent =>
+                tree match
+                  case tree: DefDef =>
+                    tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
+                  case tree: ValDef if tree.symbol.is(Given) =>
+                    traverse(tree.tpt)
+                  case _ =>
+                if !tree.symbol.isGlobal then
+                  localBodies(tree.symbol) = tree.rhs
+                // ignore rhs
+
+              case PatternValDef(pat, rhs) =>
+                traverse(rhs)
+                PatternValDef.collectPats(pat).foreach(traverse)
+              case tree: TypeDef =>
+                traverseChildren(tree)
+              case tree =>
+                if !excludeChildren(tree.symbol) then
+                  traverseChildren(tree)
+            }
+            if !excludeDef(tree.symbol) && tree.span.hasLength then
               registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree), tree.source)
               val privateWithin = tree.symbol.privateWithin
               if privateWithin.exists then
                 registerUseGuarded(None, privateWithin, spanOfSymbol(privateWithin, tree.span, tree.source), tree.source)
             else if !excludeSymbol(tree.symbol) then
-              registerSymbol(tree.symbol, symbolName(tree.symbol), symbolKinds(tree))
-            tree match
-            case tree: ValDef
-            if tree.symbol.isAllOf(EnumValue) =>
-              tree.rhs match
-              case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
-                template.parents.filter(!_.span.isZeroExtent).foreach(traverse)
-              case _ => // calls $new
-            case tree: ValDef
-            if tree.symbol.isSelfSym =>
-              if tree.tpt.span.hasLength then
-                traverse(tree.tpt)
-            case tree: DefDef
-            if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
-              tree.trailingParamss.foreach(_.foreach(traverse))
-              traverse(tree.rhs)
-            case tree: (DefDef | ValDef)
-            if tree.symbol.isSyntheticWithIdent =>
-              tree match
-                case tree: DefDef =>
-                  tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
-                case tree: ValDef if tree.symbol.is(Given) => traverse(tree.tpt)
-                case _ =>
-              if !tree.symbol.isGlobal then
-                localBodies(tree.symbol) = tree.rhs
-              // ignore rhs
-            case PatternValDef(pat, rhs) =>
-              traverse(rhs)
-              PatternValDef.collectPats(pat).foreach(traverse)
-            case tree =>
-              if !excludeChildren(tree.symbol) then
-                traverseChildren(tree)
+              registerSymbol(tree.symbol, symbolKinds(tree))
+        case tree: Template if tree.symbol.owner.is(Invisible) =>
+          // do nothing
+          // exclude the symbols and synthetics generated by @main annotation
+          // (main class generated by @main has `Invisible` flag, see `MainProxies.scala`).
         case tree: Template =>
           val ctorSym = tree.constr.symbol
-          if !excludeDef(ctorSym) then
-            traverseAnnotsOfDefinition(ctorSym)
-            registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
-            ctorParams(tree.constr.termParamss, tree.body)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
           val selfSpan = tree.self.span
@@ -195,14 +199,19 @@ class ExtractSemanticDB extends Phase:
             tree.body.foreachUntilImport(traverse).foreach(traverse) // the first import statement
           else
             tree.body.foreach(traverse)
+          if !excludeDef(ctorSym) then
+            traverseAnnotsOfDefinition(ctorSym)
+            ctorParams(tree.constr.termParamss, tree.constr.leadingTypeParams, tree.body)
+            registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
         case tree: Apply =>
-          @tu lazy val genParamSymbol: Name => String = funParamSymbol(tree.fun.symbol)
+          @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
+          synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
           for arg <- tree.args do
             arg match
               case tree @ NamedArg(name, arg) =>
-                registerUse(genParamSymbol(name), tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
                 traverse(localBodies.get(arg.symbol).getOrElse(arg))
+                registerUse(genParamSymbol(name), tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
               case _ => traverse(arg)
         case tree: Assign =>
           val qualSym = condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }
@@ -222,21 +231,36 @@ class ExtractSemanticDB extends Phase:
           val qual = tree.qualifier
           val qualSpan = qual.span
           val sym = tree.symbol.adjustIfCtorTyparam
-          registerUseGuarded(qual.symbol.ifExists, sym, selectSpan(tree), tree.source)
           if qualSpan.exists && qualSpan.hasLength then
             traverse(qual)
+          registerUseGuarded(qual.symbol.ifExists, sym, selectSpan(tree), tree.source)
         case tree: Import =>
           if tree.span.exists && tree.span.hasLength then
+            traverseChildren(tree)
             for sel <- tree.selectors do
               val imported = sel.imported.name
               if imported != nme.WILDCARD then
                 for alt <- tree.expr.tpe.member(imported).alternatives do
                   registerUseGuarded(None, alt.symbol, sel.imported.span, tree.source)
-                  if (alt.symbol.companionClass.exists)
-                    registerUseGuarded(None, alt.symbol.companionClass, sel.imported.span, tree.source)
-            traverseChildren(tree)
+                  try
+                    if (alt.symbol.companionClass.exists)
+                      registerUseGuarded(None, alt.symbol.companionClass, sel.imported.span, tree.source)
+                  catch case ex: StaleSymbol =>
+                    // can happen for constructor proxies. Test case is pos-macros/i13532.
+                    ()
+
         case tree: Inlined =>
           traverse(tree.call)
+        case tree: TypeTree =>
+          tree.typeOpt match
+            // Any types could be appear inside of `TypeTree`, but
+            // types that precent in source other than TypeRef are traversable and contain Ident tree nodes
+            // (e.g. TypeBoundsTree, AppliedTypeTree)
+            case Types.TypeRef(_, sym: Symbol) if namePresentInSource(sym, tree.span, tree.source) =>
+              registerUseGuarded(None, sym, tree.span, tree.source)
+            case _ => ()
+
+
         case _ =>
           traverseChildren(tree)
 
@@ -248,14 +272,6 @@ class ExtractSemanticDB extends Phase:
         case _ =>
 
     end traverse
-
-    private def funParamSymbol(funSym: Symbol)(using Context): Name => String =
-      if funSym.isGlobal then
-        val funSymbol = symbolName(funSym)
-        name => s"$funSymbol($name)"
-      else
-        name => locals.keys.find(local => local.isTerm && local.owner == funSym && local.name == name)
-                      .fold("<?>")(Symbols.LocalPrefix + _)
 
     private object PatternValDef:
 
@@ -290,203 +306,18 @@ class ExtractSemanticDB extends Phase:
 
     end PatternValDef
 
-    /** Add semanticdb name of the given symbol to string builder */
-    private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
 
-      def addName(name: Name) =
-        val str = name.toString.unescapeUnicode
-        if str.isJavaIdent then b append str
-        else b append '`' append str append '`'
 
-      def addOwner(owner: Symbol): Unit =
-        if !owner.isRoot then addSymName(b, owner)
-
-      def addOverloadIdx(sym: Symbol): Unit =
-        val decls =
-          val decls0 = sym.owner.info.decls.lookupAll(sym.name)
-          if sym.owner.isAllOf(JavaModule) then
-            decls0 ++ sym.owner.companionClass.info.decls.lookupAll(sym.name)
-          else
-            decls0
-        end decls
-        val alts = decls.filter(_.isOneOf(Method | Mutable)).toList.reverse
-        def find(filter: Symbol => Boolean) = alts match
-          case notSym :: rest if !filter(notSym) =>
-            val idx = rest.indexWhere(filter).ensuring(_ >= 0)
-            b.append('+').append(idx + 1)
-          case _ =>
-        end find
-        val sig = sym.signature
-        find(_.signature == sig)
-
-      def addDescriptor(sym: Symbol): Unit =
-        if sym.is(ModuleClass) then
-          addDescriptor(sym.sourceModule)
-        else if sym.is(TypeParam) then
-          b.append('['); addName(sym.name); b.append(']')
-        else if sym.is(Param) then
-          b.append('('); addName(sym.name); b.append(')')
-        else if sym.isRoot then
-          b.append(Symbols.RootPackage)
-        else if sym.isEmptyPackage then
-          b.append(Symbols.EmptyPackage)
-        else if (sym.isScala2PackageObject) then
-          b.append(Symbols.PackageObjectDescriptor)
-        else
-          addName(sym.name)
-          if sym.is(Package) then b.append('/')
-          else if sym.isType || sym.isAllOf(JavaModule) then b.append('#')
-          else if sym.isOneOf(Method | Mutable)
-          && (!sym.is(StableRealizable) || sym.isConstructor) then
-            b.append('('); addOverloadIdx(sym); b.append(").")
-          else b.append('.')
-
-      /** The index of local symbol `sym`. Symbols with the same name and
-       *  the same starting position have the same index.
-       */
-      def localIdx(sym: Symbol)(using Context): Int =
-        val startPos =
-          assert(sym.span.exists, s"$sym should have a span")
-          sym.span.start
-        @tailrec
-        def computeLocalIdx(sym: Symbol): Int = locals get sym match
-          case Some(idx) => idx
-          case None      => symsAtOffset(startPos).find(_.name == sym.name) match
-            case Some(other) => computeLocalIdx(other)
-            case None =>
-              val idx = nextLocalIdx
-              nextLocalIdx += 1
-              locals(sym) = idx
-              symsAtOffset(startPos) += sym
-              idx
-        end computeLocalIdx
-        computeLocalIdx(sym)
-      end localIdx
-
-      if sym.exists then
-        if sym.isGlobal then
-          addOwner(sym.owner); addDescriptor(sym)
-        else
-          b.append(Symbols.LocalPrefix).append(localIdx(sym))
-
-    end addSymName
-
-    /** The semanticdb name of the given symbol */
-    private def symbolName(sym: Symbol)(using Context): String =
-      val b = StringBuilder(20)
-      addSymName(b, sym)
-      b.toString
-
-    private def range(span: Span, treeSource: SourceFile)(using Context): Option[Range] =
-      def lineCol(offset: Int) = (treeSource.offsetToLine(offset), treeSource.column(offset))
-      val (startLine, startCol) = lineCol(span.start)
-      val (endLine, endCol) = lineCol(span.end)
-      Some(Range(startLine, startCol, endLine, endCol))
-
-    private def symbolKind(sym: Symbol, symkinds: Set[SymbolKind])(using Context): SymbolInformation.Kind =
-      if sym.isTypeParam then
-        SymbolInformation.Kind.TYPE_PARAMETER
-      else if sym.is(TermParam) then
-        SymbolInformation.Kind.PARAMETER
-      else if sym.isTerm && sym.owner.isTerm then
-        SymbolInformation.Kind.LOCAL
-      else if sym.isInlineMethod || sym.is(Macro) then
-        SymbolInformation.Kind.MACRO
-      else if sym.isConstructor then
-        SymbolInformation.Kind.CONSTRUCTOR
-      else if sym.isSelfSym then
-        SymbolInformation.Kind.SELF_PARAMETER
-      else if sym.isOneOf(Method) || symkinds.exists(_.isVarOrVal) then
-        SymbolInformation.Kind.METHOD
-      else if sym.isPackageObject then
-        SymbolInformation.Kind.PACKAGE_OBJECT
-      else if sym.is(Module) then
-        SymbolInformation.Kind.OBJECT
-      else if sym.is(Package) then
-        SymbolInformation.Kind.PACKAGE
-      else if sym.isAllOf(JavaInterface) then
-        SymbolInformation.Kind.INTERFACE
-      else if sym.is(Trait) then
-        SymbolInformation.Kind.TRAIT
-      else if sym.isClass then
-        SymbolInformation.Kind.CLASS
-      else if sym.isType then
-        SymbolInformation.Kind.TYPE
-      else if sym.is(ParamAccessor) then
-        SymbolInformation.Kind.FIELD
-      else
-        SymbolInformation.Kind.UNKNOWN_KIND
-
-    private def symbolProps(sym: Symbol, symkinds: Set[SymbolKind])(using Context): Int =
-      if sym.is(ModuleClass) then
-        return symbolProps(sym.sourceModule, symkinds)
-      var props = 0
-      if sym.isPrimaryConstructor then
-        props |= SymbolInformation.Property.PRIMARY.value
-      if sym.is(Abstract) || symkinds.contains(SymbolKind.Abstract) then
-        props |= SymbolInformation.Property.ABSTRACT.value
-      if sym.is(Final) then
-        props |= SymbolInformation.Property.FINAL.value
-      if sym.is(Sealed) then
-        props |= SymbolInformation.Property.SEALED.value
-      if sym.isOneOf(GivenOrImplicit) then
-        props |= SymbolInformation.Property.IMPLICIT.value
-      if sym.is(Lazy, butNot=Module) then
-        props |= SymbolInformation.Property.LAZY.value
-      if sym.isAllOf(Case | Module) || sym.is(CaseClass) || sym.isAllOf(EnumCase) then
-        props |= SymbolInformation.Property.CASE.value
-      if sym.is(Covariant) then
-        props |= SymbolInformation.Property.COVARIANT.value
-      if sym.is(Contravariant) then
-        props |= SymbolInformation.Property.CONTRAVARIANT.value
-      if sym.isAllOf(DefaultMethod | JavaDefined) || sym.is(Accessor) && sym.name.is(NameKinds.DefaultGetterName) then
-        props |= SymbolInformation.Property.DEFAULT.value
-      if symkinds.exists(_.isVal) then
-        props |= SymbolInformation.Property.VAL.value
-      if symkinds.exists(_.isVar) then
-        props |= SymbolInformation.Property.VAR.value
-      if sym.is(JavaStatic) then
-        props |= SymbolInformation.Property.STATIC.value
-      if sym.is(Enum) then
-        props |= SymbolInformation.Property.ENUM.value
-      props
-
-    private def symbolAccess(sym: Symbol, kind: SymbolInformation.Kind)(using Context): Access =
-      kind match
-        case k.LOCAL | k.PARAMETER | k.SELF_PARAMETER | k.TYPE_PARAMETER | k.PACKAGE | k.PACKAGE_OBJECT =>
-          Access.Empty
-        case _ =>
-          if (sym.privateWithin == NoSymbol)
-            if (sym.isAllOf(PrivateLocal)) PrivateThisAccess()
-            else if (sym.is(Private)) PrivateAccess()
-            else if (sym.isAllOf(ProtectedLocal)) ProtectedThisAccess()
-            else if (sym.is(Protected)) ProtectedAccess()
-            else PublicAccess()
-          else
-            val ssym = symbolName(sym.privateWithin)
-            if (sym.is(Protected)) ProtectedWithinAccess(ssym)
-            else PrivateWithinAccess(ssym)
-
-    private def symbolInfo(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(using Context): SymbolInformation =
-      val kind = symbolKind(sym, symkinds)
-      SymbolInformation(
-        symbol = symbolName,
-        language = Language.SCALA,
-        kind = kind,
-        properties = symbolProps(sym, symkinds),
-        displayName = Symbols.displaySymbol(sym),
-        access = symbolAccess(sym, kind),
-      )
-
-    private def registerSymbol(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(using Context): Unit =
-      val isLocal = symbolName.isLocal
-      if !isLocal || !localNames.contains(symbolName) then
+    private def registerSymbol(sym: Symbol, symkinds: Set[SymbolKind])(using Context): Unit =
+      val sname = sym.symbolName
+      val isLocal = sname.isLocal
+      if !isLocal || !localNames.contains(sname) then
         if isLocal then
-          localNames += symbolName
-        symbolInfos += symbolInfo(sym, symbolName, symkinds)
+          localNames += sname
+        symbolInfos += sym.symbolInfo(symkinds)(using LinkMode.SymlinkChildren, converter)
 
     private def registerSymbolSimple(sym: Symbol)(using Context): Unit =
-      registerSymbol(sym, symbolName(sym), Set.empty)
+      registerSymbol(sym, Set.empty)
 
     private def registerOccurrence(symbol: String, span: Span, role: SymbolOccurrence.Role, treeSource: SourceFile)(using Context): Unit =
       val occ = SymbolOccurrence(range(span, treeSource), symbol, role)
@@ -495,30 +326,26 @@ class ExtractSemanticDB extends Phase:
         generated += occ
 
     private def registerUseGuarded(qualSym: Option[Symbol], sym: Symbol, span: Span, treeSource: SourceFile)(using Context) =
-      if !excludeUse(qualSym, sym) then
+      if !excludeUse(qualSym, sym) && !span.isZeroExtent then
         registerUse(sym, span, treeSource)
 
     private def registerUse(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Unit =
-      registerUse(symbolName(sym), span, treeSource)
+      registerUse(sym.symbolName, span, treeSource)
 
     private def registerUse(symbol: String, span: Span, treeSource: SourceFile)(using Context): Unit =
       registerOccurrence(symbol, span, SymbolOccurrence.Role.REFERENCE, treeSource)
 
     private def registerDefinition(sym: Symbol, span: Span, symkinds: Set[SymbolKind], treeSource: SourceFile)(using Context) =
-      val symbol = symbolName(sym)
+      val sname = sym.symbolName
       val finalSpan = if !span.hasLength || !sym.is(Given) || namePresentInSource(sym, span, treeSource) then
         span
       else
         Span(span.start)
 
-      registerOccurrence(symbol, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
+      if namePresentInSource(sym, span, treeSource) then
+        registerOccurrence(sname, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
       if !sym.is(Package) then
-        registerSymbol(sym, symbol, symkinds)
-
-    private def namePresentInSource(sym: Symbol, span: Span, source:SourceFile)(using Context): Boolean =
-      val content = source.content()
-      val (start, end) = if content(span.end - 1) == '`' then (span.start + 1, span.end - 1) else (span.start, span.end)
-      content.slice(start, end).mkString == sym.name.stripModuleClassSuffix.lastPart.toString
+        registerSymbol(sym, symkinds)
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
       val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
@@ -605,19 +432,22 @@ class ExtractSemanticDB extends Phase:
         symkinds.toSet
 
     private def ctorParams(
-      vparamss: List[List[ValDef]], body: List[Tree])(using Context): Unit =
+      vparamss: List[List[ValDef]], tparams: List[TypeDef], body: List[Tree])(using Context): Unit =
       @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
       for
         vparams <- vparamss
         vparam  <- vparams
       do
+        traverse(vparam.tpt)
         if !excludeSymbol(vparam.symbol) then
           traverseAnnotsOfDefinition(vparam.symbol)
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
-          registerSymbol(vparam.symbol, symbolName(vparam.symbol), symkinds)
+          registerSymbol(vparam.symbol, symkinds)
         traverse(vparam.tpt)
+      tparams.foreach(tp => traverse(tp.rhs))
+
 
 object ExtractSemanticDB:
   import java.nio.file.Path
@@ -627,7 +457,12 @@ object ExtractSemanticDB:
 
   val name: String = "extractSemanticDB"
 
-  def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
+  def write(
+    source: SourceFile,
+    occurrences: List[SymbolOccurrence],
+    symbolInfos: List[SymbolInformation],
+    synthetics: List[Synthetic],
+  )(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     val semanticdbTarget =
       val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
@@ -649,7 +484,8 @@ object ExtractSemanticDB:
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,
-      occurrences = occurrences
+      occurrences = occurrences,
+      synthetics = synthetics,
     )
     val docs = TextDocuments(List(doc))
     val out = Files.newOutputStream(outpath)

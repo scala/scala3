@@ -131,7 +131,7 @@ object ErrorReporting {
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
           "\nMaybe you are missing an else part for the conditional?"
         case _ => ""
-      errorTree(tree, TypeMismatch(treeTp, pt, implicitFailure.whyNoConversion, missingElse))
+      errorTree(tree, TypeMismatch(treeTp, pt, Some(tree), implicitFailure.whyNoConversion, missingElse))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
@@ -149,7 +149,7 @@ object ErrorReporting {
           "the empty constraint"
         else
           i"""a constraint with:
-             |${c.contentsToString}"""
+             |$c"""
       i"""
         |${TypeComparer.explained(_.isSubType(found, expected), header)}
         |

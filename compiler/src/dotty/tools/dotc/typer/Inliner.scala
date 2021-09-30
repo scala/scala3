@@ -97,6 +97,8 @@ object Inliner {
     if tree.symbol.isExperimental then
       Feature.checkExperimentalDef(tree.symbol, tree)
 
+    if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
+
     /** Set the position of all trees logically contained in the expansion of
      *  inlined call `call` to the position of `call`. This transform is necessary
      *  when lifting bindings from the expansion to the outside of the call.
@@ -302,8 +304,9 @@ object Inliner {
    */
   def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(using Context): Tree = {
     assert(ctx.source == pos.source)
-    if (callSym.is(Macro)) ref(callSym.topLevelClass.owner).select(callSym.topLevelClass.name).withSpan(pos.span)
-    else Ident(callSym.topLevelClass.typeRef).withSpan(pos.span)
+    val topLevelCls = callSym.topLevelClass
+    if (callSym.is(Macro)) ref(topLevelCls.owner).select(topLevelCls.name)(using ctx.withOwner(topLevelCls.owner)).withSpan(pos.span)
+    else Ident(topLevelCls.typeRef).withSpan(pos.span)
   }
 
   object Intrinsics {
@@ -379,7 +382,8 @@ object Inliner {
 
     /** Expand call to scala.compiletime.codeOf */
     def codeOf(arg: Tree, pos: SrcPos)(using Context): Tree =
-      Literal(Constant(arg.show)).withSpan(pos.span)
+      val ctx1 = ctx.fresh.setSetting(ctx.settings.color, "never")
+      Literal(Constant(arg.show(using ctx1))).withSpan(pos.span)
   }
 
   extension (tp: Type) {
@@ -1483,6 +1487,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       }
       super.ensureAccessible(tpe, superAccess, pos)
     }
+
+    /** Enter implicits in scope so that they can be found in implicit search.
+     *  This is important for non-transparent inlines
+     */
+    override def index(trees: List[untpd.Tree])(using Context): Context =
+      for case tree: untpd.MemberDef <- trees do
+        if tree.symbol.isOneOf(Flags.GivenOrImplicit) then
+          ctx.scope.openForMutations.enter(tree.symbol)
+      ctx
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
       inlineIfNeeded(tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))

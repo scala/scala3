@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Automatic Eta Expansion"
+type: section
+num: 66
+previous-page: /scala3/reference/changed-features/pattern-matching
+next-page: /scala3/reference/changed-features/compiler-plugins
 ---
 
 The conversion of _methods_ into _functions_ has been improved and happens automatically for methods with one or more parameters.
@@ -35,7 +38,7 @@ rather than `next _`.
 The reason for excluding nullary methods from automatic eta expansion
 is that Scala implicitly inserts the `()` argument, which would
 conflict with eta expansion. Automatic `()` insertion is
-[limited](../dropped-features/auto-apply.md) in Scala 3, but the fundamental ambiguity
+[limited](../dropped-features/auto-apply.html) in Scala 3, but the fundamental ambiguity
 remains.
 
-[More details](eta-expansion-spec.md)
+[More details](eta-expansion-spec.html)

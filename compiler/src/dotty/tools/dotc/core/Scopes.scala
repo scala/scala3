@@ -257,10 +257,6 @@ object Scopes {
       e
     }
 
-    /** create and enter a scope entry */
-    protected def newScopeEntry(sym: Symbol)(using Context): ScopeEntry =
-      newScopeEntry(sym.name, sym)
-
     private def enterInHash(e: ScopeEntry)(using Context): Unit = {
       val idx = e.name.hashCode & (hashTable.length - 1)
       e.tail = hashTable(idx)
@@ -273,7 +269,11 @@ object Scopes {
       if (sym.isType && ctx.phaseId <= typerPhase.id)
         assert(lookup(sym.name) == NoSymbol,
           s"duplicate ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
-      newScopeEntry(sym)
+      enter(sym.name, sym)
+    }
+
+    final def enter[T <: Symbol](name: Name, sym: T)(using Context): T = {
+      newScopeEntry(name, sym)
       sym
     }
 
@@ -375,7 +375,7 @@ object Scopes {
       }
       if ((e eq null) && (synthesize != null)) {
         val sym = synthesize(name)
-        if (sym.exists) newScopeEntry(sym) else e
+        if (sym.exists) newScopeEntry(sym.name, sym) else e
       }
       else e
     }
@@ -411,7 +411,7 @@ object Scopes {
       var irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
       while (e ne null) {
-        if (e.sym.isOneOf(GivenOrImplicit)) {
+        if (e.sym.isOneOf(GivenOrImplicitVal)) {
           val d = e.sym.denot
           irefs += TermRef(NoPrefix, d.symbol.asTerm).withDenot(d)
         }

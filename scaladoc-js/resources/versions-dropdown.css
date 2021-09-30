@@ -1,0 +1,107 @@
+/* The container <div> - needed to position the dropdown content */
+
+.versions-dropdown {
+  margin-left: 10px;
+  margin-right: 10px;
+  position: relative;
+}
+
+/* Dropdown Button */
+.dropdownbtn {
+  padding: 4px 12px;
+  border: none;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-radius: 3px;
+}
+
+.dropdownbtnactive {
+  background-color: var(--leftbar-dropdown-bg);
+}
+
+/* Dropdown button on hover & focus */
+.dropdownbtnactive:hover, .dropdownbtnactive:focus {
+  background-color: var(--leftbar-hover-bg);
+  cursor: pointer;
+}
+
+.dropdownbtn span.ar {
+  display: none;
+}
+
+.dropdownbtnactive span.ar {
+  display: unset;
+  position:absolute;
+  right: 10px;
+  z-index: 100;
+}
+
+.dropdownbtnactive span.ar:before {
+  content: '\e903';
+}
+
+.dropdownbtnactive.expanded span.ar:before {
+  content: '\e905';
+}
+
+/* The search field */
+#dropdown-input {
+  box-sizing: border-box;
+  background-color: var(--leftbar-dropdown-bg);
+  color: var(--leftbar-fg);
+  width: 100%;
+  font-size: var(--leftbar-font-size);
+  border-radius: 3px;
+  padding: 4px 12px;
+}
+
+#dropdown-input::placeholder{
+  color: var(--inactive-fg);
+}
+
+#dropdown-input, #dropdown-input:focus {
+  outline: none;
+  border: none;
+  border-bottom: 1px solid var(--border-medium);
+}
+
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  background-color: var(--leftbar-dropdown-bg);
+  font-size: var(--leftbar-font-size);
+  min-width: 230px;
+  border-radius: 3px;
+  z-index: 1;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+  color: var(--leftbar-fg);
+  text-decoration: none;
+  padding: 4px 12px;
+  display: block;
+  border-radius: 3px;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {
+  background-color: var(--leftbar-hover-bg);
+  color: var(--leftbar-fg);
+}
+
+/* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
+.show {
+  display:block;
+}
+
+/* Filtered entries in dropdown menu */
+.dropdown-content a.filtered {
+  display: none;
+}

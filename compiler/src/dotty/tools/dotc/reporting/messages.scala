@@ -241,7 +241,7 @@ import transform.SymUtils._
     }
   }
 
-  class TypeMismatch(found: Type, expected: Type, addenda: => String*)(using Context)
+  class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: => String*)(using Context)
     extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
@@ -281,6 +281,12 @@ import transform.SymUtils._
       s"""|Found:    $foundStr
           |Required: $expectedStr""".stripMargin
         + whereSuffix + postScript
+
+    override def explain =
+      val treeStr = inTree.map(x => s"\nTree: ${x.show}").getOrElse("")
+      treeStr + "\n" + super.explain
+
+
   end TypeMismatch
 
   class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
@@ -292,16 +298,16 @@ import transform.SymUtils._
       val maxDist = 3  // maximal number of differences to be considered for a hint
       val missing = name.show
 
-      // The names of all non-synthetic, non-private members of `site`
+      // The symbols of all non-synthetic, non-private members of `site`
       // that are of the same type/term kind as the missing member.
-      def candidates: Set[String] =
+      def candidates: Set[Symbol] =
         for
           bc <- site.widen.baseClasses.toSet
           sym <- bc.info.decls.filter(sym =>
             sym.isType == name.isTypeName
             && !sym.isConstructor
             && !sym.flagsUNSAFE.isOneOf(Synthetic | Private))
-        yield sym.name.show
+        yield sym
 
       // Calculate Levenshtein distance
       def distance(s1: String, s2: String): Int =
@@ -317,13 +323,13 @@ import transform.SymUtils._
             else (dist(j - 1)(i) min dist(j)(i - 1) min dist(j - 1)(i - 1)) + 1
         dist(s2.length)(s1.length)
 
-      // A list of possible candidate strings with their Levenstein distances
+      // A list of possible candidate symbols with their Levenstein distances
       // to the name of the missing member
-      def closest: List[(Int, String)] = candidates
+      def closest: List[(Int, Symbol)] = candidates
         .toList
-        .map(n => (distance(n, missing), n))
-        .filter((d, n) => d <= maxDist && d < missing.length && d < n.length)
-        .sorted  // sort by distance first, alphabetically second
+        .map(sym => (distance(sym.name.show, missing), sym))
+        .filter((d, sym) => d <= maxDist && d < missing.length && d < sym.name.show.length)
+        .sortBy((d, sym) => (d, sym.name.show))  // sort by distance first, alphabetically second
 
       val enumClause =
         if ((name eq nme.values) || (name eq nme.valueOf)) && site.classSymbol.companionClass.isEnumClass then
@@ -342,11 +348,15 @@ import transform.SymUtils._
       val finalAddendum =
         if addendum.nonEmpty then prefixEnumClause(addendum)
         else closest match
-          case (d, n) :: _ =>
+          case (d, sym) :: _ =>
             val siteName = site match
               case site: NamedType => site.name.show
               case site => i"$site"
-            s" - did you mean $siteName.$n?$enumClause"
+            val showName =
+              // Add .type to the name if it is a module
+              if sym.is(ModuleClass) then s"${sym.name.show}.type"
+              else sym.name.show
+            s" - did you mean $siteName.$showName?$enumClause"
           case Nil => prefixEnumClause("")
 
       ex"$selected $name is not a member of ${site.widen}$finalAddendum"
@@ -1861,11 +1871,15 @@ import transform.SymUtils._
         i" in ${conflicting.associatedFile}"
       else if conflicting.owner == owner then ""
       else i" in ${conflicting.owner}"
+    private def note =
+      if owner.is(Method) || conflicting.is(Method) then
+        "\n\nNote that overloaded methods must all be defined in the same group of toplevel definitions"
+      else ""
     def msg =
       if conflicting.isTerm != name.isTermName then
         em"$name clashes with $conflicting$where; the two must be defined together"
       else
-        em"$name is already defined as $conflicting$where"
+        em"$name is already defined as $conflicting$where$note"
     def explain = ""
 
   class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {

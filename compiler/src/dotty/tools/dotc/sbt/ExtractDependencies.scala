@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
@@ -340,12 +341,17 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     else DependencyByInheritance
 
   private def ignoreDependency(sym: Symbol)(using Context) =
-    !sym.exists ||
-    sym.isAbsent(canForce = false) || // ignore dependencies that have a symbol but do not exist.
-                                      // e.g. java.lang.Object companion object
-    sym.isEffectiveRoot ||
-    sym.isAnonymousFunction ||
-    sym.isAnonymousClass
+    try
+      !sym.exists ||
+      sym.isAbsent(canForce = false) || // ignore dependencies that have a symbol but do not exist.
+                                        // e.g. java.lang.Object companion object
+      sym.isEffectiveRoot ||
+      sym.isAnonymousFunction ||
+      sym.isAnonymousClass
+    catch case ex: StaleSymbol =>
+      // can happen for constructor proxies. Test case is pos-macros/i13532.
+      true
+
 
   /** Traverse the tree of a source file and record the dependencies and used names which
    *  can be retrieved using `dependencies` and`usedNames`.
@@ -447,18 +453,20 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
   private abstract class TypeDependencyTraverser(using Context) extends TypeTraverser() {
     protected def addDependency(symbol: Symbol): Unit
 
-    val seen = new mutable.HashSet[Type]
+    // Avoid cycles by remembering both the types (testcase:
+    // tests/run/enum-values.scala) and the symbols of named types (testcase:
+    // tests/pos-java-interop/i13575) we've seen before.
+    val seen = new mutable.HashSet[Symbol | Type]
     def traverse(tp: Type): Unit = if (!seen.contains(tp)) {
       seen += tp
       tp match {
         case tp: NamedType =>
           val sym = tp.symbol
-          if (!sym.is(Package)) {
+          if !seen.contains(sym) && !sym.is(Package) then
+            seen += sym
             addDependency(sym)
-            if (!sym.isClass)
-              traverse(tp.info)
+            if !sym.isClass then traverse(tp.info)
             traverse(tp.prefix)
-          }
         case tp: ThisType =>
           traverse(tp.underlying)
         case tp: ConstantType =>

@@ -1,5 +1,6 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "Dependent Function Types - More Details"
 ---
 
@@ -7,7 +8,7 @@ Initial implementation in [PR #3464](https://github.com/lampepfl/dotty/pull/3464
 
 ## Syntax
 
-```ebnf
+```
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {',' FunArgType } ] ‘)’
                     |  ‘(’ TypedFunParam {',' TypedFunParam } ‘)’
@@ -38,7 +39,7 @@ dependent function types for methods with dependent result types.
 
 Dependent functions can be implicit, and generalize to arity `N > 22` in the
 same way that other functions do, see
-[the corresponding documentation](../dropped-features/limit22.md).
+[the corresponding documentation](../dropped-features/limit22.html).
 
 ## Examples
 

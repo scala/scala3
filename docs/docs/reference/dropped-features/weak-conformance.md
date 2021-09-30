@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Dropped: Weak Conformance"
+type: section
+num: 84
+previous-page: /scala3/reference/dropped-features/auto-apply
+next-page: /scala3/reference/dropped-features/this-qualifier
 ---
 
 In some situations, Scala used a _weak conformance_ relation when
@@ -43,4 +46,4 @@ Therefore, Scala 3 drops the general notion of weak conformance, and
 instead keeps one rule: `Int` literals are adapted to other numeric
 types if necessary.
 
-[More details](weak-conformance-spec.md)
+[More details](weak-conformance-spec.html)

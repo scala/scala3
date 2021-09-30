@@ -1,7 +1,11 @@
 ---
-layout: doc-page
 title: "Changes in Implicit Resolution"
+type: section
+num: 59
+previous-page: /scala3/reference/changed-features/type-inference
+next-page: /scala3/reference/changed-features/implicit-conversions
 ---
+
 This section describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Scala 3.
 Implicit resolution uses a new algorithm which caches implicit results
 more aggressively for performance. There are also some changes that

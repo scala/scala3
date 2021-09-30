@@ -1,12 +1,15 @@
 ---
-layout: doc-page
 title: "Rules for Operators"
+type: section
+num: 54
+previous-page: /scala3/reference/changed-features/structural-types
+next-page: /scala3/reference/changed-features/wildcards
 ---
 
 The rules for infix operators have changed in some parts:
 
 First, an alphanumeric method can be used as an infix operator only if its definition carries an `infix` modifier. Second, it is recommended (but not enforced) to
-augment definitions of symbolic operators with [`@targetName` annotations](../other-new-features/targetName.md). Finally,
+augment definitions of symbolic operators with [`@targetName` annotations](../other-new-features/targetName.html). Finally,
 a syntax change allows infix operators to be written on the left in a multi-line expression.
 
 ## The `infix` Modifier
@@ -96,7 +99,7 @@ or if the `-source future` option is given in Dotty/Scala 3.
 
 ## The `@targetName` Annotation
 
-It is recommended that definitions of symbolic operators carry a [`@targetName` annotation](../other-new-features/targetName.md) that provides an encoding of the operator with an alphanumeric name. This has several benefits:
+It is recommended that definitions of symbolic operators carry a [`@targetName` annotation](../other-new-features/targetName.html) that provides an encoding of the operator with an alphanumeric name. This has several benefits:
 
  - It helps interoperability between Scala and other languages. One can call
    a Scala-defined symbolic operator from another language using its target name,

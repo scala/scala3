@@ -1,6 +1,6 @@
 import scala.annotation.experimental
 
-@experimental // error
+@experimental
 enum E:
   case A
   case B

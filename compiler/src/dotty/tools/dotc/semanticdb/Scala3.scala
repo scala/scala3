@@ -1,14 +1,19 @@
 package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.core
-import core.Symbols.{ Symbol , defn }
+import core.Symbols.{ Symbol , defn, NoSymbol }
 import core.Contexts._
 import core.Names
 import core.Names.Name
-import core.Types.Type
+import core.Types.{Type, TypeBounds}
 import core.Flags._
 import core.NameKinds
 import core.StdNames.nme
+import SymbolInformation.{Kind => k}
+import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.{semanticdb => s}
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 
@@ -24,6 +29,123 @@ object Scala3:
   @sharable private val ctor          = raw"[^;].*`<init>`\((?:\+\d+)?\)\.".r
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
+
+  def range(span: Span, treeSource: SourceFile)(using Context): Option[Range] =
+    def lineCol(offset: Int) = (treeSource.offsetToLine(offset), treeSource.column(offset))
+    val (startLine, startCol) = lineCol(span.start)
+    val (endLine, endCol) = lineCol(span.end)
+    Some(Range(startLine, startCol, endLine, endCol))
+
+  def namePresentInSource(sym: Symbol, span: Span, source:SourceFile)(using Context): Boolean =
+    if !span.exists then false
+    else
+      val content = source.content()
+      val (start, end) =
+        if content.lift(span.end - 1).exists(_ == '`') then
+          (span.start + 1, span.end - 1)
+        else (span.start, span.end)
+      val nameInSource = content.slice(start, end).mkString
+      // for secondary constructors `this`
+      if sym.isConstructor && nameInSource == nme.THISkw.toString then
+        true
+      else
+        val target =
+          if sym.isPackageObject then sym.owner
+          else sym
+        nameInSource == target.name.stripModuleClassSuffix.lastPart.toString
+
+  sealed trait FakeSymbol {
+    private[Scala3] var sname: Option[String] = None
+  }
+
+  /** Fake symbol that represents wildcard symbol which will be converted to
+    * semanticdb symbol with
+    * - name: local...
+    * - SymbolInformation with signature TypeSignature of given type bound.
+    */
+  case class WildcardTypeSymbol(owner: Symbol, bounds: TypeBounds) extends FakeSymbol
+
+  case class TermParamRefSymbol(owner: Symbol, name: Name, tp: Type) extends FakeSymbol
+  case class TypeParamRefSymbol(owner: Symbol, name: Name, tp: TypeBounds) extends FakeSymbol
+  case class RefinementSymbol(owner: Symbol, name: Name, tp: Type) extends FakeSymbol
+  type SemanticSymbol = Symbol | FakeSymbol
+
+  given SemanticSymbolOps : AnyRef with
+    extension (sym: SemanticSymbol)
+      def name(using Context): Name = sym match
+        case s: Symbol => s.name
+        case s: WildcardTypeSymbol => nme.WILDCARD
+        case s: TermParamRefSymbol => s.name
+        case s: TypeParamRefSymbol => s.name
+        case s: RefinementSymbol => s.name
+
+      def symbolName(using builder: SemanticSymbolBuilder)(using Context): String =
+        sym match
+          case s: Symbol => builder.symbolName(s)
+          case s: FakeSymbol =>
+            s.sname.getOrElse {
+              val sname = builder.symbolName(s)
+              s.sname = Some(sname)
+              sname
+            }
+
+      def symbolInfo(symkinds: Set[SymbolKind])(using LinkMode, TypeOps, SemanticSymbolBuilder, Context): SymbolInformation =
+        sym match
+          case s: Symbol =>
+            val kind = s.symbolKind(symkinds)
+            val sname = sym.symbolName
+            val signature = s.info.toSemanticSig(s)
+            SymbolInformation(
+              symbol = sname,
+              language = Language.SCALA,
+              kind = kind,
+              properties = s.symbolProps(symkinds),
+              displayName = Symbols.displaySymbol(s),
+              signature = signature,
+              access = s.symbolAccess(kind),
+              overriddenSymbols = s.overriddenSymbols,
+            )
+          case s: WildcardTypeSymbol =>
+            SymbolInformation(
+              symbol = symbolName,
+              language = Language.SCALA,
+              kind = SymbolInformation.Kind.TYPE,
+              displayName = nme.WILDCARD.show,
+              signature = s.bounds.toSemanticSig(s.owner),
+            )
+          case s: TermParamRefSymbol =>
+            SymbolInformation(
+              symbol = symbolName,
+              language = Language.SCALA,
+              kind = SymbolInformation.Kind.PARAMETER,
+              displayName = s.name.show.unescapeUnicode,
+              signature = s.tp.toSemanticSig(s.owner),
+            )
+          case s: TypeParamRefSymbol =>
+            SymbolInformation(
+              symbol = symbolName,
+              language = Language.SCALA,
+              kind = SymbolInformation.Kind.TYPE_PARAMETER,
+              displayName = s.name.show.unescapeUnicode,
+              signature = s.tp.toSemanticSig(s.owner),
+            )
+          case s: RefinementSymbol =>
+            val signature = s.tp.toSemanticSig(s.owner)
+            val kind = signature match
+              case _: TypeSignature => SymbolInformation.Kind.TYPE
+              case _: MethodSignature => SymbolInformation.Kind.METHOD
+              case _: ValueSignature => SymbolInformation.Kind.FIELD
+              case _ => SymbolInformation.Kind.UNKNOWN_KIND
+            SymbolInformation(
+              symbol = symbolName,
+              language = Language.SCALA,
+              kind = kind,
+              displayName = s.name.show.unescapeUnicode,
+              properties =
+                SymbolInformation.Property.ABSTRACT.value,
+              signature = signature,
+            )
+  end SemanticSymbolOps
 
   enum SymbolKind derives CanEqual:
     kind =>
@@ -83,6 +205,7 @@ object Scala3:
 
       def isEmptyNumbered: Boolean =
         !name.is(NameKinds.WildcardParamName)
+        && !name.is(NameKinds.EvidenceParamName)
         && { name match
           case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
           case _                                       => false
@@ -126,6 +249,113 @@ object Scala3:
       def isSyntheticWithIdent(using Context): Boolean =
         sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
 
+      /** The semanticdb name of the given symbol */
+      def symbolName(using builder: SemanticSymbolBuilder)(using Context): String =
+        builder.symbolName(sym)
+
+      def funParamSymbol(using builder: SemanticSymbolBuilder)(using Context): Name => String =
+        builder.funParamSymbol(sym)
+
+      def symbolKind(symkinds: Set[SymbolKind])(using Context): SymbolInformation.Kind =
+        if sym.isTypeParam then
+          SymbolInformation.Kind.TYPE_PARAMETER
+        else if sym.is(TermParam) then
+          SymbolInformation.Kind.PARAMETER
+        else if sym.isTerm && sym.owner.isTerm then
+          SymbolInformation.Kind.LOCAL
+        else if sym.isInlineMethod || sym.is(Macro) then
+          SymbolInformation.Kind.MACRO
+        else if sym.isConstructor then
+          SymbolInformation.Kind.CONSTRUCTOR
+        else if sym.isSelfSym then
+          SymbolInformation.Kind.SELF_PARAMETER
+        else if sym.isOneOf(Method) || symkinds.exists(_.isVarOrVal) then
+          SymbolInformation.Kind.METHOD
+        else if sym.isPackageObject then
+          SymbolInformation.Kind.PACKAGE_OBJECT
+        else if sym.is(Module) then
+          SymbolInformation.Kind.OBJECT
+        else if sym.is(Package) then
+          SymbolInformation.Kind.PACKAGE
+        else if sym.isAllOf(JavaInterface) then
+          SymbolInformation.Kind.INTERFACE
+        else if sym.is(Trait) then
+          SymbolInformation.Kind.TRAIT
+        else if sym.isClass then
+          SymbolInformation.Kind.CLASS
+        else if sym.isType then
+          SymbolInformation.Kind.TYPE
+        else if sym.is(ParamAccessor) then
+          SymbolInformation.Kind.FIELD
+        else
+          SymbolInformation.Kind.UNKNOWN_KIND
+
+      def symbolProps(symkinds: Set[SymbolKind])(using Context): Int =
+        if sym.is(ModuleClass) then
+          return sym.sourceModule.symbolProps(symkinds)
+        var props = 0
+        if sym.isPrimaryConstructor then
+          props |= SymbolInformation.Property.PRIMARY.value
+        if sym.is(Abstract) || symkinds.contains(SymbolKind.Abstract) then
+          props |= SymbolInformation.Property.ABSTRACT.value
+        if sym.is(Final) then
+          props |= SymbolInformation.Property.FINAL.value
+        if sym.is(Sealed) then
+          props |= SymbolInformation.Property.SEALED.value
+        if sym.isOneOf(GivenOrImplicit) then
+          props |= SymbolInformation.Property.IMPLICIT.value
+        if sym.is(Lazy, butNot=Module) then
+          props |= SymbolInformation.Property.LAZY.value
+        if sym.isAllOf(Case | Module) || sym.is(CaseClass) || sym.isAllOf(EnumCase) then
+          props |= SymbolInformation.Property.CASE.value
+        if sym.is(Covariant) then
+          props |= SymbolInformation.Property.COVARIANT.value
+        if sym.is(Contravariant) then
+          props |= SymbolInformation.Property.CONTRAVARIANT.value
+        if sym.isAllOf(DefaultMethod | JavaDefined) || sym.is(Accessor) && sym.name.is(NameKinds.DefaultGetterName) then
+          props |= SymbolInformation.Property.DEFAULT.value
+        if symkinds.exists(_.isVal) then
+          props |= SymbolInformation.Property.VAL.value
+        if symkinds.exists(_.isVar) then
+          props |= SymbolInformation.Property.VAR.value
+        if sym.is(JavaStatic) then
+          props |= SymbolInformation.Property.STATIC.value
+        if sym.is(Enum) then
+          props |= SymbolInformation.Property.ENUM.value
+        if sym.is(Given) then
+          props |= SymbolInformation.Property.GIVEN.value
+        if sym.is(Inline) then
+          props |= SymbolInformation.Property.INLINE.value
+        if sym.is(Open) then
+          props |= SymbolInformation.Property.OPEN.value
+        if sym.is(Open) then
+          props |= SymbolInformation.Property.OPEN.value
+        if sym.is(Transparent) then
+          props |= SymbolInformation.Property.TRANSPARENT.value
+        if sym.is(Infix) then
+          props |= SymbolInformation.Property.INFIX.value
+        if sym.is(Opaque) then
+          props |= SymbolInformation.Property.OPAQUE.value
+        props
+
+      def symbolAccess(kind: SymbolInformation.Kind)(using Context, SemanticSymbolBuilder): Access =
+        kind match
+          case k.LOCAL | k.PARAMETER | k.SELF_PARAMETER | k.TYPE_PARAMETER | k.PACKAGE | k.PACKAGE_OBJECT =>
+            Access.Empty
+          case _ =>
+            if (sym.privateWithin == NoSymbol)
+              if (sym.isAllOf(PrivateLocal)) PrivateThisAccess()
+              else if (sym.is(Private)) PrivateAccess()
+              else if (sym.isAllOf(ProtectedLocal)) ProtectedThisAccess()
+              else if (sym.is(Protected)) ProtectedAccess()
+              else PublicAccess()
+            else
+              val ssym = sym.privateWithin.symbolName
+              if (sym.is(Protected)) ProtectedWithinAccess(ssym)
+              else PrivateWithinAccess(ssym)
+
+      def overriddenSymbols(using Context, SemanticSymbolBuilder): List[String] =
+        sym.allOverriddenSymbols.map(_.symbolName).toList
   end SymbolOps
 
   object LocalSymbol:
@@ -164,6 +394,10 @@ object Scala3:
       def isTypeParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ']'
       def isParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ')'
 
+      def desc: Descriptor =
+        if isGlobal then DescriptorParser(symbol)._1
+        else Descriptor.None
+
       def unescapeUnicode =
         unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
 
@@ -187,6 +421,12 @@ object Scala3:
       def isStatic: Boolean = (info.properties & SymbolInformation.Property.STATIC.value) != 0
       def isEnum: Boolean = (info.properties & SymbolInformation.Property.ENUM.value) != 0
       def isDefault: Boolean = (info.properties & SymbolInformation.Property.DEFAULT.value) != 0
+      def isGiven: Boolean = (info.properties & SymbolInformation.Property.GIVEN.value) != 0
+      def isInline: Boolean = (info.properties & SymbolInformation.Property.INLINE.value) != 0
+      def isOpen: Boolean = (info.properties & SymbolInformation.Property.OPEN.value) != 0
+      def isTransparent: Boolean = (info.properties & SymbolInformation.Property.TRANSPARENT.value) != 0
+      def isInfix: Boolean = (info.properties & SymbolInformation.Property.INFIX.value) != 0
+      def isOpaque: Boolean = (info.properties & SymbolInformation.Property.OPAQUE.value) != 0
 
       def isUnknownKind: Boolean = info.kind.isUnknownKind
       def isLocal: Boolean = info.kind.isLocal
@@ -211,9 +451,7 @@ object Scala3:
       def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
   end RangeOps
 
-  /** Sort symbol occurrences by their start position. */
-  given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>
-    x.range -> y.range match
+  private def compareRange(x: Option[Range], y: Option[Range]): Int = x -> y match
     case None -> _ | _ -> None => 0
     case Some(a) -> Some(b) =>
       val byLine = Integer.compare(a.startLine, b.startLine)
@@ -221,9 +459,13 @@ object Scala3:
         byLine
       else // byCharacter
         Integer.compare(a.startCharacter, b.startCharacter)
-  end OccurrenceOrdering
+
+  /** Sort symbol occurrences by their start position. */
+  given Ordering[SymbolOccurrence] = (x, y) => compareRange(x.range, y.range)
 
   given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(IdentifierOrdering())
+
+  given Ordering[Synthetic] = (x, y) => compareRange(x.range, y.range)
 
   /**
     * A comparator for identifier like "Predef" or "Function10".

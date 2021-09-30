@@ -441,7 +441,7 @@ trait Applications extends Compatibility {
             // it might be healed by an implicit conversion
             ()
           else
-            fail(TypeMismatch(methType.resultType, resultType))
+            fail(TypeMismatch(methType.resultType, resultType, None))
 
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramInfos, 0)
@@ -744,7 +744,10 @@ trait Applications extends Compatibility {
       typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
     }
 
-    def harmonizeArgs(args: List[TypedArg]): List[Tree] = harmonize(args)
+    def harmonizeArgs(args: List[TypedArg]): List[Tree] =
+      // harmonize args only if resType depends on parameter types
+      if (isFullyDefined(methodType.resType, ForceDegree.none)) args
+      else harmonize(args)
 
     override def appPos: SrcPos = app.srcPos
 
@@ -1360,7 +1363,7 @@ trait Applications extends Compatibility {
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
-            if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled) untpd.Tuple(args) :: Nil
+            if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled && defn.isTupleNType(argType)) untpd.Tuple(args) :: Nil
             else args
           case _ => args
         }
@@ -1628,7 +1631,7 @@ trait Applications extends Compatibility {
     /** Widen the result type of synthetic given methods from the implementation class to the
      *  type that's implemented. Example
      *
-     *      given I[X] as T { ... }
+     *      given I[X]: T with { ... }
      *
      *  This desugars to
      *
@@ -1638,7 +1641,7 @@ trait Applications extends Compatibility {
      *  To compare specificity we should compare with `T`, not with its implementation `I[X]`.
      *  No such widening is performed for given aliases, which are not synthetic. E.g.
      *
-     *      given J[X] as T = rhs
+     *      given J[X]: T = rhs
      *
      *  already has the right result type `T`. Neither is widening performed for given
      *  objects, since these are anyway taken to be more specific than methods
@@ -1649,8 +1652,8 @@ trait Applications extends Compatibility {
         mt.derivedLambdaType(mt.paramNames, mt.paramInfos, widenGiven(mt.resultType, alt))
       case pt: PolyType =>
         pt.derivedLambdaType(pt.paramNames, pt.paramInfos, widenGiven(pt.resultType, alt))
-      case _ =>
-        if (alt.symbol.isAllOf(SyntheticGivenMethod)) tp.widenToParents
+      case rt =>
+        if alt.symbol.isCoDefinedGiven(rt.typeSymbol) then tp.widenToParents
         else tp
     }
 

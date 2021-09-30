@@ -7,6 +7,7 @@ import Contexts._
 import Symbols._
 import Types._
 import StdNames._
+import NameKinds.OuterSelectName
 
 import ast.tpd._
 import util.EqHashMap
@@ -27,23 +28,19 @@ class Semantic {
    *  Value = Hot | Cold | Warm | ThisRef | Fun | RefSet
    *
    *                 Cold
-   *        ┌──────►  ▲   ◄──┐  ◄────┐
-   *        │         │      │       │
-   *        │         │      │       │
-   *   ThisRef(C)     │      │       │
-   *        ▲         │      │       │
-   *        │     Warm(D)   Fun    RefSet
-   *        │         ▲      ▲       ▲
-   *        │         │      │       │
-   *      Warm(C)     │      │       │
-   *        ▲         │      │       │
-   *        │         │      │       │
-   *        └─────────┴──────┴───────┘
+   *        ┌──────►  ▲  ◄────┐  ◄────┐
+   *        │         │       │       │
+   *        │         │       │       │
+   *        |         │       │       │
+   *        |         │       │       │
+   *   ThisRef(C)  Warm(D)   Fun    RefSet
+   *        │         ▲       ▲       ▲
+   *        │         │       │       │
+   *        |         │       │       │
+   *        ▲         │       │       │
+   *        │         │       │       │
+   *        └─────────┴───────┴───────┘
    *                  Hot
-   *
-   *   The most important ordering is the following:
-   *
-   *       Hot ⊑ Warm(C) ⊑ ThisRef(C) ⊑ Cold
    *
    *   The diagram above does not reflect relationship between `RefSet`
    *   and other values. `RefSet` represents a set of values which could
@@ -194,6 +191,7 @@ class Semantic {
     class PromotionInfo {
       var isCurrentObjectPromoted: Boolean = false
       val values = mutable.Set.empty[Value]
+      override def toString(): String = values.toString()
     }
     /** Values that have been safely promoted */
     opaque type Promoted = PromotionInfo
@@ -300,9 +298,6 @@ class Semantic {
       case (Cold, _) => Cold
       case (_, Cold) => Cold
 
-      case (a: Warm, b: ThisRef) if a.klass == b.klass => b
-      case (a: ThisRef, b: Warm) if a.klass == b.klass => a
-
       case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) => RefSet(a :: b :: Nil)
 
       case (a: (Fun | Warm | ThisRef), RefSet(refs))    => RefSet(a :: refs)
@@ -326,7 +321,7 @@ class Semantic {
     def widenArgs: List[Value] = values.map(_.widenArg).toList
 
   extension (value: Value)
-    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show, printer, res => res.asInstanceOf[Result].show) {
+    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show, printer, (_: Result).show) {
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
         case Hot  =>
@@ -376,7 +371,7 @@ class Semantic {
       }
     }
 
-    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
+    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, (_: Result).show) {
       def checkArgs = args.flatMap(_.promote)
 
       // fast track if the current object is already initialized
@@ -450,7 +445,7 @@ class Semantic {
     }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, (_: Result).show) {
       val trace1 = trace.add(source)
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
@@ -495,6 +490,46 @@ class Semantic {
           Result(value2, errors)
       }
     }
+
+    def accessLocal(tmref: TermRef, klass: ClassSymbol, source: Tree): Contextual[Result] =
+      val sym = tmref.symbol
+
+      def default() = Result(Hot, Nil)
+
+      if sym.is(Flags.Param) && sym.owner.isConstructor then
+        // instances of local classes inside secondary constructors cannot
+        // reach here, as those values are abstracted by Cold instead of Warm.
+        // This enables us to simplify the domain without sacrificing
+        // expressiveness nor soundess, as local classes inside secondary
+        // constructors are uncommon.
+        if sym.isContainedIn(klass) then
+          Result(env.lookup(sym), Nil)
+        else
+          // We don't know much about secondary constructor parameters in outer scope.
+          // It's always safe to approximate them with `Cold`.
+          Result(Cold, Nil)
+      else if sym.is(Flags.Param) then
+        default()
+      else
+        sym.defTree match {
+          case vdef: ValDef =>
+            // resolve this for local variable
+            val enclosingClass = sym.owner.enclosingClass.asClass
+            val thisValue2 = resolveThis(enclosingClass, value, klass, source)
+            thisValue2 match {
+              case Hot => Result(Hot, Errors.empty)
+
+              case Cold => Result(Cold, Nil)
+
+              case addr: Addr => eval(vdef.rhs, addr, klass)
+
+              case _ =>
+                 report.error("unexpected defTree when accessing local variable, sym = " + sym.show + ", defTree = " + sym.defTree.show, source)
+                 default()
+            }
+
+          case _ => default()
+        }
   end extension
 
 // ----- Promotion ----------------------------------------------------
@@ -607,33 +642,24 @@ class Semantic {
       if classRef.memberClasses.nonEmpty || !warm.isFullyFilled then
         return PromoteError(msg, source, trace.toVector) :: Nil
 
-      val fields  = classRef.fields
-      val methods = classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred | Flags.Accessor)
       val buffer  = new mutable.ArrayBuffer[Error]
 
-      fields.exists { denot =>
-        val f = denot.symbol
-        if !f.isOneOf(Flags.Deferred | Flags.Private | Flags.Protected) && f.hasSource then
-          val trace2 = trace.add(f.defTree)
-          val res = warm.select(f, source)
-          locally {
-            given Trace = trace2
-            buffer ++= res.ensureHot(msg, source).errors
-          }
-        buffer.nonEmpty
-      }
-
-      buffer.nonEmpty || methods.exists { denot =>
-        val m = denot.symbol
-        if !m.isConstructor && m.hasSource then
-          val trace2 = trace.add(m.defTree)
-          locally {
-            given Trace = trace2
-            val args = m.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, EmptyTree))
-            val res = warm.call(m, args, superType = NoType, source = source)
-            buffer ++= res.ensureHot(msg, source).errors
-          }
-        buffer.nonEmpty
+      warm.klass.baseClasses.exists { klass =>
+        klass.hasSource && klass.info.decls.exists { member =>
+          if !member.isType && !member.isConstructor && member.hasSource  && !member.is(Flags.Deferred) then
+            if member.is(Flags.Method) then
+              val trace2 = trace.add(source)
+              locally {
+                given Trace = trace2
+                val args = member.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, EmptyTree))
+                val res = warm.call(member, args, superType = NoType, source = member.defTree)
+                buffer ++= res.ensureHot(msg, source).errors
+              }
+            else
+              val res = warm.select(member, source)
+              buffer ++= res.ensureHot(msg, source).errors
+          buffer.nonEmpty
+        }
       }
 
       if buffer.isEmpty then Nil
@@ -676,7 +702,7 @@ class Semantic {
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Addr, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
+  def eval(expr: Tree, thisV: Addr, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, (_: Result).show) {
     val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
     if (innerMap.contains(expr)) Result(innerMap(expr), Errors.empty)
     else {
@@ -765,7 +791,15 @@ class Semantic {
             res.call(id.symbol, args, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
-        eval(qualifier, thisV, klass).select(expr.symbol, expr)
+        val qualRes = eval(qualifier, thisV, klass)
+
+        name match
+          case OuterSelectName(_, hops) =>
+            val SkolemType(tp) = expr.tpe
+            val outer = resolveOuterSelect(tp.classSymbol.asClass, qualRes.value, hops, source = expr)
+            Result(outer, qualRes.errors)
+          case _ =>
+            qualRes.select(expr.symbol, expr)
 
       case _: This =>
         cases(expr.tpe, thisV, klass, expr)
@@ -855,7 +889,7 @@ class Semantic {
       case vdef : ValDef =>
         // local val definition
         // TODO: support explicit @cold annotation for local definitions
-        eval(vdef.rhs, thisV, klass).ensureHot("Local definitions may only hold initialized values", vdef)
+        eval(vdef.rhs, thisV, klass, cacheResult = true)
 
       case ddef : DefDef =>
         // local method
@@ -877,30 +911,13 @@ class Semantic {
     }
 
   /** Handle semantics of leaf nodes */
-  def cases(tp: Type, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
+  def cases(tp: Type, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, (_: Result).show) {
     tp match {
       case _: ConstantType =>
         Result(Hot, Errors.empty)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
-        val sym = tmref.symbol
-
-        def default() = Result(Hot, Nil)
-
-        if sym.is(Flags.Param) && sym.owner.isConstructor then
-          // instances of local classes inside secondary constructors cannot
-          // reach here, as those values are abstracted by Cold instead of Warm.
-          // This enables us to simplify the domain without sacrificing
-          // expressiveness nor soundess, as local classes inside secondary
-          // constructors are uncommon.
-          if sym.isContainedIn(klass) then
-            Result(env.lookup(sym), Nil)
-          else
-            // We don't know much about secondary constructor parameters in outer scope.
-            // It's always safe to approximate them with `Cold`.
-            Result(Cold, Nil)
-        else
-          default()
+        thisV.accessLocal(tmref, klass, source)
 
       case tmref: TermRef =>
         cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
@@ -924,7 +941,7 @@ class Semantic {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
     if target == klass then thisV
     else if target.is(Flags.Package) then Hot
     else
@@ -948,6 +965,40 @@ class Semantic {
 
   }
 
+  /** Resolve outer select introduced during inlining.
+   *
+   *  See `tpd.outerSelect` and `ElimOuterSelect`.
+   */
+  def resolveOuterSelect(target: ClassSymbol, thisV: Value, hops: Int, source: Tree): Contextual[Value] = log("resolving outer " + target.show + ", this = " + thisV.show + ", hops = " + hops, printer, (_: Value).show) {
+    // Is `target` reachable from `cls` with the given `hops`?
+    def reachable(cls: ClassSymbol, hops: Int): Boolean =
+      if hops == 0 then cls == target
+      else reachable(cls.lexicallyEnclosingClass.asClass, hops - 1)
+
+    thisV match
+      case Hot => Hot
+
+      case addr: Addr =>
+        val obj = heap(addr)
+        val curOpt = obj.klass.baseClasses.find(cls => reachable(cls, hops))
+        curOpt match
+          case Some(cur) =>
+            resolveThis(target, thisV, cur, source)
+
+          case None =>
+            report.warning("unexpected outerSelect, thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, source.srcPos)
+            Cold
+
+      case RefSet(refs) =>
+        refs.map(ref => resolveOuterSelect(target, ref, hops, source)).join
+
+      case fun: Fun =>
+        report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", hops = " + hops, source.srcPos)
+        Cold
+
+      case Cold => Cold
+  }
+
   /** Compute the outer value that correspond to `tref.prefix` */
   def outerValue(tref: TypeRef, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] =
     val cls = tref.classSymbol.asClass
@@ -960,7 +1011,7 @@ class Semantic {
       else cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
-  def init(tpl: Template, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
+  def init(tpl: Template, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, (_: Result).show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>

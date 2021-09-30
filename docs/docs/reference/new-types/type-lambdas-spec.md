@@ -1,5 +1,6 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "Type Lambdas - More Details"
 ---
 
@@ -104,7 +105,7 @@ would be treated as covariant, `X` is used covariantly on its right-hand side.
 
 **Note**: The decision to treat `Nothing` as universal bottom type is provisional, and might be changed after further discussion.
 
-**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](../other-new-features/kind-polymorphism.md)
+**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](../other-new-features/kind-polymorphism.html)
 
 ## Curried Type Parameters
 

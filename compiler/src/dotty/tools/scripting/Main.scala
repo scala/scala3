@@ -2,7 +2,7 @@ package dotty.tools.scripting
 
 import java.io.File
 import java.nio.file.{Path, Paths}
-import dotty.tools.dotc.config.Properties.isWin 
+import dotty.tools.dotc.config.Properties.isWin
 
 /** Main entry point to the Scripting execution engine */
 object Main:
@@ -13,6 +13,8 @@ object Main:
     assert(rest.size >= 2, s"internal error: rest == Array(${rest.mkString(",")})")
 
     val file = File(rest(1))
+    // write script path to script.path property, so called script can see it
+    sys.props("script.path") = file.toPath.toAbsolutePath.toString
     val scriptArgs = rest.drop(2)
     var saveJar = false
     var invokeFlag = true // by default, script main method is invoked
@@ -87,7 +89,7 @@ object Main:
         case s if s.startsWith("./") => s.drop(2)
         case s => s
       }
-   
+
     // convert to absolute path relative to cwd.
     def absPath: String = norm match
       case str if str.isAbsolute => norm

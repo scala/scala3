@@ -1,3 +1,4 @@
+// scalac: -Ycheck-all-patmat
 object Example {
   val op1: (Any, Any) => Unit = {
     case (_, b: Int) =>

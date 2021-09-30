@@ -1,9 +1,10 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "How to write a type class `derived` method using macros"
 ---
 
-In the main [derivation](./derivation.md) documentation page, we explained the
+In the main [derivation](./derivation.html) documentation page, we explained the
 details behind `Mirror`s and type class derivation. Here we demonstrate how to
 implement a type class `derived` method using macros only. We follow the same
 example of deriving `Eq` instances and for simplicity we support a `Product`
@@ -97,7 +98,7 @@ One additional difference with the body of `derived` here as opposed to the one
 with `inline` is that with macros we need to synthesize the body of the code during the
 macro-expansion time. That is the rationale behind the `eqProductBody` function.
 Assuming that we calculate the equality of two `Person`s defined with a case
-class that holds a name of type [`String`](https://dotty.epfl.ch/api/scala/Predef$.html#String)
+class that holds a name of type [`String`](https://scala-lang.org/api/3.x/scala/Predef$.html#String-0)
 and an age of type `Int`, the equality check we want to generate is the following:
 
 ```scala
@@ -108,7 +109,7 @@ and an age of type `Int`, the equality check we want to generate is the followin
 
 ## Calling the derived method inside the macro
 
-Following the rules in [Macros](../metaprogramming/toc.md) we create two methods.
+Following the rules in [Macros](../metaprogramming.html) we create two methods.
 One that hosts the top-level splice `eqv` and one that is the implementation.
 Alternatively and what is shown below is that we can call the `eqv` method
 directly. The `eqGen` can trigger the derivation.

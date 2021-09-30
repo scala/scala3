@@ -45,12 +45,35 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       val end = if param < 0 then url.length else param
       val point = url.lastIndexOf('.', end)
       url.substring(point+1, end)
-
     for res <- resources yield
       fileExtension(res) match
         case "css" => link(rel := "stylesheet", href := resolveLink(dri, res))
         case "js" => script(`type` := "text/javascript", src := resolveLink(dri, res), if (deferJs) Seq(defer := "true") else Nil)
         case _ => raw("")
+
+  val onlyRenderedResources: Seq[Resource] =
+    List(
+      "scripts/inkuire.js"
+    ).map(dottyRes) ++
+    List(
+      "scripts/inkuire-worker.js",
+      "webfonts/fa-brands-400.eot",
+      "webfonts/fa-brands-400.svg",
+      "webfonts/fa-brands-400.ttf",
+      "webfonts/fa-brands-400.woff",
+      "webfonts/fa-brands-400.woff2",
+      "webfonts/fa-regular-400.eot",
+      "webfonts/fa-regular-400.svg",
+      "webfonts/fa-regular-400.ttf",
+      "webfonts/fa-regular-400.woff",
+      "webfonts/fa-regular-400.woff2",
+      "webfonts/fa-solid-900.eot",
+      "webfonts/fa-solid-900.svg",
+      "webfonts/fa-solid-900.ttf",
+      "webfonts/fa-solid-900.woff",
+      "webfonts/fa-solid-900.woff2"
+    ).map(dottyRes)
+
 
   val earlyMemberResources: Seq[Resource] =
     List(
@@ -65,8 +88,12 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/dotty-icons.css",
       "styles/diagram.css",
       "styles/filter-bar.css",
-      "styles/search-bar.css",
-      "styles/scaladoc-searchbar.css",
+      "styles/code-snippets.css",
+      "styles/searchbar.css",
+      "styles/social-links.css",
+      "styles/ux.css",
+      "styles/versions-dropdown.css",
+      "styles/fontawesome.css",
       "hljs/highlight.pack.js",
       "hljs/LICENSE",
       "scripts/hljs-scala3.js",
@@ -78,8 +105,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "scripts/components/Input.js",
       "scripts/components/FilterGroup.js",
       "scripts/components/Filter.js",
-      "scripts/searchbar.js",
-      "scripts/inkuire-worker.js"
+      "scripts/searchbar.js"
     ).map(dottyRes)
 
     val urls = List(
@@ -87,25 +113,23 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "https://d3js.org/d3.v6.min.js",
       "https://cdn.jsdelivr.net/npm/graphlib-dot@0.6.2/dist/graphlib-dot.min.js",
       "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
+      "https://scastie.scala-lang.org/embedded.js"
     ).map(Resource.URL.apply)
 
-    val urlToPathMappings = List(
-      ("https://github.com/VirtusLab/Inkuire/releases/download/1.0.0-M1/inkuire.js", "scripts/inkuire.js"),
-    ).map { case (url, path) =>
-      Resource.URLToCopy(url, path)
-    }
 
-    fromResources ++ urls ++ urlToPathMappings ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
+    fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
 
   val searchDataPath = "scripts/searchData.js"
-  val memberResourcesPaths = Seq(searchDataPath) ++ memberResources.map(_.path)
+  val scastieConfigurationPath = "scripts/scastieConfiguration.js"
+  val memberResourcesPaths = Seq(searchDataPath) ++ Seq(scastieConfigurationPath) ++ memberResources.map(_.path)
   val earlyMemberResourcePaths = earlyMemberResources.map(_.path)
 
   def searchData(pages: Seq[Page]) =
     def flattenToText(signature: Signature): String =
       signature.map {
-        case Link(name, dri) => name
-        case s: String => s
+        case Type(name, dri) => name
+        case Plain(s) => s
+        case Keyword(s) => s
       }.mkString
 
     def mkEntry(dri: DRI, name: String, text: String, descr: String, kind: String) = jsonObject(
@@ -122,7 +146,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
           val descr = m.dri.asFileLocation
           def processMember(member: Member): Seq[JSON] =
             val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
-            val sig = Signature(member.kind.name, " ") ++ Seq(Link(member.name, member.dri)) ++ signatureBuilder.names.reverse
+            val sig = Signature(Plain(s"${member.kind.name} "), Plain(member.name)) ++ signatureBuilder.names.reverse
             val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr, member.kind.name)
             val children = member
                 .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])
@@ -137,6 +161,11 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
     val entries = pages.flatMap(processPage)
     Resource.Text(searchDataPath, s"pages = ${jsonList(entries)};")
+
+  def scastieConfiguration() =
+    Resource.Text(scastieConfigurationPath, s"""scastieConfiguration = "${
+      ctx.args.scastieConfiguration.replace('"'.toString, """\"""")
+    }"""")
 
 
   def allResources(pages: Seq[Page]): Seq[Resource] = earlyMemberResources ++ memberResources ++ Seq(
@@ -167,23 +196,29 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     dottyRes("images/twitter-icon-white.png"),
     dottyRes("images/gitter-icon-black.png"),
     dottyRes("images/gitter-icon-white.png"),
-    searchData(pages)
+    searchData(pages),
+    scastieConfiguration(),
   )
 
   def renderResource(resource: Resource): Seq[String] =
-    resource match
-      case Resource.Text(path, content) =>
-        Seq(write(path, content))
-      case Resource.Classpath(path, name) =>
-        getClass.getClassLoader.getResourceAsStream(name) match
-          case null =>
-            report.error(s"Unable to find $name on classpath")
-            Nil
-          case is =>
-            try Seq(copy(is, path)) finally is.close()
-      case Resource.File(path, file) =>
-        Seq(copy(file, path))
-      case Resource.URL(url) =>
-        Nil
-      case Resource.URLToCopy(url, dest) =>
-        Seq(copy(new URL(url).openStream(), dest))
+    val normalizedPath = resource.path.replace('\\', '/')
+    if normalizedPath.endsWith(".html") && apiPaths.contains(normalizedPath) then
+      report.error(s"Conflict between resource and API member for $normalizedPath. $pathsConflictResoultionMsg")
+      Nil
+    else
+      resource match
+        case Resource.Text(path, content) =>
+          Seq(write(path, content))
+        case Resource.Classpath(path, name) =>
+          getClass.getClassLoader.getResourceAsStream(name) match
+            case null =>
+              report.error(s"Unable to find $name on classpath")
+              Nil
+            case is =>
+              try Seq(copy(is, path)) finally is.close()
+        case Resource.File(path, file) =>
+          Seq(copy(file, path))
+        case Resource.URL(url) =>
+          Nil
+        case Resource.URLToCopy(url, dest) =>
+          Seq(copy(new URL(url).openStream(), dest))

@@ -13,6 +13,7 @@ object MatchTypeTrace:
     case TryReduce(scrut: Type)
     case NoMatches(scrut: Type, cases: List[Type])
     case Stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])
+    case EmptyScrutinee(scrut: Type)
   import TraceEntry._
 
   private class MatchTrace:
@@ -61,6 +62,12 @@ object MatchTypeTrace:
   def stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])(using Context) =
     matchTypeFail(Stuck(scrut, stuckCase, otherCases))
 
+  /** Record a failure that scrutinee `scrut` is provably empty.
+   *  Only the first failure is recorded.
+   */
+  def emptyScrutinee(scrut: Type)(using Context) =
+    matchTypeFail(EmptyScrutinee(scrut))
+
   /** Record in the trace that we are trying to reduce `scrut` when performing `op`
    *  If `op` succeeds the entry is removed after exit. If `op` fails, it stays.
    */
@@ -91,13 +98,26 @@ object MatchTypeTrace:
          |  matches none of the cases
          |
          |    ${casesText(cases)}"""
-    case Stuck(scrut, stuckCase, otherCases) =>
+    case EmptyScrutinee(scrut) =>
       i"""  failed since selector  $scrut
-         |  does not match  ${caseText(stuckCase)}
-         |  and cannot be shown to be disjoint from it either.
-         |  Therefore, reduction cannot advance to the remaining case${if otherCases.length == 1 then "" else "s"}
-         |
-         |    ${casesText(otherCases)}"""
+         |  is uninhabited (there are no values of that type)."""
+    case Stuck(scrut, stuckCase, otherCases) =>
+      val msg =
+        i"""  failed since selector  $scrut
+           |  does not match  ${caseText(stuckCase)}
+           |  and cannot be shown to be disjoint from it either."""
+      if otherCases.length == 0 then msg
+      else
+        val s = if otherCases.length == 1 then "" else "s"
+        i"""$msg
+           |  Therefore, reduction cannot advance to the remaining case$s
+           |
+           |    ${casesText(otherCases)}"""
+
+  def noMatchesText(scrut: Type, cases: List[Type])(using Context): String =
+    i"""failed since selector  $scrut
+       |matches none of the cases
+       |
+       |    ${casesText(cases)}"""
 
 end MatchTypeTrace
-

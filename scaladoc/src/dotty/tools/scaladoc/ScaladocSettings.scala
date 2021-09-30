@@ -109,16 +109,19 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   )
 
   val YdocumentSyntheticTypes: Setting[Boolean] =
-    BooleanSetting("-Ydocument-synthetic-types", "Documents intrinsic types e. g. Any, Nothing. Setting is useful only for stdlib", false)
+    BooleanSetting("-Ydocument-synthetic-types", "Attach pages with documentation of the intrinsic types e. g. Any, Nothing to the docs. Setting is useful only for stdlib.", false)
 
   val snippetCompiler: Setting[List[String]] =
     MultiStringSetting("-snippet-compiler", "snippet-compiler", snippets.SnippetCompilerArgs.usage)
 
-  val snippetCompilerDebug: Setting[Boolean] =
-    BooleanSetting("-Ysnippet-compiler-debug", snippets.SnippetCompilerArgs.debugUsage, false)
-
   val generateInkuire: Setting[Boolean] =
     BooleanSetting("-Ygenerate-inkuire", "Generates InkuireDB and enables Hoogle-like searches", false)
 
+  val apiSubdirectory: Setting[Boolean] =
+    BooleanSetting("-Yapi-subdirectory", "Put the API documentation pages inside a directory `api/`", false)
+
+  val scastieConfiguration: Setting[String] =
+    StringSetting("-scastie-configuration", "Scastie configuration", "Additional configuration passed to Scastie in code snippets", "")
+
   def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug, generateInkuire)
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, scastieConfiguration)

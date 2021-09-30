@@ -1,6 +1,9 @@
 ---
-layout: doc-page
 title: "Match Expressions"
+type: section
+num: 62
+previous-page: /scala3/reference/changed-features/overload-resolution
+next-page: /scala3/reference/changed-features/vararg-splices
 ---
 
 The syntactical precedence of match expressions has been changed.
@@ -46,7 +49,7 @@ The syntactical precedence of match expressions has been changed.
 
 The new syntax of match expressions is as follows.
 
-```ebnf
+```
 InfixExpr    ::=  ...
                |  InfixExpr MatchClause
 SimpleExpr   ::=  ...

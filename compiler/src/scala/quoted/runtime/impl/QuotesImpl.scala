@@ -345,6 +345,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         case x: (tpd.SeqLiteral & x.type) => Some(x)
         case x: (tpd.Inlined & x.type) => Some(x)
         case x: (tpd.NamedArg & x.type) => Some(x)
+        case x: (tpd.Typed & x.type) =>
+          TypedTypeTest.unapply(x) // Matches `Typed` but not `TypedOrTest`
         case _ => if x.isTerm then Some(x) else None
     end TermTypeTest
 
@@ -447,6 +449,20 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def name: String = self.name.toString
       end extension
     end IdentMethods
+
+    type Wildcard = tpd.Ident
+
+    object WildcardTypeTest extends TypeTest[Tree, Wildcard]:
+      def unapply(x: Tree): Option[Wildcard & x.type] = x match
+        case x: (tpd.Ident & x.type) if x.name == nme.WILDCARD => Some(x)
+        case _ => None
+    end WildcardTypeTest
+
+    object Wildcard extends WildcardModule:
+      def apply(): Wildcard =
+        withDefaultPos(untpd.Ident(nme.WILDCARD).withType(dotc.core.Symbols.defn.AnyType))
+      def unapply(pattern: Wildcard): true = true
+    end Wildcard
 
     type Select = tpd.Select
 
@@ -655,7 +671,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypedTypeTest extends TypeTest[Tree, Typed]:
       def unapply(x: Tree): Option[Typed & x.type] = x match
-        case x: (tpd.Typed & x.type) => Some(x)
+        case x: (tpd.Typed & x.type) =>
+          x.expr match
+            case TermTypeTest(_) => Some(x)
+            case _ => None
         case _ => None
     end TypedTypeTest
 
@@ -674,6 +693,31 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def tpt: TypeTree = self.tpt
       end extension
     end TypedMethods
+
+    type TypedOrTest = tpd.Typed
+
+    object TypedOrTestTypeTest extends TypeTest[Tree, TypedOrTest]:
+      def unapply(x: Tree): Option[TypedOrTest & x.type] = x match
+        case x: (tpd.Typed & x.type) => Some(x)
+        case _ => None
+    end TypedOrTestTypeTest
+
+    object TypedOrTest extends TypedOrTestModule:
+      def apply(expr: Term, tpt: TypeTree): Typed =
+        withDefaultPos(tpd.Typed(xCheckMacroValidExpr(expr), tpt))
+      def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed =
+        tpd.cpy.Typed(original)(xCheckMacroValidExpr(expr), tpt)
+      def unapply(x: Typed): (Term, TypeTree) =
+        (x.expr, x.tpt)
+    end TypedOrTest
+
+    given TypedOrTestMethods: TypedOrTestMethods with
+      extension (self: Typed)
+        def tree: Tree = self.expr
+        def tpt: TypeTree = self.tpt
+      end extension
+    end TypedOrTestMethods
+
 
     type Assign = tpd.Assign
 
@@ -1331,10 +1375,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def tpe: TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
         def low: TypeTree = self match
           case self: tpd.TypeBoundsTree => self.lo
-          case self: tpd.TypeTree => tpd.TypeTree(self.tpe.asInstanceOf[Types.TypeBounds].lo).withSpan(self.span)
+          case self: tpd.TypeTree => makeTypeDef(self.tpe.asInstanceOf[Types.TypeBounds].lo)
         def hi: TypeTree = self match
           case self: tpd.TypeBoundsTree => self.hi
-          case self: tpd.TypeTree => tpd.TypeTree(self.tpe.asInstanceOf[Types.TypeBounds].hi).withSpan(self.span)
+          case self: tpd.TypeTree => makeTypeDef(self.tpe.asInstanceOf[Types.TypeBounds].hi)
+        private def makeTypeDef(tpe: Types.Type) =
+          tpd.TypeTree(tpe)(using ctx.withSource(self.source)).withSpan(self.span)
       end extension
     end TypeBoundsTreeMethods
 
@@ -1439,6 +1485,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end UnapplyTypeTest
 
     object Unapply extends UnapplyModule:
+      def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
+        withDefaultPos(tpd.UnApply(fun, implicits, patterns, dotc.core.Symbols.defn.NothingType))
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
         withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
       def unapply(x: Unapply): (Term, List[Term], List[Tree]) =
@@ -1692,6 +1740,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           val tpNoRefinement = self.dropDependentRefinement
           tpNoRefinement != self
           && dotc.core.Symbols.defn.isNonRefinedFunction(tpNoRefinement)
+        def isTupleN: Boolean =
+          dotc.core.Symbols.defn.isTupleNType(self)
         def select(sym: Symbol): TypeRepr = self.select(sym)
         def appliedTo(targ: TypeRepr): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
@@ -2455,7 +2505,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           }
 
         def isDefinedInCurrentRun: Boolean =
-          self.topLevelClass.asClass.isDefinedInCurrentRun
+          self.exists && self.topLevelClass.asClass.isDefinedInCurrentRun
         def isLocalDummy: Boolean = self.denot.isLocalDummy
         def isRefinementClass: Boolean = self.denot.isRefinementClass
         def isAliasType: Boolean = self.denot.isAliasType
@@ -2747,6 +2797,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given SourceFileMethods: SourceFileMethods with
       extension (self: SourceFile)
         def jpath: java.nio.file.Path = self.file.jpath
+        def getJPath: Option[java.nio.file.Path] = Option(self.file.jpath)
+        def name: String = self.name
+        def path: String = self.path
         def content: Option[String] =
           // TODO detect when we do not have a source and return None
           Some(new String(self.content()))
