@@ -19,7 +19,7 @@ class ScriptingTests:
     f.getAbsolutePath.replace('\\', '/')
 
   // classpath tests managed by scripting.ClasspathTests.scala
-  def testFiles = scripts("/scripting").filter { ! _.getName.startsWith("classpath") }
+  def testFiles = scripts("/scripting").filter { ! _.getName.toLowerCase.contains("classpath") }
 
   def script2jar(scriptFile: File) = 
     val jarName = s"${scriptFile.getName.dropExtension}.jar"

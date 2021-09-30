@@ -105,17 +105,20 @@ object MainGenericRunner {
     case "-run" :: fqName :: tail =>
       process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
-      val globdir = cp.replaceAll("[\\/][^\\/]*$", "") // slash/backslash agnostic
-      val (tailargs, cpstr) = if globdir.nonEmpty && classpathSeparator != ";" || cp.contains(classpathSeparator) then
-        (tail, cp)
+      val cpEntries = cp.split(classpathSeparator).toList
+      val singleEntryClasspath: Boolean = cpEntries.take(2).size == 1
+      val globdir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
+      def validGlobbedJar(s: String): Boolean = s.startsWith(globdir) && ((s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip")))
+      val (tailargs, newEntries) = if singleEntryClasspath && validGlobbedJar(cpEntries.head) then
+        // reassemble globbed wildcard classpath
+        // globdir is wildcard directory for globbed jar files, reconstruct the intended classpath
+        val cpJars = tail.takeWhile( f => validGlobbedJar(f) )
+        val remainingArgs = tail.drop(cpJars.size)
+        (remainingArgs, cpEntries ++ cpJars)
       else
-        // combine globbed classpath entries into a classpath
-        val jarfiles = cp :: tail
-        val cpfiles = jarfiles.takeWhile( f => f.startsWith(globdir) && ((f.toLowerCase.endsWith(".jar") || f.endsWith(".zip"))) )
-        val tailargs = jarfiles.drop(cpfiles.size)
-        (tailargs, cpfiles.mkString(classpathSeparator))
-        
-      process(tailargs, settings.copy(classPath = settings.classPath ++ cpstr.split(classpathSeparator).filter(_.nonEmpty)))
+        (tail, cpEntries)
+
+      process(tailargs, settings.copy(classPath = settings.classPath ++ newEntries.filter(_.nonEmpty)))
 
     case ("-version" | "--version") :: _ =>
       settings.copy(
@@ -204,16 +207,15 @@ object MainGenericRunner {
         val targetScript = Paths.get(settings.targetScript).toFile
         val targetJar = settings.targetScript.replaceAll("[.][^\\/]*$", "")+".jar"
         val precompiledJar = Paths.get(targetJar).toFile
-        def mainClass = Jar(targetJar).mainClass.getOrElse("") // throws exception if file not found
-        val jarIsValid = precompiledJar.isFile && mainClass.nonEmpty && precompiledJar.lastModified >= targetScript.lastModified
+        val mainClass = if !precompiledJar.isFile then "" else Jar(targetJar).mainClass.getOrElse("")
+        val jarIsValid = mainClass.nonEmpty && precompiledJar.lastModified >= targetScript.lastModified
         if jarIsValid then
           // precompiledJar exists, is newer than targetScript, and manifest defines a mainClass
           sys.props("script.path") = targetScript.toPath.toAbsolutePath.normalize.toString
           val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
           val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
-          val mc = mainClass
-          if mc.nonEmpty then
-            ObjectRunner.runAndCatch(newClasspath :+ File(targetJar).toURI.toURL, mc, settings.scriptArgs)
+          if mainClass.nonEmpty then
+            ObjectRunner.runAndCatch(newClasspath :+ File(targetJar).toURI.toURL, mainClass, settings.scriptArgs)
           else
             Some(IllegalArgumentException(s"No main class defined in manifest in jar: $precompiledJar"))
         else

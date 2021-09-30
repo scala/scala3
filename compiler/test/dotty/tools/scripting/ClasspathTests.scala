@@ -18,12 +18,6 @@ class ClasspathTests:
   val packBinDir = "dist/target/pack/bin"
   val packLibDir = "dist/target/pack/lib"
 
-  // only interested in classpath test scripts
-  val testScriptName = "classpathReport.sc"
-  val testScript = scripts("/scripting").find { _.getName.matches(testScriptName) } match
-    case None => sys.error(s"test script not found: ${testScriptName}")
-    case Some(file) => file
-
   def exists(scriptPath: Path): Boolean = Files.exists(scriptPath)
   def packBinScalaExists:Boolean = exists(Paths.get(s"$packBinDir/scala"))
 
@@ -31,6 +25,12 @@ class ClasspathTests:
    * verify classpath reported by called script.
    */
   @Test def hashbangClasspathVerifyTest = {
+    // only interested in classpath test scripts
+    val testScriptName = "classpathReport.sc"
+    val testScript = scripts("/scripting").find { _.getName.matches(testScriptName) } match
+      case None => sys.error(s"test script not found: ${testScriptName}")
+      case Some(file) => file
+
     val relpath = testScript.toPath.relpath.norm
     printf("===> hashbangClasspathVerifyTest for script [%s]\n", relpath)
     printf("bash is [%s]\n", bashExe)
@@ -50,12 +50,40 @@ class ClasspathTests:
       val hashbangClasspathJars = scriptCp.split(psep).map { _.getName }.sorted.distinct
       val packlibJars = listJars(s"$scriptCwd/$packLibDir").sorted.distinct
      
+      printf("%d jar files in dist/target/pack/lib\n", packlibJars.size)
+      printf("%d test script jars in classpath\n", hashbangClasspathJars.size)
+
       // verify that the classpath set in the hashbang line is effective
       if hashbangClasspathJars.size != packlibJars.size then
-        printf("%d test script jars in classpath\n", hashbangClasspathJars.size)
-        printf("%d jar files in dist/target/pack/lib\n", packlibJars.size)
+        printf("hashbangClasspathJars: %s\n", hashbangClasspathJars.mkString("\n ", "\n ", ""))
 
       assert(hashbangClasspathJars.size == packlibJars.size)
+  }
+  /*
+   * verify classpath is unglobbed by MainGenericRunner.
+   */
+  @Test def unglobClasspathVerifyTest = {
+    val testScriptName = "unglobClasspath.sc"
+    val testScript = scripts("/scripting").find { _.getName.matches(testScriptName) } match
+      case None => sys.error(s"test script not found: ${testScriptName}")
+      case Some(file) => file
+
+    val relpath = testScript.toPath.relpath.norm
+    printf("===> unglobClasspathVerifyTest for script [%s]\n", relpath)
+    printf("bash is [%s]\n", bashExe)
+
+    if packBinScalaExists then
+      val bashCmdline = s"SCALA_OPTS= $relpath"
+      val cmd = Array(bashExe, "-c", bashCmdline)
+
+      cmd.foreach { printf("[%s]\n", _) }
+
+      // test script reports the classpath it sees 
+      val scriptOutput = exec(cmd:_*)
+      val scriptCp = findTaggedLine("unglobbed classpath", scriptOutput)
+      val classpathJars = scriptCp.split(psep).map { _.getName }.sorted.distinct
+      //classpathJars.foreach { printf("%s\n", _) }
+      assert(classpathJars.size > 1)
   }
 
 
