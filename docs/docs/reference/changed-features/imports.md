@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Imports"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/imports.html
+type: section
+num: 56
+previous-page: /scala3/reference/changed-features/wildcards
+next-page: /scala3/reference/changed-features/type-checking
 ---
 
 The syntax of wildcard and renaming imports (and exports) has changed.

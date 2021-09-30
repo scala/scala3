@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Runtime Multi-Stage Programming"
-movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/staging.html
+type: section
+num: 31
+previous-page: /scala3/reference/metaprogramming/macros
+next-page: /scala3/reference/metaprogramming/reflection
 ---
 
 The framework expresses at the same time compile-time metaprogramming and
@@ -97,7 +99,7 @@ scala -with-compiler -classpath out Test
 
 ## Example
 
-Now take exactly the same example as in [Macros](./macros.md). Assume that we
+Now take exactly the same example as in [Macros](./macros.html). Assume that we
 do not want to pass an array statically but generate code at run-time and pass
 the value, also at run-time. Note, how we make a future-stage function of type
 `Expr[Array[Int] => Int]` in line 6 below. Using `staging.run { ... }` we can evaluate an

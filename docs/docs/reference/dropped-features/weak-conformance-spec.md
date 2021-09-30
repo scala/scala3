@@ -1,7 +1,7 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "Dropped: Weak Conformance - More Details"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/weak-conformance-spec.html
 ---
 
 To simplify the underlying type theory, Scala 3 drops the notion of

@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: New Control Syntax
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/control-syntax.html
+type: section
+num: 46
+previous-page: /scala3/reference/other-new-features/targetName
+next-page: /scala3/reference/other-new-features/indentation
 ---
 
 Scala 3 has a new "quiet" syntax for control expressions that does not rely on

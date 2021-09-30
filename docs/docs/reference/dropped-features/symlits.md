@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Dropped: Symbol Literals"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/symlits.html
+type: section
+num: 82
+previous-page: /scala3/reference/dropped-features/xml
+next-page: /scala3/reference/dropped-features/auto-apply
 ---
 
 Symbol literals are no longer supported.

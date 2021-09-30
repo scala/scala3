@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Dropped: DelayedInit"
-movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/delayed-init.html
+type: section
+num: 71
+previous-page: /scala3/reference/dropped-features
+next-page: /scala3/reference/dropped-features/macros
 ---
 
 The special handling of the `DelayedInit` trait is no longer supported.
@@ -27,4 +29,4 @@ object Hello:
 ```
 
 On the other hand, Scala 3 offers a convenient alternative to such "program" objects
-with [`@main` methods](../changed-features/main-functions.md).
+with [`@main` methods](../changed-features/main-functions.html).

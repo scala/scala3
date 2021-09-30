@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Implicit Conversions"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/conversions.html
+type: section
+num: 24
+previous-page: /scala3/reference/contextual/context-functions
+next-page: /scala3/reference/contextual/by-name-context-parameters
 ---
 
 Implicit conversions are defined by given instances of the `scala.Conversion` class.

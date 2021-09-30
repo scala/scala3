@@ -1,6 +1,7 @@
 ---
-layout: doc-page
-title: Soft Keywords
+layout: singlepage-overview
+scala3: true
+title: "Soft Keywords"
 ---
 
 A soft modifier is one of the identifiers `opaque`, `inline`, `open`, `transparent`, and `infix`.

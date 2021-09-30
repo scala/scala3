@@ -1,5 +1,6 @@
 ---
-layout: doc-page
+layout: singlepage-overview
+scala3: true
 title: "Erased Definitions"
 ---
 
@@ -160,7 +161,7 @@ object Machine:
   //                    State must be Off
 ```
 
-Note that in [Inline](../metaprogramming/inline.md) we discussed `erasedValue` and inline
+Note that in [Inline](../metaprogramming/inline.html) we discussed `erasedValue` and inline
 matches. `erasedValue` is implemented with `erased`, so the state machine above
 can be encoded as follows:
 
@@ -227,4 +228,4 @@ val err: Any = CanRead() // error: illegal reference to erased class CanRead
 ```
 Here, the type of `err` is `Any`, so `err` is not considered erased. Yet its initializing value is a reference to the erased class `CanRead`.
 
-[More Details](./erased-defs-spec.md)
+[More Details](./erased-defs-spec.html)

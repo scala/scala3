@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Changes in Type Inference"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/type-inference.html
+type: section
+num: 58
+previous-page: /scala3/reference/changed-features/type-checking
+next-page: /scala3/reference/changed-features/implicit-resolution
 ---
 
 For more information, see the two presentations

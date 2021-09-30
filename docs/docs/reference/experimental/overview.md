@@ -1,6 +1,7 @@
 ---
-layout: doc-page
-title: Experimental language features
+layout: singlepage-overview
+scala3: true
+title: "Experimental language features"
 author: Nicolas Stucki
 ---
 

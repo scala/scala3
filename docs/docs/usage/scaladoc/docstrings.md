@@ -1,8 +1,11 @@
 ---
-title: Scaladoc docstrings - specific Tags and Features
+layout: multipage-overview
+title: "Docstrings - specific Tags and Features"
+partof: scala3-scaladoc
+num: 2
+previous-page: index
+next-page: linking
 ---
-
-# {{page.title}}
 
 This chapter describes how to correctly write docstrings and how to use all the available features of scaladoc.
 Since many things are the same as in the old scaladoc, some parts are reused from this [article](https://docs.scala-lang.org/overviews/scaladoc/for-library-authors.html)
@@ -192,4 +195,4 @@ Further information on the formatting and style recommendations can be found in 
 
 Scaladoc allows linking to API documentation with Wiki-style links. Linking to
 `scala.collection.immutable.List` is as simple as
-`[[scala.collection.immutable.List]]`. For more information on the exact syntax, see [doc comment documentation](./linkingDocumentation.html#definition-links).
+`[[scala.collection.immutable.List]]`. For more information on the exact syntax, see [doc comment documentation]({% link _overviews/scala3-scaladoc/linking.md %}#definition-links).

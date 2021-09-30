@@ -1,11 +1,13 @@
 ---
-layout: doc-page
 title: "Given Instances"
-movedTo: https://docs.scala-lang.org/scala3/reference/contextual/givens.html
+type: section
+num: 15
+previous-page: /scala3/reference/contextual
+next-page: /scala3/reference/contextual/using-clauses
 ---
 
 Given instances (or, simply, "givens") define "canonical" values of certain types
-that serve for synthesizing arguments to [context parameters](./using-clauses.md). Example:
+that serve for synthesizing arguments to [context parameters](./using-clauses.html). Example:
 
 ```scala
 trait Ord[T]:
@@ -34,7 +36,7 @@ a given for the type `Ord[Int]` whereas `listOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]`
 themselves. The `using` clause in `listOrd` defines a condition: There must be a
 given of type `Ord[T]` for a given of type `Ord[List[T]]` to exist.
-Such conditions are expanded by the compiler to [context parameters](./using-clauses.md).
+Such conditions are expanded by the compiler to [context parameters](./using-clauses.html).
 
 ## Anonymous Givens
 
@@ -151,7 +153,7 @@ is created for each reference.
 
 Here is the syntax for given instances:
 
-```ebnf
+```
 TmplDef             ::=  ...
                      |   ‘given’ GivenDef
 GivenDef            ::=  [GivenSig] StructuralInstance

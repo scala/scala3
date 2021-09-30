@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Match Types"
-movedTo: https://docs.scala-lang.org/scala3/reference/new-types/match-types.html
+type: section
+num: 6
+previous-page: /scala3/reference/new-types/type-lambdas
+next-page: /scala3/reference/new-types/dependent-function-types
 ---
 
 A match type reduces to one of its right-hand sides, depending on the type of

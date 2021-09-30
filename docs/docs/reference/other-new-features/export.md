@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Export Clauses"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/export.html
+type: section
+num: 38
+previous-page: /scala3/reference/other-new-features/creator-applications
+next-page: /scala3/reference/other-new-features/opaques
 ---
 
 An export clause defines aliases for selected members of an object. Example:
@@ -136,7 +138,7 @@ ImportSpec        ::=  NamedSelector
                     |  WildcardSelector
                     | ‘{’ ImportSelectors) ‘}’
 NamedSelector     ::=  id [‘as’ (id | ‘_’)]
-WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
+WildCardSelector  ::=  ‘*’ | ‘given’ [InfixType]
 ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
                     |  WildCardSelector {‘,’ WildCardSelector}
 ```

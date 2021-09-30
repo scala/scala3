@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Dependent Function Types"
-movedTo: https://docs.scala-lang.org/scala3/reference/new-types/dependent-function-types.html
+type: section
+num: 7
+previous-page: /scala3/reference/new-types/match-types
+next-page: /scala3/reference/new-types/polymorphic-function-types
 ---
 
 A dependent function type is a function type whose result depends
@@ -36,7 +38,7 @@ This type describes function values that take any argument `e` of type
 `Entry` and return a result of type `e.Key`.
 
 Recall that a normal function type `A => B` is represented as an
-instance of the [`Function1` trait](https://dotty.epfl.ch/api/scala/Function1.html)
+instance of the [`Function1` trait](https://scala-lang.org/api/3.x/scala/Function1.html)
 (i.e. `Function1[A, B]`) and analogously for functions with more parameters. Dependent functions
 are also represented as instances of these traits, but they get an additional
 refinement. In fact, the dependent function type above is just syntactic sugar for
@@ -46,4 +48,4 @@ Function1[Entry, Entry#Key]:
   def apply(e: Entry): e.Key
 ```
 
-[More details](./dependent-function-types-spec.md)
+[More details](./dependent-function-types-spec.html)

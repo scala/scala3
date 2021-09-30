@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "TypeTest"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/type-test.html
+type: section
+num: 50
+previous-page: /scala3/reference/other-new-features/safe-initialization
+next-page: /scala3/reference/changed-features
 ---
 
 ## TypeTest

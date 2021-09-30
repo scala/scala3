@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Vararg Splices"
-movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/vararg-splices.html
+type: section
+num: 63
+previous-page: /scala3/reference/changed-features/match-syntax
+next-page: /scala3/reference/changed-features/pattern-bindings
 ---
 
 The syntax of vararg splices in patterns and function arguments has changed. The new syntax uses a postfix `*`,  analogously to how a vararg parameter is declared.
@@ -24,7 +26,7 @@ The old syntax for splice arguments will be phased out.
 
 ## Syntax
 
-```ebnf
+```
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
                     |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’
 

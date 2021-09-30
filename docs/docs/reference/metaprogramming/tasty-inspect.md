@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "TASTy Inspection"
-movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/tasty-inspect.html
+type: section
+num: 33
+previous-page: /scala3/reference/metaprogramming/reflection
+next-page: /scala3/reference/other-new-features
 ---
 
 ```scala

@@ -1,6 +1,7 @@
 ---
-layout: doc-page
-title: CanThrow Capabilities
+layout: singlepage-overview
+scala3: true
+title: "CanThrow Abilities"
 author: Martin Odersky
 ---
 
@@ -60,7 +61,7 @@ In the _effects as capabilities_ model, an effect is expressed as an (implicit) 
 ```scala
 erased class CanThrow[-E <: Exception]
 ```
-This shows another experimental Scala feature: [erased definitions](./erased-defs). Roughly speaking, values of an erased class do not generate runtime code; they are erased before code generation. This means that all `CanThrow` capabilities are compile-time only artifacts; they do not have a runtime footprint.
+This shows another experimental Scala feature: [erased definitions]({% link _scala3-reference/experimental/erased-defs.md %}). Roughly speaking, values of an erased class do not generate runtime code; they are erased before code generation. This means that all `CanThrow` capabilities are compile-time only artifacts; they do not have a runtime footprint.
 
 Now, if the compiler sees a `throw Exc()` construct where `Exc` is a checked exception, it will check that there is a capability of type `CanThrow[Exc]` that can be summoned as a given. It's a compile-time error if that's not the case.
 

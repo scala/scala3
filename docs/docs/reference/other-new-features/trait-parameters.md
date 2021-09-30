@@ -1,7 +1,9 @@
 ---
-layout: doc-page
 title: "Trait Parameters"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/trait-parameters.html
+type: section
+num: 35
+previous-page: /scala3/reference/other-new-features
+next-page: /scala3/reference/other-new-features/transparent-traits
 ---
 
 Scala 3 allows traits to have parameters, just like classes have parameters.
@@ -56,7 +58,7 @@ class E extends Greeting("Bob"), FormalGreeting
 ### Traits With Context Parameters
 
 This "explicit extension required" rule is relaxed if the missing trait contains only
-[context parameters](../contextual/using-clauses). In that case the trait reference is
+[context parameters]({% link _scala3-reference/contextual/using-clauses.md %}). In that case the trait reference is
 implicitly inserted as an additional parent with inferred arguments. For instance,
 here's a variant of greetings where the addressee is a context parameter of type
 `ImpliedName`:
