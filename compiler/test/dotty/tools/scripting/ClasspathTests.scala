@@ -50,10 +50,12 @@ class ClasspathTests:
       val hashbangClasspathJars = scriptCp.split(psep).map { _.getName }.sorted.distinct
       val packlibJars = listJars(s"$scriptCwd/$packLibDir").sorted.distinct
      
+      printf("%d jar files in dist/target/pack/lib\n", packlibJars.size)
+      printf("%d test script jars in classpath\n", hashbangClasspathJars.size)
+
       // verify that the classpath set in the hashbang line is effective
       if hashbangClasspathJars.size != packlibJars.size then
-        printf("%d test script jars in classpath\n", hashbangClasspathJars.size)
-        printf("%d jar files in dist/target/pack/lib\n", packlibJars.size)
+        printf("hashbangClasspathJars: %s\n", hashbangClasspathJars.mkString("\n ", "\n ", ""))
 
       assert(hashbangClasspathJars.size == packlibJars.size)
   }

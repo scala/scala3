@@ -106,7 +106,7 @@ object MainGenericRunner {
       process(tail, settings.withExecuteMode(ExecuteMode.Run).withTargetToRun(fqName))
     case ("-cp" | "-classpath" | "--class-path") :: cp :: tail =>
       val cpEntries = cp.split(classpathSeparator).toList
-      val singleEntryClasspath: Boolean = cpEntries.nonEmpty && cpEntries.drop(1).isEmpty
+      val singleEntryClasspath: Boolean = cpEntries.take(2).size == 1
       val globdir: String = if singleEntryClasspath then cp.replaceAll("[\\\\/][^\\\\/]*$", "") else "" // slash/backslash agnostic
       def validGlobbedJar(s: String): Boolean = s.startsWith(globdir) && ((s.toLowerCase.endsWith(".jar") || s.toLowerCase.endsWith(".zip")))
       val (tailargs, newEntries) = if singleEntryClasspath && validGlobbedJar(cpEntries.head) then
@@ -243,22 +243,4 @@ object MainGenericRunner {
     e.foreach(_.printStackTrace())
     !isFailure
   }
-
-  def display(settings: Settings)= Seq(
-    s"verbose: ${settings.verbose}",
-    s"classPath: ${settings.classPath.mkString("\n  ","\n  ","")}",
-    s"executeMode: ${settings.executeMode}",
-    s"exitCode: ${settings.exitCode}",
-    s"javaArgs: ${settings.javaArgs}",
-    s"scalaArgs: ${settings.scalaArgs}",
-    s"residualArgs: ${settings.residualArgs}",
-    s"possibleEntryPaths: ${settings.possibleEntryPaths}",
-    s"scriptArgs: ${settings.scriptArgs}",
-    s"targetScript: ${settings.targetScript}",
-    s"targetToRun: ${settings.targetToRun}",
-    s"save: ${settings.save}",
-    s"modeShouldBePossibleRun: ${settings.modeShouldBePossibleRun}",
-    s"modeShouldBeRun: ${settings.modeShouldBeRun}",
-    s"compiler: ${settings.compiler}",
-  )
 }
