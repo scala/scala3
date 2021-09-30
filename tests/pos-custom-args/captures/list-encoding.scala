@@ -1,6 +1,5 @@
-package listEncoding
-
 class Cap
+type Top = Any @retains(*)
 
 type Op[T, C] =
   {*} (v: T) => {*} (s: C) => C
@@ -21,3 +20,61 @@ def foo(c: {*} Cap) =
     cons(x, cons(y, nil))
   def h(x: String, y: Any @retains(c)) =
     cons(x, cons(y, nil))
+
+def toScalaList[T](xs: List[T]) = xs[scala.List[T]]((hd: T) => (tl: scala.List[T]) => hd :: tl)(Nil)
+
+def strictMap[A <: Top, B <: Top](xs: List[A])(f: {*} A => B): List[B] =
+  xs[List[B]]((hd: A) => (tl: List[B]) => cons(f(hd), tl))(nil)
+
+def strictMap2[A <: Top, B <: Top](f: {*} A => B): {f} List[A] => List[B] =
+  (xs: List[A]) => xs[List[B]]((hd: A) => (tl: List[B]) => cons(f(hd), tl))(nil)
+
+// The syntax `{} A => B` no longer parses, using @retains() instead.
+def pureMap[A <: Top, B <: Top](xs: List[A])(f: A => B @retains()): List[B] =
+  xs[List[B]]((hd: A) => (tl: List[B]) => cons(f(hd), tl))(nil)
+
+class Unit
+object unit extends Unit
+
+def lazyMap
+  [A <: Top, B <: Top]
+  (xs: List[Unit => A])
+  (f: {*} A => B):
+  List[{f} Unit => B] =
+
+    xs[List[{f} Unit => B]]
+      ((hd: Unit => A) =>
+        (tl: List[{f} Unit => B]) =>
+          cons((u: Unit) => f(hd(unit)), tl))(nil)
+
+def lazyPureMap
+  [A <: Top, B <: Top]
+  (xs: List[Unit => A])
+  (f: A => B @retains()):
+  List[Unit => B @retains()] =
+
+    xs[List[Unit => B @retains()]]
+      ((hd: Unit => A) =>
+        (tl: List[Unit => B @retains()]) =>
+          cons((u: Unit) => f(hd(unit)), tl))(nil)
+
+def force[A](thunk: Unit=>A): A = thunk(unit)
+def forceList[A](lazyList: List[Unit=>A]): List[A] = strictMap(lazyList)(force[A])
+
+@main def Test() =
+  val list12 = cons(1, cons(2, nil))
+  val list23 = strictMap(list12)((_: Int) + 1)
+  val list34 = strictMap2((_: Int) + 2)(list12)
+  val list45 = pureMap(list12)((_: Int) + 3)
+  println(toScalaList(list12))
+  println(toScalaList(list23))
+  println(toScalaList(list34))
+  println(toScalaList(list45))
+
+  val lazylist12: List[Unit=>Int] = cons(unit=>1, cons(unit=>2, nil))
+  // Uncommenting the next line fails pickling (???)
+  // val lazylist56 = lazyMap[Int, Int](lazylist12)((_: Int) + 4)
+  val lazylist67 = lazyPureMap[Int, Int](lazylist12)((_: Int) + 5)
+  println(toScalaList(forceList(lazylist12)))
+  // println(toScalaList(forceList(lazylist56)))
+  println(toScalaList(forceList(lazylist67)))
