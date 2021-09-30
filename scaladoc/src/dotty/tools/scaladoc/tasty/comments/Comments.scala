@@ -211,7 +211,7 @@ class WikiCommentParser(repr: Repr)(using DocContext)
   private def flatten(b: wiki.Inline): String = b match
     case wiki.Text(t) => t
     case wiki.Italic(t) => flatten(t)
-    case wiki.Bold(t) =>flatten(t)
+    case wiki.Bold(t) => flatten(t)
     case wiki.Underline(t) => flatten(t)
     case wiki.Superscript(t) => flatten(t)
     case wiki.Subscript(t) => flatten(t)
