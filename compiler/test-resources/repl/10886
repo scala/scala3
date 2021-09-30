@@ -1,0 +1,10 @@
+scala> type Channel = "A" | "B"
+// defined alias type Channel = "A" | "B"
+
+scala> type SelChannel[C <: Tuple] = C match { case x *: xs => x | SelChannel[xs] case _ => Nothing }
+
+scala> lazy val a: SelChannel[("A", "B", "C")] = a
+lazy val a: "A" | ("B" | ("C" | Nothing))
+
+scala>:type a
+("A" : String) | (("B" : String) | (("C" : String) | Nothing))
