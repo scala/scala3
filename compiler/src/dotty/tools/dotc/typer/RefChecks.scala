@@ -192,6 +192,54 @@ object RefChecks {
 
   // Override checking ------------------------------------------------------------
 
+  /** A class for checking all overriding pairs of `class` with a given check function */
+  class OverridingPairsChecker(clazz: ClassSymbol, self: Type)(using Context) extends OverridingPairs.Cursor(clazz):
+
+    override def matches(sym1: Symbol, sym2: Symbol): Boolean =
+      isOverridingPair(sym1, sym2, self)
+
+    private def inLinearizationOrder(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
+      val owner1 = sym1.owner
+      val owner2 = sym2.owner
+      def precedesIn(bcs: List[ClassSymbol]): Boolean = (bcs: @unchecked) match
+        case bc :: bcs1 =>
+          if owner1 eq bc then true
+          else if owner2 eq bc then false
+          else precedesIn(bcs1)
+        case _ =>
+          false
+      precedesIn(parent.asClass.baseClasses)
+
+    // We can exclude pairs safely from checking only under two additional conditions
+    //   - their signatures also match in the parent class.
+    //     See neg/i12828.scala for an example where this matters.
+    //   - They overriding/overridden appear in linearization order.
+    //     See neg/i5094.scala for an example where this matters.
+    override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
+      isOverridingPair(sym1, sym2, parent.thisType)
+        .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parent.thisType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parent.thisType).signature} = $result", refcheck)
+      && inLinearizationOrder(sym1, sym2, parent)
+
+    def checkAll(checkOverride: (Symbol, Symbol) => Unit) =
+      while hasNext do
+        checkOverride(overriding, overridden)
+        next()
+
+      // The OverridingPairs cursor does assume that concrete overrides abstract
+      // We have to check separately for an abstract definition in a subclass that
+      // overrides a concrete definition in a superclass. E.g. the following (inspired
+      // from neg/i11130.scala) needs to be rejected as well:
+      //
+      //   class A { type T = B }
+      //   class B extends A { override type T }
+      for dcl <- clazz.info.decls.iterator do
+        if dcl.is(Deferred) then
+          for other <- dcl.allOverriddenSymbols do
+            if !other.is(Deferred) then
+              checkOverride(dcl, other)
+    end checkAll
+  end OverridingPairsChecker
+
   /** 1. Check all members of class `clazz` for overriding conditions.
    *  That is for overriding member M and overridden member O:
    *
@@ -469,50 +517,7 @@ object RefChecks {
           }*/
     }
 
-    val opc = new OverridingPairs.Cursor(clazz):
-      override def matches(sym1: Symbol, sym2: Symbol): Boolean =
-        isOverridingPair(sym1, sym2, self)
-
-      private def inLinearizationOrder(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
-        val owner1 = sym1.owner
-        val owner2 = sym2.owner
-        def precedesIn(bcs: List[ClassSymbol]): Boolean = (bcs: @unchecked) match
-          case bc :: bcs1 =>
-            if owner1 eq bc then true
-            else if owner2 eq bc then false
-            else precedesIn(bcs1)
-          case _ =>
-            false
-        precedesIn(parent.asClass.baseClasses)
-
-      // We can exclude pairs safely from checking only under two additional conditions
-      //   - their signatures also match in the parent class.
-      //     See neg/i12828.scala for an example where this matters.
-      //   - They overriding/overridden appear in linearization order.
-      //     See neg/i5094.scala for an example where this matters.
-      override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
-        isOverridingPair(sym1, sym2, parent.thisType)
-         .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parent.thisType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parent.thisType).signature} = $result", refcheck)
-        && inLinearizationOrder(sym1, sym2, parent)
-    end opc
-
-    while opc.hasNext do
-      checkOverride(opc.overriding, opc.overridden)
-      opc.next()
-
-    // The OverridingPairs cursor does assume that concrete overrides abstract
-    // We have to check separately for an abstract definition in a subclass that
-    // overrides a concrete definition in a superclass. E.g. the following (inspired
-    // from neg/i11130.scala) needs to be rejected as well:
-    //
-    //   class A { type T = B }
-    //   class B extends A { override type T }
-    for dcl <- clazz.info.decls.iterator do
-      if dcl.is(Deferred) then
-        for other <- dcl.allOverriddenSymbols do
-          if !other.is(Deferred) then
-            checkOverride(dcl, other)
-
+    OverridingPairsChecker(clazz, self).checkAll(checkOverride)
     printMixinOverrideErrors()
 
     // Verifying a concrete class has nothing unimplemented.
