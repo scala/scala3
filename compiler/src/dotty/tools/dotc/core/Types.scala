@@ -301,6 +301,11 @@ object Types {
 
     def isFromJavaObject(using Context): Boolean = typeSymbol eq defn.FromJavaObjectSymbol
 
+    def containsFromJavaObject(using Context): Boolean = this match
+      case tp: OrType => tp.tp1.containsFromJavaObject || tp.tp2.containsFromJavaObject
+      case tp: AndType => tp.tp1.containsFromJavaObject && tp.tp2.containsFromJavaObject
+      case _ => isFromJavaObject
+
     /** True iff `symd` is a denotation of a class type parameter and the reference
      *  `<pre> . <symd>` is an actual argument reference, i.e. `pre` is not the
      *  ThisType of `symd`'s owner, or a reference to `symd`'s owner.'
@@ -4933,6 +4938,8 @@ object Types {
     }
 
     def & (that: TypeBounds)(using Context): TypeBounds =
+      // if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) this
+      // else if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) that
       if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) that
       else if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) this
       else TypeBounds(this.lo | that.lo, this.hi & that.hi)
