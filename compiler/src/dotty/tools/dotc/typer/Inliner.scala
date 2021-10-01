@@ -1242,6 +1242,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
      */
     type MatchRedux = Option[(List[MemberDef], Tree)]
 
+    /** Same as MatchRedux, but also includes a boolean
+     *  that is true if the guard can be checked at compile time.
+     */
+    type MatchReduxWithGuard = Option[(List[MemberDef], Tree, Boolean)]
+
     /** Reduce an inline match
      *   @param     mtch          the match tree
      *   @param     scrutinee     the scrutinee expression, assumed to be pure, or
@@ -1423,7 +1428,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       val scrutineeSym = newSym(InlineScrutineeName.fresh(), Synthetic, scrutType).asTerm
       val scrutineeBinding = normalizeBinding(ValDef(scrutineeSym, scrutinee))
 
-      def reduceCase(cdef: CaseDef): MatchRedux = {
+      def reduceCase(cdef: CaseDef): MatchReduxWithGuard = {
         val caseBindingMap = new mutable.ListBuffer[(Symbol, MemberDef)]()
 
         def substBindings(
@@ -1442,21 +1447,26 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
         if (reducePattern(caseBindingMap, scrutineeSym.termRef, cdef.pat)(using gadtCtx)) {
           val (caseBindings, from, to) = substBindings(caseBindingMap.toList, mutable.ListBuffer(), Nil, Nil)
-          val guardOK = cdef.guard.isEmpty || {
-            typer.typed(cdef.guard.subst(from, to), defn.BooleanType) match {
-              case ConstantValue(true) => true
-              case _ => false
+          val (guardOK, canReduceGuard) =
+            if cdef.guard.isEmpty then (true, true)
+            else typer.typed(cdef.guard.subst(from, to), defn.BooleanType) match {
+              case ConstantValue(v: Boolean) => (v, true)
+              case _ => (false, false)
             }
-          }
-          if (guardOK) Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to)))
-          else None
+          if guardOK then Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to), canReduceGuard))
+          else if canReduceGuard then None
+          else Some((caseBindings.map(_.subst(from, to)), cdef.body.subst(from, to), canReduceGuard))
         }
         else None
       }
 
       def recur(cases: List[CaseDef]): MatchRedux = cases match {
         case Nil => None
-        case cdef :: cases1 => reduceCase(cdef) `orElse` recur(cases1)
+        case cdef :: cases1 =>
+          reduceCase(cdef) match
+            case None => recur(cases1)
+            case r @ Some((caseBindings, rhs, canReduceGuard)) if canReduceGuard => Some((caseBindings, rhs))
+            case _ => None
       }
 
       recur(cases)
