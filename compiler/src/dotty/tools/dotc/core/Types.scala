@@ -4938,8 +4938,6 @@ object Types {
     }
 
     def & (that: TypeBounds)(using Context): TypeBounds =
-      // if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) this
-      // else if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) that
       if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) that
       else if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) this
       else TypeBounds(this.lo | that.lo, this.hi & that.hi)
