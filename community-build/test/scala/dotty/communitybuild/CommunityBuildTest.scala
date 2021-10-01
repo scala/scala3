@@ -123,7 +123,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   @Test def fs2 = projects.fs2.run()
   @Test def munit = projects.munit.run()
   @Test def munitCatsEffect = projects.munitCatsEffect.run()
-  @Test def perspective = projects.perspective.run()
+  // @Test def perspective = projects.perspective.run()
   @Test def scalacheckEffect = projects.scalacheckEffect.run()
   @Test def scodec = projects.scodec.run()
   @Test def scodecBits = projects.scodecBits.run()
