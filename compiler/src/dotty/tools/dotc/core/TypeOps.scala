@@ -349,7 +349,11 @@ object TypeOps:
       val doms = dominators(commonBaseClasses, Nil)
       def baseTp(cls: ClassSymbol): Type =
         tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
-      doms.map(baseTp).reduceLeft(AndType.apply)
+      def meet(tp1: Type, tp2: Type) =
+        if !tp1.exists then tp2
+        else if !tp2.exists then tp1
+        else AndType(tp1, tp2)
+      doms.map(baseTp).reduceLeft(meet)
     }
 
     tp match {
