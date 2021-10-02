@@ -164,7 +164,7 @@ Type class authors will most likely use higher level derivation or generic progr
 described above and Scala 3's general metaprogramming features is provided below. It is not anticipated that type class
 authors would normally implement a `derived` method in this way, however this walkthrough can be taken as a guide for
 authors of the higher level derivation libraries that we expect typical type class authors will use (for a fully
-worked out example of such a library, see [Shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
+worked out example of such a library, see [Shapeless 3](https://github.com/typelevel/shapeless-3/)).
 
 #### How to write a type class `derived` method using low level mechanisms
 
