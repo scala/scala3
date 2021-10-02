@@ -764,7 +764,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       for (param <- tpe.cls.typeParams)
         paramProxy(param.typeRef) = adaptToPrefix(param.typeRef)
     case tpe: NamedType
-    if tpe.symbol.is(Param) && tpe.symbol.owner == inlinedMethod && !paramProxy.contains(tpe) =>
+    if tpe.symbol.is(Param)
+        && tpe.symbol.owner == inlinedMethod
+        && (tpe.symbol.isTerm || inlinedMethod.paramSymss.exists(_.contains(tpe.symbol)))
+          // this test is needed to rule out nested LambdaTypeTree parameters
+          // with the same name as the method's parameters. Note that the nested
+          // LambdaTypeTree parameters also have the inlineMethod as owner. C.f. i13460.scala.
+        && !paramProxy.contains(tpe) =>
       paramBinding.get(tpe.name) match
         case Some(bound) => paramProxy(tpe) = bound
         case _ =>  // can happen for params bound by type-lambda trees.
@@ -959,6 +965,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       substFrom = Nil,
       substTo = Nil
     )(using inlineCtx)
+
+    inlining.println(
+      i"""inliner transform with
+         |thisProxy = ${thisProxy.toList.map(_._1)}%, % --> ${thisProxy.toList.map(_._2)}%, %
+         |paramProxy = ${paramProxy.toList.map(_._1.typeSymbol.showLocated)}%, % --> ${paramProxy.toList.map(_._2)}%, %""")
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
