@@ -322,6 +322,17 @@ class CheckCaptures extends Recheck:
         interpolateVarsIn(tree.tpt)
         curEnv = saved
 
+    override def recheckRHS(tree: Tree, pt: Type, sym: Symbol)(using Context): Type =
+      val pt1 = pt match
+        case CapturingType(core, refs, _)
+        if sym.owner.isClass
+            && refs.elems.contains(sym.owner.thisType)
+            && sym.paramSymss.forall(_.forall(p => p.isType || p.info.captureSet.isAlwaysEmpty)) =>
+          pt.derivedCapturingType(core, refs ++ sym.owner.asClass.givenSelfType.captureSet)
+        case _ =>
+          pt
+      recheck(tree, pt1)
+
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       for param <- cls.paramGetters do
         if param.is(Private) && !param.info.captureSet.isAlwaysEmpty then
