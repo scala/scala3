@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/nestedclass.scala:15:15 ----------------------------------
+15 |  val xsc: C = xs  // error
+   |               ^^
+   |               Found:    (xs : {cap1} C)
+   |               Required: C
+
+longer explanation available when compiling with `-explain`

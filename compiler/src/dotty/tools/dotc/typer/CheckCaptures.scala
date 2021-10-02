@@ -263,7 +263,12 @@ class CheckCaptures extends Recheck:
             case ref: TermRef => ref.symbol.enclosure != ownEnclosure
             case _ => true
           }
-        checkSubset(targetSet, curEnv.captured, pos)
+        def includeIn(env: Env) =
+          capt.println(i"Include call capture $targetSet in ${env.owner}")
+          checkSubset(targetSet, env.captured, pos)
+        includeIn(curEnv)
+        if curEnv.owner.isTerm && curEnv.outer.owner.isClass then
+          includeIn(curEnv.outer)
 
     def includeBoxedCaptures(tp: Type, pos: SrcPos)(using Context): Unit =
       if curEnv.isOpen then
