@@ -60,6 +60,7 @@ In more detail, here are the rules for what constitutes the implicit scope of
 a type:
 
 **Definition:** A reference is an _anchor_ if it refers to an object, a class, a trait, an abstract type, an opaque type alias, or a match type alias. References to packages and package objects are anchors only under `-source:3.0-migration`.
+Opaque type aliases count as anchors only outside the scope where their alias is visible.
 
 **Definition:** The _anchors_ of a type _T_ is a set of references defined as follows:
 
