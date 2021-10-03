@@ -5,7 +5,7 @@ import KeyRanks.DTask
 object Reporter {
   import xsbti.{Reporter, Problem, Position, Severity}
 
-  lazy val check = TaskKey[Unit]("check", "make sure compilation info are forwared to sbt")
+  lazy val check = TaskKey[Unit]("check", "Check compilation output")
 
   // compilerReporter is marked private in sbt
   lazy val compilerReporter = TaskKey[xsbti.Reporter]("compilerReporter", "Experimental hook to listen (or send) compilation failure messages.", DTask)
@@ -25,18 +25,9 @@ object Reporter {
   lazy val checkSettings = Seq(
     Compile / compile / compilerReporter := reporter,
     check := (Compile / compile).failure.map(_ => {
-      println(reporter.problems.toList)
-      assert(reporter.problems.length == 1)
-      val problem = reporter.problems.head
-      // Check that all methods on position can ba called without crashing
-      val pos = problem.position
-      println(pos.sourceFile)
-      println(pos.sourcePath)
-      println(pos.line)
-      println(pos.lineContent)
-      println(pos.offset)
-      println(pos.pointer)
-      println(pos.pointerSpace)
+      val problems = reporter.problems
+      assert(problems.size == 1, problems.size)
+      assert(problems.head.position.line.get() == 5, problems.head.position.line)
     }).value
   )
 }
