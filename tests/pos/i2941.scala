@@ -11,7 +11,7 @@ trait BarBase {
 
 object Test {
   def bad(foo: FooBase): FooBase = foo match {
-    case foo: FooBase =>
-      foo.derived(???)  // Triggers infinite loop in TypeAssigner.avoid()
+    case foo1: FooBase =>
+      foo1.derived(???)  // Triggers infinite loop in TypeAssigner.avoid()
   }
 }
