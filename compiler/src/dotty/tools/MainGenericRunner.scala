@@ -146,7 +146,8 @@ object MainGenericRunner {
       process(tail, settings.withScalaArgs(o))
     case arg :: tail =>
       val line = Try(Source.fromFile(arg).getLines.toList).toOption.flatMap(_.headOption)
-      if arg.endsWith(".scala") || arg.endsWith(".sc") || (line.nonEmpty && raw"#!.*scala".r.matches(line.get)) then
+      lazy val hasScalaHashbang = { val s = line.getOrElse("") ; s.startsWith("#!") && s.contains("scala") }
+      if arg.endsWith(".scala") || arg.endsWith(".sc") || hasScalaHashbang then
         settings
           .withExecuteMode(ExecuteMode.Script)
           .withTargetScript(arg)
