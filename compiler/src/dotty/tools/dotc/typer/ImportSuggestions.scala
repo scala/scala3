@@ -273,11 +273,14 @@ trait ImportSuggestions:
   /** The `ref` parts of this list of pairs, discarding subsequent elements that
    *  have the same String part. Elements are sorted by their String parts.
    */
-  extension (refs: List[(TermRef, String)]) def distinctRefs(using Context): List[TermRef] = refs match
-    case (ref, str) :: refs1 =>
-      ref :: refs1.dropWhile(_._2 == str).distinctRefs
-    case Nil =>
-      Nil
+  extension (refs: List[(TermRef, String)]) def distinctRefs(using Context): List[TermRef] =
+    val buf = new mutable.ListBuffer[TermRef]
+    var last = ""
+    for (ref, str) <- refs do
+      if last != str then
+        buf += ref
+        last = str
+    buf.toList
 
   /** The best `n` references in `refs`, according to `compare`
    *  `compare` is a partial order. If there's a tie, we take elements
