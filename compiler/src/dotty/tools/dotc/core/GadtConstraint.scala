@@ -295,9 +295,22 @@ final class ProperGadtConstraint private(
 
         val tb = typeMember.info.bounds
 
-        tb.derivedTypeBounds(
-          lo = substDependentSyms(tb.lo, isUpper = false),
-          hi = substDependentSyms(tb.hi, isUpper = true)
+        def stripLazyRef(tp: Type): Type = tp match
+          case tp @ RefinedType(parent, name, tb) =>
+            tp.derivedRefinedType(stripLazyRef(parent), name, stripLazyRef(tb))
+          case tp: RecType =>
+            tp.derivedRecType(stripLazyRef(tp.parent))
+          case tb: TypeBounds =>
+            tb.derivedTypeBounds(stripLazyRef(tb.lo), stripLazyRef(tb.hi))
+          case ref: LazyRef =>
+            ref.stripLazyRef
+          case _ => tp
+
+        val tb1: TypeBounds = stripLazyRef(tb).asInstanceOf
+
+        tb1.derivedTypeBounds(
+          lo = substDependentSyms(tb1.lo, isUpper = false),
+          hi = substDependentSyms(tb1.hi, isUpper = true)
         )
       },
       pt => defn.AnyType
