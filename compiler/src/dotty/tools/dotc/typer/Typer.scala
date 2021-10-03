@@ -1633,6 +1633,23 @@ class Typer extends Namer
       }
       val pat1 = indexPattern(tree).transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
+
+      // Trigger path-dependent GADT reasoning
+      val scrutType = sel.tpe.widen
+      val patType = pat1.tpe.widen match
+        case AndType(tp1, tp2) => tp2
+        case tp => tp
+      val scrutPath = sel.tpe match
+        case tp: TermRef => tp
+        case _ => null
+      val patPath = pat1.tpe match
+        case tp: TermRef => tp
+        case _ => null
+
+      withMode(Mode.GadtConstraintInference)
+              (TypeComparer.constrainTypeMembers(scrutType, patType, scrutPath, patPath))
+              (using gadtCtx)
+
       var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
       if ctx.gadt.nonEmpty then
         // Store GADT constraint to later retrieve it (in PostTyper, for now).
@@ -1647,21 +1664,6 @@ class Typer extends Namer
     }
 
     val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
-
-    val scrutType = sel.tpe.widen
-    val patType = pat1.tpe.widen match
-      case AndType(tp1, tp2) => tp2
-      case tp => tp
-    val scrutPath = sel.tpe match
-      case tp: TermRef => tp
-      case _ => null
-    val patPath = pat1.tpe match
-      case tp: TermRef => tp
-      case _ => null
-
-    withMode(Mode.GadtConstraintInference)
-            (TypeComparer.constrainTypeMembers(scrutType, patType, scrutPath, patPath))
-            (using gadtCtx)
 
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(
