@@ -288,13 +288,13 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     val saved = state.constraint
     val savedGadt = ctx.gadt.fresh
 
-    val scrutPath = SkolemType(scrut)
-    val patPath = SkolemType(pat)
+    val scrutPath = if realScrutPath eq null then SkolemType(scrut) else realScrutPath
+    val patPath = if realPatPath eq null then SkolemType(pat) else realPatPath
 
     val scrutPDTs = ctx.gadt.addAllPDTsFrom(scrutPath)
     val patPDTs = ctx.gadt.addAllPDTsFrom(patPath)
 
-    if scrutPDTs.eq(null) || patPDTs.eq(null) then 
+    if scrutPDTs.eq(null) || patPDTs.eq(null) then
       ctx.gadt.restore(savedGadt)
       return true
 
@@ -316,9 +316,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     if !result then
       constraint = saved
       ctx.gadt.restore(savedGadt)
-    else
-      if realScrutPath ne null then ctx.gadt.replacePath(scrutPath, realScrutPath)
-      if realPatPath ne null then ctx.gadt.replacePath(patPath, realPatPath)
+    // else
+    //   if realScrutPath ne null then ctx.gadt.replacePath(scrutPath, realScrutPath)
+    //   if realPatPath ne null then ctx.gadt.replacePath(patPath, realPatPath)
 
     result
   }
