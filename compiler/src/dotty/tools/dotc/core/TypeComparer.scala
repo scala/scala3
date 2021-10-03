@@ -184,6 +184,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val bounds = gadtBounds(sym)
       bounds != null && op(bounds)
 
+  private inline def comparingTypeLambdas(tl1: TypeLambda, tl2: TypeLambda)(op: => Boolean): Boolean =
+    val saved = comparedTypeLambdas
+    comparedTypeLambdas += tl1
+    comparedTypeLambdas += tl2
+    try op finally comparedTypeLambdas = saved
+
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
     val savedApprox = approx
     val savedLeftRoot = leftRoot
@@ -629,12 +635,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               migrateTo3 ||
               tp1.typeParams.corresponds(tp2.typeParams)((tparam1, tparam2) =>
                 isSubType(tparam2.paramInfo.subst(tp2, tp1), tparam1.paramInfo))
-            val saved = comparedTypeLambdas
-            comparedTypeLambdas += tp1
-            comparedTypeLambdas += tp2
-            val variancesOK = variancesConform(tp1.typeParams, tp2.typeParams)
-            try variancesOK && boundsOK && isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
-            finally comparedTypeLambdas = saved
+            comparingTypeLambdas(tp1, tp2) {
+              val variancesOK = variancesConform(tp1.typeParams, tp2.typeParams)
+              variancesOK && boundsOK && isSubType(tp1.resType, tp2.resType.subst(tp2, tp1))
+            }
           case _ =>
             val tparams1 = tp1.typeParams
             if (tparams1.nonEmpty)
@@ -704,9 +708,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: PolyType =>
         def comparePoly = tp1 match {
           case tp1: PolyType =>
-            (tp1.signature consistentParams tp2.signature) &&
-            matchingPolyParams(tp1, tp2) &&
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+            comparingTypeLambdas(tp1, tp2) {
+              (tp1.signature consistentParams tp2.signature)
+              && matchingPolyParams(tp1, tp2)
+              && isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+            }
           case _ => false
         }
         comparePoly
