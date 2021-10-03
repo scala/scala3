@@ -700,7 +700,11 @@ object Erasure {
           // PolyFunction apply Selects will not have a symbol, so deduce the owner
           // from the typed qual.
           val owner = qual1.tpe.typeSymbol
-          if defn.isFunctionClass(owner) then owner else NoSymbol
+          if defn.isFunctionClass(owner) && false then owner
+          else
+            val alt = erasure(tree.qualifier.typeOpt).typeSymbol
+            if defn.isFunctionClass(alt) then alt
+            else NoSymbol
         else
           val owner = sym.maybeOwner
           if defn.specialErasure.contains(owner) then
