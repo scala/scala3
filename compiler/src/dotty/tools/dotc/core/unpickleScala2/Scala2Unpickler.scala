@@ -847,6 +847,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val maker = MethodType.companion(
           isImplicit = tag == IMPLICITMETHODtpe || params.nonEmpty && params.head.is(Implicit))
         val result = maker.fromSymbols(params, restpe)
+        result.resType match
+          case restpe1: MethodType if restpe1 ne restpe =>
+            val prevResParams = paramsOfMethodType.remove(restpe)
+            if prevResParams != null then
+              paramsOfMethodType.put(restpe1, prevResParams)
+          case _ =>
         if params.nonEmpty then paramsOfMethodType.put(result, params)
         result
       case POLYtpe =>
