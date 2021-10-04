@@ -87,7 +87,7 @@ class main extends scala.annotation.MainAnnotation:
             error(s"unknown argument name: $arg")
       end flagUnused
 
-      if args.isEmpty || args.contains("--help") then
+      if args.contains("--help") then
         usage()
         explain()
       else
