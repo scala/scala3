@@ -1041,9 +1041,13 @@ trait Implicits:
           adapt(generated, pt.widenExpr, locked)
         else {
           def untpdGenerated = untpd.TypedSplice(generated)
+          def producesConversion(info: Type): Boolean = info match
+            case info: PolyType => producesConversion(info.resType)
+            case info: MethodType if info.isImplicitMethod => producesConversion(info.resType)
+            case _ => info.derivesFrom(defn.ConversionClass)
           def tryConversion(using Context) = {
             val untpdConv =
-              if (ref.symbol.is(Given))
+              if ref.symbol.is(Given) && producesConversion(ref.symbol.info) then
                 untpd.Select(
                   untpd.TypedSplice(
                     adapt(generated,
