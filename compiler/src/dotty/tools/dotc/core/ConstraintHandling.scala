@@ -197,6 +197,7 @@ trait ConstraintHandling {
   private def unify(p1: TypeParamRef, p2: TypeParamRef)(using Context): Boolean = {
     constr.println(s"unifying $p1 $p2")
     assert(constraint.isLess(p1, p2))
+    constraint = constraint.addLess(p2, p1)
     val down = constraint.exclusiveLower(p2, p1)
     val up = constraint.exclusiveUpper(p1, p2)
     constraint = constraint.unify(p1, p2)
