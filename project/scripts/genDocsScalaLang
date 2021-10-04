@@ -41,10 +41,3 @@ cp -f "$PWD/docs/docsScalaLangResources/scaladoc-assets.html" "$DOCS_SCALA_LANG_
 
 # Hack inclusion of these assests by the docs.scala-lang jekyll builder
 echo "{% include scaladoc-assets.html %}" >> "$DOCS_SCALA_LANG_DIR/_layouts/inner-page-parent-dropdown.html"
-
-# Push changes to fork branch
-cd $DOCS_SCALA_LANG_DIR
-git remote add barkingbad git@github.com:BarkingBad/docs.scala-lang.git
-git add .
-git commit -m "Update docs from dotty repo"
-git push -f barkingbad main:pregenerated-page

@@ -22,11 +22,11 @@ object CopyDocs {
   implicit def stringToFun(s: String): MyParams => String = _ => s
 
   // Patterns, for convenience
-  val titlePattern = "(?s)^---\n.*title: ([^\n]*).*---"
-  val jekyllLinkPattern = """\{\% link _overviews/scala3-scaladoc(.*) %\}"""
+  val titlePattern = "(?s)^---\n.*?title: ([^\n]*).*?---"
+  val jekyllLinkPattern = """\{\% link _overviews/scala3-reference(.*) %\}"""
   val jekyllLinkSubstitution = "..$1"
-  val jekyllLinkPattern2 = """\{\% link |_overviews/scala3-scaladoc/(.*) %\}"""
-  val jekyllLinkSubstitution2 = "$1"
+  val jekyllLinkPattern2 = """\{\% link _overviews/scala3-scaladoc(.*) %\}"""
+  val jekyllLinkSubstitution2 = ".$1"
   val localLinkPattern = """\((?!http|www)(.*).html\)"""
   val localLinkSubstitution = "($1.md)"
 
@@ -44,6 +44,22 @@ object CopyDocs {
    * The inner set is a collection of pairs `regex pattern` -> `substitution value`.
    */
   val transformationMap: Map[String, Set[(String, MyParams => String)]] = Map(
+    "docs/docs/usage/scaladoc/index.md" -> Set(
+      ("""\{\{ site\.baseurl \}\}/resources/images/scala3/scaladoc/logo\.svg""" -> "images/scaladoc-logo.png"),
+    ),
+
+    "docs/docs/usage/scaladoc/site-versioning.md" -> Set(
+      ("""/resources/images/scala3/scaladoc/nightly\.gif""" -> "images/scaladoc/nightly.gif"),
+    ),
+
+    "docs/docs/usage/scaladoc/search-engine.md" -> Set(
+      ("""/resources/images/scala3/scaladoc/inkuire-1\.0\.0-M2_js_flatMap\.gif""" -> "images/scaladoc/inkuire-1.0.0-M2_js_flatMap.gif"),
+    ),
+
+    "docs/docs/reference/other-new-features/explicit-nulls.md" -> Set(
+      ("""/resources/images/scala3/explicit-nulls/explicit-nulls-type-hierarchy\.png""" -> "images/explicit-nulls/explicit-nulls-type-hierarchy.png"),
+    ),
+
     "docs/docs/reference/" -> (commonTransformations +
       (titlePattern -> ((p) => s"---\nlayout: doc-page\ntitle: $$1\nmovedTo: https://docs.scala-lang.org/scala3/reference/${p.newPath}.html\n---")),
     ),
@@ -57,7 +73,9 @@ object CopyDocs {
     ),
 
     "docs/docs/usage/tools-worksheets" -> (commonTransformations +
-      (titlePattern -> "---\nlayout: doc-page\ntitle: \"Worksheet mode with Dotty IDE\"\nmovedTo: https://docs.scala-lang.org/scala3/book/tools-worksheets.html\n---")
+      (titlePattern -> "---\nlayout: doc-page\ntitle: \"Worksheet mode with Dotty IDE\"\nmovedTo: https://docs.scala-lang.org/scala3/book/tools-worksheets.html\n---") +
+      ("""/resources/images/scala3-book/intellij-worksheet\.png""" -> "images/worksheets/intellij-worksheet.png") +
+      ("""/resources/images/scala3-book/metals-worksheet\.png""" -> "images/worksheets/metals-worksheet.png")
     ),
 
     "docs/docs/resources/talks" -> (commonTransformations +
@@ -76,7 +94,7 @@ object CopyDocs {
           val fileContent = inputStream.getLines().mkString("\n")
 
           new PrintStream(newPath.toFile) {
-            val patterns = transformationMap.find { case (k, v) => path.toString.startsWith(k) }.map(_._2).getOrElse(Set.empty)
+            val patterns = transformationMap.filter { case (k, v) => path.toString.startsWith(k) }.flatMap(_._2)
             val params = MyParams(newPath = s.stripPrefix("docs/docs/reference/").stripSuffix(".md"))
             val transformed = patterns.foldLeft(fileContent) { case (res, (pattern, substitution)) => res.replaceAll(pattern, substitution(params)) }
             write(transformed.getBytes("UTF8"))

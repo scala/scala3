@@ -50,7 +50,7 @@ For more information, read the [coursier-cli documentation](https://get-coursier
 You only need two tools to compile, run, test, and package a Scala project: Java 8 or 11, and sbt.
 To install these manually:
 
-1. Download Java from [Oracle Java 8](https://www.oracle.com/java/technologies/javase-jdk8-downloads.html), [Oracle Java 11](https://www.oracle.com/java/technologies/javase-jdk11-downloads.html), or [AdoptOpenJDK 8/11](https://adoptopenjdk.net/). Refer to [JDK Compatibility](/overviews/jdk-compatibility/overview.html) for Scala/Java compatibility detail.
+1. Download Java from [Oracle Java 8](https://www.oracle.com/java/technologies/javase-jdk8-downloads.html), [Oracle Java 11](https://www.oracle.com/java/technologies/javase-jdk11-downloads.html), or [AdoptOpenJDK 8/11](https://adoptopenjdk.net/). Refer to [JDK Compatibility](https://docs.scala-lang.org/overviews/jdk-compatibility/overview.html) for Scala/Java compatibility detail.
 2. Install [sbt](https://www.scala-sbt.org/download.html)
 
 
@@ -87,7 +87,7 @@ hello-world/
 ```
 The scala file `Main.scala` in `src/main/scala` is all we need for now.
 
-More documentation about sbt can be found in the [Scala Book](/scala3/book/scala-tools.html) and in the official sbt [documentation](https://www.scala-sbt.org/1.x/docs/index.html)
+More documentation about sbt can be found in the [Scala Book](https://docs.scala-lang.org/scala3/book/scala-tools.html) and in the official sbt [documentation](https://www.scala-sbt.org/1.x/docs/index.html)
 
 
 {% comment %}
@@ -156,8 +156,8 @@ Then type `exit` or press `[Ctrl][d]` to exit sbt and return to your command lin
 Now that you’ve created a first “Hello, world” example with Scala 3, you’re ready for some next steps.
 Consider checking out:
 
-- [The Scala 3 Book](/scala3/book/introduction.html), which provides a set of short lessons introducing Scala’s main features
-- [The migration guide](/scala3/guides/migration/compatibility-intro.html) helps you to migrate your existing Scala 2 code base to Scala 3.
+- [The Scala 3 Book](https://docs.scala-lang.org/scala3/book/introduction.html), which provides a set of short lessons introducing Scala’s main features
+- [The migration guide](https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html) helps you to migrate your existing Scala 2 code base to Scala 3.
 
 When you want to connect with other Scala users, there are several mailing lists and real-time chat rooms available.
 Check out our [Scala community page](https://scala-lang.org/community/) for a list of these resources, and for where to reach out for help.

@@ -83,4 +83,4 @@ Inkuire works as a JavaScript worker in the browser thanks to the power of [Scal
 
 To enable Inkuire when running scaladoc, add the flag `-Ygenerate-inkuire`. By adding this flag two files are generated:
 - `inkuire-db.json` - this is the file containing all the searchable declarations from the currently documented project in a format readable to the Inkuire search engine.
-- `inkuire-config.json` - this file contains the locations of the database files that should be searchable from the documentation of the current project. By default, it will be generated with the location of the local db file as well as the default implied locations of database files in [External mappings](/scala3/guides/scaladoc/settings.html#-external-mappings).
+- `inkuire-config.json` - this file contains the locations of the database files that should be searchable from the documentation of the current project. By default, it will be generated with the location of the local db file as well as the default implied locations of database files in [External mappings](https://docs.scala-lang.org/scala3/guides/scaladoc/settings.html#-external-mappings).
