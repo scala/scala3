@@ -63,7 +63,7 @@ class main extends scala.annotation.MainAnnotation:
     def argsGetter[T](argName: String, p: ArgumentParser[T]): () => Seq[T] =
       argInfos += ((argName, "*"))
       def remainingArgGetters(): List[() => T] = nextPositionalArg() match
-        case Some(arg) => convert(arg, argName, p) :: remainingArgGetters()
+        case Some(arg) => convert(argName, arg, p) :: remainingArgGetters()
         case None => Nil
       val getters = remainingArgGetters()
       () => getters.map(_())
