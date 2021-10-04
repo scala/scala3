@@ -470,9 +470,12 @@ jobs:
     if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
-                                           # Generate one at https://github.com/settings/tokens
-                                           # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
+      DOTTY_WEBSITE_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
+                                          # Generate one at https://github.com/settings/tokens
+                                          # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
+      DOCS_SCALALANG_BOT_TOKEN: ${{ secrets.DOCS_SCALALANG_BOT_TOKEN }}  # If you need to change this:
+                                          # Generate one at https://github.com/settings/tokens
+                                          # Make sure you have the write permissions to the repo: https://github.com/scala/docs.scala-lang
 
     steps:
       - name: Reset existing repo
@@ -494,13 +497,25 @@ jobs:
         run: |
           ./project/scripts/genDocs -doc-snapshot
 
-      - name: Deploy Website
+      - name: Deploy Website to dotty-website
         uses: peaceiris/actions-gh-pages@v3
         with:
-          personal_token: ${{ secrets.BOT_TOKEN }}
+          personal_token: ${{ DOTTY_WEBSITE_BOT_TOKEN }}
           publish_dir: docs/_site
           external_repository: lampepfl/dotty-website
           publish_branch: gh-pages
+
+      - name: Generate docs.scala-lang preprocessed files
+        run: |
+          ./project/scripts/genDocsScalaLang
+
+      - name: Deploy Website to docs.scala-lang
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ DOCS_SCALALANG_BOT_TOKEN }}
+          publish_dir: docsScalaLang
+          external_repository: scala/docs.scala-lang
+          publish_branch: dev
 
   publish_release:
     runs-on: [self-hosted, Linux]
