@@ -299,7 +299,8 @@ object Types {
       loop(this)
     }
 
-    def isFromJavaObject(using Context): Boolean = typeSymbol eq defn.FromJavaObjectSymbol
+    def isFromJavaObject(using Context): Boolean =
+      isRef(defn.ObjectClass) && (typeSymbol eq defn.FromJavaObjectSymbol)
 
     def containsFromJavaObject(using Context): Boolean = this match
       case tp: OrType => tp.tp1.containsFromJavaObject || tp.tp2.containsFromJavaObject
