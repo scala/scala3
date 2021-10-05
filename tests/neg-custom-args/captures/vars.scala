@@ -11,11 +11,13 @@ def test(cap1: Cap, cap2: Cap) =
   val z2c: () => Unit = z2  // error
 
   var a: {*} String => String = f // error
+  var b: List[{*} String => String] = Nil // error
 
   def scope =
     val cap3: Cap = CC()
     def g(x: String): String = if cap3 == cap3 then "" else "a"
     a = g
+    b = List(g)
     val gc = g
     g
 
