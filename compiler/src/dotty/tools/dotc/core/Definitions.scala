@@ -1777,6 +1777,7 @@ class Definitions {
       .updated(SingletonClass, ObjectClass)
       .updated(TupleClass, ProductClass)
       .updated(NonEmptyTupleClass, ProductClass)
+      .updated(PairClass, ObjectClass)
 
   // ----- Initialization ---------------------------------------------------
 
