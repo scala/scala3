@@ -514,7 +514,7 @@ jobs:
         with:
           personal_token: ${{ DOCS_SCALALANG_BOT_TOKEN }}
           publish_dir: docsScalaLang
-          external_repository: scala/docs.scala-lang
+          external_repository: BarkingBad/docs.scala-lang
           publish_branch: dev
 
   publish_release:

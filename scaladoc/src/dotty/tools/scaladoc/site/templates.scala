@@ -114,7 +114,15 @@ case class TemplateFile(
     val rendered = ssctx.args.projectFormat match
         case "html" => Template.parse(this.rawCode).`with`(tag).render(mutableProperties)
         case "md" => this.rawCode
-        
+
+    val sourceLinks = if !file.exists() then Nil else
+      // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
+      // toRealPath is used to turn symlinks into proper paths
+      val actualPath = Paths.get("").toAbsolutePath.relativize(file.toPath.toRealPath())
+      ssctx.sourceLinks.pathTo(actualPath).map("viewSource" -> _ ) ++
+        // List("editSource" -> ssctx.sourceLinks.pathTo(actualPath))
+        ssctx.sourceLinks.pathTo(actualPath, operation = "edit", optionalRevision = Some("master")).map("editSource" -> _ )
+
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
       // Snippet compiler currently supports markdown only
@@ -125,7 +133,8 @@ case class TemplateFile(
       ssctx.args.projectFormat match
         case "html" => HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
         case "md" =>
-          FrontMatterRenderer.render(settings) +
+
+          FrontMatterRenderer.render(settings + ("urls" -> sourceLinks.toMap)) +
           Formatter.builder(defaultMarkdownOptions).build().render(processed)
 
 

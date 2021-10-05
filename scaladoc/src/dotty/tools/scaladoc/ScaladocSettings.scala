@@ -128,7 +128,7 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
 
   val scastieConfiguration: Setting[String] =
     StringSetting("-scastie-configuration", "Scastie configuration", "Additional configuration passed to Scastie in code snippets", "")
-    
+
   val projectFormat: Setting[String] =
     ChoiceSetting(
       "-format",
