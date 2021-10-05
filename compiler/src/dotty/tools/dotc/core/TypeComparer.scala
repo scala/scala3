@@ -1511,33 +1511,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
 
-        // This & will try to preserve the FromJavaObjects type in upper bounds
-        // For example, (? <: FromJavaObjects | Null) & (? <: Any),
-        // we want to get (? <: FromJavaObjects | Null) intead of (? <: Any),
-        // because we may check FromJavaObjects | Null <:< Object | Null later.
-        def bounds_&(tp1: TypeBounds, tp2: TypeBounds) =
-          if tp1.hi.containsFromJavaObject
-            && (tp1.hi frozen_<:< tp2.hi)
-            && (tp2.lo frozen_<:< tp1.lo) then
-            // FromJavaObject in tp1.hi guarantees tp2.hi <:< tp1.hi
-            // prefer tp1 if FromJavaObject is in its hi
-            tp1
-          else if tp2.hi.containsFromJavaObject
-            && (tp2.hi frozen_<:< tp1.hi)
-            && (tp1.lo frozen_<:< tp2.lo) then
-            // Similarly, prefer tp2 if FromJavaObject is in its hi
-            tp2
-          else
-            // Use regular & to solve other cases
-            tp1 & tp2
-
         def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
           case arg2: TypeBounds =>
             val arg1norm = arg1 match {
               case arg1: TypeBounds =>
                 tparam match {
-                  case tparam: Symbol =>
-                    bounds_&(arg1, paramBounds(tparam))
+                  case tparam: Symbol => arg1 & paramBounds(tparam)
                   case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
                 }
               case _ => arg1
@@ -2068,6 +2047,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else if (!tp2.exists) tp1
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp2
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp1
+    else if tp1.isFromJavaObject && !tp2.isLambdaSub then tp2
+    else if tp2.isFromJavaObject && !tp1.isLambdaSub then tp1
     else tp2 match
       case tp2: LazyRef =>
         glb(tp1, tp2.ref)
@@ -2116,6 +2097,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
+    else if tp1.isFromJavaObject && !tp2.isLambdaSub then tp1
+    else if tp2.isFromJavaObject && !tp1.isLambdaSub then tp2
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp1
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp2
     else
