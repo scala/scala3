@@ -1,0 +1,16 @@
+Error: missing argument for num
+Error: missing argument for inc
+Usage: add num inc
+Error: missing argument for inc
+Usage: add num inc
+Error: unused argument: 3
+Usage: add num inc
+Error: unused argument: 3
+Error: unused argument: 4
+Error: unused argument: 5
+Error: unused argument: 6
+Error: unused argument: 7
+Error: unused argument: 8
+Error: unused argument: 9
+Error: unused argument: 10
+Usage: add num inc

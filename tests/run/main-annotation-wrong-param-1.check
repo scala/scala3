@@ -1,0 +1,13 @@
+Error: invalid argument for inc: true
+Error: unused argument: SPAAAAACE
+Usage: add num inc
+Error: invalid argument for num: add
+Error: unused argument: 3
+Usage: add num inc
+Error: invalid argument for num: true
+Error: invalid argument for inc: false
+Error: unused argument: 10
+Usage: add num inc
+Error: invalid argument for num: binary
+Error: unused argument: 01
+Usage: add num inc
