@@ -2891,39 +2891,54 @@ object Parsers {
  /* -------- PARAMETERS ------------------------------------------- */
 
     def typeOrTermParamClause(nparams: Int,                            // number of parameters preceding this clause
-//                    ofClass: Boolean = false,                // owner is a class
-//                    ofCaseClass: Boolean = false,            // owner is a case class
-//                    prefix: Boolean = false,                 // clause precedes name of an extension method
-//                    givenOnly: Boolean = false,              // only given parameters allowed
+                    ofClass: Boolean = false,                // owner is a class
+                    ofCaseClass: Boolean = false,            // owner is a case class
+                    prefix: Boolean = false,                 // clause precedes name of an extension method
+                    givenOnly: Boolean = false,              // only given parameters allowed
                     firstClause: Boolean = false,             // clause is the first in regular list of clauses
                     ownerKind: ParamOwner.Value
-                   ): List[TypeDef] | List[ValDef] = {
+                   ): List[TypeDef] | List[ValDef] =
       if(in.token == LPAREN){
-        paramClause(nparams, firstClause = firstClause)
+        paramClause(nparams, ofClass, ofCaseClass, prefix, givenOnly, firstClause)
       }else if(in.token == LBRACKET){
         typeParamClause(ownerKind)
       }else{
         Nil
       }
-    }
+    end typeOrTermParamClause
 
-    def typeOrTermParamClauses(nparams: Int,                            // number of parameters preceding this clause
-//                    ofClass: Boolean = false,                // owner is a class
-//                    ofCaseClass: Boolean = false,            // owner is a case class
-//                    prefix: Boolean = false,                 // clause precedes name of an extension method
-//                    givenOnly: Boolean = false,              // only given parameters allowed
-                    firstClause: Boolean = false,             // clause is the first in regular list of clauses
+    def typeOrTermParamClauses(
+                    ofClass: Boolean = false,
+                    ofCaseClass: Boolean = false,
+                    givenOnly: Boolean = false,
+                    numLeadParams: Int = 0,
                     ownerKind: ParamOwner.Value
-                   ): List[List[TypeDef] | List[ValDef]] = {
-      def rec(): List[List[TypeDef] | List[ValDef]] = {
-        val curr = typeOrTermParamClause(nparams,firstClause,ownerKind)
-        curr match {
-          case Nil => Nil
-          case l => curr :: rec()
-        }
-      }
-      rec()
-    }
+                   ): List[List[TypeDef] | List[ValDef]] =
+
+      def recur(firstClause: Boolean, nparams: Int): List[List[TypeDef] | List[ValDef]] =
+        newLineOptWhenFollowedBy(LPAREN)
+        newLineOptWhenFollowedBy(LBRACKET) //I have doubts this works
+        if in.token == LPAREN then
+          val paramsStart = in.offset
+          val params = paramClause(
+              nparams,
+              ofClass = ofClass,
+              ofCaseClass = ofCaseClass,
+              givenOnly = givenOnly,
+              firstClause = firstClause)
+          val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
+          params :: (
+            if lastClause then Nil
+            else recur(firstClause = false, nparams + params.length))
+        else if in.token == LBRACKET then
+          typeParamClause(ownerKind) :: recur(firstClause, nparams)
+        else Nil
+      end recur
+
+      //recur(firstClause = true, numLeadParams)
+
+      recur(firstClause = true, nparams = numLeadParams)
+    end typeOrTermParamClauses
 
 
     /** ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
@@ -3384,7 +3399,7 @@ object Parsers {
         val mods1 = addFlag(mods, Method)
         val ident = termIdent()
         var name = ident.name.asTermName
-        val paramss = typeOrTermParamClauses(nparams = numLeadParams, ownerKind = ParamOwner.Def)
+        val paramss = typeOrTermParamClauses(numLeadParams = numLeadParams, ownerKind = ParamOwner.Def)
         //val tparams = typeParamClauseOpt(ParamOwner.Def)
         //val vparamss = paramClauses(numLeadParams = numLeadParams)
         var tpt = fromWithinReturnType { typedOpt() }
@@ -3527,7 +3542,7 @@ object Parsers {
       val tparams = typeParamClauseOpt(ParamOwner.Class)
       val cmods = fromWithinClassConstr(constrModsOpt())
       val vparamss = paramClauses(ofClass = true, ofCaseClass = isCaseClass)
-      makeConstructor(tparams, vparamss).withMods(cmods)
+      makeConstructor(tparams, vparamss).withMods(cmods) //TODO: Reafactor to take List[List[ValDef] | List[TypeDef]]
     }
 
     /** ConstrMods        ::=  {Annotation} [AccessModifier]
@@ -3628,7 +3643,7 @@ object Parsers {
         newLineOpt()
         val vparamss =
           if in.token == LPAREN && in.lookahead.isIdent(nme.using)
-          then paramClauses(givenOnly = true)
+          then paramClauses(givenOnly = true) //TODO: Refactor
           else Nil
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
