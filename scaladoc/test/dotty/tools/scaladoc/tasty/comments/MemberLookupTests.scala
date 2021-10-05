@@ -13,6 +13,8 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
   def testAll(): Unit = {
     testOwnerlessLookup()
+    testOwnerlessLookupOfInherited()
+    testOwnerlessLookupOfClassWithinPackageWithPackageObject()
     testOwnedLookup()
     testStrictMemberLookup()
   }
@@ -46,7 +48,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
         cls("tests.lookupInheritedMembers.pack1.A").fun("x"),
 
       "tests.lookupInheritedMembers.pack2.B.x" ->
-        cls("tests.lookupInheritedMembers.pack1.A").fun("x"),
+        cls("tests.lookupInheritedMembers.pack2.B").fun("x"),
     )
 
     cases.foreach { case (query, sym) =>
@@ -60,6 +62,49 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
     assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
     val Some((lookedUp, _, _)) = lookupRes
     assertSame(query, target, lookedUp)
+  }
+
+  /**
+   * We cannot test for cls().fun() beucase it returns parent fun symbol from tasty. Hence we will look for member (val, def, type) but compare its owner to just cls()
+   */
+  def testOwnerlessLookupOfInherited(): Unit = {
+    val cases = List[(String, Sym)](
+      "tests.lookupInheritedMembers.pack2.B.x" ->
+        cls("tests.lookupInheritedMembers.pack2.B"),
+
+      "tests.lookupInheritedMembers.pack2.B.y" ->
+        cls("tests.lookupInheritedMembers.pack2.B"),
+
+      "tests.lookupInheritedMembers.pack2.B.MyType" ->
+        cls("tests.lookupInheritedMembers.pack2.B"),
+    )
+
+    cases.foreach { case (query, sym) =>
+      val target = sym.symbol
+      val lookupRes = MemberLookup.lookupOpt(parseQuery(query), None)
+      assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
+      val Some((_ , _, Some(owner))) = lookupRes
+      assertSame(query, target, owner)
+    }
+  }
+
+  /**
+   * Classes should not have owner of package object
+   */
+  def testOwnerlessLookupOfClassWithinPackageWithPackageObject(): Unit = {
+    val cases = List[(String, Sym)](
+      "<:<" ->
+        cls("scala.<:<"),
+    )
+
+    cases.foreach { case (query, sym) =>
+      val target = sym.symbol
+      val lookupRes = MemberLookup.lookupOpt(parseQuery(query), Some(cls("scala.=:=").symbol))
+      assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
+      println(lookupRes)
+      val Some((_ , _, owner)) = lookupRes
+      assertSame(query, None, owner)
+    }
   }
 
   def testOwnedLookup(): Unit = {
