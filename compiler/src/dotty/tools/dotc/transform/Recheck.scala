@@ -76,7 +76,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
       val symd = sym.denot
       symd.validFor.firstPhaseId == thisPhase.id && (sym.originDenotation ne symd)
 
-    def transformType(tp: Type, inferred: Boolean)(using Context): Type = tp
+    def transformType(tp: Type, inferred: Boolean, boxed: Boolean = false)(using Context): Type = tp
 
     object transformTypes extends TreeTraverser:
 
@@ -110,12 +110,19 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
             mapOver(t)
       end SubstParams
 
-      def traverse(tree: Tree)(using Context) =
-        traverseChildren(tree)
-        tree match
+      private def transformTT(tree: TypeTree, boxed: Boolean)(using Context) =
+        transformType(tree.tpe, tree.isInstanceOf[InferredTypeTree], boxed).rememberFor(tree)
 
+      def traverse(tree: Tree)(using Context) =
+        tree match
+          case tree @ ValDef(_, tpt: TypeTree, _) if tree.symbol.is(Mutable) =>
+            transformTT(tpt, boxed = true)
+            traverse(tree.rhs)
+          case _ =>
+            traverseChildren(tree)
+        tree match
           case tree: TypeTree =>
-            transformType(tree.tpe, tree.isInstanceOf[InferredTypeTree]).rememberFor(tree)
+            transformTT(tree, boxed = false)
           case tree: ValOrDefDef =>
             val sym = tree.symbol
 
