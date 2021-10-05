@@ -169,3 +169,21 @@ class CustomCompletionTests extends DottyTest:
 
       assert(offset == prefix.length)
       assert(labels.contains("scala.Function2"))
+
+   @Test def i12465_hkt(): Unit =
+      val prefix = "???.asInstanceOf[scala.collection.Seq]"
+      val input = prefix + "."
+
+      val (offset, completions0) = completions(input)
+      val labels = completions0.map(_.label)
+
+      assert(labels.isEmpty)
+
+   @Test def i12465_hkt_alias(): Unit =
+      val prefix = "???.asInstanceOf[Seq]"
+      val input = prefix + "."
+
+      val (offset, completions0) = completions(input)
+      val labels = completions0.map(_.label)
+
+      assert(labels.isEmpty)
