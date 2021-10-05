@@ -10,7 +10,7 @@ class ScriptedTests extends ReplTest {
 
   @Test def replTests = scripts("/repl").foreach(testFile)
 
-  @Test def typePrinterTests = scripts("/type-printer").foreach(testFile)
+  @Test def typePrinterTests = scripts("/type-printer").filter(f => f.getName == "source-compatible").foreach(testFile)
 }
 
 object ScriptedTests {
