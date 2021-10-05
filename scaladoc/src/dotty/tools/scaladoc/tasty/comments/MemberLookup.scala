@@ -193,7 +193,7 @@ trait MemberLookup {
           case Some(sym) =>
             val externalOwner: Option[reflect.Symbol] =
               if owner eq sym.owner then None
-              else if owner.flags.is(Flags.Module) then Some(owner.moduleClass)
+              else if owner.flags.is(Flags.Module) && !owner.flags.is(Flags.Package) then Some(owner.moduleClass)
               else if owner.isClassDef then Some(owner)
               else None
             Some(sym -> externalOwner)
