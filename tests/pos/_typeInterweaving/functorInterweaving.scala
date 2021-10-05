@@ -1,8 +1,8 @@
 //taken from https://dotty.epfl.ch/docs/reference/contextual/type-classes.html
 //at version 3.1.1-RC1-bin-20210930-01f040b-NIGHTLY
-//modified to have type currying
+//modified to have type interveawing
 trait Functor[F[_]]:
-  def map[A][B](x: F[A], f: A => B): F[B]
+  def map[A](x: F[A])[B](f: A => B): F[B]
 
 
 given Functor[List] with

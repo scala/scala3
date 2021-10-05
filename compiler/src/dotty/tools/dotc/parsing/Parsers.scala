@@ -2898,13 +2898,13 @@ object Parsers {
                     firstClause: Boolean = false,             // clause is the first in regular list of clauses
                     ownerKind: ParamOwner.Value
                    ): List[TypeDef] | List[ValDef] =
-      if(in.token == LPAREN){
+      if (in.token == LPAREN)
         paramClause(nparams, ofClass, ofCaseClass, prefix, givenOnly, firstClause)
-      }else if(in.token == LBRACKET){
+      else if (in.token == LBRACKET)
         typeParamClause(ownerKind)
-      }else{
+      else
         Nil
-      }
+      
     end typeOrTermParamClause
 
     def typeOrTermParamClauses(
@@ -2934,8 +2934,6 @@ object Parsers {
           typeParamClause(ownerKind) :: recur(firstClause, nparams)
         else Nil
       end recur
-
-      //recur(firstClause = true, numLeadParams)
 
       recur(firstClause = true, nparams = numLeadParams)
     end typeOrTermParamClauses
