@@ -548,7 +548,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     var lastSelf: Symbol = NoSymbol
     var lastLevel: Int = 0
     for ((level, selfSym) <- sortedProxies) {
-      lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
       val rhs = selfSym.info.dealias match
         case info: TermRef
         if info.isStable && (lastSelf.exists || isPureExpr(inlineCallPrefix)) =>
@@ -562,7 +561,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           else if lastSelf.exists then
             ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
           else
-            inlineCallPrefix
+            inlineCallPrefix match
+              case Super(_, _) => This(rhsClsSym.asClass)
+              case _ => inlineCallPrefix
       val binding = accountForOpaques(
         ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span))
       bindingsBuf += binding
