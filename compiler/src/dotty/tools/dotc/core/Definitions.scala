@@ -1620,11 +1620,11 @@ class Definitions {
 
   /** If `cls` is Tuple1..Tuple22, add the corresponding *: type as last parent to `parents` */
   def adjustForTuple(cls: ClassSymbol, tparams: List[TypeSymbol], parents: List[Type]): List[Type] = {
-    def syntheticParent(tparams: List[TypeSymbol]): Type =
-      if (tparams.isEmpty) TupleTypeRef
-      else TypeOps.nestedPairs(tparams.map(_.typeRef))
-    if (isTupleClass(cls)) parents :+ syntheticParent(tparams)
-    else parents
+    if !isTupleClass(cls) then parents
+    else if tparams.isEmpty then parents :+ TupleTypeRef
+    else
+      assert(parents.head.typeSymbol == ObjectClass)
+      TypeOps.nestedPairs(tparams.map(_.typeRef)) :: parents.tail
   }
 
   /** If it is BoxedUnit, remove `java.io.Serializable` from `parents`. */
