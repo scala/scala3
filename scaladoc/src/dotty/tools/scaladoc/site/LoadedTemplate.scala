@@ -40,15 +40,9 @@ case class LoadedTemplate(
   def resolveToHtml(ctx: StaticSiteContext): ResolvedPage =
     val posts = children.map(_.lazyTemplateProperties(ctx))
     def getMap(key: String) = templateFile.settings.getOrElse(key, Map.empty).asInstanceOf[Map[String, Object]]
-    val sourceLinks = if !file.exists() then Nil else
-      // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
-      // toRealPath is used to turn symlinks into proper paths
-      val actualPath = Paths.get("").toAbsolutePath.relativize(file.toPath.toRealPath())
-      ctx.sourceLinks.pathTo(actualPath).map("viewSource" -> _ ) ++
-        ctx.sourceLinks.pathTo(actualPath, operation = "edit", optionalRevision = Some("master")).map("editSource" -> _ )
 
     val updatedSettings = templateFile.settings ++ ctx.projectWideProperties +
-      ("site" -> (getMap("site") + ("posts" -> posts))) + ("urls" -> sourceLinks.toMap) +
+      ("site" -> (getMap("site") + ("posts" -> posts))) +
       ("page" -> (getMap("page") + ("title" -> templateFile.title.name)))
 
     templateFile.resolveInner(RenderingContext(updatedSettings, ctx.layouts))(using ctx)

@@ -18,8 +18,22 @@ git clone "https://github.com/scala/docs.scala-lang.git" $DOCS_SCALA_LANG_DIR
 
 SBT="$SCRIPT_DIR/sbt"
 mkdir -pv $SITE_OUT_DIR
+
 env "scaladoc.projectFormat=md" "$SBT" "scaladoc/renderScaladocScalajsToFile $DOCS_SCALA_LANG_DIR/scripts/scaladoc-scalajs.js $DOCS_SCALA_LANG_DIR/resources/css code-snippets.css"
-"bin/scaladoc" "-d" "$SITE_OUT_DIR" "-format" "md" "-siteroot" "docs" "/dev/null"
+
+DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(Build.dottyNonBootstrappedVersion)\""
+DOTTY_NONBOOTSTRAPPED_VERSION=$(eval $DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND | tail -n 2 | head -n 1)
+
+DOTTY_BOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(Build.dottyVersion)\""
+DOTTY_BOOTSTRAPPED_VERSION=$(eval $DOTTY_BOOTSTRAPPED_VERSION_COMMAND | tail -n 2 | head -n 1)
+
+GITHUB_REPOSITORY="lampepfl/dotty"
+GITHUB_SHA="3.0.0"
+
+"bin/scaladoc" "-d" "$SITE_OUT_DIR" "-format" "md" "-siteroot" "docs" "/dev/null " \
+  -source-links:out/bootstrap/stdlib-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/scala-library-src=github://scala/scala/v"${STDLIB_VERSION}"#src/library \
+  -source-links:out/bootstrap/stdlib-bootstrapped/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/src_managed/main/dotty-library-src=github://"${GITHUB_REPOSITORY}"/"${GITHUB_SHA}"\#library/src \
+  -source-links:github://"${GITHUB_REPOSITORY}"/"${GITHUB_SHA}" \
 
 if [ ! -d "$SITE_OUT_DIR" ]; then
   echo "Output directory did not exist: $SITE_OUT_DIR" 1>&2
