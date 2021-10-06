@@ -709,6 +709,7 @@ object Checking {
 
   def checkValue(tree: Tree)(using Context): Unit =
     val sym = tree.tpe.termSymbol
+    sym.ensureCompleted()
     if sym.is(Flags.Package) || sym.isAllOf(Flags.JavaModule) && !ctx.isJava then
       report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 
