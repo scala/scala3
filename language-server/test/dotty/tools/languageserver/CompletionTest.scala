@@ -887,4 +887,12 @@ class CompletionTest {
           )
         )
   }
+
+  @Test def i12465_hkt: Unit =
+    code"""???.asInstanceOf[scala.collection.Seq].${m1}""".withSource
+      .completion(m1, Set())
+
+  @Test def i12465_hkt_alias: Unit =
+    code"""???.asInstanceOf[Seq].${m1}""".withSource
+      .completion(m1, Set())
 }
