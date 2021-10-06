@@ -107,7 +107,14 @@ object ResolveSuper {
         // of the superaccessor's type, see i5433.scala for an example where this matters
         val otherTp = other.asSeenFrom(base.typeRef).info
         val accTp = acc.asSeenFrom(base.typeRef).info
-        if (!(otherTp.overrides(accTp, matchLoosely = true)))
+        // Since the super class can be Java defined,
+        // we use releaxed overriding check for explicit nulls if one of the symbols is Java defined.
+        // This forces `Null` being a subtype of reference types during override checking.
+        val relaxedCtxForNulls =
+        if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined)) then
+          ctx.retractMode(Mode.SafeNulls)
+        else ctx
+        if (!(otherTp.overrides(accTp, matchLoosely = true)(using relaxedCtxForNulls)))
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
 
       bcs = bcs.tail
