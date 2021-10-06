@@ -33,6 +33,7 @@ class SourceLinkTest:
     Seq(
       "github://lampepfl/dotty",
       "gitlab://lampepfl/dotty",
+      "github://lampepfl/dotty/branch/withslash",
       "https://github.com/scala/scala/blob/2.13.x€{FILE_PATH_EXT}#€{FILE_LINE}"
     ).foreach{ template =>
       test(template)
@@ -45,12 +46,6 @@ class SourceLinkTest:
       val template = s"$provider://ala/ma"
       val res = SourceLinkParser(None).parse(template)
       assertTrue(s"Expected failure containing missing revision: $res", res.left.exists(_.contains("revision")))
-
-      Seq(s"$provider://ala/ma/", s"$provider://ala", s"$provider://ala/ma/develop/on/master").foreach { template =>
-        val res = SourceLinkParser(Some("develop")).parse(template)
-        assertTrue(s"Expected failure syntax info: $res", res.left.exists(_.contains("syntax")))
-      }
-
     }
 
 class SourceLinksTest:
@@ -140,6 +135,13 @@ class SourceLinksTest:
       ("project/Build.scala", 54) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L54",
       ("project/Build.scala", edit) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L",
       ("project/Build.scala", 54, edit) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L54",
+    )
+
+    testLink(Seq("github://lampepfl/dotty/branch/withslash#src/lib"), None)(
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/branch/withslash/src/lib/project/Build.scala",
+      ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/branch/withslash/src/lib/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/branch/withslash/src/lib/project/Build.scala",
+      ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/branch/withslash/src/lib/project/Build.scala#L54",
     )
 
   @Test

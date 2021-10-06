@@ -43,7 +43,7 @@ case class WebBasedSourceLink(prefix: String, revision: String, subPath: String)
     s"$prefix/$action/$finalRevision$subPath/${pathToString(path)}$linePart"
 
 class SourceLinkParser(revision: Option[String]) extends ArgParser[SourceLink]:
-  val KnownProvider = raw"(\w+):\/\/([^\/#]+)\/([^\/#]+)(\/[^\/#]+)?(#.+)?".r
+  val KnownProvider = raw"(\w+):\/\/([^\/#]+)\/([^\/#]+)(\/[^#]+)?(#.+)?".r
   val BrokenKnownProvider = raw"(\w+):\/\/.+".r
   val ScalaDocPatten = raw"€\{(TPL_NAME|TPL_OWNER|FILE_PATH|FILE_EXT|FILE_LINE|FILE_PATH_EXT)\}".r
   val SupportedScalaDocPatternReplacements = Map(
@@ -63,6 +63,12 @@ class SourceLinkParser(revision: Option[String]) extends ArgParser[SourceLink]:
 
   def parse(string: String): Either[String, SourceLink] =
     val res = string match
+      case scaladocSetting if ScalaDocPatten.findFirstIn(scaladocSetting).nonEmpty =>
+        val all = ScalaDocPatten.findAllIn(scaladocSetting)
+        val (supported, unsupported) = all.partition(SupportedScalaDocPatternReplacements.contains)
+        if unsupported.nonEmpty then Left(s"Unsupported patterns from scaladoc format are used: ${unsupported.mkString(" ")}")
+        else Right(TemplateSourceLink(supported.foldLeft(string)((template, pattern) =>
+          template.replace(pattern, SupportedScalaDocPatternReplacements(pattern)))))
       case KnownProvider(name, organization, repo, rawRevision, rawSubPath) =>
         val subPath = Option(rawSubPath).fold("")("/" + _.drop(1))
         val pathRev = Option(rawRevision).map(_.drop(1)).orElse(revision)
@@ -81,12 +87,6 @@ class SourceLinkParser(revision: Option[String]) extends ArgParser[SourceLink]:
             Left(s"'$other' is not a known provider, please provide full source path template.")
       case BrokenKnownProvider("gitlab" | "github") =>
         Left(s"Does not match known provider syntax: `<name>://organization/repository`")
-      case scaladocSetting if ScalaDocPatten.findFirstIn(scaladocSetting).nonEmpty =>
-        val all = ScalaDocPatten.findAllIn(scaladocSetting)
-        val (supported, unsupported) = all.partition(SupportedScalaDocPatternReplacements.contains)
-        if unsupported.nonEmpty then Left(s"Unsupported patterns from scaladoc format are used: ${unsupported.mkString(" ")}")
-        else Right(TemplateSourceLink(supported.foldLeft(string)((template, pattern) =>
-          template.replace(pattern, SupportedScalaDocPatternReplacements(pattern)))))
       case other =>
         Left("Does not match any implemented source link syntax")
     res match {
