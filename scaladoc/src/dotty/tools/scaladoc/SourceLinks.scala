@@ -22,10 +22,10 @@ case class TemplateSourceLink(val urlTemplate: String) extends SourceLink:
       "\\{\\{ path \\}\\}".r -> pathString,
       "\\{\\{ line \\}\\}".r -> line.fold("")(_.toString),
       "\\{\\{ ext \\}\\}".r -> Some(
-        pathString).filter(_.lastIndexOf(".") == -1).fold("")(p => p.substring(p.lastIndexOf("."))
+        pathString).filter(_.lastIndexOf(".") != -1).fold("")(p => p.substring(p.lastIndexOf("."))
       ),
       "\\{\\{ path_no_ext \\}\\}".r -> Some(
-        pathString).filter(_.lastIndexOf(".") == -1).fold(pathString)(p => p.substring(0, p.lastIndexOf("."))
+        pathString).filter(_.lastIndexOf(".") != -1).fold(pathString)(p => p.substring(0, p.lastIndexOf("."))
       ),
       "\\{\\{ name \\}\\}".r -> memberName
     )
