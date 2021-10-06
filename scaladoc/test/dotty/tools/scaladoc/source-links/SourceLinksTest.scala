@@ -121,7 +121,7 @@ class SourceLinksTest:
       ("project/Build.scala", 54, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/project/Build.scala#L54",
     )
 
-    testLink(Seq("€{FILE_PATH}#€{FILE_LINE}"), Some("develop"))(
+    testLink(Seq("€{FILE_PATH}.scala#€{FILE_LINE}"), Some("develop"))(
       "project/Build.scala" -> "/project/Build.scala#",
       ("project/Build.scala", 54) -> "/project/Build.scala#54",
       ("project/Build.scala", edit) -> "/project/Build.scala#",
@@ -129,6 +129,13 @@ class SourceLinksTest:
     )
 
     testLink(Seq("https://github.com/scala/scala/blob/2.13.x€{FILE_PATH_EXT}#L€{FILE_LINE}"), Some("develop"))(
+      "project/Build.scala" -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L",
+      ("project/Build.scala", 54) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L",
+      ("project/Build.scala", 54, edit) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L54",
+    )
+
+    testLink(Seq("https://github.com/scala/scala/blob/2.13.x€{FILE_PATH}.scala#L€{FILE_LINE}"), Some("develop"))(
       "project/Build.scala" -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L",
       ("project/Build.scala", 54) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L54",
       ("project/Build.scala", edit) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L",
@@ -148,7 +155,7 @@ class SourceLinksTest:
   @Test
   def prefixedPaths =
     testLink(Seq(
-     "src/generated=€{FILE_PATH}#€{FILE_LINE}",
+     "src/generated=€{FILE_PATH_EXT}#€{FILE_LINE}",
       "src=gitlab://lampepfl/dotty",
       "github://lampepfl/dotty"
       ), Some("develop"))(
