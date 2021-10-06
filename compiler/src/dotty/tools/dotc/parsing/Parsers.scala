@@ -3894,6 +3894,9 @@ object Parsers {
       val stats = new ListBuffer[Tree]
       def checkLegal(tree: Tree): List[Tree] =
         val problem = tree match
+          case tree: ValDef if tree.mods.is(Mutable) =>
+            i"""refinement cannot be a mutable var.
+               |You can use an explicit getter ${tree.name} and setter ${tree.name}_= instead"""
           case tree: MemberDef if !(tree.mods.flags & ModifierFlags).isEmpty =>
             i"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}"
           case tree: DefDef if tree.termParamss.nestedExists(!_.rhs.isEmpty) =>

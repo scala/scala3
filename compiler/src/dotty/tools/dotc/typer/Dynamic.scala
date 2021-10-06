@@ -186,7 +186,7 @@ trait Dynamic {
       val base =
         untpd.Apply(
           untpd.TypedSplice(selectable.select(selectorName)).withSpan(fun.span),
-          (Literal(Constant(name.toString)) :: Nil).map(untpd.TypedSplice(_)))
+          (Literal(Constant(name.encode.toString)) :: Nil).map(untpd.TypedSplice(_)))
 
       val scall =
         if (vargss.isEmpty) base
