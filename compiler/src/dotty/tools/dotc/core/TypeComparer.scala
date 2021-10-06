@@ -2047,10 +2047,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else if (!tp2.exists) tp1
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp2
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp1
-    else if tp1.containsFromJavaObject && !tp2.isLambdaSub then
-      tp2 // If tp1 is FromJavaObject or a union containing FromJavaObject, tp2 <:< tp1
-    else if tp2.containsFromJavaObject && !tp1.isLambdaSub then
-      tp1 // Similarly, tp1 <:< tp2
     else tp2 match
       case tp2: LazyRef =>
         glb(tp1, tp2.ref)
@@ -2099,10 +2095,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
-    else if tp1.containsFromJavaObject && !tp2.isLambdaSub then
-      tp1 // If tp1 is FromJavaObject or a union containing FromJavaObject, tp2 <:< tp1
-    else if tp2.containsFromJavaObject && !tp1.isLambdaSub then
-      tp2 // Similarly, tp1 <:< tp2
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp1
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp2
     else
