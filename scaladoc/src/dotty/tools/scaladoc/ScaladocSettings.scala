@@ -41,6 +41,9 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val sourceLinks: Setting[List[String]] =
     MultiStringSetting("-source-links", "sources", SourceLinks.usage)
 
+  val legacySourceLink: Setting[String] =
+    StringSetting("-doc-source-url", "sources", "Legacy option from Scala 2. Use -source-links instead.", "")
+
   val syntax: Setting[String] =
     StringSetting("-comment-syntax", "syntax", "Syntax of the comment used", "")
 
@@ -124,4 +127,4 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     StringSetting("-scastie-configuration", "Scastie configuration", "Additional configuration passed to Scastie in code snippets", "")
 
   def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, scastieConfiguration)
+    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, scastieConfiguration)
