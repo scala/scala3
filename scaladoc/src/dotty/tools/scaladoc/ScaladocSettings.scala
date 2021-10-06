@@ -34,7 +34,7 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     StringSetting("-project-version", "project version", "The current version of your project.", "", aliases = List("-doc-version"))
 
   val projectLogo: Setting[String] =
-    StringSetting("-project-logo", "project logo filename", "The file that contains the project's logo (in /images).", "", aliases = List("-doc-logo"))
+    StringSetting("-project-logo", "project logo filename", "Path to the file that contains the project's logo. Provided path can be absolute or relative to the project root directory.", "", aliases = List("-doc-logo"))
 
   val projectFooter: Setting[String] = StringSetting("-project-footer", "project footer", "A footer on every Scaladoc page.", "", aliases = List("-doc-footer"))
 
