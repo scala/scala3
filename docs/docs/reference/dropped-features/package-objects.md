@@ -34,7 +34,8 @@ The compiler generates synthetic objects that wrap top-level definitions falling
  - implicit classes and objects,
  - companion objects of opaque type aliases.
 
-If a source file `src.scala` contains such top-level definitions, they will be put in a synthetic object named `src$package`. The wrapping is transparent, however. The definitions in `src` can still be accessed as members of the enclosing package.
+If a source file `src.scala` contains such top-level definitions, they will be put in a synthetic object named `src$package`. The wrapping is transparent, however. The definitions in `src` can still be accessed as members of the enclosing package. The synthetic object will be placed last in the file,
+after any other package clauses, imports, or object and class definitions.
 
 **Note:** This means that
 1. The name of a source file containing wrapped top-level definitions is relevant for binary compatibility. If the name changes, so does the name of the generated object and its class.
