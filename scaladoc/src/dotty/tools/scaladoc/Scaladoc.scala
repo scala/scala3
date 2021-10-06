@@ -169,6 +169,7 @@ object Scaladoc:
           CommentSyntax.default
         }
       }
+      val legacySourceLinkList = if legacySourceLink.get.nonEmpty then List(legacySourceLink.get) else Nil
       val externalMappings =
         externalDocumentationMappings.get.flatMap( s =>
             ExternalDocLink.parse(s).fold(left => {
@@ -208,7 +209,7 @@ object Scaladoc:
         projectLogo.nonDefault,
         projectFooter.nonDefault,
         parseSyntax,
-        sourceLinks.get,
+        sourceLinks.get ++ legacySourceLinkList,
         revision.nonDefault,
         externalMappings,
         socialLinksParsed,
