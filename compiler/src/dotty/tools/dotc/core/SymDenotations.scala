@@ -93,10 +93,11 @@ object SymDenotations {
         if (myFlags.is(Trait)) NoInitsInterface & bodyFlags // no parents are initialized from a trait
         else NoInits & bodyFlags & parentFlags)
 
-    private def isCurrent(fs: FlagSet) =
-      fs <= (
-        if (myInfo.isInstanceOf[SymbolLoader]) FromStartFlags
-        else AfterLoadFlags)
+    def isCurrent(fs: FlagSet)(using Context): Boolean =
+      def knownFlags(info: Type): FlagSet = info match
+        case _: SymbolLoader | _: ModuleCompleter => FromStartFlags
+        case _ => AfterLoadFlags
+      !myInfo.isInstanceOf[LazyType] || fs <= knownFlags(myInfo)
 
     final def relevantFlagsFor(fs: FlagSet)(using Context) =
       if (isCurrent(fs)) myFlags else flags
