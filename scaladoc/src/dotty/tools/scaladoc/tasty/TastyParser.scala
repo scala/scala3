@@ -160,7 +160,8 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
     all.groupBy(_._1).map { case (pckName, members) =>
       val (pcks, rest) = members.map(_._2).partition(_.kind == Kind.Package)
       val basePck = pcks.reduce( (p1, p2) =>
-        p1.withNewMembers(p2.members) // TODO add doc
+        val withNewMembers = p1.withNewMembers(p2.members)
+        if withNewMembers.docs.isEmpty then withNewMembers.withDocs(p2.docs) else withNewMembers
       )
       basePck.withMembers((basePck.members ++ rest).sortBy(_.name))
     }.toList -> rootDoc
