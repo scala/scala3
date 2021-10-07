@@ -34,12 +34,15 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     StringSetting("-project-version", "project version", "The current version of your project.", "", aliases = List("-doc-version"))
 
   val projectLogo: Setting[String] =
-    StringSetting("-project-logo", "project logo filename", "The file that contains the project's logo (in /images).", "", aliases = List("-doc-logo"))
+    StringSetting("-project-logo", "project logo filename", "Path to the file that contains the project's logo. Provided path can be absolute or relative to the project root directory.", "", aliases = List("-doc-logo"))
 
   val projectFooter: Setting[String] = StringSetting("-project-footer", "project footer", "A footer on every Scaladoc page.", "", aliases = List("-doc-footer"))
 
   val sourceLinks: Setting[List[String]] =
     MultiStringSetting("-source-links", "sources", SourceLinks.usage)
+
+  val legacySourceLink: Setting[String] =
+    StringSetting("-doc-source-url", "sources", "Legacy option from Scala 2. Use -source-links instead.", "")
 
   val syntax: Setting[String] =
     StringSetting("-comment-syntax", "syntax", "Syntax of the comment used", "")
@@ -51,6 +54,9 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     MultiStringSetting("-external-mappings", "external-mappings",
       "Mapping between regexes matching classpath entries and external documentation. " +
         "'regex::[scaladoc|scaladoc|javadoc]::path' syntax is used")
+
+  val legacyExternalDocumentationMappings: Setting[List[String]] =
+    MultiStringSetting("-doc-external-doc", "legacy-external-mappings", "Legacy option from Scala 2. Mapping betweeen path and external documentation. Use -external-mappings instead.")
 
   val socialLinks: Setting[List[String]] =
     MultiStringSetting("-social-links", "social-links",
@@ -124,4 +130,4 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     StringSetting("-scastie-configuration", "Scastie configuration", "Additional configuration passed to Scastie in code snippets", "")
 
   def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, scastieConfiguration)
+    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, scastieConfiguration)

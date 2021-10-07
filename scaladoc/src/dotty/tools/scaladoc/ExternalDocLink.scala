@@ -18,31 +18,44 @@ enum DocumentationKind:
   case Scaladoc3 extends DocumentationKind
 
 object ExternalDocLink:
-  def parse(mapping: String): Either[String, ExternalDocLink] =
-    def fail(msg: String) = Left(s"Unable to process external mapping $mapping. $msg")
+  private def fail(mapping: String, msg: String) = Left(s"Unable to process external mapping $mapping. $msg")
 
-    def tryParse[T](descr: String)(op: => T): Either[String, T] = Try(op) match {
-      case Success(v) => Right(v)
-      case Failure(e) => fail(s"Unable to parse $descr. Exception $e occured")
-    }
+  private def tryParse[T](mapping: String, descr: String)(op: => T): Either[String, T] = Try(op) match {
+    case Success(v) => Right(v)
+    case Failure(e) => fail(mapping, s"Unable to parse $descr. Exception $e occured")
+  }
+
+  def parseLegacy(mapping: String): Either[String, ExternalDocLink] =
+    mapping.split("#").toList match
+      case path :: apiUrl :: Nil => for {
+        url <- tryParse(mapping, "url")(URL(apiUrl))
+      } yield ExternalDocLink(
+        List(s"$path.*".r),
+        url,
+        DocumentationKind.Scaladoc2,
+        None
+      )
+      case _ => fail(mapping, "Wrong format of legacy external mapping. path#apiUrl format is accepted.")
+
+  def parse(mapping: String): Either[String, ExternalDocLink] =
 
     def parsePackageList(elements: List[String]) = elements match
-     case List(urlStr) => tryParse("packageList")(Some(URL(urlStr)))
+     case List(urlStr) => tryParse(mapping, "packageList")(Some(URL(urlStr)))
      case Nil => Right(None)
-     case other => fail(s"Provided multiple package lists: $other")
+     case other => fail(mapping, s"Provided multiple package lists: $other")
 
     def doctoolByName(name: String) = name match
       case "javadoc" => Right(DocumentationKind.Javadoc)
       case "scaladoc2" => Right(DocumentationKind.Scaladoc2)
       case "scaladoc3" => Right(DocumentationKind.Scaladoc3)
-      case other => fail(s"Unknown doctool: $other")
+      case other => fail(mapping, s"Unknown doctool: $other")
 
 
     mapping.split("::").toList match
       case regexStr :: docToolStr :: urlStr :: rest =>
         for {
-          regex <- tryParse("regex")(regexStr.r)
-          url <- tryParse("url")(URL(urlStr))
+          regex <- tryParse(mapping, "regex")(regexStr.r)
+          url <- tryParse(mapping, "url")(URL(urlStr))
           doctool <- doctoolByName(docToolStr)
           packageList <- parsePackageList(rest)
         } yield ExternalDocLink(
@@ -52,4 +65,4 @@ object ExternalDocLink:
             packageList
           )
       case _ =>
-        fail("Accepted format: `regexStr::docToolStr::urlStr[::rest]`")
+        fail(mapping, "Accepted format: `regexStr::docToolStr::urlStr[::rest]`")

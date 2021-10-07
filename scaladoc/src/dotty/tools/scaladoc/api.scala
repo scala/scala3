@@ -195,6 +195,8 @@ extension[T] (member: Member)
 
   def withKind(kind: Kind): Member = member.copy(kind = kind)
 
+  def withDocs(docs: Option[Comment]) = member.copy(docs = docs)
+
   def withNewMembers(newMembers: Seq[Member]): Member =
     member.copy(members = member.members ++ newMembers)
 

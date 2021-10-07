@@ -45,6 +45,18 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
   )
 )
 
+class Scaladoc2LegacyExternalLocationProviderIntegrationTest extends LegacyExternalLocationProviderIntegrationTest(
+  "externalScaladoc2",
+  List(".*scala.*#https://www.scala-lang.org/api/current/"),
+  List(
+    "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
+    "https://www.scala-lang.org/api/current/scala/Predef$.html#String",
+    "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html",
+    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):StringBuilder",
+    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String"
+  )
+)
+
 
 abstract class ExternalLocationProviderIntegrationTest(
   name: String,
@@ -84,4 +96,17 @@ abstract class ExternalLocationProviderIntegrationTest(
       reportError(reportMessage)
     }
   } :: Nil
+
+abstract class LegacyExternalLocationProviderIntegrationTest(
+  name: String,
+  mappings: Seq[String],
+  expectedLinks: Seq[String]
+) extends ExternalLocationProviderIntegrationTest(name, mappings, expectedLinks):
+
+  override def args = super.args.copy(
+      externalMappings = mappings.flatMap( s =>
+        ExternalDocLink.parseLegacy(s).fold(left => None, right => Some(right)
+      )
+    ).toList
+  )
 
