@@ -363,13 +363,15 @@ object Semantic {
        *  4. Reset last cache.
        */
       def prepareForNextClass()(using Context) =
-          if this.changed then
-            this.changed = false
-          else
-            this.commitToStableCache()
-            this.heapStable = this.heap
+        if this.changed then
+          this.changed = false
+          this.heap = this.heapStable
+        else
+          this.commitToStableCache()
+          this.heapStable = this.heap
 
-          this.last = mutable.Map.empty
+        this.last = mutable.Map.empty
+        this.current = mutable.Map.empty
 
       def updateObject(ref: Ref, obj: Objekt) =
         assert(!this.heapStable.contains(ref))
@@ -951,20 +953,20 @@ object Semantic {
      *
      *  This method should only be called from the work list scheduler.
      */
-    private def doTask(task: Task)(using Cache, Context): Unit = log("checking " + task) {
+    private def doTask(task: Task)(using Cache, Context): Unit = {
       val thisRef = task.value
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
       val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
 
-      given Promoted = Promoted.empty
-      given Trace = Trace.empty
-      given Env = Env(paramValues)
-
       @tailrec
       def iterate(): Unit = {
+        given Promoted = Promoted.empty
+        given Trace = Trace.empty
+        given Env = Env(paramValues)
+
         thisRef.ensureFresh()
-        val res = eval(tpl, thisRef, thisRef.klass)
+        val res = log("checking " + task) { eval(tpl, thisRef, thisRef.klass) }
         res.errors.foreach(_.issue)
 
         if cache.hasChanged && res.errors.isEmpty then
