@@ -2678,7 +2678,10 @@ class Typer extends Namer
           wrapDefs(defs, lift(app))
         else app
       }
-    checkValidInfix(tree, result.symbol)
+    // issue 10383: we stripBlock because e.g. default arguments desugar to blocks during typing,
+    // and the block itself doesn't have a symbol (because a Block isn't a ProxyTree),
+    // but the last expression in the block does have the right symbol
+    checkValidInfix(tree, stripBlock(result).symbol)
     result
   }
 
