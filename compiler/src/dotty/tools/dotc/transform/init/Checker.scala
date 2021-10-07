@@ -43,7 +43,7 @@ class Checker extends Phase {
     // ignore, we already called `Semantic.check()` in `runOn`
   }
 
-  class InitTreeTraverser(using State) extends TreeTraverser {
+  class InitTreeTraverser(using WorkList) extends TreeTraverser {
     override def traverse(tree: Tree)(using Context): Unit =
       traverseChildren(tree)
       tree match {
@@ -56,7 +56,6 @@ class Checker extends Phase {
           case tdef: TypeDef if tdef.isClassDef =>
             val cls = tdef.symbol.asClass
             val thisRef = ThisRef(cls)
-            given Trace = Trace.empty
             if shouldCheckClass(cls) then Semantic.addTask(thisRef)
           case _ =>
 
