@@ -59,6 +59,7 @@ object Semantic {
     def isHot = this == Hot
     def isCold = this == Cold
     def isWarm = this.isInstanceOf[Warm]
+    def isThisRef = this.isInstanceOf[ThisRef]
   }
 
   /** A transitively initialized object */
@@ -104,9 +105,6 @@ object Semantic {
     def ensureObjectExistsAndPopulated(): Contextual[this.type] =
       if cache.containsObject(this) then this
       else this.ensureFresh().populateParams()
-
-    def ensureObjectFreshAndPopulated(): Contextual[this.type] =
-      this.ensureFresh().populateParams()
   }
 
   /** A function value */
@@ -328,24 +326,36 @@ object Semantic {
 
       /** Prepare cache for the next iteration
        *
-       *  1. Reset changed flag
+       *  1. Reset changed flag.
        *
-       *  2. Reset current cache (last cache already synced in `assume`)
+       *  2. Reset current cache (last cache already synced in `assume`).
        *
        *  3. Revert heap if instable.
        *
        */
-      def prepareForNextIteration(isStable: Boolean)(using State, Context) =
-        if isStable then
-          this.commitToStableCache()
-          this.heapStable = this.heap
-          // If the current iteration is not stable, we need to use `last` for the next iteration,
-          // which already contains the updated value from the current iteration.
-          this.last = mutable.Map.empty
-
+      def prepareForNextIteration()(using Context) =
         this.changed = false
         this.current = mutable.Map.empty
         this.heap = this.heapStable
+
+      /** Prepare for checking next class
+       *
+       *  1. Reset changed flag.
+       *
+       *  2. Commit current cache to stable cache if not changed.
+       *
+       *  3. Update stable heap if not changed.
+       *
+       *  4. Reset last cache.
+       */
+      def prepareForNextClass()(using Context) =
+          if this.changed then
+            this.changed = false
+          else
+            this.commitToStableCache()
+            this.heapStable = this.heap
+
+          this.last = mutable.Map.empty
 
       def updateObject(ref: Ref, obj: Objekt) =
         assert(!this.heapStable.contains(ref))
@@ -395,17 +405,10 @@ object Semantic {
       value.instantiate(klass, ctor, args, source) ++ errors
   }
 
-// ----- State --------------------------------------------
-  /** Global state of the checker */
-  class State(val cache: Cache, val workList: WorkList)
-
-  given (using s: State): Cache = s.cache
-  given (using s: State): WorkList = s.workList
-
-  inline def state(using s: State) = s
+// ----- Checker State -----------------------------------
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Env, Context, Trace, Promoted, State) ?=> T
+  type Contextual[T] = (Env, Context, Trace, Promoted, Cache) ?=> T
 
 // ----- Error Handling -----------------------------------
 
@@ -917,50 +920,48 @@ object Semantic {
       cls == defn.ObjectClass
 
 // ----- Work list ---------------------------------------------------
-  case class Task(value: ThisRef)(val trace: Trace)
+  case class Task(value: ThisRef)
 
   class WorkList private[Semantic]() {
     private var pendingTasks: List[Task] = Nil
-    private var checkedTasks: Set[Task] = Set.empty
 
     def addTask(task: Task): Unit =
-      if !checkedTasks.contains(task) then pendingTasks = task :: pendingTasks
+      if !pendingTasks.contains(task) then pendingTasks = task :: pendingTasks
 
     /** Process the worklist until done */
-    @tailrec
-    final def work()(using State, Context): Unit =
-      pendingTasks match
-      case task :: rest =>
-        checkedTasks = checkedTasks + task
-
-        task.value.ensureFresh()
-        val res = doTask(task)
-        res.errors.foreach(_.issue)
-
-        if cache.hasChanged && res.errors.isEmpty then
-          cache.prepareForNextIteration(isStable = false)
-        else
-          cache.prepareForNextIteration(isStable = true)
-          pendingTasks = rest
-
-        work()
-      case _ =>
+    final def work()(using Cache, Context): Unit =
+      for task <- pendingTasks
+      do doTask(task)
 
     /** Check an individual class
      *
      *  This method should only be called from the work list scheduler.
      */
-    private def doTask(task: Task)(using State, Context): Result = log("checking " + task) {
+    private def doTask(task: Task)(using Cache, Context): Unit = log("checking " + task) {
       val thisRef = task.value
       val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
       val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
 
       given Promoted = Promoted.empty
-      given Trace = task.trace
+      given Trace = Trace.empty
       given Env = Env(paramValues)
 
-      eval(tpl, thisRef, thisRef.klass)
+      @tailrec
+      def iterate(): Unit = {
+        thisRef.ensureFresh()
+        val res = eval(tpl, thisRef, thisRef.klass)
+        res.errors.foreach(_.issue)
+
+        if cache.hasChanged && res.errors.isEmpty then
+          // code to prepare cache and heap for next iteration
+          cache.prepareForNextIteration()
+          iterate()
+        else
+          cache.prepareForNextClass()
+      }
+
+      iterate()
     }
   }
   inline def workList(using wl: WorkList): WorkList = wl
@@ -968,13 +969,13 @@ object Semantic {
 // ----- API --------------------------------
 
   /** Add a checking task to the work list */
-  def addTask(thisRef: ThisRef)(using WorkList, Trace) = workList.addTask(Task(thisRef)(trace))
+  def addTask(thisRef: ThisRef)(using WorkList) = workList.addTask(Task(thisRef))
 
   /** Perform check on the work list until it becomes empty
    *
    *  Should only be called once from the checker.
    */
-  def check()(using State, Context) = workList.work()
+  def check()(using Cache, WorkList, Context) = workList.work()
 
   /** Perform actions with initial checking state.
    *
@@ -984,9 +985,8 @@ object Semantic {
    *         Semantic.check()
    *      }
    */
-  def withInitialState[T](work: State ?=> T): T = {
-    val initialState = State(new Cache, new WorkList)
-    work(using initialState)
+  def withInitialState[T](work: (Cache, WorkList) ?=> T): T = {
+    work(using new Cache, new WorkList)
   }
 
 // ----- Semantic definition --------------------------------
@@ -1412,7 +1412,7 @@ object Semantic {
     var fieldsChanged = true
 
     // class body
-    if !thisV.isWarm || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
+    if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         given Env = Env.empty
         val res = eval(vdef.rhs, thisV, klass)
@@ -1423,7 +1423,7 @@ object Semantic {
       case _: MemberDef =>
 
       case tree =>
-        if fieldsChanged && !thisV.isWarm then thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject
+        if fieldsChanged && thisV.isThisRef then thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject
         fieldsChanged = false
 
         given Env = Env.empty
