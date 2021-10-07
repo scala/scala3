@@ -271,7 +271,8 @@ class SymOpsWithLinkCache:
             val extLink = if externalLinkCache.contains(csym.associatedFile)
               then externalLinkCache(csym.associatedFile)
               else {
-                val calculatedLink = Option(csym.associatedFile).map(_.path).flatMap { path =>
+                def calculatePath(file: AbstractFile): String = file.underlyingSource.filter(_ != file).fold("")(f => calculatePath(f) + "/") + file.path
+                val calculatedLink = Option(csym.associatedFile).map(f => calculatePath(f)).flatMap { path =>
                   dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
                 }
                 externalLinkCache += (csym.associatedFile -> calculatedLink)

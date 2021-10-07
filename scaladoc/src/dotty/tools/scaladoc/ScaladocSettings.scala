@@ -55,6 +55,9 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
       "Mapping between regexes matching classpath entries and external documentation. " +
         "'regex::[scaladoc|scaladoc|javadoc]::path' syntax is used")
 
+  val legacyExternalDocumentationMappings: Setting[List[String]] =
+    MultiStringSetting("-doc-external-doc", "legacy-external-mappings", "Legacy option from Scala 2. Mapping betweeen path and external documentation. Use -external-mappings instead.")
+
   val socialLinks: Setting[List[String]] =
     MultiStringSetting("-social-links", "social-links",
       "Links to social sites. '[github|twitter|gitter|discord]::link' syntax is used. " +
