@@ -35,7 +35,7 @@ trait Locations(using ctx: DocContext):
         val path = dri match
           case `docsRootDRI` => List("docs", "index")
           case `apiPageDRI` =>
-            if ctx.args.apiSubdirectory || ctx.staticSiteContext.fold(false)(_.hasIndexFile)
+            if ctx.staticSiteContext.fold(false)(_.hasIndexFile)
               then List("api", "index")
               else List("index")
           case dri if dri.isStaticFile =>
