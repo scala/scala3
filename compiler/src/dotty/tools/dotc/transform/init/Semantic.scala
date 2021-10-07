@@ -92,6 +92,19 @@ object Semantic {
     /** Ensure that outers and class parameters are initialized.
      *
      *  Fields in class body are not initialized.
+     *
+     *  We need to populate class parameters and outers for warm values for the
+     *  following cases:
+     *
+     *  - Widen an already checked warm value to another warm value without
+     *    corresponding object
+     *
+     *  - Using a warm value from the cache, whose corresponding object from
+     *    the last iteration have been remove due to heap reversion
+     *    {@see Cache.prepareForNextIteration}
+     *
+     *  After populating class parameters and outers, it is possible to lazily
+     *  compute the field values in class bodies when they are accessed.
      */
     private def populateParams(): Contextual[this.type] = log("populating parameters", printer, (_: Warm).objekt.toString) {
       assert(!populatingParams, "the object is already populating parameters")
@@ -255,11 +268,13 @@ object Semantic {
        *
        *  The fact that objects of `ThisRef` are stored in heap is just an engineering convenience.
        *  Technically, we can also store the object directly in `ThisRef`.
-       *  
-       *  The heap contains objects of two conceptually distinct kinds. 
-       *  - Objects that are also in `heapStable`
-       *    are flow-insensitive views of already initialized objects that are cached for reuse in analysis of later
-       *    classes. These objects and their fields should never change; this is enforced using assertions.
+       *
+       *  The heap contains objects of two conceptually distinct kinds.
+       *
+       *  - Objects that are also in `heapStable` are flow-insensitive views of already initialized objects that are
+       *    cached for reuse in analysis of later classes. These objects and their fields should never change; this is
+       *    enforced using assertions.
+       *
        *  - Objects that are not (yet) in `heapStable` are the flow-sensitive abstract state of objects being analyzed
        *    in the current iteration of the analysis of the current class. Their fields do change flow-sensitively: more
        *    fields are added as fields become initialized. These objects are valid only within the current iteration and
@@ -272,7 +287,6 @@ object Semantic {
 
       /** Used to revert heap to last stable heap. */
       private var heapStable: Heap = Map.empty
-      def stableHeapContains(ref: Ref) = heapStable.contains(ref)
 
       def hasChanged = changed
 
