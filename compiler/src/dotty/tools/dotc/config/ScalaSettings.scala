@@ -40,7 +40,7 @@ object ScalaSettings:
     else defaultWidth
   }
 
-trait AllScalaSettings extends CommonScalaSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
+trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
   self: SettingGroup =>
 
   /* Path related settings */
@@ -84,7 +84,7 @@ trait AllScalaSettings extends CommonScalaSettings, VerboseSettings, WarningSett
 end AllScalaSettings
 
 /** Settings shared by compiler and scaladoc */
-trait CommonScalaSettings extends PluginSettings:
+trait CommonScalaSettings:
   self: SettingGroup =>
 
   /* Path related settings */
