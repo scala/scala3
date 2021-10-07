@@ -1,8 +1,8 @@
 trait FooBase {
   type Bar >: Null <: BarBase { type This <: FooBase.this.Bar }
-  type This >: this.type <: FooBase { type This <: FooBase.this.This }
+  // type This >: this.type <: FooBase { type This <: FooBase.this.This }
 
-  def derived(bar: Bar): This = ???
+  // def derived(bar: Bar): This = ???
 }
 
 trait BarBase {
@@ -11,7 +11,7 @@ trait BarBase {
 
 object Test {
   def bad(foo: FooBase): FooBase = foo match {
-    case foo1: FooBase =>
-      foo1.derived(???)  // Triggers infinite loop in TypeAssigner.avoid()
+    case foo1: FooBase => ???
+      // foo1.derived(???)  // Triggers infinite loop in TypeAssigner.avoid()
   }
 }

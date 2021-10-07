@@ -32,15 +32,15 @@ object Test {
 
     case _: AltIndirectExprSub[Int] =>
       val a: A = 0 // error
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
 
     case _: AltIndirectExprSub2[Int] =>
       val a: A = 0 // error
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
 
     case _: AltIndirectIntExpr =>
-      val a: A = 0 // limitation // error
-      val i: Int = ??? : A // limitation // error
+      val a: A = 0
+      val i: Int = ??? : A
 
     case _: AltIndirectExprExact[Int] =>
       val a: A = 0 // limitation // error
