@@ -169,3 +169,4 @@ class CustomCompletionTests extends DottyTest:
 
       assert(offset == prefix.length)
       assert(labels.contains("scala.Function2"))
+
