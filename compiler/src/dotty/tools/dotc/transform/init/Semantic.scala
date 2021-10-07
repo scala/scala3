@@ -257,11 +257,24 @@ object Semantic {
        *
        *  The fact that objects of `ThisRef` are stored in heap is just an engineering convenience.
        *  Technically, we can also store the object directly in `ThisRef`.
+       *  
+       *  The heap contains objects of two conceptually distinct kinds. 
+       *  - Objects that are also in `heapStable`
+       *    are flow-insensitive views of already initialized objects that are cached for reuse in analysis of later
+       *    classes. These objects and their fields should never change; this is enforced using assertions.
+       *  - Objects that are not (yet) in `heapStable` are the flow-sensitive abstract state of objects being analyzed
+       *    in the current iteration of the analysis of the current class. Their fields do change flow-sensitively: more
+       *    fields are added as fields become initialized. These objects are valid only within the current iteration and
+       *    are removed when moving to a new iteration of analyzing the current class. When the analysis of a class
+       *    reaches a fixed point, these now stable flow-sensitive views of the object at the end of the constructor
+       *    of the analyzed class now become the flow-insensitive views of already initialized objects and can therefore
+       *    be added to `heapStable`.
        */
       private var heap: Heap = Map.empty
 
       /** Used to revert heap to last stable heap. */
       private var heapStable: Heap = Map.empty
+      def stableHeapContains(ref: Ref) = heapStable.contains(ref)
 
       def hasChanged = changed
 
@@ -272,6 +285,11 @@ object Semantic {
         if current.contains(value, expr) then current(value)(expr)
         else stable(value)(expr)
 
+      /** Copy the value of `(value, expr)` from the last cache to the current cache
+       * (assuming it's `Hot` if it doesn't exist in the cache).
+       *
+       * Then, runs `fun` and update the caches if the values change.
+       */
       def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result): Contextual[Result] =
         val assumeValue: Value =
           if last.contains(value, expr) then
@@ -330,6 +348,7 @@ object Semantic {
         this.heap = this.heapStable
 
       def updateObject(ref: Ref, obj: Objekt) =
+        assert(!this.heapStable.contains(ref))
         this.heap = this.heap.updated(ref, obj)
 
       def containsObject(ref: Ref) = heap.contains(ref)
