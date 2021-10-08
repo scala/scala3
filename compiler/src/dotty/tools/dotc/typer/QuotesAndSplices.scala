@@ -56,17 +56,17 @@ trait QuotesAndSplices {
     else if !qctx.tpe.isStable then
       report.error(em"Quotes require stable Quotes, but found non stable $qctx", qctx.srcPos)
 
-    val tree1 =
-      if ctx.mode.is(Mode.Pattern) then
-        typedQuotePattern(tree, pt, qctx)
-      else if tree.quoted.isType then
-        val msg = em"Consider using canonical type constructor scala.quoted.Type.of[${tree.quoted}] instead"
-        if sourceVersion.isAtLeast(`future-migration`) then report.error(msg, tree.srcPos)
-        else report.warning(msg, tree.srcPos)
-        typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_of.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
-      else
-        typedApply(untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.quoted), pt)(using pushQuotes(qctx)).select(nme.apply).appliedTo(qctx)
-    makeInlineable(tree1.withSpan(tree.span))
+    if ctx.mode.is(Mode.Pattern) then
+      typedQuotePattern(tree, pt, qctx).withSpan(tree.span)
+    else if tree.quoted.isType then
+      val msg = em"Consider using canonical type constructor scala.quoted.Type.of[${tree.quoted}] instead"
+      if sourceVersion.isAtLeast(`future-migration`) then report.error(msg, tree.srcPos)
+      else report.warning(msg, tree.srcPos)
+      val typeOfTree = untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_of.termRef), tree.quoted :: Nil).withSpan(tree.span)
+      makeInlineable(typedTypeApply(typeOfTree, pt)(using quoteContext).select(nme.apply).appliedTo(qctx).withSpan(tree.span))
+    else
+      val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.quoted)
+      makeInlineable(typedApply(exprQuoteTree, pt)(using pushQuotes(qctx)).select(nme.apply).appliedTo(qctx).withSpan(tree.span))
   }
 
   private def makeInlineable(tree: Tree)(using Context): Tree =
