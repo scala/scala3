@@ -699,7 +699,7 @@ class TestBCode extends DottyBytecodeTest {
       """.stripMargin)
 
   @Test def objectsInObjDefAreFinal =
-    checkFinalClass("Test$Foo$1$.class",
+    checkFinalClass("Test$Foo$2$.class",
       """
         |object Test {
         |  def bar() = {
@@ -709,7 +709,7 @@ class TestBCode extends DottyBytecodeTest {
       """.stripMargin)
 
   @Test def objectsInClassDefAreFinal =
-    checkFinalClass("Test$Foo$1$.class",
+    checkFinalClass("Test$Foo$2$.class",
       """
         |class Test {
         |  def bar() = {
@@ -719,7 +719,7 @@ class TestBCode extends DottyBytecodeTest {
       """.stripMargin)
 
   @Test def objectsInObjValAreFinal =
-    checkFinalClass("Test$Foo$1$.class",
+    checkFinalClass("Test$Foo$2$.class",
       """
         |class Test {
         |  val bar = {
