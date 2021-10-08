@@ -901,28 +901,32 @@ class Typer extends Namer
    *  exists, rewrite to `tt(e)`.
    *  @pre We are in pattern-matching mode (Mode.Pattern)
    */
-  def tryWithTypeTest(tree: Typed, pt: Type)(using Context): Tree = tree.tpt.tpe.dealias match {
-    case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper && !(tref =:= pt) =>
-      def withTag(tpe: Type): Option[Tree] = {
-        require(ctx.mode.is(Mode.Pattern))
-        withoutMode(Mode.Pattern)(
-          inferImplicit(tpe, EmptyTree, tree.tpt.span)
-        ) match
-          case SearchSuccess(clsTag, _, _, _) =>
-            withMode(Mode.InTypeTest) {
-              Some(typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt))
-            }
-          case _ =>
-            None
-      }
-      val tag = withTag(defn.TypeTestClass.typeRef.appliedTo(pt, tref))
-          .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tref)))
+  def tryWithTypeTest(tree: Typed, pt: Type)(using Context): Tree =
+    def withTag(tpe: Type): Option[Tree] = {
+      require(ctx.mode.is(Mode.Pattern))
+      withoutMode(Mode.Pattern)(
+        inferImplicit(tpe, EmptyTree, tree.tpt.span)
+      ) match
+        case SearchSuccess(clsTag, _, _, _) =>
+          withMode(Mode.InTypeTest) {
+            Some(typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt))
+          }
+        case _ =>
+          None
+    }
+    def tagged(tpe: Type) = {
+      val tag = withTag(defn.TypeTestClass.typeRef.appliedTo(pt, tpe))
+          .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tpe)))
           .getOrElse(tree)
-      if tag.symbol.owner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.future) then
+      if tag.symbol.maybeOwner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.future) then
         report.warning("Use of `scala.reflect.ClassTag` for type testing may be unsound. Consider using `scala.reflect.TypeTest` instead.", tree.srcPos)
       tag
-    case _ => tree
-  }
+    }
+    tree.tpt.tpe.dealias match {
+      case tpe @ AppliedType(tref: TypeRef, _) if !tref.symbol.isClass && !ctx.isAfterTyper && !(tpe =:= pt) => tagged(tpe)
+      case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper && !(tref =:= pt) => tagged(tref)
+      case _ => tree
+    }
 
 
   def typedNamedArg(tree: untpd.NamedArg, pt: Type)(using Context): NamedArg = {
