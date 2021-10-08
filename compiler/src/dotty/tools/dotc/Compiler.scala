@@ -126,7 +126,6 @@ class Compiler {
     List(new DropOuterAccessors,     // Drop unused outer accessors
          new CheckNoSuperThis,       // Check that supercalls don't contain references to `this`
          new Flatten,                // Lift all inner classes to package scope
-         new RenameLifted,           // Renames lifted classes to local numbering scheme
          new TransformWildcards,     // Replace wildcards with default values
          new MoveStatics,            // Move static methods from companion to the class itself
          new ExpandPrivate,          // Widen private definitions accessed from nested classes
