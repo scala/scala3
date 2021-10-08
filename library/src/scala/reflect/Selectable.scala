@@ -21,7 +21,7 @@ trait Selectable extends scala.Selectable:
   final def selectDynamic(name: String): Any =
     val rcls = selectedValue.getClass
     try
-      val fld = rcls.getField(name)
+      val fld = rcls.getField(name).nn
       ensureAccessible(fld)
       fld.get(selectedValue)
     catch case ex: NoSuchFieldException =>
@@ -35,7 +35,7 @@ trait Selectable extends scala.Selectable:
    */
   final def applyDynamic(name: String, paramTypes: Class[_]*)(args: Any*): Any =
     val rcls = selectedValue.getClass
-    val mth = rcls.getMethod(name, paramTypes: _*)
+    val mth = rcls.getMethod(name, paramTypes: _*).nn
     ensureAccessible(mth)
     mth.invoke(selectedValue, args.asInstanceOf[Seq[AnyRef]]: _*)
 

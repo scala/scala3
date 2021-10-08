@@ -328,54 +328,59 @@ object IArray:
   extension [T, U >: T: ClassTag](x: T)
     def +:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prepended(x)
 
+  // For backwards compatibility with code compiled without -Yexplicit-nulls
+  private def mapNull[A, B](a: A, f: =>B): B =
+    if((a: A|Null) == null) null.asInstanceOf[B] else f
+
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def genericWrapArray[T](arr: IArray[T]): ArraySeq[T] =
-    if arr eq null then null else ArraySeq.unsafeWrapArray(arr)
+    mapNull(arr, ArraySeq.unsafeWrapArray(arr))
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapRefArray[T <: AnyRef](arr: IArray[T]): ArraySeq.ofRef[T] =
     // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef]
     // is as good as another for all T <: AnyRef.  Instead of creating 100,000,000
     // unique ones by way of this implicit, let's share one.
-    if (arr eq null) null
-    else if (arr.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
-    else ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
+    mapNull(arr,
+      if (arr.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
+      else ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
+    )
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapIntArray(arr: IArray[Int]): ArraySeq.ofInt =
-    if (arr ne null) new ArraySeq.ofInt(arr.asInstanceOf[Array[Int]]) else null
+    mapNull(arr, new ArraySeq.ofInt(arr.asInstanceOf[Array[Int]]))
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapDoubleIArray(arr: IArray[Double]): ArraySeq.ofDouble =
-    if (arr ne null) new ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]]) else null
+    mapNull(arr, new ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]]))
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapLongIArray(arr: IArray[Long]): ArraySeq.ofLong =
-    if (arr ne null) new ArraySeq.ofLong(arr.asInstanceOf[Array[Long]]) else null
+    mapNull(arr, new ArraySeq.ofLong(arr.asInstanceOf[Array[Long]]))
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapFloatIArray(arr: IArray[Float]): ArraySeq.ofFloat =
-    if (arr ne null) new ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]]) else null
+    mapNull(arr, new ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]]))
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapCharIArray(arr: IArray[Char]): ArraySeq.ofChar =
-    if (arr ne null) new ArraySeq.ofChar(arr.asInstanceOf[Array[Char]]) else null
+    mapNull(arr, new ArraySeq.ofChar(arr.asInstanceOf[Array[Char]]))
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapByteIArray(arr: IArray[Byte]): ArraySeq.ofByte =
-    if (arr ne null) new ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]]) else null
+    mapNull(arr, new ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]]))
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapShortIArray(arr: IArray[Short]): ArraySeq.ofShort =
-    if (arr ne null) new ArraySeq.ofShort(arr.asInstanceOf[Array[Short]]) else null
+    mapNull(arr, new ArraySeq.ofShort(arr.asInstanceOf[Array[Short]]))
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapBooleanIArray(arr: IArray[Boolean]): ArraySeq.ofBoolean =
-    if (arr ne null) new ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]]) else null
+    mapNull(arr, new ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]]))
 
   /** Conversion from IArray to immutable.ArraySeq */
   implicit def wrapUnitIArray(arr: IArray[Unit]): ArraySeq.ofUnit =
-    if (arr ne null) new ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]]) else null
+    mapNull(arr, new ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]]))
 
   /** Convert an array into an immutable array without copying, the original array
    *   must _not_ be mutated after this or the guaranteed immutablity of IArray will
