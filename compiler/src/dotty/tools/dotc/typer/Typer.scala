@@ -2546,6 +2546,10 @@ class Typer extends Namer
     pid1 match
       case pid1: RefTree if pkg.is(Package) =>
         inContext(ctx.packageContext(tree, pkg)) {
+          // If it exists, complete the class containing the top-level definitions
+          // before typing any statement in the package to avoid cycles as in i13669.scala
+          val topLevelClassName = desugar.packageObjectName(ctx.source).moduleClassName
+          pkg.moduleClass.info.decls.lookup(topLevelClassName).ensureCompleted()
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
           if (!ctx.isAfterTyper)
             stats1 = stats1 ++ typedBlockStats(MainProxies.mainProxies(stats1))._1
