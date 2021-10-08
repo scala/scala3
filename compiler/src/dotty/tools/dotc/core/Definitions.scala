@@ -376,18 +376,18 @@ class Definitions {
    *       <T> void meth8(T... args) {}
    *
    *       // B.scala
-   *       meth7(1) // OK
-   *       meth8(1) // OK
+   *       meth7(1) // OK (creates a reference array)
+   *       meth8(1) // OK (creates a primitive array and copies it into a reference array at Erasure)
    *       val ai = Array[Int](1)
-   *       meth7(ai: _*) // OK (will copy the array)
-   *       meth8(ai: _*) // OK (will copy the array)
+   *       meth7(ai: _*) // OK (will copy the array at Erasure)
+   *       meth8(ai: _*) // OK (will copy the array at Erasure)
    *
    *     Java repeated arguments are erased to arrays, so it would be safe to treat
    *     them in the same way: add an `& Object` to the parameter type to disallow
    *     passing primitives, but that would be very inconvenient as it is common to
    *     want to pass a primitive to an Object repeated argument (e.g.
    *     `String.format("foo: %d", 1)`). So instead we type them _without_ adding the
-   *     `& Object` and let `ElimRepeated` take care of doing any necessary adaptation
+   *     `& Object` and let `ElimRepeated` and `Erasure` take care of doing any necessary adaptation
    *     (note that adapting a primitive array to a reference array requires
    *     copying the whole array, so this transformation only preserves semantics
    *     if the callee does not try to mutate the varargs array which is a reasonable

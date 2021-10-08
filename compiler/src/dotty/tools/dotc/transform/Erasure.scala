@@ -325,6 +325,13 @@ object Erasure {
       assert(!pt.isInstanceOf[SingletonType], pt)
       if (pt isRef defn.UnitClass) unbox(tree, pt)
       else (tree.tpe.widen, pt) match {
+        // Convert primitive arrays into reference arrays, this path is only
+        // needed to handle repeated arguments, see
+        // `Definitions#FromJavaObjectSymbol` and `ElimRepeated#adaptToArray`.
+        case (JavaArrayType(treeElem), JavaArrayType(ptElem))
+        if treeElem.widen.isPrimitiveValueType && !ptElem.isPrimitiveValueType =>
+          cast(ref(defn.ScalaRuntime_toObjectArray).appliedTo(tree), pt)
+
         // When casting between two EVTs, we need to check which one underlies the other to determine
         // whether u2evt or evt2u should be used.
         case (tp1 @ ErasedValueType(tycon1, underlying1), tp2 @ ErasedValueType(tycon2, underlying2)) =>
