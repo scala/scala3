@@ -72,7 +72,10 @@ end SourceLanguage
 object TypeErasure {
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
-    sym == defn.ArrayClass || sym == defn.PairClass || isDerivedValueClass(sym)
+    sym == defn.ArrayClass
+    || sym == defn.PairClass
+    || defn.isErasedFunctionClass(sym)
+    || isDerivedValueClass(sym)
 
   def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
@@ -581,12 +584,13 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       val sym = tp.symbol
       if (!sym.isClass) this(tp.translucentSuperType)
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClass(tp)
-      else if (defn.isSyntheticFunctionClass(sym)) defn.erasedFunctionType(sym)
+      else if (defn.isSyntheticFunctionClass(sym)) defn.functionTypeErasure(sym)
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
       val tycon = tp.tycon
       if (tycon.isRef(defn.ArrayClass)) eraseArray(tp)
       else if (tycon.isRef(defn.PairClass)) erasePair(tp)
+      else if defn.isErasedFunctionClass(tycon.typeSymbol) then apply(tp.argInfos.last)
       else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
       else if (semiEraseVCs && isDerivedValueClass(tycon.classSymbol)) eraseDerivedValueClass(tp)
       else apply(tp.translucentSuperType)
@@ -791,7 +795,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           if (erasedVCRef.exists) return sigName(erasedVCRef)
         }
         if (defn.isSyntheticFunctionClass(sym))
-          sigName(defn.erasedFunctionType(sym))
+          sigName(defn.functionTypeErasure(sym))
         else
           val cls = normalizeClass(sym.asClass)
           val fullName =

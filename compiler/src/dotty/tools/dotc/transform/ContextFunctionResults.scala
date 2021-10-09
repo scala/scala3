@@ -14,12 +14,17 @@ object ContextFunctionResults:
   /** Annotate methods that have context function result types directly matched by context
    *  closures on their right-hand side. Parameters to such closures will be integrated
    *  as additional method parameters in erasure.
+   *
+   *  A @ContextResultCount(n) annotation means that the method's result type
+   *  consists of a string of nested context closures, of which exactlty `n` are
+   *  not erased functions.
    */
   def annotateContextResults(mdef: DefDef)(using Context): Unit =
     def contextResultCount(rhs: Tree, tp: Type): Int = tp match
-      case defn.ContextFunctionType(_, resTpe, _) =>
+      case defn.ContextFunctionType(_, resTpe, isErased) =>
         rhs match
-          case closureDef(meth) => 1 + contextResultCount(meth.rhs, resTpe)
+          case closureDef(meth) =>
+            (if isErased then 0 else 1) + contextResultCount(meth.rhs, resTpe)
           case _ => 0
       case _ => 0
 
@@ -50,8 +55,8 @@ object ContextFunctionResults:
         crCount
       case none => 0
 
-  /** Turn the first `crCount` context function types in the result type of `tp`
-   *  into the curried method types.
+  /** Turn the first `crCount` non-erased context function types in the result type of `tp`
+   *  into the curried method types, skipping erased function types.
    */
   def integrateContextResults(tp: Type, crCount: Int)(using Context): Type =
     if crCount == 0 then tp
@@ -61,9 +66,8 @@ object ContextFunctionResults:
       case tp: MethodOrPoly =>
         tp.derivedLambdaType(resType = integrateContextResults(tp.resType, crCount))
       case defn.ContextFunctionType(argTypes, resType, isErased) =>
-        val methodType: MethodTypeCompanion =
-          if isErased then ErasedMethodType else MethodType
-        methodType(argTypes, integrateContextResults(resType, crCount - 1))
+        val resType1 = integrateContextResults(resType, crCount - 1)
+        if isErased then resType1 else MethodType(argTypes, resType1)
 
   /** The total number of parameters of method `sym`, not counting
    *  erased parameters, but including context result parameters.

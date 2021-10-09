@@ -385,7 +385,6 @@ object Erasure {
             cast(tree, pt)
     end adaptToType
 
-
     /** The following code:
      *
      *      val f: Function1[Int, Any] = x => ...
@@ -690,8 +689,9 @@ object Erasure {
      *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
-      if tree.name == nme.apply && integrateSelect(tree) then
-      	return typed(tree.qualifier, pt)
+      if tree.name == nme.apply
+          && (defn.isErasedFunctionClass(tree.symbol.maybeOwner) || integrateSelect(tree))
+      then return typed(tree.qualifier, pt)
 
       val qual1 = typed(tree.qualifier, AnySelectionProto)
 
@@ -707,7 +707,7 @@ object Erasure {
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.specialErasure(owner)
           else if defn.isSyntheticFunctionClass(owner) then
-            defn.erasedFunctionClass(owner)
+            defn.functionTypeErasure(owner).typeSymbol
           else
             owner
 
@@ -1044,6 +1044,13 @@ object Erasure {
 
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)
+
+    override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree =
+      tree.asInstanceOf[tpd.Tree] match
+        case closureDef(meth) if meth.symbol.info.isErasedMethod =>
+          typed(meth.rhs.changeOwnerAfter(meth.symbol, ctx.owner, erasurePhase), pt)
+        case _ =>
+          super.typedBlock(tree, pt)
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
       val stats0 = addRetainedInlineBodies(stats)(using preErasureCtx)
