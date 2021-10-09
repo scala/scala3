@@ -100,6 +100,13 @@ erased val erasedEvidence3: Ev = ... // does not exist at runtime
 methodWithErasedEv(evidence1)
 ```
 
+Erased function values are replaced by their results. Example:
+
+```scala
+val lambdaWithErasedEv: erased Ev => Int =
+  (erased ev: Ev) => 42         // defines a value with `42` as right hand side.
+```
+
 ## State machine with erased evidence example
 
 The following example is an extended implementation of a simple state machine
