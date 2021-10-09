@@ -60,7 +60,7 @@ in front of a parameter list (like `given`).
 def methodWithErasedEv(erased ev: Ev): Int = 42
 
 val lambdaWithErasedEv: erased Ev => Int =
-  (erased ev: Ev) => 42
+  erased (ev: Ev) => 42
 ```
 
 `erased` parameters will not be usable for computations, though they can be used
@@ -104,7 +104,7 @@ Erased function values are replaced by their results. Example:
 
 ```scala
 val lambdaWithErasedEv: erased Ev => Int =
-  (erased ev: Ev) => 42         // defines a value with `42` as right hand side.
+  erased (ev: Ev) => 42         // defines a value with `42` as right hand side.
 ```
 
 ## State machine with erased evidence example
@@ -224,7 +224,7 @@ The code above expands to
 erased class CanRead
 
 erased val x: CanRead = ...
-val y: (erased CanRead) => Int = ...
+val y: erased CanRead => Int = ...
 def f(erased x: CanRead) = ...
 erased def g(): CanRead = ...
 erased given CanRead = ...

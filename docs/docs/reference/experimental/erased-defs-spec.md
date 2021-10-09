@@ -8,7 +8,8 @@ TODO: complete
 ## Rules
 
 1. `erased` is a soft modifier. It can appear:
-   * At the start of a parameter block of a method, function or class
+   * At the start of a parameter block of a method or class
+   * In front of a function type or function literal
    * In a method definition
    * In a `val` definition (but not `lazy val` or `var`)
    * In a `class` or `trait` definition
@@ -19,7 +20,7 @@ TODO: complete
 
     def g(erased x: Int) = ...
 
-    (erased x: Int) => ...
+    erased (x: Int) => ...
     def h(x: (erased Int) => Int) = ...
 
     class K(erased x: Int) { ... }
@@ -33,26 +34,25 @@ TODO: complete
 
 
 3. Functions
-   * `(erased x1: T1, x2: T2, ..., xN: TN) => y : (erased T1, T2, ..., TN) => R`
-   * `(given erased x1: T1, x2: T2, ..., xN: TN) => y: (given erased T1, T2, ..., TN) => R`
-   * `(given erased T1) => R  <:<  erased T1 => R`
-   * `(given erased T1, T2) => R  <:< (erased T1, T2) => R`
-   *  ...
+   * `erased(x1: T1, x2: T2, ..., xN: TN) => y` has type
+     `erased(T1, T2, ..., TN) => R`
+   * `(erased x1: T1, x2: T2, ..., xN: TN) ?=> y` has type
+     `erased (T1, T2, ..., TN) ?=> R`
 
-   Note that there is no subtype relation between `(erased T) => R` and `T => R` (or `(given erased T) => R` and `(given T) => R`)
+   Note that there is no subtype relation between `erased T => R` and `T => R` (or `erased T ?=> R` and `T ?=> R`)
 
 
 4. Eta expansion
 
-   if `def f(erased x: T): U` then `f: (erased T) => U`.
+If `def f(erased x: T): U` then `f: erased T => U`. In fact `f`
+expands to `erased (x: T) => f(x)`
 
 
 5. Erasure semantics
-   * All `erased` parameters are removed from the function
-   * All argument to `erased` parameters are not passed to the function
+   * All `erased` parameters are removed from a method
+   * All arguments to `erased` parameters are not passed to the method
    * All `erased` definitions are removed
-   * All `(erased T1, T2, ..., TN) => R` and `(given erased T1, T2, ..., TN) => R` become `() => R`
-
+   * All `erased (T1, T2, ..., TN) => R` and `erased (T1, T2, ..., TN) ?=> R` become `R`
 
 6. Overloading
 
