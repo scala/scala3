@@ -3,7 +3,7 @@ import language.experimental.erasedDefinitions
 
 class CanThrow[E <: Exception]
 
-infix type throws[R, E <: Exception] = (erased CanThrow[E]) ?=> R
+infix type throws[R, E <: Exception] = erased CanThrow[E] ?=> R
 
 class Fail extends Exception
 

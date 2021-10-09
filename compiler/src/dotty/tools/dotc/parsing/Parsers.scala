@@ -1336,7 +1336,7 @@ object Parsers {
      *                   |  MatchType
      *                   |  InfixType
      *  FunType        ::=  (MonoFunType | PolyFunType)
-     *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
+     *  MonoFunType    ::=  [`erased`] FunTypeArgs (‘=>’ | ‘?=>’) Type
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
@@ -1345,6 +1345,8 @@ object Parsers {
     def typ(): Tree = {
       val start = in.offset
       var imods = Modifiers()
+      if isErased then imods = addModifier(imods)
+
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
         atSpan(start, in.offset) {
@@ -1394,7 +1396,6 @@ object Parsers {
             functionRest(Nil)
           }
           else {
-            if isErased then imods = addModifier(imods)
             val paramStart = in.offset
             val ts = funArgType() match {
               case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
@@ -1866,7 +1867,7 @@ object Parsers {
       accept(altToken)
       t
 
-    /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
+    /** Expr              ::=  [`implicit' | `erased'] FunParams (‘=>’ | ‘?=>’) Expr
      *                      |  HkTypeParamClause ‘=>’ Expr
      *                      |  Expr1
      *  FunParams         ::=  Bindings
@@ -1906,12 +1907,11 @@ object Parsers {
 
     def expr(location: Location): Tree = {
       val start = in.offset
-      def isSpecialClosureStart = in.lookahead.isIdent(nme.erased) && in.erasedEnabled
       in.token match
         case IMPLICIT =>
           closure(start, location, modifiers(BitSet(IMPLICIT)))
-        case LPAREN if isSpecialClosureStart =>
-          closure(start, location, Modifiers())
+        case IDENTIFIER if in.name == nme.erased && in.erasedEnabled =>
+          closure(start, location, addModifier(Modifiers()))
         case LBRACKET =>
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
@@ -2133,12 +2133,8 @@ object Parsers {
         if in.token == RPAREN then
           Nil
         else
-          var mods1 = mods
-          if isErased then mods1 = addModifier(mods1)
-          try
-            commaSeparated(() => binding(mods1))
-          finally
-            accept(RPAREN)
+          try commaSeparated(() => binding(mods))
+          finally accept(RPAREN)
       else {
         val start = in.offset
         val name = bindingName()
