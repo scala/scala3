@@ -1,0 +1,6 @@
+-- [E050] Type Error: tests/neg/i13696.scala:3:13 ----------------------------------------------------------------------
+3 |  x.getOrElse(() => 42)() // error: expression does not take more parameters
+  |  ^^^^^^^^^^^^^^^^^^^^^
+  |  expression does not take more parameters
+
+longer explanation available when compiling with `-explain`
