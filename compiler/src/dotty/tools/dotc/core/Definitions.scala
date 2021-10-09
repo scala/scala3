@@ -133,7 +133,8 @@ class Definitions {
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
       }
     }
-    val maybeFinal = if name.isErasedFunction then Final else EmptyFlags
+    val maybeFinal =
+      if name.isErasedFunction || name.isContextFunction then Final else EmptyFlags
     val flags = Trait | NoInits | maybeFinal
     newPermanentClassSymbol(ScalaPackageClass, name, flags, completer)
   }

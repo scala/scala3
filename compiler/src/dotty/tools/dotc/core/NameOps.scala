@@ -205,10 +205,11 @@ object NameOps {
      *  is not one of "", "Context", "Erased", "ErasedContext"
      */
     private def checkedFunArity(suffixStart: Int): Int =
-      if suffixStart == 0
-         || isPreceded("Context", suffixStart)
-         || isPreceded("Erased", suffixStart)
-         || isPreceded("ErasedContext", suffixStart)
+      if suffixStart >= 0
+        && (suffixStart == 0
+            || isPreceded("Context", suffixStart)
+            || isPreceded("Erased", suffixStart)
+            || isPreceded("ErasedContext", suffixStart))
       then funArity(suffixStart)
       else -1
 
@@ -226,14 +227,24 @@ object NameOps {
      */
     def isContextFunction: Boolean =
       val suffixStart = functionSuffixStart
-      (isPreceded("Context", suffixStart) || isPreceded("ErasedContext", suffixStart))
+      suffixStart > 0
+      && (isPreceded("Context", suffixStart) || isPreceded("ErasedContext", suffixStart))
       && funArity(suffixStart) >= 0
 
     /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedContextFunctionN for N >= 0
       */
     def isErasedFunction: Boolean =
       val suffixStart = functionSuffixStart
-      (isPreceded("Erased", suffixStart) || isPreceded("ErasedContext", suffixStart))
+      suffixStart > 0
+      && (isPreceded("Erased", suffixStart) || isPreceded("ErasedContext", suffixStart))
+      && funArity(suffixStart) >= 0
+
+    def isErasedOrContextFunction: Boolean =
+      val suffixStart = functionSuffixStart
+      suffixStart > 0
+      && (isPreceded("Erased", suffixStart)
+          || isPreceded("ErasedContext", suffixStart)
+          || isPreceded("Context", suffixStart))
       && funArity(suffixStart) >= 0
 
     /** Is a synthetic function name, i.e. one of
