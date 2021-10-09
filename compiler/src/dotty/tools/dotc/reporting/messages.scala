@@ -1352,7 +1352,9 @@ import transform.SymUtils._
     def methodSymbol: Symbol =
       def recur(t: tpd.Tree): Symbol =
         t match {
+          // See neg/i13696
           case Apply(TypeApply(_, List(tpt)), _) if tpt.tpe.classSymbol == defn.ObjectClass => NoSymbol
+
           case _ =>
             val sym = tpd.methPart(t).symbol
             if sym == defn.Any_typeCast then
