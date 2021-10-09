@@ -1351,12 +1351,16 @@ import transform.SymUtils._
   extends TypeMsg(MethodDoesNotTakeParametersId) {
     def methodSymbol: Symbol =
       def recur(t: tpd.Tree): Symbol =
-        val sym = tpd.methPart(t).symbol
-        if sym == defn.Any_typeCast then
-          t match
-            case TypeApply(Select(qual, _), _) => recur(qual)
-            case _ => sym
-        else sym
+        t match {
+          case Apply(TypeApply(_, List(tpt)), _) if tpt.tpe.classSymbol == defn.ObjectClass => NoSymbol
+          case _ =>
+            val sym = tpd.methPart(t).symbol
+            if sym == defn.Any_typeCast then
+              t match
+                case TypeApply(Select(qual, _), _) => recur(qual)
+                case _ => sym
+            else sym
+        }
       recur(tree)
 
     def msg = {
