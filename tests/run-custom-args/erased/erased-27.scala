@@ -2,7 +2,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     ({
       println("block")
-      foo
+      (x: Int) => foo(x)
     })(x)
   }
   def foo(erased a: Int): Unit = {

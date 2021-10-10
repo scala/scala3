@@ -3520,6 +3520,7 @@ class Typer extends Namer
       if arity >= 0
          && !tree.symbol.isConstructor
          && !tree.symbol.isAllOf(InlineMethod)
+         && !wtp.isErasedMethod
          && !ctx.mode.is(Mode.Pattern)
          && !(isSyntheticApply(tree) && !functionExpected)
       then

@@ -21,7 +21,7 @@ TODO: complete
     def g(erased x: Int) = ...
 
     erased (x: Int) => ...
-    def h(x: (erased Int) => Int) = ...
+    def h(x: erased Int => Int) = ...
 
     class K(erased x: Int) { ... }
     erased class E {}
@@ -34,6 +34,7 @@ TODO: complete
 
 
 3. Functions
+
    * `erased(x1: T1, x2: T2, ..., xN: TN) => y` has type
      `erased(T1, T2, ..., TN) => R`
    * `(erased x1: T1, x2: T2, ..., xN: TN) ?=> y` has type
@@ -41,12 +42,9 @@ TODO: complete
 
    Note that there is no subtype relation between `erased T => R` and `T => R` (or `erased T ?=> R` and `T ?=> R`)
 
-
 4. Eta expansion
 
-If `def f(erased x: T): U` then `f: erased T => U`. In fact `f`
-expands to `erased (x: T) => f(x)`
-
+Erased methods must be fully applied to arguments, they are not automatically eta-expanded.
 
 5. Erasure semantics
    * All `erased` parameters are removed from a method

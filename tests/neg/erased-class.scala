@@ -7,3 +7,5 @@ erased class BB extends AA // ok
   def f2(x: Int): Array[AA] = ??? // error
   def bar: AA = ???  // ok
   val baz: AA = ??? // ok
+
+  val x1: erased AA => String = erased _ => ""
