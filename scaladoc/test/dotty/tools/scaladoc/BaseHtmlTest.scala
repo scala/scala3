@@ -23,26 +23,26 @@ class BaseHtmlTest:
     withGeneratedDoc(Seq("site"), docsRoot = Some(base.toAbsolutePath.toString))(op)
 
   def withGeneratedDoc(
-      pcks: Seq[String],
-      docsRoot: Option[String] = None,
-      customArgs: Option[Scaladoc.Args] = None,
-    )(
-      op: ProjectContext ?=> Unit,
-    ): Unit =
-      val dest = customArgs.map(_.output).getOrElse(Files.createTempDirectory("test-doc").toFile)
-      try
-        val args = customArgs.getOrElse(Scaladoc.Args(
-          name = projectName,
-          tastyFiles = pcks.flatMap(tastyFiles(_)),
-          output = dest,
-          docsRoot = docsRoot,
-          projectVersion = Some(projectVersion)
-        ))
-        Scaladoc.run(args)(using testContext)
-        op(using ProjectContext(args.output.toPath))
+    pcks: Seq[String],
+    docsRoot: Option[String] = None,
+    customArgs: Option[Scaladoc.Args] = None,
+  )(
+    op: ProjectContext ?=> Unit,
+  ): Unit =
+    val dest = customArgs.fold(Files.createTempDirectory("test-doc").toFile)(_.output)
+    try
+      val args = customArgs.getOrElse(Scaladoc.Args(
+        name = projectName,
+        tastyFiles = pcks.flatMap(tastyFiles(_)),
+        output = dest,
+        docsRoot = docsRoot,
+        projectVersion = Some(projectVersion)
+      ))
+      Scaladoc.run(args)(using testContext)
+      op(using ProjectContext(args.output.toPath))
 
-      finally IO.delete(dest)
-
+    finally IO.delete(dest)
+  end withGeneratedDoc
   class DocumentContext(d: Document, path: Path):
     import collection.JavaConverters._
 
