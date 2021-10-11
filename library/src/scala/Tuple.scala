@@ -82,6 +82,13 @@ object Tuple {
     case x *: _ => x
   }
 
+  /** Type of the initial part of the tuple without its last element */
+  type Init[X <: NonEmptyTuple] <: Tuple = X match {
+    case x *: EmptyTuple => x *: EmptyTuple
+    case (x *: _) *: EmptyTuple => x *: EmptyTuple
+    case x *: xs => x *: Init[xs]
+  }
+
   /** Type of the tail of a tuple */
   type Tail[X <: NonEmptyTuple] <: Tuple = X match {
     case _ *: xs => xs
@@ -274,6 +281,10 @@ sealed trait NonEmptyTuple extends Tuple {
   /** Get the head of this tuple */
   inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
+
+  /** Get the initial part of the tuple without its last element */
+  inline def init[This >: this.type <: NonEmptyTuple]: Init[This] =
+    runtime.Tuples.init(this).asInstanceOf[Init[This]]
 
   /** Get the last of this tuple */
   inline def last[This >: this.type <: NonEmptyTuple]: Last[This] =
