@@ -87,6 +87,12 @@ object Tuple {
     case _ *: xs => xs
   }
 
+  /** Type of the last of a tuple */
+  type Last[X <: NonEmptyTuple] = X match {
+    case x *: EmptyTuple => x
+    case _ *: xs => Last[xs]
+  }
+
   /** Type of the concatenation of two tuples */
   type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match {
     case EmptyTuple => Y
@@ -268,6 +274,10 @@ sealed trait NonEmptyTuple extends Tuple {
   /** Get the head of this tuple */
   inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
+
+  /** Get the last of this tuple */
+  inline def last[This >: this.type <: NonEmptyTuple]: Last[This] =
+    runtime.Tuples.last(this).asInstanceOf[Last[This]]
 
   /** Get the tail of this tuple.
    *  This operation is O(this.size)

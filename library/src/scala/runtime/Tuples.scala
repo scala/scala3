@@ -355,6 +355,10 @@ object Tuples {
     case _ => specialCaseTail(self)
   }
 
+  def last(self: NonEmptyTuple): Any = (self: Any) match {
+    case self: Product => self.productElement(self.productArity)
+  }
+
   def apply(self: NonEmptyTuple, n: Int): Any =
     self.productElement(n)
 
