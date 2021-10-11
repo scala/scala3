@@ -1792,7 +1792,12 @@ object Build {
       settings(tastyCoreSettings).
       settings(disableDocSetting).
       settings(
-        versionScheme := Some("semver-spec")
+        versionScheme := Some("semver-spec"),
+        if (mode == Bootstrapped) {
+          commonMiMaSettings
+        } else {
+          Nil
+        }
       )
 
     def asTastyCoreScala2: Project = project.settings(commonScala2Settings)
