@@ -42,7 +42,6 @@ import org.scalajs.ir.Trees.OptimizerHints
 import dotty.tools.dotc.transform.sjs.JSSymUtils._
 
 import JSEncoding._
-import JSInterop._
 import ScopedVar.withScopedVars
 
 /** Main codegen for Scala.js IR.
@@ -526,7 +525,7 @@ class JSCodeGen()(using genCtx: Context) {
               /* We add symbols that we have to expose here. This way we also
                * get inherited stuff that is implemented in this class.
                */
-              dispatchMethodNames += jsNameOf(sym)
+              dispatchMethodNames += sym.jsName
             }
           }
 
