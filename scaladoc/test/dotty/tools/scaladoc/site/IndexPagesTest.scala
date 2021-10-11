@@ -33,7 +33,6 @@ class IndexPagesTest extends BaseHtmlTest:
   def NOstaticSiteAndNOApiSubdirectory = gridTest(baseArgs.copy(docsRoot = None, apiSubdirectory = false))
 
   private def gridTest(args: Scaladoc.Args) = withGeneratedDoc(Seq.empty, None, customArgs = Some(args)) {
-    println(args.output)
     withHtmlFile("index.html") { content  =>
       content.fileExists
     }
