@@ -156,26 +156,6 @@ object JSSymUtils {
     def isJSBracketCall(using Context): Boolean =
       sym.hasAnnotation(jsdefn.JSBracketCallAnnot)
 
-    /** Is this symbol a default param accessor for a JS method?
-     *
-     *  For default param accessors of *constructors*, we need to test whether
-     *  the companion *class* of the owner is a JS type; not whether the owner
-     *  is a JS type.
-     */
-    def isJSDefaultParam(using Context): Boolean = {
-      sym.name.is(DefaultGetterName) && {
-        val owner = sym.owner
-        val methName = sym.name.exclude(DefaultGetterName)
-        if (methName == nme.CONSTRUCTOR) {
-          owner.linkedClass.isJSType
-        } else {
-          def isAttachedMethodExposed: Boolean =
-            owner.info.decl(methName).hasAltWith(_.symbol.isJSExposed)
-          owner.isJSType && (!owner.isNonNativeJSClass || isAttachedMethodExposed)
-        }
-      }
-    }
-
     /** Is this symbol a default param accessor for the constructor of a native JS class? */
     def isJSNativeCtorDefaultParam(using Context): Boolean = {
       sym.name.is(DefaultGetterName)
