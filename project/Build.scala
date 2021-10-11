@@ -473,7 +473,10 @@ object Build {
 
   lazy val `scala3-interfaces` = project.in(file("interfaces")).
     settings(commonJavaSettings).
-    settings(commonMiMaSettings)
+    settings(commonMiMaSettings).
+    settings(
+      versionScheme := Some("semver-spec")
+    )
 
   /** Find an artifact with the given `name` in `classpath` */
   def findArtifact(classpath: Def.Classpath, name: String): File = classpath
@@ -1761,6 +1764,7 @@ object Build {
       val base =
         project.withCommonSettings.
           settings(
+            versionScheme := Some("semver-spec"),
             libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion,
             // Make sure we do not refer to experimental features outside an experimental scope.
             // In other words, disable NIGHTLY/SNAPSHOT experimental scope.
@@ -1786,7 +1790,15 @@ object Build {
     def asTastyCore(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyLibrary).
       settings(tastyCoreSettings).
-      settings(disableDocSetting)
+      settings(disableDocSetting).
+      settings(
+        versionScheme := Some("semver-spec"),
+        if (mode == Bootstrapped) {
+          commonMiMaSettings
+        } else {
+          Nil
+        }
+      )
 
     def asTastyCoreScala2: Project = project.settings(commonScala2Settings)
 
