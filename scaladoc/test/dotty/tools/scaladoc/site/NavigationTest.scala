@@ -22,7 +22,7 @@ class NavigationTest extends BaseHtmlTest:
 
 
   @Test
-  def testBasicNavigation() = withGeneratedSite(testDocPath.resolve("basic")){
+  def testBasicNavigation() = withGeneratedSite(testDocPath.resolve("basic")) {
     val topLevelNav = NavMenuTestEntry(projectName, "index.html", Seq(
       NavMenuTestEntry("A directory", "dir/index.html", Seq(
         NavMenuTestEntry("Nested in a directory", "dir/nested.html", Nil)
