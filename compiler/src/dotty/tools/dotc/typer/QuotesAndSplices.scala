@@ -70,9 +70,7 @@ trait QuotesAndSplices {
   }
 
   private def makeInlineable(tree: Tree)(using Context): Tree =
-    def quoteOwner(sym: Symbol): Symbol =
-      if sym.owner.isClass then sym else quoteOwner(sym.owner)
-    inContext(ctx.withOwner(quoteOwner(ctx.owner))) {
+    inContext(ctx.withOwner(ctx.owner.skipLocalOwners)) {
       PrepareInlineable.makeInlineable(tree)
     }
 

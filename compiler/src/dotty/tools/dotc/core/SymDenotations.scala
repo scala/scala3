@@ -1110,6 +1110,11 @@ object SymDenotations {
       enclClass(symbol, false)
     }
 
+    /** Skips symbol that are not owned by a class */
+    def skipLocalOwners(using Context): Symbol =
+      if symbol.owner.isClass then symbol
+      else symbol.owner.skipLocalOwners
+
     /** A class that in source code would be lexically enclosing */
     final def lexicallyEnclosingClass(using Context): Symbol =
       if (!exists || isClass) symbol else owner.lexicallyEnclosingClass
