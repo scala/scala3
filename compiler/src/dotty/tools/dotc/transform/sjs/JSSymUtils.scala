@@ -156,13 +156,6 @@ object JSSymUtils {
     def isJSBracketCall(using Context): Boolean =
       sym.hasAnnotation(jsdefn.JSBracketCallAnnot)
 
-    /** Is this symbol a default param accessor for the constructor of a native JS class? */
-    def isJSNativeCtorDefaultParam(using Context): Boolean = {
-      sym.name.is(DefaultGetterName)
-        && sym.name.exclude(DefaultGetterName) == nme.CONSTRUCTOR
-        && sym.owner.linkedClass.hasAnnotation(jsdefn.JSNativeAnnot)
-    }
-
     def jsCallingConvention(using Context): JSCallingConvention =
       JSCallingConvention.of(sym)
 
