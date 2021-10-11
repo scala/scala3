@@ -2007,8 +2007,46 @@ class JSCodeGen()(using genCtx: Context) {
     val args = tree.args
     val sym = tree.fun.symbol
 
+    /* Is the method a JS default accessor, which should become an
+     * `UndefinedParam` rather than being compiled normally.
+     *
+     * This is true iff one of the following conditions apply:
+     * - It is a constructor default param for the constructor of a JS class.
+     * - It is a default param of an instance method of a native JS type.
+     * - It is a default param of an instance method of a non-native JS type
+     *   and the attached method is exposed.
+     * - It is a default param for a native JS def.
+     */
+    def isJSDefaultParam: Boolean = {
+      sym.name.is(DefaultGetterName) && {
+        val info = new DefaultParamInfo(sym)
+        if (info.isForConstructor) {
+          /* This is a default accessor for a constructor parameter. Check
+           * whether the attached constructor is a JS constructor, which is
+           * the case iff the linked class is a JS type.
+           */
+          info.constructorOwner.isJSType
+        } else {
+          if (sym.owner.isJSType) {
+            /* The default accessor is in a JS type. It is a JS default
+             * param iff the enclosing class is native or the attached method
+             * is exposed.
+             */
+            !sym.owner.isNonNativeJSClass || info.attachedMethod.isJSExposed
+          } else {
+            /* The default accessor is in a Scala type. It is a JS default
+             * param iff the attached method is a native JS def. This can
+             * only happen if the owner is a module class, which we test
+             * first as a fast way out.
+             */
+            sym.owner.is(ModuleClass) && info.attachedMethod.hasAnnotation(jsdefn.JSNativeAnnot)
+          }
+        }
+      }
+    }
+
     tree.fun match {
-      case _ if sym.isJSDefaultParam =>
+      case _ if isJSDefaultParam =>
         js.Transient(UndefinedParam)
 
       case Select(Super(_, _), _) =>
@@ -4576,6 +4614,33 @@ object JSCodeGen {
 
     def printIR(out: ir.Printers.IRTreePrinter): Unit =
       out.print("<undefined-param>")
+  }
+
+  /** Info about a default param accessor.
+   *
+   *  The method must have a default getter name for this class to make sense.
+   */
+  private class DefaultParamInfo(sym: Symbol)(using Context) {
+    private val methodName = sym.name.exclude(DefaultGetterName)
+
+    def isForConstructor: Boolean = methodName == nme.CONSTRUCTOR
+
+    /** When `isForConstructor` is true, returns the owner of the attached
+     *  constructor.
+     */
+    def constructorOwner: Symbol = sym.owner.linkedClass
+
+    /** When `isForConstructor` is false, returns the method attached to the
+     *  specified default accessor.
+     */
+    def attachedMethod: Symbol = {
+      // If there are overloads, we need to find the one that has default params.
+      val overloads = sym.owner.info.decl(methodName)
+      if (!overloads.isOverloaded)
+        overloads.symbol
+      else
+        overloads.suchThat(_.is(HasDefaultParams)).symbol
+    }
   }
 
 }
