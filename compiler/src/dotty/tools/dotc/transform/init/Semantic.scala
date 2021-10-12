@@ -17,9 +17,10 @@ import reporting.trace as log
 import Errors._
 
 import scala.collection.mutable
+import scala.annotation.tailrec
+import scala.annotation.constructorOnly
 
-class Semantic {
-  import Semantic._
+object Semantic {
 
 // ----- Domain definitions --------------------------------
 
@@ -33,7 +34,7 @@ class Semantic {
    *        │         │       │       │
    *        |         │       │       │
    *        |         │       │       │
-   *   ThisRef(C)  Warm(D)   Fun    RefSet
+   *     ThisRef     Warm   Fun    RefSet
    *        │         ▲       ▲       ▲
    *        │         │       │       │
    *        |         │       │       │
@@ -54,6 +55,11 @@ class Semantic {
    */
   sealed abstract class Value {
     def show: String = this.toString()
+
+    def isHot = this == Hot
+    def isCold = this == Cold
+    def isWarm = this.isInstanceOf[Warm]
+    def isThisRef = this.isInstanceOf[ThisRef]
   }
 
   /** A transitively initialized object */
@@ -62,14 +68,13 @@ class Semantic {
   /** An object with unknown initialization status */
   case object Cold extends Value
 
-  sealed abstract class Addr extends Value {
+  sealed abstract class Ref extends Value {
     def klass: ClassSymbol
     def outer: Value
   }
 
-  /** A reference to the object under initialization pointed by `this`
-   */
-  case class ThisRef(klass: ClassSymbol) extends Addr {
+  /** A reference to the object under initialization pointed by `this` */
+  case class ThisRef(klass: ClassSymbol) extends Ref {
     val outer = Hot
   }
 
@@ -77,16 +82,52 @@ class Semantic {
    *
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
-  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Addr
+  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref {
+
+    /** If a warm value is in the process of populating parameters, class bodies are not executed. */
+    private var populatingParams: Boolean = false
+
+    def isPopulatingParams = populatingParams
+
+    /** Ensure that outers and class parameters are initialized.
+     *
+     *  Fields in class body are not initialized.
+     *
+     *  We need to populate class parameters and outers for warm values for the
+     *  following cases:
+     *
+     *  - Widen an already checked warm value to another warm value without
+     *    corresponding object
+     *
+     *  - Using a warm value from the cache, whose corresponding object from
+     *    the last iteration have been remove due to heap reversion
+     *    {@see Cache.prepareForNextIteration}
+     *
+     *  After populating class parameters and outers, it is possible to lazily
+     *  compute the field values in class bodies when they are accessed.
+     */
+    private def populateParams(): Contextual[this.type] = log("populating parameters", printer, (_: Warm).objekt.toString) {
+      assert(!populatingParams, "the object is already populating parameters")
+      populatingParams = true
+      val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+      this.callConstructor(ctor, args.map(arg => ArgInfo(arg, EmptyTree)), tpl)
+      populatingParams = false
+      this
+    }
+
+    def ensureObjectExistsAndPopulated(): Contextual[this.type] =
+      if cache.containsObject(this) then this
+      else this.ensureFresh().populateParams()
+  }
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol, env: Env) extends Value
+  case class Fun(expr: Tree, thisV: Ref, klass: ClassSymbol, env: Env) extends Value
 
   /** A value which represents a set of addresses
    *
    * It comes from `if` expressions.
    */
-  case class RefSet(refs: List[Fun | Addr]) extends Value
+  case class RefSet(refs: List[Fun | Ref]) extends Value
 
   // end of value definition
 
@@ -97,48 +138,15 @@ class Semantic {
    *
    *  Note: Object is NOT a value.
    */
-  case class Objekt(klass: ClassSymbol, fields: mutable.Map[Symbol, Value], outers: mutable.Map[ClassSymbol, Value])
+  case class Objekt(val klass: ClassSymbol, val fields: Map[Symbol, Value], val outers: Map[ClassSymbol, Value]) {
+    def field(f: Symbol): Value = fields(f)
 
-  /** Abstract heap stores abstract objects
-   *
-   *  As in the OOPSLA paper, the abstract heap is monotonistic.
-   *
-   */
-  object Heap {
-    opaque type Heap = mutable.Map[Addr, Objekt]
+    def outer(klass: ClassSymbol) = outers(klass)
 
-    /** Note: don't use `val` to avoid incorrect sharing */
-    def empty: Heap = mutable.Map.empty
+    def hasOuter(klass: ClassSymbol) = outers.contains(klass)
 
-    extension (heap: Heap)
-      def contains(addr: Addr): Boolean = heap.contains(addr)
-      def apply(addr: Addr): Objekt = heap(addr)
-      def update(addr: Addr, obj: Objekt): Unit =
-        heap(addr) = obj
-    end extension
-
-    extension (ref: Addr)
-      /** Update field value of the abstract object
-       *
-       *  Invariant: fields are immutable and only set once from `init`
-       */
-      def updateField(field: Symbol, value: Value): Contextual[Unit] =
-        val fields = heap(ref).fields
-        assert(!fields.contains(field), field.show + " already init, new = " + value + ", ref =" + ref)
-        fields(field) = value
-
-      /** Update the immediate outer of the given `klass` of the abstract object
-       *
-       *  Invariant: outers are immutable and only set once from `init`
-       */
-      def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] =
-        heap(ref).outers(klass) = value
-    end extension
+    def hasField(f: Symbol) = fields.contains(f)
   }
-  type Heap = Heap.Heap
-
-  import Heap._
-  val heap: Heap = Heap.empty
 
   /** The environment for method parameters
    *
@@ -182,7 +190,7 @@ class Semantic {
   }
 
   type Env = Env.Env
-  def env(using env: Env) = env
+  inline def env(using env: Env) = env
   inline def withEnv[T](env: Env)(op: Env ?=> T): T = op(using env)
 
   import Env._
@@ -210,7 +218,7 @@ class Semantic {
   type Promoted = Promoted.Promoted
 
   import Promoted._
-  def promoted(using p: Promoted): Promoted = p
+  inline def promoted(using p: Promoted): Promoted = p
 
   /** Interpreter configuration
    *
@@ -225,8 +233,8 @@ class Semantic {
    * maps configuration to evaluation result.
    *
    * Thanks to heap monotonicity, heap is not part of the configuration.
-   * Which also avoid computing fix-point on the cache, as the cache is
-   * immutable.
+   *
+   * This class is only used for the purpose of documentation.
    */
   case class Config(thisV: Value, expr: Tree)
 
@@ -243,8 +251,151 @@ class Semantic {
    * statement body. Macros may also create incorrect locations.
    *
    */
-  type Cache = mutable.Map[Value, EqHashMap[Tree, Value]]
-  val cache: Cache = mutable.Map.empty[Value, EqHashMap[Tree, Value]]
+
+  object Cache {
+    opaque type CacheStore = mutable.Map[Value, EqHashMap[Tree, Value]]
+    private type Heap = Map[Ref, Objekt]
+
+    class Cache {
+      private var last: CacheStore =  mutable.Map.empty
+      private var current: CacheStore = mutable.Map.empty
+      private val stable: CacheStore = mutable.Map.empty
+      private var changed: Boolean = false
+
+      /** Abstract heap stores abstract objects
+       *
+       *  The heap serves as cache of summaries for warm objects and is shared for checking all classes.
+       *
+       *  The fact that objects of `ThisRef` are stored in heap is just an engineering convenience.
+       *  Technically, we can also store the object directly in `ThisRef`.
+       *
+       *  The heap contains objects of two conceptually distinct kinds.
+       *
+       *  - Objects that are also in `heapStable` are flow-insensitive views of already initialized objects that are
+       *    cached for reuse in analysis of later classes. These objects and their fields should never change; this is
+       *    enforced using assertions.
+       *
+       *  - Objects that are not (yet) in `heapStable` are the flow-sensitive abstract state of objects being analyzed
+       *    in the current iteration of the analysis of the current class. Their fields do change flow-sensitively: more
+       *    fields are added as fields become initialized. These objects are valid only within the current iteration and
+       *    are removed when moving to a new iteration of analyzing the current class. When the analysis of a class
+       *    reaches a fixed point, these now stable flow-sensitive views of the object at the end of the constructor
+       *    of the analyzed class now become the flow-insensitive views of already initialized objects and can therefore
+       *    be added to `heapStable`.
+       */
+      private var heap: Heap = Map.empty
+
+      /** Used to revert heap to last stable heap. */
+      private var heapStable: Heap = Map.empty
+
+      def hasChanged = changed
+
+      def contains(value: Value, expr: Tree) =
+        current.contains(value, expr) || stable.contains(value, expr)
+
+      def apply(value: Value, expr: Tree) =
+        if current.contains(value, expr) then current(value)(expr)
+        else stable(value)(expr)
+
+      /** Copy the value of `(value, expr)` from the last cache to the current cache
+       * (assuming it's `Hot` if it doesn't exist in the cache).
+       *
+       * Then, runs `fun` and update the caches if the values change.
+       */
+      def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result): Contextual[Result] =
+        val assumeValue: Value =
+          if last.contains(value, expr) then
+            last.get(value, expr)
+          else
+            last.put(value, expr, Hot)
+            Hot
+          end if
+        current.put(value, expr, assumeValue)
+
+        val actual = fun
+        if actual.value != assumeValue then
+          this.changed = true
+          last.put(value, expr, actual.value)
+          current.put(value, expr, actual.value)
+        else
+          // It's tempting to cache the value in stable, but it's unsound.
+          // The reason is that the current value may depend on other values
+          // which might change.
+          //
+          // stable.put(value, expr, actual)
+          ()
+        end if
+
+        actual
+      end assume
+
+      /** Commit current cache to stable cache. */
+      private def commitToStableCache() =
+        current.foreach { (v, m) =>
+          // It's useless to cache value for ThisRef.
+          if v.isWarm then m.iterator.foreach { (e, res) =>
+            stable.put(v, e, res)
+          }
+        }
+
+      /** Prepare cache for the next iteration
+       *
+       *  1. Reset changed flag.
+       *
+       *  2. Reset current cache (last cache already synced in `assume`).
+       *
+       *  3. Revert heap if instable.
+       *
+       */
+      def prepareForNextIteration()(using Context) =
+        this.changed = false
+        this.current = mutable.Map.empty
+        this.heap = this.heapStable
+
+      /** Prepare for checking next class
+       *
+       *  1. Reset changed flag.
+       *
+       *  2. Commit current cache to stable cache if not changed.
+       *
+       *  3. Update stable heap if not changed.
+       *
+       *  4. Reset last cache.
+       */
+      def prepareForNextClass()(using Context) =
+        if this.changed then
+          this.changed = false
+          this.heap = this.heapStable
+        else
+          this.commitToStableCache()
+          this.heapStable = this.heap
+
+        this.last = mutable.Map.empty
+        this.current = mutable.Map.empty
+
+      def updateObject(ref: Ref, obj: Objekt) =
+        assert(!this.heapStable.contains(ref))
+        this.heap = this.heap.updated(ref, obj)
+
+      def containsObject(ref: Ref) = heap.contains(ref)
+
+      def getObject(ref: Ref) = heap(ref)
+    }
+
+    extension (cache: CacheStore)
+      def contains(value: Value, expr: Tree) = cache.contains(value) && cache(value).contains(expr)
+      def get(value: Value, expr: Tree): Value = cache(value)(expr)
+      def remove(value: Value, expr: Tree) = cache(value).remove(expr)
+      def put(value: Value, expr: Tree, result: Value): Unit = {
+        val innerMap = cache.getOrElseUpdate(value, new EqHashMap[Tree, Value])
+        innerMap(expr) = result
+      }
+    end extension
+  }
+
+  import Cache._
+
+  inline def cache(using c: Cache): Cache = c
 
   /** Result of abstract interpretation */
   case class Result(value: Value, errors: Seq[Error]) {
@@ -263,12 +414,17 @@ class Semantic {
     def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree): Contextual[Result] =
       value.call(meth, args, superType, source) ++ errors
 
+    def callConstructor(ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] =
+      value.callConstructor(ctor, args, source) ++ errors
+
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] =
       value.instantiate(klass, ctor, args, source) ++ errors
   }
 
+// ----- Checker State -----------------------------------
+
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Env, Context, Trace, Promoted) ?=> T
+  type Contextual[T] = (Env, Context, Trace, Promoted, Cache) ?=> T
 
 // ----- Error Handling -----------------------------------
 
@@ -298,17 +454,25 @@ class Semantic {
       case (Cold, _) => Cold
       case (_, Cold) => Cold
 
-      case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) => RefSet(a :: b :: Nil)
+      case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) =>
+        if a == b then a else RefSet(a :: b :: Nil)
 
-      case (a: (Fun | Warm | ThisRef), RefSet(refs))    => RefSet(a :: refs)
-      case (RefSet(refs), b: (Fun | Warm | ThisRef))    => RefSet(b :: refs)
+      case (a: (Fun | Warm | ThisRef), RefSet(refs)) =>
+        if refs.exists(_ == a) then b: Value // fix pickling test
+        else RefSet(a :: refs)
 
-      case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
+      case (RefSet(refs), b: (Fun | Warm | ThisRef)) =>
+        if refs.exists(_ == b) then a: Value // fix pickling test
+        else RefSet(b :: refs)
+
+      case (RefSet(refs1), RefSet(refs2)) =>
+        val diff = refs2.filter(ref => refs1.forall(_ != ref))
+        RefSet(refs1 ++ diff)
 
     /** Conservatively approximate the value with `Cold` or `Hot` */
     def widenArg: Value =
       a match
-      case _: Addr | _: Fun => Cold
+      case _: Ref | _: Fun => Cold
       case RefSet(refs) => refs.map(_.widenArg).join
       case _ => a
 
@@ -320,8 +484,60 @@ class Semantic {
 
     def widenArgs: List[Value] = values.map(_.widenArg).toList
 
+
+  extension (ref: Ref)
+    def objekt: Contextual[Objekt] =
+      // TODO: improve performance
+      ref match
+        case warm: Warm => warm.ensureObjectExistsAndPopulated()
+        case _ =>
+      cache.getObject(ref)
+
+    def ensureObjectExists()(using Cache): ref.type =
+      if cache.containsObject(ref) then
+        printer.println("object " + ref + " already exists")
+        ref
+      else
+        ensureFresh()
+
+    def ensureFresh()(using Cache): ref.type =
+      val obj = Objekt(ref.klass, fields = Map.empty, outers = Map(ref.klass -> ref.outer))
+      printer.println("reset object " + ref)
+      cache.updateObject(ref, obj)
+      ref
+
+    /** Update field value of the abstract object
+     *
+     *  Invariant: fields are immutable and only set once
+     */
+    def updateField(field: Symbol, value: Value): Contextual[Unit] = log("set field " + field + " of " + ref + " to " + value) {
+      val obj = objekt
+      // We may reset the outers or params of a populated warm object.
+      // This is the case if we need access the field of a warm object, which
+      // requires population of parameters and outers; and later create an
+      // instance of the exact warm object, which requires initialization check.
+      //
+      // See tests/init/neg/unsound1.scala
+      assert(!obj.hasField(field) || field.is(Flags.ParamAccessor) && obj.field(field) == value, field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + ref)
+      val obj2 = obj.copy(fields = obj.fields.updated(field, value))
+      cache.updateObject(ref, obj2)
+    }
+
+    /** Update the immediate outer of the given `klass` of the abstract object
+     *
+     *  Invariant: outers are immutable and only set once
+     */
+    def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] = log("set outer " + klass + " of " + ref + " to " + value) {
+      val obj = objekt
+      // See the comment in `updateField` for setting the value twice.
+      assert(!obj.hasOuter(klass) || obj.outer(klass) == value, klass.show + " already has outer, new = " + value + ", old = " + obj.outer(klass) + ", ref = " + ref)
+      val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
+      cache.updateObject(ref, obj2)
+    }
+  end extension
+
   extension (value: Value)
-    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show, printer, (_: Result).show) {
+    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show + ", this = " + value, printer, (_: Result).show) {
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
         case Hot  =>
@@ -331,18 +547,18 @@ class Semantic {
           val error = AccessCold(field, source, trace.toVector)
           Result(Hot, error :: Nil)
 
-        case addr: Addr =>
-          val target = if needResolve then resolve(addr.klass, field) else field
+        case ref: Ref =>
+          val target = if needResolve then resolve(ref.klass, field) else field
           val trace1 = trace.add(source)
           if target.is(Flags.Lazy) then
             given Trace = trace1
             val rhs = target.defTree.asInstanceOf[ValDef].rhs
-            eval(rhs, addr, target.owner.asClass, cacheResult = true)
+            eval(rhs, ref, target.owner.asClass, cacheResult = true)
           else
-            val obj = heap(addr)
-            if obj.fields.contains(target) then
-              Result(obj.fields(target), Nil)
-            else if addr.isInstanceOf[Warm] then
+            val obj = ref.objekt
+            if obj.hasField(target) then
+              Result(obj.field(target), Nil)
+            else if ref.isInstanceOf[Warm] then
               if target.is(Flags.ParamAccessor) then
                 // possible for trait parameters
                 // see tests/init/neg/trait2.scala
@@ -351,7 +567,7 @@ class Semantic {
                 Result(Hot, Nil)
               else if target.hasSource then
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-                eval(rhs, addr, target.owner.asClass, cacheResult = true)
+                eval(rhs, ref, target.owner.asClass, cacheResult = true)
               else
                 val error = CallUnknown(field, source, trace.toVector)
                 Result(Hot, error :: Nil)
@@ -384,15 +600,15 @@ class Semantic {
           val error = CallCold(meth, source, trace.toVector)
           Result(Hot, error :: checkArgs)
 
-        case addr: Addr =>
+        case ref: Ref =>
           val isLocal = !meth.owner.isClass
           val target =
             if !needResolve then
               meth
             else if superType.exists then
-              resolveSuper(addr.klass, superType, meth)
+              resolveSuper(ref.klass, superType, meth)
             else
-              resolve(addr.klass, meth)
+              resolve(ref.klass, meth)
 
           if target.isOneOf(Flags.Method) then
             val trace1 = trace.add(source)
@@ -401,20 +617,11 @@ class Semantic {
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
               val env2 = Env(ddef, args.map(_.value).widenArgs)
-              if target.isPrimaryConstructor then
-                given Env = env2
-                val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                val res = withTrace(trace.add(cls.defTree)) { eval(tpl, addr, cls, cacheResult = true) }
-                Result(addr, res.errors)
-              else if target.isConstructor then
-                given Env = env2
-                eval(ddef.rhs, addr, cls, cacheResult = true)
-              else
-                // normal method call
-                withEnv(if isLocal then env else Env.empty) {
-                  eval(ddef.rhs, addr, cls, cacheResult = true) ++ checkArgs
-                }
-            else if addr.canIgnoreMethodCall(target) then
+              // normal method call
+              withEnv(if isLocal then env else Env.empty) {
+                eval(ddef.rhs, ref, cls, cacheResult = true) ++ checkArgs
+              }
+            else if ref.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
             else
               // no source code available
@@ -422,9 +629,9 @@ class Semantic {
               Result(Hot, error :: checkArgs)
           else
             // method call resolves to a field
-            val obj = heap(addr)
-            if obj.fields.contains(target) then
-              Result(obj.fields(target), Nil)
+            val obj = ref.objekt
+            if obj.hasField(target) then
+              Result(obj.field(target), Nil)
             else
               value.select(target, source, needResolve = false)
 
@@ -444,6 +651,54 @@ class Semantic {
       }
     }
 
+    def callConstructor(ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("call " + ctor.show + ", args = " + args, printer, (_: Result).show) {
+      value match {
+        case Hot | Cold | _: RefSet | _: Fun =>
+          report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, source)
+          Result(Hot, Nil)
+
+        case ref: Warm if ref.isPopulatingParams =>
+          val trace1 = trace.add(source)
+          if ctor.hasSource then
+            given Trace = trace1
+            val cls = ctor.owner.enclosingClass.asClass
+            val ddef = ctor.defTree.asInstanceOf[DefDef]
+            given Env = Env(ddef, args.map(_.value).widenArgs)
+            if ctor.isPrimaryConstructor then
+              val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+              init(tpl, ref, cls)
+            else
+              val initCall = ddef.rhs match
+                case Block(call :: _, _) => call
+                case call => call
+              eval(initCall, ref, cls)
+            end if
+          else
+            Result(Hot, Nil)
+
+        case ref: Ref =>
+          val trace1 = trace.add(source)
+          if ctor.hasSource then
+            given Trace = trace1
+            val cls = ctor.owner.enclosingClass.asClass
+            val ddef = ctor.defTree.asInstanceOf[DefDef]
+            given Env= Env(ddef, args.map(_.value).widenArgs)
+            if ctor.isPrimaryConstructor then
+              val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+              val res = withTrace(trace.add(cls.defTree)) { eval(tpl, ref, cls, cacheResult = true) }
+              Result(ref, res.errors)
+            else
+              eval(ddef.rhs, ref, cls, cacheResult = true)
+          else if ref.canIgnoreMethodCall(ctor) then
+            Result(Hot, Nil)
+          else
+            // no source code available
+            val error = CallUnknown(ctor, source, trace.toVector)
+            Result(Hot, error :: Nil)
+      }
+
+    }
+
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, (_: Result).show) {
       val trace1 = trace.add(source)
@@ -458,26 +713,33 @@ class Semantic {
             else arg.value.widenArg
           }
 
-          if buffer.isEmpty then Result(Hot, Errors.empty)
+          if buffer.isEmpty then
+            Result(Hot, Errors.empty)
           else
-            val value = Warm(klass, Hot, ctor, args2).ensureExists
-            val res = value.call(ctor, args, superType = NoType, source)
-            Result(value, res.errors)
+            val outer = Hot
+            val warm = Warm(klass, outer, ctor, args2).ensureObjectExists()
+            val argInfos2 = args.zip(args2).map { (argInfo, v) => argInfo.copy(value = v) }
+            val res = warm.callConstructor(ctor, argInfos2, source)
+            Result(warm, res.errors)
 
         case Cold =>
           val error = CallCold(ctor, source, trace1.toVector)
           Result(Hot, error :: Nil)
 
-        case addr: Addr =>
+        case ref: Ref =>
           given Trace = trace1
-          // widen the outer to finitize addresses
-          val outer = addr match
-            case Warm(_, _: Warm, _, _) => Cold
-            case _ => addr
+          // widen the outer to finitize the domain
+          val outer = ref match
+            case warm @ Warm(_, _: Warm, _, _) =>
+              // the widened warm object might not exist in the heap
+              warm.copy(outer = Cold).ensureObjectExistsAndPopulated()
+            case _ => ref
 
-          val value = Warm(klass, outer, ctor, args.map(_.value).widenArgs).ensureExists
-          val res = value.call(ctor, args, superType = NoType, source)
-          Result(value, res.errors)
+          val argsWidened = args.map(_.value).widenArgs
+          val argInfos2 = args.zip(argsWidened).map { (argInfo, v) => argInfo.copy(value = v) }
+          val warm = Warm(klass, outer, ctor, argsWidened).ensureObjectExists()
+          val res = warm.callConstructor(ctor, argInfos2, source)
+          Result(warm, res.errors)
 
         case Fun(body, thisV, klass, env) =>
           report.error("unexpected tree in instantiating a function, fun = " + body.show, source)
@@ -521,7 +783,7 @@ class Semantic {
 
               case Cold => Result(Cold, Nil)
 
-              case addr: Addr => eval(vdef.rhs, addr, klass)
+              case ref: Ref => eval(vdef.rhs, ref, enclosingClass)
 
               case _ =>
                  report.error("unexpected defTree when accessing local variable, sym = " + sym.show + ", defTree = " + sym.defTree.show, source)
@@ -533,7 +795,7 @@ class Semantic {
   end extension
 
 // ----- Promotion ----------------------------------------------------
-  extension (addr: Addr)
+  extension (ref: Ref)
     /** Whether the object is fully assigned
      *
      *  It means all fields and outers are set. For performance, we don't check
@@ -544,27 +806,20 @@ class Semantic {
      *  object freely, as its fields or outers may still reach uninitialized
      *  objects.
      */
-    def isFullyFilled: Contextual[Boolean] = log("isFullyFilled " + addr, printer) {
-      val obj = heap(addr)
-      addr.klass.baseClasses.forall { klass =>
+    def isFullyFilled: Contextual[Boolean] = log("isFullyFilled " + ref, printer) {
+      val obj = ref.objekt
+      ref.klass.baseClasses.forall { klass =>
         !klass.hasSource || {
           val nonInits = klass.info.decls.filter { member =>
             !member.isOneOf(Flags.Method | Flags.Lazy | Flags.Deferred)
             && !member.isType
-            && !obj.fields.contains(member)
+            && !obj.hasField(member)
           }
           printer.println("nonInits = " + nonInits)
           nonInits.isEmpty
         }
       }
     }
-
-    /** Ensure the corresponding object exists in the heap */
-    def ensureExists: addr.type =
-      if !heap.contains(addr) then
-        val obj = Objekt(addr.klass, fields = mutable.Map.empty, outers = mutable.Map(addr.klass -> addr.outer))
-        heap.update(addr, obj)
-      addr
 
   end extension
 
@@ -669,7 +924,7 @@ class Semantic {
   end extension
 
 // ----- Policies ------------------------------------------------------
-  extension (value: Addr)
+  extension (value: Ref)
     /** Can the method call on `value` be ignored?
      *
      *  Note: assume overriding resolution has been performed.
@@ -679,6 +934,76 @@ class Semantic {
       cls == defn.AnyClass ||
       cls == defn.AnyValClass ||
       cls == defn.ObjectClass
+
+// ----- Work list ---------------------------------------------------
+  case class Task(value: ThisRef)
+
+  class WorkList private[Semantic]() {
+    private var pendingTasks: List[Task] = Nil
+
+    def addTask(task: Task): Unit =
+      if !pendingTasks.contains(task) then pendingTasks = task :: pendingTasks
+
+    /** Process the worklist until done */
+    final def work()(using Cache, Context): Unit =
+      for task <- pendingTasks
+      do doTask(task)
+
+    /** Check an individual class
+     *
+     *  This method should only be called from the work list scheduler.
+     */
+    private def doTask(task: Task)(using Cache, Context): Unit = {
+      val thisRef = task.value
+      val tpl = thisRef.klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+
+      val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
+
+      @tailrec
+      def iterate(): Unit = {
+        given Promoted = Promoted.empty
+        given Trace = Trace.empty
+        given Env = Env(paramValues)
+
+        thisRef.ensureFresh()
+        val res = log("checking " + task) { eval(tpl, thisRef, thisRef.klass) }
+        res.errors.foreach(_.issue)
+
+        if cache.hasChanged && res.errors.isEmpty then
+          // code to prepare cache and heap for next iteration
+          cache.prepareForNextIteration()
+          iterate()
+        else
+          cache.prepareForNextClass()
+      }
+
+      iterate()
+    }
+  }
+  inline def workList(using wl: WorkList): WorkList = wl
+
+// ----- API --------------------------------
+
+  /** Add a checking task to the work list */
+  def addTask(thisRef: ThisRef)(using WorkList) = workList.addTask(Task(thisRef))
+
+  /** Perform check on the work list until it becomes empty
+   *
+   *  Should only be called once from the checker.
+   */
+  def check()(using Cache, WorkList, Context) = workList.work()
+
+  /** Perform actions with initial checking state.
+   *
+   *      Semantic.withInitialState {
+   *         Semantic.addTask(...)
+   *         ...
+   *         Semantic.check()
+   *      }
+   */
+  def withInitialState[T](work: (Cache, WorkList) ?=> T): T = {
+    work(using new Cache, new WorkList)
+  }
 
 // ----- Semantic definition --------------------------------
 
@@ -702,27 +1027,17 @@ class Semantic {
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Addr, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, (_: Result).show) {
-    val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
-    if (innerMap.contains(expr)) Result(innerMap(expr), Errors.empty)
-    else {
-      // no need to compute fix-point, because
-      // 1. the result is decided by `cfg` for a legal program
-      //    (heap change is irrelevant thanks to monotonicity)
-      // 2. errors will have been reported for an illegal program
-      innerMap(expr) = Hot
-      val res = cases(expr, thisV, klass)
-      if cacheResult then innerMap(expr) = res.value else innerMap.remove(expr)
-      res
-    }
+  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Result).show) {
+    if (cache.contains(thisV, expr)) Result(cache(thisV, expr), Errors.empty)
+    else cache.assume(thisV, expr, cacheResult) { cases(expr, thisV, klass) }
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Addr, klass: ClassSymbol): Contextual[List[Result]] =
+  def eval(exprs: List[Tree], thisV: Ref, klass: ClassSymbol): Contextual[List[Result]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[(List[Error], List[ArgInfo])] =
+  def evalArgs(args: List[Arg], thisV: Ref, klass: ClassSymbol): Contextual[(List[Error], List[ArgInfo])] =
     val errors = new mutable.ArrayBuffer[Error]
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
     args.foreach { arg =>
@@ -742,7 +1057,7 @@ class Semantic {
    *
    *  Note: Recursive call should go to `eval` instead of `cases`.
    */
-  def cases(expr: Tree, thisV: Addr, klass: ClassSymbol): Contextual[Result] =
+  def cases(expr: Tree, thisV: Ref, klass: ClassSymbol): Contextual[Result] =
     expr match {
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -776,7 +1091,10 @@ class Semantic {
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ errors
-          res.call(ref.symbol, args, superType = NoType, source = expr)
+          if ref.symbol.isConstructor then
+            res.callConstructor(ref.symbol, args, source = expr)
+          else
+            res.call(ref.symbol, args, superType = NoType, source = expr)
 
         case id: Ident =>
           id.tpe match
@@ -788,7 +1106,10 @@ class Semantic {
             thisValue2.call(id.symbol, args, superType = NoType, expr, needResolve = false)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ errors
-            res.call(id.symbol, args, superType = NoType, source = expr)
+            if id.symbol.isConstructor then
+              res.callConstructor(id.symbol, args, source = expr)
+            else
+              res.call(id.symbol, args, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
         val qualRes = eval(qualifier, thisV, klass)
@@ -889,7 +1210,7 @@ class Semantic {
       case vdef : ValDef =>
         // local val definition
         // TODO: support explicit @cold annotation for local definitions
-        eval(vdef.rhs, thisV, klass, cacheResult = true)
+        eval(vdef.rhs, thisV, klass)
 
       case ddef : DefDef =>
         // local method
@@ -911,7 +1232,7 @@ class Semantic {
     }
 
   /** Handle semantics of leaf nodes */
-  def cases(tp: Type, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, (_: Result).show) {
+  def cases(tp: Type, thisV: Ref, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, (_: Result).show) {
     tp match {
       case _: ConstantType =>
         Result(Hot, Errors.empty)
@@ -947,15 +1268,15 @@ class Semantic {
     else
       thisV match
         case Hot => Hot
-        case addr: Addr =>
-          val obj = heap(addr)
+        case ref: Ref =>
+          val obj = ref.objekt
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
-          if !obj.outers.contains(klass) then
-            val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass, source, trace.toVector)
+          if !obj.hasOuter(klass) then
+            val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj, source, trace.toVector)
             report.error(error.show + error.stacktrace, source)
             Hot
           else
-            resolveThis(target, obj.outers(klass), outerCls, source)
+            resolveThis(target, obj.outer(klass), outerCls, source)
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass, source)).join
         case fun: Fun =>
@@ -978,8 +1299,8 @@ class Semantic {
     thisV match
       case Hot => Hot
 
-      case addr: Addr =>
-        val obj = heap(addr)
+      case ref: Ref =>
+        val obj = ref.objekt
         val curOpt = obj.klass.baseClasses.find(cls => reachable(cls, hops))
         curOpt match
           case Some(cur) =>
@@ -1000,7 +1321,7 @@ class Semantic {
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
-  def outerValue(tref: TypeRef, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] =
+  def outerValue(tref: TypeRef, thisV: Ref, klass: ClassSymbol, source: Tree): Contextual[Result] =
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
@@ -1011,7 +1332,7 @@ class Semantic {
       else cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
-  def init(tpl: Template, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, (_: Result).show) {
+  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, (_: Result).show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
@@ -1039,7 +1360,7 @@ class Semantic {
       if cls.hasSource then
         tasks.append { () =>
           printer.println("init super class " + cls.show)
-          val res2 = thisV.call(ctor, args, superType = NoType, source)
+          val res2 = thisV.callConstructor(ctor, args, source)
           errorBuffer ++= res2.errors
           ()
         }
@@ -1102,14 +1423,15 @@ class Semantic {
 
       // initialize super classes after outers are set
       tasks.foreach(task => task())
+    end if
 
     var fieldsChanged = true
 
     // class body
-    tpl.body.foreach {
+    if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         given Env = Env.empty
-        val res = eval(vdef.rhs, thisV, klass, cacheResult = true)
+        val res = eval(vdef.rhs, thisV, klass)
         errorBuffer ++= res.errors
         thisV.updateField(vdef.symbol, res.value)
         fieldsChanged = true
@@ -1117,24 +1439,22 @@ class Semantic {
       case _: MemberDef =>
 
       case tree =>
-        thisV match
-        case thisRef: ThisRef =>
-          if fieldsChanged then thisRef.tryPromoteCurrentObject
-          fieldsChanged = false
-        case _ =>
+        if fieldsChanged && thisV.isThisRef then thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject
+        fieldsChanged = false
 
         given Env = Env.empty
         errorBuffer ++= eval(tree, thisV, klass).errors
     }
 
-    Result(thisV, errorBuffer.toList)
+    // The result value is ignored, use Hot to avoid futile fixed point computation
+    Result(Hot, errorBuffer.toList)
   }
 
   /** Check that path in path-dependent types are initialized
    *
    *  This is intended to avoid type soundness issues in Dotty.
    */
-  def checkTermUsage(tpt: Tree, thisV: Addr, klass: ClassSymbol): Contextual[List[Error]] =
+  def checkTermUsage(tpt: Tree, thisV: Ref, klass: ClassSymbol): Contextual[List[Error]] =
     val buf = new mutable.ArrayBuffer[Error]
     val traverser = new TypeTraverser {
       def traverse(tp: Type): Unit = tp match {
@@ -1146,10 +1466,6 @@ class Semantic {
     }
     traverser.traverse(tpt.tpe)
     buf.toList
-
-}
-
-object Semantic {
 
 // ----- Utility methods and extractors --------------------------------
 
@@ -1216,9 +1532,10 @@ object Semantic {
   extension (symbol: Symbol) def hasSource(using Context): Boolean =
     !symbol.defTree.isEmpty
 
-  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol =
+  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show) {
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.appliedRef)
+  }
 
   def resolveSuper(cls: ClassSymbol, superType: Type, sym: Symbol)(using Context): Symbol = {
     import annotation.tailrec
