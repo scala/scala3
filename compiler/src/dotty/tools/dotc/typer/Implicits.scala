@@ -876,7 +876,8 @@ trait Implicits:
     def ignoredInstanceNormalImport = arg.tpe match
       case fail: SearchFailureType =>
         if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
-          inferImplicit(fail.expectedType, fail.argument, arg.span) match {
+          inferImplicit(fail.expectedType, fail.argument, arg.span)(
+            using findHiddenImplicitsCtx(ctx)) match {
             case s: SearchSuccess => Some(s)
             case f: SearchFailure =>
               f.reason match {
