@@ -789,7 +789,21 @@ class JSCodeGen()(using genCtx: Context) {
 
     def isExcluded(m: Symbol): Boolean = {
       def hasAccessBoundary = m.accessBoundary(defn.RootClass) ne defn.RootClass
-      m.is(Deferred) || m.isConstructor || hasAccessBoundary || (m.owner eq defn.ObjectClass)
+
+      def isOfJLObject: Boolean = m.owner eq defn.ObjectClass
+
+      def isDefaultParamOfJSNativeDef: Boolean = {
+        m.name.is(DefaultGetterName) && {
+          val info = new DefaultParamInfo(m)
+          !info.isForConstructor && info.attachedMethod.hasAnnotation(jsdefn.JSNativeAnnot)
+        }
+      }
+
+      m.is(Deferred)
+        || m.isConstructor
+        || hasAccessBoundary
+        || isOfJLObject
+        || m.hasAnnotation(jsdefn.JSNativeAnnot) || isDefaultParamOfJSNativeDef // #4557
     }
 
     val forwarders = for {
