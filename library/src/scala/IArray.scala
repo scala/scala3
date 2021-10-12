@@ -329,7 +329,7 @@ object IArray:
     def +:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prepended(x)
 
   // For backwards compatibility with code compiled without -Yexplicit-nulls
-  private def mapNull[A, B](a: A, f: =>B): B =
+  private inline def mapNull[A, B](a: A, inline f: B): B =
     if((a: A|Null) == null) null.asInstanceOf[B] else f
 
   /** Conversion from IArray to immutable.ArraySeq */
