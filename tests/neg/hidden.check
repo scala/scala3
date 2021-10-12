@@ -1,0 +1,6 @@
+-- Error: tests/neg/hidden.scala:6:13 ----------------------------------------------------------------------------------
+6 |  summon[Int] // error
+  |             ^
+  |    no implicit argument of type Int was found for parameter x of method summon in object Predef
+  |
+  |    Note: given instance given_Int in object A was not considered because it was not imported with `import given`.
