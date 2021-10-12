@@ -12,7 +12,7 @@ import core.Types._
 import core.Names._
 import core.StdNames._
 import core.NameOps._
-import core.NameKinds.{AdaptedClosureName, BodyRetainerName}
+import core.NameKinds.{AdaptedClosureName, BodyRetainerName, ImplMethName}
 import core.Scopes.newScopeWith
 import core.Decorators._
 import core.Constants._
@@ -57,6 +57,17 @@ class Erasure extends Phase with DenotTransformer {
             case _                              => false
           }
         }
+      def erasedName =
+        if ref.is(Flags.Method)
+            && contextResultsAreErased(ref.symbol)
+            && (ref.owner.is(Flags.Trait) || ref.symbol.allOverriddenSymbols.hasNext)
+        then
+          // Add a `$` to prevent this method from having the same signature
+          // as a method it overrides. We need a bridge between the
+          // two methods, so they are not allowed to already override after erasure.
+          ImplMethName(ref.targetName.asTermName)
+        else
+          ref.targetName
 
       assert(ctx.phase == this, s"transforming $ref at ${ctx.phase}")
       if (ref.symbol eq defn.ObjectClass) {
@@ -80,7 +91,7 @@ class Erasure extends Phase with DenotTransformer {
         val oldOwner = ref.owner
         val newOwner = if oldOwner == defn.AnyClass then defn.ObjectClass else oldOwner
         val oldName = ref.name
-        val newName = ref.targetName
+        val newName = erasedName
         val oldInfo = ref.info
         var newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
@@ -391,7 +402,6 @@ object Erasure {
           else
             cast(tree, pt)
     end adaptToType
-
 
     /** The following code:
      *
@@ -720,7 +730,7 @@ object Erasure {
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.specialErasure(owner)
           else if defn.isSyntheticFunctionClass(owner) then
-            defn.erasedFunctionClass(owner)
+            defn.functionTypeErasure(owner).typeSymbol
           else
             owner
 

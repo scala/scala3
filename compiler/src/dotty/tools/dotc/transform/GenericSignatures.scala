@@ -274,10 +274,10 @@ object GenericSignatures {
               jsig(erasedUnderlying, toplevel, primitiveOK)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
-            val erasedSym = defn.erasedFunctionClass(sym)
+            val erasedSym = defn.functionTypeErasure(sym).typeSymbol
             classSig(erasedSym, pre, if (erasedSym.typeParams.isEmpty) Nil else args)
           }
-          else if (sym.isClass)
+          else if sym.isClass then
             classSig(sym, pre, args)
           else
             jsig(erasure(tp), toplevel, primitiveOK)

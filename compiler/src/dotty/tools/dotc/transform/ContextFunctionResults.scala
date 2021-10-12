@@ -8,12 +8,16 @@ import StdNames.nme
 import ast.untpd
 import ast.tpd._
 import config.Config
+import Decorators.*
 
 object ContextFunctionResults:
 
   /** Annotate methods that have context function result types directly matched by context
    *  closures on their right-hand side. Parameters to such closures will be integrated
    *  as additional method parameters in erasure.
+   *
+   *  A @ContextResultCount(n) annotation means that the method's result type
+   *  consists of a string of `n` nested context closures.
    */
   def annotateContextResults(mdef: DefDef)(using Context): Unit =
     def contextResultCount(rhs: Tree, tp: Type): Int = tp match
@@ -49,6 +53,15 @@ object ContextFunctionResults:
         val ast.Trees.Literal(Constant(crCount: Int)) :: Nil = annot.arguments: @unchecked
         crCount
       case none => 0
+
+  /** True iff `ContextResultCount` is not zero and all context functions in the result
+   *  type are erased.
+   */
+  def contextResultsAreErased(sym: Symbol)(using Context): Boolean =
+    def allErased(tp: Type): Boolean = tp.dealias match
+      case defn.ContextFunctionType(_, resTpe, isErased) => isErased && allErased(resTpe)
+      case _ => true
+    contextResultCount(sym) > 0 && allErased(sym.info.finalResultType)
 
   /** Turn the first `crCount` context function types in the result type of `tp`
    *  into the curried method types.

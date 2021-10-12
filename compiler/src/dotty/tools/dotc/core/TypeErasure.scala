@@ -581,7 +581,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       val sym = tp.symbol
       if (!sym.isClass) this(tp.translucentSuperType)
       else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClass(tp)
-      else if (defn.isSyntheticFunctionClass(sym)) defn.erasedFunctionType(sym)
+      else if (defn.isSyntheticFunctionClass(sym)) defn.functionTypeErasure(sym)
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
       val tycon = tp.tycon
@@ -791,7 +791,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           if (erasedVCRef.exists) return sigName(erasedVCRef)
         }
         if (defn.isSyntheticFunctionClass(sym))
-          sigName(defn.erasedFunctionType(sym))
+          sigName(defn.functionTypeErasure(sym))
         else
           val cls = normalizeClass(sym.asClass)
           val fullName =
