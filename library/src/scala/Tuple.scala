@@ -84,9 +84,14 @@ object Tuple {
 
   /** Type of the initial part of the tuple without its last element */
   type Init[X <: NonEmptyTuple] <: Tuple = X match {
-    case x *: EmptyTuple => x *: EmptyTuple
-    case (x *: _) *: EmptyTuple => x *: EmptyTuple
-    case x *: xs => x *: Init[xs]
+    case _ *: EmptyTuple => X
+    case x *: xs =>
+      xs match {
+        case _ *: EmptyTuple =>
+          x *: EmptyTuple
+        case _ =>
+          x *: Init[xs]
+      }
   }
 
   /** Type of the tail of a tuple */
@@ -95,9 +100,20 @@ object Tuple {
   }
 
   /** Type of the last of a tuple */
-  type Last[X <: NonEmptyTuple] = X match {
-    case x *: EmptyTuple => x
-    case _ *: xs => Last[xs]
+  type Last[X <: NonEmptyTuple] = Reduce[X, EmptyTuple] match {
+    case x *: xs => xs match {
+      case EmptyTuple => x
+    }
+  }
+
+  /** Type of the reduce of the first tuple to a tuple of arity 1 or provide the second tuple as a result */
+  type Reduce[X <: Tuple, Y <: Tuple] <: Tuple = X match {
+    case EmptyTuple => Y
+    case x *: xs => xs match {
+      case EmptyTuple => x *: EmptyTuple
+      case y *: ys =>
+        Reduce[ys, y *: EmptyTuple]
+    }
   }
 
   /** Type of the concatenation of two tuples */
