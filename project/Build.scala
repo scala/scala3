@@ -3,7 +3,6 @@ import java.nio.file._
 
 import Modes._
 import com.jsuereth.sbtpgp.PgpKeys
-import com.typesafe.tools.mima.core.{DirectMissingMethodProblem, ProblemFilters}
 import sbt.Keys._
 import sbt._
 import complete.DefaultParsers._
@@ -1777,10 +1776,7 @@ object Build {
             (Compile/doc/target).value
           },
           commonMiMaSettings,
-          mimaBinaryIssueFilters ++= MiMaFilters.Library ++ Seq(
-            ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.init"),
-            ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.last")
-          )
+          mimaBinaryIssueFilters ++= MiMaFilters.Library
         )
       } else base
     }
