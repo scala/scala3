@@ -273,7 +273,7 @@ ForExpr           ::=  ‘for’ ‘(’ Enumerators0 ‘)’ {nl} [‘do‘ | �
 Enumerators0      ::=  {nl} Enumerators [semi]
 Enumerators       ::=  Generator {semi Enumerator | Guard}
 Enumerator        ::=  Generator
-                    |  Guard
+                    |  Guard {Guard}
                     |  Pattern1 ‘=’ Expr
 Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr
 Guard             ::=  ‘if’ PostfixExpr
