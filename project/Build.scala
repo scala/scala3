@@ -3,6 +3,7 @@ import java.nio.file._
 
 import Modes._
 import com.jsuereth.sbtpgp.PgpKeys
+import com.typesafe.tools.mima.core.{DirectMissingMethodProblem, ProblemFilters}
 import sbt.Keys._
 import sbt._
 import complete.DefaultParsers._
@@ -14,20 +15,15 @@ import sbt.ScriptedPlugin.autoImport._
 import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
 import xerial.sbt.Sonatype.autoImport._
-
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
-
-import dotty.tools.sbtplugin.DottyIDEPlugin.{ installCodeExtension, prepareCommand, runProcess }
+import dotty.tools.sbtplugin.DottyIDEPlugin.{installCodeExtension, prepareCommand, runProcess}
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
-
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-
 import sbtbuildinfo.BuildInfoPlugin
 import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
-
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
 object DottyJSPlugin extends AutoPlugin {
@@ -1781,7 +1777,10 @@ object Build {
             (Compile/doc/target).value
           },
           commonMiMaSettings,
-          mimaBinaryIssueFilters ++= MiMaFilters.Library,
+          mimaBinaryIssueFilters ++= MiMaFilters.Library ++ Seq(
+            ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.init"),
+            ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.last")
+          )
         )
       } else base
     }

@@ -1,5 +1,6 @@
 package scala
-import annotation.showAsInfix
+
+import annotation.{experimental, showAsInfix}
 import compiletime._
 import compiletime.ops.int._
 
@@ -299,10 +300,12 @@ sealed trait NonEmptyTuple extends Tuple {
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
 
   /** Get the initial part of the tuple without its last element */
+  @experimental
   inline def init[This >: this.type <: NonEmptyTuple]: Init[This] =
     runtime.Tuples.init(this).asInstanceOf[Init[This]]
 
   /** Get the last of this tuple */
+  @experimental
   inline def last[This >: this.type <: NonEmptyTuple]: Last[This] =
     runtime.Tuples.last(this).asInstanceOf[Last[This]]
 
