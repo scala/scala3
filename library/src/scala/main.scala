@@ -50,15 +50,21 @@ class main extends scala.annotation.MainAnnotation:
         case Some(t) => () => t
         case None => error(s"invalid argument for $argName: $arg")
 
-    def argGetter[T](argName: String, p: ArgumentParser[T], defaultValue: Option[T] = None): () => T =
-      argInfos += ((argName, if defaultValue.isDefined then "?" else ""))
+    def argGetter[T](argName: String, p: ArgumentParser[T]): () => T =
+      argInfos += ((argName, ""))
       val idx = args.indexOf(s"--$argName")
       val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
       argOpt match
         case Some(arg) => convert(argName, arg, p)
-        case None => defaultValue match
-          case Some(t) => () => t
-          case None => error(s"missing argument for $argName")
+        case None => error(s"missing argument for $argName")
+
+    def argGetter[T](argName: String, p: ArgumentParser[T], defaultValue: T): () => T =
+      argInfos += ((argName, "?"))
+      val idx = args.indexOf(s"--$argName")
+      val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
+      argOpt match
+        case Some(arg) => convert(argName, arg, p)
+        case None => () => defaultValue
 
     def argsGetter[T](argName: String, p: ArgumentParser[T]): () => Seq[T] =
       argInfos += ((argName, "*"))

@@ -27,7 +27,10 @@ trait MainAnnotation extends StaticAnnotation:
   abstract class Command:
 
     /** The getter for the next argument of type `T` */
-    def argGetter[T](argName: String, fromString: ArgumentParser[T], defaultValue: Option[T] = None): () => T
+    def argGetter[T](argName: String, fromString: ArgumentParser[T]): () => T
+
+    /** The getter for the next argument of type `T` with a default value */
+    def argGetter[T](argName: String, fromString: ArgumentParser[T], defaultValue: T): () => T
 
     /** The getter for a final varargs argument of type `T*` */
     def argsGetter[T](argName: String, fromString: ArgumentParser[T]): () => Seq[T]
