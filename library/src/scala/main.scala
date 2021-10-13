@@ -50,7 +50,7 @@ class main extends scala.annotation.MainAnnotation:
         case Some(t) => () => t
         case None => error(s"invalid argument for $argName: $arg")
 
-    def argGetter[T](argName: String, p: ArgumentParser[T]): () => T =
+    def argGetter[T](argName: String)(using p: ArgumentParser[T]): () => T =
       argInfos += ((argName, ""))
       val idx = args.indexOf(s"--$argName")
       val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
@@ -58,7 +58,7 @@ class main extends scala.annotation.MainAnnotation:
         case Some(arg) => convert(argName, arg, p)
         case None => error(s"missing argument for $argName")
 
-    def argGetter[T](argName: String, p: ArgumentParser[T], defaultValue: T): () => T =
+    def argGetter[T](argName: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
       argInfos += ((argName, "?"))
       val idx = args.indexOf(s"--$argName")
       val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
@@ -66,7 +66,7 @@ class main extends scala.annotation.MainAnnotation:
         case Some(arg) => convert(argName, arg, p)
         case None => () => defaultValue
 
-    def argsGetter[T](argName: String, p: ArgumentParser[T]): () => Seq[T] =
+    def argsGetter[T](argName: String)(using p: ArgumentParser[T]): () => Seq[T] =
       argInfos += ((argName, "*"))
       def remainingArgGetters(): List[() => T] = nextPositionalArg() match
         case Some(arg) => convert(argName, arg, p) :: remainingArgGetters()

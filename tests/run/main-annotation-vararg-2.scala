@@ -16,8 +16,8 @@ end myProgram
 object count extends main:
   def main(args: Array[String]) =
     val cmd = command(args)
-    val arg1 = cmd.argGetter[Int]("count", summon[ArgumentParser[Int]])
-    val arg2 = cmd.argsGetter[String]("elems", summon[ArgumentParser[String]])
+    val arg1 = cmd.argGetter[Int]("count")
+    val arg2 = cmd.argsGetter[String]("elems")
 
     cmd.run(myProgram.count(arg1(), arg2(): _*), "count", "Checks that the correct amount of parameters were passed")
 end count

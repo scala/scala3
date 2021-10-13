@@ -22,10 +22,10 @@ end myProgram
 object show extends main:
   def main(args: Array[String]) =
     val cmd = command(args)
-    val arg1 = cmd.argGetter[Int]("int", summon[ArgumentParser[Int]])
-    val arg2 = cmd.argGetter[Double]("double", summon[ArgumentParser[Double]])
-    val arg3 = cmd.argGetter[String]("string", summon[ArgumentParser[String]])
-    val arg4 = cmd.argGetter[Boolean]("boolean", summon[ArgumentParser[Boolean]])
+    val arg1 = cmd.argGetter[Int]("int")
+    val arg2 = cmd.argGetter[Double]("double")
+    val arg3 = cmd.argGetter[String]("string")
+    val arg4 = cmd.argGetter[Boolean]("boolean")
     cmd.run(myProgram.show(arg1(), arg2(), arg3(), arg4()), "show", "Displays some parameters")
 end show
 

@@ -12,8 +12,8 @@ end myProgram
 object add extends main:
   def main(args: Array[String]) =
     val cmd = command(args)
-    val arg1 = cmd.argGetter[Int]("num", summon[ArgumentParser[Int]])
-    val arg2 = cmd.argGetter[Int]("inc", summon[ArgumentParser[Int]])
+    val arg1 = cmd.argGetter[Int]("num")
+    val arg2 = cmd.argGetter[Int]("inc")
     cmd.run(myProgram.add(arg1(), arg2()), "add", "Adds two numbers")
 end add
 
