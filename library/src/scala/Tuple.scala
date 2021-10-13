@@ -84,7 +84,7 @@ object Tuple {
 
   /** Type of the initial part of the tuple without its last element */
   type Init[X <: NonEmptyTuple] <: Tuple = X match {
-    case _ *: EmptyTuple => X
+    case _ *: EmptyTuple => EmptyTuple
     case x *: xs =>
       xs match {
         case _ *: EmptyTuple =>

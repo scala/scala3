@@ -375,8 +375,8 @@ object Tuples {
   // Init for Tuple1 to Tuple22
   private def specialCaseInit(self: Tuple): Tuple = {
     (self: Any) match {
-      case self: Tuple1[_] =>
-        self
+      case _: Tuple1[_] =>
+        EmptyTuple
       case self: Tuple2[_, _] =>
         Tuple1(self._1)
       case self: Tuple3[_, _, _] =>
