@@ -51,7 +51,10 @@ abstract class AccessProxies {
               forwardedArgss.nonEmpty && forwardedArgss.head.nonEmpty) // defensive conditions
             accessRef.becomes(forwardedArgss.head.head)
           else
-            accessRef.appliedToTypeTrees(forwardedTpts).appliedToArgss(forwardedArgss)
+            accessRef
+              .appliedToTypeTrees(forwardedTpts)
+              .appliedToArgss(forwardedArgss)
+              .etaExpandCFT(using ctx.withOwner(accessor))
         rhs.withSpan(accessed.span)
       })
 

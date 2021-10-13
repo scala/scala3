@@ -385,7 +385,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               case t => t
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
-            val closureMethod = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
+            val closureMethod = dotc.core.Symbols.newAnonFun(owner, closureTpe)
             tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head).etaExpand(closureMethod))
           case _ => self
         }
@@ -793,7 +793,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Lambda extends LambdaModule:
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
-        val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
+        val meth = dotc.core.Symbols.newAnonFun(owner, tpe)
         withDefaultPos(tpd.Closure(meth, tss => xCheckMacroedOwners(xCheckMacroValidExpr(rhsFn(meth, tss.head.map(withDefaultPos))), meth)))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {

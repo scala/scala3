@@ -30,11 +30,9 @@ class ByNameClosures extends TransformByNameApply with IdentityDenotTransformer 
     // ExpanSAMs applied to partial functions creates methods that need
     // to be fully defined before converting. Test case is pos/i9391.scala.
 
-  override def mkByNameClosure(arg: Tree, argType: Type)(using Context): Tree = {
-    val meth = newSymbol(
-      ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, argType))
+  override def mkByNameClosure(arg: Tree, argType: Type)(using Context): Tree =
+    val meth = newAnonFun(ctx.owner, MethodType(Nil, argType))
     Closure(meth, _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase)).withSpan(arg.span)
-  }
 }
 
 object ByNameClosures {

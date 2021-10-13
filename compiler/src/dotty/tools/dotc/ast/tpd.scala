@@ -121,9 +121,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Closure(Nil, call, targetTpt))
   }
 
-  /** A closure whole anonymous function has the given method type */
+  /** A closure whose anonymous function has the given method type */
   def Lambda(tpe: MethodType, rhsFn: List[Tree] => Tree)(using Context): Block = {
-    val meth = newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe)
+    val meth = newAnonFun(ctx.owner, tpe)
     Closure(meth, tss => rhsFn(tss.head).changeOwner(ctx.owner, meth))
   }
 
@@ -1104,6 +1104,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (sym.exists) sym.defTree = tree
       tree
     }
+
+    def etaExpandCFT(using Context): Tree =
+      def expand(target: Tree, tp: Type)(using Context): Tree = tp match
+        case defn.ContextFunctionType(argTypes, resType, isErased) =>
+          val anonFun = newAnonFun(
+            ctx.owner,
+            MethodType.companion(isContextual = true, isErased = isErased)(argTypes, resType),
+            coord = ctx.owner.coord)
+          def lambdaBody(refss: List[List[Tree]]) =
+            expand(target.select(nme.apply).appliedToArgss(refss), resType)(
+              using ctx.withOwner(anonFun))
+          Closure(anonFun, lambdaBody)
+        case _ =>
+          target
+      expand(tree, tree.tpe.widen)
   }
 
   inline val MapRecursionLimit = 10

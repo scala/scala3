@@ -212,7 +212,7 @@ object QuoteMatcher {
           }
           val argTypes = args.map(x => x.tpe.widenTermRefExpr)
           val methTpe = MethodType(names)(_ => argTypes, _ => pattern.tpe)
-          val meth = newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, methTpe)
+          val meth = newAnonFun(ctx.owner, methTpe)
           def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
             val argsMap = args.map(_.symbol).zip(lambdaArgss.head).toMap
             val body = new TreeMap {

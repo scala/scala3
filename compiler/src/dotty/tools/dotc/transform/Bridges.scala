@@ -9,6 +9,11 @@ import ast.untpd
 import collection.{mutable, immutable}
 import util.Spans.Span
 import util.SrcPos
+import ContextFunctionResults.{contextResultCount, contextFunctionResultTypeAfter}
+import StdNames.nme
+import Constants.Constant
+import TypeErasure.transformInfo
+import Erasure.Boxing.adaptClosure
 
 /** A helper class for generating bridge methods in class `root`. */
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
@@ -112,12 +117,52 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       toBeRemoved += other
     }
 
-    def bridgeRhs(argss: List[List[Tree]]) = {
+    val memberCount = contextResultCount(member)
+
+    /** Eta expand application `ref(args)` as needed.
+     *  To do this correctly, we have to look at the member's original pre-erasure
+     *  type and figure out which context function types in its result are
+     *  not yet instantiated.
+     */
+    def etaExpand(ref: Tree, args: List[Tree])(using Context): Tree =
+      def expand(args: List[Tree], tp: Type, n: Int)(using Context): Tree =
+        if n <= 0 then
+          assert(ctx.typer.isInstanceOf[Erasure.Typer])
+          ctx.typer.typed(untpd.cpy.Apply(ref)(ref, args), member.info.finalResultType)
+        else
+          val defn.ContextFunctionType(argTypes, resType, isErased) = tp: @unchecked
+          val anonFun = newAnonFun(ctx.owner,
+            MethodType(if isErased then Nil else argTypes, resType),
+            coord = ctx.owner.coord)
+          anonFun.info = transformInfo(anonFun, anonFun.info)
+
+          def lambdaBody(refss: List[List[Tree]]) =
+            val refs :: Nil = refss: @unchecked
+            val expandedRefs = refs.map(_.withSpan(ctx.owner.span.endPos)) match
+              case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
+                argTypes.indices.toList.map(n =>
+                  bunchedParam
+                    .select(nme.primitive.arrayApply)
+                    .appliedTo(Literal(Constant(n))))
+              case refs1 => refs1
+            expand(args ::: expandedRefs, resType, n - 1)(using ctx.withOwner(anonFun))
+
+          val unadapted = Closure(anonFun, lambdaBody)
+          cpy.Block(unadapted)(unadapted.stats,
+            adaptClosure(unadapted.expr.asInstanceOf[Closure]))
+      end expand
+
+      val otherCount = contextResultCount(other)
+      val start = contextFunctionResultTypeAfter(member, otherCount)(using preErasureCtx)
+      expand(args, start, memberCount - otherCount)(using ctx.withOwner(bridge))
+    end etaExpand
+
+    def bridgeRhs(argss: List[List[Tree]]) =
       assert(argss.tail.isEmpty)
       val ref = This(root).select(member)
-      if (member.info.isParameterless) ref // can happen if `member` is a module
-      else Erasure.partialApply(ref, argss.head)
-    }
+      if member.info.isParameterless then ref // can happen if `member` is a module
+      else if memberCount == 0 then ref.appliedToTermArgs(argss.head)
+      else etaExpand(ref, argss.head)
 
     bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.span))
   }

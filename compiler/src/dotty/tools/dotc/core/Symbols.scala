@@ -712,6 +712,10 @@ object Symbols {
       coord: Coord = NoCoord)(using Context): TermSymbol =
     newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
 
+  /** Create an anonymous function symbol */
+  def newAnonFun(owner: Symbol, info: Type, coord: Coord = NoCoord)(using Context): TermSymbol =
+    newSymbol(owner, nme.ANON_FUN, Synthetic | Method, info, coord = coord)
+
   /** Create an empty default constructor symbol for given class `cls`. */
   def newDefaultConstructor(cls: ClassSymbol)(using Context): TermSymbol =
     newConstructor(cls, EmptyFlags, Nil, Nil)
