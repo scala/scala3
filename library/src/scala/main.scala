@@ -13,10 +13,10 @@ import collection.mutable
 /** An annotation that designates a main function
  */
 class main extends scala.annotation.MainAnnotation:
-  type ArgumentParser[T] = util.CommandLineParser.FromString[T]
-  type MainResultType = Any
+  override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
+  override type MainResultType = Any
 
-  def command(args: Array[String]): Command = new Command:
+  override def command(args: Array[String]): Command = new Command:
 
     /** A buffer of demanded argument names, plus
      *   "?"  if it has a default
@@ -50,7 +50,7 @@ class main extends scala.annotation.MainAnnotation:
         case Some(t) => () => t
         case None => error(s"invalid argument for $argName: $arg")
 
-    def argGetter[T](argName: String)(using p: ArgumentParser[T]): () => T =
+    override def argGetter[T](argName: String)(using p: ArgumentParser[T]): () => T =
       argInfos += ((argName, ""))
       val idx = args.indexOf(s"--$argName")
       val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
@@ -58,7 +58,7 @@ class main extends scala.annotation.MainAnnotation:
         case Some(arg) => convert(argName, arg, p)
         case None => error(s"missing argument for $argName")
 
-    def argGetter[T](argName: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
+    override def argGetter[T](argName: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
       argInfos += ((argName, "?"))
       val idx = args.indexOf(s"--$argName")
       val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
@@ -66,7 +66,7 @@ class main extends scala.annotation.MainAnnotation:
         case Some(arg) => convert(argName, arg, p)
         case None => () => defaultValue
 
-    def argsGetter[T](argName: String)(using p: ArgumentParser[T]): () => Seq[T] =
+    override def argsGetter[T](argName: String)(using p: ArgumentParser[T]): () => Seq[T] =
       argInfos += ((argName, "*"))
       def remainingArgGetters(): List[() => T] = nextPositionalArg() match
         case Some(arg) => convert(argName, arg, p) :: remainingArgGetters()
@@ -74,7 +74,7 @@ class main extends scala.annotation.MainAnnotation:
       val getters = remainingArgGetters()
       () => getters.map(_())
 
-    def run(f: => MainResultType, progName: String, docComment: String): Unit =
+    override def run(f: => MainResultType, progName: String, docComment: String): Unit =
       def usage(): Unit =
         println(s"Usage: $progName ${argInfos.map(_ + _).mkString(" ")}")
 
