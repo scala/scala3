@@ -1,5 +1,6 @@
 package scala
-import annotation.showAsInfix
+
+import annotation.{experimental, showAsInfix}
 import compiletime._
 import compiletime.ops.int._
 
@@ -82,9 +83,24 @@ object Tuple {
     case x *: _ => x
   }
 
+  /** Type of the initial part of the tuple without its last element */
+  @experimental
+  type Init[X <: Tuple] <: Tuple = X match {
+    case _ *: EmptyTuple => EmptyTuple
+    case x *: xs =>
+      x *: Init[xs]
+  }
+
   /** Type of the tail of a tuple */
   type Tail[X <: NonEmptyTuple] <: Tuple = X match {
     case _ *: xs => xs
+  }
+
+  /** Type of the last element of a tuple */
+  @experimental
+  type Last[X <: Tuple] = X match {
+    case x *: EmptyTuple => x
+    case _ *: xs => Last[xs]
   }
 
   /** Type of the concatenation of two tuples */
@@ -268,6 +284,16 @@ sealed trait NonEmptyTuple extends Tuple {
   /** Get the head of this tuple */
   inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
+
+  /** Get the initial part of the tuple without its last element */
+  @experimental
+  inline def init[This >: this.type <: NonEmptyTuple]: Init[This] =
+    runtime.Tuples.init(this).asInstanceOf[Init[This]]
+
+  /** Get the last of this tuple */
+  @experimental
+  inline def last[This >: this.type <: NonEmptyTuple]: Last[This] =
+    runtime.Tuples.last(this).asInstanceOf[Last[This]]
 
   /** Get the tail of this tuple.
    *  This operation is O(this.size)
