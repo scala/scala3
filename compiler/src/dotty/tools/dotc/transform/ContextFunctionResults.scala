@@ -99,33 +99,13 @@ object ContextFunctionResults:
     normalParamCount(sym.info)
   end totalParamCount
 
-  /** The rightmost context function type in the result type of `meth`
-   *  that represents `paramCount` curried, non-erased parameters that
-   *  are included in the `contextResultCount` of `meth`.
-   *  Example:
-   *
-   *  Say we have `def m(x: A): B ?=> (C1, C2, C3) ?=> D ?=> E ?=> F`,
-   *  paramCount == 4, and the contextResultCount of `m` is 3.
-   *  Then we return the type `(C1, C2, C3) ?=> D ?=> E ?=> F`, since this
-   *  type covers the 4 rightmost parameters C1, C2, C3 and D before the
-   *  contextResultCount runs out at E ?=> F.
-   *  Erased parameters are ignored; they contribute nothing to the
-   *  parameter count.
-   */
-  def contextFunctionResultTypeCovering(meth: Symbol, paramCount: Int)(using Context) =
-    atPhase(erasurePhase) {
-      // Recursive instances return pairs of context types and the
-      // # of parameters they represent.
-      def missingCR(tp: Type, crCount: Int): (Type, Int) =
-        if crCount == 0 then (tp, 0)
-        else
-          val defn.ContextFunctionType(formals, resTpe, isErased) = tp: @unchecked
-          val result @ (rt, nparams) = missingCR(resTpe, crCount - 1)
-          assert(nparams <= paramCount)
-          if nparams == paramCount || isErased then result
-          else (tp, nparams + formals.length)
-      missingCR(meth.info.finalResultType, contextResultCount(meth))._1
-    }
+  /** The `depth` levels nested context function type in the result type of `meth` */
+  def contextFunctionResultTypeAfter(meth: Symbol, depth: Int)(using Context) =
+    def recur(tp: Type, n: Int): Type =
+      if n == 0 then tp
+      else tp match
+        case defn.ContextFunctionType(_, resTpe, _) => recur(resTpe, n - 1)
+    recur(meth.info.finalResultType, depth)
 
   /** Should selection `tree` be eliminated since it refers to an `apply`
    *  node of a context function type whose parameters will end up being

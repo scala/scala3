@@ -57,6 +57,7 @@ class Erasure extends Phase with DenotTransformer {
             case _                              => false
           }
         }
+
       def erasedName =
         if ref.is(Flags.Method)
             && contextResultsAreErased(ref.symbol)
@@ -383,8 +384,8 @@ object Erasure {
       case _: FunProto | AnyFunctionProto => tree
       case _ => tree.tpe.widen match
         case mt: MethodType if tree.isTerm =>
-          if mt.paramInfos.isEmpty then adaptToType(tree.appliedToNone, pt)
-          else etaExpand(tree, mt, pt)
+          assert(mt.paramInfos.isEmpty)
+          adaptToType(tree.appliedToNone, pt)
         case tpw =>
           if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
             tree
@@ -533,61 +534,6 @@ object Erasure {
       else
         tree
     end adaptClosure
-
-    /** Eta expand given `tree` that has the given method type `mt`, so that
-     *  it conforms to erased result type `pt`.
-     *  To do this correctly, we have to look at the tree's original pre-erasure
-     *  type and figure out which context function types in its result are
-     *  not yet instantiated.
-     */
-    def etaExpand(tree: Tree, mt: MethodType, pt: Type)(using Context): Tree =
-      report.log(i"eta expanding $tree")
-      val defs = new mutable.ListBuffer[Tree]
-      val tree1 = LiftErased.liftApp(defs, tree)
-      val xmt = if tree.isInstanceOf[Apply] then mt else expandedMethodType(mt, tree)
-      val targetLength = xmt.paramInfos.length
-      val origOwner = ctx.owner
-
-      // The original type from which closures should be constructed
-      val origType = contextFunctionResultTypeCovering(tree.symbol, targetLength)
-
-      def abstracted(args: List[Tree], tp: Type, pt: Type)(using Context): Tree =
-        if args.length < targetLength then
-          try
-            val defn.ContextFunctionType(argTpes, resTpe, isErased) = tp: @unchecked
-            if isErased then abstracted(args, resTpe, pt)
-            else
-              val anonFun = newSymbol(
-                ctx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method,
-                MethodType(argTpes, resTpe), coord = tree.span.endPos)
-              anonFun.info = transformInfo(anonFun, anonFun.info)
-              def lambdaBody(refss: List[List[Tree]]) =
-                val refs :: Nil = refss: @unchecked
-                val expandedRefs = refs.map(_.withSpan(tree.span.endPos)) match
-                  case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                    argTpes.indices.toList.map(n =>
-                      bunchedParam
-                        .select(nme.primitive.arrayApply)
-                        .appliedTo(Literal(Constant(n))))
-                  case refs1 => refs1
-                abstracted(args ::: expandedRefs, resTpe, anonFun.info.finalResultType)(
-                  using ctx.withOwner(anonFun))
-
-              val unadapted = Closure(anonFun, lambdaBody)
-              cpy.Block(unadapted)(unadapted.stats, adaptClosure(unadapted.expr.asInstanceOf[Closure]))
-          catch case ex: MatchError =>
-            println(i"error while abstracting tree = $tree | mt = $mt | args = $args%, % | tp = $tp | pt = $pt")
-            throw ex
-        else
-          assert(args.length == targetLength, i"wrong # args tree = $tree | args = $args%, % | mt = $mt | tree type = ${tree.tpe}")
-          val app = untpd.cpy.Apply(tree1)(tree1, args)
-          assert(ctx.typer.isInstanceOf[Erasure.Typer])
-          ctx.typer.typed(app, pt)
-            .changeOwnerAfter(origOwner, ctx.owner, erasurePhase.asInstanceOf[Erasure])
-
-      seq(defs.toList, abstracted(Nil, origType, pt))
-    end etaExpand
-
   end Boxing
 
   class Typer(erasurePhase: DenotTransformer) extends typer.ReTyper with NoChecking {
