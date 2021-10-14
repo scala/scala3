@@ -10,9 +10,12 @@ package scala
 
 import collection.mutable
 
+
 /** An annotation that designates a main function
  */
 class main extends scala.annotation.MainAnnotation:
+  import main._
+
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
 
@@ -102,8 +105,12 @@ class main extends scala.annotation.MainAnnotation:
           for msg <- errors do println(s"Error: $msg")
           usage()
         else f match
-          case n: Int if n < 0 => System.exit(-n)
+          case ExitCode(n) => System.exit(n)
           case _ =>
     end run
   end command
+end main
+
+object main:
+  case class ExitCode(val code: Int)
 end main
