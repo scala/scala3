@@ -216,14 +216,10 @@ type errors. If there is a stack overflow during subtyping, the exception will
 be caught and turned into a compile-time error that indicates a trace of the
 subtype tests that caused the overflow without showing a full stack trace.
 
-## Variance Laws for Match Types
 
-**Note:** This section does not reflect the current implementation.
+## Match Types Variance
 
-Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count
-as covariant. By the nature of the cases `Ci` this means that occurrences in
-pattern position are contravariant (since patterns are represented as function
-type arguments).
+All type positions in a match type (scrutinee, patterns, bodies) are considered invariant.
 
 ## Related Work
 
