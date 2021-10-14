@@ -1777,7 +1777,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given NamedTypeMethods: NamedTypeMethods with
       extension (self: NamedType)
-        def qualifier: TypeRepr = self.prefix
+        def qualifier: TypeRepr = self.prefix.widenSkolem
         def name: String = self.name.toString
       end extension
     end NamedTypeMethods
