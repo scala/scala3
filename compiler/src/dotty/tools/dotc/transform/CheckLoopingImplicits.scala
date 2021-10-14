@@ -20,7 +20,13 @@ class CheckLoopingImplicits extends MiniPhase:
 
   override def phaseName: String = CheckLoopingImplicits.name
 
-  override def transformDefDef(mdef: DefDef)(using Context): DefDef =
+  override def transformValDef(mdef: ValDef)(using Context): Tree = 
+    transform(mdef)
+
+  override def transformDefDef(mdef: DefDef)(using Context): Tree =
+    transform(mdef)
+
+  def transform(mdef: ValOrDefDef)(using Context): Tree =
     val sym = mdef.symbol
 
     def checkNotSelfRef(t: RefTree) =
@@ -70,12 +76,12 @@ class CheckLoopingImplicits extends MiniPhase:
         checkNotLooping(finalizer)
       case SeqLiteral(elems, _) =>
         elems.foreach(checkNotLooping)
-      case t: ValDef =>
-        if !t.symbol.is(Lazy) then checkNotLooping(t.rhs)
+      case t: ValDef =>  
+        checkNotLooping(t.rhs)
       case _ =>
 
-    if sym.isOneOf(GivenOrImplicit) then
+    if sym.isOneOf(GivenOrImplicit | Lazy) then
       checkNotLooping(mdef.rhs)
     mdef
-  end transformDefDef
+  end transform
 end CheckLoopingImplicits
