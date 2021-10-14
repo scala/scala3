@@ -1,7 +1,7 @@
 ---
 title: "Dropped Features"
 type: chapter
-num: 70
+num: 71
 previous-page: /scala3/reference/changed-features/main-functions
 next-page: /scala3/reference/dropped-features/delayed-init
 ---

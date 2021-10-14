@@ -1,7 +1,7 @@
 ---
 title: "Pattern Bindings"
 type: section
-num: 64
+num: 65
 previous-page: /scala3/reference/changed-features/vararg-splices
 next-page: /scala3/reference/changed-features/pattern-matching
 ---

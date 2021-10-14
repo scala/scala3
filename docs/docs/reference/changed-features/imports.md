@@ -1,7 +1,7 @@
 ---
 title: "Imports"
 type: section
-num: 56
+num: 57
 previous-page: /scala3/reference/changed-features/wildcards
 next-page: /scala3/reference/changed-features/type-checking
 ---

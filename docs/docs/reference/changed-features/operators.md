@@ -1,7 +1,7 @@
 ---
 title: "Rules for Operators"
 type: section
-num: 54
+num: 55
 previous-page: /scala3/reference/changed-features/structural-types
 next-page: /scala3/reference/changed-features/wildcards
 ---

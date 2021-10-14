@@ -1,7 +1,7 @@
 ---
 title: "Numeric Literals"
 type: section
-num: 52
+num: 53
 previous-page: /scala3/reference/changed-features
 next-page: /scala3/reference/changed-features/structural-types
 ---

@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Weak Conformance"
 type: section
-num: 84
+num: 85
 previous-page: /scala3/reference/dropped-features/auto-apply
 next-page: /scala3/reference/dropped-features/this-qualifier
 ---

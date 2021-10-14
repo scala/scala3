@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Do-While"
 type: section
-num: 75
+num: 76
 previous-page: /scala3/reference/dropped-features/type-projection
 next-page: /scala3/reference/dropped-features/procedure-syntax
 ---

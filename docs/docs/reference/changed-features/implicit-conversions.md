@@ -1,7 +1,7 @@
 ---
 title: "Implicit Conversions"
 type: section
-num: 60
+num: 61
 previous-page: /scala3/reference/changed-features/implicit-resolution
 next-page: /scala3/reference/changed-features/overload-resolution
 ---

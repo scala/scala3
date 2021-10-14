@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Class Shadowing"
 type: section
-num: 79
+num: 80
 previous-page: /scala3/reference/dropped-features/early-initializers
 next-page: /scala3/reference/dropped-features/limit22
 ---

@@ -1,7 +1,7 @@
 ---
 title: "Changes in Compiler Plugins"
 type: section
-num: 67
+num: 68
 previous-page: /scala3/reference/changed-features/eta-expansion
 next-page: /scala3/reference/changed-features/lazy-vals-init
 ---

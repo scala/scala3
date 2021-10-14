@@ -1,7 +1,7 @@
 ---
 title: "Match Expressions"
 type: section
-num: 62
+num: 63
 previous-page: /scala3/reference/changed-features/overload-resolution
 next-page: /scala3/reference/changed-features/vararg-splices
 ---

@@ -1,7 +1,7 @@
 ---
 title: "Changes in Implicit Resolution"
 type: section
-num: 59
+num: 60
 previous-page: /scala3/reference/changed-features/type-inference
 next-page: /scala3/reference/changed-features/implicit-conversions
 ---

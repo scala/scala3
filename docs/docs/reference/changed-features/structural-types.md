@@ -1,7 +1,7 @@
 ---
 title: "Programmatic Structural Types"
 type: section
-num: 53
+num: 54
 previous-page: /scala3/reference/changed-features/numeric-literals
 next-page: /scala3/reference/changed-features/operators
 ---

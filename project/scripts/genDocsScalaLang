@@ -44,14 +44,15 @@ fi
 cp -rf "$SITE_OUT_DIR/docs/reference"/* "$DOCS_SCALA_LANG_DIR/_scala3-reference"
 cp -rf "$SITE_OUT_DIR/docs/usage/scaladoc"/* "$DOCS_SCALA_LANG_DIR/_overviews/scala3-scaladoc"
 
-cp -rf "$SITE_OUT_DIR/docs/resources/talks.md" "$DOCS_SCALA_LANG_DIR/scala3/talks.md"
-cp -rf "$SITE_OUT_DIR/docs/usage/getting-started.md" "$DOCS_SCALA_LANG_DIR/scala3/getting-started.md"
-cp -rf "$SITE_OUT_DIR/docs/usage/tools-worksheets.md" "$DOCS_SCALA_LANG_DIR/_overviews/scala3-book/tools-worksheets.md"
-
-
 # Copy csses and html importing these assets
 cp -f "$SITE_OUT_DIR/styles/colors.css" "$DOCS_SCALA_LANG_DIR/resources/css/colors.css"
 cp -f "$PWD/docs/docsScalaLangResources/scaladoc-assets.html" "$DOCS_SCALA_LANG_DIR/_includes/scaladoc-assets.html"
+
+# Copy images and resources
+cp -f "$PWD/scaladoc/resources/dotty_res/images/scaladoc_logo.svg" "$DOCS_SCALA_LANG_DIR/resources/images/scala3/scaladoc/logo.svg"
+cp -f "$PWD/docs/images/scaladoc/nightly.gif" "$DOCS_SCALA_LANG_DIR/resources/images/scala3/scaladoc/nightly.gif"
+cp -f "$PWD/docs/images/scaladoc/inkuire-1.0.0-M2_js_flatMap.gif" "$DOCS_SCALA_LANG_DIR/resources/images/scala3/scaladoc/inkuire-1\.0\.0-M2_js_flatMap.gif"
+cp -f "$PWD/docs/images/explicit-nulls/explicit-nulls-type-hierarchy.png" "$DOCS_SCALA_LANG_DIR/resources/images/scala3/explicit-nulls/explicit-nulls-type-hierarchy.png"
 
 # Hack inclusion of these assests by the docs.scala-lang jekyll builder
 echo "{% include scaladoc-assets.html %}" >> "$DOCS_SCALA_LANG_DIR/_layouts/inner-page-parent-dropdown.html"

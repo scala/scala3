@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Scala 2 Macros"
 type: section
-num: 72
+num: 73
 previous-page: /scala3/reference/dropped-features/delayed-init
 next-page: /scala3/reference/dropped-features/existential-types
 ---

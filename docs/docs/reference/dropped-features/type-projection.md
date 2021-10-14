@@ -1,7 +1,7 @@
 ---
 title: "Dropped: General Type Projection"
 type: section
-num: 74
+num: 75
 previous-page: /scala3/reference/dropped-features/existential-types
 next-page: /scala3/reference/dropped-features/do-while
 ---
