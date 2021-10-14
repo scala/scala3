@@ -5,6 +5,7 @@ package init
 
 import dotty.tools.dotc._
 import ast.tpd
+import tpd._
 
 import dotty.tools.dotc.core._
 import Contexts._
@@ -15,16 +16,13 @@ import StdNames._
 import dotty.tools.dotc.transform._
 import Phases._
 
-
 import scala.collection.mutable
 
+import Semantic._
 
 class Checker extends Phase {
-  import tpd._
 
   val phaseName = "initChecker"
-
-  private val semantic = new Semantic
 
   override val runsAfter = Set(Pickler.name)
 
@@ -32,34 +30,40 @@ class Checker extends Phase {
     super.isEnabled && ctx.settings.YcheckInit.value
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    units.foreach { unit => traverser.traverse(unit.tpdTree) }
-    super.runOn(units)
+    val checkCtx = ctx.fresh.setPhase(this.start)
+    Semantic.withInitialState {
+      val traverser = new InitTreeTraverser()
+      units.foreach { unit => traverser.traverse(unit.tpdTree) }
+      given Context = checkCtx
+      Semantic.check()
+      super.runOn(units)
+    }
 
-  val traverser = new TreeTraverser {
+  def run(using Context): Unit = {
+    // ignore, we already called `Semantic.check()` in `runOn`
+  }
+
+  class InitTreeTraverser(using WorkList) extends TreeTraverser {
     override def traverse(tree: Tree)(using Context): Unit =
       traverseChildren(tree)
       tree match {
-        case tdef: MemberDef =>
+        case mdef: MemberDef =>
           // self-type annotation ValDef has no symbol
-          if tdef.name != nme.WILDCARD then
-            tdef.symbol.defTree = tree
+          if mdef.name != nme.WILDCARD then
+            mdef.symbol.defTree = tree
+
+          mdef match
+          case tdef: TypeDef if tdef.isClassDef =>
+            val cls = tdef.symbol.asClass
+            val thisRef = ThisRef(cls)
+            if shouldCheckClass(cls) then Semantic.addTask(thisRef)
+          case _ =>
+
         case _ =>
       }
   }
 
-  override def run(using Context): Unit = {
-    val unit = ctx.compilationUnit
-    unit.tpdTree.foreachSubTree {
-      case tdef: TypeDef if tdef.isClassDef =>
-        transformTypeDef(tdef)
-
-      case _ =>
-    }
-  }
-
-
-  private def transformTypeDef(tree: TypeDef)(using Context): tpd.Tree = {
-    val cls = tree.symbol.asClass
+  private def shouldCheckClass(cls: ClassSymbol)(using Context) = {
     val instantiable: Boolean =
       cls.is(Flags.Module) ||
       !cls.isOneOf(Flags.AbstractOrTrait) && {
@@ -71,21 +75,6 @@ class Checker extends Phase {
       }
 
     // A concrete class may not be instantiated if the self type is not satisfied
-    if (instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass) {
-      import semantic._
-      val tpl = tree.rhs.asInstanceOf[Template]
-      val thisRef = ThisRef(cls).ensureExists
-
-      val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
-
-      given Promoted = Promoted.empty
-      given Trace = Trace.empty
-      given Env = Env(paramValues)
-
-      val res = eval(tpl, thisRef, cls)
-      res.errors.foreach(_.issue)
-    }
-
-    tree
+    instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass
   }
 }
