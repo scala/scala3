@@ -199,6 +199,12 @@ class ReplCompilerTests extends ReplTest {
     assertFalse(ParseResult.isIncomplete("_ + 1"))  // was: assertThrows[NullPointerException]
   }
 
+  @Test def `i9374 accept collective extensions`: Unit = fromInitialState { state =>
+    given Context = state.context
+    assert(ParseResult.isIncomplete("extension (x: String)"))
+    assert(ParseResult.isIncomplete("extension (x: String) {"))
+  }
+
   @Test def testSingletonPrint = fromInitialState { implicit state =>
     run("""val a = "hello"; val x: a.type = a""")
     assertMultiLineEquals("val a: String = hello\nval x: a.type = hello", storedOutput().trim)
