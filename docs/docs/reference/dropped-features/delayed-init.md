@@ -1,7 +1,7 @@
 ---
 title: "Dropped: DelayedInit"
 type: section
-num: 71
+num: 72
 previous-page: /scala3/reference/dropped-features
 next-page: /scala3/reference/dropped-features/macros
 ---

@@ -1,7 +1,7 @@
 ---
 title: Wildcard Arguments in Types
 type: section
-num: 55
+num: 56
 previous-page: /scala3/reference/changed-features/operators
 next-page: /scala3/reference/changed-features/imports
 ---
@@ -49,4 +49,4 @@ These rules make it possible to cross build between Scala 2 using the kind proje
 There is also a migration path for users that want a one-time transition to syntax with `_` as a type parameter placeholder.
 With option `-Ykind-projector:underscores` Scala 3 will regard `_` as a type parameter placeholder, leaving `?` as the only syntax for wildcards.
 
-To cross-compile with old Scala 2 sources, while using `_` a placeholder, you must use options `-Xsource:3 -P:kind-projector:underscore-placeholders` together with a recent version of kind-projector (`0.13` and higher) and most recent versions of Scala 2 (`2.13.5` and higher and `2.12.14` and higher) 
+To cross-compile with old Scala 2 sources, while using `_` a placeholder, you must use options `-Xsource:3 -P:kind-projector:underscore-placeholders` together with a recent version of kind-projector (`0.13` and higher) and most recent versions of Scala 2 (`2.13.5` and higher and `2.12.14` and higher)

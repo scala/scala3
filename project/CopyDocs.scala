@@ -45,7 +45,7 @@ object CopyDocs {
    */
   val transformationMap: Map[String, Set[(String, MyParams => String)]] = Map(
     "docs/docs/usage/scaladoc/index.md" -> Set(
-      ("""\{\{ site\.baseurl \}\}/resources/images/scala3/scaladoc/logo\.svg""" -> "images/scaladoc-logo.png"),
+      ("""\{\{ site\.baseurl \}\}/resources/images/scala3/scaladoc/logo\.svg""" -> "images/scaladoc_logo.svg"),
     ),
 
     "docs/docs/usage/scaladoc/site-versioning.md" -> Set(
@@ -67,20 +67,6 @@ object CopyDocs {
     "docs/docs/usage/scaladoc/" -> (commonTransformations +
       (titlePattern -> s"---\ntitle: $$1\n---"),
     ),
-
-    "docs/docs/usage/getting-started" -> (commonTransformations +
-      (titlePattern -> "---\nlayout: doc-page\ntitle: Getting Started: Users\nmovedTo: https://docs.scala-lang.org/scala3/getting-started.html\n---"),
-    ),
-
-    "docs/docs/usage/tools-worksheets" -> (commonTransformations +
-      (titlePattern -> "---\nlayout: doc-page\ntitle: \"Worksheet mode with Dotty IDE\"\nmovedTo: https://docs.scala-lang.org/scala3/book/tools-worksheets.html\n---") +
-      ("""/resources/images/scala3-book/intellij-worksheet\.png""" -> "images/worksheets/intellij-worksheet.png") +
-      ("""/resources/images/scala3-book/metals-worksheet\.png""" -> "images/worksheets/metals-worksheet.png")
-    ),
-
-    "docs/docs/resources/talks" -> (commonTransformations +
-      (titlePattern -> "---\nlayout: doc-page\ntitle: Talks\nmovedTo: https://docs.scala-lang.org/scala3/talks.html\n---")
-    )
   )
 
   def copyDocs() = {

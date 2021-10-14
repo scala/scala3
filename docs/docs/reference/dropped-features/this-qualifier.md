@@ -1,7 +1,7 @@
 ---
 title: "Dropped: private[this] and protected[this]"
 type: section
-num: 85
+num: 86
 previous-page: /scala3/reference/dropped-features/weak-conformance
 next-page: /scala3/reference/dropped-features/wildcard-init
 ---

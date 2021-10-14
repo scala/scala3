@@ -1,7 +1,7 @@
 ---
 title: "Automatic Eta Expansion"
 type: section
-num: 66
+num: 67
 previous-page: /scala3/reference/changed-features/pattern-matching
 next-page: /scala3/reference/changed-features/compiler-plugins
 ---
