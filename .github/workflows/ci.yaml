@@ -500,7 +500,7 @@ jobs:
       - name: Deploy Website to dotty-website
         uses: peaceiris/actions-gh-pages@v3
         with:
-          personal_token: ${{ DOTTY_WEBSITE_BOT_TOKEN }}
+          personal_token: ${{ env.DOTTY_WEBSITE_BOT_TOKEN }}
           publish_dir: docs/_site
           external_repository: lampepfl/dotty-website
           publish_branch: gh-pages
@@ -512,7 +512,7 @@ jobs:
       - name: Deploy Website to docs.scala-lang
         uses: peaceiris/actions-gh-pages@v3
         with:
-          personal_token: ${{ DOCS_SCALALANG_BOT_TOKEN }}
+          personal_token: ${{ env.DOCS_SCALALANG_BOT_TOKEN }}
           publish_dir: docsScalaLang
           external_repository: BarkingBad/docs.scala-lang
           publish_branch: dev
