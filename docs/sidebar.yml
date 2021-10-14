@@ -2,10 +2,8 @@ sidebar:
   - title: Blog
   - title: Usage
     subsection:
-      - page: docs/usage/getting-started.md
       - page: docs/usage/sbt-projects.md
       - page: docs/usage/ide-support.md
-      - page: docs/usage/tools-worksheets.md
       - page: docs/usage/cbt-projects.md
       - page: docs/usage/scaladoc
   - title: Reference
@@ -147,6 +145,3 @@ sidebar:
       - page: docs/internals/type-system.md
       - page: docs/internals/dotty-internals-1-notes.md
       - page: docs/internals/debug-macros.md
-  - title: Resources
-    subsection:
-      - page: docs/resources/talks.md

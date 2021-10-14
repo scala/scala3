@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Early Initializers"
 type: section
-num: 78
+num: 79
 previous-page: /scala3/reference/dropped-features/package-objects
 next-page: /scala3/reference/dropped-features/class-shadowing
 ---

@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Auto-Application"
 type: section
-num: 83
+num: 84
 previous-page: /scala3/reference/dropped-features/symlits
 next-page: /scala3/reference/dropped-features/weak-conformance
 ---

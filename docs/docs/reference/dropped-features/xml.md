@@ -1,7 +1,7 @@
 ---
 title: "Dropped: XML Literals"
 type: section
-num: 81
+num: 82
 previous-page: /scala3/reference/dropped-features/limit22
 next-page: /scala3/reference/dropped-features/symlits
 ---

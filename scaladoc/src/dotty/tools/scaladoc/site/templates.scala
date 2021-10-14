@@ -132,10 +132,8 @@ case class TemplateFile(
 
       ssctx.args.projectFormat match
         case "html" => HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
-        case "md" =>
-
-          FrontMatterRenderer.render(settings + ("urls" -> sourceLinks.toMap)) +
-          Formatter.builder(defaultMarkdownOptions).build().render(processed)
+        case "md" => FrontMatterRenderer.render(settings + ("urls" -> sourceLinks.toMap)) +
+                      Formatter.builder(defaultMarkdownOptions).build().render(processed)
 
 
     if layoutTemplate.isEmpty || ssctx.args.projectFormat == "md" then

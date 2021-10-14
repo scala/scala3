@@ -1,7 +1,7 @@
 ---
 title: "Main Methods"
 type: section
-num: 69
+num: 70
 previous-page: /scala3/reference/changed-features/lazy-vals-init
 next-page: /scala3/reference/dropped-features
 ---

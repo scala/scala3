@@ -1,7 +1,7 @@
 ---
 title: "Vararg Splices"
 type: section
-num: 63
+num: 64
 previous-page: /scala3/reference/changed-features/match-syntax
 next-page: /scala3/reference/changed-features/pattern-bindings
 ---

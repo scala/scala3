@@ -2,7 +2,7 @@
 title: "Language Versions"
 type: chapter
 description: This page lists the different flavours of language supported by the Scala 3 compiler.
-num: 100
+num: 101
 previous-page: overview
 ---
 
