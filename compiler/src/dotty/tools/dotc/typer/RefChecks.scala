@@ -1025,6 +1025,14 @@ object RefChecks {
           report.error(i"private $sym cannot override ${other.showLocated}", sym.srcPos)
   end checkNoPrivateOverrides
 
+  /** Check if throws annotation is defined. */
+  def checkNoThrows(tree: Tree)(using Context): Unit = {
+    val symbol = tree.symbol
+    if (symbol.hasThrowsAnnot) {
+      report.error("`@throws` only allowed for methods and constructors", tree.srcPos)
+    }
+  }
+
   /** Check that unary method definition do not receive parameters.
    *  They can only receive inferred parameters such as type parameters and implicit parameters.
    */
@@ -1254,6 +1262,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformValDef(tree: ValDef)(using Context): ValDef = {
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
+    checkNoThrows(tree) // Don't allow throws-annotation on val and var definitions
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
     val sym = tree.symbol
@@ -1345,6 +1354,7 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
     checkExperimentalAnnots(tree.symbol)
+    checkNoThrows(tree) // Don't allow throws-annotation on classes, objects, traits, and type aliases
     tree
   }
 }
