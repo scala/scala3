@@ -41,6 +41,12 @@ class main extends scala.annotation.MainAnnotation:
   def explain(commandName: String, args: Seq[Argument], docComment: String): Unit =
     if docComment.nonEmpty then println(docComment)  // todo: process & format doc comment
 
+  /** Runs the command and handles its return value */
+  def run(f: => MainResultType): Unit =
+    f match
+      case ExitCode(n) => System.exit(n)
+      case _ =>
+
   override def command(args: Array[String], commandName: String, docComment: String): Command =
     val self = this
     new Command(commandName, docComment):
@@ -123,9 +129,8 @@ class main extends scala.annotation.MainAnnotation:
           if errors.nonEmpty then
             for msg <- errors do println(s"Error: $msg")
             usage()
-          else f match
-            case ExitCode(n) => System.exit(n)
-            case _ =>
+          else
+            self.run(f)
       end run
   end command
 end main
