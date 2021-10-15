@@ -21,12 +21,12 @@ end myProgram
 // TODO remove once @main generation is operational
 object show extends main:
   def main(args: Array[String]) =
-    val cmd = command(args)
+    val cmd = command(args, "show", "Displays some parameters")
     val arg1 = cmd.argGetter[Int]("int")
     val arg2 = cmd.argGetter[Double]("double")
     val arg3 = cmd.argGetter[String]("string")
     val arg4 = cmd.argGetter[Boolean]("boolean")
-    cmd.run(myProgram.show(arg1(), arg2(), arg3(), arg4()), "show", "Displays some parameters")
+    cmd.run(myProgram.show(arg1(), arg2(), arg3(), arg4()))
 end show
 
 object Test:

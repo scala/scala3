@@ -11,8 +11,8 @@ end myProgram
 // TODO remove once @main generation is operational
 object run extends main:
   def main(args: Array[String]) =
-    val cmd = command(args)
-    cmd.run(myProgram.run(), "run", "Does nothing, except confirming that it runs")
+    val cmd = command(args, "run", "Does nothing, except confirming that it runs")
+    cmd.run(myProgram.run())
 end run
 
 object Test:

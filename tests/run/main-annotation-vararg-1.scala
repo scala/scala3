@@ -14,9 +14,9 @@ end myProgram
 // TODO remove once @main generation is operational
 object add extends main:
   def main(args: Array[String]) =
-    val cmd = command(args)
+    val cmd = command(args, "add", "Adds any amount of numbers")
     val arg1 = cmd.argsGetter[Int]("nums")
-    cmd.run(myProgram.add(arg1(): _*), "add", "Adds any amount of numbers")
+    cmd.run(myProgram.add(arg1(): _*))
 end add
 
 object Test:

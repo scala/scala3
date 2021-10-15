@@ -12,9 +12,9 @@ end myProgram
 // TODO remove once @main generation is operational
 object exit extends main:
   def main(args: Array[String]) =
-    val cmd = command(args)
+    val cmd = command(args, "exit", "Exits program with error code")
     val arg1 = cmd.argGetter[Int]("code")
-    cmd.run(myProgram.exit(arg1()), "exit", "Exits program with error code")
+    cmd.run(myProgram.exit(arg1()))
 end exit
 
 object Test:

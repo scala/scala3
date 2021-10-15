@@ -21,10 +21,10 @@ trait MainAnnotation extends StaticAnnotation:
   type MainResultType
 
   /** A new command with arguments from `args` */
-  def command(args: Array[String]): Command
+  def command(args: Array[String], commandName: String, docComment: String): Command
 
   /** A class representing a command to run */
-  abstract class Command:
+  abstract class Command(val commandName: String, val docComment: String):
 
     /** The getter for the next argument of type `T` */
     def argGetter[T](argName: String)(using fromString: ArgumentParser[T]): () => T
@@ -38,6 +38,6 @@ trait MainAnnotation extends StaticAnnotation:
     /** Run `program` if all arguments are valid,
      *  or print usage information and/or error messages.
      */
-    def run(program: => MainResultType, progName: String, docComment: String): Unit
+    def run(program: => MainResultType): Unit
   end Command
 end MainAnnotation

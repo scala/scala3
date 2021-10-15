@@ -16,98 +16,117 @@ import collection.mutable
 class main extends scala.annotation.MainAnnotation:
   import main._
 
+  protected sealed abstract class Argument {
+    val name: String
+  }
+  protected case class SimpleArgument(name: String) extends Argument
+  protected case class OptionalArgument[T](name: String, val defaultValue: T) extends Argument
+  protected case class VarArgument(name: String) extends Argument
+
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
 
-  override def command(args: Array[String]): Command = new Command:
+  /** Prints the main function's usage */
+  def usage(commandName: String, args: Seq[Argument]): Unit =
+    val argInfos = args map (
+      _ match {
+        case SimpleArgument(name) => name
+        case OptionalArgument(name, _) => s"$name?"
+        case VarArgument(name) => s"$name*"
+      }
+    )
+    println(s"Usage: $commandName ${argInfos.mkString(" ")}")
 
-    /** A buffer of demanded argument names, plus
-     *   "?"  if it has a default
-     *   "*"  if it is a vararg
-     *   ""   otherwise
-     */
-    private var argInfos = new mutable.ListBuffer[(String, String)]
+  /** Prints an explanation about the function */
+  def explain(commandName: String, args: Seq[Argument], docComment: String): Unit =
+    if docComment.nonEmpty then println(docComment)  // todo: process & format doc comment
 
-    /** A buffer for all errors */
-    private var errors = new mutable.ListBuffer[String]
+  override def command(args: Array[String], commandName: String, docComment: String): Command =
+    val self = this
+    new Command(commandName, docComment):
+      /** A buffer of demanded arguments */
+      private var argInfos = new mutable.ListBuffer[self.Argument]
 
-    /** Issue an error, and return an uncallable getter */
-    private def error(msg: String): () => Nothing =
-      errors += msg
-      () => throw new AssertionError("trying to get invalid argument")
+      /** A buffer for all errors */
+      private var errors = new mutable.ListBuffer[String]
 
-    /** The next argument index */
-    private var argIdx: Int = 0
+      /** Issue an error, and return an uncallable getter */
+      private def error(msg: String): () => Nothing =
+        errors += msg
+        () => throw new AssertionError("trying to get invalid argument")
 
-    private def argAt(idx: Int): Option[String] =
-      if idx < args.length then Some(args(idx)) else None
+      /** The next argument index */
+      private var argIdx: Int = 0
 
-    private def nextPositionalArg(): Option[String] =
-      while argIdx < args.length && args(argIdx).startsWith("--") do argIdx += 2
-      val result = argAt(argIdx)
-      argIdx += 1
-      result
+      private def argAt(idx: Int): Option[String] =
+        if idx < args.length then Some(args(idx)) else None
 
-    private def convert[T](argName: String, arg: String, p: ArgumentParser[T]): () => T =
-      p.fromStringOption(arg) match
-        case Some(t) => () => t
-        case None => error(s"invalid argument for $argName: $arg")
+      private def nextPositionalArg(): Option[String] =
+        while argIdx < args.length && args(argIdx).startsWith("--") do argIdx += 2
+        val result = argAt(argIdx)
+        argIdx += 1
+        result
 
-    override def argGetter[T](argName: String)(using p: ArgumentParser[T]): () => T =
-      argInfos += ((argName, ""))
-      val idx = args.indexOf(s"--$argName")
-      val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
-      argOpt match
-        case Some(arg) => convert(argName, arg, p)
-        case None => error(s"missing argument for $argName")
+      private def convert[T](argName: String, arg: String, p: ArgumentParser[T]): () => T =
+        p.fromStringOption(arg) match
+          case Some(t) => () => t
+          case None => error(s"invalid argument for $argName: $arg")
 
-    override def argGetter[T](argName: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
-      argInfos += ((argName, "?"))
-      val idx = args.indexOf(s"--$argName")
-      val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
-      argOpt match
-        case Some(arg) => convert(argName, arg, p)
-        case None => () => defaultValue
+      private def usage(): Unit =
+        self.usage(this.commandName, argInfos.toSeq)
 
-    override def argsGetter[T](argName: String)(using p: ArgumentParser[T]): () => Seq[T] =
-      argInfos += ((argName, "*"))
-      def remainingArgGetters(): List[() => T] = nextPositionalArg() match
-        case Some(arg) => convert(argName, arg, p) :: remainingArgGetters()
-        case None => Nil
-      val getters = remainingArgGetters()
-      () => getters.map(_())
+      private def explain(): Unit =
+        self.explain(this.commandName, argInfos.toSeq, this.docComment)
 
-    override def run(f: => MainResultType, progName: String, docComment: String): Unit =
-      def usage(): Unit =
-        println(s"Usage: $progName ${argInfos.map(_ + _).mkString(" ")}")
+      override def argGetter[T](argName: String)(using p: ArgumentParser[T]): () => T =
+        argInfos += self.SimpleArgument(argName)
+        val idx = args.indexOf(s"--$argName")
+        val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
+        argOpt match
+          case Some(arg) => convert(argName, arg, p)
+          case None => error(s"missing argument for $argName")
 
-      def explain(): Unit =
-        if docComment.nonEmpty then println(docComment)  // todo: process & format doc comment
+      override def argGetter[T](argName: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
+        argInfos += self.OptionalArgument(argName, defaultValue)
+        val idx = args.indexOf(s"--$argName")
+        val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
+        argOpt match
+          case Some(arg) => convert(argName, arg, p)
+          case None => () => defaultValue
 
-      def flagUnused(): Unit = nextPositionalArg() match
-        case Some(arg) =>
-          error(s"unused argument: $arg")
-          flagUnused()
-        case None =>
-          for
-            arg <- args
-            if arg.startsWith("--") && !argInfos.map(_._1).contains(arg.drop(2))
-          do
-            error(s"unknown argument name: $arg")
-      end flagUnused
+      override def argsGetter[T](argName: String)(using p: ArgumentParser[T]): () => Seq[T] =
+        argInfos += self.VarArgument(argName)
+        def remainingArgGetters(): List[() => T] = nextPositionalArg() match
+          case Some(arg) => convert(argName, arg, p) :: remainingArgGetters()
+          case None => Nil
+        val getters = remainingArgGetters()
+        () => getters.map(_())
 
-      if args.contains("--help") then
-        usage()
-        explain()
-      else
-        flagUnused()
-        if errors.nonEmpty then
-          for msg <- errors do println(s"Error: $msg")
+      override def run(f: => MainResultType): Unit =
+        def flagUnused(): Unit = nextPositionalArg() match
+          case Some(arg) =>
+            error(s"unused argument: $arg")
+            flagUnused()
+          case None =>
+            for
+              arg <- args
+              if arg.startsWith("--") && !argInfos.map(_.name).contains(arg.drop(2))
+            do
+              error(s"unknown argument name: $arg")
+        end flagUnused
+
+        if args.contains("--help") then
           usage()
-        else f match
-          case ExitCode(n) => System.exit(n)
-          case _ =>
-    end run
+          explain()
+        else
+          flagUnused()
+          if errors.nonEmpty then
+            for msg <- errors do println(s"Error: $msg")
+            usage()
+          else f match
+            case ExitCode(n) => System.exit(n)
+            case _ =>
+      end run
   end command
 end main
 

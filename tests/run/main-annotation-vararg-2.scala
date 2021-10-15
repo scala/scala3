@@ -15,11 +15,11 @@ end myProgram
 // TODO remove once @main generation is operational
 object count extends main:
   def main(args: Array[String]) =
-    val cmd = command(args)
+    val cmd = command(args, "count", "Checks that the correct amount of parameters were passed")
     val arg1 = cmd.argGetter[Int]("count")
     val arg2 = cmd.argsGetter[String]("elems")
 
-    cmd.run(myProgram.count(arg1(), arg2(): _*), "count", "Checks that the correct amount of parameters were passed")
+    cmd.run(myProgram.count(arg1(), arg2(): _*))
 end count
 
 object Test:
