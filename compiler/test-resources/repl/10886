@@ -3,7 +3,7 @@ scala> type Channel = "A" | "B"
 
 scala> type SelChannel[C <: Tuple] = C match { case x *: xs => x | SelChannel[xs] case _ => Nothing }
 
-scala> lazy val a: SelChannel[("A", "B", "C")] = a
+scala> lazy val a: SelChannel[("A", "B", "C")] = "A"
 lazy val a: "A" | ("B" | ("C" | Nothing))
 
 scala>:type a
