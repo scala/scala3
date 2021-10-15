@@ -73,7 +73,7 @@ class Compiler {
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
-         new ElimRedundantContextualClosure, // Unwrapped context closures if the contents is already a context closure of compatible type
+         new ElimRedundantContextualClosure, // Unwrap context closures that contain only a context function of compatible type
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
