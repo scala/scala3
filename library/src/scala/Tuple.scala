@@ -185,6 +185,14 @@ object Tuple {
    */
   type IsMappedBy[F[_]] = [X <: Tuple] =>> X =:= Map[InverseMap[X, F], F]
 
+  /** Type of the reversed tuple */
+  @experimental
+  type Reverse[X <: Tuple] <: Tuple = X match {
+    case EmptyTuple => EmptyTuple
+    case x *: xs =>
+      Concat[Reverse[xs], x *: EmptyTuple]
+  }
+
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
   type Take[T <: Tuple, N <: Int] <: Tuple = N match {
     case 0 => EmptyTuple
@@ -301,6 +309,12 @@ sealed trait NonEmptyTuple extends Tuple {
   inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
 
+  /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
+   * consisting all its elements.
+   */
+  @experimental
+  inline def reverse[This >: this.type <: NonEmptyTuple]: Reverse[This] =
+    runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
 }
 
 @showAsInfix
