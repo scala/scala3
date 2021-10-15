@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Contexts.{*, given}
 import dotty.tools.dotc.core.Decorators.{*, given}
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.typer.ProtoTypes.constrained
 
 import org.junit.Test
@@ -18,8 +19,8 @@ class ConstraintsTest:
   @Test def mergeParamsTransitivity: Unit =
     inCompilerContext(TestConfiguration.basicClasspath,
         scalaSources = "trait A { def foo[S, T, R]: Any  }") {
-      val tp = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda])
-      val List(s, t, r) = tp.paramRefs
+      val tvars = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda], EmptyTree, alwaysAddTypeVars = true)._2
+      val List(s, t, r) = tvars.tpes
 
       val innerCtx = ctx.fresh.setExploreTyperState()
       inContext(innerCtx) {
@@ -37,8 +38,8 @@ class ConstraintsTest:
   @Test def mergeBoundsTransitivity: Unit =
     inCompilerContext(TestConfiguration.basicClasspath,
         scalaSources = "trait A { def foo[S, T]: Any  }") {
-      val tp = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda])
-      val List(s, t) = tp.paramRefs
+      val tvars = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda], EmptyTree, alwaysAddTypeVars = true)._2
+      val List(s, t) = tvars.tpes
 
       val innerCtx = ctx.fresh.setExploreTyperState()
       inContext(innerCtx) {

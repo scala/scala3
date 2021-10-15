@@ -411,7 +411,7 @@ trait Applications extends Compatibility {
      */
     @threadUnsafe lazy val methType: Type = liftedFunType.widen match {
       case funType: MethodType => funType
-      case funType: PolyType => constrained(funType).resultType
+      case funType: PolyType => instantiateWithTypeVars(funType)
       case tp => tp //was: funType
     }
 
@@ -1562,7 +1562,7 @@ trait Applications extends Compatibility {
             case tp2: MethodType => true // (3a)
             case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
             case tp2: PolyType => // (3b)
-              explore(isAsSpecificValueType(tp1, constrained(tp2).resultType))
+              explore(isAsSpecificValueType(tp1, instantiateWithTypeVars(tp2)))
             case _ => // 3b)
               isAsSpecificValueType(tp1, tp2)
     }
@@ -1729,7 +1729,7 @@ trait Applications extends Compatibility {
       resultType.revealIgnored match {
         case resultType: ValueType =>
           altType.widen match {
-            case tp: PolyType => resultConforms(altSym, constrained(tp).resultType, resultType)
+            case tp: PolyType => resultConforms(altSym, instantiateWithTypeVars(tp), resultType)
             case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
             case _ => true
           }
