@@ -119,12 +119,13 @@ case class TypeParameter(
 
 case class Link(name: String, dri: DRI)
 
-sealed trait SignaturePart
+sealed trait SignaturePart:
+  val name: String
 
 // TODO (longterm) properly represent signatures
-case class Type(name: String, dri: Option[DRI]) extends SignaturePart
-case class Keyword(name: String) extends SignaturePart
-case class Plain(txt: String) extends SignaturePart
+case class Type(override val name: String, dri: Option[DRI]) extends SignaturePart
+case class Keyword(override val name: String) extends SignaturePart
+case class Plain(override val name: String) extends SignaturePart
 
 type Signature = List[SignaturePart]
 

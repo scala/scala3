@@ -86,3 +86,5 @@ class ImplicitConversionsTest3 extends SignatureTest(
 class SpecializedSignature extends SignatureTest("specializedSignature", SignatureTest.all)
 
 class ContextBounds extends SignatureTest("contextBounds", SignatureTest.all)
+
+class FBoundedTypeParameters extends SignatureTest("fboundedTypeParameters", SignatureTest.all)
