@@ -4626,7 +4626,7 @@ object Types {
      *  does it not contain wildcard types?
      */
     def hasNonWildcardUpperBound(using Context): Boolean =
-      val hi = currentEntry.hiBound
+      val hi = TypeComparer.fullUpperBound(origin).orElse(currentEntry.hiBound)
       !hi.isRef(defn.AnyClass) && !hi.containsWildcardTypes
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
