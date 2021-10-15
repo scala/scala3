@@ -38,11 +38,11 @@ import reporting.trace
  * For additional reading material, please refer to the Simplicitly paper and/or
  * the discussion at https://github.com/lampepfl/dotty/issues/10889
  */
-class ElimRedundantContextualClosure extends MiniPhase with IdentityDenotTransformer { thisPhase: DenotTransformer =>
+class ElimContextClosures extends MiniPhase with IdentityDenotTransformer { thisPhase: DenotTransformer =>
   import ast.tpd._
   import ast.untpd
 
-  override def phaseName:String = ElimRedundantContextualClosure.name
+  override def phaseName:String = ElimContextClosures.name
 
   /** The info of the tree's symbol before it is potentially transformed in this phase */
   private def originalDenotation(tree: Tree)(using Context) =
@@ -76,6 +76,6 @@ class ElimRedundantContextualClosure extends MiniPhase with IdentityDenotTransfo
     }
 }
 
-object ElimRedundantContextualClosure {
-  val name: String = "elimRedundantContextualClosure"
+object ElimContextClosures {
+  val name: String = "elimContextClosures"
 }
