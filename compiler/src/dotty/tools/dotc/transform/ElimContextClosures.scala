@@ -44,10 +44,6 @@ class ElimContextClosures extends MiniPhase with IdentityDenotTransformer { this
 
   override def phaseName:String = ElimContextClosures.name
 
-  /** The info of the tree's symbol before it is potentially transformed in this phase */
-  private def originalDenotation(tree: Tree)(using Context) =
-    atPhase(thisPhase)(tree.symbol.denot)
-
   override def transformApply(tree: Apply)(using Context): Tree =
     trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
