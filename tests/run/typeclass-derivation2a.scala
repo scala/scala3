@@ -202,8 +202,8 @@ object Either {
         case e: Right[R] => mirror(1, e)
       }
       def reify(c: Mirror): Either[L, R] = c.ordinal match {
-        case 0 => Left(c(0).asInstanceOf)
-        case 1 => Right(c(0).asInstanceOf)
+        case 0 => Left(c(0).asInstanceOf[L])
+        case 1 => Right(c(0).asInstanceOf[R])
       }
       def common = genericClass
     }
