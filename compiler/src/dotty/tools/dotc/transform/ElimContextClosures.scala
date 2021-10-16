@@ -26,8 +26,8 @@ import reporting.trace
  * function literal.
  *
  * This makes for very ergonomic client code, but the implementation
- * requires the wrapper to be genereated before type information is available.
- * Thus, it can't be determine if the passed value is already a context function
+ * requires the wrapper to be generated before type information is available.
+ * Thus, it can't be determined if the passed value is already a context function
  * of the expected type, and the closure must be generated either way.
  *
  * Without this phase, when a contextual function is passed as an argument to a
