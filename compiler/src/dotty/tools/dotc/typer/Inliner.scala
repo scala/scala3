@@ -68,7 +68,7 @@ object Inliner {
       && StagingContext.level == 0
       && (
         ctx.phase == Phases.inliningPhase
-        || (ctx.phase == Phases.typerPhase && needsTransparentInlining(tree))
+        || (ctx.phase.isTyper && needsTransparentInlining(tree))
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining

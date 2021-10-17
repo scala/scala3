@@ -34,12 +34,6 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   // Run regardless of parsing errors
   override def isRunnable(implicit ctx: Context): Boolean = true
 
-  def enterSyms(using Context): Unit = monitor("indexing") {
-    val unit = ctx.compilationUnit
-    ctx.typer.index(unit.untpdTree)
-    typr.println("entered: " + unit.source)
-  }
-
   def typeCheck(using Context): Unit = monitor("typechecking") {
     try
       val unit = ctx.compilationUnit
@@ -73,17 +67,6 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         else
           newCtx
 
-    unitContexts.foreach(enterSyms(using _))
-
-    ctx.base.parserPhase match {
-      case p: ParserPhase =>
-        if p.firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists then
-          report.error(
-            """To support XML literals, your project must depend on scala-xml.
-              |See https://github.com/scala/scala-xml for more information.""".stripMargin,
-            p.firstXmlPos)
-      case _ =>
-    }
 
     unitContexts.foreach(typeCheck(using _))
     record("total trees after typer", ast.Trees.ntrees)

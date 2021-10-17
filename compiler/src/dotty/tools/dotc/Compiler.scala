@@ -3,7 +3,7 @@ package dotc
 
 import core._
 import Contexts._
-import typer.{TyperPhase, RefChecks}
+import typer.{NamerPhase, TyperPhase, RefChecks}
 import parsing.Parser
 import Phases.Phase
 import transform._
@@ -38,7 +38,8 @@ class Compiler {
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =
     List(new Parser) ::             // Compiler frontend: scanner, parser
-    List(new TyperPhase) ::         // Compiler frontend: namer, typer
+    List(new NamerPhase) ::         // Compiler frontend: namer
+    List(new TyperPhase) ::         // Compiler frontend: typer
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files

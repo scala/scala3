@@ -57,7 +57,11 @@ class ProtectedAccessors extends MiniPhase {
    ctx.property(AccessorsKey).get
 
   override def prepareForUnit(tree: Tree)(using Context): Context =
-    ctx.fresh.setProperty(AccessorsKey, new Accessors)
+    var acc = ctx.compilationUnit.protectedAccessors.asInstanceOf[Accessors]
+    if (acc == null)
+      acc = new Accessors()
+      ctx.compilationUnit.protectedAccessors = acc
+    ctx.fresh.setProperty(AccessorsKey, acc)
 
   private class Accessors extends AccessProxies {
     val insert: Insert = new Insert {

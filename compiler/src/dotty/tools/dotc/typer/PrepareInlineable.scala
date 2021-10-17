@@ -29,7 +29,11 @@ object PrepareInlineable {
   private val InlineAccessorsKey = new Property.Key[InlineAccessors]
 
   def initContext(ctx: Context): Context =
-    ctx.fresh.setProperty(InlineAccessorsKey, new InlineAccessors)
+    var acc = ctx.compilationUnit.inlineAccessors
+    if (acc == null)
+      ctx.compilationUnit.inlineAccessors = new InlineAccessors()
+      acc = ctx.compilationUnit.inlineAccessors
+    ctx.fresh.setProperty(InlineAccessorsKey, acc)
 
   def makeInlineable(tree: Tree)(using Context): Tree =
     ctx.property(InlineAccessorsKey).get.makeInlineable(tree)

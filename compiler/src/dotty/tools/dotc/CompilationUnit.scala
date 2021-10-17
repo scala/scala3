@@ -11,6 +11,7 @@ import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
 import typer.Nullables
+import transform.AccessProxies
 import transform.SymUtils._
 import core.Decorators._
 import config.SourceVersion
@@ -62,7 +63,7 @@ class CompilationUnit protected (val source: SourceFile) {
   /** Can this compilation unit be suspended */
   def isSuspendable: Boolean = true
 
-  /** Suspends the compilation unit by thowing a SuspendException
+  /** Suspends the compilation unit by throwing a SuspendException
    *  and recording the suspended compilation unit
    */
   def suspend()(using Context): Nothing =
@@ -85,6 +86,9 @@ class CompilationUnit protected (val source: SourceFile) {
   def assignmentSpans(using Context): Map[Int, List[Span]] =
     if myAssignmentSpans == null then myAssignmentSpans = Nullables.assignmentSpans
     myAssignmentSpans
+
+  private[dotc] var inlineAccessors: InlineAccessors = null
+  private[dotc] var protectedAccessors: AccessProxies = null
 }
 
 object CompilationUnit {

@@ -98,7 +98,8 @@ phases. The current list of phases is specified in class [Compiler] as follows:
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =
     List(new Parser) ::             // scanner, parser
-    List(new TyperPhase) ::         // namer, typer
+    List(new NamerPhase) ::         // namer
+    List(new TyperPhase) ::         // typer
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
