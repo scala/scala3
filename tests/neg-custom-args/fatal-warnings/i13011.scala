@@ -6,12 +6,16 @@ class i13011 {
 
   lazy val simple3: String = if true then this.simple3 else "a" // error
 
-  lazy val simple4: String = identity(this.simple4) // error
+  def firstDigitIsEven(n: Int): Boolean = if n % 10 == n then n % 2 == 0 else firstDigitIsEven(n / 10)
+
+  lazy val simple4: String = if firstDigitIsEven(22) then this.simple4 else "a" // error
+
+  lazy val simple5: String = identity(this.simple5) // error
         
-  lazy val simple5: String = {  // error
-    this.simple5
+  lazy val simple6: String = {  // error
+    this.simple6
     "aa"
   }
 
-  lazy val simple6: Function0[Any] = () => this.simple6  // Ok
+  lazy val simple7: Function0[Any] = () => this.simple7  // Ok
 }
