@@ -48,20 +48,19 @@ class ElimContextClosures extends MiniPhase with IdentityDenotTransformer { this
     trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
       def transformArg(arg: Tree, formal: Type): Tree = {
-        val formal1 = formal.widenDealias
+        val formal1 = formal.widen
         if defn.isContextFunctionType(formal1) && untpd.isContextualClosure(arg) then
-          val body = unsplice(closureBody(arg)) match {
-            case Apply(Select(fn, nme.apply), _) => fn
+          unsplice(closureBody(arg)) match {
+            case Apply(Select(body, nme.apply), _) =>
+              val underlyingBodyType = body.tpe.widen
+              val bodyIsContextual = defn.isContextFunctionType(underlyingBodyType)
+              val bodyTypeMatches = TypeComparer.isSubType(underlyingBodyType, formal1)
+              if bodyIsContextual && bodyTypeMatches then
+                body
+              else
+                arg
             case other => other
           } // no-op if not a nested closure of some kind
-          val underlyingBodyType = body.tpe.widenDealias
-          val bodyIsContextual = defn.isContextFunctionType(underlyingBodyType)
-          val bodyTypeMatches = TypeComparer.isSubType(underlyingBodyType, formal1)
-          if bodyIsContextual && bodyTypeMatches then
-            body
-          else
-            arg
-
         else
           arg
       }
