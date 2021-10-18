@@ -8,7 +8,7 @@ class i13011 {
 
   def firstDigitIsEven(n: Int): Boolean = if n % 10 == n then n % 2 == 0 else firstDigitIsEven(n / 10)
 
-  lazy val simple4: String = if firstDigitIsEven(22) then this.simple4 else "a" // error
+  lazy val simple4: String = if firstDigitIsEven(22) then this.simple4 else "a" // ok
 
   lazy val simple5: String = identity(this.simple5) // error
         
