@@ -16,8 +16,8 @@ import collection.mutable
 class main extends scala.annotation.MainAnnotation:
   import main._
 
-  protected sealed abstract class Argument {
-    val name: String
+  protected sealed abstract trait Argument {
+    def name: String
   }
   protected case class SimpleArgument(name: String) extends Argument
   protected case class OptionalArgument[T](name: String, val defaultValue: T) extends Argument
