@@ -5,6 +5,7 @@ import core._
 import Symbols._, Types._, Contexts._, Decorators._, util.Spans._, Flags._, Constants._
 import StdNames.nme
 import ast.Trees._
+import Names.TermName
 
 /** Generate proxy classes for @main functions.
  *  A function like
@@ -13,16 +14,13 @@ import ast.Trees._
  *
  *  would be translated to something like
  *
- *     import CommandLineParser._
- *     class f {
+ *     object f extends main {
  *       @static def main(args: Array[String]): Unit =
- *         try
- *           f(
- *             parseArgument[S](args, 0),
- *             parseRemainingArguments[T](args, 1): _*
- *           )
- *         catch case err: ParseError => showError(err)
- *       }
+ *         val cmd = command(args, "f", "")
+ *         val arg1 = cmd.argGetter[S]("x")
+ *         val arg2 = cmd.argsGetter[T]("ys")
+ *         cmd.run(f(arg1(), arg2(): _*))
+ *     }
  */
 object MainProxies {
 
@@ -40,59 +38,74 @@ object MainProxies {
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
+  def mainProxy(mainFun: Symbol)(using Context): List[ModuleDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
-    val argsRef = Ident(nme.args)
+    val mainArgsName: TermName = nme.args
+    val cmdName: TermName = Names.termName("cmd")
 
-    def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree =
+    def createValArgs(mt: MethodType, cmdName: TermName, idx: Int): List[ValDef] =
       if (mt.isImplicitMethod) {
         report.error(s"@main method cannot have implicit parameters", pos)
-        call
+        Nil
       }
       else {
-        val args = mt.paramInfos.zipWithIndex map {
-          (formal, n) =>
-            val (parserSym, formalElem) =
-              if (formal.isRepeatedParam) (defn.CLP_parseRemainingArguments, formal.argTypes.head)
-              else (defn.CLP_parseArgument, formal)
-            val arg = Apply(
-              TypeApply(ref(parserSym.termRef), TypeTree(formalElem) :: Nil),
-              argsRef :: Literal(Constant(idx + n)) :: Nil)
-            if (formal.isRepeatedParam) repeated(arg) else arg
+        var valArgs: List[ValDef] = Nil
+        // TODO check & handle default value
+        val ValDefargs = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
+          case ((formal, paramName), n) =>
+            val (getterSym, formalElem) =
+              if (formal.isRepeatedParam) (defn.MainAnnotCommand_argsGetter, formal.argTypes.head)
+              else (defn.MainAnnotCommand_argGetter, formal)
+            val valArg = ValDef(
+              mainArgsName ++ (idx + n).toString, // FIXME
+              TypeTree(defn.FunctionOf(Nil, formalElem)),
+              Apply(
+                TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalElem) :: Nil),
+                Literal(Constant(paramName.toString)) :: Nil
+              ),
+            )
+            valArgs = valArgs :+ valArg
         }
-        val call1 = Apply(call, args)
         mt.resType match {
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
               report.error(s"varargs parameter of @main method must come last", pos)
-            addArgs(call1, restpe, idx + args.length)
+            valArgs ::: createValArgs(restpe, cmdName, idx + valArgs.length)
           case _ =>
-            call1
+            valArgs
         }
       }
 
-    var result: List[TypeDef] = Nil
+    var result: List[ModuleDef] = Nil
     if (!mainFun.owner.isStaticOwner)
       report.error(s"@main method is not statically accessible", pos)
     else {
-      var call = ref(mainFun.termRef)
+      val cmd = ValDef(
+        cmdName,
+        TypeTree(), // TODO check if good practice
+        Apply(
+          Ident(defn.MainAnnot_command.name),
+          Ident(mainArgsName) :: Literal(Constant(mainFun.showName)) :: /* TODO Docstring */ Literal(Constant("")) :: Nil
+        )
+      )
+      var args: List[ValDef] = Nil
+      var mainCall: Tree = ref(mainFun.termRef)
+
       mainFun.info match {
         case _: ExprType =>
         case mt: MethodType =>
-          call = addArgs(call, mt, 0)
+          args = createValArgs(mt, cmdName, 0)
+          mainCall = Apply(mainCall, args map (arg => Apply(Ident(arg.name), Nil)))
         case _: PolyType =>
           report.error(s"@main method cannot have type parameters", pos)
         case _ =>
           report.error(s"@main can only annotate a method", pos)
       }
-      val errVar = Ident(nme.error)
-      val handler = CaseDef(
-        Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
-        EmptyTree,
-        Apply(ref(defn.CLP_showError.termRef), errVar :: Nil))
-      val body = Try(call, handler :: Nil, EmptyTree)
-      val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
+
+      val run = Apply(Select(Ident(cmdName), defn.MainAnnotCommand_run.name), mainCall)
+      val body = Block(cmd :: args, run)
+      val mainArg = ValDef(mainArgsName, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
       /** Replace typed `Ident`s that have been typed with a TypeSplice with the reference to the symbol.
        *  The annotations will be retype-checked in another scope that may not have the same imports.
@@ -106,12 +119,11 @@ object MainProxies {
         .filterNot(_.matches(defn.MainAnnot))
         .map(annot => insertTypeSplices.transform(annot.tree))
       val mainMeth = DefDef(nme.main, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
-        .withFlags(JavaStatic)
+        //.withFlags(JavaStatic) // TODO check if necessary
         .withAnnotations(annots)
-      val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
-      val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
-        .withFlags(Final | Invisible)
-      if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
+      val mainTempl = Template(emptyConstructor, TypeTree(defn.MainAnnot.typeRef) :: Nil, Nil, EmptyValDef, mainMeth :: Nil)
+      val mainObj = ModuleDef(mainFun.name.toTermName, mainTempl)
+      if (!ctx.reporter.hasErrors) result = mainObj.withSpan(mainAnnotSpan.toSynthetic) :: Nil
     }
     result
   }

@@ -30,7 +30,7 @@ trait MainAnnotation extends StaticAnnotation:
     def argGetter[T](argName: String)(using fromString: ArgumentParser[T]): () => T
 
     /** The getter for the next argument of type `T` with a default value */
-    def argGetter[T](argName: String, defaultValue: T)(using fromString: ArgumentParser[T]): () => T
+    def argGetterDefault[T](argName: String, defaultValue: T)(using fromString: ArgumentParser[T]): () => T
 
     /** The getter for a final varargs argument of type `T*` */
     def argsGetter[T](argName: String)(using fromString: ArgumentParser[T]): () => Seq[T]

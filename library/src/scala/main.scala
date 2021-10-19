@@ -92,7 +92,7 @@ class main extends scala.annotation.MainAnnotation:
           case Some(arg) => convert(argName, arg, p)
           case None => error(s"missing argument for $argName")
 
-      override def argGetter[T](argName: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
+      override def argGetterDefault[T](argName: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
         argInfos += self.OptionalArgument(argName, defaultValue)
         val idx = args.indexOf(s"--$argName")
         val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
