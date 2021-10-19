@@ -54,7 +54,7 @@ This assumes a type `A throws E` to indicate computations of type `A` that can t
 
 But there is a way to avoid the ceremony. Instead of concentrating on possible _effects_ such as "this code might throw an exception", concentrate on _capabilities_ such as "this code needs the capability to throw an exception". From a standpoint of expressiveness this is quite similar. But capabilities can be expressed as parameters whereas traditionally effects are expressed as some addition to result values. It turns out that this can make a big difference!
 
-## The CanThrow Cabability
+## The CanThrow Capability
 
 In the _effects as capabilities_ model, an effect is expressed as an (implicit) parameter of a certain type. For exceptions we would expect parameters of type
 `CanThrow[E]` where `E` stands for the exception that can be thrown. Here is the definition of `CanThrow`:
