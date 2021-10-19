@@ -9,8 +9,8 @@ given Functor[List] with
   def map[A](x: List[A])[B](f: A => B): List[B] =
     x.map(f)
 
-def assertTransformation[F[_]: Functor][A][B](expected: F[B], original: F[A], mapping: A => B): Unit =
-  assert(expected == summon[Functor[F]].map(original, mapping))
+def assertTransformation[F[_]: Functor][A](original: F[A])[B](expected: F[B])(mapping: A => B): Unit =
+  assert(expected == summon[Functor[F]].map(original)(mapping))
 
 @main def test =
-  assertTransformation(List("a1", "b1"), List("a", "b"), elt => s"${elt}1")
+  assertTransformation(List("a", "b"))(List("a1", "b1")){elt => s"${elt}1"}
