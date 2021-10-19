@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Existential Types"
 type: section
-num: 73
+num: 74
 previous-page: /scala3/reference/dropped-features/macros
 next-page: /scala3/reference/dropped-features/type-projection
 ---

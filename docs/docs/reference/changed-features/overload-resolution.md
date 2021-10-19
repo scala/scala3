@@ -1,7 +1,7 @@
 ---
 title: "Changes in Overload Resolution"
 type: section
-num: 61
+num: 62
 previous-page: /scala3/reference/changed-features/implicit-conversions
 next-page: /scala3/reference/changed-features/match-syntax
 ---

@@ -3,7 +3,7 @@ title: "TypeTest"
 type: section
 num: 50
 previous-page: /scala3/reference/other-new-features/safe-initialization
-next-page: /scala3/reference/changed-features
+next-page: /scala3/reference/other-new-features/experimental-defs
 ---
 
 ## TypeTest

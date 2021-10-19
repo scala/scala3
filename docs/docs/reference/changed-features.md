@@ -1,8 +1,8 @@
 ---
 title: "Other Changed Features"
 type: chapter
-num: 51
-previous-page: /scala3/reference/other-new-features/type-test
+num: 52
+previous-page: /scala3/reference/other-new-features/experimental-defs
 next-page: /scala3/reference/changed-features/numeric-literals
 ---
 

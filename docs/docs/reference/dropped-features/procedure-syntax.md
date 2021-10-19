@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Procedure Syntax"
 type: section
-num: 76
+num: 77
 previous-page: /scala3/reference/dropped-features/do-while
 next-page: /scala3/reference/dropped-features/package-objects
 ---

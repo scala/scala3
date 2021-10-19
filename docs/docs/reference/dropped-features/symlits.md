@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Symbol Literals"
 type: section
-num: 82
+num: 83
 previous-page: /scala3/reference/dropped-features/xml
 next-page: /scala3/reference/dropped-features/auto-apply
 ---

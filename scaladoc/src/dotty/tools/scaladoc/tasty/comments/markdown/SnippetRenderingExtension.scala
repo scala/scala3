@@ -13,17 +13,17 @@ import com.vladsch.flexmark.util.options._
 import com.vladsch.flexmark.util.sequence.BasedSequence
 import com.vladsch.flexmark._
 
+/**
+ * SnippetRenderingExtension is responsible for running an analysis for scala codeblocks in the static documentation/scaladoc comments.
+ * For each codeblock we run compiler to check whether snippet works in the newest scala version and to produce rich html codeblocks with
+ * compiler warnings/errors for IDE-like live experience.
+ */
 object SnippetRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
   def rendererOptions(opt: MutableDataHolder): Unit = ()
   object ExtendedFencedCodeBlockHandler extends CustomNodeRenderer[ExtendedFencedCodeBlock]:
     override def render(node: ExtendedFencedCodeBlock, c: NodeRendererContext, html: HtmlWriter): Unit =
       html.raw(
-        SnippetRenderer.renderSnippetWithMessages(
-          node.name,
-          node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
-          node.compilationResult.toSeq.flatMap(_.messages),
-          node.hasContext
-        )
+        SnippetRenderer.renderSnippetWithMessages(node)
       )
 
   object Render extends NodeRenderer:
