@@ -179,9 +179,9 @@ object Inferencing {
         && {
           val direction = instDirection(tvar.origin)
           if minimizeSelected then
-            if direction <= 0 && tvar.hasNonWildcardLowerBound then
+            if direction <= 0 && tvar.hasLowerBound then
               instantiate(tvar, fromBelow = true)
-            else if direction >= 0 && tvar.hasNonWildcardUpperBound then
+            else if direction >= 0 && tvar.hasUpperBound then
               instantiate(tvar, fromBelow = false)
             // else hold off instantiating unbounded unconstrained variable
           else if direction != 0 then

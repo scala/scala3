@@ -4615,20 +4615,6 @@ object Types {
     /** For uninstantiated type variables: Is the upper bound different from Any? */
     def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.isRef(defn.AnyClass)
 
-    /** For uninstantiated type variables: Is the lower bound different from Nothing and
-     *  does it not contain wildcard types?
-     */
-    def hasNonWildcardLowerBound(using Context): Boolean =
-      val lo = currentEntry.loBound
-      !lo.isExactlyNothing && !lo.containsWildcardTypes
-
-    /** For uninstantiated type variables: Is the upper bound different from Any and
-     *  does it not contain wildcard types?
-     */
-    def hasNonWildcardUpperBound(using Context): Boolean =
-      val hi = currentEntry.hiBound
-      !hi.isRef(defn.AnyClass) && !hi.containsWildcardTypes
-
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
      */
