@@ -21,7 +21,7 @@ object UpperBoundParametricVariant {
   trait Child[A <: Cov[Int]] extends Root[A]
 
   // we reduce `M[T]` to `Trait2`, even though we cannot be certain of that
-  def foo[T <: Cov[Int]](c: Child[T]): Trait2 = c.thing
+  def foo[T <: Cov[Int]](c: Child[T]): Trait2 = c.thing // error
 
   class Asploder extends Child[Cov[String & Int]] {
     def thing = new Trait1 {} // error
@@ -42,7 +42,7 @@ object InheritanceVariant {
 
   trait Child extends Root { type B <: { type A <: Int } }
 
-  def foo(c: Child): Trait2 = c.thing
+  def foo(c: Child): Trait2 = c.thing // error
 
   class Asploder extends Child {
     type B = { type A = String & Int }
@@ -98,7 +98,7 @@ object UpperBoundVariant {
 
   trait Child extends Root { type A <: Cov[Int] }
 
-  def foo(c: Child): Trait2 = c.thing
+  def foo(c: Child): Trait2 = c.thing // error
 
   class Asploder extends Child {
     type A = Cov[String & Int]
