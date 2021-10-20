@@ -1,6 +1,6 @@
 package scala.runtime
 
-import annotation.experimental
+import scala.annotation.experimental
 
 object Tuples {
 
@@ -500,11 +500,13 @@ object Tuples {
     }
   }
 
+  @experimental
   def init(self: NonEmptyTuple): Tuple = (self: Any) match {
     case xxl: TupleXXL => xxlInit(xxl)
     case _ => specialCaseInit(self)
   }
 
+  @experimental
   def last(self: NonEmptyTuple): Any = (self: Any) match {
     case self: Product => self.productElement(self.productArity - 1)
   }
