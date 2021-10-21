@@ -27,13 +27,13 @@ trait MainAnnotation extends StaticAnnotation:
   abstract class Command(val commandName: String, val docComment: String):
 
     /** The getter for the next argument of type `T` */
-    def argGetter[T](argName: String)(using fromString: ArgumentParser[T]): () => T
+    def argGetter[T](argName: String, argType: String)(using fromString: ArgumentParser[T]): () => T
 
     /** The getter for the next argument of type `T` with a default value */
-    def argGetterDefault[T](argName: String, defaultValue: T)(using fromString: ArgumentParser[T]): () => T
+    def argGetterDefault[T](argName: String, argType: String, defaultValue: T)(using fromString: ArgumentParser[T]): () => T
 
     /** The getter for a final varargs argument of type `T*` */
-    def argsGetter[T](argName: String)(using fromString: ArgumentParser[T]): () => Seq[T]
+    def argsGetter[T](argName: String, argType: String)(using fromString: ArgumentParser[T]): () => Seq[T]
 
     /** Run `program` if all arguments are valid,
      *  or print usage information and/or error messages.

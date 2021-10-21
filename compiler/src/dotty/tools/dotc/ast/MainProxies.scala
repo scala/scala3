@@ -17,8 +17,8 @@ import Names.TermName
  *     object f extends main {
  *       @static def main(args: Array[String]): Unit =
  *         val cmd = command(args, "f", "")
- *         val arg1 = cmd.argGetter[S]("x")
- *         val arg2 = cmd.argsGetter[T]("ys")
+ *         val arg1 = cmd.argGetter[S]("x", "S")
+ *         val arg2 = cmd.argsGetter[T]("ys", "T")
  *         cmd.run(f(arg1(), arg2(): _*))
  *     }
  */
@@ -62,7 +62,7 @@ object MainProxies {
               TypeTree(defn.FunctionOf(Nil, formalElem)),
               Apply(
                 TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalElem) :: Nil),
-                Literal(Constant(paramName.toString)) :: Nil
+                Literal(Constant(paramName.toString)) :: Literal(Constant(formalElem.show)) :: Nil  // TODO check if better way to print name of formalElem
               ),
             )
             valArgs = valArgs :+ valArg

@@ -18,10 +18,11 @@ class main extends scala.annotation.MainAnnotation:
 
   protected sealed abstract trait Argument {
     def name: String
+    def typeName: String
   }
-  protected case class SimpleArgument(name: String) extends Argument
-  protected case class OptionalArgument[T](name: String, val defaultValue: T) extends Argument
-  protected case class VarArgument(name: String) extends Argument
+  protected case class SimpleArgument(name: String, typeName: String) extends Argument
+  protected case class OptionalArgument[T](name: String, typeName: String, val defaultValue: T) extends Argument
+  protected case class VarArgument(name: String, typeName: String) extends Argument
 
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
@@ -30,9 +31,9 @@ class main extends scala.annotation.MainAnnotation:
   def usage(commandName: String, args: Seq[Argument]): Unit =
     val argInfos = args map (
       _ match {
-        case SimpleArgument(name) => name
-        case OptionalArgument(name, _) => s"$name?"
-        case VarArgument(name) => s"$name*"
+        case SimpleArgument(name, _) => name
+        case OptionalArgument(name, _, _) => s"$name?"
+        case VarArgument(name, _) => s"$name*"
       }
     )
     println(s"Usage: $commandName ${argInfos.mkString(" ")}")
@@ -84,24 +85,24 @@ class main extends scala.annotation.MainAnnotation:
       private def explain(): Unit =
         self.explain(this.commandName, argInfos.toSeq, this.docComment)
 
-      override def argGetter[T](argName: String)(using p: ArgumentParser[T]): () => T =
-        argInfos += self.SimpleArgument(argName)
+      override def argGetter[T](argName: String, argType: String)(using p: ArgumentParser[T]): () => T =
+        argInfos += self.SimpleArgument(argName, argType)
         val idx = args.indexOf(s"--$argName")
         val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
         argOpt match
           case Some(arg) => convert(argName, arg, p)
           case None => error(s"missing argument for $argName")
 
-      override def argGetterDefault[T](argName: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
-        argInfos += self.OptionalArgument(argName, defaultValue)
+      override def argGetterDefault[T](argName: String, argType: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
+        argInfos += self.OptionalArgument(argName, argType, defaultValue)
         val idx = args.indexOf(s"--$argName")
         val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
         argOpt match
           case Some(arg) => convert(argName, arg, p)
           case None => () => defaultValue
 
-      override def argsGetter[T](argName: String)(using p: ArgumentParser[T]): () => Seq[T] =
-        argInfos += self.VarArgument(argName)
+      override def argsGetter[T](argName: String, argType: String)(using p: ArgumentParser[T]): () => Seq[T] =
+        argInfos += self.VarArgument(argName, argType)
         def remainingArgGetters(): List[() => T] = nextPositionalArg() match
           case Some(arg) => convert(argName, arg, p) :: remainingArgGetters()
           case None => Nil
