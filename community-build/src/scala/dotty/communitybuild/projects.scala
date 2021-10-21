@@ -731,6 +731,13 @@ object projects:
     dependencies = List(scalaJava8Compat, scalatest)
   )
 
+  lazy val spire = SbtCommunityProject(
+    project = "spire",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(cats, algebra, disciplineMunit)
+  )
+
 end projects
 
 def allProjects = List(
