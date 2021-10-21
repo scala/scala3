@@ -5,10 +5,10 @@ set -e
 source $(dirname $0)/cmdTestsCommon.inc.sh
 
 # check that benchmarks can run
-"$SBT" "scala3-bench/jmh:run 1 1 tests/pos/alias.scala"
+"$SBT" "scala3-bench/jmh:run -wi 1 -i 1 -- tests/pos/alias.scala"
 # The above is here as it relies on the bootstrapped library.
-"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
-"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
+"$SBT" "scala3-bench-bootstrapped/jmh:run -wi 1 -i 1 -- tests/pos/alias.scala"
+"$SBT" "scala3-bench-bootstrapped/jmh:run -wi 1 -i 1 -- -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
 
 echo "testing scala.quoted.Expr.run from sbt scala"
 "$SBT" ";scala3-compiler-bootstrapped/scalac -with-compiler tests/run-staging/quote-run.scala; scala3-compiler-bootstrapped/scala -with-compiler Test" > "$tmp"
