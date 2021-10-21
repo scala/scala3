@@ -17,21 +17,14 @@ object myProgram:
 
 end myProgram
 
-// Compiler generated code:
-// TODO remove once @main generation is operational
-object show extends main:
-  def main(args: Array[String]) =
-    val cmd = command(args, "show", "Displays some parameters")
-    val arg1 = cmd.argGetter[Int]("int")
-    val arg2 = cmd.argGetter[Double]("double")
-    val arg3 = cmd.argGetter[String]("string")
-    val arg4 = cmd.argGetter[Boolean]("boolean")
-    cmd.run(myProgram.show(arg1(), arg2(), arg3(), arg4()))
-end show
-
 object Test:
+  def callMain(args: Array[String]): Unit =
+    val clazz = Class.forName("add")
+    val method = clazz.getMethod("main", classOf[Array[String]])
+    method.invoke(null, args)
+
   def main(args: Array[String]): Unit =
-    show.main(Array("2", "3", "4", "true"))
-    show.main(Array("-1", "3456789098765445678", "false", "FALSE"))
-    show.main(Array("2147483647", "3.1415926535", "Hello world!", "True"))
+    callMain(Array("2", "3", "4", "true"))
+    callMain(Array("-1", "3456789098765445678", "false", "FALSE"))
+    callMain(Array("2147483647", "3.1415926535", "Hello world!", "True"))
 end Test

@@ -10,20 +10,16 @@ object myProgram:
 
 end myProgram
 
-// Compiler generated code:
-// TODO remove once @main generation is operational
-object add extends main:
-  def main(args: Array[String]) =
-    val cmd = command(args, "add", "Adds any amount of numbers")
-    val arg1 = cmd.argsGetter[Int]("nums")
-    cmd.run(myProgram.add(arg1(): _*))
-end add
-
 object Test:
+  def callMain(args: Array[String]): Unit =
+    val clazz = Class.forName("add")
+    val method = clazz.getMethod("main", classOf[Array[String]])
+    method.invoke(null, args)
+
   def main(args: Array[String]): Unit =
-    add.main(Array("2", "3"))
-    add.main(Array("2", "3", "-4"))
-    add.main((1 to 10).toArray.map(_.toString))
-    add.main(Array("0"))
-    add.main(Array())
+    callMain(Array("2", "3"))
+    callMain(Array("2", "3", "-4"))
+    callMain((1 to 10).toArray.map(_.toString))
+    callMain(Array("0"))
+    callMain(Array())
 end Test

@@ -17,16 +17,12 @@ object myProgram:
 
 end myProgram
 
-// TODO remove once @main generation is operational
-object add extends myMain:
-  def main(args: Array[String]) =
-    val cmd = command(args, "add", "Adds numbers")
-    val arg1 = cmd.argGetter[Int]("num")
-    val arg2 = cmd.argsGetter[Int]("inc")
-    cmd.run(myProgram.add(arg1(), arg2(): _*))
-end add
-
 object Test:
+  def callMain(args: Array[String]): Unit =
+    val clazz = Class.forName("add")
+    val method = clazz.getMethod("main", classOf[Array[String]])
+    method.invoke(null, args)
+
   def main(args: Array[String]): Unit =
-    add.main(Array("--help"))
+    callMain(Array("--help"))
 end Test

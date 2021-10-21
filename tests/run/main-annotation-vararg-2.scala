@@ -11,24 +11,18 @@ object myProgram:
 
 end myProgram
 
-// Compiler generated code:
-// TODO remove once @main generation is operational
-object count extends main:
-  def main(args: Array[String]) =
-    val cmd = command(args, "count", "Checks that the correct amount of parameters were passed")
-    val arg1 = cmd.argGetter[Int]("count")
-    val arg2 = cmd.argsGetter[String]("elems")
-
-    cmd.run(myProgram.count(arg1(), arg2(): _*))
-end count
-
 object Test:
+  def callMain(args: Array[String]): Unit =
+    val clazz = Class.forName("count")
+    val method = clazz.getMethod("main", classOf[Array[String]])
+    method.invoke(null, args)
+
   def main(args: Array[String]): Unit =
-    count.main(Array("1", "Hello"))
-    count.main(Array("2", "Hello", "world!"))
-    count.main(Array("3", "No 3 elements"))
-    count.main(Array("0"))
-    count.main(Array("0", "I", "shouldn't", "be", "here"))
-    count.main(Array("-2", "How does that make sense?"))
-    count.main(Array("26") ++ ('a' to 'z').toArray.map(_.toString))
+    callMain(Array("1", "Hello"))
+    callMain(Array("2", "Hello", "world!"))
+    callMain(Array("3", "No 3 elements"))
+    callMain(Array("0"))
+    callMain(Array("0", "I", "shouldn't", "be", "here"))
+    callMain(Array("-2", "How does that make sense?"))
+    callMain(Array("26") ++ ('a' to 'z').toArray.map(_.toString))
 end Test

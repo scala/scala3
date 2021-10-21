@@ -7,20 +7,15 @@ object myProgram:
 
 end myProgram
 
-// Compiler generated code:
-// TODO remove once @main generation is operational
-object add extends main:
-  def main(args: Array[String]) =
-    val cmd = command(args, "add", "Adds two numbers")
-    val arg1 = cmd.argGetter[Int]("num")
-    val arg2 = cmd.argGetter[Int]("inc")
-    cmd.run(myProgram.add(arg1(), arg2()))
-end add
-
 object Test:
+  def callMain(args: Array[String]): Unit =
+    val clazz = Class.forName("add")
+    val method = clazz.getMethod("main", classOf[Array[String]])
+    method.invoke(null, args)
+
   def main(args: Array[String]): Unit =
-    add.main(Array("2", "true", "SPAAAAACE"))
-    add.main(Array("add", "2", "3"))
-    add.main(Array("true", "false", "10"))
-    add.main(Array("binary", "10", "01"))
+    callMain(Array("2", "true", "SPAAAAACE"))
+    callMain(Array("add", "2", "3"))
+    callMain(Array("true", "false", "10"))
+    callMain(Array("binary", "10", "01"))
 end Test

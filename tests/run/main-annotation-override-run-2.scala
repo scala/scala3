@@ -10,15 +10,12 @@ object myProgram:
 
 end myProgram
 
-// TODO remove once @main generation is operational
-object hcf extends myMain:
-  def main(args: Array[String]) =
-    val cmd = command(args, "hcf", "Halt and catch fire")
-    val arg1 = cmd.argGetter[Int]("code")
-    cmd.run(myProgram.hcf(arg1()))
-end hcf
-
 object Test:
+  def callMain(args: Array[String]): Unit =
+    val clazz = Class.forName("hcf")
+    val method = clazz.getMethod("main", classOf[Array[String]])
+    method.invoke(null, args)
+
   def main(args: Array[String]): Unit =
-    hcf.main(Array("42"))
+    callMain(Array("42"))
 end Test

@@ -7,15 +7,12 @@ object myProgram:
 
 end myProgram
 
-// Compiler generated code:
-// TODO remove once @main generation is operational
-object run extends main:
-  def main(args: Array[String]) =
-    val cmd = command(args, "run", "Does nothing, except confirming that it runs")
-    cmd.run(myProgram.run())
-end run
-
 object Test:
+  def callMain(args: Array[String]): Unit =
+    val clazz = Class.forName("run")
+    val method = clazz.getMethod("main", classOf[Array[String]])
+    method.invoke(null, args)
+
   def main(args: Array[String]): Unit =
-    run.main(Array())
+    callMain(Array())
 end Test

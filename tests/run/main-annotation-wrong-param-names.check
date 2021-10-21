@@ -7,3 +7,9 @@ Error: missing argument for inc
 Error: unknown argument name: --n
 Error: unknown argument name: --i
 Usage: add num inc
+Error: invalid argument for num: -num
+Error: unused argument: 1
+Usage: add num inc
+Error: invalid argument for inc: -inc
+Error: unused argument: 10
+Usage: add num inc
