@@ -213,12 +213,6 @@
 [submodule "community-build/community-projects/scala-java8-compat"]
 	path = community-build/community-projects/scala-java8-compat
 	url = https://github.com/dotty-staging/scala-java8-compat.git
-<<<<<<< HEAD
-[submodule "community-build/community-projects/specs2"]
-	path = community-build/community-projects/specs2
-	url = https://github.com/dotty-staging/specs2.git
-=======
 [submodule "community-build/community-projects/spire"]
 	path = community-build/community-projects/spire
 	url = https://github.com/typelevel/spire.git
->>>>>>> Add spire to community build
