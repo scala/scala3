@@ -735,7 +735,7 @@ object projects:
     project = "spire",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(cats, algebra, disciplineMunit)
+    dependencies = List(cats, disciplineMunit)
   )
 
 end projects
