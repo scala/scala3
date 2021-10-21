@@ -807,6 +807,13 @@ import transform.SymUtils._
            |"""
   }
 
+  class LossyWideningConstantConversion(sourceType: Type, targetType: Type)(using Context)
+  extends Message(LossyWideningConstantConversionID):
+    def kind = "Lossy Conversion"
+    def msg = em"""|Widening conversion from $sourceType to $targetType loses precision.
+                   |Write `.to$targetType` instead.""".stripMargin
+    def explain = ""
+
   class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
   extends Message(PatternMatchExhaustivityID) {
     def kind = "Pattern Match Exhaustivity"
