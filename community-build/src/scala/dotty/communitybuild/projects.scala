@@ -731,6 +731,13 @@ object projects:
     dependencies = List(scalaJava8Compat, scalatest)
   )
 
+  lazy val specs2 = SbtCommunityProject(
+    project = "specs2",
+    sbtTestCommand = "core/test",
+    sbtPublishCommand = "core/publishLocal",
+    dependencies = List()
+  )
+
 end projects
 
 def allProjects = List(
@@ -809,6 +816,7 @@ def allProjects = List(
   projects.fs2,
   projects.libretto,
   projects.jacksonModuleScala,
+  projects.specs2,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
