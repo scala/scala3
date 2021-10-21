@@ -1,0 +1,44 @@
+-- Error: tests/neg/i13044.scala:50:40 ---------------------------------------------------------------------------------
+50 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
+   |                                        ^^^^^^^^^^
+   |                                        given instance gen is declared as `inline`, but was not inlined
+   |
+   |                                        Try increasing `-Xmax-inlines` above 32
+   | This location contains code that was inlined from i13044.scala:17
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37
+   | This location contains code that was inlined from i13044.scala:17
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37
+   | This location contains code that was inlined from i13044.scala:17
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37
+   | This location contains code that was inlined from i13044.scala:17
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37
+   | This location contains code that was inlined from i13044.scala:17
+   | This location contains code that was inlined from i13044.scala:18
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37
+-- Error: tests/neg/i13044.scala:50:40 ---------------------------------------------------------------------------------
+50 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
+   |                                        ^^^^^^^^^^
+   |                                        method recurse is declared as `inline`, but was not inlined
+   |
+   |                                        Try increasing `-Xmax-inlines` above 32
+   | This location contains code that was inlined from i13044.scala:18
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37
+   | This location contains code that was inlined from i13044.scala:17
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37
+   | This location contains code that was inlined from i13044.scala:17
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37
+   | This location contains code that was inlined from i13044.scala:17
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37
+   | This location contains code that was inlined from i13044.scala:17
+   | This location contains code that was inlined from i13044.scala:18
+   | This location contains code that was inlined from i13044.scala:31
+   | This location contains code that was inlined from i13044.scala:37

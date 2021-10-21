@@ -593,8 +593,14 @@ object Erasure {
       */
     private def checkNotErased(tree: Tree)(using Context): tree.type = {
       if (!ctx.mode.is(Mode.Type)) {
-        if (isErased(tree))
-          report.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.srcPos)
+        if isErased(tree) then
+          val msg =
+            if tree.symbol.is(Flags.Inline) then
+              em"""${tree.symbol} is declared as `inline`, but was not inlined
+                  |
+                  |Try increasing `-Xmax-inlines` above ${ctx.settings.XmaxInlines.value}""".stripMargin
+            else em"${tree.symbol} is declared as `erased`, but is in fact used"
+          report.error(msg, tree.srcPos)
         tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
           case Some(annot) =>
             def defaultMsg =
