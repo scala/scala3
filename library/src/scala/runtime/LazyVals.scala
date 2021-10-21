@@ -1,7 +1,5 @@
 package scala.runtime
 
-import scala.language.unsafeNulls
-
 /**
  * Helper methods used in thread-safe lazy vals.
  */

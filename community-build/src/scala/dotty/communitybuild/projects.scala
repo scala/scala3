@@ -731,11 +731,19 @@ object projects:
     dependencies = List(scalaJava8Compat, scalatest)
   )
 
+<<<<<<< HEAD
   lazy val specs2 = SbtCommunityProject(
     project = "specs2",
     sbtTestCommand = "core/testOnly -- exclude ci",
     sbtPublishCommand = "core/publishLocal",
     dependencies = List()
+=======
+  lazy val spire = SbtCommunityProject(
+    project = "spire",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(cats, algebra, disciplineMunit)
+>>>>>>> Add spire to community build
   )
 
 end projects
