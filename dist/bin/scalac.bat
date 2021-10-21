@@ -39,8 +39,10 @@ if "%_PROG_NAME%"=="%_SCRIPTING_MAIN%" (
 if defined JAVA_OPTS ( set _JAVA_OPTS=%JAVA_OPTS%
 ) else ( set _JAVA_OPTS=%_DEFAULT_JAVA_OPTS%
 )
+for %%i in ("%_PROG_HOME%\..") do set "_SCALA_HOME=%%~fi"
+
 call "%_JAVACMD%" %_JAVA_OPTS% %_JAVA_DEBUG% %_JAVA_ARGS% %_JVM_CP_ARGS% ^
--Dscala.usejavacp=true ^
+-Dscala.home="%_SCALA_HOME%" -Dscala.usejavacp=true ^
 %_PROG_NAME% %_SCALA_ARGS% %_RESIDUAL_ARGS% %_SCRIPTING_STRING%
 if not %ERRORLEVEL%==0 (
     set _EXITCODE=1
