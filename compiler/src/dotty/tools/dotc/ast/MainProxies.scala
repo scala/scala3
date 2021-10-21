@@ -54,15 +54,15 @@ object MainProxies {
         // TODO check & handle default value
         val ValDefargs = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
           case ((formal, paramName), n) =>
-            val (getterSym, formalElem) =
-              if (formal.isRepeatedParam) (defn.MainAnnotCommand_argsGetter, formal.argTypes.head)
-              else (defn.MainAnnotCommand_argGetter, formal)
+            val (getterSym, formalType, returnType) =
+              if (formal.isRepeatedParam) (defn.MainAnnotCommand_argsGetter, formal.argTypes.head, defn.SeqType.appliedTo(formal.argTypes.head))
+              else (defn.MainAnnotCommand_argGetter, formal, formal)
             val valArg = ValDef(
               mainArgsName ++ (idx + n).toString, // FIXME
-              TypeTree(defn.FunctionOf(Nil, formalElem)),
+              TypeTree(defn.FunctionOf(Nil, returnType)),
               Apply(
-                TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalElem) :: Nil),
-                Literal(Constant(paramName.toString)) :: Literal(Constant(formalElem.show)) :: Nil  // TODO check if better way to print name of formalElem
+                TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil),
+                Literal(Constant(paramName.toString)) :: Literal(Constant(formalType.show)) :: Nil  // TODO check if better way to print name of formalElem
               ),
             )
             valArgs = valArgs :+ valArg
