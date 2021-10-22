@@ -37,6 +37,8 @@ import quoted.QuoteUtils
 object Inliner {
   import tpd._
 
+  private type DefBuffer = mutable.ListBuffer[ValOrDefDef]
+
   /** `sym` is an inline method with a known body to inline.
    */
   def hasBodyToInline(sym: SymDenotation)(using Context): Boolean =
@@ -413,7 +415,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
   private val methPart = funPart(call)
   private val callTypeArgs = typeArgss(call).flatten
-  private val rawCallValueArgss = termArgss(call)
+  private val callValueArgss = termArgss(call)
   private val inlinedMethod = methPart.symbol
   private val inlineCallPrefix =
      qualifier(methPart).orElse(This(inlinedMethod.enclosingClass.asClass))
@@ -465,14 +467,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   /** A binding for the parameter of an inline method. This is a `val` def for
    *  by-value parameters and a `def` def for by-name parameters. `val` defs inherit
    *  inline annotations from their parameters. The generated `def` is appended
-   *  to `bindingsBuf`.
+   *  to `buf`.
    *  @param name        the name of the parameter
    *  @param formal      the type of the parameter
    *  @param arg         the argument corresponding to the parameter
-   *  @param bindingsBuf the buffer to which the definition should be appended
+   *  @param buf         the buffer to which the definition should be appended
    */
   private def paramBindingDef(name: Name, formal: Type, arg0: Tree,
-                              bindingsBuf: mutable.ListBuffer[ValOrDefDef])(using Context): ValOrDefDef = {
+                              buf: DefBuffer)(using Context): ValOrDefDef = {
     val isByName = formal.dealias.isInstanceOf[ExprType]
     val arg = arg0 match {
       case Typed(arg1, tpt) if tpt.tpe.isRepeatedParam && arg1.tpe.derivesFrom(defn.ArrayClass) =>
@@ -501,23 +503,25 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       else ValDef(boundSym, newArg)
     }.withSpan(boundSym.span)
     inlining.println(i"parameter binding: $binding, $argIsBottom")
-    bindingsBuf += binding
+    buf += binding
     binding
   }
 
-  /** Populate `paramBinding` and `bindingsBuf` by matching parameters with
+  /** Populate `paramBinding` and `buf` by matching parameters with
    *  corresponding arguments. `bindingbuf` will be further extended later by
    *  proxies to this-references. Issue an error if some arguments are missing.
    */
   private def computeParamBindings(
-      tp: Type, targs: List[Tree], argss: List[List[Tree]], formalss: List[List[Type]]): Boolean =
+      tp: Type, targs: List[Tree],
+      argss: List[List[Tree]], formalss: List[List[Type]],
+      buf: DefBuffer): Boolean =
     tp match
       case tp: PolyType =>
         tp.paramNames.lazyZip(targs).foreach { (name, arg) =>
           paramSpan(name) = arg.span
           paramBinding(name) = arg.tpe.stripTypeVar
         }
-        computeParamBindings(tp.resultType, targs.drop(tp.paramNames.length), argss, formalss)
+        computeParamBindings(tp.resultType, targs.drop(tp.paramNames.length), argss, formalss, buf)
       case tp: MethodType =>
         if argss.isEmpty then
           report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
@@ -529,9 +533,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               case _: SingletonType if isIdempotentPath(arg) =>
                 arg.tpe
               case _ =>
-                paramBindingDef(name, formal, arg, bindingsBuf).symbol.termRef
+                paramBindingDef(name, formal, arg, buf).symbol.termRef
           }
-          computeParamBindings(tp.resultType, targs, argss.tail, formalss.tail)
+          computeParamBindings(tp.resultType, targs, argss.tail, formalss.tail, buf)
       case _ =>
         assert(targs.isEmpty)
         assert(argss.isEmpty)
@@ -810,7 +814,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   def inlined(sourcePos: SrcPos): Tree = {
 
     // Special handling of `requireConst` and `codeOf`
-    rawCallValueArgss match
+    callValueArgss match
       case (arg :: Nil) :: Nil =>
         if inlinedMethod == defn.Compiletime_requireConst then
           arg match
@@ -860,23 +864,34 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       case TypeApply(fn, _) => paramTypess(fn, acc)
       case _ => acc
 
-    val callValueArgss = rawCallValueArgss.nestedMapConserve(mapOpaquesInValueArg)
+    val paramBindings =
+      val mappedCallValueArgss = callValueArgss.nestedMapConserve(mapOpaquesInValueArg)
+      if mappedCallValueArgss ne callValueArgss then
+        inlining.println(i"mapped value args = ${mappedCallValueArgss.flatten}%, %")
 
-    if callValueArgss ne rawCallValueArgss then
-      inlining.println(i"mapped value args = ${callValueArgss.flatten}%, %")
+      val paramBindingsBuf = new DefBuffer
+      // Compute bindings for all parameters, appending them to bindingsBuf
+      if !computeParamBindings(
+          inlinedMethod.info, callTypeArgs,
+          mappedCallValueArgss, paramTypess(call, Nil),
+          paramBindingsBuf)
+      then
+        return call
 
-    // Compute bindings for all parameters, appending them to bindingsBuf
-    if !computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss, paramTypess(call, Nil)) then
-      return call
+      paramBindingsBuf.toList
+    end paramBindings
 
     // make sure prefix is executed if it is impure
-    if (!isIdempotentExpr(inlineCallPrefix)) registerType(inlinedMethod.owner.thisType)
+    if !isIdempotentExpr(inlineCallPrefix) then registerType(inlinedMethod.owner.thisType)
 
     // Register types of all leaves of inlined body so that the `paramProxy` and `thisProxy` maps are defined.
     rhsToInline.foreachSubTree(registerLeaf)
 
     // Compute bindings for all this-proxies, appending them to bindingsBuf
     computeThisBindings()
+
+    // Parameter bindings come after this bindings, reflecting order of evaluation
+    bindingsBuf ++= paramBindings
 
     val inlineTyper = new InlineTyper(ctx.reporter.errorCount)
 
@@ -1190,7 +1205,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     private object InlineableArg {
       lazy val paramProxies = paramProxy.values.toSet
       def unapply(tree: Trees.Ident[?])(using Context): Option[Tree] = {
-        def search(buf: mutable.ListBuffer[ValOrDefDef]) = buf.find(_.name == tree.name)
+        def search(buf: DefBuffer) = buf.find(_.name == tree.name)
         if (paramProxies.contains(tree.typeOpt))
           search(bindingsBuf) match {
             case Some(bind: ValOrDefDef) if bind.symbol.is(Inline) =>
@@ -1229,7 +1244,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             cpy.Inlined(cl)(call, bindings, recur(expr))
           case _ => ddef.tpe.widen match
             case mt: MethodType if ddef.paramss.head.length == args.length =>
-              val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
+              val bindingsBuf = new DefBuffer
               val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
                 arg.tpe.dealias match {
                   case ref @ TermRef(NoPrefix, _) => ref.symbol

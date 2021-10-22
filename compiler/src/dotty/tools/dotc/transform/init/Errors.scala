@@ -55,6 +55,8 @@ object Errors {
       case unsafe: UnsafePromotion => unsafe.errors.flatMap(_.flatten)
       case _ => this :: Nil
     }
+
+    override def toString() = this.getClass.getName
   }
 
   /** Access non-initialized field */

@@ -30,19 +30,19 @@ charts:
 scripts:
 
     implicit-cache:
-        - measure $PROG_HOME/dotty/tests/bench/implicit_cache.scala
+        - measure -- $PROG_HOME/dotty/tests/bench/implicit_cache.scala
 
     implicit-cache-from-tasty:
         - source $PROG_HOME/dotty/bench/scripts/implicit-cache-from-tasty
 
     implicit-scope-loop:
-        - measure $PROG_HOME/dotty/tests/bench/implicit-scope-loop.scala
+        - measure -- $PROG_HOME/dotty/tests/bench/implicit-scope-loop.scala
 
     inductive-implicits:
-        - measure $PROG_HOME/dotty/tests/bench/inductive-implicits.scala
+        - measure -- $PROG_HOME/dotty/tests/bench/inductive-implicits.scala
 
     implicitNums:
-        - measure $PROG_HOME/dotty/tests/bench/implicitNums.scala
+        - measure -- $PROG_HOME/dotty/tests/bench/implicitNums.scala
 
     implicitNums-from-tasty:
         - source $PROG_HOME/dotty/bench/scripts/implicitNums-from-tasty

@@ -1,7 +1,7 @@
 ---
 title: Lazy Vals Initialization
 type: section
-num: 68
+num: 69
 previous-page: /scala3/reference/changed-features/compiler-plugins
 next-page: /scala3/reference/changed-features/main-functions
 ---

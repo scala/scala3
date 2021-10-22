@@ -21,6 +21,11 @@ sealed trait Tuple extends Product {
   inline def toIArray: IArray[Object] =
     runtime.Tuples.toIArray(this)
 
+  /** Return a copy of `this` tuple with an element appended */
+  @experimental
+  inline def :* [This >: this.type <: Tuple, L] (x: L): Append[This, L] =
+    runtime.Tuples.append(x, this).asInstanceOf[Append[This, L]]
+
   /** Return a new tuple by prepending the element to `this` tuple.
    *  This operation is O(this.size)
    */
@@ -77,6 +82,13 @@ sealed trait Tuple extends Product {
 }
 
 object Tuple {
+
+  /** Type of a tuple with an element appended */
+  @experimental
+  type Append[X <: Tuple, Y] <: Tuple = X match {
+    case EmptyTuple => Y *: EmptyTuple
+    case x *: xs => x *: Append[xs, Y]
+  }
 
   /** Type of the head of a tuple */
   type Head[X <: NonEmptyTuple] = X match {
@@ -236,18 +248,17 @@ object Tuple {
       case xs: Array[Object] => xs
       case xs => xs.map(_.asInstanceOf[Object])
     }
-    runtime.Tuples.fromArray(xs2).asInstanceOf[Tuple]
+    runtime.Tuples.fromArray(xs2)
   }
 
   /** Convert an immutable array into a tuple of unknown arity and types */
   def fromIArray[T](xs: IArray[T]): Tuple = {
     val xs2: IArray[Object] = xs match {
       case xs: IArray[Object] @unchecked => xs
-      case xs =>
-        // TODO support IArray.map
-        xs.asInstanceOf[Array[T]].map(_.asInstanceOf[Object]).asInstanceOf[IArray[Object]]
+      case _ =>
+        xs.map(_.asInstanceOf[Object])
     }
-    runtime.Tuples.fromIArray(xs2).asInstanceOf[Tuple]
+    runtime.Tuples.fromIArray(xs2)
   }
 
   /** Convert a Product into a tuple of unknown arity and types */

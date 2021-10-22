@@ -21,7 +21,7 @@ trait Locations(using ctx: DocContext):
 
   // We generate this collection only if there may be a conflict with resources.
   // Potentially can be quite big.
-  lazy val apiPaths = effectiveMembers.keySet.filterNot(_.isStaticFile).map(absolutePath)
+  lazy val apiPaths = effectiveMembers.keySet.filterNot(_.isStaticFile).map(absolutePath(_))
 
   var cache = new JHashMap[DRI, Seq[String]]()
 
@@ -80,7 +80,7 @@ trait Locations(using ctx: DocContext):
     pathToRaw(from, to.split("/").toList)
 
   def resolveRoot(dri: DRI, path: String): String = resolveRoot(rawLocation(dri), path)
-  def absolutePath(dri: DRI): String = rawLocation(dri).mkString("", "/", ".html")
+  def absolutePath(dri: DRI, extension: String = "html"): String = rawLocation(dri).mkString("", "/", s".$extension")
 
   def resolveLink(dri: DRI, url: String): String =
     if URI(url).isAbsolute then url else resolveRoot(dri, url)

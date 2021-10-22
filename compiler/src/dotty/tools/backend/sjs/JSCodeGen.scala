@@ -42,7 +42,6 @@ import org.scalajs.ir.Trees.OptimizerHints
 import dotty.tools.dotc.transform.sjs.JSSymUtils._
 
 import JSEncoding._
-import JSInterop._
 import ScopedVar.withScopedVars
 
 /** Main codegen for Scala.js IR.
@@ -526,7 +525,7 @@ class JSCodeGen()(using genCtx: Context) {
               /* We add symbols that we have to expose here. This way we also
                * get inherited stuff that is implemented in this class.
                */
-              dispatchMethodNames += jsNameOf(sym)
+              dispatchMethodNames += sym.jsName
             }
           }
 
@@ -790,7 +789,21 @@ class JSCodeGen()(using genCtx: Context) {
 
     def isExcluded(m: Symbol): Boolean = {
       def hasAccessBoundary = m.accessBoundary(defn.RootClass) ne defn.RootClass
-      m.is(Deferred) || m.isConstructor || hasAccessBoundary || (m.owner eq defn.ObjectClass)
+
+      def isOfJLObject: Boolean = m.owner eq defn.ObjectClass
+
+      def isDefaultParamOfJSNativeDef: Boolean = {
+        m.name.is(DefaultGetterName) && {
+          val info = new DefaultParamInfo(m)
+          !info.isForConstructor && info.attachedMethod.hasAnnotation(jsdefn.JSNativeAnnot)
+        }
+      }
+
+      m.is(Deferred)
+        || m.isConstructor
+        || hasAccessBoundary
+        || isOfJLObject
+        || m.hasAnnotation(jsdefn.JSNativeAnnot) || isDefaultParamOfJSNativeDef // #4557
     }
 
     val forwarders = for {
@@ -1403,6 +1416,53 @@ class JSCodeGen()(using genCtx: Context) {
     val vparamss = dd.termParamss
     val rhs = dd.rhs
 
+    /* Is this method a default accessor that should be ignored?
+     *
+     * This is the case iff one of the following applies:
+     * - It is a constructor default accessor and the linked class is a
+     *   native JS class.
+     * - It is a default accessor for a native JS def, but with the caveat
+     *   that its rhs must be `js.native` because of #4553.
+     *
+     * Both of those conditions can only happen if the default accessor is in
+     * a module class, so we use that as a fast way out. (But omitting that
+     * condition would not change the result.)
+     *
+     * This is different than `isJSDefaultParam` in `genApply`: we do not
+     * ignore default accessors of *non-native* JS types. Neither for
+     * constructor default accessor nor regular default accessors. We also
+     * do not need to worry about non-constructor members of native JS types,
+     * since for those, the entire member list is ignored in `genJSClassData`.
+     */
+    def isIgnorableDefaultParam: Boolean = {
+      sym.name.is(DefaultGetterName) && sym.owner.is(ModuleClass) && {
+        val info = new DefaultParamInfo(sym)
+        if (info.isForConstructor) {
+          /* This is a default accessor for a constructor parameter. Check
+           * whether the attached constructor is a native JS constructor,
+           * which is the case iff the linked class is a native JS type.
+           */
+          info.constructorOwner.hasAnnotation(jsdefn.JSNativeAnnot)
+        } else {
+          /* #4553 We need to ignore default accessors for JS native defs.
+           * However, because Scala.js <= 1.7.0 actually emitted code calling
+           * those accessors, we must keep default accessors that would
+           * compile. The only accessors we can actually get rid of are those
+           * that are `= js.native`.
+           */
+          !sym.owner.isJSType &&
+          info.attachedMethod.hasAnnotation(jsdefn.JSNativeAnnot) && {
+            dd.rhs match {
+              case MaybeAsInstanceOf(Apply(fun, _)) =>
+                fun.symbol == jsdefn.JSPackage_native
+              case _ =>
+                false
+            }
+          }
+        }
+      }
+    }
+
     withPerMethodBodyState(sym) {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
@@ -1422,7 +1482,7 @@ class JSCodeGen()(using genCtx: Context) {
         Some(js.MethodDef(js.MemberFlags.empty, methodName, originalName,
             jsParams, toIRType(patchedResultType(sym)), None)(
             OptimizerHints.empty, None))
-      } else if (sym.isJSNativeCtorDefaultParam) {
+      } else if (isIgnorableDefaultParam) {
         // #11592
         None
       } else if (sym.is(Bridge) && sym.name.is(DefaultGetterName) && currentClassSym.isNonNativeJSClass) {
@@ -2008,8 +2068,52 @@ class JSCodeGen()(using genCtx: Context) {
     val args = tree.args
     val sym = tree.fun.symbol
 
+    /* Is the method a JS default accessor, which should become an
+     * `UndefinedParam` rather than being compiled normally.
+     *
+     * This is true iff one of the following conditions apply:
+     * - It is a constructor default param for the constructor of a JS class.
+     * - It is a default param of an instance method of a native JS type.
+     * - It is a default param of an instance method of a non-native JS type
+     *   and the attached method is exposed.
+     * - It is a default param for a native JS def.
+     *
+     * This is different than `isIgnorableDefaultParam` in
+     * `genMethodWithCurrentLocalNameScope`: we include here the default
+     * accessors of *non-native* JS types (unless the corresponding methods are
+     * not exposed). We also need to handle non-constructor members of native
+     * JS types.
+     */
+    def isJSDefaultParam: Boolean = {
+      sym.name.is(DefaultGetterName) && {
+        val info = new DefaultParamInfo(sym)
+        if (info.isForConstructor) {
+          /* This is a default accessor for a constructor parameter. Check
+           * whether the attached constructor is a JS constructor, which is
+           * the case iff the linked class is a JS type.
+           */
+          info.constructorOwner.isJSType
+        } else {
+          if (sym.owner.isJSType) {
+            /* The default accessor is in a JS type. It is a JS default
+             * param iff the enclosing class is native or the attached method
+             * is exposed.
+             */
+            !sym.owner.isNonNativeJSClass || info.attachedMethod.isJSExposed
+          } else {
+            /* The default accessor is in a Scala type. It is a JS default
+             * param iff the attached method is a native JS def. This can
+             * only happen if the owner is a module class, which we test
+             * first as a fast way out.
+             */
+            sym.owner.is(ModuleClass) && info.attachedMethod.hasAnnotation(jsdefn.JSNativeAnnot)
+          }
+        }
+      }
+    }
+
     tree.fun match {
-      case _ if sym.isJSDefaultParam =>
+      case _ if isJSDefaultParam =>
         js.Transient(UndefinedParam)
 
       case Select(Super(_, _), _) =>
@@ -4577,6 +4681,33 @@ object JSCodeGen {
 
     def printIR(out: ir.Printers.IRTreePrinter): Unit =
       out.print("<undefined-param>")
+  }
+
+  /** Info about a default param accessor.
+   *
+   *  The method must have a default getter name for this class to make sense.
+   */
+  private class DefaultParamInfo(sym: Symbol)(using Context) {
+    private val methodName = sym.name.exclude(DefaultGetterName)
+
+    def isForConstructor: Boolean = methodName == nme.CONSTRUCTOR
+
+    /** When `isForConstructor` is true, returns the owner of the attached
+     *  constructor.
+     */
+    def constructorOwner: Symbol = sym.owner.linkedClass
+
+    /** When `isForConstructor` is false, returns the method attached to the
+     *  specified default accessor.
+     */
+    def attachedMethod: Symbol = {
+      // If there are overloads, we need to find the one that has default params.
+      val overloads = sym.owner.info.decl(methodName)
+      if (!overloads.isOverloaded)
+        overloads.symbol
+      else
+        overloads.suchThat(_.is(HasDefaultParams)).symbol
+    }
   }
 
 }

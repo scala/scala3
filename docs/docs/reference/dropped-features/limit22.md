@@ -1,7 +1,7 @@
 ---
 title: "Dropped: Limit 22"
 type: section
-num: 80
+num: 81
 previous-page: /scala3/reference/dropped-features/class-shadowing
 next-page: /scala3/reference/dropped-features/xml
 ---

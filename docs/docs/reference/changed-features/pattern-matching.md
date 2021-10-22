@@ -1,7 +1,7 @@
 ---
 title: "Option-less pattern matching"
 type: section
-num: 65
+num: 66
 previous-page: /scala3/reference/changed-features/pattern-bindings
 next-page: /scala3/reference/changed-features/eta-expansion
 ---

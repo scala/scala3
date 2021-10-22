@@ -1,7 +1,7 @@
 ---
 title: "Scala 3 Syntax Summary"
 type: chapter
-num: 87
+num: 88
 previous-page: /scala3/reference/dropped-features/wildcard-init
 ---
 

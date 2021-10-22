@@ -56,11 +56,24 @@ trait SiteRenderer(using DocContext) extends Locations:
       else
         processLocalLink(str)
 
-    val document = Jsoup.parse(content.resolved.code)
-    document.select("a").forEach(element =>
-      element.attr("href", processLocalLinkWithGuard(element.attr("href")))
-    )
-    document.select("img").forEach { element =>
-      element.attr("src", processLocalLink(element.attr("src")))
-    } // foreach does not work here. Why?
-    raw(document.outerHtml())
+    summon[DocContext].args.projectFormat match
+      case "html" =>
+        val document = Jsoup.parse(content.resolved.code)
+        document.select("a").forEach(element =>
+          element.attr("href", processLocalLinkWithGuard(element.attr("href")))
+        )
+        document.select("img").forEach { element =>
+          element.attr("src", processLocalLink(element.attr("src")))
+        } // foreach does not work here. Why?
+        raw(document.outerHtml())
+      case "md" =>
+        val links = """(?<!\\!)\[(.*)\\]\\((.*)\\)""".r
+        val imgs = """!\\[(.*)\\]\\((.*)\\)""".r
+
+        raw(links.replaceAllIn(
+          imgs.replaceAllIn(
+            content.resolved.code,
+            m => s"[${m.group(1)}](${processLocalLink(m.group(2))})"
+          ),
+          m => s"[${m.group(1)}](${processLocalLinkWithGuard(m.group(2))})"
+        ))
