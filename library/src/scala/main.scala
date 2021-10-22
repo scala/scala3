@@ -19,10 +19,11 @@ class main extends scala.annotation.MainAnnotation:
   protected sealed abstract trait Argument {
     def name: String
     def typeName: String
+    def doc: String
   }
-  protected case class SimpleArgument(name: String, typeName: String) extends Argument
-  protected case class OptionalArgument[T](name: String, typeName: String, val defaultValue: T) extends Argument
-  protected case class VarArgument(name: String, typeName: String) extends Argument
+  protected case class SimpleArgument(name: String, typeName: String, doc: String) extends Argument
+  protected case class OptionalArgument[T](name: String, typeName: String, doc: String, val defaultValue: T) extends Argument
+  protected case class VarArgument(name: String, typeName: String, doc: String) extends Argument
 
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
@@ -31,16 +32,23 @@ class main extends scala.annotation.MainAnnotation:
   def usage(commandName: String, args: Seq[Argument]): Unit =
     val argInfos = args map (
       _ match {
-        case SimpleArgument(name, _) => name
-        case OptionalArgument(name, _, _) => s"$name?"
-        case VarArgument(name, _) => s"$name*"
+        case SimpleArgument(name, _, _) => name
+        case OptionalArgument(name, _, _, _) => s"$name?"
+        case VarArgument(name, _, _) => s"$name*"
       }
     )
     println(s"Usage: $commandName ${argInfos.mkString(" ")}")
 
   /** Prints an explanation about the function */
-  def explain(commandName: String, args: Seq[Argument], docComment: String): Unit =
-    if docComment.nonEmpty then println(docComment)  // todo: process & format doc comment
+  def explain(commandName: String, commandDoc: String, args: Seq[Argument]): Unit =
+    if (commandDoc.nonEmpty)
+      println(commandDoc)
+    if (args.nonEmpty) {
+      println("Arguments:")
+      for (arg <- args)
+        val argDoc = if arg.doc.isEmpty then "" else s" - ${arg.doc}"
+        println(s"\t${arg.name}, ${arg.typeName}${argDoc}")
+    }
 
   /** Runs the command and handles its return value */
   def run(f: => MainResultType): Unit =
@@ -83,26 +91,26 @@ class main extends scala.annotation.MainAnnotation:
         self.usage(this.commandName, argInfos.toSeq)
 
       private def explain(): Unit =
-        self.explain(this.commandName, argInfos.toSeq, this.docComment)
+        self.explain(this.commandName, this.docComment, argInfos.toSeq)
 
-      override def argGetter[T](argName: String, argType: String)(using p: ArgumentParser[T]): () => T =
-        argInfos += self.SimpleArgument(argName, argType)
+      override def argGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => T =
+        argInfos += self.SimpleArgument(argName, argType, argDoc)
         val idx = args.indexOf(s"--$argName")
         val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
         argOpt match
           case Some(arg) => convert(argName, arg, p)
           case None => error(s"missing argument for $argName")
 
-      override def argGetterDefault[T](argName: String, argType: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
-        argInfos += self.OptionalArgument(argName, argType, defaultValue)
+      override def argGetterDefault[T](argName: String, argType: String, argDoc: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
+        argInfos += self.OptionalArgument(argName, argType, argDoc, defaultValue)
         val idx = args.indexOf(s"--$argName")
         val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
         argOpt match
           case Some(arg) => convert(argName, arg, p)
           case None => () => defaultValue
 
-      override def argsGetter[T](argName: String, argType: String)(using p: ArgumentParser[T]): () => Seq[T] =
-        argInfos += self.VarArgument(argName, argType)
+      override def argsGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => Seq[T] =
+        argInfos += self.VarArgument(argName, argType, argDoc)
         def remainingArgGetters(): List[() => T] = nextPositionalArg() match
           case Some(arg) => convert(argName, arg, p) :: remainingArgGetters()
           case None => Nil
@@ -124,6 +132,7 @@ class main extends scala.annotation.MainAnnotation:
 
         if args.contains("--help") then
           usage()
+          println()
           explain()
         else
           flagUnused()
