@@ -9,5 +9,6 @@ object MiMaFilters {
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.append"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.reverse"),
   )
 }
