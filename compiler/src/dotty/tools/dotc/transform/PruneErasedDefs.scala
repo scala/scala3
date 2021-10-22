@@ -55,7 +55,8 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
     tree
 
   def checkErasedInExperimental(sym: Symbol)(using Context): Unit =
-    if sym.is(Erased) && sym != defn.Compiletime_erasedValue && !sym.isInExperimentalScope then
+    // Make an exception for Scala 2 experimental macros to allow dual Scala 2/3 macros under non experimental mode
+    if sym.is(Erased, butNot = Macro) && sym != defn.Compiletime_erasedValue && !sym.isInExperimentalScope then
       Feature.checkExperimentalFeature("erased", sym.sourcePos)
 }
 
