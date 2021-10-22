@@ -2565,6 +2565,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
         def appliedTo(targs: List[TypeRepr]): TypeRepr
 
+        /** Substitute all types that refer in their symbol attribute to
+         *  one of the symbols in `from` by the corresponding types in `to`.
+         */
+        @experimental
+        def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr
+
       end extension
     }
 
