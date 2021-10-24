@@ -136,14 +136,14 @@ object language:
 
   /** Set source version to 3.0-migration.
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
   @compileTimeOnly("`3.0-migration` can only be used at compile time in import statements")
   object `3.0-migration`
 
   /** Set source version to 3.0.
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
   @compileTimeOnly("`3.0` can only be used at compile time in import statements")
   object `3.0`
@@ -151,13 +151,13 @@ object language:
 /* This can be added when we go to 3.1
   /** Set source version to 3.1-migration.
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
   object `3.1-migration`
 
   /** Set source version to 3.1
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
   object `3.1`
 */
