@@ -98,7 +98,7 @@ goto :eof
 
 @rem output parameter: _CLASS_PATH
 :classpathArgs
-for /f %%f in ("%_PROG_HOME%\.") do set "_LIB_DIR=%%~dpflib"
+for /f "delims=" %%f in ("%_PROG_HOME%\.") do set "_LIB_DIR=%%~dpflib"
 set _CLASS_PATH=
 @rem keep list in sync with bash script `bin\scaladoc` !
 call :updateClasspath "scaladoc"
