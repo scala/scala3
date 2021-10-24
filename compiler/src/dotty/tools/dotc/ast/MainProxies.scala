@@ -55,19 +55,19 @@ object MainProxies {
     val documentation = new Documentation(docComment)
 
     def createValArgs(mt: MethodType, cmdName: TermName, idx: Int): List[ValDef] =
+      println(mt.companion)
       if (mt.isImplicitMethod) {
         report.error(s"@main method cannot have implicit parameters", pos)
         Nil
       }
       else {
-        var valArgs: List[ValDef] = Nil
         // TODO check & handle default value
-        val ValDefargs = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
+        var valArgs: List[ValDef] = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
           case ((formal, paramName), n) =>
             val (getterSym, formalType, returnType) =
               if (formal.isRepeatedParam) (defn.MainAnnotCommand_argsGetter, formal.argTypes.head, defn.SeqType.appliedTo(formal.argTypes.head))
               else (defn.MainAnnotCommand_argGetter, formal, formal)
-            val valArg = ValDef(
+            ValDef(
               mainArgsName ++ (idx + n).toString, // FIXME
               TypeTree(defn.FunctionOf(Nil, returnType)),
               Apply(
@@ -78,7 +78,6 @@ object MainProxies {
                 :: Nil  // TODO check if better way to print name of formalType
               ),
             )
-            valArgs = valArgs :+ valArg
         }
         mt.resType match {
           case restpe: MethodType =>
