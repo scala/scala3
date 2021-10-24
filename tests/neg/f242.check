@@ -1,0 +1,6 @@
+-- Error: tests/neg/f242.scala:23:17 -----------------------------------------------------------------------------------
+23 |    case Foo.Type(NotAnInstance(_)) => ??? // error: no implicit argument of type Test.Foo[T] was found
+   |                 ^
+   |   no implicit argument of type Test.Foo[T] was found for an implicit parameter of method unapply in object Type
+   |
+   |   where:    T is a type variable with constraint <: Test.NotAnInstance

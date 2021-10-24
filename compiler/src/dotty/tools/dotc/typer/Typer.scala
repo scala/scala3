@@ -834,6 +834,9 @@ class Typer extends Namer
       val expr1 =
         if isWildcard then tree.expr.withType(underlyingTreeTpe.tpe)
         else typed(tree.expr, underlyingTreeTpe.tpe.widenSkolem)
+      if (ctx.mode.is(Mode.Pattern)) {
+        pt <:< underlyingTreeTpe.tpe
+      }
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
         .withNotNullInfo(expr1.notNullInfo)
     }
@@ -2019,7 +2022,7 @@ class Typer extends Namer
   }
 
   def typedBind(tree: untpd.Bind, pt: Type)(using Context): Tree = {
-    if !isFullyDefined(pt, ForceDegree.all) then
+    if !(ctx.mode.is(Mode.Pattern) || isFullyDefined(pt, ForceDegree.all)) then
       return errorTree(tree, i"expected type of $tree is not fully defined")
     val body1 = typed(tree.body, pt)
     body1 match {

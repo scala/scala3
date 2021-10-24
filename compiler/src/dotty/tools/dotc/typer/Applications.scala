@@ -1344,7 +1344,31 @@ trait Applications extends Compatibility {
             unapplyArgType
           }
         val dummyArg = dummyTreeOfType(ownType)
-        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
+        var unapplyApp: tpd.Tree = null
+        val unapplyAppTpe = {
+          val explicitCall = Apply(unapplyFn, dummyArg :: Nil)
+          tryEither {
+            unapplyApp = typedExpr(untpd.TypedSplice(explicitCall))
+            unapplyApp.tpe
+          } { (_, _) =>
+            // Typing explicitCall may fail if there are implicits that can only
+            // be resolved with tighter bounds on the output types
+            // (e.g. def unapply[T](x: String)(using Foo[T]): Option[T])
+            // If the call above fails to type, we try again here but with wildcards
+            // filled in for any implicits. Once we have recursively typed unapplyPatterns below,
+            // type variables may have tighter bounds and we can try again.
+            unapplyApp = null
+            var currType = mt.resultType
+            var callWithImplicits = explicitCall
+            while (currType.isImplicitMethod) {
+              val currMtType = currType.asInstanceOf[MethodType]
+              val wildcards = List.fill(currMtType.paramInfos.length)(dummyTreeOfType(WildcardType))
+              callWithImplicits = Apply(callWithImplicits, wildcards)
+              currType = currMtType.resultType
+            }
+            typedExpr(untpd.TypedSplice(callWithImplicits)).tpe
+          }
+        }
         def unapplyImplicits(unapp: Tree): List[Tree] = {
           val res = List.newBuilder[Tree]
           def loop(unapp: Tree): Unit = unapp match {
@@ -1359,8 +1383,8 @@ trait Applications extends Compatibility {
           res.result()
         }
 
-        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
-        for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
+        var argTypes = unapplyArgs(unapplyAppTpe, unapplyFn, args, tree.srcPos)
+        for (argType <- argTypes) assert(!isBounds(argType), unapplyAppTpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
             if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled && defn.isTupleNType(argType)) untpd.Tuple(args) :: Nil
@@ -1373,6 +1397,7 @@ trait Applications extends Compatibility {
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
+        if (unapplyApp == null) unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq selType) || ownType.isError) result

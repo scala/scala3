@@ -699,7 +699,7 @@ trait Inferencing { this: Typer =>
   end constrainIfDependentParamRef
 }
 
-/** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
+/** An enumeration controlling the degree of forcing in "is-fully-defined" checks. */
 @sharable object ForceDegree {
   class Value(val appliesTo: TypeVar => Boolean, val ifBottom: IfBottom)
   val none: Value = new Value(_ => false, IfBottom.ok)
