@@ -1,5 +1,5 @@
 class myMain extends main:
-  override def explain(commandName: String, args: Seq[Argument], docComment: String): Unit =
+  override def explain(commandName: String, docComment: String, args: Seq[Argument]): Unit =
     if docComment.nonEmpty then println(docComment.mkString("\n"))
 
 object myProgram:
