@@ -55,7 +55,6 @@ object MainProxies {
     val documentation = new Documentation(docComment)
 
     def createValArgs(mt: MethodType, cmdName: TermName, idx: Int): List[ValDef] =
-      println(mt.companion)
       if (mt.isImplicitMethod) {
         report.error(s"@main method cannot have implicit parameters", pos)
         Nil
