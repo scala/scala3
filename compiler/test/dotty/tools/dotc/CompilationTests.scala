@@ -64,6 +64,7 @@ class CompilationTests {
       compileFile("tests/pos-custom-args/help.scala", defaultOptions.and("-help", "-V", "-W", "-X", "-Y")),
       compileFile("tests/pos-custom-args/i10383.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/pos-custom-args/i13044.scala", defaultOptions.and("-Xmax-inlines:33")),
+      compileFile("tests/pos-custom-args/jdk-8-app.scala", defaultOptions.and("-release:8")),
     ).checkCompile()
   }
 
@@ -184,6 +185,7 @@ class CompilationTests {
       compileDir("tests/neg-custom-args/hidden-type-errors", defaultOptions.and("-explain")),
       compileFile("tests/neg-custom-args/i13026.scala", defaultOptions.and("-print-lines")),
       compileFile("tests/neg-custom-args/i13838.scala", defaultOptions.and("-Ximplicit-search-limit", "1000")),
+      compileFile("tests/neg-custom-args/jdk-9-app.scala", defaultOptions.and("-release:8")),
     ).checkExpectedErrors()
   }
 
