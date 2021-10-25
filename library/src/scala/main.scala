@@ -14,6 +14,7 @@ import collection.mutable
 /** An annotation that designates a main function
  */
 class main extends scala.annotation.MainAnnotation:
+  self =>
   import main._
 
   protected sealed abstract trait Argument {
@@ -57,7 +58,6 @@ class main extends scala.annotation.MainAnnotation:
       case _ =>
 
   override def command(args: Array[String], commandName: String, docComment: String): Command =
-    val self = this
     new Command(commandName, docComment):
       /** A buffer of demanded arguments */
       private var argInfos = new mutable.ListBuffer[self.Argument]
