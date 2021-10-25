@@ -19,7 +19,7 @@ end myProgram
 
 object Test:
   def callMain(args: Array[String]): Unit =
-    val clazz = Class.forName("add")
+    val clazz = Class.forName("show")
     val method = clazz.getMethod("main", classOf[Array[String]])
     method.invoke(null, args)
 
