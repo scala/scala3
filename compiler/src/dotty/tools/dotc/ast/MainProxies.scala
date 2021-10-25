@@ -22,9 +22,9 @@ import Comments.Comment
  *
  *  would be translated to something like
  *
- *     object f extends main {
+ *     final class f {
  *       @static def main(args: Array[String]): Unit =
- *         val cmd = command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
+ *         val cmd = (new scala.main).command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
  *         val arg1: () => S = cmd.argGetter[S]("x", "S", "my param x")
  *         val arg2: () => Seq[T] = cmd.argsGetter[T]("ys", "T", "all my params y")
  *         cmd.run(f(arg1(), arg2()*))
@@ -46,7 +46,7 @@ object MainProxies {
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol, docComment: Option[Comment])(using Context): List[ModuleDef] = {
+  def mainProxy(mainFun: Symbol, docComment: Option[Comment])(using Context): List[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
     val mainArgsName: TermName = nme.args
@@ -91,7 +91,7 @@ object MainProxies {
         }
       }
 
-    var result: List[ModuleDef] = Nil
+    var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
       report.error(s"@main method is not statically accessible", pos)
     else {
@@ -99,7 +99,7 @@ object MainProxies {
         cmdName,
         TypeTree(), // TODO check if good practice
         Apply(
-          Ident(defn.MainAnnot_command.name),
+          Select(makeNew(TypeTree(defn.MainAnnot.typeRef)), defn.MainAnnot_command.name),
           Ident(mainArgsName) :: Literal(Constant(mainFun.showName)) :: Literal(Constant(documentation.mainDoc)) :: Nil
         )
       )
@@ -139,11 +139,12 @@ object MainProxies {
         .filterNot(_.matches(defn.MainAnnot))
         .map(annot => insertTypeSplices.transform(annot.tree))
       val mainMeth = DefDef(nme.main, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
-        //.withFlags(JavaStatic) // TODO check if necessary
+        .withFlags(JavaStatic)
         .withAnnotations(annots)
-      val mainTempl = Template(emptyConstructor, TypeTree(defn.MainAnnot.typeRef) :: Nil, Nil, EmptyValDef, mainMeth :: Nil)
-      val mainObj = ModuleDef(mainFun.name.toTermName, mainTempl)
-      if (!ctx.reporter.hasErrors) result = mainObj.withSpan(mainAnnotSpan.toSynthetic) :: Nil
+      val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
+      val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
+        .withFlags(Final | Invisible)
+      if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
     }
     result
   }
