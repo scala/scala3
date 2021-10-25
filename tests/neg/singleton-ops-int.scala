@@ -71,8 +71,8 @@ object Test {
   val t46: Min[2, 2] = 1 // error
   val t47: Min[-1, -1] = 0 // error
 
-  val t48: ToString[213] = "213" // warning (deprecation)
-  val t49: ToString[-1] = "-1" // warning (deprecation)
+  val t48: ToString[213] = "213"
+  val t49: ToString[-1] = "-1"
 
   val t52: 1 ^ 2 = 3
   val t53: 1 ^ 3 = 3 // error
