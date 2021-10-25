@@ -3,7 +3,7 @@ package ast
 
 import core._
 import Symbols._, Types._, Contexts._, Decorators._, util.Spans._, Flags._, Constants._
-import StdNames.nme
+import StdNames.{nme, tpnme}
 import ast.Trees._
 import Names.TermName
 import Comments.Comment
@@ -25,9 +25,9 @@ import Comments.Comment
  *     object f extends main {
  *       @static def main(args: Array[String]): Unit =
  *         val cmd = command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
- *         val arg1 = cmd.argGetter[S]("x", "S", "my param x")
- *         val arg2 = cmd.argsGetter[T]("ys", "T", "all my params y")
- *         cmd.run(f(arg1(), arg2(): _*))
+ *         val arg1: () => S = cmd.argGetter[S]("x", "S", "my param x")
+ *         val arg2: () => Seq[T] = cmd.argsGetter[T]("ys", "T", "all my params y")
+ *         cmd.run(f(arg1(), arg2()*))
  *     }
  */
 object MainProxies {
@@ -54,19 +54,21 @@ object MainProxies {
 
     val documentation = new Documentation(docComment)
 
-    def createValArgs(mt: MethodType, cmdName: TermName, idx: Int): List[ValDef] =
+    def createValArgs(mt: MethodType, cmdName: TermName, idx: Int): List[(ValDef, Boolean)] =
       if (mt.isImplicitMethod) {
         report.error(s"@main method cannot have implicit parameters", pos)
         Nil
       }
       else {
         // TODO check & handle default value
-        var valArgs: List[ValDef] = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
+        var valArgs: List[(ValDef, Boolean)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
           case ((formal, paramName), n) =>
-            val (getterSym, formalType, returnType) =
-              if (formal.isRepeatedParam) (defn.MainAnnotCommand_argsGetter, formal.argTypes.head, defn.SeqType.appliedTo(formal.argTypes.head))
-              else (defn.MainAnnotCommand_argGetter, formal, formal)
-            ValDef(
+            // TODO make me cleaner
+            val (getterSym, formalType, isVararg) =
+              if (formal.isRepeatedParam) (defn.MainAnnotCommand_argsGetter, formal.argTypes.head, true)
+              else (defn.MainAnnotCommand_argGetter, formal, false)
+            val returnType = if isVararg then defn.SeqType.appliedTo(formalType) else formalType
+            val valDef = ValDef(
               mainArgsName ++ (idx + n).toString, // FIXME
               TypeTree(defn.FunctionOf(Nil, returnType)),
               Apply(
@@ -77,6 +79,7 @@ object MainProxies {
                 :: Nil  // TODO check if better way to print name of formalType
               ),
             )
+            (valDef, isVararg)
         }
         mt.resType match {
           case restpe: MethodType =>
@@ -106,8 +109,14 @@ object MainProxies {
       mainFun.info match {
         case _: ExprType =>
         case mt: MethodType =>
-          args = createValArgs(mt, cmdName, 0)
-          mainCall = Apply(mainCall, args map (arg => Apply(Ident(arg.name), Nil)))
+          val valArgs = createValArgs(mt, cmdName, 0)
+          args = valArgs.unzip._1
+          mainCall = Apply(mainCall, valArgs map {
+            case (arg, isVararg) =>
+              var argCall: Tree = Apply(Ident(arg.name), Nil)
+              if isVararg then argCall = repeated(argCall)
+              argCall
+          })
         case _: PolyType =>
           report.error(s"@main method cannot have type parameters", pos)
         case _ =>
