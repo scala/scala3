@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import scala.annotation.experimental
+
 object string:
   /** Concatenation of two `String` singleton types.
    *  ```scala
@@ -16,6 +18,7 @@ object string:
    *  ```
    *  @syntax markdown
    */
+  @experimental
   type Length[X <: String] <: Int
 
   /** Substring of a `String` singleton type, with a singleton type
@@ -28,6 +31,7 @@ object string:
    *  ```
    *  @syntax markdown
    */
+  @experimental
   type Substring[S <: String, IBeg <: Int, IEnd <: Int] <: String
 
   /** Tests if this `String` singleton type matches the given
@@ -37,4 +41,5 @@ object string:
    *  ```
    *  @syntax markdown
    */
+  @experimental
   type Matches[S <: String, Regex <: String] <: Boolean

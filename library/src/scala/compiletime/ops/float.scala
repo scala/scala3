@@ -1,6 +1,9 @@
 package scala.compiletime
 package ops
 
+import scala.annotation.experimental
+
+@experimental
 object float:
   /** Addition of two `Float` singleton types.
    *  ```scala
