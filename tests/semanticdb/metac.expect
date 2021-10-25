@@ -228,26 +228,26 @@ Occurrences => 48 entries
 Symbols:
 annot/Alias. => final object Alias extends Object { self: Alias.type => +2 decls }
 annot/Alias.A# => type A  = ClassAnnotation @param
-annot/Annotations# => class Annotations [typeparam T ] extends Object { self: AnyRef & Annotations[T] => +6 decls }
-annot/Annotations#S# => type S 
-annot/Annotations#[T] => typeparam T 
-annot/Annotations#`<init>`(). => primary ctor <init> [typeparam T ](param x: T): Annotations[T]
-annot/Annotations#`<init>`().(x) => param x: T
-annot/Annotations#field. => val method field Int
-annot/Annotations#method(). => method method => Int
-annot/Annotations#x. => private[this] val method x T
+annot/Annotations# => @ClassAnnotation class Annotations [@TypeParameterAnnotation typeparam T ] extends Object { self: AnyRef & Annotations[T] => +6 decls }
+annot/Annotations#S# => @TypeAnnotation type S 
+annot/Annotations#[T] => @TypeParameterAnnotation typeparam T 
+annot/Annotations#`<init>`(). => primary ctor <init> [@TypeParameterAnnotation typeparam T ](@ParameterAnnotation param x: T): Annotations[T]
+annot/Annotations#`<init>`().(x) => @ParameterAnnotation param x: T
+annot/Annotations#field. => @FieldAnnotation val method field Int
+annot/Annotations#method(). => @MethodAnnotation method method => Int
+annot/Annotations#x. => @ParameterAnnotation private[this] val method x T
 annot/B# => class B extends Object { self: B => +3 decls }
-annot/B#`<init>`(). => primary ctor <init> (param x: Int): B
+annot/B#`<init>`(). => @ConstructorAnnotation primary ctor <init> (param x: Int): B
 annot/B#`<init>`().(x) => param x: Int
-annot/B#`<init>`(+1). => ctor <init> (): B
+annot/B#`<init>`(+1). => @ConstructorAnnotation ctor <init> (): B
 annot/B#x. => private[this] val method x Int
-annot/M. => final object M extends Object { self: M.type => +1 decls }
-annot/M.m(). => macro m [typeparam TT ]: Int
+annot/M. => @ObjectAnnotation final object M extends Object { self: M.type => +1 decls }
+annot/M.m(). => @MacroAnnotation macro m [typeparam TT ]: Int
 annot/M.m().[TT] => typeparam TT 
-annot/T# => trait T extends Object { self: T => +1 decls }
+annot/T# => @TraitAnnotation trait T extends Object { self: T => +1 decls }
 annot/T#`<init>`(). => primary ctor <init> (): T
 local0 => selfparam self: AnyRef
-local1 => val local local: Int
+local1 => @LocalAnnotation val local local: Int
 
 Occurrences:
 [0:8..0:13): annot <- annot/
@@ -4082,9 +4082,9 @@ flags/p/package.C#w(). => abstract method w => Int
 flags/p/package.C#x. => private[this] val method x T
 flags/p/package.C#y. => private[this] val method y U
 flags/p/package.C#z. => private[this] val method z V
-flags/p/package.S# => class S [typeparam T ] extends Object { self: S[T] => +2 decls }
-flags/p/package.S#[T] => typeparam T 
-flags/p/package.S#`<init>`(). => primary ctor <init> [typeparam T ](): S[T]
+flags/p/package.S# => class S [@specialized typeparam T ] extends Object { self: S[T] => +2 decls }
+flags/p/package.S#[T] => @specialized typeparam T 
+flags/p/package.S#`<init>`(). => primary ctor <init> [@specialized typeparam T ](): S[T]
 flags/p/package.T1# => type T1  = Int
 flags/p/package.T2# => type T2 [typeparam T ] = S[T]
 flags/p/package.T2#[T] => typeparam T 
@@ -4635,7 +4635,7 @@ Symbols:
 _empty_/MyProgram# => final class MyProgram extends Object { self: MyProgram => +2 decls }
 _empty_/readInts# => final class readInts extends Object { self: readInts => +2 decls }
 _empty_/toplevel$package. => final package object _empty_ extends Object { self: _empty_.type => +9 decls }
-_empty_/toplevel$package.MyProgram(). => method MyProgram (param times: Int): Unit
+_empty_/toplevel$package.MyProgram(). => @main method MyProgram (param times: Int): Unit
 _empty_/toplevel$package.MyProgram().(times) => param times: Int
 _empty_/toplevel$package.a. => val inline method a ""
 _empty_/toplevel$package.combine(). => method combine (param x: Int)(param y: Int): Int
@@ -4648,7 +4648,7 @@ _empty_/toplevel$package.combine(+1).(z) => param z: Int
 _empty_/toplevel$package.combine(+2). => method combine => Int
 _empty_/toplevel$package.foo(). => method foo => String
 _empty_/toplevel$package.fooRef(). => method fooRef => String
-_empty_/toplevel$package.readInts(). => method readInts (param ints: Int*): Unit
+_empty_/toplevel$package.readInts(). => @main method readInts (param ints: Int*): Unit
 _empty_/toplevel$package.readInts().(ints) => param ints: Int*
 
 Occurrences:

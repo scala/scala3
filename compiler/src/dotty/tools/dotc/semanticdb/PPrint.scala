@@ -35,6 +35,9 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
       case Reference, Definition
     def pprint(info: SymbolInformation): String =
       val sb = new StringBuilder()
+      val annotStr = info.annotations.map(pprint).mkString(" ")
+      if annotStr.nonEmpty then
+        sb.append(annotStr + " ")
       sb.append(accessString(info.access))
       if info.isAbstract then sb.append("abstract ")
       if info.isFinal then sb.append("final ")
