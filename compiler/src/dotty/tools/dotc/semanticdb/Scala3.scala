@@ -95,6 +95,10 @@ object Scala3:
             val kind = s.symbolKind(symkinds)
             val sname = sym.symbolName
             val signature = s.info.toSemanticSig(s)
+            val symbolAnnotations = s.annotations.collect{
+              case annot if annot.symbol != defn.BodyAnnot && annot.symbol != defn.ChildAnnot =>
+                Annotation(annot.symbol.typeRef.toSemanticType(annot.symbol))
+            }
             SymbolInformation(
               symbol = sname,
               language = Language.SCALA,
@@ -104,6 +108,7 @@ object Scala3:
               signature = signature,
               access = s.symbolAccess(kind),
               overriddenSymbols = s.overriddenSymbols,
+              annotations = symbolAnnotations
             )
           case s: WildcardTypeSymbol =>
             SymbolInformation(
