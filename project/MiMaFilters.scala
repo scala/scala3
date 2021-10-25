@@ -9,5 +9,11 @@ object MiMaFilters {
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.append"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.double"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.double$"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.float"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.float$"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.long"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.long$"),
   )
 }

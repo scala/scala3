@@ -1,6 +1,8 @@
 package scala.compiletime
 package ops
 
+import annotation.experimental
+
 object any:
   /** Equality comparison of two singleton types.
    * ```scala
@@ -30,6 +32,7 @@ object any:
    * ```
    * @syntax markdown
    */
+  @experimental
   type IsConst[X] <: Boolean
 
   /** String conversion of a constant singleton type.
@@ -39,4 +42,5 @@ object any:
    *  ```
    *  @syntax markdown
    */
+  @experimental
   type ToString[X] <: String
