@@ -3,16 +3,16 @@ Usage: add num inc?
 Adds two numbers
 Arguments:
 	num, Int
-	inc, Int
+	inc, Int (optional)
 Usage: add num inc?
 
 Adds two numbers
 Arguments:
 	num, Int
-	inc, Int
+	inc, Int (optional)
 Usage: add num inc?
 
 Adds two numbers
 Arguments:
 	num, Int
-	inc, Int
+	inc, Int (optional)

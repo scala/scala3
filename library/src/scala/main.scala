@@ -48,7 +48,11 @@ class main extends scala.annotation.MainAnnotation:
       println("Arguments:")
       for (arg <- args)
         val argDoc = if arg.doc.isEmpty then "" else s" - ${arg.doc}"
-        println(s"\t${arg.name}, ${arg.typeName}${argDoc}")
+        val argDefault = arg match {
+          case OptionalArgument(_, _, _, _) => s" (optional)"
+          case _ => ""
+        }
+        println(s"\t${arg.name}, ${arg.typeName}$argDefault${argDoc}")
     }
 
   /** Runs the command and handles its return value */
