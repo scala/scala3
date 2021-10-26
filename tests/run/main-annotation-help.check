@@ -1,6 +1,18 @@
 Usage: add num inc?
+
 Adds two numbers
+Arguments:
+	num, Int
+	inc, Int
 Usage: add num inc?
+
 Adds two numbers
+Arguments:
+	num, Int
+	inc, Int
 Usage: add num inc?
+
 Adds two numbers
+Arguments:
+	num, Int
+	inc, Int

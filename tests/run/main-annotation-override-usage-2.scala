@@ -11,7 +11,7 @@ class myMain extends main:
 
 object myProgram:
 
-  /** Adds two numbers */
+  /** Adds numbers */
   @myMain def add(num: Int, inc: Int*): Unit =
     println(s"$num + ${inc.mkString(" + ")} = ${num + inc.sum}")
 

@@ -1,2 +1,6 @@
 My shiny command works like this: add num [inc [inc [...]]]
+
 Adds numbers
+Arguments:
+	num, Int
+	inc, Int
