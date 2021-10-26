@@ -3472,7 +3472,11 @@ object Parsers {
           givenDef(start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
-          EmptyTree
+          mods.annotations match {
+            case head :: Nil => head
+            case Nil => EmptyTree
+            case all => Block(all, errorTermTree)
+          }
       }
 
     /** ClassDef ::= id ClassConstr TemplateOpt
