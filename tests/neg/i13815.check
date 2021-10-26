@@ -1,0 +1,5 @@
+
+-- [E008] Not Found Error: tests/neg/i13815/Test_2.scala:1:14 ----------------------------------------------------------
+1 |val box = Box.fromProduct((1, "a"))  // error
+  |          ^^^^^^^^^^^^^^^
+  |          value fromProduct is not a member of object Box

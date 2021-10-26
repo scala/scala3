@@ -547,8 +547,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         declaredParents = oldClassInfo.declaredParents :+ parent)
       clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
     }
-    def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree) => Context ?=> Tree): Unit = {
-      val meth = newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)
+    def addMethod(
+        name: TermName, info: Type, cls: Symbol,
+        body: (Symbol, Tree) => Context ?=> Tree, additionalFlags: FlagSet = EmptyFlags): Unit = {
+      val meth = newSymbol(clazz, name, Synthetic | Method | additionalFlags, info, coord = clazz.coord)
       if (!existingDef(meth, clazz).exists) {
         meth.enteredAfter(thisPhase)
         newBody = newBody :+
@@ -571,7 +573,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def makeProductMirror(cls: Symbol) = {
       addParent(defn.Mirror_ProductClass.typeRef)
       addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
-        fromProductBody(_, _).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
+        fromProductBody(_, _).ensureConforms(monoType.typeRef),  // t4758.scala or i3381.scala are examples where a cast is needed
+        additionalFlags = Invisible)
     }
     def makeSumMirror(cls: Symbol) = {
       addParent(defn.Mirror_SumClass.typeRef)
