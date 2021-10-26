@@ -1,0 +1,18 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/i13026.scala:1:13 -------------------------------------------------
+1 |val x: Int = "not an int" // error
+  |             ^^^^^^^^^^^^
+  |             Found:    ("not an int" : String)
+  |             Required: Int
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/i13026.scala:2:13 -------------------------------------------------
+2 |val y: Int = "not an int" // error
+  |             ^^^^^^^^^^^^
+  |             Found:    ("not an int" : String)
+  |             Required: Int
+
+longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg-custom-args/i13026.scala:3:20 -----------------------------------------------------
+3 |def foo(x: Any) = x.foo // error
+  |                  ^^^^^
+  |                  value foo is not a member of Any
