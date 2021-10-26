@@ -8,6 +8,11 @@ import ast.Trees._
 import Names.TermName
 import Comments.Comment
 
+/** The symbol of an annotated function. */
+private type FunSymbol = Symbol
+/** The symbol of a main annotation. */
+private type MainSymbol = Symbol
+
 /** Generate proxy classes for @main functions.
  *  A function like
  *
@@ -34,9 +39,9 @@ object MainProxies {
 
   def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
-    def mainMethods(stats: List[Tree]): List[(Symbol, Option[Comment])] = stats.flatMap {
+    def mainMethods(stats: List[Tree]): List[(FunSymbol, MainSymbol, Option[Comment])] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
-        (stat.symbol, stat.rawComment) :: Nil
+        (stat.symbol, stat.symbol.getAnnotation(defn.MainAnnot).get.symbol, stat.rawComment) :: Nil
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(impl.body)
       case _ =>
@@ -46,7 +51,7 @@ object MainProxies {
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol, docComment: Option[Comment])(using Context): List[TypeDef] = {
+  def mainProxy(mainFun: FunSymbol, mainAnnot: MainSymbol, docComment: Option[Comment])(using Context): List[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
     val mainArgsName: TermName = nme.args
@@ -99,7 +104,7 @@ object MainProxies {
         cmdName,
         TypeTree(), // TODO check if good practice
         Apply(
-          Select(makeNew(TypeTree(defn.MainAnnot.typeRef)), defn.MainAnnot_command.name),
+          Select(makeNew(TypeTree(mainAnnot.typeRef)), defn.MainAnnot_command.name),
           Ident(mainArgsName) :: Literal(Constant(mainFun.showName)) :: Literal(Constant(documentation.mainDoc)) :: Nil
         )
       )
