@@ -9,14 +9,14 @@ import SymOps._
 
 object NameNormalizer {
 
-  extension (using Quotes)(s: reflect.Symbol) def normalizedName: String = {
-    import reflect.*
-    val withoutGivenPrefix = if s.isGiven then s.name.stripPrefix("given_") else s.name
-    val withoutObjectSuffix = if s.flags.is(Flags.Module) then withoutGivenPrefix.stripSuffix("$") else withoutGivenPrefix
-    val constructorNormalizedName = if s.isClassConstructor then "this" else withoutObjectSuffix
-    val escaped = escapedName(constructorNormalizedName)
-    escaped
-  }
+  extension (using Quotes)(s: reflect.Symbol)
+    def normalizedName: String = {
+      import reflect.*
+      val withoutObjectSuffix = if s.flags.is(Flags.Module) then s.name.stripSuffix("$") else s.name
+      val constructorNormalizedName = if s.isClassConstructor then "this" else withoutObjectSuffix
+      val escaped = escapedName(constructorNormalizedName)
+      escaped
+    }
 
   private val ignoredKeywords: Set[String] = Set("this")
 
