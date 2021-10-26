@@ -182,6 +182,7 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
       compileFile("tests/neg-custom-args/feature-shadowing.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileDir("tests/neg-custom-args/hidden-type-errors", defaultOptions.and("-explain")),
+      compileFile("tests/neg-custom-args/i13026.scala", defaultOptions.and("-print-lines")),
     ).checkExpectedErrors()
   }
 
