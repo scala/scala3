@@ -29,7 +29,7 @@ private type MainSymbol = Symbol
  *
  *     final class f {
  *       @static def main(args: Array[String]): Unit =
- *         val cmd = (new scala.main).command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
+ *         val cmd: main#Command = (new scala.main).command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
  *         val arg1: () => S = cmd.argGetter[S]("x", "S", "my param x")
  *         val arg2: () => Seq[T] = cmd.argsGetter[T]("ys", "T", "all my params y")
  *         cmd.run(f(arg1(), arg2()*))
@@ -59,38 +59,45 @@ object MainProxies {
 
     val documentation = new Documentation(docComment)
 
-    def createValArgs(mt: MethodType, cmdName: TermName, idx: Int): List[(ValDef, Boolean)] =
+    def createArgs(mt: MethodType, cmdName: TermName, idx: Int): List[(Tree, ValDef)] =
       if (mt.isImplicitMethod) {
         report.error(s"@main method cannot have implicit parameters", pos)
         Nil
       }
       else {
         // TODO check & handle default value
-        var valArgs: List[(ValDef, Boolean)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
+        var valArgs: List[(Tree, ValDef)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
           case ((formal, paramName), n) =>
-            // TODO make me cleaner
-            val (getterSym, formalType, isVararg) =
-              if (formal.isRepeatedParam) (defn.MainAnnotCommand_argsGetter, formal.argTypes.head, true)
-              else (defn.MainAnnotCommand_argGetter, formal, false)
-            val returnType = if isVararg then defn.SeqType.appliedTo(formalType) else formalType
-            val valDef = ValDef(
-              mainArgsName ++ (idx + n).toString, // FIXME
-              TypeTree(defn.FunctionOf(Nil, returnType)),
+            val argName = mainArgsName ++ (idx + n).toString
+            val getterSym = if formal.isRepeatedParam then defn.MainAnnotCommand_argsGetter else defn.MainAnnotCommand_argGetter
+
+            var argRef: Tree = Apply(Ident(argName), Nil)
+            var formalType = formal
+            //var returnType = formalType
+
+            if (formal.isRepeatedParam) {
+              argRef = repeated(argRef)
+              formalType = formalType.argTypes.head
+              //returnType = defn.SeqType.appliedTo(formalType)
+            }
+
+            val rawArgs = List(paramName.toString, formalType.show, documentation.argDocs(paramName.toString)) // TODO check if better way to print name of formalType
+            val argDef = ValDef(
+              argName,
+              TypeTree(/*defn.FunctionOf(Nil, returnType)*/),
               Apply(
                 TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil),
-                Literal(Constant(paramName.toString))
-                :: Literal(Constant(formalType.show))
-                :: Literal(Constant(documentation.argDocs(paramName.toString)))
-                :: Nil  // TODO check if better way to print name of formalType
+                rawArgs map (arg => Literal(Constant(arg)))
               ),
             )
-            (valDef, isVararg)
+
+            (argRef, argDef)
         }
         mt.resType match {
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
               report.error(s"varargs parameter of @main method must come last", pos)
-            valArgs ::: createValArgs(restpe, cmdName, idx + valArgs.length)
+            valArgs ::: createArgs(restpe, cmdName, idx + valArgs.length)
           case _ =>
             valArgs
         }
@@ -114,14 +121,9 @@ object MainProxies {
       mainFun.info match {
         case _: ExprType =>
         case mt: MethodType =>
-          val valArgs = createValArgs(mt, cmdName, 0)
-          args = valArgs.unzip._1
-          mainCall = Apply(mainCall, valArgs map {
-            case (arg, isVararg) =>
-              var argCall: Tree = Apply(Ident(arg.name), Nil)
-              if isVararg then argCall = repeated(argCall)
-              argCall
-          })
+          val (argRefs, argVals) = createArgs(mt, cmdName, 0).unzip
+          args = argVals
+          mainCall = Apply(mainCall, argRefs)
         case _: PolyType =>
           report.error(s"@main method cannot have type parameters", pos)
         case _ =>
