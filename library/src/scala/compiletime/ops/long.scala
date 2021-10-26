@@ -12,7 +12,7 @@ object long:
    *    case 0L => 1L
    *    case 1L => 2L
    *    case 2L => 3L
-   *    ...
+   *    // ...
    *    case 9223372036854775806L => 9223372036854775807L
    *  }
    *  ```
@@ -155,8 +155,8 @@ object long:
 
   /** Negation of an `Long` singleton type.
    *  ```scala
-   *  val neg1: Neg[-1L] = 1L
-   *  val neg2: Neg[1L] = -1L
+   *  val neg1: Negate[-1L] = 1L
+   *  val neg2: Negate[1L] = -1L
    *  ```
    *  @syntax markdown
    */
@@ -177,14 +177,6 @@ object long:
    *  @syntax markdown
    */
   type Max[X <: Long, Y <: Long] <: Long
-
-  /** String conversion of an `Long` singleton type.
-   *  ```scala
-   *  val abs: ToString[1L] = "1"
-   *  ```
-   *  @syntax markdown
-   */
-  type ToString[X <: Long] <: String
 
   /** Number of zero bits preceding the highest-order ("leftmost")
    * one-bit in the two's complement binary representation of the specified `Long` singleton type.
