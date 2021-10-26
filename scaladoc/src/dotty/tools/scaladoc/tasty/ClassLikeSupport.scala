@@ -97,15 +97,16 @@ trait ClassLikeSupport:
     val baseMember = mkMember(classDef.symbol, kindForClasslike(classDef), selfSignature)(
       modifiers = modifiers,
       graph = graph,
-      deprecated = classDef.symbol.isDeprecated()
+      deprecated = classDef.symbol.isDeprecated(),
+    ).copy(
+      directParents = classDef.getParentsAsLinkToTypes,
+      parents = supertypes,
     )
 
     if summon[DocContext].args.generateInkuire then doInkuireStuff(classDef)
 
     if signatureOnly then baseMember else baseMember.copy(
         members = classDef.extractPatchedMembers.sortBy(m => (m.name, m.kind.name)),
-        directParents = classDef.getParentsAsLinkToTypes,
-        parents = supertypes,
         selfType = selfType,
         companion = classDef.getCompanion
     )
@@ -144,15 +145,6 @@ trait ClassLikeSupport:
           )
           parseMethod(c, dd.symbol,specificKind = Kind.Extension(target, _))
         }
-      // TODO check given methods?
-      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven && !dd.symbol.isArtifact =>
-        Some(dd.symbol.owner.typeMember(dd.name))
-          .filterNot(_.exists)
-          .map { _ =>
-            parseMethod(c, dd.symbol, specificKind =
-              Kind.Given(_, getGivenInstance(dd), None)
-            )
-          }
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported && !dd.symbol.isArtifact =>
         val exportedTarget = dd.rhs.collect {
@@ -171,58 +163,25 @@ trait ClassLikeSupport:
         Some(parseMethod(c, dd.symbol, specificKind = Kind.Exported(_))
           .withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
-      case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod && !dd.symbol.isArtifact =>
+      case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod && !dd.symbol.isArtifact =>
         Some(parseMethod(c, dd.symbol))
 
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
         Some(parseTypeDef(td))
 
-      case vd: ValDef if !isSyntheticField(vd.symbol)
-        && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
-        && vd.symbol.isGiven =>
-          val classDef = Some(vd.tpt.tpe).flatMap(_.classSymbol.map(_.tree.asInstanceOf[ClassDef]))
-          Some(classDef.filter(_.symbol.flags.is(Flags.Module)).fold[Member](parseValDef(c, vd))(parseGivenClasslike(_)))
-
       case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
         Some(parseValDef(c, vd))
 
-      case c: ClassDef if c.symbol.owner.methodMember(c.name).exists(_.flags.is(Flags.Given)) =>
-        Some(parseGivenClasslike(c))
-
-      case c: ClassDef if c.symbol.shouldDocumentClasslike &&  !c.symbol.isGiven =>
+      case c: ClassDef if c.symbol.shouldDocumentClasslike =>
         Some(parseClasslike(c))
 
       case _ => None
   }
 
-  private def parseGivenClasslike(c: ClassDef): Member = {
-    val parsedClasslike = parseClasslike(c)
-
-    val parentTpe = c.parents(0) match {
-      case t: TypeTree => Some(t.tpe)
-      case t: Term => Some(t.tpe)
-      case _ => None
-    }
-
-    val givenParents = parsedClasslike.directParents.headOption
-    val cls: Kind.Class = parsedClasslike.kind match
-      case Kind.Object => Kind.Class(Nil, Nil)
-      case Kind.Trait(tps, args) => Kind.Class(tps, args)
-      case cls: Kind.Class => cls
-      case other =>
-        report.warning("Unrecoginzed kind for given: $other", c.pos)
-        Kind.Class(Nil, Nil)
-
-    parsedClasslike.withKind(
-      Kind.Given(cls, givenParents.map(_.signature), parentTpe.flatMap(extractImplicitConversion))
-    )
-  }
-
   private def parseInheritedMember(c: ClassDef)(s: Tree): Option[Member] =
     def inheritance = Some(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.dri))
     processTreeOpt(s)(s match
-      case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
-      case c: ClassDef if c.symbol.owner.methodMember(c.name).exists(_.flags.is(Flags.Given)) => Some(parseGivenClasslike(c))
+      case c: ClassDef if c.symbol.shouldDocumentClasslike => Some(parseClasslike(c, signatureOnly = true))
       case other => {
         val parsed = parseMember(c)(other)
         parsed.map(p =>
@@ -392,6 +351,7 @@ trait ClassLikeSupport:
           ))
         case _ =>
           Kind.Implicit(basicKind, None)
+      else if methodSymbol.flags.is(Flags.Given) then Kind.Given(basicKind, Some(method.returnTpt.tpe.asSignature), extractImplicitConversion(method.returnTpt.tpe))
       else specificKind(basicKind)
 
     val origin = if !methodSymbol.isOverridden then Origin.RegularlyDefined else
@@ -463,10 +423,10 @@ trait ClassLikeSupport:
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val
     val memberInfo = unwrapMemberInfo(c, valDef.symbol)
-    val kind = if valDef.symbol.flags.is(Flags.Implicit) then
-        Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
-        else if valDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(Kind.Val)
-        else defaultKind
+    val kind = if valDef.symbol.flags.is(Flags.Implicit) then Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
+      else if valDef.symbol.flags.is(Flags.Given) then Kind.Given(Kind.Val, Some(memberInfo.res.asSignature), extractImplicitConversion(valDef.tpt.tpe))
+      else if valDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(Kind.Val)
+      else defaultKind
 
     mkMember(valDef.symbol, kind, memberInfo.res.asSignature)(deprecated = valDef.symbol.isDeprecated())
 
