@@ -7,11 +7,7 @@ import StdNames.{nme, tpnme}
 import ast.Trees._
 import Names.TermName
 import Comments.Comment
-
-/** The symbol of an annotated function. */
-private type FunSymbol = Symbol
-/** The symbol of a main annotation. */
-private type MainSymbol = Symbol
+import NameKinds.DefaultGetterName
 
 /** Generate proxy classes for @main functions.
  *  A function like
@@ -39,20 +35,35 @@ object MainProxies {
 
   def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
-    def mainMethods(stats: List[Tree]): List[(FunSymbol, MainSymbol, Option[Comment])] = stats.flatMap {
+    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, Map[Int, Tree], Option[Comment])] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
-        (stat.symbol, stat.symbol.getAnnotation(defn.MainAnnot).get.symbol, stat.rawComment) :: Nil
+        val defaultValues: Map[Int, Tree] =
+          (scope match {
+            case TypeDef(_, template: Template) =>
+              template.body.flatMap((_: Tree) match {
+                case dd @ DefDef(name, _, _, _) if name.is(DefaultGetterName) && name.firstPart == stat.symbol.name =>
+                  val index: Int = name.toString.split("\\$")(2).toInt - 1 // FIXME please!!
+                  val valueTree = dd.rhs
+                  List(index -> valueTree)
+                case _ => List()
+              }).toMap
+            case _ => Map[Int, Tree]()
+          }).withDefaultValue(EmptyTree)
+
+        (stat.symbol, defaultValues, stat.rawComment) :: Nil
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
-        mainMethods(impl.body)
+        mainMethods(stat, impl.body)
       case _ =>
         Nil
     }
-    mainMethods(stats).flatMap(mainProxy)
+
+    // Assuming that the top-level object was already generated, all @main methods will have a scope
+    mainMethods(EmptyTree, stats).flatMap(mainProxy)
   }
 
   import untpd._
-  def mainProxy(mainFun: FunSymbol, mainAnnot: MainSymbol, docComment: Option[Comment])(using Context): List[TypeDef] = {
-    val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
+  def mainProxy(mainFun: Symbol, defaultValues: Map[Int, Tree], docComment: Option[Comment])(using Context): List[TypeDef] = {
+    val mainAnnot = mainFun.getAnnotation(defn.MainAnnot).get
     def pos = mainFun.sourcePos
     val mainArgsName: TermName = nme.args
     val cmdName: TermName = Names.termName("cmd")
@@ -65,11 +76,16 @@ object MainProxies {
         Nil
       }
       else {
-        // TODO check & handle default value
         var valArgs: List[(Tree, ValDef)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
           case ((formal, paramName), n) =>
             val argName = mainArgsName ++ (idx + n).toString
-            val getterSym = if formal.isRepeatedParam then defn.MainAnnotCommand_argsGetter else defn.MainAnnotCommand_argGetter
+            val getterSym =
+              if formal.isRepeatedParam then
+                defn.MainAnnotCommand_argsGetter
+              else if defaultValues contains n then
+                defn.MainAnnotCommand_argGetterDefault
+              else
+                defn.MainAnnotCommand_argGetter
 
             var argRef: Tree = Apply(Ident(argName), Nil)
             var formalType = formal
@@ -81,13 +97,15 @@ object MainProxies {
               //returnType = defn.SeqType.appliedTo(formalType)
             }
 
-            val rawArgs = List(paramName.toString, formalType.show, documentation.argDocs(paramName.toString)) // TODO check if better way to print name of formalType
             val argDef = ValDef(
               argName,
               TypeTree(/*defn.FunctionOf(Nil, returnType)*/),
               Apply(
                 TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil),
-                rawArgs map (arg => Literal(Constant(arg)))
+                Literal(Constant(paramName.toString))
+                :: Literal(Constant(formalType.show))
+                :: Literal(Constant(documentation.argDocs(paramName.toString)))
+                :: defaultValues.get(n).map(List(_)).getOrElse(Nil)
               ),
             )
 
@@ -111,7 +129,7 @@ object MainProxies {
         cmdName,
         TypeTree(), // TODO check if good practice
         Apply(
-          Select(makeNew(TypeTree(mainAnnot.typeRef)), defn.MainAnnot_command.name),
+          Select(makeNew(TypeTree(mainAnnot.symbol.typeRef)), defn.MainAnnot_command.name),
           Ident(mainArgsName) :: Literal(Constant(mainFun.showName)) :: Literal(Constant(documentation.mainDoc)) :: Nil
         )
       )
@@ -151,7 +169,7 @@ object MainProxies {
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
         .withFlags(Final | Invisible)
-      if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
+      if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnot.tree.span.toSynthetic) :: Nil
     }
     result
   }
