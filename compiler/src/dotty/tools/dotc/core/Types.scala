@@ -4252,9 +4252,36 @@ object Types {
           case _ => None
         }
 
-        def isConst(tp : Type) : Option[Type] = tp.fixForEvaluation match {
-          case ConstantType(_) => Some(ConstantType(Constant(true)))
-          case _ => Some(ConstantType(Constant(false)))
+        val opsSet = Set(
+          defn.CompiletimeOpsAnyModuleClass,
+          defn.CompiletimeOpsIntModuleClass,
+          defn.CompiletimeOpsLongModuleClass,
+          defn.CompiletimeOpsFloatModuleClass,
+          defn.CompiletimeOpsBooleanModuleClass,
+          defn.CompiletimeOpsStringModuleClass
+        )
+
+        //Returns Some(true) if the type is a constant.
+        //Returns Some(false) if the type is not a constant.
+        //Returns None if there is not enough information to determine if the type is a constant.
+        //The type is a constant if it is a constant type or a type operation composition of constant types.
+        //If we get a type reference for an argument, then the result is not yet known.
+        def isConst(tp : Type) : Option[Boolean] = tp.dealias match {
+          //known to be constant
+          case ConstantType(_) => Some(true)
+          //currently not a concrete known type
+          case TypeRef(NoPrefix,_) => None
+          //currently not a concrete known type
+          case _ : TypeParamRef => None
+          //constant if the term is constant
+          case t : TermRef => isConst(t.underlying)
+          //an operation type => recursively check all argument compositions
+          case applied : AppliedType if opsSet.contains(applied.typeSymbol.owner) =>
+            val argsConst = applied.args.map(isConst)
+            if (argsConst.exists(_.isEmpty)) None
+            else Some(argsConst.forall(_.get))
+          //all other types are considered not to be constant
+          case _ => Some(false)
         }
 
         def expectArgsNum(expectedNum : Int) : Unit =
@@ -4312,7 +4339,7 @@ object Types {
               case tpnme.Equals     => constantFold2(constValue, _ == _)
               case tpnme.NotEquals  => constantFold2(constValue, _ != _)
               case tpnme.ToString   => constantFold1(constValue, _.toString)
-              case tpnme.IsConst    => isConst(args.head)
+              case tpnme.IsConst    => isConst(args.head).map(b => ConstantType(Constant(b)))
               case _ => None
             } else if (owner == defn.CompiletimeOpsIntModuleClass) name match {
               case tpnme.Abs        => constantFold1(intValue, _.abs)
