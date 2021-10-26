@@ -13,6 +13,7 @@ import java.nio.file.Path
 import java.nio.file.Files
 import java.io.File
 import scala.util.matching._
+import dotty.tools.scaladoc.util.Escape._
 
 val UnresolvedLocationLink = "#"
 

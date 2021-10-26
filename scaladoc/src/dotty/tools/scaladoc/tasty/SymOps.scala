@@ -261,7 +261,7 @@ class SymOpsWithLinkCache:
         else
           (sym.className, sym.anchor)
 
-        val location = sym.packageNameSplitted ++ className
+        val location = (sym.packageNameSplitted ++ className).map(escapeFilename(_))
 
         val externalLink = {
             import reflect._
