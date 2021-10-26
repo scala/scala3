@@ -31,7 +31,7 @@ object double:
 
   /** Integer division of two `Double` singleton types.
    *  ```scala
-   *  val div: 5.0 / 2.0 = 2.0
+   *  val div: 5.0 / 2.0 = 2.5
    *  ```
    *  @syntax markdown
    */
@@ -91,8 +91,8 @@ object double:
 
   /** Negation of an `Double` singleton type.
    *  ```scala
-   *  val neg1: Neg[-1.0] = 1.0
-   *  val neg2: Neg[1.0] = -1.0
+   *  val neg1: Negate[-1.0] = 1.0
+   *  val neg2: Negate[1.0] = -1.0
    *  ```
    *  @syntax markdown
    */

@@ -31,7 +31,7 @@ object float:
 
   /** Integer division of two `Float` singleton types.
    *  ```scala
-   *  val div: 5.0f / 2.0f = 2.0f
+   *  val div: 5.0f / 2.0f = 2.5f
    *  ```
    *  @syntax markdown
    */
@@ -91,8 +91,8 @@ object float:
 
   /** Negation of an `Float` singleton type.
    *  ```scala
-   *  val neg1: Neg[-1.0f] = 1.0f
-   *  val neg2: Neg[1.0f] = -1.0f
+   *  val neg1: Negate[-1.0f] = 1.0f
+   *  val neg2: Negate[1.0f] = -1.0f
    *  ```
    *  @syntax markdown
    */

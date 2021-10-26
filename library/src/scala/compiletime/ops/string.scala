@@ -14,7 +14,7 @@ object string:
 
   /** Length of a `String` singleton type.
    *  ```scala
-   *  val helloSize: Size["hello"] = 5
+   *  val helloSize: Length["hello"] = 5
    *  ```
    *  @syntax markdown
    */
