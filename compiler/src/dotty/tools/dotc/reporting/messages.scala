@@ -348,7 +348,7 @@ import transform.SymUtils._
       val finalAddendum =
         if addendum.nonEmpty then prefixEnumClause(addendum)
         else closest match
-          case (d, sym) :: _ =>
+          case (d, sym) :: _ if sym.name != name =>
             val siteName = site match
               case site: NamedType => site.name.show
               case site => i"$site"
@@ -357,7 +357,7 @@ import transform.SymUtils._
               if sym.is(ModuleClass) then s"${sym.name.show}.type"
               else sym.name.show
             s" - did you mean $siteName.$showName?$enumClause"
-          case Nil => prefixEnumClause("")
+          case _ => prefixEnumClause("")
 
       ex"$selected $name is not a member of ${site.widen}$finalAddendum"
     }
