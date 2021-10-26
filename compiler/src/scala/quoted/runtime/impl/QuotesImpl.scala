@@ -753,9 +753,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Block extends BlockModule:
       def apply(stats: List[Statement], expr: Term): Block =
-        withDefaultPos(tpd.Block(stats, expr))
+        xCheckMacroBlockOwners(withDefaultPos(tpd.Block(stats, expr)))
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block =
-        tpd.cpy.Block(original)(stats, expr)
+        xCheckMacroBlockOwners(tpd.cpy.Block(original)(stats, expr))
       def unapply(x: Block): (List[Statement], Term) =
         (x.statements, x.expr)
     end Block
@@ -2912,6 +2912,28 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                    |""".stripMargin)
             case _ => traverseChildren(t)
       }.traverse(tree)
+
+    /** Checks that all definitions in this block have the same owner.
+     *  Nested definitions are ignored and assumed to be correct by construction.
+     */
+    private def xCheckMacroBlockOwners(tree: Tree): tree.type =
+      if xCheckMacro then
+        val defs = new tpd.TreeAccumulator[List[Tree]] {
+          def apply(defs: List[Tree], tree: Tree)(using Context): List[Tree] =
+            tree match
+              case tree: tpd.DefTree => tree :: defs
+              case _ => foldOver(defs, tree)
+        }.apply(Nil, tree)
+        val defOwners = defs.groupBy(_.symbol.owner)
+        assert(defOwners.size <= 1,
+          s"""Block contains definition with different owners.
+            |Found definitions ${defOwners.size} distinct owners: ${defOwners.keys.mkString(", ")}
+            |
+            |Block: ${Printer.TreeCode.show(tree)}
+            |
+            |${defOwners.map((owner, trees) => s"Definitions owned by $owner: \n${trees.map(Printer.TreeCode.show).mkString("\n")}").mkString("\n\n")}
+            |""".stripMargin)
+      tree
 
     private def xCheckMacroValidExprs(terms: List[Term]): terms.type =
       if xCheckMacro then terms.foreach(xCheckMacroValidExpr)

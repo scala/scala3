@@ -55,7 +55,9 @@ object X:
                      )
                    )
                  )
-        case Block(stats, last) => Block(stats, transform(last))
+        case Block(stats, last) =>
+          val recoverdOwner = stats.headOption.map(_.symbol.owner).getOrElse(Symbol.spliceOwner) // hacky workaround to missing owner tracking in transform
+          Block(stats, transform(last).changeOwner(recoverdOwner))
         case Inlined(x,List(),body) => transform(body)
         case l@Literal(x) =>
            l.asExpr match
