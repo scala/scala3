@@ -29,6 +29,15 @@ object any:
    * val c1: IsConst[1] = true
    * val c2: IsConst["hi"] = true
    * val c3: IsConst[false] = true
+   * val c4: IsConst[Any] = false
+   * ```
+   * If the type is not yet known, then `IsConst` remains unevaluated, and
+   * will be evaluated only at its concrete type application. E.g.:
+   * ```scala
+   * //def `isConst`` returns the type `IsConst[X]`, since `X` is not yet known.
+   * def isConst[X] : IsConst[X] = ???
+   * val c5 : true = isConst[1] //now the type is known to be a constant
+   * val c6 : false = isConst[Any] //now the type is known to be not a constant
    * ```
    * @syntax markdown
    */

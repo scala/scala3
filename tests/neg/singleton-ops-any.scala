@@ -30,5 +30,11 @@ object Test {
   final val two = 2
   val t47 : IsConst[two.type] = true
   val t48: IsConst[Any] = true // error
-
+  def isConst[X] : IsConst[X] = ???
+  val t49 : true = isConst[1]
+  val t50 : false = isConst[one.type]
+  def isConst2[X <: Int, Y <: Int] : IsConst[X == Y] = ???
+  val t51 : true = isConst2[1, 1]
+  val t52 : false = isConst2[1, one.type]
+  val t53 : true = isConst2[1, two.type]
 }
