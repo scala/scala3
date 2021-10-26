@@ -442,6 +442,9 @@ object Parsers {
     def convertToParam(tree: Tree, mods: Modifiers, expected: String = "formal parameter"): ValDef = tree match {
       case id @ Ident(name) =>
         makeParameter(name.asTermName, TypeTree(), mods, isBackquoted = isBackquoted(id)).withSpan(tree.span)
+      case Typed(_, tpt: TypeBoundsTree) =>
+        syntaxError(s"not a legal $expected", tree.span)
+        makeParameter(nme.ERROR, tree, mods)
       case Typed(id @ Ident(name), tpt) =>
         makeParameter(name.asTermName, tpt, mods, isBackquoted = isBackquoted(id)).withSpan(tree.span)
       case Typed(Splice(Ident(name)), tpt) =>
