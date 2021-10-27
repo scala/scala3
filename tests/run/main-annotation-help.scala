@@ -23,18 +23,7 @@ object myProgram:
     * @param num the first number
     * @param inc the second number
     */
-  @main def doc4(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
-
-  /**
-    * Adds two numbers.
-    *
-    * @param num the first number
-    * @param inc the second number
-    *
-    * This should not be printed!
-    */
-  @main def doc5(num: Int, inc: Int = 1): Unit =
+  @main def doc4(num: Int, inc: Int = 1): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   /**
@@ -42,7 +31,7 @@ object myProgram:
     *
     * @param num the first number
     */
-  @main def doc6(num: Int, inc: Int): Unit =
+  @main def doc5(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   /**
@@ -51,7 +40,7 @@ object myProgram:
     * @param num
     * @param inc
     */
-  @main def doc7(num: Int, inc: Int): Unit =
+  @main def doc6(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   /**
@@ -61,7 +50,7 @@ object myProgram:
     * @param inc the second number
     * @return the sum of the two numbers (not really)
     */
-  @main def doc8(num: Int, inc: Int): Unit =
+  @main def doc7(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   /**
@@ -71,7 +60,7 @@ object myProgram:
     * @param inc           the second number
     * @return                        the sum of the two numbers (not really)
     */
-  @main def doc9(num: Int, inc: Int): Unit =
+  @main def doc8(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   /**
@@ -81,10 +70,8 @@ object myProgram:
     * @param inc the second number
     * @return the sum of the two numbers (not really)
     * @see {{doc1}}
-    *
-    * This should not be printed!
     */
-  @main def doc10(num: Int, inc: Int): Unit =
+  @main def doc9(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   /**
@@ -103,22 +90,20 @@ object myProgram:
     * @param inc I might even
     * have to write this one
     * on three lines
-    *
-    * This should not be printed!
     */
-  @main def doc11(num: Int, inc: Int): Unit =
+  @main def doc10(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   /**
     * Adds two numbers. It seems that I have a very long line of documentation and therefore might need to be cut at some point to fit a small terminal screen.
     */
-  @main def doc12(num: Int, inc: Int): Unit =
+  @main def doc11(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   /**
     * Addstwonumbers.ItseemsthatIhaveaverylonglineofdocumentationandthereforemightneedtobecutatsomepointtofitasmallterminalscreen.
     */
-  @main def doc13(num: Int, inc: Int): Unit =
+  @main def doc12(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
 end myProgram
@@ -130,7 +115,7 @@ object Test:
     method.invoke(null, args)
 
   def callAllMains(args: Array[String]): Unit =
-    val numberOfMains = 13
+    val numberOfMains = 12
     for (i <- 1 to numberOfMains) {
       val clazz = Class.forName("doc" + i.toString)
       val method = clazz.getMethod("main", classOf[Array[String]])
