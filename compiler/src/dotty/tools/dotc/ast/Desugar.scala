@@ -1410,29 +1410,6 @@ object desugar {
     FunctionWithMods(params, body, Modifiers(mods))
   }
 
-  /** Add annotation to tree:
-   *      tree @fullName
-   *
-   *  The annotation is usually represented as a TypeTree referring to the class
-   *  with the given name `fullName`. However, if the annotation matches a file name
-   *  that is still to be entered, the annotation is represented as a cascade of `Selects`
-   *  following `fullName`. This is necessary so that we avoid reading an annotation from
-   *  the classpath that is also compiled from source.
-   */
-  def makeAnnotated(fullName: String, tree: Tree)(using Context): Annotated = {
-    val parts = fullName.split('.')
-    val ttree = typerPhase match {
-      case phase: TyperPhase if phase.stillToBeEntered(parts.last) =>
-        val prefix =
-          parts.init.foldLeft(Ident(nme.ROOTPKG): Tree)((qual, name) =>
-            Select(qual, name.toTermName))
-        Select(prefix, parts.last.toTypeName)
-      case _ =>
-        TypeTree(requiredClass(fullName).typeRef)
-    }
-    Annotated(tree, New(ttree, Nil))
-  }
-
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) = {
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
       .withMods(mods)
