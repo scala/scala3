@@ -853,18 +853,23 @@ object Types {
       def goAnd(l: Type, r: Type) =
         go(l).meet(go(r), pre, safeIntersection = ctx.base.pendingMemberSearches.contains(name))
 
-      def goOr(tp: OrType) = tp match {
-        case OrNull(tp1) if Nullables.unsafeNullsEnabled =>
-          // Selecting `name` from a type `T | Null` is like selecting `name` from `T`, if
-          // unsafeNulls is enabled. This can throw at runtime, but we trade soundness for usability.
-          tp1.findMember(name, pre.stripNull, required, excluded)
-        case _ =>
+      def goOr(tp: OrType) =
+        inline def searchAfterJoin =
           // we need to keep the invariant that `pre <: tp`. Branch `union-types-narrow-prefix`
           // achieved that by narrowing `pre` to each alternative, but it led to merge errors in
           // lots of places. The present strategy is instead of widen `tp` using `join` to be a
           // supertype of `pre`.
           go(tp.join)
-      }
+
+        if Nullables.unsafeNullsEnabled then tp match
+          case OrNull(tp1) if tp1 <:< defn.ObjectType  =>
+            // Selecting `name` from a type `T | Null` is like selecting `name` from `T`, if
+            // unsafeNulls is enabled and T is a subtype of AnyRef.
+            // This can throw at runtime, but we trade soundness for usability.
+            tp1.findMember(name, pre.stripNull, required, excluded)
+          case _ =>
+            searchAfterJoin
+        else searchAfterJoin
 
       val recCount = ctx.base.findMemberCount
       if (recCount >= Config.LogPendingFindMemberThreshold)
