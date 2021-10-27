@@ -97,7 +97,7 @@ object Scala3:
             val signature = s.info.toSemanticSig(s)
             val symbolAnnotations = s.annotations.collect{
               case annot if annot.symbol != defn.BodyAnnot && annot.symbol != defn.ChildAnnot =>
-                Annotation(annot.symbol.typeRef.toSemanticType(annot.symbol))
+                Annotation(annot.tree.tpe.toSemanticType(annot.symbol))
             }
             SymbolInformation(
               symbol = sname,

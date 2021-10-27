@@ -222,8 +222,8 @@ Schema => SemanticDB v4
 Uri => Annotations.scala
 Text => empty
 Language => Scala
-Symbols => 22 entries
-Occurrences => 48 entries
+Symbols => 23 entries
+Occurrences => 52 entries
 
 Symbols:
 annot/Alias. => final object Alias extends Object { self: Alias.type => +2 decls }
@@ -236,10 +236,11 @@ annot/Annotations#`<init>`().(x) => @ParameterAnnotation param x: T
 annot/Annotations#field. => @FieldAnnotation val method field Int
 annot/Annotations#method(). => @MethodAnnotation method method => Int
 annot/Annotations#x. => @ParameterAnnotation private[this] val method x T
-annot/B# => class B extends Object { self: B => +3 decls }
+annot/B# => class B extends Object { self: B => +4 decls }
 annot/B#`<init>`(). => @ConstructorAnnotation primary ctor <init> (param x: Int): B
 annot/B#`<init>`().(x) => param x: Int
 annot/B#`<init>`(+1). => @ConstructorAnnotation ctor <init> (): B
+annot/B#throwing(). => @throws[Exception] method throwing => Nothing
 annot/B#x. => private[this] val method x Int
 annot/M. => @ObjectAnnotation final object M extends Object { self: M.type => +1 decls }
 annot/M.m(). => @MacroAnnotation macro m [typeparam TT ]: Int
@@ -285,19 +286,23 @@ Occurrences:
 [21:36..21:39): Int -> scala/Int#
 [22:3..22:24): ConstructorAnnotation -> com/javacp/annot/ConstructorAnnotation#
 [23:6..23:10): <- annot/B#`<init>`(+1).
-[26:1..26:17): ObjectAnnotation -> com/javacp/annot/ObjectAnnotation#
-[27:7..27:8): M <- annot/M.
-[28:3..28:18): MacroAnnotation -> com/javacp/annot/MacroAnnotation#
-[29:6..29:7): m <- annot/M.m().
-[29:8..29:10): TT <- annot/M.m().[TT]
-[29:13..29:16): Int -> scala/Int#
-[29:25..29:28): ??? -> scala/Predef.`???`().
-[32:1..32:16): TraitAnnotation -> com/javacp/annot/TraitAnnotation#
-[33:6..33:7): T <- annot/T#
-[35:7..35:12): Alias <- annot/Alias.
-[36:7..36:8): A <- annot/Alias.A#
-[36:11..36:26): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
-[36:28..36:33): param -> scala/annotation/meta/param#
+[25:3..25:9): throws -> scala/throws#
+[25:10..25:19): Exception -> scala/package.Exception#
+[26:6..26:14): throwing <- annot/B#throwing().
+[26:27..26:36): Exception -> scala/package.Exception#
+[29:1..29:17): ObjectAnnotation -> com/javacp/annot/ObjectAnnotation#
+[30:7..30:8): M <- annot/M.
+[31:3..31:18): MacroAnnotation -> com/javacp/annot/MacroAnnotation#
+[32:6..32:7): m <- annot/M.m().
+[32:8..32:10): TT <- annot/M.m().[TT]
+[32:13..32:16): Int -> scala/Int#
+[32:25..32:28): ??? -> scala/Predef.`???`().
+[35:1..35:16): TraitAnnotation -> com/javacp/annot/TraitAnnotation#
+[36:6..36:7): T <- annot/T#
+[38:7..38:12): Alias <- annot/Alias.
+[39:7..39:8): A <- annot/Alias.A#
+[39:11..39:26): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
+[39:28..39:33): param -> scala/annotation/meta/param#
 
 expect/Anonymous.scala
 ----------------------
