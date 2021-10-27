@@ -106,11 +106,13 @@ object Texts {
       case Str(s, lines) =>
         if (numberWidth != 0) {
           val ln = lines.show
-          val pad = (numberWidth - ln.length - 1)
-          assert(pad >= 0)
-          sb.append(" " * pad)
-          sb.append(ln)
-          sb.append("|")
+          if (ln.nonEmpty) {
+            val pad = (numberWidth - ln.length - 1)
+            assert(pad >= 0)
+            sb.append(" " * pad)
+            sb.append(ln)
+            sb.append("|")
+          }
         }
         sb.append(s)
       case _ =>
