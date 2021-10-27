@@ -24,15 +24,20 @@ def foo[T, U][V](x: T): U = ???
  * ParamClauses           ::=  ParamClause {ParamClause}
  * ParamClause            ::=  TermParamClause | TypeParamClause | UsingParamClause
  * TermParamClause        ::=  [nl] ‘(’ [TermParams] ‘)’                              //note: allows ()
- * TypeParamClause        ::=  [nl] ‘[’ TypeParams ‘]’
+ * TypeParamClause        ::=  [nl] ‘[’ TypeParams ‘]’ 
  * UsingParamClause       ::=  [nl] ‘(’ ‘using’ TermParams ‘)’
  * 
  * (slightly simpler but should be equivalent to changes made in Parser.scla)
  */
 // same for classes, je suis un peu confus par la syntaxe ci-dessous, notament Annotation et AccessModifiers, ils sont pas là en scala 3, non ?
 // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html#class-definitions
+// 
+// change text to explain application notably when only passed one clause of type params when multiple type clauses expected
 
-// impl param de classe, déjà Parser
+// impl param de classe, déjà Parser: Done
+
+
+//add function call to chainedParams
 
 
 // Que faire de  TypeDcl ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]  //TODO: change to {ParamClauses} ?
@@ -42,7 +47,9 @@ def foo[T, U][V](x: T): U = ???
     function definition     Done
     function application    Already works
     class definition        In Progress
-    class instantiation     Might already work
+        primary constr          In Progress
+        auxiliary constr        In Progress
+    class instantiation     Might already work // see new
     given definition        Todo
     given application(?)    Doesn't exist ? or add multiple params to usings ?
     type declarations       To be determined
@@ -64,3 +71,26 @@ def foo[T, U][V](x: T): U = ???
 
 // eta expension:
 val f = foo //should work and doesn't preserve type params yet
+
+
+
+
+
+//new:
+// mettre de coté la partie sur les classes
+// fork le repo de la doc est faire changements appropriés
+// check overloading resolution
+// Applications.scala resolveMapped
+//                      methType
+// ProtoTypes.scala
+
+// check ne passer aucun arguments à une fonction
+// voir fichier overload dans pos/interweaving_
+// voir methType
+// check occurances de PolyType et PolyProto pour être sûr que ça fonctionne bien avec les [T][U]
+// testCompilation
+
+
+
+// should we allow fun[L <: List[T]][T] as alias for something like fun[F[_] <: List[]][T][L <: F[T]]
+// I'm not sure it's useful
