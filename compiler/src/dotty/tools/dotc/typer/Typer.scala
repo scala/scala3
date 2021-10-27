@@ -626,7 +626,7 @@ class Typer extends Namer
       val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
       val qual1 = if Nullables.unsafeNullsEnabled then
         qual.tpe match {
-          case OrNull(tpe1) =>
+          case OrNull(tpe1) if tpe1 <:< defn.ObjectType =>
             qual.cast(AndType(qual.tpe, tpe1))
           case tp =>
             if tp.isNullType
