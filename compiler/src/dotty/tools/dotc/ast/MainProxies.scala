@@ -190,9 +190,18 @@ object MainProxies {
       case None =>
     }
 
-    private def breakLongLines(s: String): String =
-      // TODO
-      s
+    private def wrapLongLines(s: String): String =
+      def wrapLongLine(line: String): List[String] =
+        val lastSpace = line.trim.lastIndexOf(' ', maxLineLength)
+        if ((line.length <= maxLineLength) || (lastSpace < 0))
+          List(line)
+        else {
+          val (shortLine, rest) = line.splitAt(lastSpace)
+          shortLine :: wrapLongLine(rest.trim)
+        }
+
+      val wrappedLines = s.split('\n').flatMap(wrapLongLine)
+      wrappedLines.mkString("\n")
 
     private def cleanComment(raw: String): String =
       var lines: Seq[String] = raw.trim.split('\n').toSeq
@@ -201,6 +210,7 @@ object MainProxies {
         case ("", s2) => s2
         case (s1, "") if s1.last == '\n' => s1 // Multiple newlines are kept as single newlines
         case (s1, "") => s1 + '\n'
+        case (s1, s2) if s1.last == '\n' => s1 + s2
         case (s1, s2) => s1 + ' ' + s2
       }
       s.trim
@@ -212,12 +222,12 @@ object MainProxies {
       // Parse main comment
       var mainComment: String = raw.substring(skipLineLead(raw, 0), startTag(raw, tidx))
       mainComment = cleanComment(mainComment)
-      _mainDoc = breakLongLines(mainComment)
+      _mainDoc = wrapLongLines(mainComment)
 
       // Parse arguments comments
       val argsCommentsSpans: Map[String, (Int, Int)] = paramDocs(raw, "@param", tidx)
       val argsCommentsTextSpans = argsCommentsSpans.view.mapValues(extractSectionText(raw, _))
       val argsCommentsTexts = argsCommentsTextSpans.mapValues({ case (beg, end) => raw.substring(beg, end) })
-      _argDocs = argsCommentsTexts.mapValues(cleanComment(_)).mapValues(breakLongLines(_)).toMap.withDefaultValue("")
+      _argDocs = argsCommentsTexts.mapValues(cleanComment(_)).mapValues(wrapLongLines(_)).toMap.withDefaultValue("")
   end Documentation
 }
