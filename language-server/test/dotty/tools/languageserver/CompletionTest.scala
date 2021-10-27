@@ -895,4 +895,21 @@ class CompletionTest {
   @Test def i12465_hkt_alias: Unit =
     code"""???.asInstanceOf[Seq].${m1}""".withSource
       .completion(m1, Set())
-}
+
+  @Test def i13624_annotType: Unit =
+    code"""|class MyAnnotation extends annotation.StaticAnnotation
+           |val x = 1: @MyAnnot${m1}
+           |type X = Int @MyAnnot${m2}""".withSource
+      .completion(
+        m1,
+        Set(
+          ("MyAnnotation", Class, "MyAnnotation"),
+          ("MyAnnotation", Module, "MyAnnotation")
+        )
+      ).completion(
+        m2,
+        Set(
+          ("MyAnnotation", Class, "MyAnnotation"),
+          ("MyAnnotation", Module, "MyAnnotation")
+        )
+      )}

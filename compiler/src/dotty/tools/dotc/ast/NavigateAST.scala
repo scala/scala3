@@ -5,6 +5,10 @@ import core.Contexts._
 import core.Decorators._
 import util.Spans._
 import Trees.{MemberDef, DefTree, WithLazyField}
+import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
+import dotty.tools.dotc.core.Types.AnnotatedType
+import dotty.tools.dotc.core.Types.ImportType
+import dotty.tools.dotc.core.Types.Type
 
 /** Utility functions to go from typed to untyped ASTs */
 // TODO: Handle trees with mixed source files
@@ -86,6 +90,18 @@ object NavigateAST {
       }
       bestFit
     }
+    /*
+     * Annotations trees are located in the Type
+     */
+    def unpackAnnotations(t: Type, path: List[Positioned]): List[Positioned] =
+      t match {
+        case ann: AnnotatedType =>
+            unpackAnnotations(ann.parent, childPath(ann.annot.tree.productIterator, path))
+        case imp: ImportType =>
+          childPath(imp.expr.productIterator, path)
+        case other =>
+          path
+    }
     def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] =
       if (p.span.exists && !(skipZeroExtent && p.span.isZeroExtent) && p.span.contains(span)) {
         // FIXME: We shouldn't be manually forcing trees here, we should replace
@@ -98,7 +114,12 @@ object NavigateAST {
         }
         childPath(p.productIterator, p :: path)
       }
-      else path
+      else {
+        p match {
+          case t: untpd.TypeTree => unpackAnnotations(t.typeOpt, path)
+          case _ => path
+        }
+      }
     singlePath(from, Nil)
   }
 }
