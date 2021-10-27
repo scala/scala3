@@ -2908,16 +2908,16 @@ object Parsers {
     end typeOrTermParamClause
 
     def typeOrTermParamClauses(
+                    ownerKind: ParamOwner.Value,
                     ofClass: Boolean = false,
                     ofCaseClass: Boolean = false,
                     givenOnly: Boolean = false,
-                    numLeadParams: Int = 0,
-                    ownerKind: ParamOwner.Value
+                    numLeadParams: Int = 0
                    ): List[List[TypeDef] | List[ValDef]] =
 
       def recur(firstClause: Boolean, nparams: Int): List[List[TypeDef] | List[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
-        newLineOptWhenFollowedBy(LBRACKET) //I have doubts this works
+        newLineOptWhenFollowedBy(LBRACKET) //I have doubts this works //TODO: test this
         if in.token == LPAREN then
           val paramsStart = in.offset
           val params = paramClause(
@@ -3397,7 +3397,7 @@ object Parsers {
         val mods1 = addFlag(mods, Method)
         val ident = termIdent()
         var name = ident.name.asTermName
-        val paramss = typeOrTermParamClauses(numLeadParams = numLeadParams, ownerKind = ParamOwner.Def)
+        val paramss = typeOrTermParamClauses(ParamOwner.Def, numLeadParams = numLeadParams)
         //val tparams = typeParamClauseOpt(ParamOwner.Def)
         //val vparamss = paramClauses(numLeadParams = numLeadParams)
         var tpt = fromWithinReturnType { typedOpt() }
@@ -3447,7 +3447,7 @@ object Parsers {
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 
-    /** TypeDcl ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
+    /** TypeDcl ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type] //TODO: change to {ParamClauses} ?
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
@@ -3629,7 +3629,7 @@ object Parsers {
     }
 
     /** GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
-     *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’
+     *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’ //TODO: Change to {Params}
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
@@ -3641,7 +3641,7 @@ object Parsers {
         newLineOpt()
         val vparamss =
           if in.token == LPAREN && in.lookahead.isIdent(nme.using)
-          then paramClauses(givenOnly = true) //TODO: Refactor
+          then paramClauses(givenOnly = true) 
           else Nil
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
@@ -3677,7 +3677,7 @@ object Parsers {
     }
 
     /** Extension  ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause} ‘(’ DefParam ‘)’
-     *                  {UsingParamClause} ExtMethods
+     *                  {UsingParamClause} ExtMethods //TODO: Change to {Params} ?
      */
     def extension(): ExtMethods =
       val start = in.skipToken()
