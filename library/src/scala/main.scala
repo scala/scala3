@@ -47,12 +47,23 @@ class main extends scala.annotation.MainAnnotation:
     if (args.nonEmpty) {
       println("Arguments:")
       for (arg <- args)
-        val argDoc = if arg.doc.isEmpty then "" else s" - ${arg.doc}"
-        val argDefault = arg match {
-          case OptionalArgument(_, _, _, _) => s" (optional)"
-          case _ => ""
+        val argDoc = StringBuilder(s"  ${arg.name}, ${arg.typeName}")
+
+        arg match {
+          case OptionalArgument(_, _, _, _) => argDoc append " (optional)"
+          case _ =>
         }
-        println(s"\t${arg.name}, ${arg.typeName}$argDefault${argDoc}")
+
+        if (arg.doc.nonEmpty) {
+          val separator = " - "
+          // Shift doc's lines to align with the first
+          //     foo, Int - so that this line
+          //                is aligned with this one
+          val argExpl = arg.doc.split("\n").mkString("\n" + " " * (argDoc.length + separator.length))
+          argDoc append separator append argExpl
+        }
+
+        println(argDoc)
     }
 
   /** Runs the command and handles its return value */

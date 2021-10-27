@@ -95,15 +95,29 @@ object myProgram:
     println(s"$num + $inc = ${num + inc}")
 
   /**
-    * Adds two numbers. It seems that I have a very long line of documentation and therefore might need to be cut at some point to fit a small terminal screen.
+    * Adds two numbers.
+    *
+    * @param num the first number
+    *
+    * Oh, a new line!
+    *
+    * @param inc the second number
+    *
+    *                               And another one!
     */
   @main def doc11(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   /**
-    * Addstwonumbers.ItseemsthatIhaveaverylonglineofdocumentationandthereforemightneedtobecutatsomepointtofitasmallterminalscreen.
+    * Adds two numbers. It seems that I have a very long line of documentation and therefore might need to be cut at some point to fit a small terminal screen.
     */
   @main def doc12(num: Int, inc: Int): Unit =
+    println(s"$num + $inc = ${num + inc}")
+
+  /**
+    * Addstwonumbers.ItseemsthatIhaveaverylonglineofdocumentationandthereforemightneedtobecutatsomepointtofitasmallterminalscreen.
+    */
+  @main def doc13(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
 end myProgram
@@ -115,7 +129,7 @@ object Test:
     method.invoke(null, args)
 
   def callAllMains(args: Array[String]): Unit =
-    val numberOfMains = 12
+    val numberOfMains = 13
     for (i <- 1 to numberOfMains) {
       val clazz = Class.forName("doc" + i.toString)
       val method = clazz.getMethod("main", classOf[Array[String]])

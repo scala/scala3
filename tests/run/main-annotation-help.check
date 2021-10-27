@@ -2,92 +2,100 @@ Usage: doc1 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int
-	inc, Int
+  num, Int
+  inc, Int
 Usage: doc1 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int
-	inc, Int
+  num, Int
+  inc, Int
 Usage: doc1 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int
-	inc, Int
+  num, Int
+  inc, Int
 Usage: doc1 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int
-	inc, Int
+  num, Int
+  inc, Int
 Usage: doc2 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int
-	inc, Int
+  num, Int
+  inc, Int
 Usage: doc3 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int
-	inc, Int
+  num, Int
+  inc, Int
 Usage: doc4 num inc?
 
 Adds two numbers.
 Arguments:
-	num, Int - the first number
-	inc, Int (optional) - the second number
+  num, Int - the first number
+  inc, Int (optional) - the second number
 Usage: doc5 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int - the first number
-	inc, Int
+  num, Int - the first number
+  inc, Int
 Usage: doc6 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int
-	inc, Int
+  num, Int
+  inc, Int
 Usage: doc7 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int - the first number
-	inc, Int - the second number
+  num, Int - the first number
+  inc, Int - the second number
 Usage: doc8 num inc
 
 Adds two numbers.
 Arguments:
-	num, Int - the first number
-	inc, Int - the second number
+  num, Int - the first number
+  inc, Int - the second number
 Usage: doc9 num inc
 
 Adds two numbers. Same as doc1.
 Arguments:
-	num, Int - the first number
-	inc, Int - the second number
+  num, Int - the first number
+  inc, Int - the second number
 Usage: doc10 num inc
 
 Adds two numbers.
 This should be on another line.
 And this also.
 Arguments:
-	num, Int - I might have to write this on two lines
-	inc, Int - I might even have to write this one on three lines
+  num, Int - I might have to write this on two lines
+  inc, Int - I might even have to write this one on three lines
 Usage: doc11 num inc
+
+Adds two numbers.
+Arguments:
+  num, Int - the first number
+             Oh, a new line!
+  inc, Int - the second number
+             And another one!
+Usage: doc12 num inc
 
 Adds two numbers. It seems that I have a very long line of documentation and therefore might need to be cut at some
 point to fit a small terminal screen.
 Arguments:
-	num, Int
-	inc, Int
-Usage: doc12 num inc
+  num, Int
+  inc, Int
+Usage: doc13 num inc
 
 Addstwonumbers.ItseemsthatIhaveaverylonglineofdocumentationandthereforemightneedtobecutatsomepointtofitasmallterminalscreen.
 Arguments:
-	num, Int
-	inc, Int
+  num, Int
+  inc, Int
