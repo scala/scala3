@@ -8,7 +8,7 @@ def test2 =
   if v != null then
     println(v)
 
-case class MyVal(val i: Boolean) extends AnyVal
+case class MyVal(i: Boolean) extends AnyVal
 
 def test3 =
   val v: MyVal | Null = MyVal(false)
