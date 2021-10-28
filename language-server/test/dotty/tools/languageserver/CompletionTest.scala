@@ -897,9 +897,18 @@ class CompletionTest {
       .completion(m1, Set())
 
   @Test def i13624_annotType: Unit =
-    code"""|class MyAnnotation extends annotation.StaticAnnotation
+    code"""|object Foo{
+           |  class MyAnnotation extends annotation.StaticAnnotation
+           |}
+           |class MyAnnotation extends annotation.StaticAnnotation
+           |class Annotation2(a: String) extends annotation.StaticAnnotation
            |val x = 1: @MyAnnot${m1}
-           |type X = Int @MyAnnot${m2}""".withSource
+           |type X = Int @MyAnnot${m2}
+           |val y = 1: @Foo.MyAnnot${m3}
+           |val z = 1: @Foo.MyAnnotation @MyAnno${m4}
+           |type Y = Int @MyAnnotation @Foo.MyAnnota${m5}
+           |val w = 1: @Annotation2("abc": @Foo.MyAnnot${m6})
+           |""".withSource
       .completion(
         m1,
         Set(
@@ -912,4 +921,29 @@ class CompletionTest {
           ("MyAnnotation", Class, "MyAnnotation"),
           ("MyAnnotation", Module, "MyAnnotation")
         )
-      )}
+      ).completion(
+        m3,
+        Set(
+          ("MyAnnotation", Class, "Foo.MyAnnotation"),
+          ("MyAnnotation", Module, "Foo.MyAnnotation")
+        )
+      ).completion(
+        m4,
+        Set(
+          ("MyAnnotation", Class, "MyAnnotation"),
+          ("MyAnnotation", Module, "MyAnnotation")
+        )
+      ).completion(
+        m5,
+        Set(
+          ("MyAnnotation", Class, "Foo.MyAnnotation"),
+          ("MyAnnotation", Module, "Foo.MyAnnotation")
+        )
+      ).completion(
+        m6,
+        Set(
+          ("MyAnnotation", Class, "Foo.MyAnnotation"),
+          ("MyAnnotation", Module, "Foo.MyAnnotation")
+        )
+      )
+}
