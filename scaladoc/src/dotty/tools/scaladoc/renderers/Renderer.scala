@@ -45,7 +45,50 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
           val msg = s"ERROR: Multiple index pages for doc found ${indexes.map(_.file)}"
           report.error(msg)
 
-        val templatePages = templates.map(templateToPage(_, siteContext))
+        // Below code is for walking in order the tree and modifing its nodes basing on its neighbours
+
+        // First we flatten templates to get them sorted in-order
+        def flattenedTemplates(template: LoadedTemplate): Seq[LoadedTemplate] =
+          template +: template.children.flatMap(flattenedTemplates)
+
+        // We add dummy guards
+        val allTemplates: Seq[Option[LoadedTemplate]] = None +: templates.flatMap(flattenedTemplates).map(Some(_)) :+ None
+
+        // Let's gather the list of maps for each template with its in-order neighbours
+        val newSettings: Seq[Map[String, Object]] = allTemplates.sliding(size = 3, step = 1).map {
+          case prev :: mid :: next :: Nil =>
+            val currDri = siteContext.driFor(mid.get.file.toPath)
+            def dri(sibling: Option[LoadedTemplate]) =
+              sibling.map(n => siteContext.driFor(n.file.toPath)).flatMap { dri =>
+                Some(pathToPage(currDri, dri)).filter(_ != UnresolvedLocationLink)
+              }.getOrElse("")
+            Map(
+              "previous" -> dri(prev), "next" -> dri(next)
+            )
+        }.toSeq
+
+        // We update the immutable tree of templates by walking in-order
+        def updateSettings(template: LoadedTemplate, additionalSettings: Seq[Map[String, Object]]): (LoadedTemplate, Seq[Map[String, Object]]) =
+          val head :: tail = additionalSettings
+          val (newChildren, newAdditionalSettings): (List[LoadedTemplate], List[Seq[Map[String, Object]]]) = template.children.scanLeft((null: LoadedTemplate, tail: Seq[Map[String, Object]])) { case ((_, aS), template) =>
+            updateSettings(template, aS)
+          }.unzip
+          val newLoadedTemplate = template.copy(
+            templateFile = template.templateFile.copy(settings = template.templateFile.settings.updated("page", template.templateFile.settings("page").asInstanceOf[Map[String, Object]] ++ head)),
+            children = newChildren.drop(1) // We drop trailing null from the first `scanLeft` output collection
+          )
+
+          (newLoadedTemplate, newAdditionalSettings.last)
+        end updateSettings
+
+        // We run the above function for the templates. We could do some temporary parent template so it would be just `updatedSettings(...)` but we would eventually post-process it so it has no difference
+        val (newTemplates, _): (List[LoadedTemplate], List[Seq[Map[String, Object]]]) = templates.scanLeft((null: LoadedTemplate, newSettings)) {
+          case ((_, aS), template) =>
+            updateSettings(template, aS)
+        }.unzip
+
+        // We finally obtain updated template pages. Once again we drop first null from `scanLeft` and map it using `templateToPage`
+        val templatePages = newTemplates.drop(1).map(templateToPage(_, siteContext))
 
         indexes.headOption match
           case None if templatePages.isEmpty=>

@@ -340,7 +340,8 @@ object Build {
       "-skip-by-id:scala.runtime.MatchCase",
       "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
       "-author",
-      "-groups"
+      "-groups",
+      "-default-template", "doc-page"
     ) ++ extMap
   }
 

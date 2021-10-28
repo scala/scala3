@@ -158,7 +158,11 @@ class StaticSiteContext(
             case Some(t) => t
             case None => "index"
           val fakeFile = new File(new File(root, "docs"), title)
-          LoadedTemplate(emptyTemplate(fakeFile, title), nested.map(loadSidebarContent), fakeFile)
+          LoadedTemplate(
+            args.defaultTemplate.fold(emptyTemplate(fakeFile, title))(layouts(_).copy(title = TemplateName.FilenameDefined(title))),
+            nested.map(loadSidebarContent),
+            fakeFile
+          )
 
   private def loadAllFiles() =
     def dir(name: String)= List(new File(root, name)).filter(_.isDirectory)

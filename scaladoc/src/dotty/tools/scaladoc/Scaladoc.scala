@@ -61,6 +61,7 @@ object Scaladoc:
     apiSubdirectory : Boolean = false,
     scastieConfiguration: String = "",
     projectFormat: String = "html",
+    defaultTemplate: Option[String] = None,
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -239,6 +240,7 @@ object Scaladoc:
         apiSubdirectory.get,
         scastieConfiguration.get,
         projectFormat.get,
+        defaultTemplate.nonDefault
       )
       (Some(docArgs), newContext)
     }

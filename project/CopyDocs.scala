@@ -65,7 +65,7 @@ object CopyDocs {
     ),
 
     "docs/docs/usage/scaladoc/" -> (commonTransformations +
-      (titlePattern -> s"---\ntitle: $$1\n---"),
+      (titlePattern -> s"---\nlayout: doc-page\ntitle: $$1\n---"),
     ),
   )
 

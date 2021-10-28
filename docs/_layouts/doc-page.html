@@ -1,55 +1,14 @@
 ---
 layout: main
 ---
-<main class="container">
-  <nav class="doc-navigation" role="menu">
-    <div class="navigation-ellipsis">
-      <i class="fa fa-ellipsis-v"></i>
-    </div>
-    <ul class="navigation-menu">
-      <li class="navigation-menu-item">
-        <a href="https://scala-lang.org/scala3/getting-started.html" id="getting started">Getting Started</a>
-      </li>
-      <li class="navigation-menu-item">
-        <a href="#" id="learn">Learn</a>
-        <ul class="navigation-dropdown">
-          <li>
-            <a href="https://scala-lang.org/scala3/new-in-scala3.html">New in Scala 3</a>
-          </li>
-          <li>
-            <a href="https://scala-lang.org/scala3/book/introduction.html">Scala 3 Book</a>
-          </li>
-        </ul>
-      </li>
-      <li class="navigation-menu-item">
-        <a href="https://scala-lang.org/scala3/guides/migration/compatibility-intro.html" id="migrate">Migrate</a>
-      </li>
-      <li class="navigation-menu-item">
-        <a href="#" id="reference">Reference</a>
-        <ul class="navigation-dropdown">
-          <li>
-            <a href="https://scala-lang.org/scala3/guides.html">Guides</a>
-          </li>
-          <li>
-            <a href="https://scala-lang.org/scala3/reference/overview.html">Language Specification</a>
-          </li>
-          <li>
-            <a href="https://scala-lang.org/api/3.x/">Scala Library API</a>
-          </li>
-        </ul>
-      </li>
-      <li class="navigation-menu-item">
-        <a href="https://scala-lang.org/scala3/guides/contribution/contribution-intro.html" id="contributing guide">Contributing Guide</a>
-      </li>
-    </ul>
-  </nav>
+<main>
   <header>
     <h1>{{ page.title }}</h1>
   </header>
   {{ content }}
   <div class="two-columns">
-    <a href="/scala3/reference/overview.html">← <strong>previous</strong></a>
-    <a href="/scala3/reference/new-types/intersection-types.html"><strong>next</strong> →</a>
+    <a href="{{ page.previous }}">← <strong>previous</strong></a>
+    <a href="{{ page.next }}"><strong>next</strong> →</a>
   </div>
 </main>
 
