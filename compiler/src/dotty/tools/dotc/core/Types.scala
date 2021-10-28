@@ -5941,12 +5941,13 @@ object Types {
             case Range(lo, hi) => range(bound.bounds.lo, bound.bounds.hi)
             case _ => tp.derivedMatchType(bound, scrutinee, cases)
 
-    override protected def derivedSkolemType(tp: SkolemType, info: Type): Type = info match {
-      case Range(lo, hi) =>
-        range(tp.derivedSkolemType(lo), tp.derivedSkolemType(hi))
-      case _ =>
-        tp.derivedSkolemType(info)
-    }
+    override protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
+      if info eq tp.info then tp
+      // By definition, a skolem is neither a subtype nor a supertype of a
+      // different skolem. So, regardless of `variance`, we cannot return a
+      // fresh skolem when approximating an existing skolem, we can only return
+      // a range.
+      else range(defn.NothingType, info)
 
     override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type = {
       assert(!isRange(pre))

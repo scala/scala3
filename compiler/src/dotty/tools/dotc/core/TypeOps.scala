@@ -459,8 +459,6 @@ object TypeOps:
           // Therefore, either they don't appear in the type to be avoided, or
           // it must be a class that encloses the block whose type is to be avoided.
           tp
-        case tp: SkolemType if partsToAvoid(Nil, tp.info).nonEmpty =>
-          range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
