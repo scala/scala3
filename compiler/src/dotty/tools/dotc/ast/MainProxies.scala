@@ -80,34 +80,47 @@ object MainProxies {
         var valArgs: List[(Tree, ValDef)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
           case ((formal, paramName), n) =>
             val argName = mainArgsName ++ (idx + n).toString
-            val getterSym =
-              if formal.isRepeatedParam then
-                defn.MainAnnotCommand_argsGetter
-              else if defaultValues contains n then
-                defn.MainAnnotCommand_argGetterDefault
-              else
-                defn.MainAnnotCommand_argGetter
-
             var argRef: Tree = Apply(Ident(argName), Nil)
             var formalType = formal
-            //var returnType = formalType
+            //var returnType = formal
 
-            if (formal.isRepeatedParam) {
-              argRef = repeated(argRef)
-              formalType = formalType.argTypes.head
-              //returnType = defn.SeqType.appliedTo(formalType)
-            }
+            val (getterSym, getterArgs) =
+              if formal.isRepeatedParam then
+                argRef = repeated(argRef)
+                formalType = formalType.argTypes.head
+                //returnType = defn.SeqType.appliedTo(returnType)
+                (
+                  defn.MainAnnotCommand_argsGetter,
+                  List(
+                    Literal(Constant(paramName.toString)),
+                    Literal(Constant(formalType.show)),
+                    Literal(Constant(documentation.argDocs(paramName.toString))),
+                  )
+                )
+              else if defaultValues contains n then
+                (
+                  defn.MainAnnotCommand_argGetterDefault,
+                  List(
+                    Literal(Constant(paramName.toString)),
+                    Literal(Constant(formalType.show)),
+                    Literal(Constant(documentation.argDocs(paramName.toString))),
+                    defaultValues(n),
+                  )
+                )
+              else
+                (
+                  defn.MainAnnotCommand_argGetter,
+                  List(
+                    Literal(Constant(paramName.toString)),
+                    Literal(Constant(formalType.show)),
+                    Literal(Constant(documentation.argDocs(paramName.toString))),
+                  )
+                )
 
             val argDef = ValDef(
               argName,
               TypeTree(/*defn.FunctionOf(Nil, returnType)*/),
-              Apply(
-                TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil),
-                Literal(Constant(paramName.toString))
-                :: Literal(Constant(formalType.show))
-                :: Literal(Constant(documentation.argDocs(paramName.toString)))
-                :: defaultValues.get(n).map(List(_)).getOrElse(Nil)
-              ),
+              Apply(TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil), getterArgs),
             )
 
             (argRef, argDef)
