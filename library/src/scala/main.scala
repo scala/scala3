@@ -108,21 +108,37 @@ class main extends scala.annotation.MainAnnotation:
       private def explain(): Unit =
         self.explain(this.commandName, this.docComment, argInfos.toSeq)
 
+      private def indicesOfArg(argName: String): Seq[Int] =
+        def allIndicesOf(s: String): Seq[Int] =
+          def recurse(s: String, from: Int): Seq[Int] =
+            val i = args.indexOf(s, from)
+            if i < 0 then Seq() else i +: recurse(s, i + 1)
+
+          recurse(s, 0)
+
+        val indices = allIndicesOf(s"--$argName")
+        indices.filter(_ >= 0)
+
+      private def getArgGetter[T](argName: String, defaultGetter: => () => T)(using p: ArgumentParser[T]): () => T =
+        indicesOfArg(argName) match {
+          case s @ (Seq() | Seq(_)) =>
+            val argOpt = s.headOption.map(idx => argAt(idx + 1)).getOrElse(nextPositionalArg())
+            argOpt match {
+              case Some(arg) => convert(argName, arg, p)
+              case None => defaultGetter
+            }
+          case s =>
+            val multValues = s.flatMap(idx => argAt(idx + 1))
+            error(s"more than one value for $argName: ${multValues.mkString(", ")}")
+        }
+
       override def argGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => T =
         argInfos += self.SimpleArgument(argName, argType, argDoc)
-        val idx = args.indexOf(s"--$argName")
-        val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
-        argOpt match
-          case Some(arg) => convert(argName, arg, p)
-          case None => error(s"missing argument for $argName")
+        getArgGetter(argName, error(s"missing argument for $argName"))
 
       override def argGetterDefault[T](argName: String, argType: String, argDoc: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
         argInfos += self.OptionalArgument(argName, argType, argDoc, defaultValue)
-        val idx = args.indexOf(s"--$argName")
-        val argOpt = if idx >= 0 then argAt(idx + 1) else nextPositionalArg()
-        argOpt match
-          case Some(arg) => convert(argName, arg, p)
-          case None => () => defaultValue
+        getArgGetter(argName, () => defaultValue)
 
       override def argsGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => Seq[T] =
         argInfos += self.VarArgument(argName, argType, argDoc)
