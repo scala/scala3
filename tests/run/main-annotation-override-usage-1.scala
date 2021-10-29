@@ -2,9 +2,9 @@ class myMain extends main:
   override def usage(commandName: String, args: Seq[Argument]): Unit =
     val argInfos = args map (
       _ match {
-        case SimpleArgument(name, _, _) => name
-        case OptionalArgument(name, _, _, _) => s"[$name]"
-        case VarArgument(name, _, _) => s"[$name [$name [...]]]"
+        case s: SimpleArgument => s.name
+        case o: OptionalArgument[?] => s"[${o.name}]"
+        case v: VarArgument => s"[${v.name} [${v.name} [...]]]"
       }
     )
     println(s"My shiny command works like this: $commandName ${argInfos.mkString(" ")}")

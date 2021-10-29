@@ -33,9 +33,9 @@ class main extends scala.annotation.MainAnnotation:
   def usage(commandName: String, args: Seq[Argument]): Unit =
     val argInfos = args map (
       _ match {
-        case SimpleArgument(name, _, _) => name
-        case OptionalArgument(name, _, _, _) => s"$name?"
-        case VarArgument(name, _, _) => s"$name*"
+        case s: SimpleArgument => s.name
+        case o: OptionalArgument[?] => s"${o.name}?"
+        case v: VarArgument => s"${v.name}*"
       }
     )
     println(s"Usage: $commandName ${argInfos.mkString(" ")}")
@@ -50,7 +50,7 @@ class main extends scala.annotation.MainAnnotation:
         val argDoc = StringBuilder(s"  ${arg.name}, ${arg.typeName}")
 
         arg match {
-          case OptionalArgument(_, _, _, _) => argDoc append " (optional)"
+          case o: OptionalArgument[?] => argDoc append " (optional)"
           case _ =>
         }
 
