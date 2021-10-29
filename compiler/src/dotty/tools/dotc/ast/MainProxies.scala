@@ -35,22 +35,23 @@ object MainProxies {
 
   def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
+
+    def defaultValues(scope: Tree, funSymbol: Symbol): Map[Int, Tree] =
+      scope match {
+        case TypeDef(_, template: Template) =>
+          template.body.flatMap((_: Tree) match {
+            case dd @ DefDef(name, _, _, _) if name.is(DefaultGetterName) && name.firstPart == funSymbol.name =>
+              val index: Int = name.toString.split("\\$").last.toInt - 1 // FIXME please!!
+              val valueTree = dd.rhs
+              List(index -> valueTree)
+            case _ => List()
+          }).toMap
+        case _ => Map[Int, Tree]()
+      }
+
     def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, Map[Int, Tree], Option[Comment])] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
-        val defaultValues: Map[Int, Tree] =
-          (scope match {
-            case TypeDef(_, template: Template) =>
-              template.body.flatMap((_: Tree) match {
-                case dd @ DefDef(name, _, _, _) if name.is(DefaultGetterName) && name.firstPart == stat.symbol.name =>
-                  val index: Int = name.toString.split("\\$")(2).toInt - 1 // FIXME please!!
-                  val valueTree = dd.rhs
-                  List(index -> valueTree)
-                case _ => List()
-              }).toMap
-            case _ => Map[Int, Tree]()
-          }).withDefaultValue(EmptyTree)
-
-        (stat.symbol, defaultValues, stat.rawComment) :: Nil
+        (stat.symbol, defaultValues(scope, stat.symbol), stat.rawComment) :: Nil
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(stat, impl.body)
       case _ =>
