@@ -177,7 +177,7 @@ class HoverTest {
 
   @Test def i4678: Unit = {
     code"""class Foo {
-          |  val x: Int = (${m1}1:${m2} ${m3}@annot1 @annot2 @annot3 @annot4 @annot5${m4})
+          |  val x: Int = (${m1}1:${m2} ${m3}@annot1${m4} ${m5}@annot2${m6} ${m7}@annot3${m8} ${m9}@annot4${m10} ${m11}@annot5${m12})
           |}
           |class annot1 extends scala.annotation.Annotation
           |class annot2 extends scala.annotation.Annotation
@@ -186,7 +186,11 @@ class HoverTest {
           |class annot5 extends scala.annotation.Annotation
           |""".withSource
       .hover(m1 to m2, hoverContent("(1 : Int)"))
-      .hover(m3 to m4, hoverContent("(1 : Int) @annot1 @annot2 @annot3 @annot4 @annot5"))
+      .hover(m3 to m4, hoverContent("annot1"))
+      .hover(m5 to m6, hoverContent("annot2"))
+      .hover(m7 to m8, hoverContent("annot3"))
+      .hover(m9 to m10, hoverContent("annot4"))
+      .hover(m11 to m12, hoverContent("annot5"))
   }
 
   @Test def unicodeChar: Unit = {
