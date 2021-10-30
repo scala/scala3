@@ -45,9 +45,13 @@ class main extends scala.annotation.MainAnnotation:
     if (commandDoc.nonEmpty)
       println(commandDoc)
     if (args.nonEmpty) {
+      val argNameShift = 2
+      val argDocShift = argNameShift + 2
+
       println("Arguments:")
       for (arg <- args)
-        val argDoc = StringBuilder(s"  ${arg.name}, ${arg.typeName}")
+        val argDoc = StringBuilder(" " * argNameShift)
+        argDoc append s"${arg.name}, ${arg.typeName}"
 
         arg match {
           case o: OptionalArgument[?] => argDoc append " (optional)"
@@ -55,12 +59,8 @@ class main extends scala.annotation.MainAnnotation:
         }
 
         if (arg.doc.nonEmpty) {
-          val separator = " - "
-          // Shift doc's lines to align with the first
-          //     foo, Int - so that this line
-          //                is aligned with this one
-          val argExpl = arg.doc.split("\n").mkString("\n" + " " * (argDoc.length + separator.length))
-          argDoc append separator append argExpl
+          val shiftedDoc = arg.doc.split("\n").map(" " * argDocShift + _).mkString("\n")
+          argDoc append "\n" append shiftedDoc
         }
 
         println(argDoc)
