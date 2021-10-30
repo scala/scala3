@@ -820,6 +820,11 @@ eval { // expands to the code: (16: Int)
 We can also close over several bindings using `$b(a1, a2, ..., an)`.
 To match an actual application we can use braces on the function part `${b}(a1, a2, ..., an)`.
 
+## More macro examples
+
+[More macro examples](./macros-more-examples.html)
+
+
 ## More details
 
 [More details](./macros-spec.html)
