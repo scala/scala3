@@ -33,13 +33,15 @@ class InlineVals extends MiniPhase:
     then
       val rhs = tree.rhs
       val tpt = tree.tpt
-      tpt.tpe.widenTermRefExpr.dealias.normalized match
+      tpt.tpe.widenTermRefExpr.dealiasKeepOpaques.normalized match
         case tp: ConstantType =>
           if !isPureExpr(rhs) then
             val details = if enclosingInlineds.isEmpty then "" else em"but was: $rhs"
             report.error(s"inline value must be pure$details", rhs.srcPos)
         case tp =>
-          if tp.derivesFrom(defn.UnitClass) then
+          if tp.typeSymbol.is(Opaque) then
+            report.error(em"`inline val` of type opaque types is not supported.\n\nTo inline  consider using `inline def`", rhs)
+          else if tp.derivesFrom(defn.UnitClass) then
             report.error(em"`inline val` of type `Unit` is not supported.\n\nTo inline a `Unit` consider using `inline def`", rhs)
           else if tp.derivesFrom(defn.StringClass) || defn.ScalaValueClasses().exists(tp.derivesFrom(_)) then
             val pos = if tpt.span.isZeroExtent then rhs.srcPos else tpt.srcPos
