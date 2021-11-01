@@ -227,7 +227,7 @@ object MainProxies {
         case (s1, s2) if s1.last == '\n' => s1 + s2
         case (s1, s2) => s1 + ' ' + s2
       }
-      s.trim.replaceAll(raw"\{\{", "").replaceAll(raw"\}\}", "")
+      s.replaceAll(raw"\{\{", "").replaceAll(raw"\}\}", "").trim
 
     private def parseDocComment(raw: String): Unit =
       // Positions of the sections (@) in the docstring
