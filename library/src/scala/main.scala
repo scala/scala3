@@ -31,13 +31,11 @@ class main extends scala.annotation.MainAnnotation:
 
   /** Prints the main function's usage */
   def usage(commandName: String, args: Seq[Argument]): Unit =
-    val argInfos = args map (
-      _ match {
-        case s: SimpleArgument => s.name
-        case o: OptionalArgument[?] => s"${o.name}?"
-        case v: VarArgument => s"${v.name}*"
-      }
-    )
+    val argInfos = args.map {
+      case s: SimpleArgument => s.name
+      case o: OptionalArgument[?] => s"${o.name}?"
+      case v: VarArgument => s"${v.name}*"
+    }
     println(s"Usage: $commandName ${argInfos.mkString(" ")}")
 
   /** Prints an explanation about the function */
@@ -51,16 +49,16 @@ class main extends scala.annotation.MainAnnotation:
       println("Arguments:")
       for (arg <- args)
         val argDoc = StringBuilder(" " * argNameShift)
-        argDoc append s"${arg.name}, ${arg.typeName}"
+        argDoc.append(s"${arg.name}, ${arg.typeName}")
 
         arg match {
-          case o: OptionalArgument[?] => argDoc append " (optional)"
+          case o: OptionalArgument[?] => argDoc.append(" (optional)")
           case _ =>
         }
 
         if (arg.doc.nonEmpty) {
           val shiftedDoc = arg.doc.split("\n").map(" " * argDocShift + _).mkString("\n")
-          argDoc append "\n" append shiftedDoc
+          argDoc.append("\n").append(shiftedDoc)
         }
 
         println(argDoc)

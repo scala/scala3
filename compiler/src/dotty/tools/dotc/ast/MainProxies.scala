@@ -77,7 +77,7 @@ object MainProxies {
         Nil
       }
       else {
-        var valArgs: List[(Tree, ValDef)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex map {
+        var valArgs: List[(Tree, ValDef)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
           case ((formal, paramName), n) =>
             val argName = mainArgsName ++ (idx + n).toString
             var argRef: Tree = Apply(Ident(argName), Nil)
@@ -97,7 +97,7 @@ object MainProxies {
                     Literal(Constant(documentation.argDocs(paramName.toString))),
                   )
                 )
-              else if defaultValues contains n then
+              else if defaultValues.contains(n) then
                 (
                   defn.MainAnnotCommand_argGetterDefault,
                   List(
