@@ -1363,25 +1363,26 @@ object Types {
             case Atoms.Unknown => Atoms.Unknown
         case _ => Atoms.Unknown
 
-    private def dealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = this match {
+    private def dealias1(keep: AnnotatedType => Context ?=> Boolean, keepOpaques: Boolean)(using Context): Type = this match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else tp.info match {
-          case TypeAlias(alias) => alias.dealias1(keep)
+          case TypeAlias(alias) if !(keepOpaques && tp.symbol.is(Opaque)) =>
+            alias.dealias1(keep, keepOpaques)
           case _ => tp
         }
       case app @ AppliedType(tycon, _) =>
-        val tycon1 = tycon.dealias1(keep)
-        if (tycon1 ne tycon) app.superType.dealias1(keep)
+        val tycon1 = tycon.dealias1(keep, keepOpaques)
+        if (tycon1 ne tycon) app.superType.dealias1(keep, keepOpaques)
         else this
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias1(keep) else tp
+        if (tp1.exists) tp1.dealias1(keep, keepOpaques) else tp
       case tp: AnnotatedType =>
-        val tp1 = tp.parent.dealias1(keep)
+        val tp1 = tp.parent.dealias1(keep, keepOpaques)
         if keep(tp) then tp.derivedAnnotatedType(tp1, tp.annot) else tp1
       case tp: LazyRef =>
-        tp.ref.dealias1(keep)
+        tp.ref.dealias1(keep, keepOpaques)
       case _ => this
     }
 
@@ -1389,16 +1390,22 @@ object Types {
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
-    final def dealias(using Context): Type = dealias1(keepNever)
+    final def dealias(using Context): Type = dealias1(keepNever, keepOpaques = false)
 
     /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
      *  Goes through annotated types and rewraps annotations on the result.
      */
-    final def dealiasKeepAnnots(using Context): Type = dealias1(keepAlways)
+    final def dealiasKeepAnnots(using Context): Type = dealias1(keepAlways, keepOpaques = false)
 
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
-    final def dealiasKeepRefiningAnnots(using Context): Type = dealias1(keepIfRefining)
+    final def dealiasKeepRefiningAnnots(using Context): Type = dealias1(keepIfRefining, keepOpaques = false)
+
+    /** Follow non-opaque aliases and dereferences LazyRefs, annotated types and instantiated
+     *  TypeVars until type is no longer alias type, annotated type, LazyRef,
+     *  or instantiated type variable.
+     */
+    final def dealiasKeepOpaques(using Context): Type = dealias1(keepNever, keepOpaques = true)
 
     /** Approximate this type with a type that does not contain skolem types. */
     final def deskolemized(using Context): Type =
@@ -1426,7 +1433,7 @@ object Types {
     def tryNormalize(using Context): Type = NoType
 
     private def widenDealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = {
-      val res = this.widen.dealias1(keep)
+      val res = this.widen.dealias1(keep, keepOpaques = false)
       if (res eq this) res else res.widenDealias1(keep)
     }
 
