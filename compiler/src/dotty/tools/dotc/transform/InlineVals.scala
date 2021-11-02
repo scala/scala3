@@ -40,7 +40,7 @@ class InlineVals extends MiniPhase:
             report.error(s"inline value must be pure$details", rhs.srcPos)
         case tp =>
           if tp.typeSymbol.is(Opaque) then
-            report.error(em"`inline val` of type opaque types is not supported.\n\nTo inline  consider using `inline def`", rhs)
+            report.error(em"The type of an `inline val` cannot be an opaque type.\n\nTo inline, consider using `inline def` instead", rhs)
           else if tp.derivesFrom(defn.UnitClass) then
             report.error(em"`inline val` of type `Unit` is not supported.\n\nTo inline a `Unit` consider using `inline def`", rhs)
           else if tp.derivesFrom(defn.StringClass) || defn.ScalaValueClasses().exists(tp.derivesFrom(_)) then
