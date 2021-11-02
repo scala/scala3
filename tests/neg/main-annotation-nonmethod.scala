@@ -4,4 +4,6 @@ object myProgram:
 
   @main class A // error
 
+  @main val f = ((s: String) => println(s)) // error
+
 end myProgram
