@@ -946,4 +946,21 @@ class CompletionTest {
           ("MyAnnotation", Module, "Foo.MyAnnotation")
         )
       )
+
+  @Test def i13624_annotation : Unit =
+    code"""@annotation.implicitNot${m1}
+          |@annotation.implicitNotFound @mai${m2}"""
+          .withSource
+          .completion(m1,
+            Set(
+              ("implicitNotFound", Class, "scala.annotation.implicitNotFound"),
+              ("implicitNotFound", Module, "scala.annotation.implicitNotFound")
+            )
+          )
+          .completion(m2,
+            Set(
+              ("main", Class, "scala.main"),
+              ("main", Module, "main")
+            )
+          )
 }
