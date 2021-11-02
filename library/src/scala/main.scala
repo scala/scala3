@@ -21,22 +21,42 @@ class main extends scala.annotation.MainAnnotation:
     def name: String
     def typeName: String
     def doc: String
+
+    def usage: String
   }
-  protected case class SimpleArgument(name: String, typeName: String, doc: String) extends Argument
-  protected case class OptionalArgument[T](name: String, typeName: String, doc: String, val defaultValue: T) extends Argument
-  protected case class VarArgument(name: String, typeName: String, doc: String) extends Argument
+  protected class SimpleArgument(val name: String, val typeName: String, val doc: String) extends Argument:
+    override def usage: String = s"[--$name] <$name>"
+  protected class OptionalArgument[T](val name: String, val typeName: String, val doc: String, val defaultValue: T)
+    extends Argument:
+    override def usage: String = s"[[--$name] <$name>]"
+  protected class VarArgument(val name: String, val typeName: String, val doc: String) extends Argument:
+    override def usage: String = s"[<$name> [<$name> [...]]]"
 
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
 
   /** Prints the main function's usage */
   def usage(commandName: String, args: Seq[Argument]): Unit =
-    val argInfos = args.map {
-      case s: SimpleArgument => s.name
-      case o: OptionalArgument[?] => s"${o.name}?"
-      case v: VarArgument => s"${v.name}*"
-    }
-    println(s"Usage: $commandName ${argInfos.mkString(" ")}")
+    def wrappedArgumentUsages(argsUsage: List[String], maxLength: Int): List[String] =
+      def recurse(args: List[String], currentLine: String, acc: Vector[String]): Vector[String] =
+        (args, currentLine) match {
+          case (Nil, "") => acc
+          case (Nil, l) => (acc :+ l)
+          case (arg :: t, "") => recurse(t, arg, acc)
+          case (arg :: t, l) if l.length + 1 + arg.length <= maxLength => recurse(t, s"$l $arg", acc)
+          case (arg :: t, l) => recurse(t, arg, acc :+ l)
+        }
+
+      recurse(argsUsage, "", Vector()).toList
+    end wrappedArgumentUsages
+
+    val maxLineLength = 120 // TODO as parameter? As global Dotty parameter?
+
+    val usageBeginning = s"Usage: $commandName "
+    val argsOffset = usageBeginning.length
+    val argUsages = wrappedArgumentUsages(args.map(_.usage).toList, maxLineLength - argsOffset)
+
+    println(usageBeginning + argUsages.mkString("\n" + " " * argsOffset))
 
   /** Prints an explanation about the function */
   def explain(commandName: String, commandDoc: String, args: Seq[Argument]): Unit =
@@ -49,7 +69,7 @@ class main extends scala.annotation.MainAnnotation:
       println("Arguments:")
       for (arg <- args)
         val argDoc = StringBuilder(" " * argNameShift)
-        argDoc.append(s"${arg.name}, ${arg.typeName}")
+        argDoc.append(s"${arg.name} - ${arg.typeName}")
 
         arg match {
           case o: OptionalArgument[?] => argDoc.append(" (optional)")

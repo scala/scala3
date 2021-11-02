@@ -1,7 +1,7 @@
 2 + 3 = 5
 2 + 3 = 5
 Error: more than one value for num: 2, 1
-Usage: add num inc
+Usage: add [--num] <num> [--inc] <inc>
 Error: more than one value for num: 2, 1
 Error: more than one value for inc: 1, 3
-Usage: add num inc
+Usage: add [--num] <num> [--inc] <inc>

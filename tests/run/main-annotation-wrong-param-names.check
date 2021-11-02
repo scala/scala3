@@ -1,15 +1,15 @@
 Error: invalid argument for num: -n
 Error: unused argument: -i
 Error: unused argument: 10
-Usage: add num inc
+Usage: add [--num] <num> [--inc] <inc>
 Error: missing argument for num
 Error: missing argument for inc
 Error: unknown argument name: --n
 Error: unknown argument name: --i
-Usage: add num inc
+Usage: add [--num] <num> [--inc] <inc>
 Error: invalid argument for num: -num
 Error: unused argument: 1
-Usage: add num inc
+Usage: add [--num] <num> [--inc] <inc>
 Error: invalid argument for inc: -inc
 Error: unused argument: 10
-Usage: add num inc
+Usage: add [--num] <num> [--inc] <inc>

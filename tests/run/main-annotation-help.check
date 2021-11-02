@@ -1,114 +1,136 @@
-Usage: doc1 num inc
+Usage: doc1 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
-  inc, Int
-Usage: doc1 num inc
+  num - Int
+  inc - Int
+Usage: doc1 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
-  inc, Int
-Usage: doc1 num inc
+  num - Int
+  inc - Int
+Usage: doc1 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
-  inc, Int
-Usage: doc1 num inc
+  num - Int
+  inc - Int
+Usage: doc1 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
-  inc, Int
-Usage: doc2 num inc
+  num - Int
+  inc - Int
+Usage: doc2 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
-  inc, Int
-Usage: doc3 num inc
+  num - Int
+  inc - Int
+Usage: doc3 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
-  inc, Int
-Usage: doc4 num inc?
+  num - Int
+  inc - Int
+Usage: doc4 [--num] <num> [[--inc] <inc>]
 
 Adds two numbers.
 Arguments:
-  num, Int
+  num - Int
     the first number
-  inc, Int (optional)
+  inc - Int (optional)
     the second number
-Usage: doc5 num inc
+Usage: doc5 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
+  num - Int
     the first number
-  inc, Int
-Usage: doc6 num inc
+  inc - Int
+Usage: doc6 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
-  inc, Int
-Usage: doc7 num inc
+  num - Int
+  inc - Int
+Usage: doc7 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
+  num - Int
     the first number
-  inc, Int
+  inc - Int
     the second number
-Usage: doc8 num inc
+Usage: doc8 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
+  num - Int
     the first number
-  inc, Int
+  inc - Int
     the second number
-Usage: doc9 num inc
+Usage: doc9 [--num] <num> [--inc] <inc>
 
 Adds two numbers. Same as doc1.
 Arguments:
-  num, Int
+  num - Int
     the first number
-  inc, Int
+  inc - Int
     the second number
-Usage: doc10 num inc
+Usage: doc10 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 This should be on another line.
 And this also.
 Arguments:
-  num, Int
+  num - Int
     I might have to write this on two lines
-  inc, Int
+  inc - Int
     I might even have to write this one on three lines
-Usage: doc11 num inc
+Usage: doc11 [--num] <num> [--inc] <inc>
 
 Adds two numbers.
 Arguments:
-  num, Int
+  num - Int
     the first number
     Oh, a new line!
-  inc, Int
+  inc - Int
     the second number
     And another one!
-Usage: doc12 num inc
+Usage: doc12 [--num] <num> [--inc] <inc>
 
 Adds two numbers. It seems that I have a very long line of documentation and therefore might need to be cut at some
 point to fit a small terminal screen.
 Arguments:
-  num, Int
-  inc, Int
-Usage: doc13 num inc
+  num - Int
+  inc - Int
+Usage: doc13 [--num] <num> [--inc] <inc>
 
 Addstwonumbers.ItseemsthatIhaveaverylonglineofdocumentationandthereforemightneedtobecutatsomepointtofitasmallterminalscreen.
 Arguments:
-  num, Int
-  inc, Int
+  num - Int
+  inc - Int
+Usage: doc14 [--arg1] <arg1> [--arg2] <arg2> [--arg3] <arg3> [--arg4] <arg4> [--arg5] <arg5> [--arg6] <arg6>
+             [--arg7] <arg7> [--arg8] <arg8> [[--arg9] <arg9>] [[--arg10] <arg10>] [[--arg11] <arg11>]
+             [[--arg12] <arg12>] [[--arg13] <arg13>] [[--arg14] <arg14>] [[--arg15] <arg15>] [<arg16> [<arg16> [...]]]
+
+Loudly judges the number of argument you gave to this poor function.
+Arguments:
+  arg1 - String
+  arg2 - Int
+  arg3 - String
+  arg4 - Int
+  arg5 - String
+  arg6 - Int
+  arg7 - String
+  arg8 - Int
+  arg9 - String (optional)
+  arg10 - Int (optional)
+  arg11 - String (optional)
+  arg12 - Int (optional)
+  arg13 - String (optional)
+  arg14 - Int (optional)
+  arg15 - String (optional)
+  arg16 - Int

@@ -120,6 +120,17 @@ object myProgram:
   @main def doc13(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
+  /**
+    * Loudly judges the number of argument you gave to this poor function.
+    */
+  @main def doc14(
+    arg1: String, arg2: Int, arg3: String, arg4: Int,
+    arg5: String, arg6: Int, arg7: String, arg8: Int,
+    arg9: String = "I", arg10: Int = 42, arg11: String = "used", arg12: Int = 0,
+    arg13: String = "to", arg14: Int = 34, arg15: String = "wonder", arg16: Int*
+  ): Unit =
+    println(s"Wow, now that's a lot of arguments")
+
 end myProgram
 
 object Test:
@@ -129,7 +140,7 @@ object Test:
     method.invoke(null, args)
 
   def callAllMains(args: Array[String]): Unit =
-    val numberOfMains = 13
+    val numberOfMains = 14
     for (i <- 1 to numberOfMains) {
       val clazz = Class.forName("doc" + i.toString)
       val method = clazz.getMethod("main", classOf[Array[String]])

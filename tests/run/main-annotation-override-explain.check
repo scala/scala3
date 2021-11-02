@@ -1,4 +1,4 @@
-Usage: add num inc?
+Usage: add [--num] <num> [[--inc] <inc>]
 
 A
 d
