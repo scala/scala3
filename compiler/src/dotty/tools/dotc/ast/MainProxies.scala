@@ -5,7 +5,7 @@ import core._
 import Symbols._, Types._, Contexts._, Decorators._, util.Spans._, Flags._, Constants._
 import StdNames.{nme, tpnme}
 import ast.Trees._
-import Names.TermName
+import Names.{Name, TermName}
 import Comments.Comment
 import NameKinds.DefaultGetterName
 
@@ -71,6 +71,8 @@ object MainProxies {
 
     val documentation = new Documentation(docComment)
 
+    inline def lit(any: Any): Literal = Literal(Constant(any))
+
     def createArgs(mt: MethodType, cmdName: TermName, idx: Int): List[(Tree, ValDef)] =
       if (mt.isImplicitMethod) {
         report.error(s"@main method cannot have implicit parameters", pos)
@@ -80,46 +82,37 @@ object MainProxies {
         var valArgs: List[(Tree, ValDef)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
           case ((formal, paramName), n) =>
             val argName = mainArgsName ++ (idx + n).toString
+
+            val isRepeated = formal.isRepeatedParam
+            val hasDefaultValue = defaultValues.contains(n)
+
             var argRef: Tree = Apply(Ident(argName), Nil)
             var formalType = formal
-            //var returnType = formal
+            if isRepeated then
+              argRef = repeated(argRef)
+              formalType = formalType.argTypes.head
 
-            val (getterSym, getterArgs) =
-              if formal.isRepeatedParam then
-                argRef = repeated(argRef)
-                formalType = formalType.argTypes.head
-                //returnType = defn.SeqType.appliedTo(returnType)
-                (
-                  defn.MainAnnotCommand_argsGetter,
-                  List(
-                    Literal(Constant(paramName.toString)),
-                    Literal(Constant(formalType.show)),
-                    Literal(Constant(documentation.argDocs(paramName.toString))),
-                  )
-                )
-              else if defaultValues.contains(n) then
-                (
-                  defn.MainAnnotCommand_argGetterDefault,
-                  List(
-                    Literal(Constant(paramName.toString)),
-                    Literal(Constant(formalType.show)),
-                    Literal(Constant(documentation.argDocs(paramName.toString))),
-                    defaultValues(n),
-                  )
-                )
+            val getterSym =
+              if isRepeated then
+                defn.MainAnnotCommand_argsGetter
+              else if hasDefaultValue then
+                defn.MainAnnotCommand_argGetterDefault
               else
-                (
-                  defn.MainAnnotCommand_argGetter,
-                  List(
-                    Literal(Constant(paramName.toString)),
-                    Literal(Constant(formalType.show)),
-                    Literal(Constant(documentation.argDocs(paramName.toString))),
-                  )
-                )
+                defn.MainAnnotCommand_argGetter
+
+            val getterArgs = {
+              val param = paramName.toString
+              val optionDefaultValueTree = defaultValues.get(n)
+
+              lit(param)
+              :: lit(formalType.show)
+              :: lit(documentation.argDocs(param))
+              :: optionDefaultValueTree.map(List(_)).getOrElse(Nil)
+            }
 
             val argDef = ValDef(
               argName,
-              TypeTree(/*defn.FunctionOf(Nil, returnType)*/),
+              TypeTree(),
               Apply(TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil), getterArgs),
             )
 
@@ -141,10 +134,10 @@ object MainProxies {
     else {
       val cmd = ValDef(
         cmdName,
-        TypeTree(), // TODO check if good practice
+        TypeTree(),
         Apply(
           Select(makeNew(TypeTree(mainAnnot.symbol.typeRef)), defn.MainAnnot_command.name),
-          Ident(mainArgsName) :: Literal(Constant(mainFun.showName)) :: Literal(Constant(documentation.mainDoc)) :: Nil
+          Ident(mainArgsName) :: lit(mainFun.showName) :: lit(documentation.mainDoc) :: Nil
         )
       )
       var args: List[ValDef] = Nil
