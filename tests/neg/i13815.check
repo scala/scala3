@@ -3,7 +3,14 @@
 1 |val box = Box.fromProduct((1, "a"))  // error
   |          ^^^^^^^^^^^^^^^
   |          value fromProduct is not a member of object Box
--- [E008] Not Found Error: tests/neg/i13815/Test_2.scala:2:26 ----------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i13815/Test_2.scala:2:46 ------------------------------------------------------
 2 |val circleOrdinal = Shape.ordinal(Shape.Circle(r = 23)) // error
-  |                    ^^^^^^^^^^^^^
-  |                    value ordinal is not a member of object Shape
+  |                                  ^^^^^^^^^^^^^^^^^^^^
+  |                                  Found:    Shape.Circle
+  |                                  Required: Shape.MirroredMonoType
+
+longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg/i13815/Test_2.scala:3:13 ----------------------------------------------------------
+3 |type T = Box.MirroredMonoType // error
+  |         ^^^^^^^^^^^^^^^^^^^^
+  |         type MirroredMonoType is not a member of object Box

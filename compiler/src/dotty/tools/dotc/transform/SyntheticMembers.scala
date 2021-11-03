@@ -549,8 +549,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     }
     def addMethod(
         name: TermName, info: Type, cls: Symbol,
-        body: (Symbol, Tree) => Context ?=> Tree, additionalFlags: FlagSet = EmptyFlags): Unit = {
-      val meth = newSymbol(clazz, name, Synthetic | Method | additionalFlags, info, coord = clazz.coord)
+        body: (Symbol, Tree) => Context ?=> Tree): Unit = {
+      val meth = newSymbol(clazz, name, Synthetic | Method | Invisible, info, coord = clazz.coord)
       if (!existingDef(meth, clazz).exists) {
         meth.enteredAfter(thisPhase)
         newBody = newBody :+
@@ -563,7 +563,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (existing.exists && !existing.is(Deferred)) existing
       else {
         val monoType =
-          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.reachableRawTypeRef), coord = clazz.coord)
+          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic | Invisible, TypeAlias(linked.reachableRawTypeRef), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
         monoType.enteredAfter(thisPhase)
       }
@@ -574,14 +574,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def makeProductMirror(cls: Symbol) =
       addParent(defn.Mirror_ProductClass.typeRef)
       addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
-        fromProductBody(_, _).ensureConforms(monoType.typeRef),  // t4758.scala or i3381.scala are examples where a cast is needed
-        additionalFlags = Invisible)
+        fromProductBody(_, _).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
 
     def makeSumMirror(cls: Symbol) =
       addParent(defn.Mirror_SumClass.typeRef)
       addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
-        ordinalBody(_, _),
-        additionalFlags = Invisible)
+        ordinalBody(_, _))
 
     if (clazz.is(Module)) {
       if (clazz.is(Case)) makeSingletonMirror()
