@@ -1751,9 +1751,12 @@ class Typer extends Namer
         .withSpan(expr.span)
     val caps =
       for
-        case CaseDef(pat, EmptyTree, _) <- cases
+        case CaseDef(pat, guard, _) <- cases
         if Feature.enabled(Feature.saferExceptions) && pat.tpe.widen.isCheckedException
-      yield makeCanThrow(pat.tpe.widen)
+      yield
+        checkCatch(pat, guard)
+        makeCanThrow(pat.tpe.widen)
+
     caps.foldLeft(expr)((e, g) => untpd.Block(g :: Nil, e))
 
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {

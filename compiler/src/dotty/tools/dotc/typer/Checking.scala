@@ -33,6 +33,7 @@ import NameKinds.DefaultGetterName
 import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
+import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.isIrrefutable
 import config.Feature
 import config.Feature.sourceVersion
@@ -1362,6 +1363,21 @@ trait Checking {
   def checkCanThrow(tp: Type, span: Span)(using Context): Unit =
     if Feature.enabled(Feature.saferExceptions) && tp.isCheckedException then
       ctx.typer.implicitArgTree(defn.CanThrowClass.typeRef.appliedTo(tp), span)
+
+  /** Check that catch can generate a good CanThrow exception */
+  def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = pat match
+    case Typed(_: Ident, tpt) if isFullyDefined(tpt.tpe, ForceDegree.none) && guard.isEmpty =>
+      // OK
+    case Bind(_, pat1) =>
+      checkCatch(pat1, guard)
+    case _ =>
+      val req =
+        if guard.isEmpty then "for cases of the form `ex: T` where `T` is fully defined"
+        else "if no pattern guard is given"
+      report.error(
+        em"""Implementation restriction: cannot generate CanThrow capability for this kind of catch.
+            |CanThrow capabilities can only be generated $req.""",
+        pat.srcPos)
 }
 
 trait ReChecking extends Checking {
@@ -1375,6 +1391,7 @@ trait ReChecking extends Checking {
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
   override def checkCanThrow(tp: Type, span: Span)(using Context): Unit = ()
+  override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {
