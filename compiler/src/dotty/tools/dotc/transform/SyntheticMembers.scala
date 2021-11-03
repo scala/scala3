@@ -570,17 +570,18 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     }
     def makeSingletonMirror() =
       addParent(defn.Mirror_SingletonClass.typeRef)
-    def makeProductMirror(cls: Symbol) = {
+
+    def makeProductMirror(cls: Symbol) =
       addParent(defn.Mirror_ProductClass.typeRef)
       addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
         fromProductBody(_, _).ensureConforms(monoType.typeRef),  // t4758.scala or i3381.scala are examples where a cast is needed
         additionalFlags = Invisible)
-    }
-    def makeSumMirror(cls: Symbol) = {
+
+    def makeSumMirror(cls: Symbol) =
       addParent(defn.Mirror_SumClass.typeRef)
       addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
-        ordinalBody(_, _))
-    }
+        ordinalBody(_, _),
+        additionalFlags = Invisible)
 
     if (clazz.is(Module)) {
       if (clazz.is(Case)) makeSingletonMirror()
