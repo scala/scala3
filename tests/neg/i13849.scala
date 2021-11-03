@@ -11,6 +11,6 @@ def foo(): Unit throws Ex = throw Ex(1)
 object Main:
   def main(args: Array[String]): Unit =
     try
-      foo() // error
+      foo()
     catch
-      case _: Ex if false => println("Caught")
+      case _: Ex if false => println("Caught") // error
