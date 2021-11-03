@@ -12,7 +12,7 @@ import core.Types._
 import core.Names._
 import core.StdNames._
 import core.NameOps._
-import core.NameKinds.{AdaptedClosureName, BodyRetainerName, ImplMethName}
+import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
 import core.Scopes.newScopeWith
 import core.Decorators._
 import core.Constants._
@@ -63,10 +63,10 @@ class Erasure extends Phase with DenotTransformer {
             && contextResultsAreErased(ref.symbol)
             && (ref.owner.is(Flags.Trait) || ref.symbol.allOverriddenSymbols.hasNext)
         then
-          // Add a `$` to prevent this method from having the same signature
+          // Add a `$direct` to prevent this method from having the same signature
           // as a method it overrides. We need a bridge between the
           // two methods, so they are not allowed to already override after erasure.
-          ImplMethName(ref.targetName.asTermName)
+          DirectMethName(ref.targetName.asTermName)
         else
           ref.targetName
 

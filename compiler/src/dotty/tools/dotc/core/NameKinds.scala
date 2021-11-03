@@ -365,7 +365,7 @@ object NameKinds {
   val ExtMethName: SuffixNameKind = new SuffixNameKind(EXTMETH, "$extension")
   val ParamAccessorName: SuffixNameKind = new SuffixNameKind(PARAMACC, "$accessor")
   val ModuleClassName: SuffixNameKind = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
-  val ImplMethName: SuffixNameKind = new SuffixNameKind(IMPLMETH, "$")
+  val DirectMethName: SuffixNameKind = new SuffixNameKind(DIRECT, "$direct")
   val AdaptedClosureName: SuffixNameKind = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }
   val SyntheticSetterName: SuffixNameKind = new SuffixNameKind(SETTER, "_$eq")
 
