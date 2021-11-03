@@ -1358,6 +1358,8 @@ class Definitions {
    *    - FunctionN for 22 > N >= 0 remains as FunctionN
    *    - ContextFunctionN for N > 22 becomes FunctionXXL
    *    - ContextFunctionN for N <= 22 becomes FunctionN
+   *    - ErasedFunctionN becomes Function0
+   *    - ImplicitErasedFunctionN becomes Function0
    *    - anything else becomes a NoType
    */
   def functionTypeErasure(cls: Symbol): Type =
