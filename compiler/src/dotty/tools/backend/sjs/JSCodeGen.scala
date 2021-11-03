@@ -4706,7 +4706,7 @@ object JSCodeGen {
       if (!overloads.isOverloaded)
         overloads.symbol
       else
-        overloads.suchThat(_.is(HasDefaultParams)).symbol
+        overloads.suchThat(_.is(HasDefaultParams, butNot = Bridge)).symbol
     }
   }
 
