@@ -1772,13 +1772,13 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol])(using Context)
+  class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using Context)
     extends Message(FailureToEliminateExistentialID) {
     def kind: String = "Compatibility"
     def msg =
       val originalType = ctx.printer.dclsText(boundSyms, "; ").show
-      em"""An existential type that came from a Scala-2 classfile cannot be
-          |mapped accurately to to a Scala-3 equivalent.
+      em"""An existential type that came from a Scala-2 classfile for $classRoot
+          |cannot be mapped accurately to a Scala-3 equivalent.
           |original type    : $tp forSome ${originalType}
           |reduces to       : $tp1
           |type used instead: $tp2
