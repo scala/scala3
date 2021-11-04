@@ -58,13 +58,11 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
         val newSettings: Seq[Map[String, Object]] = allTemplates.sliding(size = 3, step = 1).map {
           case prev :: mid :: next :: Nil =>
             val currDri = siteContext.driFor(mid.get.file.toPath)
-            def dri(sibling: Option[LoadedTemplate]) =
+            def dri(sibling: Option[LoadedTemplate]): Option[String] =
               sibling.map(n => siteContext.driFor(n.file.toPath)).flatMap { dri =>
                 Some(pathToPage(currDri, dri)).filter(_ != UnresolvedLocationLink)
-              }.getOrElse("")
-            Map(
-              "previous" -> dri(prev), "next" -> dri(next)
-            )
+              }
+            List(dri(prev).map("previous" -> _), dri(next).map("next" -> _)).flatten.toMap
         }.toSeq
 
         // We update the immutable tree of templates by walking in-order
@@ -74,7 +72,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
             updateSettings(template, aS)
           }.unzip
           val newLoadedTemplate = template.copy(
-            templateFile = template.templateFile.copy(settings = template.templateFile.settings.updated("page", template.templateFile.settings("page").asInstanceOf[Map[String, Object]] ++ head)),
+            templateFile = template.templateFile.copy(settings = template.templateFile.settings.updated("page", head ++ template.templateFile.settings("page").asInstanceOf[Map[String, Object]])),
             children = newChildren.drop(1) // We drop trailing null from the first `scanLeft` output collection
           )
 

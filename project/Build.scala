@@ -1324,7 +1324,7 @@ object Build {
         Seq(jsDestinationFile)
       }.taskValue,
       Compile / resourceGenerators += Def.task {
-        Seq("code-snippets.css", "searchbar.css", "social-links.css", "ux.css", "versions-dropdown.css").map { file =>
+        Seq("code-snippets.css", "searchbar.css", "content-contributors.css", "social-links.css", "ux.css", "versions-dropdown.css").map { file =>
           val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / file
           val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / file
           sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)

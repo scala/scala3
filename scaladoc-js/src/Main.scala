@@ -10,6 +10,7 @@ object Main:
     SocialLinks()
     DropdownHandler()
     Ux()
+    ContentContributors()
     common()
 
   /**

@@ -1,0 +1,20 @@
+.content-contributors .contributors-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.content-contributors .contributors-container div {
+  margin: 5px;
+}
+.content-contributors .contributors-container div a {
+  vertical-align: middle;
+  padding: 3px;
+  text-decoration: none;
+}
+.content-contributors .contributors-container div img {
+  vertical-align: middle;
+  width: 35px;
+  height: 35px;
+  margin-bottom: 0;
+  border-radius: 7px;
+}
