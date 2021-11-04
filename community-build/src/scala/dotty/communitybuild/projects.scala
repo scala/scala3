@@ -733,7 +733,7 @@ object projects:
 
   lazy val specs2 = SbtCommunityProject(
     project = "specs2",
-    sbtTestCommand = "core/test",
+    sbtTestCommand = "core/testOnly -- exclude ci",
     sbtPublishCommand = "core/publishLocal",
     dependencies = List()
   )
