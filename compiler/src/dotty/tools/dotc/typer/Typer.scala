@@ -81,6 +81,12 @@ object Typer {
    */
   private val InsertedApply = new Property.Key[Unit]
 
+  /** An attachment on a result of an implicit conversion or extension method
+   *  that was added by tryInsertImplicitOnQualifier. Needed to prevent infinite
+   *  expansions in error cases (e.g. in fuzzy/i9293.scala).
+   */
+  private val InsertedImplicitOnQualifier = new Property.Key[Unit]
+
   /** An attachment on a tree `t` occurring as part of a `t()` where
    *  the `()` was dropped by the Typer.
    */
@@ -3141,21 +3147,30 @@ class Typer extends Namer
   }
 
   /** If this tree is a select node `qual.name` (possibly applied to type variables)
-   *  that does not conform to `pt`, try to insert an implicit conversion `c` around
-   *  `qual` so that `c(qual).name` conforms to `pt`.
+   *  that does not conform to `pt`, try two mitigations:
+   *   1. Instantiate any TypeVars in the widened type of `tree` with their lower bounds.
+   *   2. Try to insert an implicit conversion `c` around `qual` so that
+   *   `c(qual).name` conforms to `pt`.
    */
   def tryInsertImplicitOnQualifier(tree: Tree, pt: Type, locked: TypeVars)(using Context): Option[Tree] = trace(i"try insert impl on qualifier $tree $pt") {
     tree match
       case tree @ Select(qual, name) if name != nme.CONSTRUCTOR =>
-        val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
-        if selProto.isMatchedBy(qual.tpe) then None
+        if couldInstantiateTypeVar(qual.tpe.widen, applied = true)
+        then
+          Some(adapt(tree, pt, locked))
         else
-          tryEither {
-            val tree1 = tryExtensionOrConversion(tree, pt, pt, qual, locked, NoViewsAllowed, inSelect = false)
-            if tree1.isEmpty then None
-            else Some(adapt(tree1, pt, locked))
-          } { (_, _) => None
-          }
+          val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
+          if selProto.isMatchedBy(qual.tpe) || tree.hasAttachment(InsertedImplicitOnQualifier) then
+            None
+          else
+            tryEither {
+              val tree1 = tryExtensionOrConversion(tree, pt, pt, qual, locked, NoViewsAllowed, inSelect = false)
+              if tree1.isEmpty then None
+              else
+                tree1.putAttachment(InsertedImplicitOnQualifier, ())
+                Some(adapt(tree1, pt, locked))
+            } { (_, _) => None
+            }
       case TypeApply(fn, args) if args.forall(_.isInstanceOf[untpd.InferredTypeTree]) =>
         tryInsertImplicitOnQualifier(fn, pt, locked)
       case _ => None

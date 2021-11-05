@@ -96,8 +96,12 @@ object Inferencing {
    *  their instantiation could uncover new type members. However that search is best
    *  effort only. It might miss type variables that appear in structures involving
    *  alias types and type projections.
+   *  @param applied  Test is done in a `tryInsertImplicitOnQualifier` application.
+   *                  In this case, we always try to instantiate TypeVars in type arguments.
+   *                  If `applied` is false, we only try that in arguments that may affect
+   *                  the result type.
    */
-  def couldInstantiateTypeVar(tp: Type)(using Context): Boolean = tp.dealias match
+  def couldInstantiateTypeVar(tp: Type, applied: Boolean = false)(using Context): Boolean = tp.dealias match
     case tvar: TypeVar
     if !tvar.isInstantiated
        && ctx.typerState.constraint.contains(tvar)
@@ -120,14 +124,14 @@ object Inferencing {
                 case _ => Nil
             case _ => Nil
         case _ => Nil
-      couldInstantiateTypeVar(tycon)
-      || argsInResult.exists(couldInstantiateTypeVar)
+      couldInstantiateTypeVar(tycon, applied)
+      || (if applied then args else argsInResult).exists(couldInstantiateTypeVar(_, applied))
     case RefinedType(parent, _, _) =>
-      couldInstantiateTypeVar(parent)
+      couldInstantiateTypeVar(parent, applied)
     case tp: AndOrType =>
-      couldInstantiateTypeVar(tp.tp1) || couldInstantiateTypeVar(tp.tp2)
+      couldInstantiateTypeVar(tp.tp1, applied) || couldInstantiateTypeVar(tp.tp2, applied)
     case AnnotatedType(tp, _) =>
-      couldInstantiateTypeVar(tp)
+      couldInstantiateTypeVar(tp, applied)
     case _ =>
       false
 
