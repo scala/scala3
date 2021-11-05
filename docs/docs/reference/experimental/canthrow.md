@@ -179,6 +179,20 @@ closure may refer to capabilities in its free variables. This means that `map` i
 already effect polymorphic even though we did not change its signature at all.
 So the takeaway is that the effects as capabilities model naturally provides for effect polymorphism whereas this is something that other approaches struggle with.
 
+**Note 1:** The compiler will only treat checked exceptions that way. An exception type is _checked_ if it is a subtype of
+`Exception` but not of `RuntimeException`. The signature of `CanThrow` still admits `RuntimeException`s since `RuntimeException` is a proper subtype of its bound, `Exception`. But no capabilities will be generated for `RuntimeException`s. Furthermore, `throws` clauses
+also may not refer to `RuntimeException`s.
+
+**Note 2:** To keep things simple, the compiler will currently only generate capabilities
+for catch clauses of the form
+```scala
+  case ex: Ex =>
+```
+where `ex` is an arbitrary variable name (`_` is also allowed), and `Ex` is an arbitrary
+checked exception type. Constructor patterns such as `Ex(...)` or patterns with guards
+are not allowed. The compiler will issue an error if one of these is used to catch
+a checked exception and `saferExceptions` is enabled.
+
 ## Gradual Typing Via Imports
 
 Another advantage is that the model allows a gradual migration from current unchecked exceptions to safer exceptions. Imagine for a moment that `experimental.saferExceptions` is turned on everywhere. There would be lots of code that breaks since functions have not yet been properly annotated with `throws`. But it's easy to create an escape hatch that lets us ignore the breakages for a while: simply add the import
