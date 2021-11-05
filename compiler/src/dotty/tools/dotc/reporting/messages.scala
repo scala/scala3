@@ -2515,3 +2515,15 @@ import transform.SymUtils._
           |Inlining such definition would multiply this footprint for each call site.
           |""".stripMargin
   }
+
+  class ImplicitSearchTooLargeWarning(limit: Int)(using Context) extends TypeMsg(ImplicitSearchTooLargeID):
+    override def showAlways = true
+    def msg =
+      em"""Implicit search problem too large.
+          |an implicit search was terminated with failure after trying $limit expressions.
+          |
+          |You can change the behavior by setting the `-Ximplicit-search-limit` value.
+          |Smaller values cause the search to fail faster.
+          |Larger values might make a very large search problem succeed.
+          |"""
+    def explain = ""

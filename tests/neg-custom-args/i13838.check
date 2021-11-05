@@ -16,3 +16,12 @@
   |
 
 longer explanation available when compiling with `-explain`
+-- [E168] Type Warning: tests/neg-custom-args/i13838.scala:8:50 --------------------------------------------------------
+8 |  def liftF[F[_], A](fa: F[A]): F[Foo[A]] = map(fa)(???)  // error
+  |                                                  ^
+  |                                     Implicit search problem too large.
+  |                                     an implicit search was terminated with failure after trying 1000 expressions.
+  |
+  |                                     You can change the behavior by setting the `-Ximplicit-search-limit` value.
+  |                                     Smaller values cause the search to fail faster.
+  |                                     Larger values might make a very large search problem succeed.
