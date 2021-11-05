@@ -489,6 +489,11 @@ object Implicits:
   @sharable val NoMatchingImplicitsFailure: SearchFailure =
     SearchFailure(NoMatchingImplicits, NoSpan)(using NoContext)
 
+  @sharable object ImplicitSearchTooLarge extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty)
+
+  @sharable val ImplicitSearchTooLargeFailure: SearchFailure =
+    SearchFailure(ImplicitSearchTooLarge, NoSpan)(using NoContext)
+
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(using Context): String =
@@ -1129,18 +1134,44 @@ trait Implicits:
 
     val isNotGiven: Boolean = wildProto.classSymbol == defn.NotGivenClass
 
+    private def searchTooLarge(): Boolean = ctx.searchHistory match
+      case root: SearchRoot =>
+        root.nestedSearches = 1
+        false
+      case h =>
+        val limit = ctx.settings.XimplicitSearchLimit.value
+        val nestedSearches = h.root.nestedSearches
+        val result = nestedSearches > limit
+        if result then
+          var c = ctx
+          while c.outer.typer eq ctx.typer do c = c.outer
+          report.echo(
+            em"""Implicit search problem too large.
+                |an implicit search was terminated with failure after trying $limit expressions.
+                |
+                |You can change the behavior by setting the `-Ximplicit-search-limit` value.
+                |Smaller values cause the search to fail faster.
+                |Larger values might make a very large search problem succeed.
+                |""",
+            ctx.source.atSpan(span))(using c)
+        else
+          h.root.nestedSearches = nestedSearches + 1
+        result
+
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search
       */
     def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult =
       if checkDivergence(cand) then
         SearchFailure(new DivergingImplicit(cand.ref, wideProto, argument), span)
-      else {
+      else if searchTooLarge() then
+        ImplicitSearchTooLargeFailure
+      else
         val history = ctx.searchHistory.nest(cand, pt)
         val typingCtx =
           nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history)
         val result = typedImplicit(cand, pt, argument, span)(using typingCtx)
-        result match {
+        result match
           case res: SearchSuccess =>
             ctx.searchHistory.defineBynameImplicit(wideProto, res)
           case _ =>
@@ -1152,8 +1183,6 @@ trait Implicits:
             // tests/neg/implicitSearch.check
             typingCtx.typerState.gc()
             result
-        }
-      }
 
     /** Search a list of eligible implicit references */
     private def searchImplicit(eligible: List[Candidate], contextual: Boolean): SearchResult =
@@ -1242,7 +1271,9 @@ trait Implicits:
 
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
-                if (fail.isAmbiguous)
+                if fail eq ImplicitSearchTooLargeFailure then
+                  fail
+                else if (fail.isAmbiguous)
                   if migrateTo3 then
                     val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
                     if (result.isSuccess)
@@ -1610,12 +1641,16 @@ case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory)(using Con
 end OpenSearch
 
 /**
- * The the state corresponding to the outermost context of an implicit searcch.
+ * The state corresponding to the outermost context of an implicit searcch.
  */
 final class SearchRoot extends SearchHistory:
   val root = this
   val byname = false
   def openSearchPairs = Nil
+
+  /** How many expressions were constructed so far in the current toplevel implicit search?
+   */
+  var nestedSearches: Int = 0
 
   /** The dictionary of recursive implicit types and corresponding terms for this search. */
   var myImplicitDictionary: mutable.Map[Type, (TermRef, tpd.Tree)] = null
