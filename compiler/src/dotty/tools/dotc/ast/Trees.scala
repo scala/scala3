@@ -19,13 +19,7 @@ import Decorators._
 
 object Trees {
 
-  // Note: it would be more logical to make Untyped = Nothing.
-  // However, this interacts in a bad way with Scala's current type inference.
-  // In fact, we cannot write something like Select(pre, name), where pre is
-  // of type Tree[Nothing]; type inference will treat the Nothing as an uninstantiated
-  // value and will not infer Nothing as the type parameter for Select.
-  // We should come back to this issue once type inference is changed.
-  type Untyped = Null
+  type Untyped = Nothing
 
   /** The total number of created tree nodes, maintained if Stats.enabled */
   @sharable var ntrees: Int = 0
@@ -44,8 +38,7 @@ object Trees {
    *
    *   - You can never observe a `tpe` which is `null` (throws an exception)
    *   - So when creating a typed tree with `withType` we can re-use
-   *     the existing tree transparently, assigning its `tpe` field,
-   *     provided it was `null` before.
+   *     the existing tree transparently, assigning its `tpe` field.
    *   - It is impossible to embed untyped trees in typed ones.
    *   - Typed trees can be embedded in untyped ones provided they are rooted
    *     in a TypedSplice node.
