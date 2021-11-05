@@ -1145,15 +1145,7 @@ trait Implicits:
         if result then
           var c = ctx
           while c.outer.typer eq ctx.typer do c = c.outer
-          report.echo(
-            em"""Implicit search problem too large.
-                |an implicit search was terminated with failure after trying $limit expressions.
-                |
-                |You can change the behavior by setting the `-Ximplicit-search-limit` value.
-                |Smaller values cause the search to fail faster.
-                |Larger values might make a very large search problem succeed.
-                |""",
-            ctx.source.atSpan(span))(using c)
+          report.warning(ImplicitSearchTooLargeWarning(limit), ctx.source.atSpan(span))(using c)
         else
           h.root.nestedSearches = nestedSearches + 1
         result
