@@ -18,6 +18,7 @@ import ast.Trees
 import config.{Feature, ScalaVersion}
 import typer.ErrorReporting.{err, matchReductionAddendum}
 import typer.ProtoTypes.ViewProto
+import typer.Implicits.Candidate
 import scala.util.control.NonFatal
 import StdNames.nme
 import printing.Formatting.hl
@@ -2516,14 +2517,25 @@ import transform.SymUtils._
           |""".stripMargin
   }
 
-  class ImplicitSearchTooLargeWarning(limit: Int)(using Context) extends TypeMsg(ImplicitSearchTooLargeID):
+  class ImplicitSearchTooLargeWarning(limit: Int, openSearchPairs: List[(Candidate, Type)])(using Context)
+    extends TypeMsg(ImplicitSearchTooLargeID):
     override def showAlways = true
+    def showQuery(query: (Candidate, Type)): String =
+      i"  ${query._1.ref.symbol.showLocated}  for  ${query._2}}"
     def msg =
       em"""Implicit search problem too large.
           |an implicit search was terminated with failure after trying $limit expressions.
+          |The root candidate for the search was:
+          |
+          |${showQuery(openSearchPairs.last)}
           |
           |You can change the behavior by setting the `-Ximplicit-search-limit` value.
           |Smaller values cause the search to fail faster.
           |Larger values might make a very large search problem succeed.
           |"""
-    def explain = ""
+    def explain =
+      em"""The overflow happened with the following lists of tried expressions and target types,
+          |starting with the root query:
+          |
+          |${openSearchPairs.reverse.map(showQuery)}%\n%
+        """
