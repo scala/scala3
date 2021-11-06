@@ -51,6 +51,8 @@ import Nullables._
 import NullOpsDecorator._
 import config.Config
 
+import scala.annotation.constructorOnly
+
 object Typer {
 
   /** The precedence of bindings which determines which of several bindings will be
@@ -110,7 +112,11 @@ object Typer {
     tree.putAttachment(HiddenSearchFailure,
       fail :: tree.attachmentOrElse(HiddenSearchFailure, Nil))
 }
-class Typer extends Namer
+/** Typecheck trees, the main entry point is `typed`.
+ *
+ *  @param nestingLevel The nesting level of the `scope` of this Typer.
+ */
+class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                with TypeAssigner
                with Applications
                with Implicits
@@ -124,6 +130,13 @@ class Typer extends Namer
   import Typer._
   import tpd.{cpy => _, _}
   import untpd.cpy
+
+  /** The scope of the typer.
+   *  For nested typers (cf `Namer#nestedTyper`), this is a place parameters are
+   *  entered during completion and where they survive until typechecking. A
+   *  context with this typer also has this scope.
+   */
+  val scope: MutableScope = newScope(nestingLevel)
 
   /** A temporary data item valid for a single typed ident:
    *  The set of all root import symbols that have been
@@ -141,7 +154,7 @@ class Typer extends Namer
   private var foundUnderScala2: Type = NoType
 
   // Overridden in derived typers
-  def newLikeThis: Typer = new Typer
+  def newLikeThis(nestingLevel: Int): Typer = new Typer(nestingLevel)
 
   /** Find the type of an identifier with given `name` in given context `ctx`.
    *   @param name       the name of the identifier
@@ -1652,7 +1665,7 @@ class Typer extends Namer
   /** Type a case. */
   def typedCase(tree: untpd.CaseDef, sel: Tree, wideSelType: Type, pt: Type)(using Context): CaseDef = {
     val originalCtx = ctx
-    val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
+    val gadtCtx: Context = ctx.fresh.setFreshGADTBounds.setNewScope
 
     def caseRest(pat: Tree)(using Context) = {
       val pt1 = instantiateMatchTypeProto(pat, pt) match {
@@ -1677,7 +1690,7 @@ class Typer extends Namer
     val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(
-        using gadtCtx.fresh.setNewScope))
+        using gadtCtx))
   }
 
   def typedLabeled(tree: untpd.Labeled)(using Context): Labeled = {

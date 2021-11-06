@@ -49,7 +49,10 @@ class Definitions {
   private def newPermanentClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, infoFn: ClassSymbol => Type) =
     newClassSymbol(owner, name, flags | Permanent | NoInits | Open, infoFn)
 
-  private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
+  private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef]): ClassSymbol =
+    enterCompleteClassSymbol(owner, name, flags, parents, newScope(owner.nestingLevel + 1))
+
+  private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope) =
     newCompleteClassSymbol(owner, name, flags | Permanent | NoInits | Open, parents, decls).entered
 
   private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
@@ -433,7 +436,7 @@ class Definitions {
     Any_toString, Any_##, Any_getClass, Any_isInstanceOf, Any_typeTest, Object_eq, Object_ne)
 
   @tu lazy val AnyKindClass: ClassSymbol = {
-    val cls = newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
+    val cls = newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil, newScope(0))
     if (!ctx.settings.YnoKindPolymorphism.value)
       // Enable kind-polymorphism by exposing scala.AnyKind
       cls.entered

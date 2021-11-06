@@ -25,6 +25,7 @@ import Constants._
 import ProtoTypes._
 import ErrorReporting._
 import Inferencing.{fullyDefinedType, isFullyDefined}
+import Scopes.newScope
 import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
@@ -1793,7 +1794,7 @@ final class SearchRoot extends SearchHistory:
             // }
 
             val parents = List(defn.ObjectType, defn.SerializableType)
-            val classSym = newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, coord = span)
+            val classSym = newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, newScope, coord = span)
             val vsyms = pruned.map(_._1.symbol)
             val nsyms = vsyms.map(vsym => newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = span).entered)
             val vsymMap = (vsyms zip nsyms).toMap
