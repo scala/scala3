@@ -4715,10 +4715,10 @@ object Types {
     private def avoidCaptures(tp: Type)(using Context): Type =
       val problemSyms = new TypeAccumulator[Set[Symbol]]:
         def apply(syms: Set[Symbol], t: Type): Set[Symbol] = t match
-          case ref @ TermRef(NoPrefix, _)
+          case ref: NamedType
           // AVOIDANCE TODO: Are there other problematic kinds of references?
           // Our current tests only give us these, but we might need to generalize this.
-          if ref.symbol.maybeOwner.nestingLevel > nestingLevel =>
+          if (ref.prefix eq NoPrefix) && ref.symbol.maybeOwner.nestingLevel > nestingLevel =>
             syms + ref.symbol
           case _ =>
             foldOver(syms, t)
