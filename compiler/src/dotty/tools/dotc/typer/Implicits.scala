@@ -1145,7 +1145,7 @@ trait Implicits:
         if result then
           var c = ctx
           while c.outer.typer eq ctx.typer do c = c.outer
-          report.warning(ImplicitSearchTooLargeWarning(limit), ctx.source.atSpan(span))(using c)
+          report.warning(ImplicitSearchTooLargeWarning(limit, h.openSearchPairs), ctx.source.atSpan(span))(using c)
         else
           h.root.nestedSearches = nestedSearches + 1
         result

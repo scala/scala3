@@ -21,7 +21,12 @@ longer explanation available when compiling with `-explain`
   |                                                  ^
   |                                     Implicit search problem too large.
   |                                     an implicit search was terminated with failure after trying 1000 expressions.
+  |                                     The root candidate for the search was:
+  |
+  |                                       method catsSyntaxEq  for  ([_] =>> Any)[Foo[Any]]}
   |
   |                                     You can change the behavior by setting the `-Ximplicit-search-limit` value.
   |                                     Smaller values cause the search to fail faster.
   |                                     Larger values might make a very large search problem succeed.
+
+longer explanation available when compiling with `-explain`
