@@ -1370,13 +1370,6 @@ class Definitions {
     else if arity >= 0 then FunctionType(arity)
     else NoType
 
-  val predefClassNames: Set[Name] =
-    Set("Predef$", "DeprecatedPredef", "LowPriorityImplicits").map(_.toTypeName.unmangleClassName)
-
-  /** Is `cls` the predef module class, or a class inherited by Predef? */
-  def isPredefClass(cls: Symbol): Boolean =
-    (cls.owner eq ScalaPackageClass) && predefClassNames.contains(cls.name)
-
   private val JavaImportFns: List[RootRef] = List(
     RootRef(() => JavaLangPackageVal.termRef)
   )
