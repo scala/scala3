@@ -98,16 +98,33 @@ object Settings:
         changed = true
         ArgsSummary(updateIn(sstate, value1), args, errors, dangers)
       end update
+
       def fail(msg: String, args: List[String]) =
         ArgsSummary(sstate, args, errors :+ msg, warnings)
+
       def missingArg =
         fail(s"missing argument for option $name", args)
+
       def setString(argValue: String, args: List[String]) =
         choices match
           case Some(xs) if !xs.contains(argValue) =>
             fail(s"$argValue is not a valid choice for $name", args)
           case _ =>
             update(argValue, args)
+
+      def setInt(argValue: String, args: List[String]) =
+        try
+          val x = argValue.toInt
+          choices match
+            case Some(r: Range) if x < r.head || r.last < x =>
+              fail(s"$argValue is out of legal range ${r.head}..${r.last} for $name", args)
+            case Some(xs) if !xs.contains(x) =>
+              fail(s"$argValue is not a valid choice for $name", args)
+            case _ =>
+              update(x, args)
+        catch case _: NumberFormatException =>
+          fail(s"$argValue is not an integer argument for $name", args)
+
       def doSet(argRest: String) = ((implicitly[ClassTag[T]], args): @unchecked) match {
         case (BooleanTag, _) =>
           update(true, args)
@@ -136,23 +153,10 @@ object Settings:
             val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
             update(output, args)
           }
-        case (IntTag, _) =>
-          val arg2 :: args2 = if (argRest == "") args else argRest :: args
-          try {
-            val x = arg2.toInt
-            choices match {
-              case Some(r: Range) if x < r.head || r.last < x =>
-                fail(s"$arg2 is out of legal range ${r.head}..${r.last} for $name", args2)
-              case Some(xs) if !xs.contains(x) =>
-                fail(s"$arg2 is not a valid choice for $name", args)
-              case _ =>
-                update(x, args2)
-            }
-          }
-          catch {
-            case _: NumberFormatException =>
-              fail(s"$arg2 is not an integer argument for $name", args2)
-          }
+        case (IntTag, args) if argRest.nonEmpty =>
+          setInt(argRest, args)
+        case (IntTag, arg2 :: args2) =>
+          setInt(arg2, args2)
         case (VersionTag, _) =>
           ScalaVersion.parse(argRest) match {
             case Success(v) => update(v, args)
