@@ -18,4 +18,5 @@ object Test:
     callMain(Array("--n", "1", "--i", "10"))
     callMain(Array("-num", "1", "--inc", "10"))
     callMain(Array("--num", "1", "-inc", "10"))
+    callMain(Array("num", "1", "inc", "10"))
 end Test

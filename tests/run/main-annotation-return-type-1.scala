@@ -18,5 +18,5 @@ object Test:
     println("Direct call")
     assert(myProgram.add(2, 3) == 5)
     println("Main call")
-    println(callMain(Array("2", "3")))
+    callMain(Array("2", "3"))
 end Test

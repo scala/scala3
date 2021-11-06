@@ -1,6 +1,10 @@
 // Sample main method
 object myProgram:
 
+  /** Adds three numbers (malformed, doesn't work) */
+  def add(num1: Int, num2: Int, num3: Int): Unit =
+    ???
+
   /** Adds two numbers */
   @main def add(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")

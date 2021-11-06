@@ -13,3 +13,7 @@ Usage: add [--num] <num> [--inc] <inc>
 Error: invalid argument for inc: -inc
 Error: unused argument: 10
 Usage: add [--num] <num> [--inc] <inc>
+Error: invalid argument for num: num
+Error: unused argument: inc
+Error: unused argument: 10
+Usage: add [--num] <num> [--inc] <inc>

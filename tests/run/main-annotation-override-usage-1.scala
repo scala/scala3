@@ -3,8 +3,8 @@ class myMain extends main:
     val argInfos = args map (
       _ match {
         case s: SimpleArgument => s.name
-        case o: OptionalArgument[?] => s"[${o.name}]"
-        case v: VarArgument => s"[${v.name} [${v.name} [...]]]"
+        case o: OptionalArgument[?] => s"${o.name}?"
+        case v: VarArgument => s"${v.name}*"
       }
     )
     println(s"My shiny command works like this: $commandName ${argInfos.mkString(" ")}")
