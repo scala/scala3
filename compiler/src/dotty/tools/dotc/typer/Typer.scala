@@ -626,7 +626,7 @@ class Typer extends Namer
       val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
       val qual1 = if Nullables.unsafeNullsEnabled then
         qual.tpe match {
-          case OrNull(tpe1) =>
+          case OrNull(tpe1) if tpe1 <:< defn.ObjectType =>
             qual.cast(AndType(qual.tpe, tpe1))
           case tp =>
             if tp.isNullType
@@ -719,7 +719,11 @@ class Typer extends Namer
       else if (target.isRef(defn.FloatClass))
         tree.kind match {
           case Whole(16) => // cant parse hex literal as float
-          case _         => return lit(floatFromDigits(digits))
+          case _         =>
+            val float = floatFromDigits(digits)
+            if digits.toIntOption.exists(_ != float.toInt) then
+              report.warning(LossyWideningConstantConversion(defn.IntType, target), tree.srcPos)
+            return lit(float)
         }
       else if (target.isRef(defn.DoubleClass))
         tree.kind match {
@@ -872,7 +876,7 @@ class Typer extends Namer
         wildName = nme.WILDCARD_STAR)
     }
     else {
-      def typedTpt = checkSimpleKinded(typedType(tree.tpt))
+      def typedTpt = checkSimpleKinded(typedType(tree.tpt, mapPatternBounds = true))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
         if !ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef then
@@ -1679,7 +1683,9 @@ class Typer extends Namer
   /** Type a case of a type match */
   def typedTypeCase(cdef: untpd.CaseDef, selType: Type, pt: Type)(using Context): CaseDef = {
     def caseRest(using Context) = {
-      val pat1 = withMode(Mode.Pattern)(checkSimpleKinded(typedType(cdef.pat)))
+      val pat1 = withMode(Mode.Pattern) {
+        checkSimpleKinded(typedType(cdef.pat, mapPatternBounds = true))
+      }
       val pat2 = indexPattern(cdef).transform(pat1)
       var body1 = typedType(cdef.body, pt)
       if !body1.isType then
@@ -1920,7 +1926,7 @@ class Typer extends Namer
                 // wildcard identifiers `_` instead.
                 TypeTree(tparamBounds).withSpan(arg.span)
               case _ =>
-                typed(desugaredArg, argPt)
+                typedType(desugaredArg, argPt, mapPatternBounds = true)
             }
           else desugaredArg.withType(UnspecifiedErrorType)
         }
@@ -1987,36 +1993,18 @@ class Typer extends Namer
     assignType(cpy.ByNameTypeTree(tree)(result1), result1)
   }
 
-  def typedTypeBoundsTree(tree: untpd.TypeBoundsTree, pt: Type)(using Context): Tree = {
+  def typedTypeBoundsTree(tree: untpd.TypeBoundsTree, pt: Type)(using Context): Tree =
     val TypeBoundsTree(lo, hi, alias) = tree
     val lo1 = typed(lo)
     val hi1 = typed(hi)
     val alias1 = typed(alias)
-
     val lo2 = if (lo1.isEmpty) typed(untpd.TypeTree(defn.NothingType)) else lo1
     val hi2 = if (hi1.isEmpty) typed(untpd.TypeTree(defn.AnyType)) else hi1
-
     if !alias1.isEmpty then
       val bounds = TypeBounds(lo2.tpe, hi2.tpe)
       if !bounds.contains(alias1.tpe) then
         report.error(em"type ${alias1.tpe} outside bounds $bounds", tree.srcPos)
-
-    val tree1 = assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
-    if (ctx.mode.is(Mode.Pattern))
-      // Associate a pattern-bound type symbol with the wildcard.
-      // The bounds of the type symbol can be constrained when comparing a pattern type
-      // with an expected type in typedTyped. The type symbol and the defining Bind node
-      // are eliminated once the enclosing pattern has been typechecked; see `indexPattern`
-      // in `typedCase`.
-      //val ptt = if (lo.isEmpty && hi.isEmpty) pt else
-      if (ctx.isAfterTyper) tree1
-      else {
-        val boundName = WildcardParamName.fresh().toTypeName
-        val wildcardSym = newPatternBoundSymbol(boundName, tree1.tpe & pt, tree.span)
-        untpd.Bind(boundName, tree1).withType(wildcardSym.typeRef)
-      }
-    else tree1
-  }
+    assignType(cpy.TypeBoundsTree(tree)(lo2, hi2, alias1), lo2, hi2, alias1)
 
   def typedBind(tree: untpd.Bind, pt: Type)(using Context): Tree = {
     if !isFullyDefined(pt, ForceDegree.all) then
@@ -2694,7 +2682,9 @@ class Typer extends Namer
       val pts =
         if (arity == pt.tupleArity) pt.tupleElementTypes
         else List.fill(arity)(defn.AnyType)
-      val elems = tree.trees.lazyZip(pts).map(typed(_, _))
+      val elems = tree.trees.lazyZip(pts).map(
+        if ctx.mode.is(Mode.Type) then typedType(_, _, mapPatternBounds = true)
+        else typed(_, _))
       if (ctx.mode.is(Mode.Type))
         elems.foldRight(TypeTree(defn.EmptyTupleModule.termRef): Tree)((elemTpt, elemTpts) =>
           AppliedTypeTree(TypeTree(defn.PairClass.typeRef), List(elemTpt, elemTpts)))
@@ -3025,8 +3015,24 @@ class Typer extends Namer
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     withoutMode(Mode.PatternOrTypeBits)(typed(tree, pt))
-  def typedType(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = // todo: retract mode between Type and Pattern?
-    withMode(Mode.Type) { typed(tree, pt) }
+
+  def typedType(tree: untpd.Tree, pt: Type = WildcardType, mapPatternBounds: Boolean = false)(using Context): Tree =
+    val tree1 = withMode(Mode.Type) { typed(tree, pt) }
+    if mapPatternBounds && ctx.mode.is(Mode.Pattern) && !ctx.isAfterTyper then
+      tree1 match
+        case tree1: TypeBoundsTree =>
+          // Associate a pattern-bound type symbol with the wildcard.
+          // The bounds of the type symbol can be constrained when comparing a pattern type
+          // with an expected type in typedTyped. The type symbol and the defining Bind node
+          // are eliminated once the enclosing pattern has been typechecked; see `indexPattern`
+          // in `typedCase`.
+          val boundName = WildcardParamName.fresh().toTypeName
+          val wildcardSym = newPatternBoundSymbol(boundName, tree1.tpe & pt, tree.span)
+          untpd.Bind(boundName, tree1).withType(wildcardSym.typeRef)
+        case tree1 =>
+          tree1
+    else tree1
+
   def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(using Context): Tree =
     withMode(Mode.Pattern)(typed(tree, selType))
 
@@ -3733,6 +3739,12 @@ class Typer extends Namer
         case ConstantType(x) =>
           val converted = x.convertTo(pt)
           if converted != null && (converted ne x) then
+            val cls = pt.classSymbol
+            if x.tag == IntTag && cls == defn.FloatClass && x.intValue.toFloat.toInt != x.intValue
+              || x.tag == LongTag && cls == defn.FloatClass  && x.longValue.toFloat.toLong != x.longValue
+              || x.tag == LongTag && cls == defn.DoubleClass && x.longValue.toDouble.toLong != x.longValue
+            then
+              report.warning(LossyWideningConstantConversion(x.tpe, pt), tree.srcPos)
             return adaptConstant(tree, ConstantType(converted))
         case _ =>
 

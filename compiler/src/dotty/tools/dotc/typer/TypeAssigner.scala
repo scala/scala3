@@ -162,7 +162,7 @@ trait TypeAssigner {
     val qualType = qual.tpe.widenIfUnstable
     def kind = if tree.isType then "type" else "value"
     val foundWithoutNull = qualType match
-      case OrNull(qualType1) =>
+      case OrNull(qualType1) if qualType1 <:< defn.ObjectType =>
         val name = tree.name
         val pre = maybeSkolemizePrefix(qualType1, name)
         reallyExists(qualType1.findMember(name, pre))

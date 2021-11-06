@@ -67,7 +67,7 @@ enum Kind(val name: String):
   case Exported(m: Kind.Def) extends Kind("export")
   case Type(concreate: Boolean, opaque: Boolean, typeParams: Seq[TypeParameter])
     extends Kind("type") // should we handle opaque as modifier?
-  case Given(kind: Def | Class, as: Option[Signature], conversion: Option[ImplicitConversion])
+  case Given(kind: Def | Class | Val.type, as: Option[Signature], conversion: Option[ImplicitConversion])
     extends Kind("given") with ImplicitConversionProvider
   case Implicit(kind: Kind.Def | Kind.Val.type, conversion: Option[ImplicitConversion])
     extends Kind(kind.name)  with ImplicitConversionProvider
