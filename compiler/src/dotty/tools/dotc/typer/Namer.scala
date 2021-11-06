@@ -27,6 +27,8 @@ import reporting._
 import config.Feature.sourceVersion
 import config.SourceVersion._
 
+import scala.annotation.constructorOnly
+
 /** This class creates symbols from definitions and imports and gives them
  *  lazy types.
  *
@@ -85,13 +87,6 @@ class Namer { typer: Typer =>
    *  used as indices. It also contains a scope that contains nested parameters.
    */
   lazy val nestedTyper: mutable.AnyRefMap[Symbol, Typer] = new mutable.AnyRefMap
-
-  /** The scope of the typer.
-   *  For nested typers this is a place parameters are entered during completion
-   *  and where they survive until typechecking. A context with this typer also
-   *  has this scope.
-   */
-  val scope: MutableScope = newScope
 
   /** We are entering symbols coming from a SourceLoader */
   private var lateCompile = false
@@ -751,7 +746,7 @@ class Namer { typer: Typer =>
         if (sym.is(Module)) moduleValSig(sym)
         else valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
       case original: DefDef =>
-        val typer1 = ctx.typer.newLikeThis
+        val typer1 = ctx.typer.newLikeThis(ctx.nestingLevel + 1)
         nestedTyper(sym) = typer1
         typer1.defDefSig(original, sym, this)(using localContext(sym).setTyper(typer1))
       case imp: Import =>
@@ -1018,7 +1013,7 @@ class Namer { typer: Typer =>
   }
 
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
-    withDecls(newScope)
+    withDecls(newScope(using ictx))
 
     protected implicit val completerCtx: Context = localContext(cls)
 

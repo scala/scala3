@@ -46,7 +46,7 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (private var myCoord: Coord, val id: Int)
+  class Symbol private[Symbols] (private var myCoord: Coord, val id: Int, val nestingLevel: Int)
     extends Designator, ParamInfo, SrcPos, printing.Showable {
 
     type ThisName <: Name
@@ -368,8 +368,8 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile, id: Int)
-    extends Symbol(coord, id) {
+  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile, id: Int, nestingLevel: Int)
+    extends Symbol(coord, id, nestingLevel) {
 
     type ThisName = TypeName
 
@@ -459,7 +459,7 @@ object Symbols {
     override protected def prefixString: String = "ClassSymbol"
   }
 
-  @sharable object NoSymbol extends Symbol(NoCoord, 0) {
+  @sharable object NoSymbol extends Symbol(NoCoord, 0, 0) {
     override def associatedFile(using Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
   }
@@ -516,7 +516,7 @@ object Symbols {
       info: Type,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord)(using Context): Symbol { type ThisName = N } = {
-    val sym = new Symbol(coord, ctx.base.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
+    val sym = new Symbol(coord, ctx.base.nextSymId, ctx.nestingLevel).asInstanceOf[Symbol { type ThisName = N }]
     val denot = SymDenotation(sym, owner, name, flags, info, privateWithin)
     sym.denot = denot
     sym
@@ -534,7 +534,7 @@ object Symbols {
       coord: Coord = NoCoord,
       assocFile: AbstractFile = null)(using Context): ClassSymbol
   = {
-    val cls = new ClassSymbol(coord, assocFile, ctx.base.nextSymId)
+    val cls = new ClassSymbol(coord, assocFile, ctx.base.nextSymId, ctx.nestingLevel)
     val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
     cls.denot = denot
     cls
@@ -546,7 +546,7 @@ object Symbols {
       name: TypeName,
       flags: FlagSet,
       parents: List[TypeRef],
-      decls: Scope = newScope,
+      decls: Scope,
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
@@ -564,7 +564,7 @@ object Symbols {
       name: TypeName,
       flags: FlagSet,
       parentTypes: List[Type],
-      decls: Scope = newScope,
+      decls: Scope,
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
@@ -580,7 +580,7 @@ object Symbols {
   }
 
   def newRefinedClassSymbol(coord: Coord = NoCoord)(using Context): ClassSymbol =
-    newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, coord = coord)
+    newCompleteClassSymbol(ctx.owner, tpnme.REFINE_CLASS, NonMember, parents = Nil, newScope, coord = coord)
 
   /** Create a module symbol with associated module class
    *  from its non-info fields and a function producing the info
@@ -646,7 +646,7 @@ object Symbols {
       name: TermName,
       modFlags: FlagSet = EmptyFlags,
       clsFlags: FlagSet = EmptyFlags,
-      decls: Scope = newScope)(using Context): TermSymbol =
+      decls: Scope = newScope(0))(using Context): TermSymbol =
     newCompleteModuleSymbol(
       owner, name,
       modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,

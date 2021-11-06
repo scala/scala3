@@ -70,7 +70,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   protected def rootContext(using Context): Context = {
     ctx.initialize()
     ctx.base.setPhasePlan(comp.phases)
-    val rootScope = new MutableScope
+    val rootScope = new MutableScope(0)
     val bootstrap = ctx.fresh
       .setPeriod(Period(comp.nextRunId, FirstPhaseId))
       .setScope(rootScope)

@@ -4667,7 +4667,7 @@ object Types {
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
    */
-  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, nestingLevel: Int) extends CachedProxyType with ValueType {
+  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, val nestingLevel: Int) extends CachedProxyType with ValueType {
 
     private var currentOrigin = initOrigin
 
@@ -4713,6 +4713,8 @@ object Types {
      *  are nested more deeply than the type variable itself.
      */
     private def avoidCaptures(tp: Type)(using Context): Type =
+      if ctx.isAfterTyper then
+        return tp
       val problemSyms = new TypeAccumulator[Set[Symbol]]:
         def apply(syms: Set[Symbol], t: Type): Set[Symbol] = t match
           case ref: NamedType
@@ -4806,7 +4808,7 @@ object Types {
   }
   object TypeVar:
     def apply(initOrigin: TypeParamRef, creatorState: TyperState)(using Context) =
-      new TypeVar(initOrigin, creatorState, ctx.owner.nestingLevel)
+      new TypeVar(initOrigin, creatorState, ctx.nestingLevel)
 
   type TypeVars = SimpleIdentitySet[TypeVar]
 
