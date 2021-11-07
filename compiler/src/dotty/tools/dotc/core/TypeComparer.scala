@@ -63,24 +63,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
 
-  private var myNecessaryConstraintsOnly = false
-  /** When collecting the constraints needed for a particular subtyping
-   *  judgment to be true, we sometimes need to approximate the constraint
-   *  set (see `TypeComparer#either` for example).
-   *
-   *  Normally, this means adding extra constraints which may not be necessary
-   *  for the subtyping judgment to be true, but if this variable is set to true
-   *  we will instead under-approximate and keep only the constraints that must
-   *  always be present for the subtyping judgment to hold.
-   *
-   *  This is needed for GADT bounds inference to be sound, but it is also used
-   *  when constraining a method call based on its expected type to avoid adding
-   *  constraints that would later prevent us from typechecking method
-   *  arguments, see or-inf.scala and and-inf.scala for examples.
-   */
-  protected def necessaryConstraintsOnly(using Context) =
-    ctx.mode.is(Mode.GadtConstraintInference) || myNecessaryConstraintsOnly
-
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
    *  constraint might still be retracted and the instantiation should

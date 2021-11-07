@@ -56,6 +56,24 @@ trait ConstraintHandling {
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
+  protected var myNecessaryConstraintsOnly = false
+  /** When collecting the constraints needed for a particular subtyping
+   *  judgment to be true, we sometimes need to approximate the constraint
+   *  set (see `TypeComparer#either` for example).
+   *
+   *  Normally, this means adding extra constraints which may not be necessary
+   *  for the subtyping judgment to be true, but if this variable is set to true
+   *  we will instead under-approximate and keep only the constraints that must
+   *  always be present for the subtyping judgment to hold.
+   *
+   *  This is needed for GADT bounds inference to be sound, but it is also used
+   *  when constraining a method call based on its expected type to avoid adding
+   *  constraints that would later prevent us from typechecking method
+   *  arguments, see or-inf.scala and and-inf.scala for examples.
+   */
+  protected def necessaryConstraintsOnly(using Context): Boolean =
+    ctx.mode.is(Mode.GadtConstraintInference) || myNecessaryConstraintsOnly
+
   def checkReset() =
     assert(addConstraintInvocations == 0)
     assert(frozenConstraint == false)
@@ -92,7 +110,11 @@ trait ConstraintHandling {
       false
     else
       val dropWildcards = new AvoidWildcardsMap:
-        if !isUpper then variance = -1
+        // Approximate the upper-bound from below and vice-versa
+        if isUpper then variance = -1
+        // ...unless we can only infer necessary constraints, in which case we
+        // flip the variance to under-approximate.
+        if necessaryConstraintsOnly then variance = -variance
         override def mapWild(t: WildcardType) =
           if approximateWildcards then super.mapWild(t)
           else newTypeVar(apply(t.effectiveBounds).toBounds)
