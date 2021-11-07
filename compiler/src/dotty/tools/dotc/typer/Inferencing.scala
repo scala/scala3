@@ -437,11 +437,18 @@ object Inferencing {
 
   type VarianceMap = SimpleIdentityMap[TypeVar, Integer]
 
-  /** All occurrences of type vars in this type that satisfy predicate
-   *  `include` mapped to their variances (-1/0/1) in this type, where
+  /** All occurrences of type vars in `tp` that satisfy predicate
+   *  `include` mapped to their variances (-1/0/1) in both `tp` and
+   *  `pt.finalResultType`, where
    *  -1 means: only contravariant occurrences
    *  +1 means: only covariant occurrences
    *  0 means: mixed or non-variant occurrences
+   *
+   *  We need to take the occurences in `pt` into account because a type
+   *  variable created when typing the current tree might only appear in the
+   *  bounds of a type variable in the expected type, for example when
+   *  `ConstraintHandling#addOneBound` creates type variables when approximating
+   *  a bound.
    *
    *  Note: We intentionally use a relaxed version of variance here,
    *  where the variance does not change under a prefix of a named type
@@ -453,7 +460,7 @@ object Inferencing {
    *
    *  we want to instantiate U to x.type right away. No need to wait further.
    */
-  private def variances(tp: Type)(using Context): VarianceMap = {
+  private def variances(tp: Type, pt: Type = WildcardType)(using Context): VarianceMap = {
     Stats.record("variances")
     val constraint = ctx.typerState.constraint
 
@@ -486,21 +493,21 @@ object Inferencing {
       def traverse(tp: Type) = { vmap1 = accu(vmap1, tp) }
       vmap.foreachBinding { (tvar, v) =>
         val param = tvar.origin
-        val e = constraint.entry(param)
-        accu.setVariance(v)
-        if (v >= 0) {
-          traverse(e.bounds.lo)
-          constraint.lower(param).foreach(p => traverse(constraint.typeVarOfParam(p)))
-        }
-        if (v <= 0) {
-          traverse(e.bounds.hi)
-          constraint.upper(param).foreach(p => traverse(constraint.typeVarOfParam(p)))
-        }
+        constraint.entry(param) match
+          case TypeBounds(lo, hi) =>
+            accu.setVariance(v)
+            if v >= 0 then
+              traverse(lo)
+              constraint.lower(param).foreach(p => traverse(constraint.typeVarOfParam(p)))
+            if v <= 0 then
+              traverse(hi)
+              constraint.upper(param).foreach(p => traverse(constraint.typeVarOfParam(p)))
+          case _ =>
       }
       if (vmap1 eq vmap) vmap else propagate(vmap1)
     }
 
-    propagate(accu(SimpleIdentityMap.empty, tp))
+    propagate(accu(accu(SimpleIdentityMap.empty, tp), pt.finalResultType))
   }
 
   /** Run the transformation after dealiasing but return the original type if it was a no-op. */
@@ -546,8 +553,8 @@ trait Inferencing { this: Typer =>
    *  @param locked  the set of type variables of the current typer state that cannot be interpolated
    *                 at the present time
    *  Eligible for interpolation are all type variables owned by the current typerstate
-   *  that are not in locked. Type variables occurring co- (respectively, contra-) variantly in the type
-   *  are minimized (respectvely, maximized). Non occurring type variables are minimized if they
+   *  that are not in locked. Type variables occurring co- (respectively, contra-) variantly in the tree type
+   *  or expected type are minimized (respectvely, maximized). Non occurring type variables are minimized if they
    *  have a lower bound different from Nothing, maximized otherwise. Type variables appearing
    *  non-variantly in the type are left untouched.
    *
@@ -572,7 +579,7 @@ trait Inferencing { this: Typer =>
     if ((ownedVars ne locked) && !ownedVars.isEmpty) {
       val qualifying = ownedVars -- locked
       if (!qualifying.isEmpty) {
-        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
+        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, pt = $pt, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
         val resultAlreadyConstrained =
           tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
         if (!resultAlreadyConstrained)
@@ -580,7 +587,7 @@ trait Inferencing { this: Typer =>
             // This is needed because it could establish singleton type upper bounds. See i2998.scala.
 
         val tp = tree.tpe.widen
-        val vs = variances(tp)
+        val vs = variances(tp, pt)
 
         // Avoid interpolating variables occurring in tree's type if typerstate has unreported errors.
         // Reason: The errors might reflect unsatisfiable constraints. In that
