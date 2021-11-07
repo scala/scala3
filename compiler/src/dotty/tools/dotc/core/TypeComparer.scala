@@ -137,16 +137,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     try topLevelSubType(tp1, tp2)
     finally myNecessaryConstraintsOnly = saved
 
-  /** Use avoidance to get rid of wildcards in constraint bounds if
-   *  we are doing a necessary comparison, or the mode is TypeVarsMissContext.
-   *  The idea is that under either of these conditions we are not interested
-   *  in creating a fresh type variable to replace the wildcard. I verified
-   *  that several tests break if one or the other part of the disjunction is dropped.
-   *  (for instance, i12677.scala demands `necessaryConstraintsOnly` in the condition)
-   */
-  override protected def approximateWildcards: Boolean =
-    necessaryConstraintsOnly || ctx.mode.is(Mode.TypevarsMissContext)
-
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
     if !topLevelSubType(tp1, tp2) then CompareResult.Fail

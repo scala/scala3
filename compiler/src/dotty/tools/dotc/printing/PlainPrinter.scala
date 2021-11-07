@@ -66,6 +66,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case tp @ AppliedType(tycon, args) =>
           if (defn.isCompiletimeAppliedType(tycon.typeSymbol)) tp.tryCompiletimeConstantFold
           else tycon.dealias.appliedTo(args)
+        case tp: NamedType =>
+          tp.reduceProjection
         case _ =>
           tp
       }
