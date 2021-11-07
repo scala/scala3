@@ -50,8 +50,15 @@ object MainProxies {
       }
 
     def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, Map[Int, Tree], Option[Comment])] = stats.flatMap {
-      case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
-        (stat.symbol, defaultValues(scope, stat.symbol), stat.rawComment) :: Nil
+      case stat: DefDef =>
+        val sym = stat.symbol
+        sym.annotations.filter(_ matches defn.MainAnnot) match {
+          case Nil => Nil
+          case _ :: Nil => (sym, defaultValues(scope, sym), stat.rawComment) :: Nil
+          case mainAnnot :: others =>
+            report.error(s"method cannot have multiple @main annotations", mainAnnot.tree)
+            Nil
+        }
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(stat, impl.body)
       case _ =>
