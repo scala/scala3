@@ -447,7 +447,7 @@ object Inferencing {
    *  We need to take the occurences in `pt` into account because a type
    *  variable created when typing the current tree might only appear in the
    *  bounds of a type variable in the expected type, for example when
-   *  `ConstraintHandling#addOneBound` creates type variables when approximating
+   *  `ConstraintHandling#legalBound` creates type variables when approximating
    *  a bound.
    *
    *  Note: We intentionally use a relaxed version of variance here,

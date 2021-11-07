@@ -4668,7 +4668,6 @@ object Types {
    *  @param  creatorState  The typer state in which the variable was created.
    */
   final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, val nestingLevel: Int) extends CachedProxyType with ValueType {
-
     private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
@@ -4709,38 +4708,6 @@ object Types {
     /** Is the variable already instantiated? */
     def isInstantiated(using Context): Boolean = instanceOpt.exists
 
-    /** Avoid term references in `tp` to parameters or local variables that
-     *  are nested more deeply than the type variable itself.
-     */
-    private def avoidCaptures(tp: Type)(using Context): Type =
-      if ctx.isAfterTyper then
-        return tp
-      val problemSyms = new TypeAccumulator[Set[Symbol]]:
-        def apply(syms: Set[Symbol], t: Type): Set[Symbol] = t match
-          case ref: NamedType
-          // AVOIDANCE TODO: Are there other problematic kinds of references?
-          // Our current tests only give us these, but we might need to generalize this.
-          if (ref.prefix eq NoPrefix) && ref.symbol.maybeOwner.nestingLevel > nestingLevel =>
-            syms + ref.symbol
-          case _ =>
-            foldOver(syms, t)
-      val problems = problemSyms(Set.empty, tp)
-      if problems.isEmpty then tp
-      else
-        val atp = TypeOps.avoid(tp, problems.toList)
-        def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
-        typr.println(msg)
-        val bound = TypeComparer.fullUpperBound(origin)
-        if !(atp <:< bound) then
-          throw new TypeError(i"$msg,\nbut the latter type does not conform to the upper bound $bound")
-        atp
-      // AVOIDANCE TODO: This really works well only if variables are instantiated from below
-      // If we hit a problematic symbol while instantiating from above, then avoidance
-      // will widen the instance type further. This could yield an alias, which would be OK.
-      // But it also could yield a true super type which would then fail the bounds check
-      // and throw a TypeError. The right thing to do instead would be to avoid "downwards".
-      // To do this, we need first test cases for that situation.
-
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(using Context): Type = {
       assert(tp ne this, i"self instantiation of $origin, constraint = ${ctx.typerState.constraint}")
@@ -4765,7 +4732,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      val tp = avoidCaptures(TypeComparer.instanceType(origin, fromBelow))
+      val tp = TypeComparer.instanceType(origin, fromBelow)
       if myInst.exists then // The line above might have triggered instantiation of the current type variable
         myInst
       else

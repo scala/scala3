@@ -81,6 +81,11 @@ final class ProperGadtConstraint private(
     subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
   }
 
+  override protected def legalBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Type =
+    // GADT constraints never involve wildcards and are not propagated outside
+    // the case where they're valid, so no approximating is needed.
+    rawBound
+
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = {
     import NameKinds.DepParamName
 
