@@ -7,7 +7,7 @@ import core.Contexts.Context
 import Diagnostic._
 
 /** A re-usable Reporter used in Contexts#test */
-class ExploringReporter extends StoreReporter(null):
+class ExploringReporter extends StoreReporter(null, fromTyperState = false):
   infos = new mutable.ListBuffer[Diagnostic]
 
   override def hasUnreportedErrors: Boolean =
