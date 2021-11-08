@@ -1751,9 +1751,12 @@ class Typer extends Namer
         .withSpan(expr.span)
     val caps =
       for
-        CaseDef(pat, _, _) <- cases
+        case CaseDef(pat, guard, _) <- cases
         if Feature.enabled(Feature.saferExceptions) && pat.tpe.widen.isCheckedException
-      yield makeCanThrow(pat.tpe.widen)
+      yield
+        checkCatch(pat, guard)
+        makeCanThrow(pat.tpe.widen)
+
     caps.foldLeft(expr)((e, g) => untpd.Block(g :: Nil, e))
 
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {
@@ -1942,14 +1945,20 @@ class Typer extends Namer
       }
       var checkedArgs = preCheckKinds(args1, paramBounds)
         // check that arguments conform to bounds is done in phase PostTyper
-      if (tpt1.symbol == defn.andType)
+      val tycon = tpt1.symbol
+      if (tycon == defn.andType)
         checkedArgs = checkedArgs.mapconserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
-      else if (tpt1.symbol == defn.orType)
+      else if (tycon == defn.orType)
         checkedArgs = checkedArgs.mapconserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
+      else if tycon == defn.throwsAlias
+          && checkedArgs.length == 2
+          && checkedArgs(1).tpe.derivesFrom(defn.RuntimeExceptionClass)
+      then
+        report.error(em"throws clause cannot be defined for RuntimeException", checkedArgs(1).srcPos)
       else if (ctx.isJava)
-        if (tpt1.symbol eq defn.ArrayClass) then
+        if tycon eq defn.ArrayClass then
           checkedArgs match {
             case List(arg) =>
               val elemtp = arg.tpe.translateJavaArrayElementType
