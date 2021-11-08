@@ -38,6 +38,7 @@ import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
+import dotty.tools.tasty.TastyFormat
 
 object Contexts {
 
@@ -480,7 +481,14 @@ object Contexts {
 
     /** A new context that summarizes an import statement */
     def importContext(imp: Import[?], sym: Symbol): FreshContext =
-       fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
+      fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
+
+    def tastyVersion: (Int, Int, Int) =
+      base.settings.scalaRelease.value match
+        case "" =>
+          import TastyFormat.*
+          (MajorVersion, MinorVersion, ExperimentalVersion)
+        case s"$maj.$min" => (maj.toInt + 25, min.toInt, 0)
 
     /** Is the debug option set? */
     def debug: Boolean = base.settings.Ydebug.value
