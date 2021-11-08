@@ -100,7 +100,7 @@ object SymOps:
         Flags.Case -> Modifier.Case,
       ).collect {
         case (flag, mod) if sym.flags.is(flag) => mod
-      } ++ Seq(Modifier.Implicit).filter(_ => sym.isImplicitClass)
+      }
 
     def isHiddenByVisibility(using dctx: DocContext): Boolean =
       import VisibilityScope._
