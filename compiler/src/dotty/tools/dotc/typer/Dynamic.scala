@@ -51,7 +51,7 @@ object DynamicUnapply {
  *  with structural types. Two functionalities:
  *
  * 1. Translates selection that does not typecheck according to the scala.Dynamic rules:
- *    foo.bar(baz) = quux                   ~~> foo.selectDynamic(bar).update(baz, quux)
+ *    foo.bar(baz) = quux                   ~~> foo.selectDynamic("bar").update(baz, quux)
  *    foo.bar = baz                         ~~> foo.updateDynamic("bar")(baz)
  *    foo.bar(x = bazX, y = bazY, baz, ...) ~~> foo.applyDynamicNamed("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
  *    foo.bar(baz0, baz1, ...)              ~~> foo.applyDynamic(bar)(baz0, baz1, ...)
@@ -70,8 +70,8 @@ trait Dynamic {
   import tpd._
 
   /** Translate selection that does not typecheck according to the normal rules into a applyDynamic/applyDynamicNamed.
-   *    foo.bar(baz0, baz1, ...)                       ~~> foo.applyDynamic(bar)(baz0, baz1, ...)
-   *    foo.bar[T0, ...](baz0, baz1, ...)              ~~> foo.applyDynamic[T0, ...](bar)(baz0, baz1, ...)
+   *    foo.bar(baz0, baz1, ...)                       ~~> foo.applyDynamic("bar")(baz0, baz1, ...)
+   *    foo.bar[T0, ...](baz0, baz1, ...)              ~~> foo.applyDynamic[T0, ...]("bar")(baz0, baz1, ...)
    *    foo.bar(x = bazX, y = bazY, baz, ...)          ~~> foo.applyDynamicNamed("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
    *    foo.bar[T0, ...](x = bazX, y = bazY, baz, ...) ~~> foo.applyDynamicNamed[T0, ...]("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
    */
@@ -113,17 +113,17 @@ trait Dynamic {
   }
 
   /** Translate selection that does not typecheck according to the normal rules into a selectDynamic.
-   *    foo.bar          ~~> foo.selectDynamic(bar)
-   *    foo.bar[T0, ...] ~~> foo.selectDynamic[T0, ...](bar)
+   *    foo.bar          ~~> foo.selectDynamic("bar")
+   *    foo.bar[T0, ...] ~~> foo.selectDynamic[T0, ...]("bar")
    *
-   *  Note: inner part of translation foo.bar(baz) = quux ~~> foo.selectDynamic(bar).update(baz, quux) is achieved
+   *  Note: inner part of translation foo.bar(baz) = quux ~~> foo.selectDynamic("bar").update(baz, quux) is achieved
    *  through an existing transformation of in typedAssign [foo.bar(baz) = quux ~~> foo.bar.update(baz, quux)].
    */
   def typedDynamicSelect(tree: untpd.Select, targs: List[untpd.Tree], pt: Type)(using Context): Tree =
     typedApply(coreDynamic(tree.qualifier, nme.selectDynamic, tree.name, tree.span, targs), pt)
 
   /** Translate selection that does not typecheck according to the normal rules into a updateDynamic.
-   *    foo.bar = baz ~~> foo.updateDynamic(bar)(baz)
+   *    foo.bar = baz ~~> foo.updateDynamic("bar")(baz)
    */
   def typedDynamicAssign(tree: untpd.Assign, pt: Type)(using Context): Tree = {
     def typedDynamicAssign(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree =
@@ -179,7 +179,7 @@ trait Dynamic {
     val fun @ Select(qual, name) = funPart(tree)
     val vargss = termArgss(tree)
 
-    def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
+    def structuralCall(selectorName: TermName, classOfs: => List[Tree], pt: Type) = {
       val selectable = adapt(qual, defn.SelectableClass.typeRef)
 
       // ($qual: Selectable).$selectorName("$name")
@@ -209,7 +209,10 @@ trait Dynamic {
               case _ => tree
             case other => tree
         case _ => tree
-      addClassOfs(typed(scall))
+      val scall1 = tryAlternatively
+          (typed(scall, pt))
+          (typed(scall))
+      addClassOfs(scall1)
     }
 
     def fail(reason: String): Tree =
@@ -217,7 +220,7 @@ trait Dynamic {
 
     fun.tpe.widen match {
       case tpe: ValueType =>
-        structuralCall(nme.selectDynamic, Nil).cast(tpe)
+        structuralCall(nme.selectDynamic, Nil, tpe).cast(tpe)
 
       case tpe: MethodType =>
         def isDependentMethod(tpe: Type): Boolean = tpe match {
@@ -237,7 +240,7 @@ trait Dynamic {
               fail(i"has a parameter type with an unstable erasure") :: Nil
             else
               TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos.map(clsOf(_))
-          structuralCall(nme.applyDynamic, classOfs).cast(tpe.finalResultType)
+          structuralCall(nme.applyDynamic, classOfs, tpe.finalResultType).cast(tpe.finalResultType)
         }
 
       // (@allanrenucci) I think everything below is dead code
