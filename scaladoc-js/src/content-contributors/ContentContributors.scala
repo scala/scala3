@@ -38,37 +38,42 @@ trait Commits extends js.Array[CommitTop]
 
 class ContentContributors:
   document.addEventListener("DOMContentLoaded", (e: Event) => {
-    val githubApiUrl = "https://api.github.com/repos/lampepfl/dotty/commits"
     val indenticonsUrl = "https://github.com/identicons"
-    val thisPageUrl = document.querySelector(".byline a").asInstanceOf[html.Anchor].href
-      .stripPrefix("https://github.com/lampepfl/dotty/edit/master/")
-    val url = s"$githubApiUrl?path=$thisPageUrl"
-    val request: Future[String] = Ajax.get(url).map(_.responseText)
-    request.onComplete {
-      case Success(json: String) =>
-        val res = JSON.parse(json).asInstanceOf[Commits]
-        val authors = res.map { commit =>
-          commit.author match
-            case null =>
-              FullAuthor(commit.commit.author.name, "", s"$indenticonsUrl/${commit.commit.author.name}.png")
-            case author =>
-              FullAuthor(author.login, author.html_url, author.avatar_url)
-        }.distinct
+    js.typeOf(Globals.githubContributorsUrl) match
+        case "undefined" =>
+          // don't do anything
+        case url =>
+          val request: Future[String] = Ajax.get(Globals.githubContributorsUrl).map(_.responseText)
+          request.onComplete {
+            case Success(json: String) =>
+              val res = JSON.parse(json).asInstanceOf[Commits]
+              val authors = res.map { commit =>
+                commit.author match
+                  case null =>
+                    FullAuthor(commit.commit.author.name, "", s"$indenticonsUrl/${commit.commit.author.name}.png")
+                  case author =>
+                    FullAuthor(author.login, author.html_url, author.avatar_url)
+              }.distinct
 
-        val div = document.getElementById("contributors")
-        authors.foreach { case FullAuthor(name, url, img) =>
-          val divN = document.createElement("div")
-          val imgN = document.createElement("img").asInstanceOf[html.Image]
-          imgN.src = img
-          val autN = document.createElement("a").asInstanceOf[html.Anchor]
-          autN.href = url
-          autN.text = name
-          divN.appendChild(imgN)
-          divN.appendChild(autN)
-          div.appendChild(divN)
-        }
-      case Failure(_) =>
-        println(s"Couldn't fetch contributors for $url")
-    }
+              val div = document.getElementById("documentation-contributors")
+
+              authors.foreach { case FullAuthor(name, url, img) =>
+                val divN = document.createElement("div")
+                val imgN = document.createElement("img").asInstanceOf[html.Image]
+                imgN.src = img
+                val autN = document.createElement("a").asInstanceOf[html.Anchor]
+                autN.href = url
+                autN.text = name
+                divN.appendChild(imgN)
+                divN.appendChild(autN)
+                div.appendChild(divN)
+              }
+
+              if authors.nonEmpty then
+                div.asInstanceOf[html.Div].parentElement.classList.toggle("hidden")
+
+            case Failure(_) =>
+              println(s"Couldn't fetch contributors for ${Globals.githubContributorsUrl}")
+          }
   })
 

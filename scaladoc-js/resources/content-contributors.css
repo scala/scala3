@@ -1,7 +1,11 @@
+.content-contributors.hidden {
+  display: none;
+}
 .content-contributors .contributors-container {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  padding-bottom: 25px;
 }
 .content-contributors .contributors-container div {
   margin: 5px;

@@ -3,7 +3,7 @@ layout: base
 ---
 <div id="content-wrapper">
   <div class="container">
-    <header id="site-header">
+    <div id="site-header">
       <div class="wrap">
         <nav class="navigation" role="menu">
           <ul class="navigation-menu">
@@ -28,8 +28,20 @@ layout: base
           </ul>
         </nav>
       </div>
-    </header>
+    </div>
     {{ content }}
+    <nav class="nav-wide-wrapper" aria-label="Page navigation">
+      {% if page.previous %}
+      <a rel="prev" href="{{ page.previous }}" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+          <i class="fa fa-angle-left"></i>
+      </a>
+      {% endif %}
+      {% if page.next %}
+      <a rel="next" href="{{ page.next }}" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+          <i class="fa fa-angle-right"></i>
+      </a>
+      {% endif %}
+    </nav>
   </div>
 </div>
 <script>

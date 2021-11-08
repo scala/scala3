@@ -3,26 +3,18 @@ layout: main
 ---
 <main>
   <header>
+    <h1>{{ page.title }}</h1>
     <div class="byline">
       <a href="{{ urls.editSource }}">
       <i class="far fa-edit"></i>
       Edit this page on GitHub
     </a>
     </div>
-    <h1>{{ page.title }}</h1>
   </header>
   {{ content }}
-  <div class="two-columns">
-    {% if page.previous %}
-      <a href="{{ page.previous }}">← <strong>previous</strong></a>
-    {% endif %}
-    {% if page.next %}
-      <a href="{{ page.next }}"><strong>next</strong> →</a>
-    {% endif %}
-  </div>
-  <div class="content-contributors">
-    <h3>Contributors to this page:</h3>
-    <div id="contributors" class="contributors-container"></div>
+  <div class="content-contributors hidden">
+    <h5>Contributors to this page:</h5>
+    <div id="documentation-contributors" class="contributors-container"></div>
   </div>
 </main>
 

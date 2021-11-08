@@ -18,7 +18,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: "Lato", sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   background: var(--body-bg);
 }
 body, button, input {
@@ -88,7 +88,10 @@ pre code, pre code.hljs {
 
 pre, .symbol.monospace {
   font-weight: 500;
-  font-size: 12px;
+  font-size: 14px;
+  padding: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 pre .hljs-comment {
   /* Fold comments in snippets */
@@ -176,7 +179,7 @@ th {
 
 /* Navigation */
 #sideMenu2 {
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
 
   height: 100%;
@@ -1036,6 +1039,7 @@ footer .socials {
 
 .navigation .navigation-menu {
   padding-left: 0px;
+  margin: 18px 0px;
 }
 .navigation .navigation-menu .navigation-menu-item {
   margin: 5px 0px;
@@ -1058,4 +1062,71 @@ footer .socials {
 .two-columns {
   display: flex;
   justify-content: space-between;
+}
+
+/* Nav Icons */
+
+.nav-chapters {
+  font-size: 2.5em;
+  text-align: center;
+  text-decoration: none;
+
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  margin: 0;
+  max-width: 150px;
+  min-width: 90px;
+
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+
+  transition: color 0.5s, background-color 0.5s;
+}
+
+.nav-chapters.previous, .nav-chapters.next {
+  color: var(--grey400);
+}
+
+.nav-chapters:hover {
+  text-decoration: none;
+  color: var(--grey300);
+  background-color: var(--grey900);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.nav-wrapper {
+  margin-top: 50px;
+  display: none;
+}
+
+.mobile-nav-chapters {
+  font-size: 2.5em;
+  text-align: center;
+  text-decoration: none;
+  width: 90px;
+  border-radius: 5px;
+  background-color: var(--sidebar-bg);
+}
+
+.previous {
+  float: left;
+  left: var(--side-width);
+}
+
+.next {
+  float: right;
+  right: 0;
+}
+
+@media only screen and (max-width: 1080px) {
+  .nav-wide-wrapper { display: none; }
+  .nav-wrapper { display: block; }
+}
+
+@media only screen and (max-width: 1380px) {
+  .sidebar-visible .nav-wide-wrapper { display: none; }
+  .sidebar-visible .nav-wrapper { display: block; }
 }
