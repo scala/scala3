@@ -215,10 +215,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         case testSource @ SeparateCompilationSource(_, dir, flags, outDir) =>
           testSource.compilationGroups.map { (group, files) =>
+            val flags1 = if group.target.isEmpty then flags else flags.and("-scala-release", group.target)
             if group.compiler.isEmpty then
-              compile(files, flags, suppressErrors, outDir)
+              compile(files, flags1, suppressErrors, outDir)
             else
-              compileWithOtherCompiler(group.compiler, files, flags, outDir)
+              compileWithOtherCompiler(group.compiler, files, flags1, outDir)
           }
       })
 
