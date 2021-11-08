@@ -11,6 +11,7 @@ object Main:
     DropdownHandler()
     Ux()
     ContentContributors()
+    TooltipNormalizer()
     common()
 
   /**

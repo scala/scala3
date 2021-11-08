@@ -77,7 +77,7 @@ code {
   padding: 0 .3em;
 }
 pre {
-  overflow: visible;
+  overflow-x: auto;
   scrollbar-width: thin;
   margin: 0px;
 }
