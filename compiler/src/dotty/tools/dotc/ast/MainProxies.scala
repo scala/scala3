@@ -52,7 +52,7 @@ object MainProxies {
     def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, Map[Int, Tree], Option[Comment])] = stats.flatMap {
       case stat: DefDef =>
         val sym = stat.symbol
-        sym.annotations.filter(_ matches defn.MainAnnot) match {
+        sym.annotations.filter(_.matches(defn.MainAnnot)) match {
           case Nil => Nil
           case _ :: Nil => (sym, defaultValues(scope, sym), stat.rawComment) :: Nil
           case mainAnnot :: others =>
