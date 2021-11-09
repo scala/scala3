@@ -1351,13 +1351,13 @@ trait Checking {
   /** check that annotation `annot` is applicable to symbol `sym` */
   def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean =
     !ctx.reporter.reportsErrorsFor {
-      val annotCls = Annotations.annotClass(annot)
+      val concreteAnnot = Annotations.ConcreteAnnotation(annot)
       val pos = annot.srcPos
-      if (annotCls == defn.MainAnnot) {
+      if (concreteAnnot.matches(defn.MainAnnot)) {
         if (!sym.isRealMethod)
-          report.error(em"@main annotation cannot be applied to $sym", pos)
+          report.error(em"main annotation cannot be applied to $sym", pos)
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
-          report.error(em"$sym cannot be a @main method since it cannot be accessed statically", pos)
+          report.error(em"$sym cannot be a main method since it cannot be accessed statically", pos)
       }
       // TODO: Add more checks here
     }

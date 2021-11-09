@@ -9,7 +9,7 @@ import Names.{Name, TermName}
 import Comments.Comment
 import NameKinds.DefaultGetterName
 
-/** Generate proxy classes for @main functions.
+/** Generate proxy classes for main functions.
  *  A function like
  *
  *     /**
@@ -56,7 +56,7 @@ object MainProxies {
           case Nil => Nil
           case _ :: Nil => (sym, defaultValues(scope, sym), stat.rawComment) :: Nil
           case mainAnnot :: others =>
-            report.error(s"method cannot have multiple @main annotations", mainAnnot.tree)
+            report.error(s"method cannot have multiple main annotations", mainAnnot.tree)
             Nil
         }
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
@@ -65,7 +65,7 @@ object MainProxies {
         Nil
     }
 
-    // Assuming that the top-level object was already generated, all @main methods will have a scope
+    // Assuming that the top-level object was already generated, all main methods will have a scope
     mainMethods(EmptyTree, stats).flatMap(mainProxy)
   }
 
@@ -82,7 +82,7 @@ object MainProxies {
 
     def createArgs(mt: MethodType, cmdName: TermName, idx: Int): List[(Tree, ValDef)] =
       if (mt.isImplicitMethod) {
-        report.error(s"@main method cannot have implicit parameters", pos)
+        report.error(s"main method cannot have implicit parameters", pos)
         Nil
       }
       else {
@@ -128,7 +128,7 @@ object MainProxies {
         mt.resType match {
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
-              report.error(s"varargs parameter of @main method must come last", pos)
+              report.error(s"varargs parameter of main method must come last", pos)
             valArgs ::: createArgs(restpe, cmdName, idx + valArgs.length)
           case _ =>
             valArgs
@@ -137,7 +137,7 @@ object MainProxies {
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
-      report.error(s"@main method is not statically accessible", pos)
+      report.error(s"main method is not statically accessible", pos)
     else {
       val cmd = ValDef(
         cmdName,
@@ -157,9 +157,9 @@ object MainProxies {
           args = argVals
           mainCall = Apply(mainCall, argRefs)
         case _: PolyType =>
-          report.error(s"@main method cannot have type parameters", pos)
+          report.error(s"main method cannot have type parameters", pos)
         case _ =>
-          report.error(s"@main can only annotate a method", pos)
+          report.error(s"main can only annotate a method", pos)
       }
 
       val run = Apply(Select(Ident(cmdName), defn.MainAnnotCommand_run.name), mainCall)

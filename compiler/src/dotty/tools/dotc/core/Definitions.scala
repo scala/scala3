@@ -853,7 +853,7 @@ class Definitions {
 
   @tu lazy val XMLTopScopeModule: Symbol = requiredModule("scala.xml.TopScope")
 
-  @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.main")
+  @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.annotation.MainAnnotation")
     @tu lazy val MainAnnot_command: Symbol = MainAnnot.requiredMethod("command")
     @tu lazy val MainAnnotCommand: ClassSymbol = MainAnnot.requiredClass("Command")
       @tu lazy val MainAnnotCommand_argGetter: Symbol = MainAnnotCommand.requiredMethod("argGetter")
