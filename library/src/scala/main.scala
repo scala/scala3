@@ -154,7 +154,7 @@ class main extends scala.annotation.MainAnnotation:
         argInfos += self.SimpleArgument(argName, argType, argDoc)
         getArgGetter(argName, error(s"missing argument for $argName"))
 
-      override def argGetterDefault[T](argName: String, argType: String, argDoc: String, defaultValue: T)(using p: ArgumentParser[T]): () => T =
+      override def argGetterDefault[T](argName: String, argType: String, argDoc: String, defaultValue: => T)(using p: ArgumentParser[T]): () => T =
         argInfos += self.OptionalArgument(argName, argType, argDoc, defaultValue)
         getArgGetter(argName, () => defaultValue)
 
