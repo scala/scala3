@@ -505,9 +505,21 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
+      val compilerDir = getCompiler(compiler).toString
+
+      def substituteClasspath(old: String): String =
+        old.split(JFile.pathSeparator).map { o =>
+          if JFile(o) == JFile(Properties.dottyLibrary) then s"$compilerDir/lib/scala3-library_3-${trueVersions(compiler)}.jar"
+          else o
+        }.mkString(JFile.pathSeparator)
+
+      val flags1 = flags.copy(defaultClassPath = substituteClasspath(flags.defaultClassPath))
+        .withClasspath(targetDir.getPath)
+        .and("-d", targetDir.getPath)
+
       val reporter = TestReporter.reporter(realStdout, ERROR) // TODO: do some reporting
 
-      val command = Array(getCompiler(compiler).toString + "/bin/scalac") ++ flags.and("-d", targetDir.getPath).all ++ files.map(_.getPath)
+      val command = Array(compilerDir + "/bin/scalac") ++ flags1.all ++ files.map(_.getPath)
       val process = Runtime.getRuntime.exec(command)
       val output = Source.fromInputStream(process.getErrorStream).mkString
       if process.waitFor() != 0 then
@@ -1400,7 +1412,7 @@ object ParallelTesting {
       dir
 
 
-  private val trueVersions = Map(
+  val trueVersions = Map(
     "3.0" -> "3.0.2",
     "3.1" -> "3.1.0"
   )
