@@ -91,7 +91,7 @@ class main extends scala.annotation.MainAnnotation:
       case _ =>
 
   override def command(args: Array[String], commandName: String, docComment: String): Command =
-    new Command(commandName, docComment):
+    new Command:
       /** A buffer of demanded arguments */
       private var argInfos = new mutable.ListBuffer[self.Argument]
 
@@ -121,10 +121,10 @@ class main extends scala.annotation.MainAnnotation:
           case None => error(s"invalid argument for $argName: $arg")
 
       private def usage(): Unit =
-        self.usage(this.commandName, argInfos.toSeq)
+        self.usage(commandName, argInfos.toSeq)
 
       private def explain(): Unit =
-        self.explain(this.commandName, this.docComment, argInfos.toSeq)
+        self.explain(commandName, docComment, argInfos.toSeq)
 
       private def indicesOfArg(argName: String): Seq[Int] =
         def allIndicesOf(s: String): Seq[Int] =

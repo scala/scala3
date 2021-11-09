@@ -24,7 +24,7 @@ trait MainAnnotation extends StaticAnnotation:
   def command(args: Array[String], commandName: String, docComment: String): Command
 
   /** A class representing a command to run */
-  abstract class Command(val commandName: String, val docComment: String):
+  trait Command:
 
     /** The getter for the next argument of type `T` */
     def argGetter[T](argName: String, argType: String, argDoc: String)(using fromString: ArgumentParser[T]): () => T
