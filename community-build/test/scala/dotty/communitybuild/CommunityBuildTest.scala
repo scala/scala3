@@ -91,6 +91,7 @@ class CommunityBuildTestC:
   @Test def sconfig = projects.sconfig.run()
   @Test def shapeless = projects.shapeless.run()
   @Test def sourcecode = projects.sourcecode.run()
+  @Test def specs2 = projects.specs2.run()
   @Test def stdLib213 = projects.stdLib213.run()
   @Test def ujson = projects.ujson.run()
   @Test def upickle = projects.upickle.run()
