@@ -215,4 +215,4 @@
 	url = https://github.com/dotty-staging/scala-java8-compat.git
 [submodule "community-build/community-projects/specs2"]
 	path = community-build/community-projects/specs2
-	url = https://github.com/etorreborre/specs2.git
+	url = https://github.com/dotty-staging/specs2.git
