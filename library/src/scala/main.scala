@@ -195,5 +195,5 @@ class main extends scala.annotation.MainAnnotation:
 end main
 
 object main:
-  case class ExitCode(val code: Int)
+  case class ExitCode(code: Int)
 end main
