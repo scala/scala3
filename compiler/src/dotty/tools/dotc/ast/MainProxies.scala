@@ -80,7 +80,7 @@ object MainProxies {
 
     inline def lit(any: Any): Literal = Literal(Constant(any))
 
-    def createArgs(mt: MethodType, cmdName: TermName, idx: Int): List[(Tree, ValDef)] =
+    def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef)] =
       if (mt.isImplicitMethod) {
         report.error(s"main method cannot have implicit parameters", pos)
         Nil
@@ -88,7 +88,7 @@ object MainProxies {
       else {
         var valArgs: List[(Tree, ValDef)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
           case ((formal, paramName), n) =>
-            val argName = mainArgsName ++ (idx + n).toString
+            val argName = mainArgsName ++ n.toString
 
             val isRepeated = formal.isRepeatedParam
             val hasDefaultValue = defaultValues.contains(n)
@@ -127,9 +127,8 @@ object MainProxies {
         }
         mt.resType match {
           case restpe: MethodType =>
-            if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
-              report.error(s"varargs parameter of main method must come last", pos)
-            valArgs ::: createArgs(restpe, cmdName, idx + valArgs.length)
+            report.error(s"main method cannot be curried", pos)
+            Nil
           case _ =>
             valArgs
         }
@@ -153,7 +152,7 @@ object MainProxies {
       mainFun.info match {
         case _: ExprType =>
         case mt: MethodType =>
-          val (argRefs, argVals) = createArgs(mt, cmdName, 0).unzip
+          val (argRefs, argVals) = createArgs(mt, cmdName).unzip
           args = argVals
           mainCall = Apply(mainCall, argRefs)
         case _: PolyType =>
