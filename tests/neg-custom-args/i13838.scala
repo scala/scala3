@@ -5,7 +5,9 @@ object Foo:
   given [A: Eq]: Eq[Foo[A]] = ???
 
 object FooT:
-  def liftF[F[_], A](fa: F[A]): F[Foo[A]] = map(fa)(???)  // error
+
+  def foo[X](using Order[X]): Unit = ???
+  foo  // error
 
   def map[F[_], A](ffa: F[Foo[A]])(f: A): Nothing = ???
 
