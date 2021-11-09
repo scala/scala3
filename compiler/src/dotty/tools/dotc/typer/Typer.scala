@@ -1755,15 +1755,22 @@ class Typer extends Namer
           untpd.ref(defn.Predef_undefined))
         .withFlags(Given | Final | Lazy | Erased)
         .withSpan(expr.span)
-    val caps =
-      for
-        case CaseDef(pat, guard, _) <- cases
-        if Feature.enabled(Feature.saferExceptions) && pat.tpe.widen.isCheckedException
-      yield
-        checkCatch(pat, guard)
-        makeCanThrow(pat.tpe.widen)
+    val caughtExceptions =
+      if Feature.enabled(Feature.saferExceptions) then
+        for
+          CaseDef(pat, guard, _) <- cases
+          tpe = pat.tpe.widen
+          if tpe.isCheckedException
+        yield
+          checkCatch(pat, guard)
+          tpe
+      else Seq.empty
 
-    caps.foldLeft(expr)((e, g) => untpd.Block(g :: Nil, e))
+    caughtExceptions match
+      case Nil => expr
+      case head :: tail =>
+        val capabilityProof = tail.foldLeft(head: Type)(OrType(_, _, true))
+        untpd.Block(makeCanThrow(capabilityProof), expr)
 
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {
     val expr2 :: cases2x = harmonic(harmonize, pt) {

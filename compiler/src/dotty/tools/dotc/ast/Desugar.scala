@@ -1265,6 +1265,8 @@ object desugar {
    *  $throws[... $throws[A, E1] ... , En].
    */
   def throws(tpt: Tree, op: Ident, excepts: Tree)(using Context): AppliedTypeTree = excepts match
+    case Parens(excepts1) =>
+      throws(tpt, op, excepts1)
     case InfixOp(l, bar @ Ident(tpnme.raw.BAR), r) =>
       throws(throws(tpt, op, l), bar, r)
     case e =>
