@@ -1,4 +1,3 @@
-Flag -indent set repeatedly
 -- [E040] Syntax Error: tests/neg/i22906.scala:6:20 --------------------------------------------------------------------
 6 |    {`1`: Int  =>  5} // error // error
   |                    ^

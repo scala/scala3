@@ -5,45 +5,54 @@ import reporting.StoreReporter
 import vulpix.TestConfiguration
 
 import core.Contexts.{Context, ContextBase}
+import dotty.tools.Useables.given
 import dotty.tools.dotc.config.Settings.*
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 import dotty.tools.dotc.config.ScalaSettingCategories.*
+import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.vulpix.TestConfiguration.mkClasspath
 import dotty.tools.io.PlainDirectory
 import dotty.tools.io.Directory
 import dotty.tools.dotc.config.ScalaVersion
 
-import java.nio.file._
+import java.nio.file.*, Files.*
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.{assertEquals, assertFalse, assertNotEquals, assertTrue}
+
 import scala.util.Using
 
-class SettingsTests {
+class SettingsTests:
 
   @Test def missingOutputDir: Unit =
-    val options = Array("-d", "not_here")
-    val reporter = Main.process(options, reporter = StoreReporter())
-    assertEquals(1, reporter.errorCount)
-    assertEquals("'not_here' does not exist or is not a directory or .jar file", reporter.allErrors.head.message)
+    val args = List("-d", "not_here")
+    val summary = ScalaSettings.processArguments(args, processAll = true)
+    assertEquals(1, summary.errors.size)
+    assertEquals("'not_here' does not exist or is not a directory or .jar file", summary.errors.head)
+
+  @Test def `skip enuf args`: Unit =
+    val args = List("-d", "not_here", "-Vprint")
+    val summary = ScalaSettings.processArguments(args, processAll = true)
+    assertEquals(2, summary.errors.size)
+    assertEquals("'not_here' does not exist or is not a directory or .jar file", summary.errors.head)
 
   @Test def jarOutput: Unit =
     val source = "tests/pos/Foo.scala"
-    val out = Paths.get("out/jaredFoo.jar").normalize
-    if (Files.exists(out)) Files.delete(out)
-    val options = Array("-classpath", TestConfiguration.basicClasspath, "-d", out.toString, source)
-    val reporter = Main.process(options)
-    assertEquals(0, reporter.errorCount)
+    val out = Paths.get("out/jarredFoo.jar").normalize
+    if Files.exists(out) then Files.delete(out)
+    val args = List("-Xmain-class", "Jarred", "-classpath", TestConfiguration.basicClasspath, "-d", out.toString, source)
+    val summary = ScalaSettings.processArguments(args, processAll = true)
+    assertEquals(0, summary.errors.size)
     assertTrue(Files.exists(out))
 
   @Test def `t8124 Don't crash on missing argument`: Unit =
-    val source    = Paths.get("tests/pos/Foo.scala").normalize
-    val outputDir = Paths.get("out/testSettings").normalize
-    if Files.notExists(outputDir) then Files.createDirectory(outputDir)
-    // -encoding takes an arg!
-    val options  = Array("-encoding", "-d", outputDir.toString, source.toString)
-    val reporter = Main.process(options, reporter = StoreReporter())
-    assertEquals(1, reporter.errorCount)
+    //val outputDir = Paths.get("out/testSettings").normalize
+    Using.resource(Files.createTempDirectory("testDir")): dir =>
+      //if Files.notExists(outputDir) then Files.createDirectory(outputDir)
+      val source = Paths.get("tests/pos/Foo.scala").normalize
+      val args  = List("-encoding", "-d", dir.toString, source.toString) // -encoding takes an arg!
+      val summary = ScalaSettings.processArguments(args, processAll = true)
+      assertEquals(1, summary.errors.size)
 
   @Test def acceptUnconstrained: Unit =
     object Settings extends SettingGroup:
@@ -51,7 +60,7 @@ class SettingsTests {
       val bar = IntSetting(RootSetting, "bar", "Bar", 0)
 
     val args = List("-foo", "b", "-bar", "1")
-    val summary = Settings.processArguments(args, true)
+    val summary = Settings.processArguments(args, processAll = true)
     assertTrue(summary.errors.isEmpty)
     withProcessedArgs(summary) {
       assertEquals("b", Settings.foo.value)
@@ -76,17 +85,17 @@ class SettingsTests {
 
   @Test def `dont crash on many options`: Unit =
     object Settings extends SettingGroup:
-      val option = BooleanSetting(RootSetting, "option", "Some option")
+      val option = StringSetting(RootSetting, "option", "opt", "Some option", "zero")
 
     val limit = 6000
-    val args = List.fill(limit)("-option")
+    val args = List.tabulate(limit)(i => if i % 2 == 0 then "-option" else i.toString)
     val summary = Settings.processArguments(args, processAll = true)
     assertTrue(summary.errors.isEmpty)
-    assertEquals(limit-1, summary.warnings.size)
-    assertTrue(summary.warnings.head.contains("repeatedly"))
+    assertEquals(limit/2 - 1, summary.warnings.size)          // should warn on all but first
+    assertTrue(summary.warnings.head.contains("was updated"))
     assertEquals(0, summary.arguments.size)
     withProcessedArgs(summary) {
-      assertTrue(Settings.option.value)
+      assertEquals("5999", Settings.option.value.toString)
     }
 
   @Test def `bad option warning consumes an arg`: Unit =
@@ -98,6 +107,7 @@ class SettingsTests {
     assertTrue(summary.errors.isEmpty)
     assertFalse(summary.warnings.isEmpty)
     assertEquals(2, summary.arguments.size)
+    assertEquals(List("dogs", "cats"), summary.arguments)
 
   @Test def `bad option settings throws`: Unit =
     object Settings extends SettingGroup:
@@ -110,7 +120,7 @@ class SettingsTests {
         false
 
     val default = Settings.defaultState
-    dotty.tools.assertThrows[IllegalArgumentException](checkMessage("found: not an option of type java.lang.String, required: Boolean")) {
+    assertThrows[IllegalArgumentException](checkMessage("found: not an option of type java.lang.String, required: Boolean")) {
       Settings.option.updateIn(default, "not an option")
     }
 
@@ -170,37 +180,112 @@ class SettingsTests {
       )
       assertEquals(expectedErrors, summary.errors)
     }
+  end validateChoices
 
   @Test def `Allow IntSetting's to be set with a colon`: Unit =
     object Settings extends SettingGroup:
       val foo = IntSetting(RootSetting, "foo", "foo", 80)
     import Settings._
 
-    val args = List("-foo:100")
-    val summary = processArguments(args, processAll = true)
-    assertTrue(s"Setting args errors:\n  ${summary.errors.take(5).mkString("\n  ")}", summary.errors.isEmpty)
-    withProcessedArgs(summary) {
-      assertEquals(100, foo.value)
+    def check(args: List[String]) = {
+      val summary = processArguments(args, processAll = true)
+      assertTrue(s"Setting args errors:\n  ${summary.errors.take(5).mkString("\n  ")}", summary.errors.isEmpty)
+      withProcessedArgs(summary) {
+        assertEquals(100, foo.value)
+      }
+    }
+    check(List("-foo:100"))
+    check(List("-foo", "100"))
+    assertThrows[AssertionError](_.getMessage.contains("missing argument for option -foo"))(check(List("-foo")))
+
+  @Test def `option fundamentals`: Unit =
+    object Settings extends SettingGroup:
+      val option = BooleanSetting(RootSetting, "option", "Some option")
+    val args = List("-option", "-option")
+    val summary = Settings.processArguments(args, processAll = true)
+    assertTrue("Multiple options is not an error", summary.errors.isEmpty)
+    assertTrue("Multiple options is not a warning if consistent", summary.warnings.isEmpty)
+
+  @Test def `boolean option fundamentals`: Unit =
+    object Settings extends SettingGroup:
+      val option = BooleanSetting(RootSetting, "option", "Some option")
+    val args = List("-option", "-option:false")
+    val summary = Settings.processArguments(args, processAll = true)
+    assertTrue("Multiple options is not an error", summary.errors.isEmpty)
+    assertFalse("Multiple conflicting options is a warning", summary.warnings.isEmpty)
+    assertTrue(summary.warnings.forall(_.contains("Conflicting")))
+
+  @Test def `string option may be consistent`: Unit =
+    object Settings extends SettingGroup:
+      val option = StringSetting(RootSetting, "option", "opt", "Some option", "none")
+    val args = List("-option:something", "-option:something")
+    val summary = Settings.processArguments(args, processAll = true)
+    assertTrue("Multiple options is not an error", summary.errors.isEmpty)
+    assertTrue("Multiple consistent options is not a warning", summary.warnings.isEmpty)
+
+  @Test def `string option must be consistent`: Unit =
+    object Settings extends SettingGroup:
+      val option = StringSetting(RootSetting, "option", "opt", "Some option", "none")
+    val args = List("-option:something", "-option:nothing")
+    val summary = Settings.processArguments(args, processAll = true)
+    assertTrue("Multiple options is not an error", summary.errors.isEmpty)
+    assertFalse("Multiple conflicting options is a warning", summary.warnings.isEmpty)
+    assertTrue(summary.warnings.forall(_.contains("updated")))
+
+  @Test def `int option also warns`: Unit =
+    object Settings extends SettingGroup:
+      val option = IntSetting(RootSetting, "option", "Some option", 42)
+    val args = List("-option:17", "-option:27")
+    val summary = Settings.processArguments(args, processAll = true)
+    assertTrue("Multiple options is not an error", summary.errors.isEmpty)
+    assertFalse("Multiple conflicting options is a warning", summary.warnings.isEmpty)
+    assertTrue(summary.warnings.forall(_.contains("updated")))
+
+  @Test def `dir option also warns`: Unit =
+    import java.nio.file.Paths
+    import io.PlainFile, PlainFile.*
+    val abc: PlainFile = Paths.get("a", "b", "c").toPlainFile
+    object Settings extends SettingGroup:
+      val option = OutputSetting(RootSetting, "option", "out", "A file", Paths.get("a", "b", "c").toPlainFile)
+    Using.resource(createTempDirectory("i13887")) { dir =>
+      val target = createDirectory(dir.resolve("x"))
+      val mistake = createDirectory(dir.resolve("y"))
+      val args = List("-option", target.toString, "-option", mistake.toString)
+      val summary = Settings.processArguments(args, processAll = true)
+      assertTrue("Multiple options is not an error", summary.errors.isEmpty)
+      assertFalse("Multiple conflicting options is a warning", summary.warnings.isEmpty)
+      assertTrue(summary.warnings.forall(_.contains("updated")))
     }
 
   @Test def `Set BooleanSettings correctly`: Unit =
     object Settings extends SettingGroup:
-      val foo = BooleanSetting(RootSetting, "foo", "foo", false)
-      val bar = BooleanSetting(RootSetting, "bar", "bar", true)
-      val baz = BooleanSetting(RootSetting, "baz", "baz", false)
-      val qux = BooleanSetting(RootSetting, "qux", "qux", false)
+      val foo = BooleanSetting(RootSetting, "foo", "foo", initialValue = false)
+      val bar = BooleanSetting(RootSetting, "bar", "bar", initialValue = true)
+      val baz = BooleanSetting(RootSetting, "baz", "baz", initialValue = false)
+      val qux = BooleanSetting(RootSetting, "qux", "qux", initialValue = false)
     import Settings._
 
     val args = List("-foo:true", "-bar:false", "-baz", "-qux:true", "-qux:false")
     val summary = processArguments(args, processAll = true)
     assertTrue(s"Setting args errors:\n  ${summary.errors.take(5).mkString("\n  ")}", summary.errors.isEmpty)
-    withProcessedArgs(summary) {
+    withProcessedArgs(summary):
       assertEquals(true, foo.value)
       assertEquals(false, bar.value)
       assertEquals(true, baz.value)
       assertEquals(false, qux.value)
-      assertEquals(List("Flag -qux set repeatedly"), summary.warnings)
-    }
+      assertEquals(List("Conflicting value for Boolean flag -qux"), summary.warnings)
+
+  @Test def `flag can't be set with separate arg`: Unit =
+    object Settings extends SettingGroup:
+      val foo = BooleanSetting(RootSetting, "foo", "foo", initialValue = false)
+    import Settings._
+
+    val args = List("-foo", "false")
+    val summary = processArguments(args, processAll = true)
+    withProcessedArgs(summary):
+      assertTrue("Nothing to see here", summary.errors.isEmpty)
+      assertTrue("Nothing to see here", summary.warnings.isEmpty)
+      assertEquals(true, foo.value)
 
   @Test def `Output setting is overriding existing jar`: Unit =
     val result = Using.resource(Files.createTempFile("myfile", ".jar")){ file =>
@@ -220,7 +305,7 @@ class SettingsTests {
 
     }(using Files.deleteIfExists(_))
 
-  @Test def `Output setting is respecting previous setting`: Unit =
+  @Test def `Output setting respects previous setting`: Unit =
     val result = Using.resources(
       Files.createTempFile("myfile", ".jar"), Files.createTempFile("myfile2", ".jar")
     ){ (file1, file2) =>
@@ -265,17 +350,18 @@ class SettingsTests {
 
     }(using Files.deleteIfExists(_))
 
-  @Test def `Arguments of flags are correctly parsed with both ":" and " " separating`: Unit =
+  @Test def `Arguments of options are correctly parsed with either ":" or " " separators`: Unit =
+    val Help = "" // i.e. help = Help
     object Settings extends SettingGroup:
       val booleanSetting = BooleanSetting(RootSetting, "booleanSetting", "booleanSetting", false)
-      val stringSetting  = StringSetting(RootSetting, "stringSetting", "stringSetting", "", "test")
-      val choiceSetting =  ChoiceSetting(RootSetting, "choiceSetting", "choiceSetting", "", List("a", "b"), "a")
-      val multiChoiceSetting=  MultiChoiceSetting(RootSetting, "multiChoiceSetting", "multiChoiceSetting", "", List("a", "b"), List(), legacyChoices = List("c"))
-      val multiChoiceHelpSetting=  MultiChoiceHelpSetting(RootSetting, "multiChoiceHelpSetting", "multiChoiceHelpSetting", "", List(ChoiceWithHelp("a", "a"), ChoiceWithHelp("b", "b")), List(), legacyChoices = List("c"))
+      val stringSetting  = StringSetting(RootSetting, "stringSetting", "stringSetting", Help, "test")
+      val choiceSetting =  ChoiceSetting(RootSetting, "choiceSetting", "choiceSetting", Help, List("a", "b"), "a")
+      val multiChoiceSetting = MultiChoiceSetting(RootSetting, "multiChoiceSetting", "multiChoiceSetting", Help, choices = List("a", "b"), legacyChoices = List("c"))
+      val multiChoiceHelpSetting=  MultiChoiceHelpSetting(RootSetting, "multiChoiceHelpSetting", "multiChoiceHelpSetting", Help, List(ChoiceWithHelp("a", "a"), ChoiceWithHelp("b", "b")), List(), legacyChoices = List("c"))
       val intSetting = IntSetting(RootSetting, "intSetting", "intSetting", 0)
       val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "intChoiceSetting", List(1,2,3), 1)
-      val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", "", List("a", "b"), List())
-      val outputSetting = OutputSetting(RootSetting, "outputSetting", "outputSetting", "", new PlainDirectory(Directory(".")))
+      val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", Help, default = List("a", "b"))
+      val outputSetting = OutputSetting(RootSetting, "outputSetting", "outputSetting", Help, new PlainDirectory(Directory(".")))
       val pathSetting = PathSetting(RootSetting, "pathSetting", "pathSetting", ".")
       val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
@@ -284,7 +370,7 @@ class SettingsTests {
     Using.resource(Files.createTempDirectory("testDir")) { dir =>
 
       val args = List(
-        List("-booleanSetting", "true"),
+        List("-booleanSetting", "true"), // `-b false` does not mean `-b:false`
         List("-stringSetting", "newTest"),
         List("-choiceSetting", "b"),
         List("-multiChoiceSetting", "a,b,c"),
@@ -299,7 +385,7 @@ class SettingsTests {
       )
 
       def testValues(summary: ArgsSummary) =
-        withProcessedArgs(summary) {
+        withProcessedArgs(summary):
           assertEquals(true, booleanSetting.value)
           assertEquals("newTest", stringSetting.value)
           assertEquals("b", choiceSetting.value)
@@ -312,7 +398,6 @@ class SettingsTests {
           assertEquals(dir.toString, pathSetting.value)
           assertEquals(List("parser", "typer"), phasesSetting.value)
           assertEquals(ScalaVersion.parse("1.0.0").get, versionSetting.value)
-        }
 
       val summaryColon = processArguments(args.map(_.mkString(":")), processAll = true)
       val summaryWhitespace = processArguments(args.flatten, processAll = true)
@@ -321,8 +406,9 @@ class SettingsTests {
 
     }(using Files.deleteIfExists(_))
 
+  // use the supplied summary for evaluating settings
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
 
+  // evaluate a setting using only a SettingsState (instead of a full-blown Context)
   extension [T](setting: Setting[T])
     private def value(using ss: SettingsState): T = setting.valueIn(ss)
-}
