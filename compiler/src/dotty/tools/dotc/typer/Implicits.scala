@@ -795,16 +795,8 @@ trait Implicits:
    */
   def inferView(from: Tree, to: Type)(using Context): SearchResult = {
     record("inferView")
-    val wfromtp = from.tpe.widen
-    if    to.isAny
-       || to.isAnyRef
-       || to.isRef(defn.UnitClass)
-       || wfromtp.isRef(defn.NothingClass)
-       || wfromtp.isRef(defn.NullClass)
-       || !ctx.mode.is(Mode.ImplicitsEnabled)
-       || from.isInstanceOf[Super]
-       || (wfromtp eq NoPrefix)
-    then NoMatchingImplicitsFailure
+    if !ctx.mode.is(Mode.ImplicitsEnabled) || from.isInstanceOf[Super] then
+      NoMatchingImplicitsFailure
     else {
       def adjust(to: Type) = to.stripTypeVar.widenExpr match {
         case SelectionProto(name, memberProto, compat, true) =>
@@ -1434,27 +1426,43 @@ trait Implicits:
       rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
     end searchImplicit
 
+    def isUnderSpecifiedArgument(tp: Type): Boolean =
+      tp.isRef(defn.NothingClass) || tp.isRef(defn.NullClass) || (tp eq NoPrefix)
+
+    private def isUnderspecified(tp: Type): Boolean = tp.stripTypeVar match
+      case tp: WildcardType =>
+        !tp.optBounds.exists || isUnderspecified(tp.optBounds.hiBound)
+      case tp: ViewProto =>
+        isUnderspecified(tp.resType)
+        || tp.resType.isRef(defn.UnitClass)
+        || isUnderSpecifiedArgument(tp.argType.widen)
+      case _ =>
+        tp.isAny || tp.isAnyRef
+
     private def searchImplicit(contextual: Boolean): SearchResult =
-      val eligible =
-        if contextual then ctx.implicits.eligible(wildProto)
-        else implicitScope(wildProto).eligible
-      searchImplicit(eligible, contextual) match
-        case result: SearchSuccess =>
-          result
-        case failure: SearchFailure =>
-          failure.reason match
-            case _: AmbiguousImplicits => failure
-            case reason =>
-              if contextual then
-                searchImplicit(contextual = false).recoverWith {
-                  failure2 => failure2.reason match
-                    case _: AmbiguousImplicits => failure2
-                    case _ =>
-                      reason match
-                        case (_: DivergingImplicit) => failure
-                        case _ => List(failure, failure2).maxBy(_.tree.treeSize)
-                }
-              else failure
+      if isUnderspecified(wildProto) then
+        NoMatchingImplicitsFailure
+      else
+        val eligible =
+          if contextual then ctx.implicits.eligible(wildProto)
+          else implicitScope(wildProto).eligible
+        searchImplicit(eligible, contextual) match
+          case result: SearchSuccess =>
+            result
+          case failure: SearchFailure =>
+            failure.reason match
+              case _: AmbiguousImplicits => failure
+              case reason =>
+                if contextual then
+                  searchImplicit(contextual = false).recoverWith {
+                    failure2 => failure2.reason match
+                      case _: AmbiguousImplicits => failure2
+                      case _ =>
+                        reason match
+                          case (_: DivergingImplicit) => failure
+                          case _ => List(failure, failure2).maxBy(_.tree.treeSize)
+                  }
+                else failure
     end searchImplicit
 
     /** Find a unique best implicit reference */
