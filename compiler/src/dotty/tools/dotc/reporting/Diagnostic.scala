@@ -87,6 +87,10 @@ object Diagnostic:
   extends ConditionalWarning(msg, pos), OriginWarning(origin):
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.deprecation
 
+  class ConfigurationWarning(msg: Message, pos: SourcePosition) extends ConditionalWarning(msg, pos):
+    def enablingOption(using Context): Setting[Boolean] = Setting.internal("-configuration", value = true)
+    override def isSummarizedConditional(using Context): Boolean = false
+
   class MigrationWarning(
     msg: Message,
     pos: SourcePosition
