@@ -57,12 +57,14 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
         // Let's gather the list of maps for each template with its in-order neighbours
         val newSettings: Seq[Map[String, Object]] = allTemplates.sliding(size = 3, step = 1).map {
           case prev :: mid :: next :: Nil =>
-            val currDri = siteContext.driFor(mid.get.file.toPath)
-            def dri(sibling: Option[LoadedTemplate]): Option[String] =
-              sibling.map(n => siteContext.driFor(n.file.toPath)).flatMap { dri =>
-                Some(pathToPage(currDri, dri)).filter(_ != UnresolvedLocationLink)
+            def link(sibling: Option[LoadedTemplate]): Option[String] =
+              def realPath(path: Path) = if Files.isDirectory(path) then Paths.get(path.toString, "index.html") else path
+              sibling.map { n =>
+                val realMidPath = realPath(mid.get.file.toPath)
+                val realSiblingPath = realPath(n.file.toPath)
+                realMidPath.relativize(realSiblingPath).toString.stripPrefix("../")
               }
-            List(dri(prev).map("previous" -> _), dri(next).map("next" -> _)).flatten.toMap
+            List(link(prev).map("previous" -> _), link(next).map("next" -> _)).flatten.toMap
         }.toSeq
 
         // We update the immutable tree of templates by walking in-order

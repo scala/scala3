@@ -33,7 +33,7 @@ trait SiteRenderer(using DocContext) extends Locations:
         case HashRegex(path, prefix) => (path, prefix)
         case _ => (str, "")
 
-      val res = ctx.driForLink(content.template.templateFile, path).filter(driExists)
+      val res = ctx.driForLink(content.template.file, path).filter(driExists)
       res.headOption.map(pathToPage(pageDri, _) + prefix)
 
     def processLocalLink(str: String): String =

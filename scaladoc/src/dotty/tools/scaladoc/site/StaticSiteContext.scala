@@ -90,7 +90,7 @@ class StaticSiteContext(
           val indexFiles = from.listFiles { file => file.getName == "index.md" || file.getName == "index.html" }
           indexes match
             case Nil => emptyTemplate(from, from.getName)
-            case Seq(loadedTemplate) => loadedTemplate.templateFile.copy(file = from)
+            case Seq(loadedTemplate) => loadedTemplate.templateFile
             case _ =>
               // TODO (https://github.com/lampepfl/scaladoc/issues/238): provide proper error handling
               val msg = s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}"
@@ -145,9 +145,9 @@ class StaticSiteContext(
             case t: TemplateName.YamlDefined => t
             case _: TemplateName.FilenameDefined => TemplateName.SidebarDefined(title)
             case t: TemplateName.SidebarDefined => t // should never reach this path
-          LoadedTemplate(template.copy(settings = template.settings + ("title" -> newTitle.name), file = file, title = newTitle), children, file)
+          LoadedTemplate(template.copy(settings = template.settings + ("title" -> newTitle.name), title = newTitle), children, file)
         case None =>
-          LoadedTemplate(template.copy(settings = template.settings, file = file), children, file)
+          LoadedTemplate(template.copy(settings = template.settings), children, file)
 
     case Sidebar.Category(optionTitle, optionIndexPath, nested) =>
       optionIndexPath match
@@ -157,7 +157,7 @@ class StaticSiteContext(
           val title = optionTitle match
             case Some(t) => t
             case None => "index"
-          val fakeFile = new File(new File(root, "docs"), title)
+          val fakeFile = Paths.get(root.toString, "docs", title, "index.html").toFile
           LoadedTemplate(
             args.defaultTemplate.fold(emptyTemplate(fakeFile, title))(layouts(_).copy(title = TemplateName.FilenameDefined(title))),
             nested.map(loadSidebarContent),
@@ -169,22 +169,25 @@ class StaticSiteContext(
     dir("docs").flatMap(_.listFiles()).flatMap(loadTemplate(_, isBlog = false))
       ++ dir("blog").flatMap(loadTemplate(_, isBlog = true))
 
-  def driForLink(template: TemplateFile, link: String): Seq[DRI] =
+  def driForLink(loadedTemplateFile: File, link: String): Seq[DRI] =
     val pathsDri: Option[Seq[DRI]] = Try {
       val baseFile =
-        if link.startsWith("/") then root.toPath.resolve(link.drop(1))
-        else template.file.toPath.getParent().resolve(link).normalize()
+        if
+          link.startsWith("/") then root.toPath.resolve(link.drop(1))
+        else
+          val path = loadedTemplateFile.toPath
+          (if Files.isDirectory(path) then path else path.getParent).resolve(link).normalize
 
       val fileName = baseFile.getFileName.toString
       val baseFileName = if fileName.endsWith(".md")
           then fileName.stripSuffix(".md")
           else fileName.stripSuffix(".html")
-
-      Seq(
+      (Seq(
         Some(baseFile.resolveSibling(baseFileName + ".html")),
-        Some(baseFile.resolveSibling(baseFileName + ".md")),
+        Some(baseFile.resolveSibling(baseFileName + ".md"))
+      ).flatten.filter(Files.exists(_)) ++ Seq(
         Option.when(baseFileName == "index")(baseFile.getParent)
-      ).flatten.filter(Files.exists(_)).map(driFor)
+      ).flatten).map(driFor)
     }.toOption.filter(_.nonEmpty)
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 
