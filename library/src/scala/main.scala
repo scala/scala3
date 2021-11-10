@@ -77,7 +77,7 @@ class main extends scala.annotation.MainAnnotation:
         }
 
         if (arg.doc.nonEmpty) {
-          val shiftedDoc = arg.doc.split("\n").map(" " * argDocShift + _).mkString("\n")
+          val shiftedDoc = arg.doc.split("\n").nn.map(" " * argDocShift + _).mkString("\n")
           argDoc.append("\n").append(shiftedDoc)
         }
 
