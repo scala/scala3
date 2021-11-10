@@ -24,8 +24,9 @@ object NameTags extends TastyFormat.NameTags {
 
   final val ADAPTEDCLOSURE = 31 // Used in Erasure to adapt closures over primitive types.
 
-  final val IMPLMETH = 32       // Used to define methods in implementation classes
-                                // (can probably be removed).
+  final val DIRECT = 32         // Used to define implementations of methods with
+                                // erased context function results that can override some
+                                // other method.
 
   final val PARAMACC = 33       // Used for a private parameter alias
 
@@ -48,7 +49,7 @@ object NameTags extends TastyFormat.NameTags {
     case INITIALIZER => "INITIALIZER"
     case FIELD => "FIELD"
     case EXTMETH => "EXTMETH"
-    case IMPLMETH => "IMPLMETH"
+    case DIRECT => "DIRECT"
     case PARAMACC => "PARAMACC"
     case ADAPTEDCLOSURE => "ADAPTEDCLOSURE"
     case OBJECTCLASS => "OBJECTCLASS"

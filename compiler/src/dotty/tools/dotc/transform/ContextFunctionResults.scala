@@ -8,12 +8,16 @@ import StdNames.nme
 import ast.untpd
 import ast.tpd._
 import config.Config
+import Decorators.*
 
 object ContextFunctionResults:
 
   /** Annotate methods that have context function result types directly matched by context
    *  closures on their right-hand side. Parameters to such closures will be integrated
    *  as additional method parameters in erasure.
+   *
+   *  A @ContextResultCount(n) annotation means that the method's result type
+   *  consists of a string of `n` nested context closures.
    */
   def annotateContextResults(mdef: DefDef)(using Context): Unit =
     def contextResultCount(rhs: Tree, tp: Type): Int = tp match
@@ -49,6 +53,15 @@ object ContextFunctionResults:
         val ast.Trees.Literal(Constant(crCount: Int)) :: Nil = annot.arguments: @unchecked
         crCount
       case none => 0
+
+  /** True iff `ContextResultCount` is not zero and all context functions in the result
+   *  type are erased.
+   */
+  def contextResultsAreErased(sym: Symbol)(using Context): Boolean =
+    def allErased(tp: Type): Boolean = tp.dealias match
+      case defn.ContextFunctionType(_, resTpe, isErased) => isErased && allErased(resTpe)
+      case _ => true
+    contextResultCount(sym) > 0 && allErased(sym.info.finalResultType)
 
   /** Turn the first `crCount` context function types in the result type of `tp`
    *  into the curried method types.
@@ -86,33 +99,13 @@ object ContextFunctionResults:
     normalParamCount(sym.info)
   end totalParamCount
 
-  /** The rightmost context function type in the result type of `meth`
-   *  that represents `paramCount` curried, non-erased parameters that
-   *  are included in the `contextResultCount` of `meth`.
-   *  Example:
-   *
-   *  Say we have `def m(x: A): B ?=> (C1, C2, C3) ?=> D ?=> E ?=> F`,
-   *  paramCount == 4, and the contextResultCount of `m` is 3.
-   *  Then we return the type `(C1, C2, C3) ?=> D ?=> E ?=> F`, since this
-   *  type covers the 4 rightmost parameters C1, C2, C3 and D before the
-   *  contextResultCount runs out at E ?=> F.
-   *  Erased parameters are ignored; they contribute nothing to the
-   *  parameter count.
-   */
-  def contextFunctionResultTypeCovering(meth: Symbol, paramCount: Int)(using Context) =
-    atPhase(erasurePhase) {
-      // Recursive instances return pairs of context types and the
-      // # of parameters they represent.
-      def missingCR(tp: Type, crCount: Int): (Type, Int) =
-        if crCount == 0 then (tp, 0)
-        else
-          val defn.ContextFunctionType(formals, resTpe, isErased) = tp: @unchecked
-          val result @ (rt, nparams) = missingCR(resTpe, crCount - 1)
-          assert(nparams <= paramCount)
-          if nparams == paramCount || isErased then result
-          else (tp, nparams + formals.length)
-      missingCR(meth.info.finalResultType, contextResultCount(meth))._1
-    }
+  /** The `depth` levels nested context function type in the result type of `meth` */
+  def contextFunctionResultTypeAfter(meth: Symbol, depth: Int)(using Context) =
+    def recur(tp: Type, n: Int): Type =
+      if n == 0 then tp
+      else tp match
+        case defn.ContextFunctionType(_, resTpe, _) => recur(resTpe, n - 1)
+    recur(meth.info.finalResultType, depth)
 
   /** Should selection `tree` be eliminated since it refers to an `apply`
    *  node of a context function type whose parameters will end up being
