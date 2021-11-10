@@ -176,13 +176,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   ) extends TestSource {
     case class Group(ordinal: Int, compiler: String, target: String)
 
-    def compilationGroups: List[(Group, Array[JFile])] =
-      val Name = """[^_]*((?:_.*)*)\.\w+""".r
+    lazy val compilationGroups: List[(Group, Array[JFile])] =
       val Target = """t([\d\.]+)""".r
       val Compiler = """v([\d\.]+)""".r
       val Ordinal = """(\d+)""".r
       def groupFor(file: JFile): Group =
-        val Name(annotPart) = file.getName
+        val annotPart = file.getName.dropWhile(_ != '_').stripSuffix(".scala").stripSuffix(".java")
         val annots = annotPart.split("_")
         val ordinal = annots.collectFirst { case Ordinal(n) => n.toInt }.getOrElse(Int.MinValue)
         val target = annots.collectFirst { case Target(t) => t }.getOrElse("")
@@ -190,6 +189,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         Group(ordinal, compiler, target)
 
       dir.listFiles
+        .filter(isSourceFile)
         .groupBy(groupFor)
         .toList
         .sortBy { (g, _) => (g.ordinal, g.compiler, g.target) }
@@ -1255,14 +1255,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val (dirs, files) = compilationTargets(sourceDir, fileFilter)
 
     val isPicklerTest = flags.options.contains("-Ytest-pickler")
-    def ignoreDir(dir: JFile): Boolean = {
+    def picklerDirFilter(source: SeparateCompilationSource): Boolean = {
       // Pickler tests stop after pickler not producing class/tasty files. The second part of the compilation
       // will not be able to compile due to the missing artifacts from the first part.
-      isPicklerTest && dir.listFiles().exists(file => file.getName.endsWith("_2.scala") || file.getName.endsWith("_2.java"))
+      !isPicklerTest || source.compilationGroups.length == 1
     }
     val targets =
       files.map(f => JointCompilationSource(testGroup.name, Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
-      dirs.collect { case dir if !ignoreDir(dir) => SeparateCompilationSource(testGroup.name, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)) }
+      dirs.map { dir => SeparateCompilationSource(testGroup.name, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)) }.filter(picklerDirFilter)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
