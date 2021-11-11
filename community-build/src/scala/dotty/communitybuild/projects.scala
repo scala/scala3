@@ -483,7 +483,7 @@ object projects:
 
   lazy val endpoints4s = SbtCommunityProject(
     project        = "endpoints4s",
-    sbtTestCommand = "json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile",
+    sbtTestCommand = "compile;json-schemaJVM/test;json-schemaJS/test;json-schema-playjsonJVM/test;json-schema-playjsonJS/test;json-schema-genericJVM/test;json-schema-genericJS/test;algebraJVM/test;algebraJS/test",
     sbtDocCommand = ";json-schemaJVM/doc ;algebraJVM/doc; openapiJVM/doc; http4s-server/doc ;http4s-client/doc ;play-server/doc ;play-client/doc ;akka-http-server/doc ;akka-http-client/doc",
   )
 
