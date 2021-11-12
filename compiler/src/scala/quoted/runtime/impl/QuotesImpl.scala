@@ -305,6 +305,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val vdefs = terms.map(term => tpd.SyntheticValDef("x".toTermName, term)(using ctx1))
         val refs = vdefs.map(vdef => tpd.ref(vdef.symbol).asInstanceOf[Ref])
         Block(vdefs, body(refs))
+
+      def let(owner: Symbol, symbol: Symbol, rhs: Term)(body: Ref => Term): Term =
+        val vdef = apply(symbol, Some(rhs)).changeOwner(owner)
+        val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
+        Block(List(vdef), body(ref))
     end ValDef
 
     given ValDefMethods: ValDefMethods with

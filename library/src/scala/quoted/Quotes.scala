@@ -607,6 +607,41 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Creates a block `{ val x1 = <terms(0): Term>; ...; val xn = <terms(n-1): Term>; <body(List(x1, ..., xn)): Term> }` */
       def let(owner: Symbol, terms: List[Term])(body: List[Ref] => Term): Term
+
+      /**
+       * Creates a block `{ val x = <rhs: Term>; <body(x): Term> }`
+       * with the given symbol for the `val` (allowing to specify `Flags`).
+       *
+       * Usage:
+       * ```scala sc:nocompile
+       * val tpe = TypeRepr.of[String]
+       * 
+       * val valSym = Symbol.newVal(
+       *   Symbol.spliceOwner,
+       *   "myValName",
+       *   tpe,
+       *   Flags.Lazy,
+       *   Symbol.noSymbol
+       * )
+       * 
+       * ValDef.let(Symbol.spliceOwner, valSym, Expr("foo")) { v =>
+       *   '{ println(v) }.asTerm
+       * }
+       * ```
+       *
+       * In this way, it's possible to create an `Ref` to the `val` 
+       * before its definition (required for recursive/lazy definitions).
+       * 
+       * ```scala sc:nocompile
+       * // After `tpe` and `valSym` but before `let` call
+       * val earlyRef = Typed(Ref(valSym), Inferred(tpe))
+       * ```
+       *
+       * @param symbol the `val` symbol
+       * @see `Symbol.newVal`
+       */
+      @experimental
+      def let(owner: Symbol, symbol: Symbol, rhs: Term)(body: Ref => Term): Term
     }
 
     /** Makes extension methods on `ValDef` available without any imports */
