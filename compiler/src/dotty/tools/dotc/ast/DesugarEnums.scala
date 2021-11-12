@@ -8,7 +8,6 @@ import Symbols._, StdNames._, Trees._
 import Decorators._
 import util.{Property, SourceFile}
 import typer.ErrorReporting._
-import typer.Namer
 import transform.SyntheticMembers.ExtendsSingletonMirror
 
 import scala.annotation.internal.sharable
@@ -180,13 +179,12 @@ object DesugarEnums {
    *   }
    */
   private def enumValueCreator(using Context) = {
-    val fieldMethods = if isJavaEnum then Nil else ordinalMeth(Ident(nme.ordinalDollar_)) :: Nil
     val creator = New(Template(
       constr = emptyConstructor,
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = fieldMethods
+      body = Nil
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW,
         List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
@@ -271,34 +269,6 @@ object DesugarEnums {
   def param(name: TermName, typ: Type)(using Context): ValDef = param(name, TypeTree(typ))
   def param(name: TermName, tpt: Tree)(using Context): ValDef = ValDef(name, tpt, EmptyTree).withFlags(Param)
 
-  private def isJavaEnum(using Context): Boolean =
-    val enumCls = enumClass
-    // Is `tree` a parent constructor application referring to class `java.Enum`?
-    // Strictly speaking we should not be allowed to ask that here since it involves
-    // typing, which comes after desugaring. We certainly are not allowed to complete
-    // `enumCls` since that completion would see an empty companion object, e.g. in i13554.scala.
-    // So what we do instead try to keep the damage minimal: We look whether
-    // the first parent is named `Enum`, and if yes typecheck that. It's an ugly hack.
-    // Maybe it would be better if we generated code depending on `isJavaEnum` only
-    // on completion instead at desugaring. But that would make the desugar/namer interface
-    // more complex.
-    def isJEnum(tree: untpd.Tree): Boolean = tree match
-      case Apply(fn, _) => isJEnum(fn)
-      case TypeApply(fn, _) => isJEnum(fn)
-      case Select(nu, nme.CONSTRUCTOR) => isJEnum(nu)
-      case New(tpt) => isJEnum(tpt)
-      case AppliedTypeTree(tycon, _) => isJEnum(tycon)
-      case ref: untpd.RefTree if ref.name == tpnme.Enum =>
-        ctx.typer.typed(ref).symbol == defn.JavaEnumClass
-      case _ => false
-    enumCls.infoOrCompleter match
-      case completer: Namer#Completer =>
-        completer.original match
-          case TypeDef(_, Template(_, sc :: _, self, _)) => isJEnum(sc)
-          case _ => false
-      case _ =>
-        enumCls.derivesFrom(defn.JavaEnumClass)
-
   def ordinalMeth(body: Tree)(using Context): DefDef =
     DefDef(nme.ordinal, Nil, TypeTree(defn.IntType), body).withAddedFlags(Synthetic)
 
@@ -317,10 +287,8 @@ object DesugarEnums {
       expandSimpleEnumCase(name, mods, definesLookups, span)
     else {
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Object, definesLookups)
-      val impl1 = cpy.Template(impl)(
-        parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
-        body = if isJavaEnum then Nil else ordinalMethLit(tag) :: Nil
-      ).withAttachment(ExtendsSingletonMirror, ())
+      val impl1 = cpy.Template(impl)(parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue), body = Nil)
+        .withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)
     }
