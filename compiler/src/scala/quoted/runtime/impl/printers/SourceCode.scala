@@ -3,6 +3,8 @@ package runtime.impl.printers
 
 import scala.annotation.switch
 
+import dotty.tools.dotc.core
+
 /** Printer for fully elaborated representation of the source code */
 object SourceCode {
 
@@ -1233,6 +1235,9 @@ object SourceCode {
         printType(pat)
         this += " => "
         printType(rhs)
+
+      case tv: core.Types.TypeVar =>
+        this += tv.toString()
 
       case _ =>
         throw new MatchError(tpe.show(using Printer.TypeReprStructure))

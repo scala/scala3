@@ -1,6 +1,8 @@
 package scala.quoted
 package runtime.impl.printers
 
+import dotty.tools.dotc.core.Types
+
 import scala.quoted._
 
 object Extractors {
@@ -240,6 +242,8 @@ object Extractors {
         this += "NoPrefix()"
       case MatchCase(pat, rhs) =>
         this += "MatchCase(" += pat += ", " += rhs += ")"
+      case tv: Types.TypeVar =>
+        this += tv.toString()
     }
 
     def visitSignature(sig: Signature): this.type = {
