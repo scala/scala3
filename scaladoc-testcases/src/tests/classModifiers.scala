@@ -11,3 +11,5 @@ sealed case class D(c: String)
 final case class E(c: String)
 
 open class F
+
+implicit class Foo(i: Int)
