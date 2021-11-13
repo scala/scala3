@@ -114,13 +114,19 @@ class BootstrappedOnlyCompilationTests {
 
   // Run tests -----------------------------------------------------------------
 
+  /**
+   * To run specifically those tests in SBT:
+   * `scala3-compiler-bootstrapped/testOnly -- dotty.tools.dotc.BootstrappedOnlyCompilationTests.runMacros`
+   */
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
+
     aggregateTests(
-      compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros")),
+      compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"))/*,
       compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
       compileFilesInDir("tests/run-custom-args/Yread-comments", defaultOptions and "-Yread-docs"),
       compileFilesInDir("tests/run-custom-args/run-macros-erased", defaultOptions.and("-language:experimental.erasedDefinitions").and("-Xcheck-macros")),
+                                                                                  */
     )
   }.checkRuns()
 
