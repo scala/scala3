@@ -44,6 +44,9 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   override def prepareForApply(tree: Apply)(using Context): Context =
     liftingCtx(true)
 
+  override def prepareForDefDef(tree: DefDef)(using Context): Context =
+    liftingCtx(false)
+
   override def prepareForValDef(tree: ValDef)(using Context): Context =
     if !tree.symbol.exists
        || tree.symbol.isSelfSym
