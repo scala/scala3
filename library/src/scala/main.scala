@@ -13,7 +13,7 @@ import collection.mutable
 
 /** An annotation that designates a main function
  */
-class main extends scala.annotation.MainAnnotation:
+final class main extends scala.annotation.MainAnnotation:
   self =>
   import main._
 
