@@ -36,7 +36,6 @@ import scala.annotation.internal.sharable
 import config.Printers.typr
 
 object Symbols {
-
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
 
   /** Tree attachment containing the identifiers in a tree as a sorted array */
