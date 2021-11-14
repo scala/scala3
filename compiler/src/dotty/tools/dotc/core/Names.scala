@@ -245,7 +245,7 @@ object Names {
       myMangledString
     }
 
-    /** If this a qualified name, split it into underlyng, last part, and separator
+    /** If this a qualified name, split it into underlying, last part, and separator
      *  Otherwise return an empty name, the name itself, and "")
      */
     def split: (TermName, TermName, String)
