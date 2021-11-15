@@ -122,13 +122,13 @@ final class main extends scala.annotation.MainAnnotation:
         val indices = allIndicesOf(s"--$argName")
         indices.filter(_ >= 0)
 
-      private def getArgGetter[T](argName: String, defaultGetter: => () => T)(using p: ArgumentParser[T]): () => T =
+      private def getArgGetter[T](argName: String, getDefaultGetter: () => () => T)(using p: ArgumentParser[T]): () => T =
         indicesOfArg(argName) match {
           case s @ (Seq() | Seq(_)) =>
             val argOpt = s.headOption.map(idx => argAt(idx + 1)).getOrElse(nextPositionalArg())
             argOpt match {
               case Some(arg) => convert(argName, arg, p)
-              case None => defaultGetter
+              case None => getDefaultGetter()
             }
           case s =>
             val multValues = s.flatMap(idx => argAt(idx + 1))
@@ -143,11 +143,11 @@ final class main extends scala.annotation.MainAnnotation:
 
       override def argGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => T =
         registerArg(argName, argType, argDoc, ArgumentKind.SimpleArgument)
-        getArgGetter(argName, error(s"missing argument for $argName"))
+        getArgGetter(argName, () => error(s"missing argument for $argName"))
 
       override def argGetterDefault[T](argName: String, argType: String, argDoc: String, defaultValue: => T)(using p: ArgumentParser[T]): () => T =
         registerArg(argName, argType, argDoc, ArgumentKind.OptionalArgument)
-        getArgGetter(argName, () => defaultValue)
+        getArgGetter(argName, () => () => defaultValue)
 
       override def argsGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => Seq[T] =
         registerArg(argName, argType, argDoc, ArgumentKind.VarArgument)
