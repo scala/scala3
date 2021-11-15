@@ -68,6 +68,10 @@ i8182.scala
 # local lifted value in annotation argument has different position after pickling
 i2797a
 
+# Late instantiation of type variable in tryInsertImplicitOnQualifier
+# allows to simplify a type that was already computed
+i13842.scala
+
 # GADT cast applied to singleton type difference
 i4176-gadt.scala
 
