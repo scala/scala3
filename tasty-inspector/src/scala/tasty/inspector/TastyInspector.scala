@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.fromtasty._
+import dotty.tools.dotc.quoted.QuotesCache
 import dotty.tools.dotc.util.ClasspathFromClassloader
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.unsupported
@@ -64,7 +65,11 @@ object TastyInspector:
     class TastyInspectorPhase extends Phase:
       override def phaseName: String = "tastyInspector"
 
-      override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+      override def runOn(units: List[CompilationUnit])(using ctx0: Context): List[CompilationUnit] =
+        val ctx = QuotesCache.init(ctx0.fresh)
+        runOnImpl(units)(using ctx)
+
+      private def runOnImpl(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
         val quotesImpl = QuotesImpl()
         class TastyImpl(val path: String, val ast: quotesImpl.reflect.Tree) extends Tasty[quotesImpl.type] {
           val quotes = quotesImpl
