@@ -5,7 +5,7 @@ class MyNumber(val value: Int) {
 }
 
 given FromString[MyNumber] with
-  def fromString(s: String): MyNumber = MyNumber(summon[FromString[Int]].fromString(s))
+  override def fromString(s: String): MyNumber = MyNumber(summon[FromString[Int]].fromString(s))
 
 object myProgram:
 
