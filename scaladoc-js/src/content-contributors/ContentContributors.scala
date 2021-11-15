@@ -54,24 +54,23 @@ class ContentContributors:
                   case author =>
                     FullAuthor(author.login, author.html_url, author.avatar_url)
               }.distinct
+              val maybeDiv = Option(document.getElementById("documentation-contributors"))
+              maybeDiv.foreach { div =>
+                authors.foreach { case FullAuthor(name, url, img) =>
+                  val divN = document.createElement("div")
+                  val imgN = document.createElement("img").asInstanceOf[html.Image]
+                  imgN.src = img
+                  val autN = document.createElement("a").asInstanceOf[html.Anchor]
+                  autN.href = url
+                  autN.text = name
+                  divN.appendChild(imgN)
+                  divN.appendChild(autN)
+                  div.appendChild(divN)
+                }
 
-              val div = document.getElementById("documentation-contributors")
-
-              authors.foreach { case FullAuthor(name, url, img) =>
-                val divN = document.createElement("div")
-                val imgN = document.createElement("img").asInstanceOf[html.Image]
-                imgN.src = img
-                val autN = document.createElement("a").asInstanceOf[html.Anchor]
-                autN.href = url
-                autN.text = name
-                divN.appendChild(imgN)
-                divN.appendChild(autN)
-                div.appendChild(divN)
+                if authors.nonEmpty then
+                  div.asInstanceOf[html.Div].parentElement.classList.toggle("hidden")
               }
-
-              if authors.nonEmpty then
-                div.asInstanceOf[html.Div].parentElement.classList.toggle("hidden")
-
             case Failure(_) =>
               println(s"Couldn't fetch contributors for ${Globals.githubContributorsUrl}")
           }

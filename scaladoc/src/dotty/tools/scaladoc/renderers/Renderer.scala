@@ -56,6 +56,8 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
         // Let's gather the list of maps for each template with its in-order neighbours
         val newSettings: Seq[Map[String, Object]] = allTemplates.sliding(size = 3, step = 1).map {
+          case None :: None :: Nil =>
+            Map.empty
           case prev :: mid :: next :: Nil =>
             def link(sibling: Option[LoadedTemplate]): Option[String] =
               def realPath(path: Path) = if Files.isDirectory(path) then Paths.get(path.toString, "index.html") else path
@@ -74,7 +76,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
             updateSettings(template, aS)
           }.unzip
           val newLoadedTemplate = template.copy(
-            templateFile = template.templateFile.copy(settings = template.templateFile.settings.updated("page", head ++ template.templateFile.settings("page").asInstanceOf[Map[String, Object]])),
+            templateFile = template.templateFile.copy(settings = template.templateFile.settings.updated("page", head ++ template.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]])),
             children = newChildren.drop(1) // We drop trailing null from the first `scanLeft` output collection
           )
 

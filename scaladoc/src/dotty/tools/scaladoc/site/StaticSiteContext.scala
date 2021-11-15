@@ -76,10 +76,10 @@ class StaticSiteContext(
       t +: t.children.flatMap(doFlatten)
     val mainFiles = templates.flatMap(doFlatten)
     mainFiles.flatMap { loadedTemplate =>
-      loadedTemplate.templateFile.settings.apply("page").asInstanceOf[Map[String, Object]].get("redirectFrom").map { case redirectFrom: String =>
+      loadedTemplate.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]].get("redirectFrom").map { case redirectFrom: String =>
         val fakeFile = new File(docsPath.toFile, redirectFrom)
         val redirectTo = fakeFile.toPath.getParent.relativize(loadedTemplate.file.toPath).toString.stripSuffix(".md") + ".html"
-        LoadedTemplate(layouts("redirectFrom").copy(settings = layouts("redirectFrom").settings ++ Map("redirectTo" -> redirectTo)), List.empty, fakeFile)
+        LoadedTemplate(layouts("redirect").copy(settings = layouts("redirect").settings ++ Map("redirectTo" -> redirectTo)), List.empty, fakeFile)
       }
     }
   }
@@ -103,7 +103,7 @@ class StaticSiteContext(
           val indexFiles = from.listFiles { file => file.getName == "index.md" || file.getName == "index.html" }
           indexes match
             case Nil => emptyTemplate(from, from.getName)
-            case Seq(loadedTemplate) => loadedTemplate.templateFile
+            case Seq(loadedTemplate) => loadedTemplate.templateFile.copy(file = from)
             case _ =>
               // TODO (https://github.com/lampepfl/scaladoc/issues/238): provide proper error handling
               val msg = s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}"
