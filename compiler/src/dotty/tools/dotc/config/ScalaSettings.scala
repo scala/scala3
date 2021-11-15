@@ -101,7 +101,7 @@ trait CommonScalaSettings:
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.", aliases = List("--no-warnings"))
 
   val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", ScalaSettings.supportedReleaseVersions, "", aliases = List("--release"))
-  val scalaRelease: Setting[String] = ChoiceSetting("-scala-release", "release", "Emit TASTy files that can be consumed by specified version of the compiler.", List("3.0", "3.1"), "3.1", aliases = List("--scala-release"))
+  val scalaRelease: Setting[ScalaVersion] = VersionSetting("-scala-release", "Emit TASTy files that can be consumed by specified version of the compiler.")
   val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.", aliases = List("--deprecation"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain"))

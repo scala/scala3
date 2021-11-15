@@ -39,6 +39,7 @@ import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 import dotty.tools.tasty.TastyFormat
+import dotty.tools.dotc.config.{ NoScalaVersion, SpecificScalaVersion, AnyScalaVersion }
 
 object Contexts {
 
@@ -485,10 +486,11 @@ object Contexts {
 
     def tastyVersion: (Int, Int, Int) =
       base.settings.scalaRelease.value match
-        case "" =>
+        case NoScalaVersion =>
           import TastyFormat.*
           (MajorVersion, MinorVersion, ExperimentalVersion)
-        case s"$maj.$min" => (maj.toInt + 25, min.toInt, 0)
+        case SpecificScalaVersion(maj, min, _, _) => (maj.toInt + 25, min.toInt, 0)
+        case AnyScalaVersion => (28, 0, 0) // 3.0
 
     /** Is the debug option set? */
     def debug: Boolean = base.settings.Ydebug.value
