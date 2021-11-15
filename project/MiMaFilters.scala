@@ -9,6 +9,8 @@ object MiMaFilters {
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.append"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.typeParams"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.typeParams"),
 
     // Should have been added in 3.1.0
     // These are only allowed on imports and therefore should not be present in binaries emitted before
