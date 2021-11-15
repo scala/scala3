@@ -21,10 +21,12 @@ trait MainAnnotation extends StaticAnnotation:
   type MainResultType
 
   /** A new command with arguments from `args` */
-  def command(args: Array[String], commandName: String, docComment: String): Command
+  def command(args: Array[String], commandName: String, docComment: String): MainAnnotation.Command[ArgumentParser, MainResultType]
+end MainAnnotation
 
+object MainAnnotation:
   /** A class representing a command to run */
-  trait Command:
+  trait Command[ArgumentParser[_], MainResultType]:
 
     /** The getter for the next argument of type `T` */
     def argGetter[T](argName: String, argType: String, argDoc: String)(using fromString: ArgumentParser[T]): () => T

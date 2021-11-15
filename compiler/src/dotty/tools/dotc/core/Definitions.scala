@@ -855,11 +855,11 @@ class Definitions {
 
   @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.annotation.MainAnnotation")
     @tu lazy val MainAnnot_command: Symbol = MainAnnot.requiredMethod("command")
-    @tu lazy val MainAnnotCommand: ClassSymbol = MainAnnot.requiredClass("Command")
-      @tu lazy val MainAnnotCommand_argGetter: Symbol = MainAnnotCommand.requiredMethod("argGetter")
-      @tu lazy val MainAnnotCommand_argGetterDefault: Symbol = MainAnnotCommand.requiredMethod("argGetterDefault")
-      @tu lazy val MainAnnotCommand_argsGetter: Symbol = MainAnnotCommand.requiredMethod("argsGetter")
-      @tu lazy val MainAnnotCommand_run: Symbol = MainAnnotCommand.requiredMethod("run")
+  @tu lazy val MainAnnotCommand: ClassSymbol = requiredClass("scala.annotation.MainAnnotation.Command")
+    @tu lazy val MainAnnotCommand_argGetter: Symbol = MainAnnotCommand.requiredMethod("argGetter")
+    @tu lazy val MainAnnotCommand_argGetterDefault: Symbol = MainAnnotCommand.requiredMethod("argGetterDefault")
+    @tu lazy val MainAnnotCommand_argsGetter: Symbol = MainAnnotCommand.requiredMethod("argsGetter")
+    @tu lazy val MainAnnotCommand_run: Symbol = MainAnnotCommand.requiredMethod("run")
 
   @tu lazy val TupleTypeRef: TypeRef = requiredClassRef("scala.Tuple")
   def TupleClass(using Context): ClassSymbol = TupleTypeRef.symbol.asClass

@@ -9,7 +9,7 @@
 package scala
 
 import collection.mutable
-
+import annotation.MainAnnotation
 
 /** An annotation that designates a main function
  */
@@ -24,8 +24,8 @@ final class main extends scala.annotation.MainAnnotation:
     case SimpleArgument, OptionalArgument, VarArgument
   }
 
-  override def command(args: Array[String], commandName: String, docComment: String): Command =
-    new Command:
+  override def command(args: Array[String], commandName: String, docComment: String) =
+    new MainAnnotation.Command[ArgumentParser, MainResultType]:
       private var argNames = new mutable.ListBuffer[String]
       private var argTypes = new mutable.ListBuffer[String]
       private var argDocs = new mutable.ListBuffer[String]
