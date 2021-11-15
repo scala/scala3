@@ -17,7 +17,7 @@
         case _ => "th"
   val bldr = new StringBuilder(s"Happy $age$suffix birthday, $name")
   for other <- others do bldr.append(" and ").append(other)
-  println(bldr)
+  bldr.toString
 
 object Test:
   def callMain(args: Array[String]): Unit =

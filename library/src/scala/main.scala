@@ -181,7 +181,8 @@ final class main extends scala.annotation.MainAnnotation:
             usage()
           else f match
             case ExitCode(n) => sys.exit(n)
-            case _ =>
+            case () =>
+            case res => println(res)
       end run
   end command
 end main

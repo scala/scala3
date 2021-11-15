@@ -6,7 +6,6 @@ object myProgram:
 
   /** Adds two numbers and returns them */
   @main def add(num: Int, inc: Int): MyResult =
-    println(f"$num + $inc = ${num + inc}")
     MyResult(num + inc)
 
 end myProgram
