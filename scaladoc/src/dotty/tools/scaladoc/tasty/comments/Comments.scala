@@ -235,6 +235,7 @@ class WikiCommentParser(repr: Repr)(using DocContext)
     case wiki.OrderedList(elems, _) => elems.headOption.fold("")(flatten)
     case wiki.DefinitionList(items) => items.headOption.fold("")(e => flatten(e._1))
     case wiki.HorizontalRule => ""
+    case wiki.Table(header, columns, rows) => (header +: rows).flatMap(_.cells).flatMap(_.blocks).map(flatten).mkString
 
   def markupToString(str: wiki.Body) = str.blocks.headOption.fold("")(flatten)
 
