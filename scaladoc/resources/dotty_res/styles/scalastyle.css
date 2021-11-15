@@ -1066,10 +1066,9 @@ footer .socials {
 
 /* Nav Icons */
 
-.nav-chapters {
-  font-size: 2.5em;
+.arrows {
+  font-size: 3em;
   text-align: center;
-  text-decoration: none;
 
   position: fixed;
   top: 0;
@@ -1080,53 +1079,32 @@ footer .socials {
 
   display: flex;
   justify-content: center;
-  align-content: center;
   flex-direction: column;
 
   transition: color 0.5s, background-color 0.5s;
 }
 
-.nav-chapters.previous, .nav-chapters.next {
+.arrows.previous, .arrows.next {
   color: var(--grey400);
 }
 
-.nav-chapters:hover {
+.arrows:hover {
   text-decoration: none;
   color: var(--grey300);
   background-color: var(--grey900);
   transition: background-color 0.15s, color 0.15s;
 }
 
-.nav-wrapper {
-  margin-top: 50px;
-  display: none;
-}
-
-.mobile-nav-chapters {
-  font-size: 2.5em;
-  text-align: center;
-  text-decoration: none;
-  width: 90px;
-  border-radius: 5px;
-  background-color: var(--sidebar-bg);
-}
-
 .previous {
-  float: left;
   left: var(--side-width);
+  float: left;
 }
 
 .next {
-  float: right;
   right: 0;
+  float: right;
 }
 
-@media only screen and (max-width: 1080px) {
-  .nav-wide-wrapper { display: none; }
-  .nav-wrapper { display: block; }
-}
-
-@media only screen and (max-width: 1380px) {
-  .sidebar-visible .nav-wide-wrapper { display: none; }
-  .sidebar-visible .nav-wrapper { display: block; }
+@media screen and (max-width: 1000px) {
+  .arrows-wrapper { display: none; }
 }

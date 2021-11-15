@@ -22,7 +22,8 @@ object CopyDocs {
   implicit def stringToFun(s: String): MyParams => String = _ => s
 
   // Patterns, for convenience
-  val titlePattern = "(?s)^---\n.*?title: ([^\n]*).*?---"
+  val titlePattern = """(?s)^(---\n.*?title: ([^\n]*).*?---)"""
+  val redirectFromPattern = """(?s)^---.*?((redirectFrom: ([^\n]*)).*?---|---)"""
   val jekyllLinkPattern = """\{\% link _overviews/scala3-reference(.*) %\}"""
   val jekyllLinkSubstitution = "..$1"
   val jekyllLinkPattern2 = """\{\% link _overviews/scala3-scaladoc(.*) %\}"""
@@ -32,7 +33,7 @@ object CopyDocs {
 
   case class MyParams(newPath: String)
 
-  val commonTransformations: Set[(String, MyParams => String)] = Set(
+  val commonTransformations: List[(String, MyParams => String)] = List(
     jekyllLinkPattern -> jekyllLinkSubstitution,
     jekyllLinkPattern2 -> jekyllLinkSubstitution2,
     localLinkPattern -> localLinkSubstitution,
@@ -40,33 +41,35 @@ object CopyDocs {
 
   /**
    * Structure for holding which transformations should be applied to which directories.
-   * The outer map is holding morphism `directory prefix` -> `set of transformations`.
-   * The inner set is a collection of pairs `regex pattern` -> `substitution value`.
+   * The outer map is holding morphism `directory prefix` -> `List of transformations`.
+   * The inner list is a collection of pairs `regex pattern` -> `substitution value`.
    */
-  val transformationMap: Map[String, Set[(String, MyParams => String)]] = Map(
-    "docs/docs/usage/scaladoc/index.md" -> Set(
+  val transformationMap: Map[String, List[(String, MyParams => String)]] = Map(
+    "docs/docs/usage/scaladoc/index.md" -> List(
       ("""\{\{ site\.baseurl \}\}/resources/images/scala3/scaladoc/logo\.svg""" -> "images/scaladoc_logo.svg"),
     ),
 
-    "docs/docs/usage/scaladoc/site-versioning.md" -> Set(
+    "docs/docs/usage/scaladoc/site-versioning.md" -> List(
       ("""/resources/images/scala3/scaladoc/nightly\.gif""" -> "images/scaladoc/nightly.gif"),
     ),
 
-    "docs/docs/usage/scaladoc/search-engine.md" -> Set(
+    "docs/docs/usage/scaladoc/search-engine.md" -> List(
       ("""/resources/images/scala3/scaladoc/inkuire-1\.0\.0-M2_js_flatMap\.gif""" -> "images/scaladoc/inkuire-1.0.0-M2_js_flatMap.gif"),
     ),
 
-    "docs/docs/reference/other-new-features/explicit-nulls.md" -> Set(
+    "docs/docs/reference/other-new-features/explicit-nulls.md" -> List(
       ("""/resources/images/scala3/explicit-nulls/explicit-nulls-type-hierarchy\.png""" -> "images/explicit-nulls/explicit-nulls-type-hierarchy.png"),
     ),
 
-    "docs/docs/reference/" -> (commonTransformations +
-      (titlePattern -> ((p) => s"---\nlayout: doc-page\ntitle: $$1\nmovedTo: https://docs.scala-lang.org/scala3/reference/${p.newPath}.html\n---")),
-    ),
+    "docs/docs/reference/" -> (commonTransformations ++ List[(String, MyParams => String)](
+      (titlePattern -> ((p) => s"$$1\nlayout: doc-page\ntitle: $$2\nmovedTo: https://docs.scala-lang.org/scala3/reference/${p.newPath}.html\n---")),
+      (redirectFromPattern -> "---\n$2")
+    )),
 
-    "docs/docs/usage/scaladoc/" -> (commonTransformations +
-      (titlePattern -> s"---\nlayout: doc-page\ntitle: $$1\n---"),
-    ),
+    "docs/docs/usage/scaladoc/" -> (commonTransformations ++ List[(String, MyParams => String)](
+      (titlePattern -> s"$$1\nlayout: doc-page\ntitle: $$2\n---"),
+      (redirectFromPattern -> "---\n$2")
+    )),
   )
 
   def copyDocs() = {

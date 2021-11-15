@@ -71,6 +71,19 @@ class StaticSiteContext(
     orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
   }
 
+  lazy val redirectTemplates: Seq[LoadedTemplate] = {
+    def doFlatten(t: LoadedTemplate): Seq[LoadedTemplate] =
+      t +: t.children.flatMap(doFlatten)
+    val mainFiles = templates.flatMap(doFlatten)
+    mainFiles.flatMap { loadedTemplate =>
+      loadedTemplate.templateFile.settings.apply("page").asInstanceOf[Map[String, Object]].get("redirectFrom").map { case redirectFrom: String =>
+        val fakeFile = new File(docsPath.toFile, redirectFrom)
+        val redirectTo = fakeFile.toPath.getParent.relativize(loadedTemplate.file.toPath).toString.stripSuffix(".md") + ".html"
+        LoadedTemplate(layouts("redirectFrom").copy(settings = layouts("redirectFrom").settings ++ Map("redirectTo" -> redirectTo)), List.empty, fakeFile)
+      }
+    }
+  }
+
   val docsPath = root.toPath.resolve("docs")
 
   private def isValidTemplate(file: File): Boolean =

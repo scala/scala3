@@ -30,14 +30,14 @@ layout: base
       </div>
     </div>
     {{ content }}
-    <nav class="nav-wide-wrapper" aria-label="Page navigation">
+    <nav class="arrows-wrapper" aria-label="Page navigation">
       {% if page.previous %}
-      <a rel="prev" href="{{ page.previous }}" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+      <a rel="prev" href="{{ page.previous }}" class="arrows previous" aria-keyshortcuts="Left">
           <i class="fa fa-angle-left"></i>
       </a>
       {% endif %}
       {% if page.next %}
-      <a rel="next" href="{{ page.next }}" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+      <a rel="next" href="{{ page.next }}" class="arrows next" aria-keyshortcuts="Right">
           <i class="fa fa-angle-right"></i>
       </a>
       {% endif %}

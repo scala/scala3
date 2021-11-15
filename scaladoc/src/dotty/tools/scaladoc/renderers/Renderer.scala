@@ -116,6 +116,8 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
           (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
 
+  val redirectPages: Seq[Page] = staticSite.map(siteContext => siteContext.redirectTemplates.map(templateToPage(_, siteContext))).get
+
   /**
    * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
    */
@@ -132,7 +134,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
     val (newNavigablePage, pagesToRemove) = traversePages(navigablePage)
 
-    val all = newNavigablePage +: hiddenPages.filterNot(pagesToRemove.contains)
+    val all = newNavigablePage +: (hiddenPages.filterNot(pagesToRemove.contains) ++ redirectPages)
     // We need to check for conflicts only if we have top-level member called blog or docs
     val hasPotentialConflict =
       rootPackage.members.exists(m => m.name.startsWith("docs") || m.name.startsWith("blog"))
