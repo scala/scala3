@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+
+# This is script for publishing scala on SDKMAN.
+# Script resolves the latest stable version of scala and then send REST request to SDKMAN Vendor API.
+# It's releasing and announcing the release of scala on SDKMAN.
+#
+# Requirement:
+#   - the latest stable version of scala should be available in github atrifacts
+
 set -eu
 
 # latest stable dotty version 
@@ -12,7 +20,8 @@ if ! curl --output /dev/null --silent --head --fail "$DOTTY_URL"; then
 fi
 
 # Release a new Candidate Version
-curl -X POST \
+curl --silent --show-error --fail \
+          -X POST \
           -H "Consumer-Key: $SDKMAN_KEY" \
           -H "Consumer-Token: $SDKMAN_TOKEN" \
           -H "Content-Type: application/json" \
@@ -20,8 +29,10 @@ curl -X POST \
           -d '{"candidate": "scala", "version": "'"$DOTTY_VERSION"'", "url": "'"$DOTTY_URL"'"}' \
           https://vendors.sdkman.io/release
 
+
 # Set DOTTY_VERSION as Default for Candidate
-curl -X PUT \
+curl --silent --show-error --fail \
+    -X PUT \
     -H "Consumer-Key: $SDKMAN_KEY" \
     -H "Consumer-Token: $SDKMAN_TOKEN" \
     -H "Content-Type: application/json" \
