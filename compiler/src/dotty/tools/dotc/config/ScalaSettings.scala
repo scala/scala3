@@ -24,7 +24,7 @@ object ScalaSettings:
       val jdkVersion = JDK9Reflectors.runtimeVersionMajor(JDK9Reflectors.runtimeVersion()).intValue()
       val maxVersion = Math.min(jdkVersion, maxTargetVersion)
       (minTargetVersion to maxVersion).toList.map(_.toString)
-    else List()
+    else List(minTargetVersion).map(_.toString)
 
   def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
