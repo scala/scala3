@@ -2573,7 +2573,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** The applied type parameters (empty if there is no such parameters) */
         @experimental
-        def typeParams: List[TypeRepr]
+        def typeArgs: List[TypeRepr]
       end extension
     }
 
