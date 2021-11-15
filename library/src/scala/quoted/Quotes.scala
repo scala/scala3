@@ -2571,7 +2571,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         @experimental
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr
 
-        /** The applied type parameters (empty if there is no such parameters) */
+        /** The applied type arguments (empty if there is no such arguments) */
         @experimental
         def typeArgs: List[TypeRepr]
       end extension
