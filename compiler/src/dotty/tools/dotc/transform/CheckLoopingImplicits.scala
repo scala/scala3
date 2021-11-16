@@ -46,7 +46,10 @@ class CheckLoopingImplicits extends MiniPhase:
       case Apply(fn, args) =>
         checkNotLooping(fn)
         fn.tpe.widen match
-          case mt: MethodType =>
+          case mt: MethodType
+               // Boolean && and || aren't defined with by-name parameters
+               // and therefore their type isn't an ExprType, so we exempt them by symbol name
+               if t.symbol != defn.Boolean_&& && t.symbol != defn.Boolean_|| =>
             args.lazyZip(mt.paramInfos).foreach { (arg, pinfo) =>
               if !pinfo.isInstanceOf[ExprType] then checkNotLooping(arg)
             }
@@ -80,7 +83,7 @@ class CheckLoopingImplicits extends MiniPhase:
         checkNotLooping(t.rhs)
       case _ =>
 
-    if sym.isOneOf(GivenOrImplicit | Lazy) then
+    if sym.isOneOf(GivenOrImplicit | Lazy | ExtensionMethod) then
       checkNotLooping(mdef.rhs)
     mdef
   end transform

@@ -137,42 +137,44 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   var unreportedWarnings: Map[String, Int] = Map.empty
 
+  /** Issue the diagnostic, ignoring `-Wconf` and `@nowarn` configurations,
+   *  but still honouring `-nowarn`, `-Werror`, and conditional warnings. */
+  def issueUnconfigured(dia: Diagnostic)(using Context): Unit = dia match
+    case w: Warning if ctx.settings.silentWarnings.value    =>
+    case w: ConditionalWarning if w.isSummarizedConditional =>
+      val key = w.enablingOption.name
+      val count = unreportedWarnings.getOrElse(key, 0)
+      unreportedWarnings = unreportedWarnings.updated(key, count + 1)
+    case _                                                  =>
+      // conditional warnings that are not enabled are not fatal
+      val d = dia match
+        case w: Warning if ctx.settings.XfatalWarnings.value => w.toError
+        case _                                               => dia
+      if !isHidden(d) then // avoid isHidden test for summarized warnings so that message is not forced
+        withMode(Mode.Printing)(doReport(d))
+        d match {
+          case _: Warning => _warningCount += 1
+          case e: Error   =>
+            errors = e :: errors
+            _errorCount += 1
+            if ctx.typerState.isGlobalCommittable then
+              ctx.base.errorsToBeReported = true
+          case _: Info    => // nothing to do here
+          // match error if d is something else
+        }
+  end issueUnconfigured
+
   def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
     def go() =
       import Action._
-
-      val toReport = dia match
-        case w: Warning =>
-          def fatal(w: Warning) = if ctx.settings.XfatalWarnings.value && !w.isSummarizedConditional then Some(w.toError) else Some(w)
-          if ctx.settings.silentWarnings.value then None
-          else WConf.parsed.action(dia) match
-            case Silent  => None
-            case Info    => Some(w.toInfo)
-            case Warning => fatal(w)
-            case Verbose => fatal(w).tap(_.foreach(_.setVerbose()))
-            case Error   => Some(w.toError)
-        case _ => Some(dia)
-
-      toReport foreach {
-        case cw: ConditionalWarning if cw.isSummarizedConditional =>
-          val key = cw.enablingOption.name
-          unreportedWarnings =
-            unreportedWarnings.updated(key, unreportedWarnings.getOrElse(key, 0) + 1)
-        case d if !isHidden(d) =>
-          withMode(Mode.Printing)(doReport(d))
-          d match {
-            case _: Warning => _warningCount += 1
-            case e: Error =>
-              errors = e :: errors
-              _errorCount += 1
-              if ctx.typerState.isGlobalCommittable then
-                ctx.base.errorsToBeReported = true
-            case _: Info => // nothing to do here
-            // match error if d is something else
-          }
-        case _ => // hidden
-      }
-    end go
+      dia match
+        case w: Warning => WConf.parsed.action(w) match
+          case Error   => issueUnconfigured(w.toError)
+          case Warning => issueUnconfigured(w)
+          case Verbose => issueUnconfigured(w.setVerbose())
+          case Info    => issueUnconfigured(w.toInfo)
+          case Silent  =>
+        case _ => issueUnconfigured(dia)
 
     // `ctx.run` can be null in test, also in the repl when parsing the first line. The parser runs early, the Run is
     // only created in ReplDriver.compile when a line is submitted. This means that `@nowarn` doesnt work on parser

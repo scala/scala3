@@ -17,7 +17,7 @@ import Diagnostic._
   * - The reporter is not flushed and the message containers capture a
   *   `Context` (about 4MB)
   */
-class StoreReporter(outer: Reporter = Reporter.NoReporter) extends Reporter {
+class StoreReporter(outer: Reporter = Reporter.NoReporter, fromTyperState: Boolean = false) extends Reporter {
 
   protected var infos: mutable.ListBuffer[Diagnostic] = null
 
@@ -40,4 +40,11 @@ class StoreReporter(outer: Reporter = Reporter.NoReporter) extends Reporter {
   override def pendingMessages(using Context): List[Diagnostic] = if (infos != null) infos.toList else Nil
 
   override def errorsReported: Boolean = hasErrors || (outer != null && outer.errorsReported)
+
+  // If this is a TyperState buffering reporter then buffer the messages,
+  // so that then only when the messages are unbuffered (when the reporter if flushed)
+  // do they go through -Wconf, and possibly then buffered on the Run as a suspended message
+  override def report(dia: Diagnostic)(using Context): Unit =
+    if fromTyperState then issueUnconfigured(dia)
+    else super.report(dia)
 }

@@ -411,7 +411,7 @@ trait Applications extends Compatibility {
      */
     @threadUnsafe lazy val methType: Type = liftedFunType.widen match {
       case funType: MethodType => funType
-      case funType: PolyType => constrained(funType).resultType
+      case funType: PolyType => instantiateWithTypeVars(funType)
       case tp => tp //was: funType
     }
 
@@ -890,15 +890,6 @@ trait Applications extends Compatibility {
         if originalProto.hasTupledDual && needsTupledDual(fun1.tpe, originalProto)
         then originalProto.tupledDual
         else originalProto
-
-      // If some of the application's arguments are function literals without explicitly declared
-      // parameter types, relate the normalized result type of the application with the
-      // expected type through `constrainResult`. This can add more constraints which
-      // help sharpen the inferred parameter types for the argument function literal(s).
-      // This tweak is needed to make i1378 compile.
-      if (tree.args.exists(untpd.isFunctionWithUnknownParamType(_)))
-        if (!constrainResult(tree.symbol, fun1.tpe.widen, proto.derivedFunProto(resultType = pt)))
-          typr.println(i"result failure for $tree with type ${fun1.tpe.widen}, expected = $pt")
 
       /** Type application where arguments come from prototype, and no implicits are inserted */
       def simpleApply(fun1: Tree, proto: FunProto)(using Context): Tree =
@@ -1571,7 +1562,7 @@ trait Applications extends Compatibility {
             case tp2: MethodType => true // (3a)
             case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
             case tp2: PolyType => // (3b)
-              explore(isAsSpecificValueType(tp1, constrained(tp2).resultType))
+              explore(isAsSpecificValueType(tp1, instantiateWithTypeVars(tp2)))
             case _ => // 3b)
               isAsSpecificValueType(tp1, tp2)
     }
@@ -1738,7 +1729,7 @@ trait Applications extends Compatibility {
       resultType.revealIgnored match {
         case resultType: ValueType =>
           altType.widen match {
-            case tp: PolyType => resultConforms(altSym, constrained(tp).resultType, resultType)
+            case tp: PolyType => resultConforms(altSym, instantiateWithTypeVars(tp), resultType)
             case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
             case _ => true
           }

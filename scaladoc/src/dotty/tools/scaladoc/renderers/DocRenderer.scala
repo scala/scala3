@@ -42,6 +42,16 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
         val tooltip = s"Problem linking $query: $msg"
         signatureRenderer.unresolvedLink(linkBody(query), titleAttr :=  tooltip)
 
+  private def renderHeader(header: Row): AppliedTag =
+    tr(
+      header.cells.map(c => th(c.blocks.map(renderElement)))
+    )
+
+  private def renderRow(row: Row): AppliedTag =
+    tr(
+      row.cells.map(c => td(c.blocks.map(renderElement)))
+    )
+
   private def renderElement(e: WikiDocElement): AppliedTag = e match
     case Title(text, level) =>
       val content = renderElement(text)
@@ -55,6 +65,15 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
     case Paragraph(text) => p(renderElement(text))
     case Code(data: String) => pre(code(raw(data.escapeReservedTokens))) // TODO add classes
     case HorizontalRule => hr
+    case Table(header, columns, rows) =>
+      table(
+        thead(
+          renderHeader(header)
+        ),
+        tbody(
+          rows.map(renderRow)
+        )
+      )
 
     case UnorderedList(items) => ul(listItems(items))
     case OrderedList(items, style) => ol(listItems(items)) // TODO use style

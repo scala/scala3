@@ -17,6 +17,7 @@ i7740a.scala
 i7740b.scala
 i6507b.scala
 i12299a.scala
+i13871.scala
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
@@ -66,6 +67,10 @@ i8182.scala
 
 # local lifted value in annotation argument has different position after pickling
 i2797a
+
+# Late instantiation of type variable in tryInsertImplicitOnQualifier
+# allows to simplify a type that was already computed
+i13842.scala
 
 # GADT cast applied to singleton type difference
 i4176-gadt.scala

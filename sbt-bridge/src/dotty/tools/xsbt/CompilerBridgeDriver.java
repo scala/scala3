@@ -91,9 +91,9 @@ public class CompilerBridgeDriver extends Driver {
           callback.problem(problem.category(), problem.position(), problem.message(), problem.severity(),
             true);
         }
+      } else {  
+        delegate.printSummary();
       }
-
-      delegate.printSummary();
 
       if (delegate.hasErrors()) {
         log.debug(() -> "Compilation failed");

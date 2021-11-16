@@ -652,6 +652,15 @@ object Semantic {
     }
 
     def callConstructor(ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("call " + ctor.show + ", args = " + args, printer, (_: Result).show) {
+      // init "fake" param fields for the secondary constructor
+      def addParamsAsFields(env: Env, ref: Ref, ctorDef: DefDef) = {
+        val paramSyms = ctorDef.termParamss.flatten.map(_.symbol)
+        paramSyms.map { acc =>
+          val value = env.lookup(acc)
+          ref.updateField(acc, value)
+          printer.println(acc.show + " initialized with " + value)
+        }
+      }
       value match {
         case Hot | Cold | _: RefSet | _: Fun =>
           report.error("unexpected constructor call, meth = " + ctor + ", value = " + value, source)
@@ -668,6 +677,7 @@ object Semantic {
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
               init(tpl, ref, cls)
             else
+              addParamsAsFields(env, ref, ddef)
               val initCall = ddef.rhs match
                 case Block(call :: _, _) => call
                 case call => call
@@ -682,12 +692,13 @@ object Semantic {
             given Trace = trace1
             val cls = ctor.owner.enclosingClass.asClass
             val ddef = ctor.defTree.asInstanceOf[DefDef]
-            given Env= Env(ddef, args.map(_.value).widenArgs)
+            given Env = Env(ddef, args.map(_.value).widenArgs)
             if ctor.isPrimaryConstructor then
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
               val res = withTrace(trace.add(cls.defTree)) { eval(tpl, ref, cls, cacheResult = true) }
               Result(ref, res.errors)
             else
+              addParamsAsFields(env, ref, ddef)
               eval(ddef.rhs, ref, cls, cacheResult = true)
           else if ref.canIgnoreMethodCall(ctor) then
             Result(Hot, Nil)
@@ -752,19 +763,25 @@ object Semantic {
           Result(value2, errors)
       }
     }
+  end extension
 
+  extension (ref: Ref)
     def accessLocal(tmref: TermRef, klass: ClassSymbol, source: Tree): Contextual[Result] =
       val sym = tmref.symbol
 
       def default() = Result(Hot, Nil)
 
       if sym.is(Flags.Param) && sym.owner.isConstructor then
+        // if we can get the field from the Ref (which can only possibly be
+        // a secondary constructor parameter), then use it.
+        if (ref.objekt.hasField(sym))
+          Result(ref.objekt.field(sym), Errors.empty)
         // instances of local classes inside secondary constructors cannot
         // reach here, as those values are abstracted by Cold instead of Warm.
         // This enables us to simplify the domain without sacrificing
         // expressiveness nor soundess, as local classes inside secondary
         // constructors are uncommon.
-        if sym.isContainedIn(klass) then
+        else if sym.isContainedIn(klass) then
           Result(env.lookup(sym), Nil)
         else
           // We don't know much about secondary constructor parameters in outer scope.
@@ -777,7 +794,7 @@ object Semantic {
           case vdef: ValDef =>
             // resolve this for local variable
             val enclosingClass = sym.owner.enclosingClass.asClass
-            val thisValue2 = resolveThis(enclosingClass, value, klass, source)
+            val thisValue2 = resolveThis(enclosingClass, ref, klass, source)
             thisValue2 match {
               case Hot => Result(Hot, Errors.empty)
 
