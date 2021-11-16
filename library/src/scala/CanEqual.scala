@@ -1,6 +1,6 @@
 package scala
 
-import annotation.implicitNotFound
+import annotation.{ implicitNotFound, since }
 import scala.collection.{Seq, Set}
 
 /** A marker trait indicating that values of type `L` can be compared to values of type `R`. */
@@ -29,14 +29,18 @@ object CanEqual {
   // The next 6 definitions can go into the companion objects of their corresponding
   // classes. For now they are here in order not to have to touch the
   // source code of these classes
+  @since("3.1")
   given canEqualSeqs[T, U](using eq: CanEqual[T, U]): CanEqual[Seq[T], Seq[U]] = derived
   given canEqualSeq[T](using eq: CanEqual[T, T]): CanEqual[Seq[T], Seq[T]] = derived // for `case Nil` in pattern matching
 
   given canEqualSet[T, U](using eq: CanEqual[T, U]): CanEqual[Set[T], Set[U]] = derived
 
+  @since("3.1")
   given canEqualOptions[T, U](using eq: CanEqual[T, U]): CanEqual[Option[T], Option[U]] = derived
+  @since("3.1")
   given canEqualOption[T](using eq: CanEqual[T, T]): CanEqual[Option[T], Option[T]] = derived // for `case None` in pattern matching
 
+  @since("3.1")
   given canEqualEither[L1, R1, L2, R2](
     using eqL: CanEqual[L1, L2], eqR: CanEqual[R1, R2]
   ): CanEqual[Either[L1, R1], Either[L2, R2]] = derived
