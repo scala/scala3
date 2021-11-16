@@ -26,13 +26,13 @@ final class main extends scala.annotation.MainAnnotation:
 
   override def command(args: Array[String], commandName: String, docComment: String) =
     new MainAnnotation.Command[ArgumentParser, MainResultType]:
-      private var argNames = new mutable.ListBuffer[String]
-      private var argTypes = new mutable.ListBuffer[String]
-      private var argDocs = new mutable.ListBuffer[String]
-      private var argKinds = new mutable.ListBuffer[ArgumentKind]
+      private var argNames = new mutable.ArrayBuffer[String]
+      private var argTypes = new mutable.ArrayBuffer[String]
+      private var argDocs = new mutable.ArrayBuffer[String]
+      private var argKinds = new mutable.ArrayBuffer[ArgumentKind]
 
       /** A buffer for all errors */
-      private var errors = new mutable.ListBuffer[String]
+      private var errors = new mutable.ArrayBuffer[String]
 
       /** Issue an error, and return an uncallable getter */
       private def error(msg: String): () => Nothing =
@@ -60,9 +60,9 @@ final class main extends scala.annotation.MainAnnotation:
         val name = argNames(pos)
 
         argKinds(pos) match {
-          case ArgumentKind.SimpleArgument => s"[--$name] <$name>"
-          case ArgumentKind.OptionalArgument => s"[[--$name] <$name>]"
-          case ArgumentKind.VarArgument => s"[<$name> [<$name> [...]]]"
+          case ArgumentKind.SimpleArgument => s"[--$name] <${argTypes(pos)}>"
+          case ArgumentKind.OptionalArgument => s"[[--$name] <${argTypes(pos)}>]"
+          case ArgumentKind.VarArgument => s"[<${argTypes(pos)}> [<${argTypes(pos)}> [...]]]"
         }
 
       private def usage(): Unit =
@@ -100,6 +100,7 @@ final class main extends scala.annotation.MainAnnotation:
 
             argKinds(pos) match {
               case ArgumentKind.OptionalArgument => argDoc.append(" (optional)")
+              case ArgumentKind.VarArgument => argDoc.append(" (vararg)")
               case _ =>
             }
 
