@@ -17,18 +17,15 @@ object myProgram:
   /**
     * Adds two numbers.
     */
-  @main def doc1(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc1(num: Int, inc: Int): Unit = ()
 
   /** Adds two numbers. */
-  @main def doc2(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc2(num: Int, inc: Int): Unit = ()
 
   /**
     *                       Adds two numbers.
     */
-  @main def doc3(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc3(num: Int, inc: Int): Unit = ()
 
   /**
     * Adds two numbers.
@@ -36,16 +33,14 @@ object myProgram:
     * @param num the first number
     * @param inc the second number
     */
-  @main def doc4(num: Int, inc: Int = 1): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc4(num: Int, inc: Int = 1): Unit = ()
 
   /**
     * Adds two numbers.
     *
     * @param num the first number
     */
-  @main def doc5(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc5(num: Int, inc: Int): Unit = ()
 
   /**
     * Adds two numbers.
@@ -53,8 +48,7 @@ object myProgram:
     * @param num
     * @param inc
     */
-  @main def doc6(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc6(num: Int, inc: Int): Unit = ()
 
   /**
     * Adds two numbers.
@@ -63,8 +57,7 @@ object myProgram:
     * @param inc the second number
     * @return the sum of the two numbers (not really)
     */
-  @main def doc7(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc7(num: Int, inc: Int): Unit = ()
 
   /**
     * Adds two numbers.
@@ -73,8 +66,7 @@ object myProgram:
     * @param inc           the second number
     * @return                        the sum of the two numbers (not really)
     */
-  @main def doc8(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc8(num: Int, inc: Int): Unit = ()
 
   /**
     * Adds two numbers. Same as {{doc1}}.
@@ -84,8 +76,7 @@ object myProgram:
     * @return the sum of the two numbers (not really)
     * @see {{doc1}}
     */
-  @main def doc9(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc9(num: Int, inc: Int): Unit = ()
 
   /**
     * Adds two numbers.
@@ -104,8 +95,7 @@ object myProgram:
     * have to write this one
     * on three lines
     */
-  @main def doc10(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc10(num: Int, inc: Int): Unit = ()
 
   /**
     * Adds two numbers.
@@ -118,20 +108,17 @@ object myProgram:
     *
     *                               And another one!
     */
-  @main def doc11(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc11(num: Int, inc: Int): Unit = ()
 
   /**
     * Adds two numbers. It seems that I have a very long line of documentation and therefore might need to be cut at some point to fit a small terminal screen.
     */
-  @main def doc12(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc12(num: Int, inc: Int): Unit = ()
 
   /**
     * Addstwonumbers.ItseemsthatIhaveaverylonglineofdocumentationandthereforemightneedtobecutatsomepointtofitasmallterminalscreen.
     */
-  @main def doc13(num: Int, inc: Int): Unit =
-    println(s"$num + $inc = ${num + inc}")
+  @main def doc13(num: Int, inc: Int): Unit = ()
 
   /**
     * Loudly judges the number of argument you gave to this poor function.
@@ -141,27 +128,21 @@ object myProgram:
     arg5: String, arg6: Int, arg7: String, arg8: Int,
     arg9: String = "I", arg10: Int = 42, arg11: String = "used", arg12: Int = 0,
     arg13: String = "to", arg14: Int = 34, arg15: String = "wonder", arg16: Int*
-  ): Unit =
-    println(s"Wow, now that's a lot of arguments")
+  ): Unit = ()
 
   /**
     * Adds two instances of {{MyNumber}}.
     * @param myNum my first number to add
     * @param myInc my second number to add
     */
-  @main def doc15(myNum: MyNumber, myInc: MyNumber): Unit =
-    println(s"$myNum + $myInc = ${myNum + myInc}")
+  @main def doc15(myNum: MyNumber, myInc: MyNumber): Unit = ()
 
   /**
     * Compares two instances of {{MyGeneric}}.
     * @param first my first element
     * @param second my second element
     */
-  @main def doc16(first: MyGeneric[Int], second: MyGeneric[Int]): Unit =
-    if first.value == second.value then
-      println("Equal!")
-    else
-      println("Not equal")
+  @main def doc16(first: MyGeneric[Int], second: MyGeneric[Int]): Unit = ()
 
 end myProgram
 
