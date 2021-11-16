@@ -380,7 +380,12 @@ class SpaceEngine(using Context) extends SpaceLogic {
             Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
         }
       else
-        Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
+        val tp = fun.tpe.widen.finalResultType
+        val isProdMatch = isProductMatch(tp, pats.length) || defn.isProductSubType(tp) && tp.classSymbol.is(Scala2x)
+        if isProdMatch then
+          Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
+        else
+          Typ(erase(pat.tpe.stripAnnots, isValue = false), decomposed = false)
 
     case Typed(pat @ UnApply(_, _, _), _) =>
       project(pat)
