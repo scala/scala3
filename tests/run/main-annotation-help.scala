@@ -1,4 +1,17 @@
-// Sample main method
+import scala.util.CommandLineParser.FromString
+import scala.util.Try
+
+class MyNumber(val value: Int):
+  def +(other: MyNumber): MyNumber = MyNumber(value + other.value)
+
+class MyGeneric[T](val value: T)
+
+given FromString[MyNumber] with
+  override def fromString(s: String): MyNumber = MyNumber(summon[FromString[Int]].fromString(s))
+
+given FromString[MyGeneric[Int]] with
+  override def fromString(s: String): MyGeneric[Int] = MyGeneric(summon[FromString[Int]].fromString(s))
+
 object myProgram:
 
   /**
@@ -131,6 +144,25 @@ object myProgram:
   ): Unit =
     println(s"Wow, now that's a lot of arguments")
 
+  /**
+    * Adds two instances of {{MyNumber}}.
+    * @param myNum my first number to add
+    * @param myInc my second number to add
+    */
+  @main def doc15(myNum: MyNumber, myInc: MyNumber): Unit =
+    println(s"$myNum + $myInc = ${myNum + myInc}")
+
+  /**
+    * Compares two instances of {{MyGeneric}}.
+    * @param first my first element
+    * @param second my second element
+    */
+  @main def doc16(first: MyGeneric[Int], second: MyGeneric[Int]): Unit =
+    if first.value == second.value then
+      println("Equal!")
+    else
+      println("Not equal")
+
 end myProgram
 
 object Test:
@@ -139,10 +171,11 @@ object Test:
     val method = clazz.getMethod("main", classOf[Array[String]])
     method.invoke(null, args)
 
+  val allClazzes: Seq[Class[?]] =
+    LazyList.from(1).map(i => Try(Class.forName("doc" + i.toString))).takeWhile(_.isSuccess).map(_.get)
+
   def callAllMains(args: Array[String]): Unit =
-    val numberOfMains = 14
-    for (i <- 1 to numberOfMains) {
-      val clazz = Class.forName("doc" + i.toString)
+    for (clazz <- allClazzes) {
       val method = clazz.getMethod("main", classOf[Array[String]])
       method.invoke(null, args)
     }

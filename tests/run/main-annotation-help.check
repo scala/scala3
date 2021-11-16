@@ -134,3 +134,19 @@ Arguments:
   arg14 - Int (optional)
   arg15 - String (optional)
   arg16 - Int (vararg)
+Usage: doc15 [--myNum] <MyNumber> [--myInc] <MyNumber>
+
+Adds two instances of MyNumber.
+Arguments:
+  myNum - MyNumber
+    my first number to add
+  myInc - MyNumber
+    my second number to add
+Usage: doc16 [--first] <MyGeneric[Int]> [--second] <MyGeneric[Int]>
+
+Compares two instances of MyGeneric.
+Arguments:
+  first - MyGeneric[Int]
+    my first element
+  second - MyGeneric[Int]
+    my second element
