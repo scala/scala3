@@ -1,6 +1,6 @@
 package scala.quoted
 
-import scala.annotation.experimental
+import scala.annotation.{ experimental, since }
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
@@ -3704,6 +3704,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def memberField(name: String): Symbol
 
         /** Get named non-private fields declared or inherited */
+        @since("3.1")
         def fieldMember(name: String): Symbol
 
         /** Get all non-private fields declared or inherited */
