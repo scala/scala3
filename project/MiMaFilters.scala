@@ -4,8 +4,10 @@ import com.typesafe.tools.mima.core._
 object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
     ProblemFilters.exclude[MissingTypesProblem]("scala.main"),
+    ProblemFilters.exclude[FinalClassProblem]("scala.main"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.main.command"),
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$Command"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.main.SimpleArgument"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.main.OptionalArgument"),
