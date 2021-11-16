@@ -20,7 +20,7 @@ class CodeSnippets:
     case _ => None
   }
 
-  def enrichSnippets() = document.querySelectorAll("div.snippet").foreach {
+  def enrichSnippets() = document.querySelectorAll("div.snippet[scala-snippet]").foreach {
     case snippet: html.Element =>
       snippet.addEventListener("click", (e: MouseEvent) => e.asInstanceOf[js.Dynamic].fromSnippet = true)
       snippetAnchor(snippet)
