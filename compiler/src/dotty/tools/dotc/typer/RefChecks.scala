@@ -911,6 +911,7 @@ object RefChecks {
   private def checkUndesiredProperties(sym: Symbol, pos: SrcPos)(using Context): Unit =
     checkDeprecated(sym, pos)
     checkExperimental(sym, pos)
+    checkSinceAnnot(sym, pos)
 
     val xMigrationValue = ctx.settings.Xmigration.value
     if xMigrationValue != NoScalaVersion then
@@ -969,6 +970,21 @@ object RefChecks {
     if !sym.isInExperimentalScope then
       for annot <- sym.annotations if annot.symbol.isExperimental do
         Feature.checkExperimentalDef(annot.symbol, annot.tree)
+
+  private def checkSinceAnnot(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    for
+      annot <- sym.getAnnotation(defn.SinceAnnot)
+      version <- annot.argumentConstantString(0)
+    do
+      val releaseVersion = ctx.settings.scalaRelease.value
+      ScalaVersion.parse(version) match
+        case Success(symVersion) if symVersion > ctx.settings.scalaRelease.value =>
+          report.error(
+            i"$sym was added in Scala $version, therefore it cannot be used in the code targeting Scala ${releaseVersion.unparse}",
+            pos)
+        case Failure(ex) =>
+          report.warning(i"$sym has an unparsable version number: ${ex.getMessage}", pos)
+        case _ =>
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
