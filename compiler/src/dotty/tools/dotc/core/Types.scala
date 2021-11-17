@@ -4206,14 +4206,14 @@ object Types {
 
     def tryCompiletimeConstantFold(using Context): Type = tycon match {
       case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
-        extension (tp : Type) def fixForEvaluation : Type =
+        extension (tp: Type) def fixForEvaluation: Type =
           tp.normalized.dealias match {
-            //enable operations for constant singleton terms. E.g.:
-            //```
-            //final val one = 1
-            //type Two = one.type + one.type
-            //```
-            case tp : TermRef => tp.underlying
+            // enable operations for constant singleton terms. E.g.:
+            // ```
+            // final val one = 1
+            // type Two = one.type + one.type
+            // ```
+            case tp: TermRef => tp.underlying
             case tp => tp
           }
 
@@ -4261,43 +4261,43 @@ object Types {
           defn.CompiletimeOpsStringModuleClass
         )
 
-        //Returns Some(true) if the type is a constant.
-        //Returns Some(false) if the type is not a constant.
-        //Returns None if there is not enough information to determine if the type is a constant.
-        //The type is a constant if it is a constant type or a type operation composition of constant types.
-        //If we get a type reference for an argument, then the result is not yet known.
-        def isConst(tp : Type) : Option[Boolean] = tp.dealias match {
-          //known to be constant
+        // Returns Some(true) if the type is a constant.
+        // Returns Some(false) if the type is not a constant.
+        // Returns None if there is not enough information to determine if the type is a constant.
+        // The type is a constant if it is a constant type or a type operation composition of constant types.
+        // If we get a type reference for an argument, then the result is not yet known.
+        def isConst(tp: Type): Option[Boolean] = tp.dealias match {
+          // known to be constant
           case ConstantType(_) => Some(true)
-          //currently not a concrete known type
+          // currently not a concrete known type
           case TypeRef(NoPrefix,_) => None
-          //currently not a concrete known type
-          case _ : TypeParamRef => None
-          //constant if the term is constant
-          case t : TermRef => isConst(t.underlying)
-          //an operation type => recursively check all argument compositions
-          case applied : AppliedType if opsSet.contains(applied.typeSymbol.owner) =>
+          // currently not a concrete known type
+          case _: TypeParamRef => None
+          // constant if the term is constant
+          case t: TermRef => isConst(t.underlying)
+          // an operation type => recursively check all argument compositions
+          case applied: AppliedType if opsSet.contains(applied.typeSymbol.owner) =>
             val argsConst = applied.args.map(isConst)
             if (argsConst.exists(_.isEmpty)) None
             else Some(argsConst.forall(_.get))
-          //all other types are considered not to be constant
+          // all other types are considered not to be constant
           case _ => Some(false)
         }
 
-        def expectArgsNum(expectedNum : Int) : Unit =
-        //We can use assert instead of a compiler type error because this error should not
-        //occur since the type signature of the operation enforces the proper number of args.
+        def expectArgsNum(expectedNum: Int): Unit =
+        // We can use assert instead of a compiler type error because this error should not
+        // occur since the type signature of the operation enforces the proper number of args.
           assert(args.length == expectedNum, s"Type operation expects $expectedNum arguments but found ${args.length}")
 
         def natValue(tp: Type): Option[Int] = intValue(tp).filter(n => n >= 0 && n < Int.MaxValue)
 
-        //Runs the op and returns the result as a constant type.
-        //If the op throws an exception, then this exception is converted into a type error.
-        def runConstantOp(op : => Any): Type =
+        // Runs the op and returns the result as a constant type.
+        // If the op throws an exception, then this exception is converted into a type error.
+        def runConstantOp(op: => Any): Type =
           val result = try {
             op
           } catch {
-            case e : Throwable =>
+            case e: Throwable =>
               throw new TypeError(e.getMessage)
           }
           ConstantType(Constant(result))
@@ -4344,7 +4344,7 @@ object Types {
             } else if (owner == defn.CompiletimeOpsIntModuleClass) name match {
               case tpnme.Abs        => constantFold1(intValue, _.abs)
               case tpnme.Negate     => constantFold1(intValue, x => -x)
-              //ToString is deprecated for ops.int, and moved to ops.any
+              // ToString is deprecated for ops.int, and moved to ops.any
               case tpnme.ToString   => constantFold1(intValue, _.toString)
               case tpnme.Plus       => constantFold2(intValue, _ + _)
               case tpnme.Minus      => constantFold2(intValue, _ - _)
