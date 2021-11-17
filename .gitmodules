@@ -215,4 +215,4 @@
 	url = https://github.com/dotty-staging/scala-java8-compat.git
 [submodule "community-build/community-projects/spire"]
 	path = community-build/community-projects/spire
-	url = https://github.com/typelevel/spire.git
+	url = https://github.com/dotty-staging/spire.git
