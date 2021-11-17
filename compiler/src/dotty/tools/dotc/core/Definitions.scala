@@ -736,6 +736,7 @@ class Definitions {
   @tu lazy val NoneModule: Symbol = requiredModule("scala.None")
 
   @tu lazy val EnumClass: ClassSymbol = requiredClass("scala.reflect.Enum")
+    @tu lazy val Enum_ordinal: Symbol = EnumClass.requiredMethod(nme.ordinal)
 
   @tu lazy val EnumValueSerializationProxyClass: ClassSymbol = requiredClass("scala.runtime.EnumValueSerializationProxy")
     @tu lazy val EnumValueSerializationProxyConstructor: TermSymbol =
@@ -1380,23 +1381,6 @@ class Definitions {
   def isBoxedUnitClass(cls: Symbol): Boolean =
     cls.isClass && (cls.owner eq ScalaRuntimePackageClass) && cls.name == tpnme.BoxedUnit
 
-  /** Returns the erased class of the function class `cls`
-   *    - FunctionN for N > 22 becomes FunctionXXL
-   *    - FunctionN for 22 > N >= 0 remains as FunctionN
-   *    - ContextFunctionN for N > 22 becomes FunctionXXL
-   *    - ContextFunctionN for N <= 22 becomes FunctionN
-   *    - ErasedFunctionN becomes Function0
-   *    - ImplicitErasedFunctionN becomes Function0
-   *    - anything else becomes a NoSymbol
-   */
-  def erasedFunctionClass(cls: Symbol): Symbol = {
-    val arity = scalaClassName(cls).functionArity
-    if (cls.name.isErasedFunction) FunctionClass(0)
-    else if (arity > 22) FunctionXXLClass
-    else if (arity >= 0) FunctionClass(arity)
-    else NoSymbol
-  }
-
   /** Returns the erased type of the function class `cls`
    *    - FunctionN for N > 22 becomes FunctionXXL
    *    - FunctionN for 22 > N >= 0 remains as FunctionN
@@ -1406,13 +1390,12 @@ class Definitions {
    *    - ImplicitErasedFunctionN becomes Function0
    *    - anything else becomes a NoType
    */
-  def erasedFunctionType(cls: Symbol): Type = {
+  def functionTypeErasure(cls: Symbol): Type =
     val arity = scalaClassName(cls).functionArity
-    if (cls.name.isErasedFunction) FunctionType(0)
-    else if (arity > 22) FunctionXXLClass.typeRef
-    else if (arity >= 0) FunctionType(arity)
+    if cls.name.isErasedFunction then FunctionType(0)
+    else if arity > 22 then FunctionXXLClass.typeRef
+    else if arity >= 0 then FunctionType(arity)
     else NoType
-  }
 
   val predefClassNames: Set[Name] =
     Set("Predef$", "DeprecatedPredef", "LowPriorityImplicits").map(_.toTypeName.unmangleClassName)

@@ -8,16 +8,16 @@ import compiletime.ops.int._
 sealed trait Tuple extends Product {
   import Tuple._
 
-  /** Create a copy this tuple as an Array */
+  /** Create a copy of this tuple as an Array */
   inline def toArray: Array[Object] =
     runtime.Tuples.toArray(this)
 
-  /** Create a copy this tuple as a List */
+  /** Create a copy of this tuple as a List */
   inline def toList: List[Union[this.type]] =
     this.productIterator.toList
       .asInstanceOf[List[Union[this.type]]]
 
-  /** Create a copy this tuple as an IArray */
+  /** Create a copy of this tuple as an IArray */
   inline def toIArray: IArray[Object] =
     runtime.Tuples.toIArray(this)
 

@@ -70,7 +70,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               ref(defn.NoneModule))
           }
           val tpe = MethodType(List(nme.s))(_ => List(tp1), mth => defn.OptionClass.typeRef.appliedTo(mth.newParamRef(0) & tp2))
-          val meth = newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe, coord = span)
+          val meth = newAnonFun(ctx.owner, tpe, coord = span)
           val typeTestType = defn.TypeTestClass.typeRef.appliedTo(List(tp1, tp2))
           Closure(meth, tss => body(tss.head).changeOwner(ctx.owner, meth), targetType = typeTestType).withSpan(span)
       case _ =>
@@ -102,7 +102,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     def canComparePredefinedClasses(cls1: ClassSymbol, cls2: ClassSymbol): Boolean =
 
       def cmpWithBoxed(cls1: ClassSymbol, cls2: ClassSymbol) =
-        cls2 == defn.boxedType(cls1.typeRef).symbol
+        cls2 == defn.NothingClass
+        || cls2 == defn.boxedType(cls1.typeRef).symbol
         || cls1.isNumericValueClass && cls2.derivesFrom(defn.BoxedNumberClass)
 
       if cls1.isPrimitiveValueClass then
@@ -129,7 +130,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       else if cls2 == defn.NullClass then
         cls1.derivesFrom(defn.ObjectClass)
       else
-        false
+        cls1 == defn.NothingClass || cls2 == defn.NothingClass
     end canComparePredefinedClasses
 
     /** Some simulated `CanEqual` instances for predefined types. It's more efficient

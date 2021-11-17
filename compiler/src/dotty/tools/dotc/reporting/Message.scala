@@ -124,6 +124,13 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     def explain    = self.explain ++ suffix
     override def canExplain = true
 
+  /** Override with `true` for messages that should always be shown even if their
+   *  position overlaps another messsage of a different class. On the other hand
+   *  multiple messages of the same class with overlapping positions will lead
+   *  to only a single message of that class to be issued.
+   */
+  def showAlways = false
+
   override def toString = msg
 }
 

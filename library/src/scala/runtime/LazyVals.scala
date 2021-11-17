@@ -5,13 +5,13 @@ package scala.runtime
  */
 object LazyVals {
   private[this] val unsafe: sun.misc.Unsafe =
-      classOf[sun.misc.Unsafe].getDeclaredFields.find { field =>
-        field.getType == classOf[sun.misc.Unsafe] && {
-          field.setAccessible(true)
+      classOf[sun.misc.Unsafe].getDeclaredFields.nn.find { field =>
+        field.nn.getType == classOf[sun.misc.Unsafe] && {
+          field.nn.setAccessible(true)
           true
         }
       }
-      .map(_.get(null).asInstanceOf[sun.misc.Unsafe])
+      .map(_.nn.get(null).asInstanceOf[sun.misc.Unsafe])
       .getOrElse {
         throw new ExceptionInInitializerError {
           new IllegalStateException("Can't find instance of sun.misc.Unsafe")
@@ -19,7 +19,7 @@ object LazyVals {
       }
 
   private[this] val base: Int = {
-    val processors = java.lang.Runtime.getRuntime.availableProcessors()
+    val processors = java.lang.Runtime.getRuntime.nn.availableProcessors()
     8 * processors * processors
   }
   private[this] val monitors: Array[Object] =

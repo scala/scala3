@@ -1,0 +1,17 @@
+-- Error: tests/neg/i13846.scala:3:22 ----------------------------------------------------------------------------------
+3 |def foo(): Int throws ArithmeticException = 1 / 0 // error
+  |                      ^^^^^^^^^^^^^^^^^^^
+  |                      throws clause cannot be defined for RuntimeException
+-- Error: tests/neg/i13846.scala:7:9 -----------------------------------------------------------------------------------
+7 |    foo() // error
+  |         ^
+  |         The capability to throw exception ArithmeticException is missing.
+  |         The capability can be provided by one of the following:
+  |          - A using clause `(using CanThrow[ArithmeticException])`
+  |          - A `throws` clause in a result type such as `X throws ArithmeticException`
+  |          - an enclosing `try` that catches ArithmeticException
+  |
+  |         The following import might fix the problem:
+  |
+  |           import unsafeExceptions.canThrowAny
+  |

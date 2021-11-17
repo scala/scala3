@@ -18,12 +18,8 @@ import dotty.tools.dotc.core.Contexts._
 
 class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val unsupportedSettings = Seq(
-    // Options that we like to support
-    extdirs, javabootclasspath, encoding,
     // Needed for plugin architecture
-    plugin,disable,require, pluginsDir, pluginOptions,
-    // we need support for sourcepath and sourceroot
-    sourcepath, sourceroot
+    plugin, disable, require, pluginsDir, pluginOptions,
   )
 
 

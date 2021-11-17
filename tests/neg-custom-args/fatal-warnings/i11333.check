@@ -1,0 +1,30 @@
+-- [E167] Lossy Conversion Error: tests/neg-custom-args/fatal-warnings/i11333.scala:2:19 -------------------------------
+2 |  val f1: Float  = 123456789            // error
+  |                   ^^^^^^^^^
+  |                   Widening conversion from Int to Float loses precision.
+  |                   Write `.toFloat` instead.
+-- [E167] Lossy Conversion Error: tests/neg-custom-args/fatal-warnings/i11333.scala:3:19 -------------------------------
+3 |  val d1: Double = 1234567890123456789L // error
+  |                   ^^^^^^^^^^^^^^^^^^^^
+  |                   Widening conversion from Long to Double loses precision.
+  |                   Write `.toDouble` instead.
+-- [E167] Lossy Conversion Error: tests/neg-custom-args/fatal-warnings/i11333.scala:4:19 -------------------------------
+4 |  val f2: Float  = 123456789L           // error
+  |                   ^^^^^^^^^^
+  |                   Widening conversion from Long to Float loses precision.
+  |                   Write `.toFloat` instead.
+-- [E167] Lossy Conversion Error: tests/neg-custom-args/fatal-warnings/i11333.scala:10:21 ------------------------------
+10 |  val f1_b: Float  = i1 // error
+   |                     ^^
+   |                     Widening conversion from Int to Float loses precision.
+   |                     Write `.toFloat` instead.
+-- [E167] Lossy Conversion Error: tests/neg-custom-args/fatal-warnings/i11333.scala:11:21 ------------------------------
+11 |  val d1_b: Double = l1 // error
+   |                     ^^
+   |                     Widening conversion from Long to Double loses precision.
+   |                     Write `.toDouble` instead.
+-- [E167] Lossy Conversion Error: tests/neg-custom-args/fatal-warnings/i11333.scala:12:21 ------------------------------
+12 |  val f2_b: Float  = l2 // error
+   |                     ^^
+   |                     Widening conversion from Long to Float loses precision.
+   |                     Write `.toFloat` instead.

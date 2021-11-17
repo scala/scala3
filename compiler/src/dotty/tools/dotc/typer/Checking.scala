@@ -33,6 +33,7 @@ import NameKinds.DefaultGetterName
 import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
+import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.isIrrefutable
 import config.Feature
 import config.Feature.sourceVersion
@@ -1216,8 +1217,19 @@ trait Checking {
   /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
    *  3. Check that only a static `enum` base class can extend java.lang.Enum.
+   *  4. Check that user does not implement an `ordinal` method in the body of an enum class.
    */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = {
+    def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol = // adapted from SyntheticMembers
+      val existing = sym.matchingMember(clazz.thisType)
+      if existing != sym && !existing.is(Deferred) then existing else NoSymbol
+    def checkExistingOrdinal(using Context) =
+      val decl = existingDef(defn.Enum_ordinal, cls.asClass)
+      if decl.exists then
+        if decl.owner == cls then
+          report.error(em"the ordinal method of enum $cls can not be defined by the user", decl.srcPos)
+        else
+          report.error(em"enum $cls can not inherit the concrete ordinal method of ${decl.owner}", cdef.srcPos)
     def isEnumAnonCls =
       cls.isAnonymousClass
       && cls.owner.isTerm
@@ -1237,6 +1249,8 @@ trait Checking {
         // this test allows inheriting from `Enum` by hand;
         // see enum-List-control.scala.
         report.error(ClassCannotExtendEnum(cls, firstParent), cdef.srcPos)
+    if cls.isEnumClass && !isJavaEnum then
+      checkExistingOrdinal
   }
 
   /** Check that the firstParent for an enum case derives from the declaring enum class, if not, adds it as a parent
@@ -1362,6 +1376,21 @@ trait Checking {
   def checkCanThrow(tp: Type, span: Span)(using Context): Unit =
     if Feature.enabled(Feature.saferExceptions) && tp.isCheckedException then
       ctx.typer.implicitArgTree(defn.CanThrowClass.typeRef.appliedTo(tp), span)
+
+  /** Check that catch can generate a good CanThrow exception */
+  def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = pat match
+    case Typed(_: Ident, tpt) if isFullyDefined(tpt.tpe, ForceDegree.none) && guard.isEmpty =>
+      // OK
+    case Bind(_, pat1) =>
+      checkCatch(pat1, guard)
+    case _ =>
+      val req =
+        if guard.isEmpty then "for cases of the form `ex: T` where `T` is fully defined"
+        else "if no pattern guard is given"
+      report.error(
+        em"""Implementation restriction: cannot generate CanThrow capability for this kind of catch.
+            |CanThrow capabilities can only be generated $req.""",
+        pat.srcPos)
 }
 
 trait ReChecking extends Checking {
@@ -1375,6 +1404,7 @@ trait ReChecking extends Checking {
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
   override def checkCanThrow(tp: Type, span: Span)(using Context): Unit = ()
+  override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {
