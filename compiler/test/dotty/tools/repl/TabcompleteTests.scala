@@ -134,7 +134,7 @@ class TabcompleteTests extends ReplTest {
   }
 
   @Test def i12600 = fromInitialState { implicit s =>
-    assertEquals(List("select", "show", "simplified"),
+    assertEquals(List("select", "show", "simplified", "substituteTypes"),
       tabComplete("import quoted.* ; def fooImpl(using Quotes): Expr[Int] = { import quotes.reflect.* ; TypeRepr.of[Int].s"))
   }
 

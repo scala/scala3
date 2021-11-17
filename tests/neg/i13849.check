@@ -1,0 +1,5 @@
+-- Error: tests/neg/i13849.scala:16:11 ---------------------------------------------------------------------------------
+16 |      case _: Ex if false => println("Caught") // error
+   |           ^^^^^
+   |           Implementation restriction: cannot generate CanThrow capability for this kind of catch.
+   |           CanThrow capabilities can only be generated if no pattern guard is given.

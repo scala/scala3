@@ -82,6 +82,12 @@ object HTML:
   val li = Tag("li")
   val code = Tag("code")
   val pre = Tag("pre")
+  val table = Tag("table")
+  val thead = Tag("thead")
+  val tbody = Tag("tbody")
+  val th = Tag("th")
+  val tr = Tag("tr")
+  val td = Tag("td")
 
   val cls = Attr("class")
   val href = Attr("href")

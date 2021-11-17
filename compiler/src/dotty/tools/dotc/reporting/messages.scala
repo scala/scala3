@@ -18,6 +18,7 @@ import ast.Trees
 import config.{Feature, ScalaVersion}
 import typer.ErrorReporting.{err, matchReductionAddendum}
 import typer.ProtoTypes.ViewProto
+import typer.Implicits.Candidate
 import scala.util.control.NonFatal
 import StdNames.nme
 import printing.Formatting.hl
@@ -806,6 +807,13 @@ import transform.SymUtils._
            | - null
            |"""
   }
+
+  class LossyWideningConstantConversion(sourceType: Type, targetType: Type)(using Context)
+  extends Message(LossyWideningConstantConversionID):
+    def kind = "Lossy Conversion"
+    def msg = em"""|Widening conversion from $sourceType to $targetType loses precision.
+                   |Write `.to$targetType` instead.""".stripMargin
+    def explain = ""
 
   class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
   extends Message(PatternMatchExhaustivityID) {
@@ -1765,13 +1773,13 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol])(using Context)
+  class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using Context)
     extends Message(FailureToEliminateExistentialID) {
     def kind: String = "Compatibility"
     def msg =
       val originalType = ctx.printer.dclsText(boundSyms, "; ").show
-      em"""An existential type that came from a Scala-2 classfile cannot be
-          |mapped accurately to to a Scala-3 equivalent.
+      em"""An existential type that came from a Scala-2 classfile for $classRoot
+          |cannot be mapped accurately to a Scala-3 equivalent.
           |original type    : $tp forSome ${originalType}
           |reduces to       : $tp1
           |type used instead: $tp2
@@ -2508,3 +2516,26 @@ import transform.SymUtils._
           |Inlining such definition would multiply this footprint for each call site.
           |""".stripMargin
   }
+
+  class ImplicitSearchTooLargeWarning(limit: Int, openSearchPairs: List[(Candidate, Type)])(using Context)
+    extends TypeMsg(ImplicitSearchTooLargeID):
+    override def showAlways = true
+    def showQuery(query: (Candidate, Type)): String =
+      i"  ${query._1.ref.symbol.showLocated}  for  ${query._2}}"
+    def msg =
+      em"""Implicit search problem too large.
+          |an implicit search was terminated with failure after trying $limit expressions.
+          |The root candidate for the search was:
+          |
+          |${showQuery(openSearchPairs.last)}
+          |
+          |You can change the behavior by setting the `-Ximplicit-search-limit` value.
+          |Smaller values cause the search to fail faster.
+          |Larger values might make a very large search problem succeed.
+          |"""
+    def explain =
+      em"""The overflow happened with the following lists of tried expressions and target types,
+          |starting with the root query:
+          |
+          |${openSearchPairs.reverse.map(showQuery)}%\n%
+        """

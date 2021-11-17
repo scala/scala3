@@ -25,23 +25,33 @@ class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationPro
 
 class Scaladoc2ExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalScaladoc2",
-  List(".*scala.*::scaladoc2::https://www.scala-lang.org/api/current/"),
+  List(
+    ".*scala/.*::scaladoc2::https://www.scala-lang.org/api/current/",
+    ".*externalStubs.*::scaladoc2::https://external.stubs/api/"
+  ),
   List(
     "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
     "https://www.scala-lang.org/api/current/scala/Predef$.html#String",
     "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html",
     "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):StringBuilder",
-    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String"
+    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String",
+    "https://external.stubs/api/tests/externalStubs/$div$bslash$.html",
+    "https://external.stubs/api/tests/externalStubs/$bslash$div$.html"
   )
 )
 
 class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalScaladoc3",
-  List(".*scala.*::scaladoc3::https://dotty.epfl.ch/api/"),
+  List(
+    ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/",
+    ".*externalStubs.*::scaladoc3::https://external.stubs/api/"
+  ),
   List(
     "https://dotty.epfl.ch/api/scala/collection/immutable/Map.html",
     "https://dotty.epfl.ch/api/scala/Predef$.html#String-0",
-    "https://dotty.epfl.ch/api/scala/util/matching/Regex$$Match.html"
+    "https://dotty.epfl.ch/api/scala/util/matching/Regex$$Match.html",
+    "https://external.stubs/api/tests/externalStubs/$div$bslash$.html",
+    "https://external.stubs/api/tests/externalStubs/$bslash$div$.html"
   )
 )
 

@@ -730,6 +730,13 @@ object projects:
     sbtPublishCommand = "publishLocal",
     dependencies = List(scalaJava8Compat, scalatest)
   )
+  
+  lazy val specs2 = SbtCommunityProject(
+    project = "specs2",
+    sbtTestCommand = "core/testOnly -- exclude ci",
+    sbtPublishCommand = "core/publishLocal",
+    dependencies = List()
+  )
 
   lazy val spire = SbtCommunityProject(
     project = "spire",
@@ -816,6 +823,7 @@ def allProjects = List(
   projects.fs2,
   projects.libretto,
   projects.jacksonModuleScala,
+  projects.specs2,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

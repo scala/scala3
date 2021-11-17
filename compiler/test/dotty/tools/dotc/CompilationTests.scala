@@ -63,6 +63,8 @@ class CompilationTests {
       compileFile("tests/pos-special/extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration")),
       compileFile("tests/pos-custom-args/help.scala", defaultOptions.and("-help", "-V", "-W", "-X", "-Y")),
       compileFile("tests/pos-custom-args/i10383.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
+      compileFile("tests/pos-custom-args/i13044.scala", defaultOptions.and("-Xmax-inlines:33")),
+      compileFile("tests/pos-custom-args/jdk-8-app.scala", defaultOptions.and("-release:8")),
     ).checkCompile()
   }
 
@@ -181,6 +183,9 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
       compileFile("tests/neg-custom-args/feature-shadowing.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileDir("tests/neg-custom-args/hidden-type-errors", defaultOptions.and("-explain")),
+      compileFile("tests/neg-custom-args/i13026.scala", defaultOptions.and("-print-lines")),
+      compileFile("tests/neg-custom-args/i13838.scala", defaultOptions.and("-Ximplicit-search-limit", "1000")),
+      compileFile("tests/neg-custom-args/jdk-9-app.scala", defaultOptions.and("-release:8")),
     ).checkExpectedErrors()
   }
 

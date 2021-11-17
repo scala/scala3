@@ -7,7 +7,7 @@ import reporting._
 
 import org.openjdk.jmh.results.RunResult
 import org.openjdk.jmh.runner.Runner
-import org.openjdk.jmh.runner.options.OptionsBuilder
+import org.openjdk.jmh.runner.options.{OptionsBuilder, CommandLineOptions}
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.results.format._
 import java.util.concurrent.TimeUnit
@@ -22,37 +22,47 @@ import dotty.tools.io.AbstractFile
 object Bench {
   val COMPILE_OPTS_FILE = "compile.txt"
 
+  def printUsage() =
+    println("Usage (from SBT): scala3-bench/jmh:run <JMH arguments> -- <scalac arguments>")
+    println("Display JMH help: scala3-bench/jmh:run -h")
+    println("Our default JMH options: -wi 30 -i 20 -f 3 -tu ms -bm AverageTime -jvmArgs \"-Xms2G -Xmx2G\"")
+
   def main(args: Array[String]): Unit = {
     if (args.isEmpty) {
-      println("Missing <args>")
+      println("Missing arguments.")
+      printUsage()
       return
     }
-    val (intArgs, args1) = args.span(x => try { x.toInt; true } catch { case _: Throwable => false } )
 
-    val warmup = if (intArgs.length > 0) intArgs(0).toInt else 30
-    val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
-    val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
+    val (jmhArgs, _scalacArgs) = args.span(_ != "--")
+    val scalacArgs = _scalacArgs.drop(1)
 
+    storeCompileOptions(scalacArgs)
 
-    import File.{ separator => sep }
+    val jmhCliOps = new CommandLineOptions(jmhArgs:_*)
+    val jmhOps = new OptionsBuilder().parent(jmhCliOps)
 
-    val args2 = args1.map { arg =>
-      if ((arg.endsWith(".scala") || arg.endsWith(".java")) && !(new File(arg)).isAbsolute) ".." + sep + arg
-      else arg
-    }
-    storeCompileOptions(args2)
+    // set our own default options
+    if !jmhCliOps.shouldFailOnError().hasValue() then jmhOps.shouldFailOnError(true)
+    if !jmhCliOps.getWarmupIterations().hasValue() then jmhOps.warmupIterations(30)
+    if !jmhCliOps.getMeasurementIterations().hasValue() then jmhOps.measurementIterations(20)
+    if !jmhCliOps.getForkCount().hasValue() then jmhOps.forks(1)
+    if jmhCliOps.getBenchModes().isEmpty() then jmhOps.mode(Mode.AverageTime)
+    if !jmhCliOps.getTimeUnit().hasValue() then jmhOps.timeUnit(TimeUnit.MILLISECONDS)
+    if !jmhCliOps.getJvmArgs().hasValue() then jmhOps.jvmArgs("-Xms2G", "-Xmx2G")
 
-    val opts = new OptionsBuilder()
-               .shouldFailOnError(true)
-               .jvmArgs("-Xms2G", "-Xmx2G")
-               .mode(Mode.AverageTime)
-               .timeUnit(TimeUnit.MILLISECONDS)
-               .warmupIterations(warmup)
-               .measurementIterations(iterations)
-               .forks(forks)
-               .build
+    val runner = new Runner(jmhOps.build())
 
-    val runner = new Runner(opts) // full access to all JMH features, you can also provide a custom output Format here
+    if jmhCliOps.shouldHelp() then
+      printUsage()
+      println("Following is the JMH options documentation.")
+      println("-------------------------------------------")
+      return jmhCliOps.showHelp()
+    if jmhCliOps.shouldList() then return runner.list()
+    if jmhCliOps.shouldListWithParams() then return runner.listWithParams(jmhCliOps)
+    if jmhCliOps.shouldListProfilers() then return jmhCliOps.listProfilers()
+    if jmhCliOps.shouldListResultFormats() then return jmhCliOps.listResultFormats()
+
     runner.run() // actually run the benchmarks
 
     removeCompileOptions
@@ -61,13 +71,17 @@ object Bench {
   def removeCompileOptions: Unit = new File(COMPILE_OPTS_FILE).delete()
 
   def storeCompileOptions(args: Array[String]): Unit = {
+    import File.{ separator => sep }
+
     val standard_libs = System.getProperty("BENCH_CLASS_PATH")
     val compiler_libs = System.getProperty("BENCH_COMPILER_CLASS_PATH")
 
     val libs = if (args.contains("-with-compiler")) compiler_libs else standard_libs
-    var argsNorm = args.filter(_ != "-with-compiler")
+    var argsNorm = args.filter(_ != "-with-compiler").map { arg =>
+      if ((arg.endsWith(".scala") || arg.endsWith(".java")) && !(new File(arg)).isAbsolute) ".." + sep + arg
+      else arg
+    }
 
-    import File.{ pathSeparator => sep }
     var cpIndex = argsNorm.indexOf("-classpath")
     if (cpIndex == -1) cpIndex = argsNorm.indexOf("-cp")
     if (cpIndex != -1) argsNorm(cpIndex + 1) = argsNorm(cpIndex + 1) + sep + libs

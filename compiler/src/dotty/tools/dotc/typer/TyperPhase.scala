@@ -31,15 +31,6 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
 
   override def allowsImplicitSearch: Boolean = true
 
-  /** The contexts for compilation units that are parsed but not yet entered */
-  private var remaining: List[Context] = Nil
-
-  /** Does a source file ending with `<name>.scala` belong to a compilation unit
-   *  that is parsed but not yet entered?
-   */
-  def stillToBeEntered(name: String): Boolean =
-    remaining.exists(_.compilationUnit.toString.endsWith(name + ".scala"))
-
   // Run regardless of parsing errors
   override def isRunnable(implicit ctx: Context): Boolean = true
 
@@ -68,13 +59,6 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
       JavaChecks.check(unit.tpdTree)
   }
 
-
-  private def firstTopLevelDef(trees: List[tpd.Tree])(using Context): Symbol = trees match
-    case PackageDef(_, defs) :: _    => firstTopLevelDef(defs)
-    case Import(_, _) :: defs        => firstTopLevelDef(defs)
-    case (tree @ TypeDef(_, _)) :: _ => tree.symbol
-    case _ => NoSymbol
-
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
     unit.isJava || unit.suspended
 
@@ -89,11 +73,9 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         else
           newCtx
 
-    remaining = unitContexts
-    while remaining.nonEmpty do
-      enterSyms(using remaining.head)
-      remaining = remaining.tail
-    val firstXmlPos = ctx.base.parserPhase match {
+    unitContexts.foreach(enterSyms(using _))
+
+    ctx.base.parserPhase match {
       case p: ParserPhase =>
         if p.firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists then
           report.error(

@@ -367,9 +367,9 @@ object Inliner {
         lit(error.pos.column),
         if kind == ErrorKind.Parser then parserErrorKind else typerErrorKind)
 
-    private def packErrors(errors: List[(ErrorKind, Error)])(using Context): Tree =
+    private def packErrors(errors: List[(ErrorKind, Error)], pos: SrcPos)(using Context): Tree =
       val individualErrors: List[Tree] = errors.map(packError)
-      val errorTpt = ref(defn.CompiletimeTesting_ErrorClass)
+      val errorTpt = ref(defn.CompiletimeTesting_ErrorClass).withSpan(pos.span)
       mkList(individualErrors, errorTpt)
 
     /** Expand call to scala.compiletime.testing.typeChecks */
@@ -380,7 +380,7 @@ object Inliner {
     /** Expand call to scala.compiletime.testing.typeCheckErrors */
     def typeCheckErrors(tree: Tree)(using Context): Tree =
       val errors = compileForErrors(tree)
-      packErrors(errors)
+      packErrors(errors, tree)
 
     /** Expand call to scala.compiletime.codeOf */
     def codeOf(arg: Tree, pos: SrcPos)(using Context): Tree =

@@ -15,7 +15,7 @@ charts:
 scripts:
 
     i1535:
-        - measure $PROG_HOME/dotty/tests/bench/i1535.scala
+        - measure -- $PROG_HOME/dotty/tests/bench/i1535.scala
 
     i1687:
-        - measure $PROG_HOME/dotty/tests/bench/i1687.scala
+        - measure -- $PROG_HOME/dotty/tests/bench/i1687.scala

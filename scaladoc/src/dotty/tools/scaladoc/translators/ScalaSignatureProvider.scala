@@ -22,6 +22,8 @@ object ScalaSignatureProvider:
         givenClassSignature(documentable, cls, builder)
       case Kind.Given(d: Kind.Def, _, _) =>
         givenMethodSignature(documentable, d, builder)
+      case Kind.Given(Kind.Val, _, _) =>
+        givenValSignature(documentable, builder)
       case cls: Kind.Class =>
         classSignature(documentable, cls, builder)
       case enm: Kind.Enum =>
@@ -129,10 +131,24 @@ object ScalaSignatureProvider:
     case Kind.Given(_, Some(instance), _) =>
       builder.keyword("given ")
         .name(method.name, method.dri)
+        .generics(body.typeParams)
+        .functionParameters(body.argsLists)
         .plain(": ")
         .signature(instance)
     case _ =>
-      builder.keyword("given ").name(method.name, method.dri)
+      builder.keyword("given ")
+        .name(method.name, method.dri)
+        .generics(body.typeParams)
+        .functionParameters(body.argsLists)
+
+  private def givenValSignature(field: Member, builder: SignatureBuilder): SignatureBuilder = field.kind match
+    case Kind.Given(_, Some(instance), _) =>
+      builder.keyword("given ")
+        .name(field.name, field.dri)
+        .plain(": ")
+        .signature(instance)
+    case _ =>
+      builder.keyword("given ").name(field.name, field.dri)
 
   private def methodSignature(method: Member, cls: Kind.Def, builder: SignatureBuilder): SignatureBuilder =
     val bdr = builder

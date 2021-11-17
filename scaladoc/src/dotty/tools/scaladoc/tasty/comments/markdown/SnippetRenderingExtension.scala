@@ -12,6 +12,7 @@ import com.vladsch.flexmark.util.ast._
 import com.vladsch.flexmark.util.options._
 import com.vladsch.flexmark.util.sequence.BasedSequence
 import com.vladsch.flexmark._
+import com.vladsch.flexmark.ast.FencedCodeBlock
 
 /**
  * SnippetRenderingExtension is responsible for running an analysis for scala codeblocks in the static documentation/scaladoc comments.
@@ -26,10 +27,17 @@ object SnippetRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
         SnippetRenderer.renderSnippetWithMessages(node)
       )
 
+  object FencedCodeBlockHandler extends CustomNodeRenderer[FencedCodeBlock]:
+    override def render(node: FencedCodeBlock, c: NodeRendererContext, html: HtmlWriter): Unit =
+      html.raw("""<div class="snippet">""")
+      c.delegateRender()
+      html.raw("""</div>""")
+
   object Render extends NodeRenderer:
     override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[_]] =
       JSet(
         new NodeRenderingHandler(classOf[ExtendedFencedCodeBlock], ExtendedFencedCodeBlockHandler),
+        new NodeRenderingHandler(classOf[FencedCodeBlock], FencedCodeBlockHandler)
       )
 
   object Factory extends NodeRendererFactory:
