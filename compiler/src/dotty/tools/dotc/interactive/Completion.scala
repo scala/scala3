@@ -201,13 +201,22 @@ object Completion {
 
       mappings.foreach { (name, denotss) =>
         val first = denotss.head
+
+        // import a.c
+        def isSingleImport =  denotss.length < 2
+        // import a.C
+        // locally {  import b.C }
+        def isImportedInDifferentScope =  first.ctx.scope ne denotss(1).ctx.scope
+        // import a.C
+        // import a.C
+        def isSameSymbolImportedDouble =  denotss.forall(_.denots == first.denots)
+
         denotss.find(!_.ctx.isImportContext) match {
           // most deeply nested member or local definition if not shadowed by an import
           case Some(local) if local.ctx.scope == first.ctx.scope =>
             resultMappings += name -> local.denots
 
-          // most deeply nested import if not shadowed by another import
-          case None if denotss.length < 2 || (denotss(1).ctx.scope ne first.ctx.scope) =>
+          case None if isSingleImport || isImportedInDifferentScope || isSameSymbolImportedDouble =>
             resultMappings += name -> first.denots
 
           case _ =>
