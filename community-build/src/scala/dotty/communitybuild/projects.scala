@@ -712,8 +712,8 @@ object projects:
 
   lazy val fs2 = SbtCommunityProject(
     project = "fs2",
-    sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
-    sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
+    sbtTestCommand = "coreJVM/test; coreJS/test; ioJS/test",  // ioJVM/test requires JDK9+
+    sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal; nodeJS/publishLocal; ioJS/publishLocal",
     dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
   )
 
