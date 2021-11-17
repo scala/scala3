@@ -615,14 +615,11 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      *  The members are sorted by name and signature to guarantee a stable ordering.
      */
     private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet): List[Symbol] = {
-      // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
-      val names = tp.memberNames(takeAllFilter).toSeq.sorted
-      val buffer = mutable.ListBuffer[Symbol]()
-      names.foreach { name =>
-        buffer ++= tp.memberBasedOnFlags(name, required, excluded)
+      val names = tp.memberNames(takeAllFilter).toList
+      names.flatMap { name =>
+        tp.memberBasedOnFlags(name, required, excluded)
           .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
       }
-      buffer.toList
     }
 
     /*

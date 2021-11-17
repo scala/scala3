@@ -51,9 +51,9 @@ object RefChecks {
     }
     {
       val defaultGetterNames = defaultGetterClass.asClass.memberNames(defaultMethodFilter)
-      val defaultMethodNames = defaultGetterNames map { _ replace {
+      val defaultMethodNames = defaultGetterNames.toList.map { _ replace {
         case DefaultGetterName(methName, _) => methName
-      }}
+      }}.distinct
 
       for (name <- defaultMethodNames) {
         val methods = clazz.info.member(name).alternatives.map(_.symbol)
