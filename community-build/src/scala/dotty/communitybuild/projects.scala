@@ -730,7 +730,7 @@ object projects:
     sbtPublishCommand = "publishLocal",
     dependencies = List(scalaJava8Compat, scalatest)
   )
-  
+
   lazy val specs2 = SbtCommunityProject(
     project = "specs2",
     sbtTestCommand = "core/testOnly -- exclude ci",
