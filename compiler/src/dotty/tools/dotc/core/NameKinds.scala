@@ -358,6 +358,13 @@ object NameKinds {
   val ProtectedAccessorName: PrefixNameKind = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
   val InlineAccessorName: PrefixNameKind = new PrefixNameKind(INLINEACCESSOR, "inline$")
 
+  /** See `ConstraintHandling#LevelAvoidMap`. */
+  enum AvoidNameKind(tag: Int, prefix: String) extends PrefixNameKind(tag, prefix):
+    override def definesNewName = true
+    case UpperBound extends AvoidNameKind(AVOIDUPPER, "(upper)")
+    case LowerBound extends AvoidNameKind(AVOIDLOWER, "(lower)")
+    case BothBounds extends AvoidNameKind(AVOIDBOTH, "(avoid)")
+
   val BodyRetainerName: SuffixNameKind = new SuffixNameKind(BODYRETAINER, "$retainedBody")
   val FieldName: SuffixNameKind = new SuffixNameKind(FIELD, "$$local") {
       override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString

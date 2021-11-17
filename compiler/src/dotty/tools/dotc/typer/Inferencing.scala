@@ -7,7 +7,7 @@ import ast._
 import Contexts._, Types._, Flags._, Symbols._
 import Trees._
 import ProtoTypes._
-import NameKinds.UniqueName
+import NameKinds.{AvoidNameKind, UniqueName}
 import util.Spans._
 import util.{Stats, SimpleIdentityMap}
 import Decorators._
@@ -553,7 +553,8 @@ trait Inferencing { this: Typer =>
    *  @param locked  the set of type variables of the current typer state that cannot be interpolated
    *                 at the present time
    *  Eligible for interpolation are all type variables owned by the current typerstate
-   *  that are not in locked. Type variables occurring co- (respectively, contra-) variantly in the tree type
+   *  that are not in `locked` and whose `nestingLevel` is `>= ctx.nestingLevel`.
+   *  Type variables occurring co- (respectively, contra-) variantly in the tree type
    *  or expected type are minimized (respectvely, maximized). Non occurring type variables are minimized if they
    *  have a lower bound different from Nothing, maximized otherwise. Type variables appearing
    *  non-variantly in the type are left untouched.
@@ -615,17 +616,35 @@ trait Inferencing { this: Typer =>
         type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
         val toInstantiate = new InstantiateQueue
         for tvar <- qualifying do
-          if !tvar.isInstantiated && constraint.contains(tvar) then
+          if !tvar.isInstantiated && constraint.contains(tvar) && tvar.nestingLevel >= ctx.nestingLevel then
             constrainIfDependentParamRef(tvar, tree)
             // Needs to be checked again, since previous interpolations could already have
             // instantiated `tvar` through unification.
             val v = vs(tvar)
             if v == null then
-              typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
-              toInstantiate += ((tvar, tvar.hasLowerBound))
+              // Even though `tvar` is non-occurring in `v`, the specific
+              // instantiation we pick still matters because `tvar` might appear
+              // in the bounds of a non-`qualifying` type variable in the
+              // constraint.
+              // In particular, if `tvar` was created as the upper or lower
+              // bound of an existing variable by `LevelAvoidMap`, we
+              // instantiate it in the direction corresponding to the
+              // original variable which might be further constrained later.
+              // Otherwise, we simply rely on `hasLowerBound`.
+              val name = tvar.origin.paramName
+              val fromBelow =
+                name.is(AvoidNameKind.UpperBound) ||
+                !name.is(AvoidNameKind.LowerBound) && tvar.hasLowerBound
+              typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
+              toInstantiate += ((tvar, fromBelow))
             else if v.intValue != 0 then
               typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
               toInstantiate += ((tvar, v.intValue == 1))
+            else if tvar.nestingLevel > ctx.nestingLevel then
+              // Invariant: a type variable of level N can only appear
+              // in the type of a tree whose enclosing scope is level <= N.
+              typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
+              comparing(_.atLevel(ctx.nestingLevel, tvar.origin))
             else
               typr.println(i"no interpolation for nonvariant $tvar in $state")
 
@@ -687,26 +706,26 @@ trait Inferencing { this: Typer =>
    *  type if necessary to make it a Singleton.
    */
   private def constrainIfDependentParamRef(tvar: TypeVar, call: Tree)(using Context): Unit =
-    representedParamRef(tvar) match
-      case ref: TermParamRef =>
+    if tvar.origin.paramName.is(NameKinds.DepParamName) then
+      representedParamRef(tvar.origin) match
+        case ref: TermParamRef =>
+          def findArg(tree: Tree)(using Context): Tree = tree match
+            case Apply(fn, args) =>
+              if fn.tpe.widen eq ref.binder then
+                if ref.paramNum < args.length then args(ref.paramNum)
+                else EmptyTree
+              else findArg(fn)
+            case TypeApply(fn, _) => findArg(fn)
+            case Block(_, expr) => findArg(expr)
+            case Inlined(_, _, expr) => findArg(expr)
+            case _ => EmptyTree
 
-        def findArg(tree: Tree)(using Context): Tree = tree match
-          case Apply(fn, args) =>
-            if fn.tpe.widen eq ref.binder then
-              if ref.paramNum < args.length then args(ref.paramNum)
-              else EmptyTree
-            else findArg(fn)
-          case TypeApply(fn, _) => findArg(fn)
-          case Block(_, expr) => findArg(expr)
-          case Inlined(_, _, expr) => findArg(expr)
-          case _ => EmptyTree
-
-        val arg = findArg(call)
-        if !arg.isEmpty then
-          var argType = arg.tpe.widenIfUnstable
-          if !argType.isSingleton then argType = SkolemType(argType)
-          argType <:< tvar
-      case _ =>
+          val arg = findArg(call)
+          if !arg.isEmpty then
+            var argType = arg.tpe.widenIfUnstable
+            if !argType.isSingleton then argType = SkolemType(argType)
+            argType <:< tvar
+        case _ =>
   end constrainIfDependentParamRef
 }
 

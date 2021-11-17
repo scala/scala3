@@ -231,6 +231,16 @@ class TypeApplications(val self: Type) extends AnyVal {
       (alias ne self) && alias.hasSimpleKind
     }
 
+  /** The top type with the same kind as `self`. */
+  def topType(using Context): Type =
+    if self.hasSimpleKind then
+      defn.AnyType
+    else EtaExpand(self.typeParams) match
+      case tp: HKTypeLambda =>
+        tp.derivedLambdaType(resType = tp.resultType.topType)
+      case _ =>
+        defn.AnyKindType
+
   /** If self type is higher-kinded, its result type, otherwise NoType.
    *  Note: The hkResult of an any-kinded type is again AnyKind.
    */
