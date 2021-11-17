@@ -986,6 +986,15 @@ object RefChecks {
           report.warning(i"$sym has an unparsable version number: ${ex.getMessage}", pos)
         case _ =>
 
+  private def checkSinceAnnotInSignature(sym: Symbol, pos: SrcPos)(using Context) =
+    new TypeTraverser:
+      def traverse(tp: Type) =
+        if tp.typeSymbol.hasAnnotation(defn.SinceAnnot) then
+          checkSinceAnnot(tp.typeSymbol, pos)
+        else
+          traverseChildren(tp)
+    .traverse(sym.info)
+
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
    */
@@ -1272,6 +1281,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
+    checkSinceAnnotInSignature(tree.symbol, tree)
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
       tree.rhs match {
@@ -1294,6 +1304,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
+    checkSinceAnnotInSignature(tree.symbol, tree)
     checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
     checkUnaryMethods(tree.symbol)
     tree
