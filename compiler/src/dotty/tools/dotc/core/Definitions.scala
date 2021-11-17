@@ -1090,7 +1090,7 @@ class Definitions {
     tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max
   )
   private val compiletimePackageIntTypes: Set[Name] = compiletimePackageNumericTypes ++ Set[Name](
-    tpnme.ToString, //ToString is moved to ops.any and deprecated for ops.int
+    tpnme.ToString, // ToString is moved to ops.any and deprecated for ops.int
     tpnme.NumberOfLeadingZeros, tpnme.ToLong, tpnme.ToFloat, tpnme.ToDouble,
     tpnme.Xor, tpnme.BitwiseAnd, tpnme.BitwiseOr, tpnme.ASR, tpnme.LSL, tpnme.LSR
   )
