@@ -14,6 +14,12 @@ If you're not sure what version you're using, run `print scalaVersion` from sbt
 
 ## Minimized code
 
+<!--
+This code should be self contained, compilable (with possible failures) and as small as possible.
+
+Ideally, we should be able to just copy this code in a file and run `scalac` (and maybe `scala`) to reproduce the issue.
+-->
+
 ```Scala
 println("hello, world")
 ```
