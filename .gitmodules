@@ -216,3 +216,6 @@
 [submodule "community-build/community-projects/specs2"]
 	path = community-build/community-projects/specs2
 	url = https://github.com/dotty-staging/specs2.git
+[submodule "community-build/community-projects/spire"]
+	path = community-build/community-projects/spire
+	url = https://github.com/dotty-staging/spire.git
