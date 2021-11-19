@@ -5,8 +5,10 @@ import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.config.CommandLineParser.tokenize
 import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Phases.{unfusedPhases, typerPhase}
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
@@ -413,6 +415,23 @@ class ReplDriver(settings: Array[String],
           )
       }
       state
+
+    case Settings(arg) => arg match
+      case "" =>
+        given ctx: Context = state.context
+        for (s <- ctx.settings.userSetSettings(ctx.settingsState).sortBy(_.name))
+          out.println(s"${s.name} = ${if s.value == "" then "\"\"" else s.value}")
+        state
+      case _  =>
+        setup(tokenize(arg).toArray, rootCtx) match
+          case Some((files, ictx)) =>
+            inContext(ictx) {
+              if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
+              ictx.base.initialize()(using ictx)
+              rootCtx = ictx
+            }
+          case _ =>
+        state.copy(context = rootCtx)
 
     case Quit =>
       // end of the world!

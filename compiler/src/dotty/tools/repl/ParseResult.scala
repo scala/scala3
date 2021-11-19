@@ -80,6 +80,11 @@ case object Imports extends Command {
   val command: String = ":imports"
 }
 
+case class Settings(arg: String) extends Command
+object Settings {
+  val command: String = ":settings"
+}
+
 /** Reset the session to the initial state from when the repl program was
  *  started
  */
@@ -106,6 +111,7 @@ case object Help extends Command {
       |:doc <expression>        print the documentation for the given expression
       |:imports                 show import history
       |:reset                   reset the repl to its initial state, forgetting all session entries
+      |:settings <options>      update compiler options, if possible
     """.stripMargin
 }
 
@@ -128,7 +134,8 @@ object ParseResult {
     Imports.command -> (_  => Imports),
     Load.command -> (arg => Load(arg)),
     TypeOf.command -> (arg => TypeOf(arg)),
-    DocOf.command -> (arg => DocOf(arg))
+    DocOf.command -> (arg => DocOf(arg)),
+    Settings.command -> (arg => Settings(arg)),
   )
 
   def apply(source: SourceFile)(implicit state: State): ParseResult = {

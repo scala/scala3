@@ -31,16 +31,16 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   private val MaxStringElements: Int = 1000  // no need to mkString billions of elements
 
-  private var myClassLoader: ClassLoader = _
+  private var myClassLoader: AbstractFileClassLoader = _
 
   private var myReplStringOf: Object => String = _
 
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
-    if (myClassLoader != null) myClassLoader
+    if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
     else {
-      val parent = parentClassLoader.getOrElse {
+      val parent = Option(myClassLoader).orElse(parentClassLoader).getOrElse {
         val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
         // We can't use the system classloader as a parent because it would
         // pollute the user classpath with everything passed to the JVM
