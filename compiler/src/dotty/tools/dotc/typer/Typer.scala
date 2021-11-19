@@ -1601,7 +1601,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             result
         }
     }
-    if Nullables.unsafeNullsEnabled then
+    if Nullables.unsafeNullsEnabled && ctx.phase == Phases.typerPhase then
       tree1.putAttachment(Nullables.UnsafeNullsMatch, ())
     tree1
 
