@@ -338,16 +338,13 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
   override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space = trace(s"atomic intersection: ${AndType(tp1, tp2).show}", debug) {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
-    if (!ctx.explicitNulls && (tp1.isNullType || tp2.isNullType)) {
+    if !ctx.mode.is(Mode.SafeNulls) && (tp1.isNullType || tp2.isNullType) then
       // Since projections of types don't include null, intersection with null is empty.
       Empty
-    }
-    else {
+    else
       val res = TypeComparer.provablyDisjoint(tp1, tp2)
-
-      if (res) Empty
+      if res then Empty
       else Typ(AndType(tp1, tp2), decomposed = true)
-    }
   }
 
   /** Return the space that represents the pattern `pat` */
@@ -549,7 +546,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
-    if tp1 == constantNullType && !ctx.explicitNulls then tp2 == constantNullType
+    if tp1 == constantNullType && !ctx.mode.is(Mode.SafeNulls)
+    then tp2 == constantNullType
     else adaptType(tp1, tp2) <:< tp2
   }
 

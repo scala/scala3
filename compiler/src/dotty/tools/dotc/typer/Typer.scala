@@ -1502,7 +1502,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedMatch(tree: untpd.Match, pt: Type)(using Context): Tree =
-    tree.selector match {
+    val tree1 = tree.selector match {
       case EmptyTree =>
         if (tree.isInline) {
           checkInInlineContext("summonFrom", tree.srcPos)
@@ -1604,6 +1604,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             result
         }
     }
+    if Nullables.unsafeNullsEnabled then
+      tree1.putAttachment(Nullables.UnsafeNullsMatch, ())
+    tree1
 
   /** Special typing of Match tree when the expected type is a MatchType,
    *  and the patterns of the Match tree and the MatchType correspond.
