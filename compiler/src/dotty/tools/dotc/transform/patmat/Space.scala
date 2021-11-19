@@ -108,7 +108,7 @@ trait SpaceLogic {
   def decompose(tp: Type): List[Typ]
 
   /** Whether the extractor covers the given type */
-  def covers(unapp: TermRef, scrutineeTp: Type): Boolean
+  def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int): Boolean
 
   /** Display space in string format */
   def show(sp: Space): String
@@ -186,7 +186,7 @@ trait SpaceLogic {
         isSubType(tp1, tp2)
       case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
         isSubType(tp1, tp2)
-        && covers(fun, tp1)
+        && covers(fun, tp1, ss.length)
         && isSubspace(Prod(tp2, fun, signature(fun, tp2, ss.length).map(Typ(_, false))), b)
       case (Prod(_, fun1, ss1), Prod(_, fun2, ss2)) =>
         isSameUnapply(fun1, fun2) && ss1.zip(ss2).forall((isSubspace _).tupled)
@@ -240,7 +240,7 @@ trait SpaceLogic {
         else a
       case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if isSubType(tp1, tp2) && covers(fun, tp1) then
+        if isSubType(tp1, tp2) && covers(fun, tp1, ss.length) then
           minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
         else if canDecompose(tp1) then
           tryDecompose1(tp1)
@@ -262,6 +262,7 @@ trait SpaceLogic {
           a
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
         if (!isSameUnapply(fun1, fun2)) return a
+        if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) return a
 
         val range = (0 until ss1.size).toList
         val cache = Array.fill[Space](ss2.length)(null)
@@ -288,13 +289,13 @@ object SpaceEngine {
   /** Is the unapply or unapplySeq irrefutable?
    *  @param  unapp   The unapply function reference
    */
-  def isIrrefutable(unapp: TermRef)(using Context): Boolean = {
+  def isIrrefutable(unapp: TermRef, argLen: Int)(using Context): Boolean = {
     val unappResult = unapp.widen.finalResultType
     unappResult.isRef(defn.SomeClass)
     || unappResult <:< ConstantType(Constant(true)) // only for unapply
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
-    || productArity(unappResult) > 0
+    || isProductMatch(unappResult, argLen)
     || {
       val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition)
       isEmptyTp <:< ConstantType(Constant(false))
@@ -304,10 +305,10 @@ object SpaceEngine {
   /** Is the unapply or unapplySeq irrefutable?
    *  @param  unapp   The unapply function tree
    */
-  def isIrrefutable(unapp: tpd.Tree)(using Context): Boolean = {
+  def isIrrefutable(unapp: tpd.Tree, argLen: Int)(using Context): Boolean = {
     val fun1 = tpd.funPart(unapp)
     val funRef = fun1.tpe.asInstanceOf[TermRef]
-    isIrrefutable(funRef)
+    isIrrefutable(funRef, argLen)
   }
 }
 
@@ -606,8 +607,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
   }
 
   /** Whether the extractor covers the given type */
-  def covers(unapp: TermRef, scrutineeTp: Type): Boolean =
-    SpaceEngine.isIrrefutable(unapp) || unapp.symbol == defn.TypeTest_unapply && {
+  def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int): Boolean =
+    SpaceEngine.isIrrefutable(unapp, argLen) || unapp.symbol == defn.TypeTest_unapply && {
       val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias
       scrutineeTp <:< tp
     }
