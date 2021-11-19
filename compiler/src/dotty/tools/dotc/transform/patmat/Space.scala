@@ -330,12 +330,6 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
   private val constantNullType     = ConstantType(Constant(null))
 
-  /** Does the given tree stand for the literal `null`? */
-  def isNullLit(tree: Tree): Boolean = tree match {
-    case Literal(Constant(null)) => true
-    case _ => false
-  }
-
   override def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type): Space = trace(s"atomic intersection: ${AndType(tp1, tp2).show}", debug) {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
     if !ctx.mode.is(Mode.SafeNulls) && (tp1.isNullType || tp2.isNullType) then

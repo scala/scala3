@@ -247,6 +247,7 @@ class CompilationTests {
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
       compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions),
+      compileFilesInDir("tests/explicit-nulls/pos-patmat", explicitNullsOptions and "-Xfatal-warnings"),
       compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls"),
     )
   }.checkCompile()
