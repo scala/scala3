@@ -1,8 +1,11 @@
+import scala.language.unsafeNulls
+
 def test1 =
   val s: String = ???
   s match
     case _: String =>
-    case null => // error: Values of types Null and String cannot be compared
+    // under unsafeNulls, we should not get Match case Unreachable Warning
+    case null => // ok
 
 def test2 =
   val s: String | Null = ???
