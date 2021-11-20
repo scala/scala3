@@ -63,7 +63,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
 
-  private var useNecessaryEither = false
+  private var myNecessaryConstraintsOnly = false
+  /** When collecting the constraints needed for a particular subtyping
+   *  judgment to be true, we sometimes need to approximate the constraint
+   *  set (see `TypeComparer#either` for example).
+   *
+   *  Normally, this means adding extra constraints which may not be necessary
+   *  for the subtyping judgment to be true, but if this variable is set to true
+   *  we will instead under-approximate and keep only the constraints that must
+   *  always be present for the subtyping judgment to hold.
+   *
+   *  This is needed for GADT bounds inference to be sound, but it is also used
+   *  when constraining a method call based on its expected type to avoid adding
+   *  constraints that would later prevent us from typechecking method
+   *  arguments, see or-inf.scala and and-inf.scala for examples.
+   */
+  protected def necessaryConstraintsOnly(using Context) =
+    ctx.mode.is(Mode.GadtConstraintInference) || myNecessaryConstraintsOnly
 
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
@@ -134,20 +150,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   def necessarySubType(tp1: Type, tp2: Type): Boolean =
-    val saved = useNecessaryEither
-    useNecessaryEither = true
+    val saved = myNecessaryConstraintsOnly
+    myNecessaryConstraintsOnly = true
     try topLevelSubType(tp1, tp2)
-    finally useNecessaryEither = saved
+    finally myNecessaryConstraintsOnly = saved
 
   /** Use avoidance to get rid of wildcards in constraint bounds if
    *  we are doing a necessary comparison, or the mode is TypeVarsMissContext.
    *  The idea is that under either of these conditions we are not interested
    *  in creating a fresh type variable to replace the wildcard. I verified
    *  that several tests break if one or the other part of the disjunction is dropped.
-   *  (for instance, i12677.scala demands `useNecessaryEither` in the condition)
+   *  (for instance, i12677.scala demands `necessaryConstraintsOnly` in the condition)
    */
   override protected def approximateWildcards: Boolean =
-    useNecessaryEither || ctx.mode.is(Mode.TypevarsMissContext)
+    necessaryConstraintsOnly || ctx.mode.is(Mode.TypevarsMissContext)
 
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
@@ -1580,24 +1596,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true and approximates resulting constraints.
    *
-   *  If we're inferring GADT bounds or constraining a method based on its
-   *  expected type, we infer only the _necessary_ constraints, this means we
-   *  keep the smaller constraint if any, or no constraint at all. This is
-   *  necessary for GADT bounds inference to be sound. When constraining a
-   *  method, this avoid committing of constraints that would later prevent us
-   *  from typechecking method arguments, see or-inf.scala and and-inf.scala for
-   *  examples.
+   *  If `necessaryConstraintsOnly` is true, we keep the smaller constraint if
+   *  any, or no constraint at all.
    *
    *  Otherwise, we infer _sufficient_ constraints: we try to keep the smaller of
    *  the two constraints, but if never is smaller than the other, we just pick
    *  the first one.
-   *
-   *  @see [[necessaryEither]] for the GADT / result type case
-   *  @see [[sufficientEither]] for the normal case
    */
   protected def either(op1: => Boolean, op2: => Boolean): Boolean =
     Stats.record("TypeComparer.either")
-    if ctx.mode.is(Mode.GadtConstraintInference) || useNecessaryEither then
+    if necessaryConstraintsOnly then
       necessaryEither(op1, op2)
     else
       sufficientEither(op1, op2)
@@ -1673,7 +1681,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *     T1 & T2 <:< T3
    *     T1 <:< T2 | T3
    *
-   *  Unlike [[sufficientEither]], this method is used in GADTConstraintInference mode, when we are attempting
+   *  But this method is used when `useNecessaryEither` is true, like when we are attempting
    *  to infer GADT constraints that necessarily follow from the subtyping relationship. For instance, if we have
    *
    *     enum Expr[T] {
