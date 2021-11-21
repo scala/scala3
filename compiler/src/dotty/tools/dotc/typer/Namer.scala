@@ -1479,22 +1479,7 @@ class Namer { typer: Typer =>
             // This case applies if the closure result type contains uninstantiated
             // type variables. In this case, constrain the closure result from below
             // by the parameter-capture-avoiding type of the body.
-            val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
-
-            // The following part is important since otherwise we might instantiate
-            // the closure result type with a plain functon type that refers
-            // to local parameters. An example where this happens in `dependent-closures.scala`
-            // If the code after `val rhsType` is commented out, this file fails pickling tests.
-            // AVOIDANCE TODO: Follow up why this happens, and whether there
-            // are better ways to achieve this. It would be good if we could get rid of this code.
-            // It seems at least partially redundant with the nesting level checking on TypeVar
-            // instantiation.
-            val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
-            if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
-              report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
-                i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
-            //println(i"lifting $rhsType over $termParamss -> $hygienicType = ${tpt.tpe}")
-            //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
+            typedAheadExpr(mdef.rhs, tpt.tpe).tpe
           case _ =>
         }
         WildcardType
