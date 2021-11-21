@@ -13,7 +13,7 @@ import annotation.MainAnnotation
 
 /** An annotation that designates a main function
  */
-final class main extends scala.annotation.MainAnnotation:
+final class main(maxLineLength: Int = 120) extends scala.annotation.MainAnnotation:
   self =>
   import main._
 
@@ -28,8 +28,9 @@ final class main extends scala.annotation.MainAnnotation:
     new MainAnnotation.Command[ArgumentParser, MainResultType]:
       private var argNames = new mutable.ArrayBuffer[String]
       private var argTypes = new mutable.ArrayBuffer[String]
-      private var argDocs = new mutable.ArrayBuffer[String]
       private var argKinds = new mutable.ArrayBuffer[ArgumentKind]
+
+      private var documentation = new Documentation(docComment, maxLineLength)
 
       /** A buffer for all errors */
       private var errors = new mutable.ArrayBuffer[String]
@@ -66,50 +67,40 @@ final class main extends scala.annotation.MainAnnotation:
         }
 
       private def usage(): Unit =
-        def wrappedArgumentUsages(argsUsage: List[String], maxLength: Int): List[String] =
-          def recurse(args: List[String], currentLine: String, acc: Vector[String]): Vector[String] =
-            (args, currentLine) match {
-              case (Nil, "") => acc
-              case (Nil, l) => (acc :+ l)
-              case (arg :: t, "") => recurse(t, arg, acc)
-              case (arg :: t, l) if l.length + 1 + arg.length <= maxLength => recurse(t, s"$l $arg", acc)
-              case (arg :: t, l) => recurse(t, arg, acc :+ l)
-            }
-
-          recurse(argsUsage, "", Vector()).toList
-        end wrappedArgumentUsages
-
-        val maxLineLength = 120 // TODO as parameter? As global Dotty parameter?
         val usageBeginning = s"Usage: $commandName "
         val argsOffset = usageBeginning.length
-        val argUsages = wrappedArgumentUsages((0 until argNames.length).map(argUsage).toList, maxLineLength - argsOffset)
+        val argUsages = documentation.wrapArgumentUsages((0 until argNames.length).map(argUsage).toList, maxLineLength - argsOffset)
 
         println(usageBeginning + argUsages.mkString("\n" + " " * argsOffset))
 
       private def explain(): Unit =
-        if (docComment.nonEmpty)
-          println(docComment)
+        if (documentation.mainDoc.nonEmpty)
+          println(documentation.wrapLongLine(documentation.mainDoc, maxLineLength).mkString("\n"))
         if (argNames.nonEmpty) {
           val argNameShift = 2
           val argDocShift = argNameShift + 2
 
           println("Arguments:")
           for (pos <- 0 until argNames.length)
-            val argDoc = StringBuilder(" " * argNameShift)
-            argDoc.append(s"${argNames(pos)} - ${argTypes(pos)}")
+            val argDocBuilder = StringBuilder(" " * argNameShift)
+            argDocBuilder.append(s"${argNames(pos)} - ${argTypes(pos)}")
 
             argKinds(pos) match {
-              case ArgumentKind.OptionalArgument => argDoc.append(" (optional)")
-              case ArgumentKind.VarArgument => argDoc.append(" (vararg)")
+              case ArgumentKind.OptionalArgument => argDocBuilder.append(" (optional)")
+              case ArgumentKind.VarArgument => argDocBuilder.append(" (vararg)")
               case _ =>
             }
 
-            if (argDocs(pos).nonEmpty) {
-              val shiftedDoc = argDocs(pos).split("\n").nn.map(" " * argDocShift + _).mkString("\n")
-              argDoc.append("\n").append(shiftedDoc)
+            val argDoc = documentation.argDocs(argNames(pos))
+            if (argDoc.nonEmpty) {
+              val formatedDocLines =
+                argDoc
+                .split("\n").nn
+                .map(line => documentation.wrapLongLine(line.nn, maxLineLength - argDocShift).map(" " * argDocShift + _).mkString("\n"))
+              argDocBuilder.append("\n").append(formatedDocLines.mkString("\n"))
             }
 
-            println(argDoc)
+            println(argDocBuilder)
         }
 
       private def indicesOfArg(argName: String): Seq[Int] =
@@ -136,22 +127,21 @@ final class main extends scala.annotation.MainAnnotation:
             error(s"more than one value for $argName: ${multValues.mkString(", ")}")
         }
 
-      private def registerArg(argName: String, argType: String, argDoc: String, argKind: ArgumentKind): Unit =
+      private def registerArg(argName: String, argType: String, argKind: ArgumentKind): Unit =
         argNames += argName
         argTypes += argType
-        argDocs += argDoc
         argKinds += argKind
 
-      override def argGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => T =
-        registerArg(argName, argType, argDoc, ArgumentKind.SimpleArgument)
+      override def argGetter[T](argName: String, argType: String)(using p: ArgumentParser[T]): () => T =
+        registerArg(argName, argType, ArgumentKind.SimpleArgument)
         getArgGetter(argName, () => error(s"missing argument for $argName"))
 
-      override def argGetterDefault[T](argName: String, argType: String, argDoc: String, defaultValue: => T)(using p: ArgumentParser[T]): () => T =
-        registerArg(argName, argType, argDoc, ArgumentKind.OptionalArgument)
+      override def argGetterDefault[T](argName: String, argType: String, defaultValue: => T)(using p: ArgumentParser[T]): () => T =
+        registerArg(argName, argType, ArgumentKind.OptionalArgument)
         getArgGetter(argName, () => () => defaultValue)
 
-      override def argsGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => Seq[T] =
-        registerArg(argName, argType, argDoc, ArgumentKind.VarArgument)
+      override def argsGetter[T](argName: String, argType: String)(using p: ArgumentParser[T]): () => Seq[T] =
+        registerArg(argName, argType, ArgumentKind.VarArgument)
         def remainingArgGetters(): List[() => T] = nextPositionalArg() match
           case Some(arg) => convert(argName, arg, p) :: remainingArgGetters()
           case None => Nil
@@ -183,7 +173,9 @@ final class main extends scala.annotation.MainAnnotation:
           else f match
             case ExitCode(n) => sys.exit(n)
             case () =>
-            case res => println(res)
+            case res =>
+              val wrappedLines = res.toString.split("\n").nn.map(line => documentation.wrapLongLine(line.nn, maxLineLength).mkString("\n"))
+              println(wrappedLines.mkString("\n"))
       end run
   end command
 end main
@@ -191,3 +183,173 @@ end main
 object main:
   case class ExitCode(code: Int)
 end main
+
+/*
+ * Most of this class' helper methods come from {{dotty.tools.dotc.util.Chars}}
+ * and {{dotty.tools.dotc.util.CommentParsing}}.
+ */
+private class Documentation(docComment: String, maxLineLength: Int):
+  /** The main part of the documentation. */
+  def mainDoc: String = _mainDoc
+  /** The parameters identified by @param. Maps from param name to documentation. */
+  def argDocs: Map[String, String] = _argDocs
+
+  def wrapLongLine(line: String, maxLength: Int): List[String] = {
+    def recurse(s: String, acc: Vector[String]): Seq[String] =
+      val lastSpace = s.trim.nn.lastIndexOf(' ', maxLength)
+      if ((s.length <= maxLength) || (lastSpace < 0))
+        acc :+ s
+      else {
+        val (shortLine, rest) = s.splitAt(lastSpace)
+        recurse(rest.trim.nn, acc :+ shortLine)
+      }
+
+    recurse(line, Vector()).toList
+  }
+
+  def wrapArgumentUsages(argsUsage: List[String], maxLength: Int): List[String] = {
+    def recurse(args: List[String], currentLine: String, acc: Vector[String]): Seq[String] =
+      (args, currentLine) match {
+        case (Nil, "") => acc
+        case (Nil, l) => (acc :+ l)
+        case (arg :: t, "") => recurse(t, arg, acc)
+        case (arg :: t, l) if l.length + 1 + arg.length <= maxLength => recurse(t, s"$l $arg", acc)
+        case (arg :: t, l) => recurse(t, arg, acc :+ l)
+      }
+
+    recurse(argsUsage, "", Vector()).toList
+  }
+
+  private var _mainDoc: String = ""
+  private var _argDocs: Map[String, String] = Map().withDefaultValue("")
+
+  docComment.trim match {
+    case "" =>
+    case doc => parseDocComment(doc.nn)
+  }
+
+  private def isWhitespace(c: Char): Boolean =
+    c == ' ' || c == '\t' || c == '\u000D'
+
+  private def isIdentifierPart(c: Char): Boolean =
+    (c == '$') || java.lang.Character.isUnicodeIdentifierPart(c)
+
+  private def skipWhitespace(str: String, start: Int): Int =
+    if (start < str.length && isWhitespace(str charAt start)) skipWhitespace(str, start + 1)
+    else start
+
+  private def skipIdent(str: String, start: Int): Int =
+    if (start < str.length && isIdentifierPart(str charAt start)) skipIdent(str, start + 1)
+    else start
+
+  private def skipTag(str: String, start: Int): Int =
+    if (start < str.length && (str charAt start) == '@') skipIdent(str, start + 1)
+    else start
+
+  private def skipLineLead(str: String, start: Int): Int =
+    if (start == str.length) start
+    else {
+      val idx = skipWhitespace(str, start + 1)
+      if (idx < str.length && (str charAt idx) == '*') skipWhitespace(str, idx + 1)
+      else if (idx + 2 < str.length && (str charAt idx) == '/' && (str charAt (idx + 1)) == '*' && (str charAt (idx + 2)) == '*')
+        skipWhitespace(str, idx + 3)
+      else idx
+    }
+
+  private def startTag(str: String, sections: List[(Int, Int)]): Int = sections match {
+    case Nil             => str.length - 2
+    case (start, _) :: _ => start
+  }
+
+  private def skipToEol(str: String, start: Int): Int =
+    if (start + 2 < str.length && (str charAt start) == '/' && (str charAt (start + 1)) == '*' && (str charAt (start + 2)) == '*') start + 3
+    else if (start < str.length && (str charAt start) != '\n') skipToEol(str, start + 1)
+    else start
+
+  private def findNext(str: String, start: Int)(p: Int => Boolean): Int = {
+    val idx = skipLineLead(str, skipToEol(str, start))
+    if (idx < str.length && !p(idx)) findNext(str, idx)(p)
+    else idx
+  }
+
+  private def findAll(str: String, start: Int)(p: Int => Boolean): List[Int] = {
+    val idx = findNext(str, start)(p)
+    if (idx == str.length) List()
+    else idx :: findAll(str, idx)(p)
+  }
+
+  private def tagIndex(str: String, p: Int => Boolean = (idx => true)): List[(Int, Int)] = {
+    var indices = findAll(str, 0) (idx => str(idx) == '@' && p(idx))
+    indices = mergeUsecaseSections(str, indices)
+    indices = mergeInheritdocSections(str, indices)
+
+    indices match {
+      case List() => List()
+      case idxs   => idxs zip (idxs.tail ::: List(str.length - 2))
+    }
+  }
+
+  private def mergeUsecaseSections(str: String, idxs: List[Int]): List[Int] =
+    idxs.indexWhere(str.startsWith("@usecase", _)) match {
+      case firstUCIndex if firstUCIndex != -1 =>
+        val commentSections = idxs.take(firstUCIndex)
+        val usecaseSections = idxs.drop(firstUCIndex).filter(str.startsWith("@usecase", _))
+        commentSections ::: usecaseSections
+      case _ =>
+        idxs
+    }
+
+  private def mergeInheritdocSections(str: String, idxs: List[Int]): List[Int] =
+    idxs.filterNot(str.startsWith("@inheritdoc", _))
+
+  private def startsWithTag(str: String, section: (Int, Int), tag: String): Boolean =
+    startsWithTag(str, section._1, tag)
+
+  private def startsWithTag(str: String, start: Int, tag: String): Boolean =
+    str.startsWith(tag, start) && !isIdentifierPart(str charAt (start + tag.length))
+
+  private def paramDocs(str: String, tag: String, sections: List[(Int, Int)]): Map[String, (Int, Int)] =
+    Map() ++ {
+      for (section <- sections if startsWithTag(str, section, tag)) yield {
+        val start = skipWhitespace(str, section._1 + tag.length)
+        str.substring(start, skipIdent(str, start)).nn -> section
+      }
+    }
+
+  private def extractSectionText(str: String, section: (Int, Int)): (Int, Int) = {
+    val (beg, end) = section
+    if (str.startsWith("@param", beg) ||
+        str.startsWith("@tparam", beg) ||
+        str.startsWith("@throws", beg))
+      (skipWhitespace(str, skipIdent(str, skipWhitespace(str, skipTag(str, beg)))), end)
+    else
+      (skipWhitespace(str, skipTag(str, beg)), end)
+  }
+
+  private def format(raw: String): String =
+    val remove = List("/**", "*", "/*", "*/")
+    var lines: Seq[String] = raw.trim.nn.split('\n').toSeq
+    lines = lines.map(l => l.substring(skipLineLead(l, -1), l.length).nn.trim.nn)
+    var s = lines.foldLeft("") {
+      case ("", s2) => s2
+      case (s1, "") if s1.last == '\n' => s1 // Multiple newlines are kept as single newlines
+      case (s1, "") => s1 + '\n'
+      case (s1, s2) if s1.last == '\n' => s1 + s2
+      case (s1, s2) => s1 + ' ' + s2
+    }
+    s.replaceAll(raw"\{\{", "").nn.replaceAll(raw"\}\}", "").nn.trim.nn
+
+  private def parseDocComment(trimmedDoc: String): Unit =
+    // Positions of the sections (@) in the docstring
+    val tidx: List[(Int, Int)] = tagIndex(trimmedDoc)
+
+    // Parse main comment
+    var mainComment: String = trimmedDoc.substring(skipLineLead(trimmedDoc, 0), startTag(trimmedDoc, tidx)).nn
+    _mainDoc = format(mainComment)
+
+    // Parse arguments comments
+    val argsCommentsSpans: Map[String, (Int, Int)] = paramDocs(trimmedDoc, "@param", tidx)
+    val argsCommentsTextSpans = argsCommentsSpans.view.mapValues(extractSectionText(trimmedDoc, _))
+    val argsCommentsTexts = argsCommentsTextSpans.mapValues { case (beg, end) => trimmedDoc.substring(beg, end) }
+    _argDocs = argsCommentsTexts.mapValues(s => format(s.nn)).toMap.withDefaultValue("")
+end Documentation

@@ -19,13 +19,14 @@ import NameKinds.DefaultGetterName
  *       * @param x my param x
  *       * @param ys all my params y
  *       */
- *     @main def f(x: S, ys: T*) = ...
+ *     @main(80) def f(x: S, ys: T*) = ...
  *
  *  would be translated to something like
  *
  *     final class f {
  *       @static def main(args: Array[String]): Unit =
- *         val cmd: main#Command = (new scala.main).command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
+ *         val cmd: MainAnnotation#Command[..., ...] =
+ *           (new scala.main(80)).command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
  *         val arg1: () => S = cmd.argGetter[S]("x", "S", "my param x")
  *         val arg2: () => Seq[T] = cmd.argsGetter[T]("ys", "T", "all my params y")
  *         cmd.run(f(arg1(), arg2()*))
@@ -76,8 +77,6 @@ object MainProxies {
     val mainArgsName: TermName = nme.args
     val cmdName: TermName = Names.termName("cmd")
 
-    val documentation = new Documentation(docComment)
-
     inline def lit(any: Any): Literal = Literal(Constant(any))
 
     def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef)] =
@@ -113,7 +112,6 @@ object MainProxies {
 
               lit(param)
               :: lit(formalType.show)
-              :: lit(documentation.argDocs(param))
               :: optionDefaultValueTree.map(List(_)).getOrElse(Nil)
             }
 
@@ -138,12 +136,18 @@ object MainProxies {
     if (!mainFun.owner.isStaticOwner)
       report.error(s"main method is not statically accessible", pos)
     else {
+      val mainAnnotArgs = mainAnnot.tree match {
+        case Apply(_, namedArgs) => namedArgs.filter {
+          case Select(_, name) => !name.is(DefaultGetterName)  // Remove default arguments of main
+          case _ => true
+        }
+      }
       val cmd = ValDef(
         cmdName,
         TypeTree(),
         Apply(
-          Select(makeNew(TypeTree(mainAnnot.symbol.typeRef)), defn.MainAnnot_command.name),
-          Ident(mainArgsName) :: lit(mainFun.showName) :: lit(documentation.mainDoc) :: Nil
+          Select(New(TypeTree(mainAnnot.symbol.typeRef), List(mainAnnotArgs)), defn.MainAnnot_command.name),
+          Ident(mainArgsName) :: lit(mainFun.showName) :: lit(docComment.map(_.raw).getOrElse("")) :: Nil
         )
       )
       var args: List[ValDef] = Nil
@@ -186,61 +190,4 @@ object MainProxies {
     }
     result
   }
-
-  private class Documentation(docComment: Option[Comment], val maxLineLength: Int = 120):
-    import util.CommentParsing._
-
-    /** The main part of the documentation. */
-    lazy val mainDoc: String = _mainDoc
-    /** The parameters identified by @param. Maps from param name to documentation. */
-    lazy val argDocs: Map[String, String] = _argDocs
-
-    private var _mainDoc: String = ""
-    private var _argDocs: Map[String, String] = Map().withDefaultValue("")
-
-    docComment match {
-      case Some(comment) => if comment.isDocComment then parseDocComment(comment.raw) else _mainDoc = comment.raw
-      case None =>
-    }
-
-    private def wrapLongLines(s: String): String =
-      def wrapLongLine(line: String): List[String] =
-        val lastSpace = line.trim.lastIndexOf(' ', maxLineLength)
-        if ((line.length <= maxLineLength) || (lastSpace < 0))
-          List(line)
-        else {
-          val (shortLine, rest) = line.splitAt(lastSpace)
-          shortLine :: wrapLongLine(rest.trim)
-        }
-
-      val wrappedLines = s.split('\n').flatMap(wrapLongLine)
-      wrappedLines.mkString("\n")
-
-    private def cleanComment(raw: String): String =
-      var lines: Seq[String] = raw.trim.split('\n').toSeq
-      lines = lines.map(l => l.substring(skipLineLead(l, -1), l.length).trim)
-      var s = lines.foldLeft("") {
-        case ("", s2) => s2
-        case (s1, "") if s1.last == '\n' => s1 // Multiple newlines are kept as single newlines
-        case (s1, "") => s1 + '\n'
-        case (s1, s2) if s1.last == '\n' => s1 + s2
-        case (s1, s2) => s1 + ' ' + s2
-      }
-      s.replaceAll(raw"\{\{", "").replaceAll(raw"\}\}", "").trim
-
-    private def parseDocComment(raw: String): Unit =
-      // Positions of the sections (@) in the docstring
-      val tidx: List[(Int, Int)] = tagIndex(raw)
-
-      // Parse main comment
-      var mainComment: String = raw.substring(skipLineLead(raw, 0), startTag(raw, tidx))
-      mainComment = cleanComment(mainComment)
-      _mainDoc = wrapLongLines(mainComment)
-
-      // Parse arguments comments
-      val argsCommentsSpans: Map[String, (Int, Int)] = paramDocs(raw, "@param", tidx)
-      val argsCommentsTextSpans = argsCommentsSpans.view.mapValues(extractSectionText(raw, _))
-      val argsCommentsTexts = argsCommentsTextSpans.mapValues({ case (beg, end) => raw.substring(beg, end) })
-      _argDocs = argsCommentsTexts.mapValues(cleanComment(_)).mapValues(wrapLongLines(_)).toMap.withDefaultValue("")
-  end Documentation
 }
