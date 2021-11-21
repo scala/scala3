@@ -144,6 +144,9 @@ object myProgram:
     */
   @main def doc16(first: MyGeneric[Int], second: MyGeneric[Int]): Unit = ()
 
+  // This should not be printed in explain!
+  @main def doc17(a: Int, b: Int, c: String): Unit = ()
+
 end myProgram
 
 object Test:
