@@ -189,9 +189,9 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
 
 object PickleBuffer {
 
-  private final val ScalaFlagEnd = 48
-  private final val ChunkBits = 8
-  private final val ChunkSize = 1 << ChunkBits
+  private inline val ScalaFlagEnd = 48
+  private inline val ChunkBits = 8
+  private inline val ChunkSize = 1 << ChunkBits
   private type FlagMap = Array[Array[Long]]
 
   private val (scalaTermFlagMap, scalaTypeFlagMap) = {

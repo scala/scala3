@@ -13,7 +13,7 @@ import ast.untpd.Tree
 
 class TreeBuffer extends TastyBuffer(50000) {
 
-  private final val ItemsOverOffsets = 2
+  private inline val ItemsOverOffsets = 2
   private val initialOffsetSize = bytes.length / (AddrWidth * ItemsOverOffsets)
   private var offsets = new Array[Int](initialOffsetSize)
   private var isRelative = new Array[Boolean](initialOffsetSize)

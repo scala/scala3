@@ -22,7 +22,7 @@ class SixteenNibbles(val bits: Long) extends AnyVal {
 }
 
 object SixteenNibbles {
-  final val Width = 4
-  final val Mask = (1 << Width) - 1
+  inline val Width = 4
+  inline val Mask = (1 << Width) - 1
   final val LongMask: Long = Mask.toLong
 }

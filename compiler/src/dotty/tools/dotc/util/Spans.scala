@@ -15,9 +15,9 @@ import language.implicitConversions
  */
 object Spans {
 
-  private final val StartEndBits = 26
-  private final val StartEndMask = (1L << StartEndBits) - 1
-  private final val SyntheticPointDelta = (1 << (64 - StartEndBits * 2)) - 1
+  private inline val StartEndBits = 26
+  private inline val StartEndMask = (1L << StartEndBits) - 1
+  private inline val SyntheticPointDelta = (1 << (64 - StartEndBits * 2)) - 1
 
   /** The maximal representable offset in a span */
   final val MaxOffset = StartEndMask.toInt

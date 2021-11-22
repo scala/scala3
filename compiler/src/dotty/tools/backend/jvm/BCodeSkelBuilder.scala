@@ -70,7 +70,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     with    BCJGenSigGen {
 
     // Strangely I can't find this in the asm code 255, but reserving 1 for "this"
-    final val MaximumJvmParameters = 254
+    inline val MaximumJvmParameters = 254
 
     // current class
     var cnode: ClassNode1          = null
