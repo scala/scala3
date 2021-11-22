@@ -717,11 +717,17 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
           val sym = ref.symbol
           if sym.is(Inline, butNot = Param) && !seenInlines.contains(sym) then
             seenInlines += sym // dont re-enter hashing this ref
-            sym.defTree match
-              case defTree: ValOrDefDef =>
-                h = inlineReferenceHash(sym, defTree.rhs, h)
-              case _ =>
-                h = err(i"inline method reference `${ref.name}`", ref.name, ref, h)
+            if sym.is(Method) then
+              Inliner.bodyToInline(sym) match // force typechecking of body if from source
+                case EmptyTree =>
+                  h = err("inline method reference", ref, p, h)
+                case rhs =>
+                  h = inlineReferenceHash(sym, rhs, h)
+            else
+              // inline value - its rhs should match its type
+              // no extra info is gained from hashing the rhs
+              h = MurmurHash3.mix(h, InlineValHash)
+              h = inlineReferenceHash(sym, EmptyTree, h)
         case _ =>
 
       // FIXME: If `p` is a tree we should probably take its type into account
