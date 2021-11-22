@@ -4,7 +4,7 @@ package ops
 import annotation.experimental
 
 object int:
-  /** Successor of a natural number where zero is the type 0 and successors are reduced as if the definition was
+  /** Successor of a natural number where zero is the type 0 and successors are reduced as if the definition was:
    *
    *  ```scala
    *  type S[N <: Int] <: Int = N match {
