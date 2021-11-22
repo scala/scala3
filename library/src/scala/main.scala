@@ -13,9 +13,11 @@ import annotation.MainAnnotation
 
 /** An annotation that designates a main function
  */
-final class main(maxLineLength: Int = 120) extends scala.annotation.MainAnnotation:
+final class main(maxLineLength: Int) extends MainAnnotation:
   self =>
   import main._
+
+  def this() = this(120)
 
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any

@@ -5,7 +5,9 @@ object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
     ProblemFilters.exclude[MissingTypesProblem]("scala.main"),
     ProblemFilters.exclude[FinalClassProblem]("scala.main"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.main.this"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.main.command"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.Documentation"),
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation"),
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$Command"),
