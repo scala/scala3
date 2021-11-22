@@ -24,19 +24,19 @@ import collection.mutable
 object Scopes {
 
   /** Maximal fill factor of hash table */
-  private final val FillFactor = 2.0/3.0
+  private inline val FillFactor = 2.0/3.0
 
   /** A hashtable is created once current size exceeds MinHash * FillFactor
    *  The initial hash table has twice that size (i.e 16).
    *  This value must be a power of two, so that the index of an element can
    *  be computed as element.hashCode & (hashTable.length - 1)
    */
-  final val MinHashedScopeSize = 8
+  inline val MinHashedScopeSize = 8
 
   /** The maximal permissible number of recursions when creating
    *  a hashtable
    */
-  private final val MaxRecursions = 1000
+  private inline val MaxRecursions = 1000
 
   /** A function that optionally produces synthesized symbols with
    *  the given name in the given context. Returns `NoSymbol` if the

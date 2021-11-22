@@ -4369,7 +4369,7 @@ class JSCodeGen()(using genCtx: Context) {
     js.LoadJSConstructor(encodeClassName(sym))
   }
 
-  private final val GenericGlobalObjectInformationMsg = {
+  private inline val GenericGlobalObjectInformationMsg = {
     "\n  " +
     "See https://www.scala-js.org/doc/interoperability/global-scope.html " +
     "for further information."

@@ -13,33 +13,33 @@ object StdNames {
 /** Base strings from which synthetic names are derived. */
 
   object str {
-    final val SETTER_SUFFIX            = "_="
-    final val EXPAND_SEPARATOR         = "$$"
-    final val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
-    final val SUPER_PREFIX             = "super$"
-    final val INITIALIZER_PREFIX       = "initial$"
-    final val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
-    final val MODULE_SUFFIX            = "$"
-    final val TOPLEVEL_SUFFIX          = "$package"
-    final val NAME_JOIN                = "$"
-    final val DEFAULT_GETTER           = "$default$"
-    final val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
-    final val ANON_CLASS               = "$anon"
-    final val ANON_FUN                 = "$anonfun"
+    inline val SETTER_SUFFIX            = "_="
+    inline val EXPAND_SEPARATOR         = "$$"
+    inline val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
+    inline val SUPER_PREFIX             = "super$"
+    inline val INITIALIZER_PREFIX       = "initial$"
+    inline val AVOID_CLASH_SUFFIX       = "$_avoid_name_clash_$"
+    inline val MODULE_SUFFIX            = "$"
+    inline val TOPLEVEL_SUFFIX          = "$package"
+    inline val NAME_JOIN                = "$"
+    inline val DEFAULT_GETTER           = "$default$"
+    inline val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
+    inline val ANON_CLASS               = "$anon"
+    inline val ANON_FUN                 = "$anonfun"
 
-    final val REPL_SESSION_LINE  = "rs$line$"
-    final val REPL_ASSIGN_SUFFIX = "$assign"
-    final val REPL_RES_PREFIX    = "res"
+    inline val REPL_SESSION_LINE  = "rs$line$"
+    inline val REPL_ASSIGN_SUFFIX = "$assign"
+    inline val REPL_RES_PREFIX    = "res"
 
-    final val MODULE_INSTANCE_FIELD      = "MODULE$"
+    inline val MODULE_INSTANCE_FIELD      = "MODULE$"
 
-    final val Function                   = "Function"
-    final val ErasedFunction             = "ErasedFunction"
-    final val ContextFunction            = "ContextFunction"
-    final val ErasedContextFunction      = "ErasedContextFunction"
-    final val AbstractFunction           = "AbstractFunction"
-    final val Tuple                      = "Tuple"
-    final val Product                    = "Product"
+    inline val Function                   = "Function"
+    inline val ErasedFunction             = "ErasedFunction"
+    inline val ContextFunction            = "ContextFunction"
+    inline val ErasedContextFunction      = "ErasedContextFunction"
+    inline val AbstractFunction           = "AbstractFunction"
+    inline val Tuple                      = "Tuple"
+    inline val Product                    = "Product"
 
     def sanitize(str: String): String = str.replaceAll("""[<>]""", """\$""")
   }

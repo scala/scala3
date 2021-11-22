@@ -17,7 +17,7 @@ object NameOps {
   object compactify {
     lazy val md5: MessageDigest = MessageDigest.getInstance("MD5")
 
-    final val CLASSFILE_NAME_CHAR_LIMIT = 240
+    inline val CLASSFILE_NAME_CHAR_LIMIT = 240
 
     /** COMPACTIFY
      *

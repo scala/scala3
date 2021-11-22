@@ -5,7 +5,7 @@ package parsing
 import collection.immutable.BitSet
 
 object JavaTokens extends TokensCommon {
-  final val minToken = EMPTY
+  inline val minToken = EMPTY
   final def maxToken: Int = DOUBLE
 
   final val javaOnlyKeywords: TokenSet = tokenRange(INSTANCEOF, ASSERT)
@@ -15,78 +15,78 @@ object JavaTokens extends TokensCommon {
   final val keywords: BitSet = sharedKeywords | javaOnlyKeywords | primTypes
 
   /** keywords */
-  final val INSTANCEOF = 101;       enter(INSTANCEOF, "instanceof")
-  final val CONST = 102;            enter(CONST, "const")
+  inline val INSTANCEOF = 101;       enter(INSTANCEOF, "instanceof")
+  inline val CONST = 102;            enter(CONST, "const")
 
   /** templates */
-  final val INTERFACE = 105;        enter(INTERFACE, "interface")
-  final val ENUM = 106;             enter(ENUM, "enum")
-  final val IMPLEMENTS = 107;       enter(IMPLEMENTS, "implements")
+  inline val INTERFACE = 105;        enter(INTERFACE, "interface")
+  inline val ENUM = 106;             enter(ENUM, "enum")
+  inline val IMPLEMENTS = 107;       enter(IMPLEMENTS, "implements")
 
   /** modifiers */
-  final val PUBLIC = 110;           enter(PUBLIC, "public")
-  final val DEFAULT = 111;          enter(DEFAULT, "default")
-  final val STATIC = 112;           enter(STATIC, "static")
-  final val TRANSIENT = 113;        enter(TRANSIENT, "transient")
-  final val VOLATILE = 114;         enter(VOLATILE, "volatile")
-  final val SYNCHRONIZED = 115;     enter(SYNCHRONIZED, "synchronized")
-  final val NATIVE = 116;           enter(NATIVE, "native")
-  final val STRICTFP = 117;         enter(STRICTFP, "strictfp")
-  final val THROWS = 118;           enter(THROWS, "throws")
+  inline val PUBLIC = 110;           enter(PUBLIC, "public")
+  inline val DEFAULT = 111;          enter(DEFAULT, "default")
+  inline val STATIC = 112;           enter(STATIC, "static")
+  inline val TRANSIENT = 113;        enter(TRANSIENT, "transient")
+  inline val VOLATILE = 114;         enter(VOLATILE, "volatile")
+  inline val SYNCHRONIZED = 115;     enter(SYNCHRONIZED, "synchronized")
+  inline val NATIVE = 116;           enter(NATIVE, "native")
+  inline val STRICTFP = 117;         enter(STRICTFP, "strictfp")
+  inline val THROWS = 118;           enter(THROWS, "throws")
 
   /** control structures */
-  final val BREAK = 130;            enter(BREAK, "break")
-  final val CONTINUE = 131;         enter(CONTINUE, "continue")
-  final val GOTO = 132;             enter(GOTO, "goto")
-  final val SWITCH = 133;           enter(SWITCH, "switch")
-  final val ASSERT = 134;           enter(ASSERT, "assert")
+  inline val BREAK = 130;            enter(BREAK, "break")
+  inline val CONTINUE = 131;         enter(CONTINUE, "continue")
+  inline val GOTO = 132;             enter(GOTO, "goto")
+  inline val SWITCH = 133;           enter(SWITCH, "switch")
+  inline val ASSERT = 134;           enter(ASSERT, "assert")
 
   /** special symbols */
-  final val EQEQ = 140
-  final val BANGEQ = 141
-  final val LT = 142
-  final val GT = 143
-  final val LTEQ = 144
-  final val GTEQ = 145
-  final val BANG = 146
-  final val QMARK = 147
-  final val AMP = 148
-  final val BAR = 149
-  final val PLUS = 150
-  final val MINUS = 151
-  final val ASTERISK = 152
-  final val SLASH = 153
-  final val PERCENT = 154
-  final val HAT = 155
-  final val LTLT = 156
-  final val GTGT = 157
-  final val GTGTGT = 158
-  final val AMPAMP = 159
-  final val BARBAR = 160
-  final val PLUSPLUS = 161
-  final val MINUSMINUS = 162
-  final val TILDE = 163
-  final val DOTDOTDOT = 164
-  final val AMPEQ = 165
-  final val BAREQ = 166
-  final val PLUSEQ = 167
-  final val MINUSEQ = 168
-  final val ASTERISKEQ = 169
-  final val SLASHEQ = 170
-  final val PERCENTEQ = 171
-  final val HATEQ = 172
-  final val LTLTEQ = 173
-  final val GTGTEQ = 174
-  final val GTGTGTEQ = 175
+  inline val EQEQ = 140
+  inline val BANGEQ = 141
+  inline val LT = 142
+  inline val GT = 143
+  inline val LTEQ = 144
+  inline val GTEQ = 145
+  inline val BANG = 146
+  inline val QMARK = 147
+  inline val AMP = 148
+  inline val BAR = 149
+  inline val PLUS = 150
+  inline val MINUS = 151
+  inline val ASTERISK = 152
+  inline val SLASH = 153
+  inline val PERCENT = 154
+  inline val HAT = 155
+  inline val LTLT = 156
+  inline val GTGT = 157
+  inline val GTGTGT = 158
+  inline val AMPAMP = 159
+  inline val BARBAR = 160
+  inline val PLUSPLUS = 161
+  inline val MINUSMINUS = 162
+  inline val TILDE = 163
+  inline val DOTDOTDOT = 164
+  inline val AMPEQ = 165
+  inline val BAREQ = 166
+  inline val PLUSEQ = 167
+  inline val MINUSEQ = 168
+  inline val ASTERISKEQ = 169
+  inline val SLASHEQ = 170
+  inline val PERCENTEQ = 171
+  inline val HATEQ = 172
+  inline val LTLTEQ = 173
+  inline val GTGTEQ = 174
+  inline val GTGTGTEQ = 175
 
   /** primitive types */
-  final val VOID = 180;             enter(VOID, "void")
-  final val BOOLEAN = 181;          enter(BOOLEAN, "boolean")
-  final val BYTE = 182;             enter(BYTE, "byte")
-  final val SHORT = 183;            enter(SHORT, "short")
-  final val CHAR = 184;             enter(CHAR, "char")
-  final val INT = 185;              enter(INT, "int")
-  final val LONG = 186;             enter(LONG, "long")
-  final val FLOAT = 187;            enter(FLOAT, "float")
-  final val DOUBLE = 188;           enter(DOUBLE, "double")
+  inline val VOID = 180;             enter(VOID, "void")
+  inline val BOOLEAN = 181;          enter(BOOLEAN, "boolean")
+  inline val BYTE = 182;             enter(BYTE, "byte")
+  inline val SHORT = 183;            enter(SHORT, "short")
+  inline val CHAR = 184;             enter(CHAR, "char")
+  inline val INT = 185;              enter(INT, "int")
+  inline val LONG = 186;             enter(LONG, "long")
+  inline val FLOAT = 187;            enter(FLOAT, "float")
+  inline val DOUBLE = 188;           enter(DOUBLE, "double")
 }

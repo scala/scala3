@@ -66,10 +66,10 @@ object Implicits:
   }
   object Candidate {
     type Kind = Int
-    final val None = 0
-    final val Value = 1
-    final val Conversion = 2
-    final val Extension = 4
+    inline val None = 0
+    inline val Value = 1
+    inline val Conversion = 2
+    inline val Extension = 4
   }
 
   /** If `expected` is a selection prototype, does `tp` have an extension
