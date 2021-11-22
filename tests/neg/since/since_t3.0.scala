@@ -9,3 +9,8 @@ def useQuotes(using Quotes) =
   def boundByWildcard[T <: Wildcard]: T = ??? // error
 
   (useFieldMember, getWildcard, acceptWildcard) // error
+
+def equality =
+  import language.strictEquality
+  val a = 1 :: Nil == Nil
+  val b = Some(5) == None // error
