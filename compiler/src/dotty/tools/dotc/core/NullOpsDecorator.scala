@@ -40,7 +40,9 @@ object NullOpsDecorator:
       case _ => strip(tp)
 
     override def apply(tp: Type): Type =
-      if isDeep then stripOver(tp) else strip(tp)
+      val tpw = tp.widenDealias
+      val tpws = if isDeep then stripOver(tpw) else strip(tpw)
+      if tpws ne tpw then tpws else tp
 
   end StripNullsMap
 
@@ -52,11 +54,7 @@ object NullOpsDecorator:
      *  The type will not be changed if explicit-nulls is not enabled.
      */
     def stripNull(using Context): Type = {
-      if ctx.explicitNulls then
-        val selfw = self.widenDealias
-        val selfws = new StripNullsMap(false)(selfw)
-        if selfws ne selfw then selfws else self
-      else self
+      if ctx.explicitNulls then new StripNullsMap(false)(self) else self
     }
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
@@ -70,11 +68,7 @@ object NullOpsDecorator:
      *  each member of function types as well.
      */
     def stripNullsDeep(using Context): Type =
-      if ctx.explicitNulls then
-        val selfw = self.widenDealias
-        val selfws = new StripNullsMap(true)(selfw)
-        if selfws ne selfw then selfws else self
-      else self
+      if ctx.explicitNulls then new StripNullsMap(true)(self) else self
 
   end extension
 
