@@ -5,6 +5,7 @@ package transform
 import core._
 import Flags._, Symbols._, Contexts._, Scopes._, Decorators._, Types.Type
 import NameKinds.DefaultGetterName
+import NullOpsDecorator._
 import collection.mutable
 import collection.immutable.BitSet
 import scala.annotation.tailrec
@@ -215,15 +216,20 @@ object OverridingPairs:
             }
       )
     else
-      // releaxed override check for explicit nulls if one of the symbols is Java defined,
-      // force `Null` being a subtype of reference types during override checking
-      val relaxedCtxForNulls =
+      def matchNullaryLoosely = member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack
+      // default getters are not checked for compatibility
+      member.name.is(DefaultGetterName) || {
         if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
-          ctx.retractMode(Mode.SafeNulls)
-        else ctx
-      member.name.is(DefaultGetterName) // default getters are not checked for compatibility
-      || memberTp.overrides(otherTp,
-            member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack
-          )(using relaxedCtxForNulls)
+          // releaxed override check for explicit nulls if one of the symbols is Java defined,
+          // force `Null` being a subtype of reference types during override checking.
+          // `stripNullsDeep` is used here because we may encounter type parameters
+          // (`T | Null` is not a subtype of `T` even if we retract Mode.SafeNulls).
+          val memberTp1 = memberTp.stripNullsDeep
+          val otherTp1 = otherTp.stripNullsDeep
+          withoutMode(Mode.SafeNulls)(
+             memberTp1.overrides(otherTp1, matchNullaryLoosely))
+        else
+          memberTp.overrides(otherTp, matchNullaryLoosely)
+      }
 
 end OverridingPairs
