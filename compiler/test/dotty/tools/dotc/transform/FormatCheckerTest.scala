@@ -6,15 +6,14 @@ import org.junit.{Test, Assert}, Assert.{assertEquals, assertFalse, assertTrue}
 import scala.collection.mutable.ListBuffer
 import scala.language.implicitConversions
 import scala.reflect.{ClassTag, classTag}
-import scala.util.chaining._
 
 import java.util.{Calendar, Date, Formattable}
 
-import localopt.{FormatChecker, StringContextChecker}
+import localopt.{FormatChecker, InterpolationReporter}
 
 // TDD for just the Checker
 class FormatCheckerTest:
-  class TestReporter extends StringContextChecker.InterpolationReporter:
+  class TestReporter extends InterpolationReporter:
     private var reported = false
     private var oldReported = false
     val reports = ListBuffer.empty[(String, Int, Int)]
@@ -44,17 +43,6 @@ class FormatCheckerTest:
       reported = oldReported
   end TestReporter
   given TestReporter = TestReporter()
-
-  /*
-  enum ArgTypeTag:
-    case BooleanArg, ByteArg, CharArg, ShortArg, IntArg, LongArg, FloatArg, DoubleArg, AnyArg,
-         StringArg, FormattableArg, BigIntArg, BigDecimalArg, CalendarArg, DateArg
-  given Conversion[ArgTypeTag, Int] = _.ordinal
-  def argTypeString(tag: Int) =
-    if tag < 0 then "Null"
-    else if tag >= ArgTypeTag.values.length then throw RuntimeException(s"Bad tag $tag")
-    else ArgTypeTag.values(tag)
-  */
 
   class TestChecker(args: ClassTag[?]*)(using val reporter: TestReporter) extends FormatChecker:
     def argType(argi: Int, types: ClassTag[?]*): ClassTag[?] = types.find(_ == args(argi)).getOrElse(types.head)

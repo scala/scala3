@@ -22,51 +22,7 @@ import scala.util.matching.Regex.Match
 
 object FormatInterpolatorTransform:
   import tpd._
-  import StringContextChecker.InterpolationReporter
 
-  /*
-  /** This trait defines a tool to report errors/warnings that do not depend on Position. */
-  trait InterpolationReporter:
-
-    /** Reports error/warning of size 1 linked with a part of the StringContext.
-      *
-      * @param message the message to report as error/warning
-      * @param index the index of the part inside the list of parts of the StringContext
-      * @param offset the index in the part String where the error is
-      * @return an error/warning depending on the function
-      */
-    def partError(message: String, index: Int, offset: Int): Unit
-    def partWarning(message: String, index: Int, offset: Int): Unit
-
-    /** Reports error linked with an argument to format.
-      *
-      * @param message the message to report as error/warning
-      * @param index the index of the argument inside the list of arguments of the format function
-      * @return an error depending on the function
-      */
-    def argError(message: String, index: Int): Unit
-
-    /** Reports error linked with the list of arguments or the StringContext.
-      *
-      * @param message the message to report in the error
-      * @return an error
-      */
-    def strCtxError(message: String): Unit
-    def argsError(message: String): Unit
-
-    /** Claims whether an error or a warning has been reported
-      *
-      * @return true if an error/warning has been reported, false
-      */
-    def hasReported: Boolean
-
-    /** Stores the old value of the reported and reset it to false */
-    def resetReported(): Unit
-
-    /** Restores the value of the reported boolean that has been reset */
-    def restoreReported(): Unit
-  end InterpolationReporter
-  */
   class PartsReporter(fun: Tree, args0: Tree, parts: List[Tree], args: List[Tree])(using Context) extends InterpolationReporter:
     private var reported = false
     private var oldReported = false
@@ -193,3 +149,45 @@ object FormatInterpolatorTransform:
         (literally(checked.mkString), tpd.SeqLiteral(checker.actuals.toList, elemtpt))
   end checked
 end FormatInterpolatorTransform
+
+/** This trait defines a tool to report errors/warnings that do not depend on Position. */
+trait InterpolationReporter:
+
+  /** Reports error/warning of size 1 linked with a part of the StringContext.
+   *
+   *  @param message the message to report as error/warning
+   *  @param index the index of the part inside the list of parts of the StringContext
+   *  @param offset the index in the part String where the error is
+   *  @return an error/warning depending on the function
+   */
+  def partError(message: String, index: Int, offset: Int): Unit
+  def partWarning(message: String, index: Int, offset: Int): Unit
+
+  /** Reports error linked with an argument to format.
+   *
+   *  @param message the message to report as error/warning
+   *  @param index the index of the argument inside the list of arguments of the format function
+   *  @return an error depending on the function
+   */
+  def argError(message: String, index: Int): Unit
+
+  /** Reports error linked with the list of arguments or the StringContext.
+   *
+   *  @param message the message to report in the error
+   *  @return an error
+   */
+  def strCtxError(message: String): Unit
+  def argsError(message: String): Unit
+
+  /** Claims whether an error or a warning has been reported
+   *
+   *  @return true if an error/warning has been reported, false
+   */
+  def hasReported: Boolean
+
+  /** Stores the old value of the reported and reset it to false */
+  def resetReported(): Unit
+
+  /** Restores the value of the reported boolean that has been reset */
+  def restoreReported(): Unit
+end InterpolationReporter

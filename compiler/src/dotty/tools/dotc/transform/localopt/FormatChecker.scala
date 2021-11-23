@@ -9,8 +9,6 @@ import scala.util.matching.Regex.Match
 
 import java.util.{Calendar, Date, Formattable}
 
-import StringContextChecker.InterpolationReporter
-
 /** Formatter string checker. */
 abstract class FormatChecker(using reporter: InterpolationReporter):
 
