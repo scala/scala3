@@ -1295,6 +1295,7 @@ object Build {
         name,
         scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
         dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
+        dottySrcLink(referenceVersion, "docs-for-dotty-page=", "#docs"),
         dottySrcLink(referenceVersion),
         "-Ygenerate-inkuire",
       ) ++ scalacOptionsDocSettings(includeExternalMappings) ++ revision ++ params ++ targets

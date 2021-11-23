@@ -139,7 +139,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     StringSetting(
       "-default-template",
       "default template used by static site",
-      "The static site is generating empty files for indexes that haven't been provided explicitly. User can specify what template should be used for such generic indexes (note it can still interpolate some general settings)",
+      "The static site is generating empty files for indexes that haven't been provided explicitly in a sidebar/missing index.html in directory. " +
+        "User can specify what default template should be used for such indexes. It can be useful for providing generic templates that interpolate some common settings, like title, or can have some custom html embedded.",
       ""
     )
 
