@@ -13,6 +13,7 @@ import Names._
 import StdNames._
 import NameOps._
 import NameKinds._
+import NullOpsDecorator._
 import ResolveSuper._
 import reporting.IllegalSuperAccessor
 
@@ -110,11 +111,13 @@ object ResolveSuper {
         // Since the super class can be Java defined,
         // we use releaxed overriding check for explicit nulls if one of the symbols is Java defined.
         // This forces `Null` being a subtype of reference types during override checking.
-        val relaxedCtxForNulls =
-        if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined)) then
-          ctx.retractMode(Mode.SafeNulls)
-        else ctx
-        if (!(otherTp.overrides(accTp, matchLoosely = true)(using relaxedCtxForNulls)))
+        val overridesSuper = if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined)) then
+          val otherTp1 = otherTp.stripNullsDeep
+          val accTp1 = accTp.stripNullsDeep
+          withoutMode(Mode.SafeNulls)(otherTp1.overrides(accTp1, matchLoosely = true))
+        else
+          otherTp.overrides(accTp, matchLoosely = true)
+        if !overridesSuper then
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
 
       bcs = bcs.tail
