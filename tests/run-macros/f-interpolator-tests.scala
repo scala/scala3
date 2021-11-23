@@ -1,10 +1,9 @@
-/**
-  * These tests test all the possible formats the f interpolator has to deal with.
-  * The tests are sorted by argument category as the arguments are on https://docs.oracle.com/javase/6/docs/api/java/util/Formatter.html#detail
-  *
-  *
-  * Some tests come from https://github.com/lampepfl/dotty/pull/3894/files
-  */
+/** These tests test all the possible formats the f interpolator has to deal with.
+ *
+ *  The tests are sorted by argument category as the arguments are on https://docs.oracle.com/javase/6/docs/api/java/util/Formatter.html#detail
+ *
+ *  Some tests come from https://github.com/lampepfl/dotty/pull/3894/files
+ */
 object Test {
   def main(args: Array[String]) = {
     println(f"integer: ${5}%d")
