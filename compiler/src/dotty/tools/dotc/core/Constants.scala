@@ -9,19 +9,19 @@ import Decorators._
 
 object Constants {
 
-  final val NoTag      = 0
-  final val UnitTag    = 1
-  final val BooleanTag = 2
-  final val ByteTag    = 3
-  final val ShortTag   = 4
-  final val CharTag    = 5
-  final val IntTag     = 6
-  final val LongTag    = 7
-  final val FloatTag   = 8
-  final val DoubleTag  = 9
-  final val StringTag  = 10
-  final val NullTag    = 11
-  final val ClazzTag   = 12
+  inline val NoTag      = 0
+  inline val UnitTag    = 1
+  inline val BooleanTag = 2
+  inline val ByteTag    = 3
+  inline val ShortTag   = 4
+  inline val CharTag    = 5
+  inline val IntTag     = 6
+  inline val LongTag    = 7
+  inline val FloatTag   = 8
+  inline val DoubleTag  = 9
+  inline val StringTag  = 10
+  inline val NullTag    = 11
+  inline val ClazzTag   = 12
 
   class Constant(val value: Any, val tag: Int) extends printing.Showable with Product1[Any] {
     import java.lang.Double.doubleToRawLongBits

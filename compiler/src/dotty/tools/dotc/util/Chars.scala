@@ -11,10 +11,10 @@ import java.lang.Character.UPPERCASE_LETTER
 /** Contains constants and classifier methods for characters */
 object Chars {
 
-  final val LF = '\u000A'
-  final val FF = '\u000C'
-  final val CR = '\u000D'
-  final val SU = '\u001A'
+  inline val LF = '\u000A'
+  inline val FF = '\u000C'
+  inline val CR = '\u000D'
+  inline val SU = '\u001A'
 
   /** Convert a character digit to an Int according to given base,
     *  -1 if no success

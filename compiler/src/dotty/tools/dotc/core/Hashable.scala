@@ -19,20 +19,20 @@ object Hashable {
   /** A hash value indicating that the underlying type is not
    *  cached in uniques.
    */
-  final val NotCached = 0
+  inline val NotCached = 0
 
   /** An alternative value returned from `hash` if the
    *  computed hashCode would be `NotCached`.
    */
-  private[core] final val NotCachedAlt = Int.MinValue
+  private[core] inline val NotCachedAlt = Int.MinValue
 
   /** A value that indicates that the hash code is unknown
    */
-  private[core] final val HashUnknown = 1234
+  private[core] inline val HashUnknown = 1234
 
   /** An alternative value if computeHash would otherwise yield HashUnknown
    */
-  private[core] final val HashUnknownAlt = 4321
+  private[core] inline val HashUnknownAlt = 4321
 }
 
 trait Hashable {

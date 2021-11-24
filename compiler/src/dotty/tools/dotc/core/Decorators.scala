@@ -74,7 +74,7 @@ object Decorators {
       NoSymbol
     }
 
-  final val MaxFilterRecursions = 10
+  inline val MaxFilterRecursions = 10
 
   /** Implements filterConserve, zipWithConserve methods
    *  on lists that avoid duplication of list nodes where feasible.

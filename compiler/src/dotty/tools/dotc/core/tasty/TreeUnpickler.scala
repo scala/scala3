@@ -1522,9 +1522,9 @@ object TreeUnpickler {
 
   /** An enumeration indicating which subtrees should be added to an OwnerTree. */
   type MemberDefMode = Int
-  final val MemberDefsOnly = 0   // add only member defs; skip other statements
-  final val NoMemberDefs = 1     // add only statements that are not member defs
-  final val AllDefs = 2          // add everything
+  inline val MemberDefsOnly = 0   // add only member defs; skip other statements
+  inline val NoMemberDefs = 1     // add only statements that are not member defs
+  inline val AllDefs = 2          // add everything
 
   class TreeWithoutOwner extends Exception
 }
