@@ -61,6 +61,8 @@ object SymUtils:
 
     def isVolatile(using Context): Boolean = self.hasAnnotation(defn.VolatileAnnot)
 
+    def isNonHotParams(using Context): Boolean = self.hasAnnotation(defn.NonHotParamsAnnot)
+
     def isAnyOverride(using Context): Boolean = self.is(Override) || self.is(AbsOverride)
       // careful: AbsOverride is a term only flag. combining with Override would catch only terms.
 
