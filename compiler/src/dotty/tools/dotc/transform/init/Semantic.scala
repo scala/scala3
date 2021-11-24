@@ -12,7 +12,8 @@ import NameKinds.OuterSelectName
 import ast.tpd._
 import util.EqHashMap
 import config.Printers.init as printer
-import reporting.trace as log
+import reporting.trace.force as log
+import dotty.tools.dotc.transform.SymUtils.isNonHotParams
 
 import Errors._
 
@@ -254,7 +255,7 @@ object Semantic {
    */
 
   object Cache {
-    opaque type CacheStore = mutable.Map[Value, EqHashMap[Tree, Value]]
+    opaque type CacheStore = mutable.Map[Value, EqHashMap[Tree, mutable.Map[Env, Value]]]
     private type Heap = Map[Ref, Objekt]
 
     class Cache {
@@ -291,33 +292,33 @@ object Semantic {
 
       def hasChanged = changed
 
-      def contains(value: Value, expr: Tree) =
-        current.contains(value, expr) || stable.contains(value, expr)
+      def contains(value: Value, expr: Tree, env: Env) =
+        current.contains(value, expr, env) || stable.contains(value, expr, env)
 
-      def apply(value: Value, expr: Tree) =
-        if current.contains(value, expr) then current(value)(expr)
-        else stable(value)(expr)
+      def apply(value: Value, expr: Tree, env: Env) =
+        if current.contains(value, expr, env) then current(value)(expr)(env)
+        else stable(value)(expr)(env)
 
       /** Copy the value of `(value, expr)` from the last cache to the current cache
        * (assuming it's `Hot` if it doesn't exist in the cache).
        *
        * Then, runs `fun` and update the caches if the values change.
        */
-      def assume(value: Value, expr: Tree, cacheResult: Boolean)(fun: => Result): Contextual[Result] =
+      def assume(value: Value, expr: Tree, env: Env, cacheResult: Boolean)(fun: => Result): Contextual[Result] =
         val assumeValue: Value =
-          if last.contains(value, expr) then
-            last.get(value, expr)
+          if last.contains(value, expr, env) then
+            last.get(value, expr, env)
           else
-            last.put(value, expr, Hot)
+            last.put(value, expr, env, Hot)
             Hot
           end if
-        current.put(value, expr, assumeValue)
+        current.put(value, expr, env, assumeValue)
 
         val actual = fun
         if actual.value != assumeValue then
           this.changed = true
-          last.put(value, expr, actual.value)
-          current.put(value, expr, actual.value)
+          last.put(value, expr, env, actual.value)
+          current.put(value, expr, env, actual.value)
         else
           // It's tempting to cache the value in stable, but it's unsound.
           // The reason is that the current value may depend on other values
@@ -334,8 +335,10 @@ object Semantic {
       private def commitToStableCache() =
         current.foreach { (v, m) =>
           // It's useless to cache value for ThisRef.
-          if v.isWarm then m.iterator.foreach { (e, res) =>
-            stable.put(v, e, res)
+          if v.isWarm then m.iterator.foreach { (e, c) =>
+            c.iterator.foreach { (env, res) =>
+              stable.put(v, e, env, res)
+            }
           }
         }
 
@@ -384,12 +387,13 @@ object Semantic {
     }
 
     extension (cache: CacheStore)
-      def contains(value: Value, expr: Tree) = cache.contains(value) && cache(value).contains(expr)
-      def get(value: Value, expr: Tree): Value = cache(value)(expr)
-      def remove(value: Value, expr: Tree) = cache(value).remove(expr)
-      def put(value: Value, expr: Tree, result: Value): Unit = {
-        val innerMap = cache.getOrElseUpdate(value, new EqHashMap[Tree, Value])
-        innerMap(expr) = result
+      def contains(value: Value, expr: Tree, env: Env) = cache.contains(value) && cache(value).contains(expr) && cache(value)(expr).contains(env)
+      def get(value: Value, expr: Tree, env: Env): Value = cache(value)(expr)(env)
+      def remove(value: Value, expr: Tree, env: Env) = cache(value)(expr).remove(env)
+      def put(value: Value, expr: Tree, env: Env, result: Value): Unit = {
+        val treeMap = cache.getOrElseUpdate(value, new EqHashMap[Tree, mutable.Map[Env, Value]])
+        val innerMap = treeMap.getOrElseUpdate(expr, mutable.Map.empty)
+        innerMap(env) = result
       }
     end extension
   }
@@ -595,6 +599,7 @@ object Semantic {
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
         case Hot  =>
+          // TODO: handle @nonHotParameters
           Result(Hot, checkArgs)
 
         case Cold =>
@@ -619,8 +624,8 @@ object Semantic {
               val ddef = target.defTree.asInstanceOf[DefDef]
               val env2 = Env(ddef, args.map(_.value).widenArgs)
               // normal method call
-              withEnv(if isLocal then env else Env.empty) {
-                eval(ddef.rhs, ref, cls, cacheResult = true) ++ checkArgs
+              withEnv((if isLocal then env else Env.empty).union(if target.isNonHotParams then env2 else Env.empty)) {
+                eval(ddef.rhs, ref, cls, cacheResult = true) ++ (if target.isNonHotParams then Errors.empty else checkArgs)
               }
             else if ref.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
@@ -946,7 +951,7 @@ object Semantic {
   end extension
 
 // ----- Policies ------------------------------------------------------
-  extension (value: Ref)
+  extension (value: Value)
     /** Can the method call on `value` be ignored?
      *
      *  Note: assume overriding resolution has been performed.
@@ -1050,8 +1055,8 @@ object Semantic {
    *  This method only handles cache logic and delegates the work to `cases`.
    */
   def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Result).show) {
-    if (cache.contains(thisV, expr)) Result(cache(thisV, expr), Errors.empty)
-    else cache.assume(thisV, expr, cacheResult) { cases(expr, thisV, klass) }
+    if (cache.contains(thisV, expr, env)) Result(cache(thisV, expr, env), Errors.empty)
+    else cache.assume(thisV, expr, env, cacheResult) { cases(expr, thisV, klass) }
   }
 
   /** Evaluate a list of expressions */
