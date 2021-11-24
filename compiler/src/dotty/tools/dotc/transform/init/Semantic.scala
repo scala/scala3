@@ -19,6 +19,7 @@ import Errors._
 import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
+import dotty.tools.dotc.transform.SymUtils.isNonHotParams
 
 object Semantic {
 
@@ -121,7 +122,7 @@ object Semantic {
   }
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Ref, klass: ClassSymbol, env: Env) extends Value
+  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol, env: Env) extends Value
 
   /** A value which represents a set of addresses
    *
@@ -765,7 +766,7 @@ object Semantic {
     }
   end extension
 
-  extension (ref: Ref)
+  extension (value: Value)
     def accessLocal(tmref: TermRef, klass: ClassSymbol, source: Tree): Contextual[Result] =
       val sym = tmref.symbol
 
@@ -774,8 +775,8 @@ object Semantic {
       if sym.is(Flags.Param) && sym.owner.isConstructor then
         // if we can get the field from the Ref (which can only possibly be
         // a secondary constructor parameter), then use it.
-        if (ref.objekt.hasField(sym))
-          Result(ref.objekt.field(sym), Errors.empty)
+        if (value.isInstanceOf[Ref] && value.asInstanceOf[Ref].objekt.hasField(sym))
+          Result(value.asInstanceOf[Ref].objekt.field(sym), Errors.empty)
         // instances of local classes inside secondary constructors cannot
         // reach here, as those values are abstracted by Cold instead of Warm.
         // This enables us to simplify the domain without sacrificing
@@ -788,13 +789,17 @@ object Semantic {
           // It's always safe to approximate them with `Cold`.
           Result(Cold, Nil)
       else if sym.is(Flags.Param) then
-        default()
+        // If the symbol is a method that takes non-hot parameters, we look it up in the environment.
+        if sym.isNonHotParams then
+          Result(env.lookup(sym), Nil)
+        else
+         default()
       else
         sym.defTree match {
           case vdef: ValDef =>
             // resolve this for local variable
             val enclosingClass = sym.owner.enclosingClass.asClass
-            val thisValue2 = resolveThis(enclosingClass, ref, klass, source)
+            val thisValue2 = resolveThis(enclosingClass, value, klass, source)
             thisValue2 match {
               case Hot => Result(Hot, Errors.empty)
 
@@ -1044,17 +1049,17 @@ object Semantic {
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Result).show) {
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Result).show) {
     if (cache.contains(thisV, expr)) Result(cache(thisV, expr), Errors.empty)
     else cache.assume(thisV, expr, cacheResult) { cases(expr, thisV, klass) }
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Ref, klass: ClassSymbol): Contextual[List[Result]] =
+  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol): Contextual[List[Result]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Ref, klass: ClassSymbol): Contextual[(List[Error], List[ArgInfo])] =
+  def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol): Contextual[(List[Error], List[ArgInfo])] =
     val errors = new mutable.ArrayBuffer[Error]
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
     args.foreach { arg =>
@@ -1074,7 +1079,7 @@ object Semantic {
    *
    *  Note: Recursive call should go to `eval` instead of `cases`.
    */
-  def cases(expr: Tree, thisV: Ref, klass: ClassSymbol): Contextual[Result] =
+  def cases(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Result] =
     expr match {
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -1239,7 +1244,10 @@ object Semantic {
         else Result(Hot, checkTermUsage(tdef.rhs, thisV, klass))
 
       case tpl: Template =>
-        init(tpl, thisV, klass)
+        thisV match {
+          case ref: Ref => init(tpl, ref, klass)
+          case _ => throw new Exception("initialization called on a non-ref value: " + thisV)
+        }
 
       case _: Import | _: Export =>
         Result(Hot, Errors.empty)
@@ -1249,7 +1257,7 @@ object Semantic {
     }
 
   /** Handle semantics of leaf nodes */
-  def cases(tp: Type, thisV: Ref, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, (_: Result).show) {
+  def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, (_: Result).show) {
     tp match {
       case _: ConstantType =>
         Result(Hot, Errors.empty)
@@ -1338,7 +1346,7 @@ object Semantic {
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
-  def outerValue(tref: TypeRef, thisV: Ref, klass: ClassSymbol, source: Tree): Contextual[Result] =
+  def outerValue(tref: TypeRef, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Result] =
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
@@ -1471,7 +1479,7 @@ object Semantic {
    *
    *  This is intended to avoid type soundness issues in Dotty.
    */
-  def checkTermUsage(tpt: Tree, thisV: Ref, klass: ClassSymbol): Contextual[List[Error]] =
+  def checkTermUsage(tpt: Tree, thisV: Value, klass: ClassSymbol): Contextual[List[Error]] =
     val buf = new mutable.ArrayBuffer[Error]
     val traverser = new TypeTraverser {
       def traverse(tp: Type): Unit = tp match {
