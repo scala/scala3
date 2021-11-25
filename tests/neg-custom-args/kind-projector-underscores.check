@@ -6,14 +6,14 @@
 10 |  type -_ = Int // error -_ not allowed as a type def name without backticks
    |        ^
    |        =, >:, or <: expected, but '_' found
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E095] Syntax Error: tests/neg-custom-args/kind-projector-underscores.scala:11:8 ------------------------------------
 11 |  type +_ = Int // error +_ not allowed as a type def name without backticks
    |        ^
    |        =, >:, or <: expected, but '_' found
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/kind-projector-underscores.scala:14:51 -------------------------------------------------
 14 |class BacktickUnderscoreIsNotFine extends Foo[List[`_`]] // error wildcard invalid as backquoted identifier
    |                                                   ^

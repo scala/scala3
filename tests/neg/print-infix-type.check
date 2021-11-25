@@ -3,5 +3,5 @@
   |                             ^
   |                             Found:    Int over String
   |                             Required: String over Int
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

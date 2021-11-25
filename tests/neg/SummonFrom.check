@@ -2,11 +2,11 @@
 4 |  case x => ??? // error
   |       ^
   |       Unexpected pattern for summonFrom. Expected `x: T` or `_`
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E153] Syntax Error: tests/neg/SummonFrom.scala:8:7 -----------------------------------------------------------------
 8 |  case x@String => ??? // error
   |       ^^^^^^^^
   |       Unexpected pattern for summonFrom. Expected `x: T` or `_`
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

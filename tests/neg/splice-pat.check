@@ -2,8 +2,8 @@
 12 |  case '{ foo(${  // error: pattern expected
    |                ^
    |                pattern expected
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E040] Syntax Error: tests/neg/splice-pat.scala:15:5 ----------------------------------------------------------------
 15 |    })} => ???  // error
    |     ^

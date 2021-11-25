@@ -2,5 +2,5 @@
 4 |  case Var(name, _) => name: String // error
   |       ^^^^^^^^^^^^
   |       Wrong number of argument patterns for Var; expected: (String)
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

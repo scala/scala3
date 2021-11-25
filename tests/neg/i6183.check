@@ -17,5 +17,5 @@
   |     [B](b: B)(using x$2: DummyImplicit): Char
   |     [A](a: A): String
   |    both match arguments ((42 : Int))
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

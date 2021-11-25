@@ -3,8 +3,8 @@
   |                                         ^^^^
   |                                         C does not take type parameters
   |                                         (Note that F-bounds of type parameters may not be type lambdas)
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/i8752.scala:3:39 -----------------------------------------------------------------------------------
 3 |trait Arround1[C <:[X]=>>IterableOps[X,C,C[X]] ] // error // error
   |                                       ^

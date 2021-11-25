@@ -11,5 +11,5 @@
   |        ^
   |        Found:    Unit
   |        Required: Boolean
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

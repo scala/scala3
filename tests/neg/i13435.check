@@ -4,8 +4,8 @@
   |  match may not be exhaustive.
   |
   |  It would fail on pattern case: (_), ((_, _), (_, _))
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/i13435.scala:8:10 ----------------------------------------------------------------------------------
 8 |    case (dim: Axis, size: Int) => dim // error
   |          ^^^^^^^^^

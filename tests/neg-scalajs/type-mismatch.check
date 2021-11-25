@@ -3,5 +3,5 @@
   |                 ^^^
   |                 Found:    (msg : String)
   |                 Required: Int
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

@@ -3,7 +3,8 @@ scala> def x
 1 | def x
   |      ^
   |      Missing return type
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 scala> def x: Int
 -- [E067] Syntax Error: --------------------------------------------------------
 1 | def x: Int

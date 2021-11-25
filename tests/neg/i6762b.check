@@ -3,5 +3,5 @@
   |                                       ^^^^^^^^^^^
   |                                       Found:    Expr[String]
   |                                       Required: Expr[G[String]]
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

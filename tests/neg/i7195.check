@@ -6,5 +6,5 @@
    |
    |        where:    T  is a type in object B
    |                  T² is a type in object A
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

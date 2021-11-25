@@ -4,5 +4,5 @@
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                Found:    Int
    |                Required: (4 : Int)
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

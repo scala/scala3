@@ -2,5 +2,5 @@
 4 |  def t1 = / // error
   |           ^
   |           Not found: /
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

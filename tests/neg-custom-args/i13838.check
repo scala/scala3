@@ -22,5 +22,5 @@
    |     You can change the behavior by setting the `-Ximplicit-search-limit` value.
    |     Smaller values cause the search to fail faster.
    |     Larger values might make a very large search problem succeed.
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
