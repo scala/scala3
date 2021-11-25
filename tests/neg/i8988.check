@@ -3,5 +3,5 @@
   |                 ^^
   |                 Found:    (ys : List[Int])
   |                 Required: String
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

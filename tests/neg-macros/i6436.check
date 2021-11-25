@@ -6,5 +6,5 @@
 6 |      val ps: Seq[Expr[String]] = parts // error
   |                                  ^^^^^
   |                                  Not found: parts
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

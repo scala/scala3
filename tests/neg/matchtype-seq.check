@@ -29,8 +29,8 @@
    |                      Therefore, reduction cannot advance to the remaining case
    |
    |                        case (2 : Int) => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:12:20 -----------------------------------------------------
 12 |  identity[T1[Int]](1) // error
    |                    ^
@@ -46,8 +46,8 @@ longer explanation available when compiling with `-explain`
    |                      Therefore, reduction cannot advance to the remaining case
    |
    |                        case (2 : Int) => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:21:20 -----------------------------------------------------
 21 |  identity[T2[Int]]("") // error
    |                    ^^
@@ -63,15 +63,15 @@ longer explanation available when compiling with `-explain`
    |                      Therefore, reduction cannot advance to the remaining case
    |
    |                        case _ => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:22:18 -----------------------------------------------------
 22 |  identity[T2[2]](1) // error
    |                  ^
    |                  Found:    (1 : Int)
    |                  Required: String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:23:20 -----------------------------------------------------
 23 |  identity[T2[Int]](1) // error
    |                    ^
@@ -87,8 +87,8 @@ longer explanation available when compiling with `-explain`
    |                      Therefore, reduction cannot advance to the remaining case
    |
    |                        case _ => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:36:18 -----------------------------------------------------
 36 |  identity[T3[A]](1) // error
    |                  ^
@@ -104,8 +104,8 @@ longer explanation available when compiling with `-explain`
    |                    Therefore, reduction cannot advance to the remaining case
    |
    |                      case Test.C => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:37:18 -----------------------------------------------------
 37 |  identity[T3[A]]("") // error
    |                  ^^
@@ -121,8 +121,8 @@ longer explanation available when compiling with `-explain`
    |                    Therefore, reduction cannot advance to the remaining case
    |
    |                      case Test.C => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:55:18 -----------------------------------------------------
 55 |  identity[T5[A]](1) // error
    |                  ^
@@ -138,8 +138,8 @@ longer explanation available when compiling with `-explain`
    |                    Therefore, reduction cannot advance to the remaining case
    |
    |                      case Test.A => Int
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:56:18 -----------------------------------------------------
 56 |  identity[T5[A]]("") // error
    |                  ^^
@@ -155,8 +155,8 @@ longer explanation available when compiling with `-explain`
    |                    Therefore, reduction cannot advance to the remaining case
    |
    |                      case Test.A => Int
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:82:18 -----------------------------------------------------
 82 |  identity[T7[D]]("") // error
    |                  ^^
@@ -172,8 +172,8 @@ longer explanation available when compiling with `-explain`
    |                    Therefore, reduction cannot advance to the remaining case
    |
    |                      case Test.D => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:83:18 -----------------------------------------------------
 83 |  identity[T7[D]](1) // error
    |                  ^
@@ -189,8 +189,8 @@ longer explanation available when compiling with `-explain`
    |                    Therefore, reduction cannot advance to the remaining case
    |
    |                      case Test.D => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:94:19 -----------------------------------------------------
 94 |  identity[T8[E2]](1) // error
    |                   ^
@@ -206,15 +206,15 @@ longer explanation available when compiling with `-explain`
    |                     Therefore, reduction cannot advance to the remaining case
    |
    |                       case Test.E2 => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:95:19 -----------------------------------------------------
 95 |  identity[T8[E1]]("") // error
    |                   ^^
    |                   Found:    ("" : String)
    |                   Required: Int
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:96:19 -----------------------------------------------------
 96 |  identity[T8[E2]]("") // error
    |                   ^^
@@ -230,8 +230,8 @@ longer explanation available when compiling with `-explain`
    |                     Therefore, reduction cannot advance to the remaining case
    |
    |                       case Test.E2 => String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:105:40 ----------------------------------------------------
 105 |  identity[T9[Tuple2[Nothing, String]]](1) // error
     |                                        ^
@@ -243,8 +243,8 @@ longer explanation available when compiling with `-explain`
     |                                          trying to reduce  Test.T9[(Nothing, String)]
     |                                          failed since selector  (Nothing, String)
     |                                          is uninhabited (there are no values of that type).
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:106:40 ----------------------------------------------------
 106 |  identity[T9[Tuple2[String, Nothing]]]("1") // error
     |                                        ^^^
@@ -256,8 +256,8 @@ longer explanation available when compiling with `-explain`
     |                                          trying to reduce  Test.T9[(String, Nothing)]
     |                                          failed since selector  (String, Nothing)
     |                                          is uninhabited (there are no values of that type).
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:107:37 ----------------------------------------------------
 107 |  identity[T9[Tuple2[Int, Nothing]]](1) // error
     |                                     ^
@@ -269,8 +269,8 @@ longer explanation available when compiling with `-explain`
     |                                       trying to reduce  Test.T9[(Int, Nothing)]
     |                                       failed since selector  (Int, Nothing)
     |                                       is uninhabited (there are no values of that type).
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:108:37 ----------------------------------------------------
 108 |  identity[T9[Tuple2[Nothing, Int]]]("1") // error
     |                                     ^^^
@@ -282,8 +282,8 @@ longer explanation available when compiling with `-explain`
     |                                       trying to reduce  Test.T9[(Nothing, Int)]
     |                                       failed since selector  (Nothing, Int)
     |                                       is uninhabited (there are no values of that type).
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:109:29 ----------------------------------------------------
 109 |  identity[T9[Tuple2[_, _]]]("") // error
     |                             ^^
@@ -299,8 +299,8 @@ longer explanation available when compiling with `-explain`
     |                               Therefore, reduction cannot advance to the remaining case
     |
     |                                 case (String, Int) => String
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:110:29 ----------------------------------------------------
 110 |  identity[T9[Tuple2[_, _]]](1) // error
     |                             ^
@@ -316,8 +316,8 @@ longer explanation available when compiling with `-explain`
     |                               Therefore, reduction cannot advance to the remaining case
     |
     |                                 case (String, Int) => String
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:111:33 ----------------------------------------------------
 111 |  identity[T9[Tuple2[Any, Any]]]("") // error
     |                                 ^^
@@ -333,8 +333,8 @@ longer explanation available when compiling with `-explain`
     |                                   Therefore, reduction cannot advance to the remaining case
     |
     |                                     case (String, Int) => String
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:112:33 ----------------------------------------------------
 112 |  identity[T9[Tuple2[Any, Any]]](1) // error
     |                                 ^
@@ -350,8 +350,8 @@ longer explanation available when compiling with `-explain`
     |                                   Therefore, reduction cannot advance to the remaining case
     |
     |                                     case (String, Int) => String
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:122:39 ----------------------------------------------------
 122 |  identity[TA[Box2[Int, Int, String]]](1) // error
     |                                       ^
@@ -367,8 +367,8 @@ longer explanation available when compiling with `-explain`
     |                                         Therefore, reduction cannot advance to the remaining case
     |
     |                                           case Test.Box2[Int, Int, String] => String
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:123:39 ----------------------------------------------------
 123 |  identity[TA[Box2[Int, Int, String]]]("") // error
     |                                       ^^
@@ -384,8 +384,8 @@ longer explanation available when compiling with `-explain`
     |                                         Therefore, reduction cannot advance to the remaining case
     |
     |                                           case Test.Box2[Int, Int, String] => String
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:144:41 ----------------------------------------------------
 144 |  identity[TD[Box2_C[Int, Int, String]]]("") // error
     |                                         ^^
@@ -401,8 +401,8 @@ longer explanation available when compiling with `-explain`
     |                                           Therefore, reduction cannot advance to the remaining case
     |
     |                                             case Test.Box2_C[Int, Int, String] => String
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:153:25 ----------------------------------------------------
 153 |  def a[A]: M[Some[A]] = 1  // error
     |                         ^
@@ -418,8 +418,8 @@ longer explanation available when compiling with `-explain`
     |                           Therefore, reduction cannot advance to the remaining case
     |
     |                             case Some[_] => Int
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:154:25 ----------------------------------------------------
 154 |  def b[A]: M[Some[A]] = "" // error
     |                         ^^
@@ -435,8 +435,8 @@ longer explanation available when compiling with `-explain`
     |                           Therefore, reduction cannot advance to the remaining case
     |
     |                             case Some[_] => Int
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:168:23 ----------------------------------------------------
 168 |    val a: M[Inv[A]] = 1 // error
     |                       ^
@@ -452,8 +452,8 @@ longer explanation available when compiling with `-explain`
     |                         Therefore, reduction cannot advance to the remaining case
     |
     |                           case _ => Int
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:187:25 ----------------------------------------------------
 187 |      val a: M[Inv[A]] = 1 // error
     |                         ^
@@ -469,5 +469,5 @@ longer explanation available when compiling with `-explain`
     |                           Therefore, reduction cannot advance to the remaining case
     |
     |                             case _ => Int
-
-longer explanation available when compiling with `-explain`
+    |
+    | longer explanation available when compiling with `-explain`

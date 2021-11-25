@@ -2,56 +2,55 @@
 11 |  var h = new HKT3_1[FunctorImpl]();  // error // error
    |                                 ^
    |       Type argument test2.FunctorImpl does not conform to upper bound [Generic2[T <: String] <: Set[T]] =>> Any
-
-Explanation
-===========
-
-I tried to show that
-  test2.FunctorImpl
-conforms to
-  [Generic2[T <: String] <: Set[T]] =>> Any
-but the comparison trace ended with `false`:
-          
-  ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any
-    ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
-      ==> [T <: String] =>> Set[T]  <:  Iterable
-        ==> type bounds []  <:  type bounds [ <: String]
-          ==> Any  <:  String
-            ==> Any  <:  String
-            <== Any  <:  String = false
-          <== Any  <:  String = false
-        <== type bounds []  <:  type bounds [ <: String] = false
-      <== [T <: String] =>> Set[T]  <:  Iterable = false
-    <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
-  <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any = false
-
-The tests were made under the empty constraint
-
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |····················································································································
+   | I tried to show that
+   |   test2.FunctorImpl
+   | conforms to
+   |   [Generic2[T <: String] <: Set[T]] =>> Any
+   | but the comparison trace ended with `false`:
+   |
+   |   ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any
+   |     ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
+   |       ==> [T <: String] =>> Set[T]  <:  Iterable
+   |         ==> type bounds []  <:  type bounds [ <: String]
+   |           ==> Any  <:  String
+   |             ==> Any  <:  String
+   |             <== Any  <:  String = false
+   |           <== Any  <:  String = false
+   |         <== type bounds []  <:  type bounds [ <: String] = false
+   |       <== [T <: String] =>> Set[T]  <:  Iterable = false
+   |     <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
+   |   <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any = false
+   |
+   | The tests were made under the empty constraint
+   ·--------------------------------------------------------------------------------------------------------------------
 -- [E057] Type Mismatch Error: tests/neg-custom-args/i11637.scala:11:21 ------------------------------------------------
 11 |  var h = new HKT3_1[FunctorImpl]();  // error // error
    |                     ^
    |       Type argument test2.FunctorImpl does not conform to upper bound [Generic2[T <: String] <: Set[T]] =>> Any
-
-Explanation
-===========
-
-I tried to show that
-  test2.FunctorImpl
-conforms to
-  [Generic2[T <: String] <: Set[T]] =>> Any
-but the comparison trace ended with `false`:
-          
-  ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any
-    ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
-      ==> [T <: String] =>> Set[T]  <:  Iterable
-        ==> type bounds []  <:  type bounds [ <: String]
-          ==> Any  <:  String
-            ==> Any  <:  String
-            <== Any  <:  String = false
-          <== Any  <:  String = false
-        <== type bounds []  <:  type bounds [ <: String] = false
-      <== [T <: String] =>> Set[T]  <:  Iterable = false
-    <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
-  <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any = false
-
-The tests were made under the empty constraint
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |····················································································································
+   | I tried to show that
+   |   test2.FunctorImpl
+   | conforms to
+   |   [Generic2[T <: String] <: Set[T]] =>> Any
+   | but the comparison trace ended with `false`:
+   |
+   |   ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any
+   |     ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
+   |       ==> [T <: String] =>> Set[T]  <:  Iterable
+   |         ==> type bounds []  <:  type bounds [ <: String]
+   |           ==> Any  <:  String
+   |             ==> Any  <:  String
+   |             <== Any  <:  String = false
+   |           <== Any  <:  String = false
+   |         <== type bounds []  <:  type bounds [ <: String] = false
+   |       <== [T <: String] =>> Set[T]  <:  Iterable = false
+   |     <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
+   |   <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any = false
+   |
+   | The tests were made under the empty constraint
+   ·--------------------------------------------------------------------------------------------------------------------

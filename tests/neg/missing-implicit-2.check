@@ -26,5 +26,5 @@
   |
   |                         where:    Byte  is a class in package scala
   |                                   Byte² is a class in package java.lang
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

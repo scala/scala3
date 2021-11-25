@@ -5,5 +5,6 @@ scala> try 1
   | ^^^^^
   | A try without catch or finally is equivalent to putting
   | its body in a block; no exceptions are handled.
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 val res0: Int = 1

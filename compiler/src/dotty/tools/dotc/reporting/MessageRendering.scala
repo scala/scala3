@@ -249,6 +249,19 @@ trait MessageRendering {
     else sb.append(msg.message)
     if (dia.isVerbose)
       appendFilterHelp(dia, sb)
+
+    if Diagnostic.shouldExplain(dia) then
+      sb.append(EOL).append(newBox())
+      sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
+      sb.append(EOL).append(newBox(soft = true))
+      dia.msg.explanation.split(EOL).foreach { line =>
+        sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
+      }
+      sb.append(EOL).append(endBox)
+    else if dia.msg.canExplain then
+      sb.append(EOL).append(offsetBox)
+      sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
+
     sb.toString
   }
 

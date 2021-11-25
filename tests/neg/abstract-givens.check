@@ -12,5 +12,5 @@
   |        ^
   |        error overriding given instance z in trait T of type [T](using x$1: T): List[T];
   |          given instance z of type [T](using x$1: T): Seq[T] has incompatible type
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

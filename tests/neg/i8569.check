@@ -2,5 +2,5 @@
 13 |  val x = outer.Inner(2) // error (at posttyper)
    |          ^^^^^^^^^^^^^^
    |          Outer is not a valid class prefix, since it is not an immutable path
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

@@ -4,29 +4,29 @@
   |              Reference to x is ambiguous,
   |              it is both defined in object Test
   |              and inherited subsequently in class D
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E049] Reference Error: tests/neg/ambiref.scala:10:14 ---------------------------------------------------------------
 10 |      println(x)  // error
    |              ^
    |              Reference to x is ambiguous,
    |              it is both defined in object Test
    |              and inherited subsequently in anonymous class test1.C {...}
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E049] Reference Error: tests/neg/ambiref.scala:17:14 ---------------------------------------------------------------
 17 |      println(y)  // error
    |              ^
    |              Reference to y is ambiguous,
    |              it is both defined in method c
    |              and inherited subsequently in anonymous class D {...}
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E049] Reference Error: tests/neg/ambiref.scala:25:16 ---------------------------------------------------------------
 25 |        println(y)  // error
    |                ^
    |                Reference to y is ambiguous,
    |                it is both defined in method c
    |                and inherited subsequently in class E
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

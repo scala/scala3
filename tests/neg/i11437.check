@@ -2,5 +2,5 @@
 1 |transparent inline def foo = error // error
   |                             ^^^^^
   |                             Not found: error
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

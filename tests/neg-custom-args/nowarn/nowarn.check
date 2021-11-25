@@ -3,22 +3,22 @@
   |          ^^^^^
   |          A try without catch or finally is equivalent to putting
   |          its body in a block; no exceptions are handled.
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E000] Syntax Warning: tests/neg-custom-args/nowarn/nowarn.scala:23:25 ----------------------------------------------
 23 |@nowarn(o.inl) def t2d = try 1   // two warnings (`inl` is not a compile-time constant)
    |                         ^^^^^
    |                         A try without catch or finally is equivalent to putting
    |                         its body in a block; no exceptions are handled.
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E000] Syntax Warning: tests/neg-custom-args/nowarn/nowarn.scala:31:26 ----------------------------------------------
 31 |@nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
    |                          ^^^^^
    |                          A try without catch or finally is equivalent to putting
    |                          its body in a block; no exceptions are handled.
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E000] Syntax Warning: tests/neg-custom-args/nowarn/nowarn.scala:33:28 ----------------------------------------------
 33 |@nowarn("verbose") def t5 = try 1 // warning with details
    |                            ^^^^^
@@ -27,14 +27,14 @@ longer explanation available when compiling with `-explain`
 Matching filters for @nowarn or -Wconf:
   - id=E0
   - name=EmptyCatchOrFinallyBlock
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E129] Potential Issue Warning: tests/neg-custom-args/nowarn/nowarn.scala:13:11 -------------------------------------
 13 |def t2 = { 1; 2 } // warning (the invalid nowarn doesn't silence anything)
    |           ^
    |           A pure expression does nothing in statement position; you may be omitting necessary parentheses
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- Warning: tests/neg-custom-args/nowarn/nowarn.scala:12:8 -------------------------------------------------------------
 12 |@nowarn("wat?") // warning (typer, invalid filter)
    |        ^^^^^^
@@ -44,8 +44,8 @@ longer explanation available when compiling with `-explain`
 16 |def t2a = { 1; 2 } // warning (invalid nowarn doesn't silence)
    |            ^
    |            A pure expression does nothing in statement position; you may be omitting necessary parentheses
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- Warning: tests/neg-custom-args/nowarn/nowarn.scala:15:8 -------------------------------------------------------------
 15 |@nowarn(t1a.toString) // warning (typer, argument not a compile-time constant)
    |        ^^^^^^^^^^^^

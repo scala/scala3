@@ -5,5 +5,5 @@
   |                          Required: Vector[F[Any]]
   |
   |                          where:    F is a type in method magic with bounds <: [_] =>> Any
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

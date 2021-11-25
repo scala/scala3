@@ -6,5 +6,5 @@
 2 |val te = tup.map((x: _ <: Int) => List(x)) // error // error
   |                                       ^
   |                                       Not found: x
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

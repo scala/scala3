@@ -32,10 +32,6 @@ object ConsoleReporter {
     /** Prints the message with the given position indication. */
     def doReport(dia: Diagnostic)(using Context): Unit = {
       printMessage(messageAndPos(dia))
-      if Diagnostic.shouldExplain(dia) then
-        printMessage(explanation(dia.msg))
-      else if dia.msg.canExplain then
-        printMessage("\nlonger explanation available when compiling with `-explain`")
     }
   }
 }

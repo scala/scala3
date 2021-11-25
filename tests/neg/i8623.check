@@ -7,5 +7,5 @@
    |  But the part corresponding to `<skolem>` is not a reference that can be generated.
    |  This might be because resolution yielded as given instance a function that is not
    |  known to be total and side-effect free.
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
