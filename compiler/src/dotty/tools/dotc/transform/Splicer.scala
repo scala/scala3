@@ -49,7 +49,7 @@ object Splicer {
           val oldContextClassLoader = Thread.currentThread().getContextClassLoader
           Thread.currentThread().setContextClassLoader(classLoader)
           try {
-            val interpreter = new Interpreter(spliceExpansionPos, classLoader)
+            val interpreter = new Interpreter(splicePos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
             val interpretedExpr = interpreter.interpret[Quotes => scala.quoted.Expr[Any]](tree)

@@ -4,4 +4,3 @@
   |  ^
   |  NoMatchingImplicits
   |  no implicit values were found that match type A
-  | This location contains code that was inlined from Test_2.scala:3

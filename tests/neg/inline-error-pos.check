@@ -4,4 +4,11 @@
   |          cannot reduce inline match with
   |           scrutinee:  2 : (2 : Int)
   |           patterns :  case 1
-  | This location contains code that was inlined from inline-error-pos.scala:3
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |·····················································································································
+  |This location contains code that was inlined from inline-error-pos.scala:3
+3 |  inline x match
+  |         ^
+4 |    case 1 => 9
+  ·---------------------------------------------------------------------------------------------------------------------

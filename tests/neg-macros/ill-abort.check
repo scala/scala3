@@ -3,4 +3,10 @@
 1 |def test = fail() // error
   |           ^^^^^^
   |Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users to facilitate debugging when aborting a macro expansion.
-  | This location contains code that was inlined from quoted_1.scala:3
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |·····················································································································
+  |This location contains code that was inlined from quoted_1.scala:3
+3 |inline def fail(): Unit = ${ impl }
+  |                          ^^^^^^^^^
+  ·---------------------------------------------------------------------------------------------------------------------
