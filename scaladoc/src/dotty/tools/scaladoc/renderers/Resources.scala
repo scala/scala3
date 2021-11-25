@@ -90,7 +90,6 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/filter-bar.css",
       "styles/code-snippets.css",
       "styles/searchbar.css",
-      "styles/content-contributors.css",
       "styles/social-links.css",
       "styles/ux.css",
       "styles/versions-dropdown.css",

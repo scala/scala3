@@ -8,7 +8,6 @@ import scala.scalajs.js.annotation.JSGlobalScope
 object Globals extends js.Object {
   val pathToRoot: String = js.native
   val versionsDictionaryUrl: String = js.native
-  val githubContributorsUrl: String = js.native
 }
 
 object StringUtils {

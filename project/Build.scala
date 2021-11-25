@@ -1256,16 +1256,31 @@ object Build {
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
     settings(commonBootstrappedSettings)
-  lazy val `scaladoc-js` = project.in(file("scaladoc-js")).
+
+   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
-      Compile / scalaJSMainModuleInitializer := (sys.env.get("scaladoc.projectFormat") match {
-        case Some("md") => Some(ModuleInitializer.mainMethod("dotty.tools.scaladoc.Main", "markdownMain"))
-        case _ => Some(ModuleInitializer.mainMethod("dotty.tools.scaladoc.Main", "main"))
-      }),
       Test / fork := false,
-      Compile / scalaJSUseMainModuleInitializer := true,
+      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
+    )
+
+  lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
+    enablePlugins(DottyJSPlugin).
+    dependsOn(`scaladoc-js-common`).
+    settings(scalaJSUseMainModuleInitializer := true)
+
+   lazy val `scaladoc-js-markdown` = project.in(file("scaladoc-js/markdown")).
+    enablePlugins(DottyJSPlugin).
+    dependsOn(`scaladoc-js-common`).
+    settings(scalaJSUseMainModuleInitializer := true)
+
+  lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).
+    enablePlugins(DottyJSPlugin).
+    dependsOn(`scala3-library-bootstrappedJS`).
+    settings(
+      Test / fork := false,
+      scalaJSUseMainModuleInitializer := true,
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
     )
 
@@ -1320,14 +1335,30 @@ object Build {
     ).
     settings(
       Compile / resourceGenerators += Def.task {
-        val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "scaladoc-scalajs.js"
-        sbt.IO.copyFile((`scaladoc-js` / Compile / fullOptJS).value.data, jsDestinationFile)
-        Seq(jsDestinationFile)
+        val contributorsFile = (`scaladoc-js-contributors` / Compile / fullOptJS).value.data
+        val contributorsDestinationFile = Paths.get("docs-for-dotty-page", "js", "contributors.js").toFile
+        sbt.IO.copyFile(contributorsFile, contributorsDestinationFile)
+
+        val mainFile = (`scaladoc-js-main` / Compile / fullOptJS).value.data
+        val mainDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "scaladoc-scalajs.js"
+        sbt.IO.copyFile(mainFile, mainDestinationFile)
+
+        Seq(mainDestinationFile, contributorsDestinationFile)
       }.taskValue,
       Compile / resourceGenerators += Def.task {
-        Seq("code-snippets.css", "searchbar.css", "content-contributors.css", "social-links.css", "ux.css", "versions-dropdown.css").map { file =>
+        {
+          val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "code-snippets.css"
+          val cssSourceFile = (`scaladoc-js-common` / Compile / resourceDirectory).value / "code-snippets.css"
+          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
+          Seq(cssDesitnationFile)
+        } ++ {
+          val cssDesitnationFile = Paths.get("docs-for-dotty-page", "css", "content-contributors.css").toFile
+          val cssSourceFile = (`scaladoc-js-contributors` / Compile / resourceDirectory).value / "content-contributors.css"
+          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
+          Seq(cssDesitnationFile)
+        } ++ Seq("searchbar.css", "social-links.css", "ux.css", "versions-dropdown.css").map { file =>
           val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / file
-          val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / file
+          val cssSourceFile = (`scaladoc-js-main` / Compile / resourceDirectory).value / file
           sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
           cssDesitnationFile
         }
@@ -1458,10 +1489,10 @@ object Build {
           case _ => throw new IllegalArgumentException("No js destination provided")
         }
         val jsDestinationFile: File = Paths.get(destJS).toFile
-        sbt.IO.copyFile((`scaladoc-js` / Compile / fullOptJS).value.data, jsDestinationFile)
+        sbt.IO.copyFile((`scaladoc-js-markdown` / Compile / fullOptJS).value.data, jsDestinationFile)
         csses.map { file =>
           val cssDesitnationFile = Paths.get(destCSS).toFile / file
-          val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / file
+          val cssSourceFile = (`scaladoc-js-markdown` / Compile / resourceDirectory).value / file
           sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
           cssDesitnationFile
         }

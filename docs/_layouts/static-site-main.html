@@ -7,7 +7,7 @@ layout: main
       <nav class="navigation" role="menu">
         <ul class="navigation-menu">
           <li class="navigation-menu-item">
-            <a href="/" class="active">Documentation</a>
+            <a href="https://docs.scala-lang.org/" class="active">Documentation</a>
           </li>
           <li class="navigation-menu-item">
             <a href="https://www.scala-lang.org/download/">Download</a>
@@ -28,6 +28,11 @@ layout: main
       </nav>
     </div>
   </div>
+  {% if page.movedTo %}
+  <aside class="warning">
+    The content of this page is outdated. Click <a href="{{ page.movedTo }}">here</a> to find the up to date version of this page.
+  </aside>
+  {% endif %}
   {{ content }}
   <nav class="arrows-wrapper" aria-label="Page navigation">
     {% if page.previous %}
