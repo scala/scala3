@@ -4,4 +4,3 @@
   |  ^
   |  AmbiguousImplicits
   |  both value a1 in class Test1 and value a2 in class Test1 match type A
-  | This location contains code that was inlined from Test_2.scala:6
