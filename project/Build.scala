@@ -1260,20 +1260,23 @@ object Build {
    lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
-    settings(
-      Test / fork := false,
-      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
-    )
+    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13))
 
   lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
-    settings(scalaJSUseMainModuleInitializer := true)
+    settings(
+      scalaJSUseMainModuleInitializer := true,
+      Test / fork := false
+    )
 
    lazy val `scaladoc-js-markdown` = project.in(file("scaladoc-js/markdown")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
-    settings(scalaJSUseMainModuleInitializer := true)
+    settings(
+      scalaJSUseMainModuleInitializer := true,
+      Test / fork := false
+    )
 
   lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).
     enablePlugins(DottyJSPlugin).

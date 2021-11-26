@@ -71,16 +71,21 @@ class StaticSiteContext(
     orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
   }
 
-  lazy val redirectTemplates: Seq[LoadedTemplate] = {
+  lazy val redirectTemplates: Seq[(LoadedTemplate, DRI, DRI)] = {
     def doFlatten(t: LoadedTemplate): Seq[LoadedTemplate] =
       t +: t.children.flatMap(doFlatten)
     val mainFiles = templates.flatMap(doFlatten)
     mainFiles.flatMap { loadedTemplate =>
-      loadedTemplate.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]].get("redirectFrom").map { case redirectFrom: String =>
+      val redirectFrom = loadedTemplate.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]].get("redirectFrom")
+      def redirectToTemplate(redirectFrom: String) =
         val fakeFile = new File(docsPath.toFile, redirectFrom)
-        val redirectTo = fakeFile.toPath.getParent.relativize(loadedTemplate.file.toPath).toString.stripSuffix(".md") + ".html"
-        LoadedTemplate(layouts("redirect").copy(settings = layouts("redirect").settings ++ Map("redirectTo" -> redirectTo)), List.empty, fakeFile)
-      }
+        val driFrom = driFor(fakeFile.toPath)
+        val driTo = driFor(loadedTemplate.file.toPath)
+        (LoadedTemplate(layouts("redirect"), List.empty, fakeFile), driFrom, driTo)
+      redirectFrom.map {
+        case redirectFrom: String => Seq(redirectToTemplate(redirectFrom))
+        case redirects: List[?] => redirects.asInstanceOf[List[String]].map(redirectToTemplate)
+      }.getOrElse(Nil)
     }
   }
 

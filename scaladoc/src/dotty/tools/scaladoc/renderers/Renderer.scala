@@ -111,7 +111,11 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
           (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
 
-  val redirectPages: Seq[Page] = staticSite.fold(Seq.empty)(siteContext => siteContext.redirectTemplates.map(templateToPage(_, siteContext)))
+  val redirectPages: Seq[Page] = staticSite.fold(Seq.empty)(siteContext => siteContext.redirectTemplates.map {
+    case (template, driFrom, driTo) =>
+      val redirectTo = pathToPage(driFrom, driTo)
+      templateToPage(template.copy(templateFile = template.templateFile.copy(settings = template.templateFile.settings ++ Map("redirectTo" -> redirectTo))), siteContext)
+  })
 
   /**
    * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
