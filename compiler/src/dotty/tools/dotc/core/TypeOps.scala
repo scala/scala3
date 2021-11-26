@@ -829,4 +829,11 @@ object TypeOps:
   def nestedPairs(ts: List[Type])(using Context): Type =
     ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 
+  class StripTypeVarsMap(using Context) extends TypeMap:
+    def apply(tp: Type) = mapOver(tp).stripTypeVar
+
+  /** Apply [[Type.stripTypeVar]] recursively. */
+  def stripTypeVars(tp: Type)(using Context): Type =
+    new StripTypeVarsMap().apply(tp)
+
 end TypeOps
