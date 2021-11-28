@@ -18,11 +18,11 @@ import Variances.Variance
 import annotation.tailrec
 import util.SimpleIdentityMap
 import util.Stats
-import util.UniqList
 import java.util.WeakHashMap
 import scala.util.control.NonFatal
 import config.Config
 import reporting._
+import collection.immutable.SortedSet
 import collection.mutable
 import transform.TypeUtils._
 
@@ -2232,7 +2232,7 @@ object SymDenotations {
       }
     }
 
-    def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): UniqList[Name] =
+    def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): SortedSet[Name] =
       if (this.is(PackageClass) || !Config.cacheMemberNames)
         computeMemberNames(keepOnly) // don't cache package member names; they might change
       else {
@@ -2240,8 +2240,8 @@ object SymDenotations {
         memberNamesCache(keepOnly, this)
       }
 
-    def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): UniqList[Name] = {
-      val names = new UniqList.Builder[Name]
+    def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): SortedSet[Name] = {
+      var names = SortedSet[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       try {
         for (p <- parentSyms if p.isClass)
@@ -2254,7 +2254,7 @@ object SymDenotations {
             else info.decls.iterator.filter(_.isOneOf(GivenOrImplicitVal))
           else info.decls.iterator
         for (sym <- ownSyms) maybeAdd(sym.name)
-        names.result
+        names
       }
       catch {
         case ex: Throwable =>
@@ -2467,10 +2467,10 @@ object SymDenotations {
     end computeMembersNamed
 
     /** The union of the member names of the package and the package object */
-    override def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): UniqList[Name] = {
-      def recur(pobjs: List[ClassDenotation], acc: UniqList[Name]): UniqList[Name] = pobjs match {
+    override def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): SortedSet[Name] = {
+      def recur(pobjs: List[ClassDenotation], acc: SortedSet[Name]): SortedSet[Name] = pobjs match {
         case pcls :: pobjs1 =>
-          recur(pobjs1, acc | pcls.memberNames(keepOnly))
+          recur(pobjs1, acc.union(pcls.memberNames(keepOnly)))
         case nil =>
           acc
       }
@@ -2753,7 +2753,7 @@ object SymDenotations {
   /** A cache for sets of member names, indexed by a NameFilter */
   trait MemberNames extends InheritedCache {
     def apply(keepOnly: NameFilter, clsd: ClassDenotation)
-             (implicit onBehalf: MemberNames, ctx: Context): UniqList[Name]
+             (implicit onBehalf: MemberNames, ctx: Context): SortedSet[Name]
   }
 
   object MemberNames {
@@ -2814,7 +2814,7 @@ object SymDenotations {
   }
 
   private class MemberNamesImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with MemberNames {
-    private var cache: SimpleIdentityMap[NameFilter, UniqList[Name]] = SimpleIdentityMap.empty
+    private var cache: SimpleIdentityMap[NameFilter, SortedSet[Name]] = SimpleIdentityMap.empty
 
     final def isValid(using Context): Boolean =
       cache != null && isValidAt(ctx.phase)

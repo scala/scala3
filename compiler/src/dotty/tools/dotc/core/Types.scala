@@ -23,13 +23,13 @@ import Variances.{Variance, varianceFromInt, varianceToInt, setStructuralVarianc
 import typer.Nullables
 import util.Stats._
 import util.SimpleIdentitySet
-import util.UniqList
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
 import printing.Printer
 import Hashable._
 import Uniques._
+import collection.immutable.SortedSet
 import collection.mutable
 import config.Config
 import config.Feature
@@ -903,7 +903,7 @@ object Types {
      *  @note: OK to use a Set[Name] here because Name hashcodes are replayable,
      *         hence the Set will always give the same names in the same order.
      */
-    final def memberNames(keepOnly: NameFilter, pre: Type = this)(using Context): UniqList[Name] = this match {
+    final def memberNames(keepOnly: NameFilter, pre: Type = this)(using Context): SortedSet[Name] = this match {
       case tp: ClassInfo =>
         val names = tp.cls.classDenot.memberNames(keepOnly)
         if keepOnly.isStable then names else names.filter(keepOnly(pre, _))
@@ -917,7 +917,7 @@ object Types {
       case tp: OrType =>
         tp.tp1.memberNames(keepOnly, pre) & tp.tp2.memberNames(keepOnly, pre)
       case _ =>
-        UniqList.empty
+        SortedSet()
     }
 
     def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(using Context): Seq[SingleDenotation] = {
