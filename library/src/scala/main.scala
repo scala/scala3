@@ -341,19 +341,13 @@ final class main(maxLineLength: Int) extends MainAnnotation:
           if errors.nonEmpty then
             for msg <- errors do println(s"Error: $msg")
             usage()
-          else f match
-            case ExitCode(n) => sys.exit(n)
-            case () =>
-            case res =>
-              val wrappedLines = res.toString.split("\n").nn.map(line => wrapLongLine(line.nn, maxLineLength).mkString("\n"))
-              println(wrappedLines.mkString("\n"))
+          else
+            f
       end run
   end command
 end main
 
 object main:
-  case class ExitCode(code: Int)
-
   private trait Documentation:
     /** The main part of the documentation. */
     def mainDoc: String

@@ -5,8 +5,8 @@ class MyResult(val result: Int):
 object myProgram:
 
   /** Adds two numbers and returns them */
-  @main def add(num: Int, inc: Int): MyResult =
-    MyResult(num + inc)
+  @main def add(num: Int, inc: Int) =
+    println(MyResult(num + inc))
 
 end myProgram
 
@@ -18,7 +18,7 @@ object Test:
 
   def main(args: Array[String]): Unit =
     println("Direct call")
-    assert(myProgram.add(2, 3).result == 5)
+    myProgram.add(2, 3)
     println("Main call")
     callMain(Array("2", "3"))
 end Test
