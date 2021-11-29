@@ -341,7 +341,7 @@ object Build {
       "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
       "-author",
       "-groups",
-      "-default-template", "doc-page"
+      "-default-template", "static-site-main"
     ) ++ extMap
   }
 
@@ -1257,7 +1257,16 @@ object Build {
     dependsOn(`scala3-compiler-bootstrapped`).
     settings(commonBootstrappedSettings)
 
-   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
+
+  /**
+   * Collection of projects building targets for scaladoc, these are:
+   * - common - common module for javascript shared among html and markdown outpu
+   * - main - main target for default scaladoc producing html webpage
+   * - markdown - companion js for preprocessing features. Can be later used with some templating engine
+   * - contributors - not related project to any of forementioned modules. Used for presenting contributors for static site.
+   *                   Made as an indepented project to be scaladoc-agnostic.
+   */
+  lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13))
@@ -1270,7 +1279,7 @@ object Build {
       Test / fork := false
     )
 
-   lazy val `scaladoc-js-markdown` = project.in(file("scaladoc-js/markdown")).
+  lazy val `scaladoc-js-markdown` = project.in(file("scaladoc-js/markdown")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
     settings(
@@ -1338,70 +1347,13 @@ object Build {
     ).
     settings(
       Compile / resourceGenerators += Def.task {
-        val contributorsFile = (`scaladoc-js-contributors` / Compile / fullOptJS).value.data
-        val contributorsDestinationFile = Paths.get("docs-for-dotty-page", "js", "contributors.js").toFile
-        sbt.IO.copyFile(contributorsFile, contributorsDestinationFile)
-
-        val mainFile = (`scaladoc-js-main` / Compile / fullOptJS).value.data
-        val mainDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "scaladoc-scalajs.js"
-        sbt.IO.copyFile(mainFile, mainDestinationFile)
-
-        Seq(mainDestinationFile, contributorsDestinationFile)
-      }.taskValue,
-      Compile / resourceGenerators += Def.task {
-        {
-          val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "code-snippets.css"
-          val cssSourceFile = (`scaladoc-js-common` / Compile / resourceDirectory).value / "code-snippets.css"
-          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
-          Seq(cssDesitnationFile)
-        } ++ {
-          val cssDesitnationFile = Paths.get("docs-for-dotty-page", "css", "content-contributors.css").toFile
-          val cssSourceFile = (`scaladoc-js-contributors` / Compile / resourceDirectory).value / "content-contributors.css"
-          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
-          Seq(cssDesitnationFile)
-        } ++ Seq("searchbar.css", "social-links.css", "ux.css", "versions-dropdown.css").map { file =>
-          val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / file
-          val cssSourceFile = (`scaladoc-js-main` / Compile / resourceDirectory).value / file
-          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
-          cssDesitnationFile
-        }
-      }.taskValue,
-      Compile / resourceGenerators += Def.task {
-        import _root_.scala.sys.process._
-        import _root_.scala.concurrent._
-        import _root_.scala.concurrent.duration.Duration
-        import ExecutionContext.Implicits.global
-        val inkuireVersion = "1.0.0-M3"
-        val inkuireLink = s"https://github.com/VirtusLab/Inkuire/releases/download/$inkuireVersion/inkuire.js"
-        val inkuireDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "inkuire.js"
-        sbt.IO.touch(inkuireDestinationFile)
-
-        def tryFetch(retries: Int, timeout: Duration): Unit = {
-          val downloadProcess = (new java.net.URL(inkuireLink) #> inkuireDestinationFile).run()
-          val result: Future[Int] = Future(blocking(downloadProcess.exitValue()))
-          try {
-            Await.result(result, timeout) match {
-              case 0 =>
-              case res if retries > 0 =>
-                println(s"Failed to fetch inkuire.js from $inkuireLink: Error code $res. $retries retries left")
-                tryFetch(retries - 1, timeout)
-              case res => throw new MessageOnlyException(s"Failed to fetch inkuire.js from $inkuireLink: Error code $res")
-            }
-          } catch {
-            case e: TimeoutException =>
-              downloadProcess.destroy()
-              if (retries > 0) {
-                println(s"Failed to fetch inkuire.js from $inkuireLink: Download timeout. $retries retries left")
-                tryFetch(retries - 1, timeout)
-              }
-              else {
-                throw new MessageOnlyException(s"Failed to fetch inkuire.js from $inkuireLink: Download timeout")
-              }
-          }
-        }
-
-        tryFetch(5, Duration(60, "s"))
-        Seq(inkuireDestinationFile)
+        DocumentationWebsite.generateStaticAssets(
+          (`scaladoc-js-contributors` / Compile / fullOptJS).value.data,
+          (`scaladoc-js-main` / Compile / fullOptJS).value.data,
+          (`scaladoc-js-contributors` / Compile / baseDirectory).value / "css",
+          (`scaladoc-js-common` / Compile / baseDirectory).value / "css",
+          (Compile / resourceManaged).value,
+        )
       }.taskValue,
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
         "nl.big-o" % "liqp" % "0.6.8",

@@ -1,0 +1,22 @@
+---
+extraJS:
+  - js/contributors.js
+extraCSS:
+  - css/bootstrap.min.css
+  - css/content-contributors.css
+---
+<div class="container">
+  {{ content }}
+  <nav class="arrows-wrapper" aria-label="Page navigation">
+    {% if page.previous %}
+    <a rel="prev" href="{{ page.previous }}" class="arrows previous" aria-keyshortcuts="Left">
+        <i class="fa fa-angle-left"></i>
+    </a>
+    {% endif %}
+    {% if page.next %}
+    <a rel="next" href="{{ page.next }}" class="arrows next" aria-keyshortcuts="Right">
+        <i class="fa fa-angle-right"></i>
+    </a>
+    {% endif %}
+  </nav>
+</div>

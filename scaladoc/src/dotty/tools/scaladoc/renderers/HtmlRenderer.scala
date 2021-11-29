@@ -88,7 +88,10 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           val path = loadedTemplate.file.toPath
           ctx.sourceLinks.repoSummary(path) match
             case Some(DefinedRepoSummary("github", org, repo)) =>
-              script(raw(s"""var githubContributorsUrl = "https://api.github.com/repos/$org/$repo/commits?path=docs/${relativePath(path).toString.stripPrefix("docs-for-dotty-page/")}";"""))
+              val tag: TagArg = ctx.sourceLinks.fullPath(relativePath(path)).fold("") { githubContributors =>
+                script(raw(s"""var githubContributorsUrl = "https://api.github.com/repos/$org/$repo/commits?path=$githubContributors";"""))
+              }
+              tag // for some reason inference fails so had to state the type explicitly
             case _ => ""
         case _ => ""),
       ctx.args.versionsDictionaryUrl match

@@ -113,7 +113,10 @@ class SourceLinks(private val sourceLinks: PathBased[SourceLink]):
     sourceLinks.get(path).map(_.elem.repoSummary)
 
   def fullPath(path: Path): Option[Path] =
-    sourceLinks.get(path).map(_.path)
+    sourceLinks.get(path).map { case PathBased.Result(path, elem) => elem match
+      case e: WebBasedSourceLink => Paths.get(e.subPath, path.toString)
+      case _ => path
+    }
 
 object SourceLinks:
   val usage =
