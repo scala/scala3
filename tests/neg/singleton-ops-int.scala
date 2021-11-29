@@ -9,6 +9,9 @@ object Test {
   summon[1 + Int <:< Int]
 
   val t0: 2 + 3 = 5
+  final val two = 2
+  final val three = 3
+  val t0_b : two.type + three.type = 5
   val t1: 2 + 2 = 5 // error
   val t2: -1 + 1 = 0
   val t3: -5 + -5 = -11 // error
@@ -70,8 +73,6 @@ object Test {
 
   val t48: ToString[213] = "213"
   val t49: ToString[-1] = "-1"
-  val t50: ToString[0] = "-0" // error
-  val t51: ToString[200] = "100" // error
 
   val t52: 1 ^ 2 = 3
   val t53: 1 ^ 3 = 3 // error
@@ -102,4 +103,17 @@ object Test {
   val t73: -7 >>> 3 = 536870911
   val t74: -7 >>> 3 = -1 // error
 
+  val t75: NumberOfLeadingZeros[0] = 32
+  val t76: NumberOfLeadingZeros[8] = 28
+  val t77: NumberOfLeadingZeros[-1] = 0
+  val t78: NumberOfLeadingZeros[-1] = 1 // error
+
+  val t79: ToLong[1] = 1L
+  val t80: ToLong[2] = 2 // error
+
+  val t81: ToFloat[1] = 1.0f
+  val t82: ToFloat[2] = 2 // error
+
+  val t83: ToDouble[1] = 1.0
+  val t84: ToDouble[2] = 2 // error
 }
