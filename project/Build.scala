@@ -319,10 +319,11 @@ object Build {
 
   private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
 
-  lazy val scalacOptionsDocSettings = Seq(
-      "-external-mappings:" +
-        ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/," +
-        ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
+  def scalacOptionsDocSettings(includeExternalMappings: Boolean = true) = {
+    val extMap = Seq("-external-mappings:" +
+        (if (includeExternalMappings) ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/," else "") +
+        ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/")
+    Seq(
       "-skip-by-regex:.+\\.internal($|\\..+)",
       "-skip-by-regex:.+\\.impl($|\\..+)",
       "-project-logo", "docs/logo.svg",
@@ -340,7 +341,8 @@ object Build {
       "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
       "-author",
       "-groups"
-  )
+    ) ++ extMap
+  }
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
@@ -423,7 +425,7 @@ object Build {
       assert(docScalaInstance.loaderCompilerOnly == base.loaderCompilerOnly)
       docScalaInstance
     },
-    Compile / doc / scalacOptions ++= scalacOptionsDocSettings
+    Compile / doc / scalacOptions ++= scalacOptionsDocSettings()
   )
 
   lazy val commonBenchmarkSettings = Seq(
@@ -1266,7 +1268,7 @@ object Build {
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
     )
 
-  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil) =
+  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil, includeExternalMappings: Boolean = true) =
     Def.taskDyn {
       val distLocation = (dist / pack).value
       val projectVersion = version.value
@@ -1294,7 +1296,7 @@ object Build {
         dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
         dottySrcLink(referenceVersion),
         "-Ygenerate-inkuire",
-      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
+      ) ++ scalacOptionsDocSettings(includeExternalMappings) ++ revision ++ params ++ targets
       import _root_.scala.sys.process._
       val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
       Def.task {
@@ -1424,7 +1426,7 @@ object Build {
               "https://scala-lang.org/api/versions.json",
               "-Ydocument-synthetic-types",
               s"-snippet-compiler:${dottyLibRoot}/scala/quoted=compile,${dottyLibRoot}/scala/compiletime=compile"
-            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs-for-dotty-page", "-Yapi-subdirectory")))
+            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs-for-dotty-page", "-Yapi-subdirectory")), includeExternalMappings = false)
 
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
         else if (justAPI) generateDocTask

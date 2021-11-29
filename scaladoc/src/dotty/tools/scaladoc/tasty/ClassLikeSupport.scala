@@ -70,19 +70,21 @@ trait ClassLikeSupport:
           case tree: ClassDef => tree
       case tt: TypeTree => unpackTreeToClassDef(tt.tpe.typeSymbol.tree)
 
-    def getSupertypesGraph(classDef: Tree, link: LinkToType): Seq[(LinkToType, LinkToType)] =
-      val smbl = classDef.symbol
-      val parents = unpackTreeToClassDef(classDef).parents
-      parents.flatMap { case tree =>
+    def getSupertypesGraph(link: LinkToType, to: Seq[Tree]): Seq[(LinkToType, LinkToType)] =
+      to.flatMap { case tree =>
         val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
         val superLink = LinkToType(tree.asSignature, symbol.dri, bareClasslikeKind(symbol))
-        Seq(link -> superLink) ++ getSupertypesGraph(tree, superLink)
+        val nextTo = unpackTreeToClassDef(tree).parents
+        if symbol.isHiddenByVisibility then getSupertypesGraph(link, nextTo)
+        else Seq(link -> superLink) ++ getSupertypesGraph(superLink, nextTo)
       }
 
-    val supertypes = getSupertypes(using qctx)(classDef).map {
-      case (symbol, tpe) =>
-        LinkToType(tpe.asSignature, symbol.dri, bareClasslikeKind(symbol))
-    }
+    val supertypes = getSupertypes(using qctx)(classDef)
+      .filterNot((s, t) => s.isHiddenByVisibility)
+      .map {
+        case (symbol, tpe) =>
+          LinkToType(tpe.asSignature, symbol.dri, bareClasslikeKind(symbol))
+      }
     val selfType = classDef.self.map { (valdef: ValDef) =>
       val symbol = valdef.symbol
       val tpe = valdef.tpt.tpe
@@ -91,7 +93,7 @@ trait ClassLikeSupport:
     val selfSignature: DSignature = typeForClass(classDef).asSignature
 
     val graph = HierarchyGraph.withEdges(
-      getSupertypesGraph(classDef, LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)))
+      getSupertypesGraph(LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)), unpackTreeToClassDef(classDef).parents)
     )
 
     val baseMember = mkMember(classDef.symbol, kindForClasslike(classDef), selfSignature)(
@@ -255,7 +257,7 @@ trait ClassLikeSupport:
           case t: TypeTree => t.tpe.typeSymbol
           case tree if tree.symbol.isClassConstructor => tree.symbol.owner
           case tree => tree.symbol
-        if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass
+        if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass && !parentSymbol.isHiddenByVisibility
       yield (parentTree, parentSymbol)
 
     def getConstructors: List[Symbol] = c.membersToDocument.collect {
