@@ -77,6 +77,8 @@ object MainProxies {
     val mainArgsName: TermName = nme.args
     val cmdName: TermName = Names.termName("cmd")
 
+    val documentation = new Documentation(docComment)
+
     inline def lit(any: Any): Literal = Literal(Constant(any))
 
     def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef)] =
@@ -112,6 +114,7 @@ object MainProxies {
 
               lit(param)
               :: lit(formalType.show)
+              :: lit(documentation.argDocs(param))
               :: optionDefaultValueTree.map(List(_)).getOrElse(Nil)
             }
 
@@ -147,7 +150,7 @@ object MainProxies {
         TypeTree(),
         Apply(
           Select(New(TypeTree(mainAnnot.symbol.typeRef), List(mainAnnotArgs)), defn.MainAnnot_command.name),
-          Ident(mainArgsName) :: lit(mainFun.showName) :: lit(docComment.map(_.raw).getOrElse("")) :: Nil
+          Ident(mainArgsName) :: lit(mainFun.showName) :: lit(documentation.mainDoc) :: Nil
         )
       )
       var args: List[ValDef] = Nil
@@ -190,4 +193,47 @@ object MainProxies {
     }
     result
   }
+
+  private class Documentation(docComment: Option[Comment]):
+    import util.CommentParsing._
+
+    /** The main part of the documentation. */
+    lazy val mainDoc: String = _mainDoc
+    /** The parameters identified by @param. Maps from param name to documentation. */
+    lazy val argDocs: Map[String, String] = _argDocs
+
+    private var _mainDoc: String = ""
+    private var _argDocs: Map[String, String] = Map().withDefaultValue("")
+
+    docComment match {
+      case Some(comment) => if comment.isDocComment then parseDocComment(comment.raw) else _mainDoc = comment.raw
+      case None =>
+    }
+
+    private def cleanComment(raw: String): String =
+      var lines: Seq[String] = raw.trim.split('\n').toSeq
+      lines = lines.map(l => l.substring(skipLineLead(l, -1), l.length).trim)
+      var s = lines.foldLeft("") {
+        case ("", s2) => s2
+        case (s1, "") if s1.last == '\n' => s1 // Multiple newlines are kept as single newlines
+        case (s1, "") => s1 + '\n'
+        case (s1, s2) if s1.last == '\n' => s1 + s2
+        case (s1, s2) => s1 + ' ' + s2
+      }
+      s.replaceAll(raw"\{\{", "").replaceAll(raw"\}\}", "").trim
+
+    private def parseDocComment(raw: String): Unit =
+      // Positions of the sections (@) in the docstring
+      val tidx: List[(Int, Int)] = tagIndex(raw)
+
+      // Parse main comment
+      var mainComment: String = raw.substring(skipLineLead(raw, 0), startTag(raw, tidx))
+      _mainDoc = cleanComment(mainComment)
+
+      // Parse arguments comments
+      val argsCommentsSpans: Map[String, (Int, Int)] = paramDocs(raw, "@param", tidx)
+      val argsCommentsTextSpans = argsCommentsSpans.view.mapValues(extractSectionText(raw, _))
+      val argsCommentsTexts = argsCommentsTextSpans.mapValues({ case (beg, end) => raw.substring(beg, end) })
+      _argDocs = argsCommentsTexts.mapValues(cleanComment(_)).toMap.withDefaultValue("")
+  end Documentation
 }
