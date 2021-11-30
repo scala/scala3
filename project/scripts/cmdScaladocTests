@@ -37,6 +37,7 @@ dist/target/pack/bin/scaladoc \
   "-snippet-compiler:scaladoc-testcases/docs=compile" \
   -siteroot scaladoc-testcases/docs \
   -project-footer "Copyright (c) 2002-2021, LAMP/EPFL" \
+  -default-template static-site-main \
   -author -groups -revision master -project-version "${DOTTY_BOOTSTRAPPED_VERSION}" \
   out/bootstrap/scaladoc-testcases/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/classes > "$tmp" 2>&1 || echo "generated testcases project with scripts"
 diff -rq "$OUT1" "scaladoc/output/testcases"
