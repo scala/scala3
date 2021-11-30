@@ -36,7 +36,7 @@ jobs:
           java-version: 11
 
       - name: Compile and test scala3doc-js
-        run: ./project/scripts/sbt scaladoc-js/test
+        run: ./project/scripts/sbt scaladoc-js-main/test
 
       - name: Compile and test
         run: |

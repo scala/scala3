@@ -71,6 +71,24 @@ class StaticSiteContext(
     orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
   }
 
+  lazy val redirectTemplates: Seq[(LoadedTemplate, DRI, DRI)] = {
+    def doFlatten(t: LoadedTemplate): Seq[LoadedTemplate] =
+      t +: t.children.flatMap(doFlatten)
+    val mainFiles = templates.flatMap(doFlatten)
+    mainFiles.flatMap { loadedTemplate =>
+      val redirectFrom = loadedTemplate.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]].get("redirectFrom")
+      def redirectToTemplate(redirectFrom: String) =
+        val fakeFile = new File(docsPath.toFile, redirectFrom)
+        val driFrom = driFor(fakeFile.toPath)
+        val driTo = driFor(loadedTemplate.file.toPath)
+        (LoadedTemplate(layouts("redirect"), List.empty, fakeFile), driFrom, driTo)
+      redirectFrom.map {
+        case redirectFrom: String => Seq(redirectToTemplate(redirectFrom))
+        case redirects: List[?] => redirects.asInstanceOf[List[String]].map(redirectToTemplate)
+      }.getOrElse(Nil)
+    }
+  }
+
   val docsPath = root.toPath.resolve("docs")
 
   private def isValidTemplate(file: File): Boolean =
@@ -87,10 +105,10 @@ class StaticSiteContext(
         val (indexes, children) = allFiles.flatMap(loadTemplate(_, isBlog)).partition(_.templateFile.isIndexPage())
 
         def loadIndexPage(): TemplateFile =
-          val indexFiles = from.listFiles { file => file.getName == "index.md" || file.getName == "index.html" }
           indexes match
-            case Nil => emptyTemplate(from, from.getName)
-            case Seq(loadedTemplate) => loadedTemplate.templateFile.copy(file = from)
+            case Nil =>
+              args.defaultTemplate.fold(emptyTemplate(from, from.getName))(layouts(_).copy(title = TemplateName.FilenameDefined(from.getName))).copy(file = File(from, "index.html"))
+            case Seq(loadedTemplate) => loadedTemplate.templateFile
             case _ =>
               // TODO (https://github.com/lampepfl/scaladoc/issues/238): provide proper error handling
               val msg = s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}"
@@ -116,14 +134,14 @@ class StaticSiteContext(
         }
 
         val processedTemplate = // Set provided name as arg in page for `docs`
-          if from.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
+          if templateFile.file.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
             if templateFile.title.name != "index" then
               report.warn("Property `title` will be overridden by project name", from)
 
             templateFile.copy(title = TemplateName.FilenameDefined(args.name))
           else templateFile
 
-        Some(LoadedTemplate(processedTemplate, processedChildren.toList, from))
+        Some(LoadedTemplate(processedTemplate, processedChildren.toList, processedTemplate.file))
       catch
           case e: RuntimeException =>
             // TODO (https://github.com/lampepfl/scaladoc/issues/238): provide proper error handling
@@ -137,17 +155,17 @@ class StaticSiteContext(
         if Files.exists(root.toPath.resolve(pagePath)) then pagePath
         else pagePath.stripSuffix(".html") + ".md"
 
-      val file = root.toPath.resolve(path).toFile
-      val LoadedTemplate(template, children, _) = loadTemplate(file, isBlog).get // Add proper logging if file does not exisits
+      // val file = root.toPath.resolve(path).toFile
+      val LoadedTemplate(template, children, file) = loadTemplate(root.toPath.resolve(path).toFile, isBlog).get // Add proper logging if file does not exisits
       optionTitle match
         case Some(title) =>
           val newTitle = template.title match
             case t: TemplateName.YamlDefined => t
             case _: TemplateName.FilenameDefined => TemplateName.SidebarDefined(title)
             case t: TemplateName.SidebarDefined => t // should never reach this path
-          LoadedTemplate(template.copy(settings = template.settings + ("title" -> newTitle.name), file = file, title = newTitle), children, file)
+          LoadedTemplate(template.copy(settings = template.settings + ("title" -> newTitle.name), title = newTitle), children, file)
         case None =>
-          LoadedTemplate(template.copy(settings = template.settings, file = file), children, file)
+          LoadedTemplate(template.copy(settings = template.settings), children, file)
 
     case Sidebar.Category(optionTitle, optionIndexPath, nested) =>
       optionIndexPath match
@@ -157,30 +175,49 @@ class StaticSiteContext(
           val title = optionTitle match
             case Some(t) => t
             case None => "index"
-          val fakeFile = new File(new File(root, "docs"), title)
-          LoadedTemplate(emptyTemplate(fakeFile, title), nested.map(loadSidebarContent), fakeFile)
+          val sidebarContent = nested.map(loadSidebarContent)
+          // Heuristic to add section index.html around its child pages. Otherwise we put it in directory named after title of section in top-level
+          def longestPrefix(s1: String, s2: String): String = s1.zip(s2).takeWhile(Function.tupled(_ == _)).map(_._1).mkString
+          val sortedNames = sidebarContent.collect {
+            case t if t.file.getName.reverse.dropWhile(_ != '.').reverse != "index" =>
+              t.file.toPath.toString
+          }.sorted
+          def indexPathTemplate(s: String) = Paths.get(root.toString, s, "index.html").toFile
+          val fakeFile = Option.when(sortedNames.nonEmpty)(sortedNames).map { s =>
+            indexPathTemplate(longestPrefix(s.head, s.last))
+          }.filter(_.exists).getOrElse {
+            indexPathTemplate(s"docs/${title.toLowerCase}")
+          }
+          LoadedTemplate(
+            args.defaultTemplate.fold(emptyTemplate(fakeFile, title))(layouts(_).copy(title = TemplateName.FilenameDefined(title))),
+            sidebarContent,
+            fakeFile
+          )
 
   private def loadAllFiles() =
     def dir(name: String)= List(new File(root, name)).filter(_.isDirectory)
     dir("docs").flatMap(_.listFiles()).flatMap(loadTemplate(_, isBlog = false))
       ++ dir("blog").flatMap(loadTemplate(_, isBlog = true))
 
-  def driForLink(template: TemplateFile, link: String): Seq[DRI] =
+  def driForLink(loadedTemplateFile: File, link: String): Seq[DRI] =
     val pathsDri: Option[Seq[DRI]] = Try {
       val baseFile =
-        if link.startsWith("/") then root.toPath.resolve(link.drop(1))
-        else template.file.toPath.getParent().resolve(link).normalize()
+        if
+          link.startsWith("/") then root.toPath.resolve(link.drop(1))
+        else
+          val path = loadedTemplateFile.toPath
+          (if Files.isDirectory(path) then path else path.getParent).resolve(link).normalize
 
       val fileName = baseFile.getFileName.toString
       val baseFileName = if fileName.endsWith(".md")
           then fileName.stripSuffix(".md")
           else fileName.stripSuffix(".html")
-
-      Seq(
+      (Seq(
         Some(baseFile.resolveSibling(baseFileName + ".html")),
-        Some(baseFile.resolveSibling(baseFileName + ".md")),
+        Some(baseFile.resolveSibling(baseFileName + ".md"))
+      ).flatten.filter(Files.exists(_)) ++ Seq(
         Option.when(baseFileName == "index")(baseFile.getParent)
-      ).flatten.filter(Files.exists(_)).map(driFor)
+      ).flatten).map(driFor)
     }.toOption.filter(_.nonEmpty)
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 

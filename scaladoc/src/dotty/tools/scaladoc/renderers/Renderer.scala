@@ -3,6 +3,7 @@ package renderers
 
 import util.HTML._
 import collection.JavaConverters._
+import collection.mutable.ListBuffer
 import java.net.URI
 import java.net.URL
 import dotty.tools.scaladoc.site._
@@ -45,7 +46,44 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
           val msg = s"ERROR: Multiple index pages for doc found ${indexes.map(_.file)}"
           report.error(msg)
 
-        val templatePages = templates.map(templateToPage(_, siteContext))
+        // Below code is for walking in order the tree and modifing its nodes basing on its neighbours
+
+        // First we flatten templates to get them sorted in-order
+        def flattenedTemplates(template: LoadedTemplate): Seq[LoadedTemplate] =
+          template +: template.children.flatMap(flattenedTemplates)
+
+        // We add dummy guards
+        val allTemplates: Seq[Option[LoadedTemplate]] = None +: templates.flatMap(flattenedTemplates).map(Some(_)) :+ None
+
+        // Let's gather the list of maps for each template with its in-order neighbours
+        val newSettings: List[Map[String, Object]] = allTemplates.sliding(size = 3, step = 1).map {
+          case None :: None :: Nil =>
+            Map.empty
+          case prev :: mid :: next :: Nil =>
+            def link(sibling: Option[LoadedTemplate]): Option[String] =
+              def realPath(path: Path) = if Files.isDirectory(path) then Paths.get(path.toString, "index.html") else path
+              sibling.map { n =>
+                val realMidPath = realPath(mid.get.file.toPath)
+                val realSiblingPath = realPath(n.file.toPath)
+                realMidPath.relativize(realSiblingPath).toString.stripPrefix("../")
+              }
+            List(link(prev).map("previous" -> _), link(next).map("next" -> _)).flatten.toMap
+        }.toList
+
+        def updateSettings(templates: Seq[LoadedTemplate], additionalSettings: ListBuffer[Map[String, Object]]): List[LoadedTemplate] =
+          val updatedTemplates = List.newBuilder[LoadedTemplate]
+          for template <- templates do
+            val head: Map[String, Object] = additionalSettings.remove(0)
+            val current: Map[String, Object] = template.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]]
+            val updatedTemplateFile = template.templateFile.copy(settings = template.templateFile.settings.updated("page", head ++ current))
+            updatedTemplates += template.copy(
+              templateFile = updatedTemplateFile,
+              children = updateSettings(template.children, additionalSettings)
+            )
+          updatedTemplates.result()
+
+        val newTemplates = updateSettings(templates, newSettings.to(ListBuffer))
+        val templatePages = newTemplates.map(templateToPage(_, siteContext))
 
         indexes.headOption match
           case None if templatePages.isEmpty=>
@@ -73,6 +111,12 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
           (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
 
+  val redirectPages: Seq[Page] = staticSite.fold(Seq.empty)(siteContext => siteContext.redirectTemplates.map {
+    case (template, driFrom, driTo) =>
+      val redirectTo = pathToPage(driFrom, driTo)
+      templateToPage(template.copy(templateFile = template.templateFile.copy(settings = template.templateFile.settings ++ Map("redirectTo" -> redirectTo))), siteContext)
+  })
+
   /**
    * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
    */
@@ -89,7 +133,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
     val (newNavigablePage, pagesToRemove) = traversePages(navigablePage)
 
-    val all = newNavigablePage +: hiddenPages.filterNot(pagesToRemove.contains)
+    val all = newNavigablePage +: (hiddenPages.filterNot(pagesToRemove.contains) ++ redirectPages)
     // We need to check for conflicts only if we have top-level member called blog or docs
     val hasPotentialConflict =
       rootPackage.members.exists(m => m.name.startsWith("docs") || m.name.startsWith("blog"))

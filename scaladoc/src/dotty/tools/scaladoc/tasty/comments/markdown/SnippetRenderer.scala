@@ -13,7 +13,7 @@ case class SnippetLine(content: String, lineNo: Int, classes: Set[String] = Set.
   private def attributesToString: String = attributes.updated("id", lineNo).map((key, value) => s"""$key="$value"""").mkString(" ")
   def toHTML =
     val label = if messages.nonEmpty then s"""label="${messages.map(_.escapeReservedTokens).mkString("\n")}"""" else ""
-    s"""<span $attributesToString class="${classes.mkString(" ")}" $label>$content</span>"""
+    s"""<span $attributesToString class="${classes.mkString(" ")}"><span class="tooltip-container" $label></span>$content</span>"""
 
 object SnippetRenderer:
   val hiddenStartSymbol = "//{"
