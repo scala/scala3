@@ -48,6 +48,7 @@ LIST='- [ ] Publish artifacts to Maven via CI
   - [ ] Publish Blog Post on dotty.epfl.ch
   - [ ] Make an announcement thread on https://contributors.scala-lang.org
   - [ ] Tweet the announcement blog post on https://twitter.com/scala_lang
+  - [ ] Run workflow releases CI to publish scala on SDKMAN - https://github.com/lampepfl/dotty/actions/workflows/releases.yml
 
 [Instructions on how to release](https://dotty.epfl.ch/docs/contributing/release.html)'
 
