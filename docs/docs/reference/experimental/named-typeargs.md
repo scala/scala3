@@ -2,6 +2,7 @@
 layout: singlepage-overview
 scala3: true
 title: "Named Type Arguments"
+redirectFrom: reference/other-new-features/named-typeargs.html
 ---
 
 **Note:** This feature is implemented in Scala 3, but is not expected to be part of Scala 3.0.

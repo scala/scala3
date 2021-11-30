@@ -135,5 +135,15 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
       "html"
     )
 
+  val defaultTemplate: Setting[String] =
+    StringSetting(
+      "-default-template",
+      "default template used by static site",
+      "The static site is generating empty files for indexes that haven't been provided explicitly in a sidebar/missing index.html in directory. " +
+        "User can specify what default template should be used for such indexes. It can be useful for providing generic templates that interpolate some common settings, like title, or can have some custom html embedded.",
+      ""
+    )
+
+
   def scaladocSpecificSettings: Set[Setting[_]] =
     Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, scastieConfiguration)

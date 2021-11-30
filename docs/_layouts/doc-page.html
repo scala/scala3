@@ -1,9 +1,22 @@
 ---
-layout: main
+layout: static-site-main
 ---
-<main class="container">
-    <header>
-        <h1>{{ page.title }}</h1>
-    </header>
-    {{ content }}
+<main>
+  <header>
+    <h1>{{ page.title }}</h1>
+    {% if urls.editSource %}
+    <div class="byline">
+      <a href="{{ urls.editSource }}">
+        <i class="far fa-edit"></i>
+        Edit this page on GitHub
+      </a>
+    </div>
+    {% endif %}
+  </header>
+  {{ content }}
+  <div class="content-contributors hidden">
+    <h5>Contributors to this page:</h5>
+    <div id="documentation-contributors" class="contributors-container"></div>
+  </div>
 </main>
+

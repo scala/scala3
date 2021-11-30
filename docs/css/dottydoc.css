@@ -25,6 +25,10 @@ main > h1 {
   margin-bottom: 20px;
 }
 
+.byline {
+  font-size: 14px;
+}
+
 .byline, .byline a {
   color: grey;
 }

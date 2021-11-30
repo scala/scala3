@@ -112,16 +112,18 @@ input:checked + .slider:before {
   transform: translateX(var(--translation-size));
 }
 
-.tooltip {
-  position: relative;
+.tooltip-container {
+  display: none;
 }
-.tooltip:hover:after {
+.tooltip:hover .tooltip-container {
+  display: block;
+}
+.tooltip:hover .tooltip-container::after {
   content: attr(label);
   padding: 4px 8px;
   color: white;
   background-color:black;
   position: absolute;
-  left: 0;
   z-index:10;
   box-shadow:0 0 3px #444;
   opacity: 0.8;
