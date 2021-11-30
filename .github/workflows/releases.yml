@@ -1,0 +1,24 @@
+name: Releases
+on:
+  workflow_dispatch:
+
+jobs:
+  publish_release:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+
+    env:
+      SDKMAN_KEY: ${{ secrets.SDKMAN_KEY }} 
+      SDKMAN_TOKEN: ${{ secrets.SDKMAN_TOKEN }}
+      
+    steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Publish to SDKMAN
+        run: .github/workflows/scripts/publish-sdkman.sh
