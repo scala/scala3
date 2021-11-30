@@ -5,7 +5,7 @@ class WithRef(_b: B) {
 }
 
 class WithHot {
-  @nonHotParameters def b(b: B) = b.n
+  @nonHotParameters final def b(b: B) = b.n
 }
 
 class B {

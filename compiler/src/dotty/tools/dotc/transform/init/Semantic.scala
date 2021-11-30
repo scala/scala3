@@ -12,7 +12,7 @@ import NameKinds.OuterSelectName
 import ast.tpd._
 import util.EqHashMap
 import config.Printers.init as printer
-import reporting.trace.force as log
+import reporting.trace as log
 import dotty.tools.dotc.transform.SymUtils.isNonHotParams
 
 import Errors._
@@ -595,19 +595,45 @@ object Semantic {
     def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, (_: Result).show) {
       def checkArgs = args.flatMap(_.promote)
 
+      // Perform the analysis of the `target` symbol's rhs.
+      def performCall(target: Symbol) =
+        val isLocal = !meth.owner.isClass
+        val trace1 = trace.add(source)
+        if target.hasSource then
+          given Trace = trace1
+          val cls = target.owner.enclosingClass.asClass
+          val ddef = target.defTree.asInstanceOf[DefDef]
+          val env2 = Env(ddef, args.map(_.value).widenArgs)
+          // normal method call
+          withEnv((if isLocal then env else Env.empty).union(if target.isNonHotParams then env2 else Env.empty)) {
+            eval(ddef.rhs, value, cls, cacheResult = true) ++ (if target.isNonHotParams then Errors.empty else checkArgs)
+          }
+        else if value.canIgnoreMethodCall(target) then
+          Result(Hot, Nil)
+        else
+          // no source code available
+          val error = CallUnknown(target, source, trace.toVector)
+          Result(Hot, error :: checkArgs)
+
       // fast track if the current object is already initialized
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
         case Hot  =>
-          // TODO: handle @nonHotParameters
-          Result(Hot, checkArgs)
+          // If we cannot resolve the meth (if it's not effectively final),
+          // then just stop.
+          if needResolve && !meth.isEffectivelyFinal then
+            Result(Hot, checkArgs)
+          // If the method requires hot parameters, stop.
+          else if !meth.isNonHotParams then
+            Result(Hot, checkArgs)
+          else
+            performCall(meth)
 
         case Cold =>
           val error = CallCold(meth, source, trace.toVector)
           Result(Hot, error :: checkArgs)
 
         case ref: Ref =>
-          val isLocal = !meth.owner.isClass
           val target =
             if !needResolve then
               meth
@@ -617,22 +643,7 @@ object Semantic {
               resolve(ref.klass, meth)
 
           if target.isOneOf(Flags.Method) then
-            val trace1 = trace.add(source)
-            if target.hasSource then
-              given Trace = trace1
-              val cls = target.owner.enclosingClass.asClass
-              val ddef = target.defTree.asInstanceOf[DefDef]
-              val env2 = Env(ddef, args.map(_.value).widenArgs)
-              // normal method call
-              withEnv((if isLocal then env else Env.empty).union(if target.isNonHotParams then env2 else Env.empty)) {
-                eval(ddef.rhs, ref, cls, cacheResult = true) ++ (if target.isNonHotParams then Errors.empty else checkArgs)
-              }
-            else if ref.canIgnoreMethodCall(target) then
-              Result(Hot, Nil)
-            else
-              // no source code available
-              val error = CallUnknown(target, source, trace.toVector)
-              Result(Hot, error :: checkArgs)
+            performCall(target)
           else
             // method call resolves to a field
             val obj = ref.objekt
