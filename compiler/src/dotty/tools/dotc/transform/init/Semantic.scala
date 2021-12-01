@@ -13,14 +13,13 @@ import ast.tpd._
 import util.EqHashMap
 import config.Printers.init as printer
 import reporting.trace as log
-import dotty.tools.dotc.transform.SymUtils.isNonHotParams
+import dotty.tools.dotc.transform.SymUtils._
 
 import Errors._
 
 import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
-import dotty.tools.dotc.transform.SymUtils.isNonHotParams
 
 object Semantic {
 
@@ -592,7 +591,7 @@ object Semantic {
       }
     }
 
-    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, (_: Result).show) {
+    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args + ", value = " + value, printer, (_: Result).show) {
       def checkArgs = args.flatMap(_.promote)
 
       // Perform the analysis of the `target` symbol's rhs.
