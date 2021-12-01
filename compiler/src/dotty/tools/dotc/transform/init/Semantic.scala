@@ -618,13 +618,16 @@ object Semantic {
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
         case Hot  =>
+          val tryPromote = checkArgs
+          if tryPromote.isEmpty then
+            Result(Hot, Errors.empty)
           // If we cannot resolve the meth (if it's not effectively final),
           // then just stop.
-          if needResolve && !meth.isEffectivelyFinal then
-            Result(Hot, checkArgs)
+          else if needResolve && !meth.isEffectivelyFinal then
+            Result(Hot, tryPromote)
           // If the method requires hot parameters, stop.
           else if !meth.isNonHotParams then
-            Result(Hot, checkArgs)
+            Result(Hot, tryPromote)
           else
             performCall(meth)
 
