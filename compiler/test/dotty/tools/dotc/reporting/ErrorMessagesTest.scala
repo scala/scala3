@@ -8,7 +8,7 @@ import org.junit.Assert._
 
 trait ErrorMessagesTest extends DottyTest {
 
-  private def newContext = {
+  protected def newContext = {
     val rep = new StoreReporter(null)
               with UniqueMessagePositions with HideNonSensicalMessages
     initialCtx.setReporter(rep).setSetting(ctx.settings.color, "never")

@@ -37,7 +37,7 @@ class ScriptEngine extends AbstractScriptEngine {
     val vid = state.valIndex
     state = driver.run(script)(state)
     val oid = state.objectIndex
-    Class.forName(s"${nme.REPL_PACKAGE}.${str.REPL_SESSION_LINE}$oid", true, rendering.classLoader()(using state.context))
+    Class.forName(s"${Rendering.REPL_WRAPPER_NAME_PREFIX}$oid", true, rendering.classLoader()(using state.context))
       .getDeclaredMethods.find(_.getName == s"${str.REPL_RES_PREFIX}$vid")
       .map(_.invoke(null))
       .getOrElse(null)
