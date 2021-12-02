@@ -88,7 +88,8 @@ object Settings {
 /** Reset the session to the initial state from when the repl program was
  *  started
  */
-case object Reset extends Command {
+case class Reset(arg: String) extends Command
+object Reset {
   val command: String = ":reset"
 }
 
@@ -110,7 +111,7 @@ case object Help extends Command {
       |:type <expression>       evaluate the type of the given expression
       |:doc <expression>        print the documentation for the given expression
       |:imports                 show import history
-      |:reset                   reset the repl to its initial state, forgetting all session entries
+      |:reset [options]         reset the repl to its initial state, forgetting all session entries
       |:settings <options>      update compiler options, if possible
     """.stripMargin
 }
@@ -130,7 +131,7 @@ object ParseResult {
     Quit.command -> (_ => Quit),
     Quit.alias -> (_ => Quit),
     Help.command -> (_  => Help),
-    Reset.command -> (_  => Reset),
+    Reset.command -> (arg  => Reset(arg)),
     Imports.command -> (_  => Imports),
     Load.command -> (arg => Load(arg)),
     TypeOf.command -> (arg => TypeOf(arg)),
