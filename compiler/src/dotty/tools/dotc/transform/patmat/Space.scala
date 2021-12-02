@@ -531,6 +531,11 @@ class SpaceEngine(using Context) extends SpaceLogic {
     else convertConstantType(tp1, tp2)
   }
 
+  private val isSubspaceCache = mutable.HashMap.empty[(Space, Space, Context), Boolean]
+
+  override def isSubspace(a: Space, b: Space)(using Context): Boolean =
+    isSubspaceCache.getOrElseUpdate((a, b, ctx), super.isSubspace(a, b))
+
   /** Is `tp1` a subtype of `tp2`?  */
   def isSubType(tp1: Type, tp2: Type): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
     if tp1 == constantNullType && !ctx.explicitNulls then tp2 == constantNullType

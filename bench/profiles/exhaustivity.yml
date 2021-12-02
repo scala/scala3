@@ -47,6 +47,12 @@ charts:
         - key: exhaustivity-i12358
           label: bootstrapped
 
+    - name: "exhaustivity i13565"
+      url: https://github.com/lampepfl/dotty/blob/master/tests/pos/i13565.scala
+      lines:
+        - key: exhaustivity-i13565
+          label: bootstrapped
+
 scripts:
 
     patmatexhaust:
@@ -72,6 +78,9 @@ scripts:
 
     exhaustivity-i12358:
         - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/patmat/i12358.scala
+
+    exhaustivity-i13565:
+        - measure 20 40 3 $PROG_HOME/dotty/tests/pos/i13565.scala
 
 config:
     pr_base_url: "https://github.com/lampepfl/dotty/pull/"
