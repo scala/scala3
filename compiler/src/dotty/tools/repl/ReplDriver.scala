@@ -70,11 +70,11 @@ class ReplDriver(settings: Array[String],
   override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
-  private def initialCtx = {
+  private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     rootCtx.setSetting(rootCtx.settings.YreadComments, true)
-    setupRootCtx(settings, rootCtx)
+    setupRootCtx(this.settings ++ settings, rootCtx)
   }
 
   private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
@@ -99,8 +99,8 @@ class ReplDriver(settings: Array[String],
    *  such, when the user enters `:reset` this method should be called to reset
    *  everything properly
    */
-  protected def resetToInitial(): Unit = {
-    rootCtx = initialCtx
+  protected def resetToInitial(settings: List[String] = Nil): Unit = {
+    rootCtx = initialCtx(settings)
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
         .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
@@ -378,8 +378,8 @@ class ReplDriver(settings: Array[String],
       out.println(Help.text)
       state
 
-    case Reset =>
-      resetToInitial()
+    case Reset(arg) =>
+      resetToInitial(tokenize(arg))
       initialState
 
     case Imports =>
