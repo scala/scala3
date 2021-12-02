@@ -74,11 +74,17 @@ class ReplDriver(settings: Array[String],
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     rootCtx.setSetting(rootCtx.settings.YreadComments, true)
+    setupRootCtx(settings, rootCtx)
+  }
+
+  private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
     setup(settings, rootCtx) match
-      case Some((files, ictx)) =>
+      case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
-        ictx.base.initialize()(using ictx)
+        if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
+        ictx.base.initialize()
         ictx
+      }
       case None =>
         shouldStart = false
         rootCtx
@@ -423,14 +429,7 @@ class ReplDriver(settings: Array[String],
           out.println(s"${s.name} = ${if s.value == "" then "\"\"" else s.value}")
         state
       case _  =>
-        setup(tokenize(arg).toArray, rootCtx) match
-          case Some((files, ictx)) =>
-            inContext(ictx) {
-              if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
-              ictx.base.initialize()(using ictx)
-              rootCtx = ictx
-            }
-          case _ =>
+        rootCtx = setupRootCtx(tokenize(arg).toArray, rootCtx)
         state.copy(context = rootCtx)
 
     case Quit =>
