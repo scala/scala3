@@ -505,17 +505,6 @@ jobs:
           external_repository: lampepfl/dotty-website
           publish_branch: gh-pages
 
-      - name: Generate docs.scala-lang preprocessed files
-        run: |
-          ./project/scripts/genDocsScalaLang
-
-      - name: Deploy Website to docs.scala-lang
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          personal_token: ${{ env.DOCS_SCALALANG_BOT_TOKEN }}
-          publish_dir: docsScalaLang
-          external_repository: BarkingBad/docs.scala-lang
-          publish_branch: dev
 
   publish_release:
     runs-on: [self-hosted, Linux]
