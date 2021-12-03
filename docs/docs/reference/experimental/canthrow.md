@@ -162,9 +162,9 @@ You'll get this error message:
                                ^^^^^^^^^^^^^^^^^^^^^
 The capability to throw exception LimitExceeded is missing.
 The capability can be provided by one of the following:
- - A using clause `(using CanThrow[LimitExceeded])`
- - A `throws` clause in a result type such as `X throws LimitExceeded`
- - an enclosing `try` that catches LimitExceeded
+ - Adding a using clause `(using CanThrow[LimitExceeded])` to the definition of the enclosing method
+ - Adding `throws LimitExceeded` clause after the result type of the enclosing method
+ - Wrapping this piece of code with a `try` block that catches LimitExceeded
 
 The following import might fix the problem:
 

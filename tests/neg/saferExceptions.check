@@ -3,9 +3,9 @@
    |                ^^^^^^^^^^^^^^^^^
    |                The capability to throw exception Exception is missing.
    |                The capability can be provided by one of the following:
-   |                 - A using clause `(using CanThrow[Exception])`
-   |                 - A `throws` clause in a result type such as `X throws Exception`
-   |                 - an enclosing `try` that catches Exception
+   |                 - Adding a using clause `(using CanThrow[Exception])` to the definition of the enclosing method
+   |                 - Adding `throws Exception` clause after the result type of the enclosing method
+   |                 - Wrapping this piece of code with a `try` block that catches Exception
    |
    |                The following import might fix the problem:
    |
@@ -14,13 +14,13 @@
 -- Error: tests/neg/saferExceptions.scala:17:46 ------------------------------------------------------------------------
 17 |  def baz(x: Int): Int throws Failure = bar(x)  // error
    |                                              ^
-   |                                    The capability to throw exception java.io.IOException is missing.
-   |                                    The capability can be provided by one of the following:
-   |                                     - A using clause `(using CanThrow[java.io.IOException])`
-   |                                     - A `throws` clause in a result type such as `X throws java.io.IOException`
-   |                                     - an enclosing `try` that catches java.io.IOException
+   |      The capability to throw exception java.io.IOException is missing.
+   |      The capability can be provided by one of the following:
+   |       - Adding a using clause `(using CanThrow[java.io.IOException])` to the definition of the enclosing method
+   |       - Adding `throws java.io.IOException` clause after the result type of the enclosing method
+   |       - Wrapping this piece of code with a `try` block that catches java.io.IOException
    |
-   |                                    The following import might fix the problem:
+   |      The following import might fix the problem:
    |
-   |                                      import unsafeExceptions.canThrowAny
+   |        import unsafeExceptions.canThrowAny
    |
