@@ -1759,18 +1759,16 @@ class Typer extends Namer
       if Feature.enabled(Feature.saferExceptions) then
         for
           CaseDef(pat, guard, _) <- cases
-          tpe = pat.tpe.widen
-          if tpe.isCheckedException
+          if pat.tpe.widen.isCheckedException
         yield
           checkCatch(pat, guard)
-          tpe
+          pat.tpe.widen
       else Seq.empty
 
-    caughtExceptions match
-      case Nil => expr
-      case head :: tail =>
-        val capabilityProof = tail.foldLeft(head: Type)(OrType(_, _, true))
-        untpd.Block(makeCanThrow(capabilityProof), expr)
+    if caughtExceptions.isEmpty then expr
+    else
+      val capabilityProof = caughtExceptions.reduce(OrType(_, _, true))
+      untpd.Block(makeCanThrow(capabilityProof), expr)
 
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {
     val expr2 :: cases2x = harmonic(harmonize, pt) {
