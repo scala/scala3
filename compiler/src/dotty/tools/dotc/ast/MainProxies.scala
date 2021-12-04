@@ -83,77 +83,65 @@ object MainProxies {
     inline def lit(any: Any): Literal = Literal(Constant(any))
 
     def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef)] =
-      if (mt.isImplicitMethod) {
-        report.error(s"main method cannot have implicit parameters", pos)
-        Nil
-      }
-      else {
-        var valArgs: List[(Tree, ValDef)] = mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
-          case ((formal, paramName), n) =>
-            val argName = mainArgsName ++ n.toString
+      mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
+        case ((formal, paramName), n) =>
+          val argName = mainArgsName ++ n.toString
 
-            val isRepeated = formal.isRepeatedParam
-            val defaultValue = defaultValues.get(n)
+          val isRepeated = formal.isRepeatedParam
+          val defaultValue = defaultValues.get(n)
 
-            var argRef: Tree = Apply(Ident(argName), Nil)
-            var formalType = formal
+          var argRef: Tree = Apply(Ident(argName), Nil)
+          var formalType = formal
+          if isRepeated then
+            argRef = repeated(argRef)
+            formalType = formalType.argTypes.head
+
+          val getterSym =
             if isRepeated then
-              argRef = repeated(argRef)
-              formalType = formalType.argTypes.head
+              defn.MainAnnotCommand_varargGetter
+            else
+              defn.MainAnnotCommand_argGetter
 
-            val getterSym =
-              if isRepeated then
-                defn.MainAnnotCommand_varargGetter
-              else
-                defn.MainAnnotCommand_argGetter
-
-            val parameterInfos = {
-              val param = paramName.toString
-              val paramInfosName = argName ++ "paramInfos"
-              val paramInfosIdent = Ident(paramInfosName)
-              val docTree = documentation.argDocs.get(param) match {
-                case Some(doc) => Apply(ref(defn.SomeClass.companionModule.termRef), lit(doc))
-                case None => ref(defn.NoneModule.termRef)
-              }
-              val paramInfosTree = New(
-                AppliedTypeTree(TypeTree(defn.MainAnnotParameterInfos.typeRef), List(TypeTree(formalType))),
-                List(List(lit(param), lit(formalType.show), docTree))
-              )
-
-              var assignations: List[(String, Tree)] = Nil
-
-              if defaultValue.nonEmpty then
-                assignations = ("defaultValue", defaultValue.get) :: assignations
-
-              val assignationsTrees = assignations.map{
-                case (name, value) =>
-                  val opt = Apply(ref(defn.SomeClass.companionModule.termRef), value)
-                  Apply(Select(paramInfosIdent, defn.MainAnnotParameterInfos.requiredMethod(name + "_=").name), opt)
-              }
-
-              if assignations.isEmpty then
-                paramInfosTree
-              else
-                val paramInfosInstance = ValDef(paramInfosName, TypeTree(), paramInfosTree)
-                Block(paramInfosInstance :: assignationsTrees, paramInfosIdent)
+          val parameterInfos = {
+            val param = paramName.toString
+            val paramInfosName = argName ++ "paramInfos"
+            val paramInfosIdent = Ident(paramInfosName)
+            val docTree = documentation.argDocs.get(param) match {
+              case Some(doc) => Apply(ref(defn.SomeClass.companionModule.termRef), lit(doc))
+              case None => ref(defn.NoneModule.termRef)
             }
-
-            val argDef = ValDef(
-              argName,
-              TypeTree(),
-              Apply(TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil), parameterInfos),
+            val paramInfosTree = New(
+              AppliedTypeTree(TypeTree(defn.MainAnnotParameterInfos.typeRef), List(TypeTree(formalType))),
+              List(List(lit(param), lit(formalType.show), docTree))
             )
 
-            (argRef, argDef)
-        }
-        mt.resType match {
-          case restpe: MethodType =>
-            report.error(s"main method cannot be curried", pos)
-            Nil
-          case _ =>
-            valArgs
-        }
+            var assignations: List[(String, Tree)] = Nil
+
+            if defaultValue.nonEmpty then
+              assignations = ("defaultValue", defaultValue.get) :: assignations
+
+            val assignationsTrees = assignations.map{
+              case (name, value) =>
+                val opt = Apply(ref(defn.SomeClass.companionModule.termRef), value)
+                Apply(Select(paramInfosIdent, defn.MainAnnotParameterInfos.requiredMethod(name + "_=").name), opt)
+            }
+
+            if assignations.isEmpty then
+              paramInfosTree
+            else
+              val paramInfosInstance = ValDef(paramInfosName, TypeTree(), paramInfosTree)
+              Block(paramInfosInstance :: assignationsTrees, paramInfosIdent)
+          }
+
+          val argDef = ValDef(
+            argName,
+            TypeTree(),
+            Apply(TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil), parameterInfos),
+          )
+
+          (argRef, argDef)
       }
+    end createArgs
 
     inline def instanciateAnnotation(annot: Annotation, argss: List[List[Tree]]): Tree = New(TypeTree(annot.symbol.typeRef), argss)
 
@@ -192,9 +180,18 @@ object MainProxies {
       mainFun.info match {
         case _: ExprType =>
         case mt: MethodType =>
-          val (argRefs, argVals) = createArgs(mt, cmdName).unzip
-          args = argVals
-          mainCall = Apply(mainCall, argRefs)
+          if (mt.isImplicitMethod) {
+            report.error(s"main method cannot have implicit parameters", pos)
+          }
+          else mt.resType match {
+            case restpe: MethodType =>
+              report.error(s"main method cannot be curried", pos)
+              Nil
+            case _ =>
+              val (argRefs, argVals) = createArgs(mt, cmdName).unzip
+              args = argVals
+              mainCall = Apply(mainCall, argRefs)
+          }
         case _: PolyType =>
           report.error(s"main method cannot have type parameters", pos)
         case _ =>
