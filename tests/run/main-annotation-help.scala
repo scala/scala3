@@ -69,12 +69,12 @@ object myProgram:
   @main def doc8(num: Int, inc: Int): Unit = ()
 
   /**
-    * Adds two numbers. Same as {{doc1}}.
+    * Adds two numbers. Same as [[doc1]].
     *
     * @param num the first number
     * @param inc the second number
     * @return the sum of the two numbers (not really)
-    * @see {{doc1}}
+    * @see [[doc1]]
     */
   @main def doc9(num: Int, inc: Int): Unit = ()
 
@@ -131,14 +131,14 @@ object myProgram:
   ): Unit = ()
 
   /**
-    * Adds two instances of {{MyNumber}}.
+    * Adds two instances of [[MyNumber]].
     * @param myNum my first number to add
     * @param myInc my second number to add
     */
   @main def doc15(myNum: MyNumber, myInc: MyNumber): Unit = ()
 
   /**
-    * Compares two instances of {{MyGeneric}}.
+    * Compares two instances of [[MyGeneric]].
     * @param first my first element
     * @param second my second element
     */
