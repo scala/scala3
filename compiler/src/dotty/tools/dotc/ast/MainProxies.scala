@@ -8,6 +8,7 @@ import ast.Trees._
 import Names.{Name, TermName}
 import Comments.Comment
 import NameKinds.DefaultGetterName
+import Annotations.Annotation
 
 /** Generate proxy classes for main functions.
  *  A function like
@@ -135,21 +136,33 @@ object MainProxies {
         }
       }
 
+    inline def instanciateAnnotation(annot: Annotation, argss: List[List[Tree]]): Tree = New(TypeTree(annot.symbol.typeRef), argss)
+
+    def extractAnnotationArgs(annot: Annotation): List[List[Tree]] =
+      def recurse(t: Tree, acc: List[List[Tree]]): List[List[Tree]] = t match {
+        case Apply(t, args: List[Tree]) => recurse(t, extractArgs(args) :: acc)
+        case _ => acc
+      }
+
+      def extractArgs(args: List[Tree]): List[Tree] =
+        args.flatMap {
+          case Typed(SeqLiteral(varargs, _), _) => varargs
+          case arg @ Select(_, name) => if name.is(DefaultGetterName) then List() else List(arg)
+          case arg => List(arg)
+        }
+
+      recurse(annot.tree, Nil)
+
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
       report.error(s"main method is not statically accessible", pos)
     else {
-      val mainAnnotArgs = mainAnnot.tree match {
-        case Apply(_, namedArgs) => namedArgs.filter {
-          case Select(_, name) => !name.is(DefaultGetterName)  // Remove default arguments of main
-          case _ => true
-        }
-      }
+      val mainAnnotArgss = extractAnnotationArgs(mainAnnot)
       val cmd = ValDef(
         cmdName,
         TypeTree(),
         Apply(
-          Select(New(TypeTree(mainAnnot.symbol.typeRef), List(mainAnnotArgs)), defn.MainAnnot_command.name),
+          Select(instanciateAnnotation(mainAnnot, mainAnnotArgss), defn.MainAnnot_command.name),
           Ident(mainArgsName) :: lit(mainFun.showName) :: lit(documentation.mainDoc) :: Nil
         )
       )
