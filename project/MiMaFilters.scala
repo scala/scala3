@@ -12,6 +12,7 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation"),
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$Command"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$ParameterInfos"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.init"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.last"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.append"),

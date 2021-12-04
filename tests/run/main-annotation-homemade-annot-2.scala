@@ -168,24 +168,25 @@ class myMain(runs: Int = 3)(after: String*) extends MainAnnotation:
             error(s"more than one value for $argName: ${multValues.mkString(", ")}")
         }
 
-      private def registerArg(argName: String, argType: String, argDoc: String, argKind: ArgumentKind): Unit =
-        argNames += argName
-        argTypes += argType
-        argDocs += argDoc
+      private def registerArg(paramInfos: MainAnnotation.ParameterInfos[_], argKind: ArgumentKind): Unit =
+        argNames += paramInfos.name
+        argTypes += paramInfos.typeName
+        argDocs += paramInfos.doc.getOrElse("")
         argKinds += argKind
 
-      override def argGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => T =
-        registerArg(argName, argType, argDoc, ArgumentKind.SimpleArgument)
-        getArgGetter(argName, () => error(s"missing argument for $argName"))
+      override def argGetter[T](paramInfos: MainAnnotation.ParameterInfos[T])(using p: ArgumentParser[T]): () => T =
+        val name = paramInfos.name
+        val (defaultGetter, argumentKind) = paramInfos.defaultValue match {
+          case Some(value) => (() => () => value, ArgumentKind.OptionalArgument)
+          case None => (() => error(s"missing argument for $name"), ArgumentKind.SimpleArgument)
+        }
+        registerArg(paramInfos, argumentKind)
+        getArgGetter(name, defaultGetter)
 
-      override def argGetterDefault[T](argName: String, argType: String, argDoc: String, defaultValue: => T)(using p: ArgumentParser[T]): () => T =
-        registerArg(argName, argType, argDoc, ArgumentKind.OptionalArgument)
-        getArgGetter(argName, () => () => defaultValue)
-
-      override def argsGetter[T](argName: String, argType: String, argDoc: String)(using p: ArgumentParser[T]): () => Seq[T] =
-        registerArg(argName, argType, argDoc, ArgumentKind.VarArgument)
+      override def varargGetter[T](paramInfos: MainAnnotation.ParameterInfos[T])(using p: ArgumentParser[T]): () => Seq[T] =
+        registerArg(paramInfos, ArgumentKind.VarArgument)
         def remainingArgGetters(): List[() => T] = nextPositionalArg() match
-          case Some(arg) => convert(argName, arg, p) :: remainingArgGetters()
+          case Some(arg) => convert(paramInfos.name, arg, p) :: remainingArgGetters()
           case None => Nil
         val getters = remainingArgGetters()
         () => getters.map(_())

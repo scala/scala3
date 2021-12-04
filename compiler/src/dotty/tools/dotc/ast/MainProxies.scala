@@ -93,7 +93,7 @@ object MainProxies {
             val argName = mainArgsName ++ n.toString
 
             val isRepeated = formal.isRepeatedParam
-            val hasDefaultValue = defaultValues.contains(n)
+            val defaultValue = defaultValues.get(n)
 
             var argRef: Tree = Apply(Ident(argName), Nil)
             var formalType = formal
@@ -103,26 +103,45 @@ object MainProxies {
 
             val getterSym =
               if isRepeated then
-                defn.MainAnnotCommand_argsGetter
-              else if hasDefaultValue then
-                defn.MainAnnotCommand_argGetterDefault
+                defn.MainAnnotCommand_varargGetter
               else
                 defn.MainAnnotCommand_argGetter
 
-            val getterArgs = {
+            val parameterInfos = {
               val param = paramName.toString
-              val optionDefaultValueTree = defaultValues.get(n)
+              val paramInfosName = argName ++ "paramInfos"
+              val paramInfosIdent = Ident(paramInfosName)
+              val docTree = documentation.argDocs.get(param) match {
+                case Some(doc) => Apply(ref(defn.SomeClass.companionModule.termRef), lit(doc))
+                case None => ref(defn.NoneModule.termRef)
+              }
+              val paramInfosTree = New(
+                AppliedTypeTree(TypeTree(defn.MainAnnotParameterInfos.typeRef), List(TypeTree(formalType))),
+                List(List(lit(param), lit(formalType.show), docTree))
+              )
 
-              lit(param)
-              :: lit(formalType.show)
-              :: lit(documentation.argDocs(param))
-              :: optionDefaultValueTree.map(List(_)).getOrElse(Nil)
+              var assignations: List[(String, Tree)] = Nil
+
+              if defaultValue.nonEmpty then
+                assignations = ("defaultValue", defaultValue.get) :: assignations
+
+              val assignationsTrees = assignations.map{
+                case (name, value) =>
+                  val opt = Apply(ref(defn.SomeClass.companionModule.termRef), value)
+                  Apply(Select(paramInfosIdent, defn.MainAnnotParameterInfos.requiredMethod(name + "_=").name), opt)
+              }
+
+              if assignations.isEmpty then
+                paramInfosTree
+              else
+                val paramInfosInstance = ValDef(paramInfosName, TypeTree(), paramInfosTree)
+                Block(paramInfosInstance :: assignationsTrees, paramInfosIdent)
             }
 
             val argDef = ValDef(
               argName,
               TypeTree(),
-              Apply(TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil), getterArgs),
+              Apply(TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil), parameterInfos),
             )
 
             (argRef, argDef)
@@ -152,6 +171,7 @@ object MainProxies {
         }
 
       recurse(annot.tree, Nil)
+    end extractAnnotationArgs
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
@@ -216,7 +236,7 @@ object MainProxies {
     lazy val argDocs: Map[String, String] = _argDocs
 
     private var _mainDoc: String = ""
-    private var _argDocs: Map[String, String] = Map().withDefaultValue("")
+    private var _argDocs: Map[String, String] = Map()
 
     docComment match {
       case Some(comment) => if comment.isDocComment then parseDocComment(comment.raw) else _mainDoc = comment.raw
@@ -247,6 +267,6 @@ object MainProxies {
       val argsCommentsSpans: Map[String, (Int, Int)] = paramDocs(raw, "@param", tidx)
       val argsCommentsTextSpans = argsCommentsSpans.view.mapValues(extractSectionText(raw, _))
       val argsCommentsTexts = argsCommentsTextSpans.mapValues({ case (beg, end) => raw.substring(beg, end) })
-      _argDocs = argsCommentsTexts.mapValues(cleanComment(_)).toMap.withDefaultValue("")
+      _argDocs = argsCommentsTexts.mapValues(cleanComment(_)).toMap
   end Documentation
 }
