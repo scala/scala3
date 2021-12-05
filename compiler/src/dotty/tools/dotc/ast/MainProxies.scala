@@ -50,6 +50,10 @@ object MainProxies {
   def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
 
+    /**
+      * Compute the default values of the function. Since they cannot be infered anymore at this point
+      * of the compilation, they must be explicitely passed by [[mainProxy]].
+      */
     def defaultValues(scope: Tree, funSymbol: Symbol): Map[Int, Tree] =
       scope match {
         case TypeDef(_, template: Template) =>
@@ -63,6 +67,7 @@ object MainProxies {
         case _ => Map[Int, Tree]()
       }
 
+    /** Computes the list of main methods present in the code. */
     def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, Vector[Option[Annotation]], Map[Int, Tree], Option[Comment])] = stats.flatMap {
       case stat: DefDef =>
         val sym = stat.symbol
@@ -105,6 +110,12 @@ object MainProxies {
 
     inline def some(value: Tree): Tree = Apply(ref(defn.SomeClass.companionModule.termRef), value)
 
+    /**
+      * Creates a list of references and definitions of arguments, the first referencing the second.
+      * The goal is to create the
+      *   `val arg0: () => S = ...`
+      * part of the code. The first element of the tuple is a ref to `arg0`, the second is the whole definition.
+      */
     def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef)] =
       mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
         case ((formal, paramName), n) =>
@@ -125,15 +136,24 @@ object MainProxies {
             else
               defn.MainAnnotCommand_argGetter
 
+          // The ParameterInfos to be passed to the arg getter
           val parameterInfos = {
             val param = paramName.toString
             val paramInfosName = argName ++ "paramInfos"
             val paramInfosIdent = Ident(paramInfosName)
             val paramInfosTree = New(
               AppliedTypeTree(TypeTree(defn.MainAnnotParameterInfos.typeRef), List(TypeTree(formalType))),
+              // Arguments to be passed to ParameterInfos' constructor
               List(List(lit(param), lit(formalType.show)))
             )
 
+            /*
+             * Assignations to be made after the creation of the ParameterInfos.
+             * For example:
+             *   args0paramInfos.documentation = Some("my param x")
+             * is represented by the pair
+             *   ("documentation", some(lit("my param x")))
+             */
             var assignations: List[(String, Tree)] = Nil
             for (dv <- defaultValue)
               assignations = ("defaultValue" -> some(dv)) :: assignations
@@ -163,6 +183,7 @@ object MainProxies {
       }
     end createArgs
 
+    /** Turns an annotation (e.g. `@main(40)`) into an instance of the class (e.g. `new scala.main(40)`). */
     def instanciateAnnotation(annot: Annotation): Tree =
       val argss = {
         def recurse(t: Tree, acc: List[List[Tree]]): List[List[Tree]] = t match {
@@ -245,12 +266,13 @@ object MainProxies {
     result
   }
 
+  /** A class responsible for extracting the docstrings of a method. */
   private class Documentation(docComment: Option[Comment]):
     import util.CommentParsing._
 
     /** The main part of the documentation. */
     lazy val mainDoc: String = _mainDoc
-    /** The parameters identified by @param. Maps from param name to documentation. */
+    /** The parameters identified by @param. Maps from parameter name to its documentation. */
     lazy val argDocs: Map[String, String] = _argDocs
 
     private var _mainDoc: String = ""

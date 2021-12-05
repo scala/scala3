@@ -11,13 +11,17 @@ package scala
 import collection.mutable
 import annotation._
 
-/** An annotation that designates a main function
- */
+/**
+  * An annotation that designates a main function.
+  * @param maxLineLength the maximum number of characters to print on a single line when
+  *                      displaying the help
+  */
 final class main(maxLineLength: Int) extends MainAnnotation:
   self =>
   import main._
   import MainAnnotation._
 
+  /** An annotation that designates a main function. */
   def this() = this(120)
 
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
@@ -145,15 +149,12 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         }
 
       private def indicesOfArg(argName: String, shortArgName: Option[Char]): Seq[Int] =
-        def allIndicesOf(s: String): Seq[Int] =
-          def recurse(s: String, from: Int): Seq[Int] =
-            val i = args.indexOf(s, from)
-            if i < 0 then Seq() else i +: recurse(s, i + 1)
+        def allIndicesOf(s: String, from: Int): Seq[Int] =
+          val i = args.indexOf(s, from)
+          if i < 0 then Seq() else i +: allIndicesOf(s, i + 1)
 
-          recurse(s, 0)
-
-        val indices = allIndicesOf(s"--$argName")
-        val indicesShort = shortArgName.map(shortName => allIndicesOf(s"-$shortName")).getOrElse(Seq())
+        val indices = allIndicesOf(s"--$argName", 0)
+        val indicesShort = shortArgName.map(shortName => allIndicesOf(s"-$shortName", 0)).getOrElse(Seq())
         (indices ++: indicesShort).filter(_ >= 0)
 
       private def getArgGetter[T](paramInfos: ParameterInfos[_], getDefaultGetter: () => () => T)(using p: ArgumentParser[T]): () => T =
@@ -189,7 +190,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         argKinds += argKind
 
         val shortName = getShortName(paramInfos)
-        if shortName.exists(c => !shortNameIsValid(c)) then throw IllegalArgumentException(s"Invalid short name: -${shortName.get}")
+        shortName.foreach(c => if !shortNameIsValid(c) then throw IllegalArgumentException(s"Invalid short name: -$c"))
         argShortNames += shortName
 
       override def argGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => T =
