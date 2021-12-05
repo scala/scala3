@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/deprecation/t3235-minimal-v2.scala:3:16 ------------------------------------------------
+3 |    assert(math.round(123456789) == 123456789) // error
+  |           ^^^^^^^^^^
+  |method round in package scala.math is deprecated since 2.11.0: This is an integer type; there is no reason to round it. Perhaps you meant to call this with a floating-point value?
+-- Error: tests/neg-custom-args/deprecation/t3235-minimal-v2.scala:4:16 ------------------------------------------------
+4 |    assert(math.round(1234567890123456789L) == 1234567890123456789L) // error
+  |           ^^^^^^^^^^
+  |method round in package scala.math is deprecated since 2.11.0: This is an integer type; there is no reason to round it. Perhaps you meant to call this with a floating-point value?

@@ -1,0 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg/zipped.scala:6:10 -------------------------------------------------------------
+6 |    .map( (x: (Int, Int, Int)) => x match { case (x, y, z) => x + y + z })     // error
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |          Found:    ((Int, Int, Int)) => Int
+  |          Required: (Int, Int, Int) => Int
+
+longer explanation available when compiling with `-explain`
+-- [E086] Syntax Error: tests/neg/zipped.scala:9:12 --------------------------------------------------------------------
+9 |    .map( x => x match { case (x, y, z) => x + y + z })     // error
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |          Wrong number of parameters, expected: 3
