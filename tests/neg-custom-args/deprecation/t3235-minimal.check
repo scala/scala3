@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/deprecation/t3235-minimal.scala:3:21 ---------------------------------------------------
+3 |    assert(123456789.round == 123456789) // error
+  |           ^^^^^^^^^^^^^^^
+  |method round in class RichInt is deprecated since 2.11.0: this is an integer type; there is no reason to round it.  Perhaps you meant to call this on a floating-point value?

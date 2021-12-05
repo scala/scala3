@@ -908,8 +908,9 @@ trait Applications extends Compatibility {
        *  part. Return an optional value to indicate success.
        */
       def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(using Context): Option[Tree] =
-        if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
+        if ctx.mode.is(Mode.SynthesizeExtMethodReceiver) || proto.hasErrorArg then
           // Suppress insertion of apply or implicit conversion on extension method receiver
+          // or if argument is erroneous by itself.
           None
         else
           tryInsertImplicitOnQualifier(fun1, proto, ctx.typerState.ownedVars) flatMap { fun2 =>

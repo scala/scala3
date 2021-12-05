@@ -8,7 +8,7 @@ import Contexts._, Types._, Denotations._, Names._, StdNames._, NameOps._, Symbo
 import NameKinds.DepParamName
 import Trees._
 import Constants._
-import util.{Stats, SimpleIdentityMap}
+import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
 import Decorators._
 import Uniques._
 import config.Printers.typr
@@ -282,6 +282,9 @@ object ProtoTypes {
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
     var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.empty
 
+    /** The argument that produced errors during typing */
+    var errorArgs: SimpleIdentitySet[untpd.Tree] = SimpleIdentitySet.empty
+
     /** The tupled or untupled version of this prototype, if it has been computed */
     var tupledDual: Type = NoType
 
@@ -341,6 +344,9 @@ object ProtoTypes {
       case _ => false
     }
 
+    /** Did an argument produce an error when typing? */
+    def hasErrorArg = !state.errorArgs.isEmpty
+
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(using Context): Tree = {
       var targ = state.typedArg(arg)
       if (targ == null)
@@ -357,8 +363,11 @@ object ProtoTypes {
             targ = arg.withType(WildcardType)
           case _ =>
             targ = typerFn(arg)
-            if (!ctx.reporter.hasUnreportedErrors)
+            if ctx.reporter.hasUnreportedErrors then
+              state.errorArgs += arg
+            else
               state.typedArg = state.typedArg.updated(arg, targ)
+              state.errorArgs -= arg
         }
       targ
     }
