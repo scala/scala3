@@ -344,7 +344,10 @@ object ProtoTypes {
       case _ => false
     }
 
-    /** Did an argument produce an error when typing? */
+    /** Did an argument produce an error when typing? This means: an error was reported
+     *  and a tree got an error type. Errors of adaptation whree a tree has a good type
+     *  but that type does not conform to the expected type are not counted.
+     */
     def hasErrorArg = !state.errorArgs.isEmpty
 
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(using Context): Tree = {
@@ -363,7 +366,7 @@ object ProtoTypes {
             targ = arg.withType(WildcardType)
           case _ =>
             targ = typerFn(arg)
-            if ctx.reporter.hasUnreportedErrors then
+            if ctx.reporter.hasUnreportedErrors && targ.existsSubTree(_.tpe.isError) then
               state.errorArgs += arg
             else
               state.typedArg = state.typedArg.updated(arg, targ)
