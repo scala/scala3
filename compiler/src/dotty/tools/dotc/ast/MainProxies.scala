@@ -11,28 +11,40 @@ import NameKinds.DefaultGetterName
 import Annotations.Annotation
 
 /** Generate proxy classes for main functions.
- *  A function like
- *
- *     /**
- *       * Lorem ipsum dolor sit amet
- *       * consectetur adipiscing elit.
- *       *
- *       * @param x my param x
- *       * @param ys all my params y
- *       */
- *     @main(80) def f(x: S, ys: T*) = ...
- *
- *  would be translated to something like
- *
- *     final class f {
- *       @static def main(args: Array[String]): Unit =
- *         val cmd: MainAnnotation#Command[..., ...] =
- *           (new scala.main(80)).command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
- *         val arg1: () => S = cmd.argGetter[S]("x", "S", "my param x")
- *         val arg2: () => Seq[T] = cmd.argsGetter[T]("ys", "T", "all my params y")
- *         cmd.run(f(arg1(), arg2()*))
- *     }
- */
+  * A function like
+  *
+  *     /**
+  *       * Lorem ipsum dolor sit amet
+  *       * consectetur adipiscing elit.
+  *       *
+  *       * @param x my param x
+  *       * @param ys all my params y
+  *       */
+  *     @main(80) def f(@main.arg(shortName = 'x', name = "myX") x: S, ys: T*) = ...
+  *
+  *  would be translated to something like
+  *
+  *     final class f {
+  *       static def main(args: Array[String]): Unit = {
+  *         val cmd = new main(80).command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
+  *
+  *         val args0: () => S = cmd.argGetter[S]({
+  *           val args0paramInfos = new scala.annotation.MainAnnotation.ParameterInfos[S]("x", "S")
+  *           args0paramInfos.documentation = Some("my param x")
+  *           args0paramInfos.annotation = Some(new scala.main.arg(name = "myX", shortName = 'x'))
+  *           args0paramInfos
+  *         })(util.CommandLineParser.FromString.given_FromString_Int)
+  *
+  *         val args1: () => Seq[T] = cmd.varargGetter[T]({
+  *           val args1paramInfos = new scala.annotation.MainAnnotation.ParameterInfos[T]("ys", "T")
+  *           args1paramInfos.documentation = Some("all my params y")
+  *           args1paramInfos
+  *         })(util.CommandLineParser.FromString.given_FromString_String)
+  *
+  *         cmd.run(f(args0.apply(), args1.apply()*))
+  *       }
+  *     }
+  */
 object MainProxies {
 
   def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
