@@ -185,7 +185,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
       private def registerArg(paramInfos: ParameterInfos[_], argKind: ArgumentKind): Unit =
         argNames += getEffectiveName(paramInfos)
         argTypes += paramInfos.typeName
-        argDocs += paramInfos.doc.getOrElse("")
+        argDocs += paramInfos.documentation.getOrElse("")
         argKinds += argKind
 
         val shortName = getShortName(paramInfos)

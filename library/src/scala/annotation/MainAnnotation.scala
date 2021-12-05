@@ -25,8 +25,18 @@ trait MainAnnotation extends StaticAnnotation:
 end MainAnnotation
 
 object MainAnnotation:
-  class ParameterInfos[T](var name: String, var typeName: String, var doc: Option[String]):
+  /**
+    * The information related to one of the parameters of the annotated method.
+    * @param name the name of the parameter
+    * @param typeName the name of the parameter's type
+    * @tparam T the type of the parameter
+    */
+  class ParameterInfos[T](var name: String, var typeName: String):
+    /** The docstring of the parameter. Defaults to None. */
+    var documentation: Option[String] = None
+    /** The default value that the parameter has. Defaults to None. */
     var defaultValue: Option[T] = None
+    /** If there is one, the ParameterAnnotation associated with the parameter. Defaults to None. */
     var annotation: Option[ParameterAnnotation] = None
 
   /** A class representing a command to run */

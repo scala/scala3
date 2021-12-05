@@ -164,7 +164,7 @@ class mainAwait(timeout: Int = 2) extends MainAnnotation:
       private def registerArg(paramInfos: MainAnnotation.ParameterInfos[_], argKind: ArgumentKind): Unit =
         argNames += paramInfos.name
         argTypes += paramInfos.typeName
-        argDocs += paramInfos.doc.getOrElse("")
+        argDocs += paramInfos.documentation.getOrElse("")
         argKinds += argKind
 
       override def argGetter[T](paramInfos: MainAnnotation.ParameterInfos[T])(using p: ArgumentParser[T]): () => T =

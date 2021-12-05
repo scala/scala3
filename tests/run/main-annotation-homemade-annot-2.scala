@@ -171,7 +171,7 @@ class myMain(runs: Int = 3)(after: String*) extends MainAnnotation:
       private def registerArg(paramInfos: MainAnnotation.ParameterInfos[_], argKind: ArgumentKind): Unit =
         argNames += paramInfos.name
         argTypes += paramInfos.typeName
-        argDocs += paramInfos.doc.getOrElse("")
+        argDocs += paramInfos.documentation.getOrElse("")
         argKinds += argKind
 
       override def argGetter[T](paramInfos: MainAnnotation.ParameterInfos[T])(using p: ArgumentParser[T]): () => T =

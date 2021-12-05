@@ -91,6 +91,8 @@ object MainProxies {
 
     inline def lit(any: Any): Literal = Literal(Constant(any))
 
+    inline def some(value: Tree): Tree = Apply(ref(defn.SomeClass.companionModule.termRef), value)
+
     def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef)] =
       mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
         case ((formal, paramName), n) =>
@@ -115,27 +117,27 @@ object MainProxies {
             val param = paramName.toString
             val paramInfosName = argName ++ "paramInfos"
             val paramInfosIdent = Ident(paramInfosName)
-            val docTree = documentation.argDocs.get(param) match {
-              case Some(doc) => Apply(ref(defn.SomeClass.companionModule.termRef), lit(doc))
-              case None => ref(defn.NoneModule.termRef)
-            }
             val paramInfosTree = New(
               AppliedTypeTree(TypeTree(defn.MainAnnotParameterInfos.typeRef), List(TypeTree(formalType))),
-              List(List(lit(param), lit(formalType.show), docTree))
+              List(List(lit(param), lit(formalType.show)))
             )
 
             var assignations: List[(String, Tree)] = Nil
 
             if defaultValue.nonEmpty then
-              assignations = ("defaultValue", defaultValue.get) :: assignations
+              assignations = ("defaultValue", some(defaultValue.get)) :: assignations
 
             if paramAnnotations(n).nonEmpty then
-              assignations = ("annotation", instanciateAnnotation(paramAnnotations(n).get)) :: assignations
+              assignations = ("annotation", some(instanciateAnnotation(paramAnnotations(n).get))) :: assignations
+
+            documentation.argDocs.get(param) match {
+              case Some(doc) =>
+                assignations = ("documentation", some(lit(doc))) :: assignations
+              case None =>
+            }
 
             val assignationsTrees = assignations.map{
-              case (name, value) =>
-                val opt = Apply(ref(defn.SomeClass.companionModule.termRef), value)
-                Apply(Select(paramInfosIdent, defn.MainAnnotParameterInfos.requiredMethod(name + "_=").name), opt)
+              case (name, value) => Apply(Select(paramInfosIdent, defn.MainAnnotParameterInfos.requiredMethod(name + "_=").name), value)
             }
 
             if assignations.isEmpty then
