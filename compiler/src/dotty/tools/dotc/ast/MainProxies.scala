@@ -51,12 +51,21 @@ object MainProxies {
         case _ => Map[Int, Tree]()
       }
 
-    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, Map[Int, Tree], Option[Comment])] = stats.flatMap {
+    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, Vector[Option[Annotation]], Map[Int, Tree], Option[Comment])] = stats.flatMap {
       case stat: DefDef =>
         val sym = stat.symbol
         sym.annotations.filter(_.matches(defn.MainAnnot)) match {
-          case Nil => Nil
-          case _ :: Nil => (sym, defaultValues(scope, sym), stat.rawComment) :: Nil
+          case Nil =>
+            Nil
+          case _ :: Nil =>
+            val paramAnnotations = stat.paramss.flatMap(_.map(
+              valdef => valdef.symbol.annotations.filter(_.matches(defn.MainAnnotParameterAnnotation)) match {
+                case Nil => None
+                case paramAnnot :: Nil => Some(paramAnnot)
+                case paramAnnot :: others => report.error(s"parameters cannot have multiple annotations", paramAnnot.tree); None
+              }
+            ))
+            (sym, paramAnnotations.toVector, defaultValues(scope, sym), stat.rawComment) :: Nil
           case mainAnnot :: others =>
             report.error(s"method cannot have multiple main annotations", mainAnnot.tree)
             Nil
@@ -72,7 +81,7 @@ object MainProxies {
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol, defaultValues: Map[Int, Tree], docComment: Option[Comment])(using Context): List[TypeDef] = {
+  def mainProxy(mainFun: Symbol, paramAnnotations: Vector[Option[Annotation]], defaultValues: Map[Int, Tree], docComment: Option[Comment])(using Context): List[TypeDef] = {
     val mainAnnot = mainFun.getAnnotation(defn.MainAnnot).get
     def pos = mainFun.sourcePos
     val mainArgsName: TermName = nme.args
@@ -120,6 +129,9 @@ object MainProxies {
             if defaultValue.nonEmpty then
               assignations = ("defaultValue", defaultValue.get) :: assignations
 
+            if paramAnnotations(n).nonEmpty then
+              assignations = ("annotation", instanciateAnnotation(paramAnnotations(n).get)) :: assignations
+
             val assignationsTrees = assignations.map{
               case (name, value) =>
                 val opt = Apply(ref(defn.SomeClass.companionModule.termRef), value)
@@ -143,34 +155,35 @@ object MainProxies {
       }
     end createArgs
 
-    inline def instanciateAnnotation(annot: Annotation, argss: List[List[Tree]]): Tree = New(TypeTree(annot.symbol.typeRef), argss)
-
-    def extractAnnotationArgs(annot: Annotation): List[List[Tree]] =
-      def recurse(t: Tree, acc: List[List[Tree]]): List[List[Tree]] = t match {
-        case Apply(t, args: List[Tree]) => recurse(t, extractArgs(args) :: acc)
-        case _ => acc
-      }
-
-      def extractArgs(args: List[Tree]): List[Tree] =
-        args.flatMap {
-          case Typed(SeqLiteral(varargs, _), _) => varargs
-          case arg @ Select(_, name) => if name.is(DefaultGetterName) then List() else List(arg)
-          case arg => List(arg)
+    def instanciateAnnotation(annot: Annotation): Tree =
+      val argss = {
+        def recurse(t: Tree, acc: List[List[Tree]]): List[List[Tree]] = t match {
+          case Apply(t, args: List[Tree]) => recurse(t, extractArgs(args) :: acc)
+          case _ => acc
         }
 
-      recurse(annot.tree, Nil)
-    end extractAnnotationArgs
+        def extractArgs(args: List[Tree]): List[Tree] =
+          args.flatMap {
+            case Typed(SeqLiteral(varargs, _), _) => varargs
+            case arg @ Select(_, name) => if name.is(DefaultGetterName) then List() else List(arg)
+            case arg => List(arg)
+          }
+
+        recurse(annot.tree, Nil)
+      }
+
+      New(TypeTree(annot.symbol.typeRef), argss)
+    end instanciateAnnotation
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
       report.error(s"main method is not statically accessible", pos)
     else {
-      val mainAnnotArgss = extractAnnotationArgs(mainAnnot)
       val cmd = ValDef(
         cmdName,
         TypeTree(),
         Apply(
-          Select(instanciateAnnotation(mainAnnot, mainAnnotArgss), defn.MainAnnot_command.name),
+          Select(instanciateAnnotation(mainAnnot), defn.MainAnnot_command.name),
           Ident(mainArgsName) :: lit(mainFun.showName) :: lit(documentation.mainDoc) :: Nil
         )
       )

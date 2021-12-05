@@ -27,6 +27,7 @@ end MainAnnotation
 object MainAnnotation:
   class ParameterInfos[T](var name: String, var typeName: String, var doc: Option[String]):
     var defaultValue: Option[T] = None
+    var annotation: Option[ParameterAnnotation] = None
 
   /** A class representing a command to run */
   trait Command[ArgumentParser[_], MainResultType]:
@@ -42,4 +43,7 @@ object MainAnnotation:
      */
     def run(program: => MainResultType): Unit
   end Command
+
+  /** An annotation for the parameters of a MainAnnotated method. */
+  trait ParameterAnnotation extends StaticAnnotation
 end MainAnnotation

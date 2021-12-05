@@ -1,6 +1,5 @@
-Error: invalid argument for num: -n
-Error: unused argument: -i
-Error: unused argument: 10
+Error: missing argument for num
+Error: missing argument for inc
 Usage: add [--num] <Int> [--inc] <Int>
 Error: missing argument for num
 Error: missing argument for inc
