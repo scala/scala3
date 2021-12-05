@@ -135,18 +135,12 @@ object MainProxies {
             )
 
             var assignations: List[(String, Tree)] = Nil
-
-            if defaultValue.nonEmpty then
-              assignations = ("defaultValue", some(defaultValue.get)) :: assignations
-
-            if paramAnnotations(n).nonEmpty then
-              assignations = ("annotation", some(instanciateAnnotation(paramAnnotations(n).get))) :: assignations
-
-            documentation.argDocs.get(param) match {
-              case Some(doc) =>
-                assignations = ("documentation", some(lit(doc))) :: assignations
-              case None =>
-            }
+            for (dv <- defaultValue)
+              assignations = ("defaultValue" -> some(dv)) :: assignations
+            for (annot <- paramAnnotations(n))
+              assignations = ("annotation" -> some(instanciateAnnotation(annot))) :: assignations
+            for (doc <- documentation.argDocs.get(param))
+              assignations = ("documentation" -> some(lit(doc))) :: assignations
 
             val assignationsTrees = assignations.map{
               case (name, value) => Apply(Select(paramInfosIdent, defn.MainAnnotParameterInfos.requiredMethod(name + "_=").name), value)
