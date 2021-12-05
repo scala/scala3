@@ -14,7 +14,7 @@ object MatchTest {
       CaseDef(Bind(bind, Typed(Ref(bind), subtype)), None, '{()}.asTerm)
     }
     val result = Match(obj, cases)
-    println(result.show(using Printer.TreeAnsiCode))
+    //println(result.show(using Printer.TreeAnsiCode))
     result.asExprOf[Unit]
   }
 }
