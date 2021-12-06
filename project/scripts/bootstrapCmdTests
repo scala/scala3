@@ -87,3 +87,12 @@ clear_out "$OUT"
 ./bin/scalac -d "$OUT/out.jar" tests/pos/i12973.scala
 echo "Bug12973().check" | TERM=dumb ./bin/scala -cp "$OUT/out.jar" > "$tmp" 2>&1
 grep -qe "Bug12973 is fixed" "$tmp"
+
+echo "testing -sourcepath with inlining"
+cwd=$(pwd)
+java_prop="-Dpack.version.file=$cwd/dist/target/pack/VERSION"
+sbt_test_command=";clean;prepareSources;compile;copyChanges;compile"
+(cd "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline" && "$SBT" "$java_prop" "$sbt_test_command")
+rm -rf "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/target"
+rm -rf "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/project/target"
+rm -f "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/src/main/scala/a/zz.scala"

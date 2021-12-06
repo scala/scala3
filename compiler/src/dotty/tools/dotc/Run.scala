@@ -304,10 +304,6 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
       def process()(using Context) = {
 
-        def parseSource()(using Context) =
-          if (unit.isJava) new JavaParser(unit.source).parse()
-          else new Parser(unit.source).parse()
-
         def enterTrees()(using Context) =
           ctx.typer.lateEnter(unit.untpdTree)
           def typeCheckUnit()(using Context) =
@@ -321,7 +317,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             if compiling then finalizeActions += (() => typeCheckUnit()(using typerCtx))
             else typeCheckUnit()(using typerCtx)
 
-        unit.untpdTree = parseSource()
+        unit.untpdTree =
+          if (unit.isJava) new JavaParser(unit.source).parse()
+          else new Parser(unit.source).parse()
         val namerCtx =
           // inline body annotations are set in namer, capturing the current context
           // we need to prepare the context for inlining.
