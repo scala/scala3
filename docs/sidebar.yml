@@ -10,6 +10,7 @@ sidebar:
     subsection:
       - page: docs/reference/overview.md
       - title: New Types
+        index: docs/reference/new-types/new-types.md
         subsection:
           - page: docs/reference/new-types/intersection-types.md
           - page: docs/reference/new-types/union-types.md
@@ -18,13 +19,14 @@ sidebar:
           - page: docs/reference/new-types/dependent-function-types.md
           - page: docs/reference/new-types/polymorphic-function-types.md
       - title: Enums
+        index: docs/reference/enums/enums-index.md
         subsection:
           - page: docs/reference/enums/enums.md
           - page: docs/reference/enums/adts.md
           - page: docs/reference/enums/desugarEnums.md
       - title: Contextual Abstractions
+        index: docs/reference/contextual/contextual.md
         subsection:
-          - page: docs/reference/contextual.md
           - page: docs/reference/contextual/givens.md
           - page: docs/reference/contextual/using-clauses.md
           - page: docs/reference/contextual/context-bounds.md
@@ -38,8 +40,8 @@ sidebar:
           - page: docs/reference/contextual/by-name-context-parameters.md
           - page: docs/reference/contextual/relationship-implicits.md
       - title: Metaprogramming
+        index: docs/reference/metaprogramming/metaprogramming.md
         subsection:
-          - page: docs/reference/metaprogramming.md
           - page: docs/reference/metaprogramming/inline.md
           - page: docs/reference/metaprogramming/compiletime-ops.md
           - page: docs/reference/metaprogramming/macros.md
@@ -47,6 +49,7 @@ sidebar:
           - page: docs/reference/metaprogramming/reflection.md
           - page: docs/reference/metaprogramming/tasty-inspect.md
       - title: Other New Features
+        index: docs/reference/other-new-features/other-new-types.md
         subsection:
           - page: docs/reference/other-new-features/trait-parameters.md
           - page: docs/reference/other-new-features/transparent-traits.md
@@ -66,6 +69,7 @@ sidebar:
           - page: docs/reference/other-new-features/type-test.md
           - page: docs/reference/other-new-features/experimental-defs.md
       - title: Other Changed Features
+        index: docs/reference/changed-features/changed-features.md
         subsection:
           - page: docs/reference/changed-features/numeric-literals.md
           - page: docs/reference/changed-features/structural-types.md
@@ -86,6 +90,7 @@ sidebar:
           - page: docs/reference/changed-features/lazy-vals-init.md
           - page: docs/reference/changed-features/main-functions.md
       - title: Dropped Features
+        index: docs/reference/dropped-features/dropped-features.md
         subsection:
           - page: docs/reference/dropped-features/delayed-init.md
           - page: docs/reference/dropped-features/macros.md
