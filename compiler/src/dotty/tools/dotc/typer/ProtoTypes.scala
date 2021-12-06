@@ -350,6 +350,24 @@ object ProtoTypes {
      */
     def hasErrorArg = !state.errorArgs.isEmpty
 
+    /** Does tree have embedded error trees that are not at the outside.
+     *  A nested tree t1 is "at the outside" relative to a tree t2 if
+     *    - t1 and t2 have the same span, or
+     *    - t2 is a ascription (t22: T) and t1 is at the outside of t22
+     *    - t2 is a closure (...) => t22 and t1 is at the outside of t22
+     */
+    def hasInnerErrors(t: Tree): Boolean = t match
+      case Typed(expr, tpe) => hasInnerErrors(expr)
+      case closureDef(mdef) => hasInnerErrors(mdef.rhs)
+      case _ =>
+        t.existsSubTree { t1 =>
+          if t1.tpe.isError && t1.span.toSynthetic != t.span.toSynthetic then
+            typr.println(i"error subtree $t1 of $t with ${t1.tpe}, spans = ${t1.span}, ${t.span}")
+            true
+          else
+            false
+        }
+
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(using Context): Tree = {
       var targ = state.typedArg(arg)
       if (targ == null)
@@ -366,8 +384,9 @@ object ProtoTypes {
             targ = arg.withType(WildcardType)
           case _ =>
             targ = typerFn(arg)
-            if ctx.reporter.hasUnreportedErrors && targ.existsSubTree(_.tpe.isError) then
-              state.errorArgs += arg
+            if ctx.reporter.hasUnreportedErrors then
+              if hasInnerErrors(targ) then
+                state.errorArgs += arg
             else
               state.typedArg = state.typedArg.updated(arg, targ)
               state.errorArgs -= arg
