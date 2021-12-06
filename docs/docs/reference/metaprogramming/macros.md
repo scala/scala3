@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Macros"
-type: section
-num: 30
-previous-page: /scala3/reference/metaprogramming/compiletime-ops
-next-page: /scala3/reference/metaprogramming/staging
+movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros.html
 ---
 
 > When developing macros enable `-Xcheck-macros` scalac option flag to have extra runtime checks.
@@ -505,7 +503,7 @@ and allow for undefined compiler behavior if they are not. This is analogous to
 the status of pattern guards in Scala, which are also required, but not
 verified, to be pure.
 
-[Multi-Stage Programming](./staging.html) introduces one additional method where
+[Multi-Stage Programming](./staging.md) introduces one additional method where
 you can expand code at runtime with a method `run`. There is also a problem with
 that invocation of `run` in splices. Consider the following expression:
 
@@ -627,7 +625,7 @@ def setForExpr[T: Type](using Quotes): Expr[Set[T]] =
 
 ## Relationship with Transparent Inline
 
-[Inline](./inline.html) documents inlining. The code below introduces a transparent
+[Inline](./inline.md) documents inlining. The code below introduces a transparent
 inline method that can calculate either a value of type `Int` or a value of type
 `String`.
 
@@ -822,4 +820,4 @@ To match an actual application we can use braces on the function part `${b}(a1, 
 
 ## More details
 
-[More details](./macros-spec.html)
+[More details](./macros-spec.md)

@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Dropped: Class Shadowing"
-type: section
-num: 80
-previous-page: /scala3/reference/dropped-features/early-initializers
-next-page: /scala3/reference/dropped-features/limit22
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/class-shadowing.html
 ---
 
 Scala 2 so far allowed patterns like this:
@@ -32,4 +30,4 @@ other, but classes in Scala 2 cannot be overridden. To keep things clean
 (and its internal operations consistent) the Scala 3 compiler forces you
 to rename the inner classes so that their names are different.
 
-[More details](./class-shadowing-spec.html)
+[More details](./class-shadowing-spec.md)

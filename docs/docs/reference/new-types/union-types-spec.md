@@ -1,13 +1,13 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Union Types - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/union-types-spec.html
 ---
 
 ## Syntax
 
 Syntactically, unions follow the same rules as intersections, but have a lower precedence, see
-[Intersection Types - More Details](./intersection-types-spec.html).
+[Intersection Types - More Details](./intersection-types-spec.md).
 
 ### Interaction with pattern matching syntax
 `|` is also used in pattern matching to separate pattern alternatives and has
@@ -140,7 +140,7 @@ On the other hand, the following would be allowed
 
 ```scala
 trait C { def hello: String }
-trait A extends C with D 
+trait A extends C with D
 trait B extends C with E
 
 def test(x: A | B) = x.hello // ok as `hello` is a member of the join of A | B which is C

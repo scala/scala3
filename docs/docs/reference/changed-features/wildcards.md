@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: Wildcard Arguments in Types
-type: section
-num: 56
-previous-page: /scala3/reference/changed-features/operators
-next-page: /scala3/reference/changed-features/imports
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/wildcards.html
 ---
 
 The syntax of wildcard arguments in types has changed from `_` to `?`. Example:

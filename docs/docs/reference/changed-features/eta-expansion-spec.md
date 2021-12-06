@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Automatic Eta Expansion - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/eta-expansion-spec.html
 ---
 
 ## Motivation

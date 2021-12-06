@@ -1,9 +1,6 @@
 ---
-layout: multipage-overview
+layout: doc-page
 title: "Settings"
-partof: scala3-scaladoc
-num: 8
-previous-page: search-engine
 ---
 
 This chapter lists the configuration options that can be used when calling scaladoc. Some of the information shown here can be found by calling scaladoc with the `-help` flag.

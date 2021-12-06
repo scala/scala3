@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Programmatic Structural Types - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/structural-types-spec.html
 ---
 
 ## Syntax
@@ -81,7 +81,7 @@ and `Rs` are structural refinement declarations, and given `v.a` of type `U`, we
 
 Note that `v`'s static type does not necessarily have to conform to `Selectable`, nor does it need to have `selectDynamic` and `applyDynamic` as members. It suffices that there is an implicit
 conversion that can turn `v` into a `Selectable`, and the selection methods could also be available as
-[extension methods](../contextual/extension-methods.html).
+[extension methods](../contextual/extension-methods.md).
 
 ## Limitations of Structural Types
 

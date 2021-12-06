@@ -1,8 +1,7 @@
 ---
+layout: doc-page
 title: "Scala 3 Syntax Summary"
-type: chapter
-num: 88
-previous-page: /scala3/reference/dropped-features/wildcard-init
+movedTo: https://docs.scala-lang.org/scala3/reference/syntax.html
 ---
 
 The following description of Scala tokens uses literal characters `‘c’` when
@@ -91,7 +90,7 @@ semi             ::=  ‘;’ |  nl {nl}
 
 ## Optional Braces
 
-The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](./other-new-features/indentation.html).
+The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](./other-new-features/indentation.md).
 
 In the context-free productions below we use the notation `<<< ts >>>`
 to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
@@ -126,7 +125,7 @@ type      val       var       while     with      yield
 as  derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
 ```
 
-See the [separate section on soft keywords](./soft-modifier.html) for additional
+See the [separate section on soft keywords](./soft-modifier.md) for additional
 details on where a soft keyword is recognized.
 
 ## Context-free Syntax

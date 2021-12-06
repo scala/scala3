@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Dropped: Package Objects"
-type: section
-num: 78
-previous-page: /scala3/reference/dropped-features/procedure-syntax
-next-page: /scala3/reference/dropped-features/early-initializers
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/package-objects.html
 ---
 
 Package objects

@@ -1,7 +1,12 @@
 ---
 layout: doc-page
 title: "Worksheet Mode - Implementation details"
+
+
+
+
 ---
+
 
 In brief, the worksheets extend the Language Server Protocol and rely on the
 Dotty REPL to evaluate code.

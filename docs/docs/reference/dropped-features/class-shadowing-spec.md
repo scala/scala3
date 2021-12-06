@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Dropped: Class Shadowing - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/class-shadowing-spec.html
 ---
 
 Spec diff: in section [5.1.4 Overriding](https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html#Overriding), add *M' must not be a class*.

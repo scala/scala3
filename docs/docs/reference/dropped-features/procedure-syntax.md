@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Dropped: Procedure Syntax"
-type: section
-num: 77
-previous-page: /scala3/reference/dropped-features/do-while
-next-page: /scala3/reference/dropped-features/package-objects
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/procedure-syntax.html
 ---
 
 Procedure syntax

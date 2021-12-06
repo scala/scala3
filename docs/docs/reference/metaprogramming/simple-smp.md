@@ -1,11 +1,11 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "The Meta-theory of Symmetric Metaprogramming"
+movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/simple-smp.html
 ---
 
 This note presents a simplified variant of
-[principled metaprogramming](./macros.html)
+[principled metaprogramming](./macros.md)
 and sketches its soundness proof. The variant treats only dialogues
 between two stages. A program can have quotes which can contain
 splices (which can contain quotes, which can contain splices, and so

@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Implicit Conversions - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-conversions-spec.html
 ---
 
 ## Implementation
@@ -82,7 +82,7 @@ implicit val myConverter: Int => String = _.toString
 implicit val myConverter: Conversion[Int, String] = _.toString
 ```
 
-Note that implicit conversions are also affected by the [changes to implicit resolution](implicit-resolution.html) between Scala 2 and Scala 3.
+Note that implicit conversions are also affected by the [changes to implicit resolution](implicit-resolution.md) between Scala 2 and Scala 3.
 
 ## Motivation for the changes
 
@@ -109,9 +109,9 @@ will report a type error, because `Map` isn't an instance of
 Implicit values that are used as views should see their type changed to `Conversion`.
 
 For the migration of implicit conversions that are affected by the
-changes to implicit resolution, refer to the [Changes in Implicit Resolution](implicit-resolution.html) for more information.
+changes to implicit resolution, refer to the [Changes in Implicit Resolution](implicit-resolution.md) for more information.
 
 ## Reference
 
-For more information about implicit resolution, see [Changes in Implicit Resolution](implicit-resolution.html).
+For more information about implicit resolution, see [Changes in Implicit Resolution](implicit-resolution.md).
 Other details are available in [PR #2065](https://github.com/lampepfl/dotty/pull/2065).

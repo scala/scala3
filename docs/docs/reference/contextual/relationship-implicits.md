@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Relationship with Scala 2 Implicits"
-type: section
-num: 26
-previous-page: /scala3/reference/contextual/by-name-context-parameters
-next-page: /scala3/reference/metaprogramming
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/relationship-implicits.html
 ---
 
 Many, but not all, of the new contextual abstraction features in Scala 3 can be mapped to Scala 2's implicits. This page gives a rundown on the relationships between new and old features.

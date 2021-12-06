@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Parameter Untupling - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/parameter-untupling-spec.html
 ---
 
 ## Motivation

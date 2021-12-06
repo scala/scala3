@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Union Types"
-type: section
-num: 4
-previous-page: /scala3/reference/new-types/intersection-types
-next-page: /scala3/reference/new-types/type-lambdas
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/union-types.html
 ---
 
 A union type `A | B` has as values all values of type `A` and also all values of type `B`.
@@ -45,4 +43,4 @@ The type of `res2` is `Object & Product`, which is a supertype of
 UserName`.  If we want the least supertype, we have to give it
 explicitly, as is done for the type of `either`.
 
-[More details](./union-types-spec.html)
+[More details](./union-types-spec.md)
