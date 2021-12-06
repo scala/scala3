@@ -1339,7 +1339,20 @@ class RefChecks extends MiniPhase { thisPhase =>
   }
 
   override def transformTypeTree(tree: TypeTree)(using Context): TypeTree = {
-    checkExperimental(tree.symbol, tree.srcPos)
+    object CheckExperimental extends TypeTraverser {
+      def traverse(tp: Type): Unit =
+        tp match {
+          case tp: TypeRef =>
+            checkDeprecated(tp.symbol, tree.srcPos)
+            checkExperimental(tp.symbol, tree.srcPos)
+          case tp: TermRef =>
+            checkDeprecated(tp.symbol, tree.srcPos)
+            checkExperimental(tp.symbol, tree.srcPos)
+          case _ =>
+            traverseChildren(tp)
+        }
+    }
+    CheckExperimental.traverse(tree.tpe)
     tree
   }
 

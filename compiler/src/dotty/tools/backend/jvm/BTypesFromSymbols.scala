@@ -5,7 +5,7 @@ package jvm
 import scala.tools.asm
 import scala.annotation.threadUnsafe
 import scala.collection.mutable
-import scala.collection.generic.Clearable
+import scala.collection.mutable.Clearable
 
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Contexts._
