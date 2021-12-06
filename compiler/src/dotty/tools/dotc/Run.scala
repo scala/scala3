@@ -9,7 +9,7 @@ import Types._
 import Scopes._
 import Names.Name
 import Denotations.Denotation
-import typer.Typer
+import typer.{Typer, PrepareInlineable}
 import typer.ImportInfo._
 import Decorators._
 import io.{AbstractFile, PlainFile, VirtualFile}
@@ -303,17 +303,30 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         .withRootImports
 
       def process()(using Context) = {
-        unit.untpdTree =
+
+        def parseSource()(using Context) =
           if (unit.isJava) new JavaParser(unit.source).parse()
           else new Parser(unit.source).parse()
-        ctx.typer.lateEnter(unit.untpdTree)
-        def processUnit() = {
-          unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
-          val phase = new transform.SetRootTree()
-          phase.run
-        }
-        if (typeCheck)
-          if (compiling) finalizeActions += (() => processUnit()) else processUnit()
+
+        def enterTrees()(using Context) =
+          ctx.typer.lateEnter(unit.untpdTree)
+          def typeCheckUnit()(using Context) =
+            unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
+            val phase = new transform.SetRootTree()
+            phase.run
+          if typeCheck then
+            val typerCtx: Context =
+              // typer phase allows implicits to be searched
+              ctx.withPhase(Phases.typerPhase)
+            if compiling then finalizeActions += (() => typeCheckUnit()(using typerCtx))
+            else typeCheckUnit()(using typerCtx)
+
+        unit.untpdTree = parseSource()
+        val namerCtx =
+          // inline body annotations are set in namer, capturing the current context
+          // we need to prepare the context for inlining.
+          if unit.isJava then ctx else PrepareInlineable.initContext(ctx)
+        enterTrees()(using namerCtx)
       }
       process()(using unitCtx)
     }
