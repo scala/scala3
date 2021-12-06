@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Polymorphic Function Types"
-type: section
-num: 8
-previous-page: /scala3/reference/new-types/dependent-function-types
-next-page: /scala3/reference/enums
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/polymorphic-function-types.html
 ---
 
 A polymorphic function type is a function type which accepts type parameters.
@@ -83,7 +81,7 @@ println(e1) // Apply(Apply(Var(wrap),Var(f)),Apply(Var(wrap),Var(a)))
 ## Relationship With Type Lambdas
 
 Polymorphic function types are not to be confused with
-[_type lambdas_](type-lambdas.html).
+[_type lambdas_](type-lambdas.md).
 While the former describes the _type_ of a polymorphic _value_,
 the latter is an actual function value _at the type level_.
 

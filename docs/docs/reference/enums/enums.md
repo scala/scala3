@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Enumerations"
-type: section
-num: 10
-previous-page: /scala3/reference/enums
-next-page: /scala3/reference/enums/adts
+movedTo: https://docs.scala-lang.org/scala3/reference/enums/enums.html
 ---
 
 An enumeration is used to define a type consisting of a set of named values.
@@ -133,7 +131,7 @@ object Planet {
 }
 ```
 
-We could imagine that a library may use [type class derivation](../contextual/derivation.html) to automatically provide an instance for `Deprecations`.
+We could imagine that a library may use [type class derivation](../contextual/derivation.md) to automatically provide an instance for `Deprecations`.
 
 ### Compatibility with Java Enums
 

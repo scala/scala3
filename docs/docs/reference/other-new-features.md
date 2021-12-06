@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Other New Features"
-type: chapter
-num: 34
-previous-page: /scala3/reference/metaprogramming/tasty-inspect
-next-page: /scala3/reference/other-new-features/trait-parameters
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features.html
 ---
 
 The following pages document new features of Scala 3.

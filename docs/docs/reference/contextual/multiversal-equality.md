@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Multiversal Equality"
-type: section
-num: 22
-previous-page: /scala3/reference/contextual/derivation
-next-page: /scala3/reference/contextual/context-functions
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/multiversal-equality.html
 ---
 
 Previously, Scala had universal equality: Two values of any types
@@ -106,7 +104,7 @@ Instead of defining `CanEqual` instances directly, it is often more convenient t
 class Box[T](x: T) derives CanEqual
 ```
 
-By the usual rules of [type class derivation](./derivation.html),
+By the usual rules of [type class derivation](./derivation.md),
 this generates the following `CanEqual` instance in the companion object of `Box`:
 
 ```scala

@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Dropped: private[this] and protected[this]"
-type: section
-num: 86
-previous-page: /scala3/reference/dropped-features/weak-conformance
-next-page: /scala3/reference/dropped-features/wildcard-init
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
 ---
 
 The `private[this]` and `protected[this]` access modifiers are deprecated and will be phased out.
@@ -31,7 +29,5 @@ This can cause problems if a program tries to access the missing private field v
       // [C] needed if `field` is to be accessed through reflection
     val retained = field * field
 ```
-
-
 
 

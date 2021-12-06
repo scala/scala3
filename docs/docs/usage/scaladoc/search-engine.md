@@ -1,10 +1,6 @@
 ---
-layout: multipage-overview
+layout: doc-page
 title: "Type-based search"
-partof: scala3-scaladoc
-num: 7
-previous-page: site-versioning
-next-page: settings
 ---
 
 Searching for functions by their symbolic names can be time-consuming.
@@ -19,7 +15,7 @@ Instead of searching for `span` we can also search for `IArray[A] => (A => Boole
 
 To use this feature, type the signature of the member you are looking for in the scaladoc searchbar. This is how it works:
 
-![]({{ site.baseurl }}/resources/images/scala3/scaladoc/inkuire-1.0.0-M2_js_flatMap.gif)
+![]({{ site.baseurl }}images/scaladoc/inkuire-1.0.0-M2_js_flatMap.gif)
 
 This feature is provided by the [Inkuire](https://github.com/VirtusLab/Inkuire) search engine, which works for Scala 3 and Kotlin. To be up-to-date with the development of this feature, follow the [Inkuire repository](https://github.com/VirtusLab/Inkuire).
 

@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Dropped: Existential Types"
-type: section
-num: 74
-previous-page: /scala3/reference/dropped-features/macros
-next-page: /scala3/reference/dropped-features/type-projection
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/existential-types.html
 ---
 
 Existential types using `forSome` (as in

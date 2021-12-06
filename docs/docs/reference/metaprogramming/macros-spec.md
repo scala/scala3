@@ -1,14 +1,14 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Macros Spec"
+movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/macros-spec.html
 ---
 
 ## Implementation
 
 ### Syntax
 
-Compared to the [Scala 3 reference grammar](../syntax.html)
+Compared to the [Scala 3 reference grammar](../syntax.md)
 there are the following syntax changes:
 ```
 SimpleExpr      ::=  ...
@@ -159,7 +159,7 @@ environments and terms.
                        Es |- 't: expr T
 ```
 The meta theory of a slightly simplified 2-stage variant of this calculus
-is studied [separately](./simple-smp.html).
+is studied [separately](./simple-smp.md).
 
 ## Going Further
 

@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Main Methods"
-type: section
-num: 70
-previous-page: /scala3/reference/changed-features/lazy-vals-init
-next-page: /scala3/reference/dropped-features
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/main-functions.html
 ---
 
 Scala 3 offers a new way to define programs that can be invoked from the command line:
@@ -87,5 +85,5 @@ object happyBirthday extends App:
   ...
 ```
 
-The previous functionality of `App`, which relied on the "magic" [`DelayedInit`]({% link _scala3-reference/dropped-features/delayed-init.md %}) trait, is no longer available. [`App`](https://scala-lang.org/api/3.x/scala/App.html) still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build
+The previous functionality of `App`, which relied on the "magic" [`DelayedInit`]({% link _scala3-reference/dropped-features/delayed-init.md %}) trait, is no longer available. [`App`](https://scala-lang.org/api/3.x/scala/App.md) still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build
 between Scala 2 and Scala 3, it is recommended to use an explicit `main` method with an `Array[String]` argument instead.

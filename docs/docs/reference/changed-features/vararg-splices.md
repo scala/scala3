@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Vararg Splices"
-type: section
-num: 64
-previous-page: /scala3/reference/changed-features/match-syntax
-next-page: /scala3/reference/changed-features/pattern-bindings
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/vararg-splices.html
 ---
 
 The syntax of vararg splices in patterns and function arguments has changed. The new syntax uses a postfix `*`,  analogously to how a vararg parameter is declared.

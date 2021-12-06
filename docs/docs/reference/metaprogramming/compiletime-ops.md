@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Compile-time operations"
-type: section
-num: 29
-previous-page: /scala3/reference/metaprogramming/inline
-next-page: /scala3/reference/metaprogramming/macros
+movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/compiletime-ops.html
 ---
 
 ## The `scala.compiletime` Package

@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "By-Name Context Parameters"
-type: section
-num: 25
-previous-page: /scala3/reference/contextual/conversions
-next-page: /scala3/reference/contextual/relationship-implicits
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/by-name-context-parameters.html
 ---
 
 Context parameters can be declared by-name to avoid a divergent inferred expansion. Example:

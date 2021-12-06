@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Kind Polymorphism"
-type: section
-num: 42
-previous-page: /scala3/reference/other-new-features/parameter-untupling
-next-page: /scala3/reference/other-new-features/matchable
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/kind-polymorphism.html
 ---
 
 Normally type parameters in Scala are partitioned into _kinds_. First-level types are types of values. Higher-kinded types are type constructors
