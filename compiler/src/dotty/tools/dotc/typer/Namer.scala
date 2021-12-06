@@ -1116,6 +1116,7 @@ class Namer { typer: Typer =>
                   (StableRealizable, ExprType(path.tpe.select(sym)))
                 else
                   (EmptyFlags, mbr.info.ensureMethodic)
+              sym.hasDefaultParams // ensure HasDefaultParams and NoDefaultParams flags are set
               var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
               if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)
