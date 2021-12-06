@@ -88,7 +88,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       def newSuperArgMethod(argType: Type) = {
         val (staticFlag, methOwner) =
           if (cls.owner.is(Package)) (JavaStatic, cls) else (EmptyFlags, cls.owner)
-        val argTypeWrtConstr = argType.subst(origParams, allParamRefs(constr.info))
+        val argTypeWrtConstr = argType.widenTermRefExpr.subst(origParams, allParamRefs(constr.info))
         // argType with references to paramRefs of the primary constructor instead of
         // local parameter accessors
         newSymbol(
