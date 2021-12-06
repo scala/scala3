@@ -15,4 +15,12 @@ object Test {
     //     f.apply(0)
     //      ^
   }
+
+  def test2 = {
+    val f = "".contains("", (_: Int)) // dotc:
+    f.apply(0)
+    // sandbox/eta.scala:18: error: apply is not a member of Boolean(f)
+    //     f.apply(0)
+    //       ^
+  }
 }

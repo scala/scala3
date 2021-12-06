@@ -23,10 +23,11 @@ object Test {
     .map( (x: Int, y: Int, z: Int) => x + y + z )     // OK
 
   // 4. The single parameter map works through an inserted conversion
-  //xs.lazyZip(xs).lazyZip(xs)
-  //  .map( (x: (Int, Int, Int)) => x match { case (x, y, z) => x + y + z })     // now also OK
+  xs.lazyZip(xs).lazyZip(xs)
+    .map( (x: (Int, Int, Int)) => x match { case (x, y, z) => x + y + z })     // now also OK
 
-  // 5. If we leave out the parameter type, it now works as well.
+  // 5. But if that pone is deeper nested, it does not work since we don't retypecheck
+  //    arguments deeply.
   //xs.lazyZip(xs).lazyZip(xs)
   //  .map( x => x match { case (x, y, z) => x + y + z })     // now also OK
 

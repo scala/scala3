@@ -361,8 +361,8 @@ object ProtoTypes {
       case closureDef(mdef) => hasInnerErrors(mdef.rhs)
       case _ =>
         t.existsSubTree { t1 =>
-          if t1.tpe.isError && t1.span.toSynthetic != t.span.toSynthetic then
-            typr.println(i"error subtree $t1 of $t with ${t1.tpe}, spans = ${t1.span}, ${t.span}")
+          if t1.typeOpt.isError && t1.span.toSynthetic != t.span.toSynthetic then
+            typr.println(i"error subtree $t1 of $t with ${t1.typeOpt}, spans = ${t1.span}, ${t.span}")
             true
           else
             false
