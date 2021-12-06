@@ -1548,13 +1548,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         //if the projection leads to a typed tree then we stop reduction
         resNoReduce
       else
-        val resMaybeReduced = constToLiteral(reducedProjection)
-        if resNoReduce ne resMaybeReduced then
-          typed(resMaybeReduced, pt) // redo typecheck if reduction changed something
-        else
-          val res = resMaybeReduced
-          ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.srcPos)
+        val res = constToLiteral(reducedProjection)
+        if resNoReduce ne res then
+          typed(res, pt) // redo typecheck if reduction changed something
+        else if res.symbol.isInlineMethod then
           inlineIfNeeded(res)
+        else
+          ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.srcPos)
+          res
     }
 
     override def typedIf(tree: untpd.If, pt: Type)(using Context): Tree =
