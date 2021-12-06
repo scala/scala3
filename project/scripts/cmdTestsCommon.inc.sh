@@ -1,6 +1,8 @@
 set -eux
 
-SBT="./project/scripts/sbt" # if run on CI
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/../.."
+
+SBT="$ROOT/project/scripts/sbt" # if run on CI
 # SBT="sbt" # if run locally
 
 SOURCE="tests/pos/HelloWorld.scala"
