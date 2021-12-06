@@ -378,6 +378,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           else (tree.rhs, sym.info) match
             case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
               VarianceChecker.checkLambda(rhs, bounds)
+              if sym.isOpaqueAlias then
+                VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
             case _ =>
           processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>
