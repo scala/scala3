@@ -1,7 +1,0 @@
--- [E007] Type Mismatch Error: tests/neg/i903.scala:3:16 ---------------------------------------------------------------
-3 |    "".contains("", (_: Int)) // error
-  |                ^^^^^^^^^^^^
-  |                Found:    (String, Int)
-  |                Required: CharSequence
-
-longer explanation available when compiling with `-explain`
