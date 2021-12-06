@@ -1322,7 +1322,6 @@ object Build {
         name,
         scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
         dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
-        dottySrcLink(referenceVersion, "docs-for-dotty-page=", "#docs"),
         dottySrcLink(referenceVersion),
         "-Ygenerate-inkuire",
       ) ++ scalacOptionsDocSettings(includeExternalMappings) ++ revision ++ params ++ targets
@@ -1383,7 +1382,6 @@ object Build {
         val dest = file(extraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
         val justAPI = extraArgs.drop(1).headOption == Some("--justAPI")
         val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
-        CopyDocs.copyDocs() // invoke copying function form `project/CopyDocs.scala`
         val dottyJars: Seq[java.io.File] = Seq(
           (`stdlib-bootstrapped`/Compile/products).value,
           (`scala3-interfaces`/Compile/products).value,
@@ -1414,7 +1412,7 @@ object Build {
               "https://scala-lang.org/api/versions.json",
               "-Ydocument-synthetic-types",
               s"-snippet-compiler:${dottyLibRoot}/scala/quoted=compile,${dottyLibRoot}/scala/compiletime=compile"
-            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs-for-dotty-page", "-Yapi-subdirectory")), includeExternalMappings = false)
+            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")), includeExternalMappings = false)
 
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
         else if (justAPI) generateDocTask

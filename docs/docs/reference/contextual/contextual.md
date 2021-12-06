@@ -50,25 +50,25 @@ Existing Scala programmers by and large have gotten used to the status quo and s
 
 The following pages introduce a redesign of contextual abstractions in Scala. They introduce four fundamental changes:
 
-1. [Given Instances](./contextual/givens.md) are a new way to define basic terms that can be synthesized.  They replace implicit definitions. The core principle of the proposal is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
+1. [Given Instances](./givens.md) are a new way to define basic terms that can be synthesized.  They replace implicit definitions. The core principle of the proposal is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
 
-2. [Using Clauses](./contextual/using-clauses.md) are a new syntax for implicit _parameters_ and their _arguments_. It unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several `using` clauses in a definition.
+2. [Using Clauses](./using-clauses.md) are a new syntax for implicit _parameters_ and their _arguments_. It unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several `using` clauses in a definition.
 
-3. ["Given" Imports](./contextual/given-imports.md) are a new class of import selectors that specifically import
+3. ["Given" Imports](./given-imports.md) are a new class of import selectors that specifically import
    givens and nothing else.
 
-4. [Implicit Conversions](./contextual/conversions.md) are now expressed as given instances of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
+4. [Implicit Conversions](./conversions.md) are now expressed as given instances of a standard `Conversion` class. All other forms of implicit conversions will be phased out.
 
 This section also contains pages describing other language features that are related to context abstraction. These are:
 
-- [Context Bounds](./contextual/context-bounds.md), which carry over unchanged.
-- [Extension Methods](./contextual/extension-methods.md) replace implicit classes in a way that integrates better with type classes.
-- [Implementing Type Classes](./contextual/type-classes.md) demonstrates how some common type classes can be implemented using the new constructs.
-- [Type Class Derivation](./contextual/derivation.md) introduces constructs to automatically derive type class instances for ADTs.
-- [Multiversal Equality](./contextual/multiversal-equality.md) introduces a special type class to support type safe equality.
-- [Context Functions](./contextual/context-functions.md) provide a way to abstract over context parameters.
-- [By-Name Context Parameters](./contextual/by-name-context-parameters.md) are an essential tool to define recursive synthesized values without looping.
-- [Relationship with Scala 2 Implicits](./contextual/relationship-implicits.md) discusses the relationship between old-style implicits and new-style givens and how to migrate from one to the other.
+- [Context Bounds](./context-bounds.md), which carry over unchanged.
+- [Extension Methods](./extension-methods.md) replace implicit classes in a way that integrates better with type classes.
+- [Implementing Type Classes](./type-classes.md) demonstrates how some common type classes can be implemented using the new constructs.
+- [Type Class Derivation](./derivation.md) introduces constructs to automatically derive type class instances for ADTs.
+- [Multiversal Equality](./multiversal-equality.md) introduces a special type class to support type safe equality.
+- [Context Functions](./context-functions.md) provide a way to abstract over context parameters.
+- [By-Name Context Parameters](./by-name-context-parameters.md) are an essential tool to define recursive synthesized values without looping.
+- [Relationship with Scala 2 Implicits](./relationship-implicits.md) discusses the relationship between old-style implicits and new-style givens and how to migrate from one to the other.
 
 Overall, the new design achieves a better separation of term inference from the rest of the language: There is a single way to define givens instead of a multitude of forms all taking an `implicit` modifier. There is a single way to introduce implicit parameters and arguments instead of conflating implicit with normal arguments. There is a separate way to import givens that does not allow them to hide in a sea of normal imports. And there is a single way to define an implicit conversion which is clearly marked as such and does not require special syntax.
 

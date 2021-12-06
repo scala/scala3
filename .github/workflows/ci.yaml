@@ -473,7 +473,8 @@ jobs:
       DOTTY_WEBSITE_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
                                           # Generate one at https://github.com/settings/tokens
                                           # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
-      DOCS_SCALALANG_BOT_TOKEN: ${{ secrets.DOCS_SCALALANG_BOT_TOKEN }}  # If you need to change this:
+      # Currently unused token, no need to deploy anything to docs.scala-lang
+      # DOCS_SCALALANG_BOT_TOKEN: ${{ secrets.DOCS_SCALALANG_BOT_TOKEN }}  # If you need to change this:
                                           # Generate one at https://github.com/settings/tokens
                                           # Make sure you have the write permissions to the repo: https://github.com/scala/docs.scala-lang
 

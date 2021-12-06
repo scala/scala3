@@ -102,3 +102,7 @@ cs
 
 # Coursier test product
 compiler/test-coursier/run/*.jar
+
+# docs related
+contributors.js
+content-contributors.css
