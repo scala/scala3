@@ -56,7 +56,7 @@ class E extends Greeting("Bob"), FormalGreeting
 ### Traits With Context Parameters
 
 This "explicit extension required" rule is relaxed if the missing trait contains only
-[context parameters]({% link _scala3-reference/contextual/using-clauses.md %}). In that case the trait reference is
+[context parameters](../contextual/using-clauses.md). In that case the trait reference is
 implicitly inserted as an additional parent with inferred arguments. For instance,
 here's a variant of greetings where the addressee is a context parameter of type
 `ImpliedName`:

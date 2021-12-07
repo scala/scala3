@@ -85,5 +85,5 @@ object happyBirthday extends App:
   ...
 ```
 
-The previous functionality of `App`, which relied on the "magic" [`DelayedInit`]({% link _scala3-reference/dropped-features/delayed-init.md %}) trait, is no longer available. [`App`](https://scala-lang.org/api/3.x/scala/App.md) still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build
+The previous functionality of `App`, which relied on the "magic" [`DelayedInit`](../dropped-features/delayed-init.md) trait, is no longer available. [`App`](https://scala-lang.org/api/3.x/scala/App.md) still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build
 between Scala 2 and Scala 3, it is recommended to use an explicit `main` method with an `Array[String]` argument instead.

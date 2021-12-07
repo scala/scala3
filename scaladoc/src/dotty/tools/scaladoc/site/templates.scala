@@ -105,14 +105,8 @@ case class TemplateFile(
     // Library requires mutable maps..
     val mutableProperties = new JHashMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
 
-    // Register escaping {% link ... %} in markdown
-    val tag = new Tag("link"):
-      override def render(context: TemplateContext, nodes: Array[? <: LNode]): Object =
-        val link = super.asString(nodes(0).render(context))
-        s"{% link $link %}"
-
     val rendered = ssctx.args.projectFormat match
-        case "html" => Template.parse(this.rawCode).`with`(tag).render(mutableProperties)
+        case "html" => Template.parse(this.rawCode).render(mutableProperties)
         case "md" => this.rawCode
 
     // We want to render markdown only if next template is html
