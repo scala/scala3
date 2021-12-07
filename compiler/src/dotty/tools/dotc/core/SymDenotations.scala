@@ -930,7 +930,7 @@ object SymDenotations {
     def hasDefaultParams(using Context): Boolean =
       if ctx.erasedTypes then false
       else if is(HasDefaultParams) then true
-      else if is(NoDefaultParams) then false
+      else if is(NoDefaultParams) || !is(Method) then false
       else
         val result =
           rawParamss.nestedExists(_.is(HasDefault))

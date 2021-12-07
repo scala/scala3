@@ -1128,7 +1128,9 @@ class Namer { typer: Typer =>
                   (StableRealizable, ExprType(path.tpe.select(sym)))
                 else
                   (EmptyFlags, mbr.info.ensureMethodic)
-              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
+              var flagMask = RetainedExportFlags
+              if sym.isTerm then flagMask |= HasDefaultParams | NoDefaultParams
+              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & flagMask
               if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)

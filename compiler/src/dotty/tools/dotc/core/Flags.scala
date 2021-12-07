@@ -531,7 +531,7 @@ object Flags {
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
 
   /** Flags retained in export forwarders */
-  val RetainedExportFlags = Given | Implicit | Inline | Transparent | HasDefaultParams | NoDefaultParams
+  val RetainedExportFlags = Given | Implicit | Inline | Transparent
 
   /** Flags that apply only to classes */
   val ClassOnlyFlags = Sealed | Open | Abstract.toTypeFlags
