@@ -462,20 +462,26 @@ object Implicits:
       val ctx1 = ctx.fresh.setExploreTyperState()
       ctx1.typerState.constraint = constraint
       inContext(ctx1) {
-        val map = new TypeMap {
-          def apply(t: Type): Type = t match {
+        val map = new TypeMap:
+          def apply(t: Type): Type = t match
             case t: TypeParamRef =>
-              constraint.entry(t) match {
-                case NoType => t
-                case bounds: TypeBounds => TypeComparer.fullBounds(t)
+              constraint.entry(t) match
+                case NoType | _: TypeBounds => t
                 case t1 => t1
-              }
             case t: TypeVar =>
               t.instanceOpt.orElse(apply(t.origin))
             case _ =>
               mapOver(t)
-          }
-        }
+
+          override def mapArgs(args: List[Type], tparams: List[ParamInfo]) =
+            args.mapConserve {
+              case t: TypeParamRef =>
+                constraint.entry(t) match
+                  case bounds: TypeBounds => TypeComparer.fullBounds(t)
+                  case _ => this(t)
+              case t => this(t)
+            }
+        end map
         map(tp)
       }
 
