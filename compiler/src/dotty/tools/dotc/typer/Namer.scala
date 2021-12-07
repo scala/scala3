@@ -1096,6 +1096,26 @@ class Namer { typer: Typer =>
         else Yes
       }
 
+      def defaultGetters(sym: TermSymbol): List[Symbol] =
+        def recur(params: List[Symbol], paramss: List[List[Symbol]], n: Int): List[Symbol] =
+          params match
+            case param :: params1 =>
+              def otherGetters =
+                recur(params1, paramss, if param.isType then n else n + 1)
+              if param.is(HasDefault) then
+                val getterName = DefaultGetterName(sym.name, n)
+                val getter = path.tpe.member(DefaultGetterName(sym.name, n)).symbol
+                assert(getter.exists, i"$path does not have a default getter named $getterName")
+                getter :: otherGetters
+              else
+                otherGetters
+            case Nil =>
+              paramss match
+                case params1 :: paramss1 => recur(params1, paramss1, n)
+                case Nil => Nil
+        recur(Nil, sym.paramSymss, 0)
+          .showing(i"default getters of $sym, ${sym.paramSymss.nestedMap(_.flagsString)} = $result")
+
       /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
         *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
         */
@@ -1151,20 +1171,18 @@ class Namer { typer: Typer =>
           forwarder.info = avoidPrivateLeaks(forwarder)
           forwarder.addAnnotations(sym.annotations)
 
-          val forwarderDef =
-            if (forwarder.isType) tpd.TypeDef(forwarder.asType)
-            else {
-              import tpd._
-              val ref = path.select(sym.asTerm)
-              val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
-                  ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss))
-              )
-              if forwarder.isInlineMethod then
-                PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
-              ddef
-            }
-
-          buf += forwarderDef.withSpan(span)
+          if forwarder.isType then
+            buf += tpd.TypeDef(forwarder.asType).withSpan(span)
+          else
+            import tpd._
+            val ref = path.select(sym.asTerm)
+            val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
+                ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss)))
+            if forwarder.isInlineMethod then
+              PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
+            buf += ddef.withSpan(span)
+            for getter <- defaultGetters(sym.asTerm) do
+              addForwarder(getter.name.asTermName, getter, span)
       end addForwarder
 
       def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
@@ -1188,11 +1206,15 @@ class Namer { typer: Typer =>
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)
         for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
-          if !mbr.symbol.isSuperAccessor && !isCaseClassSynthesized(mbr.symbol) then
-            // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
-            // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
-            // Symbols from base traits of case classes that will get synthesized implementations
-            // at PostTyper are also excluded.
+          if !mbr.symbol.isSuperAccessor
+              // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
+              // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
+              // Symbols from base traits of case classes that will get synthesized implementations
+              // at PostTyper are also excluded.
+            && !isCaseClassSynthesized(mbr.symbol)
+            && !mbr.symbol.name.is(DefaultGetterName)
+              // default getters are exported with the members they belong to
+          then
             val alias = mbr.name.toTermName
             if mbr.symbol.is(Given) then
               if !seen.contains(alias) && mbr.matchesImportBound(givenBound) then
