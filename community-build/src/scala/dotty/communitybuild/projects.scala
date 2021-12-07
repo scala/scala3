@@ -261,19 +261,21 @@ object projects:
     sbtTestCommand   = "test",
     sbtDocCommand = "doc",
     requiresExperimental = true,
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val algebra = SbtCommunityProject(
     project       = "algebra",
     sbtTestCommand   = "coreJVM/compile",
-    sbtDocCommand = forceDoc("coreJVM")
+    sbtDocCommand = forceDoc("coreJVM"),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test;js/test",
     sbtPublishCommand = "jvm/publishLocal;js/publishLocal",
-    sbtDocCommand = forceDoc("jvm")
+    sbtDocCommand = forceDoc("jvm"),
   )
 
   lazy val scalatest: SbtCommunityProject = SbtCommunityProject(
@@ -298,7 +300,7 @@ object projects:
     // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
     // dotty.tools.dotc.core.MissingType:
     dependencies = List(scalaXml),
-    testOnlyDependencies = () => List(scalatestplusJunit, scalatestplusTestNG)
+    testOnlyDependencies = () => List(scalatestplusJunit, scalatestplusTestNG),
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
@@ -306,34 +308,35 @@ object projects:
     sbtTestCommand = "scalatestPlusScalaCheckJVM/test",
     sbtPublishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
     sbtDocCommand = "scalatestPlusScalaCheckJVM/doc",
-    dependencies = List(scalatest, scalacheck)
+    dependencies = List(scalatest, scalacheck),
   )
 
   lazy val scalatestplusJunit = SbtCommunityProject(
     project           = "scalatestplus-junit",
     sbtTestCommand    = "scalatestplus-junit/test",
     sbtPublishCommand = "scalatestplus-junit/publishLocal",
-    dependencies      = List(scalatest)
+    dependencies      = List(scalatest),
   )
 
   lazy val scalatestplusTestNG = SbtCommunityProject(
     project = "scalatestplus-testng",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(scalatest)
+    dependencies = List(scalatest),
   )
 
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
     sbtTestCommand = "xml/test",
     sbtPublishCommand = "xml/publishLocal",
-    sbtDocCommand = "xml/doc"
+    sbtDocCommand = "xml/doc",
   )
 
   lazy val scalap = SbtCommunityProject(
     project       = "scalap",
     sbtTestCommand   = "scalap/compile",
-    sbtDocCommand = "scalap/doc"
+    sbtDocCommand = "scalap/doc",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val betterfiles = SbtCommunityProject(
@@ -349,14 +352,15 @@ object projects:
     // module class ScalaPbCodeGenerator$ has non-class parent: TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module protocbridge),ProtocCodeGenerator)
     // Also it seems that we do not handle correctly aggreagation projects
     // sbtDocCommand = "dotty-community-build/doc"
-    sbtDocCommand = forceDoc("scalapbc", "grpcRuntime","runtimeJVM", "compilerPlugin")
+    sbtDocCommand = forceDoc("scalapbc", "grpcRuntime","runtimeJVM", "compilerPlugin"),
   )
 
   lazy val minitest = SbtCommunityProject(
     project       = "minitest",
     sbtTestCommand   = "test",
     sbtDocCommand = aggregateDoc("lawsJVM")("minitestJVM"),
-    dependencies = List(scalacheck)
+    dependencies = List(scalacheck),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val fastparse = SbtCommunityProject(
@@ -364,6 +368,7 @@ object projects:
     sbtTestCommand   = "dotty-community-build/compile;dotty-community-build/test:compile",
     // Problem parsing perftests/bench2/src/perftests/PythonParse.scala:[0..18..694]
     // sbtDocCommand = "dotty-community-build/doc"
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val stdLib213 = SbtCommunityProject(
@@ -379,13 +384,16 @@ object projects:
     project       = "shapeless",
     sbtTestCommand   = "test",
     sbtDocCommand = forceDoc("typeable", "deriving", "data"),
-    scalacOptions = Nil // disable -Ysafe-init, due to -Xfatal-warnings
+    // disable -Ysafe-init, due to -Xfatal-warnings
+    // shapeless already uses -Yexplicit-nulls itself
+    scalacOptions = Nil
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
     project       = "xml-interpolator",
     sbtTestCommand   = "test",
     sbtDocCommand = "doc", // Again we've got problem with extensions
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val effpi = SbtCommunityProject(
@@ -414,14 +422,15 @@ object projects:
     project       = "sconfig",
     sbtTestCommand   = "sconfigJVM/test",
     sbtDocCommand = "sconfigJVM/doc",
-    dependencies = List(scalaCollectionCompat)
+    dependencies = List(scalaCollectionCompat),
   )
 
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
     sbtDocCommand = forceDoc("coreJVM"),
-    dependencies = List(izumiReflect)
+    dependencies = List(izumiReflect),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val munit = SbtCommunityProject(
@@ -429,7 +438,8 @@ object projects:
     sbtTestCommand  = "testsJVM/test;testsJS/test;",
     sbtPublishCommand = "munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal",
     sbtDocCommand   = "junit/doc; munitJVM/doc",
-    dependencies = List(scalacheck)
+    dependencies = List(scalacheck),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scodecBits = SbtCommunityProject(
@@ -438,6 +448,7 @@ object projects:
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scodec = SbtCommunityProject(
@@ -446,12 +457,14 @@ object projects:
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit, scodecBits),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
     project          = "scala-parser-combinators",
     sbtTestCommand   = "parserCombinatorsJVM/test",
     sbtDocCommand   = forceDoc("parserCombinatorsJVM"),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val dottyCpsAsync = SbtCommunityProject(
@@ -478,13 +491,14 @@ object projects:
     // [error] class scalaz.iteratee.Iteratee cannot be unpickled because no class file was found
 
     sbtDocCommand = forceDoc("effectJVM"),
-    dependencies     = List(scalacheck)
+    dependencies     = List(scalacheck),
   )
 
   lazy val endpoints4s = SbtCommunityProject(
     project        = "endpoints4s",
     sbtTestCommand = "json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile",
     sbtDocCommand = ";json-schemaJVM/doc ;algebraJVM/doc; openapiJVM/doc; http4s-server/doc ;http4s-client/doc ;play-server/doc ;play-client/doc ;akka-http-server/doc ;akka-http-client/doc",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val catsEffect3 = SbtCommunityProject(
@@ -492,20 +506,22 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
-    dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
+    dependencies   = List(cats, coop, disciplineSpecs2, scalacheck),
   )
 
   lazy val scalaParallelCollections = SbtCommunityProject(
     project        = "scala-parallel-collections",
     sbtTestCommand = "test",
     sbtDocCommand  = forceDoc("core"),
-    dependencies   = List(scalacheck)
+    dependencies   = List(scalacheck),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scalaCollectionCompat = SbtCommunityProject(
     project        = "scala-collection-compat",
     sbtTestCommand = "compat30/test",
     sbtPublishCommand = "compat30/publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scalaJava8Compat = SbtCommunityProject(
@@ -520,21 +536,24 @@ object projects:
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
     sbtDocCommand = "verifyJVM/doc",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") // TODO enable -Xcheck-macros
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
+    // TODO enable -Xcheck-macros
   )
 
   lazy val discipline = SbtCommunityProject(
     project = "discipline",
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
-    dependencies = List(scalacheck)
+    dependencies = List(scalacheck),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" ,
   )
 
   lazy val disciplineMunit = SbtCommunityProject(
     project = "discipline-munit",
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
-    dependencies = List(discipline, munit)
+    dependencies = List(discipline, munit),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val disciplineSpecs2 = SbtCommunityProject(
@@ -542,13 +561,14 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init")
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init") :+ "-Yexplicit-nulls" ,
   )
 
   lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
     project = "simulacrum-scalafix",
     sbtTestCommand = "annotation/test:compile;annotationJS/test:compile",
     sbtPublishCommand = "annotation/publishLocal;annotationJS/publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" ,
   )
 
   lazy val cats = SbtCommunityProject(
@@ -564,14 +584,16 @@ object projects:
     project = "cats-mtl",
     sbtTestCommand = "testsJVM/test;testsJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal;lawsJVM/publishLocal;lawsJS/publishLocal",
-    dependencies = List(cats, disciplineMunit)
+    dependencies = List(cats, disciplineMunit),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val coop = SbtCommunityProject(
     project = "coop",
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
-    dependencies = List(cats, catsMtl)
+    dependencies = List(cats, catsMtl),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   // 'Sciss/Lucre' with its dependencies:
@@ -581,6 +603,7 @@ object projects:
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
     dependencies      = List(scalatest),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" ,
   )
 
   lazy val scissFingerTree = SbtCommunityProject(
@@ -588,12 +611,14 @@ object projects:
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
     dependencies      = List(scalatest),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" ,
   )
 
   lazy val scissLog = SbtCommunityProject(
     project           = "Log",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scissModel = SbtCommunityProject(
@@ -601,6 +626,7 @@ object projects:
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
     dependencies      = List(scalatest),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" ,
   )
 
   lazy val scissNumbers = SbtCommunityProject(
@@ -608,6 +634,7 @@ object projects:
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
     dependencies      = List(scalatest),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" ,
   )
 
   lazy val scissSerial = SbtCommunityProject(
@@ -615,6 +642,7 @@ object projects:
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
     dependencies      = List(scalatest),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scissAsyncFile = SbtCommunityProject(
@@ -622,6 +650,7 @@ object projects:
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
     dependencies      = List(scissLog, scalatest),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scissSpan = SbtCommunityProject(
@@ -629,6 +658,7 @@ object projects:
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
     dependencies      = List(scissSerial, scalatest),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" ,
   )
 
   lazy val scalaSTM = SbtCommunityProject(
@@ -636,6 +666,7 @@ object projects:
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
     dependencies      = List(scalatestplusJunit),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scissLucre = SbtCommunityProject(
@@ -644,13 +675,15 @@ object projects:
     extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;expr0JVM/publishLocal;expr1JVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
     dependencies      = List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val izumiReflect = SbtCommunityProject(
     project = "izumi-reflect",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(scalatest)
+    dependencies = List(scalatest),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val perspective = SbtCommunityProject(
@@ -658,20 +691,23 @@ object projects:
     // No library with easy typeclasses to verify data against exist for Dotty, so no tests yet
     // Until then I guess this mainly serves to check that it still compiles at all
     sbtTestCommand = "dottyPerspectiveExamples/compile",
-    dependencies = List(cats)
+    dependencies = List(cats),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val akka = SbtCommunityProject(
     project = "akka",
     extraSbtArgs = List(s"-Dakka.build.scalaVersion=$compilerVersion"),
     sbtTestCommand = "set every targetSystemJdk := true; akka-actor-tests/Test/compile",
-    dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
+    dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" ,
   )
 
   lazy val monocle = SbtCommunityProject(
     project = "Monocle",
     sbtTestCommand = "coreJVM/test; macrosJVM/test; testJVM/test",
-    dependencies = List(cats, munit, discipline, disciplineMunit)
+    dependencies = List(cats, munit, discipline, disciplineMunit),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val protoquill = SbtCommunityProject(
@@ -679,14 +715,15 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
     dependencies = List(), // TODO add scalatest and pprint (see protoquill/build.sbt)
-    scalacOptions = List("-language:implicitConversions"), // disabled -Ysafe-init, due to bug in macro
+    scalacOptions = List("-language:implicitConversions") :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
+    // disabled -Ysafe-init, due to bug in macro
   )
 
   lazy val onnxScala = SbtCommunityProject(
     project = "onnx-scala",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(scalatest)
+    dependencies = List(scalatest),
   )
 
   lazy val playJson = SbtCommunityProject(
@@ -694,55 +731,61 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
     dependencies = List(scalatest, scalatestplusScalacheck),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val munitCatsEffect = SbtCommunityProject(
     project = "munit-cats-effect",
     sbtTestCommand = "ce3JVM/test; ce3JS/test",
     sbtPublishCommand = "ce3JVM/publishLocal; ce3JS/publishLocal",
-    dependencies = List(munit, catsEffect3)
+    dependencies = List(munit, catsEffect3),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scalacheckEffect = SbtCommunityProject(
     project = "scalacheck-effect",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(cats, catsEffect3, munit, scalacheck)
+    dependencies = List(cats, catsEffect3, munit, scalacheck),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val fs2 = SbtCommunityProject(
     project = "fs2",
     sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
-    dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
+    dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val libretto = SbtCommunityProject(
     project = "libretto",
     sbtTestCommand = "core/test; examples/compile",
     sbtPublishCommand = "core/publishLocal; examples/publishLocal",
-    dependencies = List(scalatest)
+    dependencies = List(scalatest),
   )
 
   lazy val jacksonModuleScala = SbtCommunityProject(
     project = "jackson-module-scala",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(scalaJava8Compat, scalatest)
+    dependencies = List(scalaJava8Compat, scalatest),
   )
 
   lazy val specs2 = SbtCommunityProject(
     project = "specs2",
     sbtTestCommand = "core/testOnly -- exclude ci",
     sbtPublishCommand = "core/publishLocal",
-    dependencies = List()
+    dependencies = List(),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val spire = SbtCommunityProject(
     project = "spire",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(cats, disciplineMunit)
+    dependencies = List(cats, disciplineMunit),
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
 end projects
