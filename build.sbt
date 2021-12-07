@@ -22,7 +22,6 @@ val scaladoc = Build.scaladoc
 val `scaladoc-testcases` = Build.`scaladoc-testcases`
 val `scaladoc-js-common` = Build.`scaladoc-js-common`
 val `scaladoc-js-main` = Build.`scaladoc-js-main`
-val `scaladoc-js-markdown` = Build.`scaladoc-js-markdown`
 val `scaladoc-js-contributors` = Build.`scaladoc-js-contributors`
 val `scala3-bench-run` = Build.`scala3-bench-run`
 val dist = Build.dist
