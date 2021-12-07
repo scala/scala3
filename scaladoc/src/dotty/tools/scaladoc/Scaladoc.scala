@@ -60,7 +60,6 @@ object Scaladoc:
     generateInkuire : Boolean = false,
     apiSubdirectory : Boolean = false,
     scastieConfiguration: String = "",
-    projectFormat: String = "html",
     defaultTemplate: Option[String] = None,
   )
 
@@ -239,7 +238,6 @@ object Scaladoc:
         generateInkuire.get,
         apiSubdirectory.get,
         scastieConfiguration.get,
-        projectFormat.get,
         defaultTemplate.nonDefault
       )
       (Some(docArgs), newContext)
@@ -248,11 +246,6 @@ object Scaladoc:
   private [scaladoc] def run(args: Args)(using ctx: CompilerContext): DocContext =
     given docContext: DocContext = new DocContext(args, ctx)
     val module = ScalaModuleProvider.mkModule()
-
-    val renderer = args.projectFormat match
-      case "html" => new dotty.tools.scaladoc.renderers.HtmlRenderer(module.rootPackage, module.members)
-      case "md" => new dotty.tools.scaladoc.renderers.MarkdownRenderer(module.rootPackage, module.members)
-
-    renderer.render()
+    new dotty.tools.scaladoc.renderers.HtmlRenderer(module.rootPackage, module.members).render()
     report.inform("generation completed successfully")
     docContext

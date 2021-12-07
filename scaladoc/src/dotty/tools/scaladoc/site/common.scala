@@ -37,10 +37,7 @@ def defaultMarkdownOptions(using ctx: StaticSiteContext): DataHolder =
       YamlFrontMatterExtension.create(),
       StrikethroughExtension.create(),
       WikiLinkExtension.create(),
-      (ctx.args.projectFormat match
-        case "html" => tasty.comments.markdown.SnippetRenderingExtension
-        case "md" => tasty.comments.markdown.SnippetFormattingExtension
-      ),
+      tasty.comments.markdown.SnippetRenderingExtension
     ))
 
 def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
