@@ -11,7 +11,8 @@ import Types._
 import Flags._
 import Decorators._
 import DenotTransformers._
-import core.StdNames.nme
+import StdNames.nme
+import NameKinds.SuperArgName
 import ast.Trees._
 import reporting.trace
 
@@ -51,7 +52,8 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
             if qual.tpe.derivesFrom(defn.Function0) && (isPureExpr(qual) || qual.symbol.isAllOf(Inline | Param)) =>
               wrap(qual)
             case _ =>
-              if (isByNameRef(arg) || arg.symbol == defn.cbnArg) arg
+              if isByNameRef(arg) || arg.symbol == defn.cbnArg || arg.symbol.name.is(SuperArgName)
+              then arg
               else wrap(mkByNameClosure(arg, argType))
           }
         case _ =>
