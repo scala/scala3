@@ -976,4 +976,13 @@ class CompletionTest {
               ("main", Module, "main")
             )
           )
+
+  @Test def i13623_annotation : Unit =
+    code"""import annot${m1}"""
+          .withSource
+          .completion(m1,
+            Set(
+              ("annotation", Module, "scala.annotation")
+            )
+          )
 }
