@@ -174,17 +174,11 @@ final class main(maxLineLength: Int) extends MainAnnotation:
             error(s"more than one value for $argName: ${multValues.mkString(", ")}")
         }
 
-      private def getAnnotationData[T](paramInfos: ParameterInfos[_], extractor: Arg => T): Option[T] =
-        paramInfos.annotation match {
-          case Some(annot: Arg) => Some(extractor(annot))
-          case _ => None
-        }
-
       private inline def getEffectiveName(paramInfos: ParameterInfos[_]): String =
-        getAnnotationData(paramInfos, _.name).filter(_.length > 0).getOrElse(paramInfos.name)
+        paramInfos.annotations.collectFirst{ case arg: Arg if arg.name.length > 0 => arg.name }.getOrElse(paramInfos.name)
 
       private inline def getShortName(paramInfos: ParameterInfos[_]): Option[Char] =
-        getAnnotationData(paramInfos, _.shortName).filterNot(_ == 0)
+        paramInfos.annotations.collectFirst{ case arg: Arg if arg.shortName != 0 => arg.shortName }
 
       private def registerArg(paramInfos: ParameterInfos[_], argKind: ArgumentKind): Unit =
         argNames += getEffectiveName(paramInfos)
@@ -198,8 +192,8 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 
       override def argGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => T =
         val name = getEffectiveName(paramInfos)
-        val (defaultGetter, argumentKind) = paramInfos.defaultValue match {
-          case Some(value) => (() => () => value, ArgumentKind.OptionalArgument)
+        val (defaultGetter, argumentKind) = paramInfos.defaultValueOpt match {
+          case Some(value) => (() => value, ArgumentKind.OptionalArgument)
           case None => (() => error(s"missing argument for $name"), ArgumentKind.SimpleArgument)
         }
         registerArg(paramInfos, argumentKind)

@@ -47,7 +47,7 @@ import Annotations.Annotation
   */
 object MainProxies {
   private type DefaultValueSymbols = Map[Int, Symbol]
-  private type ParameterAnnotations = Vector[Option[Annotation]]
+  private type ParameterAnnotationss = Seq[Seq[Annotation]]
 
   def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
@@ -69,7 +69,7 @@ object MainProxies {
       }
 
     /** Computes the list of main methods present in the code. */
-    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, ParameterAnnotations, DefaultValueSymbols, Option[Comment])] = stats.flatMap {
+    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, ParameterAnnotationss, DefaultValueSymbols, Option[Comment])] = stats.flatMap {
       case stat: DefDef =>
         val sym = stat.symbol
         sym.annotations.filter(_.matches(defn.MainAnnot)) match {
@@ -77,11 +77,7 @@ object MainProxies {
             Nil
           case _ :: Nil =>
             val paramAnnotations = stat.paramss.flatMap(_.map(
-              valdef => valdef.symbol.annotations.filter(_.matches(defn.MainAnnotParameterAnnotation)) match {
-                case Nil => None
-                case paramAnnot :: Nil => Some(paramAnnot)
-                case paramAnnot :: others => report.error(s"parameters cannot have multiple annotations", paramAnnot.tree); None
-              }
+              valdef => valdef.symbol.annotations.filter(_.matches(defn.MainAnnotParameterAnnotation))
             ))
             (sym, paramAnnotations.toVector, defaultValueSymbols(scope, sym), stat.rawComment) :: Nil
           case mainAnnot :: others =>
@@ -99,7 +95,7 @@ object MainProxies {
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol, paramAnnotations: ParameterAnnotations, defaultValueSymbols: DefaultValueSymbols, docComment: Option[Comment])(using Context): List[TypeDef] = {
+  def mainProxy(mainFun: Symbol, paramAnnotations: ParameterAnnotationss, defaultValueSymbols: DefaultValueSymbols, docComment: Option[Comment])(using Context): List[TypeDef] = {
     val mainAnnot = mainFun.getAnnotation(defn.MainAnnot).get
     def pos = mainFun.sourcePos
     val mainArgsName: TermName = nme.args
@@ -110,6 +106,11 @@ object MainProxies {
     inline def lit(any: Any): Literal = Literal(Constant(any))
 
     inline def some(value: Tree): Tree = Apply(ref(defn.SomeClass.companionModule.termRef), value)
+
+    def unitToValue(value: Tree): Tree =
+      val anonName = nme.ANON_FUN
+      val defdef = DefDef(anonName, List(Nil), TypeTree(), value)
+      Block(defdef, Closure(Nil, Ident(anonName), EmptyTree))
 
     /**
       * Creates a list of references and definitions of arguments, the first referencing the second.
@@ -150,27 +151,24 @@ object MainProxies {
             /*
              * Assignations to be made after the creation of the ParameterInfos.
              * For example:
-             *   args0paramInfos.documentation = Some("my param x")
+             *   args0paramInfos.withDocumentation = Some("my param x")
              * is represented by the pair
-             *   ("documentation", some(lit("my param x")))
+             *   (defn.MainAnnotationParameterInfos_withDocumentation, some(lit("my param x")))
              */
-            var assignations: List[(String, Tree)] = Nil
+            var assignations: List[(Symbol, List[Tree])] = Nil
             for (dvSym <- defaultValueSymbols.get(n))
-              assignations = ("defaultValue" -> some(ref(dvSym.termRef))) :: assignations
-            for (annot <- paramAnnotations(n))
-              assignations = ("annotation" -> some(instanciateAnnotation(annot))) :: assignations
+              assignations = (defn.MainAnnotationParameterInfos_withDefaultValue -> List(unitToValue(ref(dvSym.termRef)))) :: assignations
             for (doc <- documentation.argDocs.get(param))
-              assignations = ("documentation" -> some(lit(doc))) :: assignations
+              assignations = (defn.MainAnnotationParameterInfos_withDocumentation -> List(lit(doc))) :: assignations
 
-            val assignationsTrees = assignations.map{
-              case (name, value) => Apply(Select(paramInfosIdent, defn.MainAnnotParameterInfos.requiredMethod(name + "_=").name), value)
-            }
+            val instanciatedAnnots = paramAnnotations(n).map(instanciateAnnotation).toList
+            if instanciatedAnnots.nonEmpty then
+              assignations = (defn.MainAnnotationParameterInfos_withAnnotations -> instanciatedAnnots) :: assignations
 
             if assignations.isEmpty then
               paramInfosTree
             else
-              val paramInfosInstance = ValDef(paramInfosName, TypeTree(), paramInfosTree)
-              Block(paramInfosInstance :: assignationsTrees, paramInfosIdent)
+              assignations.foldLeft[Tree](paramInfosTree){ case (tree, (setterSym, values)) => Apply(Select(tree, setterSym.name), values) }
           }
 
           val argDef = ValDef(

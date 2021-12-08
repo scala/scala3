@@ -25,19 +25,34 @@ trait MainAnnotation extends StaticAnnotation:
 end MainAnnotation
 
 object MainAnnotation:
-  /**
-    * The information related to one of the parameters of the annotated method.
-    * @param name the name of the parameter
-    * @param typeName the name of the parameter's type
-    * @tparam T the type of the parameter
-    */
-  class ParameterInfos[T](var name: String, var typeName: String):
+  // Inspired by https://github.com/scala-js/scala-js/blob/0708917912938714d52be1426364f78a3d1fd269/linker-interface/shared/src/main/scala/org/scalajs/linker/interface/StandardConfig.scala#L23-L218
+  final class ParameterInfos[T] private (
+    /** The name of the parameter */
+    val name: String,
+    /** The name of the parameter's type */
+    val typeName: String,
     /** The docstring of the parameter. Defaults to None. */
-    var documentation: Option[String] = None
+    val documentation: Option[String],
     /** The default value that the parameter has. Defaults to None. */
-    var defaultValue: Option[T] = None
-    /** If there is one, the ParameterAnnotation associated with the parameter. Defaults to None. */
-    var annotation: Option[ParameterAnnotation] = None
+    val defaultValueOpt: Option[() => T],
+    /** The ParameterAnnotations associated with the parameter. Defaults to Seq.empty. */
+    val annotations: Seq[ParameterAnnotation],
+  ) {
+    // Main public constructor
+    def this(name: String, typeName: String) =
+      this(name, typeName, None, None, Seq.empty)
+
+    def withDefaultValue(defaultValueGetter: () => T): ParameterInfos[T] =
+      new ParameterInfos(name, typeName, documentation, Some(defaultValueGetter), annotations)
+
+    def withDocumentation(doc: String): ParameterInfos[T] =
+      new ParameterInfos(name, typeName, Some(doc), defaultValueOpt, annotations)
+
+    def withAnnotations(annots: ParameterAnnotation*): ParameterInfos[T] =
+      new ParameterInfos(name, typeName, documentation, defaultValueOpt, annots)
+
+    override def toString: String = s"$name: $typeName"
+  }
 
   /** A class representing a command to run */
   trait Command[ArgumentParser[_], MainResultType]:
