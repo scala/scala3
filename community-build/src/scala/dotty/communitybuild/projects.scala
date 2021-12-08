@@ -342,7 +342,8 @@ object projects:
   lazy val betterfiles = SbtCommunityProject(
     project       = "betterfiles",
     sbtTestCommand   = "dotty-community-build/compile",
-    sbtDocCommand   = ";core/doc ;akka/doc ;shapelessScanner/doc"
+    sbtDocCommand   = ";core/doc ;akka/doc ;shapelessScanner/doc",
+    scalacOptions = SbtCommunityProject.scalacOptions :+ "-Yexplicit-nulls" :+ "-language:unsafeNulls",
   )
 
   lazy val scalaPB = SbtCommunityProject(
