@@ -7,6 +7,7 @@ import java.nio.file.{Path, Paths, Files}
 import scala.sys.process._
 
 import org.junit.Test
+import org.junit.Assert.assertEquals
 
 import vulpix.TestConfiguration
 
@@ -28,13 +29,13 @@ class BashScriptsTests:
   printf("scalac path: [%s]\n", scalacPath)
 
   lazy val expectedOutput = List(
-    "arg  0:[a]", 
-    "arg  1:[b]", 
-    "arg  2:[c]", 
-    "arg  3:[-repl]", 
-    "arg  4:[-run]", 
-    "arg  5:[-script]", 
-    "arg  6:[-debug]", 
+    "arg  0:[a]",
+    "arg  1:[b]",
+    "arg  2:[c]",
+    "arg  3:[-repl]",
+    "arg  4:[-run]",
+    "arg  5:[-script]",
+    "arg  6:[-debug]",
   )
   lazy val testScriptArgs = Seq(
     "a", "b", "c", "-repl", "-run", "-script", "-debug"
@@ -56,6 +57,38 @@ class BashScriptsTests:
       if fail then
         assert(stdout == expectedOutput)
 
+  /* verify `dist/bin/scala` with -J setting */
+  @Test def verifyScJProperty =
+    val commandline = Seq(scalaPath, "-J-Dkey=World", testFiles.find(_.getName == "envtest.sc").get.absPath).mkString(" ")
+    val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
+    assertEquals(stdout.mkString("/n"), "Hello World")
+
+  /* verify `dist/bin/scala` with -J setting */
+  @Test def verifyScalaJProperty =
+    val commandline = Seq(scalaPath, "-J-Dkey=World3", testFiles.find(_.getName == "envtest.scala").get.absPath).mkString(" ")
+    val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
+    assertEquals(stdout.mkString("/n"), "Hello World3")
+
+  /* verify `dist/bin/scala` with -D setting */
+  @Test def verifyScDProperty =
+    val commandline = Seq(scalaPath, "-Dkey=World3", testFiles.find(_.getName == "envtest.sc").get.absPath).mkString(" ")
+    val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
+    assertEquals(stdout.mkString("/n"), "Hello World3")
+
+  /* verify `dist/bin/scala` with -D setting */
+  @Test def verifyScalaDProperty =
+    val commandline = Seq(scalaPath, "-Dkey=World4", testFiles.find(_.getName == "envtest.scala").get.absPath).mkString(" ")
+    val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
+    assertEquals(stdout.mkString("/n"), "Hello World4")
+
+  /* verify `dist/bin/scala` with -D setting */
+  @Test def saveAndRunWithDProperty =
+    val commandline = Seq(scalaPath, "-save", testFiles.find(_.getName == "envtest.scala").get.absPath).mkString(" ")
+    val (_, _, _, _) = bashCommand(commandline)
+    val commandline2 = Seq(scalaPath, "-Dkey=World5", testFiles.find(_.getName == "envtest.jar").get.absPath).mkString(" ")
+    val (validTest, exitCode, stdout, stderr) = bashCommand(commandline2)
+    assertEquals(stdout.mkString("/n"), "Hello World5")
+
   /* verify `dist/bin/scala` non-interference with command line args following script name */
   @Test def verifyScalaArgs =
     val commandline = (Seq("SCALA_OPTS= ", scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
@@ -73,7 +106,7 @@ class BashScriptsTests:
         assert(stdout == expectedOutput)
 
   /*
-   * verify that scriptPath.sc sees a valid script.path property, 
+   * verify that scriptPath.sc sees a valid script.path property,
    * and that it's value is the path to "scriptPath.sc".
    */
   @Test def verifyScriptPathProperty =
@@ -192,7 +225,7 @@ class BashScriptsTests:
       val envPairs = testEnvPairs ++ additionalEnvPairs
       val proc = Process(cmd, None, envPairs *)
       val exitVal = proc ! ProcessLogger (
-        (out: String) => stdout ::= out, 
+        (out: String) => stdout ::= out,
         (err: String) => stderr ::= err
       )
       val validTest = exitVal == 0 && ! stderr.exists(_.contains("Permission denied"))

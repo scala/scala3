@@ -111,7 +111,7 @@ jobs:
 
       - name: Cmd Tests
         run: |
-          ./project/scripts/sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/bootstrapCmdTests
 
       - name: MiMa

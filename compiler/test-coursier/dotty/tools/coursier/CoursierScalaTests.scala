@@ -60,6 +60,13 @@ class CoursierScalaTests:
       assertTrue(output.mkString("\n").endsWith("scriptPath.sc"))
     scriptPath()
 
+    def scriptEnvDashJDashD() =
+      val scriptPath = scripts("/scripting").find(_.getName == "envtest.sc").get.absPath
+      val args = scriptPath
+      val output = CoursierScalaTests.csScalaCmd("-J-Dkey=World", args)
+      assertEquals(output.mkString("\n"), "Hello World")
+    scriptEnvDashJDashD()
+
     def version() =
       val output = CoursierScalaTests.csScalaCmd("-version")
       assertTrue(output.mkString("\n").contains(sys.env("DOTTY_BOOTSTRAPPED_VERSION")))
@@ -74,6 +81,11 @@ class CoursierScalaTests:
       val output = CoursierScalaTests.csScalaCmd("-classpath", scripts("/run").head.getParentFile.getParent, "-run", "run.myfile")
       assertEquals(output.mkString("\n"), "Hello")
     run()
+
+    def runDashJDashD() =
+      val output = CoursierScalaTests.csScalaCmd("-J-Dkey=World", "-classpath", scripts("/run").head.getParentFile.getParent, "-run", "run.envtest")
+      assertEquals(output.mkString("\n"), "Hello World")
+    runDashJDashD()
 
     def notOnlyOptionsEqualsRun() =
       val output = CoursierScalaTests.csScalaCmd("-classpath", scripts("/run").head.getParentFile.getParent, "run.myfile")
@@ -147,10 +159,12 @@ object CoursierScalaTests:
     csCmd("dotty.tools.dotc.Main", options*)
 
   private def csCmd(entry: String, options: String*): List[String] =
-    val newOptions = options match
-      case Nil => options
-      case _ => "--" +: options
-    execCmd("./cs", (s"""launch "org.scala-lang:scala3-compiler_3:${sys.env("DOTTY_BOOTSTRAPPED_VERSION")}" --main-class "$entry" --property "scala.usejavacp=true"""" +: newOptions)*)
+    val (jOpts, args) = options.partition(_.startsWith("-J"))
+    val newOptions = args match
+      case Nil => args
+      case _ => "--" +: args
+    val newJOpts = jOpts.map(s => s"--java-opt ${s.stripPrefix("-J")}").mkString(" ")
+    execCmd("./cs", (s"""launch "org.scala-lang:scala3-compiler_3:${sys.env("DOTTY_BOOTSTRAPPED_VERSION")}" $newJOpts --main-class "$entry" --property "scala.usejavacp=true"""" +: newOptions)*)
 
   /** Get coursier script */
   @BeforeClass def setup(): Unit =
