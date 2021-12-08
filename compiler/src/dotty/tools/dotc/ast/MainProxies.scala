@@ -46,31 +46,30 @@ import Annotations.Annotation
   *     }
   */
 object MainProxies {
-  private type DefaultValues = Map[Int, Tree[_]]
+  private type DefaultValueSymbols = Map[Int, Symbol]
   private type ParameterAnnotations = Vector[Option[Annotation]]
 
   def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
 
     /**
-      * Compute the default values of the function. Since they cannot be infered anymore at this point
-      * of the compilation, they must be explicitely passed by [[mainProxy]].
+      * Computes the symbols of the default values of the function. Since they cannot be infered anymore at this
+      * point of the compilation, they must be explicitely passed by [[mainProxy]].
       */
-    def defaultValues(scope: Tree, funSymbol: Symbol): DefaultValues =
+    def defaultValueSymbols(scope: Tree, funSymbol: Symbol): DefaultValueSymbols =
       scope match {
         case TypeDef(_, template: Template) =>
           template.body.flatMap((_: Tree) match {
             case dd @ DefDef(name, _, _, _) if name.is(DefaultGetterName) && name.firstPart == funSymbol.name =>
               val index: Int = name.toString.split("\\$").last.toInt - 1 // FIXME please!!
-              val valueTree = dd.rhs
-              List(index -> valueTree)
+              List(index -> dd.symbol)
             case _ => List()
           }).toMap
-        case _ => Map[Int, Tree]()
+        case _ => Map.empty
       }
 
     /** Computes the list of main methods present in the code. */
-    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, ParameterAnnotations, DefaultValues, Option[Comment])] = stats.flatMap {
+    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, ParameterAnnotations, DefaultValueSymbols, Option[Comment])] = stats.flatMap {
       case stat: DefDef =>
         val sym = stat.symbol
         sym.annotations.filter(_.matches(defn.MainAnnot)) match {
@@ -84,7 +83,7 @@ object MainProxies {
                 case paramAnnot :: others => report.error(s"parameters cannot have multiple annotations", paramAnnot.tree); None
               }
             ))
-            (sym, paramAnnotations.toVector, defaultValues(scope, sym), stat.rawComment) :: Nil
+            (sym, paramAnnotations.toVector, defaultValueSymbols(scope, sym), stat.rawComment) :: Nil
           case mainAnnot :: others =>
             report.error(s"method cannot have multiple main annotations", mainAnnot.tree)
             Nil
@@ -100,7 +99,7 @@ object MainProxies {
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol, paramAnnotations: ParameterAnnotations, defaultValues: DefaultValues, docComment: Option[Comment])(using Context): List[TypeDef] = {
+  def mainProxy(mainFun: Symbol, paramAnnotations: ParameterAnnotations, defaultValueSymbols: DefaultValueSymbols, docComment: Option[Comment])(using Context): List[TypeDef] = {
     val mainAnnot = mainFun.getAnnotation(defn.MainAnnot).get
     def pos = mainFun.sourcePos
     val mainArgsName: TermName = nme.args
@@ -124,7 +123,6 @@ object MainProxies {
           val argName = mainArgsName ++ n.toString
 
           val isRepeated = formal.isRepeatedParam
-          val defaultValue = defaultValues.get(n)
 
           var argRef: Tree = Apply(Ident(argName), Nil)
           var formalType = formal
@@ -157,8 +155,8 @@ object MainProxies {
              *   ("documentation", some(lit("my param x")))
              */
             var assignations: List[(String, Tree)] = Nil
-            for (dv <- defaultValue)
-              assignations = ("defaultValue" -> some(dv)) :: assignations
+            for (dvSym <- defaultValueSymbols.get(n))
+              assignations = ("defaultValue" -> some(ref(dvSym.termRef))) :: assignations
             for (annot <- paramAnnotations(n))
               assignations = ("annotation" -> some(instanciateAnnotation(annot))) :: assignations
             for (doc <- documentation.argDocs.get(param))

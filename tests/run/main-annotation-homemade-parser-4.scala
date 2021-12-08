@@ -22,9 +22,9 @@ given [T : FromString]: FromString[Either[T, String]] with
 
 object myProgram:
 
-  @main def getOption(o: Option[Int] = Some[Int](42)) = println(o)
+  @main def getOption(o: Option[Int] = Some(42)) = println(o)
 
-  @main def getEither(e: Either[Int, String] = Right[Int, String]("No argument given")) = println(e)
+  @main def getEither(e: Either[Int, String] = Right("No argument given")) = println(e)
 
 end myProgram
 
