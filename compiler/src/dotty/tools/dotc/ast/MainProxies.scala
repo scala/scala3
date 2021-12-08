@@ -46,6 +46,8 @@ import Annotations.Annotation
   *     }
   */
 object MainProxies {
+  private type DefaultValues = Map[Int, Tree[_]]
+  private type ParameterAnnotations = Vector[Option[Annotation]]
 
   def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
@@ -54,7 +56,7 @@ object MainProxies {
       * Compute the default values of the function. Since they cannot be infered anymore at this point
       * of the compilation, they must be explicitely passed by [[mainProxy]].
       */
-    def defaultValues(scope: Tree, funSymbol: Symbol): Map[Int, Tree] =
+    def defaultValues(scope: Tree, funSymbol: Symbol): DefaultValues =
       scope match {
         case TypeDef(_, template: Template) =>
           template.body.flatMap((_: Tree) match {
@@ -68,7 +70,7 @@ object MainProxies {
       }
 
     /** Computes the list of main methods present in the code. */
-    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, Vector[Option[Annotation]], Map[Int, Tree], Option[Comment])] = stats.flatMap {
+    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, ParameterAnnotations, DefaultValues, Option[Comment])] = stats.flatMap {
       case stat: DefDef =>
         val sym = stat.symbol
         sym.annotations.filter(_.matches(defn.MainAnnot)) match {
@@ -98,7 +100,7 @@ object MainProxies {
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol, paramAnnotations: Vector[Option[Annotation]], defaultValues: Map[Int, Tree], docComment: Option[Comment])(using Context): List[TypeDef] = {
+  def mainProxy(mainFun: Symbol, paramAnnotations: ParameterAnnotations, defaultValues: DefaultValues, docComment: Option[Comment])(using Context): List[TypeDef] = {
     val mainAnnot = mainFun.getAnnotation(defn.MainAnnot).get
     def pos = mainFun.sourcePos
     val mainArgsName: TermName = nme.args
