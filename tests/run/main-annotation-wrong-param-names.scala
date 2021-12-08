@@ -14,9 +14,8 @@ object Test:
     method.invoke(null, args)
 
   def main(args: Array[String]): Unit =
-    callMain(Array("-n", "1", "-i", "10"))
     callMain(Array("--n", "1", "--i", "10"))
-    callMain(Array("-num", "1", "--inc", "10"))
-    callMain(Array("--num", "1", "-inc", "10"))
     callMain(Array("num", "1", "inc", "10"))
+    callMain(Array("--something", "1", "10"))
+    callMain(Array("1", "--else", "10"))
 end Test

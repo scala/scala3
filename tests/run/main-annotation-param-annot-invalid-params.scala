@@ -3,11 +3,11 @@ import java.lang.reflect.InvocationTargetException
 object myProgram:
 
   @main def space(
-    @main.Arg(shortName = ' ') i: Int,
+    @main.ShortName(' ') i: Int,
   ): Unit = ()
 
   @main def nonLetter(
-    @main.Arg(shortName = '1') i: Int,
+    @main.ShortName('1') i: Int,
   ): Unit = ()
 
 end myProgram
