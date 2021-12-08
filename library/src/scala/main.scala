@@ -33,6 +33,9 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 
   override def command(args: Array[String], commandName: String, docComment: String) =
     new Command[ArgumentParser, MainResultType]:
+      private val argMarker = "--"
+      private val shortArgMarker = "-"
+
       private var argNames = new mutable.ArrayBuffer[String]
       private var argShortNames = new mutable.ArrayBuffer[Option[Char]]
       private var argTypes = new mutable.ArrayBuffer[String]
@@ -55,8 +58,8 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 
       private def isArgNameAt(idx: Int): Boolean =
         val arg = args(argIdx)
-        val isFullName = arg.startsWith("--")
-        val isShortName = arg.startsWith("-") && arg.length == 2 && shortNameIsValid(arg(1))
+        val isFullName = arg.startsWith(argMarker)
+        val isShortName = arg.startsWith(shortArgMarker) && arg.length == 2 && shortNameIsValid(arg(1))
 
         isFullName || isShortName
 
@@ -76,7 +79,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 
       private def argUsage(pos: Int): String =
         val name = argNames(pos)
-        val namePrint = argShortNames(pos).map(short => s"[-$short | --$name]").getOrElse(s"[--$name]")
+        val namePrint = argShortNames(pos).map(short => s"[$shortArgMarker$short | $argMarker$name]").getOrElse(s"[$argMarker$name]")
 
         argKinds(pos) match {
           case ArgumentKind.SimpleArgument => s"$namePrint <${argTypes(pos)}>"
@@ -153,8 +156,8 @@ final class main(maxLineLength: Int) extends MainAnnotation:
           val i = args.indexOf(s, from)
           if i < 0 then Seq() else i +: allIndicesOf(s, i + 1)
 
-        val indices = allIndicesOf(s"--$argName", 0)
-        val indicesShort = shortArgName.map(shortName => allIndicesOf(s"-$shortName", 0)).getOrElse(Seq())
+        val indices = allIndicesOf(s"$argMarker$argName", 0)
+        val indicesShort = shortArgName.map(shortName => allIndicesOf(s"$shortArgMarker$shortName", 0)).getOrElse(Seq())
         (indices ++: indicesShort).filter(_ >= 0)
 
       private def getArgGetter[T](paramInfos: ParameterInfos[_], getDefaultGetter: () => () => T)(using p: ArgumentParser[T]): () => T =
@@ -190,7 +193,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         argKinds += argKind
 
         val shortName = getShortName(paramInfos)
-        shortName.foreach(c => if !shortNameIsValid(c) then throw IllegalArgumentException(s"Invalid short name: -$c"))
+        shortName.foreach(c => if !shortNameIsValid(c) then throw IllegalArgumentException(s"Invalid short name: $shortArgMarker$c"))
         argShortNames += shortName
 
       override def argGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => T =
@@ -223,12 +226,12 @@ final class main(maxLineLength: Int) extends MainAnnotation:
           case None =>
             for
               arg <- args
-              if arg.startsWith("--") && !argNames.contains(arg.drop(2))
+              if arg.startsWith(argMarker) && !argNames.contains(arg.drop(2))
             do
               error(s"unknown argument name: $arg")
         end flagUnused
 
-        if args.contains("--help") then
+        if args.contains(s"${argMarker}help") then
           usage()
           println()
           explain()
