@@ -667,8 +667,18 @@ object Erasure {
       def mapOwner(sym: Symbol): Symbol =
         if !sym.exists && tree.name == nme.apply then
           // PolyFunction apply Selects will not have a symbol, so deduce the owner
-          // from the typed the erasure of the original qualifier.
-          val owner = erasure(tree.qualifier.typeOpt).typeSymbol
+          // from the typed tree of the erasure of the original qualifier's PolyFunction type.
+          // Need to sidestep information loss in the erasure of AndTypes, see pos/i13950.scala.
+          val polyFunctionQualType = inContext(preErasureCtx) {
+            def narrowToPolyFun(tp: Type)(using Context): Type =
+              if tp.derivesFrom(defn.PolyFunctionClass) then
+                tp match
+                  case AndType(tp1, tp2) => narrowToPolyFun(tp1).orElse(narrowToPolyFun(tp2))
+                  case _ => tp
+              else NoType
+            narrowToPolyFun(tree.qualifier.typeOpt.widen)
+          }
+          val owner = erasure(polyFunctionQualType).typeSymbol
           if defn.isFunctionClass(owner) then owner else NoSymbol
         else
           val owner = sym.maybeOwner
@@ -687,7 +697,7 @@ object Erasure {
 
       val owner = mapOwner(origSym)
       val sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
-      assert(sym.exists, origSym.showLocated)
+      assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
 
       if owner == defn.ObjectClass then checkValue(qual1)
 
