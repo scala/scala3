@@ -1662,7 +1662,7 @@ class Typer extends Namer
       val pat1 = indexPattern(tree).transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
       var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
-      if ctx.gadt.nonEmpty then
+      if ctx.gadt.isNarrowing then
         // Store GADT constraint to later retrieve it (in PostTyper, for now).
         // GADT constraints are necessary to correctly check bounds of type app,
         // see tests/pos/i12226 and issue #12226. It might be possible that this
@@ -3824,7 +3824,7 @@ class Typer extends Namer
 
       pt match
         case pt: SelectionProto =>
-          if ctx.gadt.nonEmpty then
+          if ctx.gadt.isNarrowing then
             // try GADT approximation if we're trying to select a member
             // Member lookup cannot take GADTs into account b/c of cache, so we
             // approximate types based on GADT constraints instead. For an example,
