@@ -75,4 +75,7 @@ i13842.scala
 # GADT cast applied to singleton type difference
 i4176-gadt.scala
 
+# GADT difference
+i13974a.scala
+
 java-inherited-type1
