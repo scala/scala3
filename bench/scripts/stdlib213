@@ -3,5 +3,5 @@ set -e
 pattern="! -name AnyVal.scala ! -name language.scala -name *.scala -o -name *.java"
 stdlib213=$(find $PROG_HOME/dotty/community-build/community-projects/stdLib213/src/library/scala $pattern)
 cd $PROG_HOME/dotty
-measure -language:implicitConversions $stdlib213
+measure -- -language:implicitConversions $stdlib213
 

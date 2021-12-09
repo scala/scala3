@@ -5,4 +5,4 @@ mkdir -p "$out"
 
 compile -d "$out" "$PROG_HOME/dotty/tests/bench/implicit_cache.scala"
 
-measure -from-tasty "$out/Test.tasty" "$out/A.tasty" "$out/Foo.tasty"
+measure -- -from-tasty "$out/Test.tasty" "$out/A.tasty" "$out/Foo.tasty"

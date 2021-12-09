@@ -4,4 +4,4 @@ mkdir -p "$PROG_HOME/tests/power-macro/out"
 
 compile -d "$PROG_HOME/tests/power-macro/out" "$PROG_HOME/dotty/tests/bench/power-macro/PowerMacro.scala"
 
-measure "$PROG_HOME/dotty/tests/bench/power-macro/PowerInlined-1k.scala" -classpath "$PROG_HOME/tests/power-macro/out"
+measure -- "$PROG_HOME/dotty/tests/bench/power-macro/PowerInlined-1k.scala" -classpath "$PROG_HOME/tests/power-macro/out"
