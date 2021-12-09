@@ -56,28 +56,28 @@ charts:
 scripts:
 
     patmatexhaust:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/patmatexhaust.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/patmatexhaust.scala
 
     exhaustivity-I:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/exhaustivity-I.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/exhaustivity-I.scala
 
     exhaustivity-S:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/exhaustivity-S.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/exhaustivity-S.scala
 
     exhaustivity-T:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/exhaustivity-T.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/exhaustivity-T.scala
 
     exhaustivity-V:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/exhaustivity-V.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/exhaustivity-V.scala
 
     exhaustivity-mips:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/patmat/i7186.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/patmat/i7186.scala
 
     exhaustivity-i12241:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/patmat/i12241.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/patmat/i12241.scala
 
     exhaustivity-i12358:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/patmat/i12358.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/patmat/i12358.scala
 
     exhaustivity-i13565:
         - measure 20 40 3 $PROG_HOME/dotty/tests/pos/i13565.scala
