@@ -1,3 +1,0 @@
-class Outer {
-  class Inner
-}
