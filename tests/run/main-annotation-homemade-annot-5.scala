@@ -1,6 +1,6 @@
 import scala.annotation.MainAnnotation
 
-@mainManyArgs(Some[Int](1)) def foo() = println("Hello world!")
+@mainManyArgs(Some(1)) def foo() = println("Hello world!")
 @mainManyArgs(None) def bar() = println("Hello world!")
 
 object Test:

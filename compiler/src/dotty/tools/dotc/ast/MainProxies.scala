@@ -184,16 +184,16 @@ object MainProxies {
     /** Turns an annotation (e.g. `@main(40)`) into an instance of the class (e.g. `new scala.main(40)`). */
     def instanciateAnnotation(annot: Annotation): Tree =
       val argss = {
-        def recurse(t: Tree, acc: List[List[Tree]]): List[List[Tree]] = t match {
-          case Apply(t, args: List[Tree]) => recurse(t, extractArgs(args) :: acc)
+        def recurse(t: tpd.Tree, acc: List[List[Tree]]): List[List[Tree]] = t match {
+          case Apply(t, args: List[tpd.Tree]) => recurse(t, extractArgs(args) :: acc)
           case _ => acc
         }
 
-        def extractArgs(args: List[Tree]): List[Tree] =
+        def extractArgs(args: List[tpd.Tree]): List[Tree] =
           args.flatMap {
-            case Typed(SeqLiteral(varargs, _), _) => varargs
-            case arg @ Select(_, name) => if name.is(DefaultGetterName) then List() else List(arg)
-            case arg => List(arg)
+            case Typed(SeqLiteral(varargs, _), _) => varargs.map(arg => TypedSplice(arg))
+            case arg @ Select(_, name) => if name.is(DefaultGetterName) then List() else List(TypedSplice(arg))
+            case arg => List(TypedSplice(arg))
           }
 
         recurse(annot.tree, Nil)
