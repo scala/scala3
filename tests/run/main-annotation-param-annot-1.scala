@@ -23,9 +23,26 @@ object myProgram:
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
-  @main def mix(
+  @main def mix1(
     @main.Name("myNum") @main.ShortName('n') num: Int,
     @main.ShortName('i') @main.Name("myInc") inc: Int
+  ): Unit =
+    println(s"$num + $inc = ${num + inc}")
+
+  def myNum: String = "myNum"
+  def myShortNum = {
+    var short = 'a'
+    for i <- 0 until 'n' - 'a'
+    do
+      short = (short.toInt + 1).toChar
+    short
+  }
+  def myInc = {new Exception("myInc")}.getMessage
+  def myShortInc = () => 'i'
+
+  @main def mix2(
+    @main.Name(myNum) @main.ShortName(myShortNum) num: Int,
+    @main.ShortName(myShortInc()) @main.Name(myInc) inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 end myProgram
@@ -54,12 +71,20 @@ object Test:
     callMain("shortName2", Array("--num", "2", "-i", "3"))
     callMain("shortName2", Array("-n", "2", "-i", "3"))
 
-    callMain("mix", Array("--num", "2", "--inc", "3"))
-    callMain("mix", Array("-n", "2", "--inc", "3"))
-    callMain("mix", Array("--num", "2", "-i", "3"))
-    callMain("mix", Array("-n", "2", "-i", "3"))
-    callMain("mix", Array("--myNum", "2", "--myInc", "3"))
-    callMain("mix", Array("-n", "2", "--myInc", "3"))
-    callMain("mix", Array("--myNum", "2", "-i", "3"))
-    callMain("mix", Array("-n", "2", "-i", "3"))
+    callMain("mix1", Array("--num", "2", "--inc", "3"))
+    callMain("mix1", Array("-n", "2", "--inc", "3"))
+    callMain("mix1", Array("--num", "2", "-i", "3"))
+    callMain("mix1", Array("-n", "2", "-i", "3"))
+    callMain("mix1", Array("--myNum", "2", "--myInc", "3"))
+    callMain("mix1", Array("-n", "2", "--myInc", "3"))
+    callMain("mix1", Array("--myNum", "2", "-i", "3"))
+    callMain("mix1", Array("-n", "2", "-i", "3"))
+    callMain("mix2", Array("--num", "2", "--inc", "3"))
+    callMain("mix2", Array("-n", "2", "--inc", "3"))
+    callMain("mix2", Array("--num", "2", "-i", "3"))
+    callMain("mix2", Array("-n", "2", "-i", "3"))
+    callMain("mix2", Array("--myNum", "2", "--myInc", "3"))
+    callMain("mix2", Array("-n", "2", "--myInc", "3"))
+    callMain("mix2", Array("--myNum", "2", "-i", "3"))
+    callMain("mix2", Array("-n", "2", "-i", "3"))
 end Test
