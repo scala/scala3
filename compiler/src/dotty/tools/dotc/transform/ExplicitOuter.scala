@@ -177,7 +177,7 @@ object ExplicitOuter {
           else prefix.widen)
     val info = if (flags.is(Method)) ExprType(target) else target
     atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
-      newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
+      newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord)
     }
   }
 
