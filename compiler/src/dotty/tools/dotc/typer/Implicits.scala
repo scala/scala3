@@ -330,11 +330,25 @@ object Implicits:
       (this eq finalImplicits) || (outerImplicits eq finalImplicits)
     }
 
+    private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
+      if ownEligible.isEmpty then outerEligible
+      else if outerEligible.isEmpty then ownEligible
+      else
+        val shadowed = ownEligible.map(_.ref.implicitName).toSet
+        ownEligible ::: outerEligible.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
+
+    def uncachedEligible(tp: Type)(using Context): List[Candidate] =
+      Stats.record("uncached eligible")
+      if monitored then record(s"check uncached eligible refs in irefCtx", refs.length)
+      val ownEligible = filterMatching(tp)
+      if isOuterMost then ownEligible
+      else combineEligibles(ownEligible, outerImplicits.uncachedEligible(tp))
+
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[Candidate] =
       if (tp.hash == NotCached)
         Stats.record(i"compute eligible not cached ${tp.getClass}")
-        Stats.record(i"compute eligible not cached")
+        Stats.record("compute eligible not cached")
         computeEligible(tp)
       else {
         val eligibles = eligibleCache.lookup(tp)
@@ -354,14 +368,8 @@ object Implicits:
     private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
-      if (isOuterMost) ownEligible
-      else if ownEligible.isEmpty then outerImplicits.eligible(tp)
-      else
-        val outerEligible = outerImplicits.eligible(tp)
-        if outerEligible.isEmpty then ownEligible
-        else
-          val shadowed = ownEligible.map(_.ref.implicitName).toSet
-          ownEligible ::: outerEligible.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
+      if isOuterMost then ownEligible
+      else combineEligibles(ownEligible, outerImplicits.eligible(tp))
     }
 
     override def isAccessible(ref: TermRef)(using Context): Boolean =
@@ -1444,7 +1452,12 @@ trait Implicits:
         NoMatchingImplicitsFailure
       else
         val eligible =
-          if contextual then ctx.implicits.eligible(wildProto)
+          if contextual then
+            if ctx.gadt.isNarrowing then
+              withoutMode(Mode.ImplicitsEnabled) {
+                ctx.implicits.uncachedEligible(wildProto)
+              }
+            else ctx.implicits.eligible(wildProto)
           else implicitScope(wildProto).eligible
         searchImplicit(eligible, contextual) match
           case result: SearchSuccess =>
