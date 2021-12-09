@@ -41,7 +41,7 @@ class ClasspathTests:
 
       cmd.foreach { printf("[%s]\n", _) }
 
-      // test script reports the classpath it sees 
+      // test script reports the classpath it sees
       val scriptOutput = exec(cmd:_*)
       val scriptCwd = findTaggedLine("cwd", scriptOutput)
       printf("script ran in directory [%s]\n", scriptCwd)
@@ -49,7 +49,7 @@ class ClasspathTests:
 
       val hashbangClasspathJars = scriptCp.split(psep).map { _.getName }.sorted.distinct
       val packlibJars = listJars(s"$scriptCwd/$packLibDir").sorted.distinct
-     
+
       printf("%d jar files in dist/target/pack/lib\n", packlibJars.size)
       printf("%d test script jars in classpath\n", hashbangClasspathJars.size)
 
@@ -78,7 +78,7 @@ class ClasspathTests:
 
       cmd.foreach { printf("[%s]\n", _) }
 
-      // test script reports the classpath it sees 
+      // test script reports the classpath it sees
       val scriptOutput = exec(cmd:_*)
       val scriptCp = findTaggedLine("unglobbed classpath", scriptOutput)
       val classpathJars = scriptCp.split(psep).map { _.getName }.sorted.distinct
