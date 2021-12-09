@@ -369,6 +369,7 @@ object NameKinds {
   val FieldName: SuffixNameKind = new SuffixNameKind(FIELD, "$$local") {
       override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString
   }
+  val ExplicitFieldName: SuffixNameKind = new SuffixNameKind(EXPLICITFIELD, "$field")
   val ExtMethName: SuffixNameKind = new SuffixNameKind(EXTMETH, "$extension")
   val ParamAccessorName: SuffixNameKind = new SuffixNameKind(PARAMACC, "$accessor")
   val ModuleClassName: SuffixNameKind = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
