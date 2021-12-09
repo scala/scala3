@@ -244,7 +244,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         checkNamesDuplicates(argShortNamess.last)
 
       override def argGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => T =
-        val dvOpt = paramInfos.defaultValueOpt
+        val dvOpt = paramInfos.defaultValueGetterOpt
         registerArg(paramInfos, if dvOpt.nonEmpty then ArgumentKind.OptionalArgument else ArgumentKind.SimpleArgument)
 
         // registerArg placed all infos in the respective buffers

@@ -34,7 +34,7 @@ object MainAnnotation:
     /** The docstring of the parameter. Defaults to None. */
     val documentation: Option[String],
     /** The default value that the parameter has. Defaults to None. */
-    val defaultValueOpt: Option[() => T],
+    val defaultValueGetterOpt: Option[() => T],
     /** The ParameterAnnotations associated with the parameter. Defaults to Seq.empty. */
     val annotations: Seq[ParameterAnnotation],
   ) {
@@ -46,10 +46,10 @@ object MainAnnotation:
       new ParameterInfos(name, typeName, documentation, Some(defaultValueGetter), annotations)
 
     def withDocumentation(doc: String): ParameterInfos[T] =
-      new ParameterInfos(name, typeName, Some(doc), defaultValueOpt, annotations)
+      new ParameterInfos(name, typeName, Some(doc), defaultValueGetterOpt, annotations)
 
     def withAnnotations(annots: ParameterAnnotation*): ParameterInfos[T] =
-      new ParameterInfos(name, typeName, documentation, defaultValueOpt, annots)
+      new ParameterInfos(name, typeName, documentation, defaultValueGetterOpt, annots)
 
     override def toString: String = s"$name: $typeName"
   }
