@@ -24,6 +24,7 @@ import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.util.{NameTransformer, NoSourcePosition, SourcePosition}
 
 import scala.collection.mutable
+import scala.util.control.NonFatal
 
 /**
  * One of the results of a completion query.
@@ -223,11 +224,11 @@ object Completion {
         // import java.lang.annotation
         //    is shadowed by
         // import scala.annotation
-        def isJavaLangAndScala =  denotss match
-          case List(first, second) =>
-            isScalaPackage(first) && isJavaLangPackage(second) ||
-            isScalaPackage(second) && isJavaLangPackage(first)
-          case _ => false
+        def isJavaLangAndScala =
+          try
+            denotss.forall(denots => isScalaPackage(denots) || isJavaLangPackage(denots))
+          catch
+            case NonFatal(_) => false
 
         denotss.find(!_.ctx.isImportContext) match {
           // most deeply nested member or local definition if not shadowed by an import
