@@ -1540,7 +1540,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       inlineIfNeeded(tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
-      assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
       val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       val reducedProjection = reducer.reduceProjection(resNoReduce)
