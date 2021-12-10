@@ -1,12 +1,15 @@
 class A:
   def greeting(name: String = "you") = s"Hello $name"
 
+class A2:
+  inline def greeting(name: String = "you") = s"Hello $name"
+
 class B:
   val a = A()
   export a.*
 
 class C:
-  val a = A()
+  val a = A2()
   export a.greeting
 
 @main def Test =
@@ -26,6 +29,7 @@ class C:
   import w.given
 
   println(summon[String]) // error: I found: w.bark(/* missing */summon[String])
+
 
 class Dog:
   given bark(using msg: String = "Woof!"): String = s"bark: $msg"
