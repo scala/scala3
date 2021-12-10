@@ -87,14 +87,27 @@ can alternatively be expressed like this:
 ```scala
 def m(x: T): U throws E
 ```
-Multiple `CanThrow` capabilities can be combined in a single throws clause. For instance, the method
-```scala
-def m2(x: T)(using CanThrow[E1], CanThrow[E2]): U
-```
-can alternatively be expressed like this:
+Also the capability to throw multiple types of exceptions can be expressed in a few ways as shown in the examples below:
 ```scala
 def m(x: T): U throws E1 | E2
+def m(x: T): U throws E1 throws E2
+def m(x: T)(using CanThrow[E1], CanThrow[E2]): U
+def m(x: T)(using CanThrow[E1])(using CanThrow[E2]): U
+def m(x: T)(using CanThrow[E1]): U throws E2
 ```
+
+**Note 1:** A signature like
+```scala
+def m(x: T)(using CanThrow[E1 | E2]): U
+```
+would also allow throwing `E1` or `E2` inside the method's body but might cause problems when someone tried to call this method
+from another method declaring its `CanThrow` capabilities like in the earlier examples.
+This is because `CanThrow` has a contravariant type parameter so `CanThrow[E1 | E2]` is a subtype of both `CanThrow[E1]` and `CanThrow[E2]`.
+Hence the presence of a given instance of `CanThrow[E1 | E2]` in scope satisfies the requirement for `CanThrow[E1]` and `CanThrow[E2]`
+but given instances of `CanThrow[E1]` and `CanThrow[E2]` cannot be combined to provide and instance of `CanThrow[E1 | E2]`.
+
+**Note 2:** One should keep in mind that `|` binds its left and right arguments more tightly than `throws` so `A | B throws E1 | E2` means `(A | B) throws (Ex1 | Ex2)`, not `A | (B throws E1) | E2`.
+
 The `CanThrow`/`throws` combo essentially propagates the `CanThrow` requirement outwards. But where are these capabilities created in the first place? That's in the `try` expression. Given a `try` like this:
 
 ```scala
@@ -105,17 +118,29 @@ catch
   ...
   case exN: ExN => handlerN
 ```
-the compiler generates capabilities for `CanThrow[Ex1]`, ..., `CanThrow[ExN]` that are in scope as givens in `body`. It does this by augmenting the `try` roughly as follows:
+the compiler generates an accumulated capability of type `CanThrow[Ex1 | ... | Ex2]` that is available as a given in the scope of `body`. It does this by augmenting the `try` roughly as follows:
 ```scala
 try
-  erased given CanThrow[Ex1] = ???
-  ...
-  erased given CanThrow[ExN] = ???
+  erased given CanThrow[Ex1 | ... | ExN] = ???
   body
 catch ...
 ```
-Note that the right-hand side of all givens is `???` (undefined). This is OK since
-these givens are erased; they will not be executed at runtime.
+Note that the right-hand side of the synthesized given is `???` (undefined). This is OK since
+this given is erased; it will not be executed at runtime.
+
+**Note 1:** The `saferExceptions` feature is designed to work only with checked exceptions. An exception type is _checked_ if it is a subtype of
+`Exception` but not of `RuntimeException`. The signature of `CanThrow` still admits `RuntimeException`s since `RuntimeException` is a proper subtype of its bound, `Exception`. But no capabilities will be generated for `RuntimeException`s. Furthermore, `throws` clauses
+also may not refer to `RuntimeException`s.
+
+**Note 2:** To keep things simple, the compiler will currently only generate capabilities
+for catch clauses of the form
+```scala
+  case ex: Ex =>
+```
+where `ex` is an arbitrary variable name (`_` is also allowed), and `Ex` is an arbitrary
+checked exception type. Constructor patterns such as `Ex(...)` or patterns with guards
+are not allowed. The compiler will issue an error if one of these is used to catch
+a checked exception and `saferExceptions` is enabled.
 
 ## An Example
 
@@ -133,17 +158,17 @@ def f(x: Double): Double =
 ```
 You'll get this error message:
 ```
-9 |  if x < limit then x * x else throw LimitExceeded()
-  |                               ^^^^^^^^^^^^^^^^^^^^^
-  |The capability to throw exception LimitExceeded is missing.
-  |The capability can be provided by one of the following:
-  | - A using clause `(using CanThrow[LimitExceeded])`
-  | - A `throws` clause in a result type such as `X throws LimitExceeded`
-  | - an enclosing `try` that catches LimitExceeded
-  |
-  |The following import might fix the problem:
-  |
-  |  import unsafeExceptions.canThrowAny
+  if x < limit then x * x else throw LimitExceeded()
+                               ^^^^^^^^^^^^^^^^^^^^^
+The capability to throw exception LimitExceeded is missing.
+The capability can be provided by one of the following:
+ - Adding a using clause `(using CanThrow[LimitExceeded])` to the definition of the enclosing method
+ - Adding `throws LimitExceeded` clause after the result type of the enclosing method
+ - Wrapping this piece of code with a `try` block that catches LimitExceeded
+
+The following import might fix the problem:
+
+  import unsafeExceptions.canThrowAny
 ```
 As the error message implies, you have to declare that `f` needs the capability to throw a `LimitExceeded` exception. The most concise way to do so is to add a `throws` clause:
 ```scala
@@ -178,20 +203,6 @@ The `CanThrow[LimitExceeded]` capability is passed in a synthesized `using` clau
 closure may refer to capabilities in its free variables. This means that `map` is
 already effect polymorphic even though we did not change its signature at all.
 So the takeaway is that the effects as capabilities model naturally provides for effect polymorphism whereas this is something that other approaches struggle with.
-
-**Note 1:** The compiler will only treat checked exceptions that way. An exception type is _checked_ if it is a subtype of
-`Exception` but not of `RuntimeException`. The signature of `CanThrow` still admits `RuntimeException`s since `RuntimeException` is a proper subtype of its bound, `Exception`. But no capabilities will be generated for `RuntimeException`s. Furthermore, `throws` clauses
-also may not refer to `RuntimeException`s.
-
-**Note 2:** To keep things simple, the compiler will currently only generate capabilities
-for catch clauses of the form
-```scala
-  case ex: Ex =>
-```
-where `ex` is an arbitrary variable name (`_` is also allowed), and `Ex` is an arbitrary
-checked exception type. Constructor patterns such as `Ex(...)` or patterns with guards
-are not allowed. The compiler will issue an error if one of these is used to catch
-a checked exception and `saferExceptions` is enabled.
 
 ## Gradual Typing Via Imports
 
