@@ -26,10 +26,10 @@ charts:
 
 scripts:
     dotty:
-        - measure --  -with-compiler $(find $PROG_HOME/dotty/compiler/src/dotty -name *.scala -o -name *.java)
+        - measure -with-compiler $(find $PROG_HOME/dotty/compiler/src/dotty -name *.scala -o -name *.java)
 
     re2s:
-        - measure -- $(find $PROG_HOME/tests/re2s/src -name *.scala)
+        - measure $(find $PROG_HOME/tests/re2s/src -name *.scala)
 
     # scalapb:
     #    - source $PROG_HOME/dotty/bench/scripts/scalapb

@@ -9,7 +9,7 @@ charts:
 
 scripts:
     dotty-sbt:
-        - measure --  -with-compiler -Yforce-sbt-phases -with-dotty $(find $PROG_HOME/dotty/compiler/src/dotty -name *.scala -o -name *.java)
+        - measure -with-compiler -Yforce-sbt-phases -with-dotty $(find $PROG_HOME/dotty/compiler/src/dotty -name *.scala -o -name *.java)
 
 config:
     pr_base_url: "https://github.com/lampepfl/dotty/pull/"

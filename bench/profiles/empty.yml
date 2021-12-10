@@ -21,13 +21,13 @@ charts:
 scripts:
 
     empty-class:
-        - measure -- $PROG_HOME/dotty/tests/bench/empty-class.scala
+        - measure $PROG_HOME/dotty/tests/bench/empty-class.scala
 
     empty-object:
-        - measure -- $PROG_HOME/dotty/tests/bench/empty-object.scala
+        - measure $PROG_HOME/dotty/tests/bench/empty-object.scala
 
     empty-file:
-        - measure -- $PROG_HOME/dotty/tests/bench/empty-file.scala
+        - measure $PROG_HOME/dotty/tests/bench/empty-file.scala
 
 config:
     pr_base_url: "https://github.com/lampepfl/dotty/pull/"
