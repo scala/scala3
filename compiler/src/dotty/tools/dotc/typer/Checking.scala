@@ -20,6 +20,7 @@ import ErrorReporting.errorTree
 import rewrites.Rewrites.patch
 import util.Spans.Span
 import Phases.refchecksPhase
+import Constants.Constant
 
 import util.SrcPos
 import util.Spans.Span
@@ -1204,13 +1205,14 @@ trait Checking {
   /** Check arguments of compiler-defined annotations */
   def checkAnnotArgs(tree: Tree)(using Context): tree.type =
     val cls = Annotations.annotClass(tree)
-    def needsStringLit(arg: Tree) =
-      report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
     tree match
       case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
         arg match
+          case Literal(Constant("")) =>
+            report.error(em"target name cannot be empty", arg.srcPos)
           case Literal(_) => // ok
-          case _ => needsStringLit(arg)
+          case _ =>
+            report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
       case _ =>
     tree
 
