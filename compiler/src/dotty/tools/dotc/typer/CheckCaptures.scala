@@ -406,8 +406,7 @@ class CheckCaptures extends Recheck:
     def checkNotGlobal(tree: Tree, tp: Type, allArgs: Tree*)(using Context): Unit =
       for ref <-tp.captureSet.elems do
         val isGlobal = ref match
-          case ref: TermRef =>
-            ref.isRootCapability || ref.prefix != NoPrefix && ref.symbol.hasAnnotation(defn.AbilityAnnot)
+          case ref: TermRef => ref.isRootCapability
           case _ => false
         if isGlobal then
           val what = if ref.isRootCapability then "universal" else "global"
