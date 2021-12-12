@@ -2732,7 +2732,6 @@ object Types {
     def canBeTracked(using Context) =
       ((prefix eq NoPrefix)
       || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
-      || symbol.hasAnnotation(defn.AbilityAnnot)
       || isRootCapability
       ) && !symbol.is(Method)
 
