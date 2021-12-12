@@ -1,5 +1,5 @@
 import language.experimental.erasedDefinitions
-import annotation.ability
+import annotation.capability
 import java.io.IOException
 
 class CT[-E]  // variance is needed for correct rechecking inference
