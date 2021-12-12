@@ -359,7 +359,6 @@ Text => empty
 Language => Scala
 Symbols => 14 entries
 Occurrences => 30 entries
-Synthetics => 2 entries
 
 Symbols:
 example/Anonymous# => class Anonymous extends Object { self: Anonymous & Anonymous => +6 decls }
@@ -409,10 +408,6 @@ Occurrences:
 [18:6..18:9): foo <- example/Anonymous#foo.
 [18:16..18:19): Foo -> example/Anonymous#Foo#
 
-Synthetics:
-[10:2..10:9):locally => *[Unit]
-[13:2..13:9):locally => *[Unit]
-
 expect/AnonymousGiven.scala
 ---------------------------
 
@@ -447,7 +442,6 @@ Text => empty
 Language => Scala
 Symbols => 109 entries
 Occurrences => 113 entries
-Synthetics => 2 entries
 
 Symbols:
 classes/C1# => final class C1 extends AnyVal { self: C1 => +2 decls }
@@ -675,10 +669,6 @@ Occurrences:
 [53:4..53:9): local -> local4
 [53:10..53:11): + -> scala/Int#`+`(+4).
 
-Synthetics:
-[51:16..51:27):List(1).map => *[Int]
-[51:16..51:20):List => *.apply[Int]
-
 expect/Empty.scala
 ------------------
 
@@ -881,7 +871,7 @@ Text => empty
 Language => Scala
 Symbols => 181 entries
 Occurrences => 148 entries
-Synthetics => 10 entries
+Synthetics => 8 entries
 
 Symbols:
 _empty_/Enums. => final object Enums extends Object { self: Enums.type => +30 decls }
@@ -1224,8 +1214,6 @@ Synthetics:
 [52:31..52:50):identity[Option[B]] => *[Function1[A, Option[B]]]
 [54:14..54:18):Some => *.apply[Some[Int]]
 [54:14..54:34):Some(Some(1)).unwrap => *(given_<:<_T_T[Option[Int]])
-[54:19..54:23):Some => *.apply[Int]
-[54:28..54:34):unwrap => *[Some[Int], Int]
 [56:52..56:64):Enum[Planet] => *[Planet]
 
 expect/EtaExpansion.scala
@@ -1238,7 +1226,7 @@ Text => empty
 Language => Scala
 Symbols => 3 entries
 Occurrences => 8 entries
-Synthetics => 5 entries
+Synthetics => 1 entries
 
 Symbols:
 example/EtaExpansion# => class EtaExpansion extends Object { self: EtaExpansion => +1 decls }
@@ -1256,11 +1244,7 @@ Occurrences:
 [4:25..4:26): + -> java/lang/String#`+`().
 
 Synthetics:
-[3:2..3:13):Some(1).map => *[Int]
-[3:2..3:6):Some => *.apply[Int]
-[3:14..3:22):identity => *[Int]
 [4:2..4:18):List(1).foldLeft => *[String]
-[4:2..4:6):List => *.apply[Int]
 
 expect/Example.scala
 --------------------
@@ -1410,7 +1394,7 @@ Text => empty
 Language => Scala
 Symbols => 13 entries
 Occurrences => 52 entries
-Synthetics => 6 entries
+Synthetics => 2 entries
 
 Symbols:
 example/ForComprehension# => class ForComprehension extends Object { self: ForComprehension => +1 decls }
@@ -1482,10 +1466,6 @@ Occurrences:
 [41:6..41:7): f -> local10
 
 Synthetics:
-[4:9..4:13):List => *.apply[Int]
-[5:9..5:13):List => *.apply[Int]
-[10:9..10:13):List => *.apply[Int]
-[11:9..11:13):List => *.apply[Int]
 [19:9..19:13):List => *.apply[Tuple2[Int, Int]]
 [33:9..33:13):List => *.apply[Tuple4[Int, Int, Int, Int]]
 
@@ -1499,7 +1479,6 @@ Text => empty
 Language => Scala
 Symbols => 29 entries
 Occurrences => 65 entries
-Synthetics => 3 entries
 
 Symbols:
 a/b/Givens. => final object Givens extends Object { self: Givens.type => +12 decls }
@@ -1598,11 +1577,6 @@ Occurrences:
 [26:50..26:55): empty -> a/b/Givens.Monoid#empty().
 [26:57..26:58): A -> a/b/Givens.foo().(A)
 [26:59..26:64): empty -> a/b/Givens.Monoid#empty().
-
-Synthetics:
-[12:17..12:25):sayHello => *[Int]
-[13:19..13:29):sayGoodbye => *[Int]
-[14:18..14:27):saySoLong => *[Int]
 
 expect/ImplicitConversion.scala
 -------------------------------
@@ -2003,7 +1977,6 @@ Text => empty
 Language => Scala
 Symbols => 6 entries
 Occurrences => 10 entries
-Synthetics => 1 entries
 
 Symbols:
 example/Local# => class Local extends Object { self: Local => +2 decls }
@@ -2025,9 +1998,6 @@ Occurrences:
 [4:25..4:26): a -> local1
 [5:4..5:6): id -> local2
 
-Synthetics:
-[5:4..5:6):id => *[Int]
-
 expect/Locals.scala
 -------------------
 
@@ -2038,7 +2008,6 @@ Text => empty
 Language => Scala
 Symbols => 3 entries
 Occurrences => 6 entries
-Synthetics => 1 entries
 
 Symbols:
 local0 => val local x: Int
@@ -2207,7 +2176,7 @@ Text => empty
 Language => Scala
 Symbols => 3 entries
 Occurrences => 80 entries
-Synthetics => 2 entries
+Synthetics => 1 entries
 
 Symbols:
 example/MethodUsages# => class MethodUsages extends Object { self: MethodUsages => +2 decls }
@@ -2297,7 +2266,6 @@ Occurrences:
 [34:8..34:9): m -> example/Methods#m17.m().
 
 Synthetics:
-[13:2..13:6):m.m7 => *[Int]
 [13:2..13:26):m.m7(m, new m.List[Int]) => *(Int)
 
 expect/Methods.scala
@@ -3150,7 +3118,7 @@ Text => empty
 Language => Scala
 Symbols => 52 entries
 Occurrences => 132 entries
-Synthetics => 36 entries
+Synthetics => 23 entries
 
 Symbols:
 example/Synthetic# => class Synthetic extends Object { self: Synthetic => +23 decls }
@@ -3341,26 +3309,17 @@ Occurrences:
 [58:6..58:9): foo -> example/Synthetic#Contexts.foo().
 
 Synthetics:
-[5:2..5:13):List(1).map => *[Int]
-[5:2..5:6):List => *.apply[Int]
 [6:2..6:18):Array.empty[Int] => intArrayOps(*)
 [7:2..7:8):"fooo" => augmentString(*)
 [10:13..10:24):"name:(.*)" => augmentString(*)
-[11:17..11:25):LazyList => *.apply[Int]
-[13:4..13:28):#:: 2 #:: LazyList.empty => *[Int]
 [13:8..13:28):2 #:: LazyList.empty => toDeferrer[Int](*)
-[13:10..13:28):#:: LazyList.empty => *[Int]
 [13:14..13:28):LazyList.empty => toDeferrer[Nothing](*)
 [13:14..13:28):LazyList.empty => *[Nothing]
-[15:25..15:33):LazyList => *.apply[Int]
-[17:14..17:38):#:: 2 #:: LazyList.empty => *[Int]
 [17:18..17:38):2 #:: LazyList.empty => toDeferrer[Int](*)
-[17:20..17:38):#:: LazyList.empty => *[Int]
 [17:24..17:38):LazyList.empty => toDeferrer[Nothing](*)
 [17:24..17:38):LazyList.empty => *[Nothing]
 [19:12..19:13):1 => intWrapper(*)
 [19:26..19:27):0 => intWrapper(*)
-[19:46..19:50):x -> => *[Int]
 [19:46..19:47):x => ArrowAssoc[Int](*)
 [20:12..20:13):1 => intWrapper(*)
 [20:26..20:27):0 => intWrapper(*)
@@ -3369,10 +3328,6 @@ Synthetics:
 [32:35..32:49):Array.empty[T] => *(evidence$1)
 [36:22..36:27):new F => orderingToOrdered[F](*)
 [36:22..36:27):new F => *(ordering)
-[40:9..40:43):scala.concurrent.Future.successful => *[Int]
-[41:9..41:43):scala.concurrent.Future.successful => *[Int]
-[44:9..44:43):scala.concurrent.Future.successful => *[Int]
-[45:9..45:43):scala.concurrent.Future.successful => *[Int]
 [51:24..51:30):foo(0) => *(x$1)
 [52:27..52:33):foo(0) => *(x)
 [55:6..55:12):foo(x) => *(x)
@@ -3428,7 +3383,7 @@ Text => empty
 Language => Scala
 Symbols => 22 entries
 Occurrences => 46 entries
-Synthetics => 7 entries
+Synthetics => 2 entries
 
 Symbols:
 example/ValPattern# => class ValPattern extends Object { self: ValPattern => +14 decls }
@@ -3503,13 +3458,8 @@ Occurrences:
 [40:10..40:18): rightVar -> local4
 
 Synthetics:
-[6:4..6:8):Some => *.apply[Int]
 [8:6..8:10):List => *.unapplySeq[Nothing]
 [8:11..8:15):Some => *.unapply[Nothing]
-[12:4..12:8):Some => *.apply[Int]
-[25:4..25:11):locally => *[Unit]
-[28:8..28:12):Some => *.apply[Int]
-[32:8..32:12):Some => *.apply[Int]
 
 expect/Vals.scala
 -----------------
@@ -4109,7 +4059,6 @@ Text => empty
 Language => Scala
 Symbols => 3 entries
 Occurrences => 6 entries
-Synthetics => 1 entries
 
 Symbols:
 example/`local-file`# => class local-file extends Object { self: local-file => +1 decls }
@@ -4124,9 +4073,6 @@ Occurrences:
 [5:4..5:9): local -> local0
 [5:10..5:11): + -> scala/Int#`+`(+4).
 
-Synthetics:
-[3:2..3:9):locally => *[Int]
-
 expect/nullary.scala
 --------------------
 
@@ -4137,7 +4083,6 @@ Text => empty
 Language => Scala
 Symbols => 17 entries
 Occurrences => 29 entries
-Synthetics => 1 entries
 
 Symbols:
 _empty_/Concrete# => class Concrete extends NullaryTest[Int, List] { self: Concrete => +3 decls }
@@ -4188,9 +4133,6 @@ Occurrences:
 [17:17..17:25): nullary2 -> _empty_/Concrete#nullary2().
 [18:7..18:15): Concrete -> _empty_/Concrete#
 [18:17..18:25): nullary3 -> _empty_/Concrete#nullary3().
-
-Synthetics:
-[13:17..13:21):List => *.apply[Int]
 
 expect/recursion.scala
 ----------------------
@@ -4480,7 +4422,6 @@ Text => empty
 Language => Scala
 Symbols => 144 entries
 Occurrences => 225 entries
-Synthetics => 1 entries
 
 Symbols:
 local0 => abstract method k => Int
@@ -4855,9 +4796,6 @@ Occurrences:
 [119:32..119:38): Option -> scala/Option#
 [119:39..119:42): Int -> scala/Int#
 
-Synthetics:
-[68:20..68:24):@ann => *[Int]
-
 expect/semanticdb-extract.scala
 -------------------------------
 
@@ -4868,7 +4806,7 @@ Text => empty
 Language => Scala
 Symbols => 18 entries
 Occurrences => 20 entries
-Synthetics => 3 entries
+Synthetics => 2 entries
 
 Symbols:
 _empty_/AnObject. => final object AnObject extends Object { self: AnObject.type => +6 decls }
@@ -4913,7 +4851,6 @@ Occurrences:
 [16:20..16:23): Int -> scala/Int#
 
 Synthetics:
-[11:2..11:6):List => *.apply[Int]
 [12:2..12:12):List.apply => *[Nothing]
 [13:2..13:14):List.`apply` => *[Nothing]
 
@@ -4927,7 +4864,7 @@ Text => empty
 Language => Scala
 Symbols => 18 entries
 Occurrences => 43 entries
-Synthetics => 2 entries
+Synthetics => 1 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram extends Object { self: MyProgram => +2 decls }
@@ -4995,6 +4932,5 @@ Occurrences:
 [7:30..7:33): foo -> _empty_/toplevel$package.foo().
 
 Synthetics:
-[5:40..5:60):(1 to times) foreach => *[Unit]
 [5:41..5:42):1 => intWrapper(*)
 
