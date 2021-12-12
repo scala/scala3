@@ -283,3 +283,15 @@ class ReplVerboseTests extends ReplTest(ReplTest.defaultOptions :+ "-verbose") {
     assert(storedOutput().trim().endsWith("val a: Int = 42"))
   }
 }
+
+class FewerBracesTests extends ReplTest(ReplTest.defaultOptions :+ "-language:experimental.fewerBraces" :+ "-Ydebug-error") {
+  @Test def i13097 = fromInitialState { implicit state =>
+    given Context = state.context
+    assert(ParseResult.isIncomplete("val x = List(42).foreach:"))
+  }
+
+  @Test def i13097Part2 = fromInitialState { implicit state =>
+    given Context = state.context
+    assert(ParseResult.isIncomplete("class C:"))
+  }
+}
