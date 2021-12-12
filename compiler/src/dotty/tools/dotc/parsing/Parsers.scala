@@ -2333,6 +2333,13 @@ object Parsers {
         if !in.isOperator && in.lookahead.isArrow && location != Location.InGuard && in.fewerBracesEnabled =>
           val app = applyToClosure(t, in.offset, convertToParams(termIdent()))
           simpleExprRest(app, location, canApply = true)
+//      Failing tests
+//        tests\pos\indent-colons.scala failed
+//        tests\pos\i12218.scala failed
+//        tests\pos\closure-args.scala failed
+        case EOF if in.fewerBracesEnabled && in.isNestedStart =>
+          incompleteInputError("indented definitions expected, eof found")
+          t
         case _ =>
           t
       }
