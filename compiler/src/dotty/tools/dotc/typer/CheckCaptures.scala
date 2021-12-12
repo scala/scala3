@@ -115,7 +115,7 @@ class CheckCaptures extends Recheck:
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
     import ast.tpd.*
 
-    override def transformType(tp: Type, inferred: Boolean)(using Context): Type =
+    override def transformType(tp: Type, inferred: Boolean, boxed: Boolean)(using Context): Type =
 
       def addInnerVars(tp: Type): Type = tp match
         case tp @ AppliedType(tycon, args) =>
@@ -191,15 +191,15 @@ class CheckCaptures extends Recheck:
               apply(parent)
             case _ =>
               mapOver(t)
-        addVars(addFunctionRefinements(cleanup(tp)))
+        addVars(addFunctionRefinements(cleanup(tp)), boxed)
           .showing(i"reinfer $tp --> $result", capt)
       else
-        val addBoxes = new TypeTraverser:
-          def setBoxed(t: Type) = t match
-            case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
-              annot.tree.setBoxedCapturing()
-            case _ =>
+        def setBoxed(t: Type) = t match
+          case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
+            annot.tree.setBoxedCapturing()
+          case _ =>
 
+        val addBoxes = new TypeTraverser:
           def traverse(t: Type) =
             t match
               case AppliedType(tycon, args) if !defn.isNonRefinedFunction(t) =>
@@ -208,8 +208,8 @@ class CheckCaptures extends Recheck:
                 setBoxed(lo); setBoxed(hi)
               case _ =>
             traverseChildren(t)
-        end addBoxes
 
+        if boxed then setBoxed(tp)
         addBoxes.traverse(tp)
         tp
     end transformType
@@ -403,27 +403,46 @@ class CheckCaptures extends Recheck:
           show(unit.tpdTree) // this dows not print tree, but makes its variables visible for dependency printing
       }
 
+    def checkNotGlobal(tree: Tree, tp: Type, allArgs: Tree*)(using Context): Unit =
+      for ref <-tp.captureSet.elems do
+        val isGlobal = ref match
+          case ref: TermRef =>
+            ref.isRootCapability || ref.prefix != NoPrefix && ref.symbol.hasAnnotation(defn.AbilityAnnot)
+          case _ => false
+        if isGlobal then
+          val what = if ref.isRootCapability then "universal" else "global"
+          val notAllowed = i" is not allowed to capture the $what capability $ref"
+          def msg =
+            if allArgs.isEmpty then
+              i"type of mutable variable ${knownType(tree)}$notAllowed"
+            else tree match
+              case tree: InferredTypeTree =>
+                i"""inferred type argument ${knownType(tree)}$notAllowed
+                    |
+                    |The inferred arguments are: [${allArgs.map(knownType)}%, %]"""
+              case _ => s"type argument$notAllowed"
+          report.error(msg, tree.srcPos)
+
     def checkNotGlobal(tree: Tree, allArgs: Tree*)(using Context): Unit =
       if disallowGlobal then
         tree match
           case LambdaTypeTree(_, restpt) =>
             checkNotGlobal(restpt, allArgs*)
           case _ =>
-            for ref <- knownType(tree).captureSet.elems do
-              val isGlobal = ref match
-                case ref: TermRef =>
-                  ref.isRootCapability || ref.prefix != NoPrefix && ref.symbol.hasAnnotation(defn.AbilityAnnot)
-                case _ => false
-              val what = if ref.isRootCapability then "universal" else "global"
-              if isGlobal then
-                val notAllowed = i" is not allowed to capture the $what capability $ref"
-                def msg = tree match
-                  case tree: InferredTypeTree =>
-                    i"""inferred type argument ${knownType(tree)}$notAllowed
-                        |
-                        |The inferred arguments are: [${allArgs.map(knownType)}%, %]"""
-                  case _ => s"type argument$notAllowed"
-                report.error(msg, tree.srcPos)
+            checkNotGlobal(tree, knownType(tree), allArgs*)
+
+    def checkNotGlobalDeep(tree: Tree)(using Context): Unit =
+      val checker = new TypeTraverser:
+        def traverse(tp: Type): Unit = tp match
+          case tp: TypeRef =>
+            tp.info match
+              case TypeBounds(_, hi) => traverse(hi)
+              case _ =>
+          case tp: TermRef =>
+          case _ =>
+            checkNotGlobal(tree, tp)
+            traverseChildren(tp)
+      checker.traverse(knownType(tree))
 
     object PostRefinerCheck extends TreeTraverser:
       def traverse(tree: Tree)(using Context) =
@@ -463,6 +482,8 @@ class CheckCaptures extends Recheck:
                         |The type needs to be declared explicitly.""", t.srcPos)
                 case _ =>
               inferred.foreachPart(checkPure, StopAt.Static)
+          case t: ValDef if t.symbol.is(Mutable) =>
+            checkNotGlobalDeep(t.tpt)
           case _ =>
         traverseChildren(tree)
 
