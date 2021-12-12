@@ -1,6 +1,6 @@
 package scala.annotation
 
-/** Marks an annotated class as a capabulity.
+/** Marks an annotated class as a capability.
  *  If the annotation is present and -Ycc is set, any (possibly aliased
  *  or refined) instance of the class type is implicitly augmented with
  *  the universal capture set. Example
