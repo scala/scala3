@@ -523,7 +523,9 @@ object CaptureSet:
         tp.captureSet
       case tp: TermParamRef =>
         tp.captureSet
-      case _: TypeRef | _: TypeParamRef =>
+      case _: TypeRef =>
+        if tp.classSymbol.hasAnnotation(defn.CapabilityAnnot) then universal else empty
+      case _: TypeParamRef =>
         empty
       case CapturingType(parent, refs, _) =>
         recur(parent) ++ refs
