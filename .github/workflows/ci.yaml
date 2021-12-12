@@ -115,9 +115,9 @@ jobs:
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
-      - name: MiMa
-        run: |
-          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues"
+#      - name: MiMa
+#        run: |
+#         ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues"
 
   test_windows_fast:
     runs-on: [self-hosted, Windows]
