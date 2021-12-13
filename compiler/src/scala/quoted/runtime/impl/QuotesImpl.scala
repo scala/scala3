@@ -1749,6 +1749,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr =
           self.subst(from, to)
+
+        def typeArgs: List[TypeRepr] = self match
+          case AppliedType(_, args) => args
+          case _ => List.empty
       end extension
     end TypeReprMethods
 
@@ -2480,6 +2484,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def name: String = self.denot.name.toString
         def fullName: String = self.denot.fullName.toString
+
         def pos: Option[Position] =
           if self.exists then Some(self.sourcePos) else None
 
