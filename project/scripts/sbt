@@ -2,23 +2,12 @@
 set -e
 
 # Usage:
-# ./sbt <props*> <cmd>
+# ./sbt <cmd>
 
-declare -a sys_props
-declare -a sbt_commands
-
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -D*) sys_props+=("$1") && shift ;;
-    *) sbt_commands+=("$1") && shift ;;
-  esac
-done
-
-CMD="${sbt_commands[0]:?Missing sbt command}"
+CMD="${1:?Missing sbt command}"
 
 # run sbt with the supplied arg
 sbt -J-XX:ReservedCodeCacheSize=512m \
     -DSBT_PGP_USE_GPG=false \
-    "${sys_props[@]}" \
     -no-colors \
     "$CMD"

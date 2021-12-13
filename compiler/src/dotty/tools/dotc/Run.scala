@@ -307,9 +307,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             else doTypeCheck()
         )
 
-      inContext(unitCtx) {
-        process()
-      }
+      process()(using unitCtx)
     }
 
   private sealed trait PrintedTree

@@ -88,11 +88,22 @@ clear_out "$OUT"
 echo "Bug12973().check" | TERM=dumb ./bin/scala -cp "$OUT/out.jar" > "$tmp" 2>&1
 grep -qe "Bug12973 is fixed" "$tmp"
 
-echo "testing -sourcepath with inlining"
+echo "capturing scala version from dist/target/pack/VERSION"
 cwd=$(pwd)
-java_prop="-Dpack.version.file=$cwd/dist/target/pack/VERSION"
-sbt_test_command=";clean;prepareSources;compile;copyChanges;compile"
-(cd "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline" && "$SBT" "$java_prop" "$sbt_test_command")
+IFS=':=' read -ra versionProps < "$cwd/dist/target/pack/VERSION" # temporarily set IFS to ':=' to split versionProps
+[ ${#versionProps[@]} -eq 3 ] && \
+  [ ${versionProps[0]} = "version" ] && \
+  [ -n ${versionProps[2]} ] || die "Expected non-empty 'version' property in $cwd/dist/target/pack/VERSION"
+scala_version=${versionProps[2]}
+
+echo "testing -sourcepath with inlining"
+# Here we will test that an inline method symbol loaded from the sourcepath (-sourcepath compiler option)
+# will have its `defTree` correctly set when its method body is required for inlining.
+# So far I have not found a way to replicate issue https://github.com/lampepfl/dotty/issues/13994
+# with sbt scripted tests, if a way is found, move this test there.
+cwd=$(pwd)
+sbt_test_command="++${scala_version}!;clean;prepareSources;compile;copyChanges;compile"
+(cd "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline" && "$SBT" "$sbt_test_command")
 rm -rf "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/target"
 rm -rf "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/project/target"
 rm -f "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/src/main/scala/a/zz.scala"

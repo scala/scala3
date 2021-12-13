@@ -14,6 +14,11 @@ OUT=$(mktemp -d)
 OUT1=$(mktemp -d)
 tmp=$(mktemp)
 
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
 clear_out()
 {
   local out="$1"
