@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Using Clauses"
-type: section
-num: 16
-previous-page: /scala3/reference/contextual/givens
-next-page: /scala3/reference/contextual/context-bounds
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/using-clauses.html
 ---
 
 Functional programming tends to express most dependencies as simple function parameterization.
@@ -11,7 +9,7 @@ This is clean and powerful, but it sometimes leads to functions that take many p
 functions. Context parameters can help here since they enable the compiler to synthesize
 repetitive arguments instead of the programmer having to write them explicitly.
 
-For example, with the [given instances](./givens.html) defined previously,
+For example, with the [given instances](./givens.md) defined previously,
 a `max` function that works for any arguments for which an ordering exists can be defined as follows:
 
 ```scala
@@ -66,7 +64,7 @@ class GivenIntBox2(using givenInt: Int):
   //def n = summon[Int]     // ambiguous
 ```
 
-The `given` member is importable as explained in the section on [importing `given`s](./given-imports.html):
+The `given` member is importable as explained in the section on [importing `given`s](./given-imports.md):
 
 ```scala
 val b = GivenIntBox(using 23)
@@ -144,7 +142,7 @@ def summon[T](using x: T): x.type = x
 
 ## Syntax
 
-Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](../syntax.html). `using` is a soft keyword, recognized only at the start of a parameter or argument list. It can be used as a normal identifier everywhere else.
+Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](../syntax.md). `using` is a soft keyword, recognized only at the start of a parameter or argument list. It can be used as a normal identifier everywhere else.
 
 ```
 ClsParamClause      ::=  ... | UsingClsParamClause

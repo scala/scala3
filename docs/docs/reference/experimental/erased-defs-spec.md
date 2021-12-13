@@ -1,7 +1,8 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Erased Definitions: More Details"
+
+movedTo: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs-spec.html
 ---
 
 TODO: complete
@@ -62,4 +63,3 @@ TODO: complete
 7. Overriding
    * Member definitions overriding each other must both be `erased` or not be `erased`
    * `def foo(x: T): U` cannot be overridden by `def foo(erased x: T): U` and vice-versa
-

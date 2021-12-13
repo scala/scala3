@@ -1,9 +1,6 @@
 ---
-layout: multipage-overview
+layout: doc-page
 title: "Settings"
-partof: scala3-scaladoc
-num: 8
-previous-page: search-engine
 ---
 
 This chapter lists the configuration options that can be used when calling scaladoc. Some of the information shown here can be found by calling scaladoc with the `-help` flag.
@@ -160,7 +157,7 @@ compile - Enables snippet checking.
 nocompile - Disables snippet checking.
 fail - Enables snippet checking, asserts that snippet doesn't compile.
 
-The fail flag comes in handy for snippets that present that some action would eventually fail during compilation, e. g. [Opaques page]({% link _scala3-reference/other-new-features/opaques.md %})
+The fail flag comes in handy for snippets that present that some action would eventually fail during compilation, e. g. [Opaques page](../../reference/other-new-features/opaques.md)
 
 Example usage:
 

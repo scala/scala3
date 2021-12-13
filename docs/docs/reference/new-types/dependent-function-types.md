@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Dependent Function Types"
-type: section
-num: 7
-previous-page: /scala3/reference/new-types/match-types
-next-page: /scala3/reference/new-types/polymorphic-function-types
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/dependent-function-types.html
 ---
 
 A dependent function type is a function type whose result depends
@@ -48,4 +46,4 @@ Function1[Entry, Entry#Key]:
   def apply(e: Entry): e.Key
 ```
 
-[More details](./dependent-function-types-spec.html)
+[More details](./dependent-function-types-spec.md)

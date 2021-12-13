@@ -92,7 +92,7 @@ case class TemplateFile(
     if (ctx.resolving.contains(file.getAbsolutePath))
       throw new RuntimeException(s"Cycle in templates involving $file: ${ctx.resolving}")
 
-    val layoutTemplate = layout.filter(_ => ssctx.args.projectFormat == "html").map(name =>
+    val layoutTemplate = layout.map(name =>
       ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}")))
 
     def asJavaElement(o: Object): Object = o match
@@ -105,15 +105,7 @@ case class TemplateFile(
     // Library requires mutable maps..
     val mutableProperties = new JHashMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
 
-    // Register escaping {% link ... %} in markdown
-    val tag = new Tag("link"):
-      override def render(context: TemplateContext, nodes: Array[? <: LNode]): Object =
-        val link = super.asString(nodes(0).render(context))
-        s"{% link $link %}"
-
-    val rendered = ssctx.args.projectFormat match
-        case "html" => Template.parse(this.rawCode).`with`(tag).render(mutableProperties)
-        case "md" => this.rawCode
+    val rendered = Template.parse(this.rawCode).render(mutableProperties)
 
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
@@ -121,14 +113,9 @@ case class TemplateFile(
       val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
       val parsedMd = parser.parse(rendered)
       val processed = FlexmarkSnippetProcessor.processSnippets(parsedMd, None, snippetCheckingFunc, withContext = false)(using ssctx.outerCtx)
+      HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
 
-      ssctx.args.projectFormat match
-        case "html" => HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
-        case "md" => FrontMatterRenderer.render(ctx.properties ++ settings) +
-                      Formatter.builder(defaultMarkdownOptions).build().render(processed)
-
-
-    if layoutTemplate.isEmpty || ssctx.args.projectFormat == "md" then
+    if layoutTemplate.isEmpty then
       ResolvedPage(code, resources ++ ctx.resources)
     else
       layoutTemplate.get.resolveInner(ctx.nest(code, file, resources))

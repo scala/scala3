@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Type Lambdas - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/type-lambdas-spec.html
 ---
 
 ## Syntax
@@ -105,7 +105,7 @@ would be treated as covariant, `X` is used covariantly on its right-hand side.
 
 **Note**: The decision to treat `Nothing` as universal bottom type is provisional, and might be changed after further discussion.
 
-**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](../other-new-features/kind-polymorphism.html)
+**Note**: Scala 2 and 3 differ in that Scala 2 also treats `Any` as universal top-type. This is not done in Scala 3. See also the discussion on [kind polymorphism](../other-new-features/kind-polymorphism.md)
 
 ## Curried Type Parameters
 
@@ -114,6 +114,4 @@ The body of a type lambda can again be a type lambda. Example:
 type TL = [X] =>> [Y] =>> (X, Y)
 ```
 Currently, no special provision is made to infer type arguments to such curried type lambdas. This is left for future work.
-
-
 

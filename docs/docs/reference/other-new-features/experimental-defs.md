@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Experimental definitions"
-type: section
-num: 51
-previous-page: /scala3/reference/other-new-features/type-test
-next-page: /scala3/reference/changed-features
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/experimental-defs.html
 ---
 
 

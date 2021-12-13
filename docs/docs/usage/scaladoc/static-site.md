@@ -1,10 +1,6 @@
 ---
-layout: multipage-overview
+layout: doc-page
 title: "Static documentation"
-partof: scala3-scaladoc
-num: 4
-previous-page: linking
-next-page: blog
 ---
 
 Scaladoc can generate static sites, known from [Jekyll](http://jekyllrb.com/) or [Docusaurus](https://docusaurus.io/).
@@ -145,7 +141,7 @@ The `page` property `subsection` accepts nested nodes, these can be either pages
 
 In `subsection`s, you can omit `title` or `index`, however not specifying any of these properties prevents you from specifying the title of the section.
 
-`blog` is a special node represented by simple entry `- title: Blog` with no other attributes. All your blog posts will be automatically linked under this section. You can read more about the blog [here]({% link _overviews/scala3-scaladoc/blog.md %}).
+`blog` is a special node represented by simple entry `- title: Blog` with no other attributes. All your blog posts will be automatically linked under this section. You can read more about the blog [here](./blog.md).
 
 ```
 ├── blog

@@ -103,9 +103,6 @@ cs
 # Coursier test product
 compiler/test-coursier/run/*.jar
 
-# Docs
-docs-for-dotty-page/*
-
-# docs.scala-lang deplyment temp dir
-docsScalaLang/
-docs/_site/
+# docs related
+contributors.js
+content-contributors.css

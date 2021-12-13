@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Changes in Implicit Resolution"
-type: section
-num: 60
-previous-page: /scala3/reference/changed-features/type-inference
-next-page: /scala3/reference/changed-features/implicit-conversions
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-resolution.html
 ---
 
 This section describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Scala 3.

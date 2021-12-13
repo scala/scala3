@@ -1,14 +1,12 @@
 ---
+layout: doc-page
 title: Inline
-type: section
-num: 28
-previous-page: /scala3/reference/metaprogramming
-next-page: /scala3/reference/metaprogramming/compiletime-ops
+movedTo: https://docs.scala-lang.org/scala3/reference/metaprogramming/inline.html
 ---
 
 ## Inline Definitions
 
-`inline` is a new [soft modifier](../soft-modifier.html) that guarantees that a
+`inline` is a new [soft modifier](../soft-modifier.md) that guarantees that a
 definition will be inlined at the point of use. Example:
 
 ```scala

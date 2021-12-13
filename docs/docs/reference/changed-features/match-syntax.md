@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Match Expressions"
-type: section
-num: 63
-previous-page: /scala3/reference/changed-features/overload-resolution
-next-page: /scala3/reference/changed-features/vararg-splices
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/match-syntax.html
 ---
 
 The syntactical precedence of match expressions has been changed.

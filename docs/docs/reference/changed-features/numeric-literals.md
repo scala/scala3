@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Numeric Literals"
-type: section
-num: 53
-previous-page: /scala3/reference/changed-features
-next-page: /scala3/reference/changed-features/structural-types
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/numeric-literals.html
 ---
 
 [Document was moved](../experimental/numeric-literals.md)

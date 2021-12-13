@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Named Type Arguments - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/experimental/named-typeargs-spec.html
 ---
 
 ## Syntax

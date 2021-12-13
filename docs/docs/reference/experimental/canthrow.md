@@ -1,8 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "CanThrow Abilities"
-author: Martin Odersky
+movedTo: https://docs.scala-lang.org/scala3/reference/experimental/canthrow.html
 ---
 
 This page describes experimental support for exception checking in Scala 3. It is enabled by the language import
@@ -61,7 +60,7 @@ In the _effects as capabilities_ model, an effect is expressed as an (implicit) 
 ```scala
 erased class CanThrow[-E <: Exception]
 ```
-This shows another experimental Scala feature: [erased definitions]({% link _scala3-reference/experimental/erased-defs.md %}). Roughly speaking, values of an erased class do not generate runtime code; they are erased before code generation. This means that all `CanThrow` capabilities are compile-time only artifacts; they do not have a runtime footprint.
+This shows another experimental Scala feature: [erased definitions](./erased-defs.md). Roughly speaking, values of an erased class do not generate runtime code; they are erased before code generation. This means that all `CanThrow` capabilities are compile-time only artifacts; they do not have a runtime footprint.
 
 Now, if the compiler sees a `throw Exc()` construct where `Exc` is a checked exception, it will check that there is a capability of type `CanThrow[Exc]` that can be summoned as a given. It's a compile-time error if that's not the case.
 
@@ -276,4 +275,3 @@ And it would have many other applications besides: Exceptions are a special case
 But even without these additional mechanisms, exception checking is already useful as it is. It gives a clear path forward to make code that uses exceptions safer, better documented, and easier to refactor. The only loophole arises for scoped capabilities - here we have to verify manually that these capabilities do not escape. Specifically, a `try` always has to be placed in the same computation stage as the throws that it enables.
 
 Put another way: If the status quo is 0% static checking since 100% is too painful, then an alternative that gives you 95% static checking with great ergonomics looks like a win. And we might still get to 100% in the future.
-

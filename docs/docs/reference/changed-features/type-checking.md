@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Changes in Type Checking"
-type: section
-num: 58
-previous-page: /scala3/reference/changed-features/imports
-next-page: /scala3/reference/changed-features/type-inference
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/type-checking.html
 ---
 
 *** **TO BE FILLED IN** ***

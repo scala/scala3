@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Implicit Conversions"
-type: section
-num: 61
-previous-page: /scala3/reference/changed-features/implicit-resolution
-next-page: /scala3/reference/changed-features/overload-resolution
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-conversions.html
 ---
 
 An _implicit conversion_, also called _view_, is a conversion that
@@ -63,4 +61,4 @@ implicitly[Ordering[A]] // Ok, will use the implicit conversion from
                         // `A` to `Int` and the `Ordering` for `Int`.
 ```
 
-[More details](implicit-conversions-spec.html)
+[More details](implicit-conversions-spec.md)

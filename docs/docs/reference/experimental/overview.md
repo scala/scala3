@@ -1,8 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Experimental language features"
-author: Nicolas Stucki
+movedTo: https://docs.scala-lang.org/scala3/reference/experimental/overview.html
 ---
 
 ### Experimental language features

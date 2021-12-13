@@ -1251,7 +1251,6 @@ object Build {
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
-  val renderScaladocScalajsToFile = inputKey[Unit]("Copy the output of the scaladoc js files")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
@@ -1260,9 +1259,8 @@ object Build {
 
   /**
    * Collection of projects building targets for scaladoc, these are:
-   * - common - common module for javascript shared among html and markdown outpu
+   * - common - common module for javascript
    * - main - main target for default scaladoc producing html webpage
-   * - markdown - companion js for preprocessing features. Can be later used with some templating engine
    * - contributors - not related project to any of forementioned modules. Used for presenting contributors for static site.
    *                   Made as an indepented project to be scaladoc-agnostic.
    */
@@ -1272,14 +1270,6 @@ object Build {
     settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13))
 
   lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
-    enablePlugins(DottyJSPlugin).
-    dependsOn(`scaladoc-js-common`).
-    settings(
-      scalaJSUseMainModuleInitializer := true,
-      Test / fork := false
-    )
-
-  lazy val `scaladoc-js-markdown` = project.in(file("scaladoc-js/markdown")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scaladoc-js-common`).
     settings(
@@ -1322,7 +1312,6 @@ object Build {
         name,
         scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
         dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
-        dottySrcLink(referenceVersion, "docs-for-dotty-page=", "#docs"),
         dottySrcLink(referenceVersion),
         "-Ygenerate-inkuire",
       ) ++ scalacOptionsDocSettings(includeExternalMappings) ++ revision ++ params ++ targets
@@ -1383,7 +1372,6 @@ object Build {
         val dest = file(extraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
         val justAPI = extraArgs.drop(1).headOption == Some("--justAPI")
         val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
-        CopyDocs.copyDocs() // invoke copying function form `project/CopyDocs.scala`
         val dottyJars: Seq[java.io.File] = Seq(
           (`stdlib-bootstrapped`/Compile/products).value,
           (`scala3-interfaces`/Compile/products).value,
@@ -1414,7 +1402,7 @@ object Build {
               "https://scala-lang.org/api/versions.json",
               "-Ydocument-synthetic-types",
               s"-snippet-compiler:${dottyLibRoot}/scala/quoted=compile,${dottyLibRoot}/scala/compiletime=compile"
-            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs-for-dotty-page", "-Yapi-subdirectory")), includeExternalMappings = false)
+            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")), includeExternalMappings = false)
 
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
         else if (justAPI) generateDocTask
@@ -1435,23 +1423,6 @@ object Build {
           Seq("-usejavacp", "-snippet-compiler:scaladoc-testcases/docs=compile", "-siteroot", "scaladoc-testcases/docs")
         )
       }.value,
-
-      renderScaladocScalajsToFile := Def.inputTask {
-        val extraArgs = spaceDelimited("<arg>").parsed
-        val (destJS, destCSS, csses) = extraArgs match {
-          case js :: css :: tail => (js, css, tail)
-          case js :: Nil => (js, "", Nil)
-          case _ => throw new IllegalArgumentException("No js destination provided")
-        }
-        val jsDestinationFile: File = Paths.get(destJS).toFile
-        sbt.IO.copyFile((`scaladoc-js-markdown` / Compile / fullOptJS).value.data, jsDestinationFile)
-        csses.map { file =>
-          val cssDesitnationFile = Paths.get(destCSS).toFile / file
-          val cssSourceFile = (`scaladoc-js-markdown` / Compile / resourceDirectory).value / file
-          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
-          cssDesitnationFile
-        }
-      }.evaluated,
 
       Test / buildInfoKeys := Seq[BuildInfoKey](
         (Test / Build.testcasesOutputDir),
