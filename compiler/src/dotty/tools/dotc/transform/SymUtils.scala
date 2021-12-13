@@ -112,7 +112,19 @@ object SymUtils:
           self.isCoDefinedGiven(res.typeSymbol)
       self.isAllOf(Given | Method) && isCodefined(self.info)
 
-    def useCompanionAsMirror(using Context): Boolean = self.linkedClass.exists && !self.is(Scala2x)
+    def useCompanionAsSumMirror(using Context): Boolean =
+      self.linkedClass.exists
+      && !self.is(Scala2x)
+      && (
+        // If the sum type is compiled from source, and `self` is a "generic sum"
+        // then its companion object will become a sum mirror in `posttyper`. (This method
+        // can be called from `typer` when summoning a Mirror.)
+        // However if `self` is from a prior run then we should check that its companion subclasses `Mirror.Sum`.
+        // e.g. before Scala 3.1, hierarchical sum types were not considered "generic sums", so their
+        // companion would not cache the mirror. Companions from TASTy will already be typed as `Mirror.Sum`.
+        self.isDefinedInCurrentRun
+        || self.linkedClass.isSubClass(defn.Mirror_SumClass)
+      )
 
     /** Is this a sealed class or trait for which a sum mirror is generated?
     *  It must satisfy the following conditions:
@@ -129,7 +141,7 @@ object SymUtils:
         s"it is not an abstract class"
       else {
         val children = self.children
-        val companionMirror = self.useCompanionAsMirror
+        val companionMirror = self.useCompanionAsSumMirror
         assert(!(companionMirror && (declScope ne self.linkedClass)))
         def problem(child: Symbol) = {
 
@@ -144,7 +156,7 @@ object SymUtils:
             val s = child.whyNotGenericProduct
             if (s.isEmpty) s
             else if (child.is(Sealed)) {
-              val s = child.whyNotGenericSum(if child.useCompanionAsMirror then child.linkedClass else ctx.owner)
+              val s = child.whyNotGenericSum(if child.useCompanionAsSumMirror then child.linkedClass else ctx.owner)
               if (s.isEmpty) s
               else i"its child $child is not a generic sum because $s"
             } else i"its child $child is not a generic product because $s"
