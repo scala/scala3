@@ -215,7 +215,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: PolyType =>
         changePrec(GlobalPrec) {
           "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~
-          (Str(" => ") provided !tp.resultType.isInstanceOf[MethodType]) ~
+          (Str(" =>> ") provided !tp.resultType.isInstanceOf[MethodType]) ~
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
