@@ -167,6 +167,7 @@ class BashScriptsTests:
     def exists: Boolean = s.toPath.toFile.exists
     def name: String = s.toFile.getName
     def dropExtension: String = s.reverse.dropWhile(_ != '.').drop(1).reverse
+    def parent(up: Int): String = s.norm.split("/").reverse.drop(up).reverse.mkString("/")
   }
 
   extension(p: Path) {
@@ -201,7 +202,7 @@ class BashScriptsTests:
     if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
     else envOrElse("SCALA_HOME", "").norm
 
-  lazy val javaHome = envOrElse("JAVA_HOME", "").norm
+  lazy val javaHome = whichJava.parent(2)
 
   lazy val testEnvPairs = List(
     ("JAVA_HOME", javaHome),
@@ -209,14 +210,12 @@ class BashScriptsTests:
     ("PATH", adjustedPath),
   ).filter { case (name, valu) => valu.nonEmpty }
 
-  lazy val whichBash: String =
-    var whichBash = ""
-    if osname.startsWith("windows") then
-      whichBash = which("bash.exe")
-    else
-      whichBash = which("bash")
+  lazy val whichBash: String = whichExe("bash")
+  lazy val whichJava: String = whichExe("java")
 
-    whichBash
+  def whichExe(basename: String): String = 
+    val exeName = if (osname.toLowerCase.startsWith("windows")) s"$basename.exe" else basename
+    which(exeName)
 
   def bashCommand(cmdstr: String, additionalEnvPairs: List[(String, String)] = Nil): (Boolean, Int, Seq[String], Seq[String]) = {
     var (stdout, stderr) = (List.empty[String], List.empty[String])
