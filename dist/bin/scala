@@ -28,10 +28,34 @@ fi
 
 source "$PROG_HOME/bin/common"
 
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -D*)
+      # pass to scala as well: otherwise we lose it sometimes when we
+      # need it, e.g. communicating with a server compiler.
+      addJava "$1"
+      addScala "$1"
+      # respect user-supplied -Dscala.usejavacp
+      shift
+      ;;
+    -J*)
+      # as with -D, pass to scala even though it will almost
+      # never be used.
+      addJava "${1:2}"
+      addScala "$1"
+      shift
+      ;;
+    *)
+      addScala "$1"
+      shift
+      ;;
+  esac
+done
+
 # exec here would prevent onExit from being called, leaving terminal in unusable state
 compilerJavaClasspathArgs
 [ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405
-eval "\"$JAVACMD\"" "-Dscala.home=$PROG_HOME" "-classpath \"$jvm_cp_args\"" "dotty.tools.MainGenericRunner" "-classpath \"$jvm_cp_args\"" "$@"
+eval "\"$JAVACMD\"" "${java_args[@]}" "-Dscala.home=$PROG_HOME" "-classpath \"$jvm_cp_args\"" "dotty.tools.MainGenericRunner" "-classpath \"$jvm_cp_args\"" "${scala_args[@]}"
 scala_exit_status=$?
 
 

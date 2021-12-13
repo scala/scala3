@@ -157,7 +157,7 @@ object MainGenericRunner {
         process(tail, newSettings.withResidualArgs(arg))
 
   def main(args: Array[String]): Unit =
-    val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" "))
+    val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" ")).filter(_.nonEmpty)
     val allArgs = scalaOpts ++ args
     val settings = process(allArgs.toList, Settings())
     if settings.exitCode != 0 then System.exit(settings.exitCode)

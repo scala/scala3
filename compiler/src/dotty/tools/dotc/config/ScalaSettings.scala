@@ -73,6 +73,9 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   )
 
   val wikiSyntax: Setting[Boolean] = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc.")
+
+  val jvmargs  = PrefixSetting("-J<flag>", "-J", "Pass <flag> directly to the runtime system.")
+  val defines  = PrefixSetting("-Dproperty=value", "-D", "Pass -Dproperty=value directly to the runtime system.")
 end AllScalaSettings
 
 /** Settings shared by compiler and scaladoc */
