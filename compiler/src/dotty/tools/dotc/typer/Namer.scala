@@ -18,6 +18,8 @@ import tpd.tpes
 import Variances.alwaysInvariant
 import config.{Config, Feature}
 import config.Printers.typr
+import parsing.JavaParsers.JavaParser
+import parsing.Parsers.Parser
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._
@@ -708,15 +710,44 @@ class Namer { typer: Typer =>
     ctxWithStats
   }
 
-  /** Index symbols in `tree` while asserting the `lateCompile` flag.
-   *  This will cause any old top-level symbol with the same fully qualified
-   *  name as a newly created symbol to be replaced.
+  /** Parse the source and index symbols in the compilation unit's untpdTree
+   *  while asserting the `lateCompile` flag. This will cause any old
+   *  top-level symbol with the same fully qualified name as a newly created
+   *  symbol to be replaced.
+   *
+   *  Will call the callback with an implementation of type checking
+   *  That will set the tpdTree and root tree for the compilation unit.
    */
-  def lateEnter(tree: Tree)(using Context): Context = {
-    val saved = lateCompile
-    lateCompile = true
-    try index(tree :: Nil) finally lateCompile = saved
-  }
+  def lateEnterUnit(typeCheckCB: (() => Unit) => Unit)(using Context) =
+    val unit = ctx.compilationUnit
+
+    /** Index symbols in unit.untpdTree with lateCompile flag = true */
+    def lateEnter()(using Context): Context =
+      val saved = lateCompile
+      lateCompile = true
+      try index(unit.untpdTree :: Nil) finally lateCompile = saved
+
+    /** Set the tpdTree and root tree of the compilation unit */
+    def lateTypeCheck()(using Context) =
+      unit.tpdTree = typer.typedExpr(unit.untpdTree)
+      val phase = new transform.SetRootTree()
+      phase.run
+
+    unit.untpdTree =
+      if (unit.isJava) new JavaParser(unit.source).parse()
+      else new Parser(unit.source).parse()
+
+    atPhase(Phases.typerPhase) {
+      inContext(PrepareInlineable.initContext(ctx)) {
+        // inline body annotations are set in namer, capturing the current context
+        // we need to prepare the context for inlining.
+        lateEnter()
+        typeCheckCB { () =>
+          lateTypeCheck()
+        }
+      }
+    }
+  end lateEnterUnit
 
   /** The type bound on wildcard imports of an import list, with special values
    *    Nothing  if no wildcard imports of this kind exist

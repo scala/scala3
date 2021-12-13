@@ -23,8 +23,6 @@ import rewrites.Rewrites
 
 import profile.Profiler
 import printing.XprintMode
-import parsing.Parsers.Parser
-import parsing.JavaParsers.JavaParser
 import typer.ImplicitRunInfo
 import config.Feature
 import StdNames.nme
@@ -302,31 +300,16 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         .setCompilationUnit(unit)
         .withRootImports
 
-      def process()(using Context) = {
-
-        def enterTrees()(using Context) =
-          ctx.typer.lateEnter(unit.untpdTree)
-          def typeCheckUnit()(using Context) =
-            unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
-            val phase = new transform.SetRootTree()
-            phase.run
+      def process()(using Context) =
+        ctx.typer.lateEnterUnit(doTypeCheck =>
           if typeCheck then
-            val typerCtx: Context =
-              // typer phase allows implicits to be searched
-              ctx.withPhase(Phases.typerPhase)
-            if compiling then finalizeActions += (() => typeCheckUnit()(using typerCtx))
-            else typeCheckUnit()(using typerCtx)
+            if compiling then finalizeActions += doTypeCheck
+            else doTypeCheck()
+        )
 
-        unit.untpdTree =
-          if (unit.isJava) new JavaParser(unit.source).parse()
-          else new Parser(unit.source).parse()
-        val namerCtx =
-          // inline body annotations are set in namer, capturing the current context
-          // we need to prepare the context for inlining.
-          if unit.isJava then ctx else PrepareInlineable.initContext(ctx)
-        enterTrees()(using namerCtx)
+      inContext(unitCtx) {
+        process()
       }
-      process()(using unitCtx)
     }
 
   private sealed trait PrintedTree
