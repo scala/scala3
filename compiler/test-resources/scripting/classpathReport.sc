@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bin/scala -classpath 'dist/target/pack/lib/*'
+#!bin/scala -classpath 'dist/target/pack/lib/*'
 
 import java.nio.file.Paths
 

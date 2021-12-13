@@ -88,7 +88,7 @@ class ClasspathTests:
 
 
 //////////////// end of tests ////////////////
-lazy val cwd = Paths.get(".").toAbsolutePath
+lazy val cwd = Paths.get(".").toAbsolutePath.normalize
 lazy val wildcardEntry = "dist/target/pack/lib/*"
 
 def listJars(dir: String) =

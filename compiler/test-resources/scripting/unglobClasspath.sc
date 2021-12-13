@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bin/scala -classpath 'dist/target/pack/lib/*'
+#!bin/scala -classpath 'dist/target/pack/lib/*'
 
 // won't compile unless the hashbang line sets classpath
 import org.jline.terminal.Terminal
