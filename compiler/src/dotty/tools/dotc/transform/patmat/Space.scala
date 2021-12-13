@@ -953,8 +953,9 @@ class SpaceEngine(using Context) extends SpaceLogic {
       if prev == Empty && covered == Empty then // defer until a case is reachable
         deferred ::= pat
       else {
-        for (pat <- deferred.reverseIterator)
-          report.warning(MatchCaseUnreachable(), pat.srcPos)
+        // FIXME: These should be emitted, but reverted for i13931
+        //for (pat <- deferred.reverseIterator)
+        //  report.warning(MatchCaseUnreachable(), pat.srcPos)
         if pat != EmptyTree // rethrow case of catch uses EmptyTree
             && isSubspace(covered, prev)
         then {
