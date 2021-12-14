@@ -9,7 +9,7 @@ import Types._
 import Scopes._
 import Names.Name
 import Denotations.Denotation
-import typer.Typer
+import typer.{Typer, PrepareInlineable}
 import typer.ImportInfo._
 import Decorators._
 import io.{AbstractFile, PlainFile, VirtualFile}
@@ -23,8 +23,6 @@ import rewrites.Rewrites
 
 import profile.Profiler
 import printing.XprintMode
-import parsing.Parsers.Parser
-import parsing.JavaParsers.JavaParser
 import typer.ImplicitRunInfo
 import config.Feature
 import StdNames.nme
@@ -302,19 +300,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         .setCompilationUnit(unit)
         .withRootImports
 
-      def process()(using Context) = {
-        unit.untpdTree =
-          if (unit.isJava) new JavaParser(unit.source).parse()
-          else new Parser(unit.source).parse()
-        ctx.typer.lateEnter(unit.untpdTree)
-        def processUnit() = {
-          unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
-          val phase = new transform.SetRootTree()
-          phase.run
-        }
-        if (typeCheck)
-          if (compiling) finalizeActions += (() => processUnit()) else processUnit()
-      }
+      def process()(using Context) =
+        ctx.typer.lateEnterUnit(doTypeCheck =>
+          if typeCheck then
+            if compiling then finalizeActions += doTypeCheck
+            else doTypeCheck()
+        )
+
       process()(using unitCtx)
     }
 
