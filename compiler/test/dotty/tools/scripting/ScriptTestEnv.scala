@@ -40,11 +40,11 @@ object ScriptTestEnv {
   def cygwin = ostype == "cygwin"
   def mingw = ostype == "mingw"
   def msys = ostype == "msys"
-  def winshell = cygwin || mingw || msys
+  def winshell: Boolean = cygwin || mingw || msys
 
   def which(str: String) =
     var out = ""
-    // use of adjusted path here would result in circular reference
+    // must not use adjusted path here! (causes recursive call / stack overflow)
     envPathEntries.find { entry =>
       val it = Paths.get(entry).toAbsolutePath.normalize
       it.toFile.isDirectory && {
@@ -176,12 +176,12 @@ object ScriptTestEnv {
       case str => str
     }
     def name: String = p.toFile.getName
-    def relpath: Path = cwd.relativize(p)
+    def relpath: Path = cwd.relativize(p).normalize
     def files: Seq[File] = p.toFile.files
     def parent: String = norm.replaceAll("/[^/]*$", "")
 
     // convert to absolute path relative to cwd.
-    def absPath: String = if (p.isAbsolute) p.norm else Paths.get(userDir, p.norm).toString.norm
+    def absPath: String = if (p.isAbsolute) p.norm else Paths.get(userDir, p.norm).norm
 
     def isDir: Boolean = Files.isDirectory(p)
 
@@ -202,8 +202,8 @@ object ScriptTestEnv {
 
   lazy val cwd: Path = Paths.get(".").toAbsolutePath.normalize
 
-  lazy val scalacPath = s"$workingDirectory/dist/target/pack/bin/scalac".norm
-  lazy val scalaPath = s"$workingDirectory/dist/target/pack/bin/scala".norm
+  lazy val scalacPath = s"$workingDirectory/dist/target/pack/bin/scalac".toPath.normalize.norm
+  lazy val scalaPath = s"$workingDirectory/dist/target/pack/bin/scala".toPath.normalize.norm
 
   // use optional TEST_BASH if defined, otherwise, bash must be in PATH
 
@@ -216,12 +216,32 @@ object ScriptTestEnv {
     else envOrElse("SCALA_HOME", "").norm
 
   lazy val envJavaHome: String = envOrElse("JAVA_HOME", whichJava.parent(2)).norm
+  lazy val cyghome = envOrElse("CYGWIN", "")
+  lazy val msyshome = envOrElse("MSYS", "")
 
-  lazy val testEnvPairs = List(
-    ("JAVA_HOME", envJavaHome),
-    ("SCALA_HOME", envScalaHome),
-    ("PATH", adjustedPath),
-  ).filter { case (name, valu) => valu.nonEmpty }
+  // remove xtrace, if present, add :igncr: if not present
+  lazy val shellopts: String = {
+    val value: String = envOrElse("SHELLOPTS", "braceexpand:hashall:igncr:ignoreeof:monitor:vi")
+    val list: List[String] = value.split(":").toList
+    "igncr" :: list.filter {
+      case "igncr" | "xtrace" => false
+      case _ => true
+    }
+  }.mkString(":")
+
+  lazy val testEnvPairs = {
+    val pairs = List(
+      ("JAVA_HOME", envJavaHome),
+      ("SCALA_HOME", envScalaHome),
+      ("PATH", adjustedPath),
+      ("CYGWIN", cyghome),
+      ("MSYS", msyshome),
+      ("SHELLOPTS", shellopts),
+    ).filter { case (name, valu) => valu.nonEmpty }
+    for (k, v) <- pairs do
+      printf("%s : %s\n", k ,v)
+    pairs
+  }
 
   // if unable to execute bash commands, this prevents invalid tests from failing
   lazy val passInvalidTests = envOrElse("PASS_INVALID_TESTS", "").nonEmpty

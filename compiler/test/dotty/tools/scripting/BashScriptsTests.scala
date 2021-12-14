@@ -31,6 +31,7 @@ class BashScriptsTests:
   def testFiles = scripts("/scripting")
 
   printf("osname[%s]\n", osname)
+  printf("uname[%s]\n", ostypeFull)
   printf("using JAVA_HOME=%s\n", envJavaHome)
   printf("using SCALA_HOME=%s\n", envScalaHome)
   printf("first 5 PATH entries:\n%s\n", adjustedPathEntries.take(5).mkString("\n"))
