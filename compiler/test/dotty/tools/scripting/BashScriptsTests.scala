@@ -132,10 +132,13 @@ class BashScriptsTests:
     printf("stdout: %s\n", stdout.mkString("\n","\n",""))
     if verifyValid(validTest) then
       val expected = s"${workingDirectory.norm}"
-      val output = stdout.find( _.trim.startsWith("cwd") ).getOrElse("").dropWhile(_!=' ').trim
-      printf("output  [%s]\n", output)
+      val cwdline = stdout.find( _.trim.startsWith("cwd") ).getOrElse("")
+      printf("cwdline  [%s]\n", cwdline)
       printf("expected[%s]\n", expected)
-      val valid = output.startsWith(expected)
+      val valid = cwdline.endsWith(expected)
+      if (!valid) then
+        stdout.foreach { printf("stdout[%s]\n", _) }
+        stderr.foreach { printf("stderr[%s]\n", _) }
       if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", workingDirectory, scriptFile.getName)
       assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
 
