@@ -8,7 +8,7 @@ sealed trait Foo
 class Bar
 
 def test1(bar: Bar) = bar match
-  case _: Foo => 1 // FIXME: this is unreachable, but reverted for i13931
+  case _: Foo => 1
   case _: Bar => 2
 
 def test2(bar: Bar) = bar match
