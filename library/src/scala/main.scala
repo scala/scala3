@@ -179,11 +179,11 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         (indices ++: indicesShort).filter(_ >= 0)
 
       private def getAlternativeNames(paramInfos: ParameterInfos[_]): Seq[String] =
-        paramInfos.annotations.collect{ case Name(n) => n }.filter(_.length > 0)
+        paramInfos.annotations.collect{ case annot: Name => annot.name }.filter(_.length > 0)
 
       private def getShortNames(paramInfos: ParameterInfos[_]): Seq[Char] =
         val (valid, invalid) =
-          paramInfos.annotations.collect{ case ShortName(c) => c }.partition(shortNameIsValid)
+          paramInfos.annotations.collect{ case annot: ShortName => annot.shortName }.partition(shortNameIsValid)
         if invalid.nonEmpty then
           throw IllegalArgumentException(s"invalid short names ${invalid.mkString(", ")} for parameter ${paramInfos.name}")
         valid
@@ -293,6 +293,6 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 end main
 
 object main:
-  final case class ShortName(val shortName: Char) extends MainAnnotation.ParameterAnnotation
-  final case class Name(val name: String) extends MainAnnotation.ParameterAnnotation
+  final class ShortName(val shortName: Char) extends MainAnnotation.ParameterAnnotation
+  final class Name(val name: String) extends MainAnnotation.ParameterAnnotation
 end main
