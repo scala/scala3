@@ -233,7 +233,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   }
 
   /** The `decls` scope associated with given symbol */
-  protected def symScope(sym: Symbol): Scope = symScopes.getOrElseUpdate(sym, newScope)
+  protected def symScope(sym: Symbol): Scope = symScopes.getOrElseUpdate(sym, newScope(0))
 
   /** Does entry represent an (internal) symbol */
   protected def isSymbolEntry(i: Int)(using Context): Boolean = {

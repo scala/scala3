@@ -18,14 +18,16 @@ object Test {
     int = vi => vi.i : vi.A,
     str = vs => vs.t : vs.A
   )
+  // Used to infer `c.visit[Int & M)]` and error out in the second lambda,
+  // now infers `c.visit[(Int & M | String & M)]`
   def minimalFail[M](c: Container { type A = M }): M = c.visit(
     int = vi => vi.i : vi.A,
-    str = vs => vs.t : vs.A  // error // error
+    str = vs => vs.t : vs.A
   )
 
   def main(args: Array[String]): Unit = {
     val e: Container { type A = String } = new StrV
     println(minimalOk(e)) // this one prints "hello"
-    println(minimalFail(e)) // this one fails with ClassCastException: class java.lang.String cannot be cast to class java.lang.Integer
+    println(minimalFail(e)) // used to fail with ClassCastException, now prints "hello"
   }
 }

@@ -3,6 +3,7 @@ package dotc
 package transform
 
 import core._
+import Scopes.newScope
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._
 import MegaPhase._
 import SymUtils._
@@ -123,7 +124,7 @@ class ExpandSAMs extends MiniPhase:
     val parents = List(
       defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType),
       defn.SerializableType)
-    val pfSym = newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, coord = tree.span)
+    val pfSym = newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, newScope, coord = tree.span)
 
     def overrideSym(sym: Symbol) = sym.copy(
       owner = pfSym,
