@@ -287,7 +287,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             .functionParameters(on.argsLists)
             .asInstanceOf[InlineSignatureBuilder].names.reverse
           val sig = typeSig ++ Signature(Plain(s"(${on.name}: ")) ++ on.signature ++ Signature(Plain(")")) ++ argsSig
-          MGroup(span(sig.map(renderElement)), members.sortBy(_.name).toSeq, on.name)
+          MGroup(span(cls := "groupHeader")(sig.map(renderElement)), members.sortBy(_.name).toSeq, on.name)
       }.toSeq
 
     div(cls := "membersList")(renderTabs(
