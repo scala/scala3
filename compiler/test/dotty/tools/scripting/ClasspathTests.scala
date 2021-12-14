@@ -86,7 +86,7 @@ class ClasspathTests:
     printf("bash is [%s]\n", bashExe)
 
     if packBinScalaExists then
-      val bashCmdline = s"SCALA_OPTS= $relpath"
+      val bashCmdline = s"set +x ; SCALA_OPTS= $relpath"
       val cmd = Array(bashExe, "-c", bashCmdline)
 
       cmd.foreach { printf("[%s]\n", _) }

@@ -24,12 +24,20 @@ object ScriptTestEnv {
   def whichJava: String = whichExe("java")
   def whichBash: String = whichExe("bash")
 
-  def workingDirectory: String = envOrElse("TEST_CWD", userDir).norm // optional working directory TEST_CWD
+  lazy val workingDirectory: String = {
+    val dirstr = envOrElse("TEST_CWD", userDir).norm // optional working directory TEST_CWD
+    printf("working directory is [%s]\n", dirstr)
+    val test = Paths.get(s"$dirstr/dist/target/pack/bin").normalize
+    if !test.isDirectory then
+      printf("warning: not found below working directory: %s\n", test.norm)
+    dirstr
+  }
 
-  def envPath: String = envOrElse("PATH", "").norm
-  def adjustedPath: String = s"$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath"
-  def adjustedPathEntries: List[String] = adjustedPath.split(psep).toList
-  def envPathEntries: List[String] = envPath.split(psep).toList
+  def envPath: String = envOrElse("PATH", "")
+  // remove duplicate entries in path
+  def adjustedPathEntries: List[String] = s"dist/target/pack/bin$psep$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath".norm.split(psep).toList.distinct
+  def adjustedPath: String = adjustedPathEntries.mkString(psep)
+  def envPathEntries: List[String] = envPath.split(psep).toList.distinct
 
   def bashExe: String = envOrElse("TEST_BASH", whichBash)
 
@@ -184,6 +192,8 @@ object ScriptTestEnv {
     def absPath: String = if (p.isAbsolute) p.norm else Paths.get(userDir, p.norm).norm
 
     def isDir: Boolean = Files.isDirectory(p)
+    def isDirectory: Boolean = p.toFile.isDirectory
+    def isFile: Boolean = p.toFile.isFile
 
     def toUrl: String = Paths.get(absPath).toUri.toURL.toString
 
@@ -202,8 +212,18 @@ object ScriptTestEnv {
 
   lazy val cwd: Path = Paths.get(".").toAbsolutePath.normalize
 
-  lazy val scalacPath = s"$workingDirectory/dist/target/pack/bin/scalac".toPath.normalize.norm
-  lazy val scalaPath = s"$workingDirectory/dist/target/pack/bin/scala".toPath.normalize.norm
+  lazy val (scalacPath: String, scalaPath: String) = {
+    val scalac = s"$workingDirectory/dist/target/pack/bin/scalac".toPath.normalize
+    val scala = s"$workingDirectory/dist/target/pack/bin/scala".toPath.normalize
+    if (scalac.isFile){
+      (scalac.norm, scala.norm)
+    } else {
+      val s1 = findFile("scalac").replaceAll("/bin/scalac$", "")
+      val s2 = findFile("scala").replaceAll("/bin/scala$", "")
+      (s1.norm, s2.norm)
+    }
+  }
+    
 
   // use optional TEST_BASH if defined, otherwise, bash must be in PATH
 
@@ -212,8 +232,19 @@ object ScriptTestEnv {
   //    else, SCALA_HOME if defined
   //    else, not defined
   lazy val envScalaHome =
+    printf("scalacPath: %s\n", scalacPath.norm)
     if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
-    else envOrElse("SCALA_HOME", "").norm
+    else envOrElse("SCALA_HOME", "not-found").norm
+
+  lazy val fallbackScalaHome = {
+    findFile("scalac").replaceAll("/bin/scalac$", "")
+  }
+  def findFile(name: String) = {
+    val (valid, err, stdout, stderr) = bashCommand(s"/usr/bin/find . -name $name -type f")
+    stdout.foreach { printf("out[%s]\n", _) }
+    stderr.foreach { printf("err[%s]\n", _) }
+    stdout.take(1).mkString("").norm
+  }
 
   lazy val envJavaHome: String = envOrElse("JAVA_HOME", whichJava.parent(2)).norm
   lazy val cyghome = envOrElse("CYGWIN", "")
@@ -223,10 +254,14 @@ object ScriptTestEnv {
   lazy val shellopts: String = {
     val value: String = envOrElse("SHELLOPTS", "braceexpand:hashall:igncr:ignoreeof:monitor:vi")
     val list: List[String] = value.split(":").toList
-    "igncr" :: list.filter {
+    val minlist = list.filter {
       case "igncr" | "xtrace" => false
       case _ => true
     }
+    if isWin then
+      "igncr" :: minlist
+    else
+      minlist
   }.mkString(":")
 
   lazy val testEnvPairs = {
