@@ -91,18 +91,18 @@ abstract class SignatureTest(
 
   private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[SignatureRes] =
     source.getLines.map(_.trim)
-        .filterNot(_.isEmpty)
-        .filterNot(_.startWithAnyOfThese("=",":","{","}", "//"))
-        .toSeq
-        .flatMap {
-          case unexpectedRegex(signature) => findName(signature, kinds).map(Unexpected(_))
-          case expectedRegex(signature) => findName(signature, kinds).map(Expected(_, signature))
-          case signature =>
-            findName(signature, kinds).map(
-              Expected(_, commentRegex.replaceAllIn(signature, "")
-                .compactWhitespaces.reverse.dropWhile(List('{', ':').contains(_)).reverse)
-            )
-        }
+      .filterNot(_.isEmpty)
+      .filterNot(_.startWithAnyOfThese("=",":","{","}", "//"))
+      .toSeq
+      .flatMap {
+        case unexpectedRegex(signature) => findName(signature, kinds).map(Unexpected(_))
+        case expectedRegex(signature) => findName(signature, kinds).map(Expected(_, signature))
+        case signature =>
+          findName(signature, kinds).map(
+            Expected(_, commentRegex.replaceAllIn(signature, "")
+              .compactWhitespaces.reverse.dropWhile(List('{', ':').contains(_)).reverse)
+          )
+      }
 
   private def signaturesFromDocumentation()(using DocContext): Seq[String] =
     val output = summon[DocContext].args.output.toPath
@@ -129,6 +129,6 @@ abstract class SignatureTest(
 
 object SignatureTest {
   val classlikeKinds = Seq("class",  "object", "trait", "enum") // TODO add docs for packages
-  val members = Seq("type", "def", "val", "var")
+  val members = Seq("type", "def", "val", "var", "given")
   val all = classlikeKinds ++ members
 }

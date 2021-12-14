@@ -115,7 +115,6 @@ object SymOps:
       !sym.isHiddenByVisibility
       && !sym.flags.is(Flags.Synthetic)
       && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
-      && !(sym.companionModule.flags.is(Flags.Given))
 
     def getCompanionSymbol: Option[reflect.Symbol] = Some(sym.companionClass).filter(_.exists)
 
@@ -249,7 +248,6 @@ class SymOpsWithLinkCache:
     def dri(using dctx: DocContext): DRI =
       import reflect.*
       if sym == Symbol.noSymbol then topLevelDri
-      else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri
       else
         val method =
           if (sym.isDefDef) Some(sym)
@@ -261,7 +259,7 @@ class SymOpsWithLinkCache:
         else
           (sym.className, sym.anchor)
 
-        val location = sym.packageNameSplitted ++ className
+        val location = (sym.packageNameSplitted ++ className).map(escapeFilename(_))
 
         val externalLink = {
             import reflect._

@@ -61,7 +61,7 @@ trait TypesSupport:
   extension (on: SignaturePart) def l: List[SignaturePart] = List(on)
 
   private def tpe(using Quotes)(symbol: reflect.Symbol): SSignature =
-    val suffix = if symbol.isValDef then plain(".type").l else Nil
+    val suffix = if symbol.isValDef || symbol.flags.is(reflect.Flags.Module) then plain(".type").l else Nil
     dotty.tools.scaladoc.Type(symbol.normalizedName, Some(symbol.dri)) :: suffix
 
   private def commas(lists: List[SSignature]) = lists match
