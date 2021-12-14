@@ -1,4 +1,3 @@
-
 package dotty
 package tools
 package scripting
@@ -12,6 +11,10 @@ import scala.sys.process.*
 import scala.jdk.CollectionConverters.*
 
 /**
+ * Common Code for supporting scripting tests.
+ * To override the path to the bash executable, set TEST_BASH=<path-to-bash.exe>
+ * To specify where `dist/target/pack/bin` resides, set TEST_CWD=<working-directory>
+ * Test scripts run in a bash env, so paths are converted to forward slash via .norm.
  */
 object ScriptTestEnv {
   def osname: String = sys.props("os.name").toLowerCase
@@ -21,7 +24,7 @@ object ScriptTestEnv {
   def whichJava: String = whichExe("java")
   def whichBash: String = whichExe("bash")
 
-  def workingDirectory: String = envOrElse("TEST_CWD", userDir) // optional working directory TEST_CWD
+  def workingDirectory: String = envOrElse("TEST_CWD", userDir).norm // optional working directory TEST_CWD
 
   def envPath: String = envOrElse("PATH", "").norm
   def adjustedPath: String = s"$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath"
@@ -43,7 +46,7 @@ object ScriptTestEnv {
     var out = ""
     // use of adjusted path here would result in circular reference
     envPathEntries.find { entry =>
-      val it = Paths.get(entry).toAbsolutePath
+      val it = Paths.get(entry).toAbsolutePath.normalize
       it.toFile.isDirectory && {
         var testpath = s"$it/$str".norm
         val test = Paths.get(testpath)
@@ -65,6 +68,12 @@ object ScriptTestEnv {
     val exeName = if (osname.toLowerCase.startsWith("windows")) s"$basename.exe" else basename
     which(exeName)
 
+  /* returned values are:
+   * validTest: Boolean   - false if permissions problems occur, true otherwise
+   * exitVal:   Int       - the conventional return error code, where zero implies "no errors".
+   * stdout: Seq[String]  - the lines captured from STDOUT
+   * stderr: Seq[String]  - the lines captured from STDERR
+   */
   def bashCommand(cmdstr: String, additionalEnvPairs: List[(String, String)] = Nil): (Boolean, Int, Seq[String], Seq[String]) = {
     var (stdout, stderr) = (List.empty[String], List.empty[String])
     if bashExe.toFile.exists then
@@ -75,7 +84,7 @@ object ScriptTestEnv {
         (out: String) => stdout ::= out,
         (err: String) => stderr ::= err
       )
-   // val validTest = exitVal == 0 && ! stderr.exists(_.contains("Permission denied"))
+      // a misconfigured environment (e.g., script is not executable) can prevent script execution
       val validTest = !stderr.exists(_.contains("Permission denied"))
       if ! validTest then
         printf("\nunable to execute script, return value is %d\n", exitVal)
@@ -97,10 +106,10 @@ object ScriptTestEnv {
   def packLibDir = "dist/target/pack/lib"
   def packBinScalaExists: Boolean = Files.exists(Paths.get(s"$packBinDir/scala"))
 
-  def listJars(dir: String) =
+  def listJars(dir: String): List[File] =
     val packlibDir = Paths.get(dir).toFile
     if packlibDir.isDirectory then
-      packlibDir.listFiles.toList.map { _.getName }.filter { _.endsWith(".jar") }
+      packlibDir.listFiles.toList.filter { _.getName.endsWith(".jar") }
     else
       Nil
 
@@ -139,8 +148,8 @@ object ScriptTestEnv {
 
   def fixHome(s: String): String =
     s.startsWith("~") match {
-    case false => s
-    case true => s.replaceFirst("~", userHome)
+      case false => s
+      case true => s.replaceFirst("~", userHome)
     }
 
   extension(s: String) {
@@ -163,8 +172,8 @@ object ScriptTestEnv {
     def norm: String = p.normalize.toString.replace('\\', '/')
 
     def noDrive = p.norm match {
-    case str if str.drop(1).take(1) == ":" => str.drop(2)
-    case str => str
+      case str if str.drop(1).take(1) == ":" => str.drop(2)
+      case str => str
     }
     def name: String = p.toFile.getName
     def relpath: Path = cwd.relativize(p)
@@ -186,10 +195,12 @@ object ScriptTestEnv {
     def name = f.getName
     def norm: String = f.toPath.normalize.norm
     def absPath: String = f.getAbsolutePath.norm
+    def relpath: Path = f.toPath.relpath
     def files: Seq[File] = f.listFiles.toList
+    def parentDir: Path = f.toPath.getParent
   }
 
-  lazy val cwd: Path = Paths.get(".").toAbsolutePath
+  lazy val cwd: Path = Paths.get(".").toAbsolutePath.normalize
 
   lazy val scalacPath = s"$workingDirectory/dist/target/pack/bin/scalac".norm
   lazy val scalaPath = s"$workingDirectory/dist/target/pack/bin/scala".norm
@@ -221,5 +232,4 @@ object ScriptTestEnv {
       assert(validTest == true, s"unable to call script via bash -c")
 
     validTest
-
 }

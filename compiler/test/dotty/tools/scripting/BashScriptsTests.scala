@@ -2,7 +2,7 @@ package dotty
 package tools
 package scripting
 
-import org.junit.Test
+import org.junit.{Test, AfterClass}
 import org.junit.Assert.assertEquals
 
 import vulpix.TestConfiguration
@@ -15,10 +15,20 @@ import ScriptTestEnv.*
  *   +. prevent SCALA_OPTS in build environment from infecting tests, via 'SCALA_OPTS= ' prefix
  *   +. test scripts must not throw execptions or exit with nonzero.
  */
+object BashScriptsTests:
+  lazy val argsfile = createArgsFile() // avoid problems caused by drive letter
+
+  @AfterClass def cleanup: Unit = {
+    val af = argsfile.toFile
+    if (af.exists) {
+      af.delete()
+    }
+  }
+
 class BashScriptsTests:
+  import BashScriptsTests.*
   // classpath tests managed by scripting.ClasspathTests.scala
   def testFiles = scripts("/scripting")
-  lazy val argsfile = createArgsFile() // avoid problems caused by drive letter
 
   printf("osname[%s]\n", osname)
   printf("using JAVA_HOME=%s\n", envJavaHome)
@@ -56,31 +66,31 @@ class BashScriptsTests:
       if fail then
         assert(stdout == expectedOutput)
 
-  /* verify `dist/bin/scala` with -J setting */
+  /* verify that `dist/bin/scala` correctly passes args to the jvm via -J-D for script envtest.sc */
   @Test def verifyScJProperty =
     val commandline = Seq("SCALA_OPTS= ", scalaPath, "-J-Dkey=World", testFiles.find(_.getName == "envtest.sc").get.absPath).mkString(" ")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
     assertEquals(stdout.mkString("/n"), "Hello World")
 
-  /* verify `dist/bin/scala` with -J setting */
+  /* verify that `dist/bin/scala` correctly passes args to the jvm via -J-D for script envtest.scala */
   @Test def verifyScalaJProperty =
     val commandline = Seq("SCALA_OPTS= ", scalaPath, "-J-Dkey=World3", testFiles.find(_.getName == "envtest.scala").get.absPath).mkString(" ")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
     assertEquals(stdout.mkString("/n"), "Hello World3")
 
-  /* verify `dist/bin/scala` with -D setting */
+  /* verify that `dist/bin/scala` can set system properties via -D for envtest.sc */
   @Test def verifyScDProperty =
     val commandline = Seq("SCALA_OPTS= ", scalaPath, "-Dkey=World3", testFiles.find(_.getName == "envtest.sc").get.absPath).mkString(" ")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
     assertEquals(stdout.mkString("/n"), "Hello World3")
 
-  /* verify `dist/bin/scala` with -D setting */
+  /* verify that `dist/bin/scala` can set system properties via -D for envtest.scala */
   @Test def verifyScalaDProperty =
     val commandline = Seq("SCALA_OPTS= ", scalaPath, "-Dkey=World4", testFiles.find(_.getName == "envtest.scala").get.absPath).mkString(" ")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
     assertEquals(stdout.mkString("/n"), "Hello World4")
 
-  /* verify `dist/bin/scala` with -D setting */
+  /* verify that `dist/bin/scala` can set system properties via -D when executing compiled script via -jar envtest.jar */
   @Test def saveAndRunWithDProperty =
     val commandline = Seq("SCALA_OPTS= ", scalaPath, "-save", testFiles.find(_.getName == "envtest.scala").get.absPath).mkString(" ")
     val (_, _, _, _) = bashCommand(commandline)
@@ -95,7 +105,6 @@ class BashScriptsTests:
     if verifyValid(validTest) then
       var fail = false
       printf("\n")
-      var mismatches = List.empty[(String, String)]
       for (line, expect) <- stdout zip expectedOutput do
         printf("expected: %-17s\nactual  : %s\n", expect, line)
         if line != expect then

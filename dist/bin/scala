@@ -45,6 +45,16 @@ while [[ $# -gt 0 ]]; do
       addScala "$1"
       shift
       ;;
+    -classpath*)
+      if [ "$1" != "${1##* }" ]; then
+        # hashbang-combined args "-classpath 'lib/*'"
+        A=$1 ; shift # consume $1 before adding its substrings back
+        set -- $A "$@" # split $1 on whitespace and put it back
+      else
+        addScala "$1"
+        shift
+      fi
+      ;;
     *)
       addScala "$1"
       shift
