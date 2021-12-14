@@ -220,7 +220,7 @@ object OverridingPairs:
       // default getters are not checked for compatibility
       member.name.is(DefaultGetterName) || {
         if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
-          // releaxed override check for explicit nulls if one of the symbols is Java defined,
+          // relaxed override check for explicit nulls if one of the symbols is Java defined,
           // force `Null` being a subtype of reference types during override checking.
           // `stripNullsDeep` is used here because we may encounter type parameters
           // (`T | Null` is not a subtype of `T` even if we retract Mode.SafeNulls).
