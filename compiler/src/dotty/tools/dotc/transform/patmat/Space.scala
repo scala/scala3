@@ -371,10 +371,15 @@ class SpaceEngine(using Context) extends SpaceLogic {
       val fun1 = funPart(fun)
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
-        if (fun.symbol.owner == scalaSeqFactoryClass)
+        val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
+        if (fun.symbol.owner == scalaSeqFactoryClass && scalaListType.appliedTo(elemTp) <:< pat.tpe)
+          // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
+          // and product types (into its components).  To get better counter-examples for patterns that are of type
+          // List (or a super-type of list, like LinearSeq) we project them into spaces that use `::` and Nil.
+          // Doing so with a pattern of `case Seq() =>` with a scrutinee of type `Vector()` doesn't work because the
+          // space is then discarded leading to a false positive reachability warning, see #13931.
           projectSeq(pats)
         else {
-          val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
           if (elemTp.exists)
             Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, projectSeq(pats) :: Nil)
           else
@@ -959,9 +964,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
       if prev == Empty && covered == Empty then // defer until a case is reachable
         deferred ::= pat
       else {
-        // FIXME: These should be emitted, but reverted for i13931
-        //for (pat <- deferred.reverseIterator)
-        //  report.warning(MatchCaseUnreachable(), pat.srcPos)
+        for (pat <- deferred.reverseIterator)
+          report.warning(MatchCaseUnreachable(), pat.srcPos)
         if pat != EmptyTree // rethrow case of catch uses EmptyTree
             && isSubspace(covered, prev)
         then {

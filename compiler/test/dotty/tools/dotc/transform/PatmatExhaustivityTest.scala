@@ -66,7 +66,7 @@ class PatmatExhaustivityTest {
       .filter(f => f.extension == "scala" || f.isDirectory)
       .filter { f =>
         val path = if f.isDirectory then f.path + "/" else f.path
-        path.contains(Properties.testsFilter.getOrElse(""))
+        Properties.testsFilter.getOrElse("").split(',').exists(path.contains)
       }
       .map(f => if f.isDirectory then compileDir(f.jpath) else compileFile(f.jpath))
 
