@@ -49,4 +49,13 @@ object Mirror {
   type Of[T] = Mirror { type MirroredType = T; type MirroredMonoType = T ; type MirroredElemTypes <: Tuple }
   type ProductOf[T] = Mirror.Product { type MirroredType = T; type MirroredMonoType = T ; type MirroredElemTypes <: Tuple }
   type SumOf[T] = Mirror.Sum { type MirroredType = T; type MirroredMonoType = T; type MirroredElemTypes <: Tuple }
+
+  extension [T](p: ProductOf[T])
+    /** Create a new instance of type `T` with elements taken from product `a`. */
+    def fromProductTyped[A <: scala.Product](a: A)(using m: ProductOf[A], ev: p.MirroredElemTypes =:= m.MirroredElemTypes): T =
+      p.fromProduct(a)
+
+    /** Create a new instance of type `T` with elements taken from tuple `t`. */
+    def fromTuple(t: p.MirroredElemTypes): T =
+      p.fromProduct(t)
 }

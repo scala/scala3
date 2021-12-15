@@ -13,6 +13,8 @@ object Test extends App {
   case class AA[X >: Null <: AnyRef](x: X, y: X, z: String)
 
   println(summon[Mirror.ProductOf[A]].fromProduct(A(1, 2)))
+  summon[Mirror.ProductOf[A]].fromProductTyped(A(1, 2))
+  summon[Mirror.ProductOf[A]].fromTuple((1, 2))
   assert(summon[Mirror.SumOf[T]].ordinal(A(1, 2)) == 0)
   assert(summon[Mirror.Sum { type MirroredType = T }].ordinal(B) == 1)
   summon[Mirror.Of[A]] match {
