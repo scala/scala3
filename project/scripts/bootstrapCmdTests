@@ -96,8 +96,8 @@ IFS=':=' read -ra versionProps < "$cwd/dist/target/pack/VERSION" # temporarily s
   [ -n ${versionProps[2]} ] || die "Expected non-empty 'version' property in $cwd/dist/target/pack/VERSION"
 scala_version=${versionProps[2]}
 
-echo "testing -sourcepath with inlining"
-# Here we will test that an inline method symbol loaded from the sourcepath (-sourcepath compiler option)
+echo "testing -sourcepath with incremental compile: inlining changed inline def into a def"
+# Here we will test that a changed inline method symbol loaded from the sourcepath (-sourcepath compiler option)
 # will have its `defTree` correctly set when its method body is required for inlining.
 # So far I have not found a way to replicate issue https://github.com/lampepfl/dotty/issues/13994
 # with sbt scripted tests, if a way is found, move this test there.
@@ -107,3 +107,17 @@ sbt_test_command="++${scala_version}!;clean;prepareSources;compile;copyChanges;c
 rm -rf "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/target"
 rm -rf "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/project/target"
 rm -f "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/src/main/scala/a/zz.scala"
+
+echo "testing -sourcepath with incremental compile: hashing reference to changed inline def from an inline def"
+# Here we will test that a changed inline method symbol loaded from the sourcepath (-sourcepath compiler option)
+# will have its `defTree` correctly set when its method body is hashed by extractAPI, when referenced from another
+# inline method.
+# So far I have not found a way to replicate https://github.com/lampepfl/dotty/pull/12931#discussion_r753212124
+# with sbt scripted tests, if a way is found, move this test there.
+cwd=$(pwd)
+sbt_test_dir="$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline-api-hash"
+sbt_test_command="++${scala_version}!;clean;prepareSources;compile;copyChanges;compile"
+(cd "$sbt_test_dir" && "$SBT" "$sbt_test_command")
+rm -rf "$sbt_test_dir/target"
+rm -rf "$sbt_test_dir/project/target"
+rm -f "$sbt_test_dir/src/main/scala/a/zz.scala"
