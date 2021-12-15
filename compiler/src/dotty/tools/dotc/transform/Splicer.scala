@@ -149,7 +149,14 @@ object Splicer {
         case Typed(expr, _) => checkIfValidArgument(expr)
 
         case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
-          // OK
+          val noSpliceChecker = new TreeTraverser {
+            def traverse(tree: Tree)(using Context): Unit = tree match
+              case Spliced(_) =>
+                report.error("Quoted argument of macros may not have splices", tree.srcPos)
+              case _ =>
+                traverseChildren(tree)
+          }
+          noSpliceChecker.traverse(quoted)
 
         case Apply(TypeApply(fn, List(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
           // OK
