@@ -131,11 +131,17 @@ object ScriptTestEnv {
 
   // script output expected as "<tag>: <value>"
   def findTaggedLine(tag: String, lines: Seq[String]): String =
-    lines.find { _.startsWith(tag) } match
+    lines.map { stripColors(_) }.find { _.startsWith(tag) } match
       case None =>
         lines.foreach { System.err.printf("line[%s]\n", _) }
         sys.error(s"no $tag: found in script output")
       case Some(cwd) => cwd.dropWhile( _ != ' ').trim // discard tag
+
+  def stripColors(line:String): String =
+    // ESC has be seen in the wild replaced by "\u2190"
+    // Also, BOM marker appears as ï»¿
+    lazy val colorsRegex = "(\u001b|\u2190)\\[[0-9;]*m|ï»¿".r
+    colorsRegex.replaceAllIn(line,"")
 
   def exec(cmd: String *): Seq[String] = Process(cmd).lazyLines_!.toList
 

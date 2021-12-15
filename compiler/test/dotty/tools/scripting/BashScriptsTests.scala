@@ -142,7 +142,8 @@ class BashScriptsTests:
     printf("stdout: %s\n", stdout.mkString("\n","\n",""))
     if verifyValid(validTest) then
       val expected = s"${workingDirectory.norm}"
-      val cwdline = stdout.find( _.trim.startsWith("cwd") ).getOrElse("")
+      // stdout might be polluted with an ANSI color prefix, so be careful
+      val cwdline = stdout.find( _.trim.matches(".*cwd: .*") ).getOrElse("")
       printf("cwdline  [%s]\n", cwdline)
       printf("expected[%s]\n", expected)
       val valid = cwdline.endsWith(expected)
