@@ -20,16 +20,24 @@ object ScriptTestEnv {
   def osname: String = sys.props("os.name").toLowerCase
   def psep: String = sys.props("path.separator")
   def userDir: String = sys.props("user.dir").norm
+  def testCwd = envOrElse("TEST_CWD", "").norm // optional working directory TEST_CWD
 
   def whichJava: String = whichExe("java")
   def whichBash: String = whichExe("bash")
 
   lazy val workingDirectory: String = {
-    val dirstr = envOrElse("TEST_CWD", userDir).norm // optional working directory TEST_CWD
-    printf("working directory is [%s]\n", dirstr)
+    val dirstr = if testCwd.nonEmpty then
+      printf("TEST_CWD set to [%s]\n", testCwd)
+      testCwd
+    else 
+      userDir // userDir, if TEST_CWD not set
+
+    // issue warning if things don't look right
     val test = Paths.get(s"$dirstr/dist/target/pack/bin").normalize
     if !test.isDirectory then
       printf("warning: not found below working directory: %s\n", test.norm)
+
+    printf("working directory is [%s]\n", dirstr)
     dirstr
   }
 
@@ -215,13 +223,7 @@ object ScriptTestEnv {
   lazy val (scalacPath: String, scalaPath: String) = {
     val scalac = s"$workingDirectory/dist/target/pack/bin/scalac".toPath.normalize
     val scala = s"$workingDirectory/dist/target/pack/bin/scala".toPath.normalize
-    if (scalac.isFile){
-      (scalac.norm, scala.norm)
-    } else {
-      val s1 = findFile("scalac").replaceAll("/bin/scalac$", "")
-      val s2 = findFile("scala").replaceAll("/bin/scala$", "")
-      (s1.norm, s2.norm)
-    }
+    (scalac.norm, scala.norm)
   }
     
 
@@ -235,16 +237,6 @@ object ScriptTestEnv {
     printf("scalacPath: %s\n", scalacPath.norm)
     if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
     else envOrElse("SCALA_HOME", "not-found").norm
-
-  lazy val fallbackScalaHome = {
-    findFile("scalac").replaceAll("/bin/scalac$", "")
-  }
-  def findFile(name: String) = {
-    val (valid, err, stdout, stderr) = bashCommand(s"/usr/bin/find . -name $name -type f")
-    stdout.foreach { printf("out[%s]\n", _) }
-    stderr.foreach { printf("err[%s]\n", _) }
-    stdout.take(1).mkString("").norm
-  }
 
   lazy val envJavaHome: String = envOrElse("JAVA_HOME", whichJava.parent(2)).norm
   lazy val cyghome = envOrElse("CYGWIN", "")
