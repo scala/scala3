@@ -1,8 +1,8 @@
--- Error: tests/neg-custom-args/fatal-warnings/i8711.scala:7:9 ---------------------------------------------------------
+-- [E030] Match case Unreachable Error: tests/neg-custom-args/fatal-warnings/i8711.scala:7:9 ---------------------------
 7 |    case x: B => x // error: this case is unreachable since class A is not a subclass of class B
-  |         ^
-  |         this case is unreachable since type A and class B are unrelated
--- Error: tests/neg-custom-args/fatal-warnings/i8711.scala:12:9 --------------------------------------------------------
+  |         ^^^^
+  |         Unreachable case
+-- [E030] Match case Unreachable Error: tests/neg-custom-args/fatal-warnings/i8711.scala:12:9 --------------------------
 12 |    case x: C => x // error
-   |         ^
-   |         this case is unreachable since type A | B and class C are unrelated
+   |         ^^^^
+   |         Unreachable case
