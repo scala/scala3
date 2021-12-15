@@ -7,9 +7,7 @@ import dotty.tools.dotc.core.Names.Name
 
 inline val TermNameHash = 1987 // 300th prime
 inline val TypeNameHash = 1993 // 301st prime
-inline val EmptyParamHash = 1997 // 302nd prime
-inline val InlineParamHash = 1999 // 303rd prime
-inline val InlineValHash = 2003 // 304th prime
+inline val InlineParamHash = 1997 // 302nd prime
 
 extension (sym: Symbol)
 

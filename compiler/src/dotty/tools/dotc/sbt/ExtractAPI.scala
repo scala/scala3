@@ -24,6 +24,7 @@ import java.io.PrintWriter
 import xsbti.api.DefinitionType
 
 import scala.collection.mutable
+import scala.util.hashing.MurmurHash3
 
 /** This phase sends a representation of the API of classes to sbt via callbacks.
  *
@@ -143,6 +144,12 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     */
   private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
 
+  /** This cache is necessary to avoid infinite loops when hashing the body of inline definitions.
+   *  Its keys represent the root inline definitions, and its values are seen inline references within
+   *  the rhs of the key. If a symbol is present in the value set, then do not hash its signature or inline body.
+   */
+  private val seenInlineCache = mutable.HashMap.empty[Symbol, mutable.HashSet[Symbol]]
+
   private val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
   private val _mainClasses = new mutable.HashSet[String]
 
@@ -219,7 +226,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     val structure = apiClassStructure(sym)
     val acc = apiAccess(sym)
     val modifiers = apiModifiers(sym)
-    val anns = apiAnnotations(sym).toArray
+    val anns = apiAnnotations(sym, inlineOrigin = NoSymbol).toArray
     val topLevel = sym.isTopLevelClass
     val childrenOfSealedClass = sym.sealedDescendants.sorted(classFirstSort).map(c =>
       if (c.isClass)
@@ -320,54 +327,97 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     }
   }
 
-  def apiDefinitions(defs: List[Symbol]): List[api.ClassDefinition] = {
-    defs.sorted(classFirstSort).map(apiDefinition)
-  }
+  def apiDefinitions(defs: List[Symbol]): List[api.ClassDefinition] =
+    defs.sorted(classFirstSort).map(apiDefinition(_, inlineOrigin = NoSymbol))
 
-  def apiDefinition(sym: Symbol): api.ClassDefinition = {
+  /** `inlineOrigin` denotes an optional inline method that we are
+   *  currently hashing the body of. If it exists, include extra information
+   *  that is missing after erasure
+   */
+  def apiDefinition(sym: Symbol, inlineOrigin: Symbol): api.ClassDefinition = {
     if (sym.isClass) {
       apiClass(sym.asClass)
     } else if (sym.isType) {
       apiTypeMember(sym.asType)
     } else if (sym.is(Mutable, butNot = Accessor)) {
       api.Var.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
-        apiAnnotations(sym).toArray, apiType(sym.info))
+        apiAnnotations(sym, inlineOrigin).toArray, apiType(sym.info))
     } else if (sym.isStableMember && !sym.isRealMethod) {
       api.Val.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
-        apiAnnotations(sym).toArray, apiType(sym.info))
+        apiAnnotations(sym, inlineOrigin).toArray, apiType(sym.info))
     } else {
-      apiDef(sym.asTerm)
+      apiDef(sym.asTerm, inlineOrigin)
     }
   }
 
-  def apiDef(sym: TermSymbol): api.Def = {
+  /** `inlineOrigin` denotes an optional inline method that we are
+   *  currently hashing the body of. If it exists, include extra information
+   *  that is missing after erasure
+   */
+  def apiDef(sym: TermSymbol, inlineOrigin: Symbol): api.Def = {
+
+    val inlineExtras = new mutable.ListBuffer[Int => Int]
+
+    def mixInlineParam(p: Symbol): Unit =
+      if inlineOrigin.exists && p.is(Inline) then
+        inlineExtras += hashInlineParam(p)
+
+    def inlineExtrasAnnot: Option[api.Annotation] =
+      Option.when(inlineOrigin.exists && inlineExtras.nonEmpty) {
+        marker(s"${hashList(inlineExtras.toList)("inlineExtras".hashCode)}")
+      }
+
+    def tparamList(pt: TypeLambda): List[api.TypeParameter] =
+      pt.paramNames.lazyZip(pt.paramInfos).map((pname, pbounds) =>
+        apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi)
+      )
+
+    def paramList(mt: MethodType, params: List[Symbol]): api.ParameterList =
+      val apiParams = params.lazyZip(mt.paramInfos).map((param, ptype) =>
+        mixInlineParam(param)
+        api.MethodParameter.of(
+          param.name.toString, apiType(ptype), param.is(HasDefault), api.ParameterModifier.Plain))
+      api.ParameterList.of(apiParams.toArray, mt.isImplicitMethod)
+
     def paramLists(t: Type, paramss: List[List[Symbol]]): List[api.ParameterList] = t match {
       case pt: TypeLambda =>
         paramLists(pt.resultType, paramss.drop(1))
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
         assert(paramss.nonEmpty && paramss.head.hasSameLengthAs(pnames),
           i"mismatch for $sym, ${sym.info}, ${sym.paramSymss}")
-        val apiParams = paramss.head.lazyZip(ptypes).map((param, ptype) =>
-          api.MethodParameter.of(param.name.toString, apiType(ptype),
-          param.is(HasDefault), api.ParameterModifier.Plain))
-        api.ParameterList.of(apiParams.toArray, mt.isImplicitMethod)
-          :: paramLists(restpe, paramss.tail)
+        paramList(mt, paramss.head) :: paramLists(restpe, paramss.tail)
       case _ =>
         Nil
     }
 
-    val tparams = sym.info match {
+    /** returns list of pairs of 1: the position in all parameter lists, and 2: a type parameter list */
+    def tparamLists(t: Type, index: Int): List[(Int, List[api.TypeParameter])] = t match
       case pt: TypeLambda =>
-        pt.paramNames.lazyZip(pt.paramInfos).map((pname, pbounds) =>
-          apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi))
+        (index, tparamList(pt)) :: tparamLists(pt.resultType, index + 1)
+      case mt: MethodType =>
+        tparamLists(mt.resultType, index + 1)
       case _ =>
         Nil
-    }
+
+    val (tparams, tparamsExtras) = sym.info match
+      case pt: TypeLambda =>
+        (tparamList(pt), tparamLists(pt.resultType, index = 1))
+      case mt: MethodType =>
+        (Nil, tparamLists(mt.resultType, index = 1))
+      case _ =>
+        (Nil, Nil)
+
     val vparamss = paramLists(sym.info, sym.paramSymss)
     val retTp = sym.info.finalResultType.widenExpr
 
+    val tparamsExtraAnnot = Option.when(tparamsExtras.nonEmpty) {
+      marker(s"${hashTparamsExtras(tparamsExtras)("tparamsExtra".hashCode)}")
+    }
+
+    val annotations = inlineExtrasAnnot ++: tparamsExtraAnnot ++: apiAnnotations(sym, inlineOrigin)
+
     api.Def.of(sym.zincMangledName.toString, apiAccess(sym), apiModifiers(sym),
-      apiAnnotations(sym).toArray, tparams.toArray, vparamss.toArray, apiType(retTp))
+      annotations.toArray, tparams.toArray, vparamss.toArray, apiType(retTp))
   }
 
   def apiTypeMember(sym: TypeSymbol): api.TypeMember = {
@@ -375,7 +425,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     val name = sym.name.toString
     val access = apiAccess(sym)
     val modifiers = apiModifiers(sym)
-    val as = apiAnnotations(sym)
+    val as = apiAnnotations(sym, inlineOrigin = NoSymbol)
     val tpe = sym.info
 
     if (sym.isAliasType)
@@ -585,10 +635,13 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       sym.isOneOf(GivenOrImplicit), sym.is(Lazy), sym.is(Macro), sym.isSuperAccessor)
   }
 
-  def apiAnnotations(s: Symbol): List[api.Annotation] = {
+  /** `inlineOrigin` denotes an optional inline method that we are
+   *  currently hashing the body of.
+   */
+  def apiAnnotations(s: Symbol, inlineOrigin: Symbol): List[api.Annotation] = {
     val annots = new mutable.ListBuffer[api.Annotation]
     val inlineBody = Inliner.bodyToInline(s)
-    if (!inlineBody.isEmpty) {
+    if !inlineBody.isEmpty then
       // If the body of an inline def changes, all the reverse dependencies of
       // this method need to be recompiled. sbt has no way of tracking method
       // bodies, so we include the hash of the body of the method as part of the
@@ -599,9 +652,18 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       // an inline def in every class that extends its owner. To avoid this we
       // could store the hash as an annotation when pickling an inline def
       // and retrieve it here instead of computing it on the fly.
-      val inlineBodyHash = treeHash(inlineBody, inlineSym = s)
-      annots += marker(inlineBodyHash.toString)
-    }
+      val root =
+        if inlineOrigin.exists then
+          inlineOrigin
+        else
+          assert(!seenInlineCache.contains(s))
+          seenInlineCache.put(s, mutable.HashSet.empty)
+          s
+      if !seenInlineCache(root).contains(s) then
+        seenInlineCache(root) += s
+        val inlineBodyHash = treeHash(inlineBody, inlineOrigin = root)
+        annots += marker(inlineBodyHash.toString)
+    end if
 
     // In the Scala2 ExtractAPI phase we only extract annotations that extend
     // StaticAnnotation, but in Dotty we currently pickle all annotations so we
@@ -619,15 +681,14 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
   /** Produce a hash for a tree that is as stable as possible:
    *  it should stay the same across compiler runs, compiler instances,
    *  JVMs, etc.
+   *
+   * `inlineOrigin` denotes an optional inline method that we are hashing the body of, where `tree` could be
+   * its body, or the body of another method referenced in a call chain leading to `inlineOrigin`.
+   *
+   * If `inlineOrigin` is NoSymbol, then tree is the tree of an annotation.
    */
-  def treeHash(tree: Tree, inlineSym: Symbol): Int =
-    import scala.util.hashing.MurmurHash3
+  def treeHash(tree: Tree, inlineOrigin: Symbol): Int =
     import core.Constants.*
-
-    val seenInlines = mutable.HashSet.empty[Symbol]
-
-    if inlineSym ne NoSymbol then
-      seenInlines += inlineSym // do not hash twice a recursive def
 
     def nameHash(n: Name, initHash: Int): Int =
       val h =
@@ -651,7 +712,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       tp match
         case ConstantType(c) =>
           h = constantHash(c, h)
-        case TypeBounds(lo, hi) =>
+        case TypeBounds(lo, hi) => // TODO when does this happen?
           h = MurmurHash3.mix(h, apiType(lo).hashCode)
           h = MurmurHash3.mix(h, apiType(hi).hashCode)
         case tp =>
@@ -671,38 +732,8 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       h
     end constantHash
 
-    /**An inline method that calls another inline method will eventually inline the call
-     * at a non-inline callsite, in this case if the implementation of the nested call
-     * changes, then the callsite will have a different API, we should hash the definition
-     */
-    def inlineReferenceHash(ref: Symbol, rhs: Tree, initHash: Int): Int =
-      var h = initHash
-
-      def paramssHash(paramss: List[List[Symbol]], initHash: Int): Int = paramss match
-        case Nil :: paramss1 =>
-          paramssHash(paramss1, MurmurHash3.mix(initHash, EmptyParamHash))
-        case params :: paramss1 =>
-          var h = initHash
-          val paramsIt = params.iterator
-          while paramsIt.hasNext do
-            val param = paramsIt.next
-            h = nameHash(param.name, h)
-            h = typeHash(param.info, h)
-            if param.is(Inline) then
-              h = MurmurHash3.mix(h, InlineParamHash) // inline would change the generated code
-          paramssHash(paramss1, h)
-        case Nil =>
-          initHash
-      end paramssHash
-
-      h = paramssHash(ref.paramSymss, h)
-      h = typeHash(ref.info.finalResultType, h)
-      positionedHash(rhs, h)
-    end inlineReferenceHash
-
-    def err(what: String, elem: Any, pos: Positioned, initHash: Int): Int =
+    def cannotHash(what: String, elem: Any, pos: Positioned): Unit =
       internalError(i"Don't know how to produce a stable hash for $what", pos.sourcePos)
-      MurmurHash3.mix(initHash, elem.toString.hashCode)
 
     def positionedHash(p: ast.Positioned, initHash: Int): Int =
       var h = initHash
@@ -712,23 +743,16 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
           p.forceIfLazy
         case _ =>
 
-      p match
-        case ref: RefTree @unchecked =>
-          val sym = ref.symbol
-          if sym.is(Inline, butNot = Param) && !seenInlines.contains(sym) then
-            seenInlines += sym // dont re-enter hashing this ref
-            if sym.is(Method) then
-              Inliner.bodyToInline(sym) match // force typechecking of body if from source
-                case EmptyTree =>
-                  h = err("inline method reference", ref, p, h)
-                case rhs =>
-                  h = inlineReferenceHash(sym, rhs, h)
-            else
-              // inline value - its rhs should match its type
-              // no extra info is gained from hashing the rhs
-              h = MurmurHash3.mix(h, InlineValHash)
-              h = inlineReferenceHash(sym, EmptyTree, h)
-        case _ =>
+      if inlineOrigin.exists then
+        p match
+          case ref: RefTree @unchecked =>
+            val sym = ref.symbol
+            if sym.is(Inline, butNot = Param) && !seenInlineCache(inlineOrigin).contains(sym) then
+              // An inline method that calls another inline method will eventually inline the call
+              // at a non-inline callsite, in this case if the implementation of the nested call
+              // changes, then the callsite will have a different API, we should hash the definition
+              h = MurmurHash3.mix(h, apiDefinition(sym, inlineOrigin).hashCode)
+          case _ =>
 
       // FIXME: If `p` is a tree we should probably take its type into account
       // when hashing it, but producing a stable hash for a type is not trivial
@@ -754,7 +778,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
           case n: Name =>
             h = nameHash(n, h)
           case elem =>
-            h = err(i"`$elem` of unknown class ${elem.getClass}", elem, tree, h)
+            cannotHash(what = i"`$elem` of unknown class ${elem.getClass}", elem, tree)
       h
     end iteratorHash
 
@@ -762,6 +786,48 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     val h = positionedHash(tree, seed)
     MurmurHash3.finalizeHash(h, 0)
   end treeHash
+
+  /** Hash secondary type parameters in separate marker annotation.
+   *  We hash them separately because the position of type parameters is important.
+   */
+  private def hashTparamsExtras(tparamsExtras: List[(Int, List[api.TypeParameter])])(initHash: Int): Int =
+
+    def mixTparams(tparams: List[api.TypeParameter])(initHash: Int) =
+      var h = initHash
+      var elems = tparams
+      while elems.nonEmpty do
+        h = MurmurHash3.mix(h, elems.head.hashCode)
+        elems = elems.tail
+      h
+
+    def mixIndexAndTparams(index: Int, tparams: List[api.TypeParameter])(initHash: Int) =
+      mixTparams(tparams)(MurmurHash3.mix(initHash, index))
+
+    var h = initHash
+    var extras = tparamsExtras
+    var len = 0
+    while extras.nonEmpty do
+      h = mixIndexAndTparams(index = extras.head(0), tparams = extras.head(1))(h)
+      extras = extras.tail
+      len += 1
+    MurmurHash3.finalizeHash(h, len)
+  end hashTparamsExtras
+
+  private def hashList(extraHashes: List[Int => Int])(initHash: Int): Int =
+    var h = initHash
+    var fs = extraHashes
+    var len = 0
+    while fs.nonEmpty do
+      h = fs.head(h)
+      fs = fs.tail
+      len += 1
+    MurmurHash3.finalizeHash(h, len)
+
+  /** Mix in the name hash also because otherwise switching which
+   *  parameter is inline will not affect the hash.
+   */
+  private def hashInlineParam(p: Symbol)(h: Int) =
+    MurmurHash3.mix(p.name.toString.hashCode, MurmurHash3.mix(h, InlineParamHash))
 
   def apiAnnotation(annot: Annotation): api.Annotation = {
     // Like with inline defs, the whole body of the annotation and not just its
@@ -773,6 +839,6 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     // annotated @org.junit.Test).
     api.Annotation.of(
       apiType(annot.tree.tpe), // Used by sbt to find tests to run
-      Array(api.AnnotationArgument.of("TREE_HASH", treeHash(annot.tree, inlineSym = NoSymbol).toString)))
+      Array(api.AnnotationArgument.of("TREE_HASH", treeHash(annot.tree, inlineOrigin = NoSymbol).toString)))
   }
 }
