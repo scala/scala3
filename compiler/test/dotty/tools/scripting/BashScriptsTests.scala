@@ -67,37 +67,72 @@ class BashScriptsTests:
       if fail then
         assert(stdout == expectedOutput)
 
+  def testFile(name: String): String = 
+    val file = testFiles.find(_.getName == name) match {
+      case Some(f) =>
+        val ff = f.absPath
+        printf("test file [%s] is [%s]\n", name, ff)
+        ff
+      case None =>
+        printf("test file [%s] not found!\n", name)
+        name.absPath
+    }
+    file
+
+  lazy val Seq(envtestSc, envtestScala) =
+    Seq("envtest.sc", "envtest.scala").map { testFile(_) }
+
+/*
+  def testParameters(tag: String, script: String, keyPfx: String) =
+    val keyArg = s"$keyPfx=$tag"
+    (tag, script, keyArg)
+*/
+
+  def buildCmd(tag: String, script: String, keyPre: String): String =
+    val keyArg = s"$keyPre=$tag"
+    printf("pass tag [%s] via [%s] to script [%s]\n", tag, keyArg, script)
+    val cmd: String = Seq("SCALA_OPTS= ", scalaPath, keyArg, script).mkString(" ")
+    printf("cmd: [%s]\n", cmd)
+    cmd
+
   /* verify that `dist/bin/scala` correctly passes args to the jvm via -J-D for script envtest.sc */
   @Test def verifyScJProperty =
-    val commandline = Seq("SCALA_OPTS= ", scalaPath, "-J-Dkey=World", testFiles.find(_.getName == "envtest.sc").get.absPath).mkString(" ")
+    val tag = "World1"
+    val commandline = buildCmd(tag, envtestSc, s"-J-Dkey")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
-    assertEquals(stdout.mkString("/n"), "Hello World")
+    assertEquals( s"Hello $tag", stdout.mkString("/n"))
 
   /* verify that `dist/bin/scala` correctly passes args to the jvm via -J-D for script envtest.scala */
   @Test def verifyScalaJProperty =
-    val commandline = Seq("SCALA_OPTS= ", scalaPath, "-J-Dkey=World3", testFiles.find(_.getName == "envtest.scala").get.absPath).mkString(" ")
+    val tag = "World2"
+    val commandline = buildCmd(tag, envtestScala, s"-J-Dkey")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
-    assertEquals(stdout.mkString("/n"), "Hello World3")
+    assertEquals(s"Hello $tag", stdout.mkString("/n"))
 
   /* verify that `dist/bin/scala` can set system properties via -D for envtest.sc */
   @Test def verifyScDProperty =
-    val commandline = Seq("SCALA_OPTS= ", scalaPath, "-Dkey=World3", testFiles.find(_.getName == "envtest.sc").get.absPath).mkString(" ")
+    val tag = "World3"
+    val commandline = buildCmd(tag, envtestSc, s"-Dkey")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
-    assertEquals(stdout.mkString("/n"), "Hello World3")
+    assertEquals(s"Hello $tag", stdout.mkString("/n"))
 
   /* verify that `dist/bin/scala` can set system properties via -D for envtest.scala */
   @Test def verifyScalaDProperty =
-    val commandline = Seq("SCALA_OPTS= ", scalaPath, "-Dkey=World4", testFiles.find(_.getName == "envtest.scala").get.absPath).mkString(" ")
+    val tag = "World4"
+    val commandline = buildCmd(tag, envtestScala, s"-Dkey")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline)
-    assertEquals(stdout.mkString("/n"), "Hello World4")
+    assertEquals(s"Hello $tag", stdout.mkString("/n"))
 
   /* verify that `dist/bin/scala` can set system properties via -D when executing compiled script via -jar envtest.jar */
   @Test def saveAndRunWithDProperty =
-    val commandline = Seq("SCALA_OPTS= ", scalaPath, "-save", testFiles.find(_.getName == "envtest.scala").get.absPath).mkString(" ")
-    val (_, _, _, _) = bashCommand(commandline)
-    val commandline2 = Seq("SCALA_OPTS= ", scalaPath, "-Dkey=World5", testFiles.find(_.getName == "envtest.jar").get.absPath).mkString(" ")
+    val commandline = Seq("SCALA_OPTS= ", scalaPath, "-save", envtestScala).mkString(" ")
+    val (_, _, _, _) = bashCommand(commandline) // compile jar, discard output
+
+    val tag = "World5"
+    val envtestJar = testFile("envtest.jar") // jar is created by the previous bashCommand()
+    val commandline2 = Seq("SCALA_OPTS= ", scalaPath, s"-Dkey=$tag", envtestJar).mkString(" ")
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline2)
-    assertEquals(stdout.mkString("/n"), "Hello World5")
+    assertEquals(s"Hello $tag", stdout.mkString("/n"))
 
   /* verify `dist/bin/scala` non-interference with command line args following script name */
   @Test def verifyScalaArgs =
