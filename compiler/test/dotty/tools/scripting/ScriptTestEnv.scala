@@ -43,7 +43,8 @@ object ScriptTestEnv {
 
   def envPath: String = envOrElse("PATH", "")
   // remove duplicate entries in path
-  def adjustedPathEntries: List[String] = s"dist/target/pack/bin$psep$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath".norm.split(psep).toList.distinct
+  def supplementedPath: String = s"dist/target/pack/bin$psep$envJavaHome/bin$psep$envScalaHome/bin$psep$envPath".norm
+  def adjustedPathEntries: List[String] = supplementedPath.norm.split(psep).toList.distinct
   def adjustedPath: String = adjustedPathEntries.mkString(psep)
   def envPathEntries: List[String] = envPath.split(psep).toList.distinct
 
@@ -93,6 +94,8 @@ object ScriptTestEnv {
   def bashCommand(cmdstr: String, additionalEnvPairs: List[(String, String)] = Nil): (Boolean, Int, Seq[String], Seq[String]) = {
     var (stdout, stderr) = (List.empty[String], List.empty[String])
     if bashExe.toFile.exists then
+      def q = "\""
+      printf("bashCmd: %s -c %s\n", bashExe, s"$q$cmdstr$q")
       val cmd = Seq(bashExe, "-c", cmdstr)
       val envPairs = testEnvPairs ++ additionalEnvPairs
       val proc = Process(cmd, None, envPairs *)
@@ -177,9 +180,10 @@ object ScriptTestEnv {
   extension(s: String) {
     def norm: String = s.replace('\\', '/') // bash expects forward slash
     def noDrive = if s.secondChar == ":" then s.drop(2).norm else s.norm
-    def toPath: Path = Paths.get(fixHome(s.noDrive)) // .toAbsolutePath
-    def toFile: File = new File(s)
+    def toPath: Path = Paths.get(fixHome(s)) // .toAbsolutePath
+    def toFile: File = File(s)
     def absPath: String = s.toFile.absPath
+    def relpath: String = s.norm.replaceFirst(s"${cwd.norm}/","")
     def isFile: Boolean = s.toFile.isFile
     def isDirectory: Boolean = s.toFile.isDirectory
     def exists: Boolean = s.toFile.exists
@@ -192,7 +196,6 @@ object ScriptTestEnv {
 
   extension(p: Path) {
     def norm: String = p.normalize.toString.replace('\\', '/')
-
     def noDrive = p.norm match {
       case str if str.drop(1).take(1) == ":" => str.drop(2)
       case str => str
@@ -244,7 +247,8 @@ object ScriptTestEnv {
     if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
     else envOrElse("SCALA_HOME", "not-found").norm
 
-  lazy val envJavaHome: String = envOrElse("JAVA_HOME", whichJava.parent(2)).norm
+  lazy val javaParent: String = whichJava.norm.replace("/bin/[^/]*$","")
+  lazy val envJavaHome: String = envOrElse("JAVA_HOME", javaParent)
   lazy val cyghome = envOrElse("CYGWIN", "")
   lazy val msyshome = envOrElse("MSYS", "")
 
