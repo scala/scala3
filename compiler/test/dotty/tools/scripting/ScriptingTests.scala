@@ -8,48 +8,12 @@ import java.nio.file.Path
 import org.junit.Test
 
 import vulpix.TestConfiguration
-
+import ScriptTestEnv.*
 
 /** Runs all tests contained in `compiler/test-resources/scripting/` */
 class ScriptingTests:
-  extension (str: String) def dropExtension =
-    str.reverse.dropWhile(_ != '.').drop(1).reverse
-
-  extension(f: File) def absPath =
-    f.getAbsolutePath.replace('\\', '/')
-
   // classpath tests managed by scripting.ClasspathTests.scala
   def testFiles = scripts("/scripting").filter { ! _.getName.toLowerCase.contains("classpath") }
-
-  def script2jar(scriptFile: File) = 
-    val jarName = s"${scriptFile.getName.dropExtension}.jar"
-    File(scriptFile.getParent, jarName)
-
-  def showScriptUnderTest(scriptFile: File): Unit =
-    printf("===> test script name [%s]\n", scriptFile.getName)
-
-  val argss: Map[String, Array[String]] = (
-    for
-      argFile <- testFiles
-      if argFile.getName.endsWith(".args")
-      name = argFile.getName.dropExtension
-      scriptArgs = readLines(argFile).toArray
-    yield name -> scriptArgs).toMap
-
-  def scalaFilesWithArgs(extension: String) = (
-    for
-      scriptFile <- testFiles
-      if scriptFile.getName.endsWith(extension)
-      name = scriptFile.getName.dropExtension
-      scriptArgs = argss.getOrElse(name, Array.empty[String])
-    yield scriptFile -> scriptArgs).toList.sortBy { (file, args) => file.getName }
-
-  def callExecutableJar(script: File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
-    import scala.sys.process._
-    val cmd = Array("java", s"-Dscript.path=${script.getName}", "-jar", jar.absPath)
-      ++ scriptArgs
-    Process(cmd).lazyLines_!.foreach { println }
-  }
 
   /*
    * Call .scala scripts without -save option, verify no jar created
@@ -71,7 +35,7 @@ class ScriptingTests:
         printf("mainClass from ScriptingDriver: %s\n", mainClass)
         true // call compiled script main method
       }
-      assert(! unexpectedJar.exists, s"not expecting jar file: ${unexpectedJar.absPath}")
+      assert( !unexpectedJar.exists, s"not expecting jar file: ${unexpectedJar.absPath}" )
 
   /*
    * Call .sc scripts without -save option, verify no jar created
@@ -89,7 +53,7 @@ class ScriptingTests:
       ) ++ scriptArgs
 
       Main.main(mainArgs)
-      assert(! unexpectedJar.exists, s"not expecting jar file: ${unexpectedJar.absPath}")
+      assert( !unexpectedJar.exists, s"not expecting jar file: ${unexpectedJar.absPath}")
 
   /*
    * Call .sc scripts with -save option, verify jar is created.
@@ -125,7 +89,7 @@ class ScriptingTests:
     // verify main method not called when false is returned
     printf("testing script compile, with no call to script main method.\n")
     touchedFile.delete
-    assert(!touchedFile.exists, s"unable to delete ${touchedFile}")
+    assert( !touchedFile.exists, s"unable to delete ${touchedFile}" )
     ScriptingDriver(
       compilerArgs = Array("-classpath", TestConfiguration.basicClasspath),
       scriptFile = scriptFile,
@@ -174,12 +138,44 @@ class ScriptingTests:
     assert(expectedJar.exists, s"unable to create executable jar [$expectedJar]")
 
     touchedFile.delete
-    assert(!touchedFile.exists, s"unable to delete ${touchedFile}")
+    assert( !touchedFile.exists, s"unable to delete ${touchedFile}" )
     printf("calling executable jar %s\n", expectedJar)
     callExecutableJar(scriptFile, expectedJar)
     if touchedFile.exists then
       printf("success: executable jar created file %s\n", touchedFile)
     assert( touchedFile.exists, s"expected to find file ${touchedFile}" )
 
+///////////////////////////////////
   def touchFileScript = testFiles.find(_.getName == "touchFile.sc").get
+
   def touchedFile = File("touchedFile.out")
+
+  def script2jar(scriptFile: File) = 
+    val jarName = s"${scriptFile.getName.dropExtension}.jar"
+    File(scriptFile.getParent, jarName)
+
+  def showScriptUnderTest(scriptFile: File): Unit =
+    printf("===> test script name [%s]\n", scriptFile.getName)
+
+  def argss: Map[String, Array[String]] = (
+    for
+      argFile <- testFiles
+      if argFile.getName.endsWith(".args")
+      name = argFile.getName.dropExtension
+      scriptArgs = readLines(argFile).toArray
+    yield name -> scriptArgs).toMap
+
+  def scalaFilesWithArgs(extension: String) = (
+    for
+      scriptFile <- testFiles
+      if scriptFile.getName.endsWith(extension)
+      name = scriptFile.getName.dropExtension
+      scriptArgs = argss.getOrElse(name, Array.empty[String])
+    yield scriptFile -> scriptArgs).toList.sortBy { (file, args) => file.getName }
+
+  def callExecutableJar(script: File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
+    import scala.sys.process._
+    val cmd = Array("java", s"-Dscript.path=${script.getName}", "-jar", jar.absPath)
+      ++ scriptArgs
+    Process(cmd).lazyLines_!.foreach { println }
+  }
