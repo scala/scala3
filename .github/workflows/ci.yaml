@@ -66,7 +66,7 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";compile ;test"
+          ./project/scripts/sbt ";dist/pack; compile ;test"
           ./project/scripts/cmdTests
 
   test:
@@ -181,7 +181,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Test
-        run: sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test"
+        run: sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test"
         shell: cmd
 
       - name: Scala.js Test
