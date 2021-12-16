@@ -149,6 +149,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
    *  the rhs of the key. If a symbol is present in the value set, then do not hash its signature or inline body.
    */
   private val seenInlineCache = mutable.HashMap.empty[Symbol, mutable.HashSet[Symbol]]
+  private val inlineBodyCache = mutable.HashMap.empty[Symbol, Int]
 
   private val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
   private val _mainClasses = new mutable.HashSet[String]
@@ -652,17 +653,27 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       // an inline def in every class that extends its owner. To avoid this we
       // could store the hash as an annotation when pickling an inline def
       // and retrieve it here instead of computing it on the fly.
-      val root =
-        if inlineOrigin.exists then
-          inlineOrigin
-        else
-          assert(!seenInlineCache.contains(s))
-          seenInlineCache.put(s, mutable.HashSet.empty)
-          s
-      if !seenInlineCache(root).contains(s) then
-        seenInlineCache(root) += s
-        val inlineBodyHash = treeHash(inlineBody, inlineOrigin = root)
+
+      def registerInlineHash(inlineBodyHash: Int): Unit =
         annots += marker(inlineBodyHash.toString)
+
+      def nestedHash(root: Symbol): Unit =
+        if !seenInlineCache(root).contains(s) then
+          seenInlineCache(root) += s
+          registerInlineHash(treeHash(inlineBody, inlineOrigin = root))
+
+      def originHash(root: Symbol): Unit =
+        def computeHash(): Int =
+          assert(!seenInlineCache.contains(root))
+          seenInlineCache.put(root, mutable.HashSet(root))
+          val res = treeHash(inlineBody, inlineOrigin = root)
+          seenInlineCache.remove(root)
+          res
+        registerInlineHash(inlineBodyCache.getOrElseUpdate(root, computeHash()))
+
+      if inlineOrigin.exists then nestedHash(root = inlineOrigin)
+      else originHash(root = s)
+
     end if
 
     // In the Scala2 ExtractAPI phase we only extract annotations that extend
