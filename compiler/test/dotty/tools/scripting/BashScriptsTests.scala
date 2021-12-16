@@ -17,7 +17,7 @@ import ScriptTestEnv.*
  */
 object BashScriptsTests:
   lazy val argsfile = createArgsFile() // avoid problems caused by drive letter
-  lazy val testFiles = scripts("/scripting")
+  def testFiles = scripts("/scripting")
 
   @AfterClass def cleanup: Unit = {
     val af = argsfile.toFile
