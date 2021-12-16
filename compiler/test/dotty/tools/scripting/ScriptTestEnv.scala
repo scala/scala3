@@ -247,7 +247,7 @@ object ScriptTestEnv {
     if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
     else envOrElse("SCALA_HOME", "not-found").norm
 
-  lazy val javaParent: String = whichJava.norm.replace("/bin/[^/]*$","")
+  lazy val javaParent: String = whichJava.parent(2)
   lazy val envJavaHome: String = envOrElse("JAVA_HOME", javaParent)
   lazy val cyghome = envOrElse("CYGWIN", "")
   lazy val msyshome = envOrElse("MSYS", "")

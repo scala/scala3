@@ -104,7 +104,8 @@ class BashScriptsTests:
 
   /* verify that `dist/bin/scala` can set system properties via -D when executing compiled script via -jar envtest.jar */
   @Test def saveAndRunWithDProperty =
-    val commandline = Seq("SCALA_OPTS= ", scalaPath, "-save", envtestScala).mkString(" ")
+    val commandline2 = Seq("SCALA_OPTS= ", scalaPath.relpath, s"-Dkey=$tag", testJar.relpath)
+    val commandline = Seq("SCALA_OPTS= ", scalaPath.relpath, "-save", envtestScala.relpath).mkString(" ")
     val (_, _, _, _) = bashCommand(commandline) // compile jar, discard output
     val testJar = testFile("envtest.jar") // jar is created by the previous bashCommand()
     if (testJar.isFile){
