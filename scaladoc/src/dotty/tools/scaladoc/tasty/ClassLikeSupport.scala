@@ -149,21 +149,23 @@ trait ClassLikeSupport:
         }
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported && !dd.symbol.isArtifact =>
-        val exportedTarget = dd.rhs.collect {
-          case a: Apply => a.fun.asInstanceOf[Select]
-          case s: Select => s
+        dd.rhs.map {
+          case TypeApply(rhs, _) => rhs
+          case Apply(TypeApply(rhs, _), _) => rhs
+          case rhs => rhs
+        }.map(_.tpe.termSymbol).filter(_.exists).map(_.tree).map {
+          case v: ValDef if v.symbol.flags.is(Flags.Module) && !v.symbol.flags.is(Flags.Synthetic) =>
+            v.symbol.owner -> Symbol.newVal(c.symbol, dd.name, v.tpt.tpe, Flags.Final, Symbol.noSymbol).tree
+          case other => other.symbol.owner -> other
+        }.flatMap { (originalOwner, tree) =>
+          parseMember(c)(tree)
+            .map { m => m
+              .withDRI(dd.symbol.dri)
+              .withName(dd.symbol.normalizedName)
+              .withKind(Kind.Exported(m.kind))
+              .withOrigin(Origin.ExportedFrom(Some(Link(originalOwner.normalizedName, originalOwner.dri))))
+            }
         }
-        val functionName = exportedTarget.fold("function")(_.name)
-        val instanceName = exportedTarget.collect {
-          case Select(qualifier: Select, _) => qualifier.name
-          case Select(qualifier: Ident, _) => qualifier.tpe.typeSymbol.normalizedName
-        }.getOrElse("instance")
-        val dri = dd.rhs.collect {
-          case s: Select if s.symbol.isDefDef => s.symbol.dri
-        }.orElse(exportedTarget.map(_.qualifier.tpe.typeSymbol.dri))
-
-        Some(parseMethod(c, dd.symbol, specificKind = Kind.Exported(_))
-          .withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod && !dd.symbol.isArtifact =>
         Some(parseMethod(c, dd.symbol))
@@ -423,7 +425,17 @@ trait ClassLikeSupport:
     val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics).asInstanceOf[Kind.Type]
     val kind = if typeDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
       else defaultKind
-    mkMember(typeDef.symbol, kind, tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated())
+
+    if typeDef.symbol.flags.is(Flags.Exported)
+    then {
+      val origin = Some(tpeTree).flatMap {
+        case TypeBoundsTree(l: TypeTree, h: TypeTree) if l.tpe == h.tpe =>
+          Some(Link(l.tpe.typeSymbol.owner.name, l.tpe.typeSymbol.owner.dri))
+        case _ => None
+      }
+      mkMember(typeDef.symbol, Kind.Exported(kind), tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated(), origin = Origin.ExportedFrom(origin))
+    }
+    else mkMember(typeDef.symbol, kind, tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val

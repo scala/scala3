@@ -88,3 +88,5 @@ class SpecializedSignature extends SignatureTest("specializedSignature", Signatu
 class ContextBounds extends SignatureTest("contextBounds", SignatureTest.all)
 
 class FBoundedTypeParameters extends SignatureTest("fboundedTypeParameters", SignatureTest.all)
+
+class Exports extends SignatureTest("exports2", SignatureTest.all, sourceFiles = List("exports1", "exports2"))

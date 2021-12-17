@@ -2,12 +2,12 @@ package dotty.tools.scaladoc
 package translators
 
 object ScalaSignatureProvider:
-  def rawSignature(documentable: Member, builder: SignatureBuilder): SignatureBuilder =
-    documentable.kind match
+  def rawSignature(documentable: Member, builder: SignatureBuilder)(kind: Kind = documentable.kind): SignatureBuilder =
+    kind match
       case Kind.Extension(_, m) =>
         extensionSignature(documentable, m, builder)
       case Kind.Exported(d) =>
-         methodSignature(documentable, d, builder)
+         rawSignature(documentable, builder)(d)
       case d: Kind.Def =>
         methodSignature(documentable, d, builder)
       case Kind.Constructor(d) =>
@@ -33,7 +33,7 @@ object ScalaSignatureProvider:
       case trt: Kind.Trait =>
         traitSignature(documentable, trt, builder)
       case Kind.Val | Kind.Var | Kind.Implicit(Kind.Val, _) =>
-        fieldSignature(documentable, documentable.kind.name, builder)
+        fieldSignature(documentable, kind.name, builder)
       case tpe: Kind.Type =>
         typeSignature(tpe, documentable, builder)
       case Kind.Package =>
