@@ -20,7 +20,7 @@ object FilterAttributes:
   private def origin(m: Member): Map[String, String] = m.origin match
     case Origin.ImplicitlyAddedBy(name, _) => Map("implicitly" -> s"by $name")
     case Origin.ExtensionFrom(name, _) => Map("extension" -> s"from $name")
-    case Origin.ExportedFrom(name, _) => Map("export" -> s"from $name")
+    case Origin.ExportedFrom(Some(link)) => Map("export" -> s"from ${link.name}}")
     case _ => Map.empty
 
 

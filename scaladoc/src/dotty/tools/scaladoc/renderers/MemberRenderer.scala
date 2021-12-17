@@ -120,10 +120,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Seq("Implicitly added by ", renderLink(name, dri))
     case Origin.ExtensionFrom(name, dri) =>
       Seq("Extension method from ", renderLink(name, dri))
-    case Origin.ExportedFrom(name, dri) =>
-      val signatureName: TagArg = dri match
-        case Some(dri: DRI) => renderLink(name, dri)
-        case None => name
+    case Origin.ExportedFrom(Some(link)) =>
+      val signatureName: TagArg = link match
+        case Link(name, dri) => renderLink(name, dri)
       Seq("Exported from ", signatureName)
     case _ => Nil
   }
@@ -132,7 +131,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val depStyle = if member.deprecated.isEmpty then "" else "deprecated"
     val nameClasses = cls := s"documentableName $depStyle"
 
-    val rawBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())
+    val rawBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())()
     val inlineBuilder = rawBuilder.asInstanceOf[InlineSignatureBuilder]
     val kind :: modifiersRevered = inlineBuilder.preName
     val signature = inlineBuilder.names.reverse
