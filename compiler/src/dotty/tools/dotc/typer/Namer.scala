@@ -1096,6 +1096,17 @@ class Namer { typer: Typer =>
         else Yes
       }
 
+      def foreachDefaultGetterOf(sym: TermSymbol, op: TermSymbol => Unit): Unit =
+        var n = 0
+        for params <- sym.paramSymss; param <- params do
+          if param.isTerm then
+            if param.is(HasDefault) then
+              val getterName = DefaultGetterName(sym.name, n)
+              val getter = path.tpe.member(DefaultGetterName(sym.name, n)).symbol
+              assert(getter.exists, i"$path does not have a default getter named $getterName")
+              op(getter.asTerm)
+            n += 1
+
       /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
         *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
         */
@@ -1118,6 +1129,7 @@ class Namer { typer: Typer =>
 
         if canForward(mbr) == CanForward.Yes then
           val sym = mbr.symbol
+          val hasDefaults = sym.hasDefaultParams // compute here to ensure HasDefaultParams and NoDefaultParams flags are set
           val forwarder =
             if mbr.isType then
               val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
@@ -1142,28 +1154,29 @@ class Namer { typer: Typer =>
                   (StableRealizable, ExprType(path.tpe.select(sym)))
                 else
                   (EmptyFlags, mbr.info.ensureMethodic)
-              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
+              var flagMask = RetainedExportFlags
+              if sym.isTerm then flagMask |= HasDefaultParams | NoDefaultParams
+              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & flagMask
               if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
 
           forwarder.info = avoidPrivateLeaks(forwarder)
-          forwarder.addAnnotations(sym.annotations)
+          forwarder.addAnnotations(sym.annotations.filterConserve(_.symbol != defn.BodyAnnot))
 
-          val forwarderDef =
-            if (forwarder.isType) tpd.TypeDef(forwarder.asType)
-            else {
-              import tpd._
-              val ref = path.select(sym.asTerm)
-              val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
-                  ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss))
-              )
-              if forwarder.isInlineMethod then
-                PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
-              ddef
-            }
-
-          buf += forwarderDef.withSpan(span)
+          if forwarder.isType then
+            buf += tpd.TypeDef(forwarder.asType).withSpan(span)
+          else
+            import tpd._
+            val ref = path.select(sym.asTerm)
+            val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
+                ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss)))
+            if forwarder.isInlineMethod then
+              PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
+            buf += ddef.withSpan(span)
+            if hasDefaults then
+              foreachDefaultGetterOf(sym.asTerm,
+                getter => addForwarder(getter.name.asTermName, getter, span))
       end addForwarder
 
       def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
@@ -1187,11 +1200,15 @@ class Namer { typer: Typer =>
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)
         for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
-          if !mbr.symbol.isSuperAccessor && !isCaseClassSynthesized(mbr.symbol) then
-            // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
-            // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
-            // Symbols from base traits of case classes that will get synthesized implementations
-            // at PostTyper are also excluded.
+          if !mbr.symbol.isSuperAccessor
+              // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
+              // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
+              // Symbols from base traits of case classes that will get synthesized implementations
+              // at PostTyper are also excluded.
+            && !isCaseClassSynthesized(mbr.symbol)
+            && !mbr.symbol.name.is(DefaultGetterName)
+              // default getters are exported with the members they belong to
+          then
             val alias = mbr.name.toTermName
             if mbr.symbol.is(Given) then
               if !seen.contains(alias) && mbr.matchesImportBound(givenBound) then
