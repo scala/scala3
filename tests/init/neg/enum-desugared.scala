@@ -8,7 +8,7 @@ sealed abstract class ErrorMessageID($name: String, _$ordinal: Int)
   def errorNumber: Int = this.ordinal() - 2
 }
 
-object ErrorMessageID {
+object ErrorMessageID extends scala.reflect.EnumCompanion[ErrorMessageID]{
 
   final val LazyErrorId = $new(0, "LazyErrorId")
   final val NoExplanationID = $new(1, "NoExplanationID")
