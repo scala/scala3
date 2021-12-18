@@ -1238,7 +1238,7 @@ class Typer extends Namer
     val numArgs = args.length
     val isContextual = funFlags.is(Given)
     val isErased = funFlags.is(Erased)
-    val funCls = defn.FunctionClass(numArgs, isContextual, isErased)
+    val funCls = defn.FunctionSymbol(numArgs, isContextual, isErased)
 
     /** If `app` is a function type with arguments that are all erased classes,
      *  turn it into an erased function type.
@@ -1248,7 +1248,7 @@ class Typer extends Namer
       if !isErased
          && numArgs > 0
          && args.indexWhere(!_.tpe.isErasedClass) == numArgs =>
-        val tycon1 = TypeTree(defn.FunctionClass(numArgs, isContextual, isErased = true).typeRef)
+        val tycon1 = TypeTree(defn.FunctionSymbol(numArgs, isContextual, isErased = true).typeRef)
           .withSpan(tycon.span)
         assignType(cpy.AppliedTypeTree(app)(tycon1, args), tycon1, args)
       case _ =>
