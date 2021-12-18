@@ -15,7 +15,7 @@ import Annotations.Annotation
 import Denotations._
 import SymDenotations._
 import StdNames.{nme, tpnme}
-import ast.{Trees, untpd}
+import ast.{Trees, tpd, untpd}
 import typer.{Implicits, Namer, Applications}
 import typer.ProtoTypes._
 import Trees._
@@ -25,10 +25,12 @@ import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
 import transform.TypeUtils._
 import transform.SymUtils._
+import config.Config
 
 import language.implicitConversions
 import dotty.tools.dotc.util.{NameTransformer, SourcePosition}
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
+import cc.{EventuallyCapturingType, CaptureSet, toCaptureSet, IllegalCaptureRef}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
@@ -602,7 +604,17 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree: Template =>
         toTextTemplate(tree)
       case Annotated(arg, annot) =>
-        toTextLocal(arg) ~~ annotText(annot.symbol.enclosingClass, annot)
+        def captureSet =
+          annot.asInstanceOf[tpd.Tree].toCaptureSet
+        def toTextAnnot =
+          toTextLocal(arg) ~~ annotText(annot.symbol.enclosingClass, annot)
+        def toTextRetainsAnnot =
+          try changePrec(GlobalPrec)(toText(captureSet) ~ " " ~ toText(arg))
+          catch case ex: IllegalCaptureRef => toTextAnnot
+        if annot.symbol.maybeOwner == defn.RetainsAnnot
+            && ctx.settings.Ycc.value && Config.printCaptureSetsAsPrefix && !printDebug
+        then toTextRetainsAnnot
+        else toTextAnnot
       case EmptyTree =>
         "<empty>"
       case TypedSplice(t) =>

@@ -49,6 +49,12 @@ sealed abstract class CaptureSet extends Showable:
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
 
+  final def isUniversal(using Context) =
+    elems.exists {
+      case ref: TermRef => ref.symbol == defn.captureRoot
+      case _ => false
+    }
+
   /** Cast to variable. @pre: @isConst */
   def asVar: Var =
     assert(!isConst)

@@ -138,6 +138,9 @@ class CheckCaptures extends Recheck:
         case _ =>
           tp
 
+      /** Turn plain function types into dependent function types, so that
+       *  we can refer to the parameter in capture sets
+       */
       def addFunctionRefinements(tp: Type): Type = tp match
         case tp @ AppliedType(tycon, args) =>
           if defn.isNonRefinedFunction(tp) then

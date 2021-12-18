@@ -17,9 +17,13 @@ def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
   case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
   case _ => Nil
 
+class IllegalCaptureRef(tpe: Type) extends Exception
+
 extension (tree: Tree)
 
-  def toCaptureRef(using Context): CaptureRef = tree.tpe.asInstanceOf[CaptureRef]
+  def toCaptureRef(using Context): CaptureRef = tree.tpe match
+    case ref: CaptureRef => ref
+    case tpe => throw IllegalCaptureRef(tpe)
 
   def toCaptureSet(using Context): CaptureSet =
     tree.getAttachment(Captures) match

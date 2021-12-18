@@ -1304,7 +1304,7 @@ class Definitions {
         val classRefs1 = new Array[TypeRef](classRefs.length * 2)
         Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
         classRefs = classRefs1
-      val funName = prefix + n.toString
+      val funName = s"scala.$prefix$n"
       if classRefs(n) == null then
         classRefs(n) =
           if prefix.startsWith("Impure")
@@ -1326,7 +1326,7 @@ class Definitions {
       if contxt then str = "Context" + str
       if erasd then str = "Erased" + str
       if impure then str = "Impure" + str
-      arr(funTypeIdx(contxt, erasd, impure)) = FunType("scala." + str)
+      arr(funTypeIdx(contxt, erasd, impure)) = FunType(str)
     IArray.unsafeFromArray(arr)
 
   def FunctionSymbol(n: Int, isContextual: Boolean = false, isErased: Boolean = false, isImpure: Boolean = false)(using Context): Symbol =
