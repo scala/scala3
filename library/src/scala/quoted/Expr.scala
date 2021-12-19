@@ -52,6 +52,16 @@ object Expr {
   def unapply[T](x: Expr[T])(using FromExpr[T])(using Quotes): Option[T] =
     scala.Predef.summon[FromExpr[T]].unapply(x)
 
+  /** Creates an expression that will construct a function with one parameter
+   *
+   *  Transforms a sequence of expression
+   *    `a => r` where `a: Expr[A]` and `r: Expr[R]`
+   *  to an expression equivalent to
+   *    `'{ $a => $r }` typed as an `Expr[A => R]`
+   */
+  def ofFunction1[A, R](f: Expr[A] => Expr[R])(using Type[R], Type[A])(using Quotes): Expr[A => R] =
+    '{ (a: A) => ${f('a)} }
+
   /** Creates an expression that will construct a copy of this sequence
    *
    *  Transforms a sequence of expression
