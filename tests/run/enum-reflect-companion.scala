@@ -26,7 +26,7 @@ enum Foo4:
 
 val check4 = summon[Foo4.type <:< EnumCompanion[Foo4]]
 
-@main def main : Unit =
+@main def Test : Unit =
   Foo3.check(Foo3.Bar)
   (Foo3 : AnyRef) match
     case _ : SingletonEnumCompanion[?] =>
