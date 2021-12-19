@@ -227,17 +227,14 @@ object NameOps {
      */
     def isPlainFunction: Boolean = functionArity >= 0
 
-    /** Is an context function name, i.e one of ContextFunctionN or ErasedContextFunctionN for N >= 0
-     */
-    def isContextFunction: Boolean =
+    /** Is a function name that contains `mustHave` as a substring */
+    private def isSpecificFunction(mustHave: String): Boolean =
       val suffixStart = functionSuffixStart
-      isFunctionPrefix(suffixStart, mustHave = "Context") && funArity(suffixStart) >= 0
+      isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= 0
 
-    /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedContextFunctionN for N >= 0
-      */
-    def isErasedFunction: Boolean =
-      val suffixStart = functionSuffixStart
-      isFunctionPrefix(suffixStart, mustHave = "Erased") && funArity(suffixStart) >= 0
+    def isContextFunction: Boolean = isSpecificFunction("Context")
+    def isErasedFunction: Boolean = isSpecificFunction("Erased")
+    def isImpureFunction: Boolean = isSpecificFunction("Impure")
 
     /** Is a synthetic function name, i.e. one of
      *    - FunctionN for N > 22

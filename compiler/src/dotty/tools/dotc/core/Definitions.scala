@@ -1381,6 +1381,10 @@ class Definitions {
    */
   def isFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isFunction
 
+  /** Is a function class, or an impure function type alias */
+  def isFunctionSymbol(sym: Symbol): Boolean =
+    sym.isType && (sym.owner eq ScalaPackageClass) && sym.name.isFunction
+
   /** Is a function class where
    *    - FunctionN for N >= 0 and N != XXL
    */

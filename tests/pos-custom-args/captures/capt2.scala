@@ -9,12 +9,12 @@ def test1() =
 def test2() =
   val x: Cap = C()
   val y = () => { x; () }
-  def z: (() => Unit) @retains(x) = y
-  z: (() => Unit) @retains(x)
-  def z2: (() => Unit) @retains(y) = y
-  z2: (() => Unit) @retains(y)
-  val p: {*} () => String = () => "abc"
+  def z: (() -> Unit) @retains(x) = y
+  z: (() -> Unit) @retains(x)
+  def z2: (() -> Unit) @retains(y) = y
+  z2: (() -> Unit) @retains(y)
+  val p: {*} () -> String = () => "abc"
   val q: {p} C = ???
-  p: ({p} () => String)
+  p: ({p} () -> String)
 
 

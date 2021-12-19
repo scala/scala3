@@ -1,21 +1,21 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:3:2 ------------------------------------------
 3 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    {x} () => ? C
-  |  Required: () => C
+  |  Found:    {x} () -> ? C
+  |  Required: () -> C
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:6:2 ------------------------------------------
 6 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    {x} () => ? C
+  |  Found:    {x} () -> ? C
   |  Required: Matchable
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:13:2 -----------------------------------------
 13 |  def f(y: Int) = if x == null then y else y  // error
    |  ^
-   |  Found:    {x} Int => Int
+   |  Found:    {x} Int -> Int
    |  Required: Matchable
 14 |  f
 
@@ -38,9 +38,9 @@ longer explanation available when compiling with `-explain`
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:31:24 ----------------------------------------
-31 |  val z2 = h[() => Cap](() => x)(() => C())  // error
+31 |  val z2 = h[() -> Cap](() => x)(() => C())  // error
    |                        ^^^^^^^
-   |                        Found:    {x} () => ? Cap
-   |                        Required: () => Cap
+   |                        Found:    {x} () -> ? Cap
+   |                        Required: () -> Cap
 
 longer explanation available when compiling with `-explain`
