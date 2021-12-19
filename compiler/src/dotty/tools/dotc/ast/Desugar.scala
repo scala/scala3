@@ -745,7 +745,8 @@ object desugar {
         val enumCompClass =
           if (isSingletonEnum) defn.SingletonEnumCompanionClass.typeRef
           else defn.EnumCompanionClass.typeRef
-        val parent = appliedTypeTree(ref(enumCompClass), Ident(className) :: Nil)
+        val clsWithArgs = appliedTypeTree(Ident(className), impliedTparams.map(_ => WildcardTypeBoundsTree()))
+        val parent = appliedTypeTree(ref(enumCompClass), clsWithArgs :: Nil)
         companionDefs(parent, companionMembers)
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty)
         companionDefs(anyRef, companionMembers)
