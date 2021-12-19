@@ -737,9 +737,8 @@ object desugar {
         companionDefs(anyRef, applyMeths ::: unapplyMeth :: toStringMeth :: companionMembers)
       }
       else if (isEnum)
-        val r = ref(defn.EnumCompanionClass.typeRef)
-        val r2 = appliedTypeTree(r, ref(requiredClass(className).typeRef) :: Nil)
-        companionDefs(r2, companionMembers)
+        val parent = appliedTypeTree(ref(defn.EnumCompanionClass.typeRef), Ident(className) :: Nil)
+        companionDefs(parent, companionMembers)
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty)
         companionDefs(anyRef, companionMembers)
       else if (isValueClass)
