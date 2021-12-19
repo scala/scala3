@@ -737,7 +737,15 @@ object desugar {
         companionDefs(anyRef, applyMeths ::: unapplyMeth :: toStringMeth :: companionMembers)
       }
       else if (isEnum)
-        val parent = appliedTypeTree(ref(defn.EnumCompanionClass.typeRef), Ident(className) :: Nil)
+        val isSingletonEnum = companionMembers.forall {
+          case _ : PatDef => true
+          case _ : ModuleDef => true
+          case _ => false
+        }
+        val enumCompClass =
+          if (isSingletonEnum) defn.SingletonEnumCompanionClass.typeRef
+          else defn.EnumCompanionClass.typeRef
+        val parent = appliedTypeTree(ref(enumCompClass), Ident(className) :: Nil)
         companionDefs(parent, companionMembers)
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty)
         companionDefs(anyRef, companionMembers)
