@@ -64,11 +64,13 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
     val expectedOutput = lines.flatMap(filterEmpties)
     val actualOutput = {
-      resetToInitial()
+      val opts = toolArgsParse(lines.take(1))
+      val (optsLine, inputLines) = if opts.isEmpty then ("", lines) else (lines.head, lines.drop(1))
+      resetToInitial(opts)
 
-      assert(lines.head.startsWith(prompt),
+      assert(inputLines.head.startsWith(prompt),
         s"""Each script must start with the prompt: "$prompt"""")
-      val inputRes = lines.filter(_.startsWith(prompt))
+      val inputRes = inputLines.filter(_.startsWith(prompt))
 
       val buf = new ArrayBuffer[String]
       inputRes.foldLeft(initialState) { (state, input) =>
@@ -76,7 +78,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         out.linesIterator.foreach(buf.append)
         nstate
       }
-      buf.toList.flatMap(filterEmpties)
+      (optsLine :: buf.toList).flatMap(filterEmpties)
     }
 
     if !FileDiff.matches(actualOutput, expectedOutput) then
