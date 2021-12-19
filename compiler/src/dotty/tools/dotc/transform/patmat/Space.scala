@@ -212,14 +212,20 @@ trait SpaceLogic {
         if (isSubType(tp2, tp1)) b
         else if (canDecompose(tp1)) tryDecompose1(tp1)
         else if (isSubType(tp1, tp2)) a // problematic corner case: inheriting a case class
-        else intersectUnrelatedAtomicTypes(tp1, tp2)
+        else intersectUnrelatedAtomicTypes(tp1, tp2) match
+          case Typ(tp, _) => Prod(tp, fun, ss)
+          case sp         => sp
       case (Prod(tp1, fun, ss), Typ(tp2, _)) =>
         if (isSubType(tp1, tp2)) a
         else if (canDecompose(tp2)) tryDecompose2(tp2)
         else if (isSubType(tp2, tp1)) a  // problematic corner case: inheriting a case class
-        else intersectUnrelatedAtomicTypes(tp1, tp2)
+        else intersectUnrelatedAtomicTypes(tp1, tp2) match
+          case Typ(tp, _) => Prod(tp, fun, ss)
+          case sp         => sp
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-        if (!isSameUnapply(fun1, fun2)) intersectUnrelatedAtomicTypes(tp1, tp2)
+        if (!isSameUnapply(fun1, fun2)) intersectUnrelatedAtomicTypes(tp1, tp2) match
+          case Typ(tp, _) => Prod(tp, fun1, ss1)
+          case sp         => sp
         else if (ss1.zip(ss2).exists(p => simplify(intersect(p._1, p._2)) == Empty)) Empty
         else Prod(tp1, fun1, ss1.zip(ss2).map((intersect _).tupled))
     }
