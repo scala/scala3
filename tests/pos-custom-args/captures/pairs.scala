@@ -1,6 +1,5 @@
 
-class C
-type Cap = {*} C
+@annotation.capability class Cap
 
 object Generic:
 

@@ -63,20 +63,6 @@ extension (tp: Type)
 
   def isBoxedCapturing(using Context) = !tp.boxedCaptured.isAlwaysEmpty
 
-  def canHaveInferredCapture(using Context): Boolean = tp match
-    case tp: TypeRef if tp.symbol.isClass =>
-      !tp.symbol.isValueClass && tp.symbol != defn.AnyClass
-    case _: TypeVar | _: TypeParamRef =>
-      false
-    case tp: TypeProxy =>
-      tp.superType.canHaveInferredCapture
-    case tp: AndType =>
-      tp.tp1.canHaveInferredCapture && tp.tp2.canHaveInferredCapture
-    case tp: OrType =>
-      tp.tp1.canHaveInferredCapture || tp.tp2.canHaveInferredCapture
-    case _ =>
-      false
-
   def stripCapturing(using Context): Type = tp.dealiasKeepAnnots match
     case CapturingType(parent, _, _) =>
       parent.stripCapturing
