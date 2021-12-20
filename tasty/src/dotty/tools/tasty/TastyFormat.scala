@@ -343,16 +343,12 @@ object TastyFormat {
    * @syntax markdown
    */
   def isVersionCompatible(
-    fileMajor: Int,
-    fileMinor: Int,
-    fileExperimental: Int,
-    compilerMajor: Int,
-    compilerMinor: Int,
-    compilerExperimental: Int
+    fileVersion: TastyVersion,
+    compilerVersion: TastyVersion
   ): Boolean = (
-    fileMajor == compilerMajor &&
-      (  fileMinor == compilerMinor && fileExperimental == compilerExperimental // full equality
-      || fileMinor <  compilerMinor && fileExperimental == 0 // stable backwards compatibility
+    fileVersion.major == compilerVersion.major &&
+      (  fileVersion.minor == compilerVersion.minor && fileVersion.experimental == compilerVersion.experimental // full equality
+      || fileVersion.minor < compilerVersion.minor && fileVersion.experimental == 0 // stable backwards compatibility
     )
   )
 

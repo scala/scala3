@@ -128,7 +128,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           }
           sb.toString + "\n\n"
         }
-        case self: SeparateCompilationSource => { // TODO: this is incorrect when using other versions of compiler
+        case self: SeparateCompilationSource => { // TODO: this won't work when using other versions of compiler
           val command = sb.toString
           val fsb = new StringBuilder(command)
           self.compilationGroups.foreach { (_, files) =>
@@ -174,25 +174,25 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     flags: TestFlags,
     outDir: JFile
   ) extends TestSource {
-    case class Group(ordinal: Int, compiler: String, target: String)
+    case class Group(ordinal: Int, compiler: String, release: String)
 
     lazy val compilationGroups: List[(Group, Array[JFile])] =
-      val Target = """t([\d\.]+)""".r
-      val Compiler = """v([\d\.]+)""".r
+      val Release = """r([\d\.]+)""".r
+      val Compiler = """c([\d\.]+)""".r
       val Ordinal = """(\d+)""".r
       def groupFor(file: JFile): Group =
-        val annotPart = file.getName.dropWhile(_ != '_').stripSuffix(".scala").stripSuffix(".java")
-        val annots = annotPart.split("_")
-        val ordinal = annots.collectFirst { case Ordinal(n) => n.toInt }.getOrElse(Int.MinValue)
-        val target = annots.collectFirst { case Target(t) => t }.getOrElse("")
-        val compiler = annots.collectFirst { case Compiler(c) => c}.getOrElse("")
-        Group(ordinal, compiler, target)
+        val groupSuffix = file.getName.dropWhile(_ != '_').stripSuffix(".scala").stripSuffix(".java")
+        val groupSuffixParts = groupSuffix.split("_")
+        val ordinal = groupSuffixParts.collectFirst { case Ordinal(n) => n.toInt }.getOrElse(Int.MinValue)
+        val release = groupSuffixParts.collectFirst { case Release(r) => r }.getOrElse("")
+        val compiler = groupSuffixParts.collectFirst { case Compiler(c) => c }.getOrElse("")
+        Group(ordinal, compiler, release)
 
       dir.listFiles
         .filter(isSourceFile)
         .groupBy(groupFor)
         .toList
-        .sortBy { (g, _) => (g.ordinal, g.compiler, g.target) }
+        .sortBy { (g, _) => (g.ordinal, g.compiler, g.release) }
         .map { (g, f) => (g, f.sorted) }
 
     def sourceFiles = compilationGroups.map(_._2).flatten.toArray
@@ -215,7 +215,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         case testSource @ SeparateCompilationSource(_, dir, flags, outDir) =>
           testSource.compilationGroups.map { (group, files) =>
-            val flags1 = if group.target.isEmpty then flags else flags.and(s"-scala-release:${group.target}")
+            val flags1 = if group.release.isEmpty then flags else flags.and(s"-scala-release:${group.release}")
             if group.compiler.isEmpty then
               compile(files, flags1, suppressErrors, outDir)
             else
@@ -509,7 +509,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       def substituteClasspath(old: String): String =
         old.split(JFile.pathSeparator).map { o =>
-          if JFile(o) == JFile(Properties.dottyLibrary) then s"$compilerDir/lib/scala3-library_3-${trueVersions(compiler)}.jar"
+          if JFile(o) == JFile(Properties.dottyLibrary) then s"$compilerDir/lib/scala3-library_3-$compiler.jar"
           else o
         }.mkString(JFile.pathSeparator)
 
@@ -517,7 +517,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         .withClasspath(targetDir.getPath)
         .and("-d", targetDir.getPath)
 
-      val reporter = TestReporter.reporter(realStdout, ERROR) // TODO: do some reporting
+      val reporter = TestReporter.reporter(realStdout, ERROR)
 
       val command = Array(compilerDir + "/bin/scalac") ++ flags1.all ++ files.map(_.getPath)
       val process = Runtime.getRuntime.exec(command)
@@ -1401,24 +1401,20 @@ object ParallelTesting {
     f.getName.endsWith(".tasty")
 
   def getCompiler(version: String): JFile =
-    val patch = trueVersions(version)
-    val dir = cache.resolve(s"scala3-${patch}").toFile
-    if dir.exists then
-      dir
-    else
-      import scala.sys.process._
-      val zipPath = cache.resolve(s"scala3-$patch.zip")
-      (URL(s"https://github.com/lampepfl/dotty/releases/download/$patch/scala3-$patch.zip") #>> zipPath.toFile #&& s"unzip $zipPath -d $cache").!!
-      dir
-
-
-  val trueVersions = Map(
-    "3.0" -> "3.0.2",
-    "3.1" -> "3.1.0"
-  )
+    val dir = cache.resolve(s"scala3-${version}").toFile
+    synchronized {
+      if dir.exists then
+        dir
+      else
+        import scala.sys.process._
+        val zipPath = cache.resolve(s"scala3-$version.zip")
+        val compilerDownloadUrl = s"https://github.com/lampepfl/dotty/releases/download/$version/scala3-$version.zip"
+        (URL(compilerDownloadUrl) #>> zipPath.toFile #&& s"unzip $zipPath -d $cache").!!
+        dir
+    }
 
   private lazy val cache =
     val dir = Files.createTempDirectory("dotty.tests")
-    // dir.toFile.deleteOnExit()
+    dir.toFile.deleteOnExit()
     dir
 }

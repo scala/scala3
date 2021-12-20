@@ -3,7 +3,7 @@ package dotc
 package core
 package classfile
 
-import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
+import dotty.tools.tasty.{ TastyFormat, TastyReader, TastyHeaderUnpickler, TastyVersion }
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
@@ -884,7 +884,7 @@ class ClassfileParser(
       }
 
       def unpickleTASTY(bytes: Array[Byte]): Some[Embedded]  = {
-        val unpickler = new tasty.DottyUnpickler(bytes)
+        val unpickler = new tasty.DottyUnpickler(bytes, ctx.tastyVersion)
         unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
         Some(unpickler)
       }
@@ -950,9 +950,23 @@ class ClassfileParser(
           if (tastyBytes.nonEmpty) {
             val reader = new TastyReader(bytes, 0, 16)
             val expectedUUID = new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
-            val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
+            val tastyHeader = new TastyHeaderUnpickler(tastyBytes).readFullHeader()
+            val fileTastyVersion = TastyVersion(tastyHeader.majorVersion, tastyHeader.minorVersion, tastyHeader.experimentalVersion)
+            val tastyUUID = tastyHeader.uuid
             if (expectedUUID != tastyUUID)
               report.warning(s"$classfile is out of sync with its TASTy file. Loaded TASTy file. Try cleaning the project to fix this issue", NoSourcePosition)
+
+            val tastyFilePath = classfile.path.stripSuffix(".class") + ".tasty"
+            val isTastyCompatible =
+              TastyFormat.isVersionCompatible(fileVersion = fileTastyVersion, compilerVersion = ctx.tastyVersion) ||
+              classRoot.symbol.showFullName.startsWith("scala.") // References to stdlib are considered safe because we check the values of @since annotations
+
+            if !isTastyCompatible then
+              report.error(s"""The class ${classRoot.symbol.showFullName} cannot be loaded from file ${tastyFilePath} because its TASTy format version is too high
+                |highest allowed: ${ctx.tastyVersion.show}
+                |found:           ${fileTastyVersion.show}
+              """.stripMargin)
+
             return unpickleTASTY(tastyBytes)
           }
         }

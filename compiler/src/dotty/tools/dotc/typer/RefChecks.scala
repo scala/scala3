@@ -15,7 +15,7 @@ import ast._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
 import scala.util.{Try, Failure, Success}
-import config.{ScalaVersion, NoScalaVersion}
+import config.{ScalaVersion, NoScalaVersion, ScalaRelease}
 import Decorators._
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting._
@@ -976,14 +976,14 @@ object RefChecks {
       annot <- sym.getAnnotation(defn.SinceAnnot)
       version <- annot.argumentConstantString(0)
     do
-      val releaseVersion = ctx.settings.scalaRelease.value
-      ScalaVersion.parse(version) match
-        case Success(symVersion) if symVersion > ctx.settings.scalaRelease.value =>
+      val releaseVersion = ctx.scalaRelease
+      ScalaRelease.parse(version) match
+        case Some(symVersion) if symVersion > releaseVersion =>
           report.error(
-            i"$sym was added in Scala $version, therefore it cannot be used in the code targeting Scala ${releaseVersion.unparse}",
+            i"$sym was added in Scala $version, therefore it cannot be used in the code targeting Scala ${releaseVersion.show}",
             pos)
-        case Failure(ex) =>
-          report.warning(i"$sym has an unparsable version number: ${ex.getMessage}", pos)
+        case None =>
+          report.warning(i"$sym has an unparsable release name: '${version}'", pos)
         case _ =>
 
   private def checkSinceAnnotInSignature(sym: Symbol, pos: SrcPos)(using Context) =
@@ -1320,6 +1320,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
     checkExperimentalInheritance(cls)
     checkExperimentalAnnots(cls)
+    checkSinceAnnot(cls, cls.srcPos)
     tree
   }
   catch {
@@ -1371,9 +1372,11 @@ class RefChecks extends MiniPhase { thisPhase =>
       case TypeRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
         checkExperimental(sym, tree.srcPos)
+        checkSinceAnnot(sym, tree.srcPos)
       case TermRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
         checkExperimental(sym, tree.srcPos)
+        checkSinceAnnot(sym, tree.srcPos)
       case _ =>
     }
     tree
