@@ -59,7 +59,7 @@ object DottyJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.1.1-RC1"
+  val referenceVersion = "3.1.1-RC2"
 
   val baseVersion = "3.1.2-RC1"
 
