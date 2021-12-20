@@ -54,7 +54,7 @@ object Expr {
 
   /** Creates an expression that will construct a function with one parameter
    *
-   *  Transforms a sequence of expression
+   *  Transforms the expression
    *    `a => r` where `a: Expr[A]` and `r: Expr[R]`
    *  to an expression equivalent to
    *    `'{ $a => $r }` typed as an `Expr[A => R]`
