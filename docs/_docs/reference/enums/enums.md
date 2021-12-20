@@ -89,6 +89,31 @@ object Planet:
 end Planet
 ```
 
+As explained [later](./desugarEnums.md), enum cases are expanded in the companion object of the enum.
+Even though the enum cases are written within the lexical scope of the enum template, they may not
+reference members of the enum class. Like secondary constructors, although written inside the template,
+they are scoped outside it.
+
+Similarly, they may not directly reference members of the companion object in which they expand.
+They are like default class arguments, which are also expanded in the class's companion. For example:
+
+```scala
+import Planet.*
+enum Planet(mass: Double, radius: Double):
+  private final val (MercuryMass @ _, MercuryRadius @ _) = (3.303e+23, 2.4397e6)
+
+  case Mercury extends Planet(MercuryMass, MercuryRadius)             // Not found
+  case Venus   extends Planet(VenusMass, VenusRadius)                 // illegal reference
+  case Earth   extends Planet(Planet.EarthMass, Planet.EarthRadius)   // ok
+object Planet:
+  private final val (VenusMass @ _, VenusRadius @ _) = (4.869e+24, 6.0518e6)
+  private final val (EarthMass @ _, EarthRadius @ _) = (5.976e+24, 6.37814e6)
+end Planet
+```
+The fields for Mercury are not visible, and the fields for Venus may not be referenced directly.
+Since the direct reference after expansion shadows any import clause, the import statement does not make the fields available.
+Direct references using a renaming import are also disallowed.
+
 ### Deprecation of Enum Cases
 
 As a library author, you may want to signal that an enum case is no longer intended for use. However you could still want to gracefully handle the removal of a case from your public API, such as special casing deprecated cases.
