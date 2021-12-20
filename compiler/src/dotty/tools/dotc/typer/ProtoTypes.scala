@@ -582,7 +582,7 @@ object ProtoTypes {
     override def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
       canInstantiate(tp) || tp.member(nme.apply).hasAltWith(d => canInstantiate(d.info))
 
-    def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
+    def derivedPolyProto(targs: List[Tree], resType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
 
