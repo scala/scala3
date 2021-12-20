@@ -36,13 +36,13 @@ class TastyPickler(val rootCls: ClassSymbol) {
     def lengthWithLength(buf: TastyBuffer) =
       buf.length + natSize(buf.length)
 
-    val (majorVersion, minorVersion, experimentalVersion) = ctx.tastyVersion
-
     nameBuffer.assemble()
     sections.foreach(_._2.assemble())
 
     val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes)
     val treeSectionHash +: otherSectionHashes = sections.map(x => TastyHash.pjwHash64(x._2.bytes))
+
+    val tastyVersion = ctx.tastyVersion
 
     // Hash of name table and tree
     val uuidLow: Long = nameBufferHash ^ treeSectionHash
@@ -52,9 +52,9 @@ class TastyPickler(val rootCls: ClassSymbol) {
     val headerBuffer = {
       val buf = new TastyBuffer(header.length + TastyPickler.versionStringBytes.length + 32)
       for (ch <- header) buf.writeByte(ch.toByte)
-      buf.writeNat(majorVersion)
-      buf.writeNat(minorVersion)
-      buf.writeNat(experimentalVersion)
+      buf.writeNat(tastyVersion.major)
+      buf.writeNat(tastyVersion.minor)
+      buf.writeNat(tastyVersion.experimental)
       buf.writeNat(TastyPickler.versionStringBytes.length)
       buf.writeBytes(TastyPickler.versionStringBytes, TastyPickler.versionStringBytes.length)
       buf.writeUncompressedLong(uuidLow)

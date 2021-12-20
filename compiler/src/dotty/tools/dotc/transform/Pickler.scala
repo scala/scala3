@@ -125,7 +125,7 @@ class Pickler extends Phase {
     ctx.initialize()
     val unpicklers =
       for ((cls, pickler) <- picklers) yield {
-        val unpickler = new DottyUnpickler(pickler.assembleParts())
+        val unpickler = new DottyUnpickler(pickler.assembleParts(), ctx.tastyVersion)
         unpickler.enter(roots = Set.empty)
         cls -> unpickler
       }

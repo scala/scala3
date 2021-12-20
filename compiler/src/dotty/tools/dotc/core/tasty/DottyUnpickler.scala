@@ -10,7 +10,7 @@ import classfile.ClassfileParser
 import Names.SimpleName
 import TreeUnpickler.UnpickleMode
 
-import dotty.tools.tasty.TastyReader
+import dotty.tools.tasty.{ TastyReader, TastyVersion }
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 
 object DottyUnpickler {
@@ -39,7 +39,7 @@ object DottyUnpickler {
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
  *  @param mode          the tasty file contains package (TopLevel), an expression (Term) or a type (TypeTree)
  */
-class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLevel) extends ClassfileParser.Embedded with tpd.TreeProvider {
+class DottyUnpickler(bytes: Array[Byte], maximalTastyVersion: TastyVersion, mode: UnpickleMode = UnpickleMode.TopLevel) extends ClassfileParser.Embedded with tpd.TreeProvider {
   import tpd._
   import DottyUnpickler._
 

@@ -45,7 +45,8 @@ class TastyHeaderUnpickler(reader: TastyReader) {
     val fileMajor = readNat()
     if (fileMajor <= 27) { // old behavior before `tasty-core` 3.0.0-M4
       val fileMinor = readNat()
-      val signature = signatureString(fileMajor, fileMinor, 0)
+      val fileTastyVersion = TastyVersion(fileMajor, fileMinor, 0)
+      val signature = signatureString(fileTastyVersion, TastyVersion.compilerVersion)
       throw new UnpickleException(signature + backIncompatAddendum + toolingAddendum)
     }
     else {
@@ -59,17 +60,15 @@ class TastyHeaderUnpickler(reader: TastyReader) {
         new String(bytes, start.index, length)
       }
 
+      val fileTastyVersion = TastyVersion(fileMajor, fileMinor, fileExperimental)
+
       val validVersion = TastyFormat.isVersionCompatible(
-        fileMajor            = fileMajor,
-        fileMinor            = fileMinor,
-        fileExperimental     = fileExperimental,
-        compilerMajor        = MajorVersion,
-        compilerMinor        = MinorVersion,
-        compilerExperimental = ExperimentalVersion
+        fileVersion = fileTastyVersion,
+        compilerVersion = TastyVersion.compilerVersion
       )
 
       check(validVersion, {
-        val signature = signatureString(fileMajor, fileMinor, fileExperimental)
+        val signature = signatureString(fileTastyVersion, TastyVersion.compilerVersion)
         val producedByAddendum = s"\nThe TASTy file was produced by $toolingVersion.$toolingAddendum"
         val msg = (
           if (fileExperimental != 0) unstableAddendum
@@ -100,16 +99,16 @@ object TastyHeaderUnpickler {
       ""
   )
 
-  private def signatureString(fileMajor: Int, fileMinor: Int, fileExperimental: Int) = {
+  private def signatureString(found: TastyVersion, expected: TastyVersion) = {
     def showMinorVersion(min: Int, exp: Int) = {
       val expStr = if (exp == 0) "" else s" [unstable release: $exp]"
       s"$min$expStr"
     }
-    val minorVersion = showMinorVersion(MinorVersion, ExperimentalVersion)
-    val fileMinorVersion = showMinorVersion(fileMinor, fileExperimental)
+    val expectedMinorVersion = showMinorVersion(expected.minor, expected.experimental)
+    val foundMinorVersion = showMinorVersion(found.minor, found.experimental)
     s"""TASTy signature has wrong version.
-      | expected: {majorVersion: $MajorVersion, minorVersion: $minorVersion}
-      | found   : {majorVersion: $fileMajor, minorVersion: $fileMinorVersion}
+      | expected: {majorVersion: ${expected.major}, minorVersion: $expectedMinorVersion}
+      | found   : {majorVersion: ${found.major}, minorVersion: $foundMinorVersion}
       |
       |""".stripMargin
   }
