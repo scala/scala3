@@ -276,7 +276,6 @@ But even without these additional mechanisms, exception checking is already usef
 
 Put another way: If the status quo is 0% static checking since 100% is too painful, then an alternative that gives you 95% static checking with great ergonomics looks like a win. And we might still get to 100% in the future.
 
-For more info, see also our [paper at the ACM Scala Symposium 2021](
-https://github.com/lampepfl/dotty/docs/docs/reference/experimental/safer-exceptions.pdf).
+For more info, see also our [paper at the ACM Scala Symposium 2021](resources/safer-exceptions.pdf).
 
 
