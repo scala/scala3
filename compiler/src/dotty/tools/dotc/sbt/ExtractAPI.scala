@@ -25,6 +25,7 @@ import xsbti.api.DefinitionType
 
 import scala.collection.mutable
 import scala.util.hashing.MurmurHash3
+import scala.util.chaining.*
 
 /** This phase sends a representation of the API of classes to sbt via callbacks.
  *
@@ -141,14 +142,17 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
   /** This cache is necessary to avoid unstable name hashing when `typeCache` is present,
    *  see the comment in the `RefinedType` case in `computeType`
    *  The cache key is (api of RefinedType#parent, api of RefinedType#refinedInfo).
-    */
+   */
   private val refinedTypeCache = new mutable.HashMap[(api.Type, api.Definition), api.Structure]
 
-  /** This cache is necessary to avoid infinite loops when hashing the body of inline definitions.
-   *  Its keys represent the root inline definitions, and its values are seen inline references within
-   *  the rhs of the key. If a symbol is present in the value set, then do not hash its signature or inline body.
+  /** This cache is necessary to avoid infinite loops when hashing an inline "Body" annotation.
+   *  Its values are transitively seen inline references within a call chain starting from a single "origin" inline
+   *  definition. Avoid hashing an inline "Body" annotation if its associated definition is already in the cache.
+   *  Precondition: the cache is empty whenever we hash a new "origin" inline "Body" annotation.
    */
-  private val seenInlineCache = mutable.HashMap.empty[Symbol, mutable.HashSet[Symbol]]
+  private val seenInlineCache = mutable.HashSet.empty[Symbol]
+
+  /** This cache is optional, it avoids recomputing hashes of inline "Body" annotations. */
   private val inlineBodyCache = mutable.HashMap.empty[Symbol, Int]
 
   private val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
@@ -357,15 +361,18 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
    */
   def apiDef(sym: TermSymbol, inlineOrigin: Symbol): api.Def = {
 
-    val inlineExtras = new mutable.ListBuffer[Int => Int]
+    var seenInlineExtras = false
+    var inlineExtras = 41
 
     def mixInlineParam(p: Symbol): Unit =
       if inlineOrigin.exists && p.is(Inline) then
-        inlineExtras += hashInlineParam(p)
+        seenInlineExtras = true
+        inlineExtras = hashInlineParam(p, inlineExtras)
 
     def inlineExtrasAnnot: Option[api.Annotation] =
-      Option.when(inlineOrigin.exists && inlineExtras.nonEmpty) {
-        marker(s"${hashList(inlineExtras.toList)("inlineExtras".hashCode)}")
+      val h = inlineExtras
+      Option.when(seenInlineExtras) {
+        marker(s"${MurmurHash3.finalizeHash(h, "inlineExtras".hashCode)}")
       }
 
     def tparamList(pt: TypeLambda): List[api.TypeParameter] =
@@ -654,25 +661,15 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       // could store the hash as an annotation when pickling an inline def
       // and retrieve it here instead of computing it on the fly.
 
-      def registerInlineHash(inlineBodyHash: Int): Unit =
-        annots += marker(inlineBodyHash.toString)
+      def hash[U](inlineOrigin: Symbol): Int =
+        assert(seenInlineCache.add(s)) // will fail if already seen, guarded by treeHash
+        treeHash(inlineBody, inlineOrigin)
 
-      def nestedHash(root: Symbol): Unit =
-        if !seenInlineCache(root).contains(s) then
-          seenInlineCache(root) += s
-          registerInlineHash(treeHash(inlineBody, inlineOrigin = root))
+      val inlineHash =
+        if inlineOrigin.exists then hash(inlineOrigin)
+        else inlineBodyCache.getOrElseUpdate(s, hash(inlineOrigin = s).tap(_ => seenInlineCache.clear()))
 
-      def originHash(root: Symbol): Unit =
-        def computeHash(): Int =
-          assert(!seenInlineCache.contains(root))
-          seenInlineCache.put(root, mutable.HashSet(root))
-          val res = treeHash(inlineBody, inlineOrigin = root)
-          seenInlineCache.remove(root)
-          res
-        registerInlineHash(inlineBodyCache.getOrElseUpdate(root, computeHash()))
-
-      if inlineOrigin.exists then nestedHash(root = inlineOrigin)
-      else originHash(root = s)
+      annots += marker(inlineHash.toString)
 
     end if
 
@@ -712,32 +709,19 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       MurmurHash3.mix(h, n.toString.hashCode)
     end nameHash
 
-    def typeHash(tp: Type, initHash: Int): Int =
-      // Go through `apiType` to get a value with a stable hash, it'd
-      // be better to use Murmur here too instead of relying on
-      // `hashCode`, but that would essentially mean duplicating
-      // https://github.com/sbt/zinc/blob/develop/internal/zinc-apiinfo/src/main/scala/xsbt/api/HashAPI.scala
-      // and at that point we might as well do type hashing on our own
-      // representation.
-      var h = initHash
-      tp match
-        case ConstantType(c) =>
-          h = constantHash(c, h)
-        case TypeBounds(lo, hi) => // TODO when does this happen?
-          h = MurmurHash3.mix(h, apiType(lo).hashCode)
-          h = MurmurHash3.mix(h, apiType(hi).hashCode)
-        case tp =>
-          h = MurmurHash3.mix(h, apiType(tp).hashCode)
-      h
-    end typeHash
-
     def constantHash(c: Constant, initHash: Int): Int =
       var h = MurmurHash3.mix(initHash, c.tag)
       c.tag match
         case NullTag =>
           // No value to hash, the tag is enough.
         case ClazzTag =>
-          h = typeHash(c.typeValue, h)
+          // Go through `apiType` to get a value with a stable hash, it'd
+          // be better to use Murmur here too instead of relying on
+          // `hashCode`, but that would essentially mean duplicating
+          // https://github.com/sbt/zinc/blob/develop/internal/zinc-apiinfo/src/main/scala/xsbt/api/HashAPI.scala
+          // and at that point we might as well do type hashing on our own
+          // representation.
+          h = MurmurHash3.mix(h, apiType(c.typeValue).hashCode)
         case _ =>
           h = MurmurHash3.mix(h, c.value.hashCode)
       h
@@ -758,7 +742,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
         p match
           case ref: RefTree @unchecked =>
             val sym = ref.symbol
-            if sym.is(Inline, butNot = Param) && !seenInlineCache(inlineOrigin).contains(sym) then
+            if sym.is(Inline, butNot = Param) && !seenInlineCache.contains(sym) then
               // An inline method that calls another inline method will eventually inline the call
               // at a non-inline callsite, in this case if the implementation of the nested call
               // changes, then the callsite will have a different API, we should hash the definition
@@ -824,20 +808,10 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     MurmurHash3.finalizeHash(h, len)
   end hashTparamsExtras
 
-  private def hashList(extraHashes: List[Int => Int])(initHash: Int): Int =
-    var h = initHash
-    var fs = extraHashes
-    var len = 0
-    while fs.nonEmpty do
-      h = fs.head(h)
-      fs = fs.tail
-      len += 1
-    MurmurHash3.finalizeHash(h, len)
-
   /** Mix in the name hash also because otherwise switching which
    *  parameter is inline will not affect the hash.
    */
-  private def hashInlineParam(p: Symbol)(h: Int) =
+  private def hashInlineParam(p: Symbol, h: Int) =
     MurmurHash3.mix(p.name.toString.hashCode, MurmurHash3.mix(h, InlineParamHash))
 
   def apiAnnotation(annot: Annotation): api.Annotation = {
