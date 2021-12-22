@@ -152,7 +152,9 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
    */
   private val seenInlineCache = mutable.HashSet.empty[Symbol]
 
-  /** This cache is optional, it avoids recomputing hashes of inline "Body" annotations. */
+  /** This cache is optional, it avoids recomputing hashes of inline "Body" annotations,
+   *  e.g. when a concrete inline method is inherited by a subclass.
+   */
   private val inlineBodyCache = mutable.HashMap.empty[Symbol, Int]
 
   private val allNonLocalClassesInSrc = new mutable.HashSet[xsbti.api.ClassLike]
@@ -654,12 +656,6 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       // this method need to be recompiled. sbt has no way of tracking method
       // bodies, so we include the hash of the body of the method as part of the
       // signature we send to sbt.
-      //
-      // FIXME: The API of a class we send to Zinc includes the signatures of
-      // inherited methods, which means that we repeatedly compute the hash of
-      // an inline def in every class that extends its owner. To avoid this we
-      // could store the hash as an annotation when pickling an inline def
-      // and retrieve it here instead of computing it on the fly.
 
       def hash[U](inlineOrigin: Symbol): Int =
         assert(seenInlineCache.add(s)) // will fail if already seen, guarded by treeHash
