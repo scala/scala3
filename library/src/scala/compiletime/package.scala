@@ -188,4 +188,3 @@ def byName[T](x: => T): T = x
   */
 extension [T](x: T)
   transparent inline def asMatchable: x.type & Matchable = x.asInstanceOf[x.type & Matchable]
-
