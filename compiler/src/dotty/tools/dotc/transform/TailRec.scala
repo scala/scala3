@@ -456,7 +456,7 @@ class TailRec extends MiniPhase {
 
         case Return(expr, from) =>
           val fromSym = from.symbol
-          val inTailPosition = fromSym.is(Label) && tailPositionLabeledSyms.contains(fromSym)
+          val inTailPosition = !fromSym.is(Label) || tailPositionLabeledSyms.contains(fromSym)
           cpy.Return(tree)(transform(expr, inTailPosition), from)
 
         case _ =>
