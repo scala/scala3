@@ -3,6 +3,8 @@ type Cap = C @retains(*)
 
 type T = (x: Cap) -> String @retains(x)
 
+type ID[X] = X
+
 val aa: ((x: Cap) -> String @retains(x)) = (x: Cap) => ""
 
 def f(y: Cap, z: Cap): String @retains(*) =
@@ -12,7 +14,7 @@ def f(y: Cap, z: Cap): String @retains(*) =
   def g(): C @retains(y, z) = ???
   val d = a(g())
 
-  val ac: ((x: Cap) -> String @retains(x) -> String @retains(x)) = ???
+  val ac: ((x: Cap) -> ID[String @retains(x) -> String @retains(x)]) = ???
   val bc: (({y} String) -> {y} String) = ac(y)
   val dc: (String -> {y, z} String) = ac(g())
   c

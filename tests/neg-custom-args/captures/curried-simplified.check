@@ -1,0 +1,42 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/curried-simplified.scala:7:28 ----------------------------
+7 |  def y1: () -> () -> Int = x1  // error
+  |                            ^^
+  |                            Found:    {x} () -> {x} () -> Int
+  |                            Required: () -> () -> Int
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/curried-simplified.scala:9:28 ----------------------------
+9 |  def y2: () -> () => Int = x2 // error
+  |                            ^^
+  |                            Found:    {x} () -> () => Int
+  |                            Required: () -> () => Int
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/curried-simplified.scala:11:39 ---------------------------
+11 |  def y3: Cap -> Protect[Int -> Int] = x3 // error
+   |                                       ^^
+   |                                       Found:    (x$0: Cap) -> {x$0} Int -> Int
+   |                                       Required: Cap -> Protect[Int -> Int]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/curried-simplified.scala:14:39 ---------------------------
+14 |  def y5: Cap -> Protect[Int -> Int] = x5 // error
+   |                                       ^^
+   |                                       Found:    Cap -> {x} Int -> Int
+   |                                       Required: Cap -> Protect[Int -> Int]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/curried-simplified.scala:16:55 ---------------------------
+16 |  def y6: Cap -> Protect[Cap -> Protect[Int -> Int]] = x6 // error
+   |                                                       ^^
+   |                                               Found:    (x$0: Cap) -> {x$0} (x$0: Cap) -> {x$0, x$0} Int -> Int
+   |                                               Required: Cap -> Protect[Cap -> Protect[Int -> Int]]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/curried-simplified.scala:18:55 ---------------------------
+18 |  def y7: Cap -> Protect[Cap -> Protect[Int -> Int]] = x7 // error
+   |                                                       ^^
+   |                                                   Found:    (x$0: Cap) -> {x$0} (x: Cap) -> {x$0, x} Int -> Int
+   |                                                   Required: Cap -> Protect[Cap -> Protect[Int -> Int]]
+
+longer explanation available when compiling with `-explain`
