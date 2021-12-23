@@ -49,7 +49,14 @@ sealed abstract class CaptureSet extends Showable:
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
 
-  /** Cast to variable. @pre: @isConst */
+  /** Cast to Const. @pre: isConst */
+  def asConst: Const = this match
+    case c: Const => c
+    case v: Var =>
+      assert(v.isConst)
+      Const(v.elems)
+
+  /** Cast to variable. @pre: !isConst */
   def asVar: Var =
     assert(!isConst)
     asInstanceOf[Var]
