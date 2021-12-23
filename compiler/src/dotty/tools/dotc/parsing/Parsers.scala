@@ -896,6 +896,10 @@ object Parsers {
 
     def followingIsCaptureSet(): Boolean =
       val lookahead = in.LookaheadScanner()
+      def followingIsTypeStart() =
+        lookahead.nextToken()
+        canStartInfixTypeTokens.contains(lookahead.token)
+        || lookahead.token == LBRACKET
       def recur(): Boolean =
         (lookahead.isIdent || lookahead.token == THIS) && {
           lookahead.nextToken()
@@ -903,14 +907,10 @@ object Parsers {
             lookahead.nextToken()
             recur()
           else
-            lookahead.token == RBRACE && {
-              lookahead.nextToken()
-              canStartInfixTypeTokens.contains(lookahead.token)
-              || lookahead.token == LBRACKET
-            }
+            lookahead.token == RBRACE && followingIsTypeStart()
         }
       lookahead.nextToken()
-      recur()
+      if lookahead.token == RBRACE then followingIsTypeStart() else recur()
 
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -1486,7 +1486,9 @@ object Parsers {
           else { accept(TLARROW); typ() }
         }
         else if in.token == LBRACE && followingIsCaptureSet() then
-          val refs = inBraces { commaSeparated(captureRef) }
+          val refs = inBraces {
+            if in.token == RBRACE then Nil else commaSeparated(captureRef)
+          }
           val t = typ()
           CapturingTypeTree(refs, t)
         else if (in.token == INDENT) enclosed(INDENT, typ())
