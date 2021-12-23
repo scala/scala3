@@ -7,7 +7,7 @@ import Symbols.*, Contexts.*, Types.*, ContextOps.*, Decorators.*, SymDenotation
 import Flags.*, SymUtils.*, NameKinds.*
 import ast.*
 import Phases.Phase
-import DenotTransformers.IdentityDenotTransformer
+import DenotTransformers.{IdentityDenotTransformer, DenotTransformer}
 import NamerOps.{methodType, linkConstructorParams}
 import NullOpsDecorator.stripNull
 import typer.ErrorReporting.err
@@ -22,8 +22,47 @@ import reporting.trace
 
 object Recheck:
 
+  import tpd.Tree
+
   /** Attachment key for rechecked types of TypeTrees */
   private val RecheckedType = Property.Key[Type]
+
+  extension (sym: Symbol)
+
+    /** Update symbol's info to newInfo from prevPhase.next to lastPhase.
+     *  Reset to previous info for phases after lastPhase.
+     */
+    def updateInfoBetween(prevPhase: DenotTransformer, lastPhase: DenotTransformer, newInfo: Type)(using Context): Unit =
+      if sym.info ne newInfo then
+        sym.copySymDenotation().installAfter(lastPhase) // reset
+        sym.copySymDenotation(
+            info = newInfo,
+            initFlags =
+              if newInfo.isInstanceOf[LazyType] then sym.flags &~ Touched
+              else sym.flags
+          ).installAfter(prevPhase)
+
+    /** Does symbol have a new denotation valid from phase.next that is different
+     *  from the denotation it had before?
+     */
+    def isUpdatedAfter(phase: Phase)(using Context) =
+      val symd = sym.denot
+      symd.validFor.firstPhaseId == phase.id + 1 && (sym.originDenotation ne symd)
+
+  extension (tree: Tree)
+
+    /** Remember `tpe` as the type of `tree`, which might be different from the
+     *  type stored in the tree itself.
+     */
+    def rememberType(tpe: Type)(using Context): Unit =
+      if (tpe ne tree.tpe) && !tree.hasAttachment(RecheckedType) then
+        tree.putAttachment(RecheckedType, tpe)
+
+    /** The remembered type of the tree, or if none was installed, the original type */
+    def knownType =
+      tree.attachmentOrElse(RecheckedType, tree.tpe)
+
+    def hasRememberedType: Boolean = tree.hasAttachment(RecheckedType)
 
 abstract class Recheck extends Phase, IdentityDenotTransformer:
   thisPhase =>
@@ -43,9 +82,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
   override def widenSkolems = true
 
   def run(using Context): Unit =
-    val rechecker = newRechecker()
-    rechecker.transformTypes.traverse(ctx.compilationUnit.tpdTree)
-    rechecker.checkUnit(ctx.compilationUnit)
+    newRechecker().checkUnit(ctx.compilationUnit)
 
   def newRechecker()(using Context): Rechecker
 
@@ -54,120 +91,6 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
     private val keepTypes = inContext(ictx) {
       ictx.settings.Xprint.value.containsPhase(thisPhase)
     }
-
-    extension (sym: Symbol) def updateInfo(newInfo: Type)(using Context): Unit =
-      if sym.info ne newInfo then
-        sym.copySymDenotation().installAfter(thisPhase) // reset
-        sym.copySymDenotation(
-            info = newInfo,
-            initFlags =
-              if newInfo.isInstanceOf[LazyType] then sym.flags &~ Touched
-              else sym.flags
-          ).installAfter(preRecheckPhase)
-
-    extension (tpe: Type) def rememberFor(tree: Tree)(using Context): Unit =
-      if (tpe ne tree.tpe) && !tree.hasAttachment(RecheckedType) then
-        tree.putAttachment(RecheckedType, tpe)
-
-    def knownType(tree: Tree) =
-      tree.attachmentOrElse(RecheckedType, tree.tpe)
-
-    def isUpdated(sym: Symbol)(using Context) =
-      val symd = sym.denot
-      symd.validFor.firstPhaseId == thisPhase.id && (sym.originDenotation ne symd)
-
-    def transformType(tp: Type, inferred: Boolean, boxed: Boolean = false)(using Context): Type = tp
-
-    object transformTypes extends TreeTraverser:
-
-      // Substitute parameter symbols in `from` to paramRefs in corresponding
-      // method or poly types `to`. We use a single BiTypeMap to do everything.
-      class SubstParams(from: List[List[Symbol]], to: List[LambdaType])(using Context)
-      extends DeepTypeMap, BiTypeMap:
-
-        def apply(t: Type): Type = t match
-          case t: NamedType =>
-            val sym = t.symbol
-            def outer(froms: List[List[Symbol]], tos: List[LambdaType]): Type =
-              def inner(from: List[Symbol], to: List[ParamRef]): Type =
-                if from.isEmpty then outer(froms.tail, tos.tail)
-                else if sym eq from.head then to.head
-                else inner(from.tail, to.tail)
-              if tos.isEmpty then t
-              else inner(froms.head, tos.head.paramRefs)
-            outer(from, to)
-          case _ =>
-            mapOver(t)
-
-        def inverse(t: Type): Type = t match
-          case t: ParamRef =>
-            def recur(from: List[LambdaType], to: List[List[Symbol]]): Type =
-              if from.isEmpty then t
-              else if t.binder eq from.head then to.head(t.paramNum).namedType
-              else recur(from.tail, to.tail)
-            recur(to, from)
-          case _ =>
-            mapOver(t)
-      end SubstParams
-
-      private def transformTT(tree: TypeTree, boxed: Boolean)(using Context) =
-        transformType(tree.tpe, tree.isInstanceOf[InferredTypeTree], boxed).rememberFor(tree)
-
-      def traverse(tree: Tree)(using Context) =
-        tree match
-          case tree @ ValDef(_, tpt: TypeTree, _) if tree.symbol.is(Mutable) =>
-            transformTT(tpt, boxed = true)
-            traverse(tree.rhs)
-          case _ =>
-            traverseChildren(tree)
-        tree match
-          case tree: TypeTree =>
-            transformTT(tree, boxed = false)
-          case tree: ValOrDefDef =>
-            val sym = tree.symbol
-
-            // replace an existing symbol info with inferred types
-            def integrateRT(
-                info: Type,                     // symbol info to replace
-                psymss: List[List[Symbol]],     // the local (type and trem) parameter symbols corresponding to `info`
-                prevPsymss: List[List[Symbol]], // the local parameter symbols seen previously in reverse order
-                prevLambdas: List[LambdaType]   // the outer method and polytypes generated previously in reverse order
-              ): Type =
-              info match
-                case mt: MethodOrPoly =>
-                  val psyms = psymss.head
-                  mt.companion(mt.paramNames)(
-                    mt1 =>
-                      if !psyms.exists(isUpdated) && !mt.isParamDependent && prevLambdas.isEmpty then
-                        mt.paramInfos
-                      else
-                        val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
-                        psyms.map(psym => subst(psym.info).asInstanceOf[mt.PInfo]),
-                    mt1 =>
-                      integrateRT(mt.resType, psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas)
-                  )
-                case info: ExprType =>
-                  info.derivedExprType(resType =
-                    integrateRT(info.resType, psymss, prevPsymss, prevLambdas))
-                case _ =>
-                  val restp = knownType(tree.tpt)
-                  if prevLambdas.isEmpty then restp
-                  else SubstParams(prevPsymss, prevLambdas)(restp)
-
-            if tree.tpt.hasAttachment(RecheckedType) && !sym.isConstructor then
-              val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
-                .showing(i"update info $sym: ${sym.info} --> $result", recheckr)
-              if newInfo ne sym.info then
-                val completer = new LazyType:
-                  def complete(denot: SymDenotation)(using Context) =
-                    denot.info = newInfo
-                    recheckDef(tree, sym)
-                sym.updateInfo(completer)
-          case tree: Bind =>
-            val sym = tree.symbol
-            sym.updateInfo(transformType(sym.info, inferred = true))
-          case _ =>
-    end transformTypes
 
     def constFold(tree: Tree, tp: Type)(using Context): Type =
       val tree1 = tree.withType(tp)
@@ -375,7 +298,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
           case tree: ValOrDefDef =>
             if tree.isEmpty then NoType
             else
-              if isUpdated(sym) then sym.ensureCompleted()
+              if sym.isUpdatedAfter(preRecheckPhase) then sym.ensureCompleted()
               else recheckDef(tree, sym)
               sym.termRef
           case tree: TypeDef =>
@@ -414,7 +337,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
 
     def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
       checkConforms(tpe, pt, tree)
-      if keepTypes then tpe.rememberFor(tree)
+      if keepTypes then tree.rememberType(tpe)
       tpe
 
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
