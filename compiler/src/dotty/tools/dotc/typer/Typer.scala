@@ -336,7 +336,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
            *  A package object should always be skipped if we look for a term.
            *  That way we make sure we consider all overloaded alternatives of
            *  a definition, even if they are in different source files.
-           *  If we are looking for a type, a package object should ne skipped
+           *  If we are looking for a type, a package object should be skipped
            *  only if it does not contain opaque definitions. Package objects
            *  with opaque definitions are significant, since opaque aliases
            *  are only seen if the prefix is the this-type of the package object.
