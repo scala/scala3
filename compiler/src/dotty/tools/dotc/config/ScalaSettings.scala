@@ -317,6 +317,7 @@ private sealed trait YSettings:
   val Yrecheck: Setting[Boolean] = BooleanSetting("-Yrecheck", "Run type rechecks (test only)")
   val Ycc: Setting[Boolean] = BooleanSetting("-Ycc", "Check captured references")
   val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Debug info for captured references")
+  val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with -Ycc, suppress type abbreviations")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
