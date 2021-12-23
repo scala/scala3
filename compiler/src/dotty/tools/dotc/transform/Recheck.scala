@@ -203,12 +203,15 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
         bindType
 
     def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
-      if !tree.rhs.isEmpty then recheck(tree.rhs, sym.info)
+      if !tree.rhs.isEmpty then recheckRHS(tree.rhs, sym.info, sym)
 
     def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Unit =
       val rhsCtx = linkConstructorParams(sym).withOwner(sym)
       if !tree.rhs.isEmpty && !sym.isInlineMethod && !sym.isEffectivelyErased then
-        inContext(rhsCtx) { recheck(tree.rhs, recheck(tree.tpt)) }
+        inContext(rhsCtx) { recheckRHS(tree.rhs, recheck(tree.tpt), sym) }
+
+    def recheckRHS(tree: Tree, pt: Type, sym: Symbol)(using Context): Type =
+      recheck(tree, pt)
 
     def recheckTypeDef(tree: TypeDef, sym: Symbol)(using Context): Type =
       recheck(tree.rhs)

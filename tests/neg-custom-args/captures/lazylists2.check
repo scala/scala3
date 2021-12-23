@@ -1,0 +1,45 @@
+-- [E163] Declaration Error: tests/neg-custom-args/captures/lazylists2.scala:50:10 -------------------------------------
+50 |      def tail: {xs, f} LazyList[B] = xs.tail.map(f) // error
+   |          ^
+   |          error overriding method tail in trait LazyList of type => {Mapped.this} LazyList[B];
+   |            method tail of type => {xs, f} LazyList[B] has incompatible type
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:18:4 ------------------------------------
+18 |    final class Mapped extends LazyList[B]:  // error
+   |    ^
+   |    Found:    {f, xs} LazyList[B]
+   |    Required: {f} LazyList[B]
+19 |      this: ({xs, f} Mapped) =>
+20 |      def isEmpty = false
+21 |      def head: B = f(xs.head)
+22 |      def tail: {this} LazyList[B] = xs.tail.map(f)
+23 |    new Mapped
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:27:4 ------------------------------------
+27 |    final class Mapped extends LazyList[B]:  // error
+   |    ^
+   |    Found:    {f, xs} LazyList[B]
+   |    Required: {xs} LazyList[B]
+28 |      this: ({xs, f} Mapped) =>
+29 |      def isEmpty = false
+30 |      def head: B = f(xs.head)
+31 |      def tail: {this} LazyList[B] = xs.tail.map(f)
+32 |    new Mapped
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:41:48 -----------------------------------
+41 |      def tail: {this} LazyList[B] = xs.tail.map(f) // error
+   |                                     ^^^^^^^^^^^^^^
+   |                                     Found:    {f} LazyList[B]
+   |                                     Required: {xs} LazyList[B]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:59:48 -----------------------------------
+59 |      def tail: {this} LazyList[B] = xs.tail.map(f) // error
+   |                                     ^^^^^^^^^^^^^^
+   |                                     Found:    {f} LazyList[B]
+   |                                     Required: {Mapped.this} LazyList[B]
+
+longer explanation available when compiling with `-explain`
