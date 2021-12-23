@@ -5,26 +5,17 @@ package cc
 import core._
 import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
-import Types._
-import Symbols._
-import StdNames._
-import Decorators._
+import Types.*, StdNames.*
 import config.Printers.{capt, recheckr}
 import ast.{tpd, untpd, Trees}
-import NameKinds.{DocArtifactName, OuterSelectName, DefaultGetterName}
-import Trees._
-import scala.util.control.NonFatal
-import typer.ErrorReporting._
-import typer.RefChecks
-import util.Spans.Span
+import Trees.*
+import typer.RefChecks.checkAllOverrides
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
-import util.Chars.*
-import transform.*
 import transform.SymUtils.*
+import transform.Recheck
+import Recheck.*
 import scala.collection.mutable
-import reporting._
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
-import CaptureSet.{CompareResult, withCaptureSetsExplained}
+import CaptureSet.withCaptureSetsExplained
 
 object CheckCaptures:
   import ast.tpd.*
@@ -108,179 +99,12 @@ class CheckCaptures extends Recheck:
           // ^^^ TODO: Can we avoid doing overrides checks twice?
           // We need to do them here since only at this phase CaptureTypes are relevant
           // But maybe we can then elide the check during the RefChecks phase if -Ycc is set?
-          RefChecks.checkAllOverrides(ctx.owner.asClass)
+          checkAllOverrides(ctx.owner.asClass)
         case _ =>
       traverseChildren(t)
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
     import ast.tpd.*
-
-    override def transformType(tp: Type, inferred: Boolean, boxed: Boolean)(using Context): Type =
-
-      def depFun(tycon: Type, argTypes: List[Type], resType: Type): Type =
-        MethodType.companion(
-            isContextual = defn.isContextFunctionClass(tycon.classSymbol),
-            isErased = defn.isErasedFunctionClass(tycon.classSymbol)
-          )(argTypes, resType)
-          .toFunctionType(isJava = false, alwaysDependent = true)
-
-      def box(tp: Type): Type = tp match
-        case CapturingType(parent, refs, false) => CapturingType(parent, refs, true)
-        case _ => tp
-
-      /** Perform the following transformation steps everywhere in a type:
-       *  1. Drop retains annotations
-       *  2. Turn plain function types into dependent function types, so that
-       *     we can refer to their parameter in capture sets. Currently this is
-       *     only done at the toplevel, i.e. for function types that are not
-       *     themselves argument types of other function types. Without this restriction
-       *     boxmap-paper.scala fails. Need to figure out why.
-       *  3. Refine other class types C by adding capture set variables to their parameter getters
-       *     (see addCaptureRefinements)
-       *  4. Add capture set variables to all types that can be tracked
-       *
-       *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
-       */
-      def mapInferred = new TypeMap:
-
-        /** Drop @retains annotations everywhere */
-        object cleanup extends TypeMap:
-          def apply(t: Type) = t match
-            case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
-              apply(parent)
-            case _ =>
-              mapOver(t)
-
-        /** Refine a possibly applied class type C where the class has tracked parameters
-         *  x_1: T_1, ..., x_n: T_n to C { val x_1: CV_1 T_1, ..., val x_n: CV_n T_n }
-         *  where CV_1, ..., CV_n are fresh capture sets.
-         */
-        def addCaptureRefinements(tp: Type): Type = tp match
-          case _: TypeRef | _: AppliedType if tp.typeParams.isEmpty =>
-            tp.typeSymbol match
-              case cls: ClassSymbol if !defn.isFunctionClass(cls) =>
-                cls.paramGetters.foldLeft(tp) { (core, getter) =>
-                  if getter.termRef.isTracked then
-                    val getterType = tp.memberInfo(getter).strippedDealias
-                    RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var(), boxed = false))
-                      .showing(i"add capture refinement $tp --> $result", capt)
-                  else
-                    core
-                }
-              case _ => tp
-          case _ => tp
-
-        /** Should a capture set variable be added on type `tp`? */
-        def canHaveInferredCapture(tp: Type): Boolean =
-          tp.typeParams.isEmpty && tp.match
-            case tp: (TypeRef | AppliedType) =>
-              val sym = tp.typeSymbol
-              if sym.isClass then !sym.isValueClass && sym != defn.AnyClass
-              else canHaveInferredCapture(tp.superType.dealias)
-            case tp: (RefinedOrRecType | MatchType) =>
-              canHaveInferredCapture(tp.underlying)
-            case tp: AndType =>
-              canHaveInferredCapture(tp.tp1) && canHaveInferredCapture(tp.tp2)
-            case tp: OrType =>
-              canHaveInferredCapture(tp.tp1) || canHaveInferredCapture(tp.tp2)
-            case _ =>
-              false
-
-        /** Add a capture set variable to `tp` if necessary, or maybe pull out
-         *  an embedded capture set variables from a part of `tp`.
-         */
-        def addVar(tp: Type) = tp match
-          case tp @ RefinedType(parent @ CapturingType(parent1, refs, boxed), rname, rinfo) =>
-            CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, boxed)
-          case tp: RecType =>
-            tp.parent match
-              case CapturingType(parent1, refs, boxed) =>
-                CapturingType(tp.derivedRecType(parent1), refs, boxed)
-              case _ =>
-                tp // can return `tp` here since unlike RefinedTypes, RecTypes are never created
-                   // by `mapInferred`. Hence if the underlying type admits capture variables
-                   // a variable was already added, and the first case above would apply.
-          case AndType(CapturingType(parent1, refs1, boxed1), CapturingType(parent2, refs2, boxed2)) =>
-            assert(refs1.asVar.elems.isEmpty)
-            assert(refs2.asVar.elems.isEmpty)
-            assert(boxed1 == boxed2)
-            CapturingType(AndType(parent1, parent2), refs1, boxed1)
-          case tp @ OrType(CapturingType(parent1, refs1, boxed1), CapturingType(parent2, refs2, boxed2)) =>
-            assert(refs1.asVar.elems.isEmpty)
-            assert(refs2.asVar.elems.isEmpty)
-            assert(boxed1 == boxed2)
-            CapturingType(OrType(parent1, parent2, tp.isSoft), refs1, boxed1)
-          case tp @ OrType(CapturingType(parent1, refs1, boxed1), tp2) =>
-            CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, boxed1)
-          case tp @ OrType(tp1, CapturingType(parent2, refs2, boxed2)) =>
-            CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, boxed2)
-          case _ if canHaveInferredCapture(tp) =>
-            CapturingType(tp, CaptureSet.Var(), boxed = false)
-          case _ =>
-            tp
-
-        var isTopLevel = true
-
-        def mapNested(ts: List[Type]): List[Type] =
-          val saved = isTopLevel
-          isTopLevel = false
-          try ts.mapConserve(this) finally isTopLevel = saved
-
-        def apply(t: Type) =
-          val t1 = t match
-            case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
-              apply(parent)
-            case tp @ AppliedType(tycon, args) =>
-              val tycon1 = this(tycon)
-              if defn.isNonRefinedFunction(tp) then
-                val args1 = mapNested(args.init)
-                val res1 = this(args.last)
-                if isTopLevel then
-                  depFun(tycon1, args1, res1)
-                    .showing(i"add function refinement $tp --> $result", capt)
-                else
-                  tp.derivedAppliedType(tycon1, args1 :+ res1)
-              else
-                tp.derivedAppliedType(tycon1, args.mapConserve(arg => box(this(arg))))
-            case tp @ RefinedType(core, rname, rinfo) if defn.isFunctionType(tp) =>
-              apply(rinfo).toFunctionType(isJava = false, alwaysDependent = true)
-            case tp: MethodType =>
-              tp.derivedLambdaType(
-                paramInfos = mapNested(tp.paramInfos),
-                resType = this(tp.resType))
-            case tp: TypeLambda =>
-              // Don't recurse into parameter bounds, just cleanup any stray retains annotations
-              tp.derivedLambdaType(
-                paramInfos = tp.paramInfos.mapConserve(cleanup(_).bounds),
-                resType = this(tp.resType))
-            case _ =>
-              mapOver(t)
-          addVar(addCaptureRefinements(t1))
-      end mapInferred
-
-      if inferred then
-        val tp1 = mapInferred(tp)
-        if boxed then box(tp1) else tp1
-      else
-        def setBoxed(t: Type) = t match
-          case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
-            annot.tree.setBoxedCapturing()
-          case _ =>
-
-        val addBoxes = new TypeTraverser:
-          def traverse(t: Type) =
-            t match
-              case AppliedType(tycon, args) if !defn.isNonRefinedFunction(t) =>
-                args.foreach(setBoxed)
-              case TypeBounds(lo, hi) =>
-                setBoxed(lo); setBoxed(hi)
-              case _ =>
-            traverseChildren(t)
-
-        if boxed then setBoxed(tp)
-        addBoxes.traverse(tp)
-        tp
-    end transformType
 
     private def interpolator(using Context) = new TypeTraverser:
       override def traverse(t: Type) =
@@ -299,8 +123,8 @@ class CheckCaptures extends Recheck:
 
     private def interpolateVarsIn(tpt: Tree)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
-        interpolator.traverse(knownType(tpt))
-          .showing(i"solved vars in ${knownType(tpt)}", capt)
+        interpolator.traverse(tpt.knownType)
+          .showing(i"solved vars in ${tpt.knownType}", capt)
 
     private var curEnv: Env = Env(NoSymbol, CaptureSet.empty, false, null)
 
@@ -480,6 +304,8 @@ class CheckCaptures extends Recheck:
       res
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
+      Setup(preRecheckPhase, thisPhase, recheckDef)
+        .traverse(ctx.compilationUnit.tpdTree)
       withCaptureSetsExplained {
         super.checkUnit(unit)
         PostRefinerCheck.traverse(unit.tpdTree)
@@ -497,12 +323,12 @@ class CheckCaptures extends Recheck:
           val notAllowed = i" is not allowed to capture the $what capability $ref"
           def msg =
             if allArgs.isEmpty then
-              i"type of mutable variable ${knownType(tree)}$notAllowed"
+              i"type of mutable variable ${tree.knownType}$notAllowed"
             else tree match
               case tree: InferredTypeTree =>
-                i"""inferred type argument ${knownType(tree)}$notAllowed
+                i"""inferred type argument ${tree.knownType}$notAllowed
                     |
-                    |The inferred arguments are: [${allArgs.map(knownType)}%, %]"""
+                    |The inferred arguments are: [${allArgs.map(_.knownType)}%, %]"""
               case _ => s"type argument$notAllowed"
           report.error(msg, tree.srcPos)
 
@@ -512,7 +338,7 @@ class CheckCaptures extends Recheck:
           case LambdaTypeTree(_, restpt) =>
             checkNotGlobal(restpt, allArgs*)
           case _ =>
-            checkNotGlobal(tree, knownType(tree), allArgs*)
+            checkNotGlobal(tree, tree.knownType, allArgs*)
 
     def checkNotGlobalDeep(tree: Tree)(using Context): Unit =
       val checker = new TypeTraverser:
@@ -525,23 +351,23 @@ class CheckCaptures extends Recheck:
           case _ =>
             checkNotGlobal(tree, tp)
             traverseChildren(tp)
-      checker.traverse(knownType(tree))
+      checker.traverse(tree.knownType)
 
     object PostRefinerCheck extends TreeTraverser:
       def traverse(tree: Tree)(using Context) =
         tree match
           case _: InferredTypeTree =>
           case tree: TypeTree if !tree.span.isZeroExtent =>
-            knownType(tree).foreachPart(
+            tree.knownType.foreachPart(
               checkWellformedPost(_, tree.srcPos))
-            knownType(tree).foreachPart {
+            tree.knownType.foreachPart {
               case AnnotatedType(_, annot) =>
                 checkWellformedPost(annot.tree)
               case _ =>
             }
           case tree1 @ TypeApply(fn, args) if disallowGlobal =>
             for arg <- args do
-              //println(i"checking $arg in $tree: ${knownType(tree).captureSet}")
+              //println(i"checking $arg in $tree: ${tree.knownType.captureSet}")
               checkNotGlobal(arg, args*)
           case t: ValOrDefDef if t.tpt.isInstanceOf[InferredTypeTree] =>
             val sym = t.symbol
@@ -554,7 +380,7 @@ class CheckCaptures extends Recheck:
               || sym.owner.is(Trait)               // ... since we do OverridingPairs checking before capture inference
               || sym.allOverriddenSymbols.nonEmpty // ... since we do override checking before capture inference
             then
-              val inferred = knownType(t.tpt)
+              val inferred = t.tpt.knownType
               def checkPure(tp: Type) = tp match
                 case CapturingType(_, refs, _) if !refs.elems.isEmpty =>
                   val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
