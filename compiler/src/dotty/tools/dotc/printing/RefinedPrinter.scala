@@ -28,7 +28,7 @@ import config.Config
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{EventuallyCapturingType, CaptureSet, toCaptureSet, IllegalCaptureRef}
+import cc.{CaptureSet, toCaptureSet, IllegalCaptureRef}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
