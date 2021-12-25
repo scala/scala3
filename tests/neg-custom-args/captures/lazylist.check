@@ -8,7 +8,7 @@ longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:35:29 -------------------------------------
 35 |  val ref1c: LazyList[Int] = ref1 // error
    |                             ^^^^
-   |                 Found:    (ref1 : {cap1} lazylists.LazyCons[Int]{xs: {cap1} () => {*} lazylists.LazyList[Int]})
+   |                 Found:    (ref1 : {cap1} lazylists.LazyCons[Int]{xs: {cap1} () -> {*} lazylists.LazyList[Int]})
    |                 Required: lazylists.LazyList[Int]
 
 longer explanation available when compiling with `-explain`
