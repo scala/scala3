@@ -180,7 +180,7 @@ object Types {
       case _ => false
     }
 
-    /** Is this type a (possibly refined or applied or aliased) type reference
+    /** Is this type a (possibly refined, applied, aliased or annotated) type reference
      *  to the given type symbol?
      *  @sym  The symbol to compare to. It must be a class symbol or abstract type.
      *        It makes no sense for it to be an alias type because isRef would always
@@ -201,9 +201,7 @@ object Types {
       case this1: TypeVar =>
         this1.instanceOpt.isRef(sym, skipRefined)
       case this1: AnnotatedType =>
-        this1 match
-          case CapturingType(_, _, _) => false
-          case _ => this1.parent.isRef(sym, skipRefined)
+        this1.parent.isRef(sym, skipRefined)
       case _ => false
     }
 

@@ -1,8 +1,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:28:43 ------------------------------------------
-28 |  val b = handle[Exception, () => Nothing] {  // error
+28 |  val b = handle[Exception, () -> Nothing] {  // error
    |                                           ^
-   |                                           Found:    ? (x: CanThrow[Exception]) => {x} () => ? Nothing
-   |                                           Required: CanThrow[Exception] => () => Nothing
+   |                                           Found:    ? (x: CanThrow[Exception]) -> {x} () -> ? Nothing
+   |                                           Required: CanThrow[Exception] => () -> Nothing
 29 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 30 |  } {
 
@@ -14,12 +14,12 @@ longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/try.scala:34:11 ---------------------------------------------------------------
 34 |  val xx = handle { // error
    |           ^^^^^^
-   |           inferred type argument {*} () => Int is not allowed to capture the universal capability (* : Any)
+   |           inferred type argument {*} () -> Int is not allowed to capture the universal capability (* : Any)
    |
-   |           The inferred arguments are: [? Exception, {*} () => Int]
+   |           The inferred arguments are: [? Exception, {*} () -> Int]
 -- Error: tests/neg-custom-args/captures/try.scala:46:13 ---------------------------------------------------------------
 46 |val global = handle {  // error
    |             ^^^^^^
-   |             inferred type argument {*} () => Int is not allowed to capture the universal capability (* : Any)
+   |             inferred type argument {*} () -> Int is not allowed to capture the universal capability (* : Any)
    |
-   |             The inferred arguments are: [? Exception, {*} () => Int]
+   |             The inferred arguments are: [? Exception, {*} () -> Int]

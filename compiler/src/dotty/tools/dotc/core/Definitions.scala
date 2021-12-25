@@ -8,6 +8,7 @@ import Flags._, Scopes._, Decorators._, NameOps._, Periods._, NullOpsDecorator._
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
+import Denotations.{SingleDenotation, staticRef}
 import util.{SimpleIdentityMap, SourceFile, NoSource}
 import typer.ImportInfo.RootRef
 import Comments.CommentsContext
@@ -88,7 +89,7 @@ class Definitions {
    *
    *  FunctionN traits follow this template:
    *
-   *      trait FunctionN[T0,...T{N-1}, R] extends Object {
+   *      trait FunctionN[-T0,...-T{N-1}, +R] extends Object {
    *        def apply($x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
@@ -98,46 +99,65 @@ class Definitions {
    *
    *  ContextFunctionN traits follow this template:
    *
-   *      trait ContextFunctionN[T0,...,T{N-1}, R] extends Object {
+   *      trait ContextFunctionN[-T0,...,-T{N-1}, +R] extends Object {
    *        def apply(using $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedFunctionN traits follow this template:
    *
-   *      trait ErasedFunctionN[T0,...,T{N-1}, R] extends Object {
+   *      trait ErasedFunctionN[-T0,...,-T{N-1}, +R] extends Object {
    *        def apply(erased $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedContextFunctionN traits follow this template:
    *
-   *      trait ErasedContextFunctionN[T0,...,T{N-1}, R] extends Object {
+   *      trait ErasedContextFunctionN[-T0,...,-T{N-1}, +R] extends Object {
    *        def apply(using erased $x0: T0, ..., $x{N_1}: T{N-1}): R
    *      }
    *
    *  ErasedFunctionN and ErasedContextFunctionN erase to Function0.
+   *
+   *  EffXYZFunctionN afollow this template:
+   *
+   *      type EffXYZFunctionN[-T0,...,-T{N-1}, +R] = {*} XYZFunctionN[T0,...,T{N-1}, R]
    */
-  def newFunctionNTrait(name: TypeName): ClassSymbol = {
+  private def newFunctionNType(name: TypeName): Symbol = {
+    val impure = name.startsWith("Impure")
     val completer = new LazyType {
       def complete(denot: SymDenotation)(using Context): Unit = {
-        val cls = denot.asClass.classSymbol
-        val decls = newScope
         val arity = name.functionArity
-        val paramNamePrefix = tpnme.scala ++ str.NAME_JOIN ++ name ++ str.EXPAND_SEPARATOR
-        val argParamRefs = List.tabulate(arity) { i =>
-          enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
-        }
-        val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
-        val methodType = MethodType.companion(
-          isContextual = name.isContextFunction,
-          isImplicit = false,
-          isErased = name.isErasedFunction)
-        decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
-        denot.info =
-          ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
+        if impure then
+          val argParamNames = List.tabulate(arity)(tpnme.syntheticTypeParamName)
+          val argVariances = List.fill(arity)(Contravariant)
+          val underlyingName = name.asSimpleName.drop(6)
+          val underlyingClass = ScalaPackageVal.requiredClass(underlyingName)
+          denot.info = TypeAlias(
+            HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
+              tl => List.fill(arity + 1)(TypeBounds.empty),
+              tl => CapturingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
+                CaptureSet.universal, boxed = false)
+            ))
+        else
+          val cls = denot.asClass.classSymbol
+          val decls = newScope
+          val paramNamePrefix = tpnme.scala ++ str.NAME_JOIN ++ name ++ str.EXPAND_SEPARATOR
+          val argParamRefs = List.tabulate(arity) { i =>
+            enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
+          }
+          val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
+          val methodType = MethodType.companion(
+            isContextual = name.isContextFunction,
+            isImplicit = false,
+            isErased = name.isErasedFunction)
+          decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
+          denot.info =
+            ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
       }
     }
-    val flags = Trait | NoInits
-    newPermanentClassSymbol(ScalaPackageClass, name, flags, completer)
+    if impure then
+      newPermanentSymbol(ScalaPackageClass, name, EmptyFlags, completer)
+    else
+      newPermanentClassSymbol(ScalaPackageClass, name, Trait | NoInits, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
@@ -211,7 +231,7 @@ class Definitions {
     val cls = ScalaPackageVal.moduleClass.asClass
     cls.info.decls.openForMutations.useSynthesizer(
       name =>
-        if (name.isTypeName && name.isSyntheticFunction) newFunctionNTrait(name.asTypeName)
+        if (name.isTypeName && name.isSyntheticFunction) newFunctionNType(name.asTypeName)
         else NoSymbol)
     cls
   }
@@ -1285,39 +1305,55 @@ class Definitions {
 
   @tu lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
+  /** Cached function types of arbitary arities.
+   *  Function types are created on demand with newFunctionNTrait, which is
+   *  called from a synthesizer installed in ScalaPackageClass.
+   */
   private class FunType(prefix: String):
     private var classRefs: Array[TypeRef] = new Array(22)
+
     def apply(n: Int): TypeRef =
       while n >= classRefs.length do
         val classRefs1 = new Array[TypeRef](classRefs.length * 2)
         Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
         classRefs = classRefs1
+      val funName = s"scala.$prefix$n"
       if classRefs(n) == null then
-        classRefs(n) = requiredClassRef(prefix + n.toString)
+        classRefs(n) =
+          if prefix.startsWith("Impure")
+          then staticRef(funName.toTypeName).symbol.typeRef
+          else requiredClassRef(funName)
       classRefs(n)
+  end FunType
 
-  private val erasedContextFunType = FunType("scala.ErasedContextFunction")
-  private val contextFunType = FunType("scala.ContextFunction")
-  private val erasedFunType = FunType("scala.ErasedFunction")
-  private val funType = FunType("scala.Function")
+  private def funTypeIdx(isContextual: Boolean, isErased: Boolean, isImpure: Boolean): Int =
+      (if isContextual then 1 else 0)
+    + (if isErased     then 2 else 0)
+    + (if isImpure     then 4 else 0)
 
-  def FunctionClass(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): Symbol =
-    ( if isContextual && isErased then erasedContextFunType(n)
-      else if isContextual then contextFunType(n)
-      else if isErased then erasedFunType(n)
-      else funType(n)
-    ).symbol.asClass
+  private val funTypeArray: IArray[FunType] =
+    val arr = Array.ofDim[FunType](8)
+    val choices = List(false, true)
+    for contxt <- choices; erasd <- choices; impure <- choices do
+      var str = "Function"
+      if contxt then str = "Context" + str
+      if erasd then str = "Erased" + str
+      if impure then str = "Impure" + str
+      arr(funTypeIdx(contxt, erasd, impure)) = FunType(str)
+    IArray.unsafeFromArray(arr)
+
+  def FunctionSymbol(n: Int, isContextual: Boolean = false, isErased: Boolean = false, isImpure: Boolean = false)(using Context): Symbol =
+    funTypeArray(funTypeIdx(isContextual, isErased, isImpure))(n).symbol
 
   @tu lazy val Function0_apply: Symbol = Function0.requiredMethod(nme.apply)
-  @tu lazy val ContextFunction0_apply: Symbol = ContextFunction0.requiredMethod(nme.apply)
 
-  @tu lazy val Function0: Symbol = FunctionClass(0)
-  @tu lazy val Function1: Symbol = FunctionClass(1)
-  @tu lazy val Function2: Symbol = FunctionClass(2)
-  @tu lazy val ContextFunction0: Symbol = FunctionClass(0, isContextual = true)
+  @tu lazy val Function0: Symbol = FunctionSymbol(0)
+  @tu lazy val Function1: Symbol = FunctionSymbol(1)
+  @tu lazy val Function2: Symbol = FunctionSymbol(2)
+  @tu lazy val ContextFunction0: Symbol = FunctionSymbol(0, isContextual = true)
 
-  def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): TypeRef =
-    FunctionClass(n, isContextual && !ctx.erasedTypes, isErased).typeRef
+  def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false, isImpure: Boolean = false)(using Context): TypeRef =
+    FunctionSymbol(n, isContextual && !ctx.erasedTypes, isErased, isImpure).typeRef
 
   lazy val PolyFunctionClass = requiredClass("scala.PolyFunction")
   def PolyFunctionType = PolyFunctionClass.typeRef
@@ -1358,6 +1394,10 @@ class Definitions {
    *   - ErasedContextFunctionN for N > 0
    */
   def isFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isFunction
+
+  /** Is a function class, or an impure function type alias */
+  def isFunctionSymbol(sym: Symbol): Boolean =
+    sym.isType && (sym.owner eq ScalaPackageClass) && sym.name.isFunction
 
   /** Is a function class where
    *    - FunctionN for N >= 0 and N != XXL
@@ -1565,7 +1605,7 @@ class Definitions {
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
     paramTypes.length <= 2
-    && (cls.derivesFrom(FunctionClass(paramTypes.length)) || isByNameFunctionClass(cls))
+    && (cls.derivesFrom(FunctionSymbol(paramTypes.length)) || isByNameFunctionClass(cls))
     && isSpecializableFunctionSAM(paramTypes, retType)
 
   /** If the Single Abstract Method of a Function class has this type, is it specializable? */

@@ -1,5 +1,5 @@
 class C
-def f(x: C @retains(*), y: C): () => C =
+def f(x: C @retains(*), y: C): () -> C =
   () => if x == null then y else y  // error
 
 def g(x: C @retains(*), y: C): Matchable =
@@ -28,7 +28,7 @@ def h4(x: Cap, y: Int): A =
 def foo() =
   val x: C @retains(*) = ???
   def h[X](a: X)(b: X) = a
-  val z2 = h[() => Cap](() => x)(() => C())  // error
-  val z3 = h[(() => Cap) @retains(x)](() => x)(() => C())  // ok
-  val z4 = h[(() => Cap) @retains(x)](() => x)(() => C())  // what was inferred for z3
+  val z2 = h[() -> Cap](() => x)(() => C())  // error
+  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // ok
+  val z4 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // what was inferred for z3
 

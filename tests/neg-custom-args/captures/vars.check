@@ -1,21 +1,21 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:11:24 -----------------------------------------
-11 |  val z2c: () => Unit = z2  // error
+11 |  val z2c: () -> Unit = z2  // error
    |                        ^^
-   |                        Found:    (z2 : {x, cap1} () => Unit)
-   |                        Required: () => Unit
+   |                        Found:    (z2 : {x, cap1} () -> Unit)
+   |                        Required: () -> Unit
 
 longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/vars.scala:13:10 --------------------------------------------------------------
-13 |  var a: {*} String => String = f // error
-   |          ^^^^^^^^^^^^^^^^^^^
-   |  type of mutable variable box {*} String => String is not allowed to capture the universal capability (* : Any)
+-- Error: tests/neg-custom-args/captures/vars.scala:13:16 --------------------------------------------------------------
+13 |  var a: String => String = f // error
+   |         ^^^^^^^^^^^^^^^^
+   |         type of mutable variable String => String is not allowed to capture the universal capability (* : Any)
 -- Error: tests/neg-custom-args/captures/vars.scala:14:9 ---------------------------------------------------------------
-14 |  var b: List[{*} String => String] = Nil // error
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |type of mutable variable List[box {*} String => String] is not allowed to capture the universal capability (* : Any)
+14 |  var b: List[String => String] = Nil // error
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |    type of mutable variable List[String => String] is not allowed to capture the universal capability (* : Any)
 -- Error: tests/neg-custom-args/captures/vars.scala:29:2 ---------------------------------------------------------------
 29 |  local { cap3 => // error
    |  ^^^^^
-   |inferred type argument {*} (x$0: ? String) => ? String is not allowed to capture the universal capability (* : Any)
+   |inferred type argument {*} (x$0: ? String) -> ? String is not allowed to capture the universal capability (* : Any)
    |
-   |The inferred arguments are: [{*} (x$0: ? String) => ? String]
+   |The inferred arguments are: [{*} (x$0: ? String) -> ? String]
