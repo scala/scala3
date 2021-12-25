@@ -1,6 +1,5 @@
 
-class C
-type Cap = {*} C
+@annotation.capability class Cap
 
 object Generic:
 
@@ -13,13 +12,13 @@ object Generic:
     def g(x: Cap): Unit = if d == x then ()
     val p = Pair(f, g)
     val x1 = p.fst
-    val x1c: {c} Cap => Unit = x1
+    val x1c: {c} Cap -> Unit = x1
     val y1 = p.snd
-    val y1c: {d} Cap => Unit = y1
+    val y1c: {d} Cap -> Unit = y1
 
 object Monomorphic:
 
-  class Pair(val x: {*} Cap => Unit, val y: {*} Cap => Unit):
+  class Pair(val x: Cap => Unit, val y: {*} Cap -> Unit):
     def fst = x
     def snd = y
 
@@ -28,6 +27,6 @@ object Monomorphic:
     def g(x: Cap): Unit = if d == x then ()
     val p = Pair(f, g)
     val x1 = p.fst
-    val x1c: {c} Cap => Unit = x1
+    val x1c: {c} Cap -> Unit = x1
     val y1 = p.snd
-    val y1c: {d} Cap => Unit = y1
+    val y1c: {d} Cap -> Unit = y1
