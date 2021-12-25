@@ -1,15 +1,14 @@
-class CC
-type Cap = {*} CC
+@annotation.capability class Cap
 
-class LazyRef[T](val elem: {*} () => T):
+class LazyRef[T](val elem: () => T):
   val get = elem
-  def map[U](f: {*} T => U): {f, this} LazyRef[U] =
+  def map[U](f: T => U): {f, this} LazyRef[U] =
     new LazyRef(() => f(elem()))
 
-def map[A, B](ref: {*} LazyRef[A], f: {*} A => B): {f, ref} LazyRef[B] =
+def map[A, B](ref: {*} LazyRef[A], f: A => B): {f, ref} LazyRef[B] =
   new LazyRef(() => f(ref.elem()))
 
-def mapc[A, B]: (ref: {*} LazyRef[A], f: {*} A => B) => {f, ref} LazyRef[B] =
+def mapc[A, B]: (ref: {*} LazyRef[A], f: A => B) => {f, ref} LazyRef[B] =
   (ref1, f1) => map[A, B](ref1, f1)
 
 def test(cap1: Cap, cap2: Cap) =

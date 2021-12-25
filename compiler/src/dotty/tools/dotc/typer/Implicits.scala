@@ -816,7 +816,7 @@ trait Implicits:
       def isOldStyleFunctionConversion(tpe: Type): Boolean =
         tpe match {
           case PolyType(_, resType) => isOldStyleFunctionConversion(resType)
-          case _ => tpe.derivesFrom(defn.FunctionClass(1)) && !tpe.derivesFrom(defn.ConversionClass) && !tpe.derivesFrom(defn.SubTypeClass)
+          case _ => tpe.derivesFrom(defn.FunctionSymbol(1)) && !tpe.derivesFrom(defn.ConversionClass) && !tpe.derivesFrom(defn.SubTypeClass)
         }
 
       try
