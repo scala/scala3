@@ -14,7 +14,7 @@ object LazyNil extends LazyList[Nothing]:
   def tail = ???
 
 extension [A](xs: {*} LazyList[A])
-  def map[B](f: {*} A => B): {xs, f} LazyList[B] =
+  def map[B](f: A => B): {xs, f} LazyList[B] =
     final class Mapped extends LazyList[B]:
       this: ({xs, f} Mapped) =>
 
