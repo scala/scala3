@@ -197,20 +197,25 @@ object NameOps {
           else collectDigits(acc * 10 + d, idx + 1)
       collectDigits(0, suffixStart + 8)
 
-    /** name[0..suffixStart) == `str` */
-    private def isPreceded(str: String, suffixStart: Int) =
-      str.length == suffixStart && name.firstPart.startsWith(str)
+    private def isFunctionPrefix(suffixStart: Int, mustHave: String = ""): Boolean =
+      suffixStart >= 0
+      && {
+        val first = name.firstPart
+        var found = mustHave.isEmpty
+        def skip(idx: Int, str: String) =
+          if first.startsWith(str, idx) then
+            if str == mustHave then found = true
+            idx + str.length
+          else idx
+        skip(skip(skip(0, "Impure"), "Erased"), "Context") == suffixStart
+        && found
+      }
 
     /** Same as `funArity`, except that it returns -1 if the prefix
      *  is not one of "", "Context", "Erased", "ErasedContext"
      */
     private def checkedFunArity(suffixStart: Int): Int =
-      if suffixStart == 0
-         || isPreceded("Context", suffixStart)
-         || isPreceded("Erased", suffixStart)
-         || isPreceded("ErasedContext", suffixStart)
-      then funArity(suffixStart)
-      else -1
+      if isFunctionPrefix(suffixStart) then funArity(suffixStart) else -1
 
     /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN, ErasedFunctionN, ErasedContextFunctionN for N >= 0
      */
@@ -222,19 +227,14 @@ object NameOps {
      */
     def isPlainFunction: Boolean = functionArity >= 0
 
-    /** Is an context function name, i.e one of ContextFunctionN or ErasedContextFunctionN for N >= 0
-     */
-    def isContextFunction: Boolean =
+    /** Is a function name that contains `mustHave` as a substring */
+    private def isSpecificFunction(mustHave: String): Boolean =
       val suffixStart = functionSuffixStart
-      (isPreceded("Context", suffixStart) || isPreceded("ErasedContext", suffixStart))
-      && funArity(suffixStart) >= 0
+      isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= 0
 
-    /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedContextFunctionN for N >= 0
-      */
-    def isErasedFunction: Boolean =
-      val suffixStart = functionSuffixStart
-      (isPreceded("Erased", suffixStart) || isPreceded("ErasedContext", suffixStart))
-      && funArity(suffixStart) >= 0
+    def isContextFunction: Boolean = isSpecificFunction("Context")
+    def isErasedFunction: Boolean = isSpecificFunction("Erased")
+    def isImpureFunction: Boolean = isSpecificFunction("Impure")
 
     /** Is a synthetic function name, i.e. one of
      *    - FunctionN for N > 22
