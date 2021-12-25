@@ -9,6 +9,6 @@ def test(c: Cap) =
   def f(x: Int): Int = if c == c then x else 0
   val b = new B(f)
   val r1 = b.elem
-  val r1c: {c} Int => Int = r1
+  val r1c: {c} Int -> Int = r1
   val r2 = b.lateElem
-  val r2c: () => {c} Int => Int = r2 // error
+  val r2c: () -> {c} Int -> Int = r2 // error

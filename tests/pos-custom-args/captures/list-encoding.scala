@@ -3,10 +3,10 @@ package listEncoding
 class Cap
 
 type Op[T, C] =
-  {*} (v: T) => {*} (s: C) => C
+  (v: T) => (s: C) => C
 
 type List[T] =
-  [C] => (op: Op[T, C]) => {op} (s: C) => C
+  [C] -> (op: Op[T, C]) -> {op} (s: C) -> C
 
 def nil[T]: List[T] =
   [C] => (op: Op[T, C]) => (s: C) => s

@@ -56,6 +56,12 @@ sealed abstract class CaptureSet extends Showable:
       assert(v.isConst)
       Const(v.elems)
 
+  final def isUniversal(using Context) =
+    elems.exists {
+      case ref: TermRef => ref.symbol == defn.captureRoot
+      case _ => false
+    }
+
   /** Cast to variable. @pre: !isConst */
   def asVar: Var =
     assert(!isConst)

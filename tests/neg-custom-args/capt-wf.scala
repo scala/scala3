@@ -8,7 +8,7 @@ def test(c: Cap, other: String): Unit =
   val x2: {other} C = ??? // error: cs is empty
   val s1 = () => "abc"
   val x3: {s1} C = ??? // error: cs is empty
-  val x3a: () => String = s1
+  val x3a: () -> String = s1
   val s2 = () => if x1 == null then "" else "abc"
   val x4: {s2} C = ??? // OK
   val x5: {c, c} C = ??? // error: redundant
@@ -26,8 +26,8 @@ def test(c: Cap, other: String): Unit =
   val y1: {e1} String = ??? // error cs is empty
   val y2: {o1} String = ??? // error cs is empty
 
-  lazy val ev: (Int => Boolean) = (n: Int) =>
-    lazy val od: (Int => Boolean) = (n: Int) =>
+  lazy val ev: (Int -> Boolean) = (n: Int) =>
+    lazy val od: (Int -> Boolean) = (n: Int) =>
       if n == 1 then true else ev(n - 1)
     if n == 0 then true else od(n - 1)
   val y3: {ev} String = ??? // error cs is empty

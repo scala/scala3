@@ -2,7 +2,7 @@ abstract class LIST[+T]:
   def isEmpty: Boolean
   def head: T
   def tail: LIST[T]
-  def map[U](f: {*} T => U): LIST[U] =
+  def map[U](f: T => U): LIST[U] =
     if isEmpty then NIL
     else CONS(f(head), tail.map(f))
 
@@ -15,7 +15,7 @@ object NIL extends LIST[Nothing]:
   def head = ???
   def tail = ???
 
-def map[A, B](f: {*} A => B)(xs: LIST[A]): LIST[B] =
+def map[A, B](f: A => B)(xs: LIST[A]): LIST[B] =
   xs.map(f)
 
 class C
@@ -29,7 +29,7 @@ def test(c: Cap, d: Cap) =
   val zs =
     val z = g
     CONS(z, ys)
-  val zsc: LIST[{d, y} Cap => Unit] = zs
+  val zsc: LIST[{d, y} Cap -> Unit] = zs
 
   val a4 = zs.map(identity)
-  val a4c: LIST[{d, y} Cap => Unit] = a4
+  val a4c: LIST[{d, y} Cap -> Unit] = a4
