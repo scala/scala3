@@ -741,6 +741,8 @@ object StdNames {
     val XOR      : N = "^"
     val ZAND     : N = "&&"
     val ZOR      : N = "||"
+    val PUREARROW: N = "->"
+    val PURECTXARROW: N = "?->"
 
     // unary operators
     val UNARY_PREFIX: N = "unary_"

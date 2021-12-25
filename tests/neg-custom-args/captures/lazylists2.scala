@@ -14,7 +14,7 @@ object LazyNil extends LazyList[Nothing]:
   def tail = ???
 
 extension [A](xs: {*} LazyList[A])
-  def map[B](f: {*} A => B): {f} LazyList[B] =
+  def map[B](f: A => B): {f} LazyList[B] =
     final class Mapped extends LazyList[B]:  // error
       this: ({xs, f} Mapped) =>
 
@@ -23,7 +23,7 @@ extension [A](xs: {*} LazyList[A])
       def tail: {this} LazyList[B] = xs.tail.map(f)
     new Mapped
 
-  def map2[B](f: {*} A => B): {xs} LazyList[B] =
+  def map2[B](f: A => B): {xs} LazyList[B] =
     final class Mapped extends LazyList[B]:  // error
       this: ({xs, f} Mapped) =>
 
@@ -32,7 +32,7 @@ extension [A](xs: {*} LazyList[A])
       def tail: {this} LazyList[B] = xs.tail.map(f)
     new Mapped
 
-  def map3[B](f: {*} A => B): {xs} LazyList[B] =
+  def map3[B](f: A => B): {xs} LazyList[B] =
     final class Mapped extends LazyList[B]:
       this: ({xs} Mapped) =>
 
@@ -41,7 +41,7 @@ extension [A](xs: {*} LazyList[A])
       def tail: {this} LazyList[B] = xs.tail.map(f) // error
     new Mapped
 
-  def map4[B](f: {*} A => B): {xs} LazyList[B] =
+  def map4[B](f: A => B): {xs} LazyList[B] =
     final class Mapped extends LazyList[B]:
       this: ({xs, f} Mapped) =>
 
@@ -50,7 +50,7 @@ extension [A](xs: {*} LazyList[A])
       def tail: {xs, f} LazyList[B] = xs.tail.map(f) // error
     new Mapped
 
-  def map5[B](f: {*} A => B): LazyList[B] =
+  def map5[B](f: A => B): LazyList[B] =
     class Mapped extends LazyList[B]:
       this: ({xs, f} Mapped) =>
 

@@ -1238,7 +1238,8 @@ class Typer extends Namer
     val numArgs = args.length
     val isContextual = funFlags.is(Given)
     val isErased = funFlags.is(Erased)
-    val funCls = defn.FunctionClass(numArgs, isContextual, isErased)
+    val isImpure = funFlags.is(Impure)
+    val funSym = defn.FunctionSymbol(numArgs, isContextual, isErased, isImpure)
 
     /** If `app` is a function type with arguments that are all erased classes,
      *  turn it into an erased function type.
@@ -1248,7 +1249,7 @@ class Typer extends Namer
       if !isErased
          && numArgs > 0
          && args.indexWhere(!_.tpe.isErasedClass) == numArgs =>
-        val tycon1 = TypeTree(defn.FunctionClass(numArgs, isContextual, isErased = true).typeRef)
+        val tycon1 = TypeTree(defn.FunctionSymbol(numArgs, isContextual, true, isImpure).typeRef)
           .withSpan(tycon.span)
         assignType(cpy.AppliedTypeTree(app)(tycon1, args), tycon1, args)
       case _ =>
@@ -1275,7 +1276,7 @@ class Typer extends Namer
         report.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
       val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
       val typeArgs = appDef.termParamss.head.map(_.tpt) :+ resTpt
-      val tycon = TypeTree(funCls.typeRef)
+      val tycon = TypeTree(funSym.typeRef)
       val core = propagateErased(AppliedTypeTree(tycon, typeArgs))
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     end typedDependent
@@ -1286,7 +1287,7 @@ class Typer extends Namer
           using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
       case _ =>
         propagateErased(
-          typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt))
+          typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ body), pt))
     }
   }
 
