@@ -17,9 +17,13 @@ def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
   case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
   case _ => Nil
 
+class IllegalCaptureRef(tpe: Type) extends Exception
+
 extension (tree: Tree)
 
-  def toCaptureRef(using Context): CaptureRef = tree.tpe.asInstanceOf[CaptureRef]
+  def toCaptureRef(using Context): CaptureRef = tree.tpe match
+    case ref: CaptureRef => ref
+    case tpe => throw IllegalCaptureRef(tpe)
 
   def toCaptureSet(using Context): CaptureSet =
     tree.getAttachment(Captures) match
@@ -58,20 +62,6 @@ extension (tp: Type)
     getBoxed(tp)
 
   def isBoxedCapturing(using Context) = !tp.boxedCaptured.isAlwaysEmpty
-
-  def canHaveInferredCapture(using Context): Boolean = tp match
-    case tp: TypeRef if tp.symbol.isClass =>
-      !tp.symbol.isValueClass && tp.symbol != defn.AnyClass
-    case _: TypeVar | _: TypeParamRef =>
-      false
-    case tp: TypeProxy =>
-      tp.superType.canHaveInferredCapture
-    case tp: AndType =>
-      tp.tp1.canHaveInferredCapture && tp.tp2.canHaveInferredCapture
-    case tp: OrType =>
-      tp.tp1.canHaveInferredCapture || tp.tp2.canHaveInferredCapture
-    case _ =>
-      false
 
   def stripCapturing(using Context): Type = tp.dealiasKeepAnnots match
     case CapturingType(parent, _, _) =>

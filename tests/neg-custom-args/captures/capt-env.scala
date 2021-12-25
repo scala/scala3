@@ -9,5 +9,5 @@ def test(c: Cap) =
   def f(x: Cap): Unit = if c == x then ()
   val p = Pair(f, f)
   val g = () => p.fst == p.snd
-  val gc: () => Boolean = g  // error
+  val gc: () -> Boolean = g  // error
 

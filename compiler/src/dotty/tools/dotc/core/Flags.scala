@@ -314,8 +314,8 @@ object Flags {
   /** A Scala 2x super accessor / an unpickled Scala 2.x class */
   val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")
 
-  /** A parameter with a default value */
-  val (_, HasDefault @ _, _) = newFlags(27, "<hasdefault>")
+  /** A parameter with a default value / an impure untpd.Function type */
+  val (_, HasDefault @ _, Impure @ _) = newFlags(27, "<hasdefault>", "<{*}>")
 
   /** An extension method, or a collective extension instance */
   val (Extension @ _, ExtensionMethod @ _, _) = newFlags(28, "<extension>")

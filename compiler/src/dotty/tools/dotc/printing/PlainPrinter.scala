@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.Config
-import cc.{CapturingType, CaptureSet}
+import cc.{EventuallyCapturingType, CaptureSet}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -143,6 +143,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     + defn.ObjectClass
     + defn.FromJavaObjectSymbol
 
+  def toText(cs: CaptureSet): Text =
+    "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
       case tp: TypeType =>
@@ -197,7 +200,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
-      case CapturingType(parent, refs, boxed) =>
+      case EventuallyCapturingType(parent, refs, boxed) =>
         def box = Str("box ") provided boxed
         if printDebug && !refs.isConst then
           changePrec(GlobalPrec)(box ~ s"$refs " ~ toText(parent))
@@ -206,11 +209,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else if !refs.isConst && refs.elems.isEmpty then
           changePrec(GlobalPrec)("?" ~ " " ~ toText(parent))
         else if Config.printCaptureSetsAsPrefix then
-          changePrec(GlobalPrec)(
-            box ~ "{"
-            ~ Text(refs.elems.toList.map(toTextCaptureRef), ", ")
-            ~ "} "
-            ~ toText(parent))
+          changePrec(GlobalPrec)(box ~ toText(refs) ~ " " ~ toText(parent))
         else
           changePrec(InfixPrec)(toText(parent) ~ " retains " ~ box ~ toText(refs.toRetainsTypeArg))
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>

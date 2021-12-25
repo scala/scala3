@@ -6,12 +6,12 @@ def test(cap1: Cap, cap2: Cap) =
   var x = f
   val y = x
   val z = () => if x("") == "" then "a" else "b"
-  val zc: {cap1} () => String = z
+  val zc: {cap1} () -> String = z
   val z2 = () => { x = identity }
-  val z2c: () => Unit = z2  // error
+  val z2c: () -> Unit = z2  // error
 
-  var a: {*} String => String = f // error
-  var b: List[{*} String => String] = Nil // error
+  var a: String => String = f // error
+  var b: List[String => String] = Nil // error
 
   def scope =
     val cap3: Cap = CC()
@@ -22,9 +22,9 @@ def test(cap1: Cap, cap2: Cap) =
     g
 
   val s = scope
-  val sc: {*} String => String = scope
+  val sc: String => String = scope
 
-  def local[T](op: Cap => T): T = op(CC())
+  def local[T](op: Cap -> T): T = op(CC())
 
   local { cap3 => // error
     def g(x: String): String = if cap3 == cap3 then "" else "a"
@@ -32,7 +32,7 @@ def test(cap1: Cap, cap2: Cap) =
   }
 
   class Ref:
-    var elem: {cap1} String => String = null
+    var elem: {cap1} String -> String = null
 
   val r = Ref()
   r.elem = f
