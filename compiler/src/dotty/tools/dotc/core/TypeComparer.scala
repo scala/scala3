@@ -2411,7 +2411,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
     case CapturingType(parent1, refs1, _) =>
-      if subCaptures(tp2.captureSet, refs1, frozenConstraint).isOK then
+      if subCaptures(tp2.captureSet, refs1, frozen = true).isOK then
         parent1 & tp2
       else
         tp1.derivedCapturingType(parent1 & tp2, refs1)

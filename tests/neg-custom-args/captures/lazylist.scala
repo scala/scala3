@@ -7,11 +7,11 @@ abstract class LazyList[+T]:
   def head: T
   def tail: LazyList[T]
 
-  def map[U](f: {*} T => U): {f, this} LazyList[U] =
+  def map[U](f: T => U): {f, this} LazyList[U] =
     if isEmpty then LazyNil
     else LazyCons(f(head), () => tail.map(f))
 
-class LazyCons[+T](val x: T, val xs: {*} () => {*} LazyList[T]) extends LazyList[T]:
+class LazyCons[+T](val x: T, val xs: () => {*} LazyList[T]) extends LazyList[T]:
   def isEmpty = false
   def head = x
   def tail = xs() // error: cannot have an inferred type
@@ -21,7 +21,7 @@ object LazyNil extends LazyList[Nothing]:
   def head = ???
   def tail: {*} LazyList[Nothing] = ???  // error overriding
 
-def map[A, B](xs: {*} LazyList[A], f: {*} A => B): {f, xs} LazyList[B] =
+def map[A, B](xs: {*} LazyList[A], f: A => B): {f, xs} LazyList[B] =
   xs.map(f)
 
 class CC
