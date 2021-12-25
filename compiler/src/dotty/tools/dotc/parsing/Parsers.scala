@@ -1376,47 +1376,56 @@ object Parsers {
      *                   |  InfixType
      *                   |  CaptureSet Type
      *  FunType        ::=  (MonoFunType | PolyFunType)
-     *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
-     *  PolyFunType    ::=  HKTypeParamClause '=>' Type
+     *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’ | ‘->’ | ‘?->’ ) Type
+     *  PolyFunType    ::=  HKTypeParamClause ('=>' | ‘->’_) Type
      *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
      *  CaptureSet     ::=  `{` CaptureRef {`,` CaptureRef} `}`
      *  CaptureRef     ::=  Ident
      */
-    def typ(): Tree = {
+    def typ(): Tree =
       val start = in.offset
       var imods = Modifiers()
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
         atSpan(start, in.offset) {
-          if in.token == TLARROW then
+          var token = in.token
+          if in.isIdent(nme.PUREARROW) then
+            token = ARROW
+          else if in.isIdent(nme.PURECTXARROW) then
+            token = CTXARROW
+          else if token == TLARROW then
             if !imods.flags.isEmpty || params.isEmpty then
               syntaxError(em"illegal parameter list for type lambda", start)
-              in.token = ARROW
-            else
-              for case ValDef(_, tpt: ByNameTypeTree, _) <- params do
-                syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
-              in.nextToken()
-              return TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], typ())
+              token = ARROW
+          else if ctx.settings.Ycc.value then
+            // `=>` means impure function under -Ycc whereas `->` is a regular function.
+            // Without -Ycc they both mean regular function.
+            imods |= Impure
 
-          if in.token == CTXARROW then
+          if token == CTXARROW then
             in.nextToken()
             imods |= Given
+          else if token == ARROW || token == TLARROW then
+            in.nextToken()
           else
             accept(ARROW)
-          val t = typ()
 
-          if imods.isOneOf(Given | Erased) then
+          val resultType = typ()
+          if token == TLARROW then
+            for case ValDef(_, tpt: ByNameTypeTree, _) <- params do
+              syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
+            TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], resultType)
+          else if imods.isOneOf(Given | Erased | Impure) then
             if imods.is(Given) && params.isEmpty then
               syntaxError("context function types require at least one parameter", paramSpan)
-            new FunctionWithMods(params, t, imods)
+            FunctionWithMods(params, resultType, imods)
           else if !ctx.settings.YkindProjector.isDefault then
-            val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t): @unchecked
-
-            lambdaAbstract(tparams, Function(newParams, newT))
+            val (newParams :+ newResultType, tparams) = replaceKindProjectorPlaceholders(params :+ resultType): @unchecked
+            lambdaAbstract(tparams, Function(newParams, newResultType))
           else
-            Function(params, t)
+            Function(params, resultType)
         }
 
       var isValParamList = false
@@ -1468,7 +1477,7 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == TLARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
-          else if (in.token == ARROW) {
+          else if (in.token == ARROW || in.isIdent(nme.PUREARROW)) {
             val arrowOffset = in.skipToken()
             val body = toplevelTyp()
             atSpan(start, arrowOffset) {
@@ -1489,16 +1498,18 @@ object Parsers {
         else if (in.token == INDENT) enclosed(INDENT, typ())
         else infixType()
 
-      in.token match {
+      in.token match
         case ARROW | CTXARROW => functionRest(t :: Nil)
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
-            syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
-          t
-      }
-    }
+          if isIdent(nme.PUREARROW) || isIdent(nme.PURECTXARROW) then
+            functionRest(t :: Nil)
+          else
+            if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
+              syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
+            t
+    end typ
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
       val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
@@ -1555,7 +1566,7 @@ object Parsers {
 
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartInfixTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
-        isOperator = !followingIsVararg())
+        isOperator = !followingIsVararg() && !isIdent(nme.PUREARROW) && !isIdent(nme.PURECTXARROW))
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
      */
