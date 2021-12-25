@@ -25,7 +25,7 @@ def test =
     (ex: Exception) => ???
   }
 
-  val b = handle[Exception, () => Nothing] {  // error
+  val b = handle[Exception, () -> Nothing] {  // error
     (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
   } {
     (ex: Exception) => ???

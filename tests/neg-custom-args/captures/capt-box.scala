@@ -1,6 +1,4 @@
-//import scala.retains
-class C
-type Cap = {*} C
+@annotation.capability class Cap
 
 def test(x: Cap) =
 
@@ -10,4 +8,4 @@ def test(x: Cap) =
 
   val x2 = identity(x1)
 
-  val x3: Cap => Unit = x2 // error
+  val x3: Cap -> Unit = x2 // error
