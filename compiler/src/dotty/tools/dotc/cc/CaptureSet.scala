@@ -204,6 +204,12 @@ sealed abstract class CaptureSet extends Showable:
 
   protected def propagateSolved()(using Context): Unit = ()
 
+  /** This capture set with a description that tells where it comes from */
+  def withDescription(description: String): CaptureSet
+
+  /** The provided description (using `withDescription`) for this capture set or else "" */
+  def description: String
+
   def toRetainsTypeArg(using Context): Type =
     assert(isConst)
     ((NoType: Type) /: elems) ((tp, ref) =>
@@ -213,7 +219,7 @@ sealed abstract class CaptureSet extends Showable:
     Annotation(CaptureAnnotation(this, boxed = false).tree)
 
   override def toText(printer: Printer): Text =
-    Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}")
+    Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}") ~~ description
 
 object CaptureSet:
   type Refs = SimpleIdentitySet[CaptureRef]
@@ -242,7 +248,7 @@ object CaptureSet:
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
 
-  class Const private[CaptureSet] (val elems: Refs) extends CaptureSet:
+  class Const private[CaptureSet] (val elems: Refs, val description: String = "") extends CaptureSet:
     assert(elems != null)
     def isConst = true
     def isAlwaysEmpty = elems.isEmpty
@@ -253,6 +259,8 @@ object CaptureSet:
     def addSuper(cs: CaptureSet)(using Context, VarState) = CompareResult.OK
 
     def upperApprox(origin: CaptureSet)(using Context): CaptureSet = this
+
+    def withDescription(description: String): Const = Const(elems, description)
 
     override def toString = elems.toString
   end Const
@@ -268,6 +276,8 @@ object CaptureSet:
     var deps: Deps = emptySet
     def isConst = isSolved
     def isAlwaysEmpty = false
+
+    var description: String = ""
 
     private def recordElemsState()(using VarState): Boolean =
       varState.getElems(this) match
@@ -313,6 +323,12 @@ object CaptureSet:
         computingApprox = true
         try computeApprox(origin).ensuring(_.isConst)
         finally computingApprox = false
+
+    def withDescription(description: String): this.type =
+      this.description =
+        if this.description.isEmpty then description
+        else s"${this.description} and $description"
+      this
 
     protected def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       (universal /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }

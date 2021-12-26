@@ -5070,10 +5070,17 @@ object Types {
           if (!givenSelf.isValueType) appliedRef
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
-          else AndType(givenSelf, appliedRef)
+          else givenSelf match
+            case givenSelf @ CapturingType(tp, refs, boxed) =>
+              givenSelf.derivedCapturingType(AndType(tp, appliedRef), refs)
+            case _ =>
+              AndType(givenSelf, appliedRef)
         }
       selfTypeCache
     }
+
+    def invalidateSelfTypeCache() =
+      selfTypeCache = null
 
     def appliedRef(using Context): Type = {
       if (appliedRefCache == null)

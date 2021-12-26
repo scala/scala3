@@ -324,5 +324,16 @@ extends tpd.TreeTraverser:
         val sym = tree.symbol
         sym.updateInfoBetween(preRecheckPhase, thisPhase,
           transformInferredType(sym.info, boxed = false))
+      case tree: TypeDef if tree.symbol.isClass && !tree.symbol.is(ModuleClass) =>
+        // TODO handle modules
+        val cls = tree.symbol.asClass
+        val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
+        if selfInfo eq NoType then
+          val newInfo = ClassInfo(prefix, cls, ps, decls,
+            CapturingType(cinfo.selfType, CaptureSet.Var(), boxed = false)
+              .showing(i"inferred self type for $cls: $result", capt))
+          cls.updateInfoBetween(preRecheckPhase, thisPhase, newInfo)
+        else
+          cinfo.invalidateSelfTypeCache()
       case _ =>
 end Setup

@@ -29,13 +29,14 @@ longer explanation available when compiling with `-explain`
 32 |    new Mapped
 
 longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:41:48 -----------------------------------
+-- Error: tests/neg-custom-args/captures/lazylists2.scala:40:20 --------------------------------------------------------
+40 |      def head: B = f(xs.head) // error
+   |                    ^
+   |(f : A => B) cannot be referenced here; it is not included in the allowed capture set {xs} of the self type of class Mapped
+-- Error: tests/neg-custom-args/captures/lazylists2.scala:41:49 --------------------------------------------------------
 41 |      def tail: {this} LazyList[B] = xs.tail.map(f) // error
-   |                                     ^^^^^^^^^^^^^^
-   |                                     Found:    {f} LazyList[B]
-   |                                     Required: {xs} LazyList[B]
-
-longer explanation available when compiling with `-explain`
+   |                                                 ^
+   |(f : A => B) cannot be referenced here; it is not included in the allowed capture set {xs} of the self type of class Mapped
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:59:48 -----------------------------------
 59 |      def tail: {this} LazyList[B] = xs.tail.map(f) // error
    |                                     ^^^^^^^^^^^^^^

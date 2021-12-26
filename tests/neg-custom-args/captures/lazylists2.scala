@@ -37,7 +37,7 @@ extension [A](xs: {*} LazyList[A])
       this: ({xs} Mapped) =>
 
       def isEmpty = false
-      def head: B = f(xs.head)
+      def head: B = f(xs.head) // error
       def tail: {this} LazyList[B] = xs.tail.map(f) // error
     new Mapped
 

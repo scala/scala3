@@ -9,7 +9,7 @@ import Types.*, StdNames.*
 import config.Printers.{capt, recheckr}
 import ast.{tpd, untpd, Trees}
 import Trees.*
-import typer.RefChecks.checkAllOverrides
+import typer.RefChecks.{checkAllOverrides, checkParents}
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import transform.SymUtils.*
 import transform.Recheck
@@ -177,12 +177,15 @@ class CheckCaptures extends Recheck:
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos)(using Context) =
       val res = elem.singletonCaptureSet.subCaptures(cs, frozen = false)
       if !res.isOK then
-        report.error(i"$elem cannot be referenced here; it is not included in allowed capture set ${res.blocking}", pos)
+        report.error(i"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking}", pos)
 
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos)(using Context) =
       val res = cs1.subCaptures(cs2, frozen = false)
       if !res.isOK then
-        report.error(i"references $cs1 are not all included in allowed capture set ${res.blocking}", pos)
+        def header =
+          if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
+          else i"references $cs1 are not all"
+        report.error(i"$header included in allowed capture set ${res.blocking}", pos)
 
     override def recheckClosure(tree: Closure, pt: Type)(using Context): Type =
       val cs = capturedVars(tree.meth.symbol)
@@ -239,8 +242,15 @@ class CheckCaptures extends Recheck:
       val saved = curEnv
       val localSet = capturedVars(cls)
       if !localSet.isAlwaysEmpty then curEnv = Env(cls, localSet, false, curEnv)
-      try super.recheckClassDef(tree, impl, cls)
-      finally curEnv = saved
+      try
+        val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
+        checkSubset(localSet, thisSet, tree.srcPos)
+        for param <- cls.paramGetters do
+          checkSubset(param.termRef.captureSet, thisSet, param.srcPos)
+        super.recheckClassDef(tree, impl, cls)
+      finally
+        checkParents(cls, impl.parents)
+        curEnv = saved
 
     /** First half: Refine the type of a constructor call `new C(t_1, ..., t_n)`
      *  to C{val x_1: T_1, ..., x_m: T_m} where x_1, ..., x_m are the tracked
