@@ -2,7 +2,7 @@ abstract class LIST[+T]:
   def isEmpty: Boolean
   def head: T
   def tail: LIST[T]
-  def map[U](f: {*} T -> U): LIST[U] =
+  def map[U](f: T => U): LIST[U] =
     if isEmpty then NIL
     else CONS(f(head), tail.map(f))
 
