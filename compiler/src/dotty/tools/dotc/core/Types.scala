@@ -5072,7 +5072,7 @@ object Types {
           else if (ctx.erasedTypes) appliedRef
           else givenSelf match
             case givenSelf @ CapturingType(tp, refs, boxed) =>
-              givenSelf.derivedCapturingType(AndType(tp, appliedRef), refs)
+              givenSelf.derivedCapturingType(tp & appliedRef, refs)
             case _ =>
               AndType(givenSelf, appliedRef)
         }

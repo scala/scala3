@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-this.scala:8:15 ---------------------------------------
 8 |    val y: C = this // error
   |               ^^^^
-  |               Found:    (C.this : {C.this.x} C & C)
+  |               Found:    (C.this : {C.this.x} C)
   |               Required: C
 
 longer explanation available when compiling with `-explain`
@@ -12,7 +12,7 @@ longer explanation available when compiling with `-explain`
 -- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this.scala:17:8 ---------------------------------------
 17 |  class C4(val f: () => Int) extends C3 // error
    |        ^
-   |        illegal inheritance: self type {C4.this.f} C4 & C4 of class C4 does not conform to self type C3
+   |        illegal inheritance: self type {C4.this.f} C4 of class C4 does not conform to self type C3
    |        of parent class C3
 
 longer explanation available when compiling with `-explain`

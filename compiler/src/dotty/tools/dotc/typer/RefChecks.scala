@@ -96,23 +96,36 @@ object RefChecks {
       cls.thisType
   }
 
+  /** Check that self type of given class info conforms to self types of parents
+   *  and required classes.
+   *  @param onlyIfDeclared  Check only parents with explicitly delared self types
+   */
+  def checkSelfConformance(cinfo: ClassInfo, onlyDeclared: Boolean)(using Context): Unit =
+    val cls = cinfo.cls
+
+    def checkSelfConforms(other: ClassSymbol, category: String, relation: String) =
+      var otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
+      if !onlyDeclared && other.topLevelClass.hasAnnotation(defn.CCAnnot) then
+        otherSelf = otherSelf.orElse(other.classInfo.selfType)
+      if otherSelf.exists && !(cinfo.selfType <:< otherSelf) then
+        report.error(DoesNotConformToSelfType(category, cinfo.selfType.simplified, cls, otherSelf.simplified, relation, other),
+          cls.srcPos)
+
+    for psym <- cls.parentSyms do
+      checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
+    for reqd <- cls.givenSelfType.classSymbols do
+      checkSelfConforms(reqd, "missing requirement", "required")
+  end checkSelfConformance
+
   /** Check that self type of this class conforms to self types of parents
    *  and required classes. Also check that only `enum` constructs extend
    *  `java.lang.Enum` and no user-written class extends ContextFunctionN.
    */
   def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
-      def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
-        val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
-        if otherSelf.exists && !(cinfo.selfType <:< otherSelf) then
-          report.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other),
-            cls.srcPos)
-      }
+      checkSelfConformance(cinfo, onlyDeclared = true)
+
       val psyms = cls.asClass.parentSyms
-      for (psym <- psyms)
-        checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
-      for (reqd <- cinfo.cls.givenSelfType.classSymbols)
-        checkSelfConforms(reqd, "missing requirement", "required")
 
       def isClassExtendingJavaEnum =
         !cls.isOneOf(Enum | Trait) && psyms.contains(defn.JavaEnumClass)

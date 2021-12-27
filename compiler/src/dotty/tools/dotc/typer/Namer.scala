@@ -1388,6 +1388,8 @@ class Namer { typer: Typer =>
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.invalidateMemberCaches() // we might have checked for a member when parents were not known yet.
       cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
+      if ctx.settings.Ycc.value && cls.owner.is(Package) then
+        cls.addAnnotation(defn.CCAnnot)
       val ctorStable =
         if cls.is(Trait) then cls.is(NoInits)
         else cls.isNoInitsRealClass

@@ -9,7 +9,7 @@ import Types.*, StdNames.*
 import config.Printers.{capt, recheckr}
 import ast.{tpd, untpd, Trees}
 import Trees.*
-import typer.RefChecks.{checkAllOverrides, checkParents}
+import typer.RefChecks.{checkAllOverrides, checkSelfConformance}
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import transform.SymUtils.*
 import transform.Recheck
@@ -249,7 +249,7 @@ class CheckCaptures extends Recheck:
           checkSubset(param.termRef.captureSet, thisSet, param.srcPos)
         super.recheckClassDef(tree, impl, cls)
       finally
-        checkParents(cls, impl.parents)
+        checkSelfConformance(cls.classInfo, onlyDeclared = false)
         curEnv = saved
 
     /** First half: Refine the type of a constructor call `new C(t_1, ..., t_n)`
