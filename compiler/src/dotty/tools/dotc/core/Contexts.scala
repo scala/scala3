@@ -485,15 +485,15 @@ object Contexts {
       fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
 
     def scalaRelease: ScalaRelease =
-      val releaseName = base.settings.scalaRelease.value
+      val releaseName = base.settings.YscalaRelease.value
       if releaseName.nonEmpty then ScalaRelease.parse(releaseName).get else ScalaRelease.latest
 
     def tastyVersion: TastyVersion =
       import math.Ordered.orderingToOrdered
       val latestRelease = ScalaRelease.latest
       val specifiedRelease = scalaRelease
-      if ((specifiedRelease.majorVersion, specifiedRelease.minorVersion) < (latestRelease.majorVersion, latestRelease.majorVersion)) then
-        // This is needed to make -scala-release a no-op when set to the latest release for unstable versions of the compiler
+      if ((specifiedRelease.majorVersion, specifiedRelease.minorVersion) < (latestRelease.majorVersion, latestRelease.minorVersion)) then
+        // This is needed to make -Yscala-release a no-op when set to the latest release for unstable versions of the compiler
         // (which might have the tasty format version numbers set to higher values before they're decreased during a release)
         TastyVersion.fromStableScalaRelease(specifiedRelease.majorVersion, specifiedRelease.minorVersion)
       else

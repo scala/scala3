@@ -974,16 +974,15 @@ object RefChecks {
   private def checkSinceAnnot(sym: Symbol, pos: SrcPos)(using Context): Unit =
     for
       annot <- sym.getAnnotation(defn.SinceAnnot)
-      version <- annot.argumentConstantString(0)
+      releaseName <- annot.argumentConstantString(0)
     do
-      val releaseVersion = ctx.scalaRelease
-      ScalaRelease.parse(version) match
-        case Some(symVersion) if symVersion > releaseVersion =>
+      ScalaRelease.parse(releaseName) match
+        case Some(release) if release > ctx.scalaRelease =>
           report.error(
-            i"$sym was added in Scala $version, therefore it cannot be used in the code targeting Scala ${releaseVersion.show}",
+            i"$sym was added in Scala release ${releaseName.show}, therefore it cannot be used in the code targeting Scala ${ctx.scalaRelease.show}",
             pos)
         case None =>
-          report.warning(i"$sym has an unparsable release name: '${version}'", pos)
+          report.error(i"$sym has an unparsable release name: '${releaseName}'", annot.tree.srcPos)
         case _ =>
 
   private def checkSinceAnnotInSignature(sym: Symbol, pos: SrcPos)(using Context) =
@@ -1281,6 +1280,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
+    checkSinceAnnot(tree.symbol, tree.srcPos)
     checkSinceAnnotInSignature(tree.symbol, tree)
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
@@ -1320,7 +1320,6 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
     checkExperimentalInheritance(cls)
     checkExperimentalAnnots(cls)
-    checkSinceAnnot(cls, cls.srcPos)
     tree
   }
   catch {
@@ -1384,6 +1383,7 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
     checkExperimentalAnnots(tree.symbol)
+    checkSinceAnnot(tree.symbol, tree.srcPos)
     tree
   }
 }
