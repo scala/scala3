@@ -957,15 +957,22 @@ class ClassfileParser(
               report.warning(s"$classfile is out of sync with its TASTy file. Loaded TASTy file. Try cleaning the project to fix this issue", NoSourcePosition)
 
             val tastyFilePath = classfile.path.stripSuffix(".class") + ".tasty"
-            val isTastyCompatible =
-              TastyFormat.isVersionCompatible(fileVersion = fileTastyVersion, compilerVersion = ctx.tastyVersion) ||
-              classRoot.symbol.showFullName.startsWith("scala.") // References to stdlib are considered safe because we check the values of @since annotations
 
-            if !isTastyCompatible then
-              report.error(s"""The class ${classRoot.symbol.showFullName} cannot be loaded from file ${tastyFilePath} because its TASTy format version is too high
-                |highest allowed: ${ctx.tastyVersion.show}
-                |found:           ${fileTastyVersion.show}
+            def reportWrongTasty(reason: String, highestAllowed: TastyVersion) =
+              report.error(s"""The class ${classRoot.symbol.showFullName} cannot be loaded from file ${tastyFilePath} because $reason:
+                              |highest allowed: ${highestAllowed.show}
+                              |found:           ${fileTastyVersion.show}
               """.stripMargin)
+
+            val isTastyReadable = TastyFormat.isVersionCompatible(fileVersion = fileTastyVersion, compilerVersion = TastyVersion.compilerVersion)
+            if !isTastyReadable then
+              reportWrongTasty("its TASTy format cannot be read by the compiler", TastyVersion.compilerVersion)
+            else
+              val isTastyCompatible =
+                TastyFormat.isVersionCompatible(fileVersion = fileTastyVersion, compilerVersion = ctx.tastyVersion) ||
+                classRoot.symbol.showFullName.startsWith("scala.") // References to stdlib are considered safe because we check the values of @since annotations
+              if !isTastyCompatible then
+                reportWrongTasty(s"its TASTy format is not compatible with the one of the targeted Scala release (${ctx.scalaRelease.show})", ctx.tastyVersion)
 
             return unpickleTASTY(tastyBytes)
           }

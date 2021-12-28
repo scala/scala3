@@ -24,4 +24,8 @@ def useQuotes(using Quotes) =
 
   class Box(w: Wildcard) // error
 
+  // The inferred result type also gets reported even though it's not written explicitly
   def castToWildcard(x: Any) = x.asInstanceOf[Wildcard] // error // error
+
+  // 2 errors reported because at the stage of compilation when this is checked (already after some code transformations) the illegal type is referred to more than once
+  val selectable: Any = new Selectable.WithoutPreciseParameterTypes {} // error // error

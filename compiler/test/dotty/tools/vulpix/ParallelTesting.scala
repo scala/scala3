@@ -2,7 +2,7 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{File => JFile, IOException}
+import java.io.{File => JFile, IOException, PrintStream, ByteArrayOutputStream}
 import java.lang.System.{lineSeparator => EOL}
 import java.net.URL
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -13,7 +13,7 @@ import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
 
 import scala.collection.mutable
-import scala.io.Source
+import scala.io.{Codec, Source}
 import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
@@ -27,7 +27,7 @@ import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.config.Config
-import dotc.util.DiffUtil
+import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans}
 import io.AbstractFile
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
@@ -215,7 +215,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         case testSource @ SeparateCompilationSource(_, dir, flags, outDir) =>
           testSource.compilationGroups.map { (group, files) =>
-            val flags1 = if group.release.isEmpty then flags else flags.and(s"-scala-release:${group.release}")
+            val flags1 = if group.release.isEmpty then flags else flags.and("-Yscala-release", group.release)
             if group.compiler.isEmpty then
               compile(files, flags1, suppressErrors, outDir)
             else
@@ -504,6 +504,21 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       reporter
     }
 
+    private def parseErrors(errorsText: String, compilerVersion: String) =
+      val errorPattern = """.*Error: (.*\.scala):(\d+):(\d+).*""".r
+      errorsText.linesIterator.toSeq.collect {
+        case errorPattern(filePath, line, column) =>
+          val lineNum = line.toInt
+          val columnNum = column.toInt
+          val abstractFile = AbstractFile.getFile(filePath)
+          val sourceFile = SourceFile(abstractFile, Codec.UTF8)
+          val offset = sourceFile.lineToOffset(lineNum - 1) + columnNum - 1
+          val span = Spans.Span(offset)
+          val sourcePos = SourcePosition(sourceFile, span)
+
+          Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column. Full error output:\n\n$errorsText\n", sourcePos)
+      }
+
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
       val compilerDir = getCompiler(compiler).toString
 
@@ -517,14 +532,18 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         .withClasspath(targetDir.getPath)
         .and("-d", targetDir.getPath)
 
-      val reporter = TestReporter.reporter(realStdout, ERROR)
+      val dummyStream = new PrintStream(new ByteArrayOutputStream())
+      val reporter = TestReporter.reporter(dummyStream, ERROR)
 
       val command = Array(compilerDir + "/bin/scalac") ++ flags1.all ++ files.map(_.getPath)
       val process = Runtime.getRuntime.exec(command)
-      val output = Source.fromInputStream(process.getErrorStream).mkString
+      val errorsText = Source.fromInputStream(process.getErrorStream).mkString
       if process.waitFor() != 0 then
-        echo(s"\nCompilation using Scala $compiler failed: \n$output")
-        fail()
+        val diagnostics = parseErrors(errorsText, compiler)
+        diagnostics.foreach { diag =>
+          val context = (new ContextBase).initialCtx
+          reporter.report(diag)(using context)
+        }
 
       reporter
 

@@ -104,7 +104,6 @@ trait CommonScalaSettings:
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.", aliases = List("--no-warnings"))
 
   val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", ScalaSettings.supportedReleaseVersions, "", aliases = List("--release"))
-  val scalaRelease: Setting[String] = ChoiceSetting("-scala-release", "release", "Emit TASTy files that can be consumed by specified version of the compiler.", ScalaSettings.supportedScalaReleaseVersions, "", aliases = List("--scala-release"))
   val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.", aliases = List("--deprecation"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain"))
@@ -311,6 +310,7 @@ private sealed trait YSettings:
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
+  val YscalaRelease: Setting[String] = ChoiceSetting("-Yscala-release", "release", "Emit TASTy files that can be consumed by specified version of the compiler.", ScalaSettings.supportedScalaReleaseVersions, "", aliases = List("--Yscala-release"))
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

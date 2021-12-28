@@ -1,7 +1,7 @@
 package dotty.tools.tasty
 
 case class TastyVersion(major: Int, minor: Int, experimental: Int) {
-  def show = s"$major.$minor-$experimental"
+  def show = "" + major + "." + minor + "-" + experimental
 }
 
 object TastyVersion {
