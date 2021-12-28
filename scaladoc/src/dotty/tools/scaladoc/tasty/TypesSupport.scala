@@ -305,7 +305,8 @@ trait TypesSupport:
   private def typeBoundsTreeOfHigherKindedType(using Quotes)(low: reflect.TypeRepr, high: reflect.TypeRepr) =
     import reflect._
     def regularTypeBounds(low: TypeRepr, high: TypeRepr) =
-      typeBound(low, low = true) ++ typeBound(high, low = false)
+      if low == high then keyword(" = ").l ++ inner(low)
+      else typeBound(low, low = true) ++ typeBound(high, low = false)
     high.match
       case TypeLambda(params, paramBounds, resType) =>
         if resType.typeSymbol == defn.AnyClass then
