@@ -10,7 +10,7 @@ import classfile.ClassfileParser
 import Names.SimpleName
 import TreeUnpickler.UnpickleMode
 
-import dotty.tools.tasty.{ TastyReader, TastyVersion }
+import dotty.tools.tasty.TastyReader
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 
 object DottyUnpickler {

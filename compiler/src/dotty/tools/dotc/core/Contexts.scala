@@ -38,8 +38,9 @@ import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
-import dotty.tools.tasty.{ TastyFormat, TastyVersion }
+import dotty.tools.tasty.TastyFormat
 import dotty.tools.dotc.config.{ NoScalaVersion, SpecificScalaVersion, AnyScalaVersion, ScalaBuild }
+import dotty.tools.dotc.core.tasty.TastyVersion
 
 object Contexts {
 

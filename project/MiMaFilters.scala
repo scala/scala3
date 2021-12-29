@@ -27,5 +27,8 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language.3.1"),
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E1$"),
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$3$u002E1$minusmigration$"),
+
+    // Private to the compiler - needed for forward binary compatibility
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.since")
   )
 }

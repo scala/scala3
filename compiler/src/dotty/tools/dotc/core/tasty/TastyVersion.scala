@@ -1,7 +1,14 @@
-package dotty.tools.tasty
+package dotty.tools.dotc.core.tasty
+
+import dotty.tools.tasty.TastyFormat
 
 case class TastyVersion(major: Int, minor: Int, experimental: Int) {
-  def show = "" + major + "." + minor + "-" + experimental
+  def show = s"$major.$minor-$experimental"
+
+  def isCompatibleWith(that: TastyVersion): Boolean = TastyFormat.isVersionCompatible(
+    this.major, this.minor, this.experimental,
+    that.major, that.minor, that.experimental
+  )
 }
 
 object TastyVersion {

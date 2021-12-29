@@ -1,7 +1,5 @@
 package dotty.tools.dotc.config
 
-import dotty.tools.tasty.TastyVersion
-
 enum ScalaRelease(val majorVersion: Int, val minorVersion: Int) extends Ordered[ScalaRelease]:
   case Release3_0 extends ScalaRelease(3, 0)
   case Release3_1 extends ScalaRelease(3, 1)

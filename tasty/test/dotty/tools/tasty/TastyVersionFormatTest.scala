@@ -3,8 +3,6 @@ package dotty.tools.tasty
 import org.junit.Assert._
 import org.junit.{Test, Ignore}
 
-import dotty.tools.tasty.TastyVersion
-
 import TastyFormat._
 import TastyBuffer._
 
@@ -13,10 +11,10 @@ class TastyVersionFormatTest {
   import TastyVersionFormatTest._
 
   /** aliases `TastyVersion.apply` */
-  def compiler(major: Int, minor: Int, experimental: Experimental) = tastyVersion(major, minor, experimental)
+  def compiler(major: Int, minor: Int, experimental: Experimental) = TastyVersion(major, minor, experimental)
 
   /** aliases `TastyVersion.apply` */
-  def file(major: Int, minor: Int, experimental: Experimental) = tastyVersion(major, minor, experimental)
+  def file(major: Int, minor: Int, experimental: Experimental) = TastyVersion(major, minor, experimental)
 
   @Test def accept_ExperimentalReadEQExperimental_EQMinor: Unit = {
     assert(file(28,1,Exp(1)) <:< compiler(28,1,Exp(1))) // same minor, same experimental
@@ -71,18 +69,22 @@ object TastyVersionFormatTest {
   val Final: Experimental = 0
   def Exp(i: Int): Experimental = i.ensuring(_ > 0)
 
-  implicit class TastyVersionOps(fileVersion: TastyVersion) {
-    def <:<(compilerVersion: TastyVersion): Boolean = TastyFormat.isVersionCompatible(fileVersion, compilerVersion)
-
-    /**if `file unrelated compiler` then tasty file must be rejected.*/
-    def unrelatedTo(compilerVersion: TastyVersion): Boolean = !(fileVersion <:< compilerVersion)
-  }
-
-  def tastyVersion(major: Int, minor: Int, experimental: Experimental) = {
+  case class TastyVersion(major: Int, minor: Int, experimental: Experimental) { file =>
     assert(major >= 0)
     assert(minor >= 0)
     assert(experimental >= 0)
-    TastyVersion(major, minor, experimental)
+
+    def <:<(compiler: TastyVersion): Boolean = TastyFormat.isVersionCompatible(
+      fileMajor            = file.major,
+      fileMinor            = file.minor,
+      fileExperimental     = file.experimental,
+      compilerMajor        = compiler.major,
+      compilerMinor        = compiler.minor,
+      compilerExperimental = compiler.experimental
+    )
+
+    /**if `file unrelated compiler` then tasty file must be rejected.*/
+    def unrelatedTo(compiler: TastyVersion): Boolean = !(file <:< compiler)
   }
 
 }
