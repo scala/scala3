@@ -3,7 +3,7 @@ package dotc
 package core
 package classfile
 
-import dotty.tools.tasty.{ TastyFormat, TastyReader, TastyHeaderUnpickler, TastyVersion }
+import dotty.tools.tasty.{ TastyFormat, TastyReader, TastyHeaderUnpickler }
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
@@ -20,6 +20,7 @@ import java.util.UUID
 import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
+import tasty.TastyVersion
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, PlainFile, ZipArchive}
 import scala.util.control.NonFatal
@@ -964,12 +965,12 @@ class ClassfileParser(
                               |found:           ${fileTastyVersion.show}
               """.stripMargin)
 
-            val isTastyReadable = TastyFormat.isVersionCompatible(fileVersion = fileTastyVersion, compilerVersion = TastyVersion.compilerVersion)
+            val isTastyReadable = fileTastyVersion.isCompatibleWith(TastyVersion.compilerVersion)
             if !isTastyReadable then
               reportWrongTasty("its TASTy format cannot be read by the compiler", TastyVersion.compilerVersion)
             else
               val isTastyCompatible =
-                TastyFormat.isVersionCompatible(fileVersion = fileTastyVersion, compilerVersion = ctx.tastyVersion) ||
+                fileTastyVersion.isCompatibleWith(ctx.tastyVersion) ||
                 classRoot.symbol.showFullName.startsWith("scala.") // References to stdlib are considered safe because we check the values of @since annotations
               if !isTastyCompatible then
                 reportWrongTasty(s"its TASTy format is not compatible with the one of the targeted Scala release (${ctx.scalaRelease.show})", ctx.tastyVersion)
