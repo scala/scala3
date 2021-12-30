@@ -44,7 +44,7 @@ val copier = new Copier
 copier.print(copier.scan())
 ```
 
-An export clause has the same format as an import clause. Its general form is:
+An `export` clause has the same format as an import clause. Its general form is:
 
 ```scala
 export path . { sel_1, ..., sel_n }

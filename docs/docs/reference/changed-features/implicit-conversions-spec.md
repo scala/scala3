@@ -12,7 +12,7 @@ defined by either:
 - An `implicit def` which has type `S => T` or `(=> S) => T`
 - An implicit value which has type `Conversion[S, T]`
 
-The standard library defines an abstract class `Conversion`:
+The standard library defines an abstract class [`Conversion`](https://scala-lang.org/api/3.x/scala/Conversion.html):
 
 ```scala
 package scala
@@ -86,7 +86,7 @@ Note that implicit conversions are also affected by the [changes to implicit res
 
 ## Motivation for the changes
 
-The introduction of [`scala.Conversion`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/Conversion.scala)
+The introduction of [`scala.Conversion`](https://scala-lang.org/api/3.x/scala/Conversion.html)
 in Scala 3 and the decision to restrict implicit values of this type to be
 considered as potential views comes from the desire to remove surprising
 behavior from the language:
@@ -102,7 +102,7 @@ This snippet contains a type error. The right-hand side of `val x`
 does not conform to type `String`. In Scala 2, the compiler will use
 `m` as an implicit conversion from `Int` to `String`, whereas Scala 3
 will report a type error, because `Map` isn't an instance of
-`Conversion`.
+[`Conversion`](https://scala-lang.org/api/3.x/scala/Conversion.html).
 
 ## Migration path
 

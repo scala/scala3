@@ -28,9 +28,10 @@ Defining an implicit conversion will emit a warning unless the import
 
 ## Examples
 
-The first example is taken from `scala.Predef`. Thanks to this
-implicit conversion, it is possible to pass a `scala.Int` to a Java
-method that expects a `java.lang.Integer`
+The first example is taken from [`scala.Predef`](https://scala-lang.org/api/3.x/scala/Predef$.html).
+Thanks to this implicit conversion, it is possible to pass a
+[`scala.Int`](https://scala-lang.org/api/3.x/scala/Int.html)
+to a Java method that expects a `java.lang.Integer`
 
 ```scala
 import scala.language.implicitConversions

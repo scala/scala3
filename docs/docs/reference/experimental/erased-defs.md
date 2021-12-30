@@ -5,12 +5,12 @@ movedTo: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs.h
 ---
 
 `erased` is a modifier that expresses that some definition or expression is erased by the compiler instead of being represented in the compiled output. It is not yet part of the Scala language standard. To enable `erased`, turn on the language feature
-`experimental.erasedDefinitions`. This can be done with a language import
+[`experimental.erasedDefinitions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$experimental$$erasedDefinitions$.html). This can be done with a language import
 ```scala
 import scala.language.experimental.erasedDefinitions
 ```
 or by setting the command line option `-language:experimental.erasedDefinitions`.
-Erased definitions must be in an experimental scope (see [../other-new-features/experimental-defs.md]).
+Erased definitions must be in an experimental scope (see [Experimental definitions](../other-new-features/experimental-defs.md)).
 
 ## Why erased terms?
 

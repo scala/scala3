@@ -122,7 +122,8 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
+as  derives  end  extension  infix  inline  opaque  open  throws
+transparent  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](./soft-modifier.md) for additional

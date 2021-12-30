@@ -4,6 +4,8 @@ title: "Named Type Arguments - More Details"
 movedTo: https://docs.scala-lang.org/scala3/reference/experimental/named-typeargs-spec.html
 ---
 
+In this section we give more details about the [named type arguments](named-typeargs.md) (*experimental*).
+
 ## Syntax
 
 The addition to the grammar is:

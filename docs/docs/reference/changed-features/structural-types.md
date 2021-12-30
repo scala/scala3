@@ -59,7 +59,7 @@ help from the user. In practice, the connection between a structural type
 and its underlying generic representation would most likely be done by
 a database layer, and therefore would not be a concern of the end user.
 
-`Record` extends the marker trait `scala.Selectable` and defines
+`Record` extends the marker trait [`scala.Selectable`](https://scala-lang.org/api/3.x/scala/Selectable.html) and defines
 a method `selectDynamic`, which maps a field name to its value.
 Selecting a structural type member is done by calling this method.
 The `person.name` and `person.age` selections are translated by
@@ -90,7 +90,7 @@ Structural types can also be accessed using [Java reflection](https://www.oracle
     def close(): Unit
 ```
 
-Here, we define a structural type `Closeable` that defines a `close` method. There are various classes that have `close` methods, we just list `FileInputStream` and `Channel` as two examples. It would be easiest if the two classes shared a common interface that factors out the `close` method. But such factorings are often not possible if different libraries are combined in one application. Yet, we can still have methods that work on
+Here, we define a structural type `Closeable` that defines a `close` method. There are various classes that have `close` methods, we just list [`FileInputStream`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/FileInputStream.html#%3Cinit%3E(java.io.File)) and [`Channel`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/channels/Channel.html) as two examples. It would be easiest if the two classes shared a common interface that factors out the `close` method. But such factorings are often not possible if different libraries are combined in one application. Yet, we can still have methods that work on
 all classes with a `close` method by using the `Closeable` type. For instance,
 
 ```scala
@@ -147,10 +147,9 @@ i3.range
 
 The type of `i3` in this example is `Vehicle { val range: Int }`. Hence,
 `i3.range` is well-formed. Since the base class `Vehicle` does not define a `range` field or method, we need structural dispatch to access the `range` field of the anonymous class that initializes `id3`. Structural dispatch
-is implemented by the base trait `reflect.Selectable` of `Vehicle`, which
-defines the necessary `selectDynamic` member.
+is implemented by the base trait [`reflect.Selectable`](https://scala-lang.org/api/3.x/scala/reflect/Selectable.html) of `Vehicle`, which defines the necessary `selectDynamic` member.
 
-`Vehicle` could also extend some other subclass of `scala.Selectable` that implements `selectDynamic` and `applyDynamic` differently. But if it does not extend a `Selectable` at all, the code would no longer typecheck:
+`Vehicle` could also extend some other subclass of [`scala.Selectable`](https://scala-lang.org/api/3.x/scala/Selectable.html) that implements `selectDynamic` and `applyDynamic` differently. But if it does not extend a `Selectable` at all, the code would no longer typecheck:
 
 ```scala
 trait Vehicle:
@@ -168,11 +167,11 @@ adding any refinements. Hence, `i3` now has just type `Vehicle` and the selectio
 
 Note that in Scala 2 all local and anonymous classes could produce values with refined types. But
 members defined by such refinements could be selected only with the language import
-`reflectiveCalls`.
+[`reflectiveCalls`](https://scala-lang.org/api/3.x/scala/languageFeature$$reflectiveCalls$.html).
 
 ## Relation with `scala.Dynamic`
 
-There are clearly some connections with `scala.Dynamic` here, since
+There are clearly some connections with [`scala.Dynamic`](https://scala-lang.org/api/3.x/scala/Dynamic.html) here, since
 both select members programmatically. But there are also some
 differences.
 
@@ -180,13 +179,13 @@ differences.
   is, as long as the correspondence of the structural type with the
   underlying value is as stated.
 
-- `Dynamic` is just a marker trait, which gives more leeway where and
+- [`Dynamic`](https://scala-lang.org/api/3.x/scala/Dynamic.html) is just a marker trait, which gives more leeway where and
   how to define reflective access operations. By contrast
   `Selectable` is a trait which declares the access operations.
 
 - Two access operations, `selectDynamic` and `applyDynamic` are shared
   between both approaches. In `Selectable`, `applyDynamic` also may also take
-  `java.lang.Class` arguments indicating the method's formal parameter types.
-  `Dynamic` comes with `updateDynamic`.
+  [`java.lang.Class`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Class.html) arguments indicating the method's formal parameter types.
+  [`Dynamic`](https://scala-lang.org/api/3.x/scala/Dynamic.html) comes with `updateDynamic`.
 
 [More details](structural-types-spec.md)

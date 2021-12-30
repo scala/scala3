@@ -114,4 +114,3 @@ The body of a type lambda can again be a type lambda. Example:
 type TL = [X] =>> [Y] =>> (X, Y)
 ```
 Currently, no special provision is made to infer type arguments to such curried type lambdas. This is left for future work.
-
