@@ -745,6 +745,13 @@ object projects:
     dependencies = List(cats, disciplineMunit)
   )
 
+  lazy val ReactiveMongoBson = SbtCommunityProject(
+    project = "ReactiveMongo-BSON",
+    sbtTestCommand = "api/testOnly",
+    sbtPublishCommand = "api/publishLocal",
+    dependencies = List()
+  )
+
 end projects
 
 def allProjects = List(
@@ -824,6 +831,7 @@ def allProjects = List(
   projects.libretto,
   projects.jacksonModuleScala,
   projects.specs2,
+  projects.ReactiveMongoBson,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

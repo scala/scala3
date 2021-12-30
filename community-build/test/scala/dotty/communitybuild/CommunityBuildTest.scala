@@ -99,4 +99,5 @@ class CommunityBuildTestC:
   @Test def utest = projects.utest.run()
   @Test def verify = projects.verify.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
+  @Test def reactiveMongoBson = projects.ReactiveMongoBson.run()
 end CommunityBuildTestC

@@ -219,3 +219,6 @@
 [submodule "community-build/community-projects/spire"]
 	path = community-build/community-projects/spire
 	url = https://github.com/dotty-staging/spire.git
+[submodule "community-build/community-projects/ReactiveMongo-BSON"]
+	path = community-build/community-projects/ReactiveMongo-BSON
+	url = https://github.com/ReactiveMongo/ReactiveMongo-BSON.git
