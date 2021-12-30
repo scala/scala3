@@ -31,7 +31,7 @@ Classes that are not open can still be extended, but only if at least one of two
 
  - The extending class is in the same source file as the extended class. In this case, the extension is usually an internal implementation matter.
 
- - The language feature `adhocExtensions` is enabled for the extending class. This is typically enabled by an import clause in the source file of the extension:
+ - The language feature [`adhocExtensions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$adhocExtensions$.html) is enabled for the extending class. This is typically enabled by an import clause in the source file of the extension:
    ```scala
    import scala.language.adhocExtensions
    ```
@@ -47,7 +47,7 @@ Classes that are not open can still be extended, but only if at least one of two
      |or by setting the compiler option -language:adhocExtensions.
    ```
 
-### Motivation
+## Motivation
 
 When writing a class, there are three possible expectations of extensibility:
 
@@ -64,17 +64,17 @@ It is good practice to avoid _ad-hoc_ extensions in a code base, since they tend
 are still some situations where these extensions are useful: for instance,
 to mock classes in tests, or to apply temporary patches that add features or fix bugs in library classes. That's why _ad-hoc_ extensions are permitted, but only if there is an explicit opt-in via a language feature import.
 
-### Details
+## Details
 
  - `open` is a soft modifier. It is treated as a normal identifier
    unless it is in modifier position.
  - An `open` class cannot be `final` or `sealed`.
  - Traits or `abstract` classes are always `open`, so `open` is redundant for them.
 
-### Relationship with `sealed`
+## Relationship with `sealed`
 
-A class that is neither `abstract` nor `open` is similar to a `sealed` class: it can still be extended, but only in the same source file. The difference is what happens if an extension of the class is attempted in another source file. For a `sealed` class, this is an error, whereas for a simple non-open class, this is still permitted provided the `adhocExtensions` feature is enabled, and it gives a warning otherwise.
+A class that is neither `abstract` nor `open` is similar to a `sealed` class: it can still be extended, but only in the same source file. The difference is what happens if an extension of the class is attempted in another source file. For a `sealed` class, this is an error, whereas for a simple non-open class, this is still permitted provided the [`adhocExtensions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$adhocExtensions$.html) feature is enabled, and it gives a warning otherwise.
 
-### Migration
+## Migration
 
 `open` is a new modifier in Scala 3. To allow cross compilation between Scala 2.13 and Scala 3.0 without warnings, the feature warning for ad-hoc extensions is produced only under `-source future`. It will be produced by default from Scala 3.1 on.

@@ -14,7 +14,7 @@ _must_ be applied to a type argument, unless they are passed to type parameters 
 
 Sometimes we would like to have type parameters that can have more than one kind, for instance to define an implicit
 value that works for parameters of any kind. This is now possible through a form of (_subtype_) kind polymorphism.
-Kind polymorphism relies on the special type `scala.AnyKind` that can be used as an upper bound of a type.
+Kind polymorphism relies on the special type [`scala.AnyKind`](https://scala-lang.org/api/3.x/scala/AnyKind.html) that can be used as an upper bound of a type.
 
 ```scala
 def f[T <: AnyKind] = ...
@@ -38,7 +38,7 @@ through advanced uses of implicits.
 
 (todo: insert good concise example)
 
-Some technical details: `AnyKind` is a synthesized class just like `Any`, but without any members. It extends no other class.
+Some technical details: [`AnyKind`](https://scala-lang.org/api/3.x/scala/AnyKind.html) is a synthesized class just like `Any`, but without any members. It extends no other class.
 It is declared `abstract` and `final`, so it can be neither instantiated nor extended.
 
 `AnyKind` plays a special role in Scala's subtype system: It is a supertype of all other types no matter what their kind is. It is also assumed to be kind-compatible with all other types. Furthermore, `AnyKind` is treated as a higher-kinded type (so it cannot be used as a type of values), but at the same time it has no type parameters (so it cannot be instantiated).

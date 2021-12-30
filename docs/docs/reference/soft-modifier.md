@@ -4,9 +4,9 @@ title: "Soft Keywords"
 movedTo: https://docs.scala-lang.org/scala3/reference/soft-modifier.html
 ---
 
-A soft modifier is one of the identifiers `opaque`, `inline`, `open`, `transparent`, and `infix`.
+A soft modifier is one of the identifiers `infix`, `inline`, `opaque`, `open` and `transparent`.
 
-A soft keyword is a soft modifier, or one of `derives`, `end`, `extension`, `throws`, `using`, `|`, `+`, `-`, `*`
+A soft keyword is a soft modifier, or one of `as`, `derives`, `end`, `extension`, `throws`, `using`, `|`, `+`, `-`, `*`
 
 A soft modifier is treated as potential modifier of a definition if it is followed by a hard modifier or a keyword combination starting a definition (`def`, `val`, `var`, `type`, `given`, `class`, `trait`, `object`, `enum`, `case class`, `case object`). Between the two words there may be a sequence of newline tokens and soft modifiers.
 

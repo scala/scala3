@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Intersection Types
+title: "Intersection Types"
 movedTo: https://docs.scala-lang.org/scala3/reference/new-types/intersection-types.html
 ---
 

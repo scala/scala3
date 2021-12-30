@@ -4,7 +4,7 @@ title: "Opaque Type Aliases: More Details"
 movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/opaques-details.html
 ---
 
-### Syntax
+## Syntax
 
 ```
 Modifier          ::=  ...
@@ -16,7 +16,7 @@ Modifier          ::=  ...
 Opaque type aliases must be members of classes, traits, or objects, or they are defined
 at the top-level. They cannot be defined in local blocks.
 
-### Type Checking
+## Type Checking
 
 The general form of a (monomorphic) opaque type alias is
 
@@ -24,7 +24,7 @@ The general form of a (monomorphic) opaque type alias is
 opaque type T >: L <: U = R
 ```
 
-where the lower bound `L` and the upper bound `U` may be missing, in which case they are assumed to be `scala.Nothing` and `scala.Any`, respectively. If bounds are given, it is checked that the right-hand side `R` conforms to them, i.e. `L <: R` and `R <: U`. F-bounds are not supported for opaque type aliases: `T` is not allowed to appear in `L` or `U`.
+where the lower bound `L` and the upper bound `U` may be missing, in which case they are assumed to be [`scala.Nothing`](https://scala-lang.org/api/3.x/scala/Nothing.html) and [`scala.Any`](https://scala-lang.org/api/3.x/scala/Any.html), respectively. If bounds are given, it is checked that the right-hand side `R` conforms to them, i.e. `L <: R` and `R <: U`. F-bounds are not supported for opaque type aliases: `T` is not allowed to appear in `L` or `U`.
 
 Inside the scope of the alias definition, the alias is transparent: `T` is treated
 as a normal alias of `R`. Outside its scope, the alias is treated as the abstract type
@@ -51,7 +51,7 @@ object o:
 def id(x: o.T): o.T = x
 ```
 
-### Type Parameters of Opaque Types
+## Type Parameters of Opaque Types
 
 Opaque type aliases can have a single type parameter list. The following aliases
 are well-formed
@@ -65,7 +65,7 @@ opaque type BadF[T] = [U] =>> (T, U)
 opaque type BadG = [T] =>> [U] => (T, U)
 ```
 
-### Translation of Equality
+## Translation of Equality
 
 Comparing two values of opaque type with `==` or `!=` normally uses universal equality,
 unless another overloaded `==` or `!=` operator is defined for the type. To avoid
@@ -80,7 +80,7 @@ defined on the underlying type. For instance,
   x == y    // uses Int equality for the comparison.
 ```
 
-### Top-level Opaque Types
+## Top-level Opaque Types
 
 An opaque type alias on the top-level is transparent in all other top-level definitions in the sourcefile where it appears, but is opaque in nested
 objects and classes and in all other source files. Example:
@@ -107,7 +107,7 @@ object obj:
 The opaque type alias `A` is transparent in its scope, which includes the definition of `x`, but not the definitions of `obj` and `y`.
 
 
-### Relationship to SIP 35
+## Relationship to SIP 35
 
 Opaque types in Scala 3 are an evolution from what is described in
 [Scala SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
