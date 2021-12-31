@@ -203,7 +203,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else if Config.printCaptureSetsAsPrefix then
           changePrec(GlobalPrec)(box ~ toText(refs) ~ " " ~ toText(parent))
         else
-          changePrec(InfixPrec)(toText(parent) ~ " retains " ~ box ~ toText(refs.toRetainsTypeArg))
+          def toRetainsTypeArg(refs: CaptureSet): Type =
+            assert(refs.isConst)
+            ((NoType: Type) /: refs.elems) ((tp, ref) =>
+              if tp.exists then OrType(tp, ref, soft = false) else ref)
+          changePrec(InfixPrec) {
+            toText(parent) ~ " retains " ~ box ~ toText(toRetainsTypeArg(refs))
+          }
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>

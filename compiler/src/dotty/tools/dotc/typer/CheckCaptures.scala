@@ -110,8 +110,9 @@ class CheckCaptures extends Recheck:
       override def traverse(t: Type) =
         t match
           case CapturingType(parent, refs: CaptureSet.Var, _) =>
-            if variance < 0 then capt.println(i"solving $t")
-            refs.solve(variance)
+            if variance < 0 then
+              capt.println(i"solving $t")
+              refs.solve(variance)
             traverse(parent)
           case t @ RefinedType(_, nme.apply, rinfo) if defn.isFunctionOrPolyType(t) =>
             traverse(rinfo)
@@ -177,7 +178,7 @@ class CheckCaptures extends Recheck:
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos)(using Context) =
       val res = elem.singletonCaptureSet.subCaptures(cs, frozen = false)
       if !res.isOK then
-        report.error(i"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking}", pos)
+        report.error(i"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking.showDetailed}", pos)
 
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos)(using Context) =
       val res = cs1.subCaptures(cs2, frozen = false)
@@ -185,7 +186,7 @@ class CheckCaptures extends Recheck:
         def header =
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
           else i"references $cs1 are not all"
-        report.error(i"$header included in allowed capture set ${res.blocking}", pos)
+        report.error(i"$header included in allowed capture set ${res.blocking.showDetailed}", pos)
 
     override def recheckClosure(tree: Closure, pt: Type)(using Context): Type =
       val cs = capturedVars(tree.meth.symbol)

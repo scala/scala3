@@ -14,7 +14,7 @@ import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, Property}
 import util.common.alwaysTrue
-import scala.collection.mutable
+import scala.collection.{mutable, immutable}
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -49,6 +49,12 @@ sealed abstract class CaptureSet extends Showable:
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
 
+  final def isUniversal(using Context) =
+    elems.exists {
+      case ref: TermRef => ref.symbol == defn.captureRoot
+      case _ => false
+    }
+
   /** Cast to Const. @pre: isConst */
   def asConst: Const = this match
     case c: Const => c
@@ -56,13 +62,7 @@ sealed abstract class CaptureSet extends Showable:
       assert(v.isConst)
       Const(v.elems)
 
-  final def isUniversal(using Context) =
-    elems.exists {
-      case ref: TermRef => ref.symbol == defn.captureRoot
-      case _ => false
-    }
-
-  /** Cast to variable. @pre: !isConst */
+  /** Cast to variable. @pre: !isConst. Note that solved Vars have isConst = true as well */
   def asVar: Var =
     assert(!isConst)
     asInstanceOf[Var]
@@ -81,7 +81,12 @@ sealed abstract class CaptureSet extends Showable:
   /** If this is a variable, add `cs` as a super set */
   protected def addSuper(cs: CaptureSet)(using Context, VarState): CompareResult
 
-  /** If `cs` is a variable, add this capture set as one of its super sets */
+  /** If `cs` is a variable, add this capture set as one of its super sets
+   *  (without recording it in a VarState). This is used if
+   *   - the operation is performed outside a transaction, or
+   *   - the additions are all fresh capturesets that do not have a previous state
+   *     to record.
+   */
   protected def addSub(cs: CaptureSet)(using Context): this.type =
     cs.addSuper(this)(using ctx, UnrecordedState)
     this
@@ -159,14 +164,20 @@ sealed abstract class CaptureSet extends Showable:
   def **(that: CaptureSet)(using Context): CaptureSet =
     if this.subCaptures(that, frozen = true).isOK then this
     else if that.subCaptures(this, frozen = true).isOK then that
-    else if this.isConst && that.isConst then Const(elems.intersect(that.elems))
+    else if this.isConst && that.isConst then
+      Const(elems.intersect(that.elems))
+        // ^^^ that's actually too small. There could be references that
+        // are accounted for in both `this` and `that`, and that therefore should
+        // be in the intersection. The problem is how to find these references when
+        // they are not already a part of either set.
     else if that.isConst then Intersected(this.asVar, that)
     else Intersected(that.asVar, this)
 
   def -- (that: CaptureSet.Const)(using Context): CaptureSet =
-    val elems1 = elems.filter(!that.accountsFor(_))
-    if elems1.size == elems.size then this
-    else if this.isConst then Const(elems1)
+    if that.isAlwaysEmpty then this
+    else if this.isConst then
+      val elems1 = elems.filter(!that.accountsFor(_))
+      if elems1.size == elems.size then this else Const(elems1)
     else Diff(asVar, that)
 
   def - (ref: CaptureRef)(using Context): CaptureSet =
@@ -196,13 +207,14 @@ sealed abstract class CaptureSet extends Showable:
   /** An upper approximation of this capture set. This is the set itself
    *  except for real (non-mapped, non-filtered) capture set variables, where
    *  it is the intersection of all upper approximations of known supersets
-   *  of the variable.
+   *  of the variable. ^^^ also handle mapped and filtered variables
    *  The upper approximation is meaningful only if it is constant. If not,
    *  `upperApprox` can return an arbitrary capture set variable.
    */
   protected def upperApprox(origin: CaptureSet)(using Context): CaptureSet
 
-  protected def propagateSolved()(using Context): Unit = ()
+  /** Inform all dependencies that their source might have been solved */
+  protected def publishSolved()(using Context): Unit = ()
 
   /** This capture set with a description that tells where it comes from */
   def withDescription(description: String): CaptureSet
@@ -210,21 +222,20 @@ sealed abstract class CaptureSet extends Showable:
   /** The provided description (using `withDescription`) for this capture set or else "" */
   def description: String
 
-  def toRetainsTypeArg(using Context): Type =
-    assert(isConst)
-    ((NoType: Type) /: elems) ((tp, ref) =>
-      if tp.exists then OrType(tp, ref, soft = false) else ref)
+  /** Show the set including its description */
+  def showDetailed(using Context): String =
+    if description.isEmpty then show else s"$show $description"
 
   def toRegularAnnotation(using Context): Annotation  =
     Annotation(CaptureAnnotation(this, boxed = false).tree)
 
   override def toText(printer: Printer): Text =
-    Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}") ~~ description
+    Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}")
 
 object CaptureSet:
   type Refs = SimpleIdentitySet[CaptureRef]
   type Vars = SimpleIdentitySet[Var]
-  type Deps = SimpleIdentitySet[CaptureSet]
+  type Supers = SimpleIdentitySet[CaptureSet]
 
   /** If set to `true`, capture stack traces that tell us where sets are created */
   private final val debugSets = false
@@ -234,9 +245,11 @@ object CaptureSet:
 
   val empty: CaptureSet.Const = Const(emptySet)
 
+  @sharable private val emptyDerived: Array[DerivedVar] = Array.empty
+
   /** The universal capture set `{*}` */
   def universal(using Context): CaptureSet =
-    defn.captureRoot.termRef.singletonCaptureSet
+    defn.captureRootRef.singletonCaptureSet
 
   /** Used as a recursion brake */
   @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
@@ -273,46 +286,68 @@ object CaptureSet:
     private var isSolved: Boolean = false
 
     var elems: Refs = initialElems
-    var deps: Deps = emptySet
+    var supers: Supers = emptySet
+    private var derived: Array[DerivedVar] = emptyDerived
+    private var nderived: Int = 0
+    private var derivedsCache: Seq[DerivedVar] = Nil
+    var description: String = ""
+
     def isConst = isSolved
     def isAlwaysEmpty = false
 
-    var description: String = ""
+    def addDerived(cs: DerivedVar): Unit =
+      if nderived == derived.length then
+        val newDerived = new Array[DerivedVar](nderived * 2 max 4)
+        derived.copyToArray(newDerived)
+        derived = newDerived
+      derived(nderived) = cs
+      nderived += 1
+
+    def deriveds: Seq[DerivedVar] =
+      if derivedsCache.length != nderived then
+        derivedsCache = new immutable.IndexedSeq:
+          def apply(i: Int) = derived(i)
+          def length = nderived
+      derivedsCache
 
     private def recordElemsState()(using VarState): Boolean =
       varState.getElems(this) match
         case None => varState.putElems(this, elems)
         case _ => true
 
-    private[CaptureSet] def recordDepsState()(using VarState): Boolean =
-      varState.getDeps(this) match
-        case None => varState.putDeps(this, deps)
+    private[CaptureSet] def recordSupersState()(using VarState): Boolean =
+      varState.getSupers(this) match
+        case None => varState.putSupers(this, supers)
         case _ => true
 
     def resetElems()(using state: VarState): Unit =
       elems = state.elems(this)
 
-    def resetDeps()(using state: VarState): Unit =
-      deps = state.deps(this)
+    def resetSupers()(using state: VarState): Unit =
+      supers = state.supers(this)
 
     def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       if !isConst && recordElemsState() then
         elems ++= newElems
         // assert(id != 2 || elems.size != 2, this)
-        (CompareResult.OK /: deps) { (r, dep) =>
-          r.andAlso(dep.tryInclude(newElems, this))
+        val superResult = (CompareResult.OK /: supers) { (r, sup) =>
+          r.andAlso(sup.tryInclude(newElems, this))
+        }
+        deriveds.foldLeft(superResult) { (r, derivd) =>
+          r.andAlso(derivd.addElemsFromSource(newElems))
         }
       else
         CompareResult.fail(this)
 
     def addSuper(cs: CaptureSet)(using Context, VarState): CompareResult =
-      if (cs eq this) || cs.elems.contains(defn.captureRoot.termRef) || isConst then
+      if (cs eq this) || cs.elems.contains(defn.captureRootRef) || isConst then
         CompareResult.OK
-      else if recordDepsState() then
-        deps += cs
+      else if recordSupersState() then
+        supers += cs
         CompareResult.OK
       else
         CompareResult.fail(this)
+        // ^^^ need to propagate to mapped sets
 
     private var computingApprox = false
 
@@ -331,12 +366,13 @@ object CaptureSet:
       this
 
     protected def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
-      (universal /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }
+      (universal /: supers) { (acc, sup) => acc ** sup.upperApprox(this) }
 
+    /** Replace variable by its upper approximation */
     def solve(variance: Int)(using Context): Unit =
-      if variance < 0 && !isConst then
+      if !isConst then
         val approx = upperApprox(empty)
-        //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
+        //println(i"solving var $this $approx ${approx.isConst} supers = ${supers.toList}")
         if approx.isConst then
           val newElems = approx.elems -- elems
           if newElems.isEmpty || addNewElems(newElems, empty)(using ctx, VarState()).isOK then
@@ -344,7 +380,8 @@ object CaptureSet:
 
     def markSolved()(using Context): Unit =
       isSolved = true
-      deps.foreach(_.propagateSolved())
+      supers.foreach(_.publishSolved())
+      deriveds.foreach(_.publishSolved())
 
     protected def ids(using Context): String =
       val trail = this.match
@@ -364,9 +401,11 @@ object CaptureSet:
   extends Var(initialElems):
     def source: Var
 
-    addSub(source)
+    source.addDerived(this)
 
-    override def propagateSolved()(using Context) =
+    def addElemsFromSource(newElems: Refs)(using Context, VarState): CompareResult
+
+    override def publishSolved()(using Context) =
       if source.isConst && !isConst then markSolved()
   end DerivedVar
 
@@ -386,44 +425,44 @@ object CaptureSet:
               |${stack.mkString("\n")}"""
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      val added =
-        if origin eq source then
-          mapRefs(newElems, tm, variance)
-        else
-          if variance <= 0 && !origin.isConst && (origin ne initial) then
-            report.warning(i"trying to add elems $newElems from unrecognized source $origin of mapped set $this$whereCreated")
-            return CompareResult.fail(this)
-          Const(newElems)
-      super.addNewElems(added.elems, origin)
-        .andAlso {
-          if added.isConst then CompareResult.OK
-          else if added.asVar.recordDepsState() then { addSub(added); CompareResult.OK }
-          else CompareResult.fail(this)
-        }
+      if variance <= 0 && !origin.isConst && (origin ne initial) then
+        report.warning(i"trying to add elems $newElems from unrecognized source $origin of mapped set $this$whereCreated")
+        return CompareResult.fail(this)
+      super.addNewElems(newElems, origin)
+
+    def addElemsFromSource(newElems: Refs)(using Context, VarState): CompareResult =
+      val added = mapRefs(newElems, tm, variance)
+      tryInclude(added.elems, source).andAlso {
+        if added.isConst then CompareResult.OK
+        else if added.asVar.recordSupersState() then { addSub(added); CompareResult.OK }
+        else CompareResult.fail(this)
+      }
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
-      if source eq origin then universal
+      if origin eq source then universal
       else source.upperApprox(this).map(tm)
 
-    override def propagateSolved()(using Context) =
-      if initial.isConst then super.propagateSolved()
+    override def publishSolved()(using Context) =
+      if initial.isConst then super.publishSolved()
 
     override def toString = s"Mapped$id($source, elems = $elems)"
   end Mapped
 
+  /** A mapped variable obtained from a map that is invertible.
+   */
   class BiMapped private[CaptureSet]
     (val source: Var, bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends DerivedVar(initialElems):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      if origin eq source then
-        super.addNewElems(newElems.map(bimap.forward), origin)
-      else
-        super.addNewElems(newElems, origin)
-          .andAlso {
-            source.tryInclude(newElems.map(bimap.backward), this)
-              .showing(i"propagating new elems $newElems backward from $this to $source", capt)
-          }
+      super.addNewElems(newElems, origin)
+        .andAlso {
+          source.tryInclude(newElems.map(bimap.backward), this)
+            .showing(i"propagating new elems $newElems backward from $this to $source", capt)
+        }
+
+    def addElemsFromSource(newElems: Refs)(using Context, VarState): CompareResult =
+      super.addNewElems(newElems.map(bimap.forward), source)
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       val supApprox = super.computeApprox(this)
@@ -438,8 +477,8 @@ object CaptureSet:
     (val source: Var, p: CaptureRef => Boolean)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.elems.filter(p)):
 
-    override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      super.addNewElems(newElems.filter(p), origin)
+    def addElemsFromSource(newElems: Refs)(using Context, VarState): CompareResult =
+      tryInclude(newElems.filter(p), source)
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if source eq origin then universal
@@ -461,10 +500,13 @@ object CaptureSet:
     val r1 = tm(r)
     val upper = r1.captureSet
     def isExact =
-      upper.isAlwaysEmpty || upper.isConst && upper.elems.size == 1 && upper.elems.contains(r1)
+      upper.isAlwaysEmpty
+      || upper.isConst && upper.elems.size == 1 && upper.elems.contains(r1)
+          // i.e. r1.captureSet = {r1}. Q: Is there a simpler way to say this?
     if variance > 0 || isExact then upper
     else if variance < 0 then CaptureSet.empty
     else assert(false, i"trying to add $upper from $r via ${tm.getClass} in a non-variant setting")
+      // TODO: handle this case
 
   def mapRefs(xs: Refs, f: CaptureRef => CaptureSet)(using Context): CaptureSet =
     ((empty: CaptureSet) /: xs)((cs, x) => cs ++ f(x))
@@ -485,33 +527,43 @@ object CaptureSet:
       def show: String = if result.isOK then "OK" else result.toString
       def andAlso(op: Context ?=> Type)(using Context): Type = if result.isOK then op else result
 
+  /** Keeps track of the state of variables before the current transaction.
+   *  A transaction is a call to subCaptures which, if successful, changes the
+   *  state of variables
+   */
   class VarState:
     private val elemsMap: util.EqHashMap[Var, Refs] = new util.EqHashMap
-    private val depsMap: util.EqHashMap[Var, Deps] = new util.EqHashMap
+    private val supersMap: util.EqHashMap[Var, Supers] = new util.EqHashMap
 
+    /** The elements of variables */
     def elems(v: Var): Refs = elemsMap(v)
     def getElems(v: Var): Option[Refs] = elemsMap.get(v)
     def putElems(v: Var, elems: Refs): Boolean = { elemsMap(v) = elems; true }
 
-    def deps(v: Var): Deps = depsMap(v)
-    def getDeps(v: Var): Option[Deps] = depsMap.get(v)
-    def putDeps(v: Var, deps: Deps): Boolean = { depsMap(v) = deps; true }
+    /** The supersets of variables */
+    def supers(v: Var): Supers = supersMap(v)
+    def getSupers(v: Var): Option[Supers] = supersMap.get(v)
+    def putSupers(v: Var, supers: Supers): Boolean = { supersMap(v) = supers; true }
 
     def abort(): Unit =
       elemsMap.keysIterator.foreach(_.resetElems()(using this))
-      depsMap.keysIterator.foreach(_.resetDeps()(using this))
+      supersMap.keysIterator.foreach(_.resetSupers()(using this))
   end VarState
 
+  /** A frozen state does not admit any snaptshots of elements or supersets */
   @sharable
   object FrozenState extends VarState:
     override def putElems(v: Var, refs: Refs) = false
-    override def putDeps(v: Var, deps: Deps) = false
+    override def putSupers(v: Var, supers: Supers) = false
     override def abort(): Unit = ()
 
+  /** A varstate that does not do any recordings; used for actions outside
+   *  a transaction
+   */
   @sharable
   object UnrecordedState extends VarState:
     override def putElems(v: Var, refs: Refs) = true
-    override def putDeps(v: Var, deps: Deps) = true
+    override def putSupers(v: Var, supers: Supers) = true
     override def abort(): Unit = ()
 
   def varState(using state: VarState): VarState = state
@@ -592,17 +644,20 @@ object CaptureSet:
             val cv = todo.dequeue()
             if !reachable.contains(cv) then
               reachable += cv
-              cv.deps.foreach {
+              cv.supers.foreach {
                 case cv: Var => incl(cv)
                 case _ =>
               }
+              cv.deriveds.foreach(incl)
               cv match
                 case cv: DerivedVar => incl(cv.source)
                 case _ =>
           val allVars = reachable.toArray.sortBy(_.id)
-          println(i"Capture set dependencies:")
+          println(i"Capture set dependencies: set :: superset :: dependent")
           for cv <- allVars do
-            println(i"  ${cv.show.padTo(20, ' ')} :: ${cv.deps.toList}%, %")
+            def depString(kind: String, deps: Seq[CaptureSet]) =
+              if deps.isEmpty then "" else i", $kind = $deps%, %"
+            println(i"  ${cv.show.padTo(20, ' ')}${depString("supersets", cv.supers.toList)}${depString("derived", cv.deriveds)}")
       }
     else op
 end CaptureSet

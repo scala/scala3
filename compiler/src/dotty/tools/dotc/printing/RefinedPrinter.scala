@@ -935,10 +935,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
     val parentsText = Text(impl.parents.map(constrText), if (ofNew) keywordStr(" with ") else ", ")
     val derivedText = Text(impl.derived.map(toText(_)), ", ")
-    val selfText = {
-      val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
-      (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
-    }.provided(!self.isEmpty)
+    val selfText =
+      if self.isEmpty then
+        if ctx.settings.Ycc.value && ctx.phase == Phases.checkCapturesPhase then
+          (keywordStr("this") ~ ": " ~ toText(impl.symbol.owner.asClass.givenSelfType) ~ " =>").close
+        else Str("")
+      else
+        val selfName = if (self.name == nme.WILDCARD) keywordStr("this") else self.name.toString
+        (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
     val body = if (ctx.settings.YtestPickler.value) {
       // Pickling/unpickling reorders the body members, so we need to homogenize
       val (params, rest) = impl.body partition {
