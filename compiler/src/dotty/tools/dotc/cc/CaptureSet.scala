@@ -286,7 +286,7 @@ object CaptureSet:
     private var isSolved: Boolean = false
 
     var elems: Refs = initialElems
-    var supers: Supers = emptySet
+    private var mySupers: Supers = emptySet
     private var derived: Array[DerivedVar] = emptyDerived
     private var nderived: Int = 0
     private var derivedsCache: Seq[DerivedVar] = Nil
@@ -294,6 +294,7 @@ object CaptureSet:
 
     def isConst = isSolved
     def isAlwaysEmpty = false
+    def supers(using Context) = mySupers
 
     def addDerived(cs: DerivedVar): Unit =
       if nderived == derived.length then
@@ -315,7 +316,7 @@ object CaptureSet:
         case None => varState.putElems(this, elems)
         case _ => true
 
-    private[CaptureSet] def recordSupersState()(using VarState): Boolean =
+    private[CaptureSet] def recordSupersState()(using Context, VarState): Boolean =
       varState.getSupers(this) match
         case None => varState.putSupers(this, supers)
         case _ => true
@@ -324,7 +325,7 @@ object CaptureSet:
       elems = state.elems(this)
 
     def resetSupers()(using state: VarState): Unit =
-      supers = state.supers(this)
+      mySupers = state.supers(this)
 
     def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       if !isConst && recordElemsState() then
@@ -343,11 +344,12 @@ object CaptureSet:
       if (cs eq this) || cs.elems.contains(defn.captureRootRef) || isConst then
         CompareResult.OK
       else if recordSupersState() then
-        supers += cs
+        mySupers += cs
+        for case derived: OneWayDerived <- deriveds do
+          derived.addTransformedSuper(cs)
         CompareResult.OK
       else
         CompareResult.fail(this)
-        // ^^^ need to propagate to mapped sets
 
     private var computingApprox = false
 
@@ -409,12 +411,42 @@ object CaptureSet:
       if source.isConst && !isConst then markSolved()
   end DerivedVar
 
+  abstract class OneWayDerived(initialElems: Refs)(using @constructorOnly ctx: Context)
+  extends DerivedVar(initialElems):
+
+    private var initialized = false
+
+    override def supers(using ctx1: Context) =
+      if !initialized then
+        initialized = true
+        source.supers.foreach(addTransformedSuper(_)(using ctx1, UnrecordedState))
+      super.supers
+
+    /** Is this `sup` a transformed super set of this set?
+     *  @pre  `sup` is derived from a superset of this capture set. So all we
+     *        need to check here is whether it is derived with the same mapping as
+     *        this set.
+     */
+    def isTransformedSuper(sup: DerivedVar): Boolean
+
+    /** A set that maps `newSource` in the same way as this set */
+    def withSource(newSource: CaptureSet)(using Context): CaptureSet
+
+    def addTransformedSuper(cs: CaptureSet)(using Context, VarState): CompareResult =
+      def isPresent = supers.exists {
+        case sup: DerivedVar => sup.source == cs && isTransformedSuper(sup)
+        case _ => false
+      }
+      if isPresent then CompareResult.OK else addSuper(withSource(cs))
+
+  end OneWayDerived
+
   /** A variable that changes when `source` changes, where all additional new elements are mapped
    *  using   ∪ { f(x) | x <- elems }
    */
   class Mapped private[CaptureSet]
-    (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
-  extends DerivedVar(initial.elems):
+    (val source: Var, val tm: TypeMap, val variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
+  extends OneWayDerived(initial.elems):
     addSub(initial)
     val stack = if debugSets then (new Throwable).getStackTrace().take(20) else null
 
@@ -424,12 +456,6 @@ object CaptureSet:
               |Stack trace of variable creation:"
               |${stack.mkString("\n")}"""
 
-    override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      if variance <= 0 && !origin.isConst && (origin ne initial) then
-        report.warning(i"trying to add elems $newElems from unrecognized source $origin of mapped set $this$whereCreated")
-        return CompareResult.fail(this)
-      super.addNewElems(newElems, origin)
-
     def addElemsFromSource(newElems: Refs)(using Context, VarState): CompareResult =
       val added = mapRefs(newElems, tm, variance)
       tryInclude(added.elems, source).andAlso {
@@ -438,9 +464,17 @@ object CaptureSet:
         else CompareResult.fail(this)
       }
 
+    def isTransformedSuper(sup: DerivedVar): Boolean = sup match
+      case sup: Mapped => sup.tm == tm && sup.variance == variance
+      case _ => false
+
+    def withSource(newSource: CaptureSet)(using Context): CaptureSet =
+      if newSource.isConst then mapRefs(newSource.elems, tm, variance)
+      else Mapped(newSource.asVar, tm, variance, mapRefs(newSource.elems, tm, variance))
+
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if origin eq source then universal
-      else source.upperApprox(this).map(tm)
+      else source.upperApprox(this).map(tm) // ^^^ use upper directly
 
     override def publishSolved()(using Context) =
       if initial.isConst then super.publishSolved()
@@ -474,11 +508,18 @@ object CaptureSet:
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
-    (val source: Var, p: CaptureRef => Boolean)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.elems.filter(p)):
+    (val source: Var, val p: CaptureRef => Boolean)(using @constructorOnly ctx: Context)
+  extends OneWayDerived(source.elems.filter(p)):
 
     def addElemsFromSource(newElems: Refs)(using Context, VarState): CompareResult =
       tryInclude(newElems.filter(p), source)
+
+    def isTransformedSuper(sup: DerivedVar): Boolean = sup match
+      case sup: Filtered => sup.p eq p
+      case _ => false
+
+    def withSource(newSource: CaptureSet)(using Context): CaptureSet =
+      newSource.filter(p)
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if source eq origin then universal
@@ -488,13 +529,21 @@ object CaptureSet:
   end Filtered
 
   /** A variable with elements given at any time as { x <- source.elems | !other.accountsFor(x) } */
-  class Diff(source: Var, other: Const)(using Context)
-  extends Filtered(source, !other.accountsFor(_))
+  class Diff(source: Var, val other: Const)(using Context)
+  extends Filtered(source, !other.accountsFor(_)):
+    override def isTransformedSuper(sup: DerivedVar): Boolean = sup match
+      case sup: Diff => sup.other =:= other
+      case _ => false
+  end Diff
 
   /** A variable with elements given at any time as { x <- source.elems | other.accountsFor(x) } */
-  class Intersected(source: Var, other: CaptureSet)(using Context)
+  class Intersected(source: Var, val other: CaptureSet)(using Context)
   extends Filtered(source, other.accountsFor(_)):
     addSub(other)
+    override def isTransformedSuper(sup: DerivedVar): Boolean = sup match
+      case sup: Intersected => sup.other eq other
+      case _ => false
+  end Intersected
 
   def extrapolateCaptureRef(r: CaptureRef, tm: TypeMap, variance: Int)(using Context): CaptureSet =
     val r1 = tm(r)
