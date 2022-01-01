@@ -26,6 +26,8 @@ Defining an implicit conversion will emit a warning unless the import
 `scala.language.implicitConversions` is in scope, or the flag
 `-language:implicitConversions` is given to the compiler.
 
+Conversion can no longer be defined as a value of type `T => S`.
+
 ## Examples
 
 The first example is taken from `scala.Predef`. Thanks to this
