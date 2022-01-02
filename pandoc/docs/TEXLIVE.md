@@ -31,7 +31,7 @@ In the next sections we describe our setup of [TeX Live 2020][tex_live] in the M
 - [Docker](#docker) (Ubuntu)
 <div style="font-size:90%;margin:-10px 0 0 24px;"><sup>(*)</sup> Previous versions not tested (tested Windows 10 environments : <a href="https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/windows-commands#command-shell-overview">Windows Command Prompt</a> and MSYS2 Bash Shell).</div>
 
-## <span id="windows">Setting up TeX Live 2020 on MS Windows 10</span> 
+## <span id="windows">Setting up TeX Live 2021 on MS Windows 10</span> 
 
 We start with the following two steps :
 
@@ -66,22 +66,22 @@ We can now do a quick check of our LaTeX installation :
 Microsoft Windows [version 10.0.18363.1316]
 &nbsp;
 <b>&gt; <a href="https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/where">where</a> /r %TEXLIVE_HOME%\bin *latex.exe</b>
-c:\opt\texlive\2020\bin\win32\dvilualatex.exe
-c:\opt\texlive\2020\bin\win32\latex.exe
-c:\opt\texlive\2020\bin\win32\lualatex.exe
-c:\opt\texlive\2020\bin\win32\pdflatex.exe
+c:\opt\texlive\2021\bin\win32\dvilualatex.exe
+c:\opt\texlive\2021\bin\win32\latex.exe
+c:\opt\texlive\2021\bin\win32\lualatex.exe
+c:\opt\texlive\2021\bin\win32\pdflatex.exe
 &nbsp;
 <b>&gt; %TEXLIVE_HOME%\bin\win32\lualatex.exe --version | findstr Version</b>
-This is LuaHBTeX, Version 1.12.0 (TeX Live 2020/W32TeX)
+This is LuaHBTeX, Version 1.13.2 (TeX Live 2020/W32TeX)
 &nbsp;
 <b>&gt; <a href="https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/where">where</a> /r %PANDOC_HOME% *.exe</b>
-c:\opt\pandoc-2.11.4\pandoc.exe
+c:\opt\pandoc-2.16.2\pandoc.exe
 </pre>
 
 > **:mag_right:** One may be curious about the directory sizes after performing the above installation steps :
 > <pre style="font-size:90%; max-width:584px;">
-> <b>&gt; powershell -c "function f{param($path);$n=[math]::Round((ls -r $path | measure -sum Length).sum/1024/1024);\"{0,4}M $path\" -f $n};f('c:\opt\texlive\2020');f('c:\opt\texlive\texmf-local')"</b>
-> 354M c:\opt\texlive\2020
+> <b>&gt; powershell -c "function f{param($path);$n=[math]::Round((ls -r $path | measure -sum Length).sum/1024/1024);\"{0,4}M $path\" -f $n};f('c:\opt\texlive\2021');f('c:\opt\texlive\texmf-local')"</b>
+> 354M c:\opt\texlive\2021
 >  48M c:\opt\texlive\texmf-local
 > </pre>
 
@@ -118,13 +118,13 @@ We can now do a quick check of our LaTeX installation :
 4.4.0-18362-Microsoft x86_64 GNU/Linux
 &nbsp;
 <b>$ <a href="https://man7.org/linux/man-pages/man1/find.1.html">find</a> $TEXLIVE_HOME/bin -name *latex</b>
-/opt/texlive/2020//bin/x86_64-linux/dvilualatex
-/opt/texlive/2020//bin/x86_64-linux/latex
-/opt/texlive/2020//bin/x86_64-linux/lualatex
-/opt/texlive/2020//bin/x86_64-linux/pdflatex
+/opt/texlive/2021/bin/x86_64-linux/dvilualatex
+/opt/texlive/2021/bin/x86_64-linux/latex
+/opt/texlive/2021/bin/x86_64-linux/lualatex
+/opt/texlive/2021/bin/x86_64-linux/pdflatex
 &nbsp;
-<b>$ /opt/texlive/2020//bin/x86_64-linux/lualatex --version | grep Version</b>
-This is LuaHBTeX, Version 1.12.0 (TeX Live 2020)
+<b>$ /opt/texlive/2021//bin/x86_64-linux/lualatex --version | grep Version</b>
+This is LuaHBTeX, Version 1.13.2 (TeX Live 2020)
 </pre>
 
 > **:mag_right:** One may be curious about the directory sizes after performing the above installation steps :
@@ -143,7 +143,7 @@ We use [`pandoc/ubuntu-latex`][docker_pandoc], a Ubuntu based image which bundle
 <!--
 ## <span id="footnotes">Footnotes</span>
 
-<b name="footnote_01">[1]</b> ***Pandoc software*** [↩](#anchor_01)
+<span id="footnote_01">[1]</span> ***Pandoc software*** [↩](#anchor_01)
 
 <p style="margin:0 0 1em 20px;">
  (version: 2.11.3.2, compressed size: 240.96 MB)
@@ -151,7 +151,7 @@ We use [`pandoc/ubuntu-latex`][docker_pandoc], a Ubuntu based image which bundle
 -->
 ***
 
-*[mics](https://github.com/michelou/)/January 2021* [**&#9650;**](#top "Back to top")
+*[mics](https://github.com/michelou/)/January 2022* [**&#9650;**](#top "Back to top")
 <span id="bottom">&nbsp;</span>
 
 [docker_entrypoint]: https://docs.docker.com/engine/reference/builder/#entrypoint "ENTRYPOINT instruction"

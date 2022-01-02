@@ -32,14 +32,14 @@ The generated PDF file is more elaborated than its sibling HTML version; unlike 
 
 This project depends on the following software :
 
-- [Pandoc 2](https://github.com/jgm/pandoc/releases) <sup id="anchor_01">[[1]](#footnote_01)</sup> *([release notes](https://pandoc.org/releases.html))*
-- [TeX Live 2020](https://tug.org/texlive/) <sup id="anchor_02">[[2]](#footnote_02)</sup> *([release notes](http://www.tug.org/texlive/doc/texlive-en/texlive-en.html#x1-880009.2))*
+- [Pandoc 2](https://github.com/jgm/pandoc/releases) <sup id="anchor_01">[1](#footnote_01)</sup> *([release notes](https://pandoc.org/releases.html))*
+- [TeX Live 2021](https://tug.org/texlive/) <sup id="anchor_02">[2](#footnote_02)</sup> *([release notes](http://www.tug.org/texlive/doc/texlive-en/texlive-en.html#x1-880009.2))*
 
 > See documents [`PANDOC.md`](docs/PANDOC.md) and [`TEXLIVE.md`](docs/TEXLIVE.md) for product specific information, e.g. software installation.
 
 One may also install the following software:
 
-- [Docker Desktop 3](https://docs.docker.com/get-docker/) <sup id="anchor_03">[[3]](#footnote_03)</sup> *([release notes](https://docs.docker.com/release-notes/))*
+- [Docker Desktop 3](https://docs.docker.com/get-docker/) <sup id="anchor_03">[3](#footnote_03)</sup> *([release notes](https://docs.docker.com/release-notes/))*
 
 > See document [`DOCKER.md`](docs/DOCKER.md) for further information, e.g. `Dockerfile` usage.
 
@@ -60,26 +60,26 @@ We also provide support for cloud development/deployment :
 
 <span id="footnote_01">[1]</span> ***Pandoc software*** [↩](#anchor_01)
 
-<p style="margin:0 0 1em 20px;">
+<dl><dd>
 <a href="https://pandoc.org/">Pandoc</a> is both a library and a command line tool for converting files from one markup format into another. Through the command line option <a href="https://pandoc.org/MANUAL.html#option--pdf-engine"><code>--pdf-engine=&lt;path&gt;</code></a> Pandoc supports many PDF engines, among others <a href="https://linux.die.net/man/1/pdflatex"><code>pdflatex</code></a>, <a href="http://www.luatex.org/"><code>lualatex</code></a> and <code>xelatex</code>.
-</p>
+</dd></dl>
 
 <span id="footnote_02">[2]</span> ***MiKTeX software*** [↩](#anchor_02)
 
-<p style="margin:0 0 1em 20px;">
+<dl><dd>
 As an alternative to <a href="https://tug.org/texlive/">TeX Live 2020</a> one may also use the <a href="https://miktex.org/">MiKTeX</a> distribution <i>(<a href="https://miktex.org/announcement/miktex-20-12">release notes</a>)</i> which we have tested on both MS Windows 10 and <a href="https://www.msys2.org/">MSYS2</a>.
-</p>
+</dd></dl>
 
 <span id="footnote_03">[3]</span> ***Docker software*** [↩](#anchor_03)
 
-<p style="margin:0 0 1em 20px;">
+<dl><dd>
 We run <a href="https://docs.docker.com/docker-for-windows/install/">Docker Desktop for Windows</a> on our development machine.<br/>
 Note that WSL 2 is required to interact with Docker on Windows from <a href="https://ubuntu.com/wsl">Ubuntu for WSL</a> (see documentation <a href="https://docs.docker.com/docker-for-windows/wsl/">Docker Desktop WSL 2 backend</a>).
-</p>
+</dd></dl>
 
 ***
 
-*[mics](https://github.com/michelou/)/January 2021* [**&#9650;**](#top "Back to top")
+*[mics](https://github.com/michelou/)/January 2022* [**&#9650;**](#top "Back to top")
 <span id="bottom">&nbsp;</span>
 
 [github_dotty]: https://github.com/lampepfl/dotty/#dotty

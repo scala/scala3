@@ -3,7 +3,7 @@
 
 Command [`docker image inspect`][docker_inspect] helps us to get information out of the [`pandoc/ubuntu-latex`][docker_pandoc] image, e.g. to know the values of the [`ENV`][docker_env] and [`ENTRYPOINT`][docker_entrypoint] instructions :
 
-<pre style="font-size:90%; max-width:680px;">
+<pre style="font-size:80%; max-width:680px;">
 <b>&gt; <a href="https://docs.docker.com/engine/reference/commandline/image_inspect/">docker image inspect</a> --format "{{.Config.<b style="color:darkred;">Env</b>}}" pandoc/ubuntu-latex:2.11.4</b>
 [PATH=/opt/texlive/texdir/bin/x86_64-linux:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]
 &nbsp;
@@ -13,7 +13,7 @@ Command [`docker image inspect`][docker_inspect] helps us to get information out
 
 Let us now check that both commands [`pandoc`][pandoc_command] and [`lualatex`][lualatex] are available in the running container :
 
-<pre style="font-size:90%; max-width:680px;">
+<pre style="font-size:80%; max-width:680px;">
 <b>&gt; <a href="https://docs.docker.com/engine/reference/commandline/run/">docker run</a> --rm --entrypoint lualatex pandoc/ubuntu-latex:2.11.4 --version | findstr Version</b>
 This is LuaHBTeX, Version 1.12.0 (TeX Live 2020)
 &nbsp;
@@ -34,7 +34,7 @@ At this point we face the same situation as in the previous environments where s
 
 We create a [`Dockerfile`](../Dockerfile) document which adds a layer with our additions on top on the [`pandoc/ubuntu-latex`][docker_pandoc] image. We reproduce below a simplified version :
 
-<pre style="font-size:90%; max-width:600px;">
+<pre style="font-size:80%; max-width:600px;">
 <a href="https://docs.docker.com/engine/reference/builder/#from"><b>FROM</b></a> <a href="https://hub.docker.com/r/pandoc/ubuntu-latex">pandoc/ubuntu-latex:2.11.4</a>
 <a href="https://docs.docker.com/engine/reference/builder/#workdir"><b>WORKDIR</b></a> /app
 <a href="https://docs.docker.com/engine/reference/builder/#copy"><b>COPY</b></a> ./data ./data
@@ -49,7 +49,7 @@ We create a [`Dockerfile`](../Dockerfile) document which adds a layer with our a
 
 Command [`docker images`][docker_images] displays the repository name, the tag name and the size of both images :
 
-<pre style="font-size:90%; max-width:600px;">
+<pre style="font-size:80%; max-width:600px;">
 <b>&gt; <a href="https://docs.docker.com/engine/reference/commandline/images/">docker images</a></b>
 REPOSITORY               TAG         IMAGE ID       CREATED          SIZE
 scala3/md2pdf            1.0         ec4bc8c273cd   19 minutes ago   861MB
@@ -58,7 +58,7 @@ pandoc/ubuntu-latex      2.11.4      fa20b6e6dfe6   5 days ago       799MB
 
 Finally, we can save both images as archive files with command [`docker save`][docker_save] (and [`gzip`][linux_gzip] for compression) :
 
-<pre style="font-size:90%; max-width:600px;">
+<pre style="font-size:80%; max-width:600px;">
 <b>&gt; <a href="https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/dir">dir</a> target\*tar* | <a href="https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/findstr">findstr</a> /b [0-9]</b>
 29.01.2021  23:34       813 513 216 pandoc_ubuntu-latex-2.11.4.tar
 29.01.2021  23:34       254 725 746 pandoc_ubuntu-latex-2.11.4.tar.gz
@@ -77,7 +77,7 @@ Finally, we can save both images as archive files with command [`docker save`][d
 -->
 ***
 
-*[mics](https://github.com/michelou/)/January 2021* [**&#9650;**](#top "Back to top")
+*[mics](https://github.com/michelou/)/January 2022* [**&#9650;**](#top "Back to top")
 <span id="bottom">&nbsp;</span>
 
 [docker_entrypoint]: https://docs.docker.com/engine/reference/builder/#entrypoint "ENTRYPOINT instruction"

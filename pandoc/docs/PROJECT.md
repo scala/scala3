@@ -92,25 +92,25 @@ The `pandoc/` directory is organized as follows:
 
 <span id="footnote_01">[1]</span> ***Pandoc filters*** [↩](#anchor_01)
 
-<p style="margin:0 0 1em 20px;">
+<dl><dd>
 <a href="https://pandoc.org/filters.html">Pandoc filters</a> can be written in any programming language (<a href="<a href="https://pandoc.org/lua-filters.html">Lua</a>, <a href="https://metacpan.org/pod/Pandoc::Filter">Perl</a>, <a href="https://github.com/vinai/pandocfilters-php">PHP</a>, <a href="https://pypi.org/project/pandocfilters/">Python</a>, <a href="https://cran.r-project.org/web/packages/pandocfilters/">R</a>, etc.). However using a <a href="https://pypi.org/project/pandocfilters/">Python-based Pandoc filter</a>, for instance, requires a Python installation to be present. Starting with version 2.0, <a href="https://pandoc.org/">Pandoc</a> makes it possible to write <a href="https://pandoc.org/lua-filters.html">filters in Lua</a> without any external dependencies.
-</p>
+</dd></dl>
 
 <span id="footnote_02">[2]</span> ***Kate syntax files*** [↩](#anchor_02)
 
-<p style="margin:0 0 1em 20px;">
+<dl><dd>
 File <a href="../data/templates/scala.xml"><code>data/templates/scala.xml</code></a> is derived from the Scala 2 syntax file <a href="https://github.com/KDE/syntax-highlighting/tree/master/data/syntax"><code>scala.xml</code></a> available from the <a href="https://github.com/KDE">KDE project</a>. Note that file <a href="../data/templates/scala.xml"><code>data/templates/scala.xml</code></a> <i>must be adapted</i> to any syntax change of the Scala 3 language.
-</p>
+</dd></dl>
 
 <span id="footnote_03">[3]</span> ***Pandoc templates*** [↩](#anchor_03)
 
-<p style="margin:0 0 1em 20px;">
+<dl><dd>
 File <a href="../data/templates/template.tex"><code>data/templates/template.tex</code></a> is derived from the default TeX template bundled with <a href="https://pandoc.org/">Pandoc</a>; for instance it contains additional LaTeX code to set up the title page.<br/>The default TeX template file bundled with <a href="https://pandoc.org/">Pandoc</a> can be saved with the following command : <code>$PANDOC_HOME/pandoc -D latex &gt; default-template.tex</code>.
-</p>
+</dd></dl>
 
 ***
 
-*[mics](https://github.com/michelou/)/January 2021* [**&#9650;**](#top "Back to top")
+*[mics](https://github.com/michelou/)/January 2022* [**&#9650;**](#top "Back to top")
 <span id="bottom">&nbsp;</span>
 
 [github_dotty]: https://github.com/lampepfl/dotty/#dotty

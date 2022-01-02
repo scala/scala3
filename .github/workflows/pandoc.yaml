@@ -11,25 +11,16 @@ jobs:
     steps:
       - name: Print environment
         run: |
+          env | grep GIT
           env | grep HOME
-
-  setenv:
-    needs: printenv
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Set up Pandoc
-        uses: docker://pandoc/latex:latest
-
-      - name: Check environment setup
-        run: |
           docker version --format '{{.Server.Version}}'
           docker run pandoc/latex:latest --version | grep ^pandoc
-          env | grep DOCKER
 
   build:
-    needs: setenv
+    needs: printenv
     runs-on: ubuntu-latest
+    container:
+      image: pandoc/latex:latest
     #if: "(    github.event_name == 'pull_request'
     #       && !contains(github.event.pull_request.body, '[skip ci]')
     #       && !contains(github.event.pull_request.body, '[skip docs]')
@@ -43,5 +34,7 @@ jobs:
 
       - name: Generate PDF reference documentation
         run: |
-          echo chmod +x ./pandoc/md2pdf
-          echo ./pandoc/md2pdf reference
+          pandoc --version | grep ^pandoc
+          find . -name md2pdf
+          chmod u+x ./pandoc/md2pdf
+          DEBUG=1 & ./pandoc/md2pdf reference
