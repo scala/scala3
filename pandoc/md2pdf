@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 ## Created by mics (https://github.com/michelou/) on December 2020.
 
@@ -6,7 +6,8 @@
 ## Subroutines
 
 getHome() {
-    local source="${BASH_SOURCE[0]}"
+    # local source="${BASH_SOURCE[0]}"
+    local source="$0"
     while [ -h "$source" ] ; do
         local linked="$(readlink "$source")"
         local dir="$( cd -P $(dirname "$source") && cd -P $(dirname "$linked") && pwd )"
@@ -67,15 +68,15 @@ fi
 
 LATEX=lualatex$EXT
 ## We only consider commands from the installation directory defined by TEXLIVE_HOME
-## LATEX_CMD="$(command -v $LATEX)"
-## if ! [ -x "$LATEX_CMD" ]; then
+LATEX_CMD="$(command -v $LATEX)"
+if ! [ -x "$LATEX_CMD" ]; then
     case $OS in
         Win) LATEX_CMD=$TEXLIVE_HOME/bin/win32/$LATEX ;;
         Mac) LATEX_CMD=$TEXLIVE_HOME/bin/x86_64-darwin/$LATEX ;;
         *)   LATEX_CMD=$TEXLIVE_HOME/bin/x86_64-linux/$LATEX
     esac
     [ -x "$LATEX_CMD" ] || { echo "$LATEX executable not found" 1>&2; exit 1; }
-## fi
+fi
 
 SOURCE_DIR=$(dirname "$PROG_HOME")/docs/docs
 DATA_DIR=$PROG_HOME/data
@@ -165,7 +166,8 @@ for f in $MD_FILES; do
     sed -e "s/\[\(.\+\)\](\(.*\/\)*\(.\+\)\.md)/[\1](#\3)/g" -e "s/\[\(.\+\)\](\(.*\/\)*\(.\+\)\.md)/[\1](#\3)/g" $IN_FILE > $OUT_FILE
 
     ## Markdown file contains image urls
-    if [[ "$OUT_FILE" =~ -nulls\.md$ ]]; then
+    #if [[ "$OUT_FILE" =~ -nulls\.md$ ]]; then
+    if [[ "$OUT_FILE" == *-nulls\.md* ]]; then
         TMP_FILE=$OUT_FILE.tmp
         cp "$OUT_FILE" "$TMP_FILE"
         [ $DEBUG ] && echo "Update file \"${OUT_FILE/$PROG_HOME\//}\"" 1>&2
