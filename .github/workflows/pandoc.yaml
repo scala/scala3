@@ -5,7 +5,16 @@ on:
     branches: [scala3-pandoc]
 
 jobs:
+  printenv:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print environment
+        run: |
+          env | grep HOME
+
   setenv:
+    needs: printenv
     runs-on: ubuntu-latest
 
     steps:
@@ -16,6 +25,7 @@ jobs:
         run: |
           docker version --format '{{.Server.Version}}'
           docker run pandoc/latex:latest --version | grep ^pandoc
+          env | grep DOCKER
 
   build:
     needs: setenv
