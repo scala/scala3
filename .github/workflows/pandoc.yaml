@@ -15,7 +15,7 @@ jobs:
       - name: Check environment setup
         run: |
           docker version --format '{{.Server.Version}}'
-          #docker run pandoc/latex:latest --version | grep ^pandoc
+          docker run pandoc/latex:latest --version | grep ^pandoc
 
   build:
     needs: setenv
@@ -33,5 +33,5 @@ jobs:
 
       - name: Generate PDF reference documentation
         run: |
-          chmod +x ./pandoc/md2pdf
-          ./pandoc/md2pdf reference
+          echo chmod +x ./pandoc/md2pdf
+          echo ./pandoc/md2pdf reference
