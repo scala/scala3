@@ -2,7 +2,7 @@ name: Pandoc
 
 on:
   push:
-    branches: [master]
+    branches: [scala3-pandoc]
 
 jobs:
   setenv:
