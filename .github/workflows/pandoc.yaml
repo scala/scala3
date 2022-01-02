@@ -14,7 +14,8 @@ jobs:
 
       - name: Check environment setup
         run: |
-          pandoc --version | grep ^pandoc
+          docker version --format '{{.Server.Version}}'
+          #docker run pandoc/latex:latest --version | grep ^pandoc
 
   build:
     needs: setenv
