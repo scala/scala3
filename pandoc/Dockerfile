@@ -28,7 +28,7 @@ RUN tlmgr install \
  tcolorbox \
  trimspaces
 
-RUN echo "#!/bin/bash \n ./md2pdf" > ./entrypoint.sh
+RUN echo "#!/bin/bash \n ./md2pdf \n ls /dotty/out/pandoc/" > ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 ENTRYPOINT [ "./entrypoint.sh" ]

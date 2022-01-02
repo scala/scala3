@@ -153,9 +153,12 @@ adapted from "java.xml" by Alfredo Luiz Foltran Fialho (alfoltran@ig.com.br)
         <Detect2Chars attribute="String Interpolation" context="StringInterpolatorF" char="f" char1="&quot;"/>
         <StringDetect attribute="Raw String" context="StringInterpolatorRaw" String="raw&quot;"/>
 
+        <WordDetect attribute="Keyword" context="SoftKeywordAs" String="as"/>
+        <WordDetect attribute="Keyword" context="SoftKeywordDerives" String="derives"/>
         <WordDetect attribute="Keyword" context="SoftKeywordEnd" String="end"/>
         <WordDetect attribute="Keyword" context="SoftKeywordErased" String="erased"/>
         <WordDetect attribute="Keyword" context="SoftKeywordExtension" String="extension"/>
+        <WordDetect attribute="Keyword" context="SoftKeywordInfix" String="infix"/>
         <WordDetect attribute="Keyword" context="SoftKeywordInline" String="inline"/>
         <WordDetect attribute="Keyword" context="SoftKeywordOpaque" String="opaque"/>
         <WordDetect attribute="Keyword" context="SoftKeywordOpen" String="open"/>
@@ -296,14 +299,23 @@ adapted from "java.xml" by Alfredo Luiz Foltran Fialho (alfoltran@ig.com.br)
         <DetectChar attribute="Raw String" context="#pop" char="&quot;"/>
       </context>
 
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordAs" fallthroughContext="#pop">
+        <RegExpr attribute="Keyword" context="#pop" String="[_a-zA-Z][0-9_a-zA-Z]*"/>
+      </context>
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordDerives" fallthroughContext="#pop">
+        <RegExpr attribute="Keyword" context="#pop" String="[_a-zA-Z][0-9_a-zA-Z]*"/>
+      </context>
       <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordEnd" fallthroughContext="#pop">
-        <RegExpr attribute="Normal Text" context="#pop" String="[_a-zA-Z][0-9_a-zA-Z]*"/>
+        <RegExpr attribute="Keyword" context="#pop" String="[_a-zA-Z][0-9_a-zA-Z]*"/>
       </context>
       <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordErased" fallthroughContext="#pop">
         <RegExpr attribute="Keyword" context="#pop" String="def|val"/>
       </context>
       <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordExtension" fallthroughContext="#pop">
-        <RegExpr attribute="Symbol" context="#pop" String="\(|\["/>
+        <RegExpr attribute="Keyword" context="#pop" String="\(|\["/>
+      </context>
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordInfix" fallthroughContext="#pop">
+        <RegExpr attribute="Keyword" context="#pop" String="type"/>
       </context>
       <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordInline" fallthroughContext="#pop">
         <RegExpr attribute="Keyword" context="#pop" String="def|given|val"/>
@@ -318,7 +330,7 @@ adapted from "java.xml" by Alfredo Luiz Foltran Fialho (alfoltran@ig.com.br)
         <RegExpr attribute="Keyword" context="#pop" String="(inline[\s]+)?def"/>
       </context>
       <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordUsing" fallthroughContext="#pop">
-        <RegExpr attribute="Normal Text" context="#pop" String="[_a-zA-Z][0-9_a-zA-Z]*"/>
+        <RegExpr attribute="Keyword" context="#pop" String="[_a-zA-Z][0-9_a-zA-Z]*"/>
       </context>
 
       <context attribute="Comment" lineEndContext="#pop" name="CommentSingleLine">
