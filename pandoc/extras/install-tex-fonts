@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 ## DEBUG=1
 
@@ -6,7 +6,8 @@
 ## Subroutines
 
 getHome() {
-    local source="${BASH_SOURCE[0]}"
+    # local source="${BASH_SOURCE[0]}"
+    local source="$0"
     while [ -h "$source" ] ; do
         local linked="$(readlink "$source")"
         local dir="$( cd -P $(dirname "$source") && cd -P $(dirname "$linked") && pwd )"
@@ -29,8 +30,8 @@ getOS() {
 
 download() {
     local status=0
-    ## Update path part '2021/01/20' to retrieve newer archive files
-    local archive_url=https://texlive.info/tlnet-archive/2021/01/20/tlnet/archive
+    ## Update path part '2022/01/04' to retrieve the latest archive files
+    local archive_url=https://texlive.info/tlnet-archive/2022/01/04/tlnet/archive
     local archive_files="dejavu environ fancyvrb fontspec gnu-freefont"
     archive_files="$archive_files l3backend l3kernel l3packages pgf"
     archive_files="$archive_files tcolorbox trimspaces unicode-math xcolor"
@@ -49,6 +50,8 @@ download() {
 }
 
 install() {
+    [ -d "$TEXMF_LOCAL_DIR" ] || mkdir -p "$TEXMF_LOCAL_DIR"
+
     local status=0
     for f in $(ls $DOWNLOADS_DIR/*.tar.xz); do
         local xz_file=$f
@@ -92,16 +95,13 @@ else
     XZ_CMD=xz
 fi
 TEXHASH=texhash$EXT
-## We only consider commands from the installation directory defined by TEXLIVE_HOME
-## TEXHASH_CMD="$(command -v $TEXHASH)"
-## if ! [ -x "$TEXHASH_CMD" ]; then
-    case $OS in
-        Win) TEXHASH_CMD=$TEXLIVE_HOME/bin/win32/$TEXHASH ;;
-        Mac) TEXHASH_CMD=$TEXLIVE_HOME/bin/x86_64-darwin/$TEXHASH ;;
-        *)   TEXHASH_CMD=$TEXLIVE_HOME/bin/x86_64-linux/$TEXHASH
-    esac
-    [ -x "$TEXHASH_CMD" ] || { echo "Error: $TEXHASH executable not found (check variable TEXLIVE_HOME)" >>$LOG_FILE; exit 1; }
-## fi
+## We give priority to commands from the installation directory defined by TEXLIVE_HOME
+if [ -d "$TEXLIVE_HOME" ]; then
+    TEXHASH_CMD="$(find $TEXLIVE_HOME $TEXHASH)"
+else
+    TEXHASH_CMD="$(command -v $TEXHASH)"
+fi
+[ -x "$TEXHASH_CMD" ] || { echo "Error: $TEXHASH executable not found (check variable TEXLIVE_HOME)" >>$LOG_FILE; exit 1; }
 
 BASENAME="$(basename "$0")"
 DOWNLOADS_DIR=$PROG_HOME/downloads
