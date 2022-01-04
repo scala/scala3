@@ -3619,6 +3619,8 @@ object Parsers {
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, joinParams(tparams, vparamss), parents.head, EmptyTree)
         else
+          if mods.is(Inline) then
+            syntaxError(i"`inline given` cannot be implemented using a `with`")
           val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
           val vparamss1 = vparamss.map(_.map(vparam =>
             vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
