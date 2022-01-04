@@ -9,12 +9,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Print environment
+      - name: Print Ubuntu environment
         run: |
           env | grep GIT
           env | grep HOME
           docker version --format '{{.Server.Version}}'
-          docker run pandoc/latex:latest --version | grep ^pandoc
+          #docker run pandoc/latex:latest --version | grep ^pandoc
 
   build:
     needs: printenv
@@ -32,9 +32,19 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
+      - name: Print Pandoc environment
+        run: |
+          #env | grep TEX
+          pandoc --version | grep ^pandoc
+
+      - name: Install additional TeX fonts
+        run: |
+          find . -name install-tex-fonts
+          chmod u+x ./pandoc/extras/install-tex-fonts
+          DEBUG=1 & ./pandoc/extras/install-tex-fonts
+
       - name: Generate PDF reference documentation
         run: |
-          pandoc --version | grep ^pandoc
           find . -name md2pdf
           chmod u+x ./pandoc/md2pdf
           DEBUG=1 & ./pandoc/md2pdf reference
