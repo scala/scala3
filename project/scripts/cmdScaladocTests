@@ -30,7 +30,7 @@ dist/target/pack/bin/scaladoc \
   "-skip-by-regex:.+\.internal($|\..+)" \
   "-skip-by-regex:.+\.impl($|\..+)" \
   -project-logo docs/logo.svg \
-  -social-links:github::https://github.com/lampepfl/dotty,gitter::https://gitter.im/scala/scala,twitter::https://twitter.com/scala_lang \
+  -social-links:github::https://github.com/lampepfl/dotty,discord::https://discord.com/invite/scala,twitter::https://twitter.com/scala_lang \
   -Ygenerate-inkuire \
   "-skip-by-id:scala.runtime.stdLibPatches" \
   "-skip-by-id:scala.runtime.MatchCase" \

@@ -119,12 +119,6 @@ pre, code {
   line-height: 1.75em;
 }
 
-/* gitter chat */
-.gitter-chat-embed {
-  top: 0;
-  bottom: 0;
-}
-
 aside {
   margin: 0;
   padding: 0;
