@@ -33,13 +33,11 @@ class EtaReduce extends MiniPhase:
         case Apply(Select(fn, nme.apply), args)
         if meth.paramss.head.corresponds(args)((param, arg) =>
               arg.isInstanceOf[Ident] && arg.symbol == param.symbol)
-            && isPurePath(fn) =>
-          val treeSym = tree.tpe.widen.typeSymbol
-          val fnSym = fn.tpe.widen.typeSymbol
-          if treeSym == fnSym && defn.isFunctionClass(fnSym) then
-            report.log(i"eta reducing $tree --> $fn")
-            fn
-          else tree
+            && isPurePath(fn)
+            && fn.tpe <:< tree.tpe
+            && defn.isFunctionClass(fn.tpe.widen.typeSymbol) =>
+          report.log(i"eta reducing $tree --> $fn")
+          fn
         case _ => tree
     case _ => tree
 
