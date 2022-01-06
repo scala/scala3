@@ -91,11 +91,6 @@ object PickledQuotes {
               val quotedType = typeHole(idx, reifiedArgs)
               PickledQuotes.quotedTypeToTree(quotedType)
           }
-        case tree: Select =>
-          // Retain selected members
-          val qual = transform(tree.qualifier)
-          qual.select(tree.symbol).withSpan(tree.span)
-
         case tree =>
           if tree.isDef then
             tree.symbol.annotations = tree.symbol.annotations.map {
