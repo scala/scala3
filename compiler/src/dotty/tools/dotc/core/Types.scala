@@ -1430,6 +1430,14 @@ object Types {
      */
     final def dealiasKeepOpaques(using Context): Type = dealias1(keepNever, keepOpaques = true)
 
+    /** Apply `f` to this type dealiased. If the type changes, keep the change,
+     *  otherwise return the original (not dealiased) type.
+     */
+    final def withDealiased(f: Type => Type)(using Context): Type =
+      val tpd = dealias
+      val result = f(tpd)
+      if result eq tpd then this else result
+
     /** Approximate this type with a type that does not contain skolem types. */
     final def deskolemized(using Context): Type =
       val deskolemizer = new ApproximatingTypeMap {
@@ -1478,10 +1486,9 @@ object Types {
     }
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
-    final def dropDependentRefinement(using Context): Type = dealias match {
+    final def dropDependentRefinement(using Context): Type = dealias match
       case RefinedType(parent, nme.apply, _) => parent
-      case tp => tp
-    }
+      case _ => this
 
     /** The type constructor of an applied type, otherwise the type itself */
     final def typeConstructor(using Context): Type = this match {

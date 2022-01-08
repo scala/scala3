@@ -451,8 +451,8 @@ object TypeOps:
       try
         tp match
           case tp: TermRef if toAvoid(tp) =>
-            tp.info.widenExpr.dealias match {
-              case info: SingletonType => apply(info)
+            tp.info.widenExpr.withDealiased {
+              case singleton: SingletonType => apply(singleton)
               case info => range(defn.NothingType, apply(info))
             }
           case tp: TypeRef if toAvoid(tp) =>
