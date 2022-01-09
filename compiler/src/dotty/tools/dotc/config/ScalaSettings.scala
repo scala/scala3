@@ -234,6 +234,8 @@ private sealed trait XSettings:
     def isTruthy(using Context) = XmixinForceForwarders.value == "true"
     def isAtLeastJunit(using Context) = isTruthy || XmixinForceForwarders.value == "junit"
   }
+
+  val XmacroSettings: Setting[List[String]] = MultiStringSetting("-Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 end XSettings
 
 /** -Y "Forking" as in forked tongue or "Private" settings */

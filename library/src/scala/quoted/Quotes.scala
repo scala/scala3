@@ -238,6 +238,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  This will be true when the macro is used in a transparent inline.
        */
       def isWhileTyping: Boolean
+
+      /** Expose macro-specific settings as a list of strings.
+       *  Settings can be set from command line with help of -Xmacro-settings options.
+       *
+       *  These will be used to expand any transparent macros or any non-transparent macro that is forced to expand while expanding the transparent macro.
+       *  Non-transparent macros are not guaranteed to be expanded with the same set of settings.
+       */
+      @experimental
+      def XmacroSettings: List[String]
     }
 
 
