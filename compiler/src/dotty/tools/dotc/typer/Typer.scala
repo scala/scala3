@@ -3854,6 +3854,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               gadts.println(i"Member selection healed by GADT approximation")
               tree.cast(gadtApprox)
             else tree
+          else if tree.tpe.derivesFrom(defn.PairClass) && !defn.isTupleNType(tree.tpe.widenDealias) then
+            // If this is a generic tuple we need to cast it to make the TupleN/ members accessible.
+            // This only works for generic tuples of know size up to 22.
+            defn.tupleTypes(tree.tpe.widenTermRefExpr, Definitions.MaxTupleArity) match
+              case Some(elems) => tree.cast(defn.tupleType(elems))
+              case None => tree
           else tree // other adaptations for selections are handled in typedSelect
         case _ if ctx.mode.is(Mode.ImplicitsEnabled) && tree.tpe.isValueType =>
           checkConversionsSpecific(pt, tree.srcPos)
