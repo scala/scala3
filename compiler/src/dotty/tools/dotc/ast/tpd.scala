@@ -7,6 +7,7 @@ import typer.ProtoTypes
 import transform.SymUtils._
 import transform.TypeUtils._
 import core._
+import Scopes.newScope
 import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
@@ -344,7 +345,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
       else parents
     val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
-        coord = fns.map(_.span).reduceLeft(_ union _))
+        newScope, coord = fns.map(_.span).reduceLeft(_ union _))
     val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
       val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm

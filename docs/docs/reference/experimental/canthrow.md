@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "CanThrow Abilities"
+title: "CanThrow Capabilities"
 movedTo: https://docs.scala-lang.org/scala3/reference/experimental/canthrow.html
 ---
 
@@ -275,3 +275,7 @@ And it would have many other applications besides: Exceptions are a special case
 But even without these additional mechanisms, exception checking is already useful as it is. It gives a clear path forward to make code that uses exceptions safer, better documented, and easier to refactor. The only loophole arises for scoped capabilities - here we have to verify manually that these capabilities do not escape. Specifically, a `try` always has to be placed in the same computation stage as the throws that it enables.
 
 Put another way: If the status quo is 0% static checking since 100% is too painful, then an alternative that gives you 95% static checking with great ergonomics looks like a win. And we might still get to 100% in the future.
+
+For more info, see also our [paper at the ACM Scala Symposium 2021](resources/safer-exceptions.pdf).
+
+

@@ -1674,23 +1674,19 @@ object Types {
       case _ => resultType
     }
 
-    /** Find the function type in union.
-     *  If there are multiple function types, NoType is returned.
+    /** Determine the expected function type from the prototype. If multiple
+     *  function types are found in a union or intersection, their intersection
+     *  is returned. If no function type is found, Any is returned.
      */
-    def findFunctionTypeInUnion(using Context): Type = this match {
-      case t: OrType =>
-        val t1 = t.tp1.findFunctionTypeInUnion
-        if t1 == NoType then t.tp2.findFunctionTypeInUnion else
-          val t2 = t.tp2.findFunctionTypeInUnion
-          // Returen NoType if the union contains multiple function types
-          if t2 == NoType then t1 else NoType
+    def findFunctionType(using Context): Type = dealias match
+      case tp: AndOrType =>
+        tp.tp1.findFunctionType & tp.tp2.findFunctionType
       case t if defn.isNonRefinedFunction(t) =>
         t
       case t @ SAMType(_) =>
         t
       case _ =>
-        NoType
-    }
+        defn.AnyType
 
     /** This type seen as a TypeBounds */
     final def bounds(using Context): TypeBounds = this match {
@@ -4670,9 +4666,17 @@ object Types {
    *
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
+   *  @param  nestingLevel  Symbols with a nestingLevel strictly greater than this
+   *                        will not appear in the instantiation of this type variable.
+   *                        This is enforced in `ConstraintHandling` by:
+   *                        - Maintaining the invariant that the `nonParamBounds`
+   *                          of a type variable never refer to a type with a
+   *                          greater `nestingLevel` (see `legalBound` for the reason
+   *                          why this cannot be delayed until instantiation).
+   *                        - On instantiation, replacing any param in the param bound
+   *                          with a level greater than nestingLevel (see `fullLowerBound`).
    */
-  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, nestingLevel: Int) extends CachedProxyType with ValueType {
-
+  final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, val nestingLevel: Int) extends CachedProxyType with ValueType {
     private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
@@ -4713,36 +4717,6 @@ object Types {
     /** Is the variable already instantiated? */
     def isInstantiated(using Context): Boolean = instanceOpt.exists
 
-    /** Avoid term references in `tp` to parameters or local variables that
-     *  are nested more deeply than the type variable itself.
-     */
-    private def avoidCaptures(tp: Type)(using Context): Type =
-      val problemSyms = new TypeAccumulator[Set[Symbol]]:
-        def apply(syms: Set[Symbol], t: Type): Set[Symbol] = t match
-          case ref @ TermRef(NoPrefix, _)
-          // AVOIDANCE TODO: Are there other problematic kinds of references?
-          // Our current tests only give us these, but we might need to generalize this.
-          if ref.symbol.maybeOwner.nestingLevel > nestingLevel =>
-            syms + ref.symbol
-          case _ =>
-            foldOver(syms, t)
-      val problems = problemSyms(Set.empty, tp)
-      if problems.isEmpty then tp
-      else
-        val atp = TypeOps.avoid(tp, problems.toList)
-        def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
-        typr.println(msg)
-        val bound = TypeComparer.fullUpperBound(origin)
-        if !(atp <:< bound) then
-          throw new TypeError(i"$msg,\nbut the latter type does not conform to the upper bound $bound")
-        atp
-      // AVOIDANCE TODO: This really works well only if variables are instantiated from below
-      // If we hit a problematic symbol while instantiating from above, then avoidance
-      // will widen the instance type further. This could yield an alias, which would be OK.
-      // But it also could yield a true super type which would then fail the bounds check
-      // and throw a TypeError. The right thing to do instead would be to avoid "downwards".
-      // To do this, we need first test cases for that situation.
-
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(using Context): Type = {
       assert(tp ne this, i"self instantiation of $origin, constraint = ${ctx.typerState.constraint}")
@@ -4767,7 +4741,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      val tp = avoidCaptures(TypeComparer.instanceType(origin, fromBelow))
+      val tp = TypeComparer.instanceType(origin, fromBelow)
       if myInst.exists then // The line above might have triggered instantiation of the current type variable
         myInst
       else
@@ -4809,8 +4783,8 @@ object Types {
     }
   }
   object TypeVar:
-    def apply(initOrigin: TypeParamRef, creatorState: TyperState)(using Context) =
-      new TypeVar(initOrigin, creatorState, ctx.owner.nestingLevel)
+    def apply(using Context)(initOrigin: TypeParamRef, creatorState: TyperState, nestingLevel: Int = ctx.nestingLevel) =
+      new TypeVar(initOrigin, creatorState, nestingLevel)
 
   type TypeVars = SimpleIdentitySet[TypeVar]
 
@@ -5945,12 +5919,13 @@ object Types {
             case Range(lo, hi) => range(bound.bounds.lo, bound.bounds.hi)
             case _ => tp.derivedMatchType(bound, scrutinee, cases)
 
-    override protected def derivedSkolemType(tp: SkolemType, info: Type): Type = info match {
-      case Range(lo, hi) =>
-        range(tp.derivedSkolemType(lo), tp.derivedSkolemType(hi))
-      case _ =>
-        tp.derivedSkolemType(info)
-    }
+    override protected def derivedSkolemType(tp: SkolemType, info: Type): Type =
+      if info eq tp.info then tp
+      // By definition, a skolem is neither a subtype nor a supertype of a
+      // different skolem. So, regardless of `variance`, we cannot return a
+      // fresh skolem when approximating an existing skolem, we can only return
+      // a range.
+      else range(defn.NothingType, info)
 
     override protected def derivedClassInfo(tp: ClassInfo, pre: Type): Type = {
       assert(!isRange(pre))

@@ -32,6 +32,14 @@ object NameTags extends TastyFormat.NameTags {
 
   inline val SETTER = 34         // A synthesized += suffix.
 
+  // Name of type variables created by `ConstraintHandling#LevelAvoidMap`.
+  final val AVOIDUPPER = 35
+  final val AVOIDLOWER = 36
+  final val AVOIDBOTH = 37
+
+  inline val EXPLICITFIELD = 38  // An explicitly named field, introduce to avoid a clash
+                                 // with a regular field of the underlying name
+
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
     case QUALIFIED => "QUALIFIED"

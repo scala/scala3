@@ -145,7 +145,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case m: Member if m.kind != Kind.RootPackage =>
           val descr = m.dri.asFileLocation
           def processMember(member: Member): Seq[JSON] =
-            val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
+            val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())().asInstanceOf[InlineSignatureBuilder]
             val sig = Signature(Plain(s"${member.kind.name} "), Plain(member.name)) ++ signatureBuilder.names.reverse
             val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr, member.kind.name)
             val children = member

@@ -62,8 +62,8 @@ class ClassfileParser(
 
   protected val staticModule: Symbol = moduleRoot.sourceModule(using ictx)
 
-  protected val instanceScope: MutableScope = newScope     // the scope of all instance definitions
-  protected val staticScope: MutableScope = newScope       // the scope of all static definitions
+  protected val instanceScope: MutableScope = newScope(0)     // the scope of all instance definitions
+  protected val staticScope: MutableScope = newScope(0)       // the scope of all static definitions
   protected var pool: ConstantPool = _              // the classfile's constant pool
 
   protected var currentClassName: SimpleName = _      // JVM name of the current class

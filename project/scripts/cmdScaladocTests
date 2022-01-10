@@ -30,13 +30,13 @@ dist/target/pack/bin/scaladoc \
   "-skip-by-regex:.+\.internal($|\..+)" \
   "-skip-by-regex:.+\.impl($|\..+)" \
   -project-logo docs/logo.svg \
-  -social-links:github::https://github.com/lampepfl/dotty,gitter::https://gitter.im/scala/scala,twitter::https://twitter.com/scala_lang \
+  -social-links:github::https://github.com/lampepfl/dotty,discord::https://discord.com/invite/scala,twitter::https://twitter.com/scala_lang \
   -Ygenerate-inkuire \
   "-skip-by-id:scala.runtime.stdLibPatches" \
   "-skip-by-id:scala.runtime.MatchCase" \
   "-snippet-compiler:scaladoc-testcases/docs=compile" \
   -siteroot scaladoc-testcases/docs \
-  -project-footer "Copyright (c) 2002-2021, LAMP/EPFL" \
+  -project-footer "Copyright (c) 2002-2022, LAMP/EPFL" \
   -default-template static-site-main \
   -author -groups -revision master -project-version "${DOTTY_BOOTSTRAPPED_VERSION}" \
   out/bootstrap/scaladoc-testcases/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/classes > "$tmp" 2>&1 || echo "generated testcases project with scripts"

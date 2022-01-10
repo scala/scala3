@@ -10,15 +10,16 @@ lower case letter*_ are for explanation of semantic content only, they
 can be dropped without changing the grammar.
 
 Micro-syntax:
-
+```none
   LongInt       = Digit* StopDigit        -- big endian 2's complement, value fits in a Long w/o overflow
   Int           = LongInt                 -- big endian 2's complement, fits in an Int w/o overflow
   Nat           = LongInt                 -- non-negative value, fits in an Int without overflow
   Digit         = 0 | ... | 127
   StopDigit     = 128 | ... | 255         -- value = digit - 128
+```
 
 Macro-format:
-
+```none
   File          = Header majorVersion_Nat minorVersion_Nat experimentalVersion_Nat VersionString UUID
                   nameTable_Length Name* Section*
   Header        = 0x5CA1AB1F
@@ -48,13 +49,14 @@ Macro-format:
                       // If positive, this is a NameRef for the fully qualified name of a term parameter.
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
+```
 
 Note: Unqualified names in the name table are strings. The context decides whether a name is
 a type-name or a term-name. The same string can represent both.
 
 
 Standard-Section: "ASTs" TopLevelStat*
-
+```none
   TopLevelStat  = PACKAGE        Length Path TopLevelStat*                         -- package path { topLevelStats }
                   Stat
 
@@ -220,22 +222,23 @@ Standard-Section: "ASTs" TopLevelStat*
                 | CONTRAVARIANT
 
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term             -- An annotation, given (class) type of constructor, and full application tree
+```
 
 Note: The signature of a SELECTin or TERMREFin node is the signature of the selected symbol,
       not the signature of the reference. The latter undergoes an asSeenFrom but the former
       does not.
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
-
+```none
   Category 1 (tags 1-59)   :  tag
   Category 2 (tags 60-89)  :  tag Nat
   Category 3 (tags 90-109) :  tag AST
   Category 4 (tags 110-127):  tag Nat AST
   Category 5 (tags 128-255):  tag Length <payload>
-
+```
 
 Standard-Section: "Positions" LinesSizes Assoc*
-
+```none
   LinesSizes    = Nat Nat*                 // Number of lines followed by the size of each line not counting the trailing `\n`
 
   Assoc         = Header offset_Delta? offset_Delta? point_Delta?
@@ -251,15 +254,17 @@ Standard-Section: "Positions" LinesSizes Assoc*
   SOURCE        = 4                         // Impossible as header, since addr_Delta = 0 implies that we refer to the
                                             // same tree as the previous one, but then hasStartDiff = 1 implies that
                                             // the tree's range starts later than the range of itself.
+```
 
 All elements of a position section are serialized as Ints
 
 
 Standard Section: "Comments" Comment*
-
+```none
   Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
+```
 
-
+* @syntax markdown
 **************************************************************************************/
 
 object TastyFormat {

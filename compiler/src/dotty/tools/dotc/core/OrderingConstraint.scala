@@ -134,6 +134,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
                          private val lowerMap : ParamOrdering,
                          private val upperMap : ParamOrdering) extends Constraint {
 
+  import UnificationDirection.*
+
   type This = OrderingConstraint
 
 // ----------- Basic indices --------------------------------------------------
@@ -350,29 +352,37 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   /** Add the fact `param1 <: param2` to the constraint `current` and propagate
    *  `<:<` relationships between parameters ("edges") but not bounds.
    */
-  private def order(current: This, param1: TypeParamRef, param2: TypeParamRef)(using Context): This =
+  def order(current: This, param1: TypeParamRef, param2: TypeParamRef, direction: UnificationDirection = NoUnification)(using Context): This =
     if (param1 == param2 || current.isLess(param1, param2)) this
     else {
       assert(contains(param1), i"$param1")
       assert(contains(param2), i"$param2")
-      // Is `order` called during parameter unification?
-      val unifying = isLess(param2, param1)
+      val unifying = direction != NoUnification
       val newUpper = {
         val up = exclusiveUpper(param2, param1)
         if unifying then
           // Since param2 <:< param1 already holds now, filter out param1 to avoid adding
           //   duplicated orderings.
-          param2 :: up.filterNot(_ eq param1)
+          val filtered = up.filterNot(_ eq param1)
+          // Only add bounds for param2 if it will be kept in the constraint after unification.
+          if direction == KeepParam2 then
+            param2 :: filtered
+          else
+            filtered
         else
           param2 :: up
       }
       val newLower = {
         val lower = exclusiveLower(param1, param2)
         if unifying then
-          // Do not add bounds for param1 since it will be unified to param2 soon.
-          // And, similarly filter out param2 from lowerly-ordered parameters
+          // Similarly, filter out param2 from lowerly-ordered parameters
           //   to avoid duplicated orderings.
-          lower.filterNot(_ eq param2)
+          val filtered = lower.filterNot(_ eq param2)
+          // Only add bounds for param1 if it will be kept in the constraint after unification.
+          if direction == KeepParam1 then
+            param1 :: filtered
+          else
+            filtered
         else
           param1 :: lower
       }
@@ -416,14 +426,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def updateEntry(param: TypeParamRef, tp: Type)(using Context): This =
     updateEntry(this, param, ensureNonCyclic(param, tp)).checkNonCyclic()
 
-  def addLess(param1: TypeParamRef, param2: TypeParamRef)(using Context): This =
-    order(this, param1, param2).checkNonCyclic()
-
-  def unify(p1: TypeParamRef, p2: TypeParamRef)(using Context): This =
-    val bound1 = nonParamBounds(p1).substParam(p2, p1)
-    val bound2 = nonParamBounds(p2).substParam(p2, p1)
-    val p1Bounds = bound1 & bound2
-    updateEntry(p1, p1Bounds).replace(p2, p1)
+  def addLess(param1: TypeParamRef, param2: TypeParamRef, direction: UnificationDirection)(using Context): This =
+    order(this, param1, param2, direction).checkNonCyclic()
 
 // ---------- Replacements and Removals -------------------------------------
 

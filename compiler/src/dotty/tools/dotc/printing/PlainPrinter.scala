@@ -29,6 +29,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def maxToTextRecursions: Int = 100
 
   protected def showUniqueIds = ctx.settings.uniqid.value || Printer.debugPrintUnique
+  protected def showNestingLevel = ctx.settings.YprintLevel.value
 
   protected final def limiter: MessageLimiter = ctx.property(MessageLimiter).get
 
@@ -65,6 +66,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case tp @ AppliedType(tycon, args) =>
           if (defn.isCompiletimeAppliedType(tycon.typeSymbol)) tp.tryCompiletimeConstantFold
           else tycon.dealias.appliedTo(args)
+        case tp: NamedType =>
+          tp.reduceProjection
         case _ =>
           tp
       }
@@ -155,7 +158,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermParamRef =>
         ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ ".type"
       case tp: TypeParamRef =>
-        ParamRefNameString(tp) ~ lambdaHash(tp.binder)
+        val suffix =
+          if showNestingLevel then
+            val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
+            if tvar.exists then s"#${tvar.asInstanceOf[TypeVar].nestingLevel.toString}" else ""
+          else ""
+        ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ suffix
       case tp: SingletonType =>
         toTextSingleton(tp)
       case AppliedType(tycon, args) =>
@@ -271,9 +279,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
       catch { case ex: NullPointerException => "" }
     else ""
 
-  /** If -uniqid is set, the unique id of symbol, after a # */
+  /** A string to append to a symbol composed of:
+   *  - if -uniqid is set, its unique id after a #.
+   *  - if -Yprint-level, its nesting level after a %.
+   */
   protected def idString(sym: Symbol): String =
-    if (showUniqueIds || Printer.debugPrintUnique) "#" + sym.id else ""
+    (if (showUniqueIds || Printer.debugPrintUnique) "#" + sym.id else "") +
+    (if (showNestingLevel) "%" + sym.nestingLevel else "")
 
   def nameString(sym: Symbol): String =
     simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"

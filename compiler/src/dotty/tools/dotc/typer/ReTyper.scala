@@ -22,7 +22,7 @@ import Nullables._
  *
  *  Otherwise, everything is as in Typer.
  */
-class ReTyper extends Typer with ReChecking {
+class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking {
   import tpd._
 
   private def assertTyped(tree: untpd.Tree)(using Context): Unit =

@@ -93,13 +93,15 @@ abstract class Constraint extends Showable {
   /** A constraint that includes the relationship `p1 <: p2`.
    *  `<:` relationships between parameters ("edges") are propagated, but
    *  non-parameter bounds are left alone.
+   *
+   *  @param direction  Must be set to `KeepParam1` or `KeepParam2` when
+   *                    `p2 <: p1` is already true depending on which parameter
+   *                    the caller intends to keep. This will avoid propagating
+   *                    bounds that will be redundant after `p1` and `p2` are
+   *                    unified.
    */
-  def addLess(p1: TypeParamRef, p2: TypeParamRef)(using Context): This
-
-  /** A constraint resulting from adding p2 = p1 to this constraint, and at the same
-   *  time transferring all bounds of p2 to p1
-   */
-  def unify(p1: TypeParamRef, p2: TypeParamRef)(using Context): This
+  def addLess(p1: TypeParamRef, p2: TypeParamRef,
+    direction: UnificationDirection = UnificationDirection.NoUnification)(using Context): This
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all top-level occurrences
@@ -174,3 +176,15 @@ abstract class Constraint extends Showable {
    */
   def checkConsistentVars()(using Context): Unit
 }
+
+/** When calling `Constraint#addLess(p1, p2, ...)`, the caller might end up
+ *  unifying one parameter with the other, this enum lets `addLess` know which
+ *  direction the unification will take.
+ */
+enum UnificationDirection:
+  /** Neither p1 nor p2 will be instantiated. */
+  case NoUnification
+  /** `p2 := p1`, p1 left uninstantiated. */
+  case KeepParam1
+  /** `p1 := p2`, p2 left uninstantiated. */
+  case KeepParam2

@@ -270,6 +270,10 @@ object Contexts {
       if owner != null && owner.isClass then owner.asClass.unforcedDecls
       else scope
 
+    def nestingLevel: Int =
+      val sc = effectiveScope
+      if sc != null then sc.nestingLevel else 0
+
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("Context.getSource")

@@ -9,7 +9,9 @@ import dotty.tools.dotc.core.StdNames._
 import ast._
 import Trees._
 import Flags._
+import Names.Name
 import NameOps._
+import NameKinds.{FieldName, ExplicitFieldName}
 import SymUtils._
 import Symbols._
 import Decorators._
@@ -249,7 +251,28 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         splitStats(stats1)
       case Nil =>
     }
+
+    /** Check that we do not have both a private field with name `x` and a private field
+     *  with name `FieldName(x)`. These will map to the same JVM name and therefore cause
+     *  a duplicate field error. If that case arises (as in i13862.scala), use an explicit
+     *  name `x$field` instead of `FieldName(x).
+     */
+    def checkNoFieldClashes() =
+      val fieldNames = mutable.HashSet[Name]()
+      for case field: ValDef <- clsStats do
+        field.symbol.name match
+          case FieldName(_) =>
+          case name => fieldNames += name
+      for case field: ValDef <- clsStats do
+        field.symbol.name match
+          case fldName @ FieldName(name) if fieldNames.contains(name) =>
+            val newName = ExplicitFieldName(name)
+            report.log(i"avoid field/field conflict by renaming $fldName to $newName")
+            field.symbol.copySymDenotation(name = newName).installAfter(thisPhase)
+          case _ =>
+
     splitStats(tree.body)
+    checkNoFieldClashes()
 
     // The initializers for the retained accessors */
     val copyParams = accessors flatMap { acc =>

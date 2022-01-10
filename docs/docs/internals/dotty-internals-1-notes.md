@@ -88,7 +88,7 @@ on the structure of a tree is error-prone.
 ## Errors
 `dotc/typer/ErrorReporting.scala`
 
-Sometimes there's an error during compilation, but we want to continue compilling (as opposed to failing outright), to
+Sometimes there's an error during compilation, but we want to continue compiling (as opposed to failing outright), to
 uncover additional errors.
 
 In cases where a tree is expected but there's an error, we can use the `errorTree` methods in `ErrorReporting` to create

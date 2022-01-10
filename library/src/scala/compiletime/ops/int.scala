@@ -183,7 +183,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  @deprecated("Use compiletime.ops.any.ToString instead.","3.2.0")
+  //@deprecated("Use compiletime.ops.any.ToString instead.","3.2.0") // uncomment when reaching 3.2.0
   type ToString[X <: Int] <: String
 
   /** Long conversion of an `Int` singleton type.

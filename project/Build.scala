@@ -59,7 +59,7 @@ object DottyJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.1.1-RC1"
+  val referenceVersion = "3.1.1-RC2"
 
   val baseVersion = "3.1.2-RC1"
 
@@ -329,7 +329,7 @@ object Build {
       "-project-logo", "docs/logo.svg",
       "-social-links:" +
         "github::https://github.com/lampepfl/dotty," +
-        "gitter::https://gitter.im/scala/scala," +
+        "discord::https://discord.com/invite/scala," +
         "twitter::https://twitter.com/scala_lang",
       // contains special definitions which are "transplanted" elsewhere
       // and which therefore confuse Scaladoc when accessed from this pkg
@@ -828,7 +828,7 @@ object Build {
         if (isRelease) {
           val baseURI = (LocalRootProject / baseDirectory).value.toURI
           val dottyVersion = version.value
-          Seq(s"-scalajs-mapSourceURI:$baseURI->$dottyGithubRawUserContentUrl/v$dottyVersion/")
+          Seq(s"-scalajs-mapSourceURI:$baseURI->$dottyGithubRawUserContentUrl/$dottyVersion/")
         } else {
           Nil
         }
@@ -1345,7 +1345,7 @@ object Build {
         )
       }.taskValue,
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
-        "nl.big-o" % "liqp" % "0.6.8",
+        "nl.big-o" % "liqp" % "0.8.2",
         "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site
         Dependencies.`jackson-dataformat-yaml`,
 
