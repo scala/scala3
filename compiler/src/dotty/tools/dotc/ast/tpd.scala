@@ -206,8 +206,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree)(using Context): ValDef =
     ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
 
-  def SyntheticValDef(name: TermName, rhs: Tree)(using Context): ValDef =
-    ValDef(newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.span), rhs)
+  def SyntheticValDef(name: TermName, rhs: Tree, flags: FlagSet = EmptyFlags)(using Context): ValDef =
+    ValDef(newSymbol(ctx.owner, name, Synthetic | flags, rhs.tpe.widen, coord = rhs.span), rhs)
 
   def DefDef(sym: TermSymbol, paramss: List[List[Symbol]],
              resultType: Type, rhs: Tree)(using Context): DefDef =
