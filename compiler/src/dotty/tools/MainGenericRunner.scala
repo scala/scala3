@@ -81,6 +81,9 @@ case class Settings(
   def withSave: Settings =
     this.copy(save = true)
 
+  def noSave: Settings =
+    this.copy(save = false)
+
   def withModeShouldBePossibleRun: Settings =
     this.copy(modeShouldBePossibleRun = true)
 
@@ -135,6 +138,8 @@ object MainGenericRunner {
       )
     case "-save" :: tail =>
       process(tail, settings.withSave)
+    case "-nosave" :: tail =>
+      process(tail, settings.noSave)
     case "-with-compiler" :: tail =>
       process(tail, settings.withCompiler)
     case (o @ javaOption(striped)) :: tail =>
@@ -207,16 +212,18 @@ object MainGenericRunner {
       case ExecuteMode.Script =>
         val targetScript = Paths.get(settings.targetScript).toFile
         val targetJar = settings.targetScript.replaceAll("[.][^\\/]*$", "")+".jar"
-        val precompiledJar = Paths.get(targetJar).toFile
+        val precompiledJar = File(targetJar)
         val mainClass = if !precompiledJar.isFile then "" else Jar(targetJar).mainClass.getOrElse("")
-        val jarIsValid = mainClass.nonEmpty && precompiledJar.lastModified >= targetScript.lastModified
+        val jarIsValid = mainClass.nonEmpty && precompiledJar.lastModified >= targetScript.lastModified && settings.save
         if jarIsValid then
           // precompiledJar exists, is newer than targetScript, and manifest defines a mainClass
           sys.props("script.path") = targetScript.toPath.toAbsolutePath.normalize.toString
           val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
           val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
           if mainClass.nonEmpty then
-            ObjectRunner.runAndCatch(newClasspath :+ File(targetJar).toURI.toURL, mainClass, settings.scriptArgs)
+            ObjectRunner.runAndCatch(newClasspath :+ File(targetJar).toURI.toURL, mainClass, settings.scriptArgs).foreach { (t: Throwable) =>
+              t.printStackTrace()
+            }
           else
             Some(IllegalArgumentException(s"No main class defined in manifest in jar: $precompiledJar"))
         else
