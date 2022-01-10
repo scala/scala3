@@ -34,7 +34,7 @@ class Iter2(s: String) extends StringIterator(s)
                with SyncIterator with LoggedIterator;
 object Test {
   def main(args: Array[String]): Unit = {
-    class Iter extends StringIterator(args(0)) with RichIterator with SyncIterator with LoggedIterator
+    class Iter extends StringIterator("jvm") with RichIterator with SyncIterator with LoggedIterator
     val iter = new Iter
     iter foreach Console.println
   }
