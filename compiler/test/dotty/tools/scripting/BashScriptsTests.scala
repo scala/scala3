@@ -189,3 +189,24 @@ class BashScriptsTests:
       if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", workingDirectory, scriptFile.getName)
       assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
 
+  /*
+   * verify that individual scripts can override -save with -nosave (needed to address #13760).
+   */
+  @Test def sqlDateTest =
+    val scriptBase = "sqlDateError"
+    val scriptFile = testFiles.find(_.getName == s"$scriptBase.sc").get
+    val testJar = testFile(s"$scriptBase.jar") // jar should not be created when scriptFile runs
+    printf("===> verify '-save' is cancelled by '-nosave' in script hashbang.`\n")
+    val (validTest, exitCode, stdout, stderr) = bashCommand(s"SCALA_OPTS=-save ${scriptFile.absPath}")
+    printf("stdout: %s\n", stdout.mkString("\n","\n",""))
+    if verifyValid(validTest) then
+      // the script should print '1969-12-31' or '1970-01-01', depending on time zone
+      // stdout can be polluted with an ANSI color prefix, in some test environments
+      val valid = stdout.mkString("").matches(""".*\d{4}-\d{2}-\d{2}.*""")
+      if (!valid) then
+        stdout.foreach { printf("stdout[%s]\n", _) }
+        stderr.foreach { printf("stderr[%s]\n", _) }
+      if valid then printf(s"\n===> success: scripts can override -save via -nosave\n")
+      assert(valid, s"script ${scriptFile.absPath} reported unexpected value for java.sql.Date ${stdout.mkString("\n")}")
+      assert(!testJar.exists,s"unexpected, jar file [$testJar] was created")
+
