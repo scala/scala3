@@ -1765,8 +1765,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       untpd.ValDef(
           EvidenceParamName.fresh(),
           untpd.TypeTree(defn.CanThrowClass.typeRef.appliedTo(tp)),
-          untpd.ref(defn.Predef_undefined))
-        .withFlags(Given | Final | Lazy | Erased)
+          untpd.ref(defn.Compiletime_erasedValue))
+        .withFlags(Given | Final | Erased)
         .withSpan(expr.span)
     val caughtExceptions =
       if Feature.enabled(Feature.saferExceptions) then
