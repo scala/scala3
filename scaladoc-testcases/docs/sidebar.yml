@@ -1,7 +1,6 @@
-sidebar:
-  - title: Docs
-    subsection:
-      - page: docs/docs/f1.md
-      - page: docs/docs/f2.md
-      - page: docs/docs/f3.md
-      - page: docs/docs/f4.md
+rootIndex: docs/index.md
+pages:
+  - page: docs/docs/f1.md
+  - page: docs/docs/f2.md
+  - page: docs/docs/f3.md
+  - page: docs/docs/f4.md

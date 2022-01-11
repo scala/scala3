@@ -40,13 +40,10 @@ class SiteGeneratationTest extends BaseHtmlTest:
   def testDocIndexPage()(using ProjectContext) =
     checkFile("docs/index.html")(title = projectName, header = s"$projectName in header")
 
-  def testMainIndexPage()(using ProjectContext) =
-    checkFile("index.html")(title = "Basic test", header = "Header", parents = Seq(), indexLinks)
-
   def testApiPages(
     mainTitle: String = "API",
     parents: Seq[String] = Seq(projectName),
-    hasToplevelIndexIndex: Boolean = true)(using ProjectContext) =
+    hasToplevelIndexIndex: Boolean = false)(using ProjectContext) =
       checkFile((if hasToplevelIndexIndex then "api/" else "" )+ "index.html")(
         title = mainTitle,
         header = projectName,
@@ -67,7 +64,6 @@ class SiteGeneratationTest extends BaseHtmlTest:
   def basicTest() = withGeneratedSite(testDocPath.resolve("basic")){
     testDocPages()
     testDocIndexPage()
-    testMainIndexPage()
     testApiPages()
 
     withHtmlFile("docs/Adoc.html"){ content  =>
@@ -76,7 +72,7 @@ class SiteGeneratationTest extends BaseHtmlTest:
 
     withHtmlFile("tests/site/SomeClass.html"){ content  =>
       content.assertAttr(".breadcrumbs a","href",
-        "../../docs/index.html", "../../api/index.html", "../site.html", "SomeClass.html"
+        "../../docs/index.html", "../../index.html", "../site.html", "SomeClass.html"
       )
     }
   }
