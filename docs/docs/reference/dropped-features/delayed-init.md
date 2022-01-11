@@ -4,9 +4,11 @@ title: "Dropped: DelayedInit"
 movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/delayed-init.html
 ---
 
-The special handling of the `DelayedInit` trait is no longer supported.
+The special handling of the [`DelayedInit`](https://scala-lang.org/api/3.x/scala/DelayedInit.html)
+trait is no longer supported.
 
-One consequence is that the `App` class, which used `DelayedInit` is
+One consequence is that the [`App`](https://scala-lang.org/api/3.x/scala/App.html) class,
+which used [`DelayedInit`](https://scala-lang.org/api/3.x/scala/DelayedInit.html) is
 now partially broken. You can still use `App` as a simple way to set up a main program. Example:
 
 ```scala

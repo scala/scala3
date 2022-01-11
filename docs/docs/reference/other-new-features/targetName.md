@@ -4,7 +4,7 @@ title: "The @targetName annotation"
 movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/targetName.html
 ---
 
-A `@targetName` annotation on a definition defines an alternate name for the implementation of that definition. Example:
+A [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation on a definition defines an alternate name for the implementation of that definition. Example:
 
 ```scala
 import scala.annotation.targetName
@@ -21,7 +21,7 @@ Here, the `++=` operation is implemented (in Byte code or native code) under the
 VecOps.append(vec1, vec2)
 ```
 
-The `@targetName` annotation has no bearing on Scala usages. Any application of that method in Scala has to use `++=`, not `append`.
+The [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation has no bearing on Scala usages. Any application of that method in Scala has to use `++=`, not `append`.
 
 ### Details
 
@@ -31,22 +31,21 @@ The `@targetName` annotation has no bearing on Scala usages. Any application of 
 
  2. A `@targetName` annotation can be given for all kinds of definitions.
 
- 3. The name given in a `@targetName` annotation must be a legal name
+ 3. The name given in a [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation must be a legal name
     for the defined entities on the host platform.
 
- 4. It is recommended that definitions with symbolic names have a `@targetName` annotation. This will establish an alternate name that is easier to search for and
+ 4. It is recommended that definitions with symbolic names have a [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation. This will establish an alternate name that is easier to search for and
  will avoid cryptic encodings in runtime diagnostics.
 
  5. Definitions with names in backticks that are not legal host platform names
-    should also have a `@targetName` annotation.
+    should also have a [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation.
 
 ### Relationship with Overriding
 
-`@targetName` annotations are significant for matching two method definitions to decide whether they conflict or override each other. Two method definitions match if they have the same name, signature, and erased name. Here,
+[`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotations are significant for matching two method definitions to decide whether they conflict or override each other. Two method definitions match if they have the same name, signature, and erased name. Here,
 
 - The _signature_ of a definition consists of the names of the erased types of all (value-) parameters and the method's result type.
-- The _erased name_ of a method definition is its target name if a `@targetName`
-  annotation is given and its defined name otherwise.
+- The _erased name_ of a method definition is its target name if a [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation is given and its defined name otherwise.
 
 This means that `@targetName` annotations can be used to disambiguate two method definitions that would otherwise clash. For instance.
 
@@ -55,8 +54,7 @@ def f(x: => String): Int = x.length
 def f(x: => Int): Int = x + 1  // error: double definition
 ```
 
-The two definitions above clash since their erased parameter types are both `Function0`, which is the type of the translation of a by-name-parameter. Hence
-they have the same names and signatures. But we can avoid the clash by adding a `@targetName` annotation to either method or to both of them. Example:
+The two definitions above clash since their erased parameter types are both [`Function0`](https://scala-lang.org/api/3.x/scala/Function0.html), which is the type of the translation of a by-name-parameter. Hence they have the same names and signatures. But we can avoid the clash by adding a [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotation to either method or to both of them. Example:
 
 ```scala
 @targetName("f_string")
@@ -66,7 +64,7 @@ def f(x: => Int): Int = x + 1  // OK
 
 This will produce methods `f_string` and `f` in the generated code.
 
-However, `@targetName` annotations are not allowed to break overriding relationships
+However, [`@targetName`](https://scala-lang.org/api/3.x/scala/annotation/targetName.html) annotations are not allowed to break overriding relationships
 between two definitions that have otherwise the same names and types. So the following would be in error:
 
 ```scala

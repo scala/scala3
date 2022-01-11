@@ -110,7 +110,7 @@ which means that the alternative `c` would be chosen as solution!
 Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement
 the analogue of a "negated" search in implicit resolution, where a query `Q1` fails if some
 other query `Q2` succeeds and `Q1` succeeds if `Q2` fails. With the new cleaned up behavior
-these techniques no longer work. But there is now a new special type `scala.util.NotGiven`
+these techniques no longer work. But there is now a new special type [`scala.util.NotGiven`](https://scala-lang.org/api/3.x/scala/util/NotGiven.html)
 which implements negation directly. For any query type `Q`, `NotGiven[Q]` succeeds if and only if
 the implicit search for `Q` fails.
 

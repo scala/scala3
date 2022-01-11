@@ -27,7 +27,7 @@ object Y:
 In both cases, a class test will be performed at runtime.
 But when the type test is on an abstract type (type parameter or type member), the test cannot be performed because the type is erased at runtime.
 
-A `TypeTest` can be provided to make this test possible.
+A [`TypeTest`](https://scala-lang.org/api/3.x/scala/reflect/TypeTest.html) can be provided to make this test possible.
 
 ```scala
 package scala.reflect
@@ -80,7 +80,7 @@ new TypeTest[A, B]:
 
 If the type tests cannot be done there will be an unchecked warning that will be raised on the `case s: B =>` test.
 
-The most common `TypeTest` instances are the ones that take any parameters (i.e. `TypeTest[Any, T]`).
+The most common [`TypeTest`](https://scala-lang.org/api/3.x/scala/reflect/TypeTest.html) instances are the ones that take any parameters (i.e. `TypeTest[Any, T]`).
 To make it possible to use such instances directly in context bounds we provide the alias
 
 ```scala
@@ -103,10 +103,10 @@ f[Int] // false
 
 ## TypeTest and ClassTag
 
-`TypeTest` is a replacement for functionality provided previously by `ClassTag.unapply`.
-Using `ClassTag` instances was unsound since classtags can check only the class component of a type.
-`TypeTest` fixes that unsoundness.
-`ClassTag` type tests are still supported but a warning will be emitted after 3.0.
+[`TypeTest`](https://scala-lang.org/api/3.x/scala/reflect/TypeTest.html) is a replacement for functionality provided previously by `ClassTag.unapply`.
+Using [`ClassTag`](https://scala-lang.org/api/3.x/scala/reflect/ClassTag.html) instances was unsound since classtags can check only the class component of a type.
+[`TypeTest`](https://scala-lang.org/api/3.x/scala/reflect/TypeTest.html) fixes that unsoundness.
+[`ClassTag`](https://scala-lang.org/api/3.x/scala/reflect/ClassTag.html) type tests are still supported but a warning will be emitted after 3.0.
 
 
 ## Example
