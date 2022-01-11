@@ -120,7 +120,7 @@ catch
 the compiler generates an accumulated capability of type `CanThrow[Ex1 | ... | Ex2]` that is available as a given in the scope of `body`. It does this by augmenting the `try` roughly as follows:
 ```scala
 try
-  erased given CanThrow[Ex1 | ... | ExN] = ???
+  erased given CanThrow[Ex1 | ... | ExN]
   body
 catch ...
 ```
@@ -194,7 +194,7 @@ Everything typechecks and works as expected. But wait - we have called `map` wit
 // compiler-generated code
 @main def test(xs: Double*) =
   try
-    erased given ctl: CanThrow[LimitExceeded] = ???
+    erased given ctl: CanThrow[LimitExceeded]
     println(xs.map(x => f(x)(using ctl)).sum)
   catch case ex: LimitExceeded => println("too large")
 ```

@@ -166,7 +166,7 @@ object desugar {
     val mods = vdef.mods
 
     val valName = normalizeName(vdef, tpt).asTermName
-    val vdef1 = cpy.ValDef(vdef)(name = valName)
+    val vdef1 = erasedValRHS(cpy.ValDef(vdef)(name = valName))
 
     if (isSetterNeeded(vdef)) {
       // TODO: copy of vdef as getter needed?
@@ -187,6 +187,13 @@ object desugar {
     }
     else vdef1
   }
+
+  def erasedValRHS(vdef: ValDef)(using Context): ValDef =
+    if vdef.mods.is(Erased, butNot = Param) && vdef.rhs.isEmpty then
+      cpy.ValDef(vdef)(rhs = untpd.ref(defn.Compiletime_erasedValue))
+    else
+      vdef
+  end erasedValRHS
 
   def makeImplicitParameters(tpts: List[Tree], implicitFlag: FlagSet, forPrimaryConstructor: Boolean = false)(using Context): List[ValDef] =
     for (tpt <- tpts) yield {
@@ -219,7 +226,7 @@ object desugar {
    *      def f$default$2[T](x: Int) = x + "m"
    */
   private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(using Context): Tree =
-    addDefaultGetters(elimContextBounds(meth, isPrimaryConstructor))
+    addDefaultGetters(erasedDefRHS(elimContextBounds(meth, isPrimaryConstructor)))
 
   private def elimContextBounds(meth: DefDef, isPrimaryConstructor: Boolean)(using Context): DefDef =
     val DefDef(_, paramss, tpt, rhs) = meth
@@ -312,6 +319,13 @@ object desugar {
     if defGetters.isEmpty then meth
     else Thicket(cpy.DefDef(meth)(paramss = paramssNoRHS) :: defGetters)
   end addDefaultGetters
+
+  def erasedDefRHS(meth: DefDef)(using Context): DefDef =
+    if meth.mods.is(Erased, butNot = Macro | Inline) && meth.rhs.isEmpty then
+      cpy.DefDef(meth)(rhs = untpd.ref(defn.Compiletime_erasedValue))
+    else
+      meth
+  end erasedDefRHS
 
   /** Add an explicit ascription to the `expectedTpt` to every tail splice.
    *

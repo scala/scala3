@@ -41,5 +41,5 @@ object Test {
     u() // OK
   }
 
-  erased def u(): Int = 42
+  erased def u(): Int
 }

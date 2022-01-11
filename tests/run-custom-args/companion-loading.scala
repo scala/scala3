@@ -9,7 +9,7 @@ case class Foo(i: Int)
 object Foo {
   println(s"Foo companion")
 
-  erased implicit val barLink: Link[Foo, FooAssoc.type] = null
+  erased implicit val barLink: Link[Foo, FooAssoc.type]
 }
 
 implicit object FooAssoc extends Assoc[Foo] {

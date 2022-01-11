@@ -2,7 +2,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
 
-    erased def !!! : Nothing = ???
+    erased def !!! : Nothing
 
     try {
       fun(!!!)

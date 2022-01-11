@@ -15,8 +15,8 @@ TODO: complete
    * In a `class` or `trait` definition
 
     ```scala
-    erased val x = ...
-    erased def f = ...
+    erased val x: Int
+    erased def f: Int
 
     def g(erased x: Int) = ...
 

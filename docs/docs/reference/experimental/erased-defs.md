@@ -79,7 +79,7 @@ with `erased`. These will also only be usable as arguments to `erased`
 parameters.
 
 ```scala
-erased val erasedEvidence: Ev = ...
+erased val erasedEvidence: Ev
 methodWithErasedEv(erasedEvidence)
 ```
 
@@ -93,8 +93,8 @@ erased.
 def methodWithErasedEv(erased ev: Ev): Int = ...
 
 def evidence1: Ev = ...
-erased def erasedEvidence2: Ev = ... // does not exist at runtime
-erased val erasedEvidence3: Ev = ... // does not exist at runtime
+erased def erasedEvidence2: Ev // does not exist at runtime
+erased val erasedEvidence3: Ev // does not exist at runtime
 
 // evidence1 is not evaluated and no value is passed to methodWithErasedEv
 methodWithErasedEv(evidence1)
@@ -137,7 +137,7 @@ class IsOn[S <: State]
 object IsOn:
   // will not exist at runtime, the compiler will only
   // require that this evidence exists at compile time
-  erased given IsOn[On] = new IsOn[On]
+  erased given IsOn[On]
 
 class Machine[S <: State] private ():
   // ev will disappear from both functions
@@ -216,11 +216,11 @@ The code above expands to
 ```scala
 erased class CanRead
 
-erased val x: CanRead = ...
+erased val x: CanRead
 val y: (erased CanRead) => Int = ...
 def f(erased x: CanRead) = ...
-erased def g(): CanRead = ...
-erased given CanRead = ...
+erased def g(): CanRead
+erased given CanRead
 ```
 After erasure, it is checked that no references to values of erased classes remain and that no instances of erased classes are created. So the following would be an error:
 ```scala

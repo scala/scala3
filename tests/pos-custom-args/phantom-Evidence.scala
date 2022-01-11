@@ -24,5 +24,5 @@ object WithNormalState {
 
 object Utils {
   type =::=[From, To]
-  erased given tpEquals[A]: A =::= A = ???
+  erased given tpEquals[A]: A =::= A
 }

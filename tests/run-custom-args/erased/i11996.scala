@@ -1,8 +1,8 @@
 final class UnivEq[A]
 
 object UnivEq:
-  erased def force[A]: UnivEq[A] =
-    compiletime.erasedValue
+  object force:
+    erased given [A]: UnivEq[A]
 
 extension [A](a: A)
   inline def ==*[B >: A](b: B)(using erased UnivEq[B]): Boolean = a == b
@@ -12,7 +12,7 @@ case class I(i: Int)
 
 @main def Test = {
   def test[A](a: A, b: A): Unit = {
-    erased given UnivEq[A] = UnivEq.force[A]
+    import UnivEq.force.given
     println(a ==* a)
     println(a !=* b)
   }

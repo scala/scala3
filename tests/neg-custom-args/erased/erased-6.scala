@@ -1,5 +1,5 @@
 object Test {
-  erased def foo: Foo = new Foo
+  erased def foo: Foo
   foo.x() // error
   foo.y // error
   foo.z // error

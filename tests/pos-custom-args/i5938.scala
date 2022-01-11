@@ -12,7 +12,7 @@ inline def link[T] =
 
 class Foo
 object Foo {
-  erased implicit val barLink: Link[Foo, Bar.type] = null
+  erased implicit val barLink: Link[Foo, Bar.type]
 }
 
 implicit object Bar {

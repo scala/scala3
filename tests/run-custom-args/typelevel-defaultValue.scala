@@ -1,6 +1,6 @@
 
 object compiletime {
-  erased def erasedValue[T]: T = ???
+  erased def erasedValue[T]: T
 }
 
 object Test extends App {

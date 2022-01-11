@@ -24,12 +24,12 @@ object Deriving {
       /** The number of cases in the sum.
       *  Implemented by an inline method in concrete subclasses.
       */
-      erased def numberOfCases: Int = ???
+      erased def numberOfCases: Int
 
       /** The Generic representations of the sum's alternatives.
       *  Implemented by an inline method in concrete subclasses.
       */
-      erased def alternative(n: Int): Generic[_ <: T] = ???
+      erased def alternative(n: Int): Generic[_ <: T]
     }
 
     /** The Generic for a product type */

@@ -12,7 +12,7 @@ object Test {
     case _: Char =>
   }
 
-  erased def test3(x: Int) = x + 1
+  erased def test3(x: Int): Int
 
   def f(g: Int => Int) = g(0)
 

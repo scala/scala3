@@ -3615,7 +3615,7 @@ object Parsers {
           else
             DefDef(name, joinParams(tparams, vparamss), parents.head, subExpr())
         else if (isStatSep || isStatSeqEnd) && parentsIsType then
-          if name.isEmpty then
+          if name.isEmpty && !mods1.is(Erased) then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, joinParams(tparams, vparamss), parents.head, EmptyTree)
         else

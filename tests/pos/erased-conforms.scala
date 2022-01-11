@@ -5,7 +5,7 @@ erased class <::<[-From, +To] extends ErasedTerm
 
 erased class =::=[From, To] extends (From <::< To)
 
-erased given [X]: (X =::= X) = scala.compiletime.erasedValue
+erased given [X]: (X =::= X)
 
 extension [From](x: From)
   inline def cast[To](using From <::< To): To = x.asInstanceOf[To] // Safe cast because we know `From <:< To`

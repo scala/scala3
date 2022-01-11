@@ -7,14 +7,14 @@ erased class Foo
 erased class Bar
 
 @experimental
-erased def foo = 2
+erased def foo: Int
 
-erased def bar = 2
+erased def bar: Int
 
 @experimental
-erased val foo2 = 2
+erased val foo2: Int
 
-erased val bar2 = 2
+erased val bar2: Int
 
 @experimental
 def foo3(erased a: Int) = 2
