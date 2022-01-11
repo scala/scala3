@@ -541,6 +541,9 @@ object Checking {
     checkCombination(Abstract, Override)
     checkCombination(Private, Override)
     checkCombination(Lazy, Inline)
+    // The issue with `erased inline` is that the erased semantics get lost
+    // as the code is inlined and the reference is removed before the erased usage check.
+    checkCombination(Erased, Inline)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
   }
 
