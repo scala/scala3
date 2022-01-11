@@ -1,0 +1,3 @@
+List(scala.Int, scala.AnyVal, scala.Matchable, scala.Any)
+List(java.lang.Object, scala.Matchable, scala.Any)
+List(scala.Some[Some.this.A], scala.Option[Some.this.A], java.io.Serializable, scala.Product, scala.Equals, scala.collection.IterableOnce[Some.this.A], java.lang.Object, scala.Matchable, scala.Any)

@@ -502,6 +502,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  @syntax markdown
          */
         def body: List[Statement]
+
+        /** Base types of the class */
+        @experimental
+        def baseTypes: List[TypeRepr]
+
       end extension
     end ClassDefMethods
 

@@ -247,6 +247,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           optional(self.rhs.asInstanceOf[tpd.Template].self)
         def body: List[Statement] =
           self.rhs.asInstanceOf[tpd.Template].body
+        def baseTypes: List[TypeRepr] = self.symbol match
+          case cls: dotc.core.Symbols.ClassSymbol =>
+            val ref = cls.classDenot.classInfo.appliedRef
+            ref.baseClasses.map(ref.baseType(_))
+          case _ => List()
       end extension
     end ClassDefMethods
 

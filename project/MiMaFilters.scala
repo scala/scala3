@@ -19,6 +19,8 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.long$"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#CompilationInfoModule.XmacroSettings"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#CompilationInfoModule.XmacroSettings"),
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ClassDefMethods.baseTypes"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#ClassDefMethods.baseTypes"),
 
     // Should have been added in 3.1.0
     // These are only allowed on imports and therefore should not be present in binaries emitted before

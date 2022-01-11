@@ -79,6 +79,7 @@ trait ClassLikeSupport:
         else Seq(link -> superLink) ++ getSupertypesGraph(superLink, nextTo)
       }
 
+    // TODO use classDef.baseTypes
     val supertypes = getSupertypes(using qctx)(classDef)
       .filterNot((s, t) => s.isHiddenByVisibility)
       .map {
