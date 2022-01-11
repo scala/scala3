@@ -7,7 +7,7 @@ import org.junit.Assert._
 // TODO add negaitve and more details tests
 class SidebarParserTest:
 
-  private val sidebar = """sidebar:
+  private val sidebar = """pages:
     - title: Blog
     - title: My title
       page: my-page1.md
@@ -34,16 +34,19 @@ class SidebarParserTest:
 
   @Test
   def loadSidebar(): Unit = assertEquals(
-    Seq(
-      Sidebar.Page(Some("Blog"), ""),
-      Sidebar.Page(Some("My title"), "my-page1.md"),
-      Sidebar.Page(None, "my-page2.md"),
-      Sidebar.Page(None, "my-page3/subsection"),
-      Sidebar.Category(Some("Reference"), None, List(Sidebar.Page(None, "my-page3.md"))),
-      Sidebar.Category(None, Some("my-page4/index.md"),  List(Sidebar.Page(None, "my-page4/my-page4.md"))),
-      Sidebar.Category(Some("My subsection"), Some("my-page5/index.md"),  List(Sidebar.Page(None, "my-page5/my-page5.md"))),
-      Sidebar.Category(None, None,  List(Sidebar.Page(None, "my-page7/my-page7.md"))),
-      Sidebar.Category(None, Some("my-page6/index.md"),  List(Sidebar.Category(None, Some("my-page6/my-page6/index.md"),  List(Sidebar.Page(None, "my-page6/my-page6/my-page6.md"))))),
+    Sidebar.Root(
+      None,
+        List(
+        Sidebar.Page(Some("Blog"), ""),
+        Sidebar.Page(Some("My title"), "my-page1.md"),
+        Sidebar.Page(None, "my-page2.md"),
+        Sidebar.Page(None, "my-page3/subsection"),
+        Sidebar.Category(Some("Reference"), None, List(Sidebar.Page(None, "my-page3.md")), None),
+        Sidebar.Category(None, Some("my-page4/index.md"),  List(Sidebar.Page(None, "my-page4/my-page4.md")), None),
+        Sidebar.Category(Some("My subsection"), Some("my-page5/index.md"),  List(Sidebar.Page(None, "my-page5/my-page5.md")), None),
+        Sidebar.Category(None, None,  List(Sidebar.Page(None, "my-page7/my-page7.md")), None),
+        Sidebar.Category(None, Some("my-page6/index.md"),  List(Sidebar.Category(None, Some("my-page6/my-page6/index.md"),  List(Sidebar.Page(None, "my-page6/my-page6/my-page6.md")), None)), None),
+      )
     ),
     Sidebar.load(sidebar)
   )

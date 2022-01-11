@@ -1,11 +1,20 @@
-sidebar:
-  - title: Blog
+rootIndex: docs/index.md
+pages:
+  # - title: Blog
   - title: Usage
     subsection:
       - page: docs/usage/sbt-projects.md
       - page: docs/usage/ide-support.md
       - page: docs/usage/cbt-projects.md
-      - page: docs/usage/scaladoc
+      - title: Scaladoc
+        index: docs/usage/scaladoc/index.md
+        subsection:
+          - page: docs/usage/scaladoc/docstrings.md
+          - page: docs/usage/scaladoc/linking.md
+          - page: docs/usage/scaladoc/search-engine.md
+          - page: docs/usage/scaladoc/settings.md
+          - page: docs/usage/scaladoc/site-versioning.md
+          - page: docs/usage/scaladoc/static-site.md
   - title: Reference
     subsection:
       - page: docs/reference/overview.md
@@ -13,10 +22,14 @@ sidebar:
         index: docs/reference/new-types/new-types.md
         subsection:
           - page: docs/reference/new-types/intersection-types.md
+          - page: docs/reference/new-types/intersection-types-spec.md
           - page: docs/reference/new-types/union-types.md
+          - page: docs/reference/new-types/union-types-spec.md
           - page: docs/reference/new-types/type-lambdas.md
+          - page: docs/reference/new-types/type-lambdas-spec.md
           - page: docs/reference/new-types/match-types.md
           - page: docs/reference/new-types/dependent-function-types.md
+          - page: docs/reference/new-types/dependent-function-types-spec.md
           - page: docs/reference/new-types/polymorphic-function-types.md
       - title: Enums
         index: docs/reference/enums/enums-index.md
@@ -26,16 +39,20 @@ sidebar:
           - page: docs/reference/enums/desugarEnums.md
       - title: Contextual Abstractions
         index: docs/reference/contextual/contextual.md
+        directory: contextual
         subsection:
           - page: docs/reference/contextual/givens.md
           - page: docs/reference/contextual/using-clauses.md
           - page: docs/reference/contextual/context-bounds.md
           - page: docs/reference/contextual/given-imports.md
           - page: docs/reference/contextual/extension-methods.md
+          - page: docs/reference/contextual/right-associative-extension-methods.md
           - page: docs/reference/contextual/type-classes.md
           - page: docs/reference/contextual/derivation.md
+          - page: docs/reference/contextual/derivation-macro.md
           - page: docs/reference/contextual/multiversal-equality.md
           - page: docs/reference/contextual/context-functions.md
+          - page: docs/reference/contextual/context-functions-spec.md
           - page: docs/reference/contextual/conversions.md
           - page: docs/reference/contextual/by-name-context-parameters.md
           - page: docs/reference/contextual/relationship-implicits.md
@@ -45,6 +62,7 @@ sidebar:
           - page: docs/reference/metaprogramming/inline.md
           - page: docs/reference/metaprogramming/compiletime-ops.md
           - page: docs/reference/metaprogramming/macros.md
+          - page: docs/reference/metaprogramming/macros-spec.md
           - page: docs/reference/metaprogramming/staging.md
           - page: docs/reference/metaprogramming/reflection.md
           - page: docs/reference/metaprogramming/tasty-inspect.md
@@ -56,8 +74,10 @@ sidebar:
           - page: docs/reference/other-new-features/creator-applications.md
           - page: docs/reference/other-new-features/export.md
           - page: docs/reference/other-new-features/opaques.md
+          - page: docs/reference/other-new-features/opaques-details.md
           - page: docs/reference/other-new-features/open-classes.md
           - page: docs/reference/other-new-features/parameter-untupling.md
+          - page: docs/reference/other-new-features/parameter-untupling-spec.md
           - page: docs/reference/other-new-features/kind-polymorphism.md
           - page: docs/reference/other-new-features/matchable.md
           - page: docs/reference/other-new-features/threadUnsafe-annotation.md
@@ -68,10 +88,12 @@ sidebar:
           - page: docs/reference/other-new-features/type-test.md
           - page: docs/reference/other-new-features/experimental-defs.md
       - title: Other Changed Features
+        directory: changed-features
         index: docs/reference/changed-features/changed-features.md
         subsection:
           - page: docs/reference/changed-features/numeric-literals.md
           - page: docs/reference/changed-features/structural-types.md
+          - page: docs/reference/changed-features/structural-types-spec.md
           - page: docs/reference/changed-features/operators.md
           - page: docs/reference/changed-features/wildcards.md
           - page: docs/reference/changed-features/imports.md
@@ -79,12 +101,14 @@ sidebar:
           - page: docs/reference/changed-features/type-inference.md
           - page: docs/reference/changed-features/implicit-resolution.md
           - page: docs/reference/changed-features/implicit-conversions.md
+          - page: docs/reference/changed-features/implicit-conversions-spec.md
           - page: docs/reference/changed-features/overload-resolution.md
           - page: docs/reference/changed-features/match-syntax.md
           - page: docs/reference/changed-features/vararg-splices.md
           - page: docs/reference/changed-features/pattern-bindings.md
           - page: docs/reference/changed-features/pattern-matching.md
           - page: docs/reference/changed-features/eta-expansion.md
+          - page: docs/reference/changed-features/eta-expansion-spec.md
           - page: docs/reference/changed-features/compiler-plugins.md
           - page: docs/reference/changed-features/lazy-vals-init.md
           - page: docs/reference/changed-features/main-functions.md
@@ -100,15 +124,18 @@ sidebar:
           - page: docs/reference/dropped-features/package-objects.md
           - page: docs/reference/dropped-features/early-initializers.md
           - page: docs/reference/dropped-features/class-shadowing.md
+          - page: docs/reference/dropped-features/class-shadowing-spec.md
           - page: docs/reference/dropped-features/limit22.md
           - page: docs/reference/dropped-features/xml.md
           - page: docs/reference/dropped-features/symlits.md
           - page: docs/reference/dropped-features/auto-apply.md
           - page: docs/reference/dropped-features/weak-conformance.md
+          - page: docs/reference/dropped-features/weak-conformance-spec.md
           - page: docs/reference/dropped-features/nonlocal-returns.md
           - page: docs/reference/dropped-features/this-qualifier.md
           - page: docs/reference/dropped-features/wildcard-init.md
       - title: Experimental Features
+        directory: experimental
         subsection:
           - page: docs/reference/experimental/overview.md
           - page: docs/reference/experimental/canthrow.md
@@ -123,6 +150,8 @@ sidebar:
         subsection:
           - page: docs/reference/language-versions/source-compatibility.md
           - page: docs/reference/language-versions/binary-compatibility.md
+      - page: docs/reference/soft-modifier.md
+      - page: docs/reference/features-classification.md
   - title: Contributing
     subsection:
       - page: docs/contributing/contribute-knowledge.md
@@ -131,6 +160,7 @@ sidebar:
       - page: docs/contributing/testing.md
       - page: docs/contributing/debugging.md
       - title: IDEs and Tools
+        directory: tools
         subsection:
           - page: docs/contributing/tools/ide.md
           - page: docs/contributing/tools/mill.md

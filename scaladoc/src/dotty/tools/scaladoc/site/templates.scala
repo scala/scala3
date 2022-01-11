@@ -16,6 +16,8 @@ import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.formatter.Formatter
 import liqp.Template
+import liqp.ParseSettings
+import liqp.parser.Flavor
 import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
@@ -24,6 +26,13 @@ import scala.collection.JavaConverters._
 import scala.io.Source
 import dotty.tools.scaladoc.snippets._
 
+/** RenderingContext stores information about defined properties, layouts and sites being resolved
+ *
+ * @param properties  Map containing defined properties
+ * @param layouts     Map containing defined site layouts
+ * @param resolving   Set containing names of sites being resolved in this context. This information is useful for cycle detection
+ * @param resources   List of resources that need to be appended to sites
+ */
 case class RenderingContext(
   properties: Map[String, Object],
   layouts: Map[String, TemplateFile] = Map(),
@@ -93,7 +102,8 @@ case class TemplateFile(
       throw new RuntimeException(s"Cycle in templates involving $file: ${ctx.resolving}")
 
     val layoutTemplate = layout.map(name =>
-      ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}")))
+      ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}"))
+    )
 
     def asJavaElement(o: Object): Object = o match
       case m: Map[_, _] => m.transform {
@@ -105,7 +115,25 @@ case class TemplateFile(
     // Library requires mutable maps..
     val mutableProperties = new JHashMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
 
-    val rendered = Template.parse(this.rawCode).render(mutableProperties)
+    val tag = new Tag("highlight"):
+      override def render(context: TemplateContext, nodes: Array[? <: LNode]): Object =
+        super.asString(nodes(0).render(context), context) match
+          case "diff" =>
+            s"<pre><code class=\"language-diff hljs\" data-lang=\"diff\">${super.asString(nodes(1).render(context), context)}</code></pre>\n\n"
+          case _ =>
+            report.warn("Unsupported highlight value. Currenlty supported values are: `diff`", file)(using ssctx.outerCtx)
+            s"```${super.asString(nodes(1).render(context), context)}```\n\n"
+
+    val tag2 = new Tag("link"):
+      override def render(context: TemplateContext, nodes: Array[? <: LNode]): Object =
+        super.asString(nodes(0).render(context), context) match
+          case sth =>
+            report.warn(s"Unsupported link tag. Link to $sth can't be resolved", file)(using ssctx.outerCtx)
+            "/"
+
+    val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build()
+
+    val rendered = Template.parse(this.rawCode, parseSettings).`with`(tag).`with`(tag2).render(mutableProperties)
 
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
@@ -115,7 +143,8 @@ case class TemplateFile(
       val processed = FlexmarkSnippetProcessor.processSnippets(parsedMd, None, snippetCheckingFunc, withContext = false)(using ssctx.outerCtx)
       HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
 
-    if layoutTemplate.isEmpty then
-      ResolvedPage(code, resources ++ ctx.resources)
-    else
-      layoutTemplate.get.resolveInner(ctx.nest(code, file, resources))
+    // If we have a layout template, we need to embed rendered content in it. Otherwise, we just leave the content as is.
+    layoutTemplate match {
+      case Some(t) => t.resolveInner(ctx.nest(code, file, resources))
+      case None => ResolvedPage(code, resources ++ ctx.resources)
+    }
