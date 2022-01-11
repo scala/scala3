@@ -70,15 +70,21 @@ class ReplDriver(settings: Array[String],
   override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
-  private def initialCtx = {
+  private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     rootCtx.setSetting(rootCtx.settings.YreadComments, true)
+    setupRootCtx(this.settings ++ settings, rootCtx)
+  }
+
+  private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
     setup(settings, rootCtx) match
-      case Some((files, ictx)) =>
+      case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
-        ictx.base.initialize()(using ictx)
+        if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
+        ictx.base.initialize()
         ictx
+      }
       case None =>
         shouldStart = false
         rootCtx
@@ -93,8 +99,8 @@ class ReplDriver(settings: Array[String],
    *  such, when the user enters `:reset` this method should be called to reset
    *  everything properly
    */
-  protected def resetToInitial(): Unit = {
-    rootCtx = initialCtx
+  protected def resetToInitial(settings: List[String] = Nil): Unit = {
+    rootCtx = initialCtx(settings)
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
         .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
@@ -372,8 +378,8 @@ class ReplDriver(settings: Array[String],
       out.println(Help.text)
       state
 
-    case Reset =>
-      resetToInitial()
+    case Reset(arg) =>
+      resetToInitial(tokenize(arg))
       initialState
 
     case Imports =>
@@ -423,14 +429,7 @@ class ReplDriver(settings: Array[String],
           out.println(s"${s.name} = ${if s.value == "" then "\"\"" else s.value}")
         state
       case _  =>
-        setup(tokenize(arg).toArray, rootCtx) match
-          case Some((files, ictx)) =>
-            inContext(ictx) {
-              if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
-              ictx.base.initialize()(using ictx)
-              rootCtx = ictx
-            }
-          case _ =>
+        rootCtx = setupRootCtx(tokenize(arg).toArray, rootCtx)
         state.copy(context = rootCtx)
 
     case Quit =>

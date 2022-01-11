@@ -10,9 +10,8 @@ import reporting.TestReporter
 import dotty.tools.io.Directory
 
 import java.io._
-import java.nio.file.{Files, Path => JPath}
+import java.nio.file.{Path => JPath}
 
-import scala.io.Source._
 import org.junit.Test
 
 class PatmatExhaustivityTest {
@@ -78,23 +77,5 @@ class PatmatExhaustivityTest {
     assert(failed.length == 0, msg)
 
     println(msg)
-  }
-
-  // inspect given files for tool args of the form `tool: args`
-  // if args string ends in close comment, drop the `*` `/`
-  // if split, parse the args string as command line.
-  // (from scala.tools.partest.nest.Runner#toolArgsFor)
-  private def toolArgsFor(files: List[JPath]): List[String] = {
-    import scala.jdk.OptionConverters._
-    import config.CommandLineParser.tokenize
-    files.flatMap { path =>
-      val tag  = "scalac:"
-      val endc = "*" + "/"    // be forgiving of /* scalac: ... */
-      def stripped(s: String) = s.substring(s.indexOf(tag) + tag.length).stripSuffix(endc)
-      val args = scala.util.Using.resource(Files.lines(path, scala.io.Codec.UTF8.charSet))(
-        _.limit(10).filter(_.contains(tag)).map(stripped).findAny.toScala
-      )
-      args.map(tokenize).getOrElse(Nil)
-    }
   }
 }
