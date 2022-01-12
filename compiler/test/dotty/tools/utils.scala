@@ -5,7 +5,8 @@ import java.io.File
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path => JPath}
 
-import scala.io.{Codec, Source}
+import scala.io.Source
+import scala.jdk.StreamConverters._
 import scala.reflect.ClassTag
 import scala.util.Using.resource
 import scala.util.chaining.given
@@ -27,9 +28,9 @@ extension (str: String) def dropExtension =
   str.reverse.dropWhile(_ != '.').drop(1).reverse
 
 private
-def withFile[T](file: File)(action: Source => T)(using Codec): T      = resource(Source.fromFile(file))(action)
-def readLines(f: File)(using codec: Codec = Codec.UTF8): List[String] = withFile(f)(_.getLines.toList)
-def readFile(f: File)(using codec: Codec = Codec.UTF8): String        = withFile(f)(_.mkString)
+def withFile[T](file: File)(action: Source => T): T = resource(Source.fromFile(file, UTF_8.name))(action)
+def readLines(f: File): List[String]                = withFile(f)(_.getLines.toList)
+def readFile(f: File): String                       = withFile(f)(_.mkString)
 
 private object Unthrown extends ControlThrowable
 
@@ -44,8 +45,8 @@ def assertThrows[T <: Throwable: ClassTag](p: T => Boolean)(body: => Any): Unit 
     case NonFatal(other) => throw AssertionError(s"Wrong exception: expected ${implicitly[ClassTag[T]]} but was ${other.getClass.getName}").tap(_.addSuppressed(other))
 end assertThrows
 
-def toolArgsFor(files: List[JPath])(using codec: Codec = Codec.UTF8): List[String] =
-  files.flatMap(path => toolArgsParse(readLines(path.toFile)))
+def toolArgsFor(files: List[JPath]): List[String] =
+  files.flatMap(path => toolArgsParse(Files.lines(path, UTF_8).limit(10).toScala(List)))
 
 // Inspect the first 10 of the given lines for compiler options of the form
 // `// scalac: args`, `/* scalac: args`, ` * scalac: args`.
