@@ -1,8 +1,9 @@
 package dotty.tools.io
 
-import java.nio.file.{FileSystemAlreadyExistsException, FileSystems}
+import java.nio.file.{Path as JPath, *}
 
-import scala.jdk.CollectionConverters._
+import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
 
 /**
  * This class implements an [[AbstractFile]] backed by a jar
@@ -10,8 +11,16 @@ import scala.jdk.CollectionConverters._
  */
 class JarArchive private (root: Directory) extends PlainDirectory(root) {
   def close(): Unit = jpath.getFileSystem().close()
-  def allFileNames(): Iterator[String] = 
-    java.nio.file.Files.walk(jpath).iterator().asScala.map(_.toString)
+
+  def allFileNames(): Iterator[String] =
+    Files.walk(jpath).iterator().asScala.map(_.toString)
+
+  @volatile lazy val allDirs: scala.collection.Map[String, AbstractFile] = {
+    val b = new mutable.HashMap[String, VirtualDirectory]
+    for dir <- Files.walk(jpath).filter(Files.isDirectory(_)).iterator().asScala do
+      b(dir.toString) = new VirtualDirectory(dir.getFileName.toString, b.get(dir.getParent.toString))
+    b.result()
+  }
 }
 
 object JarArchive {

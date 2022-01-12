@@ -6,9 +6,9 @@ package dotty.tools.dotc.classpath
 import java.io.File
 import java.net.URL
 
-import dotty.tools.io.{ AbstractFile, FileZipArchive }
+import dotty.tools.io.{ AbstractFile, JarArchive }
 import FileUtils._
-import dotty.tools.io.{EfficientClassPath, ClassRepresentation}
+import dotty.tools.io.{EfficientClassPath, ClassRepresentation, Path}
 
 /**
  * A trait allowing to look for classpath entries of given type in zip and jar files.
@@ -24,12 +24,12 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
   override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
   override def asClassPathStrings: Seq[String] = Seq(zipFile.getPath)
 
-  private val archive = new FileZipArchive(zipFile.toPath, release)
+  private val archive = JarArchive.open(Path(zipFile.toPath))
 
   override private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry] = {
     for {
       dirEntry <- findDirEntry(inPackage).toSeq
-      entry <- dirEntry.iterator if entry.isPackage
+      entry <- dirEntry.iterator() if entry.isPackage
     }
     yield PackageEntryImpl(inPackage.entryName(entry.name))
   }
@@ -37,7 +37,7 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
   protected def files(inPackage: PackageName): Seq[FileEntryType] =
     for {
       dirEntry <- findDirEntry(inPackage).toSeq
-      entry <- dirEntry.iterator if isRequiredFileType(entry)
+      entry <- dirEntry.iterator() if isRequiredFileType(entry)
     }
     yield createFileEntry(entry)
 
@@ -53,7 +53,7 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
   def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit =
     findDirEntry(inPackage) match {
       case Some(dirEntry) =>
-        for (entry <- dirEntry.iterator) {
+        for (entry <- dirEntry.iterator()) {
           if (entry.isPackage)
             onPackageEntry(PackageEntryImpl(inPackage.entryName(entry.name)))
           else if (isRequiredFileType(entry))
@@ -62,9 +62,9 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
       case None =>
     }
 
-  private def findDirEntry(pkg: PackageName): Option[archive.DirEntry] =
+  private def findDirEntry(pkg: PackageName): Option[AbstractFile] =
     archive.allDirs.get(pkg.dirPathTrailingSlashJar)
 
-  protected def createFileEntry(file: FileZipArchive#Entry): FileEntryType
+  protected def createFileEntry(file: AbstractFile): FileEntryType
   protected def isRequiredFileType(file: AbstractFile): Boolean
 }

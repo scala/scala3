@@ -102,7 +102,7 @@ class OutputDirs {
     singleOutDir match {
       case Some(d) =>
         d match {
-          case _: VirtualDirectory | _: io.ZipArchive => Nil
+          case _: VirtualDirectory | _: io.JarArchive => Nil
           case _ => List(d.lookupPathUnchecked(srcPath, false))
         }
       case None =>

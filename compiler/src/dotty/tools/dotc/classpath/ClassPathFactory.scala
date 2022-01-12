@@ -46,10 +46,6 @@ class ClassPathFactory {
 
   def classesInPath(path: String)(using Context): List[ClassPath] = classesInPathImpl(path, expand = false)
 
-  def classesInManifest(useManifestClassPath: Boolean)(using Context): List[ClassPath] =
-    if (useManifestClassPath) dotty.tools.io.ClassPath.manifests.map(url => newClassPath(AbstractFile getResources url))
-    else Nil
-
   // Internal
   protected def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
     for {

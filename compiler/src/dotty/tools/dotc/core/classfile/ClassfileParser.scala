@@ -21,7 +21,7 @@ import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.{AbstractFile, PlainFile, ZipArchive}
+import io.{AbstractFile, PlainFile}
 import scala.util.control.NonFatal
 
 object ClassfileParser {
@@ -912,40 +912,15 @@ class ClassfileParser(
         val attrLen = in.nextInt
         val bytes = in.nextBytes(attrLen)
         if (attrLen == 16) { // A tasty attribute with that has only a UUID (16 bytes) implies the existence of the .tasty file
-          val tastyBytes: Array[Byte] = classfile match { // TODO: simplify when #3552 is fixed
-            case classfile: io.ZipArchive#Entry => // We are in a jar
-              val path = classfile.parent.lookupName(
-                classfile.name.stripSuffix(".class") + ".tasty", directory = false
-              )
-              if (path != null) {
-                val stream = path.input
-                try {
-                  val tastyOutStream = new ByteArrayOutputStream()
-                  val buffer = new Array[Byte](1024)
-                  var read = stream.read(buffer, 0, buffer.length)
-                  while (read != -1) {
-                    tastyOutStream.write(buffer, 0, read)
-                    read = stream.read(buffer, 0, buffer.length)
-                  }
-                  tastyOutStream.flush()
-                  tastyOutStream.toByteArray
-                } finally {
-                  stream.close()
-                }
-              }
-              else {
-                report.error(s"Could not find $path in ${classfile.underlyingSource}")
-                Array.empty
-              }
-            case _ =>
-              val dir = classfile.container
-              val name = classfile.name.stripSuffix(".class") + ".tasty"
-              val tastyFileOrNull = dir.lookupName(name, false)
-              if (tastyFileOrNull == null) {
-                report.error(s"Could not find TASTY file $name under $dir")
-                Array.empty
-              } else
-                tastyFileOrNull.toByteArray
+          val tastyBytes: Array[Byte] = {
+            val dir = classfile.container
+            val name = classfile.name.stripSuffix(".class") + ".tasty"
+            val tastyFileOrNull = dir.lookupName(name, false)
+            if (tastyFileOrNull == null) {
+              report.error(s"Could not find TASTY file $name under $dir")
+              Array.empty
+            } else
+              tastyFileOrNull.toByteArray
           }
           if (tastyBytes.nonEmpty) {
             val reader = new TastyReader(bytes, 0, 16)

@@ -40,7 +40,7 @@ object AbstractFile {
    */
   def getDirectory(path: Path): AbstractFile =
     if (path.isDirectory) new PlainFile(path)
-    else if (path.isFile && Path.isExtensionJarOrZip(path.jpath)) ZipArchive fromFile path.toFile
+    else if (path.isFile && Path.isExtensionJarOrZip(path.jpath)) JarArchive.open(path)
     else null
 
   /**
@@ -51,8 +51,6 @@ object AbstractFile {
   def getURL(url: URL): AbstractFile =
     if (url.getProtocol != "file") null
     else new PlainFile(new Path(Paths.get(url.toURI)))
-
-  def getResources(url: URL): AbstractFile = ZipArchive fromManifestURL url
 }
 
 /**

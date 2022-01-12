@@ -19,7 +19,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
+import dotty.tools.io.{AbstractFile, PlainFile}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext._
@@ -116,11 +116,6 @@ class ExtractDependencies extends Phase {
 
     def processExternalDependency(depFile: AbstractFile, binaryClassName: String) = {
       depFile match {
-        case ze: ZipArchive#Entry => // The dependency comes from a JAR
-          ze.underlyingSource match
-            case Some(zip) if zip.file != null =>
-              binaryDependency(zip.file, binaryClassName)
-            case _ =>
         case pf: PlainFile => // The dependency comes from a class file
           // FIXME: pf.file is null for classfiles coming from the modulepath
           // (handled by JrtClassPath) because they cannot be represented as
@@ -128,8 +123,12 @@ class ExtractDependencies extends Phase {
           // java.io.File, this means that we cannot record dependencies coming
           // from the modulepath. For now this isn't a big deal since we only
           // support having the standard Java library on the modulepath.
-          if pf.file != null then
-            binaryDependency(pf.file, binaryClassName)
+          var file = pf.file
+          if file == null then
+            for source <- pf.underlyingSource do
+              file = source.file // The dependency comes from a JAR
+          if file != null then
+            binaryDependency(file, binaryClassName)
         case _ =>
           internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.from.srcPos)
       }
