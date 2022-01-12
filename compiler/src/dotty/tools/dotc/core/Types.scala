@@ -4171,7 +4171,7 @@ object Types {
           case MatchAlias(alias) =>
             trace(i"normalize $this", typr, show = true) {
               MatchTypeTrace.recurseWith(this) {
-                alias.applyIfParameterized(args).tryNormalize
+                alias.applyIfParameterized(args.map(_.normalized)).tryNormalize
               }
             }
           case _ =>
