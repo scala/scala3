@@ -78,6 +78,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object CompilationInfo extends CompilationInfoModule:
       def isWhileTyping: Boolean = !ctx.isAfterTyper
+      def XmacroSettings: List[String] = ctx.settings.XmacroSettings.value
     end CompilationInfo
 
     extension (expr: Expr[Any])
