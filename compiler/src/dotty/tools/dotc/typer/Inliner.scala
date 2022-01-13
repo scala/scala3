@@ -486,10 +486,18 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
     val argtpe = arg.tpe.dealiasKeepAnnots.translateFromRepeated(toArray = false)
     val argIsBottom = argtpe.isBottomTypeAfterErasure
-    val bindingType =
+    val argwtpe =
       if argIsBottom then formal
-      else if isByName then ExprType(argtpe.widen)
+      else if defn.isTupleNType(formal.widenExpr) && !defn.isTupleNType(argtpe.widen) then
+        // A generic tuple with know size N is considered as a subtype of TupleN but it does not
+        // contain the members of TupleN. All these tuples will be erased to TupleN and will have
+        // those members at runtime. Therefore when inlining it is important to keep the fact that
+        // this is TupleN and that the members can be accessed when the tree is re-typechecked.
+        // Also see `newArg` bellow
+        // See i14182
+        argtpe.widen & formal.widenExpr
       else argtpe.widen
+    val bindingType = if isByName then ExprType(argwtpe) else argwtpe
     var bindingFlags: FlagSet = InlineProxy
     if formal.widenExpr.hasAnnotation(defn.InlineParamAnnot) then
       bindingFlags |= Inline
@@ -500,8 +508,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     val boundSym = newSym(InlineBinderName.fresh(name.asTermName), bindingFlags, bindingType).asTerm
     val binding = {
       var newArg = arg.changeOwner(ctx.owner, boundSym)
-      if bindingFlags.is(Inline) && argIsBottom then
+      if argIsBottom && bindingFlags.is(Inline) then
         newArg = Typed(newArg, TypeTree(formal)) // type ascribe RHS to avoid type errors in expansion. See i8612.scala
+      else if defn.isTupleNType(formal.widenExpr) && !defn.isTupleNType(argtpe.widen) then
+        // Also see `argtpe1` above
+        newArg = Typed(newArg, TypeTree(formal.widenExpr))
+
       if isByName then DefDef(boundSym, newArg)
       else ValDef(boundSym, newArg)
     }.withSpan(boundSym.span)
@@ -972,7 +984,21 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           paramProxy.get(tree.tpe) match {
             case Some(t) if tree.isTerm && t.isSingleton =>
               val inlinedSingleton = singleton(t).withSpan(argSpan)
-              inlinedFromOutside(inlinedSingleton)(tree.span)
+              val tree1 = inlinedFromOutside(inlinedSingleton)(tree.span)
+              if defn.isTupleNType(tree.tpe.widenTermRefExpr) && !defn.isTupleNType(t.widenTermRefExpr) then
+                // See tests/pos/i14182b.scala
+                // FIXME: We have a `tree1` that has a term ref `tup.type` with underlying `1 *: 2 *: EmptyTuple` type but the original reference is to a `Tuple2[Int, Int]`
+                // If we take the `tree1` then it is impossible to select the `_1` field. If we take the parameter type we can lose singletons references that we should keep.
+                // Ideally we should ascribe it to a `tup.type & Tuple2[Int, Int]` but that is not working because we have the some special sub-typing rule that makes
+                // `1 *: 2 *: EmptyTuple <:< Tuple2[Int, Int]`. Therefore the glb of the two types ends up being `tup.type` which drops the extra information we need to add.
+                // None of the following attempts work.
+
+
+                // tree1.ensureConforms(tree.tpe.widenTermRefExpr)
+                // Typed(tree1, TypeTree(tree.tpe.widenTermRefExpr & t))
+                Typed(tree1, TypeTree(AndType(tree.tpe.widenTermRefExpr, t)))
+                // tree1.asInstance(AndType(tree.tpe.widenTermRefExpr, t))
+              else tree1
             case Some(t) if tree.isType =>
               inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
             case _ => tree
