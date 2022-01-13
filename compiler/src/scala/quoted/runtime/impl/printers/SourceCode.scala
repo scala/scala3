@@ -1056,7 +1056,7 @@ object SourceCode {
 
       case LambdaTypeTree(tparams, body) =>
         printTargsDefs(tparams.zip(tparams), isDef = false)
-        this += highlightTypeDef(" => ")
+        this += highlightTypeDef(" =>> ")
         printTypeOrBoundsTree(body)
 
       case TypeBind(name, _) =>
