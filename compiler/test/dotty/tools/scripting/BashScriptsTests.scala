@@ -188,3 +188,18 @@ class BashScriptsTests:
       if valid then printf(s"\n===> success: classpath begins with %s, as reported by [%s]\n", workingDirectory, scriptFile.getName)
       assert(valid, s"script ${scriptFile.absPath} did not report valid java.class.path first entry")
 
+  /*
+   * verify -e println("yo!") works.
+   */
+  @Test def verifyCommandLineExpression =
+    printf("===> verify -e <expression> is properly handled by `dist/bin/scala`\n")
+    val expected = "9"
+    val expression = s"println(3*3)"
+    val cmd = s"bin/scala -e $expression"
+    val (validTest, exitCode, stdout, stderr) = bashCommand(s"""bin/scala -e '$expression'""")
+    val result = stdout.filter(_.nonEmpty).mkString("")
+    printf("stdout: %s\n", result)
+    printf("stderr: %s\n", stderr.mkString("\n","\n",""))
+    if verifyValid(validTest) then
+      assert(result.contains(expected), s"expression [$expression] did not send [$expected] to stdout")
+
