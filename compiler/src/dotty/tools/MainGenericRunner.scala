@@ -149,6 +149,13 @@ object MainGenericRunner {
       process(remainingArgs, settings)
     case (o @ colorOption(_*)) :: tail =>
       process(tail, settings.withScalaArgs(o))
+    case "-e" :: expression :: tail =>
+      val tempScript = writeFile(s"@main def main(args: String *): Unit =\n  ${expression}")
+      settings
+        .withExecuteMode(ExecuteMode.Script)
+        .withTargetScript(tempScript)
+        .withScriptArgs(tail*)
+        .noSave // useless
     case arg :: tail =>
       val line = Try(Source.fromFile(arg).getLines.toList).toOption.flatMap(_.headOption)
       lazy val hasScalaHashbang = { val s = line.getOrElse("") ; s.startsWith("#!") && s.contains("scala") }
@@ -161,6 +168,7 @@ object MainGenericRunner {
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
 
+      
   def main(args: Array[String]): Unit =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" ")).filter(_.nonEmpty)
     val allArgs = scalaOpts ++ args
@@ -251,4 +259,11 @@ object MainGenericRunner {
     e.foreach(_.printStackTrace())
     !isFailure
   }
+  def writeFile(contents: String): String = {
+    val file = Files.createTempFile("exec", ".scala")
+    file.toFile.deleteOnExit()
+    Files.write(file, contents.getBytes)
+    file.toString.replace('\\', '/')
+  }
+
 }
