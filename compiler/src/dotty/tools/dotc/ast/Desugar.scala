@@ -693,23 +693,11 @@ object desugar {
     // For all other classes, the parent is AnyRef.
     val companions =
       if (isCaseClass) {
-
-        // true if access to the apply method has to be restricted
-        // i.e. if the case class constructor is either private or qualified private
-        def restrictedAccess = {
-          val mods = constr1.mods
-          mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
-        }
-
         val applyMeths =
           if (mods.is(Abstract)) Nil
           else {
-            val copiedFlagsMask = copiedAccessFlags & Private
-            val appMods = {
-              val mods = Modifiers(Synthetic | constr1.mods.flags & copiedFlagsMask)
-              if (restrictedAccess) mods.withPrivateWithin(constr1.mods.privateWithin)
-              else mods
-            }
+            val appMods =
+              Modifiers(Synthetic | constr1.mods.flags & copiedAccessFlags).withPrivateWithin(constr1.mods.privateWithin)
             val appParamss =
               derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
                 ap.withMods(ap.mods | (cp.mods.flags & HasDefault)))
