@@ -50,8 +50,12 @@ object CommunityBuildPlugin extends AutoPlugin {
   override val buildSettings: Seq[Setting[_]] = Seq(
     dependencyOverrides ++= {
       if (scalaVersion.value.startsWith("3.")) {
-        val predicate: ModuleID => Boolean = if (isForwardCompatProject.value) (_.revision.contains("-forward-compat")) else (!_.revision.contains("-forward-compat"))
-        CommunityBuildDependencies.allOverrides(sLog.value).filter(predicate)
+        val forwardCompatFilter: ModuleID => Boolean = if (isForwardCompatProject.value) (_.revision.contains("-forward-compat")) else (!_.revision.contains("-forward-compat"))
+        val stdlibOverrides = Seq(
+          scalaOrganization.value %% "scala3-library" % scalaVersion.value,
+          scalaOrganization.value %% "scala3-library_sjs1" % scalaVersion.value,
+        )
+        CommunityBuildDependencies.allOverrides(sLog.value).filter(forwardCompatFilter) ++ stdlibOverrides
       } else Nil
     }
   )

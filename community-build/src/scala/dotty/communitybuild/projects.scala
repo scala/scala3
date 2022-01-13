@@ -517,7 +517,7 @@ object projects:
     dependencies   = () => List(cats, coop, disciplineSpecs2, scalacheck)
   )
 
-  lazy val catsEffect3ForwardCompat = catsEffect3.forwardCompat.withScalaRelease("3.0")
+  lazy val catsEffect3ForwardCompat = catsEffect3.forwardCompat.copy(compilerVersion = "3.0.2")
 
   lazy val scalaParallelCollections = SbtCommunityProject(
     project        = "scala-parallel-collections",
