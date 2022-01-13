@@ -240,7 +240,6 @@ object ErrorReporting {
   def err(using Context): Errors = new Errors
 }
 
-
 class ImplicitSearchError(
   arg: tpd.Tree,
   pt: Type,
@@ -249,6 +248,7 @@ class ImplicitSearchError(
   ignoredInstanceNormalImport: => Option[SearchSuccess],
   importSuggestionAddendum: => String
 )(using ctx: Context) {
+
   def missingArgMsg = arg.tpe match {
     case ambi: AmbiguousImplicits =>
       (ambi.alt1, ambi.alt2) match {
