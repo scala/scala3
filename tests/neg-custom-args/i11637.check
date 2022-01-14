@@ -13,26 +13,16 @@ conforms to
 but the comparison trace ended with `false`:
           
   ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any
-    ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any (recurring)
-      ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
-        ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring)
-          ==> [T <: String] =>> Set[T]  <:  Iterable
-            ==> [T <: String] =>> Set[T]  <:  Iterable (recurring)
-              ==> type bounds []  <:  type bounds [ <: String]
-                ==> type bounds []  <:  type bounds [ <: String] (recurring)
-                  ==> Any  <:  String
-                    ==> Any  <:  String (recurring)
-                      ==> Any  <:  String (recurring)
-                      <== Any  <:  String (recurring) = false
-                    <== Any  <:  String (recurring) = false
-                  <== Any  <:  String = false
-                <== type bounds []  <:  type bounds [ <: String] (recurring) = false
-              <== type bounds []  <:  type bounds [ <: String] = false
-            <== [T <: String] =>> Set[T]  <:  Iterable (recurring) = false
-          <== [T <: String] =>> Set[T]  <:  Iterable = false
-        <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring) = false
-      <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
-    <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any (recurring) = false
+    ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
+      ==> [T <: String] =>> Set[T]  <:  Iterable
+        ==> type bounds []  <:  type bounds [ <: String]
+          ==> Any  <:  String
+            ==> Any  <:  String
+            <== Any  <:  String = false
+          <== Any  <:  String = false
+        <== type bounds []  <:  type bounds [ <: String] = false
+      <== [T <: String] =>> Set[T]  <:  Iterable = false
+    <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
   <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any = false
 
 The tests were made under the empty constraint
@@ -52,26 +42,16 @@ conforms to
 but the comparison trace ended with `false`:
           
   ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any
-    ==> test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any (recurring)
-      ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
-        ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring)
-          ==> [T <: String] =>> Set[T]  <:  Iterable
-            ==> [T <: String] =>> Set[T]  <:  Iterable (recurring)
-              ==> type bounds []  <:  type bounds [ <: String]
-                ==> type bounds []  <:  type bounds [ <: String] (recurring)
-                  ==> Any  <:  String
-                    ==> Any  <:  String (recurring)
-                      ==> Any  <:  String (recurring)
-                      <== Any  <:  String (recurring) = false
-                    <== Any  <:  String (recurring) = false
-                  <== Any  <:  String = false
-                <== type bounds []  <:  type bounds [ <: String] (recurring) = false
-              <== type bounds []  <:  type bounds [ <: String] = false
-            <== [T <: String] =>> Set[T]  <:  Iterable (recurring) = false
-          <== [T <: String] =>> Set[T]  <:  Iterable = false
-        <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] (recurring) = false
-      <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
-    <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any (recurring) = false
+    ==> type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]]
+      ==> [T <: String] =>> Set[T]  <:  Iterable
+        ==> type bounds []  <:  type bounds [ <: String]
+          ==> Any  <:  String
+            ==> Any  <:  String
+            <== Any  <:  String = false
+          <== Any  <:  String = false
+        <== type bounds []  <:  type bounds [ <: String] = false
+      <== [T <: String] =>> Set[T]  <:  Iterable = false
+    <== type bounds [[T <: String] <: Set[T]]  <:  type bounds [[T] <: Iterable[T]] = false
   <== test2.FunctorImpl  <:  [Generic2[T <: String] <: Set[T]] =>> Any = false
 
 The tests were made under the empty constraint
