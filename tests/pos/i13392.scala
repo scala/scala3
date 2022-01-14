@@ -8,4 +8,4 @@ erased class CanThrow[-E <: Exception]
 
 @experimental
 object unsafeExceptions:
-  given canThrowAny: CanThrow[Exception] = ???
+  given canThrowAny: CanThrow[Exception] = new CanThrow

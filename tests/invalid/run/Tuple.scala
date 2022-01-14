@@ -2,7 +2,7 @@ import annotation.showAsInfix
 
 // This version of Tuple requires full retyping of untyped trees on inlining
 object typelevel {
-  erased def erasedValue[T]: T = ???
+  erased def erasedValue[T]: T = compiletime.erasedValue
   class Typed[T](val value: T) { type Type = T }
 }
 
