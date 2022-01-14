@@ -5,7 +5,7 @@ erased class Foo
 class Bar
 
 object unsafeExceptions:
-  given canThrowAny: CanThrow[Exception] = null
+  given canThrowAny: CanThrow[Exception] = new CanThrow
 
 object test1:
   trait Decoder[+T]:
@@ -44,7 +44,7 @@ object test5:
 
 @main def Test(): Unit =
   import unsafeExceptions.canThrowAny
-  given Foo = ???
+  given Foo = Foo()
   given Bar = Bar()
   test1.deco.apply().apply
   test2.deco.apply().apply

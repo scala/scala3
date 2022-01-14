@@ -88,6 +88,6 @@ object Appender {
 
 object PhantomAppender {
   type Aux[L1 <: HList, L2 <: HList, O <: HList]
-  implicit erased def caseHNil[L <: HList]: Aux[HNil, L, L] = ???
-  implicit erased def caseHCons[H, T <: HList, L <: HList, O <: HList] (using erased p: Aux[T, L, O]): Aux[H :: T, L, H :: O] = ???
+  implicit erased def caseHNil[L <: HList]: Aux[HNil, L, L] = compiletime.erasedValue
+  implicit erased def caseHCons[H, T <: HList, L <: HList, O <: HList] (using erased p: Aux[T, L, O]): Aux[H :: T, L, H :: O] = compiletime.erasedValue
 }

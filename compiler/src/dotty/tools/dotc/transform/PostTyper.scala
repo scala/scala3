@@ -352,9 +352,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             )
           }
         case tree: ValDef =>
+          checkErasedDef(tree)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
+          checkErasedDef(tree)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
@@ -463,6 +465,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+
+    private def checkErasedDef(tree: ValOrDefDef)(using Context): Unit =
+      if tree.symbol.is(Erased, butNot = Macro) then
+        val tpe = tree.rhs.tpe
+        if tpe.derivesFrom(defn.NothingClass) then
+          report.error("`erased` definition cannot be implemented with en expression of type Nothing", tree.srcPos)
+        else if tpe.derivesFrom(defn.NullClass) then
+          report.error("`erased` definition cannot be implemented with en expression of type Null", tree.srcPos)
 
     private def annotateExperimental(sym: Symbol)(using Context): Unit =
       if sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot) then
