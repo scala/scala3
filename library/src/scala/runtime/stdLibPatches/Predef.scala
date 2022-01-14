@@ -3,7 +3,7 @@ package scala.runtime.stdLibPatches
 object Predef:
   import compiletime.summonFrom
 
-  transparent inline def assert(inline assertion: Boolean, inline message: => Any): Unit =
+  transparent inline def assert(inline assertion: Boolean, inline message: Any): Unit =
     if !assertion then scala.runtime.Scala3RunTime.assertFailed(message)
 
   transparent inline def assert(inline assertion: Boolean): Unit =
