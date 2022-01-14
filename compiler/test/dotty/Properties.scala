@@ -26,7 +26,7 @@ object Properties {
   /** Filter out tests not matching the regex supplied by "dotty.tests.filter"
    *  define
    */
-  val testsFilter: Option[String] = sys.props.get("dotty.tests.filter")
+  val testsFilter: List[String] = sys.props.get("dotty.tests.filter").fold(Nil)(_.split(',').toList)
 
   /** Tests should override the checkfiles with the current output */
   val testsUpdateCheckfile: Boolean =
