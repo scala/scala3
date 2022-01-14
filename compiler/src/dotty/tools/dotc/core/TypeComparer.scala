@@ -210,7 +210,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  types (as when we go from an abstract type to one of its bounds). In that case
    *  one should use `isSubType(_, _, a)` where `a` defines the kind of approximation.
    *
-   *  Note: Logicaly, `recur` could be nested in `isSubType`, which would avoid
+   *  Note: Logically, `recur` could be nested in `isSubType`, which would avoid
    *  the instance state consisting `approx` and `leftRoot`. But then the implemented
    *  code would have two extra parameters for each of the many calls that go from
    *  one sub-part of isSubType to another.
@@ -2955,9 +2955,10 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     if (skipped) op
     else {
       indent += 2
-      b.append("\n").append(" " * indent).append("==> ").append(str)
+      val str1 = str.replace('\n', ' ')
+      b.append("\n").append(" " * indent).append("==> ").append(str1)
       val res = op
-      b.append("\n").append(" " * indent).append("<== ").append(str).append(" = ").append(show(res))
+      b.append("\n").append(" " * indent).append("<== ").append(str1).append(" = ").append(show(res))
       indent -= 2
       res
     }
@@ -2965,17 +2966,13 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   private def frozenNotice: String =
     if frozenConstraint then " in frozen constraint" else ""
 
-  override def isSubType(tp1: Type, tp2: Type, approx: ApproxState): Boolean =
+  override def recur(tp1: Type, tp2: Type): Boolean =
     def moreInfo =
       if Config.verboseExplainSubtype || ctx.settings.verbose.value
       then s" ${tp1.getClass} ${tp2.getClass}"
       else ""
+    val approx = approxState
     traceIndented(s"${show(tp1)}  <:  ${show(tp2)}$moreInfo${approx.show}$frozenNotice") {
-      super.isSubType(tp1, tp2, approx)
-    }
-
-  override def recur(tp1: Type, tp2: Type): Boolean =
-    traceIndented(s"${show(tp1)}  <:  ${show(tp2)} (recurring)$frozenNotice") {
       super.recur(tp1, tp2)
     }
 
@@ -2995,7 +2992,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(using Context): Boolean =
-    traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
+    traceIndented(s"add constraint ${show(param)} ${if (fromBelow) ">:" else "<:"} ${show(bound)} $frozenNotice, constraint = ${show(ctx.typerState.constraint)}") {
       super.addConstraint(param, bound, fromBelow)
     }
 
