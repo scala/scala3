@@ -8,6 +8,8 @@ import reporting._
 import org.openjdk.jmh.results.RunResult
 import org.openjdk.jmh.runner.Runner
 import org.openjdk.jmh.runner.options.OptionsBuilder
+import org.openjdk.jmh.runner.options.TimeValue
+//import org.openjdk.jmh.results.format.ResultFormatType
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.results.format._
 import java.util.concurrent.TimeUnit
@@ -21,8 +23,11 @@ import dotty.tools.io.AbstractFile
 
 object Bench {
   val COMPILE_OPTS_FILE = "compile.txt"
+  val GENERATED_BENCHMARKS_DIR = "tests-generated"
 
   def main(args: Array[String]): Unit = {
+    generateBenchmarks(GENERATED_BENCHMARKS_DIR)
+
     if (args.isEmpty) {
       println("Missing <args>")
       return
@@ -32,7 +37,7 @@ object Bench {
     val warmup = if (intArgs.length > 0) intArgs(0).toInt else 30
     val iterations = if (intArgs.length > 1) intArgs(1).toInt else 20
     val forks = if (intArgs.length > 2) intArgs(2).toInt else 1
-
+    val measurementTime = if (intArgs.length > 3) intArgs(3).toInt else 1
 
     import File.{ separator => sep }
 
@@ -48,7 +53,13 @@ object Bench {
                .mode(Mode.AverageTime)
                .timeUnit(TimeUnit.MILLISECONDS)
                .warmupIterations(warmup)
+               .warmupTime(TimeValue.seconds(measurementTime))
                .measurementIterations(iterations)
+               .measurementTime(TimeValue.seconds(measurementTime))
+               // To output results to bench/results.json, uncomment the 2
+               // following lines and the ResultFormatType import.
+               //.result("results.json")
+               //.resultFormat(ResultFormatType.JSON)
                .forks(forks)
                .build
 
