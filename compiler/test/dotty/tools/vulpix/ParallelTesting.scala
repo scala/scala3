@@ -1426,14 +1426,15 @@ object ParallelTesting {
         dir
       else
         import scala.sys.process._
-        val zipPath = cache.resolve(s"scala3-$version.tar.gz")
+        val archivePath = cache.resolve(s"scala3-$version.tar.gz")
         val compilerDownloadUrl = s"https://github.com/lampepfl/dotty/releases/download/$version/scala3-$version.tar.gz"
-        (URL(compilerDownloadUrl) #>> zipPath.toFile #&& s"tar -xf $zipPath -C $cache").!!
+        (URL(compilerDownloadUrl) #>> archivePath.toFile #&& s"tar -xf $archivePath -C $cache").!!
+        archivePath.toFile.delete()
         dir
     }
 
   private lazy val cache =
-    val dir = Files.createTempDirectory("dotty.tests")
-    dir.toFile.deleteOnExit()
+    val dir = Properties.testCache.resolve("compilers")
+    dir.toFile.mkdirs()
     dir
 }

@@ -15,6 +15,11 @@ object Properties {
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
   || sys.env.isDefinedAt("DRONE")  // TODO remove this when we drop Drone
 
+  val testCache: Path =
+    sys.env.get("DOTTY_TEST_CACHE").map(Paths.get(_)).getOrElse {
+      Paths.get(sys.props("user.home"), ".cache", "dotty", "test")
+    }
+
   /** Tests should run interactive? */
   val testsInteractive: Boolean = propIsNullOrTrue("dotty.tests.interactive")
 
