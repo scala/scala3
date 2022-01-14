@@ -58,7 +58,8 @@ def toolArgsParse(lines: List[String]): List[String] = {
   val endc = "*" + "/"    // be forgiving of /* scalac: ... */
   def stripped(s: String) = s.substring(s.indexOf(tag) + tag.length).stripSuffix(endc)
   val args = lines.to(LazyList).take(10).filter { s =>
-       s.contains("// " + tag)
+       s.contains("//" + tag)
+    || s.contains("// " + tag)
     || s.contains("/* " + tag)
     || s.contains(" * " + tag)
     // but avoid picking up comments like "% scalac ./a.scala" and "$ scalac a.scala"
