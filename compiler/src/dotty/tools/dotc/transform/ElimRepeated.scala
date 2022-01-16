@@ -60,7 +60,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
             addVarArgsForwarder(sym, isJavaVarargsOverride, hasAnnotation, parentHasAnnotation)
       else if hasAnnotation then
         report.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
-    end
+    end transformVarArgs
 
     super.transform(ref) match
       case ref1: SymDenotation if ref1.is(Method, butNot = JavaDefined) =>
@@ -75,6 +75,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
           ref1
       case ref1 =>
         ref1
+  end transform
 
   override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.is(Method)
 
@@ -124,19 +125,21 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       tp
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    val args = tree.args.mapConserve {
-      case arg: Typed if isWildcardStarArg(arg) =>
-        val isJavaDefined = tree.fun.symbol.is(JavaDefined)
-        val tpe = arg.expr.tpe
-        if isJavaDefined then
-          adaptToArray(arg.expr)
-        else if tpe.derivesFrom(defn.ArrayClass) then
-          arrayToSeq(arg.expr)
-        else
-          arg.expr
-      case arg => arg
-    }
-    cpy.Apply(tree)(tree.fun, args)
+    val args1 = tree.args.mapConserve(transformArg(_, tree.fun.symbol.is(JavaDefined)))
+    cpy.Apply(tree)(tree.fun, args1)
+
+  private def transformArg(arg: Tree, toArray: Boolean)(using Context): Tree = arg match
+    case arg: Typed if isWildcardStarArg(arg) =>
+      val expr = arg.expr
+      if toArray then
+        adaptToArray(expr)
+      else if expr.tpe.derivesFrom(defn.ArrayClass) then
+        arrayToSeq(expr)
+      else
+        expr
+    case arg @ ByName(arg1) =>
+      cpy.Apply(arg)(arg.fun, transformArg(arg1, toArray) :: Nil)
+    case arg => arg
 
   private def adaptToArray(tree: Tree)(implicit ctx: Context): Tree = tree match
     case SeqLiteral(elems, elemtpt) =>

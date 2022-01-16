@@ -220,7 +220,12 @@ class TypeOps:
       def loop(tpe: Type): s.Type = tpe match {
         case t if t.isFromJavaObject =>
           loop(defn.AnyType)
+
         case ExprType(tpe) =>
+          val stpe = loop(tpe)
+          s.ByNameType(stpe)
+
+        case ByNameType(tpe) =>
           val stpe = loop(tpe)
           s.ByNameType(stpe)
 

@@ -187,7 +187,7 @@ object QuoteMatcher {
         // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
         case Typed(TypeApply(patternHole, tpt :: Nil), tpt2)
             if patternHole.symbol.eq(defn.QuotedRuntimePatterns_patternHole) &&
-               tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
+               tpt2.tpe.isRepeatedParam =>
           scrutinee match
             case Typed(s, tpt1) if s.tpe <:< tpt.tpe => matched(scrutinee)
             case _ => notMatched

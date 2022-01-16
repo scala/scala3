@@ -134,7 +134,7 @@ object Implicits:
             else if (mt.paramInfos.lengthCompare(1) == 0 && {
                   var formal = widenSingleton(mt.paramInfos.head)
                   if (approx) formal = wildApprox(formal)
-                  explore(argType relaxed_<:< formal.widenExpr)
+                  explore(argType relaxed_<:< formal.widenDelayed)
                 })
               Candidate.Conversion
             else
@@ -813,7 +813,7 @@ trait Implicits:
     if !ctx.mode.is(Mode.ImplicitsEnabled) || from.isInstanceOf[Super] then
       NoMatchingImplicitsFailure
     else {
-      def adjust(to: Type) = to.stripTypeVar.widenExpr match {
+      def adjust(to: Type) = to.stripTypeVar.widenDelayed match {
         case SelectionProto(name, memberProto, compat, true) =>
           SelectionProto(name, memberProto, compat, privateOK = false)
         case tp => tp
@@ -1038,7 +1038,7 @@ trait Implicits:
             result0
         }
       // If we are at the outermost implicit search then emit the implicit dictionary, if any.
-      ctx.searchHistory.emitDictionary(span, result)
+      ctx.searchHistory.emitDictionary(span, result, pt)
     }
 
   /** Try to typecheck an implicit reference */
@@ -1051,12 +1051,12 @@ trait Implicits:
       val locked = ctx.typerState.ownedVars
       val adapted =
         if argument.isEmpty then
-          if defn.isContextFunctionType(pt) then
+          if defn.isContextFunctionType(pt) && !pt.isByName then
             // need to go through typed, to build the context closure
             typed(untpd.TypedSplice(generated), pt, locked)
           else
             // otherwise we can skip typing and go directly to adapt
-            adapt(generated, pt.widenExpr, locked)
+            adapt(generated, pt.widenDelayed, locked).alignByName(pt)
         else {
           def untpdGenerated = untpd.TypedSplice(generated)
           def producesConversion(info: Type): Boolean = info match
@@ -1128,7 +1128,7 @@ trait Implicits:
 
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(using Context):
-    assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
+    assert(argument.isEmpty || argument.tpe.isValueType,
         em"found: $argument: ${argument.tpe}, expected: $pt")
 
     private def nestedContext() =
@@ -1136,7 +1136,7 @@ trait Implicits:
 
     private def isCoherent = pt.isRef(defn.CanEqualClass)
 
-    val wideProto = pt.widenExpr
+    val wideProto = pt.widenDelayed
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
     val wildProto: Type =
@@ -1550,7 +1550,7 @@ trait Implicits:
         history match
           case prev @ OpenSearch(cand1, tp, outer) =>
             if cand1.ref eq cand.ref then
-              lazy val wildTp = wildApprox(tp.widenExpr)
+              lazy val wildTp = wildApprox(tp.widenDelayed)
               if belowByname && (wildTp <:< wildPt) then
                 fullyDefinedType(tp, "by-name implicit parameter", span)
                 false
@@ -1563,7 +1563,9 @@ trait Implicits:
             else loop(outer, tp.isByName || belowByname)
           case _ => false
 
-      loop(ctx.searchHistory, pt.isByName)
+      val res = loop(ctx.searchHistory, pt.isByName)
+      if res then implicits.println(i"divergence detected for ${cand.ref}")
+      res
     end checkDivergence
 
     /**
@@ -1598,13 +1600,13 @@ trait Implicits:
         def loop(history: SearchHistory, belowByname: Boolean): Type =
           history match
             case OpenSearch(cand, tp, outer) =>
-              if (belowByname || tp.isByName) && tp.widenExpr <:< wideProto then tp
+              if (belowByname || tp.isByName) && tp.widenDelayed <:< wideProto then tp
               else loop(outer, belowByname || tp.isByName)
             case _ => NoType
 
         loop(ctx.searchHistory, pt.isByName) match
           case NoType => NoType
-          case tp => ctx.searchHistory.linkBynameImplicit(tp.widenExpr)
+          case tp => ctx.searchHistory.linkBynameImplicit(tp.widenDelayed)
     end recursiveRef
   end ImplicitSearch
 end Implicits
@@ -1645,7 +1647,7 @@ abstract class SearchHistory:
     root.defineBynameImplicit(tpe, result)
 
   // This is NOOP unless at the root of this search history.
-  def emitDictionary(span: Span, result: SearchResult)(using Context): SearchResult = result
+  def emitDictionary(span: Span, result: SearchResult, pt: Type)(using Context): SearchResult = result
 
   override def toString: String = s"SearchHistory(open = $openSearchPairs, byname = $byname)"
 end SearchHistory
@@ -1732,8 +1734,11 @@ final class SearchRoot extends SearchHistory:
   override def defineBynameImplicit(tpe: Type, result: SearchSuccess)(using Context): SearchResult =
     implicitDictionary.get(tpe) match {
       case Some((ref, _)) =>
-        implicitDictionary.put(tpe, (ref, result.tree))
-        SearchSuccess(tpd.ref(ref).withSpan(result.tree.span), result.ref, result.level)(result.tstate, result.gstate)
+        import tpd.TreeOps
+        val rhs = result.tree.dropByName
+        implicitDictionary.put(tpe, (ref, rhs))
+        val arg = tpd.ref(ref).withSpan(rhs.span)
+        SearchSuccess(arg, result.ref, result.level)(result.tstate, result.gstate)
       case None => result
     }
 
@@ -1745,7 +1750,7 @@ final class SearchRoot extends SearchHistory:
    * @result       The elaborated result, comprising the implicit dictionary and a result tree
    *               substituted with references into the dictionary.
    */
-  override def emitDictionary(span: Span, result: SearchResult)(using Context): SearchResult =
+  override def emitDictionary(span: Span, result: SearchResult, pt: Type)(using Context): SearchResult =
     if (myImplicitDictionary == null || implicitDictionary.isEmpty) result
     else
       result match {
@@ -1805,13 +1810,26 @@ final class SearchRoot extends SearchHistory:
             val vsymMap = (vsyms zip nsyms).toMap
 
             val rhss = pruned.map(_._2)
+
             // Substitute dictionary references into dictionary entry RHSs
             val rhsMap = new TreeTypeMap(treeMap = {
               case id: Ident if vsymMap.contains(id.symbol) =>
                 tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)
               case tree => tree
             })
-            val nrhss = rhss.map(rhsMap(_))
+
+            // Add by-name closures in arguments if corresponding formal is a by-name parameter.
+            val alignByNameInArgs = new TreeMap:
+              override def transform(tree: Tree)(using Context) = super.transform(tree) match
+                case app @ Apply(fn, args) =>
+                  fn.tpe.widen match
+                    case mt: MethodType =>
+                      import tpd.TreeOps
+                      tpd.cpy.Apply(app)(fn, args.zipWithConserve(mt.paramInfos)(_.alignByName(_)))
+                    case _ => app
+                case tree => tree
+
+            val nrhss = rhss.map(rhsMap(_)).map(alignByNameInArgs.transform(_))
 
             val vdefs = (nsyms zip nrhss) map {
               case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs.changeNonLocalOwners(nsym))
@@ -1830,7 +1848,8 @@ final class SearchRoot extends SearchHistory:
               case tree => tree
             })
 
-            val res = resMap(success.tree)
+            val res = alignByNameInArgs.transform(resMap(success.tree))
+              .alignByName(pt)
 
             val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
 

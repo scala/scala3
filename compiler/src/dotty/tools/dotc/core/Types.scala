@@ -90,7 +90,7 @@ object Types {
    *
    *  Note: please keep in sync with copy in `docs/docs/internals/type-system.md`.
    */
-  abstract class Type extends Hashable with printing.Showable {
+  abstract class Type extends Hashable with printing.Showable:
 
 // ----- Tests -----------------------------------------------------
 
@@ -398,8 +398,10 @@ object Types {
       (new isGroundAccumulator).apply(true, this)
 
     /** Is this a type of a repeated parameter? */
-    def isRepeatedParam(using Context): Boolean =
-      typeSymbol eq defn.RepeatedParamClass
+    def isRepeatedParam(using Context): Boolean = this match
+      case ExprType(underlying) => underlying.isRepeatedParam
+      case ByNameType(underlying) => underlying.isRepeatedParam
+      case _ => typeSymbol eq defn.RepeatedParamClass
 
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
@@ -1517,10 +1519,13 @@ object Types {
     }
 
     /** If this is a repeated type, its element type, otherwise the type itself */
-    def repeatedToSingle(using Context): Type = this match {
-      case tp @ ExprType(tp1) => tp.derivedExprType(tp1.repeatedToSingle)
-      case _                  => if (isRepeatedParam) this.argTypesHi.head else this
-    }
+    def repeatedToSingle(using Context): Type = this match
+      case tp @ ExprType(tp1) =>
+        tp.derivedExprType(tp1.repeatedToSingle)
+      case tp @ ByNameType(tp1) =>
+        tp.derivedByNameType(tp1.repeatedToSingle)
+      case _ =>
+        if (isRepeatedParam) this.argTypesHi.head else this
 
     // ----- Normalizing typerefs over refined types ----------------------------
 
@@ -1841,7 +1846,10 @@ object Types {
     def dropRepeatedAnnot(using Context): Type = dropAnnot(defn.RepeatedAnnot)
 
     def annotatedToRepeated(using Context): Type = this match {
-      case tp @ ExprType(tp1) => tp.derivedExprType(tp1.annotatedToRepeated)
+      case tp @ ExprType(tp1) =>
+        tp.derivedExprType(tp1.annotatedToRepeated)
+      case tp @ ByNameType(tp1) =>
+        tp.derivedByNameType(tp1.annotatedToRepeated)
       case AnnotatedType(tp, annot) if annot matches defn.RepeatedAnnot =>
         val typeSym = tp.typeSymbol.asClass
         assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
@@ -1916,9 +1924,8 @@ object Types {
 
     /** Is the `hash` of this type the same for all possible sequences of enclosing binders? */
     def hashIsStable: Boolean = true
-  }
 
-  // end Type
+  end Type
 
 // ----- Type categories ----------------------------------------------
 
@@ -2085,7 +2092,7 @@ object Types {
     def designator: Designator
     protected def designator_=(d: Designator): Unit
 
-    assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
+    if !prefix.isValueType && (prefix ne NoPrefix) then throw InvalidPrefix(prefix, designator)
 
     private var myName: Name = null
     private var lastDenotation: Denotation = null
@@ -5448,6 +5455,47 @@ object Types {
       else None
   }
 
+  // ----- ByName Param Type Encoding ------------------------------------------------
+
+  object ByNameType:
+    def apply(tp: Type)(using Context): Type =
+      defn.FunctionOf(Nil, tp, isContextual = true)
+    def unapply(tp: Type)(using Context): Option[Type] = tp match
+      case tp @ AppliedType(tycon, arg :: Nil) if defn.isByNameClass(tycon.typeSymbol) =>
+        Some(arg)
+      case tp @ AnnotatedType(parent, _) =>
+        unapply(parent)
+      case _ =>
+        None
+  end ByNameType
+
+  extension (tp: Type)
+    def isByName(using Context): Boolean = tp match
+      case tp @ AppliedType(tycon, arg :: Nil) =>
+        defn.isByNameClass(tycon.typeSymbol)
+      case tp @ AnnotatedType(parent, _) =>
+        parent.isByName
+      case _ =>
+        false
+
+    def derivedByNameType(arg: Type)(using Context): Type = tp match
+      case tp @ AppliedType(tycon, arg0 :: Nil) =>
+        assert(defn.isByNameClass(tycon.typeSymbol))
+        if arg0 eq arg then tp
+        else tp.derivedAppliedType(tycon, arg :: Nil)
+      case tp @ AnnotatedType(parent, annot) =>
+        tp.derivedAnnotatedType(parent.derivedByNameType(arg), annot)
+
+    def widenByName(using Context): Type = tp match
+      case ByNameType(underlying) => underlying
+      case _ => tp
+
+    /** widen by-name types or ExprTypes */
+    def widenDelayed(using Context): Type = tp match
+      case ExprType(underlying) => underlying.widenDelayed
+      case ByNameType(underlying) => underlying.widenDelayed
+      case _ => tp
+
   // ----- TypeMaps --------------------------------------------------------------------
 
   /** Where a traversal should stop */
@@ -6140,6 +6188,7 @@ object Types {
     }
   }
 
+  /** Type size as defined in implicit divergence checking */
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {
     var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
@@ -6148,7 +6197,8 @@ object Types {
         seen += tp
         tp match {
           case tp: AppliedType =>
-            foldOver(n + 1, tp)
+            if defn.isByNameClass(tp.tycon.typeSymbol) then foldOver(n, tp.args)
+            else foldOver(n + 1, tp)
           case tp: RefinedType =>
             foldOver(n + 1, tp)
           case tp: TypeRef if tp.info.isTypeAlias =>
@@ -6161,6 +6211,7 @@ object Types {
       }
   }
 
+  /** Covering set as defined in implicit divergence checking */
   class CoveringSetAccumulator(using Context) extends TypeAccumulator[Set[Symbol]] {
     var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(cs: Set[Symbol], tp: Type): Set[Symbol] =
@@ -6171,7 +6222,9 @@ object Types {
           case tp if tp.isExactlyAny || tp.isExactlyNothing =>
             cs
           case tp: AppliedType =>
-            foldOver(cs + tp.typeSymbol, tp)
+            val tsym = tp.tycon.typeSymbol
+            if defn.isByNameClass(tsym) then foldOver(cs, tp.args)
+            else foldOver(cs + tsym, tp)
           case tp: RefinedType =>
             foldOver(cs + tp.typeSymbol, tp)
           case tp: TypeRef if tp.info.isTypeAlias =>

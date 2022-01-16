@@ -5,7 +5,7 @@
    |                        Required: String
 
 longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:43:32 --------------------------------------------
+-- Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:43:24 --------------------------------------------
 43 |    if x != null then f(identity(x), 1)   // error: dropping not null check fails typing
    |                        ^^^^^^^^^^^
    |                     This argument was typed using flow assumptions about mutable variables

@@ -498,11 +498,20 @@ object Nullables:
    *  keep it. Otherwise issue an error that the call-by-name argument was typed using
    *  flow assumptions about mutable variables and suggest that it is enclosed
    *  in a `byName(...)` call instead.
+   *
+   *  This step is needed because arguments might be evaluated in calls to overloaded
+   *  methods that have both cbn and cbv parameters, so we do not know yet whether an
+   *  argument is cbn. We always typecheck such arguments under the assumption
+   *  that they are cbv, and we have to correct this assumption if the actual resolved
+   *  method is cbn. If the call is non-overloaded, we do the right thing from the start.
+   *  Inserting a byName call just makes clear that the argumnent is cbn. There is no
+   *  special treatemnt in the compiler associated with that method; it is just the
+   *  cbn identity.
    */
   def postProcessByNameArgs(fn: TermRef, app: Tree)(using Context): Tree =
     fn.widen match
       case mt: MethodType
-      if mt.paramInfos.exists(_.isInstanceOf[ExprType]) && !fn.symbol.is(Inline) =>
+      if mt.paramInfos.exists(_.isByName) && !fn.symbol.is(Inline) =>
         app match
           case Apply(fn, args) =>
             object dropNotNull extends TreeMap:
@@ -547,8 +556,8 @@ object Nullables:
             def recur(formals: List[Type], args: List[Tree]): List[Tree] = (formals, args) match
               case (formal :: formalsRest, arg :: argsRest) =>
                 val arg1 =
-                  if formal.isInstanceOf[ExprType]
-                  then postProcess(formal.widenExpr.repeatedToSingle, arg)
+                  if formal.isByName
+                  then postProcess(formal.widenByName.repeatedToSingle, arg)
                   else arg
                 val argsRest1 = recur(
                   if formal.isRepeatedParam then formals else formalsRest,

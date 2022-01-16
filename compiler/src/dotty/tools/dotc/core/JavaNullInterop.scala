@@ -111,7 +111,7 @@ object JavaNullInterop {
           // then its Scala signature will be `def setNames(names: (String|Null)*): Unit`.
           // This is because `setNames(null)` passes as argument a single-element array containing the value `null`,
           // and not a `null` array.
-          !tp.isRef(defn.RepeatedParamClass)
+          !tp.isRepeatedParam
         case _ => true
       })
 

@@ -34,9 +34,6 @@ object TypeUtils {
       self.derivesFrom(defn.ExceptionClass)
       && !self.derivesFrom(defn.RuntimeExceptionClass)
 
-    def isByName: Boolean =
-      self.isInstanceOf[ExprType]
-
     def ensureMethodic(using Context): Type = self match {
       case self: MethodicType => self
       case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)

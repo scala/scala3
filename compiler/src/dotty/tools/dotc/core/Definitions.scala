@@ -457,6 +457,10 @@ class Definitions {
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
       MethodType(List(ThrowableType), NothingType))
 
+  /** Method wrapping by-name arguments; created by Typer, eliminated in ByNameLambda */
+  @tu lazy val byNameMethod: TermSymbol = enterMethod(OpsPackageClass, nme.BYNAME,
+      MethodType(List(AnyType))(mt => FunctionOf(Nil, mt.paramRefs(0), isContextual = true)))
+
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
   def NothingType: TypeRef = NothingClass.typeRef
@@ -1081,6 +1085,9 @@ class Definitions {
     }
   }
 
+  final def isByNameClass(sym: Symbol): Boolean =
+    sym eq ContextFunction0
+
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass
 
@@ -1298,6 +1305,7 @@ class Definitions {
   @tu lazy val Function0: Symbol = FunctionClass(0)
   @tu lazy val Function1: Symbol = FunctionClass(1)
   @tu lazy val Function2: Symbol = FunctionClass(2)
+  @tu lazy val ContextFunction0: Symbol = FunctionClass(0, isContextual = true)
 
   def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): TypeRef =
     FunctionClass(n, isContextual && !ctx.erasedTypes, isErased).typeRef
@@ -1809,7 +1817,7 @@ class Definitions {
 
   /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   @tu lazy val syntheticCoreMethods: List[TermSymbol] =
-    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod)
+    AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, byNameMethod)
 
   @tu lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
 

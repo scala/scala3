@@ -44,3 +44,7 @@ t6138
 t6138-2
 i12656.scala
 trait-static-forwarder
+
+# failure due to deprecated inline cbn parameters
+inline-param-semantics.scala
+i1569.scala

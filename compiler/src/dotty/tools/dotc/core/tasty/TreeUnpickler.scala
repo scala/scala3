@@ -882,7 +882,13 @@ class TreeUnpickler(reader: TastyReader,
             TypeDef(rhs)
           }
         case PARAM =>
-          val tpt = readTpt()(using localCtx)
+          var tpt = readTpt()(using localCtx)
+          tpt match
+            case ByNameTypeTree(restpt) if sym.isAllOf(InlineParam) =>
+              // inline by name parmeters are deprecated but can still appear in Tasty up to 3.1
+              tpt = restpt
+            case _ =>
+          sym.info = tpt.tpe
           assert(nothingButMods(end))
           sym.info = tpt.tpe
           ValDef(tpt)
@@ -1117,6 +1123,8 @@ class TreeUnpickler(reader: TastyReader,
           New(readTpt())
         case THROW =>
           Throw(readTerm())
+        case BYNAME =>
+          ByName(readTerm())
         case SINGLETONtpt =>
           SingletonTypeTree(readTerm())
         case BYNAMEtpt =>

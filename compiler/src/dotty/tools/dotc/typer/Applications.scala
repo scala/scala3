@@ -356,7 +356,7 @@ trait Applications extends Compatibility {
     /** If constructing trees, turn last `n` processed arguments into a
      *  `SeqLiteral` tree with element type `elemFormal`.
      */
-    protected def makeVarArg(n: Int, elemFormal: Type): Unit
+    protected def makeVarArg(n: Int, elemFormal: Type, formal: Type): Unit
 
     /** If all `args` have primitive numeric types, make sure it's the same one */
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
@@ -591,7 +591,7 @@ trait Applications extends Compatibility {
               case (arg @ Typed(Literal(Constant(null)), _)) :: Nil if ctx.isAfterTyper =>
                 addTyped(arg)
               case _ =>
-                val elemFormal = formal.widenExpr.argTypesLo.head
+                val elemFormal = formal.widenByName.argTypesLo.head
                 val typedArgs =
                   harmonic(harmonizeArgs, elemFormal) {
                     args.map { arg =>
@@ -600,7 +600,7 @@ trait Applications extends Compatibility {
                     }
                   }
                 typedArgs.foreach(addArg(_, elemFormal))
-                makeVarArg(args.length, elemFormal)
+                makeVarArg(args.length, elemFormal, formal)
             }
           else args match {
             case EmptyTree :: args1 =>
@@ -678,7 +678,7 @@ trait Applications extends Compatibility {
             && {
               val argtpe1 = argtpe.widen
               val captured = captureWildcards(argtpe1)
-              (captured ne argtpe1) && isCompatible(captured, formal.widenExpr)
+              (captured ne argtpe1) && isCompatible(captured, formal.widenByName)
             }
 
     /** The type of the given argument */
@@ -686,7 +686,7 @@ trait Applications extends Compatibility {
 
     def typedArg(arg: Arg, formal: Type): Arg = arg
     final def addArg(arg: TypedArg, formal: Type): Unit = ok = ok & argOK(arg, formal)
-    def makeVarArg(n: Int, elemFormal: Type): Unit = {}
+    def makeVarArg(n: Int, elemFormal: Type, formal: Type): Unit = {}
     def fail(msg: Message, arg: Arg): Unit =
       ok = false
     def fail(msg: Message): Unit =
@@ -737,11 +737,11 @@ trait Applications extends Compatibility {
     def addArg(arg: Tree, formal: Type): Unit =
       typedArgBuf += adapt(arg, formal.widenExpr)
 
-    def makeVarArg(n: Int, elemFormal: Type): Unit = {
+    def makeVarArg(n: Int, elemFormal: Type, formal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.dropRightInPlace(n)
       val elemtpt = TypeTree(elemFormal)
-      typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
+      typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt)).alignByName(formal)
     }
 
     def harmonizeArgs(args: List[TypedArg]): List[Tree] =

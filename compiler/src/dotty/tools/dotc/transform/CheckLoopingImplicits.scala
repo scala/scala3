@@ -20,7 +20,7 @@ class CheckLoopingImplicits extends MiniPhase:
 
   override def phaseName: String = CheckLoopingImplicits.name
 
-  override def transformValDef(mdef: ValDef)(using Context): Tree = 
+  override def transformValDef(mdef: ValDef)(using Context): Tree =
     transform(mdef)
 
   override def transformDefDef(mdef: DefDef)(using Context): Tree =
@@ -45,15 +45,10 @@ class CheckLoopingImplicits extends MiniPhase:
         checkNotLooping(qual)
       case Apply(fn, args) =>
         checkNotLooping(fn)
-        fn.tpe.widen match
-          case mt: MethodType
-               // Boolean && and || aren't defined with by-name parameters
-               // and therefore their type isn't an ExprType, so we exempt them by symbol name
-               if t.symbol != defn.Boolean_&& && t.symbol != defn.Boolean_|| =>
-            args.lazyZip(mt.paramInfos).foreach { (arg, pinfo) =>
-              if !pinfo.isInstanceOf[ExprType] then checkNotLooping(arg)
-            }
-          case _ =>
+        if fn.symbol != defn.Boolean_&&
+            && fn.symbol != defn.Boolean_||
+            && fn.symbol != defn.byNameMethod then
+          args.foreach(checkNotLooping)
       case TypeApply(fn, _) =>
         checkNotLooping(fn)
       case Block(stats, expr) =>
@@ -79,7 +74,7 @@ class CheckLoopingImplicits extends MiniPhase:
         checkNotLooping(finalizer)
       case SeqLiteral(elems, _) =>
         elems.foreach(checkNotLooping)
-      case t: ValDef =>  
+      case t: ValDef =>
         checkNotLooping(t.rhs)
       case _ =>
 

@@ -27,8 +27,7 @@ class EtaReduce extends MiniPhase:
   override def phaseName: String = "etaReduce"
 
   override def transformBlock(tree: Block)(using Context): Tree = tree match
-    case Block((meth : DefDef) :: Nil, closure: Closure)
-    if meth.symbol == closure.meth.symbol =>
+    case simpleClosure(meth, closure) =>
       meth.rhs match
         case Apply(Select(fn, nme.apply), args)
         if meth.paramss.head.corresponds(args)((param, arg) =>

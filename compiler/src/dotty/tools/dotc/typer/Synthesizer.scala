@@ -498,15 +498,17 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             tp.derivedRefinedType(baseWithRefinements(parent), rname, rinfo)
           case _ =>
             tp.baseType(cls)
-        val base = baseWithRefinements(formal)
+        val wformal = formal.widenByName
+        val base = baseWithRefinements(wformal)
         val result =
-          if (base <:< formal.widenExpr)
+          if (base <:< wformal)
             // With the subtype test we enforce that the searched type `formal` is of the right form
             handler(base, span)
           else EmptyTree
         result.orElse(recur(rest))
       case Nil =>
         EmptyTree
-    recur(specialHandlers)
+    val res = recur(specialHandlers)
+    if res.isEmpty then res else res.alignByName(formal)
 
 end Synthesizer

@@ -144,7 +144,7 @@ object Splicer {
           summon[Env]
       }
 
-      def checkIfValidArgument(tree: Tree)(using Env): Unit = tree match {
+      def checkIfValidArgument(tree: Tree)(using Env): Unit = tree.dropByName match {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
@@ -259,7 +259,9 @@ object Splicer {
 
       // TODO disallow interpreted method calls as arguments
       case Call(fn, args) =>
-        if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package))
+        if fn.symbol == defn.byNameMethod then
+          () => interpretTree(args.head.head)
+        else if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package))
           interpretNew(fn.symbol, args.flatten.map(interpretTree))
         else if (fn.symbol.is(Module))
           interpretModuleAccess(fn.symbol)
@@ -305,24 +307,15 @@ object Splicer {
     }
 
     private def interpretArgs(argss: List[List[Tree]], fnType: Type)(using Env): List[Object] = {
-      def interpretArgsGroup(args: List[Tree], argTypes: List[Type]): List[Object] =
-        assert(args.size == argTypes.size)
-        val view =
-          for (arg, info) <- args.lazyZip(argTypes) yield
-            info match
-              case _: ExprType => () => interpretTree(arg) // by-name argument
-              case _ => interpretTree(arg) // by-value argument
-        view.toList
-
       fnType.dealias match
         case fnType: MethodType if fnType.isErasedMethod => interpretArgs(argss, fnType.resType)
         case fnType: MethodType =>
           val argTypes = fnType.paramInfos
           assert(argss.head.size == argTypes.size)
-          interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, fnType.resType)
+          argss.head.map(interpretTree) ::: interpretArgs(argss.tail, fnType.resType)
         case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
           val argTypes :+ resType = fnType.args
-          interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)
+          argss.head.map(interpretTree) ::: interpretArgs(argss.tail, resType)
         case fnType: PolyType => interpretArgs(argss, fnType.resType)
         case fnType: ExprType => interpretArgs(argss, fnType.resType)
         case _ =>

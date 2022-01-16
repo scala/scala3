@@ -1534,7 +1534,12 @@ class Namer { typer: Typer =>
       case _ =>
         WildcardType
     }
-    val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    var mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
+    mbrTpe match
+      case ByNameType(underlying) if sym.isAllOf(InlineParam) =>
+        report.deprecationWarning(i"inline by name parameters are deprecated; use simple inline parameters instead", mdef.srcPos)
+        mbrTpe = underlying
+      case _ =>
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
       JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe

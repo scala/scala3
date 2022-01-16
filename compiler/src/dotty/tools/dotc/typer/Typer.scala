@@ -1171,7 +1171,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ => mapOver(t)
     }
 
-    val pt1 = pt.stripTypeVar.dealias.normalized
+    val pt1 = pt.widenByName.stripTypeVar.dealias.normalized
     if (pt1 ne pt1.dropDependentRefinement)
        && defn.isContextFunctionType(pt1.nonPrivateMember(nme.apply).info.finalResultType)
     then
@@ -1362,7 +1362,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     lazy val calleeType: Type = untpd.stripAnnotated(untpd.unsplice(fnBody)) match {
       case ident: untpd.Ident if isContextual =>
         val ident1 = typedIdent(ident, WildcardType)
-        val tp = ident1.tpe.widen
+        val tp = ident1.tpe.widenByName.widen
         if defn.isContextFunctionType(tp) && params.size == defn.functionArity(tp) then
           paramIndex = params.map(_.name).zipWithIndex.toMap
           fnBody = untpd.TypedSplice(ident1)
@@ -1418,17 +1418,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       defn.isProductSubType(formal) &&
       tupleComponentTypes(formal).corresponds(params) {
         (argType, param) =>
-          param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
+          param.tpt.isEmpty || argType.widenDelayed <:< typedAheadType(param.tpt).tpe
       }
 
-    val desugared =
-      if (protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head)) {
+    val desugared = protoFormals match
+      case pformal :: Nil if params.length != 1 && ptIsCorrectProduct(pformal.widenByName) =>
         val isGenericTuple =
           protoFormals.head.derivesFrom(defn.TupleClass)
           && !defn.isTupleClass(protoFormals.head.typeSymbol)
         desugar.makeTupledFunction(params, fnBody, isGenericTuple)
-      }
-      else {
+      case _ =>
         val inferredParams: List[untpd.ValDef] =
           for ((param, i) <- params.zipWithIndex) yield
             if (!param.tpt.isEmpty) param
@@ -1446,7 +1445,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 )
               cpy.ValDef(param)(tpt = paramTpt)
         desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual, tree.span)
-      }
+
     typed(desugared, pt)
   }
 
@@ -2263,7 +2262,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             params <- paramss1.dropWhile(TypeDefs.unapply(_).isDefined).take(1)
             case param: ValDef <- params
           do
-            if defn.isContextFunctionType(param.tpt.tpe) then
+            if defn.isContextFunctionType(param.tpt.tpe) && !param.tpt.tpe.isByName then
               report.error("case class element cannot be a context function", param.srcPos)
       else
         if sym.targetName != sym.name then
@@ -2859,10 +2858,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               && !ctx.isAfterTyper
               && !ctx.isInlineContext
             then
-              makeContextualFunction(xtree, ifpt)
+              makeContextualFunction(xtree, ifpt, locked)
             else xtree match
-              case xtree: untpd.NameTree => typedNamed(xtree, pt)
-              case xtree => typedUnnamed(xtree)
+            case xtree: untpd.NameTree => typedNamed(xtree, pt)
+            case xtree => typedUnnamed(xtree)
 
           simplify(result, pt, locked)
         catch case ex: TypeError => errorTree(xtree, ex, xtree.srcPos.focus)
@@ -2882,8 +2881,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         tree.overwriteType(tree.tpe.simplified)
     tree
 
-  protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
-    val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement
+  protected def makeContextualFunction(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
+    val defn.FunctionOf(formals, resType, true, _) = pt.dropDependentRefinement
 
     // The getter of default parameters may reach here.
     // Given the code below
@@ -2905,15 +2904,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     //
     // see tests/pos/i7778b.scala
 
-    val paramTypes = {
-      val hasWildcard = formals.exists(_.existsPart(_.isInstanceOf[WildcardType], StopAt.Static))
-      if hasWildcard then formals.map(_ => untpd.TypeTree())
-      else formals.map(untpd.TypeTree)
-    }
+    if formals.isEmpty then // expected type is a by-name type
+      ByName(typedUnadapted(tree, resType, locked))
+    else
+      val paramTypes =
+        val hasWildcard = formals.exists(_.existsPart(_.isInstanceOf[WildcardType], StopAt.Static))
+        if hasWildcard then formals.map(_ => untpd.TypeTree())
+        else formals.map(untpd.TypeTree)
 
-    val ifun = desugar.makeContextualFunction(paramTypes, tree, defn.isErasedFunctionType(pt))
-    typr.println(i"make contextual function $tree / $pt ---> $ifun")
-    typedFunctionValue(ifun, pt)
+      val ifun = desugar.makeContextualFunction(paramTypes, tree, defn.isErasedFunctionType(pt))
+      typr.println(i"make contextual function $tree / $pt ---> $ifun")
+      typedFunctionValue(ifun, pt) // TODO: thread locked through this
   }
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
@@ -3606,8 +3607,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     def adaptNoArgsOther(wtp: Type, functionExpected: Boolean): Tree = {
-      val implicitFun = isContextFunctionRef(wtp) && !untpd.isContextualClosure(tree)
-      def caseCompanion =
+      val isContextFunRef = isContextFunctionRef(wtp) && !untpd.isContextualClosure(tree)
+      def isCaseCompanion =
           functionExpected &&
           tree.symbol.is(Module) &&
           tree.symbol.companionClass.is(Case) &&
@@ -3616,20 +3617,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             true
           }
 
-      if ((implicitFun || caseCompanion) &&
-          !isApplyProto(pt) &&
-          pt != AssignProto &&
-          !ctx.mode.is(Mode.Pattern) &&
-          !ctx.isAfterTyper &&
-          !ctx.isInlineContext) {
+      if (isContextFunRef || isCaseCompanion)
+          && !wtp.isByName
+          && !isApplyProto(pt)
+          && pt != AssignProto
+          && !ctx.mode.is(Mode.Pattern)
+          && !ctx.isAfterTyper
+          && !ctx.isInlineContext
+      then
         typr.println(i"insert apply on implicit $tree")
         val sel = untpd.Select(untpd.TypedSplice(tree), nme.apply).withAttachment(InsertedApply, ())
         try typed(sel, pt, locked) finally sel.removeAttachment(InsertedApply)
-      }
-      else if (ctx.mode is Mode.Pattern) {
+      else if (ctx.mode is Mode.Pattern)
         checkEqualityEvidence(tree, pt)
         tree
-      }
       else
         val meth = methPart(tree).symbol
         if meth.isAllOf(DeferredInline) && !Inliner.inInlineMethod then
@@ -3927,6 +3928,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[?] | _: Closure => tree
+      case ByName(body) =>
+        pt match
+          case ByNameType(underlying) =>
+            ByName(adapt1(body, underlying, locked, tryGadtHealing))
+          case _ =>
+            adapt1(body, pt, locked, tryGadtHealing)
       case _ => tree.tpe.widen match {
         case tp: FlexType =>
           ensureReported(tp)
@@ -3950,14 +3957,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
         case wtp =>
           val isStructuralCall = wtp.isValueType && isStructuralTermSelectOrApply(tree)
-          if (isStructuralCall)
+          if isStructuralCall then
             readaptSimplified(handleStructural(tree))
+          else if needsForcing(tree, wtp, pt) then
+            readapt(tree.select(nme.apply).appliedToNone)
           else pt match {
             case pt: FunProto =>
               if tree.symbol.isAllOf(ApplyProxyFlags) then newExpr
               else adaptToArgs(wtp, pt)
             case pt: PolyProto if !wtp.isImplicitMethod =>
               tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
+            case ByNameType(underlying) if !wtp.isByName =>
+              ByName(adapt1(tree, pt.widenByName, locked, tryGadtHealing))
             case _ =>
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)
@@ -3965,6 +3976,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
     }
   }
+
+  /** Is tree an expression with by-name type that should be forced?
+   *  Overridden in ReTyper to always yield `false`. When typechecking source,
+   *  by-name types are always applied implicitly: They are context functions,
+   *  so match up only with using clauses, but they have 0 parameters, whereas
+   *  using clauses cannot be empty.
+   */
+  def needsForcing(tree: Tree, wtp: Type, pt: Type)(using Context): Boolean =
+    wtp.isByName && !pt.isByName && tree.isTerm
 
   /** True if this inline typer has already issued errors */
   def hasInliningErrors(using Context): Boolean = false

@@ -251,7 +251,7 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol.isExprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol.isExprSplice && !tpt.tpe.isRepeatedParam =>
           val tpt1 = transform(tpt) // Transform type bindings
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
           val newSplice = ref(defn.QuotedRuntime_exprSplice).appliedToType(tpt1.tpe).appliedTo(Typed(pat, exprTpt))

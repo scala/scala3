@@ -678,7 +678,7 @@ object Checking {
           case param :: params =>
             if (param.is(Mutable))
               report.error(ValueClassParameterMayNotBeAVar(clazz, param), param.srcPos)
-            if (param.info.isInstanceOf[ExprType])
+            if (param.info.isByName) // ^^^ drop?
               report.error(ValueClassParameterMayNotBeCallByName(clazz, param), param.srcPos)
             if (param.is(Erased))
               report.error("value class first parameter cannot be `erased`", param.srcPos)

@@ -32,31 +32,28 @@ abstract class Lifter {
   def noLift(expr: Tree)(using Context): Boolean
 
   /** The corresponding lifter for pass-by-name arguments */
-  protected def exprLifter: Lifter = NoLift
-
-  /** The flags of a lifted definition */
-  protected def liftedFlags: FlagSet = EmptyFlags
-
-  /** The tree of a lifted definition */
-  protected def liftedDef(sym: TermSymbol, rhs: Tree)(using Context): MemberDef = ValDef(sym, rhs)
+  protected def byNameLifter: Lifter = NoLift
 
   /** Is lifting performed on erased terms? */
   protected def isErased = false
 
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
-    if (noLift(expr)) expr
-    else {
+    if noLift(expr) then
+      expr
+    else
       val name = UniqueName.fresh(prefix)
-      // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
-      var liftedType = expr.tpe.widen.deskolemized
-      if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span))
-      defs += liftedDef(lifted, expr)
+      val (liftedFlags, rhs, mkDef, wrapType, wrapRef) = expr match
+        case ByName(body) =>
+          (Method, body, DefDef(_: TermSymbol, body), ExprType(_: Type), ByName(_: Tree))
+        case _ =>
+          (EmptyFlags, expr, ValDef(_: TermSymbol, expr), identity(_: Type), identity(_: Tree))
+      val lifted = newSymbol(
+        ctx.owner, name, liftedFlags | Synthetic, wrapType(rhs.tpe.widen.deskolemized), coord = spanCoord(expr.span))
+      defs += mkDef(lifted)
         .withSpan(expr.span)
         .changeNonLocalOwners(lifted)
         .setDefTree
-      ref(lifted.termRef).withSpan(expr.span.focus)
-    }
+      wrapRef(ref(lifted.termRef).withSpan(expr.span.focus))
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as
    *
@@ -90,7 +87,7 @@ abstract class Lifter {
         args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map { (arg, name, tp) =>
           if tp.hasAnnotation(defn.InlineParamAnnot) then arg
           else
-            val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
+            val lifter = if tp.isByName then byNameLifter else this
             lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
       case _ =>
@@ -153,18 +150,12 @@ object LiftImpure extends LiftImpure
 /** Lift all impure or complex arguments */
 class LiftComplex extends Lifter {
   def noLift(expr: tpd.Tree)(using Context): Boolean = tpd.isPurePath(expr)
-  override def exprLifter: Lifter = LiftToDefs
+  override def byNameLifter: Lifter = this
 }
 object LiftComplex extends LiftComplex
 
 object LiftErased extends LiftComplex:
   override def isErased = true
-
-/** Lift all impure or complex arguments to `def`s */
-object LiftToDefs extends LiftComplex {
-  override def liftedFlags: FlagSet = Method
-  override def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.DefDef = tpd.DefDef(sym, rhs)
-}
 
 /** Lifter for eta expansion */
 object EtaExpansion extends LiftImpure {

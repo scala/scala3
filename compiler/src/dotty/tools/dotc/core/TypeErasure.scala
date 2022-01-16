@@ -603,8 +603,6 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       this(tp.widen)
     case SuperType(thistpe, supertpe) =>
       SuperType(this(thistpe), this(supertpe))
-    case ExprType(rt) =>
-      defn.FunctionType(0)
     case RefinedType(parent, nme.apply, refinedInfo) if parent.typeSymbol eq defn.PolyFunctionClass =>
       erasePolyFunctionApply(refinedInfo)
     case tp: TypeProxy =>
@@ -692,7 +690,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     else defn.TupleXXLClass.typeRef
   }
 
-  /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
+  /** The erasure of a symbol's info. This is different from `apply` in the way
    *  `PolyType`s are treated. `eraseInfo` maps them them to method types, whereas `apply` maps them
    *  to the underlying type.
    */
@@ -702,14 +700,9 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case _ => tp
     tp1 match
       case ExprType(rt) =>
-        if sym.is(Param) then apply(tp1)
-            // Note that params with ExprTypes are eliminated by ElimByName,
-            // but potentially re-introduced by ResolveSuper, when we add
-            // forwarders to mixin methods.
-            // See doc comment for ElimByName for speculation how we could improve this.
-        else
-          MethodType(Nil, Nil,
-            eraseResult(rt.translateFromRepeated(toArray = sourceLanguage.isJava)))
+        assert(!sym.is(Param))
+        MethodType(Nil, Nil,
+          eraseResult(rt.translateFromRepeated(toArray = sourceLanguage.isJava)))
       case tp1: PolyType =>
         eraseResult(tp1.resultType) match
           case rt: MethodType => rt
@@ -820,8 +813,6 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         sigName(elem) ++ "[]"
       case tp: TermRef =>
         sigName(tp.widen)
-      case ExprType(rt) =>
-        sigName(defn.FunctionOf(Nil, rt))
       case tp: TypeVar =>
         val inst = tp.instanceOpt
         if (inst.exists) sigName(inst) else tpnme.Uninstantiated

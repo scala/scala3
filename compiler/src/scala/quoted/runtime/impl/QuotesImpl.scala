@@ -1734,7 +1734,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isFunctionType: Boolean =
           dotc.core.Symbols.defn.isFunctionType(self)
         def isContextFunctionType: Boolean =
-          dotc.core.Symbols.defn.isContextFunctionType(self)
+          dotc.core.Symbols.defn.isContextFunctionType(self) && !self.isByName
         def isErasedFunctionType: Boolean =
           dotc.core.Symbols.defn.isErasedFunctionType(self)
         def isDependentFunctionType: Boolean =
@@ -1979,7 +1979,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end MatchTypeMethods
 
-    type ByNameType = dotc.core.Types.ExprType
+    type ByNameType = dotc.core.Types.ExprType // ^^^ change
 
     object ByNameTypeTypeTest extends TypeTest[TypeRepr, ByNameType]:
       def unapply(x: TypeRepr): Option[ByNameType & x.type] = x match

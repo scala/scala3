@@ -36,7 +36,7 @@ object ProtoTypes {
      *  If `pt` is a by-name type, we compare against the underlying type instead.
      */
     def isCompatible(tp: Type, pt: Type)(using Context): Boolean =
-      (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
+      (tp.widenDelayed relaxed_<:< pt.widenDelayed) || viewExists(tp, pt)
 
     /** Like normalize and then isCompatible, but using a subtype comparison with
      *  necessary eithers that does not unnecessarily truncate the constraint space,
@@ -422,15 +422,14 @@ object ProtoTypes {
      *  used to avoid repeated typings of trees when backtracking.
      */
     def typedArg(arg: untpd.Tree, formal: Type)(using Context): Tree = {
-      val wideFormal = formal.widenExpr
       val argCtx =
-        if wideFormal eq formal then ctx
-        else ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
+        if formal.isByName then ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
+        else ctx
       val locked = ctx.typerState.ownedVars
       val targ = cacheTypedArg(arg,
-        typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
+        typer.typedUnadapted(_, formal, locked)(using argCtx),
         force = true)
-      typer.adapt(targ, wideFormal, locked)
+      typer.adapt(targ, formal, locked)
     }
 
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before

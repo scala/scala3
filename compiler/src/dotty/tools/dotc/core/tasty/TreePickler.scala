@@ -414,17 +414,18 @@ class TreePickler(pickler: TastyPickler) {
                 }
           }
         case Apply(fun, args) =>
-          if (fun.symbol eq defn.throwMethod) {
+          if fun.symbol eq defn.throwMethod then
             writeByte(THROW)
             pickleTree(args.head)
-          }
-          else {
+          else if fun.symbol eq defn.byNameMethod then
+            writeByte(BYNAME)
+            pickleTree(args.head)
+          else
             writeByte(APPLY)
             withLength {
               pickleTree(fun)
               args.foreach(pickleTree)
             }
-          }
         case TypeApply(fun, args) =>
           writeByte(TYPEAPPLY)
           withLength {

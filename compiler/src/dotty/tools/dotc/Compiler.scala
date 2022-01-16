@@ -70,6 +70,7 @@ class Compiler {
          new ExpandSAMs) ::          // Expand single abstract method closures to anonymous classes
     List(new init.Checker) ::        // Check initialization of objects
     List(new ElimRepeated,           // Rewrite vararg parameters and arguments
+         new ByNameLambda,           // Replace by-name applications with closures
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases

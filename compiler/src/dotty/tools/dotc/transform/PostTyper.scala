@@ -111,7 +111,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             for case stat: ValDef <- impl.body do
               val sym = stat.symbol
               if sym.isAllOf(PrivateParamAccessor, butNot = Mutable)
-                 && !sym.info.isInstanceOf[ExprType] // val-parameters cannot be call-by name, so no need to try to forward to them
+                 && !sym.info.isByName // val-parameters cannot be call-by name, so no need to try to forward to them
+                  // ^^^ drop this restriction?
               then
                 val idx = superArgs.indexWhere(_.symbol == sym)
                 if idx >= 0 && superParamNames(idx) == stat.name then

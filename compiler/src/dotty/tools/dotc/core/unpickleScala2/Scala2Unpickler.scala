@@ -811,7 +811,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         val tycon = select(pre, sym)
         val args = until(end, () => readTypeRef())
-        if (sym == defn.ByNameParamClass2x) ExprType(args.head)
+        if sym == defn.ByNameParamClass2x then
+          ByNameType(args.head)
         else if (ctx.settings.scalajs.value && args.length == 2 &&
             sym.owner == JSDefinitions.jsdefn.ScalaJSJSPackageClass && sym == JSDefinitions.jsdefn.PseudoUnionClass) {
           // Treat Scala.js pseudo-unions as real unions, this requires a

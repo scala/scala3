@@ -4,10 +4,4 @@ object Test {
 
   f(true)
   f(false)
-
-  inline def g(inline x: => Boolean): Unit =
-    inline if x then println()
-
-  g(true)
-  g(false)
 }

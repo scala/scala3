@@ -726,6 +726,14 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ => tree
   }
 
+  /** An anonyous function and a closure node referring to it in a block, without any wrappigs */
+  object simpleClosure:
+    def unapply(tree: Tree)(using Context): Option[(DefDef, Closure)] = tree match
+      case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
+        Some((meth, closure))
+      case _ =>
+        None
+
   /** The variables defined by a pattern, in reverse order of their appearance. */
   def patVars(tree: Tree)(using Context): List[Symbol] = {
     val acc = new TreeAccumulator[List[Symbol]] {

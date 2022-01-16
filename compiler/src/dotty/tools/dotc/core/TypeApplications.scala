@@ -412,11 +412,13 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** Translate a type of the form From[T] to either To[T] or To[? <: T] (if `wildcardArg` is set). Keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
-   *  Do the same for by name types => From[T] and => To[T]
+   *  Do the same for ExprTypes and by-name types => From[T] and => To[T].
    */
   def translateParameterized(from: ClassSymbol, to: ClassSymbol, wildcardArg: Boolean = false)(using Context): Type = self match {
     case self @ ExprType(tp) =>
       self.derivedExprType(tp.translateParameterized(from, to))
+    case self @ ByNameType(tp) =>
+      self.derivedByNameType(tp.translateParameterized(from, to))
     case _ =>
       if (self.derivesFrom(from)) {
         def elemType(tp: Type): Type = tp.widenDealias match

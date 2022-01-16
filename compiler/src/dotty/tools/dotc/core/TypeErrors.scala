@@ -41,6 +41,10 @@ class MissingType(pre: Type, name: Name) extends TypeError {
   }
 }
 
+class InvalidPrefix(pre: Type, desig: Designator) extends TypeError:
+  override def produceMessage(using Context): Message =
+    i"malformed type: $pre is not a legal prefix for $desig"
+
 class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int) extends TypeError {
 
   def explanation: String = s"$op $details"

@@ -45,10 +45,8 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
   def phaseName: String = HoistSuperArgs.name
 
-  override def runsAfter: Set[String] = Set(ByNameClosures.name)
-    // By name closures need to be introduced first in order to be hoisted out here.
-    // There's an interaction with by name closures in that the <cbn-arg> marker
-    // application should not be hoisted, but be left at the point of call.
+  override def runsAfter: Set[String] = Set(ByNameClosures.name, ByNameLambda.name)
+    // Assumes by-name argments are already converted to closures. ^^^ or maybe run before ByNameLambda?
 
   /** Defines methods for hoisting complex supercall arguments out of
    *  parent super calls and constructor definitions.

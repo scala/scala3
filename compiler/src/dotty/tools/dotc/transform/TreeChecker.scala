@@ -508,6 +508,14 @@ class TreeChecker extends Phase with SymTransformer {
         tpdTree
       }
 
+    override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
+      val sym = vdef.symbol
+      if sym.is(Param) || sym.is(ParamAccessor, butNot = Method) then
+        assert(!sym.info.isInstanceOf[ExprType],
+            i"""Parameter $sym of ${sym.owner} should not have ExprType ${sym.info}
+               |Definition = $vdef""")
+      super.typedValDef(vdef, sym)
+
     override def typedCase(tree: untpd.CaseDef, sel: Tree, selType: Type, pt: Type)(using Context): CaseDef =
       withPatSyms(tpd.patVars(tree.pat.asInstanceOf[tpd.Tree])) {
         super.typedCase(tree, sel, selType, pt)
@@ -596,7 +604,8 @@ class TreeChecker extends Phase with SymTransformer {
           i"""|${mismatch.msg}
               |found: ${infoStr(tree.tpe)}
               |expected: ${infoStr(pt)}
-              |tree = $tree""".stripMargin
+              |tree = $tree
+              |trace = ${mismatch.explain}"""
         })
       tree
     }

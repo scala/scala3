@@ -482,7 +482,7 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.ByNameTypeTree, result: Tree)(using Context): ByNameTypeTree =
-    tree.withType(ExprType(result.tpe))
+    tree.withType(ByNameType(result.tpe))
 
   def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree, alias: Tree)(using Context): TypeBoundsTree =
     tree.withType(

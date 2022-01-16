@@ -478,12 +478,17 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    */
   private def paramBindingDef(name: Name, formal: Type, arg0: Tree,
                               buf: DefBuffer)(using Context): ValOrDefDef = {
-    val isByName = formal.dealias.isInstanceOf[ExprType]
-    val arg = arg0 match {
+    val isByName = formal.isByName
+
+    def normArg(arg: Tree): Tree = arg match
       case Typed(arg1, tpt) if tpt.tpe.isRepeatedParam && arg1.tpe.derivesFrom(defn.ArrayClass) =>
         wrapArray(arg1, arg0.tpe.elemType)
-      case _ => arg0
-    }
+      case ByName(arg1) =>
+        assert(isByName)
+        normArg(arg1)
+      case _ => arg
+
+    val arg = normArg(arg0)
     val argtpe = arg.tpe.dealiasKeepAnnots.translateFromRepeated(toArray = false)
     val argIsBottom = argtpe.isBottomTypeAfterErasure
     val bindingType =
@@ -491,9 +496,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       else if isByName then ExprType(argtpe.widen)
       else argtpe.widen
     var bindingFlags: FlagSet = InlineProxy
-    if formal.widenExpr.hasAnnotation(defn.InlineParamAnnot) then
+    if formal.widenByName.hasAnnotation(defn.InlineParamAnnot) then
       bindingFlags |= Inline
-    if formal.widenExpr.hasAnnotation(defn.ErasedParamAnnot) then
+    if formal.widenByName.hasAnnotation(defn.ErasedParamAnnot) then
       bindingFlags |= Erased
     if isByName then
       bindingFlags |= Method
@@ -932,6 +937,40 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         else super.transformInlined(tree)
     end InlinerMap
 
+    def transformInlinedTree(tree: Tree): Tree = tree match
+      case tree: This =>
+        tree.tpe match {
+          case thistpe: ThisType =>
+            thisProxy.get(thistpe.cls) match {
+              case Some(t) =>
+                val thisRef = ref(t).withSpan(call.span)
+                inlinedFromOutside(thisRef)(tree.span)
+              case None => tree
+            }
+          case _ => tree
+        }
+      case Apply(Select(fn: Ident, nme.apply), Nil)
+      if fn.tpe.widen.isByName && paramProxy.contains(fn.tpe) =>
+      	// param proxies are parameterless defs, so drop the `.apply()`
+        transformInlinedTree(fn)
+      case tree: Ident =>
+        /* Span of the argument. Used when the argument is inlined directly without a binding */
+        def argSpan =
+          if (tree.name == nme.WILDCARD) tree.span // From type match
+          else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
+          else paramSpan(tree.name)
+        val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
+        paramProxy.get(tree.tpe) match {
+          case Some(t) if tree.isTerm && t.isSingleton =>
+            val inlinedSingleton = singleton(t).withSpan(argSpan)
+            inlinedFromOutside(inlinedSingleton)(tree.span)
+          case Some(t) if tree.isType =>
+            inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
+          case _ => tree
+        }
+      case tree => tree
+    end transformInlinedTree
+
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to
     // corresponding arguments or proxies on the type and term level. It also changes
@@ -950,35 +989,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             case t => mapOver(t)
           }
         },
-      treeMap = {
-        case tree: This =>
-          tree.tpe match {
-            case thistpe: ThisType =>
-              thisProxy.get(thistpe.cls) match {
-                case Some(t) =>
-                  val thisRef = ref(t).withSpan(call.span)
-                  inlinedFromOutside(thisRef)(tree.span)
-                case None => tree
-              }
-            case _ => tree
-          }
-        case tree: Ident =>
-          /* Span of the argument. Used when the argument is inlined directly without a binding */
-          def argSpan =
-            if (tree.name == nme.WILDCARD) tree.span // From type match
-            else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span?
-            else paramSpan(tree.name)
-          val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
-          paramProxy.get(tree.tpe) match {
-            case Some(t) if tree.isTerm && t.isSingleton =>
-              val inlinedSingleton = singleton(t).withSpan(argSpan)
-              inlinedFromOutside(inlinedSingleton)(tree.span)
-            case Some(t) if tree.isType =>
-              inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
-            case _ => tree
-          }
-        case tree => tree
-      },
+      treeMap = transformInlinedTree,
       oldOwners = inlinedMethod :: Nil,
       newOwners = ctx.owner :: Nil,
       substFrom = Nil,
@@ -1543,7 +1554,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       inlineIfNeeded(tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
-      val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
+      val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, tree.typeOpt, this))
       val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       val reducedProjection = reducer.reduceProjection(resNoReduce)
       if reducedProjection.isType then

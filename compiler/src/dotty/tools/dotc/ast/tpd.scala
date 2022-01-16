@@ -128,6 +128,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Closure(meth, tss => rhsFn(tss.head).changeOwner(ctx.owner, meth))
   }
 
+  /** A <byname>(...) application */
+  object ByName:
+    def apply(tree: Tree)(using Context): Apply =
+      Apply(ref(defn.byNameMethod), tree :: Nil)
+    def unapply(tree: Apply)(using Context): Option[Tree] =
+      if tree.fun.symbol == defn.byNameMethod then Some(tree.args.head)
+      else None
+
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(using Context): CaseDef =
     ta.assignType(untpd.CaseDef(pat, guard, body), pat, body)
 
@@ -955,6 +963,26 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def ensureApplied(using Context): Tree =
       if (tree.tpe.widen.isParameterless) tree else tree.appliedToNone
 
+    /** Is tree a by-name application `<byname>(arg)`? */
+    def isByName(using Context): Boolean = tree match
+      case Apply(fun, _) => fun.symbol == defn.byNameMethod
+      case _ => false
+
+    /** If tree is a by-name application `<byname>(arg)` return `arg`, otherwise the original tree */
+    def dropByName(using Context): Tree = tree match
+      case ByName(body) => body
+      case _ => tree
+
+    /** Wrap tree in a by-name application unless it is already one */
+    def wrapByName(using Context): Tree = tree match
+      case ByName(_) => tree
+      case _ => ByName(tree)
+
+    /** Make sure tree is by-name application if `formal` is a by-name parameter type */
+    def alignByName(formal: Type)(using Context) = formal match
+      case ByNameType(underlying) => wrapByName
+      case _ => tree
+
     /** `tree == that` */
     def equal(that: Tree)(using Context): Tree =
       if (that.tpe.widen.isRef(defn.NothingClass))
@@ -1108,7 +1136,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
-        case defn.ContextFunctionType(argTypes, resType, isErased) =>
+        case defn.ContextFunctionType(argTypes, resType, isErased) if argTypes.nonEmpty =>
           val anonFun = newAnonFun(
             ctx.owner,
             MethodType.companion(isContextual = true, isErased = isErased)(argTypes, resType),

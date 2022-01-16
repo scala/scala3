@@ -282,12 +282,9 @@ object GenericSignatures {
           else
             jsig(erasure(tp), toplevel, primitiveOK)
 
-        case ExprType(restpe) if toplevel =>
+        case ExprType(restpe) =>
           builder.append("()")
           methodResultSig(restpe)
-
-        case ExprType(restpe) =>
-          jsig(defn.FunctionType(0).appliedTo(restpe))
 
         case PolyType(tparams, mtpe: MethodType) =>
           assert(tparams.nonEmpty)

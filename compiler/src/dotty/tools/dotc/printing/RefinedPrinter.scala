@@ -218,14 +218,20 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def appliedText(tp: Type): Text = tp match
       case tp @ AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
-        if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
-        else if defn.isFunctionClass(cls) then toTextFunction(args, cls.name.isContextFunction, cls.name.isErasedFunction)
-        else if tp.tupleArity >= 2 && !printDebug then toTextTuple(tp.tupleElementTypes)
+        if tycon.isRepeatedParam then
+          toTextLocal(args.head) ~ "*"
+        else if defn.isByNameClass(tycon.typeSymbol) && !printDebug then
+          changePrec(GlobalPrec) { "=> " ~ toText(tp.widenByName) }
+        else if defn.isFunctionClass(cls) then
+          toTextFunction(args, cls.name.isContextFunction, cls.name.isErasedFunction)
+        else if tp.tupleArity >= 2 && !printDebug then
+          toTextTuple(tp.tupleElementTypes)
         else if isInfixType(tp) then
           val l :: r :: Nil = args
           val opName = tyconName(tycon)
           toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
-        else Str("")
+        else
+          Str("")
       case _ =>
         Str("")
 
@@ -298,9 +304,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         super.toText(tp)
     }
   }
-
-  protected def exprToText(tp: ExprType): Text =
-    "=> " ~ toText(tp.resType)
 
   protected def blockToText[T >: Untyped](block: Block[T]): Text =
     blockText(block.stats :+ block.expr)
@@ -421,10 +424,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Super(qual: This, mix) =>
         optDotPrefix(qual) ~ keywordStr("super") ~ optText(mix)("[" ~ _ ~ "]")
       case app @ Apply(fun, args) =>
-        if (fun.hasType && fun.symbol == defn.throwMethod)
+        if fun.symbol == defn.throwMethod then
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
+        else if fun.symbol == defn.byNameMethod && !printDebug then
+          toText(args.head)
         else if (!printDebug && fun.hasType && fun.symbol == defn.QuotedRuntime_exprQuote)
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else if (!printDebug && fun.hasType && fun.symbol.isExprSplice)

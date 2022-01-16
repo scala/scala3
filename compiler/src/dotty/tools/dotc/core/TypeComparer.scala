@@ -2335,13 +2335,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       }
     case tp1: RecType =>
       tp1.rebind(distributeAnd(tp1.parent, tp2))
-    case ExprType(rt1) =>
-      tp2 match {
-        case ExprType(rt2) =>
-          ExprType(rt1 & rt2)
-        case _ =>
-          NoType
-      }
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
     case tp1: AnnotatedType if !tp1.isRefining =>
@@ -2359,13 +2352,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  The rhs is a proper supertype of the lhs.
    */
   private def distributeOr(tp1: Type, tp2: Type, isSoft: Boolean = true): Type = tp1 match {
-    case ExprType(rt1) =>
-      tp2 match {
-        case ExprType(rt2) =>
-          ExprType(lub(rt1, rt2, isSoft = isSoft))
-        case _ =>
-          NoType
-      }
     case tp1: TypeVar if tp1.isInstantiated =>
       lub(tp1.underlying, tp2, isSoft = isSoft)
     case tp1: AnnotatedType if !tp1.isRefining =>

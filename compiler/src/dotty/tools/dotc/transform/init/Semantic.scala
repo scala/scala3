@@ -1502,14 +1502,16 @@ object Semantic {
 
   object Call {
 
+    private def isDelayed(tp: Type)(using Context) =
+      tp.isInstanceOf[MethodicType] || tp.isByName
+
     def unapply(tree: Tree)(using Context): Option[(Tree, List[List[Arg]])] =
       tree match
       case Apply(fn, args) =>
         val argTps = fn.tpe.widen match
           case mt: MethodType => mt.paramInfos
-        val normArgs: List[Arg] = args.zip(argTps).map {
-          case (arg, _: ExprType) => ByNameArg(arg)
-          case (arg, _)           => arg
+        val normArgs: List[Arg] = args.zip(argTps).map { (arg, formal) =>
+          if formal.isByName then ByNameArg(arg.dropByName) else arg
         }
         unapply(fn) match
         case Some((ref, args0)) => Some((ref, args0 :+ normArgs))
@@ -1518,7 +1520,7 @@ object Semantic {
       case TypeApply(fn, targs) =>
         unapply(fn)
 
-      case ref: RefTree if ref.tpe.widenSingleton.isInstanceOf[MethodicType] =>
+      case ref: RefTree if isDelayed(ref.tpe.widenSingleton) =>
         Some((ref, Nil))
 
       case _ => None
