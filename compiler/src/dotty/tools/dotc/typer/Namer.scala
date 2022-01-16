@@ -1656,7 +1656,7 @@ class Namer { typer: Typer =>
             ctx.defContext(sym).denotNamed(original)
         def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
           case params :: paramss1 =>
-            if (idx < params.length) params(idx)
+            if (idx < params.length) params(idx).widenByName
             else paramProto(paramss1, idx - params.length)
           case nil =>
             NoType
