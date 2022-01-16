@@ -45,7 +45,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
   def phaseName: String = HoistSuperArgs.name
 
-  override def runsAfter: Set[String] = Set(ByNameClosures.name, ByNameLambda.name)
+  override def runsAfter: Set[String] = Set(ByNameLambda.name)
     // Assumes by-name argments are already converted to closures. ^^^ or maybe run before ByNameLambda?
 
   /** Defines methods for hoisting complex supercall arguments out of
@@ -61,7 +61,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
      *  @param   cdef  The definition of the constructor from which the call is made
      *  @return  The argument after possible hoisting
      */
-    private def hoistSuperArg(arg: Tree, cdef: DefDef): Tree = {
+    private def hoistSuperArg(arg: Tree, cdef: DefDef): Tree =
       val constr = cdef.symbol
       lazy val origParams = // The parameters that can be accessed in the supercall
         if (constr == cls.primaryConstructor)
@@ -123,54 +123,50 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       }
 
       // begin hoistSuperArg
-      arg match {
-        case Apply(fn, arg1 :: Nil) if fn.symbol == defn.cbnArg =>
-          cpy.Apply(arg)(fn, hoistSuperArg(arg1, cdef) :: Nil)
-        case _ if arg.existsSubTree(needsHoist) =>
-          val superMeth = newSuperArgMethod(arg.tpe)
-          val superArgDef = DefDef(superMeth, prefss => {
-            val paramSyms = prefss.flatten.map(pref =>
-              if pref.isType then pref.tpe.typeSymbol else pref.symbol)
-            val tmap = new TreeTypeMap(
-              typeMap = new TypeMap {
-                lazy val origToParam = origParams.zip(paramSyms).toMap
-                def apply(tp: Type) = tp match {
-                  case tp: NamedType if needsRewire(tp) =>
-                    origToParam.get(tp.symbol) match {
-                      case Some(mappedSym) => if (tp.symbol.isType) mappedSym.typeRef else mappedSym.termRef
-                      case None => mapOver(tp)
-                    }
-                  case _ =>
-                    mapOver(tp)
-                }
-              },
-              treeMap = {
-                case tree: RefTree if needsRewire(tree.tpe) =>
-                  cpy.Ident(tree)(tree.name).withType(tree.tpe)
-                case tree =>
-                  tree
-              })
-            tmap(arg).changeOwnerAfter(constr, superMeth, thisPhase)
-          })
-          superArgDefs += superArgDef
-          def termParamRefs(tp: Type, params: List[Symbol]): List[List[Tree]] = tp match {
-            case tp: PolyType =>
-              termParamRefs(tp.resultType, params)
-            case tp: MethodType =>
-              val (thisParams, otherParams) = params.splitAt(tp.paramNames.length)
-              thisParams.map(ref) :: termParamRefs(tp.resultType, otherParams)
-            case _ =>
-              Nil
-          }
-          val (typeParams, termParams) = origParams.span(_.isType)
-          val res = ref(superMeth)
-            .appliedToTypes(typeParams.map(_.typeRef))
-            .appliedToArgss(termParamRefs(constr.info, termParams))
-          report.log(i"hoist $arg, cls = $cls = $res")
-          res
-        case _ => arg
-      }
-    }
+      if arg.existsSubTree(needsHoist) then
+        val superMeth = newSuperArgMethod(arg.tpe)
+        val superArgDef = DefDef(superMeth, prefss => {
+          val paramSyms = prefss.flatten.map(pref =>
+            if pref.isType then pref.tpe.typeSymbol else pref.symbol)
+          val tmap = new TreeTypeMap(
+            typeMap = new TypeMap {
+              lazy val origToParam = origParams.zip(paramSyms).toMap
+              def apply(tp: Type) = tp match {
+                case tp: NamedType if needsRewire(tp) =>
+                  origToParam.get(tp.symbol) match {
+                    case Some(mappedSym) => if (tp.symbol.isType) mappedSym.typeRef else mappedSym.termRef
+                    case None => mapOver(tp)
+                  }
+                case _ =>
+                  mapOver(tp)
+              }
+            },
+            treeMap = {
+              case tree: RefTree if needsRewire(tree.tpe) =>
+                cpy.Ident(tree)(tree.name).withType(tree.tpe)
+              case tree =>
+                tree
+            })
+          tmap(arg).changeOwnerAfter(constr, superMeth, thisPhase)
+        })
+        superArgDefs += superArgDef
+        def termParamRefs(tp: Type, params: List[Symbol]): List[List[Tree]] = tp match {
+          case tp: PolyType =>
+            termParamRefs(tp.resultType, params)
+          case tp: MethodType =>
+            val (thisParams, otherParams) = params.splitAt(tp.paramNames.length)
+            thisParams.map(ref) :: termParamRefs(tp.resultType, otherParams)
+          case _ =>
+            Nil
+        }
+        val (typeParams, termParams) = origParams.span(_.isType)
+        val res = ref(superMeth)
+          .appliedToTypes(typeParams.map(_.typeRef))
+          .appliedToArgss(termParamRefs(constr.info, termParams))
+        report.log(i"hoist $arg, cls = $cls = $res")
+        res
+      else arg
+    end hoistSuperArg
 
     /** Hoist complex arguments in super call out of the class. */
     def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef): Tree = superCall match {

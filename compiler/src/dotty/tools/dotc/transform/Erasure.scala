@@ -805,49 +805,46 @@ object Erasure {
      */
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       val Apply(fun, args) = tree
-      if fun.symbol == defn.cbnArg then
-        typedUnadapted(args.head, pt)
-      else
-        val origFun = fun.asInstanceOf[tpd.Tree]
-        val origFunType = origFun.tpe.widen(using preErasureCtx)
-        val ownArgs = if origFunType.isErasedMethod then Nil else args
-        val fun1 = typedExpr(fun, AnyFunctionProto)
-        fun1.tpe.widen match
-          case mt: MethodType =>
-            val (xmt,        // A method type like `mt` but with bunched arguments expanded to individual ones
-                 bunchArgs,  // whether arguments are bunched
-                 outers) =   // the outer reference parameter(s)
-              if fun1.isInstanceOf[Apply] then
-                (mt, fun1.removeAttachment(BunchedArgs).isDefined, Nil)
-              else
-                val xmt = expandedMethodType(mt, origFun)
-                (xmt, xmt ne mt, outer.args(origFun))
+      val origFun = fun.asInstanceOf[tpd.Tree]
+      val origFunType = origFun.tpe.widen(using preErasureCtx)
+      val ownArgs = if origFunType.isErasedMethod then Nil else args
+      val fun1 = typedExpr(fun, AnyFunctionProto)
+      fun1.tpe.widen match
+        case mt: MethodType =>
+          val (xmt,        // A method type like `mt` but with bunched arguments expanded to individual ones
+                bunchArgs,  // whether arguments are bunched
+                outers) =   // the outer reference parameter(s)
+            if fun1.isInstanceOf[Apply] then
+              (mt, fun1.removeAttachment(BunchedArgs).isDefined, Nil)
+            else
+              val xmt = expandedMethodType(mt, origFun)
+              (xmt, xmt ne mt, outer.args(origFun))
 
-            val args0 = outers ::: ownArgs
-            val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
-              .asInstanceOf[List[Tree]]
+          val args0 = outers ::: ownArgs
+          val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
+            .asInstanceOf[List[Tree]]
 
-            def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
-              val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)
-                .withType(applyResultType(xmt, args1))
-              if bunchArgs then app.withAttachment(BunchedArgs, ()) else app
+          def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
+            val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)
+              .withType(applyResultType(xmt, args1))
+            if bunchArgs then app.withAttachment(BunchedArgs, ()) else app
 
-            def app(fun1: Tree): Tree = fun1 match
-              case Block(stats, expr) =>
-                cpy.Block(fun1)(stats, app(expr))
-              case Apply(fun2, SeqLiteral(prevArgs, argTpt) :: _) if bunchArgs =>
-                mkApply(fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) :: Nil)
-              case Apply(fun2, prevArgs) =>
-                mkApply(fun2, prevArgs ++ args1)
-              case _ if bunchArgs =>
-                mkApply(fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) :: Nil)
-              case _ =>
-                mkApply(fun1, args1)
+          def app(fun1: Tree): Tree = fun1 match
+            case Block(stats, expr) =>
+              cpy.Block(fun1)(stats, app(expr))
+            case Apply(fun2, SeqLiteral(prevArgs, argTpt) :: _) if bunchArgs =>
+              mkApply(fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) :: Nil)
+            case Apply(fun2, prevArgs) =>
+              mkApply(fun2, prevArgs ++ args1)
+            case _ if bunchArgs =>
+              mkApply(fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) :: Nil)
+            case _ =>
+              mkApply(fun1, args1)
 
-            app(fun1)
-          case t =>
-            if ownArgs.isEmpty then fun1
-            else throw new MatchError(i"tree $tree has unexpected type of function $fun/$fun1: $t, was $origFunType, args = $ownArgs")
+          app(fun1)
+        case t =>
+          if ownArgs.isEmpty then fun1
+          else throw new MatchError(i"tree $tree has unexpected type of function $fun/$fun1: $t, was $origFunType, args = $ownArgs")
     end typedApply
 
     // The following four methods take as the proto-type the erasure of the pre-existing type,

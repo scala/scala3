@@ -14,7 +14,7 @@ import scala.collection.mutable
 class SpecializeFunctions extends MiniPhase {
   import ast.tpd._
   val phaseName = "specializeFunctions"
-  override def runsAfter = Set(ElimByName.name)
+  override def runsAfter = Set(ByNameLambda.name)
 
   override def isEnabled(using Context): Boolean =
     !ctx.settings.scalajs.value

@@ -32,7 +32,7 @@ class PatternMatcher extends MiniPhase {
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
     else {
-      // Widen termrefs with underlying `=> T` types. Otherwise ElimByName will produce
+      // Widen termrefs with underlying `=> T` types. Otherwise ByNameLambda will produce
       // inconsistent types. See i7743.scala.
       // Question: Does this need to be done more systematically, not just for pattern matches?
       val matchType = tree.tpe.widenSingleton match

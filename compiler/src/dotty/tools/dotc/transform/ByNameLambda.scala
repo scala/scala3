@@ -10,26 +10,7 @@ import StdNames.nme
 import ast.Trees._
 import ast.TreeTypeMap
 
-/** Rewrite an application
- *
- *    (((x1, ..., xn) => b): T)(y1, ..., yn)
- *
- *  where
- *
- *    - all yi are pure references without a prefix
- *    - the closure can also be contextual or erased, but cannot be a SAM type
- *    _ the type ascription ...: T is optional
- *
- *  to
- *
- *    [xi := yi]b
- *
- *  This is more limited than beta reduction in inlining since it only works for simple variables `yi`.
- *  It is more general since it also works for type-ascripted closures.
- *
- *  A typical use case is eliminating redundant closures for blackbox macros that
- *  return context functions. See i6375.scala.
- */
+/** Rewrite applications `<byname>(...)` to context closures `() ?=> ...` */
 class ByNameLambda extends MiniPhase:
   import ast.tpd._
 

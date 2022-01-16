@@ -43,8 +43,8 @@ class CollectNullableFields extends MiniPhase {
 
   override def phaseName: String = CollectNullableFields.name
 
-  /** Running after `ElimByName` to see by names as nullable types. */
-  override def runsAfter: Set[String] = Set(ElimByName.name)
+  /** Running after `ByNameLambda` to see by names as nullable types. */
+  override def runsAfter: Set[String] = Set(ByNameLambda.name)
 
   private sealed trait FieldInfo
   private case object NotNullable extends FieldInfo
