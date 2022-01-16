@@ -2,6 +2,7 @@ package dotty
 package tools
 package scripting
 
+import java.nio.file.Paths
 import org.junit.{Test, AfterClass}
 import org.junit.Assert.assertEquals
 
@@ -195,6 +196,8 @@ class BashScriptsTests:
     val scriptBase = "sqlDateError"
     val scriptFile = testFiles.find(_.getName == s"$scriptBase.sc").get
     val testJar = testFile(s"$scriptBase.jar") // jar should not be created when scriptFile runs
+    val tj = Paths.get(testJar).toFile
+    if tj.isFile then tj.delete() // discard residual debris from previous test
     printf("===> verify '-save' is cancelled by '-nosave' in script hashbang.`\n")
     val (validTest, exitCode, stdout, stderr) = bashCommand(s"SCALA_OPTS=-save ${scriptFile.absPath}")
     printf("stdout: %s\n", stdout.mkString("\n","\n",""))
