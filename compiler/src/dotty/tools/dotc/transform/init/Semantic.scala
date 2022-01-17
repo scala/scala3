@@ -625,13 +625,14 @@ object Semantic {
               given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
+              val argErrors = checkArgs
               // normal method call
-              if isSyntheticApply(meth) then
+              if argErrors.nonEmpty && isSyntheticApply(meth) then
                 val klass = meth.owner.companionClass.asClass
                 instantiate(klass, klass.primaryConstructor, args, source)
               else
                 withEnv(if isLocal then env else Env.empty) {
-                  eval(ddef.rhs, ref, cls, cacheResult = true) ++ checkArgs
+                  eval(ddef.rhs, ref, cls, cacheResult = true) ++ argErrors
                 }
             else if ref.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
