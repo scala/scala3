@@ -2,8 +2,8 @@
 -- Error: tests/neg-macros/i6976/Test_2.scala:5:44 ---------------------------------------------------------------------
 5 |  def main(args: Array[String]): Unit = mcr { 2 } // error
   |                                        ^^^^^^^^^
-  |    Exception occurred while executing macro expansion.
-  |    scala.MatchError: Inlined(EmptyTree,List(),Literal(Constant(2))) (of class dotty.tools.dotc.ast.Trees$Inlined)
-  |    	at playground.macros$.mcrImpl(Macro_1.scala:10)
+  |         Exception occurred while executing macro expansion.
+  |         scala.MatchError: Inlined(EmptyTree,List(),Ident(x$proxy1)) (of class dotty.tools.dotc.ast.Trees$Inlined)
+  |         	at playground.macros$.mcrImpl(Macro_1.scala:10)
   |
   | This location contains code that was inlined from Test_2.scala:5

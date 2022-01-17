@@ -115,6 +115,6 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 Inlined(None, Nil, Block(List(DefDef("f8", List(TermParamClause(List(ValDef("i", Annotated(Applied(Inferred(), List(TypeIdent("Int"))), Apply(Select(New(Inferred()), "<init>"), Nil)), None)))), TypeIdent("Int"), Some(Literal(IntConstant(9))))), Apply(Ident("f8"), List(Typed(Repeated(List(Literal(IntConstant(1)), Literal(IntConstant(2)), Literal(IntConstant(3))), Inferred()), Inferred())))))
 TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
-Inlined(None, Nil, Block(List(DefDef("f9", List(TermParamClause(List(ValDef("i", ByName(TypeIdent("Int")), None)))), TypeIdent("Int"), Some(Ident("i")))), Literal(UnitConstant())))
+Inlined(None, Nil, Block(List(DefDef("f9", List(TermParamClause(List(ValDef("i", ByName(TypeIdent("Int")), None)))), TypeIdent("Int"), Some(Apply(Select(Ident("i"), "apply"), Nil)))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 

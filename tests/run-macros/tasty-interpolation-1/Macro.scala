@@ -57,6 +57,13 @@ abstract class MacroStringInterpolator[T] {
   protected def getStaticStringContext(strCtxExpr: Expr[StringContext])(using Quotes) : StringContext = {
     import quotes.reflect.*
     strCtxExpr.asTerm.underlyingArgument match {
+      case Apply(Select(Select(Typed(Apply(_, List(Apply(Ident("<byname>"), List(Apply(Select(Select(Select(Ident("_root_"), "scala"), "StringContext"), "apply"), List(Typed(Repeated(strCtxArgTrees, _), Inferred()))))))), _), _), _), Nil) =>
+        val strCtxArgs = strCtxArgTrees.map {
+          case Literal(StringConstant(str)) => str
+          case tree => throw new NotStaticlyKnownError("Expected statically known StringContext", tree.asExpr)
+        }
+        StringContext(strCtxArgs*)
+      // Old style by-name
       case Select(Typed(Apply(_, List(Apply(_, List(Typed(Repeated(strCtxArgTrees, _), Inferred()))))), _), _) =>
         val strCtxArgs = strCtxArgTrees.map {
           case Literal(StringConstant(str)) => str

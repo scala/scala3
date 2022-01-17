@@ -39,7 +39,7 @@ object XmlQuote {
     val parts: List[String] = stripTyped(receiver.asTerm.underlying) match {
       case Apply(conv, List(ctx1)) if isSCOpsConversion(conv) =>
         ctx1 match {
-          case Apply(fun, List(Typed(Repeated(values, _), _))) if isStringContextApply(fun) =>
+          case Apply(Ident("<byname>"), List(Apply(fun, List(Typed(Repeated(values, _), _))))) if isStringContextApply(fun) =>
             values.iterator.map {
               case Literal(StringConstant(value)) => value
               case _ =>
