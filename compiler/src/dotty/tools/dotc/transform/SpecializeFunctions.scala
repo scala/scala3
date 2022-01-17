@@ -80,7 +80,15 @@ class SpecializeFunctions extends MiniPhase {
           val specializedApply = nme.apply.specializedFunction(retType, argTypes)
           val newSel = fun match
             case Select(qual, _) =>
-              qual.select(specializedApply)
+              val qual1 = qual.tpe.widen match
+                case ByNameType(res) =>
+                  // Need to cast to regular function, since specialied apply methods
+                  // are not members of ContextFunction0. The cast will be eliminated in
+                  // erasure.
+                  qual.cast(defn.FunctionOf(Nil, res))
+                case _ =>
+                  qual
+              qual1.select(specializedApply)
             case _ =>
               (fun.tpe: @unchecked) match
                 case TermRef(prefix: ThisType, name) =>
