@@ -57,7 +57,7 @@ object Parsers {
     val None = 0
     val Quoted = 1
     val Spliced = 1 << 1
-    val Pattern = 1 << 2
+    val QuotedPattern = 1 << 2
   }
 
   extension (buf: ListBuffer[Tree])
@@ -1578,7 +1578,7 @@ object Parsers {
         val expr =
           if (in.name.length == 1) {
             in.nextToken()
-            val inPattern = (staged & StageKind.Pattern) != 0
+            val inPattern = (staged & StageKind.QuotedPattern) != 0
             withinStaged(StageKind.Spliced)(if (inPattern) inBraces(pattern()) else stagedBlock())
           }
           else atSpan(in.offset + 1) {
@@ -2276,7 +2276,7 @@ object Parsers {
           blockExpr()
         case QUOTE =>
           atSpan(in.skipToken()) {
-            withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.Pattern else 0)) {
+            withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.QuotedPattern else 0)) {
               Quote {
                 if (in.token == LBRACKET) inBrackets(typ())
                 else stagedBlock()
