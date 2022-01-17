@@ -19,13 +19,13 @@ def baz: Int raises Exception = foo(false)
 
 @main def Test =
   try
-    given CanThrow[Fail] = ???
+    given CanThrow[Fail] = new CanThrow
     println(foo(true))
     println(foo(false))
   catch case ex: Fail =>
     println("failed")
   try
-    given CanThrow[Exception] = ???
+    given CanThrow[Exception] = new CanThrow
     println(baz)
   catch case ex: Fail =>
     println("failed")
