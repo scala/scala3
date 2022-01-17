@@ -19,3 +19,6 @@ def twoLevel(expr: Expr[Any])(using Quotes): Expr[Int] = expr match
 
 def bindQuote(expr: Expr[Any])(using Quotes): Expr[Int] = expr match
   case '{ foo(${y@'{bar($_)}})} => y
+
+def noop(expr: Expr[Any])(using Quotes): Expr[Int] = expr match
+  case '{ bar(${ '{ $y }  }) } => y
