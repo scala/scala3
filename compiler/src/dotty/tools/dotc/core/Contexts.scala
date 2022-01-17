@@ -493,7 +493,7 @@ object Contexts {
       import math.Ordered.orderingToOrdered
       val latestRelease = ScalaRelease.latest
       val specifiedRelease = scalaRelease
-      if ((specifiedRelease.majorVersion, specifiedRelease.minorVersion) < (latestRelease.majorVersion, latestRelease.minorVersion)) then
+      if specifiedRelease < latestRelease then
         // This is needed to make -Yscala-release a no-op when set to the latest release for unstable versions of the compiler
         // (which might have the tasty format version numbers set to higher values before they're decreased during a release)
         TastyVersion.fromStableScalaRelease(specifiedRelease.majorVersion, specifiedRelease.minorVersion)

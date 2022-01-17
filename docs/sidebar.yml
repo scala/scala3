@@ -119,7 +119,11 @@ sidebar:
           - page: docs/reference/experimental/named-typeargs-spec.md
           - page: docs/reference/experimental/numeric-literals.md
       - page: docs/reference/syntax.md
-      - page: docs/reference/language-versions.md
+      - title: Language Versions
+        index: docs/reference/language-versions/language-versions.md
+        subsection:
+          - page: docs/reference/language-versions/source-compatibility.md
+          - page: docs/reference/language-versions/binary-compatibility.md
   - title: Contributing
     subsection:
       - page: docs/contributing/contribute-knowledge.md

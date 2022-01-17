@@ -969,9 +969,13 @@ class ClassfileParser(
             if !isTastyReadable then
               reportWrongTasty("its TASTy format cannot be read by the compiler", TastyVersion.compilerVersion)
             else
-              val isTastyCompatible =
-                fileTastyVersion.isCompatibleWith(ctx.tastyVersion) ||
-                classRoot.symbol.showFullName.startsWith("scala.") // References to stdlib are considered safe because we check the values of @since annotations
+              def isStdlibClass(cls: ClassDenotation): Boolean =
+                ctx.platform.classPath.findClassFile(cls.fullName.mangledString) match {
+                  case Some(entry: ZipArchive#Entry) =>
+                    entry.underlyingSource.map(_.name.startsWith("scala3-library_3-")).getOrElse(false)
+                  case _ => false
+                }
+              val isTastyCompatible = fileTastyVersion.isCompatibleWith(ctx.tastyVersion) || isStdlibClass(classRoot)
               if !isTastyCompatible then
                 reportWrongTasty(s"its TASTy format is not compatible with the one of the targeted Scala release (${ctx.scalaRelease.show})", ctx.tastyVersion)
 
