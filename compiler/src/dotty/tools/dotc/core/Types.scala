@@ -4248,15 +4248,6 @@ object Types {
           case _ => None
         }
 
-        val opsSet = Set(
-          defn.CompiletimeOpsAnyModuleClass,
-          defn.CompiletimeOpsIntModuleClass,
-          defn.CompiletimeOpsLongModuleClass,
-          defn.CompiletimeOpsFloatModuleClass,
-          defn.CompiletimeOpsBooleanModuleClass,
-          defn.CompiletimeOpsStringModuleClass
-        )
-
         // Returns Some(true) if the type is a constant.
         // Returns Some(false) if the type is not a constant.
         // Returns None if there is not enough information to determine if the type is a constant.
@@ -4272,7 +4263,7 @@ object Types {
           // constant if the term is constant
           case t: TermRef => isConst(t.underlying)
           // an operation type => recursively check all argument compositions
-          case applied: AppliedType if opsSet.contains(applied.typeSymbol.owner) =>
+          case applied: AppliedType if defn.isCompiletimeAppliedType(applied.typeSymbol) =>
             val argsConst = applied.args.map(isConst)
             if (argsConst.exists(_.isEmpty)) None
             else Some(argsConst.forall(_.get))
