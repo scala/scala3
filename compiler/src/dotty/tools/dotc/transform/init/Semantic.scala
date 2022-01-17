@@ -1321,9 +1321,10 @@ object Semantic {
    */
   def resolveOuterSelect(target: ClassSymbol, thisV: Value, hops: Int, source: Tree): Contextual[Value] = log("resolving outer " + target.show + ", this = " + thisV.show + ", hops = " + hops, printer, (_: Value).show) {
     // Is `target` reachable from `cls` with the given `hops`?
-    def reachable(cls: ClassSymbol, hops: Int): Boolean =
+    def reachable(cls: ClassSymbol, hops: Int): Boolean = log("reachable from " + cls + " -> " + target + " in " + hops, printer) {
       if hops == 0 then cls == target
-      else reachable(cls.lexicallyEnclosingClass.asClass, hops - 1)
+      else reachable(cls.owner.lexicallyEnclosingClass.asClass, hops - 1)
+    }
 
     thisV match
       case Hot => Hot
