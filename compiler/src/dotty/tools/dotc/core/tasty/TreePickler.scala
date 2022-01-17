@@ -418,8 +418,9 @@ class TreePickler(pickler: TastyPickler) {
             writeByte(THROW)
             pickleTree(args.head)
           else if fun.symbol eq defn.byNameMethod then
-            writeByte(BYNAME)
             pickleTree(args.head)
+              // <by-name>(...) applications are re-constituted when unpickling
+              // based on formal parameter types.
           else
             writeByte(APPLY)
             withLength {

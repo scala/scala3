@@ -89,7 +89,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   QUALTHIS              typeIdent_Tree                             -- id.this, different from THIS in that it contains a qualifier ident with position.
                   NEW                   clsType_Term                               -- new cls
                   THROW                 throwableExpr_Term                         -- throw throwableExpr
-                  BYNAME                expr_Term                                  -- by-name argument
                   NAMEDARG              paramName_NameRef arg_Term                 -- paramName = arg
                   APPLY          Length fn_Term arg_Term*                          -- fn(args)
                   TYPEAPPLY      Length fn_Term arg_Type*                          -- fn[args]
@@ -512,7 +511,6 @@ object TastyFormat {
   final val RECtype = 100
   final val SINGLETONtpt = 101
   final val BOUNDED = 102
-  final val BYNAME = 103
 
   // Cat. 4:    tag Nat AST
 
@@ -790,7 +788,6 @@ object TastyFormat {
     case TYPEBOUNDStpt => "TYPEBOUNDStpt"
     case ANDtype => "ANDtype"
     case ORtype => "ORtype"
-    case BYNAME => "BYNAME"
     case BYNAMEtype => "BYNAMEtype"
     case BYNAMEtpt => "BYNAMEtpt"
     case POLYtype => "POLYtype"

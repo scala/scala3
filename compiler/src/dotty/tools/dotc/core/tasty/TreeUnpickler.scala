@@ -1123,8 +1123,6 @@ class TreeUnpickler(reader: TastyReader,
           New(readTpt())
         case THROW =>
           Throw(readTerm())
-        case BYNAME =>
-          ByName(readTerm())
         case SINGLETONtpt =>
           SingletonTypeTree(readTerm())
         case BYNAMEtpt =>
@@ -1145,7 +1143,12 @@ class TreeUnpickler(reader: TastyReader,
               tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTerm()
-              tpd.Apply(fn, until(end)(readTerm()))
+              var args = until(end)(readTerm())
+              fn.tpe.widen match
+                case mt: MethodType =>
+                  args = args.zipWithConserve(mt.paramInfos)(_.alignByName(_))
+                case _ =>
+              tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
             case TYPED =>
