@@ -726,7 +726,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ => tree
   }
 
-  /** An anonyous function and a closure node referring to it in a block, without any wrappigs */
+  /** An anonymous function and a closure node referring to it in a block, without any wrappings */
   object simpleClosure:
     def unapply(tree: Tree)(using Context): Option[(DefDef, Closure)] = tree match
       case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>

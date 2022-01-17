@@ -505,7 +505,7 @@ object Nullables:
    *  that they are cbv, and we have to correct this assumption if the actual resolved
    *  method is cbn. If the call is non-overloaded, we do the right thing from the start.
    *  Inserting a byName call just makes clear that the argumnent is cbn. There is no
-   *  special treatemnt in the compiler associated with that method; it is just the
+   *  special treatment in the compiler associated with that method; it is just the
    *  cbn identity.
    */
   def postProcessByNameArgs(fn: TermRef, app: Tree)(using Context): Tree =
