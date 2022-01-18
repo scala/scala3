@@ -809,7 +809,9 @@ object desugar {
             Nil
         }
       }
-      val classMods = if mods.is(Given) then mods &~ Inline | Synthetic else mods
+      if mods.isAllOf(Given | Inline | Transparent) then
+        report.error("inline non-alias given cannot be trasparent", cdef)
+      val classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
