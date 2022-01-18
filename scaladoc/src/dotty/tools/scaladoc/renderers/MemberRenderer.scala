@@ -135,7 +135,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     val rawBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())()
     val inlineBuilder = rawBuilder.asInstanceOf[InlineSignatureBuilder]
-    val kind :: modifiersRevered = inlineBuilder.preName
+    val kind :: modifiersRevered = inlineBuilder.preName: @unchecked
     val signature = inlineBuilder.names.reverse
     Seq(
       div(cls := "signature")(

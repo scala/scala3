@@ -592,7 +592,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
   /** Whether the extractor covers the given type */
   def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int): Boolean =
     SpaceEngine.isIrrefutable(unapp, argLen) || unapp.symbol == defn.TypeTest_unapply && {
-      val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias
+      val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
 

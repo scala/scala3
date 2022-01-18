@@ -108,7 +108,7 @@ object Interactive {
           val classTree = funSym.topLevelClass.asClass.rootTree
           val paramSymbol =
             for {
-              DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
+              case DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
               param <- paramss.flatten.find(_.name == name)
             }
             yield param.symbol

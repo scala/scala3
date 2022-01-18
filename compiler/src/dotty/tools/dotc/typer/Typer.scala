@@ -1145,7 +1145,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
           val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
           thenp0 :: elsep0 :: Nil
-        }
+        }: @unchecked
         assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
 
     def thenPathInfo = cond1.notNullInfoIf(true).seq(result.thenp.notNullInfo)
@@ -1313,7 +1313,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(using Context): Tree = {
-    val untpd.Function(params: List[untpd.ValDef] @unchecked, _) = tree
+    val untpd.Function(params: List[untpd.ValDef] @unchecked, _) = tree: @unchecked
 
     val isContextual = tree match {
       case tree: untpd.FunctionWithMods => tree.mods.is(Given)
@@ -1582,7 +1582,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // check `pat` here and throw away the result.
                 val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
                 val pat1 = typedPattern(pat, selType)(using gadtCtx)
-                val Typed(_, tpt) = tpd.unbind(tpd.unsplice(pat1))
+                val Typed(_, tpt) = tpd.unbind(tpd.unsplice(pat1)): @unchecked
                 instantiateMatchTypeProto(pat1, pt) match {
                   case defn.MatchCase(patternTp, _) => tpt.tpe frozen_=:= patternTp
                   case _ => false
@@ -1841,7 +1841,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)
       val expr1 = typed(addCanThrowCapabilities(tree.expr, cases1), pt.dropIfProto)
       expr1 :: cases1
-    }
+    }: @unchecked
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
     val cases2 = cases2x.asInstanceOf[List[CaseDef]]
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2)
@@ -1932,7 +1932,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val tpt1 = if (tree.tpt.isEmpty) TypeTree(defn.ObjectType) else typedAheadType(tree.tpt)
     val refineClsDef = desugar.refinedTypeToClass(tpt1, tree.refinements).withSpan(tree.span)
     val refineCls = createSymbol(refineClsDef).asClass
-    val TypeDef(_, impl: Template) = typed(refineClsDef)
+    val TypeDef(_, impl: Template) = typed(refineClsDef): @unchecked
     val refinements1 = impl.body
     assert(tree.refinements.hasSameLengthAs(refinements1), i"${tree.refinements}%, % > $refinements1%, %")
     val seen = mutable.Set[Symbol]()
@@ -2374,7 +2374,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
     if (!cls.info.isInstanceOf[ClassInfo]) return EmptyTree.assertingErrorsReported
 
-    val TypeDef(name, impl @ Template(constr, _, self, _)) = cdef
+    val TypeDef(name, impl @ Template(constr, _, self, _)) = cdef: @unchecked
     val parents = impl.parents
     val superCtx = ctx.superCallContext
 
@@ -2687,7 +2687,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
   def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(using Context): Tree = {
-    val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree
+    val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
     val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
     val nestedCtx = ctx.fresh.setNewTyperState()
     val res = typed(qual, pt1)(using nestedCtx)
@@ -2947,7 +2947,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tree
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
-    val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement
+    val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement: @unchecked
 
     // The getter of default parameters may reach here.
     // Given the code below
@@ -3989,7 +3989,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     /** Convert constructor proxy reference to a new expression */
     def newExpr =
-      val Select(qual, nme.apply) = tree; @unchecked
+      val Select(qual, nme.apply) = tree: @unchecked
       val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
       val tpt = qual match
         case Ident(name) =>

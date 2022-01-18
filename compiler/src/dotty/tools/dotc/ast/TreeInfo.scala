@@ -956,7 +956,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         Some(tree.args.head)
       else if tree.symbol == defn.QuotedTypeModule_of then
         // quoted.Type.of[<body>](quotes)
-        val TypeApply(_, body :: _) = tree.fun
+        val TypeApply(_, body :: _) = tree.fun: @unchecked
         Some(body)
       else None
   }

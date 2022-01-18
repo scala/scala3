@@ -60,7 +60,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         else
           // Generate SAM: (s: <tp1>) => if s.isInstanceOf[<tp2>] then Some(s.asInstanceOf[s.type & <tp2>]) else None
           def body(args: List[Tree]): Tree = {
-            val arg :: Nil = args
+            val arg :: Nil = args: @unchecked
             val t = arg.tpe & tp2
             If(
               arg.isInstance(tp2),

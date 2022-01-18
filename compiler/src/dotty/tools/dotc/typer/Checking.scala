@@ -1356,7 +1356,7 @@ trait Checking {
       else if (stat.symbol.is(Module) && stat.symbol.linkedClass.isAllOf(EnumCase))
         stat match {
           case TypeDef(_, impl: Template) =>
-            for ((defaultGetter @
+            for (case (defaultGetter @
                   DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _)) <- impl.body)
               check(defaultGetter.rhs)
           case _ =>

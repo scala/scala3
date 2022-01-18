@@ -1166,7 +1166,7 @@ object PrepJSInterop {
         Some(result)
       case _ =>
         // Annotations are stored in reverse order, which we re-reverse now
-        val result :: duplicates = annots.reverse
+        val result :: duplicates = annots.reverse: @unchecked
         for (annot <- duplicates)
           report.error(badAnnotCountMsg, annot.tree)
         Some(result)

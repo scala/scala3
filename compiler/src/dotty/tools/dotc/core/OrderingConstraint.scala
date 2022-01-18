@@ -518,7 +518,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       if (tl.isInstanceOf[HKLambda]) {
         // HKLambdas are hash-consed, need to create an artificial difference by adding
         // a LazyRef to a bound.
-        val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
+        val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos: @unchecked
         paramInfos = TypeBounds(lo, LazyRef.of(hi)) :: pinfos1
       }
       ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))

@@ -4716,7 +4716,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             val owner = tree.symbol
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))
           case tree: ClassDef =>
-            val constructor @ DefDef(_, _, _, _) = transformStatement(tree.constructor)(tree.symbol)
+            val constructor @ DefDef(_, _, _, _) = transformStatement(tree.constructor)(tree.symbol): @unchecked
             val parents = tree.parents.map(transformTree(_)(tree.symbol))
             val self = tree.self.map { slf =>
               transformStatement(slf)(tree.symbol) match

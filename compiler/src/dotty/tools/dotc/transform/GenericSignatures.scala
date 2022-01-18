@@ -76,7 +76,7 @@ object GenericSignatures {
      *        of `AndType` in `jsig` which already supports `def foo(x: A & Object)`.
      */
     def boundsSig(bounds: List[Type]): Unit = {
-      val (repr :: _, others) = splitIntersection(bounds)
+      val (repr :: _, others) = splitIntersection(bounds): @unchecked
       builder.append(':')
 
       // In Java, intersections always erase to their first member, so put

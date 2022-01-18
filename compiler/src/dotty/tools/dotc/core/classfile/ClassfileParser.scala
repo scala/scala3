@@ -283,7 +283,7 @@ class ClassfileParser(
         */
       def normalizeConstructorParams() = innerClasses.get(currentClassName.toString) match {
         case Some(entry) if !isStatic(entry.jflags) =>
-          val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info
+          val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info: @unchecked
           var normalizedParamNames = paramNames.tail
           var normalizedParamTypes = paramTypes.tail
           if ((jflags & JAVA_ACC_SYNTHETIC) != 0) {

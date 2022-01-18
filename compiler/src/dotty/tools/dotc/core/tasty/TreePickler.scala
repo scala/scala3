@@ -375,7 +375,7 @@ class TreePickler(pickler: TastyPickler) {
           if (qual.isEmpty) pickleType(tree.tpe)
           else {
             writeByte(QUALTHIS)
-            val ThisType(tref) = tree.tpe
+            val ThisType(tref) = tree.tpe: @unchecked
             pickleTree(qual.withType(tref))
           }
         case Select(qual, name) =>
@@ -385,7 +385,7 @@ class TreePickler(pickler: TastyPickler) {
               withLength {
                 writeNat(levels)
                 pickleTree(qual)
-                val SkolemType(tp) = tree.tpe
+                val SkolemType(tp) = tree.tpe: @unchecked
                 pickleType(tp)
               }
             case _ =>
@@ -439,7 +439,7 @@ class TreePickler(pickler: TastyPickler) {
           withLength {
             pickleTree(qual);
             if (!mix.isEmpty) {
-              val SuperType(_, mixinType: TypeRef) = tree.tpe
+              val SuperType(_, mixinType: TypeRef) = tree.tpe: @unchecked
               pickleTree(mix.withType(mixinType))
             }
           }
@@ -560,7 +560,7 @@ class TreePickler(pickler: TastyPickler) {
           withLength {
             pickleParams(params)
             tree.parents.foreach(pickleTree)
-            val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info
+            val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info: @unchecked
             if (!tree.self.isEmpty) {
               writeByte(SELFDEF)
               pickleName(tree.self.name)

@@ -269,7 +269,7 @@ trait ConstraintHandling {
         (c1 eq constraint)
         || {
           constraint = c1
-          val TypeBounds(lo, hi) = constraint.entry(param)
+          val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
           isSub(lo, hi)
         }
   end addOneBound
@@ -368,7 +368,7 @@ trait ConstraintHandling {
 
     if level1 != level2 then
       boundRemoved = LevelAvoidMap(-1, math.min(level1, level2))(boundRemoved)
-      val TypeBounds(lo, hi) = boundRemoved
+      val TypeBounds(lo, hi) = boundRemoved: @unchecked
       // After avoidance, the interval might be empty, e.g. in
       // tests/pos/i8900-promote.scala:
       //     >: x.type <: Singleton
@@ -416,7 +416,7 @@ trait ConstraintHandling {
    */
   protected final def isSatisfiable(using Context): Boolean =
     constraint.forallParams { param =>
-      val TypeBounds(lo, hi) = constraint.entry(param)
+      val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
       isSub(lo, hi) || {
         report.log(i"sub fail $lo <:< $hi")
         false

@@ -41,7 +41,7 @@ class TastyPickler(val rootCls: ClassSymbol) {
     sections.foreach(_._2.assemble())
 
     val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes)
-    val treeSectionHash +: otherSectionHashes = sections.map(x => TastyHash.pjwHash64(x._2.bytes))
+    val treeSectionHash +: otherSectionHashes = sections.map(x => TastyHash.pjwHash64(x._2.bytes)): @unchecked
 
     val tastyVersion = ctx.tastyVersion
 
