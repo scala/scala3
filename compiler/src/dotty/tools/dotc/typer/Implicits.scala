@@ -1849,9 +1849,9 @@ final class SearchRoot extends SearchHistory:
             })
 
             val res = alignByNameInArgs.transform(resMap(success.tree))
-              .alignByName(pt)
 
             val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
+              .alignByName(pt)
 
             success.copy(tree = blk)(success.tstate, success.gstate)
           }
