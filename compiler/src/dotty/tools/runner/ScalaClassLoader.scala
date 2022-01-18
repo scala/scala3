@@ -14,12 +14,8 @@ import scala.annotation.tailrec
 import scala.util.control.Exception.catching
 
 final class RichClassLoader(private val self: ClassLoader) extends AnyVal {
-  /** Executing an action with this classloader as context classloader */
-  private def asContext[T](action: => T): T = {
-    val saved = Thread.currentThread.getContextClassLoader
-    try { ScalaClassLoader.setContext(self) ; action }
-    finally ScalaClassLoader.setContext(saved)
-  }
+  /** Execute an action with this classloader as context classloader. */
+  private def asContext[T](action: => T): T = ScalaClassLoader.asContext(self)(action)
 
   /** Load and link a class with this classloader */
   def tryToLoadClass[T <: AnyRef](path: String): Option[Class[T]] = tryClass(path, initialize = false)
@@ -74,4 +70,13 @@ object ScalaClassLoader {
         MethodHandles.lookup().findStatic(classOf[ClassLoader], "getPlatformClassLoader", MethodType.methodType(classOf[ClassLoader])).invoke().asInstanceOf[ClassLoader]
       catch case _: Throwable => null
     else null
+
+  extension (classLoader: ClassLoader)
+    /** Execute an action with this classloader as context classloader. */
+    def asContext[T](action: => T): T =
+      val saved = Thread.currentThread.getContextClassLoader
+      try
+        setContext(classLoader)
+        action
+      finally setContext(saved)
 }
