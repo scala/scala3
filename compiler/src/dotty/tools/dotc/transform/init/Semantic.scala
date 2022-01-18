@@ -1042,7 +1042,7 @@ object Semantic {
 
   /** Utility definition used for better error-reporting of argument errors */
   case class ArgInfo(value: Value, source: Tree) {
-    def promote: Contextual[List[Error]] = value.promote("May only use initialized value as arguments", source)
+    def promote: Contextual[List[Error]] = value.promote("Only initialized values may be used as arguments", source)
   }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`

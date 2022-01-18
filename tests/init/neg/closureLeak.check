@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/closureLeak.scala:11:14 -----------------------------------------------------------------------
 11 |    l.foreach(a => a.addX(this)) // error
    |              ^^^^^^^^^^^^^^^^^
-   |              Cannot prove that the value is fully-initialized. May only use initialized value as arguments.
+   |             Cannot prove that the value is fully-initialized. Only initialized values may be used as arguments.
    |
-   |              The unsafe promotion may cause the following problem:
-   |              Cannot prove that the value is fully initialized. May only use initialized value as arguments.
+   |             The unsafe promotion may cause the following problem:
+   |             Cannot prove that the value is fully initialized. Only initialized values may be used as arguments.
