@@ -1,4 +1,4 @@
-scala> val Some((res40, res41)) = Option((1, 0))
+scala> val Some((res40, res41)) = Option((1, 0)): @unchecked
 val res40: Int = 1
 val res41: Int = 0
 scala> res40
