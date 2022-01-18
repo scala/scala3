@@ -428,7 +428,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
-        else if fun.symbol == defn.byNameMethod && !printDebug then
+        else if fun.symbol == defn.byNameMethod && !printDebug && !ctx.settings.YtestPickler.value then
           toText(args.head)
         else if (!printDebug && fun.hasType && fun.symbol == defn.QuotedRuntime_exprQuote)
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
