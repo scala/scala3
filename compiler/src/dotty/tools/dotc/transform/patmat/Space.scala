@@ -312,9 +312,9 @@ object SpaceEngine {
    *  @param  unapp   The unapply function tree
    */
   def isIrrefutable(unapp: tpd.Tree, argLen: Int)(using Context): Boolean = {
-    val fun1 = tpd.funPart(unapp)
-    val funRef = fun1.tpe.asInstanceOf[TermRef]
-    isIrrefutable(funRef, argLen)
+    tpd.funPart(unapp).tpe match
+      case funRef: TermRef => isIrrefutable(funRef, argLen)
+      case _: ErrorType => false
   }
 }
 
