@@ -114,6 +114,9 @@ inline given Show[Foo] with {
 ```
 Note that the inline methods within the given instances may be `transparent`.
 
+The inlining of given instances will not inline/duplicate the implementation of the given, it will just inline the instantiation of that instance.
+This is used to help dead code elimination of the given instances that are not used after inlining.
+
 
 ## Pattern-Bound Given Instances
 
