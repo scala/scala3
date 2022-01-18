@@ -972,7 +972,7 @@ class ClassfileParser(
               def isStdlibClass(cls: ClassDenotation): Boolean =
                 ctx.platform.classPath.findClassFile(cls.fullName.mangledString) match {
                   case Some(entry: ZipArchive#Entry) =>
-                    entry.underlyingSource.map(_.name.startsWith("scala3-library_3-")).getOrElse(false)
+                    entry.underlyingSource.map(_.name.startsWith("scala3-library_")).getOrElse(false)
                   case _ => false
                 }
               val isTastyCompatible = fileTastyVersion.isCompatibleWith(ctx.tastyVersion) || isStdlibClass(classRoot)
