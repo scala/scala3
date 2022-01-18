@@ -100,6 +100,21 @@ transparent inline given mkAnnotations[A, T]: Annotations[A, T] = ${
 
 Since `mkAnnotations` is `transparent`, the type of an application is the type of its right-hand side, which can be a proper subtype of the declared result type `Annotations[A, T]`.
 
+Given instances can have the `inline` but not `transparent` modifiers as their type is already known from the signature.
+Example:
+
+```scala
+trait Show[T] {
+  inline def show(x: T): String
+}
+
+inline given Show[Foo] with {
+  /*transparent*/ inline def show(x: Foo): String = ${ ... }
+}
+```
+Note that the inline methods within the given instances may be `transparent`.
+
+
 ## Pattern-Bound Given Instances
 
 Given instances can also appear in patterns. Example:
