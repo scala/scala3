@@ -601,7 +601,7 @@ object projects:
     dependencies = () => List(cats, disciplineMunit)
   )
 
-  lazy val catsMtlForwardCompat = catsMtl.forwardCompat.withScalaRelease("3.0")
+  lazy val catsMtlForwardCompat = catsMtl.forwardCompat.copy(compilerVersion = "3.0.2")
 
   lazy val coop = SbtCommunityProject(
     project = "coop",
