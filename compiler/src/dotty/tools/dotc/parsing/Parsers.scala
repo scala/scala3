@@ -2217,6 +2217,7 @@ object Parsers {
     val prefixExpr: Location => Tree = location =>
       if isIdent && nme.raw.isUnary(in.name)
          && in.canStartExprTokens.contains(in.lookahead.token)
+          && in.lookahead.token != LBRACKET
       then
         val start = in.offset
         val op = termIdent()
