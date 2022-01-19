@@ -235,6 +235,7 @@ object ExplicitOuter {
    *  fully qualified name `outerAccName` will fail, because the `outerAccName`'s
    *  result is phase dependent. In that case we use a backup strategy where we search all
    *  definitions in the class to find the one with the OuterAccessor flag.
+   *  ^^^ check whether this is still needed
    */
   def outerAccessor(cls: ClassSymbol)(using Context): Symbol =
     if (cls.isStatic) NoSymbol // fast return to avoid scanning package decls

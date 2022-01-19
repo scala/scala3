@@ -417,15 +417,13 @@ class TreePickler(pickler: TastyPickler) {
           if fun.symbol eq defn.throwMethod then
             writeByte(THROW)
             pickleTree(args.head)
-          else if fun.symbol eq defn.byNameMethod then
-            pickleTree(args.head)
-              // <by-name>(...) applications are re-constituted when unpickling
-              // based on formal parameter types.
           else
             writeByte(APPLY)
             withLength {
               pickleTree(fun)
-              args.foreach(pickleTree)
+              args.foreach(arg => pickleTree(arg.dropByName))
+                // <by-name>(...) applications are re-constituted when unpickling
+                // based on formal parameter types.
             }
         case TypeApply(fun, args) =>
           writeByte(TYPEAPPLY)
@@ -458,7 +456,7 @@ class TreePickler(pickler: TastyPickler) {
         case NamedArg(name, arg) =>
           writeByte(NAMEDARG)
           pickleName(name)
-          pickleTree(arg)
+          pickleTree(arg.dropByName)
         case Assign(lhs, rhs) =>
           writeByte(ASSIGN)
           withLength { pickleTree(lhs); pickleTree(rhs) }
@@ -493,6 +491,11 @@ class TreePickler(pickler: TastyPickler) {
         case CaseDef(pat, guard, rhs) =>
           writeByte(CASEDEF)
           withLength { pickleTree(pat); pickleTree(rhs); pickleTreeUnlessEmpty(guard) }
+        case ByName(expr) =>
+          assert(false, i"ByName tree is not a method argument: $tree")
+            // If we do allow ByName types that are not parameters in a future 3.x version,
+            // we'd have to replace the assert with a -release check that these types are
+            // not issued in earlier Tasty versions.
         case Return(expr, from) =>
           writeByte(RETURN)
           withLength { pickleSymRef(from.symbol); pickleTreeUnlessEmpty(expr) }

@@ -1491,7 +1491,7 @@ object Semantic {
     case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
   }
 
-  opaque type Arg  = Tree | ByNameArg
+  opaque type Arg  = Tree | ByNameArg  // ^^^ can be simplified
   case class ByNameArg(tree: Tree)
 
   extension (arg: Arg)

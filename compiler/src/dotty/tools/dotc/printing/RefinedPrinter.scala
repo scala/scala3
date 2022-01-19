@@ -428,8 +428,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           changePrec (GlobalPrec) {
             keywordStr("throw ") ~ toText(args.head)
           }
-        else if fun.symbol == defn.byNameMethod && !printDebug && !ctx.settings.YtestPickler.value then
-          toText(args.head)
         else if (!printDebug && fun.hasType && fun.symbol == defn.QuotedRuntime_exprQuote)
           keywordStr("'{") ~ toTextGlobal(args, ", ") ~ keywordStr("}")
         else if (!printDebug && fun.hasType && fun.symbol.isExprSplice)
@@ -501,6 +499,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ caseBlockText(body)
       case Labeled(bind, expr) =>
         changePrec(GlobalPrec) { toText(bind.name) ~ keywordStr("[") ~ toText(bind.symbol.info) ~ keywordStr("]: ") ~ toText(expr) }
+      case ByName(expr) =>
+        if printDebug || ctx.settings.YtestPickler.value then
+          "<ByName>(" ~ toText(expr) ~ ")"
+        else
+          toText(expr)
       case Return(expr, from) =>
         val sym = from.symbol
         if (sym.is(Label))

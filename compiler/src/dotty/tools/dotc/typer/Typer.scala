@@ -1714,6 +1714,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     caseRest(using ctx.fresh.setFreshGADTBounds.setNewScope)
   }
 
+  def typedByName(tree: untpd.ByName, pt: Type)(using Context): ByName =
+    val expr1 = typed(tree.expr, pt.widenByName)
+    assignType(cpy.ByName(tree)(expr1), expr1)
+
   def typedReturn(tree: untpd.Return)(using Context): Return =
 
     def enclMethInfo(cx: Context): (Tree, Type) =
@@ -2813,6 +2817,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.Import => typedImport(tree, retrieveSym(tree))
           case tree: untpd.Export => typedExport(tree)
           case tree: untpd.Match => typedMatch(tree, pt)
+          case tree: untpd.ByName => typedByName(tree, pt)
           case tree: untpd.Return => typedReturn(tree)
           case tree: untpd.WhileDo => typedWhileDo(tree)
           case tree: untpd.Try => typedTry(tree, pt)
@@ -2905,7 +2910,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // see tests/pos/i7778b.scala
 
     if formals.isEmpty then // expected type is a by-name type
-      ByName(typedUnadapted(tree, resType, locked))
+      ByName(typedUnadapted(tree, resType))
     else
       val paramTypes =
         val hasWildcard = formals.exists(_.existsPart(_.isInstanceOf[WildcardType], StopAt.Static))

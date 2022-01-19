@@ -623,6 +623,12 @@ object Trees {
     def name: Name = bind.name
   }
 
+  /** By-name wrapper; created by Typer and TreUnpickler, eliminated in TreePickler and ByNameLambda */
+  case class ByName[-T >: Untyped] private[ast] (expr: Tree[T])(implicit @constructorOnly src: SourceFile)
+    extends TermTree[T] {
+    type ThisTree[-T >: Untyped] = ByName[T]
+  }
+
   /** return expr
    *  where `from` refers to the method or label from which the return takes place
    *  After program transformations this is not necessarily the enclosing method, because
@@ -1075,6 +1081,7 @@ object Trees {
     type InlineMatch = Trees.InlineMatch[T]
     type CaseDef = Trees.CaseDef[T]
     type Labeled = Trees.Labeled[T]
+    type ByName = Trees.ByName[T]
     type Return = Trees.Return[T]
     type WhileDo = Trees.WhileDo[T]
     type Try = Trees.Try[T]
@@ -1227,6 +1234,10 @@ object Trees {
       def Labeled(tree: Tree)(bind: Bind, expr: Tree)(using Context): Labeled = tree match {
         case tree: Labeled if (bind eq tree.bind) && (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Labeled(bind, expr)(sourceFile(tree)))
+      }
+      def ByName(tree: Tree)(expr: Tree)(using Context): ByName = tree match {
+        case tree: ByName if expr eq tree.expr => tree
+        case _ => finalize(tree, untpd.ByName(expr)(sourceFile(tree)))
       }
       def Return(tree: Tree)(expr: Tree, from: Tree)(using Context): Return = tree match {
         case tree: Return if (expr eq tree.expr) && (from eq tree.from) => tree
@@ -1411,6 +1422,8 @@ object Trees {
               cpy.CaseDef(tree)(transform(pat), transform(guard), transform(body))
             case Labeled(bind, expr) =>
               cpy.Labeled(tree)(transformSub(bind), transform(expr))
+            case ByName(expr) =>
+              cpy.ByName(tree)(transform(expr))
             case Return(expr, from) =>
               cpy.Return(tree)(transform(expr), transformSub(from))
             case WhileDo(cond, body) =>
@@ -1556,6 +1569,8 @@ object Trees {
               this(this(this(x, pat), guard), body)
             case Labeled(bind, expr) =>
               this(this(x, bind), expr)
+            case ByName(expr) =>
+              this(x, expr)
             case Return(expr, from) =>
               this(this(x, expr), from)
             case WhileDo(cond, body) =>

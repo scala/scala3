@@ -45,9 +45,7 @@ class CheckLoopingImplicits extends MiniPhase:
         checkNotLooping(qual)
       case Apply(fn, args) =>
         checkNotLooping(fn)
-        if fn.symbol != defn.Boolean_&&
-            && fn.symbol != defn.Boolean_||
-            && fn.symbol != defn.byNameMethod then
+        if fn.symbol != defn.Boolean_&& && fn.symbol != defn.Boolean_|| then
           args.foreach(checkNotLooping)
       case TypeApply(fn, _) =>
         checkNotLooping(fn)

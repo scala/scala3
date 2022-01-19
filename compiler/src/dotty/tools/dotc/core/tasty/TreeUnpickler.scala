@@ -1142,11 +1142,14 @@ class TreeUnpickler(reader: TastyReader,
               val (mixId, mixTpe) = ifBefore(end)(readQualId(), (untpd.EmptyTypeIdent, NoType))
               tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
+              def restoreByName(arg: Tree, formal: Type): Tree = arg match
+                case NamedArg(name, arg1) => cpy.NamedArg(arg)(name, restoreByName(arg1, formal))
+                case _ => arg.alignByName(formal)
               val fn = readTerm()
               var args = until(end)(readTerm())
               fn.tpe.widen match
                 case mt: MethodType =>
-                  args = args.zipWithConserve(mt.paramInfos)(_.alignByName(_))
+                  args = args.zipWithConserve(mt.paramInfos)(restoreByName)
                 case _ =>
               tpd.Apply(fn, args)
             case TYPEAPPLY =>

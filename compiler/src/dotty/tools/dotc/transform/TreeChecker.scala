@@ -222,13 +222,6 @@ class TreeChecker extends Phase with SymTransformer {
       res
     }
 
-    val arguments: mutable.Set[untpd.Tree] = mutable.Set()
-    private def withArgs[T](args: List[untpd.Tree])(op: => T): T =
-      arguments ++= args
-      val res = op
-      arguments --= args
-      res
-
     def assertDefined(tree: untpd.Tree)(using Context): Unit =
       if (tree.symbol.maybeOwner.isTerm) {
         val sym = tree.symbol
@@ -452,16 +445,6 @@ class TreeChecker extends Phase with SymTransformer {
             //println(i"typing $tree, ${tree.expr.typeOpt}, $pt1, ${ctx.mode is Mode.Pattern}")
             typed(tree.expr, pt1)
       untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
-
-    override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
-      if tree.fun.symbol == defn.byNameMethod then
-        assert(arguments.contains(tree),
-          i"unexpected <by-name> application $tree,\nwhich is not a method argument")
-        ByName(typedUnadapted(tree.args.head, pt.widenByName))
-      else
-        withArgs(tree.args) {
-          super.typedApply(tree, pt)
-        }
 
     private def checkOwner(tree: untpd.Tree)(using Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =

@@ -62,6 +62,7 @@ object MegaPhase {
     def prepareForMatch(tree: Match)(using Context): Context = ctx
     def prepareForCaseDef(tree: CaseDef)(using Context): Context = ctx
     def prepareForLabeled(tree: Labeled)(using Context): Context = ctx
+    def prepareForByName(tree: ByName)(using Context): Context = ctx
     def prepareForReturn(tree: Return)(using Context): Context = ctx
     def prepareForWhileDo(tree: WhileDo)(using Context): Context = ctx
     def prepareForTry(tree: Try)(using Context): Context = ctx
@@ -96,6 +97,7 @@ object MegaPhase {
     def transformMatch(tree: Match)(using Context): Tree = tree
     def transformCaseDef(tree: CaseDef)(using Context): Tree = tree
     def transformLabeled(tree: Labeled)(using Context): Tree = tree
+    def transformByName(tree: ByName)(using Context): Tree = tree
     def transformReturn(tree: Return)(using Context): Tree = tree
     def transformWhileDo(tree: WhileDo)(using Context): Tree = tree
     def transformTry(tree: Try)(using Context): Tree = tree
@@ -198,6 +200,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           case tree: PackageDef => goPackageDef(tree, start)
           case tree: Try => goTry(tree, start)
           case tree: Inlined => goInlined(tree, start)
+          case tree: ByName => goByName(tree, start)
           case tree: Return => goReturn(tree, start)
           case tree: WhileDo => goWhileDo(tree, start)
           case tree: Alternative => goAlternative(tree, start)
@@ -397,6 +400,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           val expansion = transformTree(tree.expansion, start)(using inlineContext(tree.call))
           goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
         }
+      case tree: ByName =>
+        inContext(prepByName(tree, start)(using outerCtx)) {
+          val expr = transformTree(tree.expr, start)
+          goByName(cpy.ByName(tree)(expr), start)
+        }
       case tree: Return =>
         inContext(prepReturn(tree, start)(using outerCtx)) {
           val expr = transformTree(tree.expr, start)
@@ -535,6 +543,8 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val nxCaseDefTransPhase = init("transformCaseDef")
   private val nxLabeledPrepPhase = init("prepareForLabeled")
   private val nxLabeledTransPhase = init("transformLabeled")
+  private val nxByNamePrepPhase = init("prepareForByName")
+  private val nxByNameTransPhase = init("transformByName")
   private val nxReturnPrepPhase = init("prepareForReturn")
   private val nxReturnTransPhase = init("transformReturn")
   private val nxWhileDoPrepPhase = init("prepareForWhileDo")
@@ -808,6 +818,21 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     if (phase == null) tree
     else phase.transformLabeled(tree) match {
       case tree1: Labeled => goLabeled(tree1, phase.idxInGroup + 1)
+      case tree1 => transformNode(tree1, phase.idxInGroup + 1)
+    }
+  }
+
+  def prepByName(tree: ByName, start: Int)(using Context): Context = {
+    val phase = nxByNamePrepPhase(start)
+    if (phase == null) ctx
+    else prepByName(tree, phase.idxInGroup + 1)(using phase.prepareForByName(tree))
+  }
+
+  def goByName(tree: ByName, start: Int)(using Context): Tree = {
+    val phase = nxByNameTransPhase(start)
+    if (phase == null) tree
+    else phase.transformByName(tree) match {
+      case tree1: ByName => goByName(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }

@@ -144,9 +144,10 @@ object Splicer {
           summon[Env]
       }
 
-      def checkIfValidArgument(tree: Tree)(using Env): Unit = tree.dropByName match {
+      def checkIfValidArgument(tree: Tree)(using Env): Unit = tree match {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
+        case ByName(expr) => checkIfValidArgument(expr)
 
         case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
           val noSpliceChecker = new TreeTraverser {
@@ -259,9 +260,7 @@ object Splicer {
 
       // TODO disallow interpreted method calls as arguments
       case Call(fn, args) =>
-        if fn.symbol == defn.byNameMethod then
-          () => interpretTree(args.head.head)
-        else if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package))
+        if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package))
           interpretNew(fn.symbol, args.flatten.map(interpretTree))
         else if (fn.symbol.is(Module))
           interpretModuleAccess(fn.symbol)
@@ -293,6 +292,7 @@ object Splicer {
       // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
       case Block(stats, expr) => interpretBlock(stats, expr)
       case NamedArg(_, arg) => interpretTree(arg)
+      case ByName(arg) => () => interpretTree(arg)
 
       case Inlined(_, bindings, expansion) => interpretBlock(bindings, expansion)
 

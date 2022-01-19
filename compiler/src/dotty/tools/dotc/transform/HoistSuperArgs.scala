@@ -46,7 +46,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
   def phaseName: String = HoistSuperArgs.name
 
   override def runsAfter: Set[String] = Set(ByNameLambda.name)
-    // Assumes by-name argments are already converted to closures. ^^^ or maybe run before ByNameLambda?
+    // Assumes by-name argments are already converted to closures.
 
   /** Defines methods for hoisting complex supercall arguments out of
    *  parent super calls and constructor definitions.

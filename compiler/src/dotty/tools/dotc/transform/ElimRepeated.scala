@@ -138,7 +138,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       else
         expr
     case arg @ ByName(arg1) =>
-      cpy.Apply(arg)(arg.fun, transformArg(arg1, toArray) :: Nil)
+      cpy.ByName(arg)(transformArg(arg1, toArray))
     case arg => arg
 
   private def adaptToArray(tree: Tree)(implicit ctx: Context): Tree = tree match

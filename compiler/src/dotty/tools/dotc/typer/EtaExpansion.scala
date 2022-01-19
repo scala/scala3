@@ -200,19 +200,6 @@ object EtaExpansion extends LiftImpure {
    *  In each case, the result is an untyped tree, with `es` and `expr` as typed splices.
    *
    *    F[V](x) ==> (x => F[X])
-   *
-   *  Note: We allow eta expanding a method with a call by name parameter like
-   *
-   *    def m(x: => T): T
-   *
-   *  to a value of type (=> T) => T. This type cannot be written in source, since
-   *  by-name types => T are not legal argument types.
-   *
-   *  It would be simpler to not allow to eta expand by-name methods. That was the rule
-   *  initially, but at some point, the rule was dropped. Enforcing the restriction again
-   *  now would break existing code. Allowing by-name parameters in function types seems to
-   *  be OK. After elimByName they are all converted to regular function types anyway.
-   *  But see comment on the `ExprType` case in function `prune` in class `ConstraintHandling`.
    */
   def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(using Context): untpd.Tree = {
     import untpd._

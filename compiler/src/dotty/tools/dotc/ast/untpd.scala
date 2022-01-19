@@ -383,6 +383,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def InlineMatch(selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): Match = new InlineMatch(selector, cases)
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit src: SourceFile): CaseDef = new CaseDef(pat, guard, body)
   def Labeled(bind: Bind, expr: Tree)(implicit src: SourceFile): Labeled = new Labeled(bind, expr)
+  def ByName(expr: Tree)(implicit src: SourceFile): ByName = new ByName(expr)
   def Return(expr: Tree, from: Tree)(implicit src: SourceFile): Return = new Return(expr, from)
   def WhileDo(cond: Tree, body: Tree)(implicit src: SourceFile): WhileDo = new WhileDo(cond, body)
   def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit src: SourceFile): Try = new Try(expr, cases, finalizer)

@@ -128,14 +128,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Closure(meth, tss => rhsFn(tss.head).changeOwner(ctx.owner, meth))
   }
 
-  /** A <byname>(...) application */
-  object ByName:
-    def apply(tree: Tree)(using Context): Apply =
-      Apply(ref(defn.byNameMethod), tree :: Nil)
-    def unapply(tree: Apply)(using Context): Option[Tree] =
-      if tree.fun.symbol == defn.byNameMethod then Some(tree.args.head)
-      else None
-
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(using Context): CaseDef =
     ta.assignType(untpd.CaseDef(pat, guard, body), pat, body)
 
@@ -150,6 +142,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Labeled(sym: TermSymbol, expr: Tree)(using Context): Labeled =
     Labeled(Bind(sym, EmptyTree), expr)
+
+  def ByName(expr: Tree)(using Context): ByName =
+    ta.assignType(untpd.ByName(expr), expr)
 
   def Return(expr: Tree, from: Tree)(using Context): Return =
     ta.assignType(untpd.Return(expr, from))
@@ -706,6 +701,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Labeled(tree: Tree)(bind: Bind, expr: Tree)(using Context): Labeled =
       ta.assignType(untpdCpy.Labeled(tree)(bind, expr))
 
+    override def ByName(tree: Tree)(expr: Tree)(using Context): ByName =
+      ta.assignType(untpdCpy.ByName(tree)(expr), expr)
+
     override def Return(tree: Tree)(expr: Tree, from: Tree)(using Context): Return =
       ta.assignType(untpdCpy.Return(tree)(expr, from))
 
@@ -963,11 +961,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def ensureApplied(using Context): Tree =
       if (tree.tpe.widen.isParameterless) tree else tree.appliedToNone
 
-    /** Is tree a by-name application `<byname>(arg)`? */
-    def isByName(using Context): Boolean = tree match
-      case Apply(fun, _) => fun.symbol == defn.byNameMethod
-      case _ => false
-
     /** If tree is a by-name application `<byname>(arg)` return `arg`, otherwise the original tree */
     def dropByName(using Context): Tree = tree match
       case ByName(body) => body
@@ -980,7 +973,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** Make sure tree is by-name application if `formal` is a by-name parameter type */
     def alignByName(formal: Type)(using Context) = formal match
-      case ByNameType(underlying) => wrapByName
+      case ByNameType(_) if !tree.tpe.widen.isByName => ByName(tree)
       case _ => tree
 
     /** `tree == that` */

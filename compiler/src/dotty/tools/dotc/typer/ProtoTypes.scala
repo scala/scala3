@@ -79,7 +79,7 @@ object ProtoTypes {
      */
     def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
       val savedConstraint = ctx.typerState.constraint
-      val res = pt.widenExpr match {
+      val res = pt.widenDelayed match {
         case pt: FunProto =>
           mt match
             case mt: MethodType =>
@@ -93,7 +93,7 @@ object ProtoTypes {
                 else true
               }
             case _ => true
-        case _: ValueTypeOrProto if !disregardProto(pt) =>
+        case pt: ValueTypeOrProto if !disregardProto(pt) =>
           necessarilyCompatible(mt, pt)
         case pt: WildcardType if pt.optBounds.exists =>
           necessarilyCompatible(mt, pt)

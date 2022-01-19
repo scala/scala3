@@ -23,14 +23,11 @@ class ByNameLambda extends MiniPhase, IdentityDenotTransformer:
     // works on ByName arguments but not converted closures, and it sees the arguments
     // after transformations by subsequent miniphases in the same group.
 
-  override def transformApply(app: Apply)(using Context): Tree = app match
-    case ByName(body) =>
-      body match
-        case Apply(Select(fn, nme.apply), Nil) if isPurePath(fn) && fn.tpe.widen.isByName =>
-          fn
-        case _ =>
-          byNameClosure(body)
-    case _ => app
+  override def transformByName(tree: ByName)(using Context): Tree = tree.expr match
+    case Apply(Select(fn, nme.apply), Nil) if isPurePath(fn) && fn.tpe.widen.isByName =>
+      fn
+    case _ =>
+      byNameClosure(tree.expr)
 
   def byNameClosure(body: Tree)(using Context): Block =
     val restpe = body.tpe.widenIfUnstable.deskolemized
