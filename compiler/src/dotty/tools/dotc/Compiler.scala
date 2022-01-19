@@ -67,10 +67,10 @@ class Compiler {
          new CheckLoopingImplicits,  // Check that implicit defs do not call themselves in an infinite loop
          new BetaReduce,             // Reduce closure applications
          new InlineVals,             // Check right hand-sides of an `inline val`s
-         new ExpandSAMs) ::          // Expand single abstract method closures to anonymous classes
+         new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
+         new ElimRepeated) ::        // Rewrite vararg parameters and arguments
     List(new init.Checker) ::        // Check initialization of objects
-    List(new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new ByNameLambda,           // Replace by-name applications with closures
+    List(new ByNameLambda,           // Replace by-name applications with closures
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases

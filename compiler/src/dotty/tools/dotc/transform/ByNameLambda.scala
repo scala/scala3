@@ -18,6 +18,11 @@ class ByNameLambda extends MiniPhase, IdentityDenotTransformer:
 
   def phaseName: String = ByNameLambda.name
 
+  override def runsAfterGroupsOf: Set[String] = Set(ElimRepeated.name)
+    // ByNameLambda needs to run in a group after ElimRepeated since ElimRepeated
+    // works on ByName arguments but not converted closures, and it sees the arguments
+    // after transformations by subsequent miniphases in the same group.
+
   override def transformApply(app: Apply)(using Context): Tree = app match
     case ByName(body) =>
       body match
