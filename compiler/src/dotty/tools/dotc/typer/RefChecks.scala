@@ -15,7 +15,7 @@ import ast._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
 import scala.util.{Try, Failure, Success}
-import config.{ScalaVersion, NoScalaVersion}
+import config.{ScalaVersion, NoScalaVersion, ScalaRelease}
 import Decorators._
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting._
@@ -911,6 +911,7 @@ object RefChecks {
   private def checkUndesiredProperties(sym: Symbol, pos: SrcPos)(using Context): Unit =
     checkDeprecated(sym, pos)
     checkExperimental(sym, pos)
+    checkSinceAnnot(sym, pos)
 
     val xMigrationValue = ctx.settings.Xmigration.value
     if xMigrationValue != NoScalaVersion then
@@ -969,6 +970,29 @@ object RefChecks {
     if !sym.isInExperimentalScope then
       for annot <- sym.annotations if annot.symbol.isExperimental do
         Feature.checkExperimentalDef(annot.symbol, annot.tree)
+
+  private def checkSinceAnnot(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    for
+      annot <- sym.getAnnotation(defn.SinceAnnot)
+      releaseName <- annot.argumentConstantString(0)
+    do
+      ScalaRelease.parse(releaseName) match
+        case Some(release) if release > ctx.scalaRelease =>
+          report.error(
+            i"$sym was added in Scala release ${releaseName.show}, therefore it cannot be used in the code targeting Scala ${ctx.scalaRelease.show}",
+            pos)
+        case None =>
+          report.error(i"$sym has an unparsable release name: '${releaseName}'", annot.tree.srcPos)
+        case _ =>
+
+  private def checkSinceAnnotInSignature(sym: Symbol, pos: SrcPos)(using Context) =
+    new TypeTraverser:
+      def traverse(tp: Type) =
+        if tp.typeSymbol.hasAnnotation(defn.SinceAnnot) then
+          checkSinceAnnot(tp.typeSymbol, pos)
+        else
+          traverseChildren(tp)
+    .traverse(sym.info)
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
@@ -1256,6 +1280,8 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
+    checkSinceAnnot(tree.symbol, tree.srcPos)
+    checkSinceAnnotInSignature(tree.symbol, tree)
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
       tree.rhs match {
@@ -1278,6 +1304,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
     checkExperimentalSignature(tree.symbol, tree)
+    checkSinceAnnotInSignature(tree.symbol, tree)
     checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
     checkUnaryMethods(tree.symbol)
     tree
@@ -1344,9 +1371,11 @@ class RefChecks extends MiniPhase { thisPhase =>
       case TypeRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
         checkExperimental(sym, tree.srcPos)
+        checkSinceAnnot(sym, tree.srcPos)
       case TermRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
         checkExperimental(sym, tree.srcPos)
+        checkSinceAnnot(sym, tree.srcPos)
       case _ =>
     }
     tree
@@ -1354,6 +1383,7 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
     checkExperimentalAnnots(tree.symbol)
+    checkSinceAnnot(tree.symbol, tree.srcPos)
     tree
   }
 }

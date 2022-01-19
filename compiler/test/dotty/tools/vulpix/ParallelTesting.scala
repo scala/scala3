@@ -2,8 +2,9 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{File => JFile, IOException}
+import java.io.{File => JFile, IOException, PrintStream, ByteArrayOutputStream}
 import java.lang.System.{lineSeparator => EOL}
+import java.net.URL
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
 import java.nio.charset.StandardCharsets
@@ -12,7 +13,7 @@ import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
 
 import scala.collection.mutable
-import scala.io.Source
+import scala.io.{Codec, Source}
 import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
@@ -26,7 +27,7 @@ import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.config.Config
-import dotc.util.DiffUtil
+import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans}
 import io.AbstractFile
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
@@ -127,10 +128,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           }
           sb.toString + "\n\n"
         }
-        case self: SeparateCompilationSource => {
+        case self: SeparateCompilationSource => { // TODO: this won't work when using other versions of compiler
           val command = sb.toString
           val fsb = new StringBuilder(command)
-          self.compilationGroups.foreach { files =>
+          self.compilationGroups.foreach { (_, files) =>
             files.map(_.getPath).foreach { path =>
               fsb.append(delimiter)
               lineLen = 8
@@ -173,31 +174,28 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     flags: TestFlags,
     outDir: JFile
   ) extends TestSource {
+    case class Group(ordinal: Int, compiler: String, release: String)
 
-    /** Get the files grouped by `_X` as a list of groups, files missing this
-     *  suffix will be put into the same group.
-     *  Files in each group are sorted alphabetically.
-     *
-     *  Filters out all none source files
-     */
-    def compilationGroups: List[Array[JFile]] =
-      dir
-      .listFiles
-      .groupBy { file =>
-        val name = file.getName
-        Try {
-          val potentialNumber = name
-            .substring(0, name.lastIndexOf('.'))
-            .reverse.takeWhile(_ != '_').reverse
+    lazy val compilationGroups: List[(Group, Array[JFile])] =
+      val Release = """r([\d\.]+)""".r
+      val Compiler = """c([\d\.]+)""".r
+      val Ordinal = """(\d+)""".r
+      def groupFor(file: JFile): Group =
+        val groupSuffix = file.getName.dropWhile(_ != '_').stripSuffix(".scala").stripSuffix(".java")
+        val groupSuffixParts = groupSuffix.split("_")
+        val ordinal = groupSuffixParts.collectFirst { case Ordinal(n) => n.toInt }.getOrElse(Int.MinValue)
+        val release = groupSuffixParts.collectFirst { case Release(r) => r }.getOrElse("")
+        val compiler = groupSuffixParts.collectFirst { case Compiler(c) => c }.getOrElse("")
+        Group(ordinal, compiler, release)
 
-          potentialNumber.toInt.toString
-        }
-        .toOption
-        .getOrElse("")
-      }
-      .toList.sortBy(_._1).map(_._2.filter(isSourceFile).sorted)
+      dir.listFiles
+        .filter(isSourceFile)
+        .groupBy(groupFor)
+        .toList
+        .sortBy { (g, _) => (g.ordinal, g.compiler, g.release) }
+        .map { (g, f) => (g, f.sorted) }
 
-    def sourceFiles: Array[JFile] = compilationGroups.flatten.toArray
+    def sourceFiles = compilationGroups.map(_._2).flatten.toArray
   }
 
   private trait CompilationLogic { this: Test =>
@@ -216,7 +214,13 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           List(reporter)
 
         case testSource @ SeparateCompilationSource(_, dir, flags, outDir) =>
-          testSource.compilationGroups.map(files => compile(files, flags, suppressErrors, outDir))  // TODO? only `compile` option?
+          testSource.compilationGroups.map { (group, files) =>
+            val flags1 = if group.release.isEmpty then flags else flags.and("-Yscala-release", group.release)
+            if group.compiler.isEmpty then
+              compile(files, flags1, suppressErrors, outDir)
+            else
+              compileWithOtherCompiler(group.compiler, files, flags1, outDir)
+          }
       })
 
     final def countErrorsAndWarnings(reporters: Seq[TestReporter]): (Int, Int) =
@@ -499,6 +503,49 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       reporter
     }
+
+    private def parseErrors(errorsText: String, compilerVersion: String) =
+      val errorPattern = """.*Error: (.*\.scala):(\d+):(\d+).*""".r
+      errorsText.linesIterator.toSeq.collect {
+        case errorPattern(filePath, line, column) =>
+          val lineNum = line.toInt
+          val columnNum = column.toInt
+          val abstractFile = AbstractFile.getFile(filePath)
+          val sourceFile = SourceFile(abstractFile, Codec.UTF8)
+          val offset = sourceFile.lineToOffset(lineNum - 1) + columnNum - 1
+          val span = Spans.Span(offset)
+          val sourcePos = SourcePosition(sourceFile, span)
+
+          Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column. Full error output:\n\n$errorsText\n", sourcePos)
+      }
+
+    protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
+      val compilerDir = getCompiler(compiler).toString
+
+      def substituteClasspath(old: String): String =
+        old.split(JFile.pathSeparator).map { o =>
+          if JFile(o) == JFile(Properties.dottyLibrary) then s"$compilerDir/lib/scala3-library_3-$compiler.jar"
+          else o
+        }.mkString(JFile.pathSeparator)
+
+      val flags1 = flags.copy(defaultClassPath = substituteClasspath(flags.defaultClassPath))
+        .withClasspath(targetDir.getPath)
+        .and("-d", targetDir.getPath)
+
+      val dummyStream = new PrintStream(new ByteArrayOutputStream())
+      val reporter = TestReporter.reporter(dummyStream, ERROR)
+
+      val command = Array(compilerDir + "/bin/scalac") ++ flags1.all ++ files.map(_.getPath)
+      val process = Runtime.getRuntime.exec(command)
+      val errorsText = Source.fromInputStream(process.getErrorStream).mkString
+      if process.waitFor() != 0 then
+        val diagnostics = parseErrors(errorsText, compiler)
+        diagnostics.foreach { diag =>
+          val context = (new ContextBase).initialCtx
+          reporter.report(diag)(using context)
+        }
+
+      reporter
 
     protected def compileFromTasty(flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
       val tastyOutput = new JFile(targetDir.getPath + "_from-tasty")
@@ -1227,14 +1274,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     val (dirs, files) = compilationTargets(sourceDir, fileFilter)
 
     val isPicklerTest = flags.options.contains("-Ytest-pickler")
-    def ignoreDir(dir: JFile): Boolean = {
+    def picklerDirFilter(source: SeparateCompilationSource): Boolean = {
       // Pickler tests stop after pickler not producing class/tasty files. The second part of the compilation
       // will not be able to compile due to the missing artifacts from the first part.
-      isPicklerTest && dir.listFiles().exists(file => file.getName.endsWith("_2.scala") || file.getName.endsWith("_2.java"))
+      !isPicklerTest || source.compilationGroups.length == 1
     }
     val targets =
       files.map(f => JointCompilationSource(testGroup.name, Array(f), flags, createOutputDirsForFile(f, sourceDir, outDir))) ++
-      dirs.collect { case dir if !ignoreDir(dir) => SeparateCompilationSource(testGroup.name, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)) }
+      dirs.map { dir => SeparateCompilationSource(testGroup.name, dir, flags, createOutputDirsForDir(dir, sourceDir, outDir)) }.filter(picklerDirFilter)
 
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
@@ -1371,4 +1418,23 @@ object ParallelTesting {
 
   def isTastyFile(f: JFile): Boolean =
     f.getName.endsWith(".tasty")
+
+  def getCompiler(version: String): JFile =
+    val dir = cache.resolve(s"scala3-${version}").toFile
+    synchronized {
+      if dir.exists then
+        dir
+      else
+        import scala.sys.process._
+        val archivePath = cache.resolve(s"scala3-$version.tar.gz")
+        val compilerDownloadUrl = s"https://github.com/lampepfl/dotty/releases/download/$version/scala3-$version.tar.gz"
+        (URL(compilerDownloadUrl) #>> archivePath.toFile #&& s"tar -xf $archivePath -C $cache").!!
+        archivePath.toFile.delete()
+        dir
+    }
+
+  private lazy val cache =
+    val dir = Properties.testCache.resolve("compilers")
+    dir.toFile.mkdirs()
+    dir
 }

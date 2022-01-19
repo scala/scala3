@@ -6,12 +6,9 @@ import java.nio.charset.StandardCharsets.UTF_8
 
 lazy val communitybuildDir: Path = Paths.get(sys.props("user.dir"))
 
-lazy val compilerVersion: String =
+lazy val testedCompilerVersion: String =
   val file = communitybuildDir.resolve("scala3-bootstrapped.version")
   new String(Files.readAllBytes(file), UTF_8)
-
-lazy val compilerSupportExperimental: Boolean =
-  compilerVersion.contains("SNAPSHOT") || compilerVersion.contains("NIGHTLY")
 
 lazy val sbtPluginFilePath: String =
   // Workaround for https://github.com/sbt/sbt/issues/4395
@@ -39,17 +36,21 @@ sealed trait CommunityProject:
   val testCommand: String
   val publishCommand: String
   val docCommand: String
-  val dependencies: List[CommunityProject]
+  val dependencies: () => List[CommunityProject]
   val testOnlyDependencies: () => List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
   val requiresExperimental: Boolean
   val environment: Map[String, String] = Map.empty
+  val compilerVersion: String
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
+  final val compilerSupportExperimental: Boolean =
+    compilerVersion.contains("SNAPSHOT") || compilerVersion.contains("NIGHTLY")
+
   final def publishDependencies(): Unit =
-    dependencies.foreach(_.publish())
+    dependencies().foreach(_.publish())
 
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
@@ -87,10 +88,11 @@ end CommunityProject
 final case class MillCommunityProject(
     project: String,
     baseCommand: String,
-    dependencies: List[CommunityProject] = Nil,
+    dependencies: () => List[CommunityProject] = () => Nil,
     testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     ignoreDocs: Boolean = false,
     requiresExperimental: Boolean = false,
+    compilerVersion: String = testedCompilerVersion
     ) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
@@ -105,12 +107,14 @@ final case class SbtCommunityProject(
     project: String,
     sbtTestCommand: String,
     extraSbtArgs: List[String] = Nil,
-    dependencies: List[CommunityProject] = Nil,
+    dependencies: () => List[CommunityProject] = () => Nil,
     testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
     requiresExperimental: Boolean = false,
+    compilerVersion: String = testedCompilerVersion,
+    isForwardCompatProject: Boolean = false
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -119,6 +123,7 @@ final case class SbtCommunityProject(
 
   private val baseCommand =
     "clean; set Global/logLevel := Level.Error; set Global/updateOptions ~= (_.withLatestSnapshots(false)); "
+    ++ (if isForwardCompatProject then "set Global / isForwardCompatProject := true; " else "")
     ++ (if scalacOptions.isEmpty then "" else s"""set Global/scalacOptions ++= $scalacOptionsString;""")
     ++ s"++$compilerVersion!; "
 
@@ -146,6 +151,19 @@ final case class SbtCommunityProject(
       s"--addPluginSbtFile=$sbtPluginFilePath"
     )
 
+  def forwardCompat: SbtCommunityProject =
+    this.copy(
+      project = project + "-forward-compat",
+      dependencies = () => dependencies().map(forwardCompatMapping),
+      testOnlyDependencies = () => testOnlyDependencies().map(forwardCompatMapping),
+      isForwardCompatProject = true
+    )
+
+  def withScalaRelease(release: String): SbtCommunityProject =
+    this.copy(
+      scalacOptions = scalacOptions ++ Seq("-Yscala-release", release)
+    )
+
 object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
@@ -166,89 +184,89 @@ object projects:
 
   lazy val utest = MillCommunityProject(
     project = "utest",
-    baseCommand = s"utest.jvm[$compilerVersion]",
+    baseCommand = s"utest.jvm[$testedCompilerVersion]",
     ignoreDocs = true
   )
 
   lazy val sourcecode = MillCommunityProject(
     project = "sourcecode",
-    baseCommand = s"sourcecode.jvm[$compilerVersion]",
+    baseCommand = s"sourcecode.jvm[$testedCompilerVersion]",
     ignoreDocs = true
   )
 
   lazy val oslib = MillCommunityProject(
     project = "os-lib",
-    baseCommand = s"os.jvm[$compilerVersion]",
-    dependencies = List(utest, sourcecode)
+    baseCommand = s"os.jvm[$testedCompilerVersion]",
+    dependencies = () => List(utest, sourcecode)
   )
 
   lazy val oslibWatch = MillCommunityProject(
     project = "os-lib",
-    baseCommand = s"os.watch[$compilerVersion]",
-    dependencies = List(utest, sourcecode),
+    baseCommand = s"os.watch[$testedCompilerVersion]",
+    dependencies = () => List(utest, sourcecode),
     ignoreDocs = true
   )
 
   lazy val ujson = MillCommunityProject(
     project = "upickle",
-    baseCommand = s"ujson.jvm[$compilerVersion]",
-    dependencies = List(geny)
+    baseCommand = s"ujson.jvm[$testedCompilerVersion]",
+    dependencies = () => List(geny)
   )
 
   lazy val upickle = MillCommunityProject(
     project = "upickle",
-    baseCommand = s"upickle.jvm[$compilerVersion]",
-    dependencies = List(geny, utest)
+    baseCommand = s"upickle.jvm[$testedCompilerVersion]",
+    dependencies = () => List(geny, utest)
   )
 
   lazy val upickleCore = MillCommunityProject(
     project = "upickle",
-    baseCommand = s"core.jvm[$compilerVersion]",
-    dependencies = List(geny, utest)
+    baseCommand = s"core.jvm[$testedCompilerVersion]",
+    dependencies = () => List(geny, utest)
   )
 
   lazy val upickleImplicits = MillCommunityProject(
     project = "upickle",
-    baseCommand = s"implicits.jvm[$compilerVersion]",
-    dependencies = List(upickleCore, ujson)
+    baseCommand = s"implicits.jvm[$testedCompilerVersion]",
+    dependencies = () => List(upickleCore, ujson)
   )
 
   lazy val upack = MillCommunityProject(
     project = "upickle",
-    baseCommand = s"upack.jvm[$compilerVersion]",
-    dependencies = List(ujson, upickleCore)
+    baseCommand = s"upack.jvm[$testedCompilerVersion]",
+    dependencies = () => List(ujson, upickleCore)
   )
 
   lazy val geny = MillCommunityProject(
     project = "geny",
-    baseCommand = s"geny.jvm[$compilerVersion]",
-    dependencies = List(utest)
+    baseCommand = s"geny.jvm[$testedCompilerVersion]",
+    dependencies = () => List(utest)
   )
 
   lazy val fansi = MillCommunityProject(
     project = "fansi",
-    baseCommand = s"fansi.jvm[$compilerVersion]",
-    dependencies = List(utest, sourcecode),
+    baseCommand = s"fansi.jvm[$testedCompilerVersion]",
+    dependencies = () => List(utest, sourcecode),
     ignoreDocs = true
   )
 
   lazy val pprint = MillCommunityProject(
     project = "PPrint",
-    baseCommand = s"pprint.jvm[$compilerVersion]",
-    dependencies = List(fansi),
+    baseCommand = s"pprint.jvm[$testedCompilerVersion]",
+    dependencies = () => List(fansi),
     ignoreDocs = true
   )
 
   lazy val requests = MillCommunityProject(
     project = "requests-scala",
-    baseCommand = s"requests[$compilerVersion]",
-    dependencies = List(geny, utest, ujson, upickleCore)
+    baseCommand = s"requests[$testedCompilerVersion]",
+    dependencies = () => List(geny, utest, ujson, upickleCore)
   )
 
   lazy val cask = MillCommunityProject(
     project = "cask",
-    baseCommand = s"cask[$compilerVersion]",
-    dependencies = List(utest, geny, sourcecode, pprint, upickle, upickleImplicits, upack, requests)
+    baseCommand = s"cask[$testedCompilerVersion]",
+    dependencies = () => List(utest, geny, sourcecode, pprint, upickle, upickleImplicits, upack, requests)
   )
 
   lazy val scas = MillCommunityProject(
@@ -276,6 +294,8 @@ object projects:
     sbtDocCommand = forceDoc("jvm")
   )
 
+  lazy val scalacheckForwardCompat = scalacheck.forwardCompat.withScalaRelease("3.0")
+
   lazy val scalatest: SbtCommunityProject = SbtCommunityProject(
     project       = "scalatest",
     sbtTestCommand   =
@@ -297,7 +317,7 @@ object projects:
     // org.scalatest.Outcome
     // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
     // dotty.tools.dotc.core.MissingType:
-    dependencies = List(scalaXml),
+    dependencies = () => List(scalaXml),
     testOnlyDependencies = () => List(scalatestplusJunit, scalatestplusTestNG)
   )
 
@@ -306,21 +326,21 @@ object projects:
     sbtTestCommand = "scalatestPlusScalaCheckJVM/test",
     sbtPublishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
     sbtDocCommand = "scalatestPlusScalaCheckJVM/doc",
-    dependencies = List(scalatest, scalacheck)
+    dependencies = () => List(scalatest, scalacheck)
   )
 
   lazy val scalatestplusJunit = SbtCommunityProject(
     project           = "scalatestplus-junit",
     sbtTestCommand    = "scalatestplus-junit/test",
     sbtPublishCommand = "scalatestplus-junit/publishLocal",
-    dependencies      = List(scalatest)
+    dependencies      = () => List(scalatest)
   )
 
   lazy val scalatestplusTestNG = SbtCommunityProject(
     project = "scalatestplus-testng",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(scalatest)
+    dependencies = () => List(scalatest)
   )
 
   lazy val scalaXml = SbtCommunityProject(
@@ -356,7 +376,7 @@ object projects:
     project       = "minitest",
     sbtTestCommand   = "test",
     sbtDocCommand = aggregateDoc("lawsJVM")("minitestJVM"),
-    dependencies = List(scalacheck)
+    dependencies = () => List(scalacheck)
   )
 
   lazy val fastparse = SbtCommunityProject(
@@ -414,14 +434,14 @@ object projects:
     project       = "sconfig",
     sbtTestCommand   = "sconfigJVM/test",
     sbtDocCommand = "sconfigJVM/doc",
-    dependencies = List(scalaCollectionCompat)
+    dependencies = () => List(scalaCollectionCompat)
   )
 
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
     sbtDocCommand = forceDoc("coreJVM"),
-    dependencies = List(izumiReflect)
+    dependencies = () => List(izumiReflect)
   )
 
   lazy val munit = SbtCommunityProject(
@@ -429,15 +449,17 @@ object projects:
     sbtTestCommand  = "testsJVM/test;testsJS/test;",
     sbtPublishCommand = "munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal",
     sbtDocCommand   = "junit/doc; munitJVM/doc",
-    dependencies = List(scalacheck)
+    dependencies = () => List(scalacheck)
   )
+
+  lazy val munitForwardCompat = munit.forwardCompat.withScalaRelease("3.0")
 
   lazy val scodecBits = SbtCommunityProject(
     project          = "scodec-bits",
     sbtTestCommand   = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     sbtDocCommand   = "coreJVM/doc",
-    dependencies = List(munit),
+    dependencies = () => List(munit),
   )
 
   lazy val scodec = SbtCommunityProject(
@@ -445,7 +467,7 @@ object projects:
     sbtTestCommand   = "unitTests/test",
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
-    dependencies = List(munit, scodecBits),
+    dependencies = () => List(munit, scodecBits),
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
@@ -478,7 +500,7 @@ object projects:
     // [error] class scalaz.iteratee.Iteratee cannot be unpickled because no class file was found
 
     sbtDocCommand = forceDoc("effectJVM"),
-    dependencies     = List(scalacheck)
+    dependencies  = () => List(scalacheck)
   )
 
   lazy val endpoints4s = SbtCommunityProject(
@@ -492,14 +514,16 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
-    dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
+    dependencies   = () => List(cats, coop, disciplineSpecs2, scalacheck)
   )
+
+  lazy val catsEffect3ForwardCompat = catsEffect3.forwardCompat.copy(compilerVersion = "3.0.2")
 
   lazy val scalaParallelCollections = SbtCommunityProject(
     project        = "scala-parallel-collections",
     sbtTestCommand = "test",
     sbtDocCommand  = forceDoc("core"),
-    dependencies   = List(scalacheck)
+    dependencies   = () => List(scalacheck)
   )
 
   lazy val scalaCollectionCompat = SbtCommunityProject(
@@ -511,8 +535,8 @@ object projects:
   lazy val scalaJava8Compat = SbtCommunityProject(
     project        = "scala-java8-compat",
     // the fnGen subproject must be built with 2.12.x
-    sbtTestCommand = s"++2.12.14; ++$compilerVersion; set fnGen/dependencyOverrides := Nil; test",
-    sbtPublishCommand = s"++2.12.14; ++$compilerVersion; set fnGen/dependencyOverrides := Nil; publishLocal",
+    sbtTestCommand = s"++2.12.14; ++$testedCompilerVersion; set fnGen/dependencyOverrides := Nil; test",
+    sbtPublishCommand = s"++2.12.14; ++$testedCompilerVersion; set fnGen/dependencyOverrides := Nil; publishLocal",
     scalacOptions = Nil // avoid passing Scala 3 options to Scala 2.12 in fnGen subproject
   )
 
@@ -527,23 +551,29 @@ object projects:
     project = "discipline",
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
-    dependencies = List(scalacheck)
+    dependencies = () => List(scalacheck)
   )
+
+  lazy val disciplineForwardCompat = discipline.forwardCompat.withScalaRelease("3.0")
 
   lazy val disciplineMunit = SbtCommunityProject(
     project = "discipline-munit",
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
-    dependencies = List(discipline, munit)
+    dependencies = () => List(discipline, munit)
   )
+
+  lazy val disciplineMunitForwardCompat = disciplineMunit.forwardCompat.withScalaRelease("3.0")
 
   lazy val disciplineSpecs2 = SbtCommunityProject(
     project = "discipline-specs2",
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
-    dependencies = List(discipline),
+    dependencies = () => List(discipline),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init")
   )
+
+  lazy val disciplineSpecs2ForwardCompat = disciplineSpecs2.forwardCompat.withScalaRelease("3.0")
 
   lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
     project = "simulacrum-scalafix",
@@ -551,28 +581,36 @@ object projects:
     sbtPublishCommand = "annotation/publishLocal;annotationJS/publishLocal",
   )
 
+  lazy val simulacrumScalafixAnnotationsForwardCompat = simulacrumScalafixAnnotations.forwardCompat.withScalaRelease("3.0")
+
   lazy val cats = SbtCommunityProject(
     project = "cats",
     sbtTestCommand = "set Global/scalaJSStage := FastOptStage;buildJVM;validateAllJS",
     sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
-    dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
+    dependencies = () => List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init") // disable -Ysafe-init, due to -Xfatal-warning
 
   )
+
+  lazy val catsForwardCompat = cats.forwardCompat.withScalaRelease("3.0")
 
   lazy val catsMtl = SbtCommunityProject(
     project = "cats-mtl",
     sbtTestCommand = "testsJVM/test;testsJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal;lawsJVM/publishLocal;lawsJS/publishLocal",
-    dependencies = List(cats, disciplineMunit)
+    dependencies = () => List(cats, disciplineMunit)
   )
+
+  lazy val catsMtlForwardCompat = catsMtl.forwardCompat.copy(compilerVersion = "3.0.2")
 
   lazy val coop = SbtCommunityProject(
     project = "coop",
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
-    dependencies = List(cats, catsMtl)
+    dependencies = () => List(cats, catsMtl)
   )
+
+  lazy val coopForwardCompat = coop.forwardCompat.withScalaRelease("3.0")
 
   // 'Sciss/Lucre' with its dependencies:
 
@@ -580,14 +618,14 @@ object projects:
     project           = "Equal",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scalatest),
+    dependencies      = () => List(scalatest),
   )
 
   lazy val scissFingerTree = SbtCommunityProject(
     project           = "FingerTree",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scalatest),
+    dependencies      = () => List(scalatest),
   )
 
   lazy val scissLog = SbtCommunityProject(
@@ -600,42 +638,42 @@ object projects:
     project           = "Model",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scalatest),
+    dependencies      = () => List(scalatest),
   )
 
   lazy val scissNumbers = SbtCommunityProject(
     project           = "Numbers",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scalatest),
+    dependencies      = () => List(scalatest),
   )
 
   lazy val scissSerial = SbtCommunityProject(
     project           = "Serial",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scalatest),
+    dependencies      = () => List(scalatest),
   )
 
   lazy val scissAsyncFile = SbtCommunityProject(
     project           = "AsyncFile",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scissLog, scalatest),
+    dependencies      = () => List(scissLog, scalatest),
   )
 
   lazy val scissSpan = SbtCommunityProject(
     project           = "Span",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scissSerial, scalatest),
+    dependencies      = () => List(scissSerial, scalatest),
   )
 
   lazy val scalaSTM = SbtCommunityProject(
     project           = "scala-stm",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scalatestplusJunit),
+    dependencies      = () => List(scalatestplusJunit),
   )
 
   lazy val scissLucre = SbtCommunityProject(
@@ -643,14 +681,14 @@ object projects:
     sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;expr0JVM/test;expr1JVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
     extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;expr0JVM/publishLocal;expr1JVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
-    dependencies      = List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
+    dependencies      = () => List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
   )
 
   lazy val izumiReflect = SbtCommunityProject(
     project = "izumi-reflect",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(scalatest)
+    dependencies = () => List(scalatest)
   )
 
   lazy val perspective = SbtCommunityProject(
@@ -658,27 +696,27 @@ object projects:
     // No library with easy typeclasses to verify data against exist for Dotty, so no tests yet
     // Until then I guess this mainly serves to check that it still compiles at all
     sbtTestCommand = "dottyPerspectiveExamples/compile",
-    dependencies = List(cats)
+    dependencies = () => List(cats)
   )
 
   lazy val akka = SbtCommunityProject(
     project = "akka",
-    extraSbtArgs = List(s"-Dakka.build.scalaVersion=$compilerVersion"),
+    extraSbtArgs = List(s"-Dakka.build.scalaVersion=$testedCompilerVersion"),
     sbtTestCommand = "set every targetSystemJdk := true; akka-actor-tests/Test/compile",
-    dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
+    dependencies = () => List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
   )
 
   lazy val monocle = SbtCommunityProject(
     project = "Monocle",
     sbtTestCommand = "coreJVM/test; macrosJVM/test; testJVM/test",
-    dependencies = List(cats, munit, discipline, disciplineMunit)
+    dependencies = () => List(cats, munit, discipline, disciplineMunit)
   )
 
   lazy val protoquill = SbtCommunityProject(
     project = "protoquill",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(), // TODO add scalatest and pprint (see protoquill/build.sbt)
+    dependencies = () => List(), // TODO add scalatest and pprint (see protoquill/build.sbt)
     scalacOptions = List("-language:implicitConversions"), // disabled -Ysafe-init, due to bug in macro
   )
 
@@ -686,66 +724,79 @@ object projects:
     project = "onnx-scala",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(scalatest)
+    dependencies = () => List(scalatest)
   )
 
   lazy val playJson = SbtCommunityProject(
     project = "play-json",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(scalatest, scalatestplusScalacheck),
+    dependencies = () => List(scalatest, scalatestplusScalacheck),
   )
 
   lazy val munitCatsEffect = SbtCommunityProject(
     project = "munit-cats-effect",
     sbtTestCommand = "ce3JVM/test; ce3JS/test",
     sbtPublishCommand = "ce3JVM/publishLocal; ce3JS/publishLocal",
-    dependencies = List(munit, catsEffect3)
+    dependencies = () => List(munit, catsEffect3)
   )
 
   lazy val scalacheckEffect = SbtCommunityProject(
     project = "scalacheck-effect",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(cats, catsEffect3, munit, scalacheck)
+    dependencies = () => List(cats, catsEffect3, munit, scalacheck)
   )
 
   lazy val fs2 = SbtCommunityProject(
     project = "fs2",
     sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
-    dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
+    dependencies = () => List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
   )
 
   lazy val libretto = SbtCommunityProject(
     project = "libretto",
     sbtTestCommand = "core/test; examples/compile",
     sbtPublishCommand = "core/publishLocal; examples/publishLocal",
-    dependencies = List(scalatest)
+    dependencies = () => List(scalatest)
   )
 
   lazy val jacksonModuleScala = SbtCommunityProject(
     project = "jackson-module-scala",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(scalaJava8Compat, scalatest)
+    dependencies = () => List(scalaJava8Compat, scalatest)
   )
 
   lazy val specs2 = SbtCommunityProject(
     project = "specs2",
     sbtTestCommand = "core/testOnly -- exclude ci",
     sbtPublishCommand = "core/publishLocal",
-    dependencies = List()
+    dependencies = () => List()
   )
 
   lazy val spire = SbtCommunityProject(
     project = "spire",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List(cats, disciplineMunit)
+    dependencies = () => List(cats, disciplineMunit)
   )
 
 end projects
+
+lazy val forwardCompatMapping = Map[CommunityProject, CommunityProject](
+  projects.scalacheck -> projects.scalacheckForwardCompat,
+  projects.munit -> projects.munitForwardCompat,
+  projects.discipline -> projects.disciplineForwardCompat,
+  projects.disciplineMunit -> projects.disciplineMunitForwardCompat,
+  projects.disciplineSpecs2 -> projects.disciplineSpecs2ForwardCompat,
+  projects.simulacrumScalafixAnnotations -> projects.simulacrumScalafixAnnotationsForwardCompat,
+  projects.cats -> projects.catsForwardCompat,
+  projects.catsMtl -> projects.catsMtlForwardCompat,
+  projects.coop -> projects.coopForwardCompat,
+  projects.catsEffect3 -> projects.catsEffect3ForwardCompat,
+)
 
 def allProjects = List(
   projects.utest,
@@ -766,6 +817,7 @@ def allProjects = List(
   projects.intent,
   projects.algebra,
   projects.scalacheck,
+  projects.scalacheckForwardCompat,
   projects.scalatest,
   projects.scalatestplusScalacheck,
   projects.scalatestplusJunit,
@@ -782,6 +834,7 @@ def allProjects = List(
   projects.sconfig,
   projects.zio,
   projects.munit,
+  projects.munitForwardCompat,
   projects.scodecBits,
   projects.scodec,
   projects.scalaParserCombinators,
@@ -789,16 +842,23 @@ def allProjects = List(
   projects.scalaz,
   projects.endpoints4s,
   projects.catsEffect3,
+  projects.catsEffect3ForwardCompat,
   projects.scalaParallelCollections,
   projects.scalaCollectionCompat,
   projects.scalaJava8Compat,
   projects.verify,
   projects.discipline,
+  projects.disciplineForwardCompat,
   projects.disciplineMunit,
+  projects.disciplineMunitForwardCompat,
   projects.disciplineSpecs2,
+  projects.disciplineSpecs2ForwardCompat,
   projects.simulacrumScalafixAnnotations,
+  projects.simulacrumScalafixAnnotationsForwardCompat,
   projects.cats,
+  projects.catsForwardCompat,
   projects.catsMtl,
+  projects.catsMtlForwardCompat,
   projects.coop,
   projects.scissEqual,
   projects.scissFingerTree,
@@ -824,6 +884,8 @@ def allProjects = List(
   projects.libretto,
   projects.jacksonModuleScala,
   projects.specs2,
+  projects.coop,
+  projects.coopForwardCompat
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
