@@ -327,12 +327,6 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-         || github.event_name == 'push'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip community_build]')
-         )
          || (
            github.event_name == 'workflow_dispatch'
            && github.repository == 'lampepfl/dotty'

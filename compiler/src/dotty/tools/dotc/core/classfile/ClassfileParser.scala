@@ -975,6 +975,9 @@ class ClassfileParser(
                     entry.underlyingSource.map(_.name.startsWith("scala3-library_")).getOrElse(false)
                   case _ => false
                 }
+              // While emitting older TASTy the the newer standard library used by the compiler will still be on the class path so trying to read its TASTy files should not cause a crash.
+              // This is OK however because references to elements of stdlib API are validated according to the values of their `@since` annotations.
+              // This should guarantee that the code won't crash at runtime when used with the stdlib provided by an older compiler.
               val isTastyCompatible = fileTastyVersion.isCompatibleWith(ctx.tastyVersion) || isStdlibClass(classRoot)
               if !isTastyCompatible then
                 reportWrongTasty(s"its TASTy format is not compatible with the one of the targeted Scala release (${ctx.scalaRelease.show})", ctx.tastyVersion)
