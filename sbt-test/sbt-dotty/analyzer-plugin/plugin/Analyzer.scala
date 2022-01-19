@@ -14,7 +14,7 @@ import Decorators._
 import Symbols.Symbol
 import Constants.Constant
 import Types._
-import transform.ElimRepeated
+import transform.ProtectedAccessors
 
 class InitPlugin extends StandardPlugin {
   import tpd._
