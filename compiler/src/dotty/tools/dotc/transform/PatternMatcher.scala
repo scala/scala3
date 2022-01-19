@@ -231,8 +231,8 @@ object PatternMatcher {
         case _ =>
           tree.tpe
 
-      /** Plan for matching `selectors` against argument patterns `args` */
-      def matchArgsPlan(selectors: List[Tree], args: List[Tree], onSuccess: Plan): Plan = {
+      /** Plan for matching `components` against argument patterns `args` */
+      def matchArgsPlan(components: List[Tree], args: List[Tree], onSuccess: Plan): Plan = {
         /* For a case with arguments that have some test on them such as
          * ```
          * case Foo(1, 2) => someCode
@@ -249,9 +249,9 @@ object PatternMatcher {
          * } else ()
          * ```
          */
-        def matchArgsSelectorsPlan(selectors: List[Tree], syms: List[Symbol]): Plan =
-          selectors match {
-            case selector :: selectors1 => letAbstract(selector, selector.avoidPatBoundType())(sym => matchArgsSelectorsPlan(selectors1, sym :: syms))
+        def matchArgsComponentsPlan(components: List[Tree], syms: List[Symbol]): Plan =
+          components match {
+            case component :: components1 => letAbstract(component, component.avoidPatBoundType())(sym => matchArgsComponentsPlan(components1, sym :: syms))
             case Nil => matchArgsPatternPlan(args, syms.reverse)
           }
         def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
@@ -263,7 +263,7 @@ object PatternMatcher {
               assert(syms.isEmpty)
               onSuccess
           }
-        matchArgsSelectorsPlan(selectors, Nil)
+        matchArgsComponentsPlan(components, Nil)
       }
 
       /** Plan for matching the sequence in `seqSym` against sequence elements `args`.
@@ -326,7 +326,15 @@ object PatternMatcher {
           sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
-          matchArgsPlan(caseAccessors.map(ref(scrutinee).select(_)), args, onSuccess)
+          def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
+          def tupleApp(i: Int) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
+            ref(defn.RuntimeTuplesModule)
+              .select(defn.RuntimeTuples_apply)
+              .appliedTo(ref(scrutinee), Literal(Constant(i)))
+              .cast(args(i).tpe.widen)
+          val isGenericTuple = defn.isTupleClass(caseClass) && !defn.isTupleNType(tree.tpe)
+          val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp) else caseAccessors.map(tupleSel)
+          matchArgsPlan(components, args, onSuccess)
         else if (unapp.tpe <:< (defn.BooleanType))
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
         else
