@@ -1192,6 +1192,9 @@ object Semantic {
       case Return(expr, from) =>
         eval(expr, thisV, klass).ensureHot("return expression may only be initialized value", expr)
 
+      case ByName(expr) =>
+        eval(expr, thisV, klass)
+
       case WhileDo(cond, body) =>
         val ress = eval(cond :: body :: Nil, thisV, klass)
         Result(Hot, ress.flatMap(_.errors))
