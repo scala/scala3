@@ -512,6 +512,10 @@ object SourceCode {
         this += "return "
         printTree(expr)
 
+      case ByNameArg(expr) =>
+        this += "/*(by name)*/ "
+        printTree(expr)
+
       case Repeated(elems, _) =>
         printTrees(elems, ", ")
 
