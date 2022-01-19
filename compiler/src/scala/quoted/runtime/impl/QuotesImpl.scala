@@ -930,6 +930,29 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end ReturnMethods
 
+    type ByNameArg = tpd.ByName
+
+    object ByNameArgTypeTest extends TypeTest[Tree, ByNameArg]:
+      def unapply(x: Tree): Option[ByNameArg & x.type] = x match
+        case tpt: (tpd.ByName & x.type) => Some(tpt)
+        case _ => None
+    end ByNameArgTypeTest
+
+    object ByNameArg extends ByNameArgModule:
+      def apply(result: TypeTree): ByNameArg =
+        withDefaultPos(tpd.ByName(result))
+      def copy(original: Tree)(result: TypeTree): ByNameArg =
+        tpd.cpy.ByName(original)(result)
+      def unapply(x: ByNameArg): Some[TypeTree] =
+        Some(x.expr)
+    end ByNameArg
+
+    given ByNameArgMethods: ByNameArgMethods with
+      extension (self: ByNameArg)
+        def expr: TypeTree = self.expr
+      end extension
+    end ByNameArgMethods
+
     type Repeated = tpd.SeqLiteral
 
     object RepeatedTypeTest extends TypeTest[Tree, Repeated]:

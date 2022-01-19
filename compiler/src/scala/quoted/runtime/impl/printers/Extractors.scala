@@ -110,6 +110,8 @@ object Extractors {
         this += "SummonFrom(" ++= cases += ")"
       case Return(expr, from) =>
         this += "Return(" += expr += ", " += from += ")"
+      case ByNameArg(result) =>
+        this += "ByNameArg(" += result += ")"
       case While(cond, body) =>
         this += "While(" += cond += ", " += body += ")"
       case Try(block, handlers, finalizer) =>

@@ -1498,6 +1498,32 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ReturnMethods
 
+    /** A delayed <by-name> argument for a call-by=name parameter */
+    type ByNameArg <: Term
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ByNameArg` */
+    given ByNameArgTypeTest: TypeTest[Tree, ByNameArg]
+
+    /** Module object of `a <by-name>` argument */
+    val ByNameArg: ByNameArgModule
+
+    /** Methods of the module object `val ByNameArg` */
+    trait ByNameArgModule { this: ByNameArg.type =>
+      def apply(result: TypeTree): ByNameArg
+      def copy(original: Tree)(result: TypeTree): ByNameArg
+      def unapply(x: ByNameArg): Some[TypeTree]
+    }
+
+    /** Makes extension methods on `ByNameArg` available without any imports */
+    given ByNameArgMethods: ByNameArgMethods
+
+    /** Extension methods of `ByNameArg` */
+    trait ByNameArgMethods:
+      extension (self: ByNameArg)
+        def expr: TypeTree
+      end extension
+    end ByNameArgMethods
+
     /** Tree representing a variable argument list in the source code */
     type Repeated <: Term
 
