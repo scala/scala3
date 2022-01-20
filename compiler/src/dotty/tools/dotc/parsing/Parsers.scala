@@ -56,7 +56,8 @@ object Parsers {
   object StageKind {
     val None = 0
     val Quoted = 1
-    val Spliced = 2
+    val Spliced = 1 << 1
+    val QuotedPattern = 1 << 2
   }
 
   extension (buf: ListBuffer[Tree])
@@ -1566,15 +1567,19 @@ object Parsers {
     /** The block in a quote or splice */
     def stagedBlock() = inBraces(block(simplify = true))
 
-    /** SimpleEpxr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
-     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
+    /** SimpleExpr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
+     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
+     *
+     *  SimpleExpr  ::=  spliceId | ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
+     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
      */
     def splice(isType: Boolean): Tree =
       atSpan(in.offset) {
         val expr =
           if (in.name.length == 1) {
             in.nextToken()
-            withinStaged(StageKind.Spliced)(stagedBlock())
+            val inPattern = (staged & StageKind.QuotedPattern) != 0
+            withinStaged(StageKind.Spliced)(if (inPattern) inBraces(pattern()) else stagedBlock())
           }
           else atSpan(in.offset + 1) {
             val id = Ident(in.name.drop(1))
@@ -2271,7 +2276,7 @@ object Parsers {
           blockExpr()
         case QUOTE =>
           atSpan(in.skipToken()) {
-            withinStaged(StageKind.Quoted) {
+            withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.QuotedPattern else 0)) {
               Quote {
                 if (in.token == LBRACKET) inBrackets(typ())
                 else stagedBlock()
@@ -2714,7 +2719,7 @@ object Parsers {
       case LPAREN =>
         atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
       case QUOTE =>
-        simpleExpr(Location.ElseWhere)
+        simpleExpr(Location.InPattern)
       case XMLSTART =>
         xmlLiteralPattern()
       case GIVEN =>
