@@ -76,24 +76,27 @@ class SpecializeFunctions extends MiniPhase {
             argTypes,
             retType
           )
-
-        if (!isSpecializable || argTypes.exists(_.isInstanceOf[ExprType])) return tree
-
-        val specializedApply = nme.apply.specializedFunction(retType, argTypes)
-        val newSel = fun match {
-          case Select(qual, _) =>
-            qual.select(specializedApply)
-          case _ =>
-            (fun.tpe: @unchecked) match {
-              case TermRef(prefix: ThisType, name) =>
-                tpd.This(prefix.cls).select(specializedApply)
-              case TermRef(prefix: NamedType, name) =>
-                tpd.ref(prefix).select(specializedApply)
-            }
-        }
-
-        newSel.appliedToTermArgs(args)
-
+        if isSpecializable then
+          val specializedApply = nme.apply.specializedFunction(retType, argTypes)
+          val newSel = fun match
+            case Select(qual, _) =>
+              val qual1 = qual.tpe.widen match
+                case defn.ByNameFunction(res) =>
+                  // Need to cast to regular function, since specialied apply methods
+                  // are not members of ContextFunction0. The cast will be eliminated in
+                  // erasure.
+                  qual.cast(defn.FunctionOf(Nil, res))
+                case _ =>
+                  qual
+              qual1.select(specializedApply)
+            case _ =>
+              (fun.tpe: @unchecked) match
+                case TermRef(prefix: ThisType, name) =>
+                  tpd.This(prefix.cls).select(specializedApply)
+                case TermRef(prefix: NamedType, name) =>
+                  tpd.ref(prefix).select(specializedApply)
+          newSel.appliedToTermArgs(args)
+        else tree
       case _ => tree
     }
 
