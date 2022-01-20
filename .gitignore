@@ -58,6 +58,9 @@ tests/partest-generated/
 tests/locks/
 /test-classes/
 
+# Benchmarks
+bench/tests-generated
+
 # Ignore output files but keep the directory
 out/
 build/
