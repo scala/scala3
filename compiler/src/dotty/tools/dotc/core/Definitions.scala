@@ -1082,6 +1082,24 @@ class Definitions {
     }
   }
 
+  object ByNameFunction:
+    def apply(tp: Type)(using Context): Type =
+      defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
+    def unapply(tp: Type)(using Context): Option[Type] = tp match
+      case tp @ AppliedType(tycon, arg :: Nil) if defn.isByNameFunctionClass(tycon.typeSymbol) =>
+        Some(arg)
+      case tp @ AnnotatedType(parent, _) =>
+        unapply(parent)
+      case _ =>
+        None
+
+  final def isByNameFunctionClass(sym: Symbol): Boolean =
+    sym eq ContextFunction0
+
+  def isByNameFunction(tp: Type)(using Context): Boolean = tp match
+    case ByNameFunction(_) => true
+    case _ => false
+
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass
 
@@ -1295,10 +1313,12 @@ class Definitions {
     ).symbol.asClass
 
   @tu lazy val Function0_apply: Symbol = Function0.requiredMethod(nme.apply)
+  @tu lazy val ContextFunction0_apply: Symbol = ContextFunction0.requiredMethod(nme.apply)
 
   @tu lazy val Function0: Symbol = FunctionClass(0)
   @tu lazy val Function1: Symbol = FunctionClass(1)
   @tu lazy val Function2: Symbol = FunctionClass(2)
+  @tu lazy val ContextFunction0: Symbol = FunctionClass(0, isContextual = true)
 
   def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): TypeRef =
     FunctionClass(n, isContextual && !ctx.erasedTypes, isErased).typeRef

@@ -846,7 +846,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ => tp2.isAnyRef
         }
         compareJavaArray
-      case tp1: ExprType if ctx.phase.id > gettersPhase.id =>
+      case tp1: ExprType if ctx.phaseId > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
       case _ =>
@@ -1510,6 +1510,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case _ => arg1
             }
             arg2.contains(arg1norm)
+          case ExprType(arg2res)
+          if ctx.phaseId > ctx.base.elimByNamePhase.id && !ctx.erasedTypes
+               && defn.isByNameFunction(arg1) =>
+            // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
+            // embedded `=> T` alone. This clause needs to compensate for that.
+            isSubArg(arg1.argInfos.head, arg2res)
           case _ =>
             arg1 match {
               case arg1: TypeBounds =>
