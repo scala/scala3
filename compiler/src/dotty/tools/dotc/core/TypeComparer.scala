@@ -1499,7 +1499,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
 
-        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
+        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match
           case arg2: TypeBounds =>
             val arg1norm = arg1 match {
               case arg1: TypeBounds =>
@@ -1517,14 +1517,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // embedded `=> T` arguments alone. This clause needs to compensate for that.
             isSubArg(arg1.argInfos.head, arg2res)
           case _ =>
-            arg1 match {
+            arg1 match
               case arg1: TypeBounds =>
                 compareCaptured(arg1, arg2)
+              case ExprType(arg1res)
+              if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+                   && defn.isByNameFunction(arg2) =>
+                 isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
                 (v > 0 || isSubType(arg2, arg1)) &&
                 (v < 0 || isSubType(arg1, arg2))
-            }
-        }
 
         isSubArg(args1.head, args2.head)
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
