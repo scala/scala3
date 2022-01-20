@@ -471,6 +471,8 @@ object GenericSignatures {
             foldOver(tp.typeParams.nonEmpty, parents)
           case AnnotatedType(tpe, _) =>
             foldOver(x, tpe)
+          case ExprType(tpe) =>
+            true
           case tp =>
             foldOver(x, tp)
         }
