@@ -1,80 +1,155 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
-import DenotTransformers.InfoTransformer
-import Symbols._
 import Contexts._
+import Symbols._
 import Types._
+import Flags._
+import SymDenotations.*
+import DenotTransformers.InfoTransformer
+import NameKinds.SuperArgName
 import core.StdNames.nme
-import ast.Trees._
+import MegaPhase.*
+import Decorators.*
+import reporting.trace
 
-/** This phase eliminates ExprTypes `=> T` as types of method parameter references, and replaces them b
- *  nullary function types.  More precisely:
+/** This phase implements the following transformations:
  *
- *  For the types of parameter symbols:
+ *  1. For types of method and class parameters:
  *
- *         => T       ==>    () => T
+ *     => T     becomes    () ?=> T
  *
- *  For cbn parameter values
+ *  2. For references to cbn-parameters:
  *
- *         x          ==>    x()
+ *     x        becomes    x.apply()
  *
- *  Note: This scheme to have inconsistent types between method types (whose formal types are still
- *  ExprTypes and parameter valdefs (which are now FunctionTypes) is not pretty. There are two
- *  other options which have been abandoned or not yet pursued.
+ *  3. For arguments to cbn parameters
  *
- *  Option 1: Transform => T to () => T also in method and function types. The problem with this is
- *  that is that it requires to look at every type, and this forces too much, causing
- *  Cyclic Reference errors. Abandoned for this reason.
+ *     e        becomes    () ?=> e
  *
- *  Option 2: Merge ElimByName with erasure, or have it run immediately before. This has not been
- *  tried yet.
+ *  An opimization is applied: If the argument `e` to a cbn parameter is already
+ *  of type `() ?=> T` and is a pure expression, we avoid (2) and (3), i.e. we
+ *  pass `e` directly instead of `() ?=> e.apply()`.
+ *
+ *  Note that `() ?=> T`  cannot be written in source since user-defined context functions
+ *  must have at least one parameter. We use the type here as a convenient marker
+ *  of something that will erase to Function0, and where we know that it came from
+ *  a by-name parameter.
+ *
+ *  Note also that the transformation applies only to types of parameters, not to other
+ *  occurrences of ExprTypes. In particular, embedded occurrences in function types
+ *  such as `(=> T) => U` are left as-is. Trying to convert these as well would mean
+ *  traversing all the types, and that leads to cyclic reference errors in many cases.
+ *  This can cause problems in that we might have sometimes a `() ?=> T` where a
+ *  `=> T` is expected. To compensate, there is a new clause in TypeComparer#subArg that
+ *  declares `() ?=> T` to be a subtype of `T` for arguments of type applications,
+ *  after this phase and up to erasure.
  */
-class ElimByName extends TransformByNameApply with InfoTransformer {
+class ElimByName extends MiniPhase, InfoTransformer:
+  thisPhase =>
+
   import ast.tpd._
 
   override def phaseName: String = ElimByName.name
 
-  override def changesParents: Boolean = true // Only true for by-names
+  override def runsAfterGroupsOf: Set[String] = Set(ExpandSAMs.name, ElimRepeated.name)
+    // - ExpanSAMs applied to partial functions creates methods that need
+    //   to be fully defined before converting. Test case is pos/i9391.scala.
+    // - ByNameLambda needs to run in a group after ElimRepeated since ElimRepeated
+    //   works on simple arguments but not converted closures, and it sees the arguments
+    //   after transformations by subsequent miniphases in the same group.
 
-  /** Map `tree` to `tree.apply()` is `ftree` was of ExprType and becomes now a function */
-  private def applyIfFunction(tree: Tree, ftree: Tree)(using Context) =
-    if (isByNameRef(ftree)) {
+  override def changesParents: Boolean = true
+    // Expr types in parent type arguments are changed to function types.
+
+  /** If denotation had an ExprType before, it now gets a function type */
+  private def exprBecomesFunction(symd: SymDenotation)(using Context): Boolean =
+    symd.is(Param) || symd.is(ParamAccessor, butNot = Method)
+
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
+    case ExprType(rt) if exprBecomesFunction(sym) =>
+      defn.ByNameFunction(rt)
+    case tp: MethodType =>
+      def exprToFun(tp: Type) = tp match
+        case ExprType(rt) => defn.ByNameFunction(rt)
+        case tp => tp
+      tp.derivedLambdaType(
+        paramInfos = tp.paramInfos.mapConserve(exprToFun),
+        resType = transformInfo(tp.resType, sym))
+    case tp: PolyType =>
+      tp.derivedLambdaType(resType = transformInfo(tp.resType, sym))
+    case _ => tp
+  }
+
+  override def infoMayChange(sym: Symbol)(using Context): Boolean =
+    sym.is(Method) || exprBecomesFunction(sym)
+
+  def byNameClosure(arg: Tree, argType: Type)(using Context): Tree =
+    val meth = newAnonFun(ctx.owner, MethodType(Nil, argType), coord = arg.span)
+    Closure(meth,
+        _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase),
+        targetType = defn.ByNameFunction(argType)
+      ).withSpan(arg.span)
+
+  private def isByNameRef(tree: Tree)(using Context): Boolean =
+    defn.isByNameFunction(tree.tpe.widen)
+
+  /** Map `tree` to `tree.apply()` is `tree` is of type `() ?=> T` */
+  private def applyIfFunction(tree: Tree)(using Context) =
+    if isByNameRef(tree) then
       val tree0 = transformFollowing(tree)
-      atPhase(next) { tree0.select(defn.Function0_apply).appliedToNone }
-    }
+      atPhase(next) { tree0.select(defn.ContextFunction0_apply).appliedToNone }
     else tree
 
   override def transformIdent(tree: Ident)(using Context): Tree =
-    applyIfFunction(tree, tree)
+    applyIfFunction(tree)
 
   override def transformSelect(tree: Select)(using Context): Tree =
-    applyIfFunction(tree, tree)
+    applyIfFunction(tree)
 
   override def transformTypeApply(tree: TypeApply)(using Context): Tree = tree match {
     case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
       // See pos/t296.scala
-      applyIfFunction(tree, arg)
+      applyIfFunction(tree)
     case _ => tree
   }
 
+  override def transformApply(tree: Apply)(using Context): Tree =
+    trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
+
+      def transformArg(arg: Tree, formal: Type): Tree = formal match
+        case defn.ByNameFunction(formalResult) =>
+          def stripTyped(t: Tree): Tree = t match
+            case Typed(expr, _) => stripTyped(expr)
+            case _ => t
+          stripTyped(arg) match
+            case Apply(Select(qual, nme.apply), Nil)
+            if isByNameRef(qual) && (isPureExpr(qual) || qual.symbol.isAllOf(InlineParam)) =>
+              qual
+            case _ =>
+              if isByNameRef(arg) || arg.symbol.name.is(SuperArgName)
+              then arg
+              else
+                var argType = arg.tpe.widenIfUnstable
+                if argType.isBottomType then argType = formalResult
+                byNameClosure(arg, argType)
+        case _ =>
+          arg
+
+      val mt @ MethodType(_) = tree.fun.tpe.widen
+      val args1 = tree.args.zipWithConserve(mt.paramInfos)(transformArg)
+      cpy.Apply(tree)(tree.fun, args1)
+    }
+
   override def transformValDef(tree: ValDef)(using Context): Tree =
     atPhase(next) {
-      if (exprBecomesFunction(tree.symbol))
+      if exprBecomesFunction(tree.symbol) then
         cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
       else tree
     }
 
-  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
-    case ExprType(rt) => defn.FunctionOf(Nil, rt)
-    case _ => tp
-  }
-
-  override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.isTerm && exprBecomesFunction(sym)
-}
-
-object ElimByName {
+object ElimByName:
   val name: String = "elimByName"
-}

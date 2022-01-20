@@ -69,12 +69,11 @@ class Compiler {
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ElimRepeated) ::        // Rewrite vararg parameters and arguments
-    List(new ElimByNameParams) ::
     List(new init.Checker) ::        // Check initialization of objects
     List(new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
-         new ByNameClosures,         // Expand arguments to by-name parameters to closures
+         new ElimByName,             // Map by-name parameters to functions
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new RefChecks,              // Various checks mostly related to abstract members and overriding
@@ -84,7 +83,6 @@ class Compiler {
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
-         new ElimByName,             // Expand by-name parameter references
          new StringInterpolatorOpt) :: // Optimizes raw and s string interpolators by rewriting them to string concatenations
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new UninitializedDefs,      // Replaces `compiletime.uninitialized` by `_`
