@@ -184,6 +184,7 @@ object StdNames {
 // ----- Type names -----------------------------------------
 
     final val BYNAME_PARAM_CLASS: N             = "<byname>"
+    final val BYNAME_PARAM_FUN: N               = "<function0-byname>"
     final val EQUALS_PATTERN: N                 = "<equals>"
     final val LOCAL_CHILD: N                    = "<local child>"
     final val REPEATED_PARAM_CLASS: N           = "<repeated>"
