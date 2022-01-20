@@ -29,7 +29,7 @@ import reporting.trace
  *
  *     e        becomes    () ?=> e
  *
- *  An opimization is applied: If the argument `e` to a cbn parameter is already
+ *  An optimization is applied: If the argument `e` to a cbn parameter is already
  *  of type `() ?=> T` and is a pure expression, we avoid (2) and (3), i.e. we
  *  pass `e` directly instead of `() ?=> e.apply()`.
  *
@@ -40,12 +40,13 @@ import reporting.trace
  *
  *  Note also that the transformation applies only to types of parameters, not to other
  *  occurrences of ExprTypes. In particular, embedded occurrences in function types
- *  such as `(=> T) => U` are left as-is. Trying to convert these as well would mean
- *  traversing all the types, and that leads to cyclic reference errors in many cases.
- *  This can cause problems in that we might have sometimes a `() ?=> T` where a
- *  `=> T` is expected. To compensate, there is a new clause in TypeComparer#subArg that
- *  declares `() ?=> T` to be a subtype of `T` for arguments of type applications,
- *  after this phase and up to erasure.
+ *  such as `(=> T) => U` are left as-is here (they are eliminated in erasure).
+ *  Trying to convert these as well would mean traversing all the types, and that
+ *  leads to cyclic reference errors in many cases.  This can cause problems in that
+ *  we might have sometimes a `() ?=> T` where a `=> T` is expected. To compensate,
+ *  there is a new clause in TypeComparer#subArg that declares `() ?=> T` to be a
+ *  subtype of `=> T` for arguments of type applications at any point after this phase
+ *  and up to erasure.
  */
 class ElimByName extends MiniPhase, InfoTransformer:
   thisPhase =>
