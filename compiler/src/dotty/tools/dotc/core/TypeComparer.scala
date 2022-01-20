@@ -4,7 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
 import Decorators._
-import Phases.gettersPhase
+import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
@@ -1511,10 +1511,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             }
             arg2.contains(arg1norm)
           case ExprType(arg2res)
-          if ctx.phaseId > ctx.base.elimByNamePhase.id && !ctx.erasedTypes
+          if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
                && defn.isByNameFunction(arg1) =>
             // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
-            // embedded `=> T` alone. This clause needs to compensate for that.
+            // embedded `=> T` arguments alone. This clause needs to compensate for that.
             isSubArg(arg1.argInfos.head, arg2res)
           case _ =>
             arg1 match {
