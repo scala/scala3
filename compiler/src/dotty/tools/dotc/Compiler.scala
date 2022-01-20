@@ -7,9 +7,9 @@ import typer.{TyperPhase, RefChecks}
 import parsing.Parser
 import Phases.Phase
 import transform._
-import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
 import dotty.tools.backend
-import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
+import backend.jvm.{CollectSuperCalls, GenBCode}
+import localopt.StringInterpolatorOpt
 
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
@@ -68,15 +68,17 @@ class Compiler {
          new BetaReduce,             // Reduce closure applications
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
-         new ElimRepeated) ::        // Rewrite vararg parameters and arguments
+         new ElimRepeated,           // Rewrite vararg parameters and arguments
+         new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new init.Checker) ::        // Check initialization of objects
-    List(new ProtectedAccessors,     // Add accessors for protected members
+    List(new CrossVersionChecks,     // Check issues related to deprecated and experimental
+         new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
          new ElimByName,             // Map by-name parameters to functions
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
+         new ForwardDepChecks,       // Check that there are no forward references to local vals
          new SpecializeApplyMethods, // Adds specialized methods to FunctionN
-         new RefChecks,              // Various checks mostly related to abstract members and overriding
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher) ::      // Compile pattern matches
     List(new ElimOpaque,             // Turn opaque into normal aliases
