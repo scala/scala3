@@ -255,7 +255,7 @@ object Phases {
       myCollectNullableFieldsPhase = phaseOfClass(classOf[CollectNullableFields])
       myRefChecksPhase = phaseOfClass(classOf[RefChecks])
       myElimRepeatedPhase = phaseOfClass(classOf[ElimRepeated])
-      myElimByNamePhase = phaseOfClass(classOf[ElimByNameParams])
+      myElimByNamePhase = phaseOfClass(classOf[ElimByName])
       myExtensionMethodsPhase = phaseOfClass(classOf[ExtensionMethods])
       myErasurePhase = phaseOfClass(classOf[Erasure])
       myElimErasedValueTypePhase = phaseOfClass(classOf[ElimErasedValueType])
