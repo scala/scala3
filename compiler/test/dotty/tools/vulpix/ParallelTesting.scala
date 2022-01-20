@@ -45,11 +45,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
    */
   def isInteractive: Boolean
 
-  /** A string which is used to filter which tests to run, if `None` will run
-   *  all tests. All absolute paths that contain the substring `testFilter`
+  /** A list of strings which is used to filter which tests to run, if `Nil` will run
+   *  all tests. All absolute paths that contain any of the substrings in `testFilter`
    *  will be run
    */
-  def testFilter: Option[String]
+  def testFilter: List[String]
 
   /** Tests should override the checkfiles with the current output */
   def updateCheckFiles: Boolean
@@ -344,12 +344,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     /** All testSources left after filtering out */
     private val filteredSources =
-      if (!testFilter.isDefined) testSources
+      if (testFilter.isEmpty) testSources
       else testSources.filter {
         case JointCompilationSource(_, files, _, _, _, _) =>
-          files.exists(file => file.getPath.contains(testFilter.get))
+          testFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
         case SeparateCompilationSource(_, dir, _, _) =>
-          dir.getPath.contains(testFilter.get)
+          testFilter.exists(dir.getPath.contains)
       }
 
     /** Total amount of test sources being compiled by this test */
@@ -628,9 +628,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         else reportPassed()
       }
       else echo {
-        testFilter
-          .map(r => s"""No files matched "$r" in test""")
-          .getOrElse("No tests available under target - erroneous test?")
+        testFilter match
+          case _ :: _ => s"""No files matched "${testFilter.mkString(",")}" in test"""
+          case _      => "No tests available under target - erroneous test?"
       }
 
       this
@@ -1316,10 +1316,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
 
-    val filteredFiles = testFilter match {
-      case Some(str) => files.filter(_.getPath.contains(str))
-      case None => files
-    }
+    val filteredFiles = testFilter match
+      case _ :: _ => files.filter(f => testFilter.exists(f.getPath.contains))
+      case _      => Nil
 
     class JointCompilationSourceFromTasty(
        name: String,

@@ -17,7 +17,7 @@ def scripts(path: String): Array[File] = {
   assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
   dir.listFiles.filter { f =>
     val path = if f.isDirectory then f.getPath + "/" else f.getPath
-    path.contains(Properties.testsFilter.getOrElse(""))
+    Properties.testsFilter.isEmpty || Properties.testsFilter.exists(path.contains)
   }
 }
 
