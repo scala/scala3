@@ -13,6 +13,7 @@ import NameKinds.SuperArgName
 import core.StdNames.nme
 import MegaPhase.*
 import Decorators.*
+import typer.RefChecks
 import reporting.trace
 
 /** This phase implements the following transformations:
@@ -55,12 +56,15 @@ class ElimByName extends MiniPhase, InfoTransformer:
 
   override def phaseName: String = ElimByName.name
 
-  override def runsAfterGroupsOf: Set[String] = Set(ExpandSAMs.name, ElimRepeated.name)
+  override def runsAfterGroupsOf: Set[String] = Set(ExpandSAMs.name, ElimRepeated.name, RefChecks.name)
     // - ExpanSAMs applied to partial functions creates methods that need
     //   to be fully defined before converting. Test case is pos/i9391.scala.
-    // - ByNameLambda needs to run in a group after ElimRepeated since ElimRepeated
+    // - ElimByName needs to run in a group after ElimRepeated since ElimRepeated
     //   works on simple arguments but not converted closures, and it sees the arguments
     //   after transformations by subsequent miniphases in the same group.
+    // - ElimByName should run in a group after RefChecks, since RefChecks does heavy
+    //   comparisons of signatures, and ElimByName distorts these signatures by not
+    //   replacing `=>` with `() ?=> T` everywhere.
 
   override def changesParents: Boolean = true
     // Expr types in parent type arguments are changed to function types.

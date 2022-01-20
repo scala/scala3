@@ -9,13 +9,11 @@ import StdNames._, Denotations._, SymUtils._, Phases._, SymDenotations._
 import NameKinds.DefaultGetterName
 import Annotations._
 import util.Spans._
-import util.{Store, SrcPos}
+import util.SrcPos
 import scala.collection.{ mutable, immutable }
 import ast._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
-import scala.util.{Try, Failure, Success}
-import config.{ScalaVersion, NoScalaVersion, ScalaRelease}
 import Decorators._
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting._
@@ -25,7 +23,6 @@ import reporting._
 import scala.util.matching.Regex._
 import Constants.Constant
 import NullOpsDecorator._
-import dotty.tools.dotc.config.Feature
 
 object RefChecks {
   import tpd._
@@ -903,128 +900,6 @@ object RefChecks {
       }
   }
 
-  // Note: if a symbol has both @deprecated and @migration annotations and both
-  // warnings are enabled, only the first one checked here will be emitted.
-  // I assume that's a consequence of some code trying to avoid noise by suppressing
-  // warnings after the first, but I think it'd be better if we didn't have to
-  // arbitrarily choose one as more important than the other.
-  private def checkUndesiredProperties(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    checkDeprecated(sym, pos)
-    checkExperimental(sym, pos)
-    checkSinceAnnot(sym, pos)
-
-    val xMigrationValue = ctx.settings.Xmigration.value
-    if xMigrationValue != NoScalaVersion then
-      checkMigration(sym, pos, xMigrationValue)
-
-
-  /** If @deprecated is present, and the point of reference is not enclosed
-   * in either a deprecated member or a scala bridge method, issue a warning.
-   */
-  private def checkDeprecated(sym: Symbol, pos: SrcPos)(using Context): Unit =
-
-    /** is the owner an enum or its companion and also the owner of sym */
-    def isEnumOwner(owner: Symbol)(using Context) =
-      // pre: sym is an enumcase
-      if owner.isEnumClass then owner.companionClass eq sym.owner
-      else if owner.is(ModuleClass) && owner.companionClass.isEnumClass then owner eq sym.owner
-      else false
-
-    def isDeprecatedOrEnum(owner: Symbol)(using Context) =
-      // pre: sym is an enumcase
-      owner.isDeprecated
-      || isEnumOwner(owner)
-
-    /**Scan the chain of outer declaring scopes from the current context
-     * a deprecation warning will be skipped if one the following holds
-     * for a given declaring scope:
-     * - the symbol associated with the scope is also deprecated.
-     * - if and only if `sym` is an enum case, the scope is either
-     *   a module that declares `sym`, or the companion class of the
-     *   module that declares `sym`.
-     */
-    def skipWarning(using Context) =
-      ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
-
-    for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
-      if !skipWarning then
-        val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
-        val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
-        report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
-
-  private def checkExperimental(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    if sym.isExperimental && !ctx.owner.isInExperimentalScope then
-      Feature.checkExperimentalDef(sym, pos)
-
-  private def checkExperimentalSignature(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    class Checker extends TypeTraverser:
-      def traverse(tp: Type): Unit =
-        if tp.typeSymbol.isExperimental then
-          Feature.checkExperimentalDef(tp.typeSymbol, pos)
-        else
-          traverseChildren(tp)
-    if !sym.isInExperimentalScope then
-      new Checker().traverse(sym.info)
-
-  private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
-    if !sym.isInExperimentalScope then
-      for annot <- sym.annotations if annot.symbol.isExperimental do
-        Feature.checkExperimentalDef(annot.symbol, annot.tree)
-
-  private def checkSinceAnnot(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    for
-      annot <- sym.getAnnotation(defn.SinceAnnot)
-      releaseName <- annot.argumentConstantString(0)
-    do
-      ScalaRelease.parse(releaseName) match
-        case Some(release) if release > ctx.scalaRelease =>
-          report.error(
-            i"$sym was added in Scala release ${releaseName.show}, therefore it cannot be used in the code targeting Scala ${ctx.scalaRelease.show}",
-            pos)
-        case None =>
-          report.error(i"$sym has an unparsable release name: '${releaseName}'", annot.tree.srcPos)
-        case _ =>
-
-  private def checkSinceAnnotInSignature(sym: Symbol, pos: SrcPos)(using Context) =
-    new TypeTraverser:
-      def traverse(tp: Type) =
-        if tp.typeSymbol.hasAnnotation(defn.SinceAnnot) then
-          checkSinceAnnot(tp.typeSymbol, pos)
-        else
-          traverseChildren(tp)
-    .traverse(sym.info)
-
-  /** If @migration is present (indicating that the symbol has changed semantics between versions),
-   *  emit a warning.
-   */
-  private def checkMigration(sym: Symbol, pos: SrcPos, xMigrationValue: ScalaVersion)(using Context): Unit =
-    for annot <- sym.getAnnotation(defn.MigrationAnnot) do
-      val migrationVersion = ScalaVersion.parse(annot.argumentConstant(1).get.stringValue)
-      migrationVersion match
-        case Success(symVersion) if xMigrationValue < symVersion =>
-          val msg = annot.argumentConstant(0).get.stringValue
-          report.warning(SymbolChangedSemanticsInVersion(sym, symVersion, msg), pos)
-        case Failure(ex) =>
-          report.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage), pos)
-        case _ =>
-
-  /** Check that a deprecated val or def does not override a
-   *  concrete, non-deprecated method.  If it does, then
-   *  deprecation is meaningless.
-   */
-  private def checkDeprecatedOvers(tree: Tree)(using Context): Unit = {
-    val symbol = tree.symbol
-    if (symbol.isDeprecated) {
-      val concrOvers =
-        symbol.allOverriddenSymbols.filter(sym =>
-          !sym.isDeprecated && !sym.is(Deferred))
-      if (!concrOvers.isEmpty)
-        report.deprecationWarning(
-          symbol.toString + " overrides concrete, non-deprecated symbol(s):" +
-            concrOvers.map(_.name).mkString("    ", ", ", ""), tree.srcPos)
-    }
-  }
-
   /** Check that we do not "override" anything with a private method
    *  or something that becomes a private method. According to the Scala
    *  modeling this is non-sensical since private members don't override.
@@ -1037,7 +912,7 @@ object RefChecks {
    */
   def checkNoPrivateOverrides(tree: Tree)(using Context): Unit =
     val sym = tree.symbol
-    if sym.owner.isClass
+    if sym.maybeOwner.isClass
        && sym.is(Private)
        && (sym.isOneOf(MethodOrLazyOrMutable) || !sym.is(Local)) // in these cases we'll produce a getter later
        && !sym.isConstructor
@@ -1095,42 +970,6 @@ object RefChecks {
         checkParameters(sym.info)
 
   end checkUnaryMethods
-
-  type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
-
-  class OptLevelInfo {
-    def levelAndIndex: LevelAndIndex = Map()
-    def enterReference(sym: Symbol, span: Span): Unit = ()
-  }
-
-  /** A class to help in forward reference checking */
-  class LevelInfo(outerLevelAndIndex: LevelAndIndex, stats: List[Tree])(using Context)
-  extends OptLevelInfo {
-    override val levelAndIndex: LevelAndIndex =
-      stats.foldLeft(outerLevelAndIndex, 0) {(mi, stat) =>
-        val (m, idx) = mi
-        val m1 = stat match {
-          case stat: MemberDef => m.updated(stat.symbol, (this, idx))
-          case _ => m
-        }
-        (m1, idx + 1)
-      }._1
-    var maxIndex: Int = Int.MinValue
-    var refSpan: Span = _
-    var refSym: Symbol = _
-
-    override def enterReference(sym: Symbol, span: Span): Unit =
-      if (sym.exists && sym.owner.isTerm)
-        levelAndIndex.get(sym) match {
-          case Some((level, idx)) if (level.maxIndex < idx) =>
-            level.maxIndex = idx
-            level.refSpan = span
-            level.refSym = sym
-          case _ =>
-        }
-  }
-
-  val NoLevelInfo: RefChecks.OptLevelInfo = new OptLevelInfo()
 
   /** Verify that references in the user-defined `@implicitNotFound` message are valid.
    *  (i.e. they refer to a type variable that really occurs in the signature of the annotated symbol.)
@@ -1213,15 +1052,6 @@ object RefChecks {
 
   end checkImplicitNotFoundAnnotation
 
-
-  /** Check that classes extending experimental classes or nested in experimental classes have the @experimental annotation. */
-  private def checkExperimentalInheritance(cls: ClassSymbol)(using Context): Unit =
-    if !cls.isAnonymousClass && !cls.hasAnnotation(defn.ExperimentalAnnot) then
-      cls.info.parents.find(_.typeSymbol.isExperimental) match
-        case Some(parent) =>
-          report.error(em"extension of experimental ${parent.typeSymbol} must have @experimental annotation", cls.srcPos)
-        case _ =>
-  end checkExperimentalInheritance
 }
 import RefChecks._
 
@@ -1261,50 +1091,24 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def phaseName: String = RefChecks.name
 
-  // Needs to run after ElimRepeated for override checks involving varargs methods
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
-
-  private var LevelInfo: Store.Location[OptLevelInfo] = _
-  private def currentLevel(using Context): OptLevelInfo = ctx.store(LevelInfo)
-
-  override def initContext(ctx: FreshContext): Unit =
-    LevelInfo = ctx.addLocation(NoLevelInfo)
-
-  override def prepareForStats(trees: List[Tree])(using Context): Context =
-    if (ctx.owner.isTerm)
-      ctx.fresh.updateStore(LevelInfo, new LevelInfo(currentLevel.levelAndIndex, trees))
-    else ctx
+    // Needs to run after ElimRepeated for override checks involving varargs methods
 
   override def transformValDef(tree: ValDef)(using Context): ValDef = {
-    checkNoPrivateOverrides(tree)
-    checkDeprecatedOvers(tree)
-    checkExperimentalAnnots(tree.symbol)
-    checkExperimentalSignature(tree.symbol, tree)
-    checkSinceAnnot(tree.symbol, tree.srcPos)
-    checkSinceAnnotInSignature(tree.symbol, tree)
-    val sym = tree.symbol
-    if (sym.exists && sym.owner.isTerm) {
-      tree.rhs match {
-        case Ident(nme.WILDCARD) => report.error(UnboundPlaceholderParameter(), sym.srcPos)
-        case _ =>
-      }
-      if (!sym.is(Lazy))
-        currentLevel.levelAndIndex.get(sym) match {
-          case Some((level, symIdx)) if symIdx <= level.maxIndex =>
-            report.error(ForwardReferenceExtendsOverDefinition(sym, level.refSym),
-              ctx.source.atSpan(level.refSpan))
+    if tree.symbol.exists then
+      checkNoPrivateOverrides(tree)
+      val sym = tree.symbol
+      if (sym.exists && sym.owner.isTerm) {
+        tree.rhs match {
+          case Ident(nme.WILDCARD) => report.error(UnboundPlaceholderParameter(), sym.srcPos)
           case _ =>
         }
-    }
+      }
     tree
   }
 
   override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     checkNoPrivateOverrides(tree)
-    checkDeprecatedOvers(tree)
-    checkExperimentalAnnots(tree.symbol)
-    checkExperimentalSignature(tree.symbol, tree)
-    checkSinceAnnotInSignature(tree.symbol, tree)
     checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
     checkUnaryMethods(tree.symbol)
     tree
@@ -1318,73 +1122,12 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
-    checkExperimentalInheritance(cls)
-    checkExperimentalAnnots(cls)
     tree
   }
   catch {
     case ex: TypeError =>
       report.error(ex, tree.srcPos)
       tree
-  }
-
-  override def transformIdent(tree: Ident)(using Context): Ident = {
-    checkUndesiredProperties(tree.symbol, tree.srcPos)
-    currentLevel.enterReference(tree.symbol, tree.span)
-    tree
-  }
-
-  override def transformSelect(tree: Select)(using Context): Select = {
-    checkUndesiredProperties(tree.symbol, tree.srcPos)
-    tree
-  }
-
-  override def transformApply(tree: Apply)(using Context): Apply = {
-    if (isSelfConstrCall(tree)) {
-      assert(currentLevel.isInstanceOf[LevelInfo], s"${ctx.owner}/" + i"$tree")
-      val level = currentLevel.asInstanceOf[LevelInfo]
-      if (level.maxIndex > 0) {
-        // An implementation restriction to avoid VerifyErrors and lazyvals mishaps; see SI-4717
-        report.debuglog("refsym = " + level.refSym)
-        report.error("forward reference not allowed from self constructor invocation",
-          ctx.source.atSpan(level.refSpan))
-      }
-    }
-    tree
-  }
-
-  override def transformNew(tree: New)(using Context): New = {
-    val tpe = tree.tpe
-    val sym = tpe.typeSymbol
-    checkUndesiredProperties(sym, tree.srcPos)
-    currentLevel.enterReference(sym, tree.span)
-    tpe.dealias.foreachPart {
-      case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.span)
-      case _ =>
-    }
-    tree
-  }
-
-  override def transformTypeTree(tree: TypeTree)(using Context): TypeTree = {
-    val tpe = tree.tpe
-    tpe.foreachPart {
-      case TypeRef(_, sym: Symbol)  =>
-        checkDeprecated(sym, tree.srcPos)
-        checkExperimental(sym, tree.srcPos)
-        checkSinceAnnot(sym, tree.srcPos)
-      case TermRef(_, sym: Symbol)  =>
-        checkDeprecated(sym, tree.srcPos)
-        checkExperimental(sym, tree.srcPos)
-        checkSinceAnnot(sym, tree.srcPos)
-      case _ =>
-    }
-    tree
-  }
-
-  override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
-    checkExperimentalAnnots(tree.symbol)
-    checkSinceAnnot(tree.symbol, tree.srcPos)
-    tree
   }
 }
 
