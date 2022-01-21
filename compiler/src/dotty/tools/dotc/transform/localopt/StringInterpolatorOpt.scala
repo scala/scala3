@@ -114,9 +114,10 @@ class StringInterpolatorOpt extends MiniPhase:
         case nme.raw_ => sym eq defn.StringContext_raw
         case nme.f    => sym eq defn.StringContext_f
         case _        => false
+    // Perform format checking and normalization, then make it StringOps(fmt).format(args1) with tweaked args
     def transformF(fun: Tree, args: Tree): Tree =
-      val (parts1, args1) = FormatInterpolatorTransform.checked(fun, args)
-      resolveConstructor(defn.StringOps.typeRef, List(parts1))
+      val (fmt, args1) = FormatInterpolatorTransform.checked(fun, args)
+      resolveConstructor(defn.StringOps.typeRef, List(fmt))
         .select(nme.format)
         .appliedTo(args1)
     // Starting with Scala 2.13, s and raw are macros in the standard
@@ -137,6 +138,7 @@ class StringInterpolatorOpt extends MiniPhase:
           .appliedToTermArgs(List(process, args, parts))
       }
     end transformS
+    // begin transformApply
     if isInterpolatedMethod then
       (tree: @unchecked) match
         case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>

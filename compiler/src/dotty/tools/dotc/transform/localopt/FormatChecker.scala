@@ -9,6 +9,8 @@ import scala.util.matching.Regex.Match
 
 import java.util.{Calendar, Date, Formattable}
 
+import PartialFunction.cond
+
 /** Formatter string checker. */
 abstract class FormatChecker(using reporter: InterpolationReporter):
 
@@ -19,7 +21,7 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
   // count of args, for checking indexes
   def argc: Int
 
-  val allFlags = "-#+ 0,(<"
+  // match a conversion specifier
   val formatPattern = """%(?:(\d+)\$)?([-#+ 0,(<]+)?(\d+)?(\.\d+)?([tT]?[%a-zA-Z])?""".r
 
   // ordinal is the regex group index in the format pattern
@@ -95,18 +97,16 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
   extension (inline value: Boolean)
     inline def or(inline body: => Unit): Boolean     = value || { body ; false }
     inline def orElse(inline body: => Unit): Boolean = value || { body ; true }
-    inline def but(inline body: => Unit): Boolean    = value && { body ; false }
     inline def and(inline body: => Unit): Boolean    = value && { body ; true }
+    inline def but(inline body: => Unit): Boolean    = value && { body ; false }
 
-  /** A conversion specifier matched in the argi'th string part,
-   *  with `argc` arguments to interpolate.
+  enum Kind:
+    case StringXn, HashXn, BooleanXn, CharacterXn, IntegralXn, FloatingPointXn, DateTimeXn, LiteralXn, ErrorXn
+  import Kind.*
+
+  /** A conversion specifier matched in the argi'th string part, with `argc` arguments to interpolate.
    */
-  sealed abstract class Conversion:
-    // the match for this descriptor
-    def descriptor: Match
-    // the part number for reporting errors
-    def argi: Int
-
+  final class Conversion(val descriptor: Match, val argi: Int, val kind: Kind):
     // the descriptor fields
     val index: Option[Int]     = descriptor.intOf(Index)
     val flags: String          = descriptor.stringOf(Flags)
@@ -115,26 +115,86 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
     val op: String             = descriptor.stringOf(CC)
 
     // the conversion char is the head of the op string (but see DateTimeXn)
-    val cc: Char = if isError then '?' else op(0)
+    val cc: Char =
+      kind match
+        case ErrorXn => '?'
+        case DateTimeXn => if op.length > 1 then op(1) else '?'
+        case _ => op(0)
 
-    def isError: Boolean   = false
     def isIndexed: Boolean = index.nonEmpty || hasFlag('<')
-    def isLiteral: Boolean = false
+    def isError: Boolean   = kind == ErrorXn
+    def isLiteral: Boolean = kind == LiteralXn
 
     // descriptor is at index 0 of the part string
     def isLeading: Boolean = descriptor.at(Spec) == 0
 
+    // flags and index in specifier are ok
+    private def goodies = goodFlags && goodIndex
+
     // true if passes. Default checks flags and index
-    def verify: Boolean = goodFlags && goodIndex
+    def verify: Boolean =
+      kind match {
+        case StringXn        => goodies
+        case BooleanXn       => goodies
+        case HashXn          => goodies
+        case CharacterXn     => goodies && noPrecision && only_-("c conversion")
+        case IntegralXn      =>
+          def d_# = cc == 'd' && hasFlag('#') and badFlag('#', "# not allowed for d conversion")
+          def x_comma = cc != 'd' && hasFlag(',') and badFlag(',', "',' only allowed for d conversion of integral types")
+          goodies && noPrecision && !d_# && !x_comma
+        case FloatingPointXn =>
+          goodies && (cc match {
+            case 'a' | 'A' =>
+              val badFlags = ",(".filter(hasFlag)
+              noPrecision && badFlags.isEmpty or badFlags.foreach(badf => badFlag(badf, s"'$badf' not allowed for a, A"))
+            case _ => true
+          })
+        case DateTimeXn      =>
+          def hasCC = op.length == 2 or errorAt(CC)("Date/time conversion must have two characters")
+          def goodCC = "HIklMSLNpzZsQBbhAaCYyjmdeRTrDFc".contains(cc) or errorAt(CC, 1)(s"'$cc' doesn't seem to be a date or time conversion")
+          goodies && hasCC && goodCC && noPrecision && only_-("date/time conversions")
+        case LiteralXn       =>
+          op match {
+            case "%" => goodies && noPrecision and width.foreach(_ => warningAt(Width)("width ignored on literal"))
+            case "n" => noFlags && noWidth && noPrecision
+          }
+        case ErrorXn         =>
+          errorAt(CC)(s"illegal conversion character '$cc'")
+          false
+      }
 
     // is the specifier OK with the given arg
-    def accepts(arg: ClassTag[?]): Boolean = true
+    def accepts(arg: ClassTag[?]): Boolean =
+      kind match
+        case BooleanXn  => arg == classTag[Boolean] orElse warningAt(CC)("Boolean format is null test for non-Boolean")
+        case IntegralXn =>
+          arg == classTag[BigInt] || !cond(cc) {
+            case 'o' | 'x' | 'X' if hasAnyFlag("+ (") => "+ (".filter(hasFlag).foreach(bad => badFlag(bad, s"only use '$bad' for BigInt conversions to o, x, X")) ; true
+          }
+        case _ => true
 
     // what arg type if any does the conversion accept
-    def acceptableVariants: List[ClassTag[?]]
+    def acceptableVariants: List[ClassTag[?]] =
+      kind match {
+        case StringXn        => if hasFlag('#') then classTag[Formattable] :: Nil else classTag[Any] :: Nil
+        case BooleanXn       => classTag[Boolean] :: Conversion.FakeNullTag :: Nil
+        case HashXn          => classTag[Any] :: Nil
+        case CharacterXn     => classTag[Char] :: classTag[Byte] :: classTag[Short] :: classTag[Int] :: Nil
+        case IntegralXn      => classTag[Int] :: classTag[Long] :: classTag[Byte] :: classTag[Short] :: classTag[BigInt] :: Nil
+        case FloatingPointXn => classTag[Double] :: classTag[Float] :: classTag[BigDecimal] :: Nil
+        case DateTimeXn      => classTag[Long] :: classTag[Calendar] :: classTag[Date] :: Nil
+        case LiteralXn       => Nil
+        case ErrorXn         => Nil
+      }
 
-    // what flags does the conversion accept? defaults to all
-    protected def okFlags: String = allFlags
+    // what flags does the conversion accept?
+    private def okFlags: String =
+      kind match {
+        case StringXn => "-#<"
+        case BooleanXn | HashXn => "-<"
+        case LiteralXn => "-"
+        case _ => "-#+ 0,(<"
+      }
 
     def hasFlag(f: Char) = flags.contains(f)
     def hasAnyFlag(fs: String) = fs.exists(hasFlag)
@@ -146,6 +206,7 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
     def errorAt(g: SpecGroup, i: Int = 0)(msg: String)   = reporter.partError(msg, argi, descriptor.offset(g, i))
     def warningAt(g: SpecGroup, i: Int = 0)(msg: String) = reporter.partWarning(msg, argi, descriptor.offset(g, i))
 
+    // various assertions
     def noFlags = flags.isEmpty or errorAt(Flags)("flags not allowed")
     def noWidth = width.isEmpty or errorAt(Width)("width not allowed")
     def noPrecision = precision.isEmpty or errorAt(Precision)("precision not allowed")
@@ -162,84 +223,25 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
       okRange || hasFlag('<') or errorAt(Index)("Argument index out of range")
   object Conversion:
     def apply(m: Match, i: Int): Conversion =
-      def badCC(msg: String) = ErrorXn(m, i).tap(error => error.errorAt(if (error.op.isEmpty) Spec else CC)(msg))
-      def cv(cc: Char) = cc match
-        case 's' | 'S' => StringXn(m, i)
-        case 'h' | 'H' => HashXn(m, i)
-        case 'b' | 'B' => BooleanXn(m, i)
-        case 'c' | 'C' => CharacterXn(m, i)
+      def kindOf(cc: Char) = cc match
+        case 's' | 'S' => StringXn
+        case 'h' | 'H' => HashXn
+        case 'b' | 'B' => BooleanXn
+        case 'c' | 'C' => CharacterXn
         case 'd' | 'o' |
-             'x' | 'X' => IntegralXn(m, i)
+             'x' | 'X' => IntegralXn
         case 'e' | 'E' |
              'f' |
              'g' | 'G' |
-             'a' | 'A' => FloatingPointXn(m, i)
-        case 't' | 'T' => DateTimeXn(m, i)
-        case '%' | 'n' => LiteralXn(m, i)
-        case _         => badCC(s"illegal conversion character '$cc'")
-      end cv
+             'a' | 'A' => FloatingPointXn
+        case 't' | 'T' => DateTimeXn
+        case '%' | 'n' => LiteralXn
+        case _         => ErrorXn
+      end kindOf
       m.group(CC) match
-        case Some(cc) => cv(cc(0)).tap(_.verify)
-        case None     => badCC(s"Missing conversion operator in '${m.matched}'; $literalHelp")
+        case Some(cc) => new Conversion(m, i, kindOf(cc(0))).tap(_.verify)
+        case None     => new Conversion(m, i, ErrorXn).tap(_.errorAt(Spec)(s"Missing conversion operator in '${m.matched}'; $literalHelp"))
     end apply
     val literalHelp = "use %% for literal %, %n for newline"
+    private val FakeNullTag: ClassTag[?] = null
   end Conversion
-  abstract class GeneralXn extends Conversion
-  // s | S
-  class StringXn(val descriptor: Match, val argi: Int) extends GeneralXn:
-    val acceptableVariants =
-      if hasFlag('#') then classTag[Formattable] :: Nil
-      else classTag[Any] :: Nil
-    override protected def okFlags = "-#<"
-  // b | B
-  class BooleanXn(val descriptor: Match, val argi: Int) extends GeneralXn:
-    val FakeNullTag: ClassTag[?] = null
-    val acceptableVariants = classTag[Boolean] :: FakeNullTag :: Nil
-    override def accepts(arg: ClassTag[?]): Boolean =
-      arg == classTag[Boolean] orElse warningAt(CC)("Boolean format is null test for non-Boolean")
-    override protected def okFlags = "-<"
-  // h | H
-  class HashXn(val descriptor: Match, val argi: Int) extends GeneralXn:
-    val acceptableVariants = classTag[Any] :: Nil
-    override protected def okFlags = "-<"
-  // %% | %n
-  class LiteralXn(val descriptor: Match, val argi: Int) extends Conversion:
-    override def isLiteral = true
-    override def verify = op match
-      case "%" => super.verify && noPrecision and width.foreach(_ => warningAt(Width)("width ignored on literal"))
-      case "n" => noFlags && noWidth && noPrecision
-    override protected val okFlags = "-"
-    override def acceptableVariants = Nil
-  class CharacterXn(val descriptor: Match, val argi: Int) extends Conversion:
-    override def verify = super.verify && noPrecision && only_-("c conversion")
-    val acceptableVariants = classTag[Char] :: classTag[Byte] :: classTag[Short] :: classTag[Int] :: Nil
-  class IntegralXn(val descriptor: Match, val argi: Int) extends Conversion:
-    override def verify =
-      def d_# = cc == 'd' && hasFlag('#') and badFlag('#', "# not allowed for d conversion")
-      def x_comma = cc != 'd' && hasFlag(',') and badFlag(',', "',' only allowed for d conversion of integral types")
-      super.verify && noPrecision && !d_# && !x_comma
-    val acceptableVariants = classTag[Int] :: classTag[Long] :: classTag[Byte] :: classTag[Short] :: classTag[BigInt] :: Nil
-    override def accepts(arg: ClassTag[?]): Boolean =
-      arg == classTag[BigInt] || {
-        cc match
-          case 'o' | 'x' | 'X' if hasAnyFlag("+ (") => "+ (".filter(hasFlag).foreach(bad => badFlag(bad, s"only use '$bad' for BigInt conversions to o, x, X")) ; false
-          case _ => true
-      }
-  class FloatingPointXn(val descriptor: Match, val argi: Int) extends Conversion:
-    override def verify = super.verify && (cc match {
-      case 'a' | 'A' =>
-        val badFlags = ",(".filter(hasFlag)
-        noPrecision && badFlags.isEmpty or badFlags.foreach(badf => badFlag(badf, s"'$badf' not allowed for a, A"))
-      case _ => true
-    })
-    val acceptableVariants = classTag[Double] :: classTag[Float] :: classTag[BigDecimal] :: Nil
-  class DateTimeXn(val descriptor: Match, val argi: Int) extends Conversion:
-    override val cc: Char = if op.length > 1 then op(1) else '?'
-    def hasCC = op.length == 2 or errorAt(CC)("Date/time conversion must have two characters")
-    def goodCC = "HIklMSLNpzZsQBbhAaCYyjmdeRTrDFc".contains(cc) or errorAt(CC, 1)(s"'$cc' doesn't seem to be a date or time conversion")
-    override def verify = super.verify && hasCC && goodCC && noPrecision && only_-("date/time conversions")
-    val acceptableVariants = classTag[Long] :: classTag[Calendar] :: classTag[Date] :: Nil
-  class ErrorXn(val descriptor: Match, val argi: Int) extends Conversion:
-    override def isError = true
-    override def verify  = false
-    override def acceptableVariants = Nil
