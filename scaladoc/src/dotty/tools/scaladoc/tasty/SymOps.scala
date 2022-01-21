@@ -199,52 +199,30 @@ object SymOps:
       //println(res._1.map(_.params.map(_.show)).mkString("ExtensionPart:\n","\n","\n"))
       //println(res._2.map(_.params.map(_.show)).mkString("NonExtensionPart:\n","\n","\n"))
       res
-    def extendedTypeParams: List[reflect.TypeDef] =
-      import reflect.*
-      val method = sym.tree.asInstanceOf[DefDef]
-      method.leadingTypeParams
 
+    def extendedParamLists: List[reflect.ParamClause] =
+      sym.splitExtensionParamLists._1
+
+    def extendedTypeParams: List[reflect.TypeDef] =
+      val typeParamss: List[reflect.TypeParamClause] = sym.extendedParamLists.collect{case types: reflect.TypeParamClause => types}
+      typeParamss.headOption.map(_.params).getOrElse(List()) // only one type param clause on LHS
+
+
+    
     def extendedTermParamLists: List[reflect.TermParamClause] =
-      import reflect.*
-      if sym.nonExtensionLeadingTypeParams.nonEmpty then
-        sym.nonExtensionParamLists.takeWhile {
-          case _: TypeParamClause => false
-          case _ => true
-        }.collect {
-          case tpc: TermParamClause => tpc
-        }
-      else
-        List.empty
+      sym.extendedParamLists.collect{case terms: reflect.TermParamClause => terms}
 
     def nonExtensionTermParamLists: List[reflect.TermParamClause] =
-      import reflect.*
-      if sym.nonExtensionLeadingTypeParams.nonEmpty then
-        sym.nonExtensionParamLists.dropWhile {
-          case _: TypeParamClause => false
-          case _ => true
-        }.drop(1).collect {
-          case tpc: TermParamClause => tpc
-        }
-      else
-        sym.nonExtensionParamLists.collect {
-          case tpc: TermParamClause => tpc
-        }
+      sym.nonExtensionParamLists.collect{case terms: reflect.TermParamClause => terms}
 
     def nonExtensionParamLists: List[reflect.ParamClause] =
-      import reflect.*
-      val method = sym.tree.asInstanceOf[DefDef]
-      if sym.isExtensionMethod then
-        val params = method.paramss
-        val toDrop = if method.leadingTypeParams.nonEmpty then 2 else 1
-        if sym.isLeftAssoc || params.size == 1 then params.drop(toDrop)
-        else params.head :: params.tail.drop(toDrop)
-      else method.paramss
+      sym.splitExtensionParamLists._2
+
 
     def nonExtensionLeadingTypeParams: List[reflect.TypeDef] =
-      import reflect.*
-      sym.nonExtensionParamLists.collectFirst {
-        case TypeParamClause(params) => params
-      }.toList.flatten
+      val typeParamss: List[reflect.TypeParamClause] = sym.nonExtensionParamLists.collect{case types: reflect.TypeParamClause => types}
+      typeParamss.headOption.map(_.params).getOrElse(List()) // only one type param clause on RHS
+
 
   end extension
 
