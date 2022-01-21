@@ -1,5 +1,7 @@
 package dotty.tools.scaladoc.signatures
 
+import java.security.Signature
+
 class GenericSignaftures extends SignatureTest("genericSignatures", Seq("class"))
 
 class ObjectSignatures extends SignatureTest("objectSignatures", Seq("object"))
@@ -21,6 +23,8 @@ class VisibilityTest extends SignatureTest("visibility", SignatureTest.all)
 class GenericMethodsTest extends SignatureTest("genericMethods", Seq("def"))
 
 class MethodsAndConstructors extends SignatureTest("methodsAndConstructors", Seq("def"))
+
+class ExtensionParams extends SignatureTest("extensionParams", SignatureTest.all)
 
 class TypesSignatures extends SignatureTest("typesSignatures", SignatureTest.all)
 
