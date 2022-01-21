@@ -1395,6 +1395,7 @@ class Definitions {
     funTypeArray(funTypeIdx(isContextual, isErased, isImpure))(n).symbol
 
   @tu lazy val Function0_apply: Symbol = Function0.requiredMethod(nme.apply)
+  @tu lazy val ContextFunction0_apply: Symbol = ContextFunction0.requiredMethod(nme.apply)
 
   @tu lazy val Function0: Symbol = FunctionSymbol(0)
   @tu lazy val Function1: Symbol = FunctionSymbol(1)
