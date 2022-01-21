@@ -85,7 +85,7 @@ object MainProxies {
             report.error(s"method cannot have multiple main annotations", mainAnnot.tree)
             Nil
         }
-      case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
+      case stat @ TypeDef(_, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(stat, impl.body)
       case _ =>
         Nil
@@ -144,8 +144,6 @@ object MainProxies {
           // The ParameterInfos to be passed to the arg getter
           val parameterInfos = {
             val param = paramName.toString
-            val paramInfosName = argName ++ "paramInfos"
-            val paramInfosIdent = Ident(paramInfosName)
             val paramInfosTree = New(
               AppliedTypeTree(TypeTree(defn.MainAnnotParameterInfos.typeRef), List(TypeTree(formalType))),
               // Arguments to be passed to ParameterInfos' constructor
@@ -196,7 +194,7 @@ object MainProxies {
         def extractArgs(args: List[tpd.Tree]): List[Tree] =
           args.flatMap {
             case Typed(SeqLiteral(varargs, _), _) => varargs.map(arg => TypedSplice(arg))
-            case arg @ Select(_, name) => if name.is(DefaultGetterName) then List() else List(TypedSplice(arg))
+            case arg @ Select(_, name) if name.is(DefaultGetterName) => List()  // Ignore default values, they will be added later by the compiler
             case arg => List(TypedSplice(arg))
           }
 
