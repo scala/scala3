@@ -5847,7 +5847,7 @@ object Types {
               tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
                 case tp1: AppliedType if tp1.isUnreducibleWild =>
                   // don't infer a type that would trigger an error later in
-                  // Checling.checkAppliedType; fall through to default handling instead
+                  // Checking.checkAppliedType; fall through to default handling instead
                 case tp1 =>
                   return tp1
             end if
@@ -5856,7 +5856,7 @@ object Types {
             // non-range arguments L1, ..., Ln and H1, ..., Hn such that
             // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
             // ranges that appear in as co- or contravariant arguments.
-            // Fail for non-variant argument ranges.
+            // Fail for non-variant argument ranges (see use-site else branch below).
             // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
             // @return  operation succeeded for all arguments.
             def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
@@ -5877,10 +5877,17 @@ object Types {
             if (distributeArgs(args, tp.tyconTypeParams))
               range(tp.derivedAppliedType(tycon, loBuf.toList),
                     tp.derivedAppliedType(tycon, hiBuf.toList))
-            else range(defn.NothingType, defn.AnyType)
-              // TODO: can we give a better bound than `topType`?
+            else if tycon.isLambdaSub || args.exists(isRangeOfNonTermTypes) then
+              range(defn.NothingType, defn.AnyType)
+            else
+              // See lampepfl/dotty#14152
+              range(defn.NothingType, tp.derivedAppliedType(tycon, args.map(rangeToBounds)))
           else tp.derivedAppliedType(tycon, args)
       }
+
+    private def isRangeOfNonTermTypes(tp: Type): Boolean = tp match
+      case Range(lo, hi) => !lo.isInstanceOf[TermType] || !hi.isInstanceOf[TermType]
+      case _             => false
 
     override protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
       if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))

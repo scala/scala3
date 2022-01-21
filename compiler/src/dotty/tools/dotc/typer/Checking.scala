@@ -885,12 +885,13 @@ trait Checking {
    *  that is concurrently compiled in another source file.
    */
   def checkNoModuleClash(sym: Symbol)(using Context): Unit =
-    if sym.effectiveOwner.is(Package)
-       && sym.owner.info.member(sym.name.moduleClassName).symbol.isAbsent()
+    val effectiveOwner = sym.effectiveOwner
+    if effectiveOwner.is(Package)
+       && effectiveOwner.info.member(sym.name.moduleClassName).symbol.isAbsent()
     then
-      val conflicting = sym.owner.info.member(sym.name.toTypeName).symbol
+      val conflicting = effectiveOwner.info.member(sym.name.toTypeName).symbol
       if conflicting.exists then
-        report.error(AlreadyDefined(sym.name, sym.owner, conflicting), sym.srcPos)
+        report.error(AlreadyDefined(sym.name, effectiveOwner, conflicting), sym.srcPos)
 
  /**  Check that `tp` is a class type.
   *   Also, if `traitReq` is true, check that `tp` is a trait.
