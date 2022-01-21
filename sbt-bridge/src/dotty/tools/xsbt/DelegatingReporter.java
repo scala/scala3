@@ -11,6 +11,10 @@ import dotty.tools.dotc.util.SourcePosition;
 import xsbti.Position;
 import xsbti.Severity;
 
+// sbt-bridge/src/dotty/tools/xsbt/DelegatingReporter.java:14:1: dotty$tools$dotc$reporting$UniqueMessagePositions$$positions() in dotty.tools.dotc.reporting.AbstractReporter implements dotty$tools$dotc$reporting$UniqueMessagePositions$$positions() in dotty.tools.dotc.reporting.UniqueMessagePositions
+//   return type requires unchecked conversion from scala.collection.mutable.HashMap to scala.collection.mutable.HashMap<scala.Tuple2<dotty.tools.dotc.util.SourceFile,java.lang.Object>,dotty.tools.dotc.reporting.Diagnostic>
+@SuppressWarnings("unchecked")
+
 final public class DelegatingReporter extends AbstractReporter {
   private xsbti.Reporter delegate;
 
