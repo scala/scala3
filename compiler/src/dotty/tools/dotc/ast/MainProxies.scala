@@ -20,7 +20,10 @@ import Annotations.Annotation
   *       * @param x my param x
   *       * @param ys all my params y
   *       */
-  *     @main(80) def f(@main.arg(shortName = 'x', name = "myX") x: S, ys: T*) = ...
+  *     @main(80) def f(
+  *       @main.ShortName('x') @main.Name("myX") x: S,
+  *       ys: T*
+  *     ) = ...
   *
   *  would be translated to something like
   *
@@ -28,18 +31,16 @@ import Annotations.Annotation
   *       static def main(args: Array[String]): Unit = {
   *         val cmd = new main(80).command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
   *
-  *         val args0: () => S = cmd.argGetter[S]({
-  *           val args0paramInfos = new scala.annotation.MainAnnotation.ParameterInfos[S]("x", "S")
-  *           args0paramInfos.documentation = Some("my param x")
-  *           args0paramInfos.annotation = Some(new scala.main.arg(name = "myX", shortName = 'x'))
-  *           args0paramInfos
-  *         })(util.CommandLineParser.FromString.given_FromString_Int)
+  *         val args0: () => S = cmd.argGetter[S](
+  *           new scala.annotation.MainAnnotation.ParameterInfos[S]("x", "S")
+  *             .withDocumentation("my param x")
+  *             .withAnnotations(new scala.main.ShortName('x'), new scala.main.Name("myX"))
+  *         )
   *
-  *         val args1: () => Seq[T] = cmd.varargGetter[T]({
-  *           val args1paramInfos = new scala.annotation.MainAnnotation.ParameterInfos[T]("ys", "T")
-  *           args1paramInfos.documentation = Some("all my params y")
-  *           args1paramInfos
-  *         })(util.CommandLineParser.FromString.given_FromString_String)
+  *         val args1: () => Seq[T] = cmd.varargGetter[T](
+  *           new scala.annotation.MainAnnotation.ParameterInfos[T]("ys", "T")
+  *             .withDocumentation("all my params y")
+  *         )
   *
   *         cmd.run(f(args0.apply(), args1.apply()*))
   *       }
@@ -103,10 +104,13 @@ object MainProxies {
 
     val documentation = new Documentation(docComment)
 
+    /** A literal value (Boolean, Int, String, etc.) */
     inline def lit(any: Any): Literal = Literal(Constant(any))
 
+    /** Some(value) */
     inline def some(value: Tree): Tree = Apply(ref(defn.SomeClass.companionModule.termRef), value)
 
+    /** () => value */
     def unitToValue(value: Tree): Tree =
       val anonName = nme.ANON_FUN
       val defdef = DefDef(anonName, List(Nil), TypeTree(), value)
@@ -116,7 +120,7 @@ object MainProxies {
       * Creates a list of references and definitions of arguments, the first referencing the second.
       * The goal is to create the
       *   `val arg0: () => S = ...`
-      * part of the code. The first element of the tuple is a ref to `arg0`, the second is the whole definition.
+      * part of the code. The first element of a tuple is a ref to `arg0`, the second is the whole definition.
       */
     def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef)] =
       mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
@@ -151,9 +155,9 @@ object MainProxies {
             /*
              * Assignations to be made after the creation of the ParameterInfos.
              * For example:
-             *   args0paramInfos.withDocumentation = Some("my param x")
+             *   args0paramInfos.withDocumentation("my param x")
              * is represented by the pair
-             *   (defn.MainAnnotationParameterInfos_withDocumentation, some(lit("my param x")))
+             *   (defn.MainAnnotationParameterInfos_withDocumentation, List(lit("my param x")))
              */
             var assignations: List[(Symbol, List[Tree])] = Nil
             for (dvSym <- defaultValueSymbols.get(n))
