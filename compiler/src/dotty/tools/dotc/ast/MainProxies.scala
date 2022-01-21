@@ -61,8 +61,8 @@ object MainProxies {
       scope match {
         case TypeDef(_, template: Template) =>
           template.body.flatMap((_: Tree) match {
-            case dd @ DefDef(name, _, _, _) if name.is(DefaultGetterName) && name.firstPart == funSymbol.name =>
-              val index: Int = name.toString.split("\\$").last.toInt - 1 // FIXME please!!
+            case dd: DefDef if dd.name.is(DefaultGetterName) && dd.name.firstPart == funSymbol.name =>
+              val DefaultGetterName.NumberedInfo(index) = dd.name.info
               List(index -> dd.symbol)
             case _ => List()
           }).toMap
