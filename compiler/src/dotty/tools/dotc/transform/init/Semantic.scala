@@ -559,6 +559,7 @@ object Semantic {
             if obj.hasField(target) then
               Result(obj.field(target), Nil)
             else if ref.isInstanceOf[Warm] then
+              assert(obj.klass.isSubClass(target.owner))
               if target.is(Flags.ParamAccessor) then
                 // possible for trait parameters
                 // see tests/init/neg/trait2.scala
