@@ -1512,17 +1512,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             arg2.contains(arg1norm)
           case ExprType(arg2res)
           if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
-               && defn.isByNameFunction(arg1) =>
+               && defn.isByNameFunction(arg1.dealias) =>
             // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
             // embedded `=> T` arguments alone. This clause needs to compensate for that.
-            isSubArg(arg1.argInfos.head, arg2res)
+            isSubArg(arg1.dealias.argInfos.head, arg2res)
           case _ =>
             arg1 match
               case arg1: TypeBounds =>
                 compareCaptured(arg1, arg2)
               case ExprType(arg1res)
               if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
-                   && defn.isByNameFunction(arg2) =>
+                   && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
                 (v > 0 || isSubType(arg2, arg1)) &&

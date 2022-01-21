@@ -117,7 +117,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       // Do the test at the earliest phase where both symbols existed.
       val phaseId =
         sym1.originDenotation.validFor.firstPhaseId max sym2.originDenotation.validFor.firstPhaseId
-      atPhase(elimRepeatedPhase.next)(checkNoConflict(sym1, sym2, sym1.info))
+      atPhase(elimByNamePhase.next)(checkNoConflict(sym1, sym2, sym1.info))
       opc.next()
     }
   }
