@@ -629,7 +629,9 @@ object Semantic {
               // normal method call
               if argErrors.nonEmpty && isSyntheticApply(meth) then
                 val klass = meth.owner.companionClass.asClass
-                instantiate(klass, klass.primaryConstructor, args, source)
+                val outerCls = klass.owner.lexicallyEnclosingClass.asClass
+                val outer = resolveOuterSelect(outerCls, ref, 1, source)
+                Semantic.instantiate(outer)(klass, klass.primaryConstructor, args, source)
               else
                 withEnv(if isLocal then env else Env.empty) {
                   eval(ddef.rhs, ref, cls, cacheResult = true) ++ argErrors
