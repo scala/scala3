@@ -196,7 +196,7 @@ class TreePickler(pickler: TastyPickler) {
       else if (tpe.prefix == NoPrefix) {
         writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
         if !symRefs.contains(sym) && !sym.isPatternBound && !sym.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot) then
-          report.error(i"pickling reference to as yet undefined $tpe with symbol ${sym}", sym.srcPos)
+            report.log(i"pickling reference to as yet undefined $tpe with symbol ${sym}", sym.srcPos)
         pickleSymRef(sym)
       }
       else tpe.designator match {
