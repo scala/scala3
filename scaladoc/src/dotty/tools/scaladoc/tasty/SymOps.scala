@@ -142,7 +142,15 @@ object SymOps:
       import reflect._
       sym.flags.is(Flags.Artifact)
 
-    def isLeftAssoc: Boolean = !sym.name.endsWith(":")
+    /**
+     * note that this is not the right criterion: 
+     * An extension method is treated as a right-associative operator (as in SLS §6.12.3) 
+     * if it has a name ending in : and is immediately followed by a single parameter.
+     * https://docs.scala-lang.org/scala3/reference/contextual/right-associative-extension-methods.html
+     */
+    def isRightAssoc: Boolean = sym.name.endsWith(":")
+
+    def isLeftAssoc: Boolean = !sym.isRightAssoc
 
     def extendedSymbol: Option[reflect.ValDef] =
       import reflect.*
@@ -152,6 +160,45 @@ object SymOps:
         else termParamss(1).params(0)
       }
 
+    def splitExtensionParamLists: (List[reflect.ParamClause], List[reflect.ParamClause]) =
+      if sym.isRightAssoc && sym.isExtensionMethod then 
+        val unswapped@(extPart, defPart) = sym.splitExtensionParamListsAssumingLeftAssoc
+        def nonUsingClauses(clauses: List[reflect.ParamClause]) = clauses.zipWithIndex.collect{case (terms: reflect.TermParamClause, i) if !terms.isGiven => (terms, i)}
+        val extNonUsingClause  = nonUsingClauses(extPart)
+        val defNonUsingClauses = nonUsingClauses(defPart)
+        assert(extNonUsingClause.size == 1)
+
+        if defNonUsingClauses.lift(0).map(_._1.params.size != 1).getOrElse(true)  // was not really right associative, see comment of isRightAssoc
+        then unswapped
+        else
+          val (first, i1) = extNonUsingClause(0)
+          val (second, i2) = defNonUsingClauses(0) // since cond is false, we know lift(0) returned Some(_)
+          (extPart.updated(i1, second), defPart.updated(i2, first))
+      else
+        sym.splitExtensionParamListsAssumingLeftAssoc
+      
+    /**
+     * This uses the assumption that there is the following "pos hierachy": extension paramss < DefDef < extMethod paramss
+     * /!\ where DefDef is the tree containing the paramss
+     * It wouldn't really make sense for the Def's position not to be either the "def" or the method name, 
+     * but is not enforced
+     */
+    def splitExtensionParamListsAssumingLeftAssoc: (List[reflect.ParamClause], List[reflect.ParamClause]) = 
+      val method = sym.tree.asInstanceOf[reflect.DefDef]
+      val paramss = method.paramss //List[ParamClause[T]] //ParamClause[T] = List[ValDef[T]] | List[TypeDef[T]]
+      val defCoord = method.symbol.pos.get.start //.span.point
+
+      val res = paramss.span{
+        case reflect.TypeParamClause(params) => params.head.symbol.pos.get.start < defCoord //.span.start
+        case reflect.TermParamClause(params) => 
+          params.headOption
+            .map(_.symbol.pos.get.start < defCoord) //.span.start
+            .getOrElse(false) // () is only allowed on the RHS of extensions
+      }
+      //println(method.name)
+      //println(res._1.map(_.params.map(_.show)).mkString("ExtensionPart:\n","\n","\n"))
+      //println(res._2.map(_.params.map(_.show)).mkString("NonExtensionPart:\n","\n","\n"))
+      res
     def extendedTypeParams: List[reflect.TypeDef] =
       import reflect.*
       val method = sym.tree.asInstanceOf[DefDef]
