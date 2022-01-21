@@ -467,11 +467,8 @@ class CheckCaptures extends Recheck:
       recheckFinish(result, arg, pt)
 
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      if tree.symbol == defn.cbnArg then
-        recheckByNameArg(tree.args(0), pt)
-      else
-        includeCallCaptures(tree.symbol, tree.srcPos)
-        super.recheckApply(tree, pt)
+      includeCallCaptures(tree.symbol, tree.srcPos)
+      super.recheckApply(tree, pt)
 
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       val res = super.recheck(tree, pt)
