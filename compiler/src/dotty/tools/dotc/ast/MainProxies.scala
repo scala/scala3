@@ -4,6 +4,7 @@ package ast
 import core._
 import Symbols._, Types._, Contexts._, Flags._, Constants._
 import StdNames.nme
+import Trees._
 
 /** Generate proxy classes for @main functions.
  *  A function like
