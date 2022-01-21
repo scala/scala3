@@ -130,7 +130,10 @@ trait ClassLikeSupport:
       case dd: DefDef if isDocumentableExtension(dd.symbol) =>
         dd.symbol.extendedSymbol.map { extSym =>
           val memberInfo = unwrapMemberInfo(c, dd.symbol)
-          val typeParams = dd.symbol.extendedTypeParams.map(mkTypeArgument(_, memberInfo.genericTypes))
+          val typeParams = dd.symbol.extendedTypeParamList.map(mkTypeArgument(_, memberInfo.genericTypes))
+          //println(dd.name)
+          //println("MemberInfo:\n" + memberInfo.paramLists)
+          //println("extended...:\n" + dd.symbol.extendedTermParamLists)
           val termParams = dd.symbol.extendedTermParamLists.zipWithIndex.flatMap { case (paramList, index) =>
             memberInfo.paramLists(index) match
               case EvidenceOnlyParameterList => Nil
@@ -328,7 +331,7 @@ trait ClassLikeSupport:
     ): Member =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
     val paramLists: List[TermParamClause] = methodSymbol.nonExtensionTermParamLists
-    val genericTypes: List[TypeDef] = if (methodSymbol.isClassConstructor) Nil else methodSymbol.nonExtensionLeadingTypeParams
+    val genericTypes: List[TypeDef] = if (methodSymbol.isClassConstructor) Nil else methodSymbol.nonExtensionTypeParamList
 
     val memberInfo = unwrapMemberInfo(c, methodSymbol)
 

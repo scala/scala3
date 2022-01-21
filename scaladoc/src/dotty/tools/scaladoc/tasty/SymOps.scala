@@ -200,26 +200,25 @@ object SymOps:
       //println(res._2.map(_.params.map(_.show)).mkString("NonExtensionPart:\n","\n","\n"))
       res
 
+    
     def extendedParamLists: List[reflect.ParamClause] =
       sym.splitExtensionParamLists._1
-
-    def extendedTypeParams: List[reflect.TypeDef] =
-      val typeParamss: List[reflect.TypeParamClause] = sym.extendedParamLists.collect{case types: reflect.TypeParamClause => types}
-      typeParamss.headOption.map(_.params).getOrElse(List()) // only one type param clause on LHS
-
-
     
     def extendedTermParamLists: List[reflect.TermParamClause] =
       sym.extendedParamLists.collect{case terms: reflect.TermParamClause => terms}
 
-    def nonExtensionTermParamLists: List[reflect.TermParamClause] =
-      sym.nonExtensionParamLists.collect{case terms: reflect.TermParamClause => terms}
+    def extendedTypeParamList: List[reflect.TypeDef] =
+      val typeParamss: List[reflect.TypeParamClause] = sym.extendedParamLists.collect{case types: reflect.TypeParamClause => types}
+      typeParamss.headOption.map(_.params).getOrElse(List()) // only one type param clause on LHS
+
 
     def nonExtensionParamLists: List[reflect.ParamClause] =
       sym.splitExtensionParamLists._2
 
-
-    def nonExtensionLeadingTypeParams: List[reflect.TypeDef] =
+    def nonExtensionTermParamLists: List[reflect.TermParamClause] =
+      sym.nonExtensionParamLists.collect{case terms: reflect.TermParamClause => terms}
+    
+    def nonExtensionTypeParamList: List[reflect.TypeDef] =
       val typeParamss: List[reflect.TypeParamClause] = sym.nonExtensionParamLists.collect{case types: reflect.TypeParamClause => types}
       typeParamss.headOption.map(_.params).getOrElse(List()) // only one type param clause on RHS
 
