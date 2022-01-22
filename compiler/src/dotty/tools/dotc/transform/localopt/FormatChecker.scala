@@ -17,7 +17,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Phases.typerPhase
 
 /** Formatter string checker. */
-class TypedFormatChecker(args: List[Tree])(using Context)(using reporter: InterpolationReporter):
+class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List[Tree])(using Context):
 
   val argTypes = args.map(_.tpe)
   val actuals = ListBuffer.empty[Tree]
@@ -33,7 +33,7 @@ class TypedFormatChecker(args: List[Tree])(using Context)(using reporter: Interp
     types.find(t => argConformsTo(argi, tpe, t))
       .orElse(types.find(t => argConvertsTo(argi, tpe, t)))
       .getOrElse {
-        reporter.argError(s"Found: ${tpe.show}, Required: ${types.mkString(", ")}", argi)
+        report.argError(s"Found: ${tpe.show}, Required: ${types.mkString(", ")}", argi)
         actuals += args(argi)
         types.head
       }
@@ -64,20 +64,17 @@ class TypedFormatChecker(args: List[Tree])(using Context)(using reporter: Interp
 
   /** For N part strings and N-1 args to interpolate, normalize parts and check arg types.
    *
-   *  Returns parts, possibly updated with explicit leading "%s",
-   *  and conversions for each arg.
-   *
-   *  Implementation must emit conversions required by invocations of `argType`.
+   *  Returns normalized part strings and args, where args correcpond to conversions in tail of parts.
    */
-  def checked(parts0: List[String]): (List[String], List[Conversion]) =
+  def checked: (List[String], List[Tree]) =
     val amended = ListBuffer.empty[String]
     val convert = ListBuffer.empty[Conversion]
 
     @tailrec
-    def loop(parts: List[String], n: Int): Unit =
-      parts match
+    def loop(remaining: List[String], n: Int): Unit =
+      remaining match
         case part0 :: more =>
-          def badPart(t: Throwable): String = "".tap(_ => reporter.partError(t.getMessage, index = n, offset = 0))
+          def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage, index = n, offset = 0))
           val part = try StringContext.processEscapes(part0) catch badPart
           val matches = formatPattern.findAllMatchIn(part)
 
@@ -112,8 +109,11 @@ class TypedFormatChecker(args: List[Tree])(using Context)(using reporter: Interp
         case Nil => ()
     end loop
 
-    loop(parts0, n = 0)
-    (amended.toList, convert.toList)
+    loop(parts, n = 0)
+    if reported then (Nil, Nil)
+    else
+      assert(argc == actuals.size, s"Expected ${argc} args but got ${actuals.size} for [${parts.mkString(", ")}]")
+      (amended.toList, actuals.toList)
   end checked
 
   extension (descriptor: Match)
@@ -146,7 +146,7 @@ class TypedFormatChecker(args: List[Tree])(using Context)(using reporter: Interp
     // the conversion char is the head of the op string (but see DateTimeXn)
     val cc: Char =
       kind match
-        case ErrorXn => '?'
+        case ErrorXn => if op.isEmpty then '?' else op(0)
         case DateTimeXn => if op.length > 1 then op(1) else '?'
         case _ => op(0)
 
@@ -243,8 +243,8 @@ class TypedFormatChecker(args: List[Tree])(using Context)(using reporter: Interp
       val i = flags.indexOf(f) match { case -1 => 0 case j => j }
       errorAt(Flags, i)(msg)
 
-    def errorAt(g: SpecGroup, i: Int = 0)(msg: String)   = reporter.partError(msg, argi, descriptor.offset(g, i))
-    def warningAt(g: SpecGroup, i: Int = 0)(msg: String) = reporter.partWarning(msg, argi, descriptor.offset(g, i))
+    def errorAt(g: SpecGroup, i: Int = 0)(msg: String)   = report.partError(msg, argi, descriptor.offset(g, i))
+    def warningAt(g: SpecGroup, i: Int = 0)(msg: String) = report.partWarning(msg, argi, descriptor.offset(g, i))
 
   object Conversion:
     def apply(m: Match, i: Int): Conversion =
@@ -269,4 +269,15 @@ class TypedFormatChecker(args: List[Tree])(using Context)(using reporter: Interp
     end apply
     val literalHelp = "use %% for literal %, %n for newline"
   end Conversion
+
+  var reported = false
+
+  private def partPosAt(index: Int, offset: Int) =
+    val pos = partsElems(index).sourcePos
+    pos.withSpan(pos.span.shift(offset))
+
+  extension (r: report.type)
+    def argError(message: String, index: Int): Unit = r.error(message, args(index).srcPos).tap(_ => reported = true)
+    def partError(message: String, index: Int, offset: Int): Unit = r.error(message, partPosAt(index, offset)).tap(_ => reported = true)
+    def partWarning(message: String, index: Int, offset: Int): Unit = r.warning(message, partPosAt(index, offset)).tap(_ => reported = true)
 end TypedFormatChecker
