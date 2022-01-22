@@ -64,7 +64,7 @@ object MainProxies {
             case dd: DefDef if dd.name.is(DefaultGetterName) && dd.name.firstPart == funSymbol.name =>
               val DefaultGetterName.NumberedInfo(index) = dd.name.info
               List(index -> dd.symbol)
-            case _ => List()
+            case _ => Nil
           }).toMap
         case _ => Map.empty
       }
@@ -194,7 +194,7 @@ object MainProxies {
         def extractArgs(args: List[tpd.Tree]): List[Tree] =
           args.flatMap {
             case Typed(SeqLiteral(varargs, _), _) => varargs.map(arg => TypedSplice(arg))
-            case arg @ Select(_, name) if name.is(DefaultGetterName) => List()  // Ignore default values, they will be added later by the compiler
+            case arg: Select if arg.name.is(DefaultGetterName) => Nil  // Ignore default values, they will be added later by the compiler
             case arg => List(TypedSplice(arg))
           }
 
