@@ -1,27 +1,11 @@
 package dotty.tools.dotc
 package transform.localopt
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.NameKinds._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.Phases.typerPhase
-import dotty.tools.dotc.typer.ProtoTypes._
-
-import scala.StringContext.processEscapes
-import scala.annotation.tailrec
-import scala.collection.mutable.{ListBuffer, Stack}
-import scala.reflect.{ClassTag, classTag}
-import scala.util.chaining._
-import scala.util.matching.Regex.Match
+import dotty.tools.dotc.core.Contexts.*
 
 object FormatInterpolatorTransform:
-  import tpd._
 
   class PartsReporter(fun: Tree, args0: Tree, parts: List[Tree], args: List[Tree])(using Context) extends InterpolationReporter:
     private var reported = false
@@ -50,67 +34,6 @@ object FormatInterpolatorTransform:
       reported = false
     def restoreReported(): Unit = reported = oldReported
   end PartsReporter
-  object tags:
-    import java.util.{Calendar, Date, Formattable}
-    val StringTag      = classTag[String]
-    val FormattableTag = classTag[Formattable]
-    val BigIntTag      = classTag[BigInt]
-    val BigDecimalTag  = classTag[BigDecimal]
-    val CalendarTag    = classTag[Calendar]
-    val DateTag        = classTag[Date]
-  class FormattableTypes(using Context):
-    val FormattableType = requiredClassRef("java.util.Formattable")
-    val BigIntType      = requiredClassRef("scala.math.BigInt")
-    val BigDecimalType  = requiredClassRef("scala.math.BigDecimal")
-    val CalendarType    = requiredClassRef("java.util.Calendar")
-    val DateType        = requiredClassRef("java.util.Date")
-  class TypedFormatChecker(val args: List[Tree])(using Context, InterpolationReporter) extends FormatChecker:
-    val reporter = summon[InterpolationReporter]
-    val argTypes = args.map(_.tpe)
-    val actuals = ListBuffer.empty[Tree]
-    val argc = argTypes.length
-    def argType(argi: Int, types: Seq[ClassTag[?]]) =
-      require(argi < argc, s"$argi out of range picking from $types")
-      val tpe = argTypes(argi)
-      types.find(t => argConformsTo(argi, tpe, argTypeOf(t)))
-        .orElse(types.find(t => argConvertsTo(argi, tpe, argTypeOf(t))))
-        .getOrElse {
-          reporter.argError(s"Found: ${tpe.show}, Required: ${types.mkString(", ")}", argi)
-          actuals += args(argi)
-          types.head
-        }
-    final lazy val fmtTypes = FormattableTypes()
-    import tags.*, fmtTypes.*
-    def argConformsTo(argi: Int, arg: Type, target: Type): Boolean =
-      (arg <:< target).tap(if _ then actuals += args(argi))
-    def argConvertsTo(argi: Int, arg: Type, target: Type): Boolean =
-      import typer.Implicits.SearchSuccess
-      atPhase(typerPhase) {
-        ctx.typer.inferView(args(argi), target) match
-          case SearchSuccess(view, ref, _, _) => actuals += view ; true
-          case _ => false
-      }
-    def argTypeOf(tag: ClassTag[?]): Type = tag match
-      case StringTag        => defn.StringType
-      case ClassTag.Boolean => defn.BooleanType
-      case ClassTag.Byte    => defn.ByteType
-      case ClassTag.Char    => defn.CharType
-      case ClassTag.Short   => defn.ShortType
-      case ClassTag.Int     => defn.IntType
-      case ClassTag.Long    => defn.LongType
-      case ClassTag.Float   => defn.FloatType
-      case ClassTag.Double  => defn.DoubleType
-      case ClassTag.Any     => defn.AnyType
-      case ClassTag.AnyRef  => defn.AnyRefType
-      case FormattableTag   => FormattableType
-      case BigIntTag        => BigIntType
-      case BigDecimalTag    => BigDecimalType
-      case CalendarTag      => CalendarType
-      case DateTag          => DateType
-      case null             => defn.NullType
-      case _                => reporter.strCtxError(s"Unknown type for format $tag")
-                               defn.AnyType
-  end TypedFormatChecker
 
   /** For f"${arg}%xpart", check format conversions and return (format, args)
    *  suitable for String.format(format, args).
@@ -146,7 +69,7 @@ object FormatInterpolatorTransform:
       if reporter.hasReported then (literally(parts.mkString), args0)
       else
         assert(checker.argc == checker.actuals.size, s"Expected ${checker.argc}, actuals size is ${checker.actuals.size} for [${parts.mkString(", ")}]")
-        (literally(checked.mkString), tpd.SeqLiteral(checker.actuals.toList, elemtpt))
+        (literally(checked.mkString), SeqLiteral(checker.actuals.toList, elemtpt))
   end checked
 end FormatInterpolatorTransform
 

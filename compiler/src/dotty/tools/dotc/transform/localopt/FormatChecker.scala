@@ -2,8 +2,7 @@ package dotty.tools.dotc
 package transform.localopt
 
 import scala.annotation.tailrec
-import scala.collection.mutable.{ListBuffer, Stack}
-import scala.reflect.{ClassTag, classTag}
+import scala.collection.mutable.ListBuffer
 import scala.util.chaining.*
 import scala.util.matching.Regex.Match
 
@@ -11,15 +10,49 @@ import java.util.{Calendar, Date, Formattable}
 
 import PartialFunction.cond
 
+import dotty.tools.dotc.ast.tpd.{Match => _, *}
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Phases.typerPhase
+
 /** Formatter string checker. */
-abstract class FormatChecker(using reporter: InterpolationReporter):
+class TypedFormatChecker(args: List[Tree])(using Context)(using reporter: InterpolationReporter):
+
+  val argTypes = args.map(_.tpe)
+  val actuals = ListBuffer.empty[Tree]
+
+  // count of args, for checking indexes
+  val argc = argTypes.length
 
   // Pick the first runtime type which the i'th arg can satisfy.
   // If conversion is required, implementation must emit it.
-  def argType(argi: Int, types: ClassTag[?]*): ClassTag[?]
+  def argType(argi: Int, types: Type*): Type =
+    require(argi < argc, s"$argi out of range picking from $types")
+    val tpe = argTypes(argi)
+    types.find(t => argConformsTo(argi, tpe, t))
+      .orElse(types.find(t => argConvertsTo(argi, tpe, t)))
+      .getOrElse {
+        reporter.argError(s"Found: ${tpe.show}, Required: ${types.mkString(", ")}", argi)
+        actuals += args(argi)
+        types.head
+      }
 
-  // count of args, for checking indexes
-  def argc: Int
+  object formattableTypes:
+    val FormattableType = requiredClassRef("java.util.Formattable")
+    val BigIntType      = requiredClassRef("scala.math.BigInt")
+    val BigDecimalType  = requiredClassRef("scala.math.BigDecimal")
+    val CalendarType    = requiredClassRef("java.util.Calendar")
+    val DateType        = requiredClassRef("java.util.Date")
+  import formattableTypes.*
+  def argConformsTo(argi: Int, arg: Type, target: Type): Boolean = (arg <:< target).tap(if _ then actuals += args(argi))
+  def argConvertsTo(argi: Int, arg: Type, target: Type): Boolean =
+    import typer.Implicits.SearchSuccess
+    atPhase(typerPhase) {
+      ctx.typer.inferView(args(argi), target) match
+        case SearchSuccess(view, ref, _, _) => actuals += view ; true
+        case _ => false
+    }
 
   // match a conversion specifier
   val formatPattern = """%(?:(\d+)\$)?([-#+ 0,(<]+)?(\d+)?(\.\d+)?([tT]?[%a-zA-Z])?""".r
@@ -51,7 +84,7 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
           def insertStringConversion(): Unit =
             amended += "%s" + part
             convert += Conversion(formatPattern.findAllMatchIn("%s").next(), n)  // improve
-            argType(n-1, classTag[Any])
+            argType(n-1, defn.AnyType)
           def errorLeading(op: Conversion) = op.errorAt(Spec)(s"conversions must follow a splice; ${Conversion.literalHelp}")
           def accept(op: Conversion): Unit =
             if !op.isLeading then errorLeading(op)
@@ -66,11 +99,7 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
             val cv = Conversion(matches.next(), n)
             if cv.isLiteral then insertStringConversion()
             else if cv.isIndexed then
-              if cv.index.getOrElse(-1) == n then accept(cv)
-              else
-                // either some other arg num, or '<'
-                //c.warning(op.groupPos(Index), "Index is not this arg")
-                insertStringConversion()
+              if cv.index.getOrElse(-1) == n then accept(cv) else insertStringConversion()
             else if !cv.isError then accept(cv)
 
           // any remaining conversions in this part must be either literals or indexed
@@ -128,12 +157,26 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
     // descriptor is at index 0 of the part string
     def isLeading: Boolean = descriptor.at(Spec) == 0
 
-    // flags and index in specifier are ok
-    private def goodies = goodFlags && goodIndex
-
-    // true if passes. Default checks flags and index
+    // true if passes.
     def verify: Boolean =
-      kind match {
+      // various assertions
+      def goodies = goodFlags && goodIndex
+      def noFlags = flags.isEmpty or errorAt(Flags)("flags not allowed")
+      def noWidth = width.isEmpty or errorAt(Width)("width not allowed")
+      def noPrecision = precision.isEmpty or errorAt(Precision)("precision not allowed")
+      def only_-(msg: String) =
+        val badFlags = flags.filterNot { case '-' | '<' => true case _ => false }
+        badFlags.isEmpty or badFlag(badFlags(0), s"Only '-' allowed for $msg")
+      def goodFlags =
+        val badFlags = flags.filterNot(okFlags.contains)
+        for f <- badFlags do badFlag(f, s"Illegal flag '$f'")
+        badFlags.isEmpty
+      def goodIndex =
+        if index.nonEmpty && hasFlag('<') then warningAt(Index)("Argument index ignored if '<' flag is present")
+        val okRange = index.map(i => i > 0 && i <= argc).getOrElse(true)
+        okRange || hasFlag('<') or errorAt(Index)("Argument index out of range")
+    // begin verify
+      kind match
         case StringXn        => goodies
         case BooleanXn       => goodies
         case HashXn          => goodies
@@ -143,58 +186,55 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
           def x_comma = cc != 'd' && hasFlag(',') and badFlag(',', "',' only allowed for d conversion of integral types")
           goodies && noPrecision && !d_# && !x_comma
         case FloatingPointXn =>
-          goodies && (cc match {
+          goodies && (cc match
             case 'a' | 'A' =>
               val badFlags = ",(".filter(hasFlag)
               noPrecision && badFlags.isEmpty or badFlags.foreach(badf => badFlag(badf, s"'$badf' not allowed for a, A"))
             case _ => true
-          })
+          )
         case DateTimeXn      =>
           def hasCC = op.length == 2 or errorAt(CC)("Date/time conversion must have two characters")
           def goodCC = "HIklMSLNpzZsQBbhAaCYyjmdeRTrDFc".contains(cc) or errorAt(CC, 1)(s"'$cc' doesn't seem to be a date or time conversion")
           goodies && hasCC && goodCC && noPrecision && only_-("date/time conversions")
         case LiteralXn       =>
-          op match {
+          op match
             case "%" => goodies && noPrecision and width.foreach(_ => warningAt(Width)("width ignored on literal"))
             case "n" => noFlags && noWidth && noPrecision
-          }
         case ErrorXn         =>
           errorAt(CC)(s"illegal conversion character '$cc'")
           false
-      }
+    end verify
 
     // is the specifier OK with the given arg
-    def accepts(arg: ClassTag[?]): Boolean =
+    def accepts(arg: Type): Boolean =
       kind match
-        case BooleanXn  => arg == classTag[Boolean] orElse warningAt(CC)("Boolean format is null test for non-Boolean")
+        case BooleanXn  => arg == defn.BooleanType orElse warningAt(CC)("Boolean format is null test for non-Boolean")
         case IntegralXn =>
-          arg == classTag[BigInt] || !cond(cc) {
+          arg == BigIntType || !cond(cc) {
             case 'o' | 'x' | 'X' if hasAnyFlag("+ (") => "+ (".filter(hasFlag).foreach(bad => badFlag(bad, s"only use '$bad' for BigInt conversions to o, x, X")) ; true
           }
         case _ => true
 
     // what arg type if any does the conversion accept
-    def acceptableVariants: List[ClassTag[?]] =
-      kind match {
-        case StringXn        => if hasFlag('#') then classTag[Formattable] :: Nil else classTag[Any] :: Nil
-        case BooleanXn       => classTag[Boolean] :: Conversion.FakeNullTag :: Nil
-        case HashXn          => classTag[Any] :: Nil
-        case CharacterXn     => classTag[Char] :: classTag[Byte] :: classTag[Short] :: classTag[Int] :: Nil
-        case IntegralXn      => classTag[Int] :: classTag[Long] :: classTag[Byte] :: classTag[Short] :: classTag[BigInt] :: Nil
-        case FloatingPointXn => classTag[Double] :: classTag[Float] :: classTag[BigDecimal] :: Nil
-        case DateTimeXn      => classTag[Long] :: classTag[Calendar] :: classTag[Date] :: Nil
+    def acceptableVariants: List[Type] =
+      kind match
+        case StringXn        => if hasFlag('#') then FormattableType :: Nil else defn.AnyType :: Nil
+        case BooleanXn       => defn.BooleanType :: defn.NullType :: Nil
+        case HashXn          => defn.AnyType :: Nil
+        case CharacterXn     => defn.CharType :: defn.ByteType :: defn.ShortType :: defn.IntType :: Nil
+        case IntegralXn      => defn.IntType :: defn.LongType :: defn.ByteType :: defn.ShortType :: BigIntType :: Nil
+        case FloatingPointXn => defn.DoubleType :: defn.FloatType :: BigDecimalType :: Nil
+        case DateTimeXn      => defn.LongType :: CalendarType :: DateType :: Nil
         case LiteralXn       => Nil
         case ErrorXn         => Nil
-      }
 
     // what flags does the conversion accept?
     private def okFlags: String =
-      kind match {
+      kind match
         case StringXn => "-#<"
         case BooleanXn | HashXn => "-<"
         case LiteralXn => "-"
         case _ => "-#+ 0,(<"
-      }
 
     def hasFlag(f: Char) = flags.contains(f)
     def hasAnyFlag(fs: String) = fs.exists(hasFlag)
@@ -206,21 +246,6 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
     def errorAt(g: SpecGroup, i: Int = 0)(msg: String)   = reporter.partError(msg, argi, descriptor.offset(g, i))
     def warningAt(g: SpecGroup, i: Int = 0)(msg: String) = reporter.partWarning(msg, argi, descriptor.offset(g, i))
 
-    // various assertions
-    def noFlags = flags.isEmpty or errorAt(Flags)("flags not allowed")
-    def noWidth = width.isEmpty or errorAt(Width)("width not allowed")
-    def noPrecision = precision.isEmpty or errorAt(Precision)("precision not allowed")
-    def only_-(msg: String) =
-      val badFlags = flags.filterNot { case '-' | '<' => true case _ => false }
-      badFlags.isEmpty or badFlag(badFlags(0), s"Only '-' allowed for $msg")
-    def goodFlags =
-      val badFlags = flags.filterNot(okFlags.contains)
-      for f <- badFlags do badFlag(f, s"Illegal flag '$f'")
-      badFlags.isEmpty
-    def goodIndex =
-      if index.nonEmpty && hasFlag('<') then warningAt(Index)("Argument index ignored if '<' flag is present")
-      val okRange = index.map(i => i > 0 && i <= argc).getOrElse(true)
-      okRange || hasFlag('<') or errorAt(Index)("Argument index out of range")
   object Conversion:
     def apply(m: Match, i: Int): Conversion =
       def kindOf(cc: Char) = cc match
@@ -243,5 +268,5 @@ abstract class FormatChecker(using reporter: InterpolationReporter):
         case None     => new Conversion(m, i, ErrorXn).tap(_.errorAt(Spec)(s"Missing conversion operator in '${m.matched}'; $literalHelp"))
     end apply
     val literalHelp = "use %% for literal %, %n for newline"
-    private val FakeNullTag: ClassTag[?] = null
   end Conversion
+end TypedFormatChecker
