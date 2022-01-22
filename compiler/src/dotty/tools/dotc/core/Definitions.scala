@@ -865,6 +865,12 @@ class Definitions {
     @tu lazy val MainAnnotCommand_varargGetter: Symbol = MainAnnotCommand.requiredMethod("varargGetter")
     @tu lazy val MainAnnotCommand_run: Symbol = MainAnnotCommand.requiredMethod("run")
 
+  @tu lazy val CommandLineParserModule: Symbol = requiredModule("scala.util.CommandLineParser")
+    @tu lazy val CLP_ParseError: ClassSymbol = CommandLineParserModule.requiredClass("ParseError").typeRef.symbol.asClass
+    @tu lazy val CLP_parseArgument: Symbol = CommandLineParserModule.requiredMethod("parseArgument")
+    @tu lazy val CLP_parseRemainingArguments: Symbol = CommandLineParserModule.requiredMethod("parseRemainingArguments")
+    @tu lazy val CLP_showError: Symbol = CommandLineParserModule.requiredMethod("showError")
+
   @tu lazy val TupleTypeRef: TypeRef = requiredClassRef("scala.Tuple")
   def TupleClass(using Context): ClassSymbol = TupleTypeRef.symbol.asClass
     @tu lazy val Tuple_cons: Symbol = TupleClass.requiredMethod("*:")
