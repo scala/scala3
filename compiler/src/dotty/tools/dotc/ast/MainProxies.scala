@@ -99,16 +99,12 @@ object MainProxies {
   def mainProxy(mainFun: Symbol, paramAnnotations: ParameterAnnotationss, defaultValueSymbols: DefaultValueSymbols, docComment: Option[Comment])(using Context): List[TypeDef] = {
     val mainAnnot = mainFun.getAnnotation(defn.MainAnnot).get
     def pos = mainFun.sourcePos
-    val mainArgsName: TermName = nme.args
     val cmdName: TermName = Names.termName("cmd")
 
     val documentation = new Documentation(docComment)
 
     /** A literal value (Boolean, Int, String, etc.) */
     inline def lit(any: Any): Literal = Literal(Constant(any))
-
-    /** Some(value) */
-    inline def some(value: Tree): Tree = Apply(ref(defn.SomeClass.companionModule.termRef), value)
 
     /** () => value */
     def unitToValue(value: Tree): Tree =
@@ -125,7 +121,7 @@ object MainProxies {
     def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef)] =
       mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
         case ((formal, paramName), n) =>
-          val argName = mainArgsName ++ n.toString
+          val argName = nme.args ++ n.toString
 
           val isRepeated = formal.isRepeatedParam
 
@@ -213,7 +209,7 @@ object MainProxies {
         TypeTree(),
         Apply(
           Select(instanciateAnnotation(mainAnnot), defn.MainAnnot_command.name),
-          Ident(mainArgsName) :: lit(mainFun.showName) :: lit(documentation.mainDoc) :: Nil
+          Ident(nme.args) :: lit(mainFun.showName) :: lit(documentation.mainDoc) :: Nil
         )
       )
       var args: List[ValDef] = Nil
@@ -242,7 +238,7 @@ object MainProxies {
 
       val run = Apply(Select(Ident(cmdName), defn.MainAnnotCommand_run.name), mainCall)
       val body = Block(cmd :: args, run)
-      val mainArg = ValDef(mainArgsName, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
+      val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
       /** Replace typed `Ident`s that have been typed with a TypeSplice with the reference to the symbol.
        *  The annotations will be retype-checked in another scope that may not have the same imports.

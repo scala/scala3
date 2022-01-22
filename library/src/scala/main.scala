@@ -17,7 +17,6 @@ import annotation._
   *                      displaying the help
   */
 final class main(maxLineLength: Int) extends MainAnnotation:
-  self =>
   import main._
   import MainAnnotation._
 
