@@ -122,20 +122,14 @@ object MainProxies {
       mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
         case ((formal, paramName), n) =>
           val argName = nme.args ++ n.toString
-
           val isRepeated = formal.isRepeatedParam
 
-          var argRef: Tree = Apply(Ident(argName), Nil)
-          var formalType = formal
-          if isRepeated then
-            argRef = repeated(argRef)
-            formalType = formalType.argTypes.head
-
-          val getterSym =
-            if isRepeated then
-              defn.MainAnnotCommand_varargGetter
-            else
-              defn.MainAnnotCommand_argGetter
+          val (argRef, formalType, getterSym) = {
+            val argRef0 = Apply(Ident(argName), Nil)
+            if formal.isRepeatedParam then
+              (repeated(argRef0), formal.argTypes.head, defn.MainAnnotCommand_varargGetter)
+            else (argRef0, formal, defn.MainAnnotCommand_argGetter)
+          }
 
           // The ParameterInfos to be passed to the arg getter
           val parameterInfos = {
