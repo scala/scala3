@@ -124,13 +124,15 @@ object ErrorReporting {
 
     def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailureType = NoMatchingImplicits): Tree = {
       val normTp = normalize(tree.tpe, pt)
-      val treeTp = if (normTp <:< pt) tree.tpe else normTp
-        // use normalized type if that also shows an error, original type otherwise
+      val normPt = normalize(pt, pt)
+      val (treeTp, expectedTp) =
+        if (normTp <:< normPt) (tree.tpe, pt) else (normTp, normPt)
+        // use normalized types if that also shows an error, original types otherwise
       def missingElse = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
           "\nMaybe you are missing an else part for the conditional?"
         case _ => ""
-      errorTree(tree, TypeMismatch(treeTp, pt, Some(tree), implicitFailure.whyNoConversion, missingElse))
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), implicitFailure.whyNoConversion, missingElse))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */

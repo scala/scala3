@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, retainedElems, isBoxedCapturing}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, retainedElems, isBoxedCapturing, CapturingKind}
 import CaptureSet.CompareResult
 
 import scala.annotation.internal.sharable
@@ -1880,13 +1880,15 @@ object Types {
 
     def capturing(ref: CaptureRef)(using Context): Type =
       if captureSet.accountsFor(ref) then this
-      else CapturingType(this, ref.singletonCaptureSet, this.isBoxedCapturing)
+      else CapturingType(this, ref.singletonCaptureSet,
+        if this.isBoxedCapturing then CapturingKind.Boxed else CapturingKind.Regular)
 
     def capturing(cs: CaptureSet)(using Context): Type =
       if cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
       else this match
         case CapturingType(parent, cs1, boxed) => parent.capturing(cs1 ++ cs)
-        case _ => CapturingType(this, cs, this.isBoxedCapturing)
+        case _ => CapturingType(this, cs,
+          if this.isBoxedCapturing then CapturingKind.Boxed else CapturingKind.Regular)
 
     /** The set of distinct symbols referred to by this type, after all aliases are expanded */
     def coveringSet(using Context): Set[Symbol] =
@@ -3840,10 +3842,11 @@ object Types {
                   CapturingType(parent1, CaptureSet.universal, boxed))
             case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
               val parent1 = mapOver(parent)
-              if ann.symbol == defn.RetainsAnnot then
+              if ann.symbol == defn.RetainsAnnot || ann.symbol == defn.RetainsByNameAnnot then
+                val byName = ann.symbol == defn.RetainsByNameAnnot
                 range(
-                  AnnotatedType(parent1, CaptureSet.empty.toRegularAnnotation),
-                  AnnotatedType(parent1, CaptureSet.universal.toRegularAnnotation))
+                  AnnotatedType(parent1, CaptureSet.empty.toRegularAnnotation(byName)),
+                  AnnotatedType(parent1, CaptureSet.universal.toRegularAnnotation(byName)))
               else
                 parent1
             case _ => mapOver(tp)

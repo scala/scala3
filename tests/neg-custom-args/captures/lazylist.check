@@ -1,8 +1,8 @@
 -- [E163] Declaration Error: tests/neg-custom-args/captures/lazylist.scala:22:6 ----------------------------------------
 22 |  def tail: {*} LazyList[Nothing] = ???  // error overriding
    |      ^
-   |      error overriding method tail in class LazyList of type => lazylists.LazyList[Nothing];
-   |        method tail of type => {*} lazylists.LazyList[Nothing] has incompatible type
+   |      error overriding method tail in class LazyList of type -> lazylists.LazyList[Nothing];
+   |        method tail of type -> {*} lazylists.LazyList[Nothing] has incompatible type
 
 longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylist.scala:35:29 -------------------------------------
