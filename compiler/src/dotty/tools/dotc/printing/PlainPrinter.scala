@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.Config
-import cc.{EventuallyCapturingType, CaptureSet}
+import cc.{CapturingType, EventuallyCapturingType, CaptureSet, CapturingKind}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -200,8 +200,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
-      case EventuallyCapturingType(parent, refs, boxed) =>
-        def box = Str("box ") provided boxed
+      case EventuallyCapturingType(parent, refs, kind) =>
+        def box = Str("box ") provided kind == CapturingKind.Boxed
         if printDebug && !refs.isConst then
           changePrec(GlobalPrec)(box ~ s"$refs " ~ toText(parent))
         else if ctx.settings.YccDebug.value then
@@ -232,8 +232,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ (if tp.resultType.isInstanceOf[MethodType] then ")" else "): ")
           ~ toText(tp.resultType)
         }
-      case tp: ExprType =>
-        changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
+      case ExprType(ct @ EventuallyCapturingType(parent, refs, CapturingKind.ByName)) =>
+        if refs.isUniversal then changePrec(GlobalPrec) { "=> " ~ toText(parent) }
+        else toText(CapturingType(ExprType(parent), refs, CapturingKind.Regular))
+      case ExprType(restp) =>
+        changePrec(GlobalPrec) {
+          (if ctx.settings.Ycc.value then "-> " else "=> ") ~ toText(restp)
+        }
       case tp: HKTypeLambda =>
         changePrec(GlobalPrec) {
           "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~ Str(" =>> ") ~ toTextGlobal(tp.resultType)

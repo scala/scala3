@@ -43,9 +43,9 @@ extension (tree: Tree)
 extension (tp: Type)
 
   def derivedCapturingType(parent: Type, refs: CaptureSet)(using Context): Type = tp match
-    case CapturingType(p, r, b) =>
+    case CapturingType(p, r, k) =>
       if (parent eq p) && (refs eq r) then tp
-      else CapturingType(parent, refs, b)
+      else CapturingType(parent, refs, k)
 
   /** If this is  type variable instantiated or upper bounded with a capturing type,
    *  the capture set associated with that type. Extended to and-or types and
@@ -54,7 +54,8 @@ extension (tp: Type)
    */
   def boxedCaptured(using Context): CaptureSet =
     def getBoxed(tp: Type): CaptureSet = tp match
-      case CapturingType(_, refs, boxed) => if boxed then refs else CaptureSet.empty
+      case CapturingType(_, refs, CapturingKind.Boxed) => refs
+      case CapturingType(_, _, _) => CaptureSet.empty
       case tp: TypeProxy => getBoxed(tp.superType)
       case tp: AndType => getBoxed(tp.tp1) ++ getBoxed(tp.tp2)
       case tp: OrType => getBoxed(tp.tp1) ** getBoxed(tp.tp2)

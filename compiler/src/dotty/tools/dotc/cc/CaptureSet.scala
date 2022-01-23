@@ -209,8 +209,9 @@ sealed abstract class CaptureSet extends Showable:
     ((NoType: Type) /: elems) ((tp, ref) =>
       if tp.exists then OrType(tp, ref, soft = false) else ref)
 
-  def toRegularAnnotation(using Context): Annotation  =
-    Annotation(CaptureAnnotation(this, boxed = false).tree)
+  def toRegularAnnotation(byName: Boolean)(using Context): Annotation =
+    val kind = if byName then CapturingKind.ByName else CapturingKind.Regular
+    Annotation(CaptureAnnotation(this, kind).tree)
 
   override def toText(printer: Printer): Text =
     Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}")
