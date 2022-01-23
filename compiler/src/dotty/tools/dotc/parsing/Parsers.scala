@@ -1414,8 +1414,9 @@ object Parsers {
 
           val resultType = typ()
           if token == TLARROW then
-            for case ValDef(_, tpt: ByNameTypeTree, _) <- params do
-              syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
+            for case ValDef(_, tpt, _) <- params do
+              if isByNameType(tpt) then
+                syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
             TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], resultType)
           else if imods.isOneOf(Given | Erased | Impure) then
             if imods.is(Given) && params.isEmpty then
@@ -1454,15 +1455,13 @@ object Parsers {
             if isValParamList || in.isArrow then
               functionRest(ts)
             else {
-              val ts1 =
-                for (t <- ts) yield
-                  t match {
-                    case t@ByNameTypeTree(t1) =>
-                      syntaxError(ByNameParameterNotSupported(t), t.span)
-                      t1
-                    case _ =>
-                      t
-                  }
+              val ts1 = ts.mapConserve { t =>
+                if isByNameType(t) then
+                  syntaxError(ByNameParameterNotSupported(t), t.span)
+                  stripByNameType(t)
+                else
+                  t
+              }
               val tuple = atSpan(start) { makeTupleOrParens(ts1) }
               infixTypeRest(
                 refinedTypeRest(
@@ -1798,17 +1797,48 @@ object Parsers {
       else commaSeparated(() => argType())
     }
 
-    /** FunArgType ::=  Type | `=>' Type
-     */
-    val funArgType: () => Tree = () =>
-      if (in.token == ARROW) atSpan(in.skipToken()) { ByNameTypeTree(typ()) }
-      else typ()
+    def paramTypeOf(core: () => Tree): Tree =
+      if in.token == ARROW || isIdent(nme.PUREARROW) then
+        val isImpure = in.token == ARROW
+        val tp = atSpan(in.skipToken()) { ByNameTypeTree(core()) }
+        if isImpure && ctx.settings.Ycc.value then ImpureByNameTypeTree(tp) else tp
+      else if in.token == LBRACE && followingIsCaptureSet() then
+        val start = in.offset
+        val cs = captureSet()
+        val endCsOffset = in.lastOffset
+        val startTpOffset = in.offset
+        val tp = paramTypeOf(core)
+        val tp1 = tp match
+          case ImpureByNameTypeTree(tp1) =>
+            syntaxError("explicit captureSet is superfluous for impure call-by-name type", start)
+            tp1
+          case CapturingTypeTree(_, tp1: ByNameTypeTree) =>
+            syntaxError("only one captureSet is allowed here", start)
+            tp1
+          case _: ByNameTypeTree if startTpOffset > endCsOffset =>
+            report.warning(
+              i"""Style: by-name `->` should immediately follow closing `}` of capture set
+                 |to avoid confusion with function type.
+                 |That is, `{c}-> T` instead of `{c} -> T`.""",
+              source.atSpan(Span(startTpOffset, startTpOffset)))
+            tp
+          case _ =>
+            tp
+        CapturingTypeTree(cs, tp1)
+      else
+        core()
 
-    /** ParamType ::= [`=>'] ParamValueType
+    /** FunArgType ::=  Type
+     *               |  `=>' Type
+     *               |  [CaptureSet] `->' Type
      */
-    def paramType(): Tree =
-      if (in.token == ARROW) atSpan(in.skipToken()) { ByNameTypeTree(paramValueType()) }
-      else paramValueType()
+    val funArgType: () => Tree = () => paramTypeOf(typ)
+
+    /** ParamType  ::=  ParamValueType
+     *               |  `=>' ParamValueType
+     *               |  [CaptureSet] `->' ParamValueType
+     */
+    def paramType(): Tree = paramTypeOf(paramValueType)
 
     /** ParamValueType ::= Type [`*']
      */
@@ -3084,6 +3114,7 @@ object Parsers {
           acceptColon()
           if (in.token == ARROW && ofClass && !mods.is(Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
+              // needed?, it's checked later anyway
           val tpt = paramType()
           val default =
             if (in.token == EQUALS) { in.nextToken(); subExpr() }
