@@ -552,7 +552,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           (" <: " ~ toText(bound) provided !bound.isEmpty)
         }
       case ByNameTypeTree(tpt) =>
-        "=> " ~ toTextLocal(tpt)
+        (if ctx.settings.Ycc.value then "-> " else "=> ")
+        ~ toTextLocal(tpt)
       case TypeBoundsTree(lo, hi, alias) =>
         if (lo eq hi) && alias.isEmpty then optText(lo)(" = " ~ _)
         else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _) ~ optText(alias)(" = " ~ _)
@@ -717,7 +718,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val tptText = toTextGlobal(tpt)
         prefix ~~ idx.toString ~~ "|" ~~ tptText ~~ "|" ~~ argsText ~~ "|" ~~ contentText ~~ postfix
       case CapturingTypeTree(refs, parent) =>
-        changePrec(GlobalPrec)("{" ~ Text(refs.map(toText), ", ") ~ "} " ~ toText(parent))
+        parent match
+          case ImpureByNameTypeTree(bntpt) =>
+            "=> " ~ toTextLocal(bntpt)
+          case _ =>
+            changePrec(GlobalPrec)("{" ~ Text(refs.map(toText), ", ") ~ "} " ~ toText(parent))
       case _ =>
         tree.fallbackToText(this)
     }
