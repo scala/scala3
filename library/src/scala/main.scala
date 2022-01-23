@@ -156,7 +156,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 
       private def shortNameIsValid(shortName: Char): Boolean =
         // If you change this, remember to update the error message when an invalid short name is given
-        shortName.isLetter
+        ('A' <= shortName && shortName <= 'Z') || ('a' <= shortName && shortName <= 'z')
 
       private def convert[T](argName: String, arg: String, p: ArgumentParser[T]): () => T =
         p.fromStringOption(arg) match
