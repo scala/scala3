@@ -14,7 +14,7 @@ import typer.ImportInfo.RootRef
 import Comments.CommentsContext
 import Comments.Comment
 import util.Spans.NoSpan
-import cc.{CapturingType, CaptureSet}
+import cc.{CapturingType, CaptureSet, CapturingKind}
 
 import scala.annotation.tailrec
 
@@ -117,9 +117,9 @@ class Definitions {
    *
    *  ErasedFunctionN and ErasedContextFunctionN erase to Function0.
    *
-   *  EffXYZFunctionN afollow this template:
+   *  ImpureXYZFunctionN follow this template:
    *
-   *      type EffXYZFunctionN[-T0,...,-T{N-1}, +R] = {*} XYZFunctionN[T0,...,T{N-1}, R]
+   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = {*} XYZFunctionN[T0,...,T{N-1}, R]
    */
   private def newFunctionNType(name: TypeName): Symbol = {
     val impure = name.startsWith("Impure")
@@ -135,7 +135,7 @@ class Definitions {
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
               tl => CapturingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                CaptureSet.universal, boxed = false)
+                CaptureSet.universal, CapturingKind.Regular)
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -968,6 +968,7 @@ class Definitions {
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val SinceAnnot: ClassSymbol = requiredClass("scala.annotation.since")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.retains")
+  @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.retainsByName")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
