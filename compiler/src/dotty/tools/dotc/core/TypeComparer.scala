@@ -24,7 +24,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, CapturingKind, stripCapturing}
 
 /** Provides methods to compare types.
  */
@@ -858,7 +858,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           tp1 match
             case tp1: CaptureRef if tp1.isTracked =>
               val stripped = tp1w.stripCapturing
-              tp1w = CapturingType(stripped, tp1.singletonCaptureSet, boxed = false)
+              tp1w = CapturingType(stripped, tp1.singletonCaptureSet, CapturingKind.Regular)
             case _ =>
           isSubType(tp1w, tp2, approx.addLow)
         }

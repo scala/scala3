@@ -172,8 +172,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /** Is tpt a vararg type of the form T* or => T*? */
-  def isRepeatedParamType(tpt: Tree)(using Context): Boolean = tpt match {
-    case ByNameTypeTree(tpt1) => isRepeatedParamType(tpt1)
+  def isRepeatedParamType(tpt: Tree)(using Context): Boolean = stripByNameType(tpt) match {
     case tpt: TypeTree => tpt.typeOpt.isRepeatedParam
     case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _) => true
     case _ => false
@@ -189,6 +188,16 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case NamedArg(_, arg) => isWildcardStarArg(arg)
     case arg => arg.typeOpt.widen.isRepeatedParam
   }
+
+  def isByNameType(tree: Tree)(using Context): Boolean =
+    stripByNameType(tree) ne tree
+
+  def stripByNameType(tree: Tree)(using Context): Tree = unsplice(tree) match
+    case ByNameTypeTree(t1) => t1
+    case untpd.CapturingTypeTree(_, parent) =>
+      val parent1 = stripByNameType(parent)
+      if parent1 eq parent then tree else parent1
+    case _ => tree
 
   /** All type and value parameter symbols of this DefDef */
   def allParamSyms(ddef: DefDef)(using Context): List[Symbol] =
@@ -382,6 +391,16 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       case _ => None
     }
   }
+
+  object ImpureByNameTypeTree:
+    def apply(tp: ByNameTypeTree)(using Context): untpd.CapturingTypeTree =
+      untpd.CapturingTypeTree(
+        Ident(nme.CAPTURE_ROOT).withSpan(tp.span.startPos) :: Nil, tp)
+    def unapply(tp: Tree)(using Context): Option[ByNameTypeTree] = tp match
+      case untpd.CapturingTypeTree(id @ Ident(nme.CAPTURE_ROOT) :: Nil, bntp: ByNameTypeTree)
+      if id.span == bntp.span.startPos => Some(bntp)
+      case _ => None
+  end ImpureByNameTypeTree
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
