@@ -15,7 +15,7 @@ import Comments.CommentsContext
 import Comments.Comment
 import util.Spans.NoSpan
 import Symbols.requiredModuleRef
-import cc.{CapturingType, CaptureSet}
+import cc.{CapturingType, CaptureSet, CapturingKind, EventuallyCapturingType}
 
 import scala.annotation.tailrec
 
@@ -118,9 +118,9 @@ class Definitions {
    *
    *  ErasedFunctionN and ErasedContextFunctionN erase to Function0.
    *
-   *  EffXYZFunctionN afollow this template:
+   *  ImpureXYZFunctionN follow this template:
    *
-   *      type EffXYZFunctionN[-T0,...,-T{N-1}, +R] = {*} XYZFunctionN[T0,...,T{N-1}, R]
+   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = {*} XYZFunctionN[T0,...,T{N-1}, R]
    */
   private def newFunctionNType(name: TypeName): Symbol = {
     val impure = name.startsWith("Impure")
@@ -136,7 +136,7 @@ class Definitions {
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
               tl => CapturingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                CaptureSet.universal, boxed = false)
+                CaptureSet.universal, CapturingKind.Regular)
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -1016,6 +1016,7 @@ class Definitions {
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val SinceAnnot: ClassSymbol = requiredClass("scala.annotation.since")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.retains")
+  @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.retainsByName")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
@@ -1149,9 +1150,16 @@ class Definitions {
     }
   }
 
+  /** Extractor for function types representing by-name parameters, of the form
+   *  `() ?=> T`.
+   *  Under -Ycc, this becomes `() ?-> T` or `{r1, ..., rN} () ?-> T`.
+   */
   object ByNameFunction:
-    def apply(tp: Type)(using Context): Type =
-      defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
+    def apply(tp: Type)(using Context): Type = tp match
+      case EventuallyCapturingType(tp1, refs, CapturingKind.ByName) =>
+        CapturingType(apply(tp1), refs, CapturingKind.Regular)
+      case _ =>
+        defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match
       case tp @ AppliedType(tycon, arg :: Nil) if defn.isByNameFunctionClass(tycon.typeSymbol) =>
         Some(arg)

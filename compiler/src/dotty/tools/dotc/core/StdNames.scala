@@ -566,6 +566,7 @@ object StdNames {
     val reify : N               = "reify"
     val releaseFence : N        = "releaseFence"
     val retains: N              = "retains"
+    val retainsByName: N        = "retainsByName"
     val rootMirror : N          = "rootMirror"
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"

@@ -2718,7 +2718,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       registerNowarn(annot1, tree)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type) {
-      if annot1.symbol.maybeOwner == defn.RetainsAnnot then
+      val cls = annot1.symbol.maybeOwner
+      if cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot then
         CheckCaptures.checkWellformed(annot1)
       if arg1.isType then
         assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)

@@ -468,7 +468,7 @@ object desugar {
 
     if mods.is(Trait) then
       for vparams <- originalVparamss; vparam <- vparams do
-        if vparam.tpt.isInstanceOf[ByNameTypeTree] then
+        if isByNameType(vparam.tpt) then
           report.error(em"implementation restriction: traits cannot have by name parameters", vparam.srcPos)
 
     // Annotations on class _type_ parameters are set on the derived parameters
@@ -576,9 +576,8 @@ object desugar {
       appliedTypeTree(tycon, targs)
     }
 
-    def isRepeated(tree: Tree): Boolean = tree match {
+    def isRepeated(tree: Tree): Boolean = stripByNameType(tree) match {
       case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
-      case ByNameTypeTree(tree1) => isRepeated(tree1)
       case _ => false
     }
 
@@ -1811,8 +1810,13 @@ object desugar {
       case ext: ExtMethods =>
         Block(List(ext), Literal(Constant(())).withSpan(ext.span))
       case CapturingTypeTree(refs, parent) =>
-        val annot = New(scalaDot(tpnme.retains), List(refs))
-        Annotated(parent, annot)
+        def annotate(annotName: TypeName, tp: Tree) =
+          Annotated(tp, New(scalaDot(annotName), List(refs)))
+        parent match
+          case ByNameTypeTree(restpt) =>
+            cpy.ByNameTypeTree(parent)(annotate(tpnme.retainsByName, restpt))
+          case _ =>
+            annotate(tpnme.retains, parent)
     }
     desugared.withSpan(tree.span)
   }
