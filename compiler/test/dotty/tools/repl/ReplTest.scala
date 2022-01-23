@@ -63,8 +63,9 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         case "" => Nil
         case nonEmptyLine => nonEmptyLine :: Nil
       }
+    def nonBlank(line: String): Boolean = line.exists(!Character.isWhitespace(_))
 
-    val expectedOutput = lines.flatMap(filterEmpties)
+    val expectedOutput = lines.filter(nonBlank)
     val actualOutput = {
       val opts = toolArgsParse(lines.take(1))
       val (optsLine, inputLines) = if opts.isEmpty then ("", lines) else (lines.head, lines.drop(1))
@@ -80,7 +81,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         out.linesIterator.foreach(buf.append)
         nstate
       }
-      (optsLine :: buf.toList).flatMap(filterEmpties)
+      (optsLine :: buf.toList).filter(nonBlank)
     }
 
     if !FileDiff.matches(actualOutput, expectedOutput) then
