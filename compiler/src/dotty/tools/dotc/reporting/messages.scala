@@ -665,7 +665,7 @@ import transform.SymUtils._
     }
   }
 
-  class ByNameParameterNotSupported(tpe: untpd.TypTree)(using Context)
+  class ByNameParameterNotSupported(tpe: untpd.Tree)(using Context)
   extends SyntaxMsg(ByNameParameterNotSupportedID) {
     def msg = em"By-name parameter type ${tpe} not allowed here."
 
