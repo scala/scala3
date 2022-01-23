@@ -1168,7 +1168,9 @@ object Scanners {
           finishNamedToken(IDENTIFIER, target = next)
         }
         else
-          error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected")
+          error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected", off = charOffset - 2)
+          putChar('$')
+          getStringPart(multiLine)
       }
       else {
         val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))
