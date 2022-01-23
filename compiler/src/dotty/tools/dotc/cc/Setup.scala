@@ -25,7 +25,8 @@ extends tpd.TreeTraverser:
       .toFunctionType(isJava = false, alwaysDependent = true)
 
   private def box(tp: Type)(using Context): Type = tp match
-    case CapturingType(parent, refs, false) => CapturingType(parent, refs, true)
+    case CapturingType(parent, refs, CapturingKind.Regular) =>
+      CapturingType(parent, refs, CapturingKind.Boxed)
     case _ => tp
 
   private def setBoxed(tp: Type)(using Context) = tp match
@@ -77,7 +78,7 @@ extends tpd.TreeTraverser:
             cls.paramGetters.foldLeft(tp) { (core, getter) =>
               if getter.termRef.isTracked then
                 val getterType = tp.memberInfo(getter).strippedDealias
-                RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var(), boxed = false))
+                RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var(), CapturingKind.Regular))
                   .showing(i"add capture refinement $tp --> $result", capt)
               else
                 core
@@ -130,7 +131,7 @@ extends tpd.TreeTraverser:
       case tp @ OrType(tp1, CapturingType(parent2, refs2, boxed2)) =>
         CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, boxed2)
       case _ if canHaveInferredCapture(tp) =>
-        CapturingType(tp, CaptureSet.Var(), boxed = false)
+        CapturingType(tp, CaptureSet.Var(), CapturingKind.Regular)
       case _ =>
         tp
 
