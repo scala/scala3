@@ -3752,11 +3752,11 @@ object Parsers {
         }
         else Nil
       possibleTemplateStart()
-      if (isEnum) {
-        val (self, stats) = withinEnum(templateBody())
+      if isEnum then
+        val (self, stats) = withinEnum(templateBody(parents))
         Template(constr, parents, derived, self, stats)
-      }
-      else templateBodyOpt(constr, parents, derived)
+      else
+        templateBodyOpt(constr, parents, derived)
     }
 
     /** TemplateOpt = [Template]
@@ -3779,15 +3779,15 @@ object Parsers {
     def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template =
       val (self, stats) =
         if in.isNestedStart then
-          templateBody()
+          templateBody(parents)
         else
           checkNextNotIndented()
           (EmptyValDef, Nil)
       Template(constr, parents, derived, self, stats)
 
-    def templateBody(rewriteWithColon: Boolean = true): (ValDef, List[Tree]) =
+    def templateBody(parents: List[Tree], rewriteWithColon: Boolean = true): (ValDef, List[Tree]) =
       val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon)
-      if in.token == WITH then
+      if in.token == WITH && parents.isEmpty then
         syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
         template(emptyConstructor)
@@ -3796,7 +3796,7 @@ object Parsers {
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
       accept(WITH)
-      val (self, stats) = templateBody(rewriteWithColon = false)
+      val (self, stats) = templateBody(parents, rewriteWithColon = false)
       Template(constr, parents, Nil, self, stats)
         .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
 
@@ -4039,7 +4039,7 @@ object Parsers {
       EmptyTree
     }
 
-    override def templateBody(rewriteWithColon: Boolean): (ValDef, List[Thicket]) = {
+    override def templateBody(parents: List[Tree], rewriteWithColon: Boolean): (ValDef, List[Thicket]) = {
       skipBraces()
       (EmptyValDef, List(EmptyTree))
     }
