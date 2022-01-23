@@ -1829,7 +1829,7 @@ object Parsers {
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
-      else if location.inPattern then refinedType()
+      else if location.inPattern then rejectWildcardType(refinedType())
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -2615,15 +2615,21 @@ object Parsers {
       })
     }
 
-    /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [semi]
+    /** TypeCaseClause     ::= ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
      */
     def typeCaseClause(): CaseDef = atSpan(in.offset) {
       val pat = inSepRegion(InCase) {
         accept(CASE)
-        infixType()
+        in.token match {
+          case USCORE if in.lookahead.isArrow =>
+            val start = in.skipToken()
+            Ident(tpnme.WILDCARD).withSpan(Span(start, in.lastOffset, start))
+          case _ =>
+            rejectWildcardType(infixType())
+        }
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
-        val t = typ()
+        val t = rejectWildcardType(typ())
         if in.token == SEMI then in.nextToken()
         newLinesOptWhenFollowedBy(CASE)
         t

@@ -291,7 +291,7 @@ CaseClauses       ::=  CaseClause { CaseClause }                                
 CaseClause        ::=  ‘case’ Pattern [Guard] ‘=>’ Block                        CaseDef(pat, guard?, block)   // block starts at =>
 ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
 TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
-TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [semi]
+TypeCaseClause    ::=  ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  Pattern2 [‘:’ RefinedType]                               Bind(name, Typed(Ident(wildcard), tpe))
