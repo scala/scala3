@@ -1724,10 +1724,16 @@ class Namer { typer: Typer =>
         AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot))
       else
         // don't strip @uncheckedVariance annot for default getters
-        TypeOps.simplify(tp.widenTermRefExpr,
-            if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null) match
-          case ctp: ConstantType if isInlineVal => ctp
-          case tp => TypeComparer.widenInferred(tp, pt)
+        val typeMap = if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null
+        val shouldWiden = mdef.rhs match
+          case _: (Apply | TypeApply | Typed) => false
+          case _ => true
+        if shouldWiden then
+          TypeOps.simplify(tp.widenTermRefExpr, typeMap) match
+            case ctp: ConstantType if isInlineVal => ctp
+            case tp => TypeComparer.widenInferred(tp, pt)
+        else
+          TypeOps.simplify(tp, typeMap)
 
     // Replace aliases to Unit by Unit itself. If we leave the alias in
     // it would be erased to BoxedUnit.
