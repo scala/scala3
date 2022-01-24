@@ -505,19 +505,28 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     }
 
     private def parseErrors(errorsText: String, compilerVersion: String) =
-      val errorPattern = """.*Error: (.*\.scala):(\d+):(\d+).*""".r
-      errorsText.linesIterator.toSeq.collect {
-        case errorPattern(filePath, line, column) =>
-          val lineNum = line.toInt
-          val columnNum = column.toInt
-          val abstractFile = AbstractFile.getFile(filePath)
-          val sourceFile = SourceFile(abstractFile, Codec.UTF8)
-          val offset = sourceFile.lineToOffset(lineNum - 1) + columnNum - 1
-          val span = Spans.Span(offset)
-          val sourcePos = SourcePosition(sourceFile, span)
-
-          Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column. Full error output:\n\n$errorsText\n", sourcePos)
-      }
+      val errorPattern = """^.*Error: (.*\.scala):(\d+):(\d+).*""".r
+      val summaryPattern = """\d+ (?:warning|error)s? found""".r
+      val indent = "    "
+      var diagnostics = List.empty[Diagnostic.Error]
+      for line <- errorsText.linesIterator do
+        line match
+          case error @ errorPattern(filePath, line, column) =>
+            val lineNum = line.toInt
+            val columnNum = column.toInt
+            val abstractFile = AbstractFile.getFile(filePath)
+            val sourceFile = SourceFile(abstractFile, Codec.UTF8)
+            val offset = sourceFile.lineToOffset(lineNum - 1) + columnNum - 1
+            val span = Spans.Span(offset)
+            val sourcePos = SourcePosition(sourceFile, span)
+            diagnostics ::= Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column. Full error output:\n\n$indent$error\n", sourcePos)
+          case summaryPattern() => // Ignored
+          case errorLine =>
+            diagnostics match
+              case head :: tail =>
+                diagnostics = Diagnostic.Error(s"${head.msg.rawMessage}$indent$errorLine\n", head.pos) :: tail
+              case Nil =>
+      diagnostics.reverse
 
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
       val compilerDir = getCompiler(compiler).toString
@@ -531,9 +540,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val flags1 = flags.copy(defaultClassPath = substituteClasspath(flags.defaultClassPath))
         .withClasspath(targetDir.getPath)
         .and("-d", targetDir.getPath)
+        .and("-pagewidth", "80")
 
-      val dummyStream = new PrintStream(new ByteArrayOutputStream())
-      val reporter = TestReporter.reporter(dummyStream, ERROR)
+      val reporter = TestReporter.reporter(System.out, ERROR)
 
       val command = Array(compilerDir + "/bin/scalac") ++ flags1.all ++ files.map(_.getPath)
       val process = Runtime.getRuntime.exec(command)
