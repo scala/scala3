@@ -632,7 +632,7 @@ object Semantic {
                 val klass = meth.owner.companionClass.asClass
                 val outerCls = klass.owner.lexicallyEnclosingClass.asClass
                 val outer = resolveOuterSelect(outerCls, ref, 1, source)
-                Semantic.instantiate(outer)(klass, klass.primaryConstructor, args, source)
+                outer.instantiate(klass, klass.primaryConstructor, args, source)
               else
                 withEnv(if isLocal then env else Env.empty) {
                   eval(ddef.rhs, ref, cls, cacheResult = true) ++ argErrors
