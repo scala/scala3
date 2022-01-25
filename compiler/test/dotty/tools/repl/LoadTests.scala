@@ -46,15 +46,13 @@ class LoadTests extends ReplTest {
   )
 
   def loadTest(file: String, defs: String, runCode: String, output: String) =
-    eval(s":load ${writeFile(file)}").andThen { implicit s =>
+    eval(s":load ${writeFile(file)}") andThen {
       assertMultiLineEquals(defs, storedOutput())
       run(runCode)
       assertMultiLineEquals(output, storedOutput())
     }
 
-  private def eval(code: String): State =
-    fromInitialState { implicit s => run(code) }
-
+  private def eval(code: String): State = initially(run(code))
 }
 
 object LoadTests {

@@ -29,6 +29,7 @@ import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io._
+import dotty.tools.runner.ScalaClassLoader.*
 import org.jline.reader._
 
 import scala.annotation.tailrec
@@ -62,7 +63,7 @@ case class State(objectIndex: Int,
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
                  out: PrintStream = Console.out,
-                 classLoader: Option[ClassLoader] = None) extends Driver {
+                 classLoader: Option[ClassLoader] = None) extends Driver:
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -161,14 +162,16 @@ class ReplDriver(settings: Array[String],
       else loop(interpret(res)(state))
     }
 
-    try withRedirectedOutput { loop(initialState) }
+    try runBody { loop(initialState) }
     finally terminal.close()
   }
 
-  final def run(input: String)(implicit state: State): State = withRedirectedOutput {
+  final def run(input: String)(implicit state: State): State = runBody {
     val parsed = ParseResult(input)(state)
     interpret(parsed)
   }
+
+  private def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
 
   // TODO: i5069
   final def bind(name: String, value: Any)(implicit state: State): State = state
@@ -455,4 +458,5 @@ class ReplDriver(settings: Array[String],
   private def printDiagnostic(dia: Diagnostic)(implicit state: State) = dia.level match
     case interfaces.Diagnostic.INFO => out.println(dia.msg) // print REPL's special info diagnostics directly to out
     case _                          => ReplConsoleReporter.doReport(dia)(using state.context)
-}
+
+end ReplDriver

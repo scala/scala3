@@ -12,6 +12,7 @@ import scala.io.Source
 import scala.util.Using
 import scala.collection.mutable.ArrayBuffer
 
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.reporting.MessageRendering
 import org.junit.{After, Before}
 import org.junit.Assert._
@@ -33,11 +34,12 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   @After def cleanup: Unit =
     storedOutput()
 
-  def fromInitialState[A](op: State => A): A =
-    op(initialState)
+  def initially[A](op: State ?=> A): A = op(using initialState)
+
+  def contextually[A](op: Context ?=> A): A = op(using initialState.context)
 
   extension [A](state: State)
-    def andThen(op: State => A): A = op(state)
+    infix def andThen(op: State ?=> A): A = op(using state)
 
   def testFile(f: JFile): Unit = testScript(f.toString, readLines(f), Some(f))
 
