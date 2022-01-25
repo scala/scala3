@@ -504,11 +504,19 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       reporter
     }
 
-    private def parseErrors(errorsText: String, compilerVersion: String) =
+    private def parseErrors(errorsText: String, compilerVersion: String, pageWidth: Int) =
       val errorPattern = """^.*Error: (.*\.scala):(\d+):(\d+).*""".r
       val summaryPattern = """\d+ (?:warning|error)s? found""".r
       val indent = "    "
       var diagnostics = List.empty[Diagnostic.Error]
+      def barLine(start: Boolean) = s"$indent${if start then "╭" else "╰"}${"┄" * pageWidth}${if start then "╮" else "╯"}\n"
+      def errorLine(line: String) = s"$indent┆${String.format(s"%-${pageWidth}s", stripAnsi(line))}┆\n"
+      def stripAnsi(str: String): String = str.replaceAll("\u001b\\[\\d+m", "")
+      def addToLast(str: String): Unit =
+        diagnostics match
+          case head :: tail =>
+            diagnostics = Diagnostic.Error(s"${head.msg.rawMessage}$str", head.pos) :: tail
+          case Nil =>
       for line <- errorsText.linesIterator do
         line match
           case error @ errorPattern(filePath, line, column) =>
@@ -519,13 +527,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             val offset = sourceFile.lineToOffset(lineNum - 1) + columnNum - 1
             val span = Spans.Span(offset)
             val sourcePos = SourcePosition(sourceFile, span)
-            diagnostics ::= Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column. Full error output:\n\n$indent$error\n", sourcePos)
+            addToLast(barLine(start = false))
+            diagnostics ::= Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column.\nFull error output:\n${barLine(start = true)}${errorLine(error)}", sourcePos)
           case summaryPattern() => // Ignored
-          case errorLine =>
-            diagnostics match
-              case head :: tail =>
-                diagnostics = Diagnostic.Error(s"${head.msg.rawMessage}$indent$errorLine\n", head.pos) :: tail
-              case Nil =>
+          case line => addToLast(errorLine(line))
+      addToLast(barLine(start = false))
       diagnostics.reverse
 
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
@@ -537,10 +543,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           else o
         }.mkString(JFile.pathSeparator)
 
+      val pageWidth = 80
       val flags1 = flags.copy(defaultClassPath = substituteClasspath(flags.defaultClassPath))
         .withClasspath(targetDir.getPath)
         .and("-d", targetDir.getPath)
-        .and("-pagewidth", "80")
+        .and("-pagewidth", pageWidth.toString)
 
       val reporter = TestReporter.reporter(System.out, ERROR)
 
@@ -548,7 +555,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val process = Runtime.getRuntime.exec(command)
       val errorsText = Source.fromInputStream(process.getErrorStream).mkString
       if process.waitFor() != 0 then
-        val diagnostics = parseErrors(errorsText, compiler)
+        val diagnostics = parseErrors(errorsText, compiler, pageWidth)
         diagnostics.foreach { diag =>
           val context = (new ContextBase).initialCtx
           reporter.report(diag)(using context)
