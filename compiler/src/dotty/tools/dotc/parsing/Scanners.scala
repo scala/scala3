@@ -93,6 +93,9 @@ object Scanners {
 
     def isArrow =
       token == ARROW || token == CTXARROW
+
+    def isPureArrow =
+      isIdent(nme.PUREARROW) || isIdent(nme.PURECTXARROW)
   }
 
   abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
