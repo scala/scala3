@@ -506,6 +506,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     private def parseErrors(errorsText: String, compilerVersion: String, pageWidth: Int) =
       val errorPattern = """^.*Error: (.*\.scala):(\d+):(\d+).*""".r
+      val warnPattern = """^.*Warning: (.*\.scala):(\d+):(\d+).*""".r
       val summaryPattern = """\d+ (?:warning|error)s? found""".r
       val indent = "    "
       var diagnostics = List.empty[Diagnostic.Error]
@@ -517,9 +518,13 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           case head :: tail =>
             diagnostics = Diagnostic.Error(s"${head.msg.rawMessage}$str", head.pos) :: tail
           case Nil =>
+      var inError = false
       for line <- errorsText.linesIterator do
         line match
+          case error @ warnPattern(filePath, line, column) =>
+            inError = false
           case error @ errorPattern(filePath, line, column) =>
+            inError = true
             val lineNum = line.toInt
             val columnNum = column.toInt
             val abstractFile = AbstractFile.getFile(filePath)
@@ -530,7 +535,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             addToLast(barLine(start = false))
             diagnostics ::= Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column.\nFull error output:\n${barLine(start = true)}${errorLine(error)}", sourcePos)
           case summaryPattern() => // Ignored
-          case line => addToLast(errorLine(line))
+          case line if inError => addToLast(errorLine(line))
+          case _ =>
       addToLast(barLine(start = false))
       diagnostics.reverse
 
