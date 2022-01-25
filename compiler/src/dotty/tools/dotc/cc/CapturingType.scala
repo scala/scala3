@@ -29,7 +29,7 @@ end CapturingType
 
 /** An extractor for types that will be capturing types at phase CheckCaptures. Also
  *  included are types that indicate captures on enclosing call-by-name parameters
- *  before phase ElimByName
+ *  before phase ElimByName.
  */
 object EventuallyCapturingType:
 

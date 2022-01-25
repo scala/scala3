@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/captures/real-try.scala:10:2 -----------------------------------------------------------
+10 |  try  // error
+   |  ^
+   |  result type {*} () -> Unit is not allowed to capture the universal capability *.type
+11 |    () => foo(1)
+12 |  catch
+13 |    case _: Ex1 => ???
+14 |    case _: Ex2 => ???
