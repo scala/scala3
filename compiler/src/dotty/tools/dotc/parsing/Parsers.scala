@@ -425,7 +425,10 @@ object Parsers {
     /** Convert tree to formal parameter list
     */
     def convertToParams(tree: Tree): List[ValDef] =
-      val mods = if in.token == CTXARROW then Modifiers(Given) else EmptyModifiers
+      val mods =
+        if in.token == CTXARROW || in.isIdent(nme.PURECTXARROW)
+        then Modifiers(Given)
+        else EmptyModifiers
       tree match
         case Parens(t) =>
           convertToParam(t, mods) :: Nil
@@ -1452,7 +1455,7 @@ object Parsers {
                   commaSeparatedRest(t, funArgType)
             }
             accept(RPAREN)
-            if isValParamList || in.isArrow then
+            if isValParamList || in.isArrow || in.isPureArrow then
               functionRest(ts)
             else {
               val ts1 = ts.mapConserve { t =>
