@@ -555,7 +555,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         .and("-d", targetDir.getPath)
         .and("-pagewidth", pageWidth.toString)
 
-      val reporter = TestReporter.reporter(System.out, ERROR)
+      val reporter = TestReporter.reporter(realStdout, logLevel =
+          if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
 
       val command = Array(compilerDir + "/bin/scalac") ++ flags1.all ++ files.map(_.getPath)
       val process = Runtime.getRuntime.exec(command)
