@@ -44,6 +44,29 @@ extends tpd.TreeTraverser:
         case _ =>
       traverseChildren(t)
 
+  /** Expand some aliases of function types to the underlying functions.
+   *  Right now, these are only $throws aliases, but this could be generalized.
+   */
+  def expandInlineAlias(tp: Type)(using Context) = tp match
+    case AppliedType(tycon, res :: exc :: Nil) if tycon.typeSymbol == defn.throwsAlias =>
+      // hard-coded expansion since $throws aliases in stdlib are defined with `?=>` rather than `?->`
+      defn.FunctionOf(defn.CanThrowClass.typeRef.appliedTo(exc) :: Nil, res, isContextual = true, isErased = true)
+    case _ => tp
+
+  private def expandInlineAliases(using Context) = new TypeMap:
+    def apply(t: Type) = t match
+      case _: AppliedType =>
+        val t1 = expandInlineAlias(t)
+        if t1 ne t then apply(t1) else mapOver(t)
+      case _: LazyRef =>
+        t
+      case t @ AnnotatedType(t1, ann) =>
+        // Don't map capture sets, since that would implicitly normalize sets that
+        // are not well-formed.
+        t.derivedAnnotatedType(apply(t1), ann)
+      case _ =>
+        mapOver(t)
+
   /** Perform the following transformation steps everywhere in a type:
     *  1. Drop retains annotations
     *  2. Turn plain function types into dependent function types, so that
@@ -143,7 +166,8 @@ extends tpd.TreeTraverser:
       try ts.mapConserve(this) finally isTopLevel = saved
 
     def apply(t: Type) =
-      val t1 = t match
+      val tp = expandInlineAlias(t)
+      val tp1 = tp match
         case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
           apply(parent)
         case tp @ AppliedType(tycon, args) =>
@@ -172,8 +196,8 @@ extends tpd.TreeTraverser:
             paramInfos = tp.paramInfos.mapConserve(cleanup(_).bounds),
             resType = this(tp.resType))
         case _ =>
-          mapOver(t)
-      addVar(addCaptureRefinements(t1))
+          mapOver(tp)
+      addVar(addCaptureRefinements(tp1))
   end mapInferred
 
   private def expandAbbreviations(using Context) = new TypeMap:
@@ -232,8 +256,10 @@ extends tpd.TreeTraverser:
   private def transformExplicitType(tp: Type, boxed: Boolean)(using Context): Type =
     addBoxes.traverse(tp)
     if boxed then setBoxed(tp)
-    if ctx.settings.YccNoAbbrev.value then tp
-    else expandAbbreviations(tp)
+    val tp1 = expandInlineAliases(tp)
+    if tp1 ne tp then capt.println(i"expanded: $tp --> $tp1")
+    if ctx.settings.YccNoAbbrev.value then tp1
+    else expandAbbreviations(tp1)
 
   // Substitute parameter symbols in `from` to paramRefs in corresponding
   // method or poly types `to`. We use a single BiTypeMap to do everything.

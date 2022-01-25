@@ -337,7 +337,9 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
 
     def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
       checkConforms(tpe, pt, tree)
-      if keepTypes then tree.rememberType(tpe)
+      if keepTypes
+        || tree.isInstanceOf[Try]  // type needs tp be checked for * escapes
+      then tree.rememberType(tpe)
       tpe
 
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
@@ -363,6 +365,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
           || expected.isRepeatedParam
              && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
         if !isCompatible then
+          recheckr.println(i"conforms failed for ${tree}: $tpe vs $expected")
           err.typeMismatch(tree.withType(tpe), expected)
         else if debugSuccesses then
           tree match
