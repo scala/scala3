@@ -21,7 +21,7 @@ trait MainAnnotation extends StaticAnnotation:
   type MainResultType
 
   /** A new command with arguments from `args` */
-  def command(args: Array[String], commandName: String, docComment: String): MainAnnotation.Command[ArgumentParser, MainResultType]
+  def command(args: Array[String], commandName: String, documentation: String): MainAnnotation.Command[ArgumentParser, MainResultType]
 end MainAnnotation
 
 object MainAnnotation:

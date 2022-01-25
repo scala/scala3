@@ -116,7 +116,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
     case SimpleArgument, OptionalArgument, VarArgument
   }
 
-  override def command(args: Array[String], commandName: String, docComment: String) =
+  override def command(args: Array[String], commandName: String, documentation: String) =
     new Command[ArgumentParser, MainResultType]:
       private val argMarker = "--"
       private val shortArgMarker = "-"
@@ -217,8 +217,8 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         println(usageBeginning + usages.mkString("\n" + " " * argsOffset))
 
       private def explain(): Unit =
-        if (docComment.nonEmpty)
-          println(wrapLongLine(docComment, maxLineLength).mkString("\n"))
+        if (documentation.nonEmpty)
+          println(wrapLongLine(documentation, maxLineLength).mkString("\n"))
         if (argCanonicalNames.nonEmpty) {
           val argNameShift = 2
           val argDocShift = argNameShift + 2
