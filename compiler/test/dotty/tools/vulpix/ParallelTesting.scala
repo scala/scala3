@@ -545,25 +545,36 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       diagnostics.reverse
 
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
-      val compilerDir = getCompiler(compiler).toString
+      def artifactClasspath(organizationName: String, moduleName: String) =
+        import coursier._
+        val dep = Dependency(
+          Module(
+            Organization(organizationName),
+            ModuleName(moduleName),
+            attributes = Map.empty
+          ),
+          version = compiler
+        )
+        Fetch()
+          .addDependencies(dep)
+          .run()
+          .mkString(JFile.pathSeparator)
 
-      def substituteClasspath(old: String): String =
-        old.split(JFile.pathSeparator).map { o =>
-          if JFile(o) == JFile(Properties.dottyLibrary) then s"$compilerDir/lib/scala3-library_3-$compiler.jar"
-          else o
-        }.mkString(JFile.pathSeparator)
+      val stdlibClasspath = artifactClasspath("org.scala-lang", "scala3-library_3")
+      val scalacClasspath = artifactClasspath("org.scala-lang", "scala3-compiler_3")
 
       val pageWidth = TestConfiguration.pageWidth - 20
-      val flags1 = flags.copy(defaultClassPath = substituteClasspath(flags.defaultClassPath))
+      val flags1 = flags.copy(defaultClassPath = stdlibClasspath)
         .withClasspath(targetDir.getPath)
         .and("-d", targetDir.getPath)
         .and("-pagewidth", pageWidth.toString)
 
-      val reporter = TestReporter.reporter(realStdout, logLevel =
-          if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
-
-      val command = Array(compilerDir + "/bin/scalac") ++ flags1.all ++ files.map(_.getPath)
+      val scalacCommand = Array("java", "-cp", scalacClasspath, "dotty.tools.dotc.Main")
+      val command = scalacCommand ++ flags1.all ++ files.map(_.getAbsolutePath)
       val process = Runtime.getRuntime.exec(command)
+
+      val reporter = TestReporter.reporter(realStdout, logLevel =
+        if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
       val errorsText = Source.fromInputStream(process.getErrorStream).mkString
       if process.waitFor() != 0 then
         val diagnostics = parseErrors(errorsText, compiler, pageWidth)
@@ -1445,22 +1456,4 @@ object ParallelTesting {
   def isTastyFile(f: JFile): Boolean =
     f.getName.endsWith(".tasty")
 
-  def getCompiler(version: String): JFile =
-    val dir = cache.resolve(s"scala3-${version}").toFile
-    synchronized {
-      if dir.exists then
-        dir
-      else
-        import scala.sys.process._
-        val archivePath = cache.resolve(s"scala3-$version.tar.gz")
-        val compilerDownloadUrl = s"https://github.com/lampepfl/dotty/releases/download/$version/scala3-$version.tar.gz"
-        (URL(compilerDownloadUrl) #>> archivePath.toFile #&& s"tar -xf $archivePath -C $cache").!!
-        archivePath.toFile.delete()
-        dir
-    }
-
-  private lazy val cache =
-    val dir = Properties.testCache.resolve("compilers")
-    dir.toFile.mkdirs()
-    dir
 }
