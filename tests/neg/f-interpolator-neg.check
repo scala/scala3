@@ -1,0 +1,200 @@
+-- Error: tests/neg/f-interpolator-neg.scala:4:4 -----------------------------------------------------------------------
+4 |    new StringContext().f() // error
+  |    ^^^^^^^^^^^^^^^^^^^^^
+  |    there are no parts
+-- Error: tests/neg/f-interpolator-neg.scala:5:4 -----------------------------------------------------------------------
+5 |    new StringContext("", " is ", "%2d years old").f(s) // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    too few arguments for interpolated string
+-- Error: tests/neg/f-interpolator-neg.scala:6:4 -----------------------------------------------------------------------
+6 |    new StringContext("", " is ", "%2d years old").f(s, d, d) // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    too many arguments for interpolated string
+-- Error: tests/neg/f-interpolator-neg.scala:7:4 -----------------------------------------------------------------------
+7 |    new StringContext("", "").f() // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    too few arguments for interpolated string
+-- Error: tests/neg/f-interpolator-neg.scala:11:7 ----------------------------------------------------------------------
+11 |    f"$s%b" // error
+   |       ^
+   |       Found: (s : String), Required: Boolean, Null
+-- Error: tests/neg/f-interpolator-neg.scala:12:7 ----------------------------------------------------------------------
+12 |    f"$s%c" // error
+   |       ^
+   |       Found: (s : String), Required: Char, Byte, Short, Int
+-- Error: tests/neg/f-interpolator-neg.scala:13:7 ----------------------------------------------------------------------
+13 |    f"$f%c" // error
+   |       ^
+   |       Found: (f : Double), Required: Char, Byte, Short, Int
+-- Error: tests/neg/f-interpolator-neg.scala:14:7 ----------------------------------------------------------------------
+14 |    f"$s%x" // error
+   |       ^
+   |       Found: (s : String), Required: Int, Long, Byte, Short, BigInt
+-- Error: tests/neg/f-interpolator-neg.scala:15:7 ----------------------------------------------------------------------
+15 |    f"$b%d" // error
+   |       ^
+   |       Found: (b : Boolean), Required: Int, Long, Byte, Short, BigInt
+-- Error: tests/neg/f-interpolator-neg.scala:16:7 ----------------------------------------------------------------------
+16 |    f"$s%d" // error
+   |       ^
+   |       Found: (s : String), Required: Int, Long, Byte, Short, BigInt
+-- Error: tests/neg/f-interpolator-neg.scala:17:7 ----------------------------------------------------------------------
+17 |    f"$f%o" // error
+   |       ^
+   |       Found: (f : Double), Required: Int, Long, Byte, Short, BigInt
+-- Error: tests/neg/f-interpolator-neg.scala:18:7 ----------------------------------------------------------------------
+18 |    f"$s%e" // error
+   |       ^
+   |       Found: (s : String), Required: Double, Float, BigDecimal
+-- Error: tests/neg/f-interpolator-neg.scala:19:7 ----------------------------------------------------------------------
+19 |    f"$b%f" // error
+   |       ^
+   |       Found: (b : Boolean), Required: Double, Float, BigDecimal
+-- Error: tests/neg/f-interpolator-neg.scala:20:9 ----------------------------------------------------------------------
+20 |    f"$s%i" // error
+   |         ^
+   |         illegal conversion character 'i'
+-- Error: tests/neg/f-interpolator-neg.scala:24:9 ----------------------------------------------------------------------
+24 |    f"$s%+ 0,(s" // error
+   |         ^^^^^
+   |         Illegal flag '+'
+-- Error: tests/neg/f-interpolator-neg.scala:25:9 ----------------------------------------------------------------------
+25 |    f"$c%#+ 0,(c" // error
+   |         ^^^^^^
+   |         Only '-' allowed for c conversion
+-- Error: tests/neg/f-interpolator-neg.scala:26:9 ----------------------------------------------------------------------
+26 |    f"$d%#d" // error
+   |         ^
+   |         # not allowed for d conversion
+-- Error: tests/neg/f-interpolator-neg.scala:27:9 ----------------------------------------------------------------------
+27 |    f"$d%,x" // error
+   |         ^
+   |         ',' only allowed for d conversion of integral types
+-- Error: tests/neg/f-interpolator-neg.scala:28:9 ----------------------------------------------------------------------
+28 |    f"$d%+ (x" // error
+   |         ^^^
+   |         only use '+' for BigInt conversions to o, x, X
+-- Error: tests/neg/f-interpolator-neg.scala:29:9 ----------------------------------------------------------------------
+29 |    f"$f%,(a" // error
+   |         ^^
+   |         ',' not allowed for a, A
+-- Error: tests/neg/f-interpolator-neg.scala:30:9 ----------------------------------------------------------------------
+30 |    f"$t%#+ 0,(tT" // error
+   |         ^^^^^^
+   |         Only '-' allowed for date/time conversions
+-- Error: tests/neg/f-interpolator-neg.scala:31:7 ----------------------------------------------------------------------
+31 |    f"%-#+ 0,(n" // error
+   |       ^^^^^^^
+   |       flags not allowed
+-- Error: tests/neg/f-interpolator-neg.scala:32:7 ----------------------------------------------------------------------
+32 |    f"%#+ 0,(%" // error
+   |       ^^^^^^
+   |       Illegal flag '#'
+-- Error: tests/neg/f-interpolator-neg.scala:36:9 ----------------------------------------------------------------------
+36 |    f"$c%.2c" // error
+   |         ^^
+   |         precision not allowed
+-- Error: tests/neg/f-interpolator-neg.scala:37:9 ----------------------------------------------------------------------
+37 |    f"$d%.2d" // error
+   |         ^^
+   |         precision not allowed
+-- Error: tests/neg/f-interpolator-neg.scala:38:7 ----------------------------------------------------------------------
+38 |    f"%.2%" // error
+   |       ^^
+   |       precision not allowed
+-- Error: tests/neg/f-interpolator-neg.scala:39:7 ----------------------------------------------------------------------
+39 |    f"%.2n" // error
+   |       ^^
+   |       precision not allowed
+-- Error: tests/neg/f-interpolator-neg.scala:40:9 ----------------------------------------------------------------------
+40 |    f"$f%.2a" // error
+   |         ^^
+   |         precision not allowed
+-- Error: tests/neg/f-interpolator-neg.scala:41:9 ----------------------------------------------------------------------
+41 |    f"$t%.2tT" // error
+   |         ^^
+   |         precision not allowed
+-- Error: tests/neg/f-interpolator-neg.scala:45:7 ----------------------------------------------------------------------
+45 |    f"%<s" // error
+   |       ^
+   |       No last arg
+-- Error: tests/neg/f-interpolator-neg.scala:46:7 ----------------------------------------------------------------------
+46 |    f"%<c" // error
+   |       ^
+   |       No last arg
+-- Error: tests/neg/f-interpolator-neg.scala:47:7 ----------------------------------------------------------------------
+47 |    f"%<tT" // error
+   |       ^
+   |       No last arg
+-- Error: tests/neg/f-interpolator-neg.scala:48:21 ---------------------------------------------------------------------
+48 |    f"${8}%d ${9}%d %3$$d" // error
+   |                     ^
+   |                     Argument index out of range
+-- Error: tests/neg/f-interpolator-neg.scala:49:20 ---------------------------------------------------------------------
+49 |    f"${8}%d ${9}%d%0$$d" // error
+   |                    ^
+   |                    Argument index out of range
+-- Warning: tests/neg/f-interpolator-neg.scala:54:17 -------------------------------------------------------------------
+54 |    f"$s%s $s%s %1$$<s"
+   |                 ^
+   |                 Argument index ignored if '<' flag is present
+-- Error: tests/neg/f-interpolator-neg.scala:59:7 ----------------------------------------------------------------------
+59 |    f"$s%#s" // error
+   |       ^
+   |       Found: (s : String), Required: java.util.Formattable
+-- Error: tests/neg/f-interpolator-neg.scala:63:10 ---------------------------------------------------------------------
+63 |    f"$t%tG" // error
+   |          ^
+   |          'G' doesn't seem to be a date or time conversion
+-- Error: tests/neg/f-interpolator-neg.scala:64:9 ----------------------------------------------------------------------
+64 |    f"$t%t" // error
+   |         ^
+   |         Date/time conversion must have two characters
+-- Error: tests/neg/f-interpolator-neg.scala:65:8 ----------------------------------------------------------------------
+65 |    f"$s%10.5" // error
+   |        ^^^^^
+   |        Missing conversion operator in '%10.5'; use %% for literal %, %n for newline
+-- Error: tests/neg/f-interpolator-neg.scala:69:29 ---------------------------------------------------------------------
+69 |    f"${d}random-leading-junk%d" // error
+   |                             ^^
+   |                             conversions must follow a splice; use %% for literal %, %n for newline
+-- Error: tests/neg/f-interpolator-neg.scala:71:7 ----------------------------------------------------------------------
+71 |    f"%1$$d" // error
+   |       ^
+   |       Argument index out of range
+-- Error: tests/neg/f-interpolator-neg.scala:72:23 ---------------------------------------------------------------------
+72 |    f"blablablabla %% %.2d" // error
+   |                       ^^
+   |                       precision not allowed
+-- Error: tests/neg/f-interpolator-neg.scala:73:19 ---------------------------------------------------------------------
+73 |    f"blablablabla %.2b %%" // error
+   |                   ^^^^
+   |                   conversions must follow a splice; use %% for literal %, %n for newline
+-- Error: tests/neg/f-interpolator-neg.scala:75:17 ---------------------------------------------------------------------
+75 |    f"ana${3}%.2f%2${true}%bb" // error
+   |                 ^^
+   |                 Missing conversion operator in '%2'; use %% for literal %, %n for newline
+-- Error: tests/neg/f-interpolator-neg.scala:78:7 ----------------------------------------------------------------------
+78 |    f"b%c.%2ii%iin" // error // error // error
+   |       ^^
+   |       conversions must follow a splice; use %% for literal %, %n for newline
+-- Error: tests/neg/f-interpolator-neg.scala:78:12 ---------------------------------------------------------------------
+78 |    f"b%c.%2ii%iin" // error // error // error
+   |            ^
+   |            illegal conversion character 'i'
+-- Error: tests/neg/f-interpolator-neg.scala:78:15 ---------------------------------------------------------------------
+78 |    f"b%c.%2ii%iin" // error // error // error
+   |               ^
+   |               illegal conversion character 'i'
+-- Error: tests/neg/f-interpolator-neg.scala:79:10 ---------------------------------------------------------------------
+79 |    f"b}22%2.c<{%{"  // error // error
+   |          ^^
+   |          Missing conversion operator in '%2'; use %% for literal %, %n for newline
+-- Error: tests/neg/f-interpolator-neg.scala:79:16 ---------------------------------------------------------------------
+79 |    f"b}22%2.c<{%{"  // error // error
+   |                ^
+   |                Missing conversion operator in '%'; use %% for literal %, %n for newline
+-- Error: tests/neg/f-interpolator-neg.scala:80:19 ---------------------------------------------------------------------
+80 |    f"%%bci.2${'i'}%..2c2" // error
+   |                   ^
+   |                   Missing conversion operator in '%'; use %% for literal %, %n for newline

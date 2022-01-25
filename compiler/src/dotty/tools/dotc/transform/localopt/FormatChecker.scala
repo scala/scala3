@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Phases.typerPhase
+import dotty.tools.dotc.util.Spans.Span
 
 /** Formatter string checker. */
 class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List[Tree])(using Context):
@@ -33,7 +34,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     types.find(t => argConformsTo(argi, tpe, t))
       .orElse(types.find(t => argConvertsTo(argi, tpe, t)))
       .getOrElse {
-        report.argError(s"Found: ${tpe.show}, Required: ${types.mkString(", ")}", argi)
+        report.argError(s"Found: ${tpe.show}, Required: ${types.map(_.show).mkString(", ")}", argi)
         actuals += args(argi)
         types.head
       }
@@ -118,6 +119,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
 
   extension (descriptor: Match)
     def at(g: SpecGroup): Int = descriptor.start(g.ordinal)
+    def end(g: SpecGroup): Int = descriptor.end(g.ordinal)
     def offset(g: SpecGroup, i: Int = 0): Int = at(g) + i
     def group(g: SpecGroup): Option[String] = Option(descriptor.group(g.ordinal))
     def stringOf(g: SpecGroup): String = group(g).getOrElse("")
@@ -243,8 +245,8 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
       val i = flags.indexOf(f) match { case -1 => 0 case j => j }
       errorAt(Flags, i)(msg)
 
-    def errorAt(g: SpecGroup, i: Int = 0)(msg: String)   = report.partError(msg, argi, descriptor.offset(g, i))
-    def warningAt(g: SpecGroup, i: Int = 0)(msg: String) = report.partWarning(msg, argi, descriptor.offset(g, i))
+    def errorAt(g: SpecGroup, i: Int = 0)(msg: String)   = report.partError(msg, argi, descriptor.offset(g, i), descriptor.end(g))
+    def warningAt(g: SpecGroup, i: Int = 0)(msg: String) = report.partWarning(msg, argi, descriptor.offset(g, i), descriptor.end(g))
 
   object Conversion:
     def apply(m: Match, i: Int): Conversion =
@@ -272,12 +274,14 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
 
   var reported = false
 
-  private def partPosAt(index: Int, offset: Int) =
+  private def partPosAt(index: Int, offset: Int, end: Int) =
     val pos = partsElems(index).sourcePos
-    pos.withSpan(pos.span.shift(offset))
+    val bgn = pos.span.start + offset
+    val fin = if end < 0 then pos.span.end else pos.span.start + end
+    pos.withSpan(Span(bgn, fin, bgn))
 
   extension (r: report.type)
     def argError(message: String, index: Int): Unit = r.error(message, args(index).srcPos).tap(_ => reported = true)
-    def partError(message: String, index: Int, offset: Int): Unit = r.error(message, partPosAt(index, offset)).tap(_ => reported = true)
-    def partWarning(message: String, index: Int, offset: Int): Unit = r.warning(message, partPosAt(index, offset)).tap(_ => reported = true)
+    def partError(message: String, index: Int, offset: Int, end: Int = -1): Unit = r.error(message, partPosAt(index, offset, end)).tap(_ => reported = true)
+    def partWarning(message: String, index: Int, offset: Int, end: Int = -1): Unit = r.warning(message, partPosAt(index, offset, end)).tap(_ => reported = true)
 end TypedFormatChecker
