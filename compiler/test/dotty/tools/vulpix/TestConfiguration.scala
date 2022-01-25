@@ -6,8 +6,10 @@ import java.io.File
 
 object TestConfiguration {
 
+  val pageWidth = 120
+
   val noCheckOptions = Array(
-    "-pagewidth", "120",
+    "-pagewidth", pageWidth.toString,
     "-color:never",
     "-Xtarget", defaultTarget
   )

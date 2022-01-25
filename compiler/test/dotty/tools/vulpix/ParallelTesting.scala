@@ -27,7 +27,7 @@ import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.config.Config
-import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans}
+import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
@@ -504,20 +504,45 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       reporter
     }
 
-    private def parseErrors(errorsText: String, compilerVersion: String) =
-      val errorPattern = """.*Error: (.*\.scala):(\d+):(\d+).*""".r
-      errorsText.linesIterator.toSeq.collect {
-        case errorPattern(filePath, line, column) =>
-          val lineNum = line.toInt
-          val columnNum = column.toInt
-          val abstractFile = AbstractFile.getFile(filePath)
-          val sourceFile = SourceFile(abstractFile, Codec.UTF8)
-          val offset = sourceFile.lineToOffset(lineNum - 1) + columnNum - 1
-          val span = Spans.Span(offset)
-          val sourcePos = SourcePosition(sourceFile, span)
-
-          Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column. Full error output:\n\n$errorsText\n", sourcePos)
-      }
+    private def parseErrors(errorsText: String, compilerVersion: String, pageWidth: Int) =
+      val errorPattern = """^.*Error: (.*\.scala):(\d+):(\d+).*""".r
+      val brokenClassPattern = """^class file (.*) is broken.*""".r
+      val warnPattern = """^.*Warning: (.*\.scala):(\d+):(\d+).*""".r
+      val summaryPattern = """\d+ (?:warning|error)s? found""".r
+      val indent = "    "
+      var diagnostics = List.empty[Diagnostic.Error]
+      def barLine(start: Boolean) = s"$indent${if start then "╭" else "╰"}${"┄" * pageWidth}${if start then "╮" else "╯"}\n"
+      def errorLine(line: String) = s"$indent┆${String.format(s"%-${pageWidth}s", stripAnsi(line))}┆\n"
+      def stripAnsi(str: String): String = str.replaceAll("\u001b\\[\\d+m", "")
+      def addToLast(str: String): Unit =
+        diagnostics match
+          case head :: tail =>
+            diagnostics = Diagnostic.Error(s"${head.msg.rawMessage}$str", head.pos) :: tail
+          case Nil =>
+      var inError = false
+      for line <- errorsText.linesIterator do
+        line match
+          case error @ warnPattern(filePath, line, column) =>
+            inError = false
+          case error @ errorPattern(filePath, line, column) =>
+            inError = true
+            val lineNum = line.toInt
+            val columnNum = column.toInt
+            val abstractFile = AbstractFile.getFile(filePath)
+            val sourceFile = SourceFile(abstractFile, Codec.UTF8)
+            val offset = sourceFile.lineToOffset(lineNum - 1) + columnNum - 1
+            val span = Spans.Span(offset)
+            val sourcePos = SourcePosition(sourceFile, span)
+            addToLast(barLine(start = false))
+            diagnostics ::= Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column.\nFull error output:\n${barLine(start = true)}${errorLine(error)}", sourcePos)
+          case error @ brokenClassPattern(filePath) =>
+            inError = true
+            diagnostics ::= Diagnostic.Error(s"$error\nFull error output:\n${barLine(start = true)}${errorLine(error)}", NoSourcePosition)
+          case summaryPattern() => // Ignored
+          case line if inError => addToLast(errorLine(line))
+          case _ =>
+      addToLast(barLine(start = false))
+      diagnostics.reverse
 
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
       val compilerDir = getCompiler(compiler).toString
@@ -528,18 +553,20 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           else o
         }.mkString(JFile.pathSeparator)
 
+      val pageWidth = TestConfiguration.pageWidth - 20
       val flags1 = flags.copy(defaultClassPath = substituteClasspath(flags.defaultClassPath))
         .withClasspath(targetDir.getPath)
         .and("-d", targetDir.getPath)
+        .and("-pagewidth", pageWidth.toString)
 
-      val dummyStream = new PrintStream(new ByteArrayOutputStream())
-      val reporter = TestReporter.reporter(dummyStream, ERROR)
+      val reporter = TestReporter.reporter(realStdout, logLevel =
+          if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
 
       val command = Array(compilerDir + "/bin/scalac") ++ flags1.all ++ files.map(_.getPath)
       val process = Runtime.getRuntime.exec(command)
       val errorsText = Source.fromInputStream(process.getErrorStream).mkString
       if process.waitFor() != 0 then
-        val diagnostics = parseErrors(errorsText, compiler)
+        val diagnostics = parseErrors(errorsText, compiler, pageWidth)
         diagnostics.foreach { diag =>
           val context = (new ContextBase).initialCtx
           reporter.report(diag)(using context)
