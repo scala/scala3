@@ -3,17 +3,17 @@
  */
 package dotty.tools.xsbt;
 
+import scala.Tuple2;
+import scala.collection.mutable.HashMap;
+
 import dotty.tools.dotc.core.Contexts.Context;
 import dotty.tools.dotc.reporting.AbstractReporter;
 import dotty.tools.dotc.reporting.Diagnostic;
 import dotty.tools.dotc.reporting.Message;
+import dotty.tools.dotc.util.SourceFile;
 import dotty.tools.dotc.util.SourcePosition;
 import xsbti.Position;
 import xsbti.Severity;
-
-// sbt-bridge/src/dotty/tools/xsbt/DelegatingReporter.java:14:1: dotty$tools$dotc$reporting$UniqueMessagePositions$$positions() in dotty.tools.dotc.reporting.AbstractReporter implements dotty$tools$dotc$reporting$UniqueMessagePositions$$positions() in dotty.tools.dotc.reporting.UniqueMessagePositions
-//   return type requires unchecked conversion from scala.collection.mutable.HashMap to scala.collection.mutable.HashMap<scala.Tuple2<dotty.tools.dotc.util.SourceFile,java.lang.Object>,dotty.tools.dotc.reporting.Diagnostic>
-@SuppressWarnings("unchecked")
 
 final public class DelegatingReporter extends AbstractReporter {
   private xsbti.Reporter delegate;
@@ -65,5 +65,12 @@ final public class DelegatingReporter extends AbstractReporter {
     } else {
       return PositionBridge.noPosition;
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  // [warn] sbt-bridge/src/dotty/tools/xsbt/DelegatingReporter.java:18:1: dotty$tools$dotc$reporting$UniqueMessagePositions$$positions() in dotty.tools.dotc.reporting.AbstractReporter implements dotty$tools$dotc$reporting$UniqueMessagePositions$$positions() in dotty.tools.dotc.reporting.UniqueMessagePositions
+  // [warn]   return type requires unchecked conversion from scala.collection.mutable.HashMap to scala.collection.mutable.HashMap<scala.Tuple2<dotty.tools.dotc.util.SourceFile,java.lang.Integer>,dotty.tools.dotc.reporting.Diagnostic>
+  public HashMap<Tuple2<SourceFile, Integer>, Diagnostic> dotty$tools$dotc$reporting$UniqueMessagePositions$$positions() {
+    return (HashMap<Tuple2<SourceFile, Integer>, Diagnostic>) super.dotty$tools$dotc$reporting$UniqueMessagePositions$$positions();
   }
 }
