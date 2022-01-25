@@ -1,8 +1,14 @@
--- Error: tests/init/neg/cycle-structure.scala:9:14 --------------------------------------------------------------------
-9 |    val x = A(this) // error
-  |              ^^^^
-  |              Cannot prove that the value is fully initialized. May only use initialized value as arguments.
--- Error: tests/init/neg/cycle-structure.scala:3:14 --------------------------------------------------------------------
-3 |    val x = B(this) // error
-  |              ^^^^
-  |              Cannot prove that the value is fully initialized. May only use initialized value as arguments.
+-- Error: tests/init/neg/cycle-structure.scala:2:15 --------------------------------------------------------------------
+2 |    val x1 = b.x      // error
+  |             ^^^
+  |             Access field A.this.b.x on a value with an unknown initialization status. Calling trace:
+  |              -> val x = A(this)	[ cycle-structure.scala:9 ]
+  |               -> case class A(b: B) {	[ cycle-structure.scala:1 ]
+-- Error: tests/init/neg/cycle-structure.scala:8:15 --------------------------------------------------------------------
+8 |    val x1 = a.x      // error
+  |             ^^^
+  |             Access field B.this.a.x on a value with an unknown initialization status. Calling trace:
+  |              -> val x = A(this)	[ cycle-structure.scala:9 ]
+  |               -> case class A(b: B) {	[ cycle-structure.scala:1 ]
+  |                -> val x = B(this)	[ cycle-structure.scala:3 ]
+  |                 -> case class B(a: A) {	[ cycle-structure.scala:7 ]

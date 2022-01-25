@@ -559,6 +559,7 @@ object Semantic {
             if obj.hasField(target) then
               Result(obj.field(target), Nil)
             else if ref.isInstanceOf[Warm] then
+              assert(obj.klass.isSubClass(target.owner))
               if target.is(Flags.ParamAccessor) then
                 // possible for trait parameters
                 // see tests/init/neg/trait2.scala
@@ -590,11 +591,20 @@ object Semantic {
     def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, (_: Result).show) {
       def checkArgs = args.flatMap(_.promote)
 
+      def isSyntheticApply(meth: Symbol) =
+        meth.is(Flags.Synthetic)
+        && meth.owner.is(Flags.Module)
+        && meth.owner.companionClass.is(Flags.Case)
+
       // fast track if the current object is already initialized
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
         case Hot  =>
-          Result(Hot, checkArgs)
+          if isSyntheticApply(meth) then
+            val klass = meth.owner.companionClass.asClass
+            instantiate(klass, klass.primaryConstructor, args, source)
+          else
+            Result(Hot, checkArgs)
 
         case Cold =>
           val error = CallCold(meth, source, trace.toVector)
@@ -616,11 +626,17 @@ object Semantic {
               given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
-              val env2 = Env(ddef, args.map(_.value).widenArgs)
+              val argErrors = checkArgs
               // normal method call
-              withEnv(if isLocal then env else Env.empty) {
-                eval(ddef.rhs, ref, cls, cacheResult = true) ++ checkArgs
-              }
+              if argErrors.nonEmpty && isSyntheticApply(meth) then
+                val klass = meth.owner.companionClass.asClass
+                val outerCls = klass.owner.lexicallyEnclosingClass.asClass
+                val outer = resolveOuterSelect(outerCls, ref, 1, source)
+                outer.instantiate(klass, klass.primaryConstructor, args, source)
+              else
+                withEnv(if isLocal then env else Env.empty) {
+                  eval(ddef.rhs, ref, cls, cacheResult = true) ++ argErrors
+                }
             else if ref.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
             else
@@ -1309,9 +1325,10 @@ object Semantic {
    */
   def resolveOuterSelect(target: ClassSymbol, thisV: Value, hops: Int, source: Tree): Contextual[Value] = log("resolving outer " + target.show + ", this = " + thisV.show + ", hops = " + hops, printer, (_: Value).show) {
     // Is `target` reachable from `cls` with the given `hops`?
-    def reachable(cls: ClassSymbol, hops: Int): Boolean =
+    def reachable(cls: ClassSymbol, hops: Int): Boolean = log("reachable from " + cls + " -> " + target + " in " + hops, printer) {
       if hops == 0 then cls == target
-      else reachable(cls.lexicallyEnclosingClass.asClass, hops - 1)
+      else reachable(cls.owner.lexicallyEnclosingClass.asClass, hops - 1)
+    }
 
     thisV match
       case Hot => Hot
