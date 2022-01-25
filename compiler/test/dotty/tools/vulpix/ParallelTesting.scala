@@ -27,7 +27,7 @@ import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.config.Config
-import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans}
+import dotc.util.{DiffUtil, SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
@@ -506,6 +506,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     private def parseErrors(errorsText: String, compilerVersion: String, pageWidth: Int) =
       val errorPattern = """^.*Error: (.*\.scala):(\d+):(\d+).*""".r
+      val brokenClassPattern = """^class file (.*) is broken.*""".r
       val warnPattern = """^.*Warning: (.*\.scala):(\d+):(\d+).*""".r
       val summaryPattern = """\d+ (?:warning|error)s? found""".r
       val indent = "    "
@@ -534,6 +535,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             val sourcePos = SourcePosition(sourceFile, span)
             addToLast(barLine(start = false))
             diagnostics ::= Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column.\nFull error output:\n${barLine(start = true)}${errorLine(error)}", sourcePos)
+          case error @ brokenClassPattern(filePath) =>
+            inError = true
+            diagnostics ::= Diagnostic.Error(s"$error\nFull error output:\n${barLine(start = true)}${errorLine(error)}", NoSourcePosition)
           case summaryPattern() => // Ignored
           case line if inError => addToLast(errorLine(line))
           case _ =>
