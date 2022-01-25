@@ -1266,9 +1266,10 @@ object Types {
     /** Widen this type and if the result contains embedded soft union types, replace
      *  them by their joins.
      *  "Embedded" means: inside type lambdas, intersections or recursive types,
-     *  in prefixes of refined types, or in hard union types.
+     *  or in prefixes of refined types. Softs unions inside hard unions are
+     *  left untouched.
      *  If an embedded soft union is found, we first try to simplify or eliminate it by
-     *  re-lubbing it while allowing type parameters to be constrained further.
+     *  re-lubing it while allowing type parameters to be constrained further.
      *  Any remaining union types are replaced by their joins.
      *
      *  For instance, if `A` is an unconstrained type variable, then
@@ -1303,8 +1304,8 @@ object Types {
       case tp =>
         tp
 
-    /** Widen all top-level singletons reachable by dealiasing
-     *  and going to the operands of & and |.
+    /** Widen all top-level singletons reachable by dealiasing and going to the
+     *  operands of intersections and soft unions.
      *  Overridden and cached in OrType.
      */
     def widenSingletons(using Context): Type = dealias match {
