@@ -13,7 +13,6 @@ object Test2:
     || xs.corresponds(ys)(consistent(_, _))  // error, found: Any, required: Int | String
 
 object Test3:
-
   def g[X](x: X | String): Int = ???
   def y: Boolean | String = ???
   g[Boolean](y)
@@ -21,4 +20,14 @@ object Test3:
   g[Boolean](identity(y))
   g(identity(y))
 
+object Test4:
+  def f(a: 2 | 3) = a
 
+  def test() =
+    val x: 2 | 3 = 2
+    val y = x
+    f(y)
+
+    def g: 2 | 3 = 2
+    val z = g
+    f(z)

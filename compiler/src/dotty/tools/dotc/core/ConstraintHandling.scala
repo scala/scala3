@@ -557,8 +557,8 @@ trait ConstraintHandling {
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore
       // cannot be used as an instantiation of `param` without creating a loop.
-      // If that happens, we run `instanceType` again to find a new instantation.
-      // (we do not check for non-toplevel occurences: those should never occur
+      // If that happens, we run `instanceType` again to find a new instantiation.
+      // (we do not check for non-toplevel occurrences: those should never occur
       // since `addOneBound` disallows recursive lower bounds).
       if constraint.occursAtToplevel(param, widened) then
         instanceType(param, fromBelow)

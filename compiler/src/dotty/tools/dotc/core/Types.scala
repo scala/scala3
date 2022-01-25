@@ -3266,7 +3266,7 @@ object Types {
             TypeComparer.lub(tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull, canConstrain = true) match
               case union: OrType => union.join
               case res => res
-          else derivedOrType(tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull)
+          else this
         if !isProvisional then myUnionPeriod = ctx.period
       myUnion
 
@@ -3280,10 +3280,15 @@ object Types {
           if tp1.hasClassSymbol(defn.NothingClass) then tp2.atoms
           else if tp2.hasClassSymbol(defn.NothingClass) then tp1.atoms
           else tp1.atoms | tp2.atoms
-        val tp1w = tp1.widenSingletons
-        val tp2w = tp2.widenSingletons
-        myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
         atomsRunId = ctx.runId
+
+        myWidened =
+          if isSoft then
+            val tp1w = tp1.widenSingletons
+            val tp2w = tp2.widenSingletons
+            if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
+          else
+            this
 
     override def atoms(using Context): Atoms =
       ensureAtomsComputed()
