@@ -549,7 +549,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           else o
         }.mkString(JFile.pathSeparator)
 
-      val pageWidth = 80
+      val pageWidth = TestConfiguration.pageWidth - 20
       val flags1 = flags.copy(defaultClassPath = substituteClasspath(flags.defaultClassPath))
         .withClasspath(targetDir.getPath)
         .and("-d", targetDir.getPath)
