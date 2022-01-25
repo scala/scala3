@@ -2415,7 +2415,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
-  /** (1) Check that the signature of the class mamber does not return a repeated parameter type
+  /** (1) Check that the signature of the class member does not return a repeated parameter type
    *  (2) If info is an erased class, set erased flag of member
    */
   private def postProcessInfo(sym: Symbol)(using Context): Unit =
