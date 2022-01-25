@@ -1,6 +1,6 @@
 ---
 name: Syntax highlighting
-about: ''
+about: Please create a syntax highlighting issue in a respective repo
 title: ''
 labels: ''
 assignees: ''
