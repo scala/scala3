@@ -173,7 +173,10 @@ sealed abstract class CaptureSet extends Showable:
     this -- ref.singletonCaptureSet
 
   def filter(p: CaptureRef => Boolean)(using Context): CaptureSet =
-    if this.isConst then Const(elems.filter(p))
+    if this.isConst then
+      val elems1 = elems.filter(p)
+      if elems1 == elems then this
+      else Const(elems.filter(p))
     else Filtered(asVar, p)
 
   /** capture set obtained by applying `f` to all elements of the current capture set
@@ -183,11 +186,15 @@ sealed abstract class CaptureSet extends Showable:
   def map(tm: TypeMap)(using Context): CaptureSet = tm match
     case tm: BiTypeMap =>
       val mappedElems = elems.map(tm.forward)
-      if isConst then Const(mappedElems)
+      if isConst then
+        if mappedElems == elems then this
+        else Const(mappedElems)
       else BiMapped(asVar, tm, mappedElems)
     case _ =>
       val mapped = mapRefs(elems, tm, tm.variance)
-      if isConst then mapped
+      if isConst then
+        if mapped.isConst && mapped.elems == elems then this
+        else mapped
       else Mapped(asVar, tm, tm.variance, mapped)
 
   def substParams(tl: BindingType, to: List[Type])(using Context) =
