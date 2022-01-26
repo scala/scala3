@@ -14,6 +14,7 @@ import StdNames.nme
 import ast.tpd
 import SymUtils._
 import config.Feature
+import Decorators.*
 
 /** This phase makes all erased term members of classes private so that they cannot
  *  conflict with non-erased members. This is needed so that subsequent phases like
@@ -21,6 +22,7 @@ import config.Feature
  *  The phase also replaces all expressions that appear in an erased context by
  *  default values. This is necessary so that subsequent checking phases such
  *  as IsInstanceOfChecker don't give false negatives.
+ *  Finally, the phase drops (language-) imports.
  */
 class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
   import tpd._
@@ -54,10 +56,18 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
     checkErasedInExperimental(tree.symbol)
     tree
 
+  override def transformOther(tree: Tree)(using Context): Tree = tree match
+    case tree: Import => EmptyTree
+    case _ => tree
+
   def checkErasedInExperimental(sym: Symbol)(using Context): Unit =
     // Make an exception for Scala 2 experimental macros to allow dual Scala 2/3 macros under non experimental mode
     if sym.is(Erased, butNot = Macro) && sym != defn.Compiletime_erasedValue && !sym.isInExperimentalScope then
       Feature.checkExperimentalFeature("erased", sym.sourcePos)
+
+  override def checkPostCondition(tree: Tree)(using Context): Unit = tree match
+    case _: tpd.Import => assert(false, i"illegal tree: $tree")
+    case _ =>
 }
 
 object PruneErasedDefs {

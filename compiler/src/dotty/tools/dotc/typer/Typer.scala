@@ -2556,7 +2556,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 |The selector is not a member of an object or package.""")
     else typd(imp.expr, AnySelectionProto)
 
-  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import =
+  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Tree =
     val expr1 = typedImportQualifier(imp, typedExpr(_, _)(using ctx.withOwner(sym)))
     checkLegalImportPath(expr1)
     val selectors1 = typedSelectors(imp.selectors)
