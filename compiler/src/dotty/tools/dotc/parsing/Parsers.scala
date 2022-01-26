@@ -3079,6 +3079,61 @@ object Parsers {
 
  /* -------- PARAMETERS ------------------------------------------- */
 
+    /** DefParamClause ::= DefTypeParamClause 
+     *                   | DefTermParamClause 
+     *                   | UsingParamClause
+     */
+    def typeOrTermParamClause(nparams: Int,                            // number of parameters preceding this clause
+                    ofClass: Boolean = false,                // owner is a class
+                    ofCaseClass: Boolean = false,            // owner is a case class
+                    prefix: Boolean = false,                 // clause precedes name of an extension method
+                    givenOnly: Boolean = false,              // only given parameters allowed
+                    firstClause: Boolean = false,             // clause is the first in regular list of clauses
+                    ownerKind: ParamOwner
+                   ): List[TypeDef] | List[ValDef] =
+      if (in.token == LPAREN)
+        paramClause(nparams, ofClass, ofCaseClass, prefix, givenOnly, firstClause)
+      else if (in.token == LBRACKET)
+        typeParamClause(ownerKind)
+      else
+        Nil
+      
+    end typeOrTermParamClause
+    
+    /** DefParamClauses       ::= DefParamClause { DefParamClause }
+     */
+    def typeOrTermParamClauses(
+                    ownerKind: ParamOwner,
+                    ofClass: Boolean = false,
+                    ofCaseClass: Boolean = false,
+                    givenOnly: Boolean = false,
+                    numLeadParams: Int = 0
+                   ): List[List[TypeDef] | List[ValDef]] =
+
+      def recur(firstClause: Boolean, nparams: Int): List[List[TypeDef] | List[ValDef]] =
+        newLineOptWhenFollowedBy(LPAREN)
+        newLineOptWhenFollowedBy(LBRACKET)
+        if in.token == LPAREN then
+          val paramsStart = in.offset
+          val params = paramClause(
+              nparams,
+              ofClass = ofClass,
+              ofCaseClass = ofCaseClass,
+              givenOnly = givenOnly,
+              firstClause = firstClause)
+          val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
+          params :: (
+            if lastClause then Nil
+            else recur(firstClause = false, nparams + params.length))
+        else if in.token == LBRACKET then
+          typeParamClause(ownerKind) :: recur(firstClause, nparams)
+        else Nil
+      end recur
+
+      recur(firstClause = true, nparams = numLeadParams)
+    end typeOrTermParamClauses
+
+
     /** ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
      *  ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’]
      *                         id [HkTypeParamClause] TypeParamBounds
@@ -3143,11 +3198,15 @@ object Parsers {
      *  UsingClsParamClause::= ‘(’ ‘using’ [‘erased’] (ClsParams | ContextTypes) ‘)’
      *  ClsParams         ::=  ClsParam {‘,’ ClsParam}
      *  ClsParam          ::=  {Annotation}
+     * 
+     *  TypelessClause    ::= DefTermParamClause
+     *                      | UsingParamClause
      *
-     *  DefParamClause    ::=  ‘(’ [‘erased’] DefParams ‘)’ | UsingParamClause
-     *  UsingParamClause  ::=  ‘(’ ‘using’ [‘erased’] (DefParams | ContextTypes) ‘)’
-     *  DefParams         ::=  DefParam {‘,’ DefParam}
-     *  DefParam          ::=  {Annotation} [‘inline’] Param
+     *  DefTermParamClause::= [nl] ‘(’ [DefTermParams] ‘)’
+     *  UsingParamClause  ::=  ‘(’ ‘using’ [‘erased’] (DefTermParams | ContextTypes) ‘)’
+     *  DefImplicitClause ::=  [nl] ‘(’ ‘implicit’ DefTermParams ‘)’
+     *  DefTermParams     ::=  DefTermParam {‘,’ DefTermParam}
+     *  DefTermParam      ::=  {Annotation} [‘inline’] Param
      *
      *  Param             ::=  id `:' ParamType [`=' Expr]
      *
@@ -3246,7 +3305,7 @@ object Parsers {
     }
 
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
-     *  DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
+     *  TypelessClauses   ::= TypelessClause {TypelessClause}
      *
      *  @return  The parameter definitions
      */
@@ -3515,9 +3574,9 @@ object Parsers {
     }
 
     /** DefDef  ::=  DefSig [‘:’ Type] ‘=’ Expr
-     *            |  this ParamClause ParamClauses `=' ConstrExpr
+     *            |  this TypelessClauses [DefImplicitClause] `=' ConstrExpr
      *  DefDcl  ::=  DefSig `:' Type
-     *  DefSig  ::=  id [DefTypeParamClause] DefParamClauses
+     *  DefSig  ::=  id [DefParamClauses] [DefImplicitClause]
      *            |  ExtParamClause [nl] [‘.’] id DefParamClauses
      */
     def defDefOrDcl(start: Offset, mods: Modifiers, numLeadParams: Int = 0): DefDef = atSpan(start, nameStart) {
@@ -3555,8 +3614,7 @@ object Parsers {
         val mods1 = addFlag(mods, Method)
         val ident = termIdent()
         var name = ident.name.asTermName
-        val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses(numLeadParams = numLeadParams)
+        val paramss = typeOrTermParamClauses(ParamOwner.Def, numLeadParams = numLeadParams)
         var tpt = fromWithinReturnType { typedOpt() }
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
@@ -3574,7 +3632,7 @@ object Parsers {
             accept(EQUALS)
             expr()
 
-        val ddef = DefDef(name, joinParams(tparams, vparamss), tpt, rhs)
+        val ddef = DefDef(name, paramss, tpt, rhs)
         if (isBackquoted(ident)) ddef.pushAttachment(Backquoted, ())
         finalizeDef(ddef, mods1, start)
       }
@@ -3837,7 +3895,7 @@ object Parsers {
       finalizeDef(gdef, mods1, start)
     }
 
-    /** Extension  ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause} ‘(’ DefParam ‘)’
+    /** Extension  ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause} ‘(’ DefTermParam ‘)’
      *                  {UsingParamClause} ExtMethods
      */
     def extension(): ExtMethods =
