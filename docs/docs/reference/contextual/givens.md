@@ -111,6 +111,10 @@ trait Show[T] {
 inline given Show[Foo] with {
   /*transparent*/ inline def show(x: Foo): String = ${ ... }
 }
+
+def app =
+  // inlines `show` method call and removes the call to `given Show[Foo]`
+  summon[Show[Foo]].show(foo)
 ```
 Note that the inline methods within the given instances may be `transparent`.
 
