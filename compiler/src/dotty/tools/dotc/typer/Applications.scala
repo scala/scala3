@@ -444,10 +444,17 @@ trait Applications extends Compatibility {
     /** The function's type after widening and instantiating polytypes
      *  with TypeParamRefs in constraint set
      */
-    @threadUnsafe lazy val methType: Type = liftedFunType.widen match {
-      case funType: MethodType => funType
-      case funType: PolyType => instantiateWithTypeVars(funType)
-      case tp => tp //was: funType
+    @threadUnsafe lazy val methType: Type = {
+      def rec(t: Type): Type = {
+        t.widen match{
+          case funType: MethodType => funType
+          case funType: PolyType => 
+            rec(instantiateWithTypeVars(funType))
+          case tp => tp
+        }
+      }
+
+      rec(liftedFunType)
     }
 
     @threadUnsafe lazy val liftedFunType: Type =
@@ -1144,8 +1151,6 @@ trait Applications extends Compatibility {
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
     typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
-      case _: TypeApply if !ctx.isAfterTyper =>
-        errorTree(tree, em"illegal repeated type application")
       case typedFn =>
         typedFn.tpe.widen match {
           case pt: PolyType =>
