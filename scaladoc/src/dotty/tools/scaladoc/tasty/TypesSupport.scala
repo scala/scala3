@@ -142,7 +142,6 @@ trait TypesSupport:
           }
           case t: PolyType => {
             val paramBounds = getParamBounds(t)
-            val parsedMethod = parseRefinedElem(name, t.resType)
             if (!paramBounds.isEmpty){
               parseRefinedElem(name, t.resType, plain("[").l ++ paramBounds ++ plain("]").l)
             } else parseRefinedElem(name, t.resType)
@@ -157,20 +156,33 @@ trait TypesSupport:
         def parsePolyFunction(info: TypeRepr): SSignature = info match {
           case t: PolyType =>
             val paramBounds = getParamBounds(t)
-            val method = t.resType.asInstanceOf[MethodType]
-            val paramList = getParamList(method)
-            val resType = inner(method.resType)
-            plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(" => ").l ++ paramList ++ keyword(" => ").l ++ resType
+            val resType = inner(t.resType)
+            plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(" => ").l ++ resType
+          case other => noSupported(s"Not supported type in refinement $info")
+        }
+
+        def parseFunction(info: TypeRepr): SSignature = info match{
+          case m: MethodType =>
+            val paramList = getParamList(m)
+            val resType = inner(m.resType)
+            paramList ++ keyword(" => ").l ++ resType
           case other => noSupported(s"Not supported type in refinement $info")
         }
         val refinementInfo = getRefinementInformation(r)
         val refinedType = refinementInfo.head
         val refinedElems = refinementInfo.tail.collect{ case r: Refinement => r }.toList
-        val prefix = if refinedType.typeSymbol != defn.ObjectClass then inner(refinedType) ++ plain(" ").l else Nil
-        if (refinedType.typeSymbol.fullName == "scala.PolyFunction" && refinedElems.size == 1) {
-          parsePolyFunction(refinedElems.head.info)
-        } else {
-          prefix ++ plain("{ ").l ++ refinedElems.flatMap(e => parseRefinedElem(e.name, e.info)) ++ plain(" }").l
+        val name = refinedType.typeSymbol.fullName
+        val polyFunction = raw"scala\.PolyFunction".r
+        val function = raw"scala\.Function(\d+)".r
+        name match {
+          case polyFunction() if refinedElems.size == 1 =>
+            parsePolyFunction(refinedElems.head.info)
+          case function(n) if refinedElems.size == 1 =>
+            parseFunction(refinedElems.head.info)
+          case _ =>
+            val prefix = if refinedType.typeSymbol != defn.ObjectClass then inner(refinedType) ++ plain(" ").l else Nil
+
+            prefix ++ plain("{ ").l ++ refinedElems.flatMap(e => parseRefinedElem(e.name, e.info)) ++ plain(" }").l
         }
       }
       case t @ AppliedType(tpe, typeList) =>
