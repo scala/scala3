@@ -108,6 +108,9 @@ trait Hashable {
   protected final def doHash(bs: Binders, x1: Any, tp2: Type, tps3: List[Type]): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
 
+  protected final def doHash(x1: Any, x2: Int): Int =
+    finishHash(hashing.mix(hashing.mix(hashSeed, x1.hashCode), x2), 1)
+
   protected final def doHash(x1: Int, x2: Int): Int =
     finishHash(hashing.mix(hashing.mix(hashSeed, x1), x2), 1)
 

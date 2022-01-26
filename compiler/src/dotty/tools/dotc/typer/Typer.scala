@@ -1879,7 +1879,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(using Context): SingletonTypeTree = {
     val ref1 = typedExpr(tree.ref)
     checkStable(ref1.tpe, tree.srcPos, "singleton type")
-    assignType(cpy.SingletonTypeTree(tree)(ref1), ref1)
+
+    val ref2 = ref1.tpe match
+      case ConstantType(c) => ref1.withType(ConstantType(c, soft = false))
+      case _ => ref1
+
+    assignType(cpy.SingletonTypeTree(tree)(ref2), ref2)
   }
 
   def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(using Context): TypTree = {

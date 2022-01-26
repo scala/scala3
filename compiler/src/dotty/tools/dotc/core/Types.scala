@@ -1217,7 +1217,7 @@ object Types {
       case _: TypeRef | _: MethodOrPoly => this // fast path for most frequent cases
       case tp: TermRef => // fast path for next most frequent case
         if tp.isOverloaded then tp else tp.underlying.widen
-      case tp: SingletonType => tp.underlying.widen
+      case tp: SingletonType if tp.isSoft => tp.underlying.widen
       case tp: ExprType => tp.resultType.widen
       case tp =>
         val tp1 = tp.stripped
@@ -2025,8 +2025,12 @@ object Types {
   /** A marker trait for types that are guaranteed to contain only a
    *  single non-null value (they might contain null in addition).
    */
-  trait SingletonType extends TypeProxy with ValueType {
+  trait SingletonType extends TypeProxy with ValueType with Softenable {
     def isOverloaded(using Context): Boolean = false
+
+    /** Overriden in [[ConstantType]].
+     */
+    override def isSoft = true
   }
 
   /** A trait for types that bind other types that refer to them.
@@ -2072,6 +2076,10 @@ object Types {
       if (myNarrow eq null) myNarrow = super.narrow
       myNarrow
     }
+  }
+
+  trait Softenable {
+    def isSoft: Boolean
   }
 
 // --- NamedTypes ------------------------------------------------------------------
@@ -2855,15 +2863,16 @@ object Types {
   abstract case class ConstantType(value: Constant) extends CachedProxyType with SingletonType {
     override def underlying(using Context): Type = value.tpe
 
-    override def computeHash(bs: Binders): Int = doHash(value)
+    override def computeHash(bs: Binders): Int = doHash(value, if isSoft then 0 else 1)
   }
 
-  final class CachedConstantType(value: Constant) extends ConstantType(value)
+  final class CachedConstantType(value: Constant, override val isSoft: Boolean = true) extends ConstantType(value)
 
   object ConstantType {
-    def apply(value: Constant)(using Context): ConstantType = {
+    var i = 0
+    def apply(value: Constant, soft: Boolean = true)(using Context): ConstantType = {
       assertUnerased()
-      unique(new CachedConstantType(value))
+      unique(new CachedConstantType(value, soft))
     }
   }
 
@@ -3206,9 +3215,8 @@ object Types {
       TypeComparer.liftIfHK(tp1, tp2, AndType.make(_, _, checkValid = false), makeHk, _ | _)
   }
 
-  abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
+  abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType, Softenable {
     def isAnd: Boolean = false
-    def isSoft: Boolean
     private var myBaseClassesPeriod: Period = Nowhere
     private var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the intersection of the operand base classes. */
@@ -3282,7 +3290,12 @@ object Types {
           else tp1.atoms | tp2.atoms
         val tp1w = tp1.widenSingletons
         val tp2w = tp2.widenSingletons
-        myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
+        myWidened =
+          if isSoft then
+            if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
+          else
+            derivedOrType(tp1w, tp2w)
+
         atomsRunId = ctx.runId
 
     override def atoms(using Context): Atoms =

@@ -438,7 +438,7 @@ class TreeUnpickler(reader: TastyReader,
         case BYNAMEtype =>
           ExprType(readType())
         case _ =>
-          ConstantType(readConstant(tag))
+          ConstantType(readConstant(tag), soft = false)
       }
 
       if (tag < firstLengthTreeTag) readSimpleType() else readLengthType()
