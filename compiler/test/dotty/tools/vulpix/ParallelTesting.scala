@@ -7,7 +7,7 @@ import java.lang.System.{lineSeparator => EOL}
 import java.net.URL
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
-import java.nio.charset.StandardCharsets
+import java.nio.charset.{Charset, StandardCharsets}
 import java.text.SimpleDateFormat
 import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
@@ -445,14 +445,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           throw e
 
     protected def compile(files0: Array[JFile], flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
-      val flags = flags0.and("-d", targetDir.getPath)
-        .withClasspath(targetDir.getPath)
-
       def flattenFiles(f: JFile): Array[JFile] =
         if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
         else Array(f)
 
       val files: Array[JFile] = files0.flatMap(flattenFiles)
+
+      val flags = flags0
+        .and(toolArgsFor(files.toList.map(_.toPath), getCharsetFromEncodingOpt(flags0)): _*)
+        .and("-d", targetDir.getPath)
+        .withClasspath(targetDir.getPath)
 
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
@@ -1442,6 +1444,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
   }
+
+  private def getCharsetFromEncodingOpt(flags: TestFlags) =
+    flags.options.sliding(2).collectFirst {
+      case Array("-encoding", encoding) => Charset.forName(encoding)
+    }.getOrElse(StandardCharsets.UTF_8)
 }
 
 object ParallelTesting {
