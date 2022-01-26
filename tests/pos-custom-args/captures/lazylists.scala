@@ -2,7 +2,7 @@ class CC
 type Cap = {*} CC
 
 trait LazyList[+A]:
-  this: ({*} LazyList[A]) =>
+  this: {*} LazyList[A] =>
 
   def isEmpty: Boolean
   def head: A
@@ -16,12 +16,12 @@ object LazyNil extends LazyList[Nothing]:
 extension [A](xs: {*} LazyList[A])
   def map[B](f: A => B): {xs, f} LazyList[B] =
     final class Mapped extends LazyList[B]:
-      this: ({xs, f} Mapped) =>
+      this: {xs, f} Mapped =>
 
       def isEmpty = false
       def head: B = f(xs.head)
       def tail: {this} LazyList[B] = xs.tail.map(f)  // OK
-      def concat(other: {f} LazyList[A]): {this, f} LazyList[A] = ??? : ({xs, f} LazyList[A]) // OK
+      def concat(other: {f} LazyList[A]): {this, f} LazyList[A] = ??? : {xs, f} LazyList[A] // OK
     if xs.isEmpty then LazyNil
     else new Mapped
 
@@ -31,7 +31,7 @@ def test(cap1: Cap, cap2: Cap) =
 
   val xs =
     class Initial extends LazyList[String]:
-      this: ({cap1} Initial) =>
+      this: {cap1} Initial =>
 
       def isEmpty = false
       def head = f("")

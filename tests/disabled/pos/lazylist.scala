@@ -1,7 +1,7 @@
 package lazylists
 
 abstract class LazyList[+T]:
-  this: ({*} LazyList[T]) =>
+  this: {*} LazyList[T] =>
 
   def isEmpty: Boolean
   def head: T
