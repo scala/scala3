@@ -45,10 +45,8 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
   def phaseName: String = HoistSuperArgs.name
 
-  override def runsAfter: Set[String] = Set(ByNameClosures.name)
+  override def runsAfter: Set[String] = Set(ElimByName.name)
     // By name closures need to be introduced first in order to be hoisted out here.
-    // There's an interaction with by name closures in that the <cbn-arg> marker
-    // application should not be hoisted, but be left at the point of call.
 
   /** Defines methods for hoisting complex supercall arguments out of
    *  parent super calls and constructor definitions.
@@ -126,8 +124,6 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
       // begin hoistSuperArg
       arg match {
-        case Apply(fn, arg1 :: Nil) if fn.symbol == defn.cbnArg =>
-          cpy.Apply(arg)(fn, hoistSuperArg(arg1, cdef) :: Nil)
         case _ if arg.existsSubTree(needsHoist) =>
           val superMeth = newSuperArgMethod(arg.tpe)
           val superArgDef = DefDef(superMeth, prefss => {
