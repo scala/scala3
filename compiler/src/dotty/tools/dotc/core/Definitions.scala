@@ -248,7 +248,11 @@ class Definitions {
   @tu lazy val CompiletimeOpsPackage: Symbol = requiredPackage("scala.compiletime.ops")
     @tu lazy val CompiletimeOpsAnyModuleClass: Symbol = requiredModule("scala.compiletime.ops.any").moduleClass
     @tu lazy val CompiletimeOpsIntModuleClass: Symbol = requiredModule("scala.compiletime.ops.int").moduleClass
+      @tu lazy val CompiletimeOpsInt_Add: Type = CompiletimeOpsIntModuleClass.requiredTypeRef(tpnme.Plus)
+      @tu lazy val CompiletimeOpsInt_Multiply: Type = CompiletimeOpsIntModuleClass.requiredTypeRef(tpnme.Times)
     @tu lazy val CompiletimeOpsLongModuleClass: Symbol = requiredModule("scala.compiletime.ops.long").moduleClass
+      @tu lazy val CompiletimeOpsLong_Add: Type = CompiletimeOpsLongModuleClass.requiredTypeRef(tpnme.Plus)
+      @tu lazy val CompiletimeOpsLong_Multiply: Type = CompiletimeOpsLongModuleClass.requiredTypeRef(tpnme.Times)
     @tu lazy val CompiletimeOpsFloatModuleClass: Symbol = requiredModule("scala.compiletime.ops.float").moduleClass
     @tu lazy val CompiletimeOpsDoubleModuleClass: Symbol = requiredModule("scala.compiletime.ops.double").moduleClass
     @tu lazy val CompiletimeOpsStringModuleClass: Symbol = requiredModule("scala.compiletime.ops.string").moduleClass
