@@ -370,13 +370,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 for parent <- impl.parents do
                   Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
             // Add SourceFile annotation to top-level classes
-            if sym.owner.is(Package)
-               && ctx.compilationUnit.source.exists
-               && sym != defn.SourceFileAnnot
-            then
-              val reference = ctx.settings.sourceroot.value
-              val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
-              sym.addAnnotation(Annotation.makeSourceFile(relativePath))
+            if sym.owner.is(Package) then
+              if ctx.compilationUnit.source.exists && sym != defn.SourceFileAnnot then
+                val reference = ctx.settings.sourceroot.value
+                val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
+                sym.addAnnotation(Annotation.makeSourceFile(relativePath))
+              if ctx.settings.Ycc.value && sym != defn.CaptureCheckedAnnot then
+                sym.addAnnotation(Annotation(defn.CaptureCheckedAnnot))
           else (tree.rhs, sym.info) match
             case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
               VarianceChecker.checkLambda(rhs, bounds)
