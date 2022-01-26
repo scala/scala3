@@ -2,7 +2,7 @@ class CC
 type Cap = {*} CC
 
 trait LazyList[+A]:
-  this: ({*} LazyList[A]) =>
+  this: {*} LazyList[A] =>
 
   def isEmpty: Boolean
   def head: A
@@ -14,7 +14,7 @@ object LazyNil extends LazyList[Nothing]:
   def tail = ???
 
 final class LazyCons[+T](val x: T, val xs: Int => {*} LazyList[T]) extends LazyList[T]:
-  this: ({*} LazyList[T]) =>
+  this: {*} LazyList[T] =>
 
   def isEmpty = false
   def head = x
