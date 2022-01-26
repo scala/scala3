@@ -972,6 +972,7 @@ class Definitions {
   @tu lazy val BooleanBeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BooleanBeanProperty")
   @tu lazy val BodyAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Body")
   @tu lazy val CapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.capability")
+  @tu lazy val CaptureCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.CaptureChecked")
   @tu lazy val ChildAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Child")
   @tu lazy val ContextResultCountAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ContextResultCount")
   @tu lazy val ProvisionalSuperClassAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ProvisionalSuperClass")
