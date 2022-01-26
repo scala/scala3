@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/class-contra.scala:12:39 ---------------------------------
+12 |  def fun(x: K{val f: {a} T}) = x.setf(a) // error
+   |                                       ^
+   |                                       Found:    (a : {x, y} T)
+   |                                       Required: T
+
+longer explanation available when compiling with `-explain`
