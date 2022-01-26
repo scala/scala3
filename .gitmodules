@@ -247,3 +247,6 @@
 [submodule "community-build/community-projects/scalacheck-forward-compat"]
 	path = community-build/community-projects/scalacheck-forward-compat
 	url = https://github.com/dotty-staging/scalacheck
+[submodule "community-build/community-projects/http4s"]
+	path = community-build/community-projects/http4s
+	url = https://github.com/http4s/http4s.git

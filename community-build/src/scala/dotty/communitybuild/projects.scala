@@ -791,6 +791,13 @@ object projects:
     dependencies = () => List(cats, disciplineMunit)
   )
 
+  lazy val http4s = SbtCommunityProject(
+    project = "http4s",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = () => List(cats, catsEffect3, fs2, disciplineMunit, munitCatsEffect, scalacheckEffect)
+  )
+
 end projects
 
 lazy val forwardCompatMapping = Map[CommunityProject, CommunityProject](
@@ -892,7 +899,9 @@ def allProjects = List(
   projects.jacksonModuleScala,
   projects.specs2,
   projects.coop,
-  projects.coopForwardCompat
+  projects.coopForwardCompat,
+  projects.spire,
+  projects.http4s
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
