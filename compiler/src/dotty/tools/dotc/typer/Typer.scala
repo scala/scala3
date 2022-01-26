@@ -3750,7 +3750,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val arity =
             if (funExpected)
               if (!isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none))
-                // if method type is fully defined, but expected type is not,
+                // if expected type is not fully defined, but method type is,
                 // prioritize method parameter types as parameter types of the eta-expanded closure
                 0
               else defn.functionArity(ptNorm)
@@ -3956,11 +3956,36 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if tree.symbol.isAllOf(ApplyProxyFlags) then newExpr
           else if pt.isInstanceOf[PolyProto] then tree
           else
-            var typeArgs = tree match
-              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree)
-              case _ => Nil
-            if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2
-            convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
+            val methodTargs = poly.paramInfos
+
+            val (functionTargs: List[TypeBounds], functionParamNames: List[TypeName]) = pt match{
+              case RefinedType(_, _, npt: PolyType) => (npt.paramInfos, npt.paramNames)
+              case _ => (Nil, Nil)
+            }
+            
+            /** If the (destination) function's type args are each subtypes of the corresponding
+             *  method type args, we eta-expand the method to a function with the expected type arguments
+            */ 
+            if (functionTargs corresponds methodTargs)(_ <:< _) then
+              val paramNames = functionParamNames.map(n => UniqueName.fresh(n)) //Should be pt or tp names ?
+
+              val tParams = (paramNames zip functionTargs).map{
+                case (name, bounds) => untpd.TypeDef(name, untpd.TypeTree(bounds)).withAddedFlags(Param)
+              }
+
+              val targs = paramNames.map(name => untpd.Ident(name))
+              val body = untpd.TypeApply(untpd.TypedSplice(tree), targs)
+
+              // [tParams] => tree[targs]
+              val res = untpd.PolyFunction(tParams, body)
+
+              typed(res, pt)
+            else
+              var typeArgs = tree match
+                case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree)
+                case _ => Nil
+              if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2
+              convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
         case wtp =>
           val isStructuralCall = wtp.isValueType && isStructuralTermSelectOrApply(tree)
           if (isStructuralCall)
