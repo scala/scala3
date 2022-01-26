@@ -1,7 +1,7 @@
 package cctest
 
 abstract class Iterator[T]:
-  thisIterator: ({*} Iterator[T]) =>
+  thisIterator: {*} Iterator[T] =>
 
   def hasNext: Boolean
   def next: T
