@@ -1,7 +1,7 @@
 class B
 type Cap = {*} B
 class C(val n: Cap):
-  this: ({n} C) =>
+  this: {n} C =>
   def foo(): {n} B = n
 
 
@@ -9,7 +9,7 @@ def test(x: Cap, y: Cap, z: Cap) =
   val c0 = C(x)
   val c1: {x} C {val n: {x} B} = c0
   val d = c1.foo()
-  d: ({x} B)
+  d: {x} B
 
   val c2 = if ??? then C(x) else C(y)
   val c2a = identity(c2)
