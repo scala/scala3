@@ -1486,11 +1486,7 @@ object Parsers {
           else { accept(TLARROW); typ() }
         }
         else if in.token == LBRACE && followingIsCaptureSet() then
-          val refs = inBraces {
-            if in.token == RBRACE then Nil else commaSeparated(captureRef)
-          }
-          val t = typ()
-          CapturingTypeTree(refs, t)
+          CapturingTypeTree(captureSet(), typ())
         else if (in.token == INDENT) enclosed(INDENT, typ())
         else infixType()
 
@@ -1873,7 +1869,13 @@ object Parsers {
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
       else if location.inPattern then rejectWildcardType(refinedType())
+      else if in.token == LBRACE && followingIsCaptureSet() then
+        CapturingTypeTree(captureSet(), infixType())
       else infixType()
+
+    def captureSet(): List[Tree] = inBraces {
+      if in.token == RBRACE then Nil else commaSeparated(captureRef)
+    }
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
 
@@ -1944,7 +1946,7 @@ object Parsers {
      *                      |  ‘inline’ InfixExpr MatchClause
      *  Bindings          ::=  `(' [Binding {`,' Binding}] `)'
      *  Binding           ::=  (id | `_') [`:' Type]
-     *  Ascription        ::=  `:' InfixType
+     *  Ascription        ::=  `:' [CaptureSet] InfixType
      *                      |  `:' Annotation {Annotation}
      *                      |  `:' `_' `*'
      *  Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
@@ -3900,7 +3902,7 @@ object Parsers {
       stats.toList
     }
 
-    /** TemplateStatSeq  ::= [id [`:' Type] `=>'] TemplateStat {semi TemplateStat}
+    /** TemplateStatSeq  ::= [SelfType] TemplateStat {semi TemplateStat}
      *  TemplateStat     ::= Import
      *                     | Export
      *                     | Annotations Modifiers Def
@@ -3910,6 +3912,8 @@ object Parsers {
      *                     |
      *  EnumStat         ::= TemplateStat
      *                     | Annotations Modifiers EnumCase
+     *  SelfType         ::= id [‘:’ [CaptureSet] InfixType] ‘=>’
+     *                     | ‘this’ ‘:’ [CaptureSet] InfixType ‘=>’
      */
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
       var self: ValDef = EmptyValDef
