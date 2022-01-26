@@ -211,7 +211,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ keywordText("erased ").provided(tp.isErasedMethod)
           ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
           ~ paramsText(tp)
-          ~ (if tp.resultType.isInstanceOf[MethodType] then ")" else "): ")
+          ~ ")"
+          ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
           ~ toText(tp.resultType)
         }
       case tp: ExprType =>
@@ -223,7 +224,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: PolyType =>
         changePrec(GlobalPrec) {
           "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~
-          (Str(" => ") provided !tp.resultType.isInstanceOf[MethodType]) ~
+          (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly]) ~
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
@@ -418,7 +419,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (if (isParameter) ": => " else ": ") ~ toTextGlobal(tp.widenExpr)
       case tp: PolyType =>
         "[" ~ paramsText(tp) ~ "]"
-        ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodType])
+        ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
         ~ toTextGlobal(tp.resultType)
       case tp =>
         ": " ~ toTextGlobal(tp)
