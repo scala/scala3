@@ -5,7 +5,7 @@ package cc
 import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*
 import ast.{tpd, untpd}
-import Decorators.*
+import Decorators.*, NameOps.*
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
@@ -69,5 +69,19 @@ extension (tp: Type)
       parent.stripCapturing
     case atd @ AnnotatedType(parent, annot) =>
       atd.derivedAnnotatedType(parent.stripCapturing, annot)
+    case _ =>
+      tp
+
+  /** Under -Ycc, map regular function type to impure function type
+   */
+  def adaptFunctionType(using Context): Type = tp match
+    case AppliedType(fn, args)
+    if ctx.settings.Ycc.value && defn.isFunctionClass(fn.typeSymbol) =>
+      val fname = fn.typeSymbol.name
+      defn.FunctionType(
+        fname.functionArity,
+        isContextual = fname.isContextFunction,
+        isErased = fname.isErasedFunction,
+        isImpure = true).appliedTo(args)
     case _ =>
       tp
