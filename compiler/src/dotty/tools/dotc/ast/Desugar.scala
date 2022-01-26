@@ -1621,12 +1621,12 @@ object desugar {
       }
     }
 
-    def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match {
+    def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match
       case Parens(body1) =>
         makePolyFunction(targs, body1)
       case Block(Nil, body1) =>
         makePolyFunction(targs, body1)
-      case Function(vargs, res) =>
+      case _ =>
         assert(targs.nonEmpty)
         // TODO: Figure out if we need a `PolyFunctionWithMods` instead.
         val mods = body match {
@@ -1635,33 +1635,37 @@ object desugar {
         }
         val polyFunctionTpt = ref(defn.PolyFunctionType)
         val applyTParams = targs.asInstanceOf[List[TypeDef]]
-        if (ctx.mode.is(Mode.Type)) {
+        if ctx.mode.is(Mode.Type) then
           // Desugar [T_1, ..., T_M] -> (P_1, ..., P_N) => R
           // Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
-
-          val applyVParams = vargs.zipWithIndex.map {
-            case (p: ValDef, _) => p.withAddedFlags(mods.flags)
-            case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
-          }
+          val (res, applyVParamss) = body match
+            case Function(vargs, res) =>
+              ( res,
+                vargs.zipWithIndex.map {
+                  case (p: ValDef, _) => p.withAddedFlags(mods.flags)
+                  case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
+                } :: Nil
+              )
+            case _ =>
+              (body, Nil)
           RefinedTypeTree(polyFunctionTpt, List(
-            DefDef(nme.apply, applyTParams :: applyVParams :: Nil, res, EmptyTree)
+            DefDef(nme.apply, applyTParams :: applyVParamss, res, EmptyTree)
           ))
-        }
-        else {
+        else
           // Desugar [T_1, ..., T_M] -> (x_1: P_1, ..., x_N: P_N) => body
           // Into    new scala.PolyFunction { def apply[T_1, ..., T_M](x_1: P_1, ..., x_N: P_N) = body }
-
-          val applyVParams = vargs.asInstanceOf[List[ValDef]]
-            .map(varg => varg.withAddedFlags(mods.flags | Param))
-            New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
-              List(DefDef(nme.apply, applyTParams :: applyVParams :: Nil, TypeTree(), res))
-              ))
-        }
-      case _ =>
-        // may happen for erroneous input. An error will already have been reported.
-        assert(ctx.reporter.errorsReported)
-        EmptyTree
-    }
+          val (res, applyVParamss) = body match
+            case Function(vargs, res) =>
+              ( res,
+                vargs.asInstanceOf[List[ValDef]]
+                  .map(varg => varg.withAddedFlags(mods.flags | Param))
+                :: Nil
+              )
+            case _ =>
+              (body, Nil)
+          New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
+            List(DefDef(nme.apply, applyTParams :: applyVParamss, TypeTree(), res))
+            ))
 
     // begin desugar
 

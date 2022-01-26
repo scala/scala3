@@ -1439,14 +1439,7 @@ object Parsers {
           else if (in.token == ARROW) {
             val arrowOffset = in.skipToken()
             val body = toplevelTyp()
-            atSpan(start, arrowOffset) {
-              if (isFunction(body))
-                PolyFunction(tparams, body)
-              else {
-                syntaxError("Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
-                Ident(nme.ERROR.toTypeName)
-              }
-            }
+            atSpan(start, arrowOffset) { PolyFunction(tparams, body) }
           }
           else { accept(TLARROW); typ() }
         }
@@ -1925,14 +1918,7 @@ object Parsers {
           val tparams = typeParamClause(ParamOwner.TypeParam)
           val arrowOffset = accept(ARROW)
           val body = expr(location)
-          atSpan(start, arrowOffset) {
-            if (isFunction(body))
-              PolyFunction(tparams, body)
-            else {
-              syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
-              errorTermTree
-            }
-          }
+          atSpan(start, arrowOffset) { PolyFunction(tparams, body) }
         case _ =>
           val saved = placeholderParams
           placeholderParams = Nil

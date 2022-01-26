@@ -1,5 +1,5 @@
-trait A { type S[X[_] <: [_] => Any, Y[_]] <: [_] => Any; type I[_] } // error // error
-trait B { type S[X[_],Y[_]]; type I[_] <: [_] => Any } // error
+trait A { type S[X[_] <: [_] => Any, Y[_]] <: [_] => Any; type I[_] }
+trait B { type S[X[_],Y[_]]; type I[_] <: [_] => Any }
 trait C { type M <: B }
 trait D { type M >: A }
 

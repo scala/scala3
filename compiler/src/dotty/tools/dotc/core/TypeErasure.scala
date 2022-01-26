@@ -530,9 +530,9 @@ object TypeErasure {
     assert(applyInfo.isInstanceOf[PolyType])
     val res = applyInfo.resultType
     val paramss = res.paramNamess
-    assert(paramss.length == 1)
-    erasure(defn.FunctionType(paramss.head.length,
-      isContextual = res.isImplicitMethod, isErased = res.isErasedMethod))
+    assert(paramss.length <= 1)
+    val arity = if paramss.isEmpty then 0 else paramss.head.length
+    erasure(defn.FunctionType(arity, isContextual = res.isImplicitMethod, isErased = res.isErasedMethod))
 }
 
 import TypeErasure._
@@ -558,6 +558,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
    *      - otherwise, if T is a type parameter coming from Java, []Object
    *      - otherwise, Object
    *   - For a term ref p.x, the type <noprefix> # x.
+   *   - For a refined type scala.PolyFunction { def apply[...]: R }, scala.Function0
    *   - For a refined type scala.PolyFunction { def apply[...](x_1, ..., x_N): R }, scala.FunctionN
    *   - For a typeref scala.Any, scala.AnyVal, scala.Singleton, scala.Tuple, or scala.*: : |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
