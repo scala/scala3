@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/t3273.scala:4:42 ------------------------------------------------------------------------------
 4 |  val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error
   |                                  ^^^^^^^^^^^^^^^
-  |             Cannot prove that the value is fully-initialized. May only use initialized value as arguments.
+  |             Cannot prove that the value is fully-initialized. Only initialized values may be used as arguments.
   |
   |             The unsafe promotion may cause the following problem:
   |             Access non-initialized value num1. Calling trace:
@@ -9,7 +9,7 @@
 -- Error: tests/init/neg/t3273.scala:5:61 ------------------------------------------------------------------------------
 5 |  val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error
   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |             Cannot prove that the value is fully-initialized. May only use initialized value as arguments.
+  |             Cannot prove that the value is fully-initialized. Only initialized values may be used as arguments.
   |
   |             The unsafe promotion may cause the following problem:
   |             Access non-initialized value num2. Calling trace:
