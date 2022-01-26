@@ -31,6 +31,8 @@ import util.SourceFile
 import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
+import transform.SymUtils._
+import cc.adaptFunctionType
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
@@ -84,6 +86,9 @@ class TreeUnpickler(reader: TastyReader,
 
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = _
+
+  /** Was unpickled class compiled with -Ycc? */
+  private var wasCaptureChecked: Boolean = false
 
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
@@ -355,7 +360,7 @@ class TreeUnpickler(reader: TastyReader,
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
-              readType().appliedTo(until(end)(readType()))
+              postProcessFunction(readType().appliedTo(until(end)(readType())))
             case TYPEBOUNDS =>
               val lo = readType()
               if nothingButMods(end) then
@@ -467,6 +472,12 @@ class TreeUnpickler(reader: TastyReader,
 
     def readTermRef()(using Context): TermRef =
       readType().asInstanceOf[TermRef]
+
+    /** Under -Ycc, map all function types to impure function types,
+     *  unless the unpickled class was also compiled with -Ycc.
+     */
+    private def postProcessFunction(tp: Type)(using Context): Type =
+      if wasCaptureChecked then tp else tp.adaptFunctionType
 
 // ------ Reading definitions -----------------------------------------------------
 
@@ -603,6 +614,8 @@ class TreeUnpickler(reader: TastyReader,
       }
       registerSym(start, sym)
       if (isClass) {
+        if sym.owner.is(Package) && annots.exists(_.symbol == defn.CaptureCheckedAnnot) then
+          wasCaptureChecked = true
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(using localContext(sym))
       }
@@ -1263,7 +1276,7 @@ class TreeUnpickler(reader: TastyReader,
               val args = until(end)(readTpt())
               val tree = untpd.AppliedTypeTree(tycon, args)
               val ownType = ctx.typeAssigner.processAppliedType(tree, tycon.tpe.safeAppliedTo(args.tpes))
-              tree.withType(ownType)
+              tree.withType(postProcessFunction(ownType))
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTerm())
             case LAMBDAtpt =>
