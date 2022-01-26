@@ -432,16 +432,44 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def transformSpecificTree[T <: Tree](tree: T, start: Int)(using Context): T =
     transformTree(tree, start).asInstanceOf[T]
 
-  def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] = {
+  def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] =
+
     def transformStat(stat: Tree)(using Context): Tree = stat match {
       case _: Import | _: DefTree => transformTree(stat, start)
       case Thicket(stats) => cpy.Thicket(stat)(stats.mapConserve(transformStat))
       case _ => transformTree(stat, start)(using ctx.exprContext(stat, exprOwner))
     }
+
+    def restContext(tree: Tree)(using Context): Context = tree match
+      case imp: Import => ctx.importContext(imp, imp.symbol)
+      case _ => ctx
+
+     // A slower implementation that avoids deep recursions and stack overflows
+    def transformSlow(trees: List[Tree])(using Context): List[Tree] =
+      var curCtx = ctx
+      flatten(trees.mapConserve { tree =>
+        val tree1 = transformStat(tree)(using curCtx)
+        curCtx = restContext(tree)(using curCtx)
+        tree1
+      })
+
+    def recur(trees: List[Tree], count: Int)(using Context): List[Tree] =
+      if count > MapRecursionLimit then
+        transformSlow(trees)
+      else trees match
+        case tree :: rest =>
+          val tree1 = transformStat(tree)
+          val rest1 = recur(rest, count + 1)(using restContext(tree))
+          if (tree1 eq tree) && (rest1 eq rest) then trees
+          else tree1 match
+            case Thicket(elems1) => elems1 ::: rest1
+            case _ => tree1 :: rest1
+        case nil => nil
+
     val nestedCtx = prepStats(trees, start)
-    val trees1 = trees.mapInline(transformStat(_)(using nestedCtx))
+    val trees1 = recur(trees, 0)(using nestedCtx)
     goStats(trees1, start)(using nestedCtx)
-  }
+  end transformStats
 
   def transformUnit(tree: Tree)(using Context): Tree = {
     val nestedCtx = prepUnit(tree, 0)
