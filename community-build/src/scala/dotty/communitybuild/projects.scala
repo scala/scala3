@@ -793,7 +793,7 @@ object projects:
 
   lazy val http4s = SbtCommunityProject(
     project = "http4s",
-    sbtTestCommand = "set ThisBuild/tlFatalWarnings := false; test",
+    sbtTestCommand = "set ThisBuild/tlFatalWarnings := false; rootJVM/test",
     sbtPublishCommand = "set ThisBuild/tlFatalWarnings := false; publishLocal",
     dependencies = () => Nil
   )
