@@ -20,7 +20,7 @@ class StaticSiteContext(
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  val docsPath = root.toPath.resolve("docs")
+  val docsPath = root.toPath.resolve("_docs")
 
   val relativizeFrom = if args.apiSubdirectory then docsPath else root.toPath
 
@@ -56,11 +56,6 @@ class StaticSiteContext(
     }
 
   def driForLink(loadedTemplateFile: File, link: String): Seq[DRI] =
-    // If link doesn't exists in destination and source files and doesn't end with site extension, fallback to asset
-    def possibleAsset(p: Path): Option[Path] = Option(p)
-      .filterNot(p => siteExtensions.exists(ext => p.getFileName.toString.endsWith(ext)))
-      .filter(_.toFile.exists)
-
     def possibleLinks(link: String): Seq[Path] =
       // Destination file of template
       val templateDestLocation = loadedTemplateFile.toPath
@@ -87,7 +82,6 @@ class StaticSiteContext(
     val links = baseFiles.flatMap(p =>
       Option.when(staticSiteRoot.sources.contains(p))(p).map(p => staticSiteRoot.siteMappings(p))
         .orElse(Option.when(staticSiteRoot.dests.contains(p))(p))
-        // .orElse(possibleAsset(p))
     )
 
     links match {

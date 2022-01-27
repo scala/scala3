@@ -31,32 +31,23 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     val renderedResources = renderResources()
     super.render()
 
-  private def specificResources(page: Page): Set[String] =
-    page.children.toSet.flatMap(specificResources) ++ (page.content match
-      case r: ResolvedTemplate =>
-        r.resolved.resources.toSet
-      case _ => Set.empty
-    )
-
   private def renderResources(): Seq[String] =
-    def siteRoot = staticSite.get.root.toPath
-    def pathToResource(p: String) = Resource.File(p, siteRoot.resolve(p))
-
-    def harvestResources(path: String) =
-      val siteImgPath = siteRoot.resolve(path)
-      if !Files.exists(siteImgPath) then Nil
-      else
-        val allPaths = Files.walk(siteImgPath, FileVisitOption.FOLLOW_LINKS)
-        val files = allPaths.filter(Files.isRegularFile(_)).iterator().asScala
-        files.map(p => siteRoot.relativize(p).toString).toList
-
-    val staticResources = staticSite.toSeq.flatMap { _ =>
-      harvestResources("images") ++ harvestResources("resources")
-    }
-
-    val siteResourcesPaths = allPages.toSet.flatMap(specificResources) ++ staticResources
-
-    val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(allPages) ++ onlyRenderedResources
+    import scala.util.Using
+    import scala.jdk.CollectionConverters._
+    // All static site resources need to be in _assets folder
+    val staticSiteResources = staticSite
+      .map(_.root.toPath.resolve("_assets").toFile)
+      .filter(f => f.exists && f.isDirectory)
+      .toSeq
+      .flatMap { resourceFile =>
+        resourceFile.listFiles.toSeq.map(_.toPath).flatMap { file =>
+          Using(Files.walk(file)) { stream =>
+            stream.iterator().asScala.toSeq
+              .map(from => Resource.File(resourceFile.toPath.relativize(from).toString, from))
+          }.get
+        }
+      }
+    val resources = staticSiteResources ++ allResources(allPages) ++ onlyRenderedResources
     resources.flatMap(renderResource)
 
   def mkHead(page: Page): AppliedTag =
