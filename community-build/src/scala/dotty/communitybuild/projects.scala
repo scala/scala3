@@ -795,7 +795,7 @@ object projects:
     project = "http4s",
     sbtTestCommand = "set ThisBuild/tlFatalWarnings := false; test",
     sbtPublishCommand = "set ThisBuild/tlFatalWarnings := false; publishLocal",
-    dependencies = () => List(cats, catsEffect3, disciplineMunit, munitCatsEffect, scalacheckEffect)
+    dependencies = () => List(catsEffect3, disciplineMunit, munitCatsEffect, scalacheckEffect)
   )
 
 end projects
