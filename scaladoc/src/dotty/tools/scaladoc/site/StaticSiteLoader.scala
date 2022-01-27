@@ -13,8 +13,6 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
     "sidebar.yml"
   )
 
-  val docsDir = root.toPath.resolve("docs")
-
   def load(): StaticSiteRoot = {
     // Check whether there's YAML file defining static site structure
     possibleYamlFiles
@@ -27,7 +25,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
   }
 
   def loadBasedOnYaml(yamlRoot: Sidebar.Root): StaticSiteRoot = {
-    val rootDest = docsDir.resolve("index.html").toFile
+    val rootDest = ctx.docsPath.resolve("index.html").toFile
     val rootIndex = yamlRoot.index
       .map(Paths.get(root.getPath, _).toFile)
       .filter(_.exists)
@@ -63,6 +61,8 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
           filesInDirectory.fold(List.empty) { files =>
             val mappingFunc: File => File = file => {
               val relativeFile = root.toPath.resolve(indexPathDirectory).relativize(file.toPath)
+              println(file.toPath)
+              println(categoryPath.resolve(relativeFile))
               categoryPath.resolve(relativeFile).toFile
             }
             files.toList
@@ -85,15 +85,15 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
         // Cannot happen
         ???
     }
-    val rootTemplate = LoadedTemplate(rootIndex, yamlRoot.pages.map(c => loadChild(root.toPath.resolve("docs"))(c)), rootDest)
+    val rootTemplate = LoadedTemplate(rootIndex, yamlRoot.pages.map(c => loadChild(ctx.docsPath)(c)), rootDest)
     val mappings = createMapping(rootTemplate)
     StaticSiteRoot(rootTemplate, mappings)
   }
 
   def loadBasedOnFileSystem(): StaticSiteRoot = {
     val rootTemplate =
-      loadRecursively(docsDir.toFile).getOrElse(
-        LoadedTemplate(emptyTemplate(docsDir.resolve("index.html").toFile, "index"), List.empty, docsDir.resolve("index.html").toFile)
+      loadRecursively(ctx.docsPath.toFile).getOrElse(
+        LoadedTemplate(emptyTemplate(ctx.docsPath.resolve("index.html").toFile, "index"), List.empty, ctx.docsPath.resolve("index.html").toFile)
       )
 
     if rootTemplate.templateFile.title.name != "index" then {
@@ -145,7 +145,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
 
   private def relativizeIfNeeded(link: String): Path =
     val path = Paths.get(link)
-    if !path.isAbsolute then root.toPath.resolve(link)
+    if !path.isAbsolute then ctx.docsPath.resolve(link)
     else path
 
   extension (p: Path)

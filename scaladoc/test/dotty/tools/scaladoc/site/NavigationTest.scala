@@ -44,5 +44,5 @@ class NavigationTest extends BaseHtmlTest:
       )),
     ))
 
-    testNavMenu("docs/Adoc.html", topLevelNav)
+    testNavMenu("_docs/Adoc.html", topLevelNav)
   }

@@ -99,7 +99,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
     val all = navigablePage +: redirectPages
     // We need to check for conflicts only if we have top-level member called docs
     val hasPotentialConflict =
-      rootPackage.members.exists(m => m.name.startsWith("docs"))
+      rootPackage.members.exists(m => m.name.startsWith("_docs"))
 
     if hasPotentialConflict then
       def walk(page: Page): Unit =
