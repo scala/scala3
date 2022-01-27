@@ -25,9 +25,11 @@ class ExpressionTest:
     assert(result.contains(expected), s"expression [$expression] did not send [$expected] to stdout")
 
   @Test def verifyImports: Unit =
+
     val expressionLines = List(
       "import java.nio.file.Paths",
-      s"""println(Paths.get("\""."\"").toFile.listFiles.toList.filter(_.isDirectory).size)""",
+      "import dotty.tools.dotc.config.Properties.userDir",
+      s"""println(Paths.get(userDir).toFile.listFiles.toList.filter(_.isDirectory).size)""",
     )
     val expression = expressionLines.mkString(";")
     val success = testExpression(expression){ result =>
@@ -36,8 +38,7 @@ class ExpressionTest:
     assert(success)
 
   def getResult(expression: String): String =
-    val cmd = s"bin/scala -e $expression"
-    val (_, _, stdout, stderr) = bashCommand(s"""bin/scala -e '$expression'""")
+    val (_, _, stdout, stderr) = bashCommand(s"$scalaPath -e '$expression'")
     printf("stdout: %s\n", stdout.mkString("|"))
     printf("stderr: %s\n", stderr.mkString("\n","\n",""))
     stdout.filter(_.nonEmpty).mkString("")
