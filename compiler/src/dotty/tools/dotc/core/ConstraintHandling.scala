@@ -127,7 +127,20 @@ trait ConstraintHandling {
     * of some param when comparing types might lead to infinite recursion. Consider `bounds` instead.
     */
   def fullBounds(param: TypeParamRef)(using Context): TypeBounds =
-    nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
+    val lo = wrapRecursiveInLazy(fullLowerBound(param))
+    val hi = wrapRecursiveInLazy(fullUpperBound(param))
+    nonParamBounds(param).derivedTypeBounds(lo, hi)
+
+  def wrapRecursiveInLazy(tp: Type)(using Context) =
+    if IsRecursiveAccumulator()(false, tp) then LazyRef.of(tp)
+    else tp
+
+  class IsRecursiveAccumulator(using Context) extends TypeAccumulator[Boolean]:
+    private val seen = scala.collection.mutable.HashSet.empty[Type]
+    def apply(x: Boolean, tp: Type): Boolean = x || tp.match
+      case tp: LazyRef               => false
+      case tp @ TypeRef(NoPrefix, _) => if seen.add(tp) then apply(false, tp.info) else true
+      case _                         => foldOver(false, tp)
 
   /** An approximating map that prevents types nested deeper than maxLevel as
    *  well as WildcardTypes from leaking into the constraint.
