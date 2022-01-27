@@ -793,8 +793,8 @@ object projects:
 
   lazy val http4s = SbtCommunityProject(
     project = "http4s",
-    sbtTestCommand = "test",
-    sbtPublishCommand = "publishLocal",
+    sbtTestCommand = "set ThisBuild/tlFatalWarnings := false; test",
+    sbtPublishCommand = "set ThisBuild/tlFatalWarnings := false; publishLocal",
     dependencies = () => List(cats, catsEffect3, disciplineMunit, munitCatsEffect, scalacheckEffect)
   )
 
