@@ -795,7 +795,7 @@ object projects:
     project = "http4s",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = () => List(cats, catsEffect3, fs2, disciplineMunit, munitCatsEffect, scalacheckEffect)
+    dependencies = () => List(cats, catsEffect3, disciplineMunit, munitCatsEffect, scalacheckEffect)
   )
 
 end projects
