@@ -5,6 +5,7 @@ object Test:
     // Operations with constant arguments are constant-folded.
     summon[3L =:= 2L + 1L]
     summon[1L + 2L =:= 3L]
+    summon[3L * 2L + 1L =:= 4L * 2L - 1L]
 
     // Non-constant arguments are sorted.
     val m: Long = 2L

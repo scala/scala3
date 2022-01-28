@@ -176,10 +176,9 @@ object CompiletimeOpsNormalizer:
             case _ =>
               val beforeLast = dropCoefficient(splitOp(xSimp, tpnme.Times)._2)
               val last = dropCoefficient(ySimp)
-              dropCoefficient(beforeLast) <= dropCoefficient(last)
+              dropCoefficient(beforeLast) <= dropCoefficient(last) && beforeLast.exists
         if isNormalForm then None
         else Some((Sum.fromType(xSimp) * Sum.fromType(ySimp)).toType)
-    //res.map(x => println(x.show))
     res
 
   // ----- Ordering --------------------------------------------------------------------
