@@ -1,8 +1,20 @@
--- Error: tests/neg-custom-args/captures/real-try.scala:10:2 -----------------------------------------------------------
-10 |  try  // error
+-- Error: tests/neg-custom-args/captures/real-try.scala:12:2 -----------------------------------------------------------
+12 |  try  // error
    |  ^
-   |  result type {*} () -> Unit is not allowed to capture the universal capability *.type
-11 |    () => foo(1)
-12 |  catch
-13 |    case _: Ex1 => ???
-14 |    case _: Ex2 => ???
+   |  the expression's type {*} () -> Unit is not allowed to capture the root capability `*`
+13 |    () => foo(1)
+14 |  catch
+15 |    case _: Ex1 => ???
+16 |    case _: Ex2 => ???
+-- Error: tests/neg-custom-args/captures/real-try.scala:18:2 -----------------------------------------------------------
+18 |  try  // error
+   |  ^
+   |  the expression's type {*} () -> ? Cell[Unit] is not allowed to capture the root capability `*`
+19 |    () => Cell(foo(1))
+20 |  catch
+21 |    case _: Ex1 => ???
+22 |    case _: Ex2 => ???
+-- Error: tests/neg-custom-args/captures/real-try.scala:30:4 -----------------------------------------------------------
+30 |  b.x // error
+   |  ^^^
+   |  the expression's type box {*} () -> Unit is not allowed to capture the root capability `*`
