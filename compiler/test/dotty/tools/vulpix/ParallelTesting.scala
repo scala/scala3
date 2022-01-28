@@ -785,43 +785,32 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     //
     // We collect these in a map `"file:row" -> numberOfErrors`, for
     // nopos errors we save them in `"file" -> numberOfNoPosErrors`
-    def getErrorMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) = {
+    def getErrorMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) =
+      val comment = raw"//( *)(nopos-|anypos-)?error".r
       val errorMap = new HashMap[String, Integer]()
       var expectedErrors = 0
+      def bump(key: String): Unit =
+        errorMap.get(key) match
+          case null => errorMap.put(key, 1)
+          case n => errorMap.put(key, n+1)
+        expectedErrors += 1
       files.filter(isSourceFile).foreach { file =>
         Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
           source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
-            val errors = line.toSeq.sliding("// error".length).count(_.unwrap == "// error")
-            if (errors > 0)
-              errorMap.put(s"${file.getPath}:${lineNbr+1}", errors)
-
-            val noposErrors = line.toSeq.sliding("// nopos-error".length).count(_.unwrap == "// nopos-error")
-            if (noposErrors > 0) {
-              val nopos = errorMap.get("nopos")
-              val existing: Integer = if (nopos eq null) 0 else nopos
-              errorMap.put("nopos", noposErrors + existing)
+            comment.findAllMatchIn(line).foreach { m =>
+              m.group(2) match
+                case prefix if m.group(1).isEmpty =>
+                  val what = Option(prefix).getOrElse("")
+                  echo(s"Warning: ${file.getCanonicalPath}:${lineNbr}: found `//${what}error` but expected `// ${what}error`, skipping comment")
+                case "nopos-" => bump("nopos")
+                case "anypos-" => bump("anypos")
+                case _ => bump(s"${file.getPath}:${lineNbr+1}")
             }
-
-            val anyposErrors = line.toSeq.sliding("// anypos-error".length).count(_.unwrap == "// anypos-error")
-            if (anyposErrors > 0) {
-              val anypos = errorMap.get("anypos")
-              val existing: Integer = if (anypos eq null) 0 else anypos
-              errorMap.put("anypos", anyposErrors + existing)
-            }
-
-            val possibleTypos = List("//error" -> "// error", "//nopos-error" -> "// nopos-error", "//anypos-error" -> "// anypos-error")
-            for ((possibleTypo, expected) <- possibleTypos) {
-              if (line.contains(possibleTypo))
-                echo(s"Warning: Possible typo in error tag in file ${file.getCanonicalPath}:$lineNbr: found `$possibleTypo` but expected `$expected`")
-            }
-
-            expectedErrors += anyposErrors + noposErrors + errors
           }
         }.get
       }
-
       (errorMap, expectedErrors)
-    }
+    end getErrorMapAndExpectedCount
 
     // return unfulfilled expected errors and unexpected diagnostics
     def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[Diagnostic]): (List[String], List[String]) =
