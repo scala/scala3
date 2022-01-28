@@ -1151,35 +1151,26 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               case _ => tree1 :: rest1
           case nil => nil
       recur(trees, 0)
-  end extension
 
-  /** A treemap that generates the same contexts as the original typer for statements.
-   *  This means:
-   *    - statements that are not definitions get the exprOwner as owner
-   *    - imports are reflected in the contexts of subsequent statements
-   */
-  class TreeMapWithPreciseStatContexts(cpy: TreeCopier = tpd.cpy) extends TreeMap(cpy):
-
-    /** Transform statements, while maintaining import contexts and expression contexts
+    /** Transform statements while maintaining import contexts and expression contexts
      *  in the same way as Typer does. The code addresses additional concerns:
      *   - be tail-recursive where possible
      *   - don't re-allocate trees where nothing has changed
-     *   - avoid stack overflows for long statement lists
      */
-    override def transformStats(stats: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
+    inline def mapStatements(exprOwner: Symbol, inline op: Tree => Context ?=> Tree)(using Context): List[Tree] =
       @tailrec
       def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): List[Tree] =
         pending match
           case stat :: rest =>
-            def statCtx = stat match
+            val statCtx = stat match
               case _: DefTree | _: ImportOrExport => ctx
               case _ => ctx.exprContext(stat, exprOwner)
-            def restCtx = stat match
+            val stat1 = op(stat)(using statCtx)
+            val restCtx = stat match
               case stat: Import => ctx.importContext(stat, stat.symbol)
               case _ => ctx
-            val stat1 = transform(stat)(using statCtx)
             if stat1 eq stat then
-              loop(mapped, unchanged, rest)
+              loop(mapped, unchanged, rest)(using restCtx)
             else
               val buf = if mapped == null then new mutable.ListBuffer[Tree] else mapped
               var xc = unchanged
@@ -1194,9 +1185,18 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             if mapped == null then unchanged
             else mapped.prependToList(unchanged)
 
-      loop(null, stats, stats)
-    end transformStats
-  end TreeMapWithPreciseStatContexts
+      loop(null, trees, trees)
+    end mapStatements
+  end extension
+
+  /** A treemap that generates the same contexts as the original typer for statements.
+   *  This means:
+   *    - statements that are not definitions get the exprOwner as owner
+   *    - imports are reflected in the contexts of subsequent statements
+   */
+  class TreeMapWithPreciseStatContexts(cpy: TreeCopier = tpd.cpy) extends TreeMap(cpy):
+    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
+      trees.mapStatements(exprOwner, transform(_))
 
   /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.
    *  Also drops Inline and Block with no statements.
