@@ -89,26 +89,31 @@ object CompiletimeOpsNormalizer:
       def sorted: Product =
         Product(facts.sorted, c)
       def toType(using Context): Type =
-        (if c == 1 && facts.length > 0 then facts else ConstantType(Constant(c)) :: facts)
-          .reduceRight((l, r) => AppliedType(ops.multiplyType, List(l, r)))
+        val res = (if c == 1 && facts.length > 0 then facts else facts :+ ConstantType(Constant(c)))
+          .reduceLeft((l, r) => AppliedType(ops.multiplyType, List(l, r)))
+        res
+
+
+    def splitOp(tp: Type, name: Name) = tp match
+        case Op(`name`, List(x, y)) => (x, y)
+        case _ => (NoType, tp)
+
+    def splitProduct(tp: Type): (N, Type) =
+      val (init, last) = splitOp(tp, tpnme.Times)
+      last match
+        case ConstantType(Constant(c)) if ops.value.isDefinedAt(c) => (ops.value(c), init)
+        case _ => (ops.one, tp)
+
+    def dropCoefficient(tp: Type) = splitProduct(tp)._2
 
     object Product:
       def fromType(tp: Type) =
         def getFacts(tp: Type): List[Type] = tp match
-          case Op(tpnme.Times, List(x, y)) => x :: getFacts(y)
+          case Op(tpnme.Times, List(x, y)) => y :: getFacts(x)
+          case NoType => Nil
           case _ => List(tp)
-        tp match
-          case Op(tpnme.Times, List(ConstantType(Constant(c)), y)) if ops.value.isDefinedAt(c) =>
-            Product(getFacts(y), ops.value(c))
-          case ConstantType(Constant(c)) if ops.value.isDefinedAt(c) =>
-            Product(Nil, ops.value(c))
-          case _ =>
-            Product(List(tp), ops.one)
-
-    def dropCoefficient(tp: Type): Type = tp match
-      case Op(tpnme.Times, List(ConstantType(_), y)) => y
-      case ConstantType(_) => NoType
-      case _ => tp
+        val (c, tail) = splitProduct(tp)
+        Product(getFacts(tail), c)
 
     case class Sum(terms: List[Product]):
       infix def +(that: Sum) =
@@ -133,12 +138,12 @@ object CompiletimeOpsNormalizer:
           .map(_.toType)
           .toList
           .sortBy(dropCoefficient)
-          .reduceRight((l, r) => AppliedType(ops.addType, List(l, r)))
+          .reduceLeft((l, r) => AppliedType(ops.addType, List(l, r)))
 
     object Sum:
       def fromType(tp: Type) =
         def getTerms(tp: Type): List[Product] = tp match
-          case Op(tpnme.Plus, List(x, y)) => Product.fromType(x) :: getTerms(y)
+          case Op(tpnme.Plus, List(x, y)) => Product.fromType(y) :: getTerms(x)
           case _ => List(Product.fromType(tp))
         Sum(getTerms(tp))
 
@@ -151,30 +156,30 @@ object CompiletimeOpsNormalizer:
       case Op(tpnme.Minus,  List(x, y))   =>
         Some((Sum.fromType(simp(x)) + minusOne *  Sum.fromType(simp(y))).toType)
       case Op(tpnme.Plus,   List(x, y))   =>
-        val xNormalized = simp(x)
-        val yNormalized = simp(y)
-        val isNormalForm = xNormalized match
+        val xSimp = simp(x)
+        val ySimp = simp(y)
+        val isNormalForm = ySimp match
           case Op(tpnme.Plus, _) => false
           case _ =>
-            val fact1 = dropCoefficient(xNormalized)
-            val fact2 = dropCoefficient(
-              yNormalized match
-                case Op(tpnme.Plus, List(yX, _)) => yX
-                case _ => yNormalized
-            )
-            fact1 <= fact2 && (fact1 != fact2 || (fact2.exists && !isSingletonOrSingletonOp(fact2)))
+            val beforeLast = dropCoefficient(splitOp(xSimp, tpnme.Plus)._2)
+            val last = dropCoefficient(ySimp)
+            beforeLast <= last && (beforeLast != last || (beforeLast.exists && !isSingletonOrSingletonOp(beforeLast)))
         if isNormalForm then None
-        else Some((Sum.fromType(xNormalized) +  Sum.fromType(yNormalized)).toType)
+        else Some((Sum.fromType(xSimp) + Sum.fromType(ySimp)).toType)
       case Op(tpnme.Times,  List(x, y))   =>
-        val xNormalized = simp(x)
-        val yNormalized = simp(y)
-        val isNormalForm = xNormalized match
+        val xSimp = simp(x)
+        val ySimp = simp(y)
+        val isNormalForm = ySimp match
           case Op(tpnme.Plus | tpnme.Times, _) => false
-          case _ => yNormalized match
+          case _ => xSimp match
             case Op(tpnme.Plus, _) => false
-            case _ => dropCoefficient(xNormalized) <= dropCoefficient(yNormalized)
+            case _ =>
+              val beforeLast = dropCoefficient(splitOp(xSimp, tpnme.Times)._2)
+              val last = dropCoefficient(ySimp)
+              dropCoefficient(beforeLast) <= dropCoefficient(last)
         if isNormalForm then None
-        else Some((Sum.fromType(xNormalized) * Sum.fromType(yNormalized)).toType)
+        else Some((Sum.fromType(xSimp) * Sum.fromType(ySimp)).toType)
+    //res.map(x => println(x.show))
     res
 
   // ----- Ordering --------------------------------------------------------------------
@@ -182,13 +187,24 @@ object CompiletimeOpsNormalizer:
   def TypeOrdering(using Context) = new Ordering[Type]:
     val ListOrdering: Ordering[List[Type]] = scala.math.Ordering.Implicits.seqOrdering(this)
     def compare(a: Type, b: Type): Int = (a, b) match
-      case (NoType, NoType) => 0
-      case (NoType, _) => -1
-      case (_, NoType) => 1
+      case (AppliedType(opA: TypeRef, argsA), AppliedType(opB: TypeRef, argsB)) =>
+        val compareOp = NameOrdering.compare(opA.name, opB.name)
+        if compareOp != 0 then compareOp else ListOrdering.compare(argsA, argsB)
+      case (AppliedType(opA: TypeRef, _), _) => -1
+      case (_, AppliedType(opB: TypeRef, _)) => 1
 
-      case (NoPrefix, NoPrefix) => 0
-      case (NoPrefix, _) => -1
-      case (_, NoPrefix) => 1
+      case (ThisType(typeRefA), ThisType(typeRefB)) => compare(typeRefA, typeRefB)
+      case (_: ThisType, _) => -1
+      case (_, _: ThisType) => 1
+
+      case (a: NamedType, b: NamedType) =>
+        if a.isTerm && b.isType then -1
+        else if b.isType && a.isTerm then 1
+        else
+          val comparePrefix = compare(a.prefix, b.prefix)
+          if comparePrefix != 0 then comparePrefix else NameOrdering.compare(a.name, b.name)
+      case (_: NamedType, _) => -1
+      case (_, _: NamedType) => 1
 
       case (ConstantType(Constant(valueA: Short)), ConstantType(Constant(valueB: Short))) =>
         valueA compare valueB
@@ -220,23 +236,12 @@ object CompiletimeOpsNormalizer:
       case (ConstantType(Constant(_: String)), _) => -1
       case (_, ConstantType(Constant(_: String))) => 1
 
-      case (ThisType(typeRefA), ThisType(typeRefB)) => compare(typeRefA, typeRefB)
-      case (_: ThisType, _) => -1
-      case (_, _: ThisType) => 1
+      case (NoType, NoType) => 0
+      case (NoType, _) => -1
+      case (_, NoType) => 1
 
-      case (a: NamedType, b: NamedType) =>
-        if a.isTerm && b.isType then -1
-        else if b.isType && a.isTerm then 1
-        else
-          val comparePrefix = compare(a.prefix, b.prefix)
-          if comparePrefix != 0 then comparePrefix else NameOrdering.compare(a.name, b.name)
-      case (_: NamedType, _) => -1
-      case (_, _: NamedType) => 1
-
-      case (AppliedType(opA: TypeRef, argsA), AppliedType(opB: TypeRef, argsB)) =>
-        val compareOp = NameOrdering.compare(opA.name, opB.name)
-        if compareOp != 0 then compareOp else ListOrdering.compare(argsA, argsB)
-      case (AppliedType(opA: TypeRef, _), _) => -1
-      case (_, AppliedType(opB: TypeRef, _)) => 1
+      case (NoPrefix, NoPrefix) => 0
+      case (NoPrefix, _) => -1
+      case (_, NoPrefix) => 1
 
       case (a, b) => 0 // Not comparable
