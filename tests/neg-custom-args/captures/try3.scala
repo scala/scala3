@@ -14,12 +14,12 @@ def raise[E <: Exception](ex: E)(using CanThrow[E]): Nothing =
 
 @main def Test: Int =
   def f(a: Boolean) =
-    handle { // error
+    handle {
       if !a then raise(IOException())
       (b: Boolean) =>
         if !b then raise(IOException())
         0
-    } {
+    } {  // error
       ex => (b: Boolean) => -1
     }
   val g = f(true)

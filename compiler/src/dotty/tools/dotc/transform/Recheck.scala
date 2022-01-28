@@ -329,6 +329,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
         case tree: Alternative => recheckAlternative(tree, pt)
         case tree: PackageDef => recheckPackageDef(tree)
         case tree: Thicket => defn.NothingType
+        case tree: Import => defn.NothingType
 
       tree match
         case tree: NameTree => recheckNamed(tree, pt)

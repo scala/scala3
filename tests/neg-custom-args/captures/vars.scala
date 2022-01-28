@@ -11,7 +11,8 @@ def test(cap1: Cap, cap2: Cap) =
   val z2c: () -> Unit = z2  // error
 
   var a: String => String = f // error
-  var b: List[String => String] = Nil // error
+  var b: List[String => String] = Nil // was error, now OK
+  b.head // error
 
   def scope =
     val cap3: Cap = CC()
