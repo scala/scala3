@@ -4339,12 +4339,12 @@ object Types {
               case _ => None
             } else if (owner == defn.CompiletimeOpsIntModuleClass) name match {
               case tpnme.Abs        => constantFold1(intValue, _.abs)
-              case tpnme.Negate     => CompiletimeOpsNormalization.linearNormalForm[Int](this)
+              case tpnme.Negate     => CompiletimeOpsNormalizer.linearNormalForm[Int](this)
               // ToString is deprecated for ops.int, and moved to ops.any
               case tpnme.ToString   => constantFold1(intValue, _.toString)
-              case tpnme.Plus       => CompiletimeOpsNormalization.linearNormalForm[Int](this)
-              case tpnme.Minus      => CompiletimeOpsNormalization.linearNormalForm[Int](this)
-              case tpnme.Times      => CompiletimeOpsNormalization.linearNormalForm[Int](this)
+              case tpnme.Plus       => CompiletimeOpsNormalizer.linearNormalForm[Int](this)
+              case tpnme.Minus      => CompiletimeOpsNormalizer.linearNormalForm[Int](this)
+              case tpnme.Times      => CompiletimeOpsNormalizer.linearNormalForm[Int](this)
               case tpnme.Div        => constantFold2(intValue, _ / _)
               case tpnme.Mod        => constantFold2(intValue, _ % _)
               case tpnme.Lt         => constantFold2(intValue, _ < _)
@@ -4366,10 +4366,10 @@ object Types {
               case _ => None
             } else if (owner == defn.CompiletimeOpsLongModuleClass) name match {
               case tpnme.Abs        => constantFold1(longValue, _.abs)
-              case tpnme.Negate     => CompiletimeOpsNormalization.linearNormalForm[Long](this)
-              case tpnme.Plus       => CompiletimeOpsNormalization.linearNormalForm[Long](this)
-              case tpnme.Minus      => CompiletimeOpsNormalization.linearNormalForm[Long](this)
-              case tpnme.Times      => CompiletimeOpsNormalization.linearNormalForm[Long](this)
+              case tpnme.Negate     => CompiletimeOpsNormalizer.linearNormalForm[Long](this)
+              case tpnme.Plus       => CompiletimeOpsNormalizer.linearNormalForm[Long](this)
+              case tpnme.Minus      => CompiletimeOpsNormalizer.linearNormalForm[Long](this)
+              case tpnme.Times      => CompiletimeOpsNormalizer.linearNormalForm[Long](this)
               case tpnme.Div        => constantFold2(longValue, _ / _)
               case tpnme.Mod        => constantFold2(longValue, _ % _)
               case tpnme.Lt         => constantFold2(longValue, _ < _)

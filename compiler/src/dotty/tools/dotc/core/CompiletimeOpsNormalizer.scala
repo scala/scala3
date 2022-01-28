@@ -13,7 +13,7 @@ import Symbols._
 import SymDenotations.NoDenotation
 import Types._
 
-object CompiletimeOpsNormalization:
+object CompiletimeOpsNormalizer:
   trait Normalizable[T]:
     def moduleClass(using Context): Symbol
     def addType(using Context): Type
@@ -69,53 +69,16 @@ object CompiletimeOpsNormalization:
               Some((tycon.symbol.name, args))
           case _ => None
 
-    def dropCoefficient(tp: Type): Type = tp match
-      case Op(tpnme.Times, List(ConstantType(_), y)) => y
+    def isSingletonOrSingletonOp(tp: Type): Boolean = tp match
+      case Op(_, args) => args.forall(isSingletonOrSingletonOp)
+      case _: SingletonType => true
+      case _ => false
+
+    def underlyingSingletonDeep(tp: Type)(using Context): Type = tp match
+      case tp: SingletonType if isSingletonOrSingletonOp(tp.underlying) => tp.underlying
       case _ => tp
 
-    def isFactor(tp: Type): Boolean = tp.dealias match
-      case ConstantType(Constant(_))
-        | Op(tpnme.Negate, List(_))
-        | Op(tpnme.Plus,   List(_, _))
-        | Op(tpnme.Minus,  List(_, _))
-        | Op(tpnme.Times,  List(_, _)) => false
-      case _ => true
-
-    @annotation.tailrec
-    def isFactorsNormalForm(tp: Type, max: Type = NoType): Boolean = tp.dealias match
-      case Op(tpnme.Times, List(x, y)) =>
-        x >= max && isFactor(x)
-          && isFactorsNormalForm(y, x)
-      case tp =>
-        tp >= max
-          && isFactor(tp)
-
-    @annotation.tailrec
-    def isTermsNormalForm(tp: Type, max: Type = NoType): Boolean = tp.dealias match
-      case Op(tpnme.Plus, List(x, y)) =>
-        val xFactors = dropCoefficient(x)
-        xFactors != max && xFactors >= max
-          && isFactorsNormalForm(xFactors)
-          && isTermsNormalForm(y, xFactors)
-      case _ =>
-        val tpFactors = dropCoefficient(tp)
-        tpFactors != max && tpFactors >= max
-          && isFactorsNormalForm(tpFactors)
-
-    def isNormalForm(tp: Type) = tp match
-      case ConstantType(_) => true
-      case Op(tpnme.Plus, List(ConstantType(_), y)) => isTermsNormalForm(y)
-      case _ => isTermsNormalForm(tp)
-
-    def stableGroupReduce[K, T](seq: Seq[T], key: (T) => K, reduce: (T, T) => T) =
-      val m = mutable.LinkedHashMap.empty[K, T]
-      for (elem <- seq) do
-        val k = key(elem)
-        val v = m.get(k) match
-            case Some(b) => reduce(b, elem)
-            case None    => elem
-        m.put(k, v)
-      m
+    def simp(tp: Type) = underlyingSingletonDeep(tp.normalized.dealias)
 
     case class Product(facts: List[Type], c: N):
       infix def +(that: Product) =
@@ -129,47 +92,90 @@ object CompiletimeOpsNormalization:
         (if c == 1 && facts.length > 0 then facts else ConstantType(Constant(c)) :: facts)
           .reduceRight((l, r) => AppliedType(ops.multiplyType, List(l, r)))
 
-    case class Sum(prods: List[Product]):
+    object Product:
+      def fromType(tp: Type) =
+        def getFacts(tp: Type): List[Type] = tp match
+          case Op(tpnme.Times, List(x, y)) => x :: getFacts(y)
+          case _ => List(tp)
+        tp match
+          case Op(tpnme.Times, List(ConstantType(Constant(c)), y)) if ops.value.isDefinedAt(c) =>
+            Product(getFacts(y), ops.value(c))
+          case ConstantType(Constant(c)) if ops.value.isDefinedAt(c) =>
+            Product(Nil, ops.value(c))
+          case _ =>
+            Product(List(tp), ops.one)
+
+    def dropCoefficient(tp: Type): Type = tp match
+      case Op(tpnme.Times, List(ConstantType(_), y)) => y
+      case ConstantType(_) => NoType
+      case _ => tp
+
+    case class Sum(terms: List[Product]):
       infix def +(that: Sum) =
-        Sum(prods ++ that.prods)
+        Sum(terms ++ that.terms)
       infix def *(that: Sum) =
-        Sum(for p1 <- prods; p2 <- that.prods yield p1 * p2)
+        Sum(for p1 <- terms; p2 <- that.terms yield p1 * p2)
       def toType(using Context): Type =
-        stableGroupReduce(prods.map(_.sorted), _.facts, _ + _)
+        val groupedSingletonProds = mutable.LinkedHashMap.empty[List[Type], Product]
+        val nonSingletonProds = mutable.ArrayBuffer.empty[Product]
+        for(prod <- terms.map(_.sorted)) do
+          if prod.facts.forall(isSingletonOrSingletonOp) then
+            groupedSingletonProds.updateWith(prod.facts)({
+              case Some(prev) => Some(prev + prod)
+              case None       => Some(prod)
+            })
+          else
+            nonSingletonProds.addOne(prod)
+
+        groupedSingletonProds
           .values
+          .concat(nonSingletonProds)
           .map(_.toType)
           .toList
           .sortBy(dropCoefficient)
           .reduceRight((l, r) => AppliedType(ops.addType, List(l, r)))
 
-    def constant(c: N) = Sum(List(Product(Nil, c)))
-    val minusOne = constant(ops.minusOne)
+    object Sum:
+      def fromType(tp: Type) =
+        def getTerms(tp: Type): List[Product] = tp match
+          case Op(tpnme.Plus, List(x, y)) => Product.fromType(x) :: getTerms(y)
+          case _ => List(Product.fromType(tp))
+        Sum(getTerms(tp))
+
+    val minusOne = Sum(List(Product(Nil, ops.minusOne)))
     def single(tp: Type) = Sum(List(Product(List(tp), ops.one)))
 
-    def isSingletonOp(tp: Type): Boolean =
-      tp.dealias match
-        case Op(_, args) => args.forall(isSingletonOp)
-        case _: SingletonType => true
-        case _ => false
-
-    def convert(tp: Type): Sum = tp.dealias match
-      case ConstantType(Constant(c))      => constant(ops.value(c))
-      case Op(tpnme.Negate, List(x))      => minusOne * convert(x)
-      case Op(tpnme.Plus,   List(x, y))   => convert(x) + convert(y)
-      case Op(tpnme.Minus,  List(x, y))   => convert(x) + minusOne * convert(y)
-      case Op(tpnme.Times,  List(x, y))   => convert(x) * convert(y)
-      case singTp: SingletonType if isSingletonOp(singTp.underlying) =>
-        convert(singTp.underlying)
-      case _ => tp.tryNormalize match
-        case NoType => single(tp)
-        case normalized => convert(normalized)
-
-    if !isSingletonOp(tp) || isNormalForm(tp) then
-      None
-    else
-      val result = convert(tp).toType
-      assert(isNormalForm(result), f"Not a normal form: ${result.show}")
-      Some(result)
+    val res = tp match
+      case Op(tpnme.Negate, List(x))      =>
+        Some((minusOne * Sum.fromType(simp(x))).toType)
+      case Op(tpnme.Minus,  List(x, y))   =>
+        Some((Sum.fromType(simp(x)) + minusOne *  Sum.fromType(simp(y))).toType)
+      case Op(tpnme.Plus,   List(x, y))   =>
+        val xNormalized = simp(x)
+        val yNormalized = simp(y)
+        val isNormalForm = xNormalized match
+          case Op(tpnme.Plus, _) => false
+          case _ =>
+            val fact1 = dropCoefficient(xNormalized)
+            val fact2 = dropCoefficient(
+              yNormalized match
+                case Op(tpnme.Plus, List(yX, _)) => yX
+                case _ => yNormalized
+            )
+            fact1 <= fact2 && (fact1 != fact2 || (fact2.exists && !isSingletonOrSingletonOp(fact2)))
+        if isNormalForm then None
+        else Some((Sum.fromType(xNormalized) +  Sum.fromType(yNormalized)).toType)
+      case Op(tpnme.Times,  List(x, y))   =>
+        val xNormalized = simp(x)
+        val yNormalized = simp(y)
+        val isNormalForm = xNormalized match
+          case Op(tpnme.Plus | tpnme.Times, _) => false
+          case _ => yNormalized match
+            case Op(tpnme.Plus, _) => false
+            case _ => dropCoefficient(xNormalized) <= dropCoefficient(yNormalized)
+        if isNormalForm then None
+        else Some((Sum.fromType(xNormalized) * Sum.fromType(yNormalized)).toType)
+    res
 
   // ----- Ordering --------------------------------------------------------------------
 
