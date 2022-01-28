@@ -10,7 +10,7 @@ Today, we are excited to release Dotty version 0.2.0-RC1. This release
 serves as a technology preview that demonstrates new language features
 and the compiler supporting them.
 
-This release is based on the [previous milestone](/blog/_posts/2017-05-31-first-dotty-milestone-release.html).
+This release is based on the [previous milestone](/_blog/_posts/2017-05-31-first-dotty-milestone-release.html).
 The highlights of this release are:
  - substantial improvement of quality of generated code for pattern matching
  - improvements in VS Code IDE stability
@@ -24,7 +24,7 @@ The highlights of this release are:
 This is our second scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
 
 ## What’s in the 0.2.0-RC1 technology preview?
-The [previous technology preview](/blog/_posts/2017-05-31-first-dotty-milestone-release.html) has shipped new language features planned for Scala 3:
+The [previous technology preview](/_blog/_posts/2017-05-31-first-dotty-milestone-release.html) has shipped new language features planned for Scala 3:
 [Intersection Types](https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html),
 [Union Types](https://dotty.epfl.ch/docs/reference/new-types/union-types.html),
 [Trait Parameters](https://dotty.epfl.ch/docs/reference/other-new-features/trait-parameters.html),

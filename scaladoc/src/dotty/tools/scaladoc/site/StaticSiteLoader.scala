@@ -61,8 +61,6 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
           filesInDirectory.fold(List.empty) { files =>
             val mappingFunc: File => File = file => {
               val relativeFile = root.toPath.resolve(indexPathDirectory).relativize(file.toPath)
-              println(file.toPath)
-              println(categoryPath.resolve(relativeFile))
               categoryPath.resolve(relativeFile).toFile
             }
             files.toList
@@ -85,7 +83,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
         // Cannot happen
         ???
     }
-    val rootTemplate = LoadedTemplate(rootIndex, yamlRoot.pages.map(c => loadChild(ctx.docsPath)(c)), rootDest)
+    val rootTemplate = LoadedTemplate(rootIndex, yamlRoot.pages.map(c => loadChild(ctx.docsPath)(c)) ++ loadBlog(), rootDest)
     val mappings = createMapping(rootTemplate)
     StaticSiteRoot(rootTemplate, mappings)
   }
@@ -103,8 +101,56 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
     val withChangedTitle =
       rootTemplate.copy(templateFile = rootTemplate.templateFile.copy(title = TemplateName.FilenameDefined(args.name)))
 
-    val mappings = createMapping(withChangedTitle)
-    StaticSiteRoot(withChangedTitle, mappings)
+    val withBlog = loadBlog().fold(withChangedTitle)(blog => withChangedTitle.copy(children = withChangedTitle.children :+ blog))
+
+    val mappings = createMapping(withBlog)
+    StaticSiteRoot(withBlog, mappings)
+  }
+
+  def loadBlog(): Option[LoadedTemplate] = {
+    type Date = (String, String, String)
+    val rootPath = ctx.blogPath
+    if (!Files.exists(rootPath)) None
+    else {
+      val indexPageOpt = Seq(
+          rootPath.resolve("index.md"),
+          rootPath.resolve("index.html"),
+      ).filter(p => Files.exists(p)) match {
+          case Nil => None
+          case indexPath :: Nil => Some(indexPath)
+          case list =>
+            report.warning(s"Multiple index pages for $rootPath found in ${list.map(_.toFile)}. Defaulting to first.")
+            list.headOption
+      }
+      val indexTemplateOpt = indexPageOpt.map(p => loadTemplateFile(p.toFile))
+
+      val indexPage = indexTemplateOpt.getOrElse(emptyTemplate(rootPath.resolve("index.html").toFile, "Blog"))
+      val indexDest = ctx.docsPath.resolve("_blog").resolve("index.html")
+      val regex = raw"(\d*)-(\d*)-(\d*)-(.*)".r
+      def splitDateName(tf: TemplateFile): (Date, String) = tf.file.getName match
+          case regex(year, month, day, name) => ((year, month, day), name)
+          case name =>
+            report.warn("Incorrect file name for blog post. Post file name should be in format <year>-<month>-<day>-<name>", tf.file)
+            (("1900","01","01"), name)
+
+      def dateFrom(tf: TemplateFile, default: String = "1900-01-01"): String =
+        val pageSettings = tf.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
+        pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse(default) // blogs without date are last
+
+      val posts = List(rootPath.resolve("_posts"))
+        .filter(Files.exists(_))
+        .flatMap(_.toFile.listFiles)
+        .filterNot(_.isDirectory)
+        .map { postFile =>
+          val templateFile = loadTemplateFile(postFile)
+          val ((year, month, day), name) = splitDateName(templateFile)
+          val destPath = ctx.docsPath.resolve("_blog").resolve(year).resolve(month).resolve(day).resolve(name)
+          val date = dateFrom(templateFile, s"$year-$month-$day")
+          date -> LoadedTemplate(templateFile, List.empty, destPath.toFile)
+        }.sortBy(_._1).reverse.map(_._2)
+
+      Some(LoadedTemplate(indexPage, posts, indexDest.toFile))
+    }
   }
 
   def loadRecursively(currRoot: File, destMappingFunc: File => File = identity): Option[LoadedTemplate] = {

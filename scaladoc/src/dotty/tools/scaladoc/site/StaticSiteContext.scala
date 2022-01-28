@@ -21,6 +21,7 @@ class StaticSiteContext(
   var memberLinkResolver: String => Option[DRI] = _ => None
 
   val docsPath = root.toPath.resolve("_docs")
+  val blogPath = root.toPath.resolve("_blog")
 
   val relativizeFrom = if args.apiSubdirectory then docsPath else root.toPath
 
@@ -100,7 +101,7 @@ class StaticSiteContext(
 
     DRI.forPath(relativePath)
 
-  def relativePath(myTemplate: LoadedTemplate) = relativizeFrom.relativize(myTemplate.file.toPath)
+  def pathFromRoot(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
 
   val projectWideProperties =
     Seq("projectName" -> args.name) ++
