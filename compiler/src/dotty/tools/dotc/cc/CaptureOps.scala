@@ -3,7 +3,7 @@ package dotc
 package cc
 
 import core.*
-import Types.*, Symbols.*, Contexts.*, Annotations.*
+import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
 import config.Printers.capt
@@ -85,3 +85,27 @@ extension (tp: Type)
         isImpure = true).appliedTo(args)
     case _ =>
       tp
+
+extension (sym: Symbol)
+
+  /** Does this symbol allow results carrying the universal capability?
+   *  Currently this is true only for function type applies (since their
+   *  results are unboxed) and `erasedValue` since this function is magic in
+   *  that is allows to conjure global capabilies from nothing (aside: can we find a
+   *  more controlled way to achieve this?).
+   *  But it could be generalized to other functions that so that they can take capability
+   *  classes as arguments.
+   */
+  def allowsRootCapture(using Context): Boolean =
+    sym == defn.Compiletime_erasedValue
+    || defn.isFunctionClass(sym.maybeOwner)
+
+  def unboxesResult(using Context): Boolean =
+    def containsEnclTypeParam(tp: Type): Boolean = tp.strippedDealias match
+      case tp @ TypeRef(pre: ThisType, _) => tp.symbol.is(Param)
+      case tp: TypeParamRef => true
+      case tp: AndOrType => containsEnclTypeParam(tp.tp1) || containsEnclTypeParam(tp.tp2)
+      case tp: RefinedType => containsEnclTypeParam(tp.parent) || containsEnclTypeParam(tp.refinedInfo)
+      case _ => false
+    containsEnclTypeParam(sym.info.finalResultType)
+    && !sym.allowsRootCapture
