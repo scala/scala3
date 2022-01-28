@@ -1153,10 +1153,54 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       recur(trees, 0)
   end extension
 
+  /** A treemap that generates the same contexts as the original typer for statements.
+   *  This means:
+   *    - statements that are not definitions get the exprOwner as owner
+   *    - imports are reflected in the contexts of subsequent statements
+   */
+  class TreeMapWithPreciseStatContexts(cpy: TreeCopier = tpd.cpy) extends TreeMap(cpy):
+
+    /** Transform statements, while maintaining import contexts and expression contexts
+     *  in the same way as Typer does. The code addresses additional concerns:
+     *   - be tail-recursive where possible
+     *   - don't re-allocate trees where nothing has changed
+     */
+    override def transformStats(stats: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
+
+      @tailrec def traverse(curStats: List[Tree])(using Context): List[Tree] =
+
+        def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(using Context): List[Tree] =
+          if stats eq curStats then
+            val rest1 = transformStats(rest, exprOwner)
+            changed match
+              case Thicket(trees) => trees ::: rest1
+              case tree => tree :: rest1
+          else
+            stats.head :: recur(stats.tail, changed, rest)
+
+        curStats match
+          case stat :: rest =>
+            val statCtx = stat match
+              case _: DefTree | _: ImportOrExport => ctx
+              case _ => ctx.exprContext(stat, exprOwner)
+            val restCtx = stat match
+              case stat: Import => ctx.importContext(stat, stat.symbol)
+              case _ => ctx
+            val stat1 = transform(stat)(using statCtx)
+            if stat1 ne stat then recur(stats, stat1, rest)(using restCtx)
+            else traverse(rest)(using restCtx)
+          case nil =>
+            stats
+
+      traverse(stats)
+    end transformStats
+
+  end TreeMapWithPreciseStatContexts
+
   /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.
    *  Also drops Inline and Block with no statements.
    */
-  class MapToUnderlying extends TreeMap {
+  private class MapToUnderlying extends TreeMap {
     override def transform(tree: Tree)(using Context): Tree = tree match {
       case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) =>
         tree.symbol.defTree match {

@@ -29,18 +29,10 @@ abstract class MacroTransform extends Phase {
    */
   protected def transformPhase(using Context): Phase = this
 
-  class Transformer extends TreeMap(cpy = cpyBetweenPhases) {
+  class Transformer extends TreeMapWithPreciseStatContexts(cpy = cpyBetweenPhases):
 
-    protected def localCtx(tree: Tree)(using Context): FreshContext = 
+    protected def localCtx(tree: Tree)(using Context): FreshContext =
       ctx.fresh.setTree(tree).setOwner(localOwner(tree))
-
-    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
-      def transformStat(stat: Tree): Tree = stat match {
-        case _: Import | _: DefTree => transform(stat)
-        case _ => transform(stat)(using ctx.exprContext(stat, exprOwner))
-      }
-      flatten(trees.mapconserve(transformStat(_)))
-    }
 
     override def transform(tree: Tree)(using Context): Tree =
       try
@@ -67,5 +59,5 @@ abstract class MacroTransform extends Phase {
 
     def transformSelf(vd: ValDef)(using Context): ValDef =
       cpy.ValDef(vd)(tpt = transform(vd.tpt))
-  }
+  end Transformer
 }
