@@ -56,7 +56,7 @@ trait SiteRenderer(using DocContext) extends Locations:
         .orElse(asStaticSite)
         .orElse(asAsset)
         .getOrElse {
-          report.warn(s"Unable to resolve link '$str'", content.template.file)
+          report.warn(s"Unable to resolve link '$str'", content.template.templateFile.file)
           str
         }
 

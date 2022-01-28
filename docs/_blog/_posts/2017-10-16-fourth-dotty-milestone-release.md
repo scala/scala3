@@ -20,7 +20,7 @@ You can learn more about Dotty on our [website](http://dotty.epfl.ch).
 <!--more-->
 
 This is our fourth scheduled release according to our [6-week release schedule](https://dotty.epfl.ch/docs/usage/version-numbers.html).
-The [previous technology preview](/blog/_posts/2017-09-07-third-dotty-milestone-release.html) improved
+The [previous technology preview](/_blog/_posts/2017-09-07-third-dotty-milestone-release.html) improved
 stability and reliability.
 
 ## What’s new in the 0.4.0-RC1 technology preview?
