@@ -47,11 +47,7 @@ def assertThrows[T <: Throwable: ClassTag](p: T => Boolean)(body: => Any): Unit 
 end assertThrows
 
 def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): List[String] =
-  files.flatMap(path => toolArgsParse {
-    val stream = Files.lines(path, charset)
-    try stream.limit(10).toScala(List)
-    finally stream.close()
-  })
+  files.flatMap(path => toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List))))
 
 // Inspect the first 10 of the given lines for compiler options of the form
 // `// scalac: args`, `/* scalac: args`, ` * scalac: args`.
