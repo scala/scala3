@@ -76,16 +76,6 @@ object CheckCaptures:
       if remaining.accountsFor(firstRef) then
         report.warning(em"redundant capture: $remaining already accounts for $firstRef", ann.srcPos)
 
-  /** Does this function allow type arguments carrying the universal capability?
-   *  Currently this is true only for `erasedValue` since this function is magic in
-   *  that is allows to conjure global capabilies from nothing (aside: can we find a
-   *  more controlled way to achieve this?).
-   *  But it could be generalized to other functions that so that they can take capability
-   *  classes as arguments.
-   */
-  private def allowUniversalArguments(fn: Tree)(using Context): Boolean =
-    fn.symbol == defn.Compiletime_erasedValue
-
 class CheckCaptures extends Recheck:
   thisPhase =>
 
@@ -309,6 +299,26 @@ class CheckCaptures extends Recheck:
         includeBoxedCaptures(res, tree.srcPos)
       res
 
+    override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
+      val typeToCheck = tree match
+        case _: Ident | _: Select | _: Apply | _: TypeApply if tree.symbol.unboxesResult =>
+          tpe
+        case _: Try =>
+          tpe
+        case ValDef(_, tpt, _) if tree.symbol.is(Mutable) =>
+          tree.symbol.info
+        case _ =>
+          NoType
+      if typeToCheck.exists then
+        typeToCheck.widenDealias match
+          case wtp @ CapturingType(parent, refs, _) =>
+            refs.disallowRootCapability { () =>
+              val kind = if tree.isInstanceOf[ValDef] then "mutable variable" else "expression"
+              report.error(em"the $kind's type $wtp is not allowed to capture the root capability `*`", tree.srcPos)
+            }
+          case _ =>
+      super.recheckFinish(tpe, tree, pt)
+
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       Setup(preRecheckPhase, thisPhase, recheckDef)
         .traverse(ctx.compilationUnit.tpdTree)
@@ -318,45 +328,6 @@ class CheckCaptures extends Recheck:
         if ctx.settings.YccDebug.value then
           show(unit.tpdTree) // this dows not print tree, but makes its variables visible for dependency printing
       }
-
-    def checkNotGlobal(tree: Tree, tp: Type, isVar: Boolean, allArgs: Tree*)(using Context): Unit =
-      for ref <- tp.captureSet.elems do
-        val isGlobal = ref match
-          case ref: TermRef => ref.isRootCapability
-          case _ => false
-        if isGlobal then
-          val what = if ref.isRootCapability then "universal" else "global"
-          val notAllowed = i" is not allowed to capture the $what capability $ref"
-          def msg =
-            if allArgs.isEmpty then
-              i"${if isVar then "type of mutable variable" else "result type"} ${tree.knownType}$notAllowed"
-            else tree match
-              case tree: InferredTypeTree =>
-                i"""inferred type argument ${tree.knownType}$notAllowed
-                    |
-                    |The inferred arguments are: [${allArgs.map(_.knownType)}%, %]"""
-              case _ => s"type argument$notAllowed"
-          report.error(msg, tree.srcPos)
-
-    def checkNotGlobal(tree: Tree, allArgs: Tree*)(using Context): Unit =
-      tree match
-        case LambdaTypeTree(_, restpt) =>
-          checkNotGlobal(restpt, allArgs*)
-        case _ =>
-          checkNotGlobal(tree, tree.knownType, isVar = false, allArgs*)
-
-    def checkNotGlobalDeep(tree: Tree)(using Context): Unit =
-      val checker = new TypeTraverser:
-        def traverse(tp: Type): Unit = tp match
-          case tp: TypeRef =>
-            tp.info match
-              case TypeBounds(_, hi) => traverse(hi)
-              case _ =>
-          case tp: TermRef =>
-          case _ =>
-            checkNotGlobal(tree, tp, isVar = true)
-            traverseChildren(tp)
-      checker.traverse(tree.knownType)
 
     object PostCheck extends TreeTraverser:
       def traverse(tree: Tree)(using Context) = trace{i"post check $tree"} {
@@ -370,10 +341,6 @@ class CheckCaptures extends Recheck:
                 checkWellformedPost(annot.tree)
               case _ =>
             }
-          case tree1 @ TypeApply(fn, args) if !allowUniversalArguments(fn) =>
-            for arg <- args do
-              //println(i"checking $arg in $tree: ${tree.knownType.captureSet}")
-              checkNotGlobal(arg, args*)
           case t: ValOrDefDef if t.tpt.isInstanceOf[InferredTypeTree] =>
             val sym = t.symbol
             val isLocal =
@@ -396,10 +363,6 @@ class CheckCaptures extends Recheck:
                         |The type needs to be declared explicitly.""", t.srcPos)
                 case _ =>
               inferred.foreachPart(checkPure, StopAt.Static)
-          case t: ValDef if t.symbol.is(Mutable) =>
-            checkNotGlobalDeep(t.tpt)
-          case t: Try =>
-            checkNotGlobal(t)
           case _ =>
         traverseChildren(tree)
       }

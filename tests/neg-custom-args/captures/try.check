@@ -1,3 +1,11 @@
+-- Error: tests/neg-custom-args/captures/try.scala:24:3 ----------------------------------------------------------------
+22 |  val a = handle[Exception, CanThrow[Exception]] {
+23 |    (x: CanThrow[Exception]) => x
+24 |  }{ // error
+   |          ^
+   |          the expression's type {*} CT[Exception] is not allowed to capture the root capability `*`
+25 |    (ex: Exception) => ???
+26 |  }
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:28:43 ------------------------------------------
 28 |  val b = handle[Exception, () -> Nothing] {  // error
    |                                           ^
@@ -7,19 +15,25 @@
 30 |  } {
 
 longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/try.scala:22:28 ---------------------------------------------------------------
-22 |  val a = handle[Exception, CanThrow[Exception]] { // error
-   |                            ^^^^^^^^^^^^^^^^^^^
-   |                            type argument is not allowed to capture the universal capability (* : Any)
--- Error: tests/neg-custom-args/captures/try.scala:34:11 ---------------------------------------------------------------
-34 |  val xx = handle { // error
-   |           ^^^^^^
-   |           inferred type argument {*} () -> Int is not allowed to capture the universal capability (* : Any)
-   |
-   |           The inferred arguments are: [? Exception, {*} () -> Int]
--- Error: tests/neg-custom-args/captures/try.scala:46:13 ---------------------------------------------------------------
-46 |val global = handle {  // error
-   |             ^^^^^^
-   |             inferred type argument {*} () -> Int is not allowed to capture the universal capability (* : Any)
-   |
-   |             The inferred arguments are: [? Exception, {*} () -> Int]
+-- Error: tests/neg-custom-args/captures/try.scala:39:4 ----------------------------------------------------------------
+34 |  val xx = handle {
+35 |    (x: CanThrow[Exception]) =>
+36 |      () =>
+37 |        raise(new Exception)(using x)
+38 |        22
+39 |  } {  // error
+   |           ^
+   |           the expression's type {*} () -> Int is not allowed to capture the root capability `*`
+40 |    (ex: Exception) => () => 22
+41 |  }
+-- Error: tests/neg-custom-args/captures/try.scala:51:2 ----------------------------------------------------------------
+46 |val global = handle {
+47 |  (x: CanThrow[Exception]) =>
+48 |    () =>
+49 |      raise(new Exception)(using x)
+50 |      22
+51 |} {  // error
+   |             ^
+   |             the expression's type {*} () -> Int is not allowed to capture the root capability `*`
+52 |  (ex: Exception) => () => 22
+53 |}
