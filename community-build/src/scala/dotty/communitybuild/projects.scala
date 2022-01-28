@@ -290,7 +290,7 @@ object projects:
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test;js/test",
-    sbtPublishCommand = "jvm/publishLocal;js/publishLocal",
+    sbtPublishCommand = "set jvm/publish/skip := false; jvm/publishLocal; set js/publish/skip := false; js/publishLocal",
     sbtDocCommand = forceDoc("jvm")
   )
 
