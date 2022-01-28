@@ -19,9 +19,9 @@ def handle[E <: Exception, R <: Top](op: CanThrow[E] => R)(handler: E => R): R =
   catch case ex: E => handler(ex)
 
 def test =
-  val a = handle[Exception, CanThrow[Exception]] { // error
+  val a = handle[Exception, CanThrow[Exception]] {
     (x: CanThrow[Exception]) => x
-  }{
+  }{ // error
     (ex: Exception) => ???
   }
 
@@ -31,23 +31,23 @@ def test =
     (ex: Exception) => ???
   }
 
-  val xx = handle { // error
+  val xx = handle {
     (x: CanThrow[Exception]) =>
       () =>
         raise(new Exception)(using x)
         22
-  } {
+  } {  // error
     (ex: Exception) => () => 22
   }
   val yy = xx :: Nil
   yy // OK
 
 
-val global = handle {  // error
+val global = handle {
   (x: CanThrow[Exception]) =>
     () =>
       raise(new Exception)(using x)
       22
-} {
+} {  // error
   (ex: Exception) => () => 22
 }
