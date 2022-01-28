@@ -172,6 +172,10 @@ sealed abstract class CaptureSet extends Showable:
   def - (ref: CaptureRef)(using Context): CaptureSet =
     this -- ref.singletonCaptureSet
 
+  def disallowRootCapability(handler: () => Unit)(using Context): this.type =
+    if isUniversal then handler()
+    this
+
   def filter(p: CaptureRef => Boolean)(using Context): CaptureSet =
     if this.isConst then
       val elems1 = elems.filter(p)
@@ -276,6 +280,7 @@ object CaptureSet:
     var deps: Deps = emptySet
     def isConst = isSolved
     def isAlwaysEmpty = false
+    var addRootHandler: () => Unit = () => ()
 
     private def recordElemsState()(using VarState): Boolean =
       varState.getElems(this) match
@@ -296,6 +301,7 @@ object CaptureSet:
     def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       if !isConst && recordElemsState() then
         elems ++= newElems
+        if isUniversal then addRootHandler()
         // assert(id != 2 || elems.size != 2, this)
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
@@ -311,6 +317,10 @@ object CaptureSet:
         CompareResult.OK
       else
         CompareResult.fail(this)
+
+    override def disallowRootCapability(handler: () => Unit)(using Context): this.type =
+      addRootHandler = handler
+      super.disallowRootCapability(handler)
 
     private var computingApprox = false
 
