@@ -249,4 +249,4 @@
 	url = https://github.com/dotty-staging/scalacheck
 [submodule "community-build/community-projects/http4s"]
 	path = community-build/community-projects/http4s
-	url = https://github.com/http4s/http4s.git
+	url = https://github.com/dotty-staging/http4s.git
