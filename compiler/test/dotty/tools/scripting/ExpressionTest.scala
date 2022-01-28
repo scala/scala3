@@ -25,11 +25,10 @@ class ExpressionTest:
     assert(result.contains(expected), s"expression [$expression] did not send [$expected] to stdout")
 
   @Test def verifyImports: Unit =
-
     val expressionLines = List(
       "import java.nio.file.Paths",
-      "import dotty.tools.dotc.config.Properties.userDir",
-      s"""println(Paths.get(userDir).toFile.listFiles.toList.filter(_.isDirectory).size)""",
+      "import scala.util.Properties.userDir",
+      "println(Paths.get(userDir).toFile.listFiles.toList.filter(_.isDirectory).size)",
     )
     val expression = expressionLines.mkString(";")
     val success = testExpression(expression){ result =>
@@ -40,11 +39,18 @@ class ExpressionTest:
   def getResult(expression: String): String =
     val (_, _, stdout, stderr) = bashCommand(s"$scalaPath -e '$expression'")
     printf("stdout: %s\n", stdout.mkString("|"))
-    printf("stderr: %s\n", stderr.mkString("\n","\n",""))
+    printf("stderr: %s\n", stderr.mkString("\n", "\n", ""))
     stdout.filter(_.nonEmpty).mkString("")
     
-  def testExpression(expression: String)(check: (result: String) => Boolean): Boolean = {
+  def testExpression(expression: String)(check: (result: String) => Boolean): Boolean =
     val result = getResult(expression)
     check(result)
-  }
 
+object ExpressionTest:
+
+  def main(args: Array[String]): Unit =
+    val tests = new ExpressionTest
+    println("\n=== verifyCommandLineExpression ===")
+    tests.verifyCommandLineExpression
+    println("\n=== verifyImports ===")
+    tests.verifyImports
