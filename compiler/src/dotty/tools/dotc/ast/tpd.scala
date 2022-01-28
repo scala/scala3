@@ -1164,37 +1164,38 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  in the same way as Typer does. The code addresses additional concerns:
      *   - be tail-recursive where possible
      *   - don't re-allocate trees where nothing has changed
+     *   - avoid stack overflows for long statement lists
      */
     override def transformStats(stats: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
-
-      @tailrec def traverse(curStats: List[Tree])(using Context): List[Tree] =
-
-        def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(using Context): List[Tree] =
-          if stats eq curStats then
-            val rest1 = transformStats(rest, exprOwner)
-            changed match
-              case Thicket(trees) => trees ::: rest1
-              case tree => tree :: rest1
-          else
-            stats.head :: recur(stats.tail, changed, rest)
-
-        curStats match
+      @tailrec
+      def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): List[Tree] =
+        pending match
           case stat :: rest =>
-            val statCtx = stat match
+            def statCtx = stat match
               case _: DefTree | _: ImportOrExport => ctx
               case _ => ctx.exprContext(stat, exprOwner)
-            val restCtx = stat match
+            def restCtx = stat match
               case stat: Import => ctx.importContext(stat, stat.symbol)
               case _ => ctx
             val stat1 = transform(stat)(using statCtx)
-            if stat1 ne stat then recur(stats, stat1, rest)(using restCtx)
-            else traverse(rest)(using restCtx)
+            if stat1 eq stat then
+              loop(mapped, unchanged, rest)
+            else
+              val buf = if mapped == null then new mutable.ListBuffer[Tree] else mapped
+              var xc = unchanged
+              while xc ne pending do
+                buf += xc.head
+                xc = xc.tail
+              stat1 match
+                case Thicket(stats1) => buf ++= stats1
+                case _ => buf += stat1
+              loop(buf, rest, rest)(using restCtx)
           case nil =>
-            stats
+            if mapped == null then unchanged
+            else mapped.prependToList(unchanged)
 
-      traverse(stats)
+      loop(null, stats, stats)
     end transformStats
-
   end TreeMapWithPreciseStatContexts
 
   /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.
