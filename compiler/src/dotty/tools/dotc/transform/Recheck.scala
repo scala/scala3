@@ -195,7 +195,7 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
 
     def recheckAssign(tree: Assign)(using Context): Type =
       val lhsType = recheck(tree.lhs)
-      recheck(tree.rhs, lhsType.widen)
+      recheckRHS(tree.rhs, lhsType.widen, tree.lhs.symbol)
       defn.UnitType
 
     def recheckBlock(stats: List[Tree], expr: Tree, pt: Type)(using Context): Type =

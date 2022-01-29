@@ -213,6 +213,12 @@ class CheckCaptures extends Recheck:
         interpolateVarsIn(tree.tpt)
         curEnv = saved
 
+    /** Capture check right hand side of the definition of `sym`, or of an assignment
+     *  to `sym`. If `sym` is a member of a final class with self type `cs T`, recheck `tree`
+     *  with an expected type that allows as a captureset all references in `cs`
+     *  except references that are covered by some parameter of `sym`. See #13657 for
+     *  a more detailed explanation of why we want to do this, and why it looks sound.
+     */
     override def recheckRHS(tree: Tree, pt: Type, sym: Symbol)(using Context): Type =
       val pt1 = pt match
         case CapturingType(core, refs, _)
