@@ -750,7 +750,11 @@ object ProtoTypes {
         else
           newDepTypeVar(ref)
       mt.resultType.substParams(mt, mt.paramRefs.map(replacement))
-    else mt.resultType
+    else
+      // TODO(mbovel): document this.
+      mt.resultType match
+        case at@AppliedType(tycon: TypeRef, args) if defn.isCompiletimeAppliedType(tycon.symbol) => at.underlying
+        case _ => mt.resultType
 
   /** The normalized form of a type
    *   - instantiate polymorphic types with fresh type variables in the current constraint

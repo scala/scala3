@@ -69,13 +69,15 @@ object CompiletimeOpsNormalizer:
               Some((tycon.symbol.name, args))
           case _ => None
 
-    def isSingletonOrSingletonOp(tp: Type): Boolean = tp match
-      case Op(_, args) => args.forall(isSingletonOrSingletonOp)
+    def isSingletonOp(tp: Type): Boolean = tp match
+      case Op(_, args) => args.forall(isSingletonOp)
       case _: SingletonType => true
+      case tv: TypeVar if tv.isInstantiated => isSingletonOp(tv.underlying)
       case _ => false
 
     def underlyingSingletonDeep(tp: Type)(using Context): Type = tp match
-      case tp: SingletonType if isSingletonOrSingletonOp(tp.underlying) => tp.underlying
+      case tp: SingletonType if isSingletonOp(tp.underlying) => underlyingSingletonDeep(tp.underlying)
+      case tv: TypeVar if tv.isInstantiated => underlyingSingletonDeep(tv.underlying)
       case _ => tp
 
     def simp(tp: Type) = underlyingSingletonDeep(tp.normalized.dealias)
@@ -92,7 +94,6 @@ object CompiletimeOpsNormalizer:
         val res = (if c == 1 && facts.length > 0 then facts else facts :+ ConstantType(Constant(c)))
           .reduceLeft((l, r) => AppliedType(ops.multiplyType, List(l, r)))
         res
-
 
     def splitOp(tp: Type, name: Name) = tp match
         case Op(`name`, List(x, y)) => (x, y)
@@ -124,7 +125,7 @@ object CompiletimeOpsNormalizer:
         val groupedSingletonProds = mutable.LinkedHashMap.empty[List[Type], Product]
         val nonSingletonProds = mutable.ArrayBuffer.empty[Product]
         for(prod <- terms.map(_.sorted)) do
-          if prod.facts.forall(isSingletonOrSingletonOp) then
+          if prod.facts.forall(isSingletonOp) then
             groupedSingletonProds.updateWith(prod.facts)({
               case Some(prev) => Some(prev + prod)
               case None       => Some(prod)
@@ -150,7 +151,23 @@ object CompiletimeOpsNormalizer:
     val minusOne = Sum(List(Product(Nil, ops.minusOne)))
     def single(tp: Type) = Sum(List(Product(List(tp), ops.one)))
 
-    val res = tp match
+    def isSumNormalForm(x: Type, y: Type) = y match
+      case Op(tpnme.Plus, _) => false
+      case _ =>
+        val beforeLast = dropCoefficient(splitOp(x, tpnme.Plus)._2)
+        val last = dropCoefficient(y)
+        beforeLast <= last && (beforeLast != last || (beforeLast.exists && !isSingletonOp(beforeLast)))
+
+    def isProductNormalForm(x: Type, y: Type) = y match
+      case Op(tpnme.Plus | tpnme.Times, _) => false
+      case _ => x match
+        case Op(tpnme.Plus, _) => false
+        case _ =>
+          val beforeLast = dropCoefficient(splitOp(x, tpnme.Times)._2)
+          val last = dropCoefficient(y)
+          dropCoefficient(beforeLast) <= dropCoefficient(last) && beforeLast.exists
+
+    tp match
       case Op(tpnme.Negate, List(x))      =>
         Some((minusOne * Sum.fromType(simp(x))).toType)
       case Op(tpnme.Minus,  List(x, y))   =>
@@ -158,28 +175,13 @@ object CompiletimeOpsNormalizer:
       case Op(tpnme.Plus,   List(x, y))   =>
         val xSimp = simp(x)
         val ySimp = simp(y)
-        val isNormalForm = ySimp match
-          case Op(tpnme.Plus, _) => false
-          case _ =>
-            val beforeLast = dropCoefficient(splitOp(xSimp, tpnme.Plus)._2)
-            val last = dropCoefficient(ySimp)
-            beforeLast <= last && (beforeLast != last || (beforeLast.exists && !isSingletonOrSingletonOp(beforeLast)))
-        if isNormalForm then None
+        if (xSimp eq x) && (ySimp eq y) && isSumNormalForm(xSimp, ySimp) then None
         else Some((Sum.fromType(xSimp) + Sum.fromType(ySimp)).toType)
       case Op(tpnme.Times,  List(x, y))   =>
         val xSimp = simp(x)
         val ySimp = simp(y)
-        val isNormalForm = ySimp match
-          case Op(tpnme.Plus | tpnme.Times, _) => false
-          case _ => xSimp match
-            case Op(tpnme.Plus, _) => false
-            case _ =>
-              val beforeLast = dropCoefficient(splitOp(xSimp, tpnme.Times)._2)
-              val last = dropCoefficient(ySimp)
-              dropCoefficient(beforeLast) <= dropCoefficient(last) && beforeLast.exists
-        if isNormalForm then None
+        if (xSimp eq x) && (ySimp eq y) && isProductNormalForm(xSimp, ySimp) then None
         else Some((Sum.fromType(xSimp) * Sum.fromType(ySimp)).toType)
-    res
 
   // ----- Ordering --------------------------------------------------------------------
 
