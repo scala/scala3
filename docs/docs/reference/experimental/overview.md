@@ -13,6 +13,13 @@ They are enabled by importing the feature or using the `-language` compiler flag
 * `fewerBraces`: Enable support for using indentation for arguments.
 * [`genericNumberLiterals`](./numeric-literals.md): Enable support for generic number literals.
 * [`namedTypeArguments`](./named-typeargs.md): Enable support for named type arguments
+* [`saferExceptions`](./canthrow.md): Enable support for checked exceptions.
+
+### Experimental language features supported by special compiler options
+
+Some experimental language features that are still in research and development can be enabled with special compiler options. These include
+
+* `-Yexplicit-nulls` Enable support for tracking null references in the type system.
 
 ### Experimental language imports
 
