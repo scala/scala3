@@ -114,9 +114,7 @@ sidebar:
           - page: docs/reference/experimental/overview.md
           - page: docs/reference/experimental/canthrow.md
           - page: docs/reference/experimental/erased-defs.md
-          - page: docs/reference/experimental/erased-defs-spec.md
           - page: docs/reference/experimental/named-typeargs.md
-          - page: docs/reference/experimental/named-typeargs-spec.md
           - page: docs/reference/experimental/numeric-literals.md
       - page: docs/reference/syntax.md
       - title: Language Versions
