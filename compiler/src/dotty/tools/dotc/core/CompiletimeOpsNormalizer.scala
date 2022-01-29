@@ -186,15 +186,41 @@ object CompiletimeOpsNormalizer:
   def TypeOrdering(using Context) = new Ordering[Type]:
     val ListOrdering: Ordering[List[Type]] = scala.math.Ordering.Implicits.seqOrdering(this)
     def compare(a: Type, b: Type): Int = (a, b) match
-      case (AppliedType(opA: TypeRef, argsA), AppliedType(opB: TypeRef, argsB)) =>
-        val compareOp = NameOrdering.compare(opA.name, opB.name)
-        if compareOp != 0 then compareOp else ListOrdering.compare(argsA, argsB)
-      case (AppliedType(opA: TypeRef, _), _) => -1
-      case (_, AppliedType(opB: TypeRef, _)) => 1
+      case (NoType, NoType) => 0
+      case (_, NoType) => -1
+      case (NoType, _) => 1
+
+      case (NoPrefix, NoPrefix) => 0
+      case (_, NoPrefix) => -1
+      case (NoPrefix, _) => 1
+
+      case (ConstantType(Constant(valueA: Long)), ConstantType(Constant(valueB: Long))) => valueA compare valueB
+      case (_, ConstantType(Constant(_: Long))) => -1
+      case (ConstantType(Constant(_: Long)), _) => 1
+
+      case (ConstantType(Constant(valueA: Int)), ConstantType(Constant(valueB: Int))) => valueA compare valueB
+      case (_, ConstantType(Constant(_: Int))) => -1
+      case (ConstantType(Constant(_: Int)), _) => 1
+
+      case (ConstantType(Constant(valueA: Short)), ConstantType(Constant(valueB: Short))) => valueA compare valueB
+      case (_, ConstantType(Constant(_: Short))) => -1
+      case (ConstantType(Constant(_: Short)), _) => 1
+
+      case (ConstantType(Constant(valueA: Float)), ConstantType(Constant(valueB: Float))) => valueA compare valueB
+      case (_, ConstantType(Constant(_: Float))) => -1
+      case (ConstantType(Constant(_: Float)), _) => 1
+
+      case (ConstantType(Constant(valueA: Double)), ConstantType(Constant(valueB: Double))) => valueA compare valueB
+      case (_, ConstantType(Constant(_: Double))) => -1
+      case (ConstantType(Constant(_: Double)), _) => 1
+
+      case (ConstantType(Constant(valueA: String)), ConstantType(Constant(valueB: String))) => valueA compare valueB
+      case (_, ConstantType(Constant(_: String))) => -1
+      case (ConstantType(Constant(_: String)), _) => 1
 
       case (ThisType(typeRefA), ThisType(typeRefB)) => compare(typeRefA, typeRefB)
-      case (_: ThisType, _) => -1
-      case (_, _: ThisType) => 1
+      case (_, _: ThisType) => -1
+      case (_: ThisType, _) => 1
 
       case (a: NamedType, b: NamedType) =>
         if a.isTerm && b.isType then -1
@@ -202,45 +228,13 @@ object CompiletimeOpsNormalizer:
         else
           val comparePrefix = compare(a.prefix, b.prefix)
           if comparePrefix != 0 then comparePrefix else NameOrdering.compare(a.name, b.name)
-      case (_: NamedType, _) => -1
-      case (_, _: NamedType) => 1
+      case (_, _: NamedType) => -1
+      case (_: NamedType, _) => 1
 
-      case (ConstantType(Constant(valueA: Short)), ConstantType(Constant(valueB: Short))) =>
-        valueA compare valueB
-      case (ConstantType(Constant(_: Short)), _) => -1
-      case (_, ConstantType(Constant(_: Short))) => 1
-
-      case (ConstantType(Constant(valueA: Int)), ConstantType(Constant(valueB: Int))) =>
-        valueA compare valueB
-      case (ConstantType(Constant(_: Int)), _) => -1
-      case (_, ConstantType(Constant(_: Int))) => 1
-
-      case (ConstantType(Constant(valueA: Long)), ConstantType(Constant(valueB: Long))) =>
-        valueA compare valueB
-      case (ConstantType(Constant(_: Long)), _) => -1
-      case (_, ConstantType(Constant(_: Long))) => 1
-
-      case (ConstantType(Constant(valueA: Float)), ConstantType(Constant(valueB: Float))) =>
-        valueA compare valueB
-      case (ConstantType(Constant(_: Float)), _) => -1
-      case (_, ConstantType(Constant(_: Float))) => 1
-
-      case (ConstantType(Constant(valueA: Double)), ConstantType(Constant(valueB: Double))) =>
-        valueA compare valueB
-      case (ConstantType(Constant(_: Double)), _) => -1
-      case (_, ConstantType(Constant(_: Double))) => 1
-
-      case (ConstantType(Constant(valueA: String)), ConstantType(Constant(valueB: String))) =>
-        valueA compare valueB
-      case (ConstantType(Constant(_: String)), _) => -1
-      case (_, ConstantType(Constant(_: String))) => 1
-
-      case (NoType, NoType) => 0
-      case (NoType, _) => -1
-      case (_, NoType) => 1
-
-      case (NoPrefix, NoPrefix) => 0
-      case (NoPrefix, _) => -1
-      case (_, NoPrefix) => 1
+      case (AppliedType(opA: TypeRef, argsA), AppliedType(opB: TypeRef, argsB)) =>
+        val compareOp = NameOrdering.compare(opA.name, opB.name)
+        if compareOp != 0 then compareOp else ListOrdering.compare(argsA, argsB)
+      case (_, AppliedType(opB: TypeRef, _)) => -1
+      case (AppliedType(opA: TypeRef, _), _) => 1
 
       case (a, b) => 0 // Not comparable
