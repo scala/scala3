@@ -1,7 +1,7 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists1.scala:25:63 -----------------------------------
-25 |      def concat(other: {f} LazyList[A]): {this} LazyList[A] = ??? : ({xs, f} LazyList[A]) // error
-   |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                                               Found:    {xs, f} LazyList[A]
-   |                                                               Required: {Mapped.this, xs} LazyList[A]
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists1.scala:25:66 -----------------------------------
+25 |      def concat(other: {f} LazyList[A]): {this, f} LazyList[A] = ??? : ({xs, f} LazyList[A]) // error
+   |                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                                  Found:    {xs, f} LazyList[A]
+   |                                                                  Required: {Mapped.this, f} LazyList[A]
 
 longer explanation available when compiling with `-explain`
