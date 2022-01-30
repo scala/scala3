@@ -104,7 +104,7 @@ sealed abstract class CaptureSet extends Showable:
   extension (x: CaptureRef) private def subsumes(y: CaptureRef) =
     (x eq y)
     || y.match
-        case y: TermRef => y.prefix eq x // ^^^ y.prefix.subsumes(x) ?
+        case y: TermRef => y.prefix eq x
         case _ => false
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
