@@ -126,15 +126,12 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
         bindType
 
     def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
-      if !tree.rhs.isEmpty then recheckRHS(tree.rhs, sym.info, sym)
+      if !tree.rhs.isEmpty then recheck(tree.rhs, sym.info)
 
     def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Unit =
       val rhsCtx = linkConstructorParams(sym).withOwner(sym)
       if !tree.rhs.isEmpty && !sym.isInlineMethod && !sym.isEffectivelyErased then
-        inContext(rhsCtx) { recheckRHS(tree.rhs, recheck(tree.tpt), sym) }
-
-    def recheckRHS(tree: Tree, pt: Type, sym: Symbol)(using Context): Type =
-      recheck(tree, pt)
+        inContext(rhsCtx) { recheck(tree.rhs, recheck(tree.tpt)) }
 
     def recheckTypeDef(tree: TypeDef, sym: Symbol)(using Context): Type =
       recheck(tree.rhs)
@@ -358,21 +355,22 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
         // Don't report closure nodes, since their span is a point; wait instead
         // for enclosing block to preduce an error
       case _ =>
-        val actual = tpe.widenExpr
-        val expected = pt.widenExpr
-        //println(i"check conforms $actual <:< $expected")
-        val isCompatible =
-          actual <:< expected
-          || expected.isRepeatedParam
-             && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
-        if !isCompatible then
-          recheckr.println(i"conforms failed for ${tree}: $tpe vs $expected")
-          err.typeMismatch(tree.withType(tpe), expected)
-        else if debugSuccesses then
-          tree match
-            case _: Ident =>
-              println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actual, expected))}")
-            case _ =>
+        checkConformsExpr(tpe, tpe.widenExpr, pt.widenExpr, tree)
+
+    def checkConformsExpr(original: Type, actual: Type, expected: Type, tree: Tree)(using Context): Unit =
+      //println(i"check conforms $actual <:< $expected")
+      val isCompatible =
+        actual <:< expected
+        || expected.isRepeatedParam
+            && actual <:< expected.translateFromRepeated(toArray = tree.tpe.isRef(defn.ArrayClass))
+      if !isCompatible then
+        recheckr.println(i"conforms failed for ${tree}: $original vs $expected")
+        err.typeMismatch(tree.withType(original), expected)
+      else if debugSuccesses then
+        tree match
+          case _: Ident =>
+            println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actual, expected))}")
+          case _ =>
 
     def checkUnit(unit: CompilationUnit)(using Context): Unit =
       recheck(unit.tpdTree)
