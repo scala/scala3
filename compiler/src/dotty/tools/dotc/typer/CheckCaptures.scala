@@ -16,6 +16,7 @@ import transform.Recheck
 import Recheck.*
 import scala.collection.mutable
 import CaptureSet.withCaptureSetsExplained
+import StdNames.nme
 import reporting.trace
 
 object CheckCaptures:
@@ -213,22 +214,6 @@ class CheckCaptures extends Recheck:
         interpolateVarsIn(tree.tpt)
         curEnv = saved
 
-    override def recheckRHS(tree: Tree, pt: Type, sym: Symbol)(using Context): Type =
-      val pt1 = pt match
-        case CapturingType(core, refs, _)
-        if sym.owner.isClass && !sym.owner.isExtensibleClass
-            && refs.elems.contains(sym.owner.thisType) =>
-          val paramCaptures =
-            sym.paramSymss.flatten.foldLeft(CaptureSet.empty) { (cs, p) =>
-              val pcs = p.info.captureSet
-              (cs ++ (if pcs.isConst then pcs else CaptureSet.universal)).asConst
-            }
-          val declaredCaptures = sym.owner.asClass.givenSelfType.captureSet
-          pt.derivedCapturingType(core, refs ++ (declaredCaptures -- paramCaptures))
-        case _ =>
-          pt
-      recheck(tree, pt1)
-
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       for param <- cls.paramGetters do
         if param.is(Private) && !param.info.captureSet.isAlwaysEmpty then
@@ -237,6 +222,8 @@ class CheckCaptures extends Recheck:
             param.srcPos)
       val saved = curEnv
       val localSet = capturedVars(cls)
+      for parent <- impl.parents do
+        checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos)
       if !localSet.isAlwaysEmpty then curEnv = Env(cls, localSet, false, curEnv)
       try super.recheckClassDef(tree, impl, cls)
       finally curEnv = saved
@@ -289,9 +276,34 @@ class CheckCaptures extends Recheck:
         finally curEnv = curEnv.outer
       recheckFinish(result, arg, pt)
 
+    /** A specialized implementation of the apply rule from https://github.com/lampepfl/dotty/discussions/14387:
+     *
+     * E |- f: Cf (Ra -> Cr Rr)
+     * E |- a: Ra
+     * ------------------------
+     * E |- f a: Cr /\ {f} Rr
+     *
+     * Specialized for the case where `f` is a tracked and the arguments are pure.
+     * This replaces the previous rule #13657 while still allowing the code in pos/lazylists1.scala.
+     * We could consider generalizing to the case where the function arguments have non-empty
+     * capture sets as suggested in #14387, but that would make capture set computations more complex,
+     * so we should also evaluate the performance impact.
+     */
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       includeCallCaptures(tree.symbol, tree.srcPos)
-      super.recheckApply(tree, pt)
+      super.recheckApply(tree, pt) match
+        case tp @ CapturingType(tp1, refs, kind) =>
+          tree.fun match
+            case Select(qual, nme.apply)
+            if defn.isFunctionType(qual.tpe.widen) =>
+              qual.tpe match
+                case ref: CaptureRef
+                if ref.isTracked && tree.args.forall(_.tpe.captureSet.isAlwaysEmpty) =>
+                  tp.derivedCapturingType(tp1, refs ** ref.singletonCaptureSet)
+                    .showing(i"narrow $tree: $tp --> $result", capt)
+                case _ => tp
+            case _ => tp
+        case tp => tp
 
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       val res = super.recheck(tree, pt)
@@ -318,6 +330,42 @@ class CheckCaptures extends Recheck:
             }
           case _ =>
       super.recheckFinish(tpe, tree, pt)
+
+    /** This method implements the rule outlined in #14390:
+     *  When checking an expression `e: Ca Ta` against an expected type `Cx Tx`
+     *  where the capture set of `Cx` contains this and any method inside the class
+     *  `Cls` of `this` that contains `e` has only pure parameters, drop from `Ca`
+     *  all references to variables or this references outside `Cls`. These are all
+     *  accessed through this, so are already accounted for by `Cx`.
+     */
+    override def checkConformsExpr(original: Type, actual: Type, expected: Type, tree: Tree)(using Context): Unit =
+      def isPure(info: Type): Boolean = info match
+        case info: PolyType => isPure(info.resType)
+        case info: MethodType => info.paramInfos.forall(_.captureSet.isAlwaysEmpty) && isPure(info.resType)
+        case _ => true
+      def isPureContext(owner: Symbol, limit: Symbol): Boolean =
+        if owner == limit then true
+        else if !owner.exists then false
+        else isPure(owner.info) && isPureContext(owner.owner, limit)
+      val actual1 = (expected, actual.widen) match
+        case (CapturingType(ecore, erefs, _), actualw @ CapturingType(acore, arefs, _)) =>
+          val arefs1 = (arefs /: erefs.elems) { (arefs1, eref) =>
+            eref match
+              case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
+                arefs1.filter {
+                  case aref1: TermRef => !eref.cls.isContainedIn(aref1.symbol.owner)
+                  case aref1: ThisType => !eref.cls.isContainedIn(aref1.cls)
+                  case _ => true
+                }
+              case _ =>
+                arefs1
+          }
+          if arefs1 eq arefs then actual
+          else actualw.derivedCapturingType(acore, arefs1)
+            .showing(i"healing $actual --> $result", capt)
+        case _ =>
+          actual
+      super.checkConformsExpr(original, actual1, expected, tree)
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       Setup(preRecheckPhase, thisPhase, recheckDef)
