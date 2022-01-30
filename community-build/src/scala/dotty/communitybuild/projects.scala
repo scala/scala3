@@ -714,9 +714,10 @@ object projects:
 
   lazy val protoquill = SbtCommunityProject(
     project = "protoquill",
-    sbtTestCommand = "test",
+    extraSbtArgs  = List("-Dcommunity=true", "-DcommunityRemote=true", "-Dquill.macro.stdout=true"),
+    sbtTestCommand = "runCommunityBuild",
     sbtPublishCommand = "publishLocal",
-    dependencies = () => List(), // TODO add scalatest and pprint (see protoquill/build.sbt)
+    dependencies = () => List(scalatest),
     scalacOptions = List("-language:implicitConversions"), // disabled -Ysafe-init, due to bug in macro
   )
 
