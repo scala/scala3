@@ -22,6 +22,6 @@ extension [A](xs: {*} LazyList[A])
       def head: B = f(xs.head)
       def tail: {this} LazyList[B] = xs.tail.map(f)  // OK
       def drop(n: Int): {this} LazyList[B] = ??? : ({xs, f} LazyList[B]) // OK
-      def concat(other: {f} LazyList[A]): {this} LazyList[A] = ??? : ({xs, f} LazyList[A]) // error
+      def concat(other: {f} LazyList[A]): {this, f} LazyList[A] = ??? : ({xs, f} LazyList[A]) // error
     new Mapped
 

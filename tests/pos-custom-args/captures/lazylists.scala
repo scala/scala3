@@ -21,7 +21,6 @@ extension [A](xs: {*} LazyList[A])
       def isEmpty = false
       def head: B = f(xs.head)
       def tail: {this} LazyList[B] = xs.tail.map(f)  // OK
-      def concat(other: {f} LazyList[A]): {this, f} LazyList[A] = ??? : {xs, f} LazyList[A] // OK
     if xs.isEmpty then LazyNil
     else new Mapped
 
