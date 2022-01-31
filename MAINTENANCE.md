@@ -19,7 +19,7 @@ Other core teammates are responsible for providing information to the Issue Tsar
 Issue Tsar is rotated according to a well-defined, ordered list. They are appointed for 7 days and are responsible for what is specified in the “Responsibilities” section during those 7 days. Their assumption of the role starts on Monday and ends on Friday (both inclusive), and the scope of their responsibilities extends to all events that took place during the weekend before the Monday of their assignment.
 
 ## Prerequisites
-An issue tasr needs to have all the accesses and privileges required to get their job done. This might include:
+An issue tsar needs to have all the accesses and privileges required to get their job done. This might include:
 Admin rights in lampepfl/dotty repository
 Admin rights in lampepfl/dotty-feature-requests repository
 Permissions to create new repositories in lampepfl organization (needed to fork repositories for the community build)
