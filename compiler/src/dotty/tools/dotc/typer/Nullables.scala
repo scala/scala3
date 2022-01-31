@@ -20,13 +20,6 @@ import ast.Trees.mods
 object Nullables:
   import ast.tpd._
 
-  /** An attachment that represents a match tree is created under Unsafe Nulls.
-   *  This is used to pass Unsafe Nulls information to PatternMatcher Phase,
-   *  so we don't get Match case Unreachable Warning when using `case null => ???`
-   *  on non-nullable type.
-   */
-  val UnsafeNullsMatch = Property.StickyKey[Unit]
-
   inline def unsafeNullsEnabled(using Context): Boolean =
     ctx.explicitNulls && !ctx.mode.is(Mode.SafeNulls)
 
