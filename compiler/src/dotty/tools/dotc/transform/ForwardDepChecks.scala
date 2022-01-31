@@ -15,6 +15,7 @@ object ForwardDepChecks:
   import tpd.*
 
   val name: String = "forwardDepChecks"
+  val description: String = "ensure no forward references to local vals"
 
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
@@ -57,6 +58,8 @@ class ForwardDepChecks extends MiniPhase:
   import tpd.*
 
   override def phaseName: String = ForwardDepChecks.name
+
+  override def description: String = ForwardDepChecks.description
 
   override def runsAfter: Set[String] = Set(ElimByName.name)
 

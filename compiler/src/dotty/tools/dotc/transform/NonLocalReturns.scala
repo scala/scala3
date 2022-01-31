@@ -10,6 +10,10 @@ import config.SourceVersion._
 
 object NonLocalReturns {
   import ast.tpd._
+
+  val name: String = "nonLocalReturns"
+  val description: String = "expand non-local returns"
+
   def isNonLocalReturn(ret: Return)(using Context): Boolean =
     !ret.from.symbol.is(Label) && (ret.from.symbol != ctx.owner.enclosingMethod || ctx.owner.is(Lazy))
 }
@@ -17,7 +21,10 @@ object NonLocalReturns {
 /** Implement non-local returns using NonLocalReturnControl exceptions.
  */
 class NonLocalReturns extends MiniPhase {
-  override def phaseName: String = "nonLocalReturns"
+
+  override def phaseName: String = NonLocalReturns.name
+
+  override def description: String = NonLocalReturns.description
 
   import NonLocalReturns._
   import ast.tpd._

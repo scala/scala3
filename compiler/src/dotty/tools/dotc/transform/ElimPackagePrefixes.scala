@@ -12,7 +12,9 @@ import MegaPhase.MiniPhase
  */
 class ElimPackagePrefixes extends MiniPhase {
 
-  override def phaseName: String = "elimPackagePrefixes"
+  override def phaseName: String = ElimPackagePrefixes.name
+
+  override def description: String = ElimPackagePrefixes.description
 
   override def transformSelect(tree: Select)(using Context): Tree =
     if (isPackageClassRef(tree)) Ident(tree.tpe.asInstanceOf[TypeRef]) else tree
@@ -29,3 +31,7 @@ class ElimPackagePrefixes extends MiniPhase {
     case _ => false
   }
 }
+
+object ElimPackagePrefixes:
+  val name: String = "elimPackagePrefixes"
+  val description: String = "eliminate references to package prefixes in Select nodes"

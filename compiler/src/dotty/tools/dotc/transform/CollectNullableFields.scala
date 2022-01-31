@@ -13,6 +13,7 @@ import java.util.IdentityHashMap
 
 object CollectNullableFields {
   val name: String = "collectNullableFields"
+  val description: String = "collect fields that can be nulled out after use in lazy initialization"
 }
 
 /** Collect fields that can be nulled out after use in lazy initialization.
@@ -42,6 +43,8 @@ class CollectNullableFields extends MiniPhase {
   import tpd._
 
   override def phaseName: String = CollectNullableFields.name
+
+  override def description: String = CollectNullableFields.description
 
   /** Running after `ElimByName` to see by names as nullable types. */
   override def runsAfter: Set[String] = Set(ElimByName.name)

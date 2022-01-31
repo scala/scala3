@@ -14,7 +14,9 @@ import dotty.tools.dotc.typer.Inliner
 class InlineVals extends MiniPhase:
   import ast.tpd._
 
-  def phaseName: String = "inlineVals"
+  override def phaseName: String = InlineVals.name
+
+  override def description: String = InlineVals.description
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     if !ctx.erasedTypes then
@@ -51,3 +53,7 @@ class InlineVals extends MiniPhase:
           else
             report.error(em"inline value must contain a literal constant value.\n\nTo inline more complex types consider using `inline def`", rhs)
   }
+
+object InlineVals:
+  val name: String = "inlineVals"
+  val description: String = "check right hand-sides of an `inline val`s"

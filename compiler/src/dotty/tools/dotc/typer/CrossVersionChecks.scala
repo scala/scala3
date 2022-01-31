@@ -13,7 +13,9 @@ import ast.tpd
 class CrossVersionChecks extends MiniPhase:
   import tpd.*
 
-  def phaseName = "crossVersionChecks"
+  override def phaseName: String = CrossVersionChecks.name
+
+  override def description: String = CrossVersionChecks.description
 
   override def runsAfterGroupsOf: Set[String] = Set(FirstTransform.name)
     // We assume all type trees except TypeTree have been eliminated
@@ -208,3 +210,7 @@ class CrossVersionChecks extends MiniPhase:
   }
 
 end CrossVersionChecks
+
+object CrossVersionChecks:
+  val name: String = "crossVersionChecks"
+  val description: String = "check issues related to deprecated and experimental"

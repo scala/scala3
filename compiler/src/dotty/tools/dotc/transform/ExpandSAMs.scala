@@ -28,6 +28,7 @@ import dotty.tools.dotc.util.Spans.Span
  */
 object ExpandSAMs:
   val name: String = "expandSAMs"
+  val description: String = "expand SAM closures to anonymous classes"
 
   /** Is the SAMType `cls` also a SAM under the rules of the platform? */
   def isPlatformSam(cls: ClassSymbol)(using Context): Boolean =
@@ -42,6 +43,8 @@ class ExpandSAMs extends MiniPhase:
   import ast.tpd._
 
   override def phaseName: String = ExpandSAMs.name
+
+  override def description: String = ExpandSAMs.description
 
   override def transformBlock(tree: Block)(using Context): Tree = tree match {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>

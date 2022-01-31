@@ -56,6 +56,8 @@ class ElimByName extends MiniPhase, InfoTransformer:
 
   override def phaseName: String = ElimByName.name
 
+  override def description: String = ElimByName.description
+
   override def runsAfterGroupsOf: Set[String] = Set(ExpandSAMs.name, ElimRepeated.name, RefChecks.name)
     // - ExpanSAMs applied to partial functions creates methods that need
     //   to be fully defined before converting. Test case is pos/i9391.scala.
@@ -158,3 +160,4 @@ class ElimByName extends MiniPhase, InfoTransformer:
 
 object ElimByName:
   val name: String = "elimByName"
+  val description: String = "map by-name parameters to functions"

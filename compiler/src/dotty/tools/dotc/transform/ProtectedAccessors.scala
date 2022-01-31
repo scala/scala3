@@ -18,6 +18,7 @@ import dotty.tools.dotc.util.Property
  */
 object ProtectedAccessors {
   val name: String = "protectedAccessors"
+  val description: String = "add accessors for protected members"
 
   /** Is the current context's owner inside the access boundary established by `sym`? */
   def insideBoundaryOf(sym: Symbol)(using Context): Boolean =
@@ -50,6 +51,8 @@ class ProtectedAccessors extends MiniPhase {
   import ast.tpd._
 
   override def phaseName: String = ProtectedAccessors.name
+
+  override def description: String = ProtectedAccessors.description
 
   private val AccessorsKey = new Property.Key[Accessors]
 

@@ -62,6 +62,8 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   override def phaseName: String = Getters.name
 
+  override def description: String = Getters.description
+
   override def transformSym(d: SymDenotation)(using Context): SymDenotation = {
     def noGetterNeeded =
       d.isOneOf(NoGetterNeededFlags) ||
@@ -120,4 +122,5 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
 object Getters {
   val name: String = "getters"
+  val description: String = "replace non-private vals and vars with getter defs"
 }

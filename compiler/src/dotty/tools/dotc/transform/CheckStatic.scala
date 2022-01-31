@@ -29,6 +29,8 @@ class CheckStatic extends MiniPhase {
 
   override def phaseName: String = CheckStatic.name
 
+  override def description: String = CheckStatic.description
+
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree = {
     val defns = tree.body.collect{case t: ValOrDefDef => t}
     var hadNonStaticField = false
@@ -63,4 +65,5 @@ class CheckStatic extends MiniPhase {
 
 object CheckStatic {
   val name: String = "checkStatic"
+  val description: String = "check restrictions that apply to @static members"
 }

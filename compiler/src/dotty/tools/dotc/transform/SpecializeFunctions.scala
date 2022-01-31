@@ -13,7 +13,11 @@ import scala.collection.mutable
  */
 class SpecializeFunctions extends MiniPhase {
   import ast.tpd._
-  val phaseName = "specializeFunctions"
+
+  override def phaseName: String = SpecializeFunctions.name
+
+  override def description: String = SpecializeFunctions.description
+
   override def runsAfter = Set(ElimByName.name)
 
   override def isEnabled(using Context): Boolean =
@@ -105,3 +109,7 @@ class SpecializeFunctions extends MiniPhase {
       p == defn.Function0 || p == defn.Function1 || p == defn.Function2
     }
 }
+
+object SpecializeFunctions:
+  val name: String = "specializeFunctions"
+  val description: String = "specialize Function{0,1,2} by replacing super with specialized super"

@@ -12,6 +12,7 @@ import annotation.threadUnsafe
 
 object CheckNoSuperThis:
   val name: String = "checkNoSuperThis"
+  val description: String = "check that supercalls don't contain references to This"
 
 /** Checks that super and this calls do not pass `this` as (part of) an argument. */
 class CheckNoSuperThis extends MiniPhase:
@@ -19,6 +20,8 @@ class CheckNoSuperThis extends MiniPhase:
   import tpd._
 
   override def phaseName: String = CheckNoSuperThis.name
+
+  override def description: String = CheckNoSuperThis.description
 
   override def runsAfterGroupsOf: Set[String] = Set(Constructors.name)
 

@@ -13,6 +13,7 @@ import NameKinds.SuperAccessorName
 
 object ElimErasedValueType {
   val name: String = "elimErasedValueType"
+  val description: String = "expand erased value types to their underlying implmementation types"
 
   def elimEVT(tp: Type)(using Context): Type = tp match {
     case ErasedValueType(_, underlying) =>
@@ -39,6 +40,8 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
   import ElimErasedValueType.elimEVT
 
   override def phaseName: String = ElimErasedValueType.name
+
+  override def description: String = ElimErasedValueType.description
 
   override def runsAfter: Set[String] = Set(Erasure.name)
 

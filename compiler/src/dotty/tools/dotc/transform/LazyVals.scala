@@ -30,6 +30,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   override def phaseName: String = LazyVals.name
 
+  override def description: String = LazyVals.description
+
   /** List of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
   override def runsAfter: Set[String] = Set(Mixin.name, CollectNullableFields.name)
@@ -439,6 +441,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
 object LazyVals {
   val name: String = "lazyVals"
+  val description: String = "expand lazy vals"
 
   object lazyNme {
     import Names.TermName

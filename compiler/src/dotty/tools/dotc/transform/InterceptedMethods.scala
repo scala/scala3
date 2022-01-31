@@ -13,6 +13,7 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object InterceptedMethods {
   val name: String = "intercepted"
+  val description: String = "handling of `==`, `|=`, `getClass` methods"
 }
 
 /** Replace member references as follows:
@@ -26,6 +27,8 @@ class InterceptedMethods extends MiniPhase {
   import tpd._
 
   override def phaseName: String = InterceptedMethods.name
+
+  override def description: String = InterceptedMethods.description
 
   // this should be removed if we have guarantee that ## will get Apply node
   override def transformSelect(tree: tpd.Select)(using Context): Tree =

@@ -25,7 +25,9 @@ import Types._
 class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
   import ast.tpd._
 
-  override def phaseName: String = "functionXXLForwarders"
+  override def phaseName: String = FunctionXXLForwarders.name
+
+  override def description: String = FunctionXXLForwarders.description
 
   override def transformTemplate(impl: Template)(using Context): Template = {
 
@@ -59,3 +61,6 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
   }
 }
 
+object FunctionXXLForwarders:
+  val name: String = "functionXXLForwarders"
+  val description: String = "add forwarders for FunctionXXL apply methods"

@@ -40,6 +40,8 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def phaseName: String = ExplicitOuter.name
 
+  override def description: String = ExplicitOuter.description
+
   override def runsAfter:         Set[String] = Set(HoistSuperArgs.name)
   override def runsAfterGroupsOf: Set[String] = Set(PatternMatcher.name)
 
@@ -125,6 +127,7 @@ object ExplicitOuter {
   import ast.tpd._
 
   val name: String = "explicitOuter"
+  val description: String = "add accessors to outer classes from nested ones"
 
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(using Context): Unit =
