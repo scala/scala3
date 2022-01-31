@@ -29,7 +29,10 @@ import dotty.tools.backend.jvm.GenBCode
  *   -Xmain-class
  */
 class CollectEntryPoints extends MiniPhase:
-  def phaseName: String = "Collect entry points"
+
+  override def phaseName: String = CollectEntryPoints.name
+
+  override def description: String = CollectEntryPoints.description
 
   override def isRunnable(using Context): Boolean =
     def forceRun = ctx.settings.XmainClass.isDefault && ctx.settings.outputDir.value.isInstanceOf[JarArchive]
@@ -52,3 +55,7 @@ class CollectEntryPoints extends MiniPhase:
       case _ =>
     }
   }
+
+object CollectEntryPoints:
+  val name: String = "Collect entry points"
+  val description: String = "collect all entry points and save them in the context"

@@ -20,6 +20,7 @@ import annotation.threadUnsafe
 
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"
+  val description: String = "fill in constructors for Java enums"
 
   private val nameParamName: TermName = "_$name".toTermName
   private val ordinalParamName: TermName = "_$ordinal".toTermName
@@ -34,6 +35,8 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = CompleteJavaEnums.name
+
+  override def description: String = CompleteJavaEnums.description
 
   override def relaxedTypingInGroup: Boolean = true
     // Because it adds additional parameters to some constructors

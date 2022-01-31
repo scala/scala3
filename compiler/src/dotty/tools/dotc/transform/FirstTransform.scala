@@ -22,6 +22,7 @@ import TypeUtils.isErasedValueType
 
 object FirstTransform {
   val name: String = "firstTransform"
+  val description: String = "some transformations to put trees into a canonical form"
 }
 
 /** The first tree transform
@@ -39,6 +40,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = FirstTransform.name
+
+  override def description: String = FirstTransform.description
 
   /** eliminate self symbol in ClassInfo */
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {

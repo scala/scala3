@@ -13,7 +13,9 @@ import NameKinds.OuterSelectName
 class ElimOuterSelect extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName: String = "elimOuterSelect"
+  override def phaseName: String = ElimOuterSelect.name
+
+  override def description: String = ElimOuterSelect.description
 
   override def runsAfterGroupsOf: Set[String] = Set(ExplicitOuter.name)
     // ExplicitOuter needs to have run to completion before so that all classes
@@ -30,3 +32,7 @@ class ElimOuterSelect extends MiniPhase {
       case _ => tree
     }
 }
+
+object ElimOuterSelect:
+  val name: String = "elimOuterSelect"
+  val description: String = "expand outer selections"

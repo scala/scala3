@@ -13,6 +13,9 @@ class PostInlining extends MacroTransform, IdentityDenotTransformer:
   thisPhase =>
 
   override def phaseName: String = PostInlining.name
+
+  override def description: String = PostInlining.description
+
   override def changesMembers = true
 
   override def run(using Context): Unit =
@@ -32,3 +35,4 @@ class PostInlining extends MacroTransform, IdentityDenotTransformer:
 
 object PostInlining:
   val name: String = "postInlining"
+  val description: String = "add mirror support for inlined code"

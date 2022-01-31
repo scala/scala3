@@ -64,6 +64,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
   override def phaseName: String = PrepJSInterop.name
 
+  override def description: String = PrepJSInterop.description
+
   override def isEnabled(using Context): Boolean =
     ctx.settings.scalajs.value
 
@@ -993,6 +995,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
 object PrepJSInterop {
   val name: String = "prepjsinterop"
+  val description: String = "additional checks and transformations for Scala.js"
 
   private final class OwnerKind private (private val baseKinds: Int) extends AnyVal {
     import OwnerKind._

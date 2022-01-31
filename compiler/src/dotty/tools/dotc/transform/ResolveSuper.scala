@@ -35,6 +35,8 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
   override def phaseName: String = ResolveSuper.name
 
+  override def description: String = ResolveSuper.description
+
   override def runsAfter: Set[String] = Set(ElimByName.name, // verified empirically, need to figure out what the reason is.
                                PruneErasedDefs.name) // Erased decls make `isCurrent` work incorrectly
 
@@ -72,6 +74,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
 object ResolveSuper {
   val name: String = "resolveSuper"
+  val description: String = "implement super accessors"
 
   /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
    *

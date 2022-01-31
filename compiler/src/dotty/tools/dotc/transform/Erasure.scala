@@ -42,6 +42,8 @@ class Erasure extends Phase with DenotTransformer {
 
   override def phaseName: String = Erasure.name
 
+  override def description: String = Erasure.description
+
   /** List of names of phases that should precede this phase */
   override def runsAfter: Set[String] = Set(InterceptedMethods.name, ElimRepeated.name)
 
@@ -203,6 +205,7 @@ object Erasure {
   import TypeTestsCasts._
 
   val name: String = "erasure"
+  val description: String = "rewrite types to JVM model"
 
   /** An attachment on Apply nodes indicating that multiple arguments
    *  are passed in a single array. This occurs only if the function

@@ -18,6 +18,7 @@ import annotation.threadUnsafe
 
 object DropOuterAccessors:
   val name: String = "dropOuterAccessors"
+  val description: String = "drop unused outer accessors"
 
 /** Drops unused outer accessors of inner classes that are visible only in one
  *  toplevel class. For other classes, we can't tell whether an outer accessor
@@ -28,6 +29,8 @@ class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
   import tpd._
 
   override def phaseName: String = DropOuterAccessors.name
+
+  override def description: String = DropOuterAccessors.description
 
   override def runsAfterGroupsOf: Set[String] = Set(CountOuterAccesses.name)
 

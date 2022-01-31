@@ -18,6 +18,7 @@ import ast.Trees._
 
 object ElimOpaque {
   val name: String = "elimOpaque"
+  val description: String = "turn opaque into normal aliases"
 }
 
 /** Rewrites opaque type aliases to normal alias types */
@@ -26,6 +27,8 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
   import ast.tpd._
 
   override def phaseName: String = ElimOpaque.name
+
+  override def description: String = ElimOpaque.description
 
   // Override checks need to take place before treating opaque types as aliases
   override def runsAfterGroupsOf: Set[String] = Set(typer.RefChecks.name)

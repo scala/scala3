@@ -22,6 +22,7 @@ import collection.mutable
 
 object Mixin {
   val name: String = "mixin"
+  val description: String = "expand trait fields and trait initializers"
 
   def traitSetterName(getter: TermSymbol)(using Context): TermName =
     getter.ensureNotPrivate.name
@@ -111,6 +112,8 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = Mixin.name
+
+  override def description: String = Mixin.description
 
   override def relaxedTypingInGroup: Boolean = true
     // Because it changes number of parameters in trait initializers

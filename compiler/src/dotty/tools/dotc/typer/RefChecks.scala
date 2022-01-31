@@ -28,6 +28,7 @@ object RefChecks {
   import tpd._
 
   val name: String = "refchecks"
+  val description: String = "checks related to abstract members and overriding"
 
   private val defaultMethodFilter = new NameFilter {
     def apply(pre: Type, name: Name)(using Context): Boolean = name.is(DefaultGetterName)
@@ -1090,6 +1091,8 @@ class RefChecks extends MiniPhase { thisPhase =>
   import tpd._
 
   override def phaseName: String = RefChecks.name
+
+  override def description: String = RefChecks.description
 
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
     // Needs to run after ElimRepeated for override checks involving varargs methods

@@ -138,11 +138,32 @@ trait CliCommand:
   protected def yusageMessage(using settings: ConcreteSettings)(using SettingsState) =
     createUsageMsg("Possible private", shouldExplain = true, isPrivate)
 
-  protected def phasesMessage: String =
-    (new Compiler()).phases.map {
-      case List(single) => single.phaseName
-      case more => more.map(_.phaseName).mkString("{", ", ", "}")
-    }.mkString("\n")
+  /** Used for the formatted output of -Xshow-phases */
+  protected def phasesMessage(using ctx: Context): String =
+  
+    val phases = new Compiler().phases
+    val nameLimit = 25 
+    val maxCol = ctx.settings.pageWidth.value
+    val maxName = phases.flatten.map(_.phaseName.length).max
+    val width = maxName.min(nameLimit)
+    val maxDesc = maxCol - (width + 6)
+    val fmt = s"%${width}.${width}s  %.${maxDesc}s%n"
+
+    val sb = new StringBuilder
+    sb ++= fmt.format("phase name", "description")
+    sb ++= fmt.format("----------", "-----------")
+
+    phases.foreach {
+      case List(single) =>
+        sb ++= fmt.format(single.phaseName, single.description)
+      case Nil => ()
+      case more =>
+        sb ++= fmt.format(s"{", "")
+        more.foreach { mini => sb ++= fmt.format(mini.phaseName, mini.description) }
+        sb ++= fmt.format(s"}", "")
+    }
+    sb.mkString
+
 
   /** Provide usage feedback on argument summary, assuming that all settings
    *  are already applied in context.

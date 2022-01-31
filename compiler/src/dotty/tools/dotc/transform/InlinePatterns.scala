@@ -29,7 +29,9 @@ import ast.TreeTypeMap
 class InlinePatterns extends MiniPhase:
   import ast.tpd._
 
-  def phaseName: String = "inlinePatterns"
+  override def phaseName: String = InlinePatterns.name
+
+  override def description: String = InlinePatterns.description
 
   // This phase needs to run after because it need to transform trees that are generated
   // by the pattern matcher but are still not visible in that group of phases.
@@ -59,3 +61,8 @@ class InlinePatterns extends MiniPhase:
           case List(ddef @ DefDef(`name`, _, _, _)) => BetaReduce(ddef, args)
           case _ => tree
       case _ => tree
+
+object InlinePatterns:
+  val name: String = "inlinePatterns"
+  val description: String = "remove placeholders of inlined patterns"
+

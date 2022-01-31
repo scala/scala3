@@ -15,7 +15,9 @@ import ast.Trees._
 class LetOverApply extends MiniPhase:
   import ast.tpd._
 
-  override def phaseName: String = "letOverApply"
+  override def phaseName: String = LetOverApply.name
+
+  override def description: String = LetOverApply.description
 
   override def transformApply(tree: Apply)(using Context): Tree =
     tree.fun match
@@ -30,3 +32,7 @@ class LetOverApply extends MiniPhase:
         tree
 
 end LetOverApply
+
+object LetOverApply:
+  val name: String = "letOverApply"
+  val description: String = "lift blocks from receivers of applications"
