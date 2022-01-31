@@ -13,4 +13,3 @@ object Test:
   summon[(3L | 2L) + (3L | 2L) + m.type + m.type =:= 2L * m.type + (3L | 2L) + (3L | 2L)] // error
   summon[(3L | 2L) - (3L | 2L) =:= 0] // error
   summon[Int - Int =:= 0] // error
-  summon[1 - Long =:= -1 * Long + 1] // error

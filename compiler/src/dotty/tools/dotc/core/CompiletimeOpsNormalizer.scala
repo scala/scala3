@@ -14,7 +14,8 @@ import SymDenotations.NoDenotation
 import Types._
 
 object CompiletimeOpsNormalizer:
-  trait Normalizable[T]:
+  trait Ring[T]:
+    type S
     def moduleClass(using Context): Symbol
     def addType(using Context): Type
     def multiplyType(using Context): Type
@@ -23,9 +24,10 @@ object CompiletimeOpsNormalizer:
     val minusOne: T
     val add: (T, T) => T
     val multiply: (T, T) => T
-    val value: PartialFunction[Any, T]
+    val asT: PartialFunction[Any, T]
+    val isT: Any => Boolean
 
-  given Normalizable[Long] with
+  given Ring[Long] with
     def moduleClass(using Context) = defn.CompiletimeOpsLongModuleClass
     def addType(using Context) = defn.CompiletimeOpsLong_Add
     def multiplyType(using Context) = defn.CompiletimeOpsLong_Multiply
@@ -34,14 +36,18 @@ object CompiletimeOpsNormalizer:
     val minusOne = -1L
     val add = _ + _
     val multiply = _ * _
-    val value = {
+    val asT = {
       case n: Long => n
       case n: Int => n
       case n: Short => n
       case n: Char => n
     }
+    val isT = {
+      case _: Long => true
+      case _ => false
+    }
 
-  given Normalizable[Int] with
+  given Ring[Int] with
     def moduleClass(using Context) = defn.CompiletimeOpsIntModuleClass
     def addType(using Context) = defn.CompiletimeOpsInt_Add
     def multiplyType(using Context) = defn.CompiletimeOpsInt_Multiply
@@ -50,13 +56,17 @@ object CompiletimeOpsNormalizer:
     val minusOne = -1
     val add = _ + _
     val multiply = _ * _
-    val value = {
+    val asT = {
       case n: Int => n
       case n: Short => n
       case n: Char => n
     }
+    val isT = {
+      case _: Int => true
+      case _ => false
+    }
 
-  def linearNormalForm[@specialized(Int, Long) N](tp: Type)(using Context)(using ops: Normalizable[N]) =
+  def linearNormalForm[@specialized(Int, Long) N](tp: Type)(using Context)(using ring: Ring[N]) =
     import scala.math.Ordering.Implicits.seqOrdering
     import scala.math.Ordered.orderingToOrdered
     given Ordering[Type] = TypeOrdering
@@ -65,7 +75,7 @@ object CompiletimeOpsNormalizer:
         def unapply(tp: Type): Option[(Name, List[Type])] = tp match
           case AppliedType(tycon: TypeRef, args)
             if tycon.symbol.denot != NoDenotation
-                && tycon.symbol.owner == ops.moduleClass =>
+                && tycon.symbol.owner == ring.moduleClass =>
               Some((tycon.symbol.name, args))
           case _ => None
 
@@ -85,14 +95,14 @@ object CompiletimeOpsNormalizer:
     case class Product(facts: List[Type], c: N):
       infix def +(that: Product) =
         assert(facts.sorted == that.facts.sorted)
-        Product(facts, ops.add(c, that.c))
+        Product(facts, ring.add(c, that.c))
       infix def *(that: Product) =
-        Product(facts ++ that.facts, ops.multiply(c, that.c))
+        Product(facts ++ that.facts, ring.multiply(c, that.c))
       def sorted: Product =
         Product(facts.sorted, c)
       def toType(using Context): Type =
         val res = (if c == 1 && facts.length > 0 then facts else facts :+ ConstantType(Constant(c)))
-          .reduceLeft((l, r) => AppliedType(ops.multiplyType, List(l, r)))
+          .reduceLeft((l, r) => AppliedType(ring.multiplyType, List(l, r)))
         res
 
     def splitOp(tp: Type, name: Name) = tp match
@@ -102,8 +112,8 @@ object CompiletimeOpsNormalizer:
     def splitProduct(tp: Type): (N, Type) =
       val (init, last) = splitOp(tp, tpnme.Times)
       last match
-        case ConstantType(Constant(c)) if ops.value.isDefinedAt(c) => (ops.value(c), init)
-        case _ => (ops.one, tp)
+        case ConstantType(Constant(c)) if ring.asT.isDefinedAt(c) => (ring.asT(c), init)
+        case _ => (ring.one, tp)
 
     def dropCoefficient(tp: Type) = splitProduct(tp)._2
 
@@ -139,7 +149,7 @@ object CompiletimeOpsNormalizer:
           .map(_.toType)
           .toList
           .sortBy(dropCoefficient)
-          .reduceLeft((l, r) => AppliedType(ops.addType, List(l, r)))
+          .reduceLeft((l, r) => AppliedType(ring.addType, List(l, r)))
 
     object Sum:
       def fromType(tp: Type) =
@@ -148,11 +158,12 @@ object CompiletimeOpsNormalizer:
           case _ => List(Product.fromType(tp))
         Sum(getTerms(tp))
 
-    val minusOne = Sum(List(Product(Nil, ops.minusOne)))
-    def single(tp: Type) = Sum(List(Product(List(tp), ops.one)))
+    val minusOne = Sum(List(Product(Nil, ring.minusOne)))
+    def single(tp: Type) = Sum(List(Product(List(tp), ring.one)))
 
     def isSumNormalForm(x: Type, y: Type) = y match
       case Op(tpnme.Plus, _) => false
+      case ConstantType(Constant(c)) if !ring.isT(c) => false
       case _ =>
         val beforeLast = dropCoefficient(splitOp(x, tpnme.Plus)._2)
         val last = dropCoefficient(y)
@@ -160,6 +171,7 @@ object CompiletimeOpsNormalizer:
 
     def isProductNormalForm(x: Type, y: Type) = y match
       case Op(tpnme.Plus | tpnme.Times, _) => false
+      case ConstantType(Constant(c)) if !ring.isT(c) => false
       case _ => x match
         case Op(tpnme.Plus, _) => false
         case _ =>

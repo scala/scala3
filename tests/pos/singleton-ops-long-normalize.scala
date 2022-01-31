@@ -47,10 +47,6 @@ object Test:
     summon[v2.type =:= 9L]
     summon[(10L/2L) + m.type =:= m.type + 5L]
 
-    // Ints are converted to Longs when passed as arguments to Long operations.
-    summon[1L + 2 =:= 1 + 2L]
-    summon[1 + 2 =:= 3L]
-
     // Works with type parameters inference.
     def mult[A <: Long & Singleton, B <: Long & Singleton](a: A, b: B): A * B = (a * b).asInstanceOf[A * B]
     val v4: 2L * m.type = mult(2L, m)
@@ -70,6 +66,12 @@ object Test:
 
     // Skolems referencing singleton types are dereferenced.
     val v12: n.type * m.type * 3L = mult2(mult2(n, m) /* : (?: (n.type * m.type)) */, 3L)
+
+    // Non-singleton arguments are not grouped nor ordered, but singletons are.
+    summon[(3L | 2L) + (3L | 2L) + m.type + m.type =:= 2L * m.type + (3L | 2L) + (3L | 2L)]
+
+    // Differences with non-singleton arguments are still normalized to sums.
+    summon[1L - Long =:= -1L * Long + 1L]
 
     // Type aliases and bounds are normalized.
     type Fact[N <: Long & Singleton] <: Long = N match
@@ -92,4 +94,11 @@ object Test:
     // Does not work yet. Should type applications be reduced like match types?
     type MAD2[A <: Long , B <: Long, C <: Long] = A + (B * C)
     summon[MAD2[2L, 3L, 4L] =:= 14L]
+
+    // Ints are converted to Longs when passed as arguments to Long operations.
+    summon[1L + 2 =:= 1 + 2L]
+    summon[1 + 2 =:= 3L]
+
+    // Constants arguments are casted to the correct type for the operation.
+    summon[m.type + 1 =:= m.type + 1L]
 

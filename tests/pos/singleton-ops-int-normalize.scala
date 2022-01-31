@@ -48,10 +48,6 @@ object Test:
     summon[v2.type =:= 9]
     summon[(10/2) + m.type =:= m.type + 5]
 
-    // Ints are converted to Ints when passed as arguments to Int operations.
-    summon[1 + 2 =:= 1 + 2]
-    summon[1 + 2 =:= 3]
-
     // Works with type parameters inference.
     def mult[A <: Int & Singleton, B <: Int & Singleton](a: A, b: B): A * B = (a * b).asInstanceOf[A * B]
     val v4: 2 * m.type = mult(2, m)
@@ -71,6 +67,12 @@ object Test:
 
     // Skolems referencing singleton types are dereferenced.
     val v12: n.type * m.type * 3 = mult2(mult2(n, m) /* : (?: (n.type * m.type)) */, 3)
+
+    // Non-singleton arguments are not grouped nor ordered, but singletons are.
+    summon[(3 | 2) + (3 | 2) + m.type + m.type =:= 2 * m.type + (3 | 2) + (3 | 2)]
+
+    // Differences with non-singleton arguments are still normalized to sums.
+    summon[1 - Int =:= -1 * Int + 1]
 
     // Type aliases and bounds are normalized.
     type Fact[N <: Int & Singleton] <: Int = N match
