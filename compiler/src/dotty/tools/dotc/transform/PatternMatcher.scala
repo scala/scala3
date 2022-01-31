@@ -13,7 +13,6 @@ import SymUtils._
 import Flags._, Constants._
 import Decorators._
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
-import typer.Nullables
 import config.Printers.patmatch
 import reporting._
 import dotty.tools.dotc.ast._
@@ -44,12 +43,8 @@ class PatternMatcher extends MiniPhase {
         case rt => tree.tpe
       val translated = new Translator(matchType, this).translateMatch(tree)
 
-      val engineCtx =
-        if tree.hasAttachment(Nullables.UnsafeNullsMatch)
-        then ctx.retractMode(Mode.SafeNulls) else ctx
-
       // check exhaustivity and unreachability
-      val engine = new patmat.SpaceEngine()(using engineCtx)
+      val engine = new patmat.SpaceEngine
       engine.checkExhaustivity(tree)
       engine.checkRedundancy(tree)
 
