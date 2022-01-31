@@ -64,7 +64,6 @@ sidebar:
           - page: docs/reference/other-new-features/targetName.md
           - page: docs/reference/other-new-features/control-syntax.md
           - page: docs/reference/other-new-features/indentation.md
-          - page: docs/reference/other-new-features/explicit-nulls.md
           - page: docs/reference/other-new-features/safe-initialization.md
           - page: docs/reference/other-new-features/type-test.md
           - page: docs/reference/other-new-features/experimental-defs.md
@@ -114,10 +113,9 @@ sidebar:
           - page: docs/reference/experimental/overview.md
           - page: docs/reference/experimental/canthrow.md
           - page: docs/reference/experimental/erased-defs.md
-          - page: docs/reference/experimental/erased-defs-spec.md
           - page: docs/reference/experimental/named-typeargs.md
-          - page: docs/reference/experimental/named-typeargs-spec.md
           - page: docs/reference/experimental/numeric-literals.md
+          - page: docs/reference/experimental/explicit-nulls.md
       - page: docs/reference/syntax.md
       - title: Language Versions
         index: docs/reference/language-versions/language-versions.md
