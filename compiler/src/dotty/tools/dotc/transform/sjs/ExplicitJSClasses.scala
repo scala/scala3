@@ -239,6 +239,8 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def phaseName: String = ExplicitJSClasses.name
 
+  override def description: String = ExplicitJSClasses.description
+
   private var MyState: Store.Location[MyState] = _
   private def myState(using Context) = ctx.store(MyState)
 
@@ -720,6 +722,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
 object ExplicitJSClasses {
   val name: String = "explicitJSClasses"
+  val description: String = "make all JS classes explicit"
 
   val LocalJSClassValueName: UniqueNameKind = new UniqueNameKind("$jsclass")
 

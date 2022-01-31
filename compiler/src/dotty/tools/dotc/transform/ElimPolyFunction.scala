@@ -24,6 +24,8 @@ class ElimPolyFunction extends MiniPhase with DenotTransformer {
 
   override def phaseName: String = ElimPolyFunction.name
 
+  override def description: String = ElimPolyFunction.description
+
   override def runsAfter = Set(Erasure.name)
 
   override def changesParents: Boolean = true // Replaces PolyFunction by FunctionN
@@ -63,6 +65,7 @@ class ElimPolyFunction extends MiniPhase with DenotTransformer {
 }
 
 object ElimPolyFunction {
-  val name = "elimPolyFunction"
+  val name: String = "elimPolyFunction"
+  val description: String = "rewrite PolyFunction subclasses to FunctionN subclasses"
 }
 

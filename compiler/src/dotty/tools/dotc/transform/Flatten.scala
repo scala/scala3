@@ -14,7 +14,9 @@ import util.Store
 class Flatten extends MiniPhase with SymTransformer {
   import ast.tpd._
 
-  override def phaseName: String = "flatten"
+  override def phaseName: String = Flatten.name
+
+  override def description: String = Flatten.description
 
   // private[this] and protected[this] modifiers must be dropped
   // before classes are lifted. Getters drop these modifiers.
@@ -56,3 +58,7 @@ class Flatten extends MiniPhase with SymTransformer {
   override def transformTypeDef(tree: TypeDef)(using Context): Tree =
     liftIfNested(tree)
 }
+
+object Flatten:
+  val name: String = "flatten"
+  val description: String = "lift all inner classes to package scope"

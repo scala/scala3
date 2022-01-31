@@ -34,6 +34,8 @@ class Staging extends MacroTransform {
 
   override def phaseName: String = Staging.name
 
+  override def description: String = Staging.description
+
   override def runsAfter: Set[String] = Set(Inlining.name)
 
   override def allowsImplicitSearch: Boolean = true
@@ -85,4 +87,5 @@ class Staging extends MacroTransform {
 
 object Staging {
   val name: String = "staging"
+  val description: String = "check staging levels and heal staged types"
 }

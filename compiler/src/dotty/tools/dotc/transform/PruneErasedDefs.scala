@@ -30,6 +30,8 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
 
   override def phaseName: String = PruneErasedDefs.name
 
+  override def description: String = PruneErasedDefs.description
+
   override def changesMembers: Boolean = true   // makes erased members private
 
   override def runsAfterGroupsOf: Set[String] = Set(RefChecks.name, ExplicitOuter.name)
@@ -74,6 +76,7 @@ object PruneErasedDefs {
   import tpd._
 
   val name: String = "pruneErasedDefs"
+  val description: String = "drop erased definitions and simplify erased expressions"
 
   def trivialErasedTree(tree: Tree)(using Context): Tree =
     ref(defn.Compiletime_erasedValue).appliedToType(tree.tpe).withSpan(tree.span)

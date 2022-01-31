@@ -17,6 +17,7 @@ import reporting._
 
 object PostTyper {
   val name: String = "posttyper"
+  val description: String = "additional checks and cleanups after type checking"
 }
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
@@ -57,8 +58,9 @@ object PostTyper {
 class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase =>
   import tpd._
 
-  /** the following two members override abstract members in Transform */
   override def phaseName: String = PostTyper.name
+
+  override def description: String = PostTyper.description
 
   override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = tree match {
     case tree: ValOrDefDef =>

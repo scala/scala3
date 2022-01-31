@@ -24,7 +24,9 @@ import dotty.tools.dotc.typer.ConstFold
 class StringInterpolatorOpt extends MiniPhase {
   import tpd._
 
-  override def phaseName: String = "stringInterpolatorOpt"
+  override def phaseName: String = StringInterpolatorOpt.name
+
+  override def description: String = StringInterpolatorOpt.description
 
   override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     tree match {
@@ -178,3 +180,7 @@ class StringInterpolatorOpt extends MiniPhase {
   }
 
 }
+
+object StringInterpolatorOpt:
+  val name: String = "stringInterpolatorOpt"
+  val description: String = "optimize raw and s string interpolators"

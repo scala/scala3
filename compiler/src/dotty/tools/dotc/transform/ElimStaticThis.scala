@@ -13,7 +13,10 @@ import dotty.tools.dotc.core.Types.{ThisType, TermRef}
  */
 class ElimStaticThis extends MiniPhase {
   import ast.tpd._
-  def phaseName: String = "elimStaticThis"
+
+  override def phaseName: String = ElimStaticThis.name
+
+  override def description: String = ElimStaticThis.description
 
   override def transformThis(tree: This)(using Context): Tree =
     if (!tree.symbol.is(Package) && ctx.owner.enclosingMethod.is(JavaStatic)) {
@@ -34,3 +37,7 @@ class ElimStaticThis extends MiniPhase {
       }
     else tree
 }
+
+object ElimStaticThis:
+  val name: String = "elimStaticThis"
+  val description: String = "replace This references to static objects by global identifiers"

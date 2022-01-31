@@ -111,7 +111,9 @@ class JUnitBootstrappers extends MiniPhase {
   import JUnitBootstrappers._
   import ast.tpd._
 
-  def phaseName: String = "junitBootstrappers"
+  override def phaseName: String = JUnitBootstrappers.name
+
+  override def description: String = JUnitBootstrappers.description
 
   override def isEnabled(using Context): Boolean =
     super.isEnabled && ctx.settings.scalajs.value
@@ -312,6 +314,8 @@ class JUnitBootstrappers extends MiniPhase {
 }
 
 object JUnitBootstrappers {
+  val name: String = "junitBootstrappers"
+  val description: String = "generate JUnit-specific bootstrapper classes for Scala.js"
 
   private object junitNme {
     val beforeClass: TermName = termName("beforeClass")

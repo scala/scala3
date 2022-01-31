@@ -29,7 +29,9 @@ import Decorators._
 class CheckReentrant extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName: String = "checkReentrant"
+  override def phaseName: String = CheckReentrant.name
+
+  override def description: String = CheckReentrant.description
 
   private var shared: Set[Symbol] = Set()
   private var seen: Set[ClassSymbol] = Set()
@@ -84,3 +86,7 @@ class CheckReentrant extends MiniPhase {
     tree
   }
 }
+
+object CheckReentrant:
+  val name: String = "checkReentrant"
+  val description: String = "check no data races involving global vars"

@@ -16,6 +16,7 @@ import SymUtils._
 
 object HoistSuperArgs {
   val name: String = "hoistSuperArgs"
+  val description: String = "hoist complex arguments of supercalls to enclosing scope"
 }
 
 /** This phase hoists complex arguments of supercalls and this-calls out of the enclosing class.
@@ -43,7 +44,9 @@ object HoistSuperArgs {
 class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  def phaseName: String = HoistSuperArgs.name
+  override def phaseName: String = HoistSuperArgs.name
+
+  override def description: String = HoistSuperArgs.description
 
   override def runsAfter: Set[String] = Set(ElimByName.name)
     // By name closures need to be introduced first in order to be hoisted out here.

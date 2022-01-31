@@ -22,7 +22,9 @@ import scala.collection.immutable.::
 class ArrayConstructors extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName: String = "arrayConstructors"
+  override def phaseName: String = ArrayConstructors.name
+
+  override def description: String = ArrayConstructors.description
 
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree = {
     def expand(elemType: Type, dims: List[Tree]) =
@@ -49,3 +51,7 @@ class ArrayConstructors extends MiniPhase {
     else tree
   }
 }
+
+object ArrayConstructors:
+  val name: String = "arrayConstructors"
+  val description: String = "intercept creation of (non-generic) arrays and intrinsify"
