@@ -138,26 +138,34 @@ trait CliCommand:
   /** Used for the formatted output of -Xshow-phases */
   protected def phasesMessage(using ctx: Context): String =
   
+    import scala.io.AnsiColor.*
+    val colors = Array(GREEN, YELLOW, /*BLUE,*/ MAGENTA, CYAN, RED)
     val phases = new Compiler().phases
     val nameLimit = 25 
     val maxCol = ctx.settings.pageWidth.value
     val maxName = phases.flatten.map(_.phaseName.length).max
     val width = maxName.min(nameLimit)
     val maxDesc = maxCol - (width + 6)
-    val fmt = s"%${width}.${width}s  %.${maxDesc}s%n"
+    val colorSlot = if ctx.useColors then GREEN.length.toString else "0"
+    val fmt = s"%.${colorSlot}s%${width}.${width}s%.${colorSlot}s  %.${maxDesc}s%n"
+    def plain(name: String, description: String) = fmt.format("", name, "", description)
 
     val sb = new StringBuilder
-    sb ++= fmt.format("phase name", "description")
-    sb ++= fmt.format("----------", "-----------")
+    sb ++= plain("phase name", "description")
+    sb ++= plain("----------", "-----------")
 
-    phases.foreach {
-      case List(single) =>
-        sb ++= fmt.format(single.phaseName, single.description)
-      case Nil => ()
-      case more =>
-        sb ++= fmt.format(s"{", "")
-        more.foreach { mini => sb ++= fmt.format(mini.phaseName, mini.description) }
-        sb ++= fmt.format(s"}", "")
+    def color(index: Int): String = colors(index % colors.length)
+    def emit(index: Int)(phase: core.Phases.Phase): Unit = sb ++= fmt.format(color(index), phase.phaseName, RESET, phase.description)
+    def group(index: Int)(body: Int => Unit): Unit =
+      if !ctx.useColors then sb ++= plain(s"{", "")
+      body(index)
+      if !ctx.useColors then sb ++= plain(s"}", "")
+
+    phases.zipWithIndex.foreach { (phase, index) =>
+      phase match
+        case List(single) => emit(index)(single)
+        case Nil          =>
+        case mega         => group(index)(i => mega.foreach(emit(i)))
     }
     sb.mkString
 
