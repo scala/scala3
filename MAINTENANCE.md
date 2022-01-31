@@ -16,13 +16,18 @@ Issue Tsar is responsible for:
 Other core teammates are responsible for providing information to the Issue Tsar in a timely manner when it is requested if they have that information.
 
 ## Assignment
-Issue Tsar is rotated according to a well-defined, ordered list. They are appointed for 7 days and are responsible for what is specified in the “Responsibilities” section during those 7 days. Their assumption of the role starts on Monday and ends on Friday (both inclusive), and the scope of their responsibilities extends to all events that took place during the weekend before the Monday of their assignment.
+Issue Tsar is appointed for 7 days and is responsible for what is specified in the “Responsibilities” section during those 7 days. Their assumption of the role starts from the Dotty Meeting on Monday and ends on the next Dotty Meeting on Monday.
+
+During the Dotty Meeting, an Issue Tsar is assigned for the current week and for the week after that.
+
+Issue Tsardom schedule is maintained in the [Issue Tsardom Statistics spreadsheet](https://docs.google.com/spreadsheets/d/19IAqNzHfJ9rsii3EsjIGwPz5BLTFJs_byGM3FprmX3E/edit?usp=sharing). So, someone who knows their availability several weeks ahead into the future can assign themselves to be an issue tsar well ahead of time.
 
 ## Prerequisites
 An issue tsar needs to have all the accesses and privileges required to get their job done. This might include:
-Admin rights in lampepfl/dotty repository
-Admin rights in lampepfl/dotty-feature-requests repository
-Permissions to create new repositories in lampepfl organization (needed to fork repositories for the community build)
+- Admin rights in lampepfl/dotty repository
+- Admin rights in lampepfl/dotty-feature-requests repository
+- Permissions to create new repositories in lampepfl organization (needed to fork repositories for the community build)
+- Access to the LAMP slack to be able to ask for help with the infrastructure, triaging and such
 
 ## Procedures
 To ensure proper health of the infrastructure, the Tsar regularly monitors its proper operation. If a malfunction is detected, it is the Tsar's job to ensure that there’s someone working on it (or solve it on their own).
