@@ -27,10 +27,10 @@ def foo5(i: Int)(using CanThrow[Ex1])(using CanThrow[Ex2]): Unit =
 def foo6(i: Int)(using CanThrow[Ex1 | Ex2]): Unit =
   if i > 0 then throw new Ex1 else throw new Ex2
 
-def foo7(i: Int)(using CanThrow[Ex1]): Unit throws Ex2 =
+def foo7(i: Int)(using CanThrow[Ex1]): Unit throws Ex1 | Ex2 =
   if i > 0 then throw new Ex1 else throw new Ex2
 
-def foo8(i: Int)(using CanThrow[Ex2]): Unit throws Ex1 =
+def foo8(i: Int)(using CanThrow[Ex2]): Unit throws Ex2 | Ex1 =
   if i > 0 then throw new Ex1 else throw new Ex2
 
 def test(): Unit =
