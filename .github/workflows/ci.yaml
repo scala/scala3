@@ -232,6 +232,10 @@ jobs:
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
 
+      - name: Show dependency tracking file
+        if: ${{ always() }}
+        run: cat community-build/dotty-community-build-deps || true
+
   community_build_b:
     runs-on: [self-hosted, Linux]
     container:
@@ -275,6 +279,10 @@ jobs:
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
 
+      - name: Show dependency tracking file
+        if: ${{ always() }}
+        run: cat community-build/dotty-community-build-deps || true
+
   community_build_c:
     runs-on: [self-hosted, Linux]
     container:
@@ -317,6 +325,10 @@ jobs:
           git submodule sync
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"
+
+      - name: Show dependency tracking file
+        if: ${{ always() }}
+        run: cat community-build/dotty-community-build-deps || true
 
   community_build_forward_compat:
     runs-on: [self-hosted, Linux]
