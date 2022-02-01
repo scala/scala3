@@ -95,10 +95,3 @@ object Test:
     type MAD2[A <: Long , B <: Long, C <: Long] = A + (B * C)
     summon[MAD2[2L, 3L, 4L] =:= 14L]
 
-    // Ints are converted to Longs when passed as arguments to Long operations.
-    summon[1L + 2 =:= 1 + 2L]
-    summon[1 + 2 =:= 3L]
-
-    // Constants arguments are casted to the correct type for the operation.
-    summon[m.type + 1 =:= m.type + 1L]
-

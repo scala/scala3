@@ -25,7 +25,6 @@ object CompiletimeOpsNormalizer:
     val add: (T, T) => T
     val multiply: (T, T) => T
     val asT: PartialFunction[Any, T]
-    val isT: Any => Boolean
 
   given Ring[Long] with
     def moduleClass(using Context) = defn.CompiletimeOpsLongModuleClass
@@ -36,16 +35,7 @@ object CompiletimeOpsNormalizer:
     val minusOne = -1L
     val add = _ + _
     val multiply = _ * _
-    val asT = {
-      case n: Long => n
-      case n: Int => n
-      case n: Short => n
-      case n: Char => n
-    }
-    val isT = {
-      case _: Long => true
-      case _ => false
-    }
+    val asT = { case n: Long => n }
 
   given Ring[Int] with
     def moduleClass(using Context) = defn.CompiletimeOpsIntModuleClass
@@ -56,15 +46,7 @@ object CompiletimeOpsNormalizer:
     val minusOne = -1
     val add = _ + _
     val multiply = _ * _
-    val asT = {
-      case n: Int => n
-      case n: Short => n
-      case n: Char => n
-    }
-    val isT = {
-      case _: Int => true
-      case _ => false
-    }
+    val asT = {  case n: Int => n }
 
   def linearNormalForm[@specialized(Int, Long) N](tp: Type)(using Context)(using ring: Ring[N]) =
     import scala.math.Ordering.Implicits.seqOrdering
@@ -163,7 +145,6 @@ object CompiletimeOpsNormalizer:
 
     def isSumNormalForm(x: Type, y: Type) = y match
       case Op(tpnme.Plus, _) => false
-      case ConstantType(Constant(c)) if !ring.isT(c) => false
       case _ =>
         val beforeLast = dropCoefficient(splitOp(x, tpnme.Plus)._2)
         val last = dropCoefficient(y)
@@ -171,7 +152,6 @@ object CompiletimeOpsNormalizer:
 
     def isProductNormalForm(x: Type, y: Type) = y match
       case Op(tpnme.Plus | tpnme.Times, _) => false
-      case ConstantType(Constant(c)) if !ring.isT(c) => false
       case _ => x match
         case Op(tpnme.Plus, _) => false
         case _ =>
