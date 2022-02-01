@@ -1230,7 +1230,7 @@ object Types {
      *  base type by applying one or more `underlying` dereferences.
      */
     final def widenSingleton(using Context): Type = stripped match {
-      case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
+      case tp: SingletonType if tp.isSoft && !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
     }
 
@@ -2869,7 +2869,6 @@ object Types {
   final class CachedConstantType(value: Constant, override val isSoft: Boolean = true) extends ConstantType(value)
 
   object ConstantType {
-    var i = 0
     def apply(value: Constant, soft: Boolean = true)(using Context): ConstantType = {
       assertUnerased()
       unique(new CachedConstantType(value, soft))
