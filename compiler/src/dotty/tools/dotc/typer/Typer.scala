@@ -1812,11 +1812,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         desugar.makeTryCase(handler1) :: Nil
     typedTry(untpd.Try(tree.expr, cases, tree.finalizer).withSpan(tree.span), pt)
 
-  def typedThrow(tree: untpd.Throw)(using Context): Tree = {
+  def typedThrow(tree: untpd.Throw)(using Context): Tree =
     val expr1 = typed(tree.expr, defn.ThrowableType)
-    checkCanThrow(expr1.tpe.widen, tree.span)
-    Throw(expr1).withSpan(tree.span)
-  }
+    val cap = checkCanThrow(expr1.tpe.widen, tree.span)
+    val res = Throw(expr1).withSpan(tree.span)
+    if cap.isEmpty || !ctx.settings.Ycc.value || ctx.isAfterTyper then res
+    else
+      Typed(res,
+        TypeTree(
+          AnnotatedType(res.tpe,
+            Annotation(defn.RequiresCapabilityAnnot, cap))))
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
     val elemProto = pt.stripNull.elemType match {
