@@ -1229,7 +1229,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if pos < mtpe.paramInfos.length then
           mtpe.paramInfos(pos)
             // This works only if vararg annotations match up.
-            // See neg/i14367.scala for an example where the inferred type is mispredicated. 
+            // See neg/i14367.scala for an example where the inferred type is mispredicted. 
             // Nevertheless, the alternative would be to give up completely, so this is
             // defensible.
         else NoType
