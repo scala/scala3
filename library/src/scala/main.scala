@@ -112,12 +112,12 @@ final class main(maxLineLength: Int) extends MainAnnotation:
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
 
-  private enum ArgumentKind {
-    case SimpleArgument, OptionalArgument, VarArgument
-  }
-
   override def command(args: Array[String], commandName: String, documentation: String) =
     new Command[ArgumentParser, MainResultType]:
+      private enum ArgumentKind {
+        case SimpleArgument, OptionalArgument, VarArgument
+      }
+
       private val argMarker = "--"
       private val shortArgMarker = "-"
 
