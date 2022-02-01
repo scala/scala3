@@ -52,6 +52,12 @@ extension [A](x: A)
 def lazyCons[A](x: A, xs1: => {*} LazyList[A]): {xs1} LazyList[A] =
   LazyCons(x, () => xs1)
 
+def tabulate[A](n: Int)(gen: Int => A) =
+  def recur(i: Int): {gen} LazyList[A] =
+    if i == n then LazyNil
+    else gen(i) #: recur(i + 1)
+  recur(0)
+
 class Ex1 extends Exception
 class Ex2 extends Exception
 
@@ -72,4 +78,9 @@ def test(using cap1: CanThrow[Ex1], cap2: CanThrow[Ex2]) =
   def x2 = x1.concat(xs.map(g).filter(_ > 0))
   def x2c: {cap1, cap2} LazyList[Int] = x2
 
+  val x3 = tabulate(10) { i =>
+      if i > 9 then throw Ex1()
+      i * i
+    }
+  val x3c: {cap1} LazyList[Int] = x3
 

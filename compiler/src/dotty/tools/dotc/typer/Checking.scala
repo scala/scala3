@@ -1411,9 +1411,11 @@ trait Checking {
       val kind = if pattern then "pattern selector" else "value"
       report.warning(MatchableWarning(tp, pattern), pos)
 
-  def checkCanThrow(tp: Type, span: Span)(using Context): Unit =
+  def checkCanThrow(tp: Type, span: Span)(using Context): Tree =
     if Feature.enabled(Feature.saferExceptions) && tp.isCheckedException then
       ctx.typer.implicitArgTree(defn.CanThrowClass.typeRef.appliedTo(tp), span)
+    else
+      EmptyTree
 
   /** Check that catch can generate a good CanThrow exception */
   def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = pat match
@@ -1441,7 +1443,7 @@ trait ReChecking extends Checking {
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
-  override def checkCanThrow(tp: Type, span: Span)(using Context): Unit = ()
+  override def checkCanThrow(tp: Type, span: Span)(using Context): Tree = EmptyTree
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
   override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }
