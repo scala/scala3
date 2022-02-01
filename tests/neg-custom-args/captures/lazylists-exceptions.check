@@ -1,0 +1,9 @@
+-- Error: tests/neg-custom-args/captures/lazylists-exceptions.scala:36:2 -----------------------------------------------
+36 |  try  // error
+   |  ^
+   |  the expression's type {*} LazyList[Int] is not allowed to capture the root capability `*`
+37 |    tabulate(10) { i =>
+38 |      if i > 9 then throw Ex1()
+39 |      i * i
+40 |    }
+41 |  catch case ex: Ex1 => LazyNil

@@ -305,6 +305,16 @@ class CheckCaptures extends Recheck:
             case _ => tp
         case tp => tp
 
+    override def recheckTyped(tree: Typed)(using Context): Type =
+      tree.tpt.tpe match
+        case AnnotatedType(_, annot) if annot.symbol == defn.RequiresCapabilityAnnot =>
+          annot.tree match
+            case Apply(_, cap :: Nil) =>
+              markFree(cap.symbol, tree.srcPos)
+            case _ =>
+        case _ =>
+      super.recheckTyped(tree)
+
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       val res = super.recheck(tree, pt)
       if tree.isTerm then
