@@ -37,19 +37,26 @@ extension [A](xs: {*} LazyList[A])
 
   def filter(p: A => Boolean): {xs, p} LazyList[A] =
     if xs.isEmpty then LazyNil
-    else if p(xs.head) then LazyCons(xs.head, () => xs.tail.filter(p))
+    else if p(xs.head) then lazyCons(xs.head, xs.tail.filter(p))
     else xs.tail.filter(p)
 
   def concat(ys: {*} LazyList[A]): {xs, ys} LazyList[A] =
     if xs.isEmpty then ys
-    else LazyCons(xs.head, () => xs.tail.concat(ys))
+    else xs.head #: xs.tail.concat(ys)
 end extension
+
+extension [A](x: A)
+  def #:(xs1: => {*} LazyList[A]): {xs1} LazyList[A] =
+    LazyCons(x, () => xs1)
+
+def lazyCons[A](x: A, xs1: => {*} LazyList[A]): {xs1} LazyList[A] =
+  LazyCons(x, () => xs1)
 
 class Ex1 extends Exception
 class Ex2 extends Exception
 
 def test(using cap1: CanThrow[Ex1], cap2: CanThrow[Ex2]) =
-  val xs = LazyCons(1, () => LazyNil)
+  val xs = 1 #: LazyNil
 
   def f(x: Int): Int throws Ex1 =
     if x < 0 then throw Ex1()
