@@ -3,7 +3,9 @@ package config
 
 import Settings._
 import core.Contexts._
+import printing.Highlighting
 
+import scala.util.chaining.given
 import scala.PartialFunction.cond
 
 trait CliCommand:
@@ -52,7 +54,7 @@ trait CliCommand:
   protected def availableOptionsMsg(cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
     val ss = (settings.allSettings filter cond).toList sortBy (_.name)
     val maxNameWidth = 30
-    val nameWidths = ss.map(_.name.length).partition(_ < maxNameWidth)._1
+    val nameWidths = ss.map(_.name.length).filter(_ < maxNameWidth)
     val width = if nameWidths.nonEmpty then nameWidths.max else maxNameWidth
     val terminalWidth = settings.pageWidth.value
     val (nameWidth, descriptionWidth) = {
@@ -136,39 +138,10 @@ trait CliCommand:
     createUsageMsg("Possible private", shouldExplain = true, isPrivate)
 
   /** Used for the formatted output of -Xshow-phases */
-  protected def phasesMessage(using ctx: Context): String =
-  
-    import scala.io.AnsiColor.*
-    val colors = Array(GREEN, YELLOW, /*BLUE,*/ MAGENTA, CYAN, RED)
+  protected def phasesMessage(using Context): String =
     val phases = new Compiler().phases
-    val nameLimit = 25 
-    val maxCol = ctx.settings.pageWidth.value
-    val maxName = phases.flatten.map(_.phaseName.length).max
-    val width = maxName.min(nameLimit)
-    val maxDesc = maxCol - (width + 6)
-    val colorSlot = if ctx.useColors then GREEN.length.toString else "0"
-    val fmt = s"%.${colorSlot}s%${width}.${width}s%.${colorSlot}s  %.${maxDesc}s%n"
-    def plain(name: String, description: String) = fmt.format("", name, "", description)
-
-    val sb = new StringBuilder
-    sb ++= plain("phase name", "description")
-    sb ++= plain("----------", "-----------")
-
-    def color(index: Int): String = colors(index % colors.length)
-    def emit(index: Int)(phase: core.Phases.Phase): Unit = sb ++= fmt.format(color(index), phase.phaseName, RESET, phase.description)
-    def group(index: Int)(body: Int => Unit): Unit =
-      if !ctx.useColors then sb ++= plain(s"{", "")
-      body(index)
-      if !ctx.useColors then sb ++= plain(s"}", "")
-
-    phases.zipWithIndex.foreach { (phase, index) =>
-      phase match
-        case List(single) => emit(index)(single)
-        case Nil          =>
-        case mega         => group(index)(i => mega.foreach(emit(i)))
-    }
-    sb.mkString
-
+    val formatter = Columnator("phase name", "description", maxField = 25, separation = 2)
+    formatter(phases.map(mega => mega.map(p => (p.phaseName, p.description))))
 
   /** Provide usage feedback on argument summary, assuming that all settings
    *  are already applied in context.
@@ -196,3 +169,55 @@ trait CliCommand:
 
   extension [T](setting: Setting[T])
     protected def value(using ss: SettingsState): T = setting.valueIn(ss)
+
+  extension (s: String)
+    def padLeft(width: Int): String = StringBuilder().tap(_.append(" " * (width - s.length)).append(s)).toString
+
+  // Formatting for -help and -Vphases in two columns, handling long field1 and wrapping long field2
+  class Columnator(heading1: String, heading2: String, maxField: Int, separation: Int = 1):
+    def apply(texts: List[List[(String, String)]])(using Context): String = StringBuilder().tap(columnate(_, texts)).toString
+
+    private def columnate(sb: StringBuilder, texts: List[List[(String, String)]])(using Context): Unit =
+      import scala.util.Properties.{lineSeparator => EOL}
+      import Highlighting.*
+      val colors = Seq(Green(_), Yellow(_), Magenta(_), Cyan(_), Red(_))
+      val nocolor = texts.length == 1
+      def color(index: Int): String => Highlight = if nocolor then NoColor(_) else colors(index % colors.length)
+      val maxCol = ctx.settings.pageWidth.value
+      val field1 = maxField.min(texts.flatten.map(_._1.length).filter(_ < maxField).max) // widest field under maxField
+      val field2 = if field1 + separation + maxField < maxCol then maxCol - field1 - separation else 0 // skinny window -> terminal wrap
+      val separator = " " * separation
+      def formatField1(text: String): String = if text.length <= field1 then text.padLeft(field1) else EOL + "".padLeft(field1)
+      def formatField2(text: String): String =
+        if field2 == 0 || text.length <= field2 then text
+        else
+          text.lastIndexOf(" ", field2) match
+            case -1 => text
+            case i  =>
+              val (prefix, rest) = text.splitAt(i)
+              s"${prefix}${EOL}${formatField1("")}${separator}${formatField2(rest.trim)}"
+      def format(first: String, second: String, index: Int, colorPicker: Int => String => Highlight) =
+        sb.append(colorPicker(index)(formatField1(first)).show)
+          .append(separator)
+          .append(formatField2(second))
+          .append(EOL): Unit
+      def fancy(first: String, second: String, index: Int) = format(first, second, index, color)
+      def plain(first: String, second: String) = format(first, second, 0, _ => NoColor(_))
+
+      if heading1.nonEmpty then
+        plain(heading1, heading2)
+        plain("-" * heading1.length, "-" * heading2.length)
+
+      def emit(index: Int)(textPair: (String, String)): Unit = fancy(textPair._1, textPair._2, index)
+      def group(index: Int)(body: Int => Unit): Unit =
+        if !ctx.useColors then plain(s"{", "")
+        body(index)
+        if !ctx.useColors then plain(s"}", "")
+
+      texts.zipWithIndex.foreach { (text, index) =>
+        text match
+          case List(single) => emit(index)(single)
+          case Nil          =>
+          case mega         => group(index)(i => mega.foreach(emit(i)))
+      }
+  end Columnator
