@@ -968,6 +968,7 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val SinceAnnot: ClassSymbol = requiredClass("scala.annotation.since")
+  @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.retains")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.retainsByName")
 
