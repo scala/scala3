@@ -1,18 +1,18 @@
--- Warning: tests/neg-custom-args/captures/byname.scala:14:18 ----------------------------------------------------------
-14 |  def h(x: {cap1} -> I) = x // warning
+-- Warning: tests/neg-custom-args/captures/byname.scala:17:18 ----------------------------------------------------------
+17 |  def h(x: {cap1} -> I) = x // warning
    |                  ^
    |                  Style: by-name `->` should immediately follow closing `}` of capture set
    |                  to avoid confusion with function type.
    |                  That is, `{c}-> T` instead of `{c} -> T`.
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:7:5 -----------------------------------------
-7 |  h(f())  // error
-  |    ^^^
-  |    Found:    {cap2} (x$0: Int) -> Int
-  |    Required: Int -> Int
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:10:6 ----------------------------------------
+10 |  h(f2()) // error
+   |    ^^^^
+   |    Found:    {cap1} (x$0: Int) -> Int
+   |    Required: {cap2} Int -> Int
 
 longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:16:5 ----------------------------------------
-16 |  h(g()) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:19:5 ----------------------------------------
+19 |  h(g()) // error
    |    ^^^
    |    Found:    {cap2} () ?-> I
    |    Required: {cap1} () ?-> I
