@@ -13,7 +13,7 @@ lazy val testedCompilerVersion: String =
 lazy val sbtPluginFilePath: String =
   // Workaround for https://github.com/sbt/sbt/issues/4395
   new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
-  communitybuildDir.resolve("sbt-dotty-sbt").toAbsolutePath().toString()
+  communitybuildDir.resolve("sbt-injected-plugins").toAbsolutePath().toString()
 
 def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
@@ -281,12 +281,6 @@ object projects:
     requiresExperimental = true,
   )
 
-  lazy val algebra = SbtCommunityProject(
-    project       = "algebra",
-    sbtTestCommand   = "coreJVM/compile",
-    sbtDocCommand = forceDoc("coreJVM")
-  )
-
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test;js/test",
@@ -364,7 +358,7 @@ object projects:
 
   lazy val scalaPB = SbtCommunityProject(
     project       = "ScalaPB",
-    sbtTestCommand   = "dotty-community-build/compile",
+    sbtTestCommand   = "lensesJVM3/compile; runtimeJVM3/compile; grpcRuntimeJVM3/compile; compilerPluginJVM3/compile",
     // aggregateDoc("runtimeJVM")("scalapbc", "grpcRuntime", "compilerPlugin") fails with
     // module class ScalaPbCodeGenerator$ has non-class parent: TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module protocbridge),ProtocCodeGenerator)
     // Also it seems that we do not handle correctly aggreagation projects
@@ -442,6 +436,7 @@ object projects:
     project = "zio",
     sbtTestCommand = "testJVMDotty",
     sbtDocCommand = forceDoc("coreJVM"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
     dependencies = () => List(izumiReflect)
   )
 
@@ -468,12 +463,13 @@ object projects:
     sbtTestCommand   = "unitTests/test",
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
     dependencies = () => List(munit, scodecBits),
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
     project          = "scala-parser-combinators",
-    sbtTestCommand   = "parserCombinatorsJVM/test",
+    sbtTestCommand   = "set every versionPolicyIntention := Compatibility.None; parserCombinatorsJVM/test",
     sbtDocCommand   = forceDoc("parserCombinatorsJVM"),
   )
 
@@ -512,7 +508,7 @@ object projects:
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "test",
+    sbtTestCommand = "ciJVM",
     sbtPublishCommand = "publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
     dependencies   = () => List(cats, coop, disciplineSpecs2, scalacheck)
@@ -552,6 +548,7 @@ object projects:
     project = "discipline",
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
     dependencies = () => List(scalacheck)
   )
 
@@ -679,9 +676,9 @@ object projects:
 
   lazy val scissLucre = SbtCommunityProject(
     project           = "Lucre",
-    sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;expr0JVM/test;expr1JVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
+    sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
     extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
-    sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;expr0JVM/publishLocal;expr1JVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
+    sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
     dependencies      = () => List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
   )
 
@@ -711,6 +708,7 @@ object projects:
       """set actorTests/Compile/scalacOptions -= "-Xfatal-warnings"""",
       "akka-actor-tests/Test/compile",
     ).mkString("; "),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
     dependencies = () => List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
   )
 
@@ -761,6 +759,7 @@ object projects:
     project = "fs2",
     sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
     dependencies = () => List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
   )
 
@@ -789,6 +788,7 @@ object projects:
     project = "spire",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
     dependencies = () => List(cats, disciplineMunit)
   )
 
@@ -824,7 +824,6 @@ def allProjects = List(
   projects.cask,
   projects.scas,
   projects.intent,
-  projects.algebra,
   projects.scalacheck,
   projects.scalacheckForwardCompat,
   projects.scalatest,

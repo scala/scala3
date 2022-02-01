@@ -1,6 +1,3 @@
-[submodule "community-build/community-projects/algebra"]
-	path = community-build/community-projects/algebra
-	url = https://github.com/dotty-staging/algebra
 [submodule "community-build/community-projects/betterfiles"]
 	path = community-build/community-projects/betterfiles
 	url = https://github.com/dotty-staging/better-files

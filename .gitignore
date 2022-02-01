@@ -65,6 +65,7 @@ compiler/after-pickling.txt
 bench/compile.txt
 
 community-build/scala3-bootstrapped.version
+community-build/sbt-injected-plugins
 community-build/sbt-dotty-sbt
 community-build/sbt-scalajs-sbt
 community-build/dotty-community-build-deps
