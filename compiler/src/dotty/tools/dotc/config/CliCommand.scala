@@ -51,49 +51,21 @@ trait CliCommand:
   end distill
 
   /** Creates a help message for a subset of options based on cond */
-  protected def availableOptionsMsg(cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
-    val ss = (settings.allSettings filter cond).toList sortBy (_.name)
-    val maxNameWidth = 30
-    val nameWidths = ss.map(_.name.length).filter(_ < maxNameWidth)
-    val width = if nameWidths.nonEmpty then nameWidths.max else maxNameWidth
-    val terminalWidth = settings.pageWidth.value
-    val (nameWidth, descriptionWidth) = {
-      val w1 =
-        if width < maxNameWidth then width
-        else maxNameWidth
-      val w2 =
-        if terminalWidth < w1 + maxNameWidth then 0
-        else terminalWidth - w1 - 1
-      (w1, w2)
-    }
-    def formatName(name: String) =
-      if name.length <= nameWidth then ("%-" + nameWidth + "s") format name
-      else (name + "\n%-" + nameWidth + "s") format ""
-    def formatDescription(text: String): String =
-      if descriptionWidth == 0 then text
-      else if text.length < descriptionWidth then text
-      else {
-        val inx = text.substring(0, descriptionWidth).lastIndexOf(" ")
-        if inx < 0 then text
-        else
-          val str = text.substring(0, inx)
-          s"${str}\n${formatName("")} ${formatDescription(text.substring(inx + 1))}"
-      }
-    def formatSetting(name: String, value: String) =
-      if (value.nonEmpty)
-        // the format here is helping to make empty padding and put the additional information exactly under the description.
-        s"\n${formatName("")} $name: $value."
-      else
-        ""
-    def helpStr(s: Setting[?]) =
+  protected def availableOptionsMsg(p: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
+    // result is (Option Name, descrption\ndefault: value\nchoices: x, y, z
+    def help(s: Setting[?]): (String, String) =
+      // For now, skip the default values that do not make sense for the end user, such as 'false' for the version command.
       def defaultValue = s.default match
         case _: Int | _: String => s.default.toString
-        case _ =>
-          // For now, skip the default values that do not make sense for the end user.
-          // For example 'false' for the version command.
-          ""
-      s"${formatName(s.name)} ${formatDescription(shortHelp(s))}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
-    ss.map(helpStr).mkString("", "\n", s"\n${formatName("@<file>")} ${formatDescription("A text file containing compiler arguments (options and source files).")}\n")
+        case _ => ""
+      val info = List(shortHelp(s), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices ${s.legalChoices}" else "")
+      (s.name, info.filter(_.nonEmpty).mkString("\n"))
+    end help
+
+    val ss = settings.allSettings.filter(p).toList.sortBy(_.name)
+    val formatter = Columnator("", "", maxField = 30)
+    val fresh = ContextBase().initialCtx.fresh.setSettings(summon[SettingsState])
+    formatter(List(ss.map(help) :+ ("@<file>", "A text file containing compiler arguments (options and source files).")))(using fresh)
   end availableOptionsMsg
 
   protected def shortUsage: String = s"Usage: $cmdName <options> <source files>"
@@ -101,9 +73,9 @@ trait CliCommand:
   protected def createUsageMsg(label: String, shouldExplain: Boolean, cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
     val prefix = List(
       Some(shortUsage),
-      Some(explainAdvanced) filter (_ => shouldExplain),
+      Some(explainAdvanced).filter(_ => shouldExplain),
       Some(label + " options include:")
-    ).flatten mkString "\n"
+    ).flatten.mkString("\n")
 
     prefix + "\n" + availableOptionsMsg(cond)
 
@@ -140,7 +112,7 @@ trait CliCommand:
   /** Used for the formatted output of -Xshow-phases */
   protected def phasesMessage(using Context): String =
     val phases = new Compiler().phases
-    val formatter = Columnator("phase name", "description", maxField = 25, separation = 2)
+    val formatter = Columnator("phase name", "description", maxField = 25)
     formatter(phases.map(mega => mega.map(p => (p.phaseName, p.description))))
 
   /** Provide usage feedback on argument summary, assuming that all settings
@@ -174,7 +146,7 @@ trait CliCommand:
     def padLeft(width: Int): String = StringBuilder().tap(_.append(" " * (width - s.length)).append(s)).toString
 
   // Formatting for -help and -Vphases in two columns, handling long field1 and wrapping long field2
-  class Columnator(heading1: String, heading2: String, maxField: Int, separation: Int = 1):
+  class Columnator(heading1: String, heading2: String, maxField: Int, separation: Int = 2):
     def apply(texts: List[List[(String, String)]])(using Context): String = StringBuilder().tap(columnate(_, texts)).toString
 
     private def columnate(sb: StringBuilder, texts: List[List[(String, String)]])(using Context): Unit =
@@ -187,21 +159,15 @@ trait CliCommand:
       val field1 = maxField.min(texts.flatten.map(_._1.length).filter(_ < maxField).max) // widest field under maxField
       val field2 = if field1 + separation + maxField < maxCol then maxCol - field1 - separation else 0 // skinny window -> terminal wrap
       val separator = " " * separation
-      def formatField1(text: String): String = if text.length <= field1 then text.padLeft(field1) else EOL + "".padLeft(field1)
+      def formatField1(text: String): String = if text.length <= field1 then text.padLeft(field1) else text + EOL + "".padLeft(field1)
       def formatField2(text: String): String =
-        def loopOverField2(fld: String): String =
-          if field2 == 0 || fld.length <= field2 then fld
+        def loopOverField2(fld: String): List[String] =
+          if field2 == 0 || fld.length <= field2 then List(fld)
           else
             fld.lastIndexOf(" ", field2) match
-              case -1 => fld
-              case i  =>
-                val (prefix, rest) = fld.splitAt(i)
-                s"${prefix}${EOL}${formatField1("")}${separator}${loopOverField2(rest.trim)}"
-        def loopOverFields2(rest: List[String]): String =
-          rest match
-            case h :: t => loopOverField2(h.trim) + loopOverFields2(t)
-            case Nil => ""
-        loopOverFields2(text.split("\n").toList)
+              case -1 => List(fld)
+              case i  => val (prefix, rest) = fld.splitAt(i) ; prefix :: loopOverField2(rest.trim)
+        text.split("\n").toList.flatMap(loopOverField2).filter(_.nonEmpty).mkString(EOL + "".padLeft(field1) + separator)
       end formatField2
       def format(first: String, second: String, index: Int, colorPicker: Int => String => Highlight) =
         sb.append(colorPicker(index)(formatField1(first)).show)
