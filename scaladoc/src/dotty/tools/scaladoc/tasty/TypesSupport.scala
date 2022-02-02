@@ -92,7 +92,6 @@ trait TypesSupport:
     def noSupported(name: String): SSignature =
       println(s"WARN: Unsupported type: $name: ${tp.show}")
       plain(s"Unsupported[$name]").l
-
     tp match
       case OrType(left, right) => inner(left) ++ keyword(" | ").l ++ inner(right)
       case AndType(left, right) => inner(left) ++ keyword(" & ").l ++ inner(right)
@@ -116,7 +115,6 @@ trait TypesSupport:
         }) ++ plain("]").l
         ++ keyword(" =>> ").l
         ++ inner(resType)
-
 
       case r: Refinement => { //(parent, name, info)
         def getRefinementInformation(t: TypeRepr): List[TypeRepr] = t match {
@@ -163,13 +161,25 @@ trait TypesSupport:
             plain("[").l ++ paramBounds ++ plain("]").l ++ keyword(" => ").l ++ paramList ++ keyword(" => ").l ++ resType
           case other => noSupported(s"Not supported type in refinement $info")
         }
+
+        def parseDependentFunctionType(info: TypeRepr): SSignature = info match {
+          case m: MethodType =>
+            val paramList = getParamList(m)
+            paramList ++ keyword(" => ").l ++ inner(m.resType)
+          case other => noSupported("Dependent function type without MethodType refinement")
+        }
+
         val refinementInfo = getRefinementInformation(r)
         val refinedType = refinementInfo.head
         val refinedElems = refinementInfo.tail.collect{ case r: Refinement => r }.toList
         val prefix = if refinedType.typeSymbol != defn.ObjectClass then inner(refinedType) ++ plain(" ").l else Nil
         if (refinedType.typeSymbol.fullName == "scala.PolyFunction" && refinedElems.size == 1) {
           parsePolyFunction(refinedElems.head.info)
-        } else {
+        }
+        else if (r.isDependentFunctionType) {
+          parseDependentFunctionType(r.info)
+        }
+        else {
           prefix ++ plain("{ ").l ++ refinedElems.flatMap(e => parseRefinedElem(e.name, e.info)) ++ plain(" }").l
         }
       }
@@ -274,7 +284,7 @@ trait TypesSupport:
 
       case ParamRef(TypeLambda(names, _, _), i) => tpe(names.apply(i)).l
 
-      case ParamRef(m: MethodType, i) => tpe(m.paramNames(i)).l
+      case ParamRef(m: MethodType, i) => tpe(m.paramNames(i)).l ++ plain(".type").l
 
       case RecursiveType(tp) => inner(tp)
 
