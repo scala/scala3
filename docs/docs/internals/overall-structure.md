@@ -233,10 +233,10 @@ Phases fall into four categories:
 * Code generators: These map the transformed trees to Java classfiles or
   .sjsir files.
 
-[dotty.tools]: https://github.com/lampepfl/dotty/tree/master/compiler/src/dotty/tools
-[dotc]: https://github.com/lampepfl/dotty/tree/master/compiler/src/dotty/tools/dotc
-[Main]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Main.scala
-[Driver]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Driver.scala
-[Compiler]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Compiler.scala
-[Run]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/Run.scala
-[Context]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Contexts.scala
+[dotty.tools]: https://github.com/lampepfl/dotty/tree/main/compiler/src/dotty/tools
+[dotc]: https://github.com/lampepfl/dotty/tree/main/compiler/src/dotty/tools/dotc
+[Main]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/Main.scala
+[Driver]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/Driver.scala
+[Compiler]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/Compiler.scala
+[Run]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/Run.scala
+[Context]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/core/Contexts.scala
