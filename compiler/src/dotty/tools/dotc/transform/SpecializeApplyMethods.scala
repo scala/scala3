@@ -20,7 +20,9 @@ import scala.collection.mutable
 class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   import ast.tpd._
 
-  val phaseName = "specializeApplyMethods"
+  override def phaseName: String = SpecializeApplyMethods.name
+
+  override def description: String = SpecializeApplyMethods.description
 
   override def isEnabled(using Context): Boolean =
     !ctx.settings.scalajs.value
@@ -116,3 +118,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
       tree
   }
 }
+
+object SpecializeApplyMethods:
+  val name: String = "specializeApplyMethods"
+  val description: String = "adds specialized methods to FunctionN"

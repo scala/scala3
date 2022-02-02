@@ -36,6 +36,8 @@ class ExtractSemanticDB extends Phase:
 
   override val phaseName: String = ExtractSemanticDB.name
 
+  override val description: String = ExtractSemanticDB.description
+
   override def isRunnable(using Context) =
     super.isRunnable && ctx.settings.Xsemanticdb.value
 
@@ -461,6 +463,7 @@ object ExtractSemanticDB:
   import java.nio.file.Paths
 
   val name: String = "extractSemanticDB"
+  val description: String = "extract info into .semanticdb files"
 
   def write(
     source: SourceFile,

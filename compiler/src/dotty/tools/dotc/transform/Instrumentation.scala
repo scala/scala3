@@ -23,7 +23,9 @@ import Constants.Constant
 class Instrumentation extends MiniPhase { thisPhase =>
   import ast.tpd._
 
-  override def phaseName: String = "instrumentation"
+  override def phaseName: String = Instrumentation.name
+
+  override def description: String = Instrumentation.description
 
   override def isEnabled(using Context) =
     ctx.settings.Yinstrument.value
@@ -105,3 +107,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
       tree
   }
 }
+
+object Instrumentation:
+  val name: String = "instrumentation"
+  val description: String = "count calls and allocations under -Yinstrument"

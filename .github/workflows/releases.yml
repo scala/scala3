@@ -20,5 +20,8 @@ jobs:
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
       - name: Publish to SDKMAN
         run: .github/workflows/scripts/publish-sdkman.sh

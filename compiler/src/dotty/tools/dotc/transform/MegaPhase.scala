@@ -432,16 +432,10 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def transformSpecificTree[T <: Tree](tree: T, start: Int)(using Context): T =
     transformTree(tree, start).asInstanceOf[T]
 
-  def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] = {
-    def transformStat(stat: Tree)(using Context): Tree = stat match {
-      case _: Import | _: DefTree => transformTree(stat, start)
-      case Thicket(stats) => cpy.Thicket(stat)(stats.mapConserve(transformStat))
-      case _ => transformTree(stat, start)(using ctx.exprContext(stat, exprOwner))
-    }
+  def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] =
     val nestedCtx = prepStats(trees, start)
-    val trees1 = trees.mapInline(transformStat(_)(using nestedCtx))
+    val trees1 = trees.mapStatements(exprOwner, transformTree(_, start))(using nestedCtx)
     goStats(trees1, start)(using nestedCtx)
-  }
 
   def transformUnit(tree: Tree)(using Context): Tree = {
     val nestedCtx = prepUnit(tree, 0)

@@ -22,8 +22,9 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
   thisPhase =>
   import ast.tpd._
 
-  /** the following two members override abstract members in Transform */
-  val phaseName: String = "capturedVars"
+  override def phaseName: String = CapturedVars.name
+
+  override def description: String = CapturedVars.description
 
   override def runsAfterGroupsOf: Set[String] = Set(LiftTry.name)
     // lifting tries changes what variables are considered to be captured
@@ -167,3 +168,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
       case _ =>
         tree
     recur(tree.lhs)
+
+object CapturedVars:
+  val name: String = "capturedVars"
+  val description: String = "represent vars captured by closures as heap objects"

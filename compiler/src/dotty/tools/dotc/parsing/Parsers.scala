@@ -3637,7 +3637,7 @@ object Parsers {
           val templ =
             if isStatSep || isStatSeqEnd then Template(constr, parents, Nil, EmptyValDef, Nil)
             else withTemplate(constr, parents)
-          if noParams then ModuleDef(name, templ)
+          if noParams && !mods.is(Inline) then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef
       finalizeDef(gdef, mods1, start)

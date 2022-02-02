@@ -22,10 +22,12 @@ import TypeUtils.isErasedValueType
 
 object FirstTransform {
   val name: String = "firstTransform"
+  val description: String = "some transformations to put trees into a canonical form"
 }
 
 /** The first tree transform
- *   - eliminates some kinds of trees: Imports, NamedArgs
+ *   - eliminates some kinds of trees: Imports other than language imports,
+ *     Exports, NamedArgs, type trees other than TypeTree
  *   - stubs out native methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
  *   - collapses all type trees to trees of class TypeTree
@@ -38,6 +40,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = FirstTransform.name
+
+  override def description: String = FirstTransform.description
 
   /** eliminate self symbol in ClassInfo */
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
@@ -58,7 +62,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
             tree.symbol.is(JavaStatic) && qualTpe.derivesFrom(tree.symbol.enclosingClass),
           i"non member selection of ${tree.symbol.showLocated} from ${qualTpe} in $tree")
       case _: TypeTree =>
-      case _: Import | _: NamedArg | _: TypTree =>
+      case _: Export | _: NamedArg | _: TypTree =>
         assert(false, i"illegal tree: $tree")
       case _ =>
     }
@@ -136,7 +140,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformOther(tree: Tree)(using Context): Tree = tree match {
-    case tree: ImportOrExport => EmptyTree
+    case tree: Import if untpd.languageImport(tree.expr).isEmpty => EmptyTree
+    case tree: Export => EmptyTree
     case tree: NamedArg => transformAllDeep(tree.arg)
     case tree => if (tree.isType) toTypeTree(tree) else tree
   }

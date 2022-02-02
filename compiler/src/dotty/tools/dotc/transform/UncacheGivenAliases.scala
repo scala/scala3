@@ -15,6 +15,7 @@ import ast.tpd
 
 object UncacheGivenAliases:
   val name: String = "uncacheGivenAliases"
+  val description: String = "avoid caching RHS of simple parameterless given aliases"
 
 /** This phase optimizes alias givens represented as lazy vals to be uncached
  *  if that does not change runtime behavior. A definition does not need to be
@@ -29,6 +30,8 @@ class UncacheGivenAliases extends MiniPhase with IdentityDenotTransformer:
   import tpd._
 
   override def phaseName: String = UncacheGivenAliases.name
+
+  override def description: String = UncacheGivenAliases.description
 
   private def needsCache(sym: Symbol, rhs: Tree)(using Context): Boolean = rhs.tpe match
     case rhsTpe @ TermRef(NoPrefix, _)

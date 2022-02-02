@@ -21,13 +21,14 @@ object ScriptTestEnv {
   def psep: String = sys.props("path.separator")
   def userDir: String = sys.props("user.dir").norm
   def testCwd = envOrElse("TEST_CWD", "").norm // optional working directory TEST_CWD
+  def verbose = envOrElse("VERBOSE", "").nonEmpty
 
   def whichJava: String = whichExe("java")
   def whichBash: String = whichExe("bash")
 
   lazy val workingDirectory: String = {
     val dirstr = if testCwd.nonEmpty then
-      printf("TEST_CWD set to [%s]\n", testCwd)
+      if verbose then printf("TEST_CWD set to [%s]\n", testCwd)
       testCwd
     else 
       userDir // userDir, if TEST_CWD not set
@@ -37,7 +38,7 @@ object ScriptTestEnv {
     if !test.isDirectory then
       printf("warning: not found below working directory: %s\n", test.norm)
 
-    printf("working directory is [%s]\n", dirstr)
+    if verbose then printf("working directory is [%s]\n", dirstr)
     dirstr
   }
 
@@ -106,7 +107,7 @@ object ScriptTestEnv {
       // a misconfigured environment (e.g., script is not executable) can prevent script execution
       val validTest = !stderr.exists(_.contains("Permission denied"))
       if ! validTest then
-        printf("\nunable to execute script, return value is %d\n", exitVal)
+        System.err.printf("\nunable to execute script, return value is %d\n", exitVal)
         stderr.foreach { System.err.printf("stderr [%s]\n", _) }
 
       (validTest, exitVal, stdout.reverse, stderr.reverse)
@@ -275,8 +276,7 @@ object ScriptTestEnv {
       ("MSYS", msyshome),
       ("SHELLOPTS", shellopts),
     ).filter { case (name, valu) => valu.nonEmpty }
-    for (k, v) <- pairs do
-      printf("%s : %s\n", k ,v)
+    if verbose then for (k, v) <- pairs do printf("%s : %s\n", k ,v)
     pairs
   }
 

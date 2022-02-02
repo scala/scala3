@@ -21,6 +21,7 @@ import collection.mutable
 
 object Constructors {
   val name: String = "constructors"
+  val description: String = "collect initialization code in primary constructors"
 }
 
 /** This transform
@@ -33,6 +34,9 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   import tpd._
 
   override def phaseName: String = Constructors.name
+
+  override def description: String = Constructors.description
+
   override def runsAfter: Set[String] = Set(HoistSuperArgs.name)
   override def runsAfterGroupsOf: Set[String] = Set(Memoize.name)
     // Memoized needs to be finished because we depend on the ownerchain after Memoize

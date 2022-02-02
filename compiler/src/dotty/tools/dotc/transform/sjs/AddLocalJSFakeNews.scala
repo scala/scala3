@@ -54,6 +54,8 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
 
   override def phaseName: String = AddLocalJSFakeNews.name
 
+  override def description: String = AddLocalJSFakeNews.description
+
   override def isEnabled(using Context): Boolean =
     ctx.settings.scalajs.value
 
@@ -96,4 +98,5 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
 
 object AddLocalJSFakeNews {
   val name: String = "addLocalJSFakeNews"
+  val description: String = "adds fake new invocations to local JS classes in calls to `createLocalJSClass`"
 }

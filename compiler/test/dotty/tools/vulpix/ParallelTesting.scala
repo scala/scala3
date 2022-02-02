@@ -7,7 +7,7 @@ import java.lang.System.{lineSeparator => EOL}
 import java.net.URL
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
-import java.nio.charset.StandardCharsets
+import java.nio.charset.{Charset, StandardCharsets}
 import java.text.SimpleDateFormat
 import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
@@ -445,14 +445,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           throw e
 
     protected def compile(files0: Array[JFile], flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
-      val flags = flags0.and("-d", targetDir.getPath)
-        .withClasspath(targetDir.getPath)
-
       def flattenFiles(f: JFile): Array[JFile] =
         if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
         else Array(f)
 
       val files: Array[JFile] = files0.flatMap(flattenFiles)
+
+      val flags = flags0
+        .and(toolArgsFor(files.toList.map(_.toPath), getCharsetFromEncodingOpt(flags0)): _*)
+        .and("-d", targetDir.getPath)
+        .withClasspath(targetDir.getPath)
 
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
@@ -545,25 +547,36 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       diagnostics.reverse
 
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter =
-      val compilerDir = getCompiler(compiler).toString
+      def artifactClasspath(organizationName: String, moduleName: String) =
+        import coursier._
+        val dep = Dependency(
+          Module(
+            Organization(organizationName),
+            ModuleName(moduleName),
+            attributes = Map.empty
+          ),
+          version = compiler
+        )
+        Fetch()
+          .addDependencies(dep)
+          .run()
+          .mkString(JFile.pathSeparator)
 
-      def substituteClasspath(old: String): String =
-        old.split(JFile.pathSeparator).map { o =>
-          if JFile(o) == JFile(Properties.dottyLibrary) then s"$compilerDir/lib/scala3-library_3-$compiler.jar"
-          else o
-        }.mkString(JFile.pathSeparator)
+      val stdlibClasspath = artifactClasspath("org.scala-lang", "scala3-library_3")
+      val scalacClasspath = artifactClasspath("org.scala-lang", "scala3-compiler_3")
 
       val pageWidth = TestConfiguration.pageWidth - 20
-      val flags1 = flags.copy(defaultClassPath = substituteClasspath(flags.defaultClassPath))
+      val flags1 = flags.copy(defaultClassPath = stdlibClasspath)
         .withClasspath(targetDir.getPath)
         .and("-d", targetDir.getPath)
         .and("-pagewidth", pageWidth.toString)
 
-      val reporter = TestReporter.reporter(realStdout, logLevel =
-          if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
-
-      val command = Array(compilerDir + "/bin/scalac") ++ flags1.all ++ files.map(_.getPath)
+      val scalacCommand = Array("java", "-cp", scalacClasspath, "dotty.tools.dotc.Main")
+      val command = scalacCommand ++ flags1.all ++ files.map(_.getAbsolutePath)
       val process = Runtime.getRuntime.exec(command)
+
+      val reporter = TestReporter.reporter(realStdout, logLevel =
+        if (suppressErrors || suppressAllOutput) ERROR + 1 else ERROR)
       val errorsText = Source.fromInputStream(process.getErrorStream).mkString
       if process.waitFor() != 0 then
         val diagnostics = parseErrors(errorsText, compiler, pageWidth)
@@ -1431,6 +1444,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
     new CompilationTest(targets)
   }
+
+  private def getCharsetFromEncodingOpt(flags: TestFlags) =
+    flags.options.sliding(2).collectFirst {
+      case Array("-encoding", encoding) => Charset.forName(encoding)
+    }.getOrElse(StandardCharsets.UTF_8)
 }
 
 object ParallelTesting {
@@ -1445,22 +1463,4 @@ object ParallelTesting {
   def isTastyFile(f: JFile): Boolean =
     f.getName.endsWith(".tasty")
 
-  def getCompiler(version: String): JFile =
-    val dir = cache.resolve(s"scala3-${version}").toFile
-    synchronized {
-      if dir.exists then
-        dir
-      else
-        import scala.sys.process._
-        val archivePath = cache.resolve(s"scala3-$version.tar.gz")
-        val compilerDownloadUrl = s"https://github.com/lampepfl/dotty/releases/download/$version/scala3-$version.tar.gz"
-        (URL(compilerDownloadUrl) #>> archivePath.toFile #&& s"tar -xf $archivePath -C $cache").!!
-        archivePath.toFile.delete()
-        dir
-    }
-
-  private lazy val cache =
-    val dir = Properties.testCache.resolve("compilers")
-    dir.toFile.mkdirs()
-    dir
 }

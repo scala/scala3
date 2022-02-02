@@ -113,6 +113,8 @@ class TailRec extends MiniPhase {
 
   override def phaseName: String = TailRec.name
 
+  override def description: String = TailRec.description
+
   override def runsAfter: Set[String] = Set(Erasure.name) // tailrec assumes erased types
 
   override def transformDefDef(tree: DefDef)(using Context): Tree = {
@@ -444,4 +446,5 @@ class TailRec extends MiniPhase {
 
 object TailRec {
   val name: String = "tailrec"
+  val description: String = "rewrite tail recursion to loops"
 }

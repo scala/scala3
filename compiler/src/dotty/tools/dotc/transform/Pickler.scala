@@ -18,6 +18,7 @@ import scala.concurrent.duration.Duration
 
 object Pickler {
   val name: String = "pickler"
+  val description: String = "generates TASTy info"
 
   /** If set, perform jump target compacting, position and comment pickling,
    *  as well as final assembly in parallel with downstream phases; force
@@ -31,6 +32,8 @@ class Pickler extends Phase {
   import ast.tpd._
 
   override def phaseName: String = Pickler.name
+
+  override def description: String = Pickler.description
 
   // No need to repickle trees coming from TASTY
   override def isRunnable(using Context): Boolean =

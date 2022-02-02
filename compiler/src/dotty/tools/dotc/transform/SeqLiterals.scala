@@ -17,7 +17,10 @@ import Contexts._
 class SeqLiterals extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName: String = "seqLiterals"
+  override def phaseName: String = SeqLiterals.name
+
+  override def description: String = SeqLiterals.description
+
   override def runsAfter: Set[String] = Set(PatternMatcher.name)
 
   override def checkPostCondition(tree: Tree)(using Context): Unit = tree match {
@@ -34,3 +37,8 @@ class SeqLiterals extends MiniPhase {
       wrapArray(arr, elemtp).withSpan(tree.span).ensureConforms(tree.tpe)
   }
 }
+
+object SeqLiterals:
+  val name: String = "seqLiterals"
+  val description: String = "express vararg arguments as arrays"
+

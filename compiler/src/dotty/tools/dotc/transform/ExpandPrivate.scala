@@ -32,7 +32,9 @@ import ValueClasses._
 class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  override def phaseName: String = "expandPrivate"
+  override def phaseName: String = ExpandPrivate.name
+
+  override def description: String = ExpandPrivate.description
 
   // This phase moves methods around (in infotransform) so it may need to make other methods public
   override def runsAfter: Set[String] = Set(MoveStatics.name)
@@ -111,3 +113,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
     tree
   }
 }
+
+object ExpandPrivate:
+  val name: String = "expandPrivate"
+  val description: String = "widen private definitions accessed from nested classes"

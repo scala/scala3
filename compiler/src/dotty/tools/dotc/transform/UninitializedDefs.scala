@@ -27,6 +27,8 @@ class UninitializedDefs extends MiniPhase:
 
   override def phaseName: String = UninitializedDefs.name
 
+  override def description: String = UninitializedDefs.description
+
   override def transformValDef(tree: ValDef)(using Context): Tree =
     if !hasUninitializedRHS(tree) then tree
     else cpy.ValDef(tree)(rhs = cpy.Ident(tree.rhs)(nme.WILDCARD).withType(tree.tpt.tpe))
@@ -46,4 +48,5 @@ end UninitializedDefs
 
 object UninitializedDefs:
   val name: String = "uninitializedDefs"
+  val description: String = "replaces `compiletime.uninitialized` by `_`"
 end UninitializedDefs

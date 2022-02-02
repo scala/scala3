@@ -12,7 +12,10 @@ import Types._
 import Decorators._
 
 class RepeatableAnnotations extends MiniPhase:
-  override def phaseName = "repeatableAnnotations"
+
+  override def phaseName: String = RepeatableAnnotations.name
+
+  override def description: String = RepeatableAnnotations.description
 
   override def transformTypeDef(tree: TypeDef)(using Context): Tree = transformDef(tree)
   override def transformValDef(tree: ValDef)(using Context): Tree = transformDef(tree)
@@ -46,3 +49,7 @@ class RepeatableAnnotations extends MiniPhase:
             Nil
       case (_, anns) => anns
     }.toList
+
+object RepeatableAnnotations:
+  val name: String = "repeatableAnnotations"
+  val description: String = "aggregate repeatable annotations"

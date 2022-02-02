@@ -59,9 +59,9 @@ object DottyJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.1.1-RC2"
+  val referenceVersion = "3.1.2-RC1"
 
-  val baseVersion = "3.1.2-RC1"
+  val baseVersion = "3.1.3-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -77,7 +77,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.1.0"
+  val previousDottyVersion = "3.1.1"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -516,7 +516,8 @@ object Build {
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
-        "org.jline" % "jline-terminal-jna" % "3.19.0" // needed for Windows
+        "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
+        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
       // For convenience, change the baseDirectory when running the compiler

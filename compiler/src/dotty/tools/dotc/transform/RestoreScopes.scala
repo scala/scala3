@@ -16,7 +16,10 @@ import StdNames._
  */
 class RestoreScopes extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
-  override def phaseName: String = "restoreScopes"
+
+  override def phaseName: String = RestoreScopes.name
+
+  override def description: String = RestoreScopes.description
 
   override def changesMembers: Boolean = true // the phase affects scopes, applying tree transformations of previous phases
 
@@ -50,3 +53,6 @@ class RestoreScopes extends MiniPhase with IdentityDenotTransformer { thisPhase 
   }
 }
 
+object RestoreScopes:
+  val name: String = "restoreScopes"
+  val description: String = "repair rendered invalid scopes"
