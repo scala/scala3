@@ -1,6 +1,6 @@
 charts:
     - name: "implicit cache I"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/bench/implicit_cache.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/implicit_cache.scala
       lines:
         - key: implicit-cache
           label: bootstrapped
@@ -8,7 +8,7 @@ charts:
           label: from tasty
 
     - name: "implicit cache II"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/bench/implicitNums.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/implicitNums.scala
       lines:
         - key: implicitNums
           label: bootstrapped
@@ -16,13 +16,13 @@ charts:
           label: from tasty
 
     - name: "implicit scope loop"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/bench/implicit-scope-loop.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/implicit-scope-loop.scala
       lines:
         - key: implicit-scope-loop
           label: bootstrapped
 
     - name: "inductive implicits"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/bench/inductive-implicits.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/inductive-implicits.scala
       lines:
         - key: inductive-implicits
           label: bootstrapped
