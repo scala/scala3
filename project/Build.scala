@@ -1394,10 +1394,10 @@ object Build {
 
         def generateDocTask =
           generateDocumentation(
-            roots, "Scala 3", dest.getAbsolutePath, "master",
+            roots, "Scala 3", dest.getAbsolutePath, "main",
             Seq(
               "-comment-syntax", "wiki",
-              s"-source-links:docs=github://lampepfl/dotty/master#docs",
+              s"-source-links:docs=github://lampepfl/dotty/main#docs",
               "-doc-root-content", docRootFile.toString,
               "-versions-dictionary-url",
               "https://scala-lang.org/api/versions.json",
@@ -1420,7 +1420,7 @@ object Build {
           (Test / Build.testcasesOutputDir).value,
           "scaladoc testcases",
           "scaladoc/output/testcases",
-          "master",
+          "main",
           Seq("-usejavacp", "-snippet-compiler:scaladoc-testcases/docs=compile", "-siteroot", "scaladoc-testcases/docs")
         )
       }.value,
