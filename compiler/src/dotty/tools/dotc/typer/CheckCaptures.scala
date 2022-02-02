@@ -236,22 +236,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       try super.recheckClassDef(tree, impl, cls)
       finally curEnv = saved
 
-    /** First half: Refine the type of a constructor call `new C(t_1, ..., t_n)`
-     *  to C{val x_1: T_1, ..., x_m: T_m} where x_1, ..., x_m are the tracked
-     *  parameters of C and T_1, ..., T_m are the types of the corresponding arguments.
-     *
-     *  Second half: union of all capture sets of arguments to tracked parameters.
-     */
-    private def addParamArgRefinements(core: Type, argTypes: List[Type], cls: ClassSymbol)(using Context): (Type, CaptureSet) =
-      cls.paramGetters.lazyZip(argTypes).foldLeft((core, CaptureSet.empty: CaptureSet)) { (acc, refine) =>
-        val (core, allCaptures) = acc
-        val (getter, argType) = refine
-        if getter.termRef.isTracked then
-          (RefinedType(core, getter.name, argType), allCaptures ++ argType.captureSet)
-        else
-          (core, allCaptures)
-      }
-
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
      *  This means:
      *   - Instantiate result type with actual arguments
@@ -264,12 +248,42 @@ class CheckCaptures extends Recheck, SymTransformer:
       val ownType =
         if mt.isResultDependent then SubstParamsMap(mt, argTypes)(mt.resType)
         else mt.resType
+
       if sym.isConstructor then
         val cls = sym.owner.asClass
-        val (refined, cs) = addParamArgRefinements(ownType, argTypes, cls)
-        refined.capturing(cs ++ capturedVars(cls) ++ capturedVars(sym))
-          .showing(i"constr type $mt with $argTypes%, % in $cls = $result", capt)
+
+        /** First half: Refine the type of a constructor call `new C(t_1, ..., t_n)`
+         *  to C{val x_1: T_1, ..., x_m: T_m} where x_1, ..., x_m are the tracked
+         *  parameters of C and T_1, ..., T_m are the types of the corresponding arguments.
+         *
+         *  Second half: union of all capture sets of arguments to tracked parameters.
+         */
+        def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
+          mt.paramNames.lazyZip(argTypes).foldLeft((core, initCs)) { (acc, refine) =>
+            val (core, allCaptures) = acc
+            val (getterName, argType) = refine
+            val getter = cls.info.member(getterName).suchThat(_.is(ParamAccessor)).symbol
+            if getter.termRef.isTracked then
+              (RefinedType(core, getterName, argType), allCaptures ++ argType.captureSet)
+            else
+              (core, allCaptures)
+          }
+
+        def augmentConstructorType(core: Type, initCs: CaptureSet): Type = core match
+          case core: MethodType =>
+            core.derivedLambdaType(resType = augmentConstructorType(core.resType, initCs))
+          case CapturingType(parent, refs, _) =>
+            augmentConstructorType(parent, initCs ++ refs)
+          case _ =>
+            val (refined, cs) = addParamArgRefinements(core, initCs)
+            refined.capturing(cs)
+
+        val augmented = augmentConstructorType(ownType, CaptureSet.empty)
+        { if augmented.isInstanceOf[MethodType] then augmented
+          else augmented.capturing(capturedVars(cls) ++ capturedVars(sym))
+        }.showing(i"constr type $mt with $argTypes%, % in $cls = $result", capt)
       else ownType
+    end instantiate
 
     def recheckByNameArg(tree: Tree, pt: Type)(using Context): Type =
       val closureDef(mdef) = tree
