@@ -18,7 +18,7 @@ object Generic:
 
 object Monomorphic:
 
-  class Pair(val x: Cap => Unit, val y: {*} Cap -> Unit):
+  class Pair(x: Cap => Unit, y: {*} Cap -> Unit):
     def fst = x
     def snd = y
 

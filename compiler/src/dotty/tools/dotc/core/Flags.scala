@@ -404,7 +404,9 @@ object Flags {
   /** Children were queried on this class */
   val (_, _, ChildrenQueried @ _) = newFlags(56, "<children-queried>")
 
-  /** A module variable (Scala 2.x only) */
+  /** A module variable (Scala 2.x only)
+   *  (re-used as a capture checking flag in CheckCaptures)
+   */
   val (_, Scala2ModuleVar @ _, _) = newFlags(57, "<modulevar>")
 
   /** A macro */
