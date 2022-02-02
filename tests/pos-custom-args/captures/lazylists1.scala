@@ -15,7 +15,7 @@ object LazyNil extends LazyList[Nothing]:
   def tail = ???
   def concat[B](other: {*} LazyList[B]): {other} LazyList[B] = other
 
-final class LazyCons[+A](val x: A, val xs: () => {*} LazyList[A]) extends LazyList[A]:
+final class LazyCons[+A](x: A, xs: () => {*} LazyList[A]) extends LazyList[A]:
   this: {*} LazyList[A] =>
 
   def isEmpty = false
