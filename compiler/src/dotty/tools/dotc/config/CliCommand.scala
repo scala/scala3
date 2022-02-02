@@ -189,13 +189,20 @@ trait CliCommand:
       val separator = " " * separation
       def formatField1(text: String): String = if text.length <= field1 then text.padLeft(field1) else EOL + "".padLeft(field1)
       def formatField2(text: String): String =
-        if field2 == 0 || text.length <= field2 then text
-        else
-          text.lastIndexOf(" ", field2) match
-            case -1 => text
-            case i  =>
-              val (prefix, rest) = text.splitAt(i)
-              s"${prefix}${EOL}${formatField1("")}${separator}${formatField2(rest.trim)}"
+        def loopOverField2(fld: String): String =
+          if field2 == 0 || fld.length <= field2 then fld
+          else
+            fld.lastIndexOf(" ", field2) match
+              case -1 => fld
+              case i  =>
+                val (prefix, rest) = fld.splitAt(i)
+                s"${prefix}${EOL}${formatField1("")}${separator}${loopOverField2(rest.trim)}"
+        def loopOverFields2(rest: List[String]): String =
+          rest match
+            case h :: t => loopOverField2(h.trim) + loopOverFields2(t)
+            case Nil => ""
+        loopOverFields2(text.split("\n").toList)
+      end formatField2
       def format(first: String, second: String, index: Int, colorPicker: Int => String => Highlight) =
         sb.append(colorPicker(index)(formatField1(first)).show)
           .append(separator)
