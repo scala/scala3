@@ -98,7 +98,7 @@ object Errors {
 
     def show(using Context): String = {
       var index = 0
-      "Cannot prove that the value is fully-initialized. " + msg + ".\n" + stacktrace +
+      "Cannot prove that the value is fully initialized. " + msg + ".\n" + stacktrace +
         "\nThe unsafe promotion may cause the following problem:\n" +
         errors.head.show + errors.head.stacktrace
     }
