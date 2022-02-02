@@ -1,31 +1,31 @@
 charts:
 
     - name: "Compile-time sums of constant integer types (generated)"
-      url: https://github.com/lampepfl/dotty/blob/master/bench/src/main/scala/generateBenchmarks.scala
+      url: https://github.com/lampepfl/dotty/blob/main/bench/src/main/scala/generateBenchmarks.scala
       lines:
         - key: compiletime-sum-constants
           label: bootstrapped
 
     - name: "Compile-time sums of term reference types (generated)"
-      url: https://github.com/lampepfl/dotty/blob/master/bench/src/main/scala/generateBenchmarks.scala
+      url: https://github.com/lampepfl/dotty/blob/main/bench/src/main/scala/generateBenchmarks.scala
       lines:
         - key: compiletime-sum-termrefs
           label: bootstrapped
 
     - name: "Sums of term references, result type inferred (generated)"
-      url: https://github.com/lampepfl/dotty/blob/master/bench/src/main/scala/generateBenchmarks.scala
+      url: https://github.com/lampepfl/dotty/blob/main/bench/src/main/scala/generateBenchmarks.scala
       lines:
         - key: compiletime-sum-termrefs-terms
           label: bootstrapped
 
     - name: "Compile-time sums of type applications (generated)"
-      url: https://github.com/lampepfl/dotty/blob/master/bench/src/main/scala/generateBenchmarks.scala
+      url: https://github.com/lampepfl/dotty/blob/main/bench/src/main/scala/generateBenchmarks.scala
       lines:
         - key: compiletime-sum-applications
           label: bootstrapped
 
     - name: "Compile-time additions inside multiplications (generated)"
-      url: https://github.com/lampepfl/dotty/blob/master/bench/src/main/scala/generateBenchmarks.scala
+      url: https://github.com/lampepfl/dotty/blob/main/bench/src/main/scala/generateBenchmarks.scala
       lines:
         - key: compiletime-distribute
           label: bootstrapped
