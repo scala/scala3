@@ -164,7 +164,7 @@ val YshowVarBounds    = BooleanSetting("-Yshow-var-bounds"   , "Print type varia
 val YtestPickler      = BooleanSetting("-Ytest-pickler"      , "self-test for pickling functionality; should be used with -Ystop-after:pickler")
 ```
 
-They are defined in [ScalaSettings.scala](https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala). E.g. `YprintPos` is defined as:
+They are defined in [ScalaSettings.scala](https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/config/ScalaSettings.scala). E.g. `YprintPos` is defined as:
 
 ```scala
 val YprintPos: Setting[Boolean] = BooleanSetting("-Yprint-pos", "show tree positions.")

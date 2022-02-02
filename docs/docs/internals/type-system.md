@@ -132,8 +132,8 @@ TODO
 ## Type inference via constraint solving ##
 TODO
 
-[1]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/Types.scala
+[1]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/core/Types.scala
 [2]: https://github.com/samuelgruetter/dotty/blob/classdiagrampdf/dotty-types.pdf
 [3]: https://github.com/samuelgruetter/scaladiagrams/tree/print-descendants
-[4]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/TypeComparer.scala
-[5]: https://github.com/lampepfl/dotty/blob/master/tests/pos/refinedSubtyping.scala
+[4]: https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/core/TypeComparer.scala
+[5]: https://github.com/lampepfl/dotty/blob/main/tests/pos/refinedSubtyping.scala

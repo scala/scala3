@@ -18,7 +18,7 @@ charts:
           label: bootstrapped
 
     - name: re2
-      url: https://github.com/lampepfl/bench/blob/master/tests/re2s
+      url: https://github.com/lampepfl/bench/blob/main/tests/re2s
       lines:
         - key: re2s
           label: bootstrapped
