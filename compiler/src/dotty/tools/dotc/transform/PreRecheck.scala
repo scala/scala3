@@ -2,17 +2,15 @@ package dotty.tools.dotc
 package transform
 
 import core.Phases.Phase
-import core.DenotTransformers.IdentityDenotTransformer
+import core.DenotTransformers.DenotTransformer
 import core.Contexts.{Context, ctx}
 
 /** A phase that precedes the rechecker and that allows installing
  *  new types for local symbols.
  */
-class PreRecheck extends Phase, IdentityDenotTransformer:
+abstract class PreRecheck extends Phase, DenotTransformer:
 
   def phaseName: String = "preRecheck"
-
-  override def isEnabled(using Context) = next.isEnabled
 
   override def changesBaseTypes: Boolean = true
 
