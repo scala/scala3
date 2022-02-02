@@ -596,8 +596,15 @@ object Semantic {
         && meth.owner.is(Flags.Module)
         && meth.owner.companionClass.is(Flags.Case)
 
+      def isAlwaysSafe(meth: Symbol) =
+        (meth eq defn.Object_eq)
+        || (meth eq defn.Object_ne)
+        || (meth eq defn.Any_isInstanceOf)
+
       // fast track if the current object is already initialized
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
+      else if isAlwaysSafe(meth) then Result(Hot, Nil)
+      else if meth eq defn.Any_asInstanceOf then Result(value, Nil)
       else value match {
         case Hot  =>
           if isSyntheticApply(meth) then
