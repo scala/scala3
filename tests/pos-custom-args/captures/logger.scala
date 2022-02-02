@@ -1,6 +1,6 @@
 class FileSystem
 
-class Logger(fs: {*} FileSystem):
+class Logger(using fs: {*} FileSystem):
   def log(s: String): Unit = ???
 
 def delayed(l: {*} Logger) =
@@ -8,9 +8,9 @@ def delayed(l: {*} Logger) =
     l.log("hi")
   22
 
-def test(fs: {*} FileSystem) =
-  val l0 = Logger(fs)
-  val l: {fs} Logger = Logger(fs)
+def test(using fs: {*} FileSystem) =
+  val l0 = Logger()
+  val l: {fs} Logger = Logger(using fs)
   l.log("hello world!")
   val xs: {l} LazyList[Int] =
     LazyList.from(1)
