@@ -13,7 +13,7 @@ jobs:
            && !contains(github.event.pull_request.body, '[skip docs]')
          )
          || contains(github.event.ref, 'scaladoc')
-         || contains(github.event.ref, 'master')"
+         || contains(github.event.ref, 'main')"
 
     steps:
       - name: Git Checkout
@@ -82,7 +82,7 @@ jobs:
          )
          || contains(github.event.ref, 'scaladoc')
          || contains(github.event.ref, 'scala3doc')
-         || contains(github.event.ref, 'master'))"
+         || contains(github.event.ref, 'main'))"
 
     steps:
       - name: Git Checkout
