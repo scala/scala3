@@ -12,7 +12,7 @@ import Trees.*
 import typer.RefChecks.checkAllOverrides
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import transform.SymUtils.*
-import transform.Recheck
+import transform.{Recheck, PreRecheck}
 import Recheck.*
 import scala.collection.mutable
 import CaptureSet.withCaptureSetsExplained
@@ -21,6 +21,19 @@ import reporting.trace
 
 object CheckCaptures:
   import ast.tpd.*
+
+  class Pre extends PreRecheck, SymTransformer:
+
+    override def isEnabled(using Context) = ctx.settings.Ycc.value
+
+  	/** Reset `private` flags of parameter accessors so that we can refine them
+     *  in Setup if they have non-empty capture sets
+     */
+    def transformSym(sym: SymDenotation)(using Context): SymDenotation =
+      if sym.isAllOf(PrivateParamAccessor)
+      then sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
+      else sym
+  end Pre
 
   case class Env(owner: Symbol, captured: CaptureSet, isBoxed: Boolean, outer: Env):
     def isOpen = !captured.isAlwaysEmpty && !isBoxed
@@ -77,7 +90,7 @@ object CheckCaptures:
       if remaining.accountsFor(firstRef) then
         report.warning(em"redundant capture: $remaining already accounts for $firstRef", ann.srcPos)
 
-class CheckCaptures extends Recheck:
+class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
 
   import ast.tpd.*
@@ -215,11 +228,6 @@ class CheckCaptures extends Recheck:
         curEnv = saved
 
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
-      for param <- cls.paramGetters do
-        if param.is(Private) && !param.info.captureSet.isAlwaysEmpty then
-          report.error(
-            "Implementation restriction: Class parameter with non-empty capture set must be a `val`",
-            param.srcPos)
       val saved = curEnv
       val localSet = capturedVars(cls)
       for parent <- impl.parents do

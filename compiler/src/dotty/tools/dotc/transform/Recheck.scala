@@ -7,7 +7,7 @@ import Symbols.*, Contexts.*, Types.*, ContextOps.*, Decorators.*, SymDenotation
 import Flags.*, SymUtils.*, NameKinds.*
 import ast.*
 import Phases.Phase
-import DenotTransformers.{IdentityDenotTransformer, DenotTransformer}
+import DenotTransformers.{DenotTransformer, IdentityDenotTransformer, SymTransformer}
 import NamerOps.{methodType, linkConstructorParams}
 import NullOpsDecorator.stripNull
 import typer.ErrorReporting.err
@@ -22,6 +22,14 @@ import reporting.trace
 
 object Recheck:
 
+  /** A flag used to indicate that a ParamAccessor has been temporily made not-private
+   *  Only used at the start of the Recheck phase, reset at its end.
+   *  The flag repurposes the Scala2ModuleVar flag. No confusion is possible since
+   *  Scala2ModuleVar cannot be also ParamAccessors.
+   */
+  val ResetPrivate = Scala2ModuleVar
+  val ResetPrivateParamAccessor = ResetPrivate | ParamAccessor
+
   import tpd.Tree
 
   /** Attachment key for rechecked types of TypeTrees */
@@ -34,7 +42,12 @@ object Recheck:
      */
     def updateInfoBetween(prevPhase: DenotTransformer, lastPhase: DenotTransformer, newInfo: Type)(using Context): Unit =
       if sym.info ne newInfo then
-        sym.copySymDenotation().installAfter(lastPhase) // reset
+        sym.copySymDenotation(
+            initFlags =
+              if sym.flags.isAllOf(ResetPrivateParamAccessor)
+              then sym.flags &~ ResetPrivate | Private
+              else sym.flags
+          ).installAfter(lastPhase) // reset
         sym.copySymDenotation(
             info = newInfo,
             initFlags =
@@ -64,7 +77,7 @@ object Recheck:
 
     def hasRememberedType: Boolean = tree.hasAttachment(RecheckedType)
 
-abstract class Recheck extends Phase, IdentityDenotTransformer:
+abstract class Recheck extends Phase, SymTransformer:
   thisPhase =>
 
   import ast.tpd.*
@@ -80,6 +93,12 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
     // One failing test is pos/i583a.scala
 
   override def widenSkolems = true
+
+  /** Change any `ResetPrivate` flags back to `Private` */
+  def transformSym(sym: SymDenotation)(using Context): SymDenotation =
+    if sym.isAllOf(Recheck.ResetPrivateParamAccessor) then
+      sym.copySymDenotation(initFlags = sym.flags &~ Recheck.ResetPrivate | Private)
+    else sym
 
   def run(using Context): Unit =
     newRechecker().checkUnit(ctx.compilationUnit)
@@ -388,6 +407,9 @@ abstract class Recheck extends Phase, IdentityDenotTransformer:
       super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
     }
 end Recheck
+
+object TestRecheck:
+  class Pre extends PreRecheck, IdentityDenotTransformer
 
 class TestRecheck extends Recheck:
   def phaseName: String = "recheck"
