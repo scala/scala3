@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/enum-desugared.scala:17:15 --------------------------------------------------------------------
 17 |    Array(this.LazyErrorId, this.NoExplanationID) // error // error
    |          ^^^^^^^^^^^^^^^^
-   |          Cannot prove that the value is fully-initialized. May only use initialized value as method arguments.
+   |          Cannot prove that the value is fully initialized. May only use initialized value as method arguments.
    |
    |          The unsafe promotion may cause the following problem:
    |          Calling the external method method name may cause initialization errors. Calling trace:
@@ -10,7 +10,7 @@
 -- Error: tests/init/neg/enum-desugared.scala:17:33 --------------------------------------------------------------------
 17 |    Array(this.LazyErrorId, this.NoExplanationID) // error // error
    |                            ^^^^^^^^^^^^^^^^^^^^
-   |           Cannot prove that the value is fully-initialized. May only use initialized value as method arguments.
+   |           Cannot prove that the value is fully initialized. May only use initialized value as method arguments.
    |
    |           The unsafe promotion may cause the following problem:
    |           Calling the external method method ordinal may cause initialization errors. Calling trace:
