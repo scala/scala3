@@ -25,7 +25,7 @@ the program will still typecheck, since values of all types can be compared with
 But it will probably give unexpected results and fail at runtime.
 
 Multiversal equality is an opt-in way to make universal equality safer.
-It uses a binary type class [`scala.CanEqual`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/CanEqual.scala)
+It uses a binary type class [`scala.CanEqual`](https://github.com/lampepfl/dotty/blob/main/library/src/scala/CanEqual.scala)
 to indicate that values of two given types can be compared with each other.
 The example above would not typecheck if `S` or `T` was a class
 that derives `CanEqual`, e.g.
@@ -70,7 +70,7 @@ given CanEqual[A, B] = CanEqual.derived
 given CanEqual[B, A] = CanEqual.derived
 ```
 
-The [`scala.CanEqual`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/CanEqual.scala)
+The [`scala.CanEqual`](https://github.com/lampepfl/dotty/blob/main/library/src/scala/CanEqual.scala)
 object defines a number of `CanEqual` given instances that together
 define a rule book for what standard types can be compared (more details below).
 

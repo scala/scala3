@@ -156,7 +156,7 @@ enum B(val gravity: Double) extends java.lang.Enum[B] {
 }
 ```
 
-For more information please check the [test case](https://github.com/lampepfl/dotty/tree/master/tests/run/enum-java) and
+For more information please check the [test case](https://github.com/lampepfl/dotty/tree/main/tests/run/enum-java) and
 also the relevant PRs [#6602](https://github.com/lampepfl/dotty/pull/6602) and
 [#6629](https://github.com/lampepfl/dotty/pull/6629).
 
