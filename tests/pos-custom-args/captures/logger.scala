@@ -1,15 +1,11 @@
-class FileSystem
+import annotation.capability
 
-class Logger(using fs: {*} FileSystem):
+@capability class FileSystem
+
+class Logger(using fs: FileSystem):
   def log(s: String): Unit = ???
 
-def delayed(l: {*} Logger) =
-  () =>
-    l.log("hi")
-  22
-
-def test(using fs: {*} FileSystem) =
-  val l0 = Logger()
+def test(using fs: FileSystem) =
   val l: {fs} Logger = Logger(using fs)
   l.log("hello world!")
   val xs: {l} LazyList[Int] =
@@ -18,6 +14,7 @@ def test(using fs: {*} FileSystem) =
         l.log(s"computing elem # $i")
         i * i
       }
+  xs
 
 trait LazyList[+A]:
   this: {*} LazyList[A] =>

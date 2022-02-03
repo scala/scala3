@@ -30,7 +30,7 @@ object CheckCaptures:
      *  in Setup if they have non-empty capture sets
      */
     def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-      if sym.isAllOf(PrivateParamAccessor)
+      if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot)
       then sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
       else sym
   end Pre
@@ -263,10 +263,9 @@ class CheckCaptures extends Recheck, SymTransformer:
             val (core, allCaptures) = acc
             val (getterName, argType) = refine
             val getter = cls.info.member(getterName).suchThat(_.is(ParamAccessor)).symbol
-            if getter.termRef.isTracked then
-              (RefinedType(core, getterName, argType), allCaptures ++ argType.captureSet)
-            else
-              (core, allCaptures)
+            if getter.termRef.isTracked && !getter.is(Private)
+            then (RefinedType(core, getterName, argType), allCaptures ++ argType.captureSet)
+            else (core, allCaptures)
           }
 
         def augmentConstructorType(core: Type, initCs: CaptureSet): Type = core match
