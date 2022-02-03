@@ -16,5 +16,8 @@ import scala.annotation.meta._
  *  compile errors. The annotation is particularly useful for implicit
  *  parameters since for these a textual scan is not sufficient to know
  *  where they are used.
+ *  Note: the annotation is copied from constructor parameters to corresponding
+ *  class fields. But it is checked that the field is eliminated before code
+ *  is generated.
  */
-@param class constructorOnly extends scala.annotation.StaticAnnotation
+@param @field class constructorOnly extends scala.annotation.StaticAnnotation
