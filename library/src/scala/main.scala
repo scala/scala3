@@ -154,6 +154,9 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         argIdx += 1
         result
 
+      private def nameIsValid(name: String): Boolean =
+        name.length > 0 // TODO add more checks for illegal characters
+
       private def shortNameIsValid(shortName: Char): Boolean =
         // If you change this, remember to update the error message when an invalid short name is given
         ('A' <= shortName && shortName <= 'Z') || ('a' <= shortName && shortName <= 'z')
@@ -264,7 +267,11 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         (indices ++: indicesShort).filter(_ >= 0)
 
       private def getAlternativeNames(paramInfos: ParameterInfos[_]): Seq[String] =
-        paramInfos.annotations.collect{ case annot: Name => annot.name }.filter(_.length > 0)
+        val (valid, invalid) =
+          paramInfos.annotations.collect{ case annot: Name => annot.name }.partition(nameIsValid)
+        if invalid.nonEmpty then
+          throw IllegalArgumentException(s"invalid names ${invalid.mkString(", ")} for parameter ${paramInfos.name}")
+        valid
 
       private def getShortNames(paramInfos: ParameterInfos[_]): Seq[Char] =
         val (valid, invalid) =
