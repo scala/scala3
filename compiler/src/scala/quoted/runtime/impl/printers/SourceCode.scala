@@ -1423,7 +1423,7 @@ object SourceCode {
       case '"' => "\\\""
       case '\'' => "\\\'"
       case '\\' => "\\\\"
-      case _ => if (ch.isControl) f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch)
+      case _ => if ch.isControl then f"\\u${ch.toInt}%04x" else String.valueOf(ch)
     }
 
     private def escapedString(str: String): String = str flatMap escapedChar
