@@ -1,4 +1,4 @@
-Dotty
+.Dotty
 =====
 [![Dotty CI](https://github.com/lampepfl/dotty/workflows/Dotty/badge.svg?branch=master)](https://github.com/lampepfl/dotty/actions?query=branch%3Amain)
 [![Join the chat at https://discord.com/invite/scala](https://img.shields.io/discord/632150470000902164)](https://discord.com/invite/scala)
