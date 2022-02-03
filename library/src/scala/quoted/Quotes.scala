@@ -4391,6 +4391,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             foldTree(x, tpt)(owner)
           case Typed(expr, tpt) =>
             foldTree(foldTree(x, expr)(owner), tpt)(owner)
+          case TypedOrTest(expr, tpt) =>
+            foldTree(foldTree(x, expr)(owner), tpt)(owner)
           case NamedArg(_, arg) =>
             foldTree(x, arg)(owner)
           case Assign(lhs, rhs) =>
