@@ -9,7 +9,7 @@ object Test {
     summon[TupledFunction[Any, ((T, T, T)) => R]] // error
     summon[TupledFunction[Tuple1[Int], ((T, T, T)) => R]] // error
 
-    summon[TupledFunction[(T, T, T))=> R, Nothing]] // error
+    summon[TupledFunction[(T, T, T) => R, Nothing]] // error
     summon[TupledFunction[(T, T, T) => R, Any]] // error
     summon[TupledFunction[((T, T, T)) => R, Tuple1[Int]]] // error
 

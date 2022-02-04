@@ -3,7 +3,7 @@ import com.typesafe.tools.mima.core._
 
 object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
-    // Experimental APIs that can be added in 3.2.0
+    // Experimental APIs that can be added in 3.2.0 or later
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.append"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
@@ -17,6 +17,12 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.long$"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#CompilationInfoModule.XmacroSettings"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#CompilationInfoModule.XmacroSettings"),
+
+    // TupledFunction
+    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.TupledFunctions"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.TupledFunctions$"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.util.TupledFunction"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.util.TupledFunction$"),
 
     // Private to the compiler - needed for forward binary compatibility
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.since")
