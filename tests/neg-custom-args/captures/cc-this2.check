@@ -1,0 +1,8 @@
+
+-- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this2/D_2.scala:2:6 -----------------------------------
+2 |class D extends C: // error
+  |      ^
+  |      illegal inheritance: self type {*} D of class D does not conform to self type C
+  |      of parent class C
+
+longer explanation available when compiling with `-explain`

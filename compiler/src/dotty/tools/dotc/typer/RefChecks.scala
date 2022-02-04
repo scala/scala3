@@ -98,7 +98,7 @@ object RefChecks {
    *  and required classes. Also check that only `enum` constructs extend
    *  `java.lang.Enum` and no user-written class extends ContextFunctionN.
    */
-  private def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
+  def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
