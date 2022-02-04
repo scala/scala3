@@ -1112,10 +1112,10 @@ object Types {
      */
     def matches(that: Type)(using Context): Boolean = {
       record("matches")
-      val thisTp1 = this.stripNullsDeep
-      val thatTp1 = that.stripNullsDeep
-      withoutMode(Mode.SafeNulls)(
-        TypeComparer.matchesType(thisTp1, thatTp1, relaxed = !ctx.phase.erasedTypes))
+      val overrideCtx = if ctx.explicitNulls
+        then ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding)
+        else ctx
+      TypeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)(using overrideCtx)
     }
 
     /** This is the same as `matches` except that it also matches => T with T and

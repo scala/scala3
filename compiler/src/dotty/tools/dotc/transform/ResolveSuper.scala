@@ -115,9 +115,8 @@ object ResolveSuper {
         // we use releaxed overriding check for explicit nulls if one of the symbols is Java defined.
         // This forces `Null` being a subtype of reference types during override checking.
         val overridesSuper = if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined)) then
-          val otherTp1 = otherTp.stripNullsDeep
-          val accTp1 = accTp.stripNullsDeep
-          withoutMode(Mode.SafeNulls)(otherTp1.overrides(accTp1, matchLoosely = true))
+          val overrideCtx = ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding)
+          otherTp.overrides(accTp, matchLoosely = true)(using overrideCtx)
         else
           otherTp.overrides(accTp, matchLoosely = true)
         if !overridesSuper then
