@@ -1,0 +1,14 @@
+-- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this3.scala:8:6 ---------------------------------------
+8 |class B extends A: // error
+  |      ^
+  |      illegal inheritance: self type {*} B of class B does not conform to self type {} A
+  |      of parent class A
+
+longer explanation available when compiling with `-explain`
+-- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this3.scala:11:6 --------------------------------------
+11 |class C(val f: () => Int) extends A // error
+   |      ^
+   |      illegal inheritance: self type {C.this.f} C of class C does not conform to self type {} A
+   |      of parent class A
+
+longer explanation available when compiling with `-explain`

@@ -2,8 +2,6 @@ import language.experimental.saferExceptions
 import annotation.unchecked.uncheckedVariance
 
 trait LazyList[+A]:
-  this: {*} LazyList[A] =>
-
   def isEmpty: Boolean
   def head: A
   def tail: {this} LazyList[A]
@@ -14,8 +12,6 @@ object LazyNil extends LazyList[Nothing]:
   def tail = ???
 
 final class LazyCons[+T](val x: T, val xs: () => {*} LazyList[T]) extends LazyList[T]:
-  this: {*} LazyList[T] =>
-
   var forced = false
   var cache: {this} LazyList[T @uncheckedVariance] = compiletime.uninitialized
 
