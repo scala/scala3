@@ -124,4 +124,6 @@ object Mode {
    *  This mode forces expansion of inline calls in those positions even during typing.
    */
   val ForceInline: Mode = newMode(29, "ForceInline")
+
+  val RelaxedOverriding: Mode = newMode(30, "ForceInline")
 }

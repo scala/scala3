@@ -766,13 +766,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
             isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
-            def isNullable(tp: Type): Boolean = tp.widenDealias match {
-              case tp: TypeRef => tp.symbol.isNullableClass
-              case tp: RefinedOrRecType => isNullable(tp.parent)
-              case tp: AppliedType => isNullable(tp.tycon)
-              case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
-              case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
-              case _ => false
+            def isNullable(tp: Type): Boolean = ctx.mode.is(Mode.RelaxedOverriding) || {
+              tp.widenDealias match {
+                case tp: TypeRef => tp.symbol.isNullableClass
+                case tp: RefinedOrRecType => isNullable(tp.parent)
+                case tp: AppliedType => isNullable(tp.tycon)
+                case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
+                case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
+                case _ => false
+              }
             }
             val sym1 = tp1.symbol
             (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||

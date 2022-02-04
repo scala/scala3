@@ -9,43 +9,6 @@ import Types._
 /** Defines operations on nullable types and tree. */
 object NullOpsDecorator:
 
-  private class StripNullsMap(isDeep: Boolean)(using Context) extends TypeMap:
-    def strip(tp: Type): Type = tp match
-      case tp @ OrType(lhs, rhs) =>
-        val llhs = this(lhs)
-        val rrhs = this(rhs)
-        if rrhs.isNullType then llhs
-        else if llhs.isNullType then rrhs
-        else derivedOrType(tp, llhs, rrhs)
-      case tp @ AndType(tp1, tp2) =>
-        // We cannot `tp.derivedAndType(strip(tp1), strip(tp2))` directly,
-        // since `stripNull((A | Null) & B)` would produce the wrong
-        // result `(A & B) | Null`.
-        val tp1s = this(tp1)
-        val tp2s = this(tp2)
-        if isDeep || (tp1s ne tp1) && (tp2s ne tp2) then
-          derivedAndType(tp, tp1s, tp2s)
-        else tp
-      case tp: TypeBounds =>
-        mapOver(tp)
-      case _ => tp
-
-    def stripOver(tp: Type): Type = tp match
-      case appTp @ AppliedType(tycon, targs) =>
-        derivedAppliedType(appTp, tycon, targs.map(this))
-      case ptp: PolyType =>
-        derivedLambdaType(ptp)(ptp.paramInfos, this(ptp.resType))
-      case mtp: MethodType =>
-        mapOver(mtp)
-      case _ => strip(tp)
-
-    override def apply(tp: Type): Type =
-      val tpw = tp.widenDealias
-      val tpws = if isDeep then stripOver(tpw) else strip(tpw)
-      if tpws ne tpw then tpws else tp
-
-  end StripNullsMap
-
   extension (self: Type)
     /** Syntactically strips the nullability from this type.
      *  If the type is `T1 | ... | Tn`, and `Ti` references to `Null`,
@@ -54,7 +17,31 @@ object NullOpsDecorator:
      *  The type will not be changed if explicit-nulls is not enabled.
      */
     def stripNull(using Context): Type = {
-      if ctx.explicitNulls then new StripNullsMap(false)(self) else self
+      def strip(tp: Type): Type =
+        val tpWiden = tp.widenDealias
+        val tpStripped = tpWiden match {
+          case tp @ OrType(lhs, rhs) =>
+            val llhs = strip(lhs)
+            val rrhs = strip(rhs)
+            if rrhs.isNullType then llhs
+            else if llhs.isNullType then rrhs
+            else tp.derivedOrType(llhs, rrhs)
+          case tp @ AndType(tp1, tp2) =>
+            // We cannot `tp.derivedAndType(strip(tp1), strip(tp2))` directly,
+            // since `stripNull((A | Null) & B)` would produce the wrong
+            // result `(A & B) | Null`.
+            val tp1s = strip(tp1)
+            val tp2s = strip(tp2)
+            if (tp1s ne tp1) && (tp2s ne tp2) then
+              tp.derivedAndType(tp1s, tp2s)
+            else tp
+          case tp @ TypeBounds(lo, hi) =>
+            tp.derivedTypeBounds(strip(lo), strip(hi))
+          case tp => tp
+        }
+        if tpStripped ne tpWiden then tpStripped else tp
+
+      if ctx.explicitNulls then strip(self) else self
     }
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
@@ -62,14 +49,6 @@ object NullOpsDecorator:
       val stripped = self.stripNull
       stripped ne self
     }
-
-    /** Strips nulls from this type deeply.
-     *  Compaired to `stripNull`, `stripNullsDeep` will apply `stripNull` to
-     *  each member of function types as well.
-     */
-    def stripNullsDeep(using Context): Type =
-      if ctx.explicitNulls then new StripNullsMap(true)(self) else self
-
   end extension
 
   import ast.tpd._

@@ -221,13 +221,9 @@ object OverridingPairs:
       member.name.is(DefaultGetterName) || {
         if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
           // releaxed override check for explicit nulls if one of the symbols is Java defined,
-          // force `Null` being a subtype of reference types during override checking.
-          // `stripNullsDeep` is used here because we may encounter type parameters
-          // (`T | Null` is not a subtype of `T` even if we retract Mode.SafeNulls).
-          val memberTp1 = memberTp.stripNullsDeep
-          val otherTp1 = otherTp.stripNullsDeep
-          withoutMode(Mode.SafeNulls)(
-             memberTp1.overrides(otherTp1, matchNullaryLoosely))
+          // force `Null` being a bottom types during override checking.
+          val overrideCtx = ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding)
+          memberTp.overrides(otherTp, matchNullaryLoosely)(using overrideCtx)
         else
           memberTp.overrides(otherTp, matchNullaryLoosely)
       }
