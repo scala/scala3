@@ -1195,6 +1195,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *    - imports are reflected in the contexts of subsequent statements
    */
   class TreeMapWithPreciseStatContexts(cpy: TreeCopier = tpd.cpy) extends TreeMap(cpy):
+    override def transform(tree: Tree)(using Context): Tree = tree match
+      case Block(stats, expr) =>
+        val stats1 = transformStats(stats :+ expr, ctx.owner)
+        cpy.Block(tree)(stats1.init, stats1.last)
+      case _ =>
+        super.transform(tree)
+
     override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
       trees.mapStatements(exprOwner, transform(_))
 

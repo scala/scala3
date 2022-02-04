@@ -296,9 +296,8 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       case tree: Block =>
         inContext(prepBlock(tree, start)(using outerCtx)) {
-          val stats = transformStats(tree.stats, ctx.owner, start)
-          val expr = transformTree(tree.expr, start)
-          goBlock(cpy.Block(tree)(stats, expr), start)
+          val stats1 = transformStats(tree.stats :+ tree.expr, ctx.owner, start)
+          goBlock(cpy.Block(tree)(stats1.init, stats1.last), start)
         }
       case tree: TypeApply =>
         inContext(prepTypeApply(tree, start)(using outerCtx)) {
