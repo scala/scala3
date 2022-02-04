@@ -9,7 +9,7 @@ import Types.*, StdNames.*
 import config.Printers.{capt, recheckr}
 import ast.{tpd, untpd, Trees}
 import Trees.*
-import typer.RefChecks.checkAllOverrides
+import typer.RefChecks.{checkAllOverrides, checkParents}
 import util.{SimpleIdentitySet, EqHashMap, SrcPos}
 import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
@@ -119,12 +119,14 @@ class CheckCaptures extends Recheck, SymTransformer:
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
     import ast.tpd.*
 
-    private def interpolator(using Context) = new TypeTraverser:
+    private def interpolator(startingVariance: Int = 1)(using Context) = new TypeTraverser:
+      variance = startingVariance
       override def traverse(t: Type) =
         t match
           case CapturingType(parent, refs: CaptureSet.Var, _) =>
-            if variance < 0 then capt.println(i"solving $t")
-            refs.solve(variance)
+            if variance < 0 then
+              capt.println(i"solving $t")
+              refs.solve()
             traverse(parent)
           case t @ RefinedType(_, nme.apply, rinfo) if defn.isFunctionOrPolyType(t) =>
             traverse(rinfo)
@@ -136,7 +138,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     private def interpolateVarsIn(tpt: Tree)(using Context): Unit =
       if tpt.isInstanceOf[InferredTypeTree] then
-        interpolator.traverse(tpt.knownType)
+        interpolator().traverse(tpt.knownType)
           .showing(i"solved vars in ${tpt.knownType}", capt)
 
     private var curEnv: Env = Env(NoSymbol, CaptureSet.empty, false, null)
@@ -190,12 +192,15 @@ class CheckCaptures extends Recheck, SymTransformer:
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos)(using Context) =
       val res = elem.singletonCaptureSet.subCaptures(cs, frozen = false)
       if !res.isOK then
-        report.error(i"$elem cannot be referenced here; it is not included in allowed capture set ${res.blocking}", pos)
+        report.error(i"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking}", pos)
 
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos)(using Context) =
       val res = cs1.subCaptures(cs2, frozen = false)
       if !res.isOK then
-        report.error(i"references $cs1 are not all included in allowed capture set ${res.blocking}", pos)
+        def header =
+          if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
+          else i"references $cs1 are not all"
+        report.error(i"$header included in allowed capture set ${res.blocking}", pos)
 
     override def recheckClosure(tree: Closure, pt: Type)(using Context): Type =
       val cs = capturedVars(tree.meth.symbol)
@@ -233,8 +238,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       for parent <- impl.parents do
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos)
       if !localSet.isAlwaysEmpty then curEnv = Env(cls, localSet, false, curEnv)
-      try super.recheckClassDef(tree, impl, cls)
-      finally curEnv = saved
+      try
+        val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
+        checkSubset(localSet, thisSet, tree.srcPos)
+        for param <- cls.paramGetters do
+          checkSubset(param.termRef.captureSet, thisSet, param.srcPos)
+        super.recheckClassDef(tree, impl, cls)
+      finally
+        curEnv = saved
 
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
      *  This means:
@@ -403,51 +414,98 @@ class CheckCaptures extends Recheck, SymTransformer:
         .traverse(ctx.compilationUnit.tpdTree)
       withCaptureSetsExplained {
         super.checkUnit(unit)
-        PostCheck.traverse(unit.tpdTree)
+        checkSelfTypes(unit.tpdTree)
+        postCheck(unit.tpdTree)
         if ctx.settings.YccDebug.value then
-          show(unit.tpdTree) // this dows not print tree, but makes its variables visible for dependency printing
+          show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
       }
 
-    object PostCheck extends TreeTraverser:
-      def traverse(tree: Tree)(using Context) = trace{i"post check $tree"} {
-        tree match
-          case _: InferredTypeTree =>
-          case tree: TypeTree if !tree.span.isZeroExtent =>
-            tree.knownType.foreachPart(
-              checkWellformedPost(_, tree.srcPos))
-            tree.knownType.foreachPart {
-              case AnnotatedType(_, annot) =>
-                checkWellformedPost(annot.tree)
+    /** Check that self types of subclasses conform to self types of super classes.
+     *  (See comment below how this is achieved). The check assumes that classes
+     *  without an explicit self type have the universal capture set `{*}` on the
+     *  self type. If a class without explicit self type is not `effectivelyFinal`
+     *  it is checked that the inferred self type is universal, in order to assure
+     *  that joint and separate compilation give the same result.
+     */
+    def checkSelfTypes(unit: tpd.Tree)(using Context): Unit =
+      val parentTrees = mutable.HashMap[Symbol, List[Tree]]()
+      unit.foreachSubTree {
+        case cdef @ TypeDef(_, impl: Template) => parentTrees(cdef.symbol) = impl.parents
+        case _ =>
+      }
+      // Perform self type checking. The problem here is that `checkParents` compares a
+      // self type of a subclass with the result of an asSeenFrom of the self type of the
+      // superclass. That's no good. We need to constrain the original superclass self type
+      // capture set, not the set mapped by asSeenFrom.
+      //
+      // Instead, we proceed from parent classes to child classes. For every class
+      // we first check its parents, and then interpolate the self type to an
+      // upper approximation that satisfies all constraints on its capture set.
+      // That means all capture sets of parent self types are constants, so mapping
+      // them with asSeenFrom is OK.
+      while parentTrees.nonEmpty do
+        val roots = parentTrees.keysIterator.filter {
+          cls => !parentTrees(cls).exists(ptree => parentTrees.contains(ptree.tpe.classSymbol))
+        }
+        assert(roots.nonEmpty)
+        for root <- roots do
+          checkParents(root, parentTrees(root))
+          val selfType = root.asClass.classInfo.selfType
+          interpolator(startingVariance = -1).traverse(selfType)
+          if !root.isEffectivelySealed  then
+            selfType match
+              case CapturingType(_, refs: CaptureSet.Var, _) if !refs.isUniversal =>
+                report.error(
+                  i"""$root needs an explicitly declared self type since its
+                     |inferred self type $selfType
+                     |is not visible in other compilation units that define subclasses.""",
+                  root.srcPos)
               case _ =>
-            }
-          case t: ValOrDefDef if t.tpt.isInstanceOf[InferredTypeTree] =>
-            val sym = t.symbol
-            val isLocal =
-              sym.ownersIterator.exists(_.isTerm)
-              || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
+          parentTrees -= root
+          capt.println(i"checked $root with $selfType")
+    end checkSelfTypes
 
-            // The following classes of definitions need explicit capture types ...
-            if !isLocal                            // ... since external capture types are not inferred
-              || sym.owner.is(Trait)               // ... since we do OverridingPairs checking before capture inference
-              || sym.allOverriddenSymbols.nonEmpty // ... since we do override checking before capture inference
-            then
-              val inferred = t.tpt.knownType
-              def checkPure(tp: Type) = tp match
-                case CapturingType(_, refs, _) if !refs.elems.isEmpty =>
-                  val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
-                  report.error(
-                    em"""Non-local $sym cannot have an inferred$resultStr type
-                        |$inferred
-                        |with non-empty capture set $refs.
-                        |The type needs to be declared explicitly.""", t.srcPos)
-                case _ =>
-              inferred.foreachPart(checkPure, StopAt.Static)
-          case _ =>
-        traverseChildren(tree)
+    /** Perform the following kinds of checks
+     *   - Check all explicitly written capturing types for well-formedness using `checkWellFormedPost`.
+     *   - Check that externally visible `val`s or `def`s have empty capture sets. If not
+     *     suggest an explicit type. This is so that separate compilation (where external
+     *     symbols have empty capture sets) gives the same results as jount compilation.
+     */
+    def postCheck(unit: tpd.Tree)(using Context): Unit =
+      unit.foreachSubTree {
+        case _: InferredTypeTree =>
+        case tree: TypeTree if !tree.span.isZeroExtent =>
+          tree.knownType.foreachPart(
+            checkWellformedPost(_, tree.srcPos))
+          tree.knownType.foreachPart {
+            case AnnotatedType(_, annot) =>
+              checkWellformedPost(annot.tree)
+            case _ =>
+          }
+        case t: ValOrDefDef if t.tpt.isInstanceOf[InferredTypeTree] =>
+          val sym = t.symbol
+          val isLocal =
+            sym.ownersIterator.exists(_.isTerm)
+            || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
+
+          // The following classes of definitions need explicit capture types ...
+          if !isLocal                            // ... since external capture types are not inferred
+            || sym.owner.is(Trait)               // ... since we do OverridingPairs checking before capture inference
+            || sym.allOverriddenSymbols.nonEmpty // ... since we do override checking before capture inference
+          then
+            val inferred = t.tpt.knownType
+            def checkPure(tp: Type) = tp match
+              case CapturingType(_, refs, _) if !refs.elems.isEmpty =>
+                val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
+                report.error(
+                  em"""Non-local $sym cannot have an inferred$resultStr type
+                      |$inferred
+                      |with non-empty capture set $refs.
+                      |The type needs to be declared explicitly.""", t.srcPos)
+              case _ =>
+            inferred.foreachPart(checkPure, StopAt.Static)
+        case _ =>
       }
-
-    def postCheck(tree: tpd.Tree)(using Context): Unit =
-      PostCheck.traverse(tree)
 
   end CaptureChecker
 end CheckCaptures
