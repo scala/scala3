@@ -29,29 +29,16 @@ longer explanation available when compiling with `-explain`
 32 |    new Mapped
 
 longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:36:4 ------------------------------------
-36 |    final class Mapped extends LazyList[B]:  // error
+-- Error: tests/neg-custom-args/captures/lazylists2.scala:40:20 --------------------------------------------------------
+40 |      def head: B = f(xs.head)  // error
+   |                    ^
+   |(f : A => B) cannot be referenced here; it is not included in the allowed capture set {xs} of the self type of class Mapped
+-- Error: tests/neg-custom-args/captures/lazylists2.scala:41:49 --------------------------------------------------------
+41 |      def tail: {this} LazyList[B] = xs.tail.map(f) // error
+   |                                                 ^
+   |(f : A => B) cannot be referenced here; it is not included in the allowed capture set {xs} of the self type of class Mapped
+-- Error: tests/neg-custom-args/captures/lazylists2.scala:60:10 --------------------------------------------------------
+60 |    class Mapped2 extends Mapped:  // error
    |    ^
-   |    Found:    {f, xs} LazyList[B]
-   |    Required: {xs} LazyList[B]
-37 |      this: ({xs} Mapped) =>
-38 |      def isEmpty = false
-39 |      def head: B = f(xs.head)
-40 |      def tail: {this} LazyList[B] = xs.tail.map(f)
-41 |    new Mapped
-
-longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:54:4 ------------------------------------
-54 |    class Mapped extends LazyList[B]:  // error
-   |    ^
-   |    Found:    {f, xs} LazyList[B]
-   |    Required: LazyList[B]
-55 |      this: ({xs, f} Mapped) =>
-56 |      def isEmpty = false
-57 |      def head: B = f(xs.head)
-58 |      def tail: {this} LazyList[B] = xs.tail.map(f)
-59 |    class Mapped2 extends Mapped:
-60 |      this: Mapped =>
-61 |    new Mapped2
-
-longer explanation available when compiling with `-explain`
+   |    references {f, xs} are not all included in allowed capture set {} of the self type of class Mapped2
+61 |      this: Mapped =>
