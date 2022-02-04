@@ -5,7 +5,7 @@
 // Splicing can only be done on Expr[_ <: Any].
 // `apply methods on higher order expression provide a way to replace the unbound variables.
 
-// This can be used for HOAS quoted patterns to not return a lambda.
+// This can be used for HOAS quoted patterns to not return a lambda (see HOAS patterns section in https://infoscience.epfl.ch/record/288718?ln=en).
 // The use would be the same as each higher order expression would have an apply method.
 // But as it would be an expression, the expression would showable.
 // The expression could also be directly transformed into a Term of the reflection API.
