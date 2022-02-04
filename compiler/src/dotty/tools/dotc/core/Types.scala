@@ -35,7 +35,7 @@ import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
-import cc.{CapturingType, CaptureSet, derivedCapturingType, retainedElems, isBoxedCapturing, CapturingKind}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, retainedElems, isBoxedCapturing, CapturingKind, EventuallyCapturingType}
 import CaptureSet.CompareResult
 
 import scala.annotation.internal.sharable
@@ -2084,6 +2084,9 @@ object Types {
           myCaptureSet = computed
           myCaptureSetRunId = ctx.runId
         computed
+
+    def invalidateCaches() =
+      myCaptureSetRunId = NoRunId
 
     override def captureSet(using Context): CaptureSet =
       val cs = captureSetOfInfo
@@ -5035,8 +5038,13 @@ object Types {
           if (!givenSelf.isValueType) appliedRef
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
-          else AndType(givenSelf, appliedRef)
+          else givenSelf match
+            case givenSelf @ EventuallyCapturingType(tp, refs, kind) =>
+              givenSelf.derivedAnnotatedType(tp & appliedRef, givenSelf.annot)
+            case _ =>
+              AndType(givenSelf, appliedRef)
         }
+
       selfTypeCache
     }
 
