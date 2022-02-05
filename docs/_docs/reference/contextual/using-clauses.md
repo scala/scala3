@@ -153,8 +153,8 @@ Here is the new syntax of parameters and arguments seen as a delta from the [sta
 
 ```
 ClsParamClause      ::=  ... | UsingClsParamClause
-DefParamClauses     ::=  ... | UsingParamClause
+DefParamClause      ::=  ... | UsingParamClause
 UsingClsParamClause ::=  ‘(’ ‘using’ (ClsParams | Types) ‘)’
-UsingParamClause    ::=  ‘(’ ‘using’ (DefParams | Types) ‘)’
+UsingParamClause    ::=  ‘(’ ‘using’ (DefTermParams | Types) ‘)’
 ParArgumentExprs    ::=  ... | ‘(’ ‘using’ ExprsInParens ‘)’
 ```
