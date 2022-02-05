@@ -106,8 +106,9 @@ object RefChecks {
       val psyms = cls.asClass.parentSyms
       for (psym <- psyms)
         checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
-      for (reqd <- cinfo.cls.givenSelfType.classSymbols)
-        checkSelfConforms(reqd, "missing requirement", "required")
+      for reqd <- cinfo.cls.givenSelfType.classSymbols do
+        if reqd != cls then
+          checkSelfConforms(reqd, "missing requirement", "required")
 
       def isClassExtendingJavaEnum =
         !cls.isOneOf(Enum | Trait) && psyms.contains(defn.JavaEnumClass)
