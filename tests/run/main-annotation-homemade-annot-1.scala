@@ -27,16 +27,16 @@ class mainAwait(timeout: Int = 2) extends MainAnnotation:
   override type MainResultType = Future[Any]
 
   // This is a toy example, it only works with positional args
-  override def command(args: Array[String], commandName: String, docComment: String) =
+  override def command(args: Array[String], commandName: String, docComment: String, parameterInfos: MainAnnotation.ParameterInfos*) =
     new Command[ArgumentParser, MainResultType]:
       private var idx = 0
 
-      override def argGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => T =
+      override def argGetter[T](name: String, optDefaultGetter: Option[() => T])(using p: ArgumentParser[T]): () => T =
         val i = idx
         idx += 1
         () => p.fromString(args(i))
 
-      override def varargGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => Seq[T] =
+      override def varargGetter[T](name: String)(using p: ArgumentParser[T]): () => Seq[T] =
         () => for i <- (idx until args.length) yield p.fromString(args(i))
 
       override def run(f: => MainResultType): Unit = println(Await.result(f, Duration(timeout, SECONDS)))

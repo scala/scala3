@@ -33,16 +33,16 @@ class myMain(runs: Int = 3)(after: String*) extends MainAnnotation:
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
 
-  override def command(args: Array[String], commandName: String, docComment: String) =
+  override def command(args: Array[String], commandName: String, docComment: String, parameterInfos: MainAnnotation.ParameterInfos*) =
     new Command[ArgumentParser, MainResultType]:
       private var idx = 0
 
-      override def argGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => T =
+      override def argGetter[T](name: String, optDefaultGetter: Option[() => T])(using p: ArgumentParser[T]): () => T =
         val i = idx
         idx += 1
         () => p.fromString(args(i))
 
-      override def varargGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => Seq[T] =
+      override def varargGetter[T](name: String)(using p: ArgumentParser[T]): () => Seq[T] =
         () => for i <- (idx until args.length) yield p.fromString(args(i))
 
       override def run(f: => MainResultType): Unit =

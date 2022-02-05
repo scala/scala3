@@ -13,11 +13,11 @@ class mainManyArgs(i1: Int, s2: String, i3: Int) extends MainAnnotation:
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
 
-  override def command(args: Array[String], commandName: String, docComment: String) =
+  override def command(args: Array[String], commandName: String, docComment: String, parameterInfos: MainAnnotation.ParameterInfos*) =
     new MainAnnotation.Command[ArgumentParser, MainResultType]:
-      override def argGetter[T](paramInfos: MainAnnotation.ParameterInfos[T])(using p: ArgumentParser[T]): () => T = ???
+      override def argGetter[T](name: String, optDefaultGetter: Option[() => T])(using p: ArgumentParser[T]): () => T = ???
 
-      override def varargGetter[T](paramInfos: MainAnnotation.ParameterInfos[T])(using p: ArgumentParser[T]): () => Seq[T] = ???
+      override def varargGetter[T](name: String)(using p: ArgumentParser[T]): () => Seq[T] = ???
 
       override def run(f: => MainResultType): Unit = f
   end command

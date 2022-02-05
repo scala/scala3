@@ -10,43 +10,25 @@ import Comments.Comment
 import NameKinds.DefaultGetterName
 import Annotations.Annotation
 
-/** Generate proxy classes for main functions.
-  * A function like
-  *
-  *     /**
-  *       * Lorem ipsum dolor sit amet
-  *       * consectetur adipiscing elit.
-  *       *
-  *       * @param x my param x
-  *       * @param ys all my params y
-  *       */
-  *     @main(80) def f(
-  *       @main.ShortName('x') @main.Name("myX") x: S,
-  *       ys: T*
-  *     ) = ...
-  *
-  *  would be translated to something like
-  *
-  *     final class f {
-  *       static def main(args: Array[String]): Unit = {
-  *         val cmd = new main(80).command(args, "f", "Lorem ipsum dolor sit amet consectetur adipiscing elit.")
-  *
-  *         val args0: () => S = cmd.argGetter[S](
-  *           new scala.annotation.MainAnnotation.ParameterInfos[S]("x", "S")
-  *             .withDocumentation("my param x")
-  *             .withAnnotations(new scala.main.ShortName('x'), new scala.main.Name("myX"))
-  *         )
-  *
-  *         val args1: () => Seq[T] = cmd.varargGetter[T](
-  *           new scala.annotation.MainAnnotation.ParameterInfos[T]("ys", "T")
-  *             .withDocumentation("all my params y")
-  *         )
-  *
-  *         cmd.run(f(args0.apply(), args1.apply()*))
-  *       }
-  *     }
-  */
 object MainProxies {
+  /** Generate proxy classes for @main functions.
+   *  A function like
+   *
+   *     @main def f(x: S, ys: T*) = ...
+   *
+   *  would be translated to something like
+   *
+   *     import CommandLineParser._
+   *     class f {
+   *       @static def main(args: Array[String]): Unit =
+   *         try
+   *           f(
+   *             parseArgument[S](args, 0),
+   *             parseRemainingArguments[T](args, 1): _*
+   *           )
+   *         catch case err: ParseError => showError(err)
+   *       }
+   */
   def mainProxiesOld(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
     def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
@@ -140,6 +122,44 @@ object MainProxies {
   private type DefaultValueSymbols = Map[Int, Symbol]
   private type ParameterAnnotationss = Seq[Seq[Annotation]]
 
+  /**
+   * Generate proxy classes for main functions.
+   * A function like
+   *
+   *     /**
+   *       * Lorem ipsum dolor sit amet
+   *       * consectetur adipiscing elit.
+   *       *
+   *       * @param x my param x
+   *       * @param ys all my params y
+   *       */
+   *     @main(80) def f(
+   *       @main.ShortName('x') @main.Name("myX") x: S,
+   *       ys: T*
+   *     ) = ...
+   *
+   *  would be translated to something like
+   *
+   *     final class f {
+   *       static def main(args: Array[String]): Unit = {
+   *         val cmd = new main(80).command(
+   *           args,
+   *           "f",
+   *           "Lorem ipsum dolor sit amet consectetur adipiscing elit.",
+   *           new scala.annotation.MainAnnotation.ParameterInfos("x", "S")
+   *             .withDocumentation("my param x")
+   *             .withAnnotations(new scala.main.ShortName('x'), new scala.main.Name("myX")),
+   *           new scala.annotation.MainAnnotation.ParameterInfos("ys", "T")
+   *             .withDocumentation("all my params y")
+   *         )
+   *
+   *         val args0: () => S = cmd.argGetter[S]("x", None)
+   *         val args1: () => Seq[T] = cmd.varargGetter[T]("ys")
+   *
+   *         cmd.run(f(args0(), args1()*))
+   *       }
+   *     }
+   */
   def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
 
@@ -195,6 +215,12 @@ object MainProxies {
     /** A literal value (Boolean, Int, String, etc.) */
     inline def lit(any: Any): Literal = Literal(Constant(any))
 
+    /** None */
+    inline def none: Tree = ref(defn.NoneModule.termRef)
+
+    /** Some(value) */
+    inline def some(value: Tree): Tree = Apply(ref(defn.SomeClass.companionModule.termRef), value)
+
     /** () => value */
     def unitToValue(value: Tree): Tree =
       val anonName = nme.ANON_FUN
@@ -204,10 +230,12 @@ object MainProxies {
     /**
       * Creates a list of references and definitions of arguments, the first referencing the second.
       * The goal is to create the
-      *   `val arg0: () => S = ...`
-      * part of the code. The first element of a tuple is a ref to `arg0`, the second is the whole definition.
+      *   `val args0: () => S = cmd.argGetter[S]("x", None)`
+      * part of the code.
+      * For each tuple, the first element is a ref to `args0`, the second is the whole definition, the third
+      * is the ParameterInfos definition associated to this argument.
       */
-    def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef)] =
+    def createArgs(mt: MethodType, cmdName: TermName): List[(Tree, ValDef, Tree)] =
       mt.paramInfos.zip(mt.paramNames).zipWithIndex.map {
         case ((formal, paramName), n) =>
           val argName = nme.args ++ n.toString
@@ -220,11 +248,11 @@ object MainProxies {
             else (argRef0, formal, defn.MainAnnotCommand_argGetter)
           }
 
-          // The ParameterInfos to be passed to the arg getter
+          // The ParameterInfos
           val parameterInfos = {
             val param = paramName.toString
             val paramInfosTree = New(
-              AppliedTypeTree(TypeTree(defn.MainAnnotParameterInfos.typeRef), List(TypeTree(formalType))),
+              TypeTree(defn.MainAnnotParameterInfos.typeRef),
               // Arguments to be passed to ParameterInfos' constructor
               List(List(lit(param), lit(formalType.show)))
             )
@@ -234,11 +262,9 @@ object MainProxies {
              * For example:
              *   args0paramInfos.withDocumentation("my param x")
              * is represented by the pair
-             *   (defn.MainAnnotationParameterInfos_withDocumentation, List(lit("my param x")))
+             *   defn.MainAnnotationParameterInfos_withDocumentation -> List(lit("my param x"))
              */
             var assignations: List[(Symbol, List[Tree])] = Nil
-            for (dvSym <- defaultValueSymbols.get(n))
-              assignations = (defn.MainAnnotationParameterInfos_withDefaultValue -> List(unitToValue(ref(dvSym.termRef)))) :: assignations
             for (doc <- documentation.argDocs.get(param))
               assignations = (defn.MainAnnotationParameterInfos_withDocumentation -> List(lit(doc))) :: assignations
 
@@ -246,19 +272,28 @@ object MainProxies {
             if instanciatedAnnots.nonEmpty then
               assignations = (defn.MainAnnotationParameterInfos_withAnnotations -> instanciatedAnnots) :: assignations
 
-            if assignations.isEmpty then
-              paramInfosTree
-            else
-              assignations.foldLeft[Tree](paramInfosTree){ case (tree, (setterSym, values)) => Apply(Select(tree, setterSym.name), values) }
+            assignations.foldLeft[Tree](paramInfosTree){ case (tree, (setterSym, values)) => Apply(Select(tree, setterSym.name), values) }
           }
+
+          val argParams =
+            if formal.isRepeatedParam then
+              List(lit(paramName.toString))
+            else
+              val defaultValueGetterOpt = defaultValueSymbols.get(n) match {
+                case None =>
+                  none
+                case Some(dvSym) =>
+                  some(unitToValue(ref(dvSym.termRef)))
+              }
+              List(lit(paramName.toString), defaultValueGetterOpt)
 
           val argDef = ValDef(
             argName,
             TypeTree(),
-            Apply(TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil), parameterInfos),
+            Apply(TypeApply(Select(Ident(cmdName), getterSym.name), TypeTree(formalType) :: Nil), argParams),
           )
 
-          (argRef, argDef)
+          (argRef, argDef, parameterInfos)
       }
     end createArgs
 
@@ -287,16 +322,9 @@ object MainProxies {
     if (!mainFun.owner.isStaticOwner)
       report.error(s"main method is not statically accessible", pos)
     else {
-      val cmd = ValDef(
-        cmdName,
-        TypeTree(),
-        Apply(
-          Select(instanciateAnnotation(mainAnnot), defn.MainAnnot_command.name),
-          Ident(nme.args) :: lit(mainFun.showName) :: lit(documentation.mainDoc) :: Nil
-        )
-      )
       var args: List[ValDef] = Nil
       var mainCall: Tree = ref(mainFun.termRef)
+      var parameterInfoss: List[Tree] = Nil
 
       mainFun.info match {
         case _: ExprType =>
@@ -309,9 +337,10 @@ object MainProxies {
               report.error(s"main method cannot be curried", pos)
               Nil
             case _ =>
-              val (argRefs, argVals) = createArgs(mt, cmdName).unzip
+              val (argRefs, argVals, paramInfoss) = createArgs(mt, cmdName).unzip3
               args = argVals
               mainCall = Apply(mainCall, argRefs)
+              parameterInfoss = paramInfoss
           }
         case _: PolyType =>
           report.error(s"main method cannot have type parameters", pos)
@@ -319,6 +348,14 @@ object MainProxies {
           report.error(s"main can only annotate a method", pos)
       }
 
+      val cmd = ValDef(
+        cmdName,
+        TypeTree(),
+        Apply(
+          Select(instanciateAnnotation(mainAnnot), defn.MainAnnot_command.name),
+          Ident(nme.args) :: lit(mainFun.showName) :: lit(documentation.mainDoc) :: parameterInfoss
+        )
+      )
       val run = Apply(Select(Ident(cmdName), defn.MainAnnotCommand_run.name), mainCall)
       val body = Block(cmd :: args, run)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)

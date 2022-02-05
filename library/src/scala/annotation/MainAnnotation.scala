@@ -21,35 +21,30 @@ trait MainAnnotation extends StaticAnnotation:
   type MainResultType
 
   /** A new command with arguments from `args` */
-  def command(args: Array[String], commandName: String, documentation: String): MainAnnotation.Command[ArgumentParser, MainResultType]
+  def command(args: Array[String], commandName: String, documentation: String, parameterInfoss: MainAnnotation.ParameterInfos*): MainAnnotation.Command[ArgumentParser, MainResultType]
 end MainAnnotation
 
 object MainAnnotation:
   // Inspired by https://github.com/scala-js/scala-js/blob/0708917912938714d52be1426364f78a3d1fd269/linker-interface/shared/src/main/scala/org/scalajs/linker/interface/StandardConfig.scala#L23-L218
-  final class ParameterInfos[T] private (
+  final class ParameterInfos private (
     /** The name of the parameter */
     val name: String,
     /** The name of the parameter's type */
     val typeName: String,
     /** The docstring of the parameter. Defaults to None. */
     val documentation: Option[String],
-    /** The default value that the parameter has. Defaults to None. */
-    val defaultValueGetterOpt: Option[() => T],
     /** The ParameterAnnotations associated with the parameter. Defaults to Seq.empty. */
     val annotations: Seq[ParameterAnnotation],
   ) {
     // Main public constructor
     def this(name: String, typeName: String) =
-      this(name, typeName, None, None, Seq.empty)
+      this(name, typeName, None, Seq.empty)
 
-    def withDefaultValue(defaultValueGetter: () => T): ParameterInfos[T] =
-      new ParameterInfos(name, typeName, documentation, Some(defaultValueGetter), annotations)
+    def withDocumentation(doc: String): ParameterInfos =
+      new ParameterInfos(name, typeName, Some(doc), annotations)
 
-    def withDocumentation(doc: String): ParameterInfos[T] =
-      new ParameterInfos(name, typeName, Some(doc), defaultValueGetterOpt, annotations)
-
-    def withAnnotations(annots: ParameterAnnotation*): ParameterInfos[T] =
-      new ParameterInfos(name, typeName, documentation, defaultValueGetterOpt, annots)
+    def withAnnotations(annots: ParameterAnnotation*): ParameterInfos =
+      new ParameterInfos(name, typeName, documentation, annots)
 
     override def toString: String = s"$name: $typeName"
   }
@@ -58,10 +53,10 @@ object MainAnnotation:
   trait Command[ArgumentParser[_], MainResultType]:
 
     /** The getter for the next argument of type `T` */
-    def argGetter[T](paramInfos: ParameterInfos[T])(using fromString: ArgumentParser[T]): () => T
+    def argGetter[T](name: String, optDefaultGetter: Option[() => T])(using fromString: ArgumentParser[T]): () => T
 
     /** The getter for a final varargs argument of type `T*` */
-    def varargGetter[T](paramInfos: ParameterInfos[T])(using fromString: ArgumentParser[T]): () => Seq[T]
+    def varargGetter[T](name: String)(using fromString: ArgumentParser[T]): () => Seq[T]
 
     /** Run `program` if all arguments are valid,
      *  or print usage information and/or error messages.

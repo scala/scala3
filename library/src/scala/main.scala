@@ -112,7 +112,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
 
-  override def command(args: Array[String], commandName: String, documentation: String) =
+  override def command(args: Array[String], commandName: String, documentation: String, parameterInfoss: ParameterInfos*) =
     new Command[ArgumentParser, MainResultType]:
       private enum ArgumentKind {
         case SimpleArgument, OptionalArgument, VarArgument
@@ -121,44 +121,59 @@ final class main(maxLineLength: Int) extends MainAnnotation:
       private val argMarker = "--"
       private val shortArgMarker = "-"
 
-      private var argCanonicalNames = new mutable.ArrayBuffer[String]
-      private var argAlternativeNamess = new mutable.ArrayBuffer[Seq[String]]
-      private var argShortNamess = new mutable.ArrayBuffer[Seq[Char]]
-      private var argTypes = new mutable.ArrayBuffer[String]
-      private var argDocOpts = new mutable.ArrayBuffer[Option[String]]
-      private var argKinds = new mutable.ArrayBuffer[ArgumentKind]
+      /** A map from argument canonical name (the name of the parameter in the method definition) to parameter informations */
+      private val nameToParameterInfos: Map[String, ParameterInfos] = parameterInfoss.map(infos => infos.name -> infos).toMap
+
+      private val (positionalArgs, byNameArgs, invalidByNameArgs) = {
+        val namesToCanonicalName: Map[String, String] = parameterInfoss.flatMap(infos => (infos.name +: getAlternativeNames(infos)).map(_ -> infos.name)).toMap
+        val shortNamesToCanonicalName: Map[Char, String] = parameterInfoss.flatMap(infos => getShortNames(infos).map(_ -> infos.name)).toMap
+
+        def getCanonicalArgName(arg: String): Option[String] =
+          if arg.startsWith(argMarker) && arg.length > argMarker.length then
+            namesToCanonicalName.get(arg.drop(argMarker.length))
+          else if arg.startsWith(shortArgMarker) && arg.length == shortArgMarker.length + 1 then
+            shortNamesToCanonicalName.get(arg(shortArgMarker.length))
+          else
+            None
+
+        def recurse(remainingArgs: Seq[String], pa: mutable.Queue[String], bna: Seq[(String, String)], ia: Seq[String]): (mutable.Queue[String], Seq[(String, String)], Seq[String]) =
+          remainingArgs match {
+            case Seq() =>
+              (pa, bna, ia)
+            case argName +: argValue +: rest if isArgName(argName) =>
+              getCanonicalArgName(argName) match {
+                case Some(canonicalName) => recurse(rest, pa, bna :+ (canonicalName -> argValue), ia)
+                case None => recurse(rest, pa, bna, ia :+ argName)
+              }
+            case arg +: rest =>
+              recurse(rest, pa :+ arg, bna, ia)
+          }
+
+        val (pa, bna, ia) = recurse(args.toSeq, mutable.Queue.empty, Vector(), Vector())
+        val nameToArgValues: Map[String, Seq[String]] = if bna.isEmpty then Map.empty else bna.groupMapReduce(_._1)(p => List(p._2))(_ ++ _)
+        (pa, nameToArgValues, ia)
+      }
+
+      /** The kind of the arguments. Used to display help about the main method. */
+      private val argKinds = new mutable.ArrayBuffer[ArgumentKind]
 
       /** A buffer for all errors */
-      private var errors = new mutable.ArrayBuffer[String]
+      private val errors = new mutable.ArrayBuffer[String]
 
       /** Issue an error, and return an uncallable getter */
       private def error(msg: String): () => Nothing =
         errors += msg
         () => throw new AssertionError("trying to get invalid argument")
 
-      /** The next argument index */
-      private var argIdx: Int = 0
-
-      private def argAt(idx: Int): Option[String] =
-        if idx < args.length then Some(args(idx)) else None
-
-      private def isArgNameAt(idx: Int): Boolean =
-        val arg = args(argIdx)
+      private def isArgName(arg: String): Boolean =
         val isFullName = arg.startsWith(argMarker)
         val isShortName = arg.startsWith(shortArgMarker) && arg.length == 2 && shortNameIsValid(arg(1))
         isFullName || isShortName
-
-      private def nextPositionalArg(): Option[String] =
-        while argIdx < args.length && isArgNameAt(argIdx) do argIdx += 2
-        val result = argAt(argIdx)
-        argIdx += 1
-        result
 
       private def nameIsValid(name: String): Boolean =
         name.length > 0 // TODO add more checks for illegal characters
 
       private def shortNameIsValid(shortName: Char): Boolean =
-        // If you change this, remember to update the error message when an invalid short name is given
         ('A' <= shortName && shortName <= 'Z') || ('a' <= shortName && shortName <= 'z')
 
       private def convert[T](argName: String, arg: String, p: ArgumentParser[T]): () => T =
@@ -166,21 +181,18 @@ final class main(maxLineLength: Int) extends MainAnnotation:
           case Some(t) => () => t
           case None => error(s"invalid argument for $argName: $arg")
 
-      private def allNamesWithMarkers(pos: Int): Seq[String] =
-        val canonicalName = argMarker + argCanonicalNames(pos)
-        val alternativeNames = argAlternativeNamess(pos).map(argMarker + _)
-        val shortNames = argShortNamess(pos).map(shortArgMarker + _)
-        canonicalName +: shortNames ++: alternativeNames
-
       private def argsUsage: Seq[String] =
-        for (pos <- 0 until argCanonicalNames.length)
+        for ((infos, kind) <- parameterInfoss.zip(argKinds))
         yield {
-          val namesPrint = allNamesWithMarkers(pos).mkString("[", " | ", "]")
+          val canonicalName = argMarker + infos.name
+          val shortNames = getShortNames(infos).map(shortArgMarker + _)
+          val alternativeNames = getAlternativeNames(infos).map(argMarker + _)
+          val namesPrint = (canonicalName +: alternativeNames ++: shortNames).mkString("[", " | ", "]")
 
-          argKinds(pos) match {
-            case ArgumentKind.SimpleArgument => s"$namesPrint <${argTypes(pos)}>"
-            case ArgumentKind.OptionalArgument => s"[$namesPrint <${argTypes(pos)}>]"
-            case ArgumentKind.VarArgument => s"[<${argTypes(pos)}> [<${argTypes(pos)}> [...]]]"
+          kind match {
+            case ArgumentKind.SimpleArgument => s"$namesPrint <${infos.typeName}>"
+            case ArgumentKind.OptionalArgument => s"[$namesPrint <${infos.typeName}>]"
+            case ArgumentKind.VarArgument => s"[<${infos.typeName}> [<${infos.typeName}> [...]]]"
           }
         }
 
@@ -222,29 +234,29 @@ final class main(maxLineLength: Int) extends MainAnnotation:
       private def explain(): Unit =
         if (documentation.nonEmpty)
           println(wrapLongLine(documentation, maxLineLength).mkString("\n"))
-        if (argCanonicalNames.nonEmpty) {
+        if (nameToParameterInfos.nonEmpty) {
           val argNameShift = 2
           val argDocShift = argNameShift + 2
 
           println("Arguments:")
-          for (pos <- 0 until argCanonicalNames.length)
-            val canonicalName = argMarker + argCanonicalNames(pos)
-            val shortNames = argShortNamess(pos).map(shortArgMarker + _)
-            val alternativeNames = argAlternativeNamess(pos).map(argMarker + _)
-            val otherNames = (shortNames ++: alternativeNames) match {
+          for ((infos, kind) <- parameterInfoss.zip(argKinds))
+            val canonicalName = argMarker + infos.name
+            val shortNames = getShortNames(infos).map(shortArgMarker + _)
+            val alternativeNames = getAlternativeNames(infos).map(argMarker + _)
+            val otherNames = (alternativeNames ++: shortNames) match {
               case Seq() => ""
               case names => names.mkString("(", ", ", ") ")
             }
             val argDoc = StringBuilder(" " * argNameShift)
-            argDoc.append(s"$canonicalName $otherNames- ${argTypes(pos)}")
+            argDoc.append(s"$canonicalName $otherNames- ${infos.typeName}")
 
-            argKinds(pos) match {
+            kind match {
               case ArgumentKind.OptionalArgument => argDoc.append(" (optional)")
               case ArgumentKind.VarArgument => argDoc.append(" (vararg)")
               case _ =>
             }
 
-            argDocOpts(pos).foreach(
+            infos.documentation.foreach(
               doc => if (doc.nonEmpty) {
                 val shiftedDoc =
                   doc.split("\n").nn
@@ -257,129 +269,78 @@ final class main(maxLineLength: Int) extends MainAnnotation:
             println(argDoc)
         }
 
-      private def indicesOfArg(argNames: Seq[String], shortArgNames: Seq[Char]): Seq[Int] =
-        def allIndicesOf(s: String, from: Int): Seq[Int] =
-          val i = args.indexOf(s, from)
-          if i < 0 then Seq() else i +: allIndicesOf(s, i + 1)
-
-        val indices = argNames.flatMap(name => allIndicesOf(s"$argMarker$name", 0))
-        val indicesShort = shortArgNames.flatMap(shortName => allIndicesOf(s"$shortArgMarker$shortName", 0))
-        (indices ++: indicesShort).filter(_ >= 0)
-
-      private def getAlternativeNames(paramInfos: ParameterInfos[_]): Seq[String] =
+      private def getAlternativeNames(paramInfos: ParameterInfos): Seq[String] =
         val (valid, invalid) =
           paramInfos.annotations.collect{ case annot: Name => annot.name }.partition(nameIsValid)
         if invalid.nonEmpty then
           throw IllegalArgumentException(s"invalid names ${invalid.mkString(", ")} for parameter ${paramInfos.name}")
         valid
 
-      private def getShortNames(paramInfos: ParameterInfos[_]): Seq[Char] =
+      private def getShortNames(paramInfos: ParameterInfos): Seq[Char] =
         val (valid, invalid) =
           paramInfos.annotations.collect{ case annot: ShortName => annot.shortName }.partition(shortNameIsValid)
         if invalid.nonEmpty then
           throw IllegalArgumentException(s"invalid short names ${invalid.mkString(", ")} for parameter ${paramInfos.name}")
         valid
 
-      private def checkNamesUnicity(namess: Seq[Seq[Any]]): Unit =
-        val nameToIndex = namess.zipWithIndex.flatMap{ case (names, idx) => names.map(_ -> idx) }
-        val nameToIndices = nameToIndex.groupMap(_._1)(_._2)
-        for
-          (name, indices) <- nameToIndices if indices.length > 1
-        do
-          val canonicalNamesAtIndices = indices.map(idx => argCanonicalNames(idx)).mkString(", ")
-          throw AssertionError(s"$name is used for multiple parameters: $canonicalNamesAtIndices")
+      private def checkNamesUnicity(): Unit =
+        val nameAndCanonicalName = nameToParameterInfos.toList.flatMap {
+          case (canonicalName, infos) => (canonicalName +: getAlternativeNames(infos) ++: getShortNames(infos)).map(_ -> canonicalName)
+        }
+        val nameToCanonicalNames = nameAndCanonicalName.groupMap(_._1)(_._2)
 
-      private def checkNamesAreUnique(): Unit =
-        val namess = argCanonicalNames.zip(argAlternativeNamess).map{ case (canon, alts) => canon +: alts }.toList
-        checkNamesUnicity(namess)
-
-      private def checkShortNamesAreUnique(): Unit =
-        checkNamesUnicity(argShortNamess.toList)
+        for (name, canonicalNames) <- nameToCanonicalNames if canonicalNames.length > 1
+        do throw AssertionError(s"$name is used for multiple parameters: ${canonicalNames.mkString(", ")}")
 
       private def flagUnused(): Unit =
-        nextPositionalArg() match
-          case Some(arg) =>
-            error(s"unused argument: $arg")
-            flagUnused()
+        for (remainingArg <- positionalArgs) error(s"unused argument: $remainingArg")
+        for (invalidArg <- invalidByNameArgs) error(s"unknown argument name: $invalidArg")
+
+      override def argGetter[T](name: String, optDefaultGetter: Option[() => T])(using p: ArgumentParser[T]): () => T =
+        argKinds += (if optDefaultGetter.nonEmpty then ArgumentKind.OptionalArgument else ArgumentKind.SimpleArgument)
+        val parameterInfos = nameToParameterInfos(name)
+
+        byNameArgs.get(name) match {
+          case Some(Nil) =>
+            throw AssertionError(s"$name present in byNameArgs, but it has no argument value")
+          case Some(argValues) =>
+            if argValues.length > 1 then
+              // Do not accept multiple values
+              // Remove this test to take last given argument
+              error(s"more than one value for $name: ${argValues.mkString(", ")}")
+            else
+              convert(name, argValues.last, p)
           case None =>
-            val longNames = argCanonicalNames ++: argAlternativeNamess.flatten
-            val shortNames = argShortNamess.flatten
-            for
-              arg <- args
-            do
-              val isInvalidArg =
-                arg.length > argMarker.length
-                && arg.startsWith(argMarker)
-                && !longNames.contains(arg.drop(argMarker.length))
-              val isInvalidShortArg =
-                arg.length > shortArgMarker.length
-                && arg.startsWith(shortArgMarker)
-                && shortNameIsValid(arg(shortArgMarker.length))
-                && !shortNames.contains(arg(shortArgMarker.length))
-              if isInvalidArg || isInvalidShortArg then error(s"unknown argument name: $arg")
-
-      private def registerArg(paramInfos: ParameterInfos[_], argKind: ArgumentKind): Unit =
-        def checkNamesDuplicates(names: Seq[Any]): Unit =
-          val occurrences = names.groupMapReduce(identity)(_ => 1)(_ + _)
-          for (name, numOcc) <- occurrences if numOcc > 1
-          do throw AssertionError(s"$name is declared multiple times for ${paramInfos.name}")
-
-        argCanonicalNames += paramInfos.name
-        argAlternativeNamess += getAlternativeNames(paramInfos)
-        argShortNamess += getShortNames(paramInfos)
-        argTypes += paramInfos.typeName
-        argDocOpts += paramInfos.documentation
-        argKinds += argKind
-
-        // Check if names are used multiple times by the same param
-        checkNamesDuplicates(argAlternativeNamess.last)
-        checkNamesDuplicates(argShortNamess.last)
-
-      override def argGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => T =
-        val dvOpt = paramInfos.defaultValueGetterOpt
-        registerArg(paramInfos, if dvOpt.nonEmpty then ArgumentKind.OptionalArgument else ArgumentKind.SimpleArgument)
-
-        // registerArg placed all infos in the respective buffers
-        val canonicalName = argCanonicalNames.last
-        indicesOfArg(canonicalName +: argAlternativeNamess.last, argShortNamess.last) match {
-          case s @ (Seq() | Seq(_)) =>
-            val argOpt = s.headOption.map(idx => argAt(idx + 1)).getOrElse(nextPositionalArg())
-            (argOpt, dvOpt) match {
-              case (Some(arg), _) => convert(canonicalName, arg, p)
-              case (None, Some(defaultValueGetter)) => defaultValueGetter
-              case (None, None) => error(s"missing argument for ${paramInfos.name}")
-            }
-          case s =>
-            val multValues = s.flatMap(idx => argAt(idx + 1))
-            error(s"more than one value for $canonicalName: ${multValues.mkString(", ")}")
+            if positionalArgs.length > 0 then
+              convert(name, positionalArgs.dequeue, p)
+            else if optDefaultGetter.nonEmpty then
+              optDefaultGetter.get
+            else
+              error(s"missing argument for $name")
         }
       end argGetter
 
-      override def varargGetter[T](paramInfos: ParameterInfos[T])(using p: ArgumentParser[T]): () => Seq[T] =
-        registerArg(paramInfos, ArgumentKind.VarArgument)
-        def remainingArgGetters(): List[() => T] = nextPositionalArg() match
-          case Some(arg) => convert(paramInfos.name, arg, p) :: remainingArgGetters()
-          case None => Nil
-        val getters = remainingArgGetters()
-        () => getters.map(_())
+      override def varargGetter[T](name: String)(using p: ArgumentParser[T]): () => Seq[T] =
+        argKinds += ArgumentKind.VarArgument
+
+        val byNameGetters = byNameArgs.getOrElse(name, Seq()).map(arg => convert(name, arg, p))
+        val positionalGetters = positionalArgs.removeAll.map(arg => convert(name, arg, p))
+        // First take arguments passed by name, then those passed by position
+        () => (byNameGetters ++ positionalGetters).map(_())
 
       override def run(f: => MainResultType): Unit =
-        def checkAllConstraints(): Unit =
-          flagUnused()
-          checkNamesAreUnique()
-          checkShortNamesAreUnique()
+        flagUnused()
+        checkNamesUnicity()
 
         if args.contains(s"${argMarker}help") then
           usage()
           println()
           explain()
+        else if errors.nonEmpty then
+          for msg <- errors do println(s"Error: $msg")
+          usage()
         else
-          checkAllConstraints()
-          if errors.nonEmpty then
-            for msg <- errors do println(s"Error: $msg")
-            usage()
-          else
-            f
+          f
       end run
   end command
 end main
