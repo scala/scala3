@@ -214,7 +214,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.recheckIdent(tree)
 
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
-      try super.recheckValDef(tree, sym)
+      try
+        if !sym.is(Module) then super.recheckValDef(tree, sym)
       finally
         if !sym.is(Param) then
           // parameters with inferred types belong to anonymous methods. We need to wait
