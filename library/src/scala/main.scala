@@ -136,6 +136,11 @@ final class main(maxLineLength: Int) extends MainAnnotation:
           else
             None
 
+        def isArgName(arg: String): Boolean =
+          val isFullName = arg.startsWith(argMarker)
+          val isShortName = arg.startsWith(shortArgMarker) && arg.length == 2 && shortNameIsValid(arg(1))
+          isFullName || isShortName
+
         def recurse(remainingArgs: Seq[String], pa: mutable.Queue[String], bna: Seq[(String, String)], ia: Seq[String]): (mutable.Queue[String], Seq[(String, String)], Seq[String]) =
           remainingArgs match {
             case Seq() =>
@@ -165,11 +170,6 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         errors += msg
         () => throw new AssertionError("trying to get invalid argument")
 
-      private def isArgName(arg: String): Boolean =
-        val isFullName = arg.startsWith(argMarker)
-        val isShortName = arg.startsWith(shortArgMarker) && arg.length == 2 && shortNameIsValid(arg(1))
-        isFullName || isShortName
-
       private def nameIsValid(name: String): Boolean =
         name.length > 0 // TODO add more checks for illegal characters
 
@@ -181,57 +181,58 @@ final class main(maxLineLength: Int) extends MainAnnotation:
           case Some(t) => () => t
           case None => error(s"invalid argument for $argName: $arg")
 
-      private def argsUsage: Seq[String] =
-        for ((infos, kind) <- parameterInfoss.zip(argKinds))
-        yield {
-          val canonicalName = argMarker + infos.name
-          val shortNames = getShortNames(infos).map(shortArgMarker + _)
-          val alternativeNames = getAlternativeNames(infos).map(argMarker + _)
-          val namesPrint = (canonicalName +: alternativeNames ++: shortNames).mkString("[", " | ", "]")
+      private def usage(): Unit =
+        def argsUsage: Seq[String] =
+          for ((infos, kind) <- parameterInfoss.zip(argKinds))
+          yield {
+            val canonicalName = argMarker + infos.name
+            val shortNames = getShortNames(infos).map(shortArgMarker + _)
+            val alternativeNames = getAlternativeNames(infos).map(argMarker + _)
+            val namesPrint = (canonicalName +: alternativeNames ++: shortNames).mkString("[", " | ", "]")
 
-          kind match {
-            case ArgumentKind.SimpleArgument => s"$namesPrint <${infos.typeName}>"
-            case ArgumentKind.OptionalArgument => s"[$namesPrint <${infos.typeName}>]"
-            case ArgumentKind.VarArgument => s"[<${infos.typeName}> [<${infos.typeName}> [...]]]"
+            kind match {
+              case ArgumentKind.SimpleArgument => s"$namesPrint <${infos.typeName}>"
+              case ArgumentKind.OptionalArgument => s"[$namesPrint <${infos.typeName}>]"
+              case ArgumentKind.VarArgument => s"[<${infos.typeName}> [<${infos.typeName}> [...]]]"
+            }
           }
+
+        def wrapArgumentUsages(argsUsage: Seq[String], maxLength: Int): Seq[String] = {
+          def recurse(args: Seq[String], currentLine: String, acc: Vector[String]): Seq[String] =
+            (args, currentLine) match {
+              case (Nil, "") => acc
+              case (Nil, l) => (acc :+ l)
+              case (arg +: t, "") => recurse(t, arg, acc)
+              case (arg +: t, l) if l.length + 1 + arg.length <= maxLength => recurse(t, s"$l $arg", acc)
+              case (arg +: t, l) => recurse(t, arg, acc :+ l)
+            }
+
+          recurse(argsUsage, "", Vector()).toList
         }
 
-      private def wrapLongLine(line: String, maxLength: Int): List[String] = {
-        def recurse(s: String, acc: Vector[String]): Seq[String] =
-          val lastSpace = s.trim.nn.lastIndexOf(' ', maxLength)
-          if ((s.length <= maxLength) || (lastSpace < 0))
-            acc :+ s
-          else {
-            val (shortLine, rest) = s.splitAt(lastSpace)
-            recurse(rest.trim.nn, acc :+ shortLine)
-          }
-
-        recurse(line, Vector()).toList
-      }
-
-      private def wrapArgumentUsages(argsUsage: Seq[String], maxLength: Int): Seq[String] = {
-        def recurse(args: Seq[String], currentLine: String, acc: Vector[String]): Seq[String] =
-          (args, currentLine) match {
-            case (Nil, "") => acc
-            case (Nil, l) => (acc :+ l)
-            case (arg +: t, "") => recurse(t, arg, acc)
-            case (arg +: t, l) if l.length + 1 + arg.length <= maxLength => recurse(t, s"$l $arg", acc)
-            case (arg +: t, l) => recurse(t, arg, acc :+ l)
-          }
-
-        recurse(argsUsage, "", Vector()).toList
-      }
-
-      private inline def shiftLines(s: Seq[String], shift: Int): String = s.map(" " * shift + _).mkString("\n")
-
-      private def usage(): Unit =
         val usageBeginning = s"Usage: $commandName "
         val argsOffset = usageBeginning.length
         val usages = wrapArgumentUsages(argsUsage, maxLineLength - argsOffset)
 
         println(usageBeginning + usages.mkString("\n" + " " * argsOffset))
+      end usage
 
       private def explain(): Unit =
+        inline def shiftLines(s: Seq[String], shift: Int): String = s.map(" " * shift + _).mkString("\n")
+
+        def wrapLongLine(line: String, maxLength: Int): List[String] = {
+          def recurse(s: String, acc: Vector[String]): Seq[String] =
+            val lastSpace = s.trim.nn.lastIndexOf(' ', maxLength)
+            if ((s.length <= maxLength) || (lastSpace < 0))
+              acc :+ s
+            else {
+              val (shortLine, rest) = s.splitAt(lastSpace)
+              recurse(rest.trim.nn, acc :+ shortLine)
+            }
+
+          recurse(line, Vector()).toList
+        }
+
         if (documentation.nonEmpty)
           println(wrapLongLine(documentation, maxLineLength).mkString("\n"))
         if (nameToParameterInfos.nonEmpty) {
@@ -268,6 +269,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 
             println(argDoc)
         }
+      end explain
 
       private def getAlternativeNames(paramInfos: ParameterInfos): Seq[String] =
         val (valid, invalid) =
@@ -291,10 +293,6 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 
         for (name, canonicalNames) <- nameToCanonicalNames if canonicalNames.length > 1
         do throw AssertionError(s"$name is used for multiple parameters: ${canonicalNames.mkString(", ")}")
-
-      private def flagUnused(): Unit =
-        for (remainingArg <- positionalArgs) error(s"unused argument: $remainingArg")
-        for (invalidArg <- invalidByNameArgs) error(s"unknown argument name: $invalidArg")
 
       override def argGetter[T](name: String, optDefaultGetter: Option[() => T])(using p: ArgumentParser[T]): () => T =
         argKinds += (if optDefaultGetter.nonEmpty then ArgumentKind.OptionalArgument else ArgumentKind.SimpleArgument)
@@ -329,7 +327,8 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         () => (byNameGetters ++ positionalGetters).map(_())
 
       override def run(f: => MainResultType): Unit =
-        flagUnused()
+        for (remainingArg <- positionalArgs) error(s"unused argument: $remainingArg")
+        for (invalidArg <- invalidByNameArgs) error(s"unknown argument name: $invalidArg")
         checkNamesUnicity()
 
         if args.contains(s"${argMarker}help") then
