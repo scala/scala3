@@ -4,3 +4,4 @@
   |  ^
   |  DivergingImplicit
   |  method a1 in class Test produces a diverging implicit search when trying to match type A
+  | This location contains code that was inlined from Test_2.scala:5

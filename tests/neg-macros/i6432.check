@@ -3,11 +3,14 @@
 4 |  foo"abc${"123"}xyz${"456"}fgh" // error // error // error
   |      ^^^
   |      abc
+  | This location contains code that was inlined from Test_2.scala:4
 -- Error: tests/neg-macros/i6432/Test_2.scala:4:17 ---------------------------------------------------------------------
 4 |  foo"abc${"123"}xyz${"456"}fgh" // error // error // error
   |                 ^^^
   |                 xyz
+  | This location contains code that was inlined from Test_2.scala:4
 -- Error: tests/neg-macros/i6432/Test_2.scala:4:28 ---------------------------------------------------------------------
 4 |  foo"abc${"123"}xyz${"456"}fgh" // error // error // error
   |                            ^^^
   |                            fgh
+  | This location contains code that was inlined from Test_2.scala:4

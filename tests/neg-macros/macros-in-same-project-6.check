@@ -2,3 +2,4 @@
 4 |  Foo.myMacro() // error
   |  ^^^^^^^^^^^^^
   |  some error
+  | This location contains code that was inlined from Bar.scala:4

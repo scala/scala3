@@ -5,10 +5,4 @@
   |  java.lang.NoClassDefFoundError: this.is.not.a.Class
   |  	at Foo$.aMacroImplementation(Foo.scala:8)
   |
-  |---------------------------------------------------------------------------------------------------------------------
-  |Inline stack trace
-  |·····················································································································
-  |This location contains code that was inlined from Foo.scala:5
-5 |  inline def myMacro(): Unit = ${ aMacroImplementation }
-  |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
-  ·---------------------------------------------------------------------------------------------------------------------
+  | This location contains code that was inlined from Bar.scala:4
