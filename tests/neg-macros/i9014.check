@@ -3,3 +3,4 @@
 1 |val tests = summon[Bar] // error
   |                       ^
   |                       Failed to expand!
+  | This location contains code that was inlined from Test_2.scala:1

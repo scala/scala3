@@ -42,10 +42,4 @@
 30 |  var x7: Int = uni  // error
    |                ^^^
    |                `uninitialized` can only be used as the right hand side of a mutable field definition
-   |--------------------------------------------------------------------------------------------------------------------
-   |Inline stack trace
-   |····················································································································
-   |This location contains code that was inlined from i11225.scala:25
-25 |  transparent inline def uni = uninitialized
-   |                               ^^^^^^^^^^^^^
-   ·--------------------------------------------------------------------------------------------------------------------
+   | This location contains code that was inlined from i11225.scala:25
