@@ -1,31 +1,31 @@
 object myProgram:
   @main def altName1(
-    @main.Name("myNum") num: Int,
+    @main.Alias("myNum") num: Int,
     inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   @main def altName2(
-    @main.Name("myNum") num: Int,
-    @main.Name("myInc") inc: Int
+    @main.Alias("myNum") num: Int,
+    @main.Alias("myInc") inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   @main def shortName1(
-    @main.ShortName('n') num: Int,
+    @main.Alias("n") num: Int,
     inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   @main def shortName2(
-    @main.ShortName('n') num: Int,
-    @main.ShortName('i') inc: Int
+    @main.Alias("n") num: Int,
+    @main.Alias("i") inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
   @main def mix1(
-    @main.Name("myNum") @main.ShortName('n') num: Int,
-    @main.ShortName('i') @main.Name("myInc") inc: Int
+    @main.Alias("myNum") @main.Alias("n") num: Int,
+    @main.Alias("i") @main.Alias("myInc") inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
@@ -35,14 +35,20 @@ object myProgram:
     for i <- 0 until 'n' - 'a'
     do
       short = (short.toInt + 1).toChar
-    short
+    short.toString
   }
   def myInc = {new Exception("myInc")}.getMessage
-  def myShortInc = () => 'i'
+  def myShortInc = () => "i"
 
   @main def mix2(
-    @main.Name(myNum) @main.ShortName(myShortNum) num: Int,
-    @main.ShortName(myShortInc()) @main.Name(myInc) inc: Int
+    @main.Alias(myNum) @main.Alias(myShortNum) num: Int,
+    @main.Alias(myShortInc()) @main.Alias(myInc) inc: Int
+  ): Unit =
+    println(s"$num + $inc = ${num + inc}")
+
+  @main def multiple(
+    @main.Alias("myNum", "n") num: Int,
+    @main.Alias("i", "myInc") inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 end myProgram
@@ -87,4 +93,13 @@ object Test:
     callMain("mix2", Array("-n", "2", "--myInc", "3"))
     callMain("mix2", Array("--myNum", "2", "-i", "3"))
     callMain("mix2", Array("-n", "2", "-i", "3"))
+
+    callMain("multiple", Array("--num", "2", "--inc", "3"))
+    callMain("multiple", Array("-n", "2", "--inc", "3"))
+    callMain("multiple", Array("--num", "2", "-i", "3"))
+    callMain("multiple", Array("-n", "2", "-i", "3"))
+    callMain("multiple", Array("--myNum", "2", "--myInc", "3"))
+    callMain("multiple", Array("-n", "2", "--myInc", "3"))
+    callMain("multiple", Array("--myNum", "2", "-i", "3"))
+    callMain("multiple", Array("-n", "2", "-i", "3"))
 end Test

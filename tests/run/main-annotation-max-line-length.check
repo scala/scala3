@@ -1,40 +1,40 @@
-Usage: doc1 [--a] <Int> [--b] <Int> [--c] <String>
+Usage: doc1 [-a] <Int> [-b] <Int> [-c] <String>
 
 Help is printed normally.
 Arguments:
-  --a - Int
+  -a - Int
     the first argument
-  --b - Int
+  -b - Int
     the second argument
-  --c - String
+  -c - String
     the third argument. This one is a String
-Usage: doc2 [--a] <Int> [--b] <Int>
-            [--c] <String>
+Usage: doc2 [-a] <Int> [-b] <Int>
+            [-c] <String>
 
 Help is printed in a slightly narrow
 column.
 Arguments:
-  --a - Int
+  -a - Int
     the first argument
-  --b - Int
+  -b - Int
     the second argument
-  --c - String
+  -c - String
     the third argument. This one is a
     String
-Usage: doc3 [--a] <Int>
-            [--b] <Int>
-            [--c] <String>
+Usage: doc3 [-a] <Int>
+            [-b] <Int>
+            [-c] <String>
 
 Help is printed in a
 very narrow column!
 Arguments:
-  --a - Int
+  -a - Int
     the first
     argument
-  --b - Int
+  -b - Int
     the second
     argument
-  --c - String
+  -c - String
     the third
     argument. This
     one is a String

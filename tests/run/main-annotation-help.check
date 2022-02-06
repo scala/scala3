@@ -150,9 +150,9 @@ Arguments:
     my first element
   --second - MyGeneric[Int]
     my second element
-Usage: doc17 [--a] <Int> [--b] <Int> [--c] <String>
+Usage: doc17 [-a] <Int> [-b] <Int> [-c] <String>
 
 Arguments:
-  --a - Int
-  --b - Int
-  --c - String
+  -a - Int
+  -b - Int
+  -c - String

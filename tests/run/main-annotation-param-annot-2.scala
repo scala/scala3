@@ -1,37 +1,37 @@
 object myProgram:
   @main def multipleSameShortNames1(
-    @main.ShortName('n') num: Int,
-    @main.ShortName('n') inc: Int
+    @main.Alias("n") num: Int,
+    @main.Alias("n") inc: Int
   ): Unit = ()
 
   @main def multipleSameShortNames2(
-    @main.ShortName('n') @main.ShortName('n') num: Int,
+    @main.Alias("n") @main.Alias("n") num: Int,
     inc: Int
   ): Unit = ()
 
   @main def multipleSameNames1(
-    @main.Name("arg") num: Int,
-    @main.Name("arg") inc: Int
+    @main.Alias("arg") num: Int,
+    @main.Alias("arg") inc: Int
   ): Unit = ()
 
   @main def multipleSameNames2(
-    @main.Name("arg") @main.Name("arg") num: Int,
+    @main.Alias("arg") @main.Alias("arg") num: Int,
     inc: Int
   ): Unit = ()
 
   @main def multipleSameNames3(
     num: Int,
-    @main.Name("num") inc: Int
+    @main.Alias("num") inc: Int
   ): Unit = ()
 end myProgram
 
 
 object Test:
-  def hasCauseAssertionError(e: Throwable): Boolean =
+  def hasCauseIllegalArgumentException(e: Throwable): Boolean =
     e.getCause match {
       case null => false
-      case _: AssertionError => true
-      case e: Throwable => hasCauseAssertionError(e)
+      case _: IllegalArgumentException => true
+      case e: Throwable => hasCauseIllegalArgumentException(e)
     }
 
   def callMain(className: String, args: Array[String]) =
@@ -40,7 +40,7 @@ object Test:
 
     try { method.invoke(null, args) }
     catch {
-      case e: Exception if hasCauseAssertionError(e) => println("OK")
+      case e: Exception if hasCauseIllegalArgumentException(e) => println("OK")
     }
 
   def main(args: Array[String]): Unit =

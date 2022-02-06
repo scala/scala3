@@ -134,7 +134,7 @@ object MainProxies {
    *       * @param ys all my params y
    *       */
    *     @main(80) def f(
-   *       @main.ShortName('x') @main.Name("myX") x: S,
+   *       @main.Alias("myX") x: S,
    *       ys: T*
    *     ) = ...
    *
@@ -148,7 +148,7 @@ object MainProxies {
    *           "Lorem ipsum dolor sit amet consectetur adipiscing elit.",
    *           new scala.annotation.MainAnnotation.ParameterInfos("x", "S")
    *             .withDocumentation("my param x")
-   *             .withAnnotations(new scala.main.ShortName('x'), new scala.main.Name("myX")),
+   *             .withAnnotations(new scala.main.Alias("myX")),
    *           new scala.annotation.MainAnnotation.ParameterInfos("ys", "T")
    *             .withDocumentation("all my params y")
    *         )

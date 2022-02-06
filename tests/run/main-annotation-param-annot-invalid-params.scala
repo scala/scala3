@@ -2,12 +2,16 @@ import java.lang.reflect.InvocationTargetException
 
 object myProgram:
 
+  @main def empty(
+    @main.Alias("") i: Int,
+  ): Unit = ()
+
   @main def space(
-    @main.ShortName(' ') i: Int,
+    @main.Alias(" ") i: Int,
   ): Unit = ()
 
   @main def nonLetter(
-    @main.ShortName('1') i: Int,
+    @main.Alias("1") i: Int,
   ): Unit = ()
 
 end myProgram
@@ -32,6 +36,7 @@ object Test:
     }
 
   def main(args: Array[String]): Unit =
+    callMain("empty", Array("3"))
     callMain("space", Array("3"))
     callMain("nonLetter", Array("3"))
 end Test
