@@ -36,10 +36,13 @@ import annotation._
   * Note that main function overloading is not currently supported, i.e. you cannot define two main methods that have
   * the same name in the same project.
   *
-  * A special argument is used to display help regarding a main function: `--help`. If used as argument, the program
+  * Special arguments are used to display help regarding a main function: `--help` and `-h`. If used as argument, the program
   * will display some useful information about the main function. This help directly uses the ScalaDoc comment
   * associated with the function, more precisely its description and the description of the parameters documented with
-  * `@param`.
+  * `@param`. Note that if a parameter is named `help` or `h`, or if one of the parameters has as alias one of those names,
+  * the help displaying will be disabled for that argument.
+  * For example, for `@main def foo(help: Boolean)`, `scala foo -h` will display the help, but `scala foo --help` will fail,
+  * as it will expect a Boolean value after `--help`.
   *
   * Parameters may be given annotations to add functionalities to the main function:
   * - `main.Alias` adds other names to a parameter. For example, if a parameter `node` has as aliases
@@ -69,6 +72,20 @@ final class main extends MainAnnotation:
       private val argMarker = "--"
       private val shortArgMarker = "-"
 
+      /**
+        * The name of the special argument to display the method's help.
+        * If one of the method's parameters is called the same, will be ignored.
+        */
+      private val helpArg = "help"
+      private var helpIsOverridden = false
+
+      /**
+        * The short name of the special argument to display the method's help.
+        * If one of the method's parameters uses the same short name, will be ignored.
+        */
+      private val shortHelpArg = 'h'
+      private var shortHelpIsOverridden = false
+
       private val maxUsageLineLength = 120
 
       /** A map from argument canonical name (the name of the parameter in the method definition) to parameter informations */
@@ -89,6 +106,9 @@ final class main extends MainAnnotation:
             if shortNameIsValid(canonicalName) then names = canonicalName(0) +: names
             names.map(_ -> canonicalName)
         ).toMap
+
+        helpIsOverridden = namesToCanonicalName.exists((name, _) => name == helpArg)
+        shortHelpIsOverridden = shortNamesToCanonicalName.exists((name, _) => name == shortHelpArg)
 
         def getCanonicalArgName(arg: String): Option[String] =
           if arg.startsWith(argMarker) && arg.length > argMarker.length then
@@ -305,7 +325,10 @@ final class main extends MainAnnotation:
         for (remainingArg <- positionalArgs) error(s"unused argument: $remainingArg")
         for (invalidArg <- invalidByNameArgs) error(s"unknown argument name: $invalidArg")
 
-        if args.contains(s"${argMarker}help") then
+        val displayHelp =
+          (!helpIsOverridden && args.contains(getNameWithMarker(helpArg))) || (!shortHelpIsOverridden && args.contains(getNameWithMarker(shortHelpArg)))
+
+        if displayHelp then
           usage()
           println()
           explain()
