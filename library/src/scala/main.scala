@@ -274,19 +274,6 @@ final class main extends MainAnnotation:
       private def getInvalidNames(paramInfos: ParameterInfos): Seq[String | Char] =
         getAliases(paramInfos).filter(name => !nameIsValid(name) && !shortNameIsValid(name))
 
-      private def checkAliasesValidity(): Unit =
-        val problematicNames = nameToParameterInfos.toList.flatMap((_, infos) => getInvalidNames(infos))
-        if problematicNames.length > 0 then throw IllegalArgumentException(s"The following aliases are invalid: ${problematicNames.mkString(", ")}")
-
-      private def checkAliasesUnicity(): Unit =
-        val nameAndCanonicalName = nameToParameterInfos.toList.flatMap {
-          case (canonicalName, infos) => (canonicalName +: getAlternativeNames(infos) ++: getShortNames(infos)).map(_ -> canonicalName)
-        }
-        val nameToCanonicalNames = nameAndCanonicalName.groupMap(_._1)(_._2)
-
-        for (name, canonicalNames) <- nameToCanonicalNames if canonicalNames.length > 1
-        do throw IllegalArgumentException(s"$name is used for multiple parameters: ${canonicalNames.mkString(", ")}")
-
       override def argGetter[T](name: String, optDefaultGetter: Option[() => T])(using p: ArgumentParser[T]): () => T =
         argKinds += (if optDefaultGetter.nonEmpty then ArgumentKind.OptionalArgument else ArgumentKind.SimpleArgument)
         val parameterInfos = nameToParameterInfos(name)
@@ -320,8 +307,20 @@ final class main extends MainAnnotation:
         () => (byNameGetters ++ positionalGetters).map(_())
 
       override def run(f: => MainResultType): Unit =
-        checkAliasesUnicity()
-        checkAliasesValidity()
+        // Check aliases unicity
+        val nameAndCanonicalName = nameToParameterInfos.toList.flatMap {
+          case (canonicalName, infos) => (canonicalName +: getAlternativeNames(infos) ++: getShortNames(infos)).map(_ -> canonicalName)
+        }
+        val nameToCanonicalNames = nameAndCanonicalName.groupMap(_._1)(_._2)
+
+        for (name, canonicalNames) <- nameToCanonicalNames if canonicalNames.length > 1
+        do throw IllegalArgumentException(s"$name is used for multiple parameters: ${canonicalNames.mkString(", ")}")
+
+        // Check aliases validity
+        val problematicNames = nameToParameterInfos.toList.flatMap((_, infos) => getInvalidNames(infos))
+        if problematicNames.length > 0 then throw IllegalArgumentException(s"The following aliases are invalid: ${problematicNames.mkString(", ")}")
+
+        // Handle unused and invalid args
         for (remainingArg <- positionalArgs) error(s"unused argument: $remainingArg")
         for (invalidArg <- invalidByNameArgs) error(s"unknown argument name: $invalidArg")
 
