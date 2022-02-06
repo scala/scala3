@@ -52,59 +52,10 @@ import annotation._
   * - `scala foo -x 1 -s abc`
   * - `scala foo --number 1 --explanation abc`
   * - `scala foo -x 1 --explanation abc`
-  *
-  * @param maxLineLength the maximum number of characters to print on a single line when displaying the help
   */
-final class main(maxLineLength: Int) extends MainAnnotation:
+final class main extends MainAnnotation:
   import main._
   import MainAnnotation._
-
-  /**
-    * The annotation that designates a main function.
-    * Main functions are entry points for Scala programs. They can be called through a command line interface by using
-    * the `scala` command, followed by their name and, optionally, their parameters.
-    *
-    * The parameters of a main function may have any type `T`, as long as there exists a
-    * `given util.CommandLineParser.FromString[T]` in the scope. It will be used for parsing the string given as input
-    * into the correct argument type.
-    * These types already have parsers defined:
-    * - String,
-    * - Boolean,
-    * - Byte, Short, Int, Long, Float, Double.
-    *
-    * The parameters of a main function may be passed either by position, or by name. Passing an argument positionaly
-    * means that you give the arguments in the same order as the function's signature. Passing an argument by name means
-    * that you give the argument right after giving its name. Considering the function
-    * `@main def foo(i: Int, s: String)`, we may have arguments passed:
-    * - by position: `scala foo 1 abc`,
-    * - by name: `scala foo --i 1 --s abc` or `scala foo --s abc --i 1`.
-    *
-    * A mixture of both is also possible: `scala foo --s abc 1` is equivalent to all previous examples.
-    *
-    * Note that main function overloading is not currently supported, i.e. you cannot define two main methods that have
-    * the same name in the same project.
-    *
-    * A special argument is used to display help regarding a main function: `--help`. If used as argument, the program
-    * will display some useful information about the main function. This help directly uses the ScalaDoc comment
-    * associated with the function, more precisely its description and the description of the parameters documented with
-    * `@param`.
-    *
-    *
-    * Parameters may be given annotations to add functionalities to the main function:
-    * - `main.ShortName` adds a short name to a parameter. For example, if a parameter `node` has as short name `n`, it
-    * may be addressed using either `--node` or `-n`,
-    * - `main.Name` adds another name to a parameter. For example, if a parameter `node` has as alternative name
-    * `otherNode`, it may be addressed using either `--node` or `--otherNode`.
-    *
-    * Here is an example of a main function with annotated parameters:
-    * `@main def foo(@main.ShortName('x') number: Int, @main.Name("explanation") s: String)`. The following commands are
-    * equivalent:
-    * - `scala foo --number 1 --s abc`
-    * - `scala foo -x 1 --s abc`
-    * - `scala foo --number 1 --explanation abc`
-    * - `scala foo -x 1 --explanation abc`
-    */
-  def this() = this(120)
 
   override type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   override type MainResultType = Any
@@ -117,6 +68,8 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 
       private val argMarker = "--"
       private val shortArgMarker = "-"
+
+      private val maxUsageLineLength = 120
 
       /** A map from argument canonical name (the name of the parameter in the method definition) to parameter informations */
       private val nameToParameterInfos: Map[String, ParameterInfos] = parameterInfoss.map(infos => infos.name -> infos).toMap
@@ -230,7 +183,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
 
         val usageBeginning = s"Usage: $commandName "
         val argsOffset = usageBeginning.length
-        val usages = wrapArgumentUsages(argsUsage, maxLineLength - argsOffset)
+        val usages = wrapArgumentUsages(argsUsage, maxUsageLineLength - argsOffset)
 
         println(usageBeginning + usages.mkString("\n" + " " * argsOffset))
       end usage
@@ -252,7 +205,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
         }
 
         if (documentation.nonEmpty)
-          println(wrapLongLine(documentation, maxLineLength).mkString("\n"))
+          println(wrapLongLine(documentation, maxUsageLineLength).mkString("\n"))
         if (nameToParameterInfos.nonEmpty) {
           val argNameShift = 2
           val argDocShift = argNameShift + 2
@@ -279,7 +232,7 @@ final class main(maxLineLength: Int) extends MainAnnotation:
               doc => if (doc.nonEmpty) {
                 val shiftedDoc =
                   doc.split("\n").nn
-                     .map(line => shiftLines(wrapLongLine(line.nn, maxLineLength - argDocShift), argDocShift))
+                     .map(line => shiftLines(wrapLongLine(line.nn, maxUsageLineLength - argDocShift), argDocShift))
                      .mkString("\n")
                 argDoc.append("\n").append(shiftedDoc)
               }
