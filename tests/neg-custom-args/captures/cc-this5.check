@@ -1,3 +1,7 @@
+-- Error: tests/neg-custom-args/captures/cc-this5.scala:16:20 ----------------------------------------------------------
+16 |    def f = println(c)  // error
+   |                    ^
+   |                    (c : Cap) cannot be referenced here; it is not included in the allowed capture set {}
 -- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this5.scala:7:9 ---------------------------------------
 7 |  object D extends C:   // error
   |         ^
