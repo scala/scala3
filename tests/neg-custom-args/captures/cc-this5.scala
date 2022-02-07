@@ -10,3 +10,7 @@ def foo(c: Cap) =
     def bar: Unit = println(c)
   D.bar
 
+def test(c: Cap) =
+  class A:
+    val x: A = this
+    def f = println(c)  // error
