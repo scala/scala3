@@ -6,4 +6,10 @@
   |    scala.MatchError: Inlined(EmptyTree,List(),Literal(Constant(2))) (of class dotty.tools.dotc.ast.Trees$Inlined)
   |    	at playground.macros$.mcrImpl(Macro_1.scala:10)
   |
-  | This location contains code that was inlined from Test_2.scala:5
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |·····················································································································
+  |This location contains code that was inlined from Macro_1.scala:6
+6 |  inline def mcr(x: => Any) = ${mcrImpl('x)}
+  |                              ^^^^^^^^^^^^^^
+  ·---------------------------------------------------------------------------------------------------------------------
