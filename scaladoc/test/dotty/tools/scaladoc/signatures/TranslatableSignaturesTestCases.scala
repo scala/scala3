@@ -92,3 +92,5 @@ class FBoundedTypeParameters extends SignatureTest("fboundedTypeParameters", Sig
 class Exports extends SignatureTest("exports2", SignatureTest.all, sourceFiles = List("exports1", "exports2"))
 
 class ContextFunctions extends SignatureTest("contextfunctions", SignatureTest.all)
+
+class MarkdownCode extends SignatureTest("markdowncode", SignatureTest.all)
