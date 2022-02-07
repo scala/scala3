@@ -24,7 +24,9 @@ import ast.Trees.*
 class EtaReduce extends MiniPhase:
   import ast.tpd._
 
-  override def phaseName: String = "etaReduce"
+  override def phaseName: String = EtaReduce.name
+
+  override def description: String = EtaReduce.description
 
   override def transformBlock(tree: Block)(using Context): Tree = tree match
     case Block((meth : DefDef) :: Nil, closure: Closure)
@@ -42,3 +44,7 @@ class EtaReduce extends MiniPhase:
     case _ => tree
 
 end EtaReduce
+
+object EtaReduce:
+  val name: String = "etaReduce"
+  val description: String = "reduce eta expansions of pure paths"

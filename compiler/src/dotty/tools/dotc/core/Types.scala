@@ -3263,10 +3263,10 @@ object Types {
       if myUnionPeriod != ctx.period then
         myUnion =
           if isSoft then
-            TypeComparer.lub(tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull, canConstrain = true) match
+            TypeComparer.lub(tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull, canConstrain = true, isSoft = isSoft) match
               case union: OrType => union.join
               case res => res
-          else derivedOrType(tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull)
+          else derivedOrType(tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull, soft = isSoft)
         if !isProvisional then myUnionPeriod = ctx.period
       myUnion
 
@@ -3282,7 +3282,7 @@ object Types {
           else tp1.atoms | tp2.atoms
         val tp1w = tp1.widenSingletons
         val tp2w = tp2.widenSingletons
-        myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
+        myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else TypeComparer.lub(tp1w, tp2w, isSoft = isSoft)
         atomsRunId = ctx.runId
 
     override def atoms(using Context): Atoms =
@@ -4171,7 +4171,7 @@ object Types {
           case MatchAlias(alias) =>
             trace(i"normalize $this", typr, show = true) {
               MatchTypeTrace.recurseWith(this) {
-                alias.applyIfParameterized(args).tryNormalize
+                alias.applyIfParameterized(args.map(_.normalized)).tryNormalize
               }
             }
           case _ =>
@@ -4248,15 +4248,6 @@ object Types {
           case _ => None
         }
 
-        val opsSet = Set(
-          defn.CompiletimeOpsAnyModuleClass,
-          defn.CompiletimeOpsIntModuleClass,
-          defn.CompiletimeOpsLongModuleClass,
-          defn.CompiletimeOpsFloatModuleClass,
-          defn.CompiletimeOpsBooleanModuleClass,
-          defn.CompiletimeOpsStringModuleClass
-        )
-
         // Returns Some(true) if the type is a constant.
         // Returns Some(false) if the type is not a constant.
         // Returns None if there is not enough information to determine if the type is a constant.
@@ -4272,7 +4263,7 @@ object Types {
           // constant if the term is constant
           case t: TermRef => isConst(t.underlying)
           // an operation type => recursively check all argument compositions
-          case applied: AppliedType if opsSet.contains(applied.typeSymbol.owner) =>
+          case applied: AppliedType if defn.isCompiletimeAppliedType(applied.typeSymbol) =>
             val argsConst = applied.args.map(isConst)
             if (argsConst.exists(_.isEmpty)) None
             else Some(argsConst.forall(_.get))
@@ -5811,7 +5802,7 @@ object Types {
             case Range(infoLo: TypeBounds, infoHi: TypeBounds) =>
               assert(variance == 0)
               if (!infoLo.isTypeAlias && !infoHi.isTypeAlias) propagate(infoLo, infoHi)
-              else range(defn.NothingType, tp.parent)
+              else range(defn.NothingType, parent)
             case Range(infoLo, infoHi) =>
               propagate(infoLo, infoHi)
             case _ =>
@@ -5856,7 +5847,7 @@ object Types {
               tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
                 case tp1: AppliedType if tp1.isUnreducibleWild =>
                   // don't infer a type that would trigger an error later in
-                  // Checling.checkAppliedType; fall through to default handling instead
+                  // Checking.checkAppliedType; fall through to default handling instead
                 case tp1 =>
                   return tp1
             end if
@@ -5865,7 +5856,7 @@ object Types {
             // non-range arguments L1, ..., Ln and H1, ..., Hn such that
             // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
             // ranges that appear in as co- or contravariant arguments.
-            // Fail for non-variant argument ranges.
+            // Fail for non-variant argument ranges (see use-site else branch below).
             // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
             // @return  operation succeeded for all arguments.
             def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
@@ -5886,10 +5877,17 @@ object Types {
             if (distributeArgs(args, tp.tyconTypeParams))
               range(tp.derivedAppliedType(tycon, loBuf.toList),
                     tp.derivedAppliedType(tycon, hiBuf.toList))
-            else range(defn.NothingType, defn.AnyType)
-              // TODO: can we give a better bound than `topType`?
+            else if tycon.isLambdaSub || args.exists(isRangeOfNonTermTypes) then
+              range(defn.NothingType, defn.AnyType)
+            else
+              // See lampepfl/dotty#14152
+              range(defn.NothingType, tp.derivedAppliedType(tycon, args.map(rangeToBounds)))
           else tp.derivedAppliedType(tycon, args)
       }
+
+    private def isRangeOfNonTermTypes(tp: Type): Boolean = tp match
+      case Range(lo, hi) => !lo.isInstanceOf[TermType] || !hi.isInstanceOf[TermType]
+      case _             => false
 
     override protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
       if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))

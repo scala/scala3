@@ -84,6 +84,7 @@ object MatchTypeTrace:
 
   private def caseText(tp: Type)(using Context): String = tp match
     case tp: HKTypeLambda => caseText(tp.resultType)
+    case defn.MatchCase(any, body) if any eq defn.AnyType => i"case _ => $body"
     case defn.MatchCase(pat, body) => i"case $pat => $body"
     case _ => i"case $tp"
 

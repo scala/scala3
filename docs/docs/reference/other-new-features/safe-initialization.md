@@ -194,14 +194,6 @@ With the established principles and design goals, following rules are imposed:
    non-initialized object is not used, i.e. calling methods or accessing fields
    on the escaped object is not allowed.
 
-3. Local definitions may only refer to transitively initialized objects.
-
-   It means that in a local definition `val x: T = e`, the expression `e` may
-   only evaluate to transitively initialized objects. The same goes for local
-   lazy variables and methods. This rule is again motivated for simplicity in
-   reasoning about initialization: programmers may safely assume that all local
-   definitions only point to transitively initialized objects.
-
 ## Modularity
 
 The analysis takes the primary constructor of concrete classes as entry points.

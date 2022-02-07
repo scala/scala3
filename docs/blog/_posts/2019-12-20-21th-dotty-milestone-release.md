@@ -48,7 +48,7 @@ It means that we can now put the Scala 3 compiler under heavy load, getting it
 ready for industrial strength applications. At the moment we have 23
 projects on our community projects and we expect this number to go up!
 
-> https://github.com/lampepfl/dotty/tree/master/community-build/community-projects
+> https://github.com/lampepfl/dotty/tree/main/community-build/community-projects
 
 This project contains tests to build and test a corpus of open sources Scala 2.x
 projects against Scala 3.

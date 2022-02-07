@@ -36,7 +36,9 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
 
   private def thisPhase: ParamForwarding = this
 
-  val phaseName: String = "paramForwarding"
+  override def phaseName: String = ParamForwarding.name
+
+  override def description: String = ParamForwarding.description
 
   def transformIfParamAlias(mdef: ValOrDefDef)(using Context): Tree =
 
@@ -80,3 +82,7 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
 
   override def transformDefDef(mdef: DefDef)(using Context): Tree =
     transformIfParamAlias(mdef)
+
+object ParamForwarding:
+  val name: String = "paramForwarding"
+  val description: String = "add forwarders for aliases of superclass parameters"

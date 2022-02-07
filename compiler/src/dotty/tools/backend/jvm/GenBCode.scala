@@ -34,7 +34,10 @@ import StdNames._
 import dotty.tools.io._
 
 class GenBCode extends Phase {
-  def phaseName: String = GenBCode.name
+
+  override def phaseName: String = GenBCode.name
+
+  override def description: String = GenBCode.description
 
   private val superCallsMap = new MutableSymbolMap[Set[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol): Unit = {
@@ -106,6 +109,7 @@ class GenBCode extends Phase {
 
 object GenBCode {
   val name: String = "genBCode"
+  val description: String = "generate JVM bytecode"
 }
 
 class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrimitives)(using Context) extends BCodeSyncAndTry {

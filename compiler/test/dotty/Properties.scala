@@ -15,13 +15,18 @@ object Properties {
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
   || sys.env.isDefinedAt("DRONE")  // TODO remove this when we drop Drone
 
+  val testCache: Path =
+    sys.env.get("DOTTY_TEST_CACHE").map(Paths.get(_)).getOrElse {
+      Paths.get(sys.props("user.home"), ".cache", "dotty", "test")
+    }
+
   /** Tests should run interactive? */
   val testsInteractive: Boolean = propIsNullOrTrue("dotty.tests.interactive")
 
   /** Filter out tests not matching the regex supplied by "dotty.tests.filter"
    *  define
    */
-  val testsFilter: Option[String] = sys.props.get("dotty.tests.filter")
+  val testsFilter: List[String] = sys.props.get("dotty.tests.filter").fold(Nil)(_.split(',').toList)
 
   /** Tests should override the checkfiles with the current output */
   val testsUpdateCheckfile: Boolean =

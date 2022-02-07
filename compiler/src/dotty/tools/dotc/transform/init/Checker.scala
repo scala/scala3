@@ -22,7 +22,9 @@ import Semantic._
 
 class Checker extends Phase {
 
-  val phaseName = "initChecker"
+  override def phaseName: String = Checker.name
+
+  override def description: String = Checker.description
 
   override val runsAfter = Set(Pickler.name)
 
@@ -78,3 +80,7 @@ class Checker extends Phase {
     instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass
   }
 }
+
+object Checker:
+  val name: String = "initChecker"
+  val description: String = "check initialization of objects"

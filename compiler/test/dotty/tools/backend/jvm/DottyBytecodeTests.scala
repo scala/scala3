@@ -32,6 +32,22 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  @Test def byNameParameters = {
+    val source = """
+                   |class Foo {
+                   |  def byNameParam(str: => String): Unit = {}
+                   |}
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      val methodNode: MethodNode = getMethod(clsNode, "byNameParam")
+
+      assert(methodNode.signature == "(Lscala/Function0<Ljava/lang/String;>;)V")
+    }
+  }
+
   /** This test verifies that simple matches are transformed if possible
    *  despite no annotation
    */
@@ -957,7 +973,7 @@ class TestBCode extends DottyBytecodeTest {
 
   @Test
   def invocationReceivers(): Unit = {
-    import Opcodes._
+    import Opcodes.*
 
     checkBCode(List(invocationReceiversTestCode.definitions("Object"))) { dir =>
       val c1 = loadClassNode(dir.lookupName("C1.class", directory = false).input)

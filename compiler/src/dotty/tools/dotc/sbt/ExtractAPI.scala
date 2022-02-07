@@ -43,7 +43,10 @@ import scala.util.chaining.*
  *  @see ExtractDependencies
  */
 class ExtractAPI extends Phase {
-  override def phaseName: String = "sbt-api"
+
+  override def phaseName: String = ExtractAPI.name
+
+  override def description: String = ExtractAPI.description
 
   override def isRunnable(using Context): Boolean = {
     def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
@@ -86,6 +89,10 @@ class ExtractAPI extends Phase {
       mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
   }
 }
+
+object ExtractAPI:
+  val name: String = "sbt-api"
+  val description: String = "sends a representation of the API of classes to sbt"
 
 /** Extracts full (including private members) API representation out of Symbols and Types.
  *

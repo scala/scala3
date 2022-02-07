@@ -41,8 +41,9 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   import tpd._
   import ExtensionMethods._
 
-  /** the following two members override abstract members in Transform */
   override def phaseName: String = ExtensionMethods.name
+
+  override def description: String = ExtensionMethods.description
 
   override def runsAfter: Set[String] = Set(
     ElimRepeated.name,
@@ -174,6 +175,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 
 object ExtensionMethods {
   val name: String = "extmethods"
+  val description: String = "expand methods of value classes with extension methods"
 
   /** Name of the extension method that corresponds to given instance method `meth`. */
   def extensionName(imeth: Symbol)(using Context): TermName =

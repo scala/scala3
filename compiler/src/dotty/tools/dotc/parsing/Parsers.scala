@@ -56,7 +56,8 @@ object Parsers {
   object StageKind {
     val None = 0
     val Quoted = 1
-    val Spliced = 2
+    val Spliced = 1 << 1
+    val QuotedPattern = 1 << 2
   }
 
   extension (buf: ListBuffer[Tree])
@@ -1566,15 +1567,19 @@ object Parsers {
     /** The block in a quote or splice */
     def stagedBlock() = inBraces(block(simplify = true))
 
-    /** SimpleEpxr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
-     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
+    /** SimpleExpr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
+     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
+     *
+     *  SimpleExpr  ::=  spliceId | ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
+     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
      */
     def splice(isType: Boolean): Tree =
       atSpan(in.offset) {
         val expr =
           if (in.name.length == 1) {
             in.nextToken()
-            withinStaged(StageKind.Spliced)(stagedBlock())
+            val inPattern = (staged & StageKind.QuotedPattern) != 0
+            withinStaged(StageKind.Spliced)(if (inPattern) inBraces(pattern()) else stagedBlock())
           }
           else atSpan(in.offset + 1) {
             val id = Ident(in.name.drop(1))
@@ -1824,7 +1829,7 @@ object Parsers {
 
     def typeDependingOn(location: Location): Tree =
       if location.inParens then typ()
-      else if location.inPattern then refinedType()
+      else if location.inPattern then rejectWildcardType(refinedType())
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
@@ -2271,7 +2276,7 @@ object Parsers {
           blockExpr()
         case QUOTE =>
           atSpan(in.skipToken()) {
-            withinStaged(StageKind.Quoted) {
+            withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.QuotedPattern else 0)) {
               Quote {
                 if (in.token == LBRACKET) inBrackets(typ())
                 else stagedBlock()
@@ -2617,15 +2622,21 @@ object Parsers {
       })
     }
 
-    /** TypeCaseClause     ::= ‘case’ InfixType ‘=>’ Type [semi]
+    /** TypeCaseClause     ::= ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
      */
     def typeCaseClause(): CaseDef = atSpan(in.offset) {
       val pat = inSepRegion(InCase) {
         accept(CASE)
-        infixType()
+        in.token match {
+          case USCORE if in.lookahead.isArrow =>
+            val start = in.skipToken()
+            Ident(tpnme.WILDCARD).withSpan(Span(start, in.lastOffset, start))
+          case _ =>
+            rejectWildcardType(infixType())
+        }
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
-        val t = typ()
+        val t = rejectWildcardType(typ())
         if in.token == SEMI then in.nextToken()
         newLinesOptWhenFollowedBy(CASE)
         t
@@ -2721,7 +2732,7 @@ object Parsers {
       case LPAREN =>
         atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
       case QUOTE =>
-        simpleExpr(Location.ElseWhere)
+        simpleExpr(Location.InPattern)
       case XMLSTART =>
         xmlLiteralPattern()
       case GIVEN =>
@@ -3633,7 +3644,7 @@ object Parsers {
           val templ =
             if isStatSep || isStatSeqEnd then Template(constr, parents, Nil, EmptyValDef, Nil)
             else withTemplate(constr, parents)
-          if noParams then ModuleDef(name, templ)
+          if noParams && !mods.is(Inline) then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef
       finalizeDef(gdef, mods1, start)
@@ -3754,11 +3765,11 @@ object Parsers {
         }
         else Nil
       possibleTemplateStart()
-      if (isEnum) {
-        val (self, stats) = withinEnum(templateBody())
+      if isEnum then
+        val (self, stats) = withinEnum(templateBody(parents))
         Template(constr, parents, derived, self, stats)
-      }
-      else templateBodyOpt(constr, parents, derived)
+      else
+        templateBodyOpt(constr, parents, derived)
     }
 
     /** TemplateOpt = [Template]
@@ -3781,15 +3792,15 @@ object Parsers {
     def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template =
       val (self, stats) =
         if in.isNestedStart then
-          templateBody()
+          templateBody(parents)
         else
           checkNextNotIndented()
           (EmptyValDef, Nil)
       Template(constr, parents, derived, self, stats)
 
-    def templateBody(rewriteWithColon: Boolean = true): (ValDef, List[Tree]) =
+    def templateBody(parents: List[Tree], rewriteWithColon: Boolean = true): (ValDef, List[Tree]) =
       val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon)
-      if in.token == WITH then
+      if in.token == WITH && parents.isEmpty then
         syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
         template(emptyConstructor)
@@ -3798,7 +3809,7 @@ object Parsers {
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
       accept(WITH)
-      val (self, stats) = templateBody(rewriteWithColon = false)
+      val (self, stats) = templateBody(parents, rewriteWithColon = false)
       Template(constr, parents, Nil, self, stats)
         .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
 
@@ -4041,7 +4052,7 @@ object Parsers {
       EmptyTree
     }
 
-    override def templateBody(rewriteWithColon: Boolean): (ValDef, List[Thicket]) = {
+    override def templateBody(parents: List[Tree], rewriteWithColon: Boolean): (ValDef, List[Thicket]) = {
       skipBraces()
       (EmptyValDef, List(EmptyTree))
     }

@@ -86,7 +86,7 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
     case Subscript(text) => span(cls:="subscript")(renderElement(text))  // TODO implement style
     case Link(target, body) =>
       renderLink(target, default => body.fold[TagArg](default)(renderElement))
-    case Text(text) => raw(text)
+    case Text(text) => raw(text.escapeReservedTokens)
     case Summary(text) => renderElement(text)
     case HtmlTag(content) => raw(content)
 

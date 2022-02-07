@@ -26,6 +26,8 @@ class MoveStatics extends MiniPhase with SymTransformer {
 
   override def phaseName: String = MoveStatics.name
 
+  override def description: String = MoveStatics.description
+
   def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if (sym.hasAnnotation(defn.ScalaStaticAnnot) && sym.owner.is(Flags.Module) && sym.owner.companionClass.exists &&
         (sym.is(Flags.Method) || !(sym.is(Flags.Mutable) && sym.owner.companionClass.is(Flags.Trait)))) {
@@ -88,4 +90,5 @@ class MoveStatics extends MiniPhase with SymTransformer {
 
 object MoveStatics {
   val name: String = "moveStatic"
+  val description: String = "move static methods from companion to the class itself"
 }

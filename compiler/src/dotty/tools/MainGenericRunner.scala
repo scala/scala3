@@ -4,8 +4,6 @@ package dotty.tools
 import scala.annotation.tailrec
 import scala.io.Source
 import scala.util.{ Try, Success, Failure }
-import java.net.URLClassLoader
-import sys.process._
 import java.io.File
 import java.lang.Thread
 import scala.annotation.internal.sharable
@@ -13,12 +11,11 @@ import dotty.tools.dotc.util.ClasspathFromClassloader
 import dotty.tools.runner.ObjectRunner
 import dotty.tools.dotc.config.Properties.envOrNone
 import java.util.jar._
-import java.util.jar.Attributes.Name
 import dotty.tools.io.Jar
 import dotty.tools.runner.ScalaClassLoader
 import java.nio.file.{Files, Paths, Path}
-import scala.collection.JavaConverters._
 import dotty.tools.dotc.config.CommandLineParser
+import dotty.tools.scripting.StringDriver
 
 enum ExecuteMode:
   case Guess
@@ -26,6 +23,7 @@ enum ExecuteMode:
   case Repl
   case Run
   case PossibleRun
+  case Expression
 
 case class Settings(
   verbose: Boolean = false,
@@ -38,6 +36,7 @@ case class Settings(
   possibleEntryPaths: List[String] = List.empty,
   scriptArgs: List[String] = List.empty,
   targetScript: String = "",
+  targetExpression: String = "",
   targetToRun: String = "",
   save: Boolean = false,
   modeShouldBePossibleRun: Boolean = false,
@@ -77,6 +76,9 @@ case class Settings(
 
   def withTargetToRun(targetToRun: String): Settings =
     this.copy(targetToRun = targetToRun)
+
+  def withExpression(scalaSource: String): Settings =
+    this.copy(targetExpression = scalaSource)
 
   def withSave: Settings =
     this.copy(save = true)
@@ -149,6 +151,13 @@ object MainGenericRunner {
       process(remainingArgs, settings)
     case (o @ colorOption(_*)) :: tail =>
       process(tail, settings.withScalaArgs(o))
+    case "-e" :: expression :: tail =>
+      val mainSource = s"@main def main(args: String *): Unit =\n  ${expression}"
+      settings
+        .withExecuteMode(ExecuteMode.Expression)
+        .withExpression(mainSource)
+        .withScriptArgs(tail*)
+        .noSave // -save not useful here
     case arg :: tail =>
       val line = Try(Source.fromFile(arg).getLines.toList).toOption.flatMap(_.headOption)
       lazy val hasScalaHashbang = { val s = line.getOrElse("") ; s.startsWith("#!") && s.contains("scala") }
@@ -161,6 +170,7 @@ object MainGenericRunner {
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
 
+      
   def main(args: Array[String]): Unit =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" ")).filter(_.nonEmpty)
     val allArgs = scalaOpts ++ args
@@ -235,6 +245,16 @@ object MainGenericRunner {
               ++ List("-script", settings.targetScript)
               ++ settings.scriptArgs
           scripting.Main.main(properArgs.toArray)
+      case ExecuteMode.Expression =>
+        val cp = settings.classPath match {
+          case Nil => ""
+          case list => list.mkString(classpathSeparator)
+        }
+        val cpArgs = if cp.isEmpty then Nil else List("-classpath", cp)
+        val properArgs = cpArgs ++ settings.residualArgs ++ settings.scalaArgs
+        val driver = StringDriver(properArgs.toArray, settings.targetExpression)
+        driver.compileAndRun(settings.classPath)
+
       case ExecuteMode.Guess =>
         if settings.modeShouldBePossibleRun then
           run(settings.withExecuteMode(ExecuteMode.PossibleRun))

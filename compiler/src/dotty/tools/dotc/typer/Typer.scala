@@ -498,6 +498,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if ctx.mode.is(Mode.Pattern) then
       if name == nme.WILDCARD then
         return tree.withType(pt)
+      if name == tpnme.WILDCARD then
+        return tree.withType(defn.AnyType)
       if untpd.isVarPattern(tree) && name.isTermName then
         return typed(desugar.patternVar(tree), pt)
     else if ctx.mode.is(Mode.QuotedPattern) then
@@ -1561,6 +1563,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   case defn.MatchCase(patternTp, _) => tpt.tpe frozen_=:= patternTp
                   case _ => false
                 }
+              case (id @ Ident(nme.WILDCARD), pt) =>
+                pt match {
+                  case defn.MatchCase(patternTp, _) => defn.AnyType frozen_=:= patternTp
+                  case _ => false
+                }
               case _ => false
             }
 
@@ -1765,8 +1772,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       untpd.ValDef(
           EvidenceParamName.fresh(),
           untpd.TypeTree(defn.CanThrowClass.typeRef.appliedTo(tp)),
-          untpd.ref(defn.Predef_undefined))
-        .withFlags(Given | Final | Lazy | Erased)
+          untpd.ref(defn.Compiletime_erasedValue))
+        .withFlags(Given | Final | Erased)
         .withSpan(expr.span)
     val caughtExceptions =
       if Feature.enabled(Feature.saferExceptions) then
@@ -2549,7 +2556,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 |The selector is not a member of an object or package.""")
     else typd(imp.expr, AnySelectionProto)
 
-  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import =
+  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Tree =
     val expr1 = typedImportQualifier(imp, typedExpr(_, _)(using ctx.withOwner(sym)))
     checkLegalImportPath(expr1)
     val selectors1 = typedSelectors(imp.selectors)
@@ -3854,6 +3861,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               gadts.println(i"Member selection healed by GADT approximation")
               tree.cast(gadtApprox)
             else tree
+          else if tree.tpe.derivesFrom(defn.PairClass) && !defn.isTupleNType(tree.tpe.widenDealias) then
+            // If this is a generic tuple we need to cast it to make the TupleN/ members accessible.
+            // This only works for generic tuples of know size up to 22.
+            defn.tupleTypes(tree.tpe.widenTermRefExpr, Definitions.MaxTupleArity) match
+              case Some(elems) => tree.cast(defn.tupleType(elems))
+              case None => tree
           else tree // other adaptations for selections are handled in typedSelect
         case _ if ctx.mode.is(Mode.ImplicitsEnabled) && tree.tpe.isValueType =>
           checkConversionsSpecific(pt, tree.srcPos)

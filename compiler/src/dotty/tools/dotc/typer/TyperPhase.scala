@@ -26,7 +26,11 @@ import ast.Trees._
 class TyperPhase(addRootImports: Boolean = true) extends Phase {
 
   override def phaseName: String = TyperPhase.name
+
+  override def description: String = TyperPhase.description
+
   override def isTyper: Boolean = true
+
   import ast.tpd
 
   override def allowsImplicitSearch: Boolean = true
@@ -98,6 +102,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
 
 object TyperPhase {
   val name: String = "typer"
+  val description: String = "type the trees"
 }
 
 @deprecated(message = "FrontEnd has been split into TyperPhase and Parser. Refer to one or the other.")

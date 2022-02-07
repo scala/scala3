@@ -2,6 +2,7 @@ package dotty
 package tools
 
 import java.io.File
+import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path => JPath}
 
@@ -17,7 +18,7 @@ def scripts(path: String): Array[File] = {
   assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
   dir.listFiles.filter { f =>
     val path = if f.isDirectory then f.getPath + "/" else f.getPath
-    path.contains(Properties.testsFilter.getOrElse(""))
+    Properties.testsFilter.isEmpty || Properties.testsFilter.exists(path.contains)
   }
 }
 
@@ -45,8 +46,8 @@ def assertThrows[T <: Throwable: ClassTag](p: T => Boolean)(body: => Any): Unit 
     case NonFatal(other) => throw AssertionError(s"Wrong exception: expected ${implicitly[ClassTag[T]]} but was ${other.getClass.getName}").tap(_.addSuppressed(other))
 end assertThrows
 
-def toolArgsFor(files: List[JPath]): List[String] =
-  files.flatMap(path => toolArgsParse(Files.lines(path, UTF_8).limit(10).toScala(List)))
+def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): List[String] =
+  files.flatMap(path => toolArgsParse(resource(Files.lines(path, charset))(_.limit(10).toScala(List))))
 
 // Inspect the first 10 of the given lines for compiler options of the form
 // `// scalac: args`, `/* scalac: args`, ` * scalac: args`.
@@ -58,7 +59,8 @@ def toolArgsParse(lines: List[String]): List[String] = {
   val endc = "*" + "/"    // be forgiving of /* scalac: ... */
   def stripped(s: String) = s.substring(s.indexOf(tag) + tag.length).stripSuffix(endc)
   val args = lines.to(LazyList).take(10).filter { s =>
-       s.contains("// " + tag)
+       s.contains("//" + tag)
+    || s.contains("// " + tag)
     || s.contains("/* " + tag)
     || s.contains(" * " + tag)
     // but avoid picking up comments like "% scalac ./a.scala" and "$ scalac a.scala"

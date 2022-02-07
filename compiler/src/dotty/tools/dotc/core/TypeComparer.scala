@@ -4,7 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
 import Decorators._
-import Phases.gettersPhase
+import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
@@ -210,7 +210,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  types (as when we go from an abstract type to one of its bounds). In that case
    *  one should use `isSubType(_, _, a)` where `a` defines the kind of approximation.
    *
-   *  Note: Logicaly, `recur` could be nested in `isSubType`, which would avoid
+   *  Note: Logically, `recur` could be nested in `isSubType`, which would avoid
    *  the instance state consisting `approx` and `leftRoot`. But then the implemented
    *  code would have two extra parameters for each of the many calls that go from
    *  one sub-part of isSubType to another.
@@ -846,7 +846,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ => tp2.isAnyRef
         }
         compareJavaArray
-      case tp1: ExprType if ctx.phase.id > gettersPhase.id =>
+      case tp1: ExprType if ctx.phaseId > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
       case _ =>
@@ -1499,7 +1499,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
 
-        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
+        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match
           case arg2: TypeBounds =>
             val arg1norm = arg1 match {
               case arg1: TypeBounds =>
@@ -1510,15 +1510,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case _ => arg1
             }
             arg2.contains(arg1norm)
+          case ExprType(arg2res)
+          if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+               && defn.isByNameFunction(arg1.dealias) =>
+            // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
+            // embedded `=> T` arguments alone. This clause needs to compensate for that.
+            isSubArg(arg1.dealias.argInfos.head, arg2res)
           case _ =>
-            arg1 match {
+            arg1 match
               case arg1: TypeBounds =>
                 compareCaptured(arg1, arg2)
+              case ExprType(arg1res)
+              if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+                   && defn.isByNameFunction(arg2.dealias) =>
+                 isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
                 (v > 0 || isSubType(arg2, arg1)) &&
                 (v < 0 || isSubType(arg1, arg2))
-            }
-        }
 
         isSubArg(args1.head, args2.head)
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
@@ -2955,9 +2963,10 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     if (skipped) op
     else {
       indent += 2
-      b.append("\n").append(" " * indent).append("==> ").append(str)
+      val str1 = str.replace('\n', ' ')
+      b.append("\n").append(" " * indent).append("==> ").append(str1)
       val res = op
-      b.append("\n").append(" " * indent).append("<== ").append(str).append(" = ").append(show(res))
+      b.append("\n").append(" " * indent).append("<== ").append(str1).append(" = ").append(show(res))
       indent -= 2
       res
     }
@@ -2965,17 +2974,13 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   private def frozenNotice: String =
     if frozenConstraint then " in frozen constraint" else ""
 
-  override def isSubType(tp1: Type, tp2: Type, approx: ApproxState): Boolean =
+  override def recur(tp1: Type, tp2: Type): Boolean =
     def moreInfo =
       if Config.verboseExplainSubtype || ctx.settings.verbose.value
       then s" ${tp1.getClass} ${tp2.getClass}"
       else ""
+    val approx = approxState
     traceIndented(s"${show(tp1)}  <:  ${show(tp2)}$moreInfo${approx.show}$frozenNotice") {
-      super.isSubType(tp1, tp2, approx)
-    }
-
-  override def recur(tp1: Type, tp2: Type): Boolean =
-    traceIndented(s"${show(tp1)}  <:  ${show(tp2)} (recurring)$frozenNotice") {
       super.recur(tp1, tp2)
     }
 
@@ -2995,7 +3000,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(using Context): Boolean =
-    traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
+    traceIndented(s"add constraint ${show(param)} ${if (fromBelow) ">:" else "<:"} ${show(bound)} $frozenNotice, constraint = ${show(ctx.typerState.constraint)}") {
       super.addConstraint(param, bound, fromBelow)
     }
 

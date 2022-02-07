@@ -23,6 +23,7 @@ object LambdaLift:
   import ast.tpd._
 
   val name: String = "lambdaLift"
+  val description: String = "lifts out nested functions to class scope"
 
   /** The core lambda lift functionality. */
   class Lifter(thisPhase: MiniPhase & DenotTransformer)(using Context):
@@ -265,8 +266,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import LambdaLift._
   import ast.tpd._
 
-  /** the following two members override abstract members in Transform */
-  val phaseName: String = LambdaLift.name
+  override def phaseName: String = LambdaLift.name
+
+  override def description: String = LambdaLift.description
 
   override def relaxedTypingInGroup: Boolean = true
     // Because it adds free vars as additional proxy parameters

@@ -12,6 +12,7 @@ import annotation.threadUnsafe
 
 object CheckLoopingImplicits:
   val name: String = "checkLoopingImplicits"
+  val description: String = "check that implicit defs do not call themselves in an infinite loop"
 
 /** Checks that implicit defs do not call themselves in an infinite loop */
 class CheckLoopingImplicits extends MiniPhase:
@@ -19,6 +20,8 @@ class CheckLoopingImplicits extends MiniPhase:
   import tpd._
 
   override def phaseName: String = CheckLoopingImplicits.name
+
+  override def description: String = CheckLoopingImplicits.description
 
   override def transformValDef(mdef: ValDef)(using Context): Tree = 
     transform(mdef)

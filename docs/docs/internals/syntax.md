@@ -183,7 +183,8 @@ SimpleType1       ::=  id                                                       
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
                     |  ‘(’ Types ‘)’                                            Tuple(ts)
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
-                    |  ‘$’ ‘{’ Block ‘}’
+                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
+                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- only inside quoted pattern
                     |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
                     |  SimpleType1 ‘#’ id                                       Select(t, name)
 Singleton         ::=  SimpleRef
@@ -242,7 +243,8 @@ SimpleExpr        ::=  SimpleRef
                     |  Literal
                     |  ‘_’
                     |  BlockExpr
-                    |  ‘$’ ‘{’ Block ‘}’
+                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
+                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- only inside quoted pattern
                     |  Quoted
                     |  quoteId                                                  -- only inside splices
                     |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]        New(constr | templ)
@@ -257,7 +259,7 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr													                        -- to be dropped
 IndentedExpr      ::=  indent CaseClauses | Block outdent
-Quoted            ::=  ‘'’ ‘{’ Block ‘}’
+Quoted            ::=  ‘'’ ‘{’ Block ‘}’  
                     |  ‘'’ ‘[’ Type ‘]’
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
@@ -289,7 +291,7 @@ CaseClauses       ::=  CaseClause { CaseClause }                                
 CaseClause        ::=  ‘case’ Pattern [Guard] ‘=>’ Block                        CaseDef(pat, guard?, block)   // block starts at =>
 ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
 TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
-TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [semi]
+TypeCaseClause    ::=  ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  Pattern2 [‘:’ RefinedType]                               Bind(name, Typed(Ident(wildcard), tpe))

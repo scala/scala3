@@ -2,6 +2,7 @@ package dotty
 package tools
 package scripting
 
+import java.nio.file.Paths
 import org.junit.{Test, AfterClass}
 import org.junit.Assert.assertEquals
 
@@ -195,6 +196,8 @@ class BashScriptsTests:
     val scriptBase = "sqlDateError"
     val scriptFile = testFiles.find(_.getName == s"$scriptBase.sc").get
     val testJar = testFile(s"$scriptBase.jar") // jar should not be created when scriptFile runs
+    val tj = Paths.get(testJar).toFile
+    if tj.isFile then tj.delete() // discard residual debris from previous test
     printf("===> verify '-save' is cancelled by '-nosave' in script hashbang.`\n")
     val (validTest, exitCode, stdout, stderr) = bashCommand(s"SCALA_OPTS=-save ${scriptFile.absPath}")
     printf("stdout: %s\n", stdout.mkString("\n","\n",""))
@@ -209,3 +212,18 @@ class BashScriptsTests:
       assert(valid, s"script ${scriptFile.absPath} reported unexpected value for java.sql.Date ${stdout.mkString("\n")}")
       assert(!testJar.exists,s"unexpected, jar file [$testJar] was created")
 
+
+  /*
+   * verify -e println("yo!") works.
+   */
+  @Test def verifyCommandLineExpression =
+    printf("===> verify -e <expression> is properly handled by `dist/bin/scala`\n")
+    val expected = "9"
+    val expression = s"println(3*3)"
+    val cmd = s"bin/scala -e $expression"
+    val (validTest, exitCode, stdout, stderr) = bashCommand(s"""bin/scala -e '$expression'""")
+    val result = stdout.filter(_.nonEmpty).mkString("")
+    printf("stdout: %s\n", result)
+    printf("stderr: %s\n", stderr.mkString("\n","\n",""))
+    if verifyValid(validTest) then
+      assert(result.contains(expected), s"expression [$expression] did not send [$expected] to stdout")

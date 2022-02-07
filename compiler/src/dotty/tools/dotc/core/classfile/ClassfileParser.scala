@@ -3,7 +3,7 @@ package dotc
 package core
 package classfile
 
-import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
+import dotty.tools.tasty.{ TastyFormat, TastyReader, TastyHeaderUnpickler }
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
@@ -20,6 +20,7 @@ import java.util.UUID
 import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
+import tasty.TastyVersion
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, PlainFile, ZipArchive}
 import scala.util.control.NonFatal
@@ -884,7 +885,7 @@ class ClassfileParser(
       }
 
       def unpickleTASTY(bytes: Array[Byte]): Some[Embedded]  = {
-        val unpickler = new tasty.DottyUnpickler(bytes)
+        val unpickler = new tasty.DottyUnpickler(bytes, ctx.tastyVersion)
         unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
         Some(unpickler)
       }
@@ -950,9 +951,37 @@ class ClassfileParser(
           if (tastyBytes.nonEmpty) {
             val reader = new TastyReader(bytes, 0, 16)
             val expectedUUID = new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
-            val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
+            val tastyHeader = new TastyHeaderUnpickler(tastyBytes).readFullHeader()
+            val fileTastyVersion = TastyVersion(tastyHeader.majorVersion, tastyHeader.minorVersion, tastyHeader.experimentalVersion)
+            val tastyUUID = tastyHeader.uuid
             if (expectedUUID != tastyUUID)
               report.warning(s"$classfile is out of sync with its TASTy file. Loaded TASTy file. Try cleaning the project to fix this issue", NoSourcePosition)
+
+            val tastyFilePath = classfile.path.stripSuffix(".class") + ".tasty"
+
+            def reportWrongTasty(reason: String, highestAllowed: TastyVersion) =
+              report.error(s"""The class ${classRoot.symbol.showFullName} cannot be loaded from file ${tastyFilePath} because $reason:
+                              |highest allowed: ${highestAllowed.show}
+                              |found:           ${fileTastyVersion.show}
+              """.stripMargin)
+
+            val isTastyReadable = fileTastyVersion.isCompatibleWith(TastyVersion.compilerVersion)
+            if !isTastyReadable then
+              reportWrongTasty("its TASTy format cannot be read by the compiler", TastyVersion.compilerVersion)
+            else
+              def isStdlibClass(cls: ClassDenotation): Boolean =
+                ctx.platform.classPath.findClassFile(cls.fullName.mangledString) match {
+                  case Some(entry: ZipArchive#Entry) =>
+                    entry.underlyingSource.map(_.name.startsWith("scala3-library_")).getOrElse(false)
+                  case _ => false
+                }
+              // While emitting older TASTy the the newer standard library used by the compiler will still be on the class path so trying to read its TASTy files should not cause a crash.
+              // This is OK however because references to elements of stdlib API are validated according to the values of their `@since` annotations.
+              // This should guarantee that the code won't crash at runtime when used with the stdlib provided by an older compiler.
+              val isTastyCompatible = fileTastyVersion.isCompatibleWith(ctx.tastyVersion) || isStdlibClass(classRoot)
+              if !isTastyCompatible then
+                reportWrongTasty(s"its TASTy format is not compatible with the one of the targeted Scala release (${ctx.scalaRelease.show})", ctx.tastyVersion)
+
             return unpickleTASTY(tastyBytes)
           }
         }

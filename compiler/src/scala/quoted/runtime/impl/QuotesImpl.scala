@@ -3056,8 +3056,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       // that we have found, seal them in a quoted.Type and add them to the result
       def typeHoleApproximation(sym: Symbol) =
         val fromAboveAnnot = sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)
-        val approx = ctx1.gadt.approximation(sym, !fromAboveAnnot)
-        reflect.TypeReprMethods.asType(approx)
+        val fullBounds = ctx1.gadt.fullBounds(sym)
+        val tp = if fromAboveAnnot then fullBounds.hi else fullBounds.lo
+        reflect.TypeReprMethods.asType(tp)
       matchings.map { tup =>
         Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
       }

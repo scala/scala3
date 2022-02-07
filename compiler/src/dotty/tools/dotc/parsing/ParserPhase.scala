@@ -15,6 +15,7 @@ import dotty.tools.unsupported
 class Parser extends Phase {
 
   override def phaseName: String = Parser.name
+  override def description: String = Parser.description
 
   // We run TreeChecker only after type checking
   override def isCheckable: Boolean = false
@@ -58,4 +59,5 @@ class Parser extends Phase {
 
 object Parser{
   val name: String = "parser"
+  val description: String = "scan and parse sources"
 }

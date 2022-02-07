@@ -14,7 +14,9 @@ import dotty.tools.dotc.util.SourceFile
 class YCheckPositions extends Phase {
   import tpd._
 
-  def phaseName: String = "inlinedPositions"
+  override def phaseName: String = YCheckPositions.name
+
+  override def description: String = YCheckPositions.description
 
   override def run(using Context): Unit = () // YCheck only
 
@@ -63,3 +65,6 @@ class YCheckPositions extends Phase {
 
 }
 
+object YCheckPositions:
+  val name: String = "inlinedPositions"
+  val description: String = "check inlined positions"

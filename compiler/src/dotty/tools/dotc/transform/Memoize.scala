@@ -22,6 +22,7 @@ import util.Store
 
 object Memoize {
   val name: String = "memoize"
+  val description: String = "add private fields to getters and setters"
 
   private final class MyState {
     val classesThatNeedReleaseFence = new util.HashSet[Symbol]
@@ -48,6 +49,8 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = Memoize.name
+
+  override def description: String = Memoize.description
 
   private var MyState: Store.Location[MyState] = _
   private def myState(using Context): MyState = ctx.store(MyState)

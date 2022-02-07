@@ -42,7 +42,9 @@ import ExtensionMethods._, ValueClasses._
 class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
-  override def phaseName: String = "vcInlineMethods"
+  override def phaseName: String = VCInlineMethods.name
+
+  override def description: String = VCInlineMethods.description
 
   override def runsAfter: Set[String] =
     Set(ExtensionMethods.name, PatternMatcher.name)
@@ -105,3 +107,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
   override def transformApply(tree: Apply)(using Context): Tree =
     rewireIfNeeded(tree)
 }
+
+object VCInlineMethods:
+  val name: String = "vcInlineMethods"
+  val description: String = "inlines calls to value class methods"

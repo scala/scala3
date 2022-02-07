@@ -15,6 +15,7 @@ import collection.mutable
 
 object CountOuterAccesses:
   val name: String = "countOuterAccesses"
+  val description: String = "identify outer accessors that can be dropped"
 
   /** Characterizes outer accessors and outer fields that can be dropped
    *  if there are no references to them from within the toplevel class
@@ -37,6 +38,8 @@ class CountOuterAccesses extends MiniPhase:
   import tpd._
 
   override def phaseName: String = CountOuterAccesses.name
+
+  override def description: String = CountOuterAccesses.description
 
   override def runsAfter: Set[String] = Set(LambdaLift.name)
     // LambdaLift can create outer paths. These need to be known in this phase.

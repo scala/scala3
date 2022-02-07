@@ -182,7 +182,8 @@ SimpleType        ::=  SimpleLiteral
                     |  Singleton ‘.’ ‘type’
                     |  ‘(’ Types ‘)’
                     |  Refinement
-                    |  ‘$’ ‘{’ Block ‘}’
+                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
+                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- only inside quoted pattern
                     |  SimpleType1 TypeArgs
                     |  SimpleType1 ‘#’ id
 Singleton         ::=  SimpleRef
@@ -240,7 +241,8 @@ SimpleExpr        ::=  SimpleRef
                     |  Literal
                     |  ‘_’
                     |  BlockExpr
-                    |  ‘$’ ‘{’ Block ‘}’
+                    |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
+                    |  ‘$’ ‘{’ Pattern ‘}’                                      -- only inside quoted pattern
                     |  Quoted
                     |  quoteId                                                  -- only inside splices
                     |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]
