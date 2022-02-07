@@ -33,7 +33,7 @@ object Recheck:
   import tpd.Tree
 
   /** Attachment key for rechecked types of TypeTrees */
-  private val RecheckedType = Property.Key[Type]
+  val RecheckedType = Property.Key[Type]
 
   extension (sym: Symbol)
 
@@ -65,11 +65,16 @@ object Recheck:
   extension (tree: Tree)
 
     /** Remember `tpe` as the type of `tree`, which might be different from the
-     *  type stored in the tree itself.
+     *  type stored in the tree itself, unless a type was already remembered for `tree`.
      */
     def rememberType(tpe: Type)(using Context): Unit =
-      if (tpe ne tree.tpe) && !tree.hasAttachment(RecheckedType) then
-        tree.putAttachment(RecheckedType, tpe)
+      if !tree.hasAttachment(RecheckedType) then rememberTypeAlways(tpe)
+
+    /** Remember `tpe` as the type of `tree`, which might be different from the
+     *  type stored in the tree itself
+     */
+    def rememberTypeAlways(tpe: Type)(using Context): Unit =
+      if tpe ne tree.tpe then tree.putAttachment(RecheckedType, tpe)
 
     /** The remembered type of the tree, or if none was installed, the original type */
     def knownType =

@@ -204,9 +204,44 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     override def recheckClosure(tree: Closure, pt: Type)(using Context): Type =
       val cs = capturedVars(tree.meth.symbol)
-      recheckr.println(i"typing closure $tree with cvs $cs")
+      capt.println(i"typing closure $tree with cvs $cs")
       super.recheckClosure(tree, pt).capturing(cs)
-        .showing(i"rechecked $tree, $result", capt)
+        .showing(i"rechecked $tree / $pt = $result", capt)
+
+    override def recheckBlock(block: Block, pt: Type)(using Context): Type =
+      block match
+        case closureDef(mdef) =>
+          pt.dealias match
+            case defn.FunctionOf(ptformals, _, _, _) if ptformals.forall(_.captureSet.isAlwaysEmpty) =>
+              // Redo setup of the anonymous function so that formal parameters don't
+              // get capture sets. This is important to avoid false widenings to `*`
+              // when taking the base type of the actual clsoures's dependent function
+              // type so that it conforms to the expected non-dependent function type.
+              // See withLogFile.scala for a test case.
+              val meth = mdef.symbol
+              // First, undo the previous setup which installed a completer for `meth`.
+              atPhase(preRecheckPhase.prev)(meth.denot.copySymDenotation())
+                .installAfter(preRecheckPhase)
+              // Next, update all parameter symbols to match expected formals
+              meth.paramSymss.head.lazyZip(ptformals).foreach { (psym, pformal) =>
+                psym.copySymDenotation(info = pformal).installAfter(preRecheckPhase)
+              }
+              // Next, update types of parameter ValDefs
+              mdef.paramss.head.lazyZip(ptformals).foreach { (param, pformal) =>
+                val ValDef(_, tpt, _) = param: @unchecked
+                tpt.rememberTypeAlways(pformal)
+              }
+              // Next, install a new completer reflecting the new parameters for the anonymous method
+              val completer = new LazyType:
+                def complete(denot: SymDenotation)(using Context) =
+                  denot.info = MethodType(ptformals, mdef.tpt.knownType)
+                    .showing(i"simplify info of $meth to $result", capt)
+                  recheckDef(mdef, meth)
+              meth.copySymDenotation(info = completer, initFlags = meth.flags &~ Touched)
+                .installAfter(preRecheckPhase)
+            case _ =>
+        case _ =>
+      super.recheckBlock(block, pt)
 
     override def recheckIdent(tree: Ident)(using Context): Type =
       markFree(tree.symbol, tree.srcPos)
@@ -408,6 +443,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             .showing(i"healing $actual --> $result", capt)
         case _ =>
           actual
+      //println(i"check conforms $actual1 <<< $expected")
       super.checkConformsExpr(original, actual1, expected, tree)
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
