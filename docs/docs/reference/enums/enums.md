@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Enumerations"
-type: section
-num: 10
-previous-page: /scala3/reference/enums
-next-page: /scala3/reference/enums/adts
+movedTo: https://docs.scala-lang.org/scala3/reference/enums/enums.html
 ---
 
 An enumeration is used to define a type consisting of a set of named values.
@@ -133,7 +131,7 @@ object Planet {
 }
 ```
 
-We could imagine that a library may use [type class derivation](../contextual/derivation.html) to automatically provide an instance for `Deprecations`.
+We could imagine that a library may use [type class derivation](../contextual/derivation.md) to automatically provide an instance for `Deprecations`.
 
 ### Compatibility with Java Enums
 
@@ -154,7 +152,7 @@ scala> Color.Red.compareTo(Color.Green)
 val res15: Int = -1
 ```
 
-For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/lampepfl/dotty/tree/master/tests/run/enum-java). In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.
+For a more in-depth example of using Scala 3 enums from Java, see [this test](https://github.com/lampepfl/dotty/tree/main/tests/run/enum-java). In the test, the enums are defined in the `MainScala.scala` file and used from a Java source, `Test.java`.
 
 ### Implementation
 

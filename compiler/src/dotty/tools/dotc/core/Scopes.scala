@@ -24,19 +24,19 @@ import collection.mutable
 object Scopes {
 
   /** Maximal fill factor of hash table */
-  private final val FillFactor = 2.0/3.0
+  private inline val FillFactor = 2.0/3.0
 
   /** A hashtable is created once current size exceeds MinHash * FillFactor
    *  The initial hash table has twice that size (i.e 16).
    *  This value must be a power of two, so that the index of an element can
    *  be computed as element.hashCode & (hashTable.length - 1)
    */
-  final val MinHashedScopeSize = 8
+  inline val MinHashedScopeSize = 8
 
   /** The maximal permissible number of recursions when creating
    *  a hashtable
    */
-  private final val MaxRecursions = 1000
+  private inline val MaxRecursions = 1000
 
   /** A function that optionally produces synthesized symbols with
    *  the given name in the given context. Returns `NoSymbol` if the
@@ -75,7 +75,7 @@ object Scopes {
      */
     def size: Int
 
-    /** The number of outer scopes from which symbols are inherited */
+    /** The number of scopes enclosing this scope. */
     def nestingLevel: Int
 
     /** The symbols in this scope in the order they were entered;
@@ -193,7 +193,7 @@ object Scopes {
    *  This is necessary because when run from reflection every scope needs to have a
    *  SynchronizedScope as mixin.
    */
-  class MutableScope protected[Scopes](initElems: ScopeEntry, initSize: Int, val nestingLevel: Int = 0)
+  class MutableScope protected[Scopes](initElems: ScopeEntry, initSize: Int, val nestingLevel: Int)
       extends Scope {
 
     /** Scope shares elements with `base` */
@@ -201,7 +201,7 @@ object Scopes {
       this(base.lastEntry, base.size, base.nestingLevel + 1)
       ensureCapacity(MinHashedScopeSize)
 
-    def this() = this(null, 0, 0)
+    def this(nestingLevel: Int) = this(null, 0, nestingLevel)
 
     private[dotc] var lastEntry: ScopeEntry = initElems
 
@@ -225,7 +225,7 @@ object Scopes {
     /** Use specified synthesize for this scope */
     def useSynthesizer(s: SymbolSynthesizer): Unit = synthesize = s
 
-    protected def newScopeLikeThis(): MutableScope = new MutableScope()
+    protected def newScopeLikeThis(): MutableScope = new MutableScope(nestingLevel)
 
     /** Clone scope, taking care not to force the denotations of any symbols in the scope.
      */
@@ -440,7 +440,10 @@ object Scopes {
   }
 
   /** Create a new scope */
-  def newScope: MutableScope = new MutableScope()
+  def newScope(using Context): MutableScope =
+    new MutableScope(ctx.nestingLevel + 1)
+
+  def newScope(nestingLevel: Int): MutableScope = new MutableScope(nestingLevel)
 
   /** Create a new scope nested in another one with which it shares its elements */
   def newNestedScope(outer: Scope)(using Context): MutableScope = new MutableScope(outer)
@@ -468,8 +471,4 @@ object Scopes {
     override def lookupEntry(name: Name)(using Context): ScopeEntry = null
     override def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry = null
   }
-
-  /** A class for error scopes (mutable)
-   */
-  class ErrorScope(owner: Symbol) extends MutableScope
 }

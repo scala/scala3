@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Pattern Bindings"
-type: section
-num: 65
-previous-page: /scala3/reference/changed-features/vararg-splices
-next-page: /scala3/reference/changed-features/pattern-matching
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-bindings.html
 ---
 
 In Scala 2, pattern bindings in `val` definitions and `for` expressions are
@@ -23,12 +21,11 @@ This code gives a compile-time warning in Scala 3.1 (and also in Scala 3.0 under
 val pair = (1, true)
 val (x, y) = pair
 ```
-Sometimes one wants to decompose data anyway, even though the pattern is refutable. For instance, if at some point one knows that a list `elems` is non-empty one might
-want to decompose it like this:
+Sometimes one wants to decompose data anyway, even though the pattern is refutable. For instance, if at some point one knows that a list `elems` is non-empty one might want to decompose it like this:
 ```scala
 val first :: rest = elems   // error
 ```
-This works in Scala 2. In fact it is a typical use case for Scala 2's rules. But in Scala 3.1 it will give a warning. One can avoid the warning by marking the right-hand side with an `@unchecked` annotation:
+This works in Scala 2. In fact it is a typical use case for Scala 2's rules. But in Scala 3.1 it will give a warning. One can avoid the warning by marking the right-hand side with an [`@unchecked`](https://scala-lang.org/api/3.x/scala/unchecked.html) annotation:
 ```scala
 val first :: rest = elems: @unchecked   // OK
 ```

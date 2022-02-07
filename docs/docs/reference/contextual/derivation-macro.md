@@ -1,10 +1,10 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "How to write a type class `derived` method using macros"
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/derivation-macro.html
 ---
 
-In the main [derivation](./derivation.html) documentation page, we explained the
+In the main [derivation](./derivation.md) documentation page, we explained the
 details behind `Mirror`s and type class derivation. Here we demonstrate how to
 implement a type class `derived` method using macros only. We follow the same
 example of deriving `Eq` instances and for simplicity we support a `Product`
@@ -109,7 +109,7 @@ and an age of type `Int`, the equality check we want to generate is the followin
 
 ## Calling the derived method inside the macro
 
-Following the rules in [Macros](../metaprogramming.html) we create two methods.
+Following the rules in [Macros](../metaprogramming/metaprogramming.md) we create two methods.
 One that hosts the top-level splice `eqv` and one that is the implementation.
 Alternatively and what is shown below is that we can call the `eqv` method
 directly. The `eqGen` can trigger the derivation.

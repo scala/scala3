@@ -49,7 +49,9 @@ import scala.collection.{Set, mutable}
 class ExtractDependencies extends Phase {
   import ExtractDependencies._
 
-  override def phaseName: String = "sbt-deps"
+  override def phaseName: String = ExtractDependencies.name
+
+  override def description: String = ExtractDependencies.description
 
   override def isRunnable(using Context): Boolean = {
     def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
@@ -180,6 +182,9 @@ class ExtractDependencies extends Phase {
 }
 
 object ExtractDependencies {
+  val name: String = "sbt-deps"
+  val description: String = "sends information on classes' dependencies to sbt"
+
   def classNameAsString(sym: Symbol)(using Context): String =
     sym.fullName.stripModuleClassSuffix.toString
 

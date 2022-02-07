@@ -52,6 +52,13 @@ class RegressionTestScala3 {
     def intPlusString(x: String): String = 5 + x
     assertEquals("5bc", intPlusString("bc"))
   }
+
+  @Test def defaultParamsInModuleDefWithBridgesIssue13860(): Unit = {
+    import Issue13860._
+
+    assertEquals(0L, Foo.bar().x)
+    assertEquals(5L, Foo.bar(5L).x)
+  }
 }
 
 object RegressionTestScala3 {
@@ -99,6 +106,18 @@ object RegressionTestScala3 {
   abstract class Y_Issue13221 { self: X_Issue13221.type =>
     import I._
     def blah = i
+  }
+
+  object Issue13860 {
+    class Foo(var x: Long)
+
+    trait Companion[A] {
+      def bar(x: Long = 0): A
+    }
+
+    object Foo extends Companion[Foo] {
+      def bar(x: Long = 0): Foo = new Foo(x)
+    }
   }
 }
 

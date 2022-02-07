@@ -4,7 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
 import Decorators._
-import Phases.gettersPhase
+import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
@@ -62,8 +62,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
-
-  private var useNecessaryEither = false
 
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
@@ -134,20 +132,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   def necessarySubType(tp1: Type, tp2: Type): Boolean =
-    val saved = useNecessaryEither
-    useNecessaryEither = true
+    val saved = myNecessaryConstraintsOnly
+    myNecessaryConstraintsOnly = true
     try topLevelSubType(tp1, tp2)
-    finally useNecessaryEither = saved
-
-  /** Use avoidance to get rid of wildcards in constraint bounds if
-   *  we are doing a necessary comparison, or the mode is TypeVarsMissContext.
-   *  The idea is that under either of these conditions we are not interested
-   *  in creating a fresh type variable to replace the wildcard. I verified
-   *  that several tests break if one or the other part of the disjunction is dropped.
-   *  (for instance, i12677.scala demands `useNecessaryEither` in the condition)
-   */
-  override protected def approximateWildcards: Boolean =
-    useNecessaryEither || ctx.mode.is(Mode.TypevarsMissContext)
+    finally myNecessaryConstraintsOnly = saved
 
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
@@ -222,7 +210,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  types (as when we go from an abstract type to one of its bounds). In that case
    *  one should use `isSubType(_, _, a)` where `a` defines the kind of approximation.
    *
-   *  Note: Logicaly, `recur` could be nested in `isSubType`, which would avoid
+   *  Note: Logically, `recur` could be nested in `isSubType`, which would avoid
    *  the instance state consisting `approx` and `leftRoot`. But then the implemented
    *  code would have two extra parameters for each of the many calls that go from
    *  one sub-part of isSubType to another.
@@ -858,7 +846,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ => tp2.isAnyRef
         }
         compareJavaArray
-      case tp1: ExprType if ctx.phase.id > gettersPhase.id =>
+      case tp1: ExprType if ctx.phaseId > gettersPhase.id =>
         // getters might have converted T to => T, need to compensate.
         recur(tp1.widenExpr, tp2)
       case _ =>
@@ -1511,7 +1499,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
 
-        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
+        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match
           case arg2: TypeBounds =>
             val arg1norm = arg1 match {
               case arg1: TypeBounds =>
@@ -1522,15 +1510,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case _ => arg1
             }
             arg2.contains(arg1norm)
+          case ExprType(arg2res)
+          if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+               && defn.isByNameFunction(arg1.dealias) =>
+            // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
+            // embedded `=> T` arguments alone. This clause needs to compensate for that.
+            isSubArg(arg1.dealias.argInfos.head, arg2res)
           case _ =>
-            arg1 match {
+            arg1 match
               case arg1: TypeBounds =>
                 compareCaptured(arg1, arg2)
+              case ExprType(arg1res)
+              if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+                   && defn.isByNameFunction(arg2.dealias) =>
+                 isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
                 (v > 0 || isSubType(arg2, arg1)) &&
                 (v < 0 || isSubType(arg1, arg2))
-            }
-        }
 
         isSubArg(args1.head, args2.head)
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
@@ -1580,24 +1576,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true and approximates resulting constraints.
    *
-   *  If we're inferring GADT bounds or constraining a method based on its
-   *  expected type, we infer only the _necessary_ constraints, this means we
-   *  keep the smaller constraint if any, or no constraint at all. This is
-   *  necessary for GADT bounds inference to be sound. When constraining a
-   *  method, this avoid committing of constraints that would later prevent us
-   *  from typechecking method arguments, see or-inf.scala and and-inf.scala for
-   *  examples.
+   *  If `necessaryConstraintsOnly` is true, we keep the smaller constraint if
+   *  any, or no constraint at all.
    *
    *  Otherwise, we infer _sufficient_ constraints: we try to keep the smaller of
    *  the two constraints, but if never is smaller than the other, we just pick
    *  the first one.
-   *
-   *  @see [[necessaryEither]] for the GADT / result type case
-   *  @see [[sufficientEither]] for the normal case
    */
   protected def either(op1: => Boolean, op2: => Boolean): Boolean =
     Stats.record("TypeComparer.either")
-    if ctx.mode.is(Mode.GadtConstraintInference) || useNecessaryEither then
+    if necessaryConstraintsOnly then
       necessaryEither(op1, op2)
     else
       sufficientEither(op1, op2)
@@ -1673,7 +1661,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *     T1 & T2 <:< T3
    *     T1 <:< T2 | T3
    *
-   *  Unlike [[sufficientEither]], this method is used in GADTConstraintInference mode, when we are attempting
+   *  But this method is used when `useNecessaryEither` is true, like when we are attempting
    *  to infer GADT constraints that necessarily follow from the subtyping relationship. For instance, if we have
    *
    *     enum Expr[T] {
@@ -2975,9 +2963,10 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     if (skipped) op
     else {
       indent += 2
-      b.append("\n").append(" " * indent).append("==> ").append(str)
+      val str1 = str.replace('\n', ' ')
+      b.append("\n").append(" " * indent).append("==> ").append(str1)
       val res = op
-      b.append("\n").append(" " * indent).append("<== ").append(str).append(" = ").append(show(res))
+      b.append("\n").append(" " * indent).append("<== ").append(str1).append(" = ").append(show(res))
       indent -= 2
       res
     }
@@ -2985,17 +2974,13 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   private def frozenNotice: String =
     if frozenConstraint then " in frozen constraint" else ""
 
-  override def isSubType(tp1: Type, tp2: Type, approx: ApproxState): Boolean =
+  override def recur(tp1: Type, tp2: Type): Boolean =
     def moreInfo =
       if Config.verboseExplainSubtype || ctx.settings.verbose.value
       then s" ${tp1.getClass} ${tp2.getClass}"
       else ""
+    val approx = approxState
     traceIndented(s"${show(tp1)}  <:  ${show(tp2)}$moreInfo${approx.show}$frozenNotice") {
-      super.isSubType(tp1, tp2, approx)
-    }
-
-  override def recur(tp1: Type, tp2: Type): Boolean =
-    traceIndented(s"${show(tp1)}  <:  ${show(tp2)} (recurring)$frozenNotice") {
       super.recur(tp1, tp2)
     }
 
@@ -3015,7 +3000,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(using Context): Boolean =
-    traceIndented(i"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint, constraint = ${ctx.typerState.constraint}") {
+    traceIndented(s"add constraint ${show(param)} ${if (fromBelow) ">:" else "<:"} ${show(bound)} $frozenNotice, constraint = ${show(ctx.typerState.constraint)}") {
       super.addConstraint(param, bound, fromBelow)
     }
 

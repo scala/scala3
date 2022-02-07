@@ -27,6 +27,9 @@ class PatternMatcher extends MiniPhase {
   import PatternMatcher._
 
   override def phaseName: String = PatternMatcher.name
+
+  override def description: String = PatternMatcher.description
+
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
   override def transformMatch(tree: Match)(using Context): Tree =
@@ -53,11 +56,12 @@ object PatternMatcher {
   import ast.tpd._
 
   val name: String = "patternMatcher"
+  val description: String = "compile pattern matches"
 
-  final val selfCheck = false // debug option, if on we check that no case gets generated twice
+  inline val selfCheck = false // debug option, if on we check that no case gets generated twice
 
   /** Minimal number of cases to emit a switch */
-  final val MinSwitchCases = 4
+  inline val MinSwitchCases = 4
 
   val TrustedTypeTestKey: Key[Unit] = new StickyKey[Unit]
 

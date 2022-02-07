@@ -18,7 +18,9 @@ import TreeExtractors._, ValueClasses._
 class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
-  override def phaseName: String = "vcElideAllocations"
+  override def phaseName: String = VCElideAllocations.name
+
+  override def description: String = VCElideAllocations.description
 
   override def runsAfter: Set[String] = Set(ElimErasedValueType.name)
 
@@ -47,3 +49,7 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
         tree
     }
 }
+
+object VCElideAllocations:
+  val name: String = "vcElideAllocations"
+  val description: String = "peep-hole optimization to eliminate unnecessary value class allocations"

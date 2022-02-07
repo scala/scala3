@@ -1,3 +1,7 @@
 import language.`3.0-migration`
 
-case class A(enum: List[Int] = Nil) // error
+def given = 42 // error
+
+case class C(enum: List[Int] = Nil) { // error
+  val s = s"$enum" // error
+}

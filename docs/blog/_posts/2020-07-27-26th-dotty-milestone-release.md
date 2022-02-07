@@ -128,7 +128,7 @@ We are looking forward to having you join the team of contributors.
 
 Dotty now has a set of widely-used community libraries that are built against every nightly Dotty
 snapshot. Currently, this includes shapeless, ScalaPB, algebra, scalatest, scopt and squants.
-Join our [community build](https://github.com/lampepfl/dotty/tree/master/community-build)
+Join our [community build](https://github.com/lampepfl/dotty/tree/main/community-build)
 to make sure that our regression suite includes your library.
 
 [Scastie]: https://scastie.scala-lang.org/?target=dotty

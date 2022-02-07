@@ -1,16 +1,16 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Erased Definitions"
+movedTo: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs.html
 ---
 
 `erased` is a modifier that expresses that some definition or expression is erased by the compiler instead of being represented in the compiled output. It is not yet part of the Scala language standard. To enable `erased`, turn on the language feature
-`experimental.erasedDefinitions`. This can be done with a language import
+[`experimental.erasedDefinitions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$experimental$$erasedDefinitions$.html). This can be done with a language import
 ```scala
 import scala.language.experimental.erasedDefinitions
 ```
 or by setting the command line option `-language:experimental.erasedDefinitions`.
-Erased definitions must be in an experimental scope (see [../other-new-features/experimental-defs.md]).
+Erased definitions must be in an experimental scope (see [Experimental definitions](../other-new-features/experimental-defs.md)).
 
 ## Why erased terms?
 
@@ -161,7 +161,7 @@ object Machine:
   //                    State must be Off
 ```
 
-Note that in [Inline](../metaprogramming/inline.html) we discussed `erasedValue` and inline
+Note that in [Inline](../metaprogramming/inline.md) we discussed `erasedValue` and inline
 matches. `erasedValue` is implemented with `erased`, so the state machine above
 can be encoded as follows:
 
@@ -228,4 +228,4 @@ val err: Any = CanRead() // error: illegal reference to erased class CanRead
 ```
 Here, the type of `err` is `Any`, so `err` is not considered erased. Yet its initializing value is a reference to the erased class `CanRead`.
 
-[More Details](./erased-defs-spec.html)
+[More Details](./erased-defs-spec.md)

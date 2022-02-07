@@ -49,7 +49,10 @@ class Definitions {
   private def newPermanentClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, infoFn: ClassSymbol => Type) =
     newClassSymbol(owner, name, flags | Permanent | NoInits | Open, infoFn)
 
-  private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
+  private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef]): ClassSymbol =
+    enterCompleteClassSymbol(owner, name, flags, parents, newScope(owner.nestingLevel + 1))
+
+  private def enterCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope) =
     newCompleteClassSymbol(owner, name, flags | Permanent | NoInits | Open, parents, decls).entered
 
   private def enterTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
@@ -246,6 +249,9 @@ class Definitions {
   @tu lazy val CompiletimeOpsPackage: Symbol = requiredPackage("scala.compiletime.ops")
     @tu lazy val CompiletimeOpsAnyModuleClass: Symbol = requiredModule("scala.compiletime.ops.any").moduleClass
     @tu lazy val CompiletimeOpsIntModuleClass: Symbol = requiredModule("scala.compiletime.ops.int").moduleClass
+    @tu lazy val CompiletimeOpsLongModuleClass: Symbol = requiredModule("scala.compiletime.ops.long").moduleClass
+    @tu lazy val CompiletimeOpsFloatModuleClass: Symbol = requiredModule("scala.compiletime.ops.float").moduleClass
+    @tu lazy val CompiletimeOpsDoubleModuleClass: Symbol = requiredModule("scala.compiletime.ops.double").moduleClass
     @tu lazy val CompiletimeOpsStringModuleClass: Symbol = requiredModule("scala.compiletime.ops.string").moduleClass
     @tu lazy val CompiletimeOpsBooleanModuleClass: Symbol = requiredModule("scala.compiletime.ops.boolean").moduleClass
 
@@ -430,7 +436,7 @@ class Definitions {
     Any_toString, Any_##, Any_getClass, Any_isInstanceOf, Any_typeTest, Object_eq, Object_ne)
 
   @tu lazy val AnyKindClass: ClassSymbol = {
-    val cls = newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil)
+    val cls = newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyKind, AbstractFinal | Permanent, Nil, newScope(0))
     if (!ctx.settings.YnoKindPolymorphism.value)
       // Enable kind-polymorphism by exposing scala.AnyKind
       cls.entered
@@ -440,12 +446,6 @@ class Definitions {
 
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
-
-  /** Marker method to indicate an argument to a call-by-name parameter.
-   *  Created by byNameClosures and elimByName, eliminated by Erasure,
-   */
-  @tu lazy val cbnArg: TermSymbol = enterPolyMethod(OpsPackageClass, nme.cbnArg, 1,
-      pt => MethodType(List(FunctionOf(Nil, pt.paramRefs(0))), pt.paramRefs(0)))
 
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
@@ -942,6 +942,7 @@ class Definitions {
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
+  @tu lazy val SinceAnnot: ClassSymbol = requiredClass("scala.annotation.since")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
@@ -1075,22 +1076,61 @@ class Definitions {
     }
   }
 
+  object ByNameFunction:
+    def apply(tp: Type)(using Context): Type =
+      defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
+    def unapply(tp: Type)(using Context): Option[Type] = tp match
+      case tp @ AppliedType(tycon, arg :: Nil) if defn.isByNameFunctionClass(tycon.typeSymbol) =>
+        Some(arg)
+      case tp @ AnnotatedType(parent, _) =>
+        unapply(parent)
+      case _ =>
+        None
+
+  final def isByNameFunctionClass(sym: Symbol): Boolean =
+    sym eq ContextFunction0
+
+  def isByNameFunction(tp: Type)(using Context): Boolean = tp match
+    case ByNameFunction(_) => true
+    case _ => false
+
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass
 
-  private val compiletimePackageAnyTypes: Set[Name] = Set(tpnme.Equals, tpnme.NotEquals)
-  private val compiletimePackageIntTypes: Set[Name] = Set(
+  private val compiletimePackageAnyTypes: Set[Name] = Set(
+    tpnme.Equals, tpnme.NotEquals, tpnme.IsConst, tpnme.ToString
+  )
+  private val compiletimePackageNumericTypes: Set[Name] = Set(
     tpnme.Plus, tpnme.Minus, tpnme.Times, tpnme.Div, tpnme.Mod,
     tpnme.Lt, tpnme.Gt, tpnme.Ge, tpnme.Le,
-    tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max, tpnme.ToString,
+    tpnme.Abs, tpnme.Negate, tpnme.Min, tpnme.Max
+  )
+  private val compiletimePackageIntTypes: Set[Name] = compiletimePackageNumericTypes ++ Set[Name](
+    tpnme.ToString, // ToString is moved to ops.any and deprecated for ops.int
+    tpnme.NumberOfLeadingZeros, tpnme.ToLong, tpnme.ToFloat, tpnme.ToDouble,
     tpnme.Xor, tpnme.BitwiseAnd, tpnme.BitwiseOr, tpnme.ASR, tpnme.LSL, tpnme.LSR
   )
+  private val compiletimePackageLongTypes: Set[Name] = compiletimePackageNumericTypes ++ Set[Name](
+    tpnme.NumberOfLeadingZeros, tpnme.ToInt, tpnme.ToFloat, tpnme.ToDouble,
+    tpnme.Xor, tpnme.BitwiseAnd, tpnme.BitwiseOr, tpnme.ASR, tpnme.LSL, tpnme.LSR
+  )
+  private val compiletimePackageFloatTypes: Set[Name] = compiletimePackageNumericTypes ++ Set[Name](
+    tpnme.ToInt, tpnme.ToLong, tpnme.ToDouble
+  )
+  private val compiletimePackageDoubleTypes: Set[Name] = compiletimePackageNumericTypes ++ Set[Name](
+    tpnme.ToInt, tpnme.ToLong, tpnme.ToFloat
+  )
   private val compiletimePackageBooleanTypes: Set[Name] = Set(tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or)
-  private val compiletimePackageStringTypes: Set[Name] = Set(tpnme.Plus)
+  private val compiletimePackageStringTypes: Set[Name] = Set(
+    tpnme.Plus, tpnme.Length, tpnme.Substring, tpnme.Matches
+  )
   private val compiletimePackageOpTypes: Set[Name] =
     Set(tpnme.S)
     ++ compiletimePackageAnyTypes
     ++ compiletimePackageIntTypes
+    ++ compiletimePackageLongTypes
+    ++ compiletimePackageFloatTypes
+    ++ compiletimePackageDoubleTypes
     ++ compiletimePackageBooleanTypes
     ++ compiletimePackageStringTypes
 
@@ -1100,6 +1140,9 @@ class Definitions {
          isCompiletime_S(sym)
       || sym.owner == CompiletimeOpsAnyModuleClass && compiletimePackageAnyTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsIntModuleClass && compiletimePackageIntTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsLongModuleClass && compiletimePackageLongTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsFloatModuleClass && compiletimePackageFloatTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsDoubleModuleClass && compiletimePackageDoubleTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsBooleanModuleClass && compiletimePackageBooleanTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsStringModuleClass && compiletimePackageStringTypes.contains(sym.name)
     )
@@ -1264,10 +1307,12 @@ class Definitions {
     ).symbol.asClass
 
   @tu lazy val Function0_apply: Symbol = Function0.requiredMethod(nme.apply)
+  @tu lazy val ContextFunction0_apply: Symbol = ContextFunction0.requiredMethod(nme.apply)
 
   @tu lazy val Function0: Symbol = FunctionClass(0)
   @tu lazy val Function1: Symbol = FunctionClass(1)
   @tu lazy val Function2: Symbol = FunctionClass(2)
+  @tu lazy val ContextFunction0: Symbol = FunctionClass(0, isContextual = true)
 
   def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): TypeRef =
     FunctionClass(n, isContextual && !ctx.erasedTypes, isErased).typeRef
@@ -1369,13 +1414,6 @@ class Definitions {
     else if arity > 22 then FunctionXXLClass.typeRef
     else if arity >= 0 then FunctionType(arity)
     else NoType
-
-  val predefClassNames: Set[Name] =
-    Set("Predef$", "DeprecatedPredef", "LowPriorityImplicits").map(_.toTypeName.unmangleClassName)
-
-  /** Is `cls` the predef module class, or a class inherited by Predef? */
-  def isPredefClass(cls: Symbol): Boolean =
-    (cls.owner eq ScalaPackageClass) && predefClassNames.contains(cls.name)
 
   private val JavaImportFns: List[RootRef] = List(
     RootRef(() => JavaLangPackageVal.termRef)
@@ -1521,7 +1559,8 @@ class Definitions {
     new PerRun(Function2SpecializedReturnTypes.map(_.symbol))
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
-    paramTypes.length <= 2 && cls.derivesFrom(FunctionClass(paramTypes.length))
+    paramTypes.length <= 2
+    && (cls.derivesFrom(FunctionClass(paramTypes.length)) || isByNameFunctionClass(cls))
     && isSpecializableFunctionSAM(paramTypes, retType)
 
   /** If the Single Abstract Method of a Function class has this type, is it specializable? */

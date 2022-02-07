@@ -5,8 +5,10 @@ import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.config.CommandLineParser.tokenize
 import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Phases.{unfusedPhases, typerPhase}
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
@@ -27,6 +29,7 @@ import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io._
+import dotty.tools.runner.ScalaClassLoader.*
 import org.jline.reader._
 
 import scala.annotation.tailrec
@@ -60,7 +63,7 @@ case class State(objectIndex: Int,
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
                  out: PrintStream = Console.out,
-                 classLoader: Option[ClassLoader] = None) extends Driver {
+                 classLoader: Option[ClassLoader] = None) extends Driver:
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -68,15 +71,21 @@ class ReplDriver(settings: Array[String],
   override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
-  private def initialCtx = {
+  private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     rootCtx.setSetting(rootCtx.settings.YreadComments, true)
+    setupRootCtx(this.settings ++ settings, rootCtx)
+  }
+
+  private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
     setup(settings, rootCtx) match
-      case Some((files, ictx)) =>
+      case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
-        ictx.base.initialize()(using ictx)
+        if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
+        ictx.base.initialize()
         ictx
+      }
       case None =>
         shouldStart = false
         rootCtx
@@ -91,8 +100,8 @@ class ReplDriver(settings: Array[String],
    *  such, when the user enters `:reset` this method should be called to reset
    *  everything properly
    */
-  protected def resetToInitial(): Unit = {
-    rootCtx = initialCtx
+  protected def resetToInitial(settings: List[String] = Nil): Unit = {
+    rootCtx = initialCtx(settings)
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
         .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
@@ -153,14 +162,16 @@ class ReplDriver(settings: Array[String],
       else loop(interpret(res)(state))
     }
 
-    try withRedirectedOutput { loop(initialState) }
+    try runBody { loop(initialState) }
     finally terminal.close()
   }
 
-  final def run(input: String)(implicit state: State): State = withRedirectedOutput {
+  final def run(input: String)(implicit state: State): State = runBody {
     val parsed = ParseResult(input)(state)
     interpret(parsed)
   }
+
+  private def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
 
   // TODO: i5069
   final def bind(name: String, value: Any)(implicit state: State): State = state
@@ -370,8 +381,8 @@ class ReplDriver(settings: Array[String],
       out.println(Help.text)
       state
 
-    case Reset =>
-      resetToInitial()
+    case Reset(arg) =>
+      resetToInitial(tokenize(arg))
       initialState
 
     case Imports =>
@@ -414,6 +425,16 @@ class ReplDriver(settings: Array[String],
       }
       state
 
+    case Settings(arg) => arg match
+      case "" =>
+        given ctx: Context = state.context
+        for (s <- ctx.settings.userSetSettings(ctx.settingsState).sortBy(_.name))
+          out.println(s"${s.name} = ${if s.value == "" then "\"\"" else s.value}")
+        state
+      case _  =>
+        rootCtx = setupRootCtx(tokenize(arg).toArray, rootCtx)
+        state.copy(context = rootCtx)
+
     case Quit =>
       // end of the world!
       state
@@ -437,4 +458,5 @@ class ReplDriver(settings: Array[String],
   private def printDiagnostic(dia: Diagnostic)(implicit state: State) = dia.level match
     case interfaces.Diagnostic.INFO => out.println(dia.msg) // print REPL's special info diagnostics directly to out
     case _                          => ReplConsoleReporter.doReport(dia)(using state.context)
-}
+
+end ReplDriver

@@ -10,6 +10,7 @@ import core.Decorators._
 import core.StdNames.nme
 import core.Names._
 import core.NameKinds.TempResultName
+import core.Constants._
 import ast.Trees._
 import util.Store
 import collection.mutable
@@ -17,11 +18,13 @@ import collection.mutable
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
  */
-class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =>
+class CapturedVars extends MiniPhase with IdentityDenotTransformer:
+  thisPhase =>
   import ast.tpd._
 
-  /** the following two members override abstract members in Transform */
-  val phaseName: String = "capturedVars"
+  override def phaseName: String = CapturedVars.name
+
+  override def description: String = CapturedVars.description
 
   override def runsAfterGroupsOf: Set[String] = Set(LiftTry.name)
     // lifting tries changes what variables are considered to be captured
@@ -45,6 +48,9 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     val boxedRefClasses: collection.Set[Symbol] =
       refClassKeys.flatMap(k => Set(refClass(k), volatileRefClass(k)))
+
+    val objectRefClasses: collection.Set[Symbol] =
+      Set(refClass(defn.ObjectClass), volatileRefClass(defn.ObjectClass))
   }
 
   private var myRefInfo: RefInfo = null
@@ -123,32 +129,46 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   }
 
   /** If assignment is to a boxed ref type, e.g.
-    *
-    *      intRef.elem = expr
-    *
-    *  rewrite using a temporary var to
-    *
-    *      val ev$n = expr
-    *      intRef.elem = ev$n
-    *
-    *  That way, we avoid the problem that `expr` might contain a `try` that would
-    *  run on a non-empty stack (which is illegal under JVM rules). Note that LiftTry
-    *  has already run before, so such `try`s would not be eliminated.
-    *
-    *  Also: If the ref type lhs is followed by a cast (can be an artifact of nested translation),
-    *  drop the cast.
-    */
-  override def transformAssign(tree: Assign)(using Context): Tree = {
-    def recur(lhs: Tree): Tree = lhs match {
-      case TypeApply(Select(qual, nme.asInstanceOf_), _) =>
-        val Select(_, nme.elem) = qual
+   *
+   *      intRef.elem = expr
+   *
+   *  rewrite using a temporary var to
+   *
+   *      val ev$n = expr
+   *      intRef.elem = ev$n
+   *
+   *  That way, we avoid the problem that `expr` might contain a `try` that would
+   *  run on a non-empty stack (which is illegal under JVM rules). Note that LiftTry
+   *  has already run before, so such `try`s would not be eliminated.
+   *
+   *  If the ref type lhs is followed by a cast (can be an artifact of nested translation),
+   *  drop the cast.
+   *
+   *  If the ref type is `ObjectRef` or `VolatileObjectRef`, immediately assign `null`
+   *  to the temporary to make the underlying target of the reference available for
+   *  garbage collection. Nullification is omitted if the `expr` is already `null`.
+   *
+   *      var ev$n: RHS = expr
+   *      objRef.elem = ev$n
+   *      ev$n = null.asInstanceOf[RHS]
+   */
+  override def transformAssign(tree: Assign)(using Context): Tree =
+    def absolved: Boolean = tree.rhs match
+      case Literal(Constant(null)) | Typed(Literal(Constant(null)), _) => true
+      case _ => false
+    def recur(lhs: Tree): Tree = lhs match
+      case TypeApply(Select(qual@Select(_, nme.elem), nme.asInstanceOf_), _) =>
         recur(qual)
       case Select(_, nme.elem) if refInfo.boxedRefClasses.contains(lhs.symbol.maybeOwner) =>
-        val tempDef = transformFollowing(SyntheticValDef(TempResultName.fresh(), tree.rhs))
-        transformFollowing(Block(tempDef :: Nil, cpy.Assign(tree)(lhs, ref(tempDef.symbol))))
+        val tempDef = transformFollowing(SyntheticValDef(TempResultName.fresh(), tree.rhs, flags = Mutable))
+        val update  = cpy.Assign(tree)(lhs, ref(tempDef.symbol))
+        def reset   = cpy.Assign(tree)(ref(tempDef.symbol), nullLiteral.cast(tempDef.symbol.info))
+        val res     = if refInfo.objectRefClasses(lhs.symbol.maybeOwner) && !absolved then reset else unitLiteral
+        transformFollowing(Block(tempDef :: update :: Nil, res))
       case _ =>
         tree
-    }
     recur(tree.lhs)
-  }
-}
+
+object CapturedVars:
+  val name: String = "capturedVars"
+  val description: String = "represent vars captured by closures as heap objects"

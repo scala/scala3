@@ -33,4 +33,9 @@ object ScopeException:
             |
             |Use stack:
             |${currentScope.stack.mkString("\t", "\n\t", "\n")}
+            |
+            |Hint: A common reason for this to happen is when a `def` that creates a `'{...}`
+            |      captures an outer instance of `Quotes`. If this `def` is called in a splice
+            |      it will not track the `Quotes` provided by that particular splice.
+            |      To fix it add a `given Quotes` to this `def`.
           """.stripMargin)

@@ -46,7 +46,9 @@ import dotty.tools.dotc.transform.SymUtils._
 class SelectStatic extends MiniPhase with IdentityDenotTransformer {
   import ast.tpd._
 
-  override def phaseName: String = "selectStatic"
+  override def phaseName: String = SelectStatic.name
+
+  override def description: String = SelectStatic.description
 
   override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree = {
     val sym = tree.symbol
@@ -94,3 +96,7 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
   override def transformClosure(tree: tpd.Closure)(using Context): tpd.Tree =
     normalize(tree)
 }
+
+object SelectStatic:
+  val name: String = "selectStatic"
+  val description: String = "get rid of selects that would be compiled into GetStatic"

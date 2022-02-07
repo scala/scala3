@@ -90,6 +90,7 @@ class CommunityBuildTestC:
   @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
   @Test def shapeless = projects.shapeless.run()
+  @Test def spire = projects.spire.run()
   @Test def sourcecode = projects.sourcecode.run()
   @Test def specs2 = projects.specs2.run()
   @Test def stdLib213 = projects.stdLib213.run()
@@ -99,3 +100,17 @@ class CommunityBuildTestC:
   @Test def verify = projects.verify.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
 end CommunityBuildTestC
+
+@Category(Array(classOf[TestCategory]))
+class CommunityBuildTestForwardCompat:
+  @Test def catsEffect3ForwardCompat = projects.catsEffect3ForwardCompat.run()
+  @Test def catsForwardCompat = projects.catsForwardCompat.run()
+  @Test def catsMtlForwardCompat = projects.catsMtlForwardCompat.run()
+  @Test def coopForwardCompat = projects.coopForwardCompat.run()
+  @Test def disciplineForwardCompat = projects.disciplineForwardCompat.run()
+  @Test def disciplineMunitForwardCompat = projects.disciplineMunitForwardCompat.run()
+  @Test def disciplineSpecs2ForwardCompat = projects.disciplineSpecs2ForwardCompat.run()
+  @Test def munitForwardCompat = projects.munitForwardCompat.run()
+  @Test def scalacheckForwardCompat = projects.scalacheckForwardCompat.run()
+  @Test def simulacrumScalafixAnnotationsForwardCompat = projects.simulacrumScalafixAnnotationsForwardCompat.run()
+end CommunityBuildTestForwardCompat

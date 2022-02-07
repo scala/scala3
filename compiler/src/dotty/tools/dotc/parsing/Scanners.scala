@@ -135,10 +135,13 @@ object Scanners {
       */
     protected def putChar(c: Char): Unit = litBuf.append(c)
 
-    /** Clear buffer and set name and token
-     *  If `target` is different from `this`, don't treat identifiers as end tokens
+    /** Finish an IDENTIFIER with `this.name`. */
+    inline def finishNamed(): Unit = finishNamedToken(IDENTIFIER, this)
+
+    /** Clear buffer and set name and token.
+     *  If `target` is different from `this`, don't treat identifiers as end tokens.
      */
-    def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit =
+    def finishNamedToken(idtoken: Token, target: TokenData): Unit =
       target.name = termName(litBuf.chars, 0, litBuf.length)
       litBuf.clear()
       target.token = idtoken
@@ -242,24 +245,18 @@ object Scanners {
     /** A buffer for comments */
     private val commentBuf = CharBuffer()
 
-    private def handleMigration(keyword: Token): Token =
-      if scala3keywords.contains(keyword) && migrateTo3 then treatAsIdent()
-      else keyword
-
-    private def treatAsIdent(): Token =
-      val name0 = name  // don't capture the `name` var in the message closure, it may be null later
-      report.errorOrMigrationWarning(
-        i"$name0 is now a keyword, write `$name0` instead of $name0 to keep it as an identifier",
-        sourcePos())
-      patch(source, Span(offset), "`")
-      patch(source, Span(offset + name.length), "`")
-      IDENTIFIER
-
-    def toToken(name: SimpleName): Token = {
-      val idx = name.start
+    def toToken(identifier: SimpleName): Token =
+      def handleMigration(keyword: Token): Token =
+        if scala3keywords.contains(keyword) && migrateTo3 then
+          val what = tokenString(keyword)
+          report.errorOrMigrationWarning(i"$what is now a keyword, write `$what` instead of $what to keep it as an identifier", sourcePos())
+          patch(source, Span(offset), "`")
+          patch(source, Span(offset + identifier.length), "`")
+          IDENTIFIER
+        else keyword
+      val idx = identifier.start
       if (idx >= 0 && idx <= lastKeywordStart) handleMigration(kwArray(idx))
       else IDENTIFIER
-    }
 
     def newTokenData: TokenData = new TokenData {}
 
@@ -542,7 +539,7 @@ object Scanners {
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
-          else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) then
+          else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) && lastToken != INDENT then
             currentRegion match
               case r: Indented =>
                 currentRegion = r.enclosing
@@ -1002,7 +999,7 @@ object Scanners {
       getLitChars('`')
       if (ch == '`') {
         nextChar()
-        finishNamed(BACKQUOTED_IDENT)
+        finishNamedToken(BACKQUOTED_IDENT, target = this)
         if (name.length == 0)
           error("empty quoted identifier")
         else if (name == nme.WILDCARD)
@@ -1168,7 +1165,7 @@ object Scanners {
             nextRawChar()
             ch != SU && Character.isUnicodeIdentifierPart(ch)
           do ()
-          finishNamed(target = next)
+          finishNamedToken(IDENTIFIER, target = next)
         }
         else
           error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected")

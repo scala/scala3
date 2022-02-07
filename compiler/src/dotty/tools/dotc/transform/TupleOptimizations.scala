@@ -21,7 +21,9 @@ import scala.annotation.tailrec
 class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   import tpd._
 
-  def phaseName: String = "genericTuples"
+  override def phaseName: String = TupleOptimizations.name
+
+  override def description: String = TupleOptimizations.description
 
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
     if (!tree.symbol.exists || tree.symbol.owner != defn.RuntimeTuplesModuleClass) tree
@@ -218,3 +220,6 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     (0 until size).map(i => tup.select(nme.selectorName(i))).toList
 }
 
+object TupleOptimizations:
+  val name: String = "genericTuples"
+  val description: String = "optimize generic operations on tuples"

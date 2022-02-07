@@ -26,9 +26,9 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
 /** Utilities for JS exports handling. */
 object JSExportUtils {
-  private final val ExportPrefix = "$js$exported$"
-  private final val MethodExportPrefix = ExportPrefix + "meth$"
-  private final val PropExportPrefix = ExportPrefix + "prop$"
+  private inline val ExportPrefix = "$js$exported$"
+  private inline val MethodExportPrefix = ExportPrefix + "meth$"
+  private inline val PropExportPrefix = ExportPrefix + "prop$"
 
   /** Creates a name for an export specification. */
   def makeExportName(jsName: String, isProp: Boolean): TermName = {

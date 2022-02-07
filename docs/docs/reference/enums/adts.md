@@ -1,12 +1,10 @@
 ---
+layout: doc-page
 title: "Algebraic Data Types"
-type: section
-num: 11
-previous-page: /scala3/reference/enums/enums
-next-page: /scala3/reference/enums/desugarEnums
+movedTo: https://docs.scala-lang.org/scala3/reference/enums/adts.html
 ---
 
-The [`enum` concept](./enums.html) is general enough to also support algebraic data
+The [`enum` concept](./enums.md) is general enough to also support algebraic data
 types (ADTs) and their generalized version (GADTs). Here is an example
 how an `Option` type can be represented as an ADT:
 
@@ -152,7 +150,7 @@ enum View[-T, +U] extends (T => U):
 ### Syntax of Enums
 
 Changes to the syntax fall in two categories: enum definitions and cases inside enums.
-The changes are specified below as deltas with respect to the Scala syntax given [here](../syntax.html)
+The changes are specified below as deltas with respect to the Scala syntax given [here](../syntax.md)
 
  1. Enum definitions are defined as follows:
 

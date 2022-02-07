@@ -1,41 +1,9 @@
--- Error: tests/neg/i12284.scala:5:36 ----------------------------------------------------------------------------------
-5 |  val xx: Vector[F[_]] = deps.map(i => magic(i)) // error // error // error
-  |                                  ^^^^^^^^^^^^^
-  |                                  return type B of lambda cannot be made hygienic;
-  |                                  it is not a supertype of the hygienic type Any
--- Error: tests/neg/i12284.scala:5:33 ----------------------------------------------------------------------------------
-5 |  val xx: Vector[F[_]] = deps.map(i => magic(i)) // error // error // error
-  |                                 ^
-  |                                 Inaccessible variables captured in instantation of type variable B.
-  |                                 F[i.A] was fixed to Any,
-  |                                 but the latter type does not conform to the upper bound F[?]
--- Error: tests/neg/i12284.scala:5:6 -----------------------------------------------------------------------------------
-5 |  val xx: Vector[F[_]] = deps.map(i => magic(i)) // error // error // error
-  |      ^
-  |      Inaccessible variables captured in instantation of type variable B.
-  |      F[i.A] was fixed to Any,
-  |      but the latter type does not conform to the upper bound F[?]
--- Error: tests/neg/i12284.scala:4:2 -----------------------------------------------------------------------------------
-4 |  val deps: Vector[I[F, _]] = ??? // error
-  |  ^
-  |  Inaccessible variables captured in instantation of type variable B.
-  |  F[i.A] was fixed to Any,
-  |  but the latter type does not conform to the upper bound F[?]
--- Error: tests/neg/i12284.scala:3:4 -----------------------------------------------------------------------------------
-3 |def magic[F[_], A](in: I[F, A]): F[A] =  // error // error
-  |    ^
-  |    Inaccessible variables captured in instantation of type variable B.
-  |    F[i.A] was fixed to Any,
-  |    but the latter type does not conform to the upper bound F[?]
--- Error: tests/neg/i12284.scala:3:0 -----------------------------------------------------------------------------------
-3 |def magic[F[_], A](in: I[F, A]): F[A] =  // error // error
-  |^
-  |Inaccessible variables captured in instantation of type variable B.
-  |F[i.A] was fixed to Any,
-  |but the latter type does not conform to the upper bound F[?]
--- Error: tests/neg/i12284.scala:1:0 -----------------------------------------------------------------------------------
-1 |trait I[F[_], A]  // error
-  |^
-  |Inaccessible variables captured in instantation of type variable B.
-  |F[i.A] was fixed to Any,
-  |but the latter type does not conform to the upper bound F[?]
+-- [E007] Type Mismatch Error: tests/neg/i12284.scala:6:26 -------------------------------------------------------------
+6 |  val y: Vector[F[Any]] = xx // error
+  |                          ^^
+  |                          Found:    (xx : Vector[Any])
+  |                          Required: Vector[F[Any]]
+  |
+  |                          where:    F is a type in method magic with bounds <: [_] =>> Any
+
+longer explanation available when compiling with `-explain`

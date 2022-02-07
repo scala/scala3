@@ -343,6 +343,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol]) =
       for param <- params do
         var access = asm.Opcodes.ACC_FINAL
+        if param.is(Artifact) then access |= asm.Opcodes.ACC_SYNTHETIC
         jmethod.visitParameter(param.name.mangledString, access)
 
     /*

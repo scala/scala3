@@ -25,6 +25,7 @@ import Constants._
 import ProtoTypes._
 import ErrorReporting._
 import Inferencing.{fullyDefinedType, isFullyDefined}
+import Scopes.newScope
 import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
@@ -66,10 +67,10 @@ object Implicits:
   }
   object Candidate {
     type Kind = Int
-    final val None = 0
-    final val Value = 1
-    final val Conversion = 2
-    final val Extension = 4
+    inline val None = 0
+    inline val Value = 1
+    inline val Conversion = 2
+    inline val Extension = 4
   }
 
   /** If `expected` is a selection prototype, does `tp` have an extension
@@ -287,7 +288,7 @@ object Implicits:
       }
 
     override def isAccessible(ref: TermRef)(using Context): Boolean =
-      ref.symbol.exists && !ref.symbol.is(Private)
+      ref.symbol.exists
 
     override def toString: String =
       i"OfTypeImplicits($tp), companions = ${companionRefs.showAsList}%, %; refs = $refs%, %."
@@ -330,11 +331,25 @@ object Implicits:
       (this eq finalImplicits) || (outerImplicits eq finalImplicits)
     }
 
+    private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
+      if ownEligible.isEmpty then outerEligible
+      else if outerEligible.isEmpty then ownEligible
+      else
+        val shadowed = ownEligible.map(_.ref.implicitName).toSet
+        ownEligible ::: outerEligible.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
+
+    def uncachedEligible(tp: Type)(using Context): List[Candidate] =
+      Stats.record("uncached eligible")
+      if monitored then record(s"check uncached eligible refs in irefCtx", refs.length)
+      val ownEligible = filterMatching(tp)
+      if isOuterMost then ownEligible
+      else combineEligibles(ownEligible, outerImplicits.uncachedEligible(tp))
+
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[Candidate] =
       if (tp.hash == NotCached)
         Stats.record(i"compute eligible not cached ${tp.getClass}")
-        Stats.record(i"compute eligible not cached")
+        Stats.record("compute eligible not cached")
         computeEligible(tp)
       else {
         val eligibles = eligibleCache.lookup(tp)
@@ -354,14 +369,8 @@ object Implicits:
     private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
-      if (isOuterMost) ownEligible
-      else if ownEligible.isEmpty then outerImplicits.eligible(tp)
-      else
-        val outerEligible = outerImplicits.eligible(tp)
-        if outerEligible.isEmpty then ownEligible
-        else
-          val shadowed = ownEligible.map(_.ref.implicitName).toSet
-          ownEligible ::: outerEligible.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
+      if isOuterMost then ownEligible
+      else combineEligibles(ownEligible, outerImplicits.eligible(tp))
     }
 
     override def isAccessible(ref: TermRef)(using Context): Boolean =
@@ -462,20 +471,26 @@ object Implicits:
       val ctx1 = ctx.fresh.setExploreTyperState()
       ctx1.typerState.constraint = constraint
       inContext(ctx1) {
-        val map = new TypeMap {
-          def apply(t: Type): Type = t match {
+        val map = new TypeMap:
+          def apply(t: Type): Type = t match
             case t: TypeParamRef =>
-              constraint.entry(t) match {
-                case NoType => t
-                case bounds: TypeBounds => TypeComparer.fullBounds(t)
+              constraint.entry(t) match
+                case NoType | _: TypeBounds => t
                 case t1 => t1
-              }
             case t: TypeVar =>
               t.instanceOpt.orElse(apply(t.origin))
             case _ =>
               mapOver(t)
-          }
-        }
+
+          override def mapArgs(args: List[Type], tparams: List[ParamInfo]) =
+            args.mapConserve {
+              case t: TypeParamRef =>
+                constraint.entry(t) match
+                  case bounds: TypeBounds => TypeComparer.fullBounds(t)
+                  case _ => this(t)
+              case t => this(t)
+            }
+        end map
         map(tp)
       }
 
@@ -965,7 +980,7 @@ trait Implicits:
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       record("inferImplicit")
       assert(ctx.phase.allowsImplicitSearch,
-        if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
+        if (argument.isEmpty) i"missing implicit parameter of type $pt after typer at phase ${ctx.phase.phaseName}"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
 
       if pt.unusableForInference
@@ -1035,8 +1050,13 @@ trait Implicits:
       val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
       val locked = ctx.typerState.ownedVars
       val adapted =
-        if (argument.isEmpty)
-          adapt(generated, pt.widenExpr, locked)
+        if argument.isEmpty then
+          if defn.isContextFunctionType(pt) then
+            // need to go through typed, to build the context closure
+            typed(untpd.TypedSplice(generated), pt, locked)
+          else
+            // otherwise we can skip typing and go directly to adapt
+            adapt(generated, pt.widenExpr, locked)
         else {
           def untpdGenerated = untpd.TypedSplice(generated)
           def producesConversion(info: Type): Boolean = info match
@@ -1444,7 +1464,12 @@ trait Implicits:
         NoMatchingImplicitsFailure
       else
         val eligible =
-          if contextual then ctx.implicits.eligible(wildProto)
+          if contextual then
+            if ctx.gadt.isNarrowing then
+              withoutMode(Mode.ImplicitsEnabled) {
+                ctx.implicits.uncachedEligible(wildProto)
+              }
+            else ctx.implicits.eligible(wildProto)
           else implicitScope(wildProto).eligible
         searchImplicit(eligible, contextual) match
           case result: SearchSuccess =>
@@ -1774,7 +1799,7 @@ final class SearchRoot extends SearchHistory:
             // }
 
             val parents = List(defn.ObjectType, defn.SerializableType)
-            val classSym = newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, coord = span)
+            val classSym = newNormalizedClassSymbol(ctx.owner, LazyImplicitName.fresh().toTypeName, Synthetic | Final, parents, newScope, coord = span)
             val vsyms = pruned.map(_._1.symbol)
             val nsyms = vsyms.map(vsym => newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = span).entered)
             val vsymMap = (vsyms zip nsyms).toMap

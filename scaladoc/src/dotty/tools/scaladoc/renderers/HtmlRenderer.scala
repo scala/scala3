@@ -13,6 +13,7 @@ import java.nio.file.Path
 import java.nio.file.Files
 import java.nio.file.FileVisitOption
 import java.io.File
+import dotty.tools.scaladoc.staticFileSymbolUUID
 
 class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: DocContext)
   extends Renderer(rootPackage, members, extension = "html"):
@@ -82,6 +83,17 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       linkResources(page.link.dri, earlyResources, deferJs = false).toList,
       linkResources(page.link.dri, resources, deferJs = true).toList,
       script(raw(s"""var pathToRoot = "${pathToRoot(page.link.dri)}";""")),
+      (page.content match
+        case ResolvedTemplate(loadedTemplate, _) =>
+          val path = loadedTemplate.file.toPath
+          ctx.sourceLinks.repoSummary(path) match
+            case Some(DefinedRepoSummary("github", org, repo)) =>
+              val tag: TagArg = ctx.sourceLinks.fullPath(relativePath(path)).fold("") { githubContributors =>
+                script(raw(s"""var githubContributorsUrl = "https://api.github.com/repos/$org/$repo/commits?path=$githubContributors";"""))
+              }
+              tag // for some reason inference fails so had to state the type explicitly
+            case _ => ""
+        case _ => ""),
       ctx.args.versionsDictionaryUrl match
         case Some(url) => script(raw(s"""var versionsDictionaryUrl = "$url";"""))
         case None => ""
@@ -148,7 +160,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           a(href := pathToPage(link.dri, b.dri))(b.name),
           "/"
         )).dropRight(1)
-      div(cls := "breadcrumbs")(innerTags:_*)
+      div(cls := "breadcrumbs container")(innerTags:_*)
 
     def textFooter: String | AppliedTag =
       args.projectFooter.fold("") { f =>

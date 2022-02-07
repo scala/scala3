@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Implementing Type classes"
-type: section
-num: 20
-previous-page: /scala3/reference/contextual/extension-methods
-next-page: /scala3/reference/contextual/derivation
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/type-classes.html
 ---
 
 A _type class_ is an abstract, parameterized type that lets you add new behavior to any closed data type without using sub-typing. This can be useful in multiple use-cases, for example:
@@ -100,7 +98,7 @@ assertTransformation(List("a1", "b1"), List("a", "b"), elt => s"${elt}1")
 ```
 
 That's a first step, but in practice we probably would like the `map` function to be a method directly accessible on the type `F`. So that we can call `map` directly on instances of `F`, and get rid of the `summon[Functor[F]]` part.
-As in the previous example of Monoids, [`extension` methods](extension-methods.html) help achieving that. Let's re-define the `Functor` type class with extension methods.
+As in the previous example of Monoids, [`extension` methods](extension-methods.md) help achieving that. Let's re-define the `Functor` type class with extension methods.
 
 ```scala
 trait Functor[F[_]]:
@@ -237,7 +235,7 @@ given configDependentMonad: Monad[ConfigDependent] with
 end configDependentMonad
 ```
 
-The type `ConfigDependent` can be written using [type lambdas](../new-types/type-lambdas.html):
+The type `ConfigDependent` can be written using [type lambdas](../new-types/type-lambdas.md):
 
 ```scala
 type ConfigDependent = [Result] =>> Config => Result

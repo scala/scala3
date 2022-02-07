@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Changes in Implicit Resolution"
-type: section
-num: 60
-previous-page: /scala3/reference/changed-features/type-inference
-next-page: /scala3/reference/changed-features/implicit-conversions
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-resolution.html
 ---
 
 This section describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Scala 3.
@@ -112,7 +110,7 @@ which means that the alternative `c` would be chosen as solution!
 Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement
 the analogue of a "negated" search in implicit resolution, where a query `Q1` fails if some
 other query `Q2` succeeds and `Q1` succeeds if `Q2` fails. With the new cleaned up behavior
-these techniques no longer work. But there is now a new special type `scala.util.NotGiven`
+these techniques no longer work. But there is now a new special type [`scala.util.NotGiven`](https://scala-lang.org/api/3.x/scala/util/NotGiven.html)
 which implements negation directly. For any query type `Q`, `NotGiven[Q]` succeeds if and only if
 the implicit search for `Q` fails.
 

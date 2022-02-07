@@ -1,7 +1,8 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Deprecated: Nonlocal Returns"
+
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/nonlocal-returns.html
 ---
 
 Returning from nested anonymous functions has been deprecated.

@@ -21,7 +21,9 @@ import Contexts._, Types._, MegaPhase._, ast.Trees._, Symbols._, Decorators._, F
 class ExplicitSelf extends MiniPhase {
   import ast.tpd._
 
-  override def phaseName: String = "explicitSelf"
+  override def phaseName: String = ExplicitSelf.name
+
+  override def description: String = ExplicitSelf.description
 
   private def needsCast(tree: RefTree, cls: ClassSymbol)(using Context) =
     !cls.is(Package) && cls.givenSelfType.exists && !cls.derivesFrom(tree.symbol.owner)
@@ -49,3 +51,7 @@ class ExplicitSelf extends MiniPhase {
     case _ => tree
   }
 }
+
+object ExplicitSelf:
+  val  name: String = "explicitSelf"
+  val description: String = "make references to non-trivial self types explicit as casts"

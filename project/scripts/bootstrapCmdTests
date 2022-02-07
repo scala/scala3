@@ -5,10 +5,10 @@ set -e
 source $(dirname $0)/cmdTestsCommon.inc.sh
 
 # check that benchmarks can run
-"$SBT" "scala3-bench/jmh:run -wi 1 -i 1 -- tests/pos/alias.scala"
+"$SBT" "scala3-bench/jmh:run 1 1 tests/pos/alias.scala"
 # The above is here as it relies on the bootstrapped library.
-"$SBT" "scala3-bench-bootstrapped/jmh:run -wi 1 -i 1 -- tests/pos/alias.scala"
-"$SBT" "scala3-bench-bootstrapped/jmh:run -wi 1 -i 1 -- -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
+"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
+"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
 
 echo "testing scala.quoted.Expr.run from sbt scala"
 "$SBT" ";scala3-compiler-bootstrapped/scalac -with-compiler tests/run-staging/quote-run.scala; scala3-compiler-bootstrapped/scala -with-compiler Test" > "$tmp"
@@ -53,6 +53,10 @@ clear_out "$OUT"
 ./bin/scalac -decompile -color:never "$OUT/out.jar" > "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
+echo "testing sbt scalac with suspension"
+clear_out "$OUT"
+"$SBT" "scala3-compiler-bootstrapped/scalac -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  > "$tmp"
+
 # echo ":quit" | ./dist/target/pack/bin/scala  # not supported by CI
 
 echo "testing ./bin/scaladoc"
@@ -83,3 +87,37 @@ clear_out "$OUT"
 ./bin/scalac -d "$OUT/out.jar" tests/pos/i12973.scala
 echo "Bug12973().check" | TERM=dumb ./bin/scala -cp "$OUT/out.jar" > "$tmp" 2>&1
 grep -qe "Bug12973 is fixed" "$tmp"
+
+echo "capturing scala version from dist/target/pack/VERSION"
+cwd=$(pwd)
+IFS=':=' read -ra versionProps < "$cwd/dist/target/pack/VERSION" # temporarily set IFS to ':=' to split versionProps
+[ ${#versionProps[@]} -eq 3 ] && \
+  [ ${versionProps[0]} = "version" ] && \
+  [ -n ${versionProps[2]} ] || die "Expected non-empty 'version' property in $cwd/dist/target/pack/VERSION"
+scala_version=${versionProps[2]}
+
+echo "testing -sourcepath with incremental compile: inlining changed inline def into a def"
+# Here we will test that a changed inline method symbol loaded from the sourcepath (-sourcepath compiler option)
+# will have its `defTree` correctly set when its method body is required for inlining.
+# So far I have not found a way to replicate issue https://github.com/lampepfl/dotty/issues/13994
+# with sbt scripted tests, if a way is found, move this test there.
+cwd=$(pwd)
+sbt_test_command="++${scala_version}!;clean;prepareSources;compile;copyChanges;compile"
+(cd "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline" && "$SBT" "$sbt_test_command")
+rm -rf "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/target"
+rm -rf "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/project/target"
+rm -f "$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline/src/main/scala/a/zz.scala"
+
+echo "testing -sourcepath with incremental compile: hashing reference to changed inline def from an inline def"
+# Here we will test that a changed inline method symbol loaded from the sourcepath (-sourcepath compiler option)
+# will have its `defTree` correctly set when its method body is hashed by extractAPI, when referenced from another
+# inline method.
+# So far I have not found a way to replicate https://github.com/lampepfl/dotty/pull/12931#discussion_r753212124
+# with sbt scripted tests, if a way is found, move this test there.
+cwd=$(pwd)
+sbt_test_dir="$cwd/tests/cmdTest-sbt-tests/sourcepath-with-inline-api-hash"
+sbt_test_command="++${scala_version}!;clean;prepareSources;compile;copyChanges;compile"
+(cd "$sbt_test_dir" && "$SBT" "$sbt_test_command")
+rm -rf "$sbt_test_dir/target"
+rm -rf "$sbt_test_dir/project/target"
+rm -f "$sbt_test_dir/src/main/scala/a/zz.scala"

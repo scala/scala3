@@ -20,7 +20,9 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 class CollectSuperCalls extends MiniPhase {
   import tpd._
 
-  def phaseName: String = "collectSuperCalls"
+  override def phaseName: String = CollectSuperCalls.name
+
+  override def description: String = CollectSuperCalls.description
 
   override def transformSelect(tree: Select)(using Context): Tree = {
     tree.qualifier match {
@@ -40,3 +42,7 @@ class CollectSuperCalls extends MiniPhase {
     }
   }
 }
+
+object CollectSuperCalls:
+  val name: String = "collectSuperCalls"
+  val description: String = "find classes that are called with super"

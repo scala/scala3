@@ -1,14 +1,14 @@
 ---
+layout: doc-page
 title: "Dropped: DelayedInit"
-type: section
-num: 72
-previous-page: /scala3/reference/dropped-features
-next-page: /scala3/reference/dropped-features/macros
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/delayed-init.html
 ---
 
-The special handling of the `DelayedInit` trait is no longer supported.
+The special handling of the [`DelayedInit`](https://scala-lang.org/api/3.x/scala/DelayedInit.html)
+trait is no longer supported.
 
-One consequence is that the `App` class, which used `DelayedInit` is
+One consequence is that the [`App`](https://scala-lang.org/api/3.x/scala/App.html) class,
+which used [`DelayedInit`](https://scala-lang.org/api/3.x/scala/DelayedInit.html) is
 now partially broken. You can still use `App` as a simple way to set up a main program. Example:
 
 ```scala
@@ -29,4 +29,4 @@ object Hello:
 ```
 
 On the other hand, Scala 3 offers a convenient alternative to such "program" objects
-with [`@main` methods](../changed-features/main-functions.html).
+with [`@main` methods](../changed-features/main-functions.md).

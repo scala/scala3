@@ -25,6 +25,10 @@ main > h1 {
   margin-bottom: 20px;
 }
 
+.byline {
+  font-size: 14px;
+}
+
 .byline, .byline a {
   color: grey;
 }
@@ -207,21 +211,6 @@ aside.success {
   background-color: #ebfddd;
 }
 
-/* gitter chat */
-.gitter-open-chat-button {
-  background-color: grey;
-}
-.gitter-open-chat-button:focus, .gitter-open-chat-button:hover {
-  background-color: var(--primary);
-}
-.gitter-open-chat-button:focus {
-  box-shadow: 0 0 8px var(--primary);
-}
-.gitter-chat-embed {
-  top: 40px; /* 50px (navbar) - 10px (aside's margin) */
-  bottom: -10px;
-}
-
 /* media queries for bigger screens (dottydoc is mobile-first) */
 @media (min-width: 576px) {
   .byline .author {
@@ -246,20 +235,6 @@ aside.success {
   main.container {
     padding: 15px 45px;
   }
-}
-
-.gitter-open-chat-button {
-  writing-mode: vertical-lr;
-  text-orientation: upright;
-  right: 0px;
-  bottom: 100px;
-  padding: 0.5em 0.25em 0.5em 0.25em;
-  border-bottom-left-radius: .5em;
-  border-top-right-radius: 0em;
-}
-
-.gitter-open-chat-button.is-collapsed {
-  transform: translateX(120%);
 }
 
 header {

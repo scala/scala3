@@ -1,0 +1,7 @@
+> compile
+> recordPreviousIterations
+# Force recompilation of B because A.map, called by B.n, has changed
+$ copy-file changes/A1.scala A.scala
+> compile
+# 1 to recompile A, then 1 more to recompile B due to A.map change
+> checkIterations 2

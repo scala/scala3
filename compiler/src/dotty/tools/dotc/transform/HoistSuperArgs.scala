@@ -16,6 +16,7 @@ import SymUtils._
 
 object HoistSuperArgs {
   val name: String = "hoistSuperArgs"
+  val description: String = "hoist complex arguments of supercalls to enclosing scope"
 }
 
 /** This phase hoists complex arguments of supercalls and this-calls out of the enclosing class.
@@ -43,12 +44,12 @@ object HoistSuperArgs {
 class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  def phaseName: String = HoistSuperArgs.name
+  override def phaseName: String = HoistSuperArgs.name
 
-  override def runsAfter: Set[String] = Set(ByNameClosures.name)
+  override def description: String = HoistSuperArgs.description
+
+  override def runsAfter: Set[String] = Set(ElimByName.name)
     // By name closures need to be introduced first in order to be hoisted out here.
-    // There's an interaction with by name closures in that the <cbn-arg> marker
-    // application should not be hoisted, but be left at the point of call.
 
   /** Defines methods for hoisting complex supercall arguments out of
    *  parent super calls and constructor definitions.
@@ -88,7 +89,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       def newSuperArgMethod(argType: Type) = {
         val (staticFlag, methOwner) =
           if (cls.owner.is(Package)) (JavaStatic, cls) else (EmptyFlags, cls.owner)
-        val argTypeWrtConstr = argType.subst(origParams, allParamRefs(constr.info))
+        val argTypeWrtConstr = argType.widenTermRefExpr.subst(origParams, allParamRefs(constr.info))
         // argType with references to paramRefs of the primary constructor instead of
         // local parameter accessors
         newSymbol(
@@ -126,8 +127,6 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
       // begin hoistSuperArg
       arg match {
-        case Apply(fn, arg1 :: Nil) if fn.symbol == defn.cbnArg =>
-          cpy.Apply(arg)(fn, hoistSuperArg(arg1, cdef) :: Nil)
         case _ if arg.existsSubTree(needsHoist) =>
           val superMeth = newSuperArgMethod(arg.tpe)
           val superArgDef = DefDef(superMeth, prefss => {

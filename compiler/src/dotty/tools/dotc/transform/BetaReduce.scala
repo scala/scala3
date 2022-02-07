@@ -33,7 +33,9 @@ import ast.TreeTypeMap
 class BetaReduce extends MiniPhase:
   import ast.tpd._
 
-  def phaseName: String = "betaReduce"
+  override def phaseName: String = BetaReduce.name
+
+  override def description: String = BetaReduce.description
 
   override def transformApply(app: Apply)(using Context): Tree = app.fun match
     case Select(fn, nme.apply) if defn.isFunctionType(fn.tpe) =>
@@ -46,6 +48,9 @@ class BetaReduce extends MiniPhase:
 
 object BetaReduce:
   import ast.tpd._
+
+  val name: String = "betaReduce"
+  val description: String = "reduce closure applications"
 
   /** Beta-reduces a call to `fn` with arguments `argSyms` or returns `tree` */
   def apply(original: Tree, fn: Tree, args: List[Tree])(using Context): Tree =

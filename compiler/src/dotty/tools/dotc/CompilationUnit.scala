@@ -122,7 +122,7 @@ object CompilationUnit {
         NoSource
       }
       else if (!source.file.exists) {
-        report.error(s"not found: ${source.file.path}")
+        report.error(s"source file not found: ${source.file.path}")
         NoSource
       }
       else source

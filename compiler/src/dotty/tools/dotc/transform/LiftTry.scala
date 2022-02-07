@@ -30,7 +30,9 @@ import util.Store
 class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import ast.tpd._
 
-  val phaseName: String = LiftTry.name
+  override def phaseName: String = LiftTry.name
+
+  override def description: String = LiftTry.description
 
   private var NeedLift: Store.Location[Boolean] = _
   private def needLift(using Context): Boolean = ctx.store(NeedLift)
@@ -43,6 +45,9 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   override def prepareForApply(tree: Apply)(using Context): Context =
     liftingCtx(true)
+
+  override def prepareForDefDef(tree: DefDef)(using Context): Context =
+    liftingCtx(false)
 
   override def prepareForValDef(tree: ValDef)(using Context): Context =
     if !tree.symbol.exists
@@ -80,3 +85,4 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 }
 object LiftTry:
   val name = "liftTry"
+  val description: String = "Lifts try's that might be executed on non-empty expression stacks"

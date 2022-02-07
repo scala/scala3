@@ -94,8 +94,20 @@ object MainProxies {
       val body = Try(call, handler :: Nil, EmptyTree)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
+      /** Replace typed `Ident`s that have been typed with a TypeSplice with the reference to the symbol.
+       *  The annotations will be retype-checked in another scope that may not have the same imports.
+       */
+      def insertTypeSplices = new TreeMap {
+          override def transform(tree: Tree)(using Context): Tree = tree match
+            case tree: tpd.Ident @unchecked => TypedSplice(tree)
+            case tree => super.transform(tree)
+      }
+      val annots = mainFun.annotations
+        .filterNot(_.matches(defn.MainAnnot))
+        .map(annot => insertTypeSplices.transform(annot.tree))
       val mainMeth = DefDef(nme.main, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
         .withFlags(JavaStatic)
+        .withAnnotations(annots)
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
         .withFlags(Final | Invisible)

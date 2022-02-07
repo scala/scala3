@@ -189,7 +189,7 @@ object Applications {
         getUnapplySelectors(getTp, args, pos)
       else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
         Nil
-      else if (defn.isProductSubType(unapplyResult))
+      else if (defn.isProductSubType(unapplyResult) && productArity(unapplyResult, pos) != 0)
         productSelectorTypes(unapplyResult, pos)
           // this will cause a "wrong number of arguments in pattern" error later on,
           // which is better than the message in `fail`.
@@ -433,15 +433,18 @@ trait Applications extends Compatibility {
 
     protected def init(): Unit = methType match {
       case methType: MethodType =>
-        // apply the result type constraint, unless method type is dependent
         val resultApprox = resultTypeApprox(methType)
-        if (!constrainResult(methRef.symbol, resultApprox, resultType))
-          if (ctx.typerState.isCommittable)
-            // defer the problem until after the application;
-            // it might be healed by an implicit conversion
-            ()
-          else
-            fail(TypeMismatch(methType.resultType, resultType, None))
+        val sym = methRef.symbol
+        if ctx.typerState.isCommittable then
+          // Here we call `resultType` only to accumulate constraints (even if
+          // it fails, we might be able to heal the expression to conform to the
+          // result type) so don't check for views since `viewExists` doesn't
+          // have any side-effect and would only slow the compiler down (cf #14333).
+          NoViewsAllowed.constrainResult(sym, resultApprox, resultType)
+        else if !constrainResult(sym, resultApprox, resultType) then
+          // Here we actually record that this alternative failed so that
+          // overloading resolution might prune it.
+          fail(TypeMismatch(methType.resultType, resultType, None))
 
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramInfos, 0)
@@ -908,8 +911,9 @@ trait Applications extends Compatibility {
        *  part. Return an optional value to indicate success.
        */
       def tryWithImplicitOnQualifier(fun1: Tree, proto: FunProto)(using Context): Option[Tree] =
-        if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
+        if ctx.mode.is(Mode.SynthesizeExtMethodReceiver) || proto.hasErrorArg then
           // Suppress insertion of apply or implicit conversion on extension method receiver
+          // or if argument is erroneous by itself.
           None
         else
           tryInsertImplicitOnQualifier(fun1, proto, ctx.typerState.ownedVars) flatMap { fun2 =>

@@ -24,6 +24,7 @@ import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.util.{NameTransformer, NoSourcePosition, SourcePosition}
 
 import scala.collection.mutable
+import scala.util.control.NonFatal
 
 /**
  * One of the results of a completion query.
@@ -61,6 +62,8 @@ object Completion {
    */
   def completionMode(path: List[Tree], pos: SourcePosition): Mode =
     path match {
+      case Ident(_) :: Import(_, _) :: _ =>
+        Mode.Import
       case (ref: RefTree) :: _ =>
         if (ref.name.isTermName) Mode.Term
         else if (ref.name.isTypeName) Mode.Type
@@ -201,14 +204,45 @@ object Completion {
 
       mappings.foreach { (name, denotss) =>
         val first = denotss.head
+
+        // import a.c
+        def isSingleImport =  denotss.length < 2
+        // import a.C
+        // locally {  import b.C }
+        def isImportedInDifferentScope =  first.ctx.scope ne denotss(1).ctx.scope
+        // import a.C
+        // import a.C
+        def isSameSymbolImportedDouble =  denotss.forall(_.denots == first.denots)
+
+        def isScalaPackage(scopedDenots: ScopedDenotations) =
+          scopedDenots.denots.exists(_.info.typeSymbol.owner == defn.ScalaPackageClass)
+
+        def isJavaLangPackage(scopedDenots: ScopedDenotations) =
+          scopedDenots.denots.exists(_.info.typeSymbol.owner == defn.JavaLangPackageClass)
+
+        // For example
+        // import java.lang.annotation
+        //    is shadowed by
+        // import scala.annotation
+        def isJavaLangAndScala =
+          try
+            denotss.forall(denots => isScalaPackage(denots) || isJavaLangPackage(denots))
+          catch
+            case NonFatal(_) => false
+
         denotss.find(!_.ctx.isImportContext) match {
           // most deeply nested member or local definition if not shadowed by an import
           case Some(local) if local.ctx.scope == first.ctx.scope =>
             resultMappings += name -> local.denots
 
-          // most deeply nested import if not shadowed by another import
-          case None if denotss.length < 2 || (denotss(1).ctx.scope ne first.ctx.scope) =>
+          case None if isSingleImport || isImportedInDifferentScope || isSameSymbolImportedDouble =>
             resultMappings += name -> first.denots
+          case None if isJavaLangAndScala =>
+            denotss.foreach{
+              denots =>
+                if isScalaPackage(denots) then
+                  resultMappings += name -> denots.denots
+            }
 
           case _ =>
         }

@@ -27,7 +27,7 @@ final class ReusableInstance[T <: AnyRef] private (make: => T) {
 }
 
 object ReusableInstance {
-  private final val InitialSize = 4
+  private inline val InitialSize = 4
 
   def apply[T <: AnyRef](make: => T): ReusableInstance[T] = new ReusableInstance[T](make)
 }

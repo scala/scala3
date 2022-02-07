@@ -119,7 +119,7 @@ object TypeLevel {
   type Subtype[t] = Type[_, t]
   type Supertype[t] = Type[t, _]
   type Exactly[t] = Type[t, t]
-  erased def typeOf[T]: Type[T, T] = ???
+  erased def typeOf[T]: Type[T, T] = compiletime.erasedValue
 }
 
 // An algebraic datatype

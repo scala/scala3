@@ -7,6 +7,7 @@ import typer.ProtoTypes
 import transform.SymUtils._
 import transform.TypeUtils._
 import core._
+import Scopes.newScope
 import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
@@ -205,8 +206,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree)(using Context): ValDef =
     ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
 
-  def SyntheticValDef(name: TermName, rhs: Tree)(using Context): ValDef =
-    ValDef(newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.span), rhs)
+  def SyntheticValDef(name: TermName, rhs: Tree, flags: FlagSet = EmptyFlags)(using Context): ValDef =
+    ValDef(newSymbol(ctx.owner, name, Synthetic | flags, rhs.tpe.widen, coord = rhs.span), rhs)
 
   def DefDef(sym: TermSymbol, paramss: List[List[Symbol]],
              resultType: Type, rhs: Tree)(using Context): DefDef =
@@ -344,7 +345,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
       else parents
     val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
-        coord = fns.map(_.span).reduceLeft(_ union _))
+        newScope, coord = fns.map(_.span).reduceLeft(_ union _))
     val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
       val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
@@ -1150,12 +1151,57 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               case _ => tree1 :: rest1
           case nil => nil
       recur(trees, 0)
+
+    /** Transform statements while maintaining import contexts and expression contexts
+     *  in the same way as Typer does. The code addresses additional concerns:
+     *   - be tail-recursive where possible
+     *   - don't re-allocate trees where nothing has changed
+     */
+    inline def mapStatements(exprOwner: Symbol, inline op: Tree => Context ?=> Tree)(using Context): List[Tree] =
+      @tailrec
+      def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): List[Tree] =
+        pending match
+          case stat :: rest =>
+            val statCtx = stat match
+              case _: DefTree | _: ImportOrExport => ctx
+              case _ => ctx.exprContext(stat, exprOwner)
+            val stat1 = op(stat)(using statCtx)
+            val restCtx = stat match
+              case stat: Import => ctx.importContext(stat, stat.symbol)
+              case _ => ctx
+            if stat1 eq stat then
+              loop(mapped, unchanged, rest)(using restCtx)
+            else
+              val buf = if mapped == null then new mutable.ListBuffer[Tree] else mapped
+              var xc = unchanged
+              while xc ne pending do
+                buf += xc.head
+                xc = xc.tail
+              stat1 match
+                case Thicket(stats1) => buf ++= stats1
+                case _ => buf += stat1
+              loop(buf, rest, rest)(using restCtx)
+          case nil =>
+            if mapped == null then unchanged
+            else mapped.prependToList(unchanged)
+
+      loop(null, trees, trees)
+    end mapStatements
   end extension
+
+  /** A treemap that generates the same contexts as the original typer for statements.
+   *  This means:
+   *    - statements that are not definitions get the exprOwner as owner
+   *    - imports are reflected in the contexts of subsequent statements
+   */
+  class TreeMapWithPreciseStatContexts(cpy: TreeCopier = tpd.cpy) extends TreeMap(cpy):
+    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
+      trees.mapStatements(exprOwner, transform(_))
 
   /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.
    *  Also drops Inline and Block with no statements.
    */
-  class MapToUnderlying extends TreeMap {
+  private class MapToUnderlying extends TreeMap {
     override def transform(tree: Tree)(using Context): Tree = tree match {
       case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) =>
         tree.symbol.defTree match {

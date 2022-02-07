@@ -256,12 +256,13 @@ trait PatternTypeConstrainer { self: TypeComparer =>
               val variance = param.paramVarianceSign
               if variance != 0 && !assumeInvariantRefinement then true
               else if argS.isInstanceOf[TypeBounds] || argP.isInstanceOf[TypeBounds] then
-                // Passing TypeBounds to isSubType on LHS or RHS does the
-                // incorrect thing and infers unsound constraints, while simply
-                // returning true is sound. However, I believe that it should
-                // still be possible to extract useful constraints here.
-                // TODO extract GADT information out of wildcard type arguments
-                true
+                // This line was added here as a quick fix for issue #13998,
+                // to extract GADT constraints from wildcard type arguments.
+                // The proper fix would involve inspecting the bounds right here and performing the
+                // correct subtyping checks, the ones that are already performed by `isSubType` below,
+                // for the same reasons for which we stopped using `SkolemType` here to begin with
+                // (commit 10fe5374dc2d).
+                isSubType(SkolemType(patternTp), scrutineeTp)
               else {
                 var res = true
                 if variance <  1 then res &&= isSubType(argS, argP)

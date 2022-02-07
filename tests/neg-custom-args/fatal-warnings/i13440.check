@@ -1,4 +1,12 @@
--- Error: tests/neg-custom-args/fatal-warnings/i13440.scala:3:13 -------------------------------------------------------
-3 |case class A(enum: List[Int] = Nil) // error
+-- Error: tests/neg-custom-args/fatal-warnings/i13440.scala:3:4 --------------------------------------------------------
+3 |def given = 42 // error
+  |    ^
+  |    given is now a keyword, write `given` instead of given to keep it as an identifier
+-- Error: tests/neg-custom-args/fatal-warnings/i13440.scala:5:13 -------------------------------------------------------
+5 |case class C(enum: List[Int] = Nil) { // error
   |             ^
   |             enum is now a keyword, write `enum` instead of enum to keep it as an identifier
+-- Error: tests/neg-custom-args/fatal-warnings/i13440.scala:6:11 -------------------------------------------------------
+6 |  val s = s"$enum" // error
+  |           ^
+  |           enum is now a keyword, write `enum` instead of enum to keep it as an identifier

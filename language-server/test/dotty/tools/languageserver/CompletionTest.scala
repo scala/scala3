@@ -404,6 +404,19 @@ class CompletionTest {
       .completion(m1, Set())
   }
 
+  @Test def completeFromSameImportsForEqualNestingLevels: Unit = {
+    code"""object Foo {
+          |  def xxxx(i: Int): Int = i
+          |}
+          |object Test {
+          |  import Foo.xxxx
+          |  import Foo.xxxx
+          |  import Foo.xxxx
+          |  val x = xx$m1
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(i: Int): Int")))
+  }
+
   @Test def preferLocalDefinitionToImportForEqualNestingLevels: Unit = {
     code"""object Foo {
           |  val xxxx = 1
@@ -963,4 +976,22 @@ class CompletionTest {
               ("main", Module, "main")
             )
           )
+
+  @Test def i13623_annotation : Unit =
+    code"""import annot${m1}"""
+          .withSource
+          .completion(m1,
+            Set(
+              ("annotation", Module, "scala.annotation")
+            )
+          )
+
+  @Test def importAnnotationAfterImport : Unit =
+    code"""import java.lang.annotation; import annot${m1}"""
+        .withSource
+        .completion(m1,
+          Set(
+            ("annotation", Module, "scala.annotation")
+          )
+        )
 }

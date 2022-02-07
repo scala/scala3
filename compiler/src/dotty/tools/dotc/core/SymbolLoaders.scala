@@ -221,7 +221,7 @@ object SymbolLoaders {
     /** The scope of a package. This is different from a normal scope
   	 *  in that names of scope entries are kept in mangled form.
   	 */
-    final class PackageScope extends MutableScope {
+    final class PackageScope extends MutableScope(0) {
       override def newScopeEntry(name: Name, sym: Symbol)(using Context): ScopeEntry =
         super.newScopeEntry(name.mangled, sym)
 

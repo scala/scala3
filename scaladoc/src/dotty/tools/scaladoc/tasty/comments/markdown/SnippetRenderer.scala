@@ -13,7 +13,7 @@ case class SnippetLine(content: String, lineNo: Int, classes: Set[String] = Set.
   private def attributesToString: String = attributes.updated("id", lineNo).map((key, value) => s"""$key="$value"""").mkString(" ")
   def toHTML =
     val label = if messages.nonEmpty then s"""label="${messages.map(_.escapeReservedTokens).mkString("\n")}"""" else ""
-    s"""<span $attributesToString class="${classes.mkString(" ")}" $label>$content</span>"""
+    s"""<span $attributesToString class="${classes.mkString(" ")}"><span class="tooltip-container" $label></span>$content</span>"""
 
 object SnippetRenderer:
   val hiddenStartSymbol = "//{"
@@ -137,7 +137,7 @@ object SnippetRenderer:
   def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], hasContext: Boolean): String =
     val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).apply(codeLines).map(_.toHTML)
     val codeHTML = s"""<code class="language-scala">${transformedLines.mkString("")}</code>"""
-    s"""<div class="snippet" ${if hasContext then "hasContext" else ""}><div class="buttons"></div><pre>$codeHTML</pre>${snippetName.fold("")(snippetLabel(_))}</div>"""
+    s"""<div class="snippet" scala-snippet ${if hasContext then "hasContext" else ""}><div class="buttons"></div><pre>$codeHTML</pre>${snippetName.fold("")(snippetLabel(_))}</div>"""
 
   def renderSnippetWithMessages(node: ExtendedFencedCodeBlock): String =
     renderSnippetWithMessages(

@@ -221,7 +221,7 @@ object Async:
                                         }).transformed )
                          case _ => ???
                case Block(prevs,last) =>
-                      val rPrevs = prevs.map{ p =>
+                      val rPrevs = prevs.map[CpsExpr[?]]{ p =>
                          p match
                             case v@ValDef(vName,vtt,optRhs) =>
                               optRhs.get.tpe.widen.asType match

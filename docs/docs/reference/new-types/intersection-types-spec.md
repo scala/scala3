@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Intersection Types - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/intersection-types-spec.html
 ---
 
 ## Syntax
@@ -98,7 +98,7 @@ glb(A, _)                 = A                     // use first
 In the above, `|T|` means the erased type of `T`, `JArray` refers to
 the type of Java Array.
 
-See also: [`TypeErasure#erasedGlb`](https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/TypeErasure.scala#L289).
+See also: [`TypeErasure#erasedGlb`](https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/dotc/core/TypeErasure.scala#L289).
 
 ## Relationship with Compound Type (`with`)
 

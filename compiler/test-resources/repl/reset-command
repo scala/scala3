@@ -1,0 +1,28 @@
+scala> def f(thread: Thread) = thread.stop()
+there were 1 deprecation warning(s); re-run with -deprecation for details
+def f(thread: Thread): Unit
+
+scala>:reset -deprecation
+
+scala> def f(thread: Thread) = thread.stop()
+1 warning found
+-- Deprecation Warning: --------------------------------------------------------
+1 | def f(thread: Thread) = thread.stop()
+  |                         ^^^^^^^^^^^
+  |method stop in class Thread is deprecated since : see corresponding Javadoc for more information.
+def f(thread: Thread): Unit
+
+scala> def resetNoArgsStillWorks = 1
+def resetNoArgsStillWorks: Int
+
+scala>:reset
+
+scala> resetNoArgsStillWorks
+-- [E006] Not Found Error: -----------------------------------------------------
+1 | resetNoArgsStillWorks
+  | ^^^^^^^^^^^^^^^^^^^^^
+  | Not found: resetNoArgsStillWorks
+longer explanation available when compiling with `-explain`
+1 error found
+
+scala>:settings "-Dfoo=bar baz"

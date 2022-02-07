@@ -17,10 +17,10 @@ object CommunityBuildRunner:
    *  for more infrastructural details.
    */
   extension (self: CommunityProject) def run()(using suite: CommunityBuildRunner): Unit =
-    if self.requiresExperimental && !compilerSupportExperimental then
+    if self.requiresExperimental && !self.compilerSupportExperimental then
       log(s"Skipping ${self.project} - it needs experimental features unsupported in this build.")
       return
-    self.dependencies.foreach(_.publish())
+    self.dependencies().foreach(_.publish())
     self.testOnlyDependencies().foreach(_.publish())
     suite.runProject(self)
 
@@ -45,6 +45,7 @@ trait CommunityBuildRunner:
     val project = projectDef.project
     val command = projectDef.binaryName
     val arguments = projectDef.buildCommands
+    val compilerVersion = projectDef.compilerVersion
 
     @annotation.tailrec
     def execTimes(task: () => Int, timesToRerun: Int): Boolean =

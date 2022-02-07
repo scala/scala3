@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Implicit Conversions - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-conversions-spec.html
 ---
 
 ## Implementation
@@ -12,7 +12,7 @@ defined by either:
 - An `implicit def` which has type `S => T` or `(=> S) => T`
 - An implicit value which has type `Conversion[S, T]`
 
-The standard library defines an abstract class `Conversion`:
+The standard library defines an abstract class [`Conversion`](https://scala-lang.org/api/3.x/scala/Conversion.html):
 
 ```scala
 package scala
@@ -82,11 +82,11 @@ implicit val myConverter: Int => String = _.toString
 implicit val myConverter: Conversion[Int, String] = _.toString
 ```
 
-Note that implicit conversions are also affected by the [changes to implicit resolution](implicit-resolution.html) between Scala 2 and Scala 3.
+Note that implicit conversions are also affected by the [changes to implicit resolution](implicit-resolution.md) between Scala 2 and Scala 3.
 
 ## Motivation for the changes
 
-The introduction of [`scala.Conversion`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/Conversion.scala)
+The introduction of [`scala.Conversion`](https://scala-lang.org/api/3.x/scala/Conversion.html)
 in Scala 3 and the decision to restrict implicit values of this type to be
 considered as potential views comes from the desire to remove surprising
 behavior from the language:
@@ -102,16 +102,16 @@ This snippet contains a type error. The right-hand side of `val x`
 does not conform to type `String`. In Scala 2, the compiler will use
 `m` as an implicit conversion from `Int` to `String`, whereas Scala 3
 will report a type error, because `Map` isn't an instance of
-`Conversion`.
+[`Conversion`](https://scala-lang.org/api/3.x/scala/Conversion.html).
 
 ## Migration path
 
 Implicit values that are used as views should see their type changed to `Conversion`.
 
 For the migration of implicit conversions that are affected by the
-changes to implicit resolution, refer to the [Changes in Implicit Resolution](implicit-resolution.html) for more information.
+changes to implicit resolution, refer to the [Changes in Implicit Resolution](implicit-resolution.md) for more information.
 
 ## Reference
 
-For more information about implicit resolution, see [Changes in Implicit Resolution](implicit-resolution.html).
+For more information about implicit resolution, see [Changes in Implicit Resolution](implicit-resolution.md).
 Other details are available in [PR #2065](https://github.com/lampepfl/dotty/pull/2065).

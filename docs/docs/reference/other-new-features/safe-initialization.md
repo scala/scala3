@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Safe Initialization"
-type: section
-num: 49
-previous-page: /scala3/reference/other-new-features/explicit-nulls
-next-page: /scala3/reference/other-new-features/type-test
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/safe-initialization.html
 ---
 
 Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ysafe-init`.
@@ -196,14 +194,6 @@ With the established principles and design goals, following rules are imposed:
    non-initialized object is not used, i.e. calling methods or accessing fields
    on the escaped object is not allowed.
 
-3. Local definitions may only refer to transitively initialized objects.
-
-   It means that in a local definition `val x: T = e`, the expression `e` may
-   only evaluate to transitively initialized objects. The same goes for local
-   lazy variables and methods. This rule is again motivated for simplicity in
-   reasoning about initialization: programmers may safely assume that all local
-   definitions only point to transitively initialized objects.
-
 ## Modularity
 
 The analysis takes the primary constructor of concrete classes as entry points.
@@ -221,7 +211,7 @@ superclass is defined in another project, the crossing of project boundary
 cannot be avoided for soundness of the analysis.
 
 Meanwhile, inheritance across project boundary has been under scrutiny and the
-introduction of [open classes](./open-classes.html) mitigate the concern here.
+introduction of [open classes](./open-classes.md) mitigate the concern here.
 For example, the initialization check could enforce that the constructors of
 open classes may not contain method calls on `this` or introduce annotations as
 a contract.

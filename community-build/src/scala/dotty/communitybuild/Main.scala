@@ -57,7 +57,7 @@ object Main:
         val (toRun, ignored) =
           allProjects.partition( p =>
             p.docCommand != null
-            && (!p.requiresExperimental || compilerSupportExperimental)
+            && (!p.requiresExperimental || p.compilerSupportExperimental)
           )
 
         val paths = toRun.map { project =>

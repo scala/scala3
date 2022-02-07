@@ -59,9 +59,9 @@ object DottyJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.1.1-RC1"
+  val referenceVersion = "3.1.2-RC1"
 
-  val baseVersion = "3.1.2-RC1"
+  val baseVersion = "3.1.3-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -77,7 +77,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.1.0"
+  val previousDottyVersion = "3.1.1"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -99,8 +99,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.6"
-    case Bootstrapped => "2.13.6"
+    case NonBootstrapped => "2.13.8"
+    case Bootstrapped => "2.13.8"
   }
 
   val dottyOrganization = "org.scala-lang"
@@ -319,16 +319,17 @@ object Build {
 
   private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
 
-  lazy val scalacOptionsDocSettings = Seq(
-      "-external-mappings:" +
-        ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/," +
-        ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
+  def scalacOptionsDocSettings(includeExternalMappings: Boolean = true) = {
+    val extMap = Seq("-external-mappings:" +
+        (if (includeExternalMappings) ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/," else "") +
+        ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/")
+    Seq(
       "-skip-by-regex:.+\\.internal($|\\..+)",
       "-skip-by-regex:.+\\.impl($|\\..+)",
       "-project-logo", "docs/logo.svg",
       "-social-links:" +
         "github::https://github.com/lampepfl/dotty," +
-        "gitter::https://gitter.im/scala/scala," +
+        "discord::https://discord.com/invite/scala," +
         "twitter::https://twitter.com/scala_lang",
       // contains special definitions which are "transplanted" elsewhere
       // and which therefore confuse Scaladoc when accessed from this pkg
@@ -339,8 +340,10 @@ object Build {
       "-skip-by-id:scala.runtime.MatchCase",
       "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
       "-author",
-      "-groups"
-  )
+      "-groups",
+      "-default-template", "static-site-main"
+    ) ++ extMap
+  }
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
@@ -423,7 +426,7 @@ object Build {
       assert(docScalaInstance.loaderCompilerOnly == base.loaderCompilerOnly)
       docScalaInstance
     },
-    Compile / doc / scalacOptions ++= scalacOptionsDocSettings
+    Compile / doc / scalacOptions ++= scalacOptionsDocSettings()
   )
 
   lazy val commonBenchmarkSettings = Seq(
@@ -513,7 +516,8 @@ object Build {
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
-        "org.jline" % "jline-terminal-jna" % "3.19.0" // needed for Windows
+        "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
+        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
       // For convenience, change the baseDirectory when running the compiler
@@ -825,7 +829,7 @@ object Build {
         if (isRelease) {
           val baseURI = (LocalRootProject / baseDirectory).value.toURI
           val dottyVersion = version.value
-          Seq(s"-scalajs-mapSourceURI:$baseURI->$dottyGithubRawUserContentUrl/v$dottyVersion/")
+          Seq(s"-scalajs-mapSourceURI:$baseURI->$dottyGithubRawUserContentUrl/$dottyVersion/")
         } else {
           Nil
         }
@@ -1248,25 +1252,42 @@ object Build {
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
-  val renderScaladocScalajsToFile = inputKey[Unit]("Copy the output of the scaladoc js files")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
     settings(commonBootstrappedSettings)
-  lazy val `scaladoc-js` = project.in(file("scaladoc-js")).
+
+
+  /**
+   * Collection of projects building targets for scaladoc, these are:
+   * - common - common module for javascript
+   * - main - main target for default scaladoc producing html webpage
+   * - contributors - not related project to any of forementioned modules. Used for presenting contributors for static site.
+   *                   Made as an indepented project to be scaladoc-agnostic.
+   */
+  lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
+    enablePlugins(DottyJSPlugin).
+    dependsOn(`scala3-library-bootstrappedJS`).
+    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13))
+
+  lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
+    enablePlugins(DottyJSPlugin).
+    dependsOn(`scaladoc-js-common`).
+    settings(
+      scalaJSUseMainModuleInitializer := true,
+      Test / fork := false
+    )
+
+  lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
-      Compile / scalaJSMainModuleInitializer := (sys.env.get("scaladoc.projectFormat") match {
-        case Some("md") => Some(ModuleInitializer.mainMethod("dotty.tools.scaladoc.Main", "markdownMain"))
-        case _ => Some(ModuleInitializer.mainMethod("dotty.tools.scaladoc.Main", "main"))
-      }),
       Test / fork := false,
-      Compile / scalaJSUseMainModuleInitializer := true,
+      scalaJSUseMainModuleInitializer := true,
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
     )
 
-  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil) =
+  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil, includeExternalMappings: Boolean = true) =
     Def.taskDyn {
       val distLocation = (dist / pack).value
       val projectVersion = version.value
@@ -1294,7 +1315,7 @@ object Build {
         dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
         dottySrcLink(referenceVersion),
         "-Ygenerate-inkuire",
-      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
+      ) ++ scalacOptionsDocSettings(includeExternalMappings) ++ revision ++ params ++ targets
       import _root_.scala.sys.process._
       val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
       Def.task {
@@ -1316,58 +1337,17 @@ object Build {
     ).
     settings(
       Compile / resourceGenerators += Def.task {
-        val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "scaladoc-scalajs.js"
-        sbt.IO.copyFile((`scaladoc-js` / Compile / fullOptJS).value.data, jsDestinationFile)
-        Seq(jsDestinationFile)
-      }.taskValue,
-      Compile / resourceGenerators += Def.task {
-        Seq("code-snippets.css", "searchbar.css", "social-links.css", "ux.css", "versions-dropdown.css").map { file =>
-          val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / file
-          val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / file
-          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
-          cssDesitnationFile
-        }
-      }.taskValue,
-      Compile / resourceGenerators += Def.task {
-        import _root_.scala.sys.process._
-        import _root_.scala.concurrent._
-        import _root_.scala.concurrent.duration.Duration
-        import ExecutionContext.Implicits.global
-        val inkuireVersion = "1.0.0-M3"
-        val inkuireLink = s"https://github.com/VirtusLab/Inkuire/releases/download/$inkuireVersion/inkuire.js"
-        val inkuireDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "inkuire.js"
-        sbt.IO.touch(inkuireDestinationFile)
-
-        def tryFetch(retries: Int, timeout: Duration): Unit = {
-          val downloadProcess = (new java.net.URL(inkuireLink) #> inkuireDestinationFile).run()
-          val result: Future[Int] = Future(blocking(downloadProcess.exitValue()))
-          try {
-            Await.result(result, timeout) match {
-              case 0 =>
-              case res if retries > 0 =>
-                println(s"Failed to fetch inkuire.js from $inkuireLink: Error code $res. $retries retries left")
-                tryFetch(retries - 1, timeout)
-              case res => throw new MessageOnlyException(s"Failed to fetch inkuire.js from $inkuireLink: Error code $res")
-            }
-          } catch {
-            case e: TimeoutException =>
-              downloadProcess.destroy()
-              if (retries > 0) {
-                println(s"Failed to fetch inkuire.js from $inkuireLink: Download timeout. $retries retries left")
-                tryFetch(retries - 1, timeout)
-              }
-              else {
-                throw new MessageOnlyException(s"Failed to fetch inkuire.js from $inkuireLink: Download timeout")
-              }
-          }
-        }
-
-        tryFetch(5, Duration(60, "s"))
-        Seq(inkuireDestinationFile)
+        DocumentationWebsite.generateStaticAssets(
+          (`scaladoc-js-contributors` / Compile / fullOptJS).value.data,
+          (`scaladoc-js-main` / Compile / fullOptJS).value.data,
+          (`scaladoc-js-contributors` / Compile / baseDirectory).value / "css",
+          (`scaladoc-js-common` / Compile / baseDirectory).value / "css",
+          (Compile / resourceManaged).value,
+        )
       }.taskValue,
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
-        "nl.big-o" % "liqp" % "0.6.8",
-        "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site
+        "nl.big-o" % "liqp" % "0.8.2",
+        "org.jsoup" % "jsoup" % "1.14.3", // Needed to process .html files for static site
         Dependencies.`jackson-dataformat-yaml`,
 
         "com.novocode" % "junit-interface" % "0.11" % "test",
@@ -1393,7 +1373,6 @@ object Build {
         val dest = file(extraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
         val justAPI = extraArgs.drop(1).headOption == Some("--justAPI")
         val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
-        CopyDocs.copyDocs() // invoke copying function form `project/CopyDocs.scala`
         val dottyJars: Seq[java.io.File] = Seq(
           (`stdlib-bootstrapped`/Compile/products).value,
           (`scala3-interfaces`/Compile/products).value,
@@ -1415,16 +1394,16 @@ object Build {
 
         def generateDocTask =
           generateDocumentation(
-            roots, "Scala 3", dest.getAbsolutePath, "master",
+            roots, "Scala 3", dest.getAbsolutePath, "main",
             Seq(
               "-comment-syntax", "wiki",
-              s"-source-links:docs=github://lampepfl/dotty/master#docs",
+              s"-source-links:docs=github://lampepfl/dotty/main#docs",
               "-doc-root-content", docRootFile.toString,
               "-versions-dictionary-url",
               "https://scala-lang.org/api/versions.json",
               "-Ydocument-synthetic-types",
               s"-snippet-compiler:${dottyLibRoot}/scala/quoted=compile,${dottyLibRoot}/scala/compiletime=compile"
-            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs-for-dotty-page", "-Yapi-subdirectory")))
+            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")), includeExternalMappings = false)
 
         if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
         else if (justAPI) generateDocTask
@@ -1441,27 +1420,10 @@ object Build {
           (Test / Build.testcasesOutputDir).value,
           "scaladoc testcases",
           "scaladoc/output/testcases",
-          "master",
+          "main",
           Seq("-usejavacp", "-snippet-compiler:scaladoc-testcases/docs=compile", "-siteroot", "scaladoc-testcases/docs")
         )
       }.value,
-
-      renderScaladocScalajsToFile := Def.inputTask {
-        val extraArgs = spaceDelimited("<arg>").parsed
-        val (destJS, destCSS, csses) = extraArgs match {
-          case js :: css :: tail => (js, css, tail)
-          case js :: Nil => (js, "", Nil)
-          case _ => throw new IllegalArgumentException("No js destination provided")
-        }
-        val jsDestinationFile: File = Paths.get(destJS).toFile
-        sbt.IO.copyFile((`scaladoc-js` / Compile / fullOptJS).value.data, jsDestinationFile)
-        csses.map { file =>
-          val cssDesitnationFile = Paths.get(destCSS).toFile / file
-          val cssSourceFile = (`scaladoc-js` / Compile / resourceDirectory).value / file
-          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
-          cssDesitnationFile
-        }
-      }.evaluated,
 
       Test / buildInfoKeys := Seq[BuildInfoKey](
         (Test / Build.testcasesOutputDir),

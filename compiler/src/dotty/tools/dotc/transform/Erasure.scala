@@ -42,6 +42,8 @@ class Erasure extends Phase with DenotTransformer {
 
   override def phaseName: String = Erasure.name
 
+  override def description: String = Erasure.description
+
   /** List of names of phases that should precede this phase */
   override def runsAfter: Set[String] = Set(InterceptedMethods.name, ElimRepeated.name)
 
@@ -203,6 +205,7 @@ object Erasure {
   import TypeTestsCasts._
 
   val name: String = "erasure"
+  val description: String = "rewrite types to JVM model"
 
   /** An attachment on Apply nodes indicating that multiple arguments
    *  are passed in a single array. This occurs only if the function
@@ -667,9 +670,17 @@ object Erasure {
       def mapOwner(sym: Symbol): Symbol =
         if !sym.exists && tree.name == nme.apply then
           // PolyFunction apply Selects will not have a symbol, so deduce the owner
-          // from the typed the erasure of the original qualifier.
-          val owner = erasure(tree.qualifier.typeOpt).typeSymbol
-          if defn.isFunctionClass(owner) then owner else NoSymbol
+          // from the typed tree of the erasure of the original qualifier's PolyFunction type.
+          // We cannot simply call `erasure` on the qualifier because its erasure might be
+          // `Object` due to how we erase intersections (see pos/i13950.scala).
+          // Instead, we manually lookup the type of `apply` in the qualifier.
+          inContext(preErasureCtx) {
+            val qualTp = tree.qualifier.typeOpt.widen
+            if qualTp.derivesFrom(defn.PolyFunctionClass) then
+              erasePolyFunctionApply(qualTp.select(nme.apply).widen).classSymbol
+            else
+              NoSymbol
+          }
         else
           val owner = sym.maybeOwner
           if defn.specialErasure.contains(owner) then
@@ -687,7 +698,7 @@ object Erasure {
 
       val owner = mapOwner(origSym)
       val sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
-      assert(sym.exists, origSym.showLocated)
+      assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
 
       if owner == defn.ObjectClass then checkValue(qual1)
 
@@ -797,49 +808,46 @@ object Erasure {
      */
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       val Apply(fun, args) = tree
-      if fun.symbol == defn.cbnArg then
-        typedUnadapted(args.head, pt)
-      else
-        val origFun = fun.asInstanceOf[tpd.Tree]
-        val origFunType = origFun.tpe.widen(using preErasureCtx)
-        val ownArgs = if origFunType.isErasedMethod then Nil else args
-        val fun1 = typedExpr(fun, AnyFunctionProto)
-        fun1.tpe.widen match
-          case mt: MethodType =>
-            val (xmt,        // A method type like `mt` but with bunched arguments expanded to individual ones
-                 bunchArgs,  // whether arguments are bunched
-                 outers) =   // the outer reference parameter(s)
-              if fun1.isInstanceOf[Apply] then
-                (mt, fun1.removeAttachment(BunchedArgs).isDefined, Nil)
-              else
-                val xmt = expandedMethodType(mt, origFun)
-                (xmt, xmt ne mt, outer.args(origFun))
+      val origFun = fun.asInstanceOf[tpd.Tree]
+      val origFunType = origFun.tpe.widen(using preErasureCtx)
+      val ownArgs = if origFunType.isErasedMethod then Nil else args
+      val fun1 = typedExpr(fun, AnyFunctionProto)
+      fun1.tpe.widen match
+        case mt: MethodType =>
+          val (xmt,        // A method type like `mt` but with bunched arguments expanded to individual ones
+                bunchArgs,  // whether arguments are bunched
+                outers) =   // the outer reference parameter(s)
+            if fun1.isInstanceOf[Apply] then
+              (mt, fun1.removeAttachment(BunchedArgs).isDefined, Nil)
+            else
+              val xmt = expandedMethodType(mt, origFun)
+              (xmt, xmt ne mt, outer.args(origFun))
 
-            val args0 = outers ::: ownArgs
-            val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
-              .asInstanceOf[List[Tree]]
+          val args0 = outers ::: ownArgs
+          val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
+            .asInstanceOf[List[Tree]]
 
-            def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
-              val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)
-                .withType(applyResultType(xmt, args1))
-              if bunchArgs then app.withAttachment(BunchedArgs, ()) else app
+          def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
+            val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)
+              .withType(applyResultType(xmt, args1))
+            if bunchArgs then app.withAttachment(BunchedArgs, ()) else app
 
-            def app(fun1: Tree): Tree = fun1 match
-              case Block(stats, expr) =>
-                cpy.Block(fun1)(stats, app(expr))
-              case Apply(fun2, SeqLiteral(prevArgs, argTpt) :: _) if bunchArgs =>
-                mkApply(fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) :: Nil)
-              case Apply(fun2, prevArgs) =>
-                mkApply(fun2, prevArgs ++ args1)
-              case _ if bunchArgs =>
-                mkApply(fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) :: Nil)
-              case _ =>
-                mkApply(fun1, args1)
+          def app(fun1: Tree): Tree = fun1 match
+            case Block(stats, expr) =>
+              cpy.Block(fun1)(stats, app(expr))
+            case Apply(fun2, SeqLiteral(prevArgs, argTpt) :: _) if bunchArgs =>
+              mkApply(fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) :: Nil)
+            case Apply(fun2, prevArgs) =>
+              mkApply(fun2, prevArgs ++ args1)
+            case _ if bunchArgs =>
+              mkApply(fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) :: Nil)
+            case _ =>
+              mkApply(fun1, args1)
 
-            app(fun1)
-          case t =>
-            if ownArgs.isEmpty then fun1
-            else throw new MatchError(i"tree $tree has unexpected type of function $fun/$fun1: $t, was $origFunType, args = $ownArgs")
+          app(fun1)
+        case t =>
+          if ownArgs.isEmpty then fun1
+          else throw new MatchError(i"tree $tree has unexpected type of function $fun/$fun1: $t, was $origFunType, args = $ownArgs")
     end typedApply
 
     // The following four methods take as the proto-type the erasure of the pre-existing type,
@@ -929,7 +937,7 @@ object Erasure {
       if constr.isConstructor && needsOuterParam(constr.owner.asClass) then
         constr.info match
           case MethodTpe(outerName :: _, outerType :: _, _) =>
-            val outerSym = newSymbol(constr, outerName, Flags.Param, outerType)
+            val outerSym = newSymbol(constr, outerName, Flags.Param | Flags.SyntheticArtifact, outerType)
             ValDef(outerSym) :: Nil
           case _ =>
             // There's a possible race condition that a constructor was looked at

@@ -19,6 +19,7 @@ import NullOpsDecorator._
 
 object ElimRepeated {
   val name: String = "elimRepeated"
+  val description: String = "rewrite vararg parameters and arguments"
 }
 
 /** A transformer that eliminates repeated parameters (T*) from all types, replacing
@@ -29,6 +30,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = ElimRepeated.name
+
+  override def description: String = ElimRepeated.description
 
   override def changesMembers: Boolean = true // the phase adds vararg forwarders
 

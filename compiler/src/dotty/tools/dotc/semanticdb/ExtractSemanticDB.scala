@@ -36,6 +36,8 @@ class ExtractSemanticDB extends Phase:
 
   override val phaseName: String = ExtractSemanticDB.name
 
+  override val description: String = ExtractSemanticDB.description
+
   override def isRunnable(using Context) =
     super.isRunnable && ctx.settings.Xsemanticdb.value
 
@@ -251,6 +253,11 @@ class ExtractSemanticDB extends Phase:
 
         case tree: Inlined =>
           traverse(tree.call)
+
+        case tree: TypeApply =>
+          synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
+          traverseChildren(tree)
+
         case tree: TypeTree =>
           tree.typeOpt match
             // Any types could be appear inside of `TypeTree`, but
@@ -456,6 +463,7 @@ object ExtractSemanticDB:
   import java.nio.file.Paths
 
   val name: String = "extractSemanticDB"
+  val description: String = "extract info into .semanticdb files"
 
   def write(
     source: SourceFile,

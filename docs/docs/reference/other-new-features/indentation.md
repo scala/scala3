@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Optional Braces"
-type: section
-num: 47
-previous-page: /scala3/reference/other-new-features/control-syntax
-next-page: /scala3/reference/other-new-features/explicit-nulls
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/indentation.html
 ---
 
 Scala 3 enforces some rules on indentation and allows some occurrences of braces `{...}` to be optional:
@@ -87,7 +85,7 @@ There are two rules:
       then  else  do  catch  finally  yield  match
       ```
     - if the first token on the next line is a
-        [leading infix operator](../changed-features/operators.html).
+        [leading infix operator](../changed-features/operators.md).
       then its indentation width is less then the current indentation width,
       and it either matches a previous indentation width or is also less
       than the enclosing indentation width.
@@ -411,7 +409,7 @@ Significant indentation is enabled by default. It can be turned off by giving an
 The Scala 3 compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to
 indented regions where possible. When invoked with options `-rewrite -no-indent` it will rewrite in the reverse direction, inserting braces for indentation regions.
-The `-indent` option only works on [new-style syntax](./control-syntax.html). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
+The `-indent` option only works on [new-style syntax](./control-syntax.md). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
 `-rewrite -indent`. To go in the opposite direction, from indented code to old-style syntax, it's `-rewrite -no-indent`, followed by `-rewrite -old-syntax`.
 
 ### Variant: Indentation Marker `:`

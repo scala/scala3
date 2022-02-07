@@ -37,6 +37,8 @@ class Inlining extends MacroTransform {
 
   override def phaseName: String = Inlining.name
 
+  override def description: String = Inlining.description
+
   override def allowsImplicitSearch: Boolean = true
 
   override def run(using Context): Unit =
@@ -98,3 +100,4 @@ class Inlining extends MacroTransform {
 
 object Inlining:
   val name: String = "inlining"
+  val description: String = "inline and execute macros"

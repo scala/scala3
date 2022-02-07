@@ -15,50 +15,11 @@ import scala.annotation.tailrec
  *
  *  This incudes implicits defined in scope as well as imported implicits.
  */
-class TreeMapWithImplicits extends tpd.TreeMap {
+class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
   import tpd._
 
   def transformSelf(vd: ValDef)(using Context): ValDef =
     cpy.ValDef(vd)(tpt = transform(vd.tpt))
-
-  /** Transform statements, while maintaining import contexts and expression contexts
-   *  in the same way as Typer does. The code addresses additional concerns:
-   *   - be tail-recursive where possible
-   *   - don't re-allocate trees where nothing has changed
-   */
-  override def transformStats(stats: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
-
-    @tailrec def traverse(curStats: List[Tree])(using Context): List[Tree] = {
-
-      def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(using Context): List[Tree] =
-        if (stats eq curStats) {
-          val rest1 = transformStats(rest, exprOwner)
-          changed match {
-            case Thicket(trees) => trees ::: rest1
-            case tree => tree :: rest1
-          }
-        }
-        else stats.head :: recur(stats.tail, changed, rest)
-
-      curStats match {
-        case stat :: rest =>
-          val statCtx = stat match {
-            case stat: DefTree => ctx
-            case _ => ctx.exprContext(stat, exprOwner)
-          }
-          val restCtx = stat match {
-            case stat: Import => ctx.importContext(stat, stat.symbol)
-            case _ => ctx
-          }
-          val stat1 = transform(stat)(using statCtx)
-          if (stat1 ne stat) recur(stats, stat1, rest)(using restCtx)
-          else traverse(rest)(using restCtx)
-        case nil =>
-          stats
-      }
-    }
-    traverse(stats)
-  }
 
   private def nestedScopeCtx(defs: List[Tree])(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope

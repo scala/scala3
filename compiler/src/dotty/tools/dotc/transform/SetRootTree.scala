@@ -9,6 +9,9 @@ import dotty.tools.dotc.core.Phases.Phase
 class SetRootTree extends Phase {
 
   override val phaseName: String = SetRootTree.name
+
+  override val description: String = SetRootTree.description
+
   override def isRunnable(using Context) =
     super.isRunnable && ctx.settings.YretainTrees.value
 
@@ -43,4 +46,5 @@ class SetRootTree extends Phase {
 
 object SetRootTree {
   val name: String = "SetRootTree"
+  val description: String = "set the rootTreeOrProvider on class symbols"
 }

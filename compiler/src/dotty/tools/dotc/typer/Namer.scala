@@ -18,6 +18,8 @@ import tpd.tpes
 import Variances.alwaysInvariant
 import config.{Config, Feature}
 import config.Printers.typr
+import parsing.JavaParsers.JavaParser
+import parsing.Parsers.Parser
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._
@@ -26,6 +28,8 @@ import transform.SymUtils._
 import reporting._
 import config.Feature.sourceVersion
 import config.SourceVersion._
+
+import scala.annotation.constructorOnly
 
 /** This class creates symbols from definitions and imports and gives them
  *  lazy types.
@@ -85,13 +89,6 @@ class Namer { typer: Typer =>
    *  used as indices. It also contains a scope that contains nested parameters.
    */
   lazy val nestedTyper: mutable.AnyRefMap[Symbol, Typer] = new mutable.AnyRefMap
-
-  /** The scope of the typer.
-   *  For nested typers this is a place parameters are entered during completion
-   *  and where they survive until typechecking. A context with this typer also
-   *  has this scope.
-   */
-  val scope: MutableScope = newScope
 
   /** We are entering symbols coming from a SourceLoader */
   private var lateCompile = false
@@ -708,15 +705,44 @@ class Namer { typer: Typer =>
     ctxWithStats
   }
 
-  /** Index symbols in `tree` while asserting the `lateCompile` flag.
-   *  This will cause any old top-level symbol with the same fully qualified
-   *  name as a newly created symbol to be replaced.
+  /** Parse the source and index symbols in the compilation unit's untpdTree
+   *  while asserting the `lateCompile` flag. This will cause any old
+   *  top-level symbol with the same fully qualified name as a newly created
+   *  symbol to be replaced.
+   *
+   *  Will call the callback with an implementation of type checking
+   *  That will set the tpdTree and root tree for the compilation unit.
    */
-  def lateEnter(tree: Tree)(using Context): Context = {
-    val saved = lateCompile
-    lateCompile = true
-    try index(tree :: Nil) finally lateCompile = saved
-  }
+  def lateEnterUnit(typeCheckCB: (() => Unit) => Unit)(using Context) =
+    val unit = ctx.compilationUnit
+
+    /** Index symbols in unit.untpdTree with lateCompile flag = true */
+    def lateEnter()(using Context): Context =
+      val saved = lateCompile
+      lateCompile = true
+      try index(unit.untpdTree :: Nil) finally lateCompile = saved
+
+    /** Set the tpdTree and root tree of the compilation unit */
+    def lateTypeCheck()(using Context) =
+      unit.tpdTree = typer.typedExpr(unit.untpdTree)
+      val phase = new transform.SetRootTree()
+      phase.run
+
+    unit.untpdTree =
+      if (unit.isJava) new JavaParser(unit.source).parse()
+      else new Parser(unit.source).parse()
+
+    atPhase(Phases.typerPhase) {
+      inContext(PrepareInlineable.initContext(ctx)) {
+        // inline body annotations are set in namer, capturing the current context
+        // we need to prepare the context for inlining.
+        lateEnter()
+        typeCheckCB { () =>
+          lateTypeCheck()
+        }
+      }
+    }
+  end lateEnterUnit
 
   /** The type bound on wildcard imports of an import list, with special values
    *    Nothing  if no wildcard imports of this kind exist
@@ -751,7 +777,7 @@ class Namer { typer: Typer =>
         if (sym.is(Module)) moduleValSig(sym)
         else valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
       case original: DefDef =>
-        val typer1 = ctx.typer.newLikeThis
+        val typer1 = ctx.typer.newLikeThis(ctx.nestingLevel + 1)
         nestedTyper(sym) = typer1
         typer1.defDefSig(original, sym, this)(using localContext(sym).setTyper(typer1))
       case imp: Import =>
@@ -1018,7 +1044,7 @@ class Namer { typer: Typer =>
   }
 
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
-    withDecls(newScope)
+    withDecls(newScope(using ictx))
 
     protected implicit val completerCtx: Context = localContext(cls)
 
@@ -1070,6 +1096,17 @@ class Namer { typer: Typer =>
         else Yes
       }
 
+      def foreachDefaultGetterOf(sym: TermSymbol, op: TermSymbol => Unit): Unit =
+        var n = 0
+        for params <- sym.paramSymss; param <- params do
+          if param.isTerm then
+            if param.is(HasDefault) then
+              val getterName = DefaultGetterName(sym.name, n)
+              val getter = path.tpe.member(DefaultGetterName(sym.name, n)).symbol
+              assert(getter.exists, i"$path does not have a default getter named $getterName")
+              op(getter.asTerm)
+            n += 1
+
       /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
         *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
         */
@@ -1092,6 +1129,7 @@ class Namer { typer: Typer =>
 
         if canForward(mbr) == CanForward.Yes then
           val sym = mbr.symbol
+          val hasDefaults = sym.hasDefaultParams // compute here to ensure HasDefaultParams and NoDefaultParams flags are set
           val forwarder =
             if mbr.isType then
               val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
@@ -1116,28 +1154,29 @@ class Namer { typer: Typer =>
                   (StableRealizable, ExprType(path.tpe.select(sym)))
                 else
                   (EmptyFlags, mbr.info.ensureMethodic)
-              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
+              var flagMask = RetainedExportFlags
+              if sym.isTerm then flagMask |= HasDefaultParams | NoDefaultParams
+              var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & flagMask
               if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
 
           forwarder.info = avoidPrivateLeaks(forwarder)
-          forwarder.addAnnotations(sym.annotations)
+          forwarder.addAnnotations(sym.annotations.filterConserve(_.symbol != defn.BodyAnnot))
 
-          val forwarderDef =
-            if (forwarder.isType) tpd.TypeDef(forwarder.asType)
-            else {
-              import tpd._
-              val ref = path.select(sym.asTerm)
-              val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
-                  ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss))
-              )
-              if forwarder.isInlineMethod then
-                PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
-              ddef
-            }
-
-          buf += forwarderDef.withSpan(span)
+          if forwarder.isType then
+            buf += tpd.TypeDef(forwarder.asType).withSpan(span)
+          else
+            import tpd._
+            val ref = path.select(sym.asTerm)
+            val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
+                ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss)))
+            if forwarder.isInlineMethod then
+              PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
+            buf += ddef.withSpan(span)
+            if hasDefaults then
+              foreachDefaultGetterOf(sym.asTerm,
+                getter => addForwarder(getter.name.asTermName, getter, span))
       end addForwarder
 
       def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
@@ -1161,11 +1200,15 @@ class Namer { typer: Typer =>
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)
         for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
-          if !mbr.symbol.isSuperAccessor && !isCaseClassSynthesized(mbr.symbol) then
-            // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
-            // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
-            // Symbols from base traits of case classes that will get synthesized implementations
-            // at PostTyper are also excluded.
+          if !mbr.symbol.isSuperAccessor
+              // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
+              // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
+              // Symbols from base traits of case classes that will get synthesized implementations
+              // at PostTyper are also excluded.
+            && !isCaseClassSynthesized(mbr.symbol)
+            && !mbr.symbol.name.is(DefaultGetterName)
+              // default getters are exported with the members they belong to
+          then
             val alias = mbr.name.toTermName
             if mbr.symbol.is(Given) then
               if !seen.contains(alias) && mbr.matchesImportBound(givenBound) then
@@ -1484,22 +1527,7 @@ class Namer { typer: Typer =>
             // This case applies if the closure result type contains uninstantiated
             // type variables. In this case, constrain the closure result from below
             // by the parameter-capture-avoiding type of the body.
-            val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
-
-            // The following part is important since otherwise we might instantiate
-            // the closure result type with a plain functon type that refers
-            // to local parameters. An example where this happens in `dependent-closures.scala`
-            // If the code after `val rhsType` is commented out, this file fails pickling tests.
-            // AVOIDANCE TODO: Follow up why this happens, and whether there
-            // are better ways to achieve this. It would be good if we could get rid of this code.
-            // It seems at least partially redundant with the nesting level checking on TypeVar
-            // instantiation.
-            val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
-            if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
-              report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
-                i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
-            //println(i"lifting $rhsType over $termParamss -> $hygienicType = ${tpt.tpe}")
-            //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
+            typedAheadExpr(mdef.rhs, tpt.tpe).tpe
           case _ =>
         }
         WildcardType

@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Implicit Conversions"
-type: section
-num: 61
-previous-page: /scala3/reference/changed-features/implicit-resolution
-next-page: /scala3/reference/changed-features/overload-resolution
+movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/implicit-conversions.html
 ---
 
 An _implicit conversion_, also called _view_, is a conversion that
@@ -30,9 +28,10 @@ Defining an implicit conversion will emit a warning unless the import
 
 ## Examples
 
-The first example is taken from `scala.Predef`. Thanks to this
-implicit conversion, it is possible to pass a `scala.Int` to a Java
-method that expects a `java.lang.Integer`
+The first example is taken from [`scala.Predef`](https://scala-lang.org/api/3.x/scala/Predef$.html).
+Thanks to this implicit conversion, it is possible to pass a
+[`scala.Int`](https://scala-lang.org/api/3.x/scala/Int.html)
+to a Java method that expects a `java.lang.Integer`
 
 ```scala
 import scala.language.implicitConversions
@@ -63,4 +62,4 @@ implicitly[Ordering[A]] // Ok, will use the implicit conversion from
                         // `A` to `Int` and the `Ordering` for `Int`.
 ```
 
-[More details](implicit-conversions-spec.html)
+[More details](implicit-conversions-spec.md)

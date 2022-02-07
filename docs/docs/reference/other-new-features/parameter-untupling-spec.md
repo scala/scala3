@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Parameter Untupling - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/parameter-untupling-spec.html
 ---
 
 ## Motivation
@@ -77,11 +77,12 @@ is feasible for parameter untupling with the expected type `TupleN[T1, ..., Tn] 
 with the same expected type.
 ## Migration
 
-Code like this could not be written before, hence the new notation would not be ambiguous after adoption.
+Code like this could not be written before, hence the new notation is not ambiguous after adoption.
 
-Though it is possible that someone has written an implicit conversion form `(T1, ..., Tn) => R` to `TupleN[T1, ..., Tn] => R`
-for some `n`. This change could be detected and fixed by [`Scalafix`](https://scalacenter.github.io/scalafix/). Furthermore, such conversion would probably
-be doing the same translation (semantically) but in a less efficient way.
+It is possible that someone has written an implicit conversion from `(T1, ..., Tn) => R` to `TupleN[T1, ..., Tn] => R` for some `n`.
+Such a conversion is now only useful for general conversions of function values, when parameter untupling is not applicable.
+Some care is required to implement the conversion efficiently.
+Obsolete conversions could be detected and fixed by [`Scalafix`](https://scalacenter.github.io/scalafix/).
 
 ## Reference
 

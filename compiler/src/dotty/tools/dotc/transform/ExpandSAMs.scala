@@ -3,6 +3,7 @@ package dotc
 package transform
 
 import core._
+import Scopes.newScope
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._
 import MegaPhase._
 import SymUtils._
@@ -27,6 +28,7 @@ import dotty.tools.dotc.util.Spans.Span
  */
 object ExpandSAMs:
   val name: String = "expandSAMs"
+  val description: String = "expand SAM closures to anonymous classes"
 
   /** Is the SAMType `cls` also a SAM under the rules of the platform? */
   def isPlatformSam(cls: ClassSymbol)(using Context): Boolean =
@@ -41,6 +43,8 @@ class ExpandSAMs extends MiniPhase:
   import ast.tpd._
 
   override def phaseName: String = ExpandSAMs.name
+
+  override def description: String = ExpandSAMs.description
 
   override def transformBlock(tree: Block)(using Context): Tree = tree match {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
@@ -123,7 +127,7 @@ class ExpandSAMs extends MiniPhase:
     val parents = List(
       defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType),
       defn.SerializableType)
-    val pfSym = newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, coord = tree.span)
+    val pfSym = newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, newScope, coord = tree.span)
 
     def overrideSym(sym: Symbol) = sym.copy(
       owner = pfSym,

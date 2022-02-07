@@ -5,6 +5,10 @@ import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.NameOps.stripModuleClassSuffix
 import dotty.tools.dotc.core.Names.Name
 
+inline val TermNameHash = 1987 // 300th prime
+inline val TypeNameHash = 1993 // 301st prime
+inline val InlineParamHash = 1997 // 302nd prime
+
 extension (sym: Symbol)
 
   def constructorName(using Context) =

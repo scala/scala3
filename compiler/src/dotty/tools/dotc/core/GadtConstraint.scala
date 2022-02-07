@@ -11,6 +11,7 @@ import collection.mutable
 import printing._
 
 import scala.annotation.internal.sharable
+import scala.annotation.unused
 
 /** Represents GADT constraints currently in scope */
 sealed abstract class GadtConstraint extends Showable {
@@ -43,8 +44,8 @@ sealed abstract class GadtConstraint extends Showable {
    */
   def contains(sym: Symbol)(using Context): Boolean
 
-  def isEmpty: Boolean
-  final def nonEmpty: Boolean = !isEmpty
+  /** GADT constraint narrows bounds of at least one variable */
+  def isNarrowing: Boolean
 
   /** See [[ConstraintHandling.approximation]] */
   def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type
@@ -61,13 +62,15 @@ final class ProperGadtConstraint private(
   private var myConstraint: Constraint,
   private var mapping: SimpleIdentityMap[Symbol, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
+  private var wasConstrained: Boolean
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
   def this() = this(
     myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty),
     mapping = SimpleIdentityMap.empty,
-    reverseMapping = SimpleIdentityMap.empty
+    reverseMapping = SimpleIdentityMap.empty,
+    wasConstrained = false
   )
 
   /** Exposes ConstraintHandling.subsumes */
@@ -78,6 +81,11 @@ final class ProperGadtConstraint private(
     }
     subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
   }
+
+  override protected def legalBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Type =
+    // GADT constraints never involve wildcards and are not propagated outside
+    // the case where they're valid, so no approximating is needed.
+    rawBound
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = {
     import NameKinds.DepParamName
@@ -149,20 +157,24 @@ final class ProperGadtConstraint private(
         if (ntTvar ne null) stripInternalTypeVar(ntTvar) else bound
       case _ => bound
     }
-    (
-      internalizedBound match {
-        case boundTvar: TypeVar =>
-          if (boundTvar eq symTvar) true
-          else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
-          else addLess(boundTvar.origin, symTvar.origin)
-        case bound =>
-          addBoundTransitively(symTvar.origin, bound, isUpper)
-      }
-    ).showing({
+
+    val saved = constraint
+    val result = internalizedBound match
+      case boundTvar: TypeVar =>
+        if (boundTvar eq symTvar) true
+        else if (isUpper) addLess(symTvar.origin, boundTvar.origin)
+        else addLess(boundTvar.origin, symTvar.origin)
+      case bound =>
+        addBoundTransitively(symTvar.origin, bound, isUpper)
+
+    gadts.println {
       val descr = if (isUpper) "upper" else "lower"
       val op = if (isUpper) "<:" else ">:"
       i"adding $descr bound $sym $op $bound = $result"
-    }, gadts)
+    }
+
+    if constraint ne saved then wasConstrained = true
+    result
   }
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
@@ -193,6 +205,8 @@ final class ProperGadtConstraint private(
 
   override def contains(sym: Symbol)(using Context): Boolean = mapping(sym) ne null
 
+  def isNarrowing: Boolean = wasConstrained
+
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = {
     val res = approximation(tvarOrError(sym).origin, fromBelow = fromBelow)
     gadts.println(i"approximating $sym ~> $res")
@@ -202,7 +216,8 @@ final class ProperGadtConstraint private(
   override def fresh: GadtConstraint = new ProperGadtConstraint(
     myConstraint,
     mapping,
-    reverseMapping
+    reverseMapping,
+    wasConstrained
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -210,10 +225,9 @@ final class ProperGadtConstraint private(
       this.myConstraint = other.myConstraint
       this.mapping = other.mapping
       this.reverseMapping = other.reverseMapping
+      this.wasConstrained = other.wasConstrained
     case _ => ;
   }
-
-  override def isEmpty: Boolean = mapping.size == 0
 
   // ---- Protected/internal -----------------------------------------------
 
@@ -293,7 +307,7 @@ final class ProperGadtConstraint private(
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
 
-  override def isEmpty: Boolean = true
+  override def isNarrowing: Boolean = false
 
   override def contains(sym: Symbol)(using Context) = false
 
@@ -304,7 +318,7 @@ final class ProperGadtConstraint private(
 
   override def fresh = new ProperGadtConstraint
   override def restore(other: GadtConstraint): Unit =
-    if (!other.isEmpty) sys.error("cannot restore a non-empty GADTMap")
+    assert(!other.isNarrowing, "cannot restore a non-empty GADTMap")
 
   override def debugBoundsDescription(using Context): String = "EmptyGadtConstraint"
 

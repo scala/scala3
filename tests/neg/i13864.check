@@ -8,9 +8,9 @@
   |          ^
   |          The capability to throw exception Ex[Int] is missing.
   |          The capability can be provided by one of the following:
-  |           - A using clause `(using CanThrow[Ex[Int]])`
-  |           - A `throws` clause in a result type such as `X throws Ex[Int]`
-  |           - an enclosing `try` that catches Ex[Int]
+  |           - Adding a using clause `(using CanThrow[Ex[Int]])` to the definition of the enclosing method
+  |           - Adding `throws Ex[Int]` clause after the result type of the enclosing method
+  |           - Wrapping this piece of code with a `try` block that catches Ex[Int]
   |
   |          The following import might fix the problem:
   |

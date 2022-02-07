@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Dependent Function Types - More Details"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/dependent-function-types-spec.html
 ---
 
 Initial implementation in [PR #3464](https://github.com/lampepfl/dotty/pull/3464).
@@ -39,14 +39,14 @@ dependent function types for methods with dependent result types.
 
 Dependent functions can be implicit, and generalize to arity `N > 22` in the
 same way that other functions do, see
-[the corresponding documentation](../dropped-features/limit22.html).
+[the corresponding documentation](../dropped-features/limit22.md).
 
 ## Examples
 
 The example below defines a trait `C` and the two dependent function types
 `DF` and `IDF` and prints the results of the respective function applications:
 
-[depfuntype.scala]: https://github.com/lampepfl/dotty/blob/master/tests/pos/depfuntype.scala
+[depfuntype.scala]: https://github.com/lampepfl/dotty/blob/main/tests/pos/depfuntype.scala
 
 ```scala
 trait C { type M; val m: M }
@@ -70,7 +70,7 @@ type IDF = (x: C) ?=> x.M
 
 In the following example the depend type `f.Eff` refers to the effect type `CanThrow`:
 
-[eff-dependent.scala]: https://github.com/lampepfl/dotty/blob/master/tests/run/eff-dependent.scala
+[eff-dependent.scala]: https://github.com/lampepfl/dotty/blob/main/tests/run/eff-dependent.scala
 
 ```scala
 trait Effect

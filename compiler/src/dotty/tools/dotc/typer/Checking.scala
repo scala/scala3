@@ -20,6 +20,7 @@ import ErrorReporting.errorTree
 import rewrites.Rewrites.patch
 import util.Spans.Span
 import Phases.refchecksPhase
+import Constants.Constant
 
 import util.SrcPos
 import util.Spans.Span
@@ -540,6 +541,9 @@ object Checking {
     checkCombination(Abstract, Override)
     checkCombination(Private, Override)
     checkCombination(Lazy, Inline)
+    // The issue with `erased inline` is that the erased semantics get lost
+    // as the code is inlined and the reference is removed before the erased usage check.
+    checkCombination(Erased, Inline)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
   }
 
@@ -821,7 +825,7 @@ trait Checking {
             recur(pat1, pt)
           case UnApply(fn, _, pats) =>
             check(pat, pt) &&
-            (isIrrefutable(fn) || fail(pat, pt)) && {
+            (isIrrefutable(fn, pats.length) || fail(pat, pt)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
@@ -881,12 +885,13 @@ trait Checking {
    *  that is concurrently compiled in another source file.
    */
   def checkNoModuleClash(sym: Symbol)(using Context): Unit =
-    if sym.effectiveOwner.is(Package)
-       && sym.owner.info.member(sym.name.moduleClassName).symbol.isAbsent()
+    val effectiveOwner = sym.effectiveOwner
+    if effectiveOwner.is(Package)
+       && effectiveOwner.info.member(sym.name.moduleClassName).symbol.isAbsent()
     then
-      val conflicting = sym.owner.info.member(sym.name.toTypeName).symbol
+      val conflicting = effectiveOwner.info.member(sym.name.toTypeName).symbol
       if conflicting.exists then
-        report.error(AlreadyDefined(sym.name, sym.owner, conflicting), sym.srcPos)
+        report.error(AlreadyDefined(sym.name, effectiveOwner, conflicting), sym.srcPos)
 
  /**  Check that `tp` is a class type.
   *   Also, if `traitReq` is true, check that `tp` is a trait.
@@ -1204,13 +1209,14 @@ trait Checking {
   /** Check arguments of compiler-defined annotations */
   def checkAnnotArgs(tree: Tree)(using Context): tree.type =
     val cls = Annotations.annotClass(tree)
-    def needsStringLit(arg: Tree) =
-      report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
     tree match
       case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
         arg match
+          case Literal(Constant("")) =>
+            report.error(em"target name cannot be empty", arg.srcPos)
           case Literal(_) => // ok
-          case _ => needsStringLit(arg)
+          case _ =>
+            report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
       case _ =>
     tree
 

@@ -25,7 +25,8 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     args.classpath
   ).mkString(sep)
 
-  private val snippetCompilerSettings: Seq[SnippetCompilerSetting[_]] = cctx.settings.userSetSettings(cctx.settingsState).filter(_ != cctx.settings.classpath).map( s =>
+  private val snippetCompilerSettings: Seq[SnippetCompilerSetting[?]] = cctx.settings.userSetSettings(cctx.settingsState).filter(_ != cctx.settings.classpath)
+  .map[SnippetCompilerSetting[?]]( s =>
     SnippetCompilerSetting(s, s.valueIn(cctx.settingsState))
   ) :+ SnippetCompilerSetting(cctx.settings.classpath, fullClasspath)
 

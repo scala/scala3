@@ -524,6 +524,15 @@ object TypeErasure {
     case tp: OrType  => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
     case _ => false
   }
+
+  /** The erasure of `PolyFunction { def apply: $applyInfo }` */
+  def erasePolyFunctionApply(applyInfo: Type)(using Context): Type =
+    assert(applyInfo.isInstanceOf[PolyType])
+    val res = applyInfo.resultType
+    val paramss = res.paramNamess
+    assert(paramss.length == 1)
+    erasure(defn.FunctionType(paramss.head.length,
+      isContextual = res.isImplicitMethod, isErased = res.isErasedMethod))
 }
 
 import TypeErasure._
@@ -597,11 +606,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     case ExprType(rt) =>
       defn.FunctionType(0)
     case RefinedType(parent, nme.apply, refinedInfo) if parent.typeSymbol eq defn.PolyFunctionClass =>
-      assert(refinedInfo.isInstanceOf[PolyType])
-      val res = refinedInfo.resultType
-      val paramss = res.paramNamess
-      assert(paramss.length == 1)
-      this(defn.FunctionType(paramss.head.length, isContextual = res.isImplicitMethod, isErased = res.isErasedMethod))
+      erasePolyFunctionApply(refinedInfo)
     case tp: TypeProxy =>
       this(tp.underlying)
     case tp @ AndType(tp1, tp2) =>

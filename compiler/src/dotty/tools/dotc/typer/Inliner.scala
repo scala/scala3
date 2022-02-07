@@ -20,6 +20,7 @@ import ProtoTypes.shallowSelectionProto
 import Annotations.Annotation
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
+import Scopes.newScope
 import config.Printers.inlining
 import config.Feature
 import ErrorReporting.errorTree
@@ -33,6 +34,8 @@ import reporting.trace
 import util.Spans.Span
 import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
 import quoted.QuoteUtils
+
+import scala.annotation.constructorOnly
 
 object Inliner {
   import tpd._
@@ -196,7 +199,7 @@ object Inliner {
 
     val UnApply(fun, implicits, patterns) = unapp
     val sym = unapp.symbol
-    val cls = newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
+    val cls = newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), newScope, coord = sym.coord)
     val constr = newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
 
     val targs = fun match
@@ -334,7 +337,7 @@ object Inliner {
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
-          inContext(ctx.fresh.setNewTyperState().setTyper(new Typer).setSource(source2)) {
+          inContext(ctx.fresh.setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)) {
             val tree2 = new Parser(source2).block()
             if ctx.reporter.allErrors.nonEmpty then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))
@@ -844,7 +847,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       }
       else if (inlinedMethod == defn.Compiletime_summonInline) {
         def searchImplicit(tpt: Tree) =
-          val evTyper = new Typer
+          val evTyper = new Typer(ctx.nestingLevel + 1)
           val evCtx = ctx.fresh.setTyper(evTyper)
           val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
           evidence.tpe match
@@ -1313,7 +1316,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         }
 
         def searchImplicit(sym: TermSymbol, tpt: Tree) = {
-          val evTyper = new Typer
+          val evTyper = new Typer(ctx.nestingLevel + 1)
           val evCtx = ctx.fresh.setTyper(evTyper)
           val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
           evidence.tpe match {
@@ -1511,7 +1514,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    *  4. Make sure inlined code is type-correct.
    *  5. Make sure that the tree's typing is idempotent (so that future -Ycheck passes succeed)
    */
-  class InlineTyper(initialErrorCount: Int) extends ReTyper {
+  class InlineTyper(initialErrorCount: Int, @constructorOnly nestingLevel: Int = ctx.nestingLevel + 1) extends ReTyper(nestingLevel) {
     import reducer._
 
     override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SrcPos)(using Context): Type = {
@@ -1540,7 +1543,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       inlineIfNeeded(tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
-      assert(tree.hasType, tree)
       val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
       val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       val reducedProjection = reducer.reduceProjection(resNoReduce)
@@ -1548,13 +1550,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         //if the projection leads to a typed tree then we stop reduction
         resNoReduce
       else
-        val resMaybeReduced = constToLiteral(reducedProjection)
-        if resNoReduce ne resMaybeReduced then
-          typed(resMaybeReduced, pt) // redo typecheck if reduction changed something
-        else
-          val res = resMaybeReduced
-          ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.srcPos)
+        val res = constToLiteral(reducedProjection)
+        if resNoReduce ne res then
+          typed(res, pt) // redo typecheck if reduction changed something
+        else if res.symbol.isInlineMethod then
           inlineIfNeeded(res)
+        else
+          ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.srcPos)
+          res
     }
 
     override def typedIf(tree: untpd.If, pt: Type)(using Context): Tree =
@@ -1663,7 +1666,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         }
       }
 
-    override def newLikeThis: Typer = new InlineTyper(initialErrorCount)
+    override def newLikeThis(nestingLevel: Int): Typer = new InlineTyper(initialErrorCount, nestingLevel)
 
     /** True if this inline typer has already issued errors */
     override def hasInliningErrors(using Context) = ctx.reporter.errorCount > initialErrorCount

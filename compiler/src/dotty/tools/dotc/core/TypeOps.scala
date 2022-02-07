@@ -410,93 +410,109 @@ object TypeOps:
     }
   }
 
-  /** An upper approximation of the given type `tp` that does not refer to any symbol in `symsToAvoid`.
+  /** An approximating map that drops NamedTypes matching `toAvoid` and wildcard types. */
+  abstract class AvoidMap(using Context) extends AvoidWildcardsMap:
+    @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
+
+    def toAvoid(tp: NamedType): Boolean
+
+    /** True iff all NamedTypes on this prefix are static */
+    override def isStaticPrefix(pre: Type)(using Context): Boolean = pre match
+      case pre: NamedType =>
+        val sym = pre.currentSymbol
+        sym.is(Package) || sym.isStatic && isStaticPrefix(pre.prefix)
+      case _ => true
+
+    override def apply(tp: Type): Type = tp match
+      case tp: TermRef
+      if toAvoid(tp) =>
+        tp.info.widenExpr.dealias match {
+          case info: SingletonType => apply(info)
+          case info => range(defn.NothingType, apply(info))
+        }
+      case tp: TypeRef if toAvoid(tp) =>
+        tp.info match {
+          case info: AliasingBounds =>
+            apply(info.alias)
+          case TypeBounds(lo, hi) =>
+            range(atVariance(-variance)(apply(lo)), apply(hi))
+          case info: ClassInfo =>
+            range(defn.NothingType, apply(classBound(info)))
+          case _ =>
+            emptyRange // should happen only in error cases
+        }
+      case tp: ThisType =>
+        // ThisType is only used inside a class.
+        // Therefore, either they don't appear in the type to be avoided, or
+        // it must be a class that encloses the block whose type is to be avoided.
+        tp
+      case tp: LazyRef =>
+        if localParamRefs.contains(tp.ref) then tp
+        else if isExpandingBounds then emptyRange
+        else mapOver(tp)
+      case tl: HKTypeLambda =>
+        localParamRefs ++= tl.paramRefs
+        mapOver(tl)
+      case _ =>
+        super.apply(tp)
+    end apply
+
+    /** Three deviations from standard derivedSelect:
+     *   1. We first try a widening conversion to the type's info with
+     *      the original prefix. Since the original prefix is known to
+     *      be a subtype of the returned prefix, this can improve results.
+     *   2. Then, if the approximation result is a singleton reference C#x.type, we
+     *      replace by the widened type, which is usually more natural.
+     *   3. Finally, we need to handle the case where the prefix type does not have a member
+     *      named `tp.name` anymmore. In that case, we need to fall back to Bot..Top.
+     */
+    override def derivedSelect(tp: NamedType, pre: Type) =
+      if (pre eq tp.prefix)
+        tp
+      else tryWiden(tp, tp.prefix).orElse {
+        if (tp.isTerm && variance > 0 && !pre.isSingleton)
+          apply(tp.info.widenExpr)
+        else if (upper(pre).member(tp.name).exists)
+          super.derivedSelect(tp, pre)
+        else
+          range(defn.NothingType, defn.AnyType)
+      }
+  end AvoidMap
+
+  /** An upper approximation of the given type `tp` that does not refer to any symbol in `symsToAvoid`
+   *  and does not contain any WildcardType.
    *  We need to approximate with ranges:
    *
    *    term references to symbols in `symsToAvoid`,
    *    term references that have a widened type of which some part refers
    *    to a symbol in `symsToAvoid`,
    *    type references to symbols in `symsToAvoid`,
-   *    this types of classes in `symsToAvoid`.
    *
    *  Type variables that would be interpolated to a type that
    *  needs to be widened are replaced by the widened interpolation instance.
+   *
+   *  TODO: Could we replace some or all usages of this method by
+   *  `LevelAvoidMap` instead? It would be good to investigate this in details
+   *  but when I tried it, avoidance for inlined trees broke because `TreeMap`
+   *  does not update `ctx.nestingLevel` when entering a block so I'm leaving
+   *  this as Future Work™.
    */
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
-    val widenMap = new ApproximatingTypeMap {
+    val widenMap = new AvoidMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
-      @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
-      def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
-      def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
+      def toAvoid(tp: NamedType) =
+        val sym = tp.symbol
+        !sym.isStatic && forbidden.contains(sym)
 
-      /** True iff all NamedTypes on this prefix are static */
-      override def isStaticPrefix(pre: Type)(using Context): Boolean = pre match
-        case pre: NamedType =>
-          val sym = pre.currentSymbol
-          sym.is(Package) || sym.isStatic && isStaticPrefix(pre.prefix)
-        case _ => true
-
-      def apply(tp: Type): Type = tp match
-        case tp: TermRef
-        if toAvoid(tp.symbol) || partsToAvoid(Nil, tp.info).nonEmpty =>
-          tp.info.widenExpr.dealias match {
-            case info: SingletonType => apply(info)
-            case info => range(defn.NothingType, apply(info))
-          }
-        case tp: TypeRef if toAvoid(tp.symbol) =>
-          tp.info match {
-            case info: AliasingBounds =>
-              apply(info.alias)
-            case TypeBounds(lo, hi) =>
-              range(atVariance(-variance)(apply(lo)), apply(hi))
-            case info: ClassInfo =>
-              range(defn.NothingType, apply(classBound(info)))
-            case _ =>
-              emptyRange // should happen only in error cases
-          }
-        case tp: ThisType =>
-          // ThisType is only used inside a class.
-          // Therefore, either they don't appear in the type to be avoided, or
-          // it must be a class that encloses the block whose type is to be avoided.
-          tp
-        case tp: SkolemType if partsToAvoid(Nil, tp.info).nonEmpty =>
-          range(defn.NothingType, apply(tp.info))
+      override def apply(tp: Type): Type = tp match
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
-        case tp: LazyRef =>
-          if localParamRefs.contains(tp.ref) then tp
-          else if isExpandingBounds then emptyRange
-          else mapOver(tp)
-        case tl: HKTypeLambda =>
-          localParamRefs ++= tl.paramRefs
-          mapOver(tl)
         case _ =>
-          mapOver(tp)
+          super.apply(tp)
       end apply
-
-      /** Three deviations from standard derivedSelect:
-       *   1. We first try a widening conversion to the type's info with
-       *      the original prefix. Since the original prefix is known to
-       *      be a subtype of the returned prefix, this can improve results.
-       *   2. Then, if the approximation result is a singleton reference C#x.type, we
-       *      replace by the widened type, which is usually more natural.
-       *   3. Finally, we need to handle the case where the prefix type does not have a member
-       *      named `tp.name` anymmore. In that case, we need to fall back to Bot..Top.
-       */
-      override def derivedSelect(tp: NamedType, pre: Type) =
-        if (pre eq tp.prefix)
-          tp
-        else tryWiden(tp, tp.prefix).orElse {
-          if (tp.isTerm && variance > 0 && !pre.isSingleton)
-            apply(tp.info.widenExpr)
-          else if (upper(pre).member(tp.name).exists)
-            super.derivedSelect(tp, pre)
-          else
-            range(defn.NothingType, defn.AnyType)
-        }
     }
 
     widenMap(tp)
@@ -828,5 +844,12 @@ object TypeOps:
 
   def nestedPairs(ts: List[Type])(using Context): Type =
     ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
+
+  class StripTypeVarsMap(using Context) extends TypeMap:
+    def apply(tp: Type) = mapOver(tp).stripTypeVar
+
+  /** Apply [[Type.stripTypeVar]] recursively. */
+  def stripTypeVars(tp: Type)(using Context): Type =
+    new StripTypeVarsMap().apply(tp)
 
 end TypeOps

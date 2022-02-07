@@ -21,7 +21,9 @@ import scala.reflect.ClassTag
 class ArrayApply extends MiniPhase {
   import tpd._
 
-  override def phaseName: String = "arrayApply"
+  override def phaseName: String = ArrayApply.name
+
+  override def description: String = ArrayApply.description
 
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
     if isArrayModuleApply(tree.symbol) then
@@ -71,3 +73,7 @@ class ArrayApply extends MiniPhase {
     }
   }
 }
+
+object ArrayApply:
+  val name: String = "arrayApply"
+  val description: String = "optimize `scala.Array.apply`"

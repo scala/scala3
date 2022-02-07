@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Dropped: Package Objects"
-type: section
-num: 78
-previous-page: /scala3/reference/dropped-features/procedure-syntax
-next-page: /scala3/reference/dropped-features/early-initializers
+movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features/package-objects.html
 ---
 
 Package objects
@@ -13,7 +11,7 @@ package object p {
   def b = ...
 }
 ```
-will be dropped. They are still available in Scala 3.0, but will be deprecated and removed afterwards.
+will be dropped. They are still available in Scala 3.0 and 3.1, but will be deprecated and removed afterwards.
 
 Package objects are no longer needed since all kinds of definitions can now be written at the top-level. Example:
 ```scala

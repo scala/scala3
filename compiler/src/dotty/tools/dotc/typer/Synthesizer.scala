@@ -249,21 +249,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           val cls = mirroredType.classSymbol
           val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
           val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
+          val nestedPairs = TypeOps.nestedPairs(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
           val (monoType, elemsType) = mirroredType match
             case mirroredType: HKTypeLambda =>
-              def accessorType(acc: Symbol) =
-                if cls.typeParams.hasSameLengthAs(mirroredType.paramRefs) then
-                  acc.info.subst(cls.typeParams, mirroredType.paramRefs)
-                else
-                  acc.info
-              val elems =
-                mirroredType.derivedLambdaType(
-                  resType = TypeOps.nestedPairs(accessors.map(accessorType))
-                )
-              (mkMirroredMonoType(mirroredType), elems)
+              (mkMirroredMonoType(mirroredType), mirroredType.derivedLambdaType(resType = nestedPairs))
             case _ =>
-              val elems = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr))
-              (mirroredType, elems)
+              (mirroredType, nestedPairs)
           val elemsLabels = TypeOps.nestedPairs(elemLabels)
           checkRefinement(formal, tpnme.MirroredElemTypes, elemsType, span)
           checkRefinement(formal, tpnme.MirroredElemLabels, elemsLabels, span)
@@ -280,7 +271,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): Tree =
     val cls = mirroredType.classSymbol
-    val useCompanion = cls.useCompanionAsMirror
+    val useCompanion = cls.useCompanionAsSumMirror
 
     if cls.isGenericSum(if useCompanion then cls.linkedClass else ctx.owner) then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
@@ -344,7 +335,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       (using Context): Tree =
     if checkFormal(formal) then
       formal.member(tpnme.MirroredType).info match
-        case TypeBounds(mirroredType, _) => synth(mirroredType.stripTypeVar, formal, span)
+        case TypeBounds(mirroredType, _) => synth(TypeOps.stripTypeVars(mirroredType), formal, span)
         case other => EmptyTree
     else EmptyTree
 

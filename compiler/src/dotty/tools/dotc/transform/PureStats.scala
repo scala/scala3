@@ -9,6 +9,7 @@ import Symbols._, StdNames._, Trees._
 
 object PureStats {
   val name: String = "pureStats"
+  val description: String = "remove pure statements in blocks"
 }
 
 /** Remove pure statements in blocks */
@@ -17,6 +18,8 @@ class PureStats extends MiniPhase {
   import tpd._
 
   override def phaseName: String = PureStats.name
+
+  override def description: String = PureStats.description
 
   override def runsAfter: Set[String] = Set(Erasure.name)
 

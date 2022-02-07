@@ -24,7 +24,7 @@ import annotation.compileTimeOnly
  *  @syntax markdown
  */
 // TODO add `erased` once it is not an experimental feature anymore
-def erasedValue[T]: T = ???
+def erasedValue[T]: T = erasedValue[T]
 
 /** Used as the initializer of a mutable class or object field, like this:
  *
@@ -188,4 +188,3 @@ def byName[T](x: => T): T = x
   */
 extension [T](x: T)
   transparent inline def asMatchable: x.type & Matchable = x.asInstanceOf[x.type & Matchable]
-

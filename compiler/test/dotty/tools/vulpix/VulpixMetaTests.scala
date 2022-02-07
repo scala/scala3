@@ -28,7 +28,7 @@ object VulpixMetaTests extends ParallelTesting {
   def numberOfSlaves = 1
   def safeMode = false // Don't fork a new VM after each run test
   def isInteractive = false // Don't beautify output for interactive use.
-  def testFilter = None // Run all the tests.
+  def testFilter = Nil // Run all the tests.
   def updateCheckFiles: Boolean = false
 
   @AfterClass

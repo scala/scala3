@@ -20,7 +20,7 @@ def bar(x: Boolean)(using CanThrow[Fail]): Int =
 
 @main def Test =
   try
-    given ctf: CanThrow[Fail] = ???
+    given ctf: CanThrow[Fail] = new CanThrow[Fail]
     val x = new CanThrow[Fail]()      // OK, x is erased
     val y: Any = new CanThrow[Fail]() // error: illegal reference to erased class CanThrow
     val y2: Any = new CTF()       // error: illegal reference to erased class CanThrow

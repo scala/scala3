@@ -1,13 +1,11 @@
 ---
+layout: doc-page
 title: "Given Instances"
-type: section
-num: 15
-previous-page: /scala3/reference/contextual
-next-page: /scala3/reference/contextual/using-clauses
+movedTo: https://docs.scala-lang.org/scala3/reference/contextual/givens.html
 ---
 
 Given instances (or, simply, "givens") define "canonical" values of certain types
-that serve for synthesizing arguments to [context parameters](./using-clauses.html). Example:
+that serve for synthesizing arguments to [context parameters](./using-clauses.md). Example:
 
 ```scala
 trait Ord[T]:
@@ -36,7 +34,7 @@ a given for the type `Ord[Int]` whereas `listOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]`
 themselves. The `using` clause in `listOrd` defines a condition: There must be a
 given of type `Ord[T]` for a given of type `Ord[List[T]]` to exist.
-Such conditions are expanded by the compiler to [context parameters](./using-clauses.html).
+Such conditions are expanded by the compiler to [context parameters](./using-clauses.md).
 
 ## Anonymous Givens
 
@@ -102,6 +100,28 @@ transparent inline given mkAnnotations[A, T]: Annotations[A, T] = ${
 
 Since `mkAnnotations` is `transparent`, the type of an application is the type of its right-hand side, which can be a proper subtype of the declared result type `Annotations[A, T]`.
 
+Given instances can have the `inline` but not `transparent` modifiers as their type is already known from the signature.
+Example:
+
+```scala
+trait Show[T] {
+  inline def show(x: T): String
+}
+
+inline given Show[Foo] with {
+  /*transparent*/ inline def show(x: Foo): String = ${ ... }
+}
+
+def app =
+  // inlines `show` method call and removes the call to `given Show[Foo]`
+  summon[Show[Foo]].show(foo)
+```
+Note that the inline methods within the given instances may be `transparent`.
+
+The inlining of given instances will not inline/duplicate the implementation of the given, it will just inline the instantiation of that instance.
+This is used to help dead code elimination of the given instances that are not used after inlining.
+
+
 ## Pattern-Bound Given Instances
 
 Given instances can also appear in patterns. Example:
@@ -122,9 +142,9 @@ In each case, a pattern-bound given instance consists of `given` and a type `T`.
 
 Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement the analogue of a "negated" search in implicit resolution,
 where a query Q1 fails if some other query Q2 succeeds and Q1 succeeds if Q2 fails. With the new cleaned up behavior these techniques no longer work.
-But the new special type `scala.util.NotGiven` now implements negation directly.
+But the new special type [`scala.util.NotGiven`](https://scala-lang.org/api/3.x/scala/util/NotGiven.html) now implements negation directly.
 
-For any query type `Q`, `NotGiven[Q]` succeeds if and only if the implicit
+For any query type `Q`, [`NotGiven[Q]`](https://scala-lang.org/api/3.x/scala/util/NotGiven.html) succeeds if and only if the implicit
 search for `Q` fails, for example:
 
 ```scala

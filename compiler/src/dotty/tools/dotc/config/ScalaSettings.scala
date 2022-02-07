@@ -26,6 +26,9 @@ object ScalaSettings:
       (minTargetVersion to maxVersion).toList.map(_.toString)
     else List(minTargetVersion).map(_.toString)
 
+  def supportedScalaReleaseVersions: List[String] =
+    ScalaRelease.values.toList.map(_.show)
+
   def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
   def defaultPageWidth: Int = {
@@ -73,6 +76,9 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   )
 
   val wikiSyntax: Setting[Boolean] = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc.")
+
+  val jvmargs  = PrefixSetting("-J<flag>", "-J", "Pass <flag> directly to the runtime system.")
+  val defines  = PrefixSetting("-Dproperty=value", "-D", "Pass -Dproperty=value directly to the runtime system.")
 end AllScalaSettings
 
 /** Settings shared by compiler and scaladoc */
@@ -231,6 +237,8 @@ private sealed trait XSettings:
     def isTruthy(using Context) = XmixinForceForwarders.value == "true"
     def isAtLeastJunit(using Context) = isTruthy || XmixinForceForwarders.value == "junit"
   }
+
+  val XmacroSettings: Setting[List[String]] = MultiStringSetting("-Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 end XSettings
 
 /** -Y "Forking" as in forked tongue or "Private" settings */
@@ -274,6 +282,7 @@ private sealed trait YSettings:
   val YprintSyms: Setting[Boolean] = BooleanSetting("-Yprint-syms", "When printing trees print info in symbols instead of corresponding info in trees.")
   val YprintDebug: Setting[Boolean] = BooleanSetting("-Yprint-debug", "When printing trees, print some extra information useful for debugging.")
   val YprintDebugOwners: Setting[Boolean] = BooleanSetting("-Yprint-debug-owners", "When printing trees, print owners of definitions.")
+  val YprintLevel: Setting[Boolean] = BooleanSetting("-Yprint-level", "print nesting levels of symbols and type variables.")
   val YshowPrintErrors: Setting[Boolean] = BooleanSetting("-Yshow-print-errors", "Don't suppress exceptions thrown during tree printing.")
   val YtestPickler: Setting[Boolean] = BooleanSetting("-Ytest-pickler", "Self-test for pickling functionality; should be used with -Ystop-after:pickler.")
   val YcheckReentrant: Setting[Boolean] = BooleanSetting("-Ycheck-reentrant", "Check that compiled program does not contain vars that can be accessed from a global root.")
@@ -301,6 +310,7 @@ private sealed trait YSettings:
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
+  val YscalaRelease: Setting[String] = ChoiceSetting("-Yscala-release", "release", "Emit TASTy files that can be consumed by specified version of the compiler. The compilation will fail if for any reason valid TASTy cannot be produced (e.g. the code contains references to some parts of the standard library API that are missing in the older stdlib or uses language features unexpressible in the older version of TASTy format)", ScalaSettings.supportedScalaReleaseVersions, "", aliases = List("--Yscala-release"))
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

@@ -64,7 +64,7 @@ enum Kind(val name: String):
   case Constructor(base: Kind.Def) extends Kind("def")
   case Var extends Kind("var")
   case Val extends Kind("val")
-  case Exported(m: Kind.Def) extends Kind("export")
+  case Exported(base: Kind) extends Kind("export")
   case Type(concreate: Boolean, opaque: Boolean, typeParams: Seq[TypeParameter])
     extends Kind("type") // should we handle opaque as modifier?
   case Given(kind: Def | Class | Val.type, as: Option[Signature], conversion: Option[ImplicitConversion])
@@ -76,7 +76,7 @@ enum Kind(val name: String):
 enum Origin:
   case ImplicitlyAddedBy(name: String, dri: DRI)
   case ExtensionFrom(name: String, dri: DRI)
-  case ExportedFrom(name: String, dri: Option[DRI])
+  case ExportedFrom(link: Option[Link])
   case Overrides(overriddenMembers: Seq[Overridden])
   case RegularlyDefined
 
@@ -186,7 +186,11 @@ extension[T] (member: Member)
   def asLink: LinkToType = LinkToType(member.signature, member.dri, member.kind)
   def membersBy(op: Member => Boolean): Seq[Member] = member.members.filter(op)
 
+  def withDRI(dri: DRI): Member = member.copy(dri = dri)
+
   def withMembers(newMembers: Seq[Member]): Member = member.copy(members = newMembers)
+
+  def withName(name: String): Member = member.copy(name = name)
 
   def updateRecusivly(op: Member => Member): Member =
     val newMembers = member.members.map(_.updateRecusivly(op))

@@ -78,6 +78,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object CompilationInfo extends CompilationInfoModule:
       def isWhileTyping: Boolean = !ctx.isAfterTyper
+      def XmacroSettings: List[String] = ctx.settings.XmacroSettings.value
     end CompilationInfo
 
     extension (expr: Expr[Any])
@@ -1749,6 +1750,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr =
           self.subst(from, to)
+
+        def typeArgs: List[TypeRepr] = self match
+          case AppliedType(_, args) => args
+          case _ => List.empty
       end extension
     end TypeReprMethods
 
@@ -1878,13 +1883,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object AppliedType extends AppliedTypeModule:
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr]) =
-        (x.tycon, x.args)
+        (AppliedTypeMethods.tycon(x), AppliedTypeMethods.args(x))
     end AppliedType
 
     given AppliedTypeMethods: AppliedTypeMethods with
       extension (self: AppliedType)
-        def tycon: TypeRepr = self.tycon
-        def args: List[TypeRepr] = self.args
+        def tycon: TypeRepr = self.tycon.stripTypeVar
+        def args: List[TypeRepr] = self.args.mapConserve(_.stripTypeVar)
       end extension
     end AppliedTypeMethods
 
@@ -2480,6 +2485,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def name: String = self.denot.name.toString
         def fullName: String = self.denot.fullName.toString
+
         def pos: Option[Position] =
           if self.exists then Some(self.sourcePos) else None
 
@@ -3050,8 +3056,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       // that we have found, seal them in a quoted.Type and add them to the result
       def typeHoleApproximation(sym: Symbol) =
         val fromAboveAnnot = sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)
-        val approx = ctx1.gadt.approximation(sym, !fromAboveAnnot)
-        reflect.TypeReprMethods.asType(approx)
+        val fullBounds = ctx1.gadt.fullBounds(sym)
+        val tp = if fromAboveAnnot then fullBounds.hi else fullBounds.lo
+        reflect.TypeReprMethods.asType(tp)
       matchings.map { tup =>
         Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
       }

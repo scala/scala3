@@ -36,7 +36,7 @@ object Formatting {
               case _ => ex.getMessage
             s"[cannot display due to $msg, raw string = ${arg.toString}]"
         }
-      case _ => arg.toString
+      case _ => String.valueOf(arg)
     }
 
     private def treatArg(arg: Any, suffix: String)(using Context): (Any, String) = arg match {

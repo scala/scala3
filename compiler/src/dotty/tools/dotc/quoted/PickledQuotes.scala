@@ -91,11 +91,6 @@ object PickledQuotes {
               val quotedType = typeHole(idx, reifiedArgs)
               PickledQuotes.quotedTypeToTree(quotedType)
           }
-        case tree: Select =>
-          // Retain selected members
-          val qual = transform(tree.qualifier)
-          qual.select(tree.symbol).withSpan(tree.span)
-
         case tree =>
           if tree.isDef then
             tree.symbol.annotations = tree.symbol.annotations.map {
@@ -198,7 +193,7 @@ object PickledQuotes {
         quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never")}")
 
         val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-        val unpickler = new DottyUnpickler(bytes, mode)
+        val unpickler = new DottyUnpickler(bytes, ctx.tastyVersion, mode)
         unpickler.enter(Set.empty)
 
         val tree = unpickler.tree

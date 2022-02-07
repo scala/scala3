@@ -125,15 +125,15 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val scastieConfiguration: Setting[String] =
     StringSetting("-scastie-configuration", "Scastie configuration", "Additional configuration passed to Scastie in code snippets", "")
 
-  val projectFormat: Setting[String] =
-    ChoiceSetting(
-      "-format",
-      "format of the static site output",
-      "Format of the static site output. The default value is html, which converts all static articles into a webpage. " +
-        "The md format only preprocess markdown files and should not be used as a direct output, but rather as a sources generator for an outer templating engine like Jekyll",
-      List("html", "md"),
-      "html"
+  val defaultTemplate: Setting[String] =
+    StringSetting(
+      "-default-template",
+      "default template used by static site",
+      "The static site is generating empty files for indexes that haven't been provided explicitly in a sidebar/missing index.html in directory. " +
+        "User can specify what default template should be used for such indexes. It can be useful for providing generic templates that interpolate some common settings, like title, or can have some custom html embedded.",
+      ""
     )
+
 
   def scaladocSpecificSettings: Set[Setting[_]] =
     Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, scastieConfiguration)

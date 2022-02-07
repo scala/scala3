@@ -31,16 +31,16 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   private val MaxStringElements: Int = 1000  // no need to mkString billions of elements
 
-  private var myClassLoader: ClassLoader = _
+  private var myClassLoader: AbstractFileClassLoader = _
 
   private var myReplStringOf: Object => String = _
 
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
-    if (myClassLoader != null) myClassLoader
+    if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
     else {
-      val parent = parentClassLoader.getOrElse {
+      val parent = Option(myClassLoader).orElse(parentClassLoader).getOrElse {
         val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
         // We can't use the system classloader as a parent because it would
         // pollute the user classpath with everything passed to the JVM
@@ -158,7 +158,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     //at repl$.rs$line$2$.<clinit>(rs$line$2:1)
     //at repl$.rs$line$2.res1(rs$line$2)
     def isWrapperInitialization(ste: StackTraceElement) =
-      ste.getClassName.startsWith(nme.REPL_PACKAGE.toString + ".")  // d.symbol.owner.name.show is simple name
+      ste.getClassName.startsWith(REPL_WRAPPER_NAME_PREFIX)  // d.symbol.owner.name.show is simple name
       && (ste.getMethodName == nme.STATIC_CONSTRUCTOR.show || ste.getMethodName == nme.CONSTRUCTOR.show)
 
     cause.formatStackTracePrefix(!isWrapperInitialization(_))
@@ -170,7 +170,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 }
 
 object Rendering {
-  final val REPL_WRAPPER_NAME_PREFIX = s"${nme.REPL_PACKAGE}.${str.REPL_SESSION_LINE}"
+  final val REPL_WRAPPER_NAME_PREFIX = str.REPL_SESSION_LINE
 
   extension (s: Symbol)
     def showUser(using Context): String = {

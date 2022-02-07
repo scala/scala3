@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Export Clauses"
-type: section
-num: 38
-previous-page: /scala3/reference/other-new-features/creator-applications
-next-page: /scala3/reference/other-new-features/opaques
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/export.html
 ---
 
 An export clause defines aliases for selected members of an object. Example:
@@ -46,7 +44,7 @@ val copier = new Copier
 copier.print(copier.scan())
 ```
 
-An export clause has the same format as an import clause. Its general form is:
+An `export` clause has the same format as an import clause. Its general form is:
 
 ```scala
 export path . { sel_1, ..., sel_n }

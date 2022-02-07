@@ -1,9 +1,7 @@
 ---
-title: Intersection Types
-type: section
-num: 3
-previous-page: /scala3/reference/new-types
-next-page: /scala3/reference/new-types/union-types
+layout: doc-page
+title: "Intersection Types"
+movedTo: https://docs.scala-lang.org/scala3/reference/new-types/intersection-types.html
 ---
 
 Used on types, the `&` operator creates an intersection type.
@@ -67,4 +65,4 @@ class C extends A, B:
 ```
 
 
-[More details](./intersection-types-spec.html)
+[More details](./intersection-types-spec.md)

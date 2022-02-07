@@ -1,9 +1,7 @@
 ---
+layout: doc-page
 title: "Universal Apply Methods"
-type: section
-num: 37
-previous-page: /scala3/reference/other-new-features/transparent-traits
-next-page: /scala3/reference/other-new-features/export
+movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/creator-applications.html
 ---
 
 Scala case classes generate apply methods, so that values of case classes can be created using simple

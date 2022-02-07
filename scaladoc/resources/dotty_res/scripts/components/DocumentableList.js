@@ -47,6 +47,13 @@ class DocumentableList extends Component {
               return isElementVisible;
             }).length;
 
+          findRefs("span.groupHeader", listRef).forEach(h => {
+            const headerSiblings = this.state.list.getSectionListElementsRefs(h.parentNode).map(ref => this.state.list.toListElement(ref))
+            const isHeaderVisible = headerSiblings.filter(s => this.state.list.isElementVisible(s, filter)) != 0
+
+            this.toggleDisplayStyles(isHeaderVisible, h)
+          })
+
           this.toggleDisplayStyles(isListVisible, listRef);
 
           return isListVisible;

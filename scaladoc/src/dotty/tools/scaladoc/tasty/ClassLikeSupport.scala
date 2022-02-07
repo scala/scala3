@@ -70,19 +70,21 @@ trait ClassLikeSupport:
           case tree: ClassDef => tree
       case tt: TypeTree => unpackTreeToClassDef(tt.tpe.typeSymbol.tree)
 
-    def getSupertypesGraph(classDef: Tree, link: LinkToType): Seq[(LinkToType, LinkToType)] =
-      val smbl = classDef.symbol
-      val parents = unpackTreeToClassDef(classDef).parents
-      parents.flatMap { case tree =>
+    def getSupertypesGraph(link: LinkToType, to: Seq[Tree]): Seq[(LinkToType, LinkToType)] =
+      to.flatMap { case tree =>
         val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
         val superLink = LinkToType(tree.asSignature, symbol.dri, bareClasslikeKind(symbol))
-        Seq(link -> superLink) ++ getSupertypesGraph(tree, superLink)
+        val nextTo = unpackTreeToClassDef(tree).parents
+        if symbol.isHiddenByVisibility then getSupertypesGraph(link, nextTo)
+        else Seq(link -> superLink) ++ getSupertypesGraph(superLink, nextTo)
       }
 
-    val supertypes = getSupertypes(using qctx)(classDef).map {
-      case (symbol, tpe) =>
-        LinkToType(tpe.asSignature, symbol.dri, bareClasslikeKind(symbol))
-    }
+    val supertypes = getSupertypes(using qctx)(classDef)
+      .filterNot((s, t) => s.isHiddenByVisibility)
+      .map {
+        case (symbol, tpe) =>
+          LinkToType(tpe.asSignature, symbol.dri, bareClasslikeKind(symbol))
+      }
     val selfType = classDef.self.map { (valdef: ValDef) =>
       val symbol = valdef.symbol
       val tpe = valdef.tpt.tpe
@@ -91,7 +93,7 @@ trait ClassLikeSupport:
     val selfSignature: DSignature = typeForClass(classDef).asSignature
 
     val graph = HierarchyGraph.withEdges(
-      getSupertypesGraph(classDef, LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)))
+      getSupertypesGraph(LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)), unpackTreeToClassDef(classDef).parents)
     )
 
     val baseMember = mkMember(classDef.symbol, kindForClasslike(classDef), selfSignature)(
@@ -147,21 +149,23 @@ trait ClassLikeSupport:
         }
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported && !dd.symbol.isArtifact =>
-        val exportedTarget = dd.rhs.collect {
-          case a: Apply => a.fun.asInstanceOf[Select]
-          case s: Select => s
+        dd.rhs.map {
+          case TypeApply(rhs, _) => rhs
+          case Apply(TypeApply(rhs, _), _) => rhs
+          case rhs => rhs
+        }.map(_.tpe.termSymbol).filter(_.exists).map(_.tree).map {
+          case v: ValDef if v.symbol.flags.is(Flags.Module) && !v.symbol.flags.is(Flags.Synthetic) =>
+            v.symbol.owner -> Symbol.newVal(c.symbol, dd.name, v.tpt.tpe, Flags.Final, Symbol.noSymbol).tree
+          case other => other.symbol.owner -> other
+        }.flatMap { (originalOwner, tree) =>
+          parseMember(c)(tree)
+            .map { m => m
+              .withDRI(dd.symbol.dri)
+              .withName(dd.symbol.normalizedName)
+              .withKind(Kind.Exported(m.kind))
+              .withOrigin(Origin.ExportedFrom(Some(Link(originalOwner.normalizedName, originalOwner.dri))))
+            }
         }
-        val functionName = exportedTarget.fold("function")(_.name)
-        val instanceName = exportedTarget.collect {
-          case Select(qualifier: Select, _) => qualifier.name
-          case Select(qualifier: Ident, _) => qualifier.tpe.typeSymbol.normalizedName
-        }.getOrElse("instance")
-        val dri = dd.rhs.collect {
-          case s: Select if s.symbol.isDefDef => s.symbol.dri
-        }.orElse(exportedTarget.map(_.qualifier.tpe.typeSymbol.dri))
-
-        Some(parseMethod(c, dd.symbol, specificKind = Kind.Exported(_))
-          .withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod && !dd.symbol.isArtifact =>
         Some(parseMethod(c, dd.symbol))
@@ -255,7 +259,7 @@ trait ClassLikeSupport:
           case t: TypeTree => t.tpe.typeSymbol
           case tree if tree.symbol.isClassConstructor => tree.symbol.owner
           case tree => tree.symbol
-        if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass
+        if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass && !parentSymbol.isHiddenByVisibility
       yield (parentTree, parentSymbol)
 
     def getConstructors: List[Symbol] = c.membersToDocument.collect {
@@ -421,7 +425,17 @@ trait ClassLikeSupport:
     val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics).asInstanceOf[Kind.Type]
     val kind = if typeDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
       else defaultKind
-    mkMember(typeDef.symbol, kind, tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated())
+
+    if typeDef.symbol.flags.is(Flags.Exported)
+    then {
+      val origin = Some(tpeTree).flatMap {
+        case TypeBoundsTree(l: TypeTree, h: TypeTree) if l.tpe == h.tpe =>
+          Some(Link(l.tpe.typeSymbol.owner.name, l.tpe.typeSymbol.owner.dri))
+        case _ => None
+      }
+      mkMember(typeDef.symbol, Kind.Exported(kind), tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated(), origin = Origin.ExportedFrom(origin))
+    }
+    else mkMember(typeDef.symbol, kind, tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val

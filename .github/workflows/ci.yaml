@@ -66,7 +66,7 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";compile ;test"
+          ./project/scripts/sbt ";dist/pack; compile ;test"
           ./project/scripts/cmdTests
 
   test:
@@ -111,7 +111,7 @@ jobs:
 
       - name: Cmd Tests
         run: |
-          ./project/scripts/sbt ";scala3-bootstrapped/compile; scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/bootstrapCmdTests
 
       - name: MiMa
@@ -122,7 +122,7 @@ jobs:
     runs-on: [self-hosted, Windows]
     if: "(
            github.event_name == 'push'
-           && github.ref != 'refs/heads/master'
+           && github.ref != 'refs/heads/main'
          )
          || (
            github.event_name == 'pull_request'
@@ -181,7 +181,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Test
-        run: sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test"
+        run: sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test"
         shell: cmd
 
       - name: Scala.js Test
@@ -317,6 +317,49 @@ jobs:
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"
 
+  community_build_forward_compat:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+        || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip community_build]')
+           && contains(github.event.pull_request.body, '[test_forward_compat]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
+         )"
+
+    steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Test
+        run: |
+          git submodule sync
+          git submodule update --init --recursive --jobs 7
+          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestForwardCompat"
+
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
@@ -403,7 +446,7 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/bootstrapCmdTests
 
   publish_nightly:
@@ -415,7 +458,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
+    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, community_build_forward_compat, test_sbt, test_java8]
     if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
@@ -473,7 +516,8 @@ jobs:
       DOTTY_WEBSITE_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
                                           # Generate one at https://github.com/settings/tokens
                                           # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
-      DOCS_SCALALANG_BOT_TOKEN: ${{ secrets.DOCS_SCALALANG_BOT_TOKEN }}  # If you need to change this:
+      # Currently unused token, no need to deploy anything to docs.scala-lang
+      # DOCS_SCALALANG_BOT_TOKEN: ${{ secrets.DOCS_SCALALANG_BOT_TOKEN }}  # If you need to change this:
                                           # Generate one at https://github.com/settings/tokens
                                           # Make sure you have the write permissions to the repo: https://github.com/scala/docs.scala-lang
 
@@ -505,17 +549,6 @@ jobs:
           external_repository: lampepfl/dotty-website
           publish_branch: gh-pages
 
-      - name: Generate docs.scala-lang preprocessed files
-        run: |
-          ./project/scripts/genDocsScalaLang
-
-      - name: Deploy Website to docs.scala-lang
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          personal_token: ${{ env.DOCS_SCALALANG_BOT_TOKEN }}
-          publish_dir: docsScalaLang
-          external_repository: BarkingBad/docs.scala-lang
-          publish_branch: dev
 
   publish_release:
     runs-on: [self-hosted, Linux]

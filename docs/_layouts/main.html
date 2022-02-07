@@ -1,17 +1,10 @@
 ---
 layout: base
+extraJS:
+  - js/contributors.js
+extraCSS:
+  - css/content-contributors.css
 ---
 <div id="content-wrapper">
-    {% if page.movedTo %}
-    <aside class="warning">
-      The content of this page is outdated. Click <a href="{{ page.movedTo }}">here</a> to find the up to date version of this page.
-    </aside>
-    {% endif %}
-    {{ content }}
+  {{ content }}
 </div>
-<script>
-  ((window.gitter = {}).chat = {}).options = {
-    room: 'scala/scala'
-  };
-</script>
-<script src="https://sidecar.gitter.im/dist/sidecar.v1.js" async defer></script>

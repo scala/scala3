@@ -18,7 +18,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: "Lato", sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   background: var(--body-bg);
 }
 body, button, input {
@@ -77,7 +77,7 @@ code {
   padding: 0 .3em;
 }
 pre {
-  overflow: visible;
+  overflow-x: auto;
   scrollbar-width: thin;
   margin: 0px;
 }
@@ -88,7 +88,10 @@ pre code, pre code.hljs {
 
 pre, .symbol.monospace {
   font-weight: 500;
-  font-size: 12px;
+  font-size: 14px;
+  padding: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 pre .hljs-comment {
   /* Fold comments in snippets */
@@ -176,7 +179,7 @@ th {
 
 /* Navigation */
 #sideMenu2 {
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
 
   height: 100%;
@@ -1018,9 +1021,6 @@ footer .socials {
   }
 }
 
-
-
-
 /* Breadcrumbs */
 
 .breadcrumbs a {
@@ -1035,4 +1035,76 @@ footer .socials {
   align-self: flex-start;
 }
 
+/* Header from docs.scala-lang */
 
+.navigation .navigation-menu {
+  padding-left: 0px;
+  margin: 18px 0px;
+}
+.navigation .navigation-menu .navigation-menu-item {
+  margin: 5px 0px;
+  display: inline-block;
+}
+.navigation .navigation-menu .navigation-menu-item:last-child {
+  margin-right: 0px;
+}
+.navigation .navigation-menu .navigation-menu-item a {
+  padding: 5px 15px;
+  text-transform: uppercase;
+  border-radius: 300px;
+  font-weight: 700;
+  color: var(--title-fg);
+}
+.navigation .navigation-menu .navigation-menu-item a:active, .navigation .navigation-menu .navigation-menu-item a:focus, .navigation .navigation-menu .navigation-menu-item a:hover, .navigation .navigation-menu .navigation-menu-item a.active {
+  background: var(--red500);
+  text-decoration: none;
+}
+.two-columns {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Nav Icons */
+
+.arrows {
+  font-size: 3em;
+  text-align: center;
+
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  margin: 0;
+  max-width: 150px;
+  min-width: 90px;
+
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+
+  transition: color 0.5s, background-color 0.5s;
+}
+
+.arrows.previous, .arrows.next {
+  color: var(--grey400);
+}
+
+.arrows:hover {
+  text-decoration: none;
+  color: var(--grey300);
+  background-color: var(--grey900);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.previous {
+  left: var(--side-width);
+  float: left;
+}
+
+.next {
+  right: 0;
+  float: right;
+}
+
+@media screen and (max-width: 1000px) {
+  .arrows-wrapper { display: none; }
+}

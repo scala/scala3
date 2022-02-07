@@ -783,7 +783,7 @@ object desugar {
         DefDef(
           className.toTermName, joinParams(constrTparams, defParamss),
           classTypeRef, creatorExpr)
-          .withMods(companionMods | mods.flags.toTermFlags & GivenOrImplicit | Final)
+          .withMods(companionMods | mods.flags.toTermFlags & (GivenOrImplicit | Inline) | Final)
           .withSpan(cdef.span) :: Nil
       }
 
@@ -809,7 +809,9 @@ object desugar {
             Nil
         }
       }
-      val classMods = if mods.is(Given) then mods | Synthetic else mods
+      if mods.isAllOf(Given | Inline | Transparent) then
+        report.error("inline given instances cannot be trasparent", cdef)
+      val classMods = if mods.is(Given) then mods &~ (Inline | Transparent) | Synthetic else mods
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
@@ -1265,6 +1267,8 @@ object desugar {
    *  $throws[... $throws[A, E1] ... , En].
    */
   def throws(tpt: Tree, op: Ident, excepts: Tree)(using Context): AppliedTypeTree = excepts match
+    case Parens(excepts1) =>
+      throws(tpt, op, excepts1)
     case InfixOp(l, bar @ Ident(tpnme.raw.BAR), r) =>
       throws(throws(tpt, op, l), bar, r)
     case e =>

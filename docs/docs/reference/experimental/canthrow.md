@@ -1,8 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
-title: "CanThrow Abilities"
-author: Martin Odersky
+layout: doc-page
+title: "CanThrow Capabilities"
+movedTo: https://docs.scala-lang.org/scala3/reference/experimental/canthrow.html
 ---
 
 This page describes experimental support for exception checking in Scala 3. It is enabled by the language import
@@ -21,7 +20,7 @@ However, exceptions in current Scala and many other languages are not reflected 
 
 ## The Problem With Java's Checked Exceptions
 
-The main problem with Java's checked exception model is its inflexibility, which is due to lack of polymorphism. Consider for instance the `map` function which is declared on `List[A]` like this:
+The main problem with [Java's checked exception model](https://docs.oracle.com/javase/specs/jls/se8/html/jls-11.html#jls-11.2) is its inflexibility, which is due to lack of polymorphism. Consider for instance the `map` function which is declared on `List[A]` like this:
 ```scala
   def map[B](f: A => B): List[B]
 ```
@@ -29,7 +28,7 @@ In the Java model, function `f` is not allowed to throw a checked exception. So 
 ```scala
   xs.map(x => if x < limit then x * x else throw LimitExceeded())
 ```
-The only way around this would be to wrap the checked exception `LimitExceeded` in an unchecked `RuntimeException` that is caught at the callsite and unwrapped again. Something like this:
+The only way around this would be to wrap the checked exception `LimitExceeded` in an unchecked [`java.lang.RuntimeException`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/RuntimeException.html) that is caught at the callsite and unwrapped again. Something like this:
 ```scala
   try
     xs.map(x => if x < limit then x * x else throw Wrapper(LimitExceeded()))
@@ -39,7 +38,7 @@ Ugh! No wonder checked exceptions in Java are not very popular.
 
 ## Monadic Effects
 
-So the dilemma is that exceptions are easy to use only as long as we forgo static type checking. This has caused many people working with Scala to abandon exceptions altogether and to use an error monad like `Either` instead. This can work in many situations but is not without its downsides either. It makes code a lot more complicated and harder to refactor. It means one is quickly confronted with the problem how to work with several monads. In general, dealing with one monad at a time in Scala is straightforward but dealing with several monads together is much less pleasant since monads don't compose. A great number of techniques have been proposed, implemented, and promoted to deal with this, from monad transformers, to free monads, to tagless final. But none of these techniques is universally liked;  each introduces a complicated DSL that's hard to understand for non-experts, introduces runtime overheads, and makes debugging difficult. In the end, quite a few developers prefer to work instead with a single "super-monad" like ZIO that has error propagation built in alongside other aspects. This one-size fits all approach can work very nicely, even though (or is it because?) it represents an all-encompassing framework.
+So the dilemma is that exceptions are easy to use only as long as we forget static type checking. This has caused many people working with Scala to abandon exceptions altogether and to use an error monad like [`Either`](https://scala-lang.org/api/3.x/scala/util/Either.html) instead. This can work in many situations but is not without its downsides either. It makes code a lot more complicated and harder to refactor. It means one is quickly confronted with the problem how to work with several monads. In general, dealing with one monad at a time in Scala is straightforward but dealing with several monads together is much less pleasant since monads don't compose. A great number of techniques have been proposed, implemented, and promoted to deal with this, from monad transformers, to free monads, to tagless final. But none of these techniques is universally liked;  each introduces a complicated DSL that's hard to understand for non-experts, introduces runtime overheads, and makes debugging difficult. In the end, quite a few developers prefer to work instead with a single "super-monad" like [`ZIO`](https://zio.dev/version-1.x/datatypes/core/zio) that has error propagation built in alongside other aspects. This one-size fits all approach can work very nicely, even though (or is it because?) it represents an all-encompassing framework.
 
 However, a programming language is not a framework; it has to cater also for those applications that do not fit the framework's use cases. So there's still a strong motivation for getting exception checking right.
 
@@ -54,27 +53,27 @@ This assumes a type `A throws E` to indicate computations of type `A` that can t
 
 But there is a way to avoid the ceremony. Instead of concentrating on possible _effects_ such as "this code might throw an exception", concentrate on _capabilities_ such as "this code needs the capability to throw an exception". From a standpoint of expressiveness this is quite similar. But capabilities can be expressed as parameters whereas traditionally effects are expressed as some addition to result values. It turns out that this can make a big difference!
 
-## The CanThrow Capability
+## The `CanThrow` Capability
 
 In the _effects as capabilities_ model, an effect is expressed as an (implicit) parameter of a certain type. For exceptions we would expect parameters of type
-`CanThrow[E]` where `E` stands for the exception that can be thrown. Here is the definition of `CanThrow`:
+[`CanThrow[E]`](https://scala-lang.org/api/3.x/scala/CanThrow.html) where `E` stands for the exception that can be thrown. Here is the definition of `CanThrow`:
 ```scala
 erased class CanThrow[-E <: Exception]
 ```
-This shows another experimental Scala feature: [erased definitions]({% link _scala3-reference/experimental/erased-defs.md %}). Roughly speaking, values of an erased class do not generate runtime code; they are erased before code generation. This means that all `CanThrow` capabilities are compile-time only artifacts; they do not have a runtime footprint.
+This shows another experimental Scala feature: [erased definitions](./erased-defs.md). Roughly speaking, values of an erased class do not generate runtime code; they are erased before code generation. This means that all `CanThrow` capabilities are compile-time only artifacts; they do not have a runtime footprint.
 
 Now, if the compiler sees a `throw Exc()` construct where `Exc` is a checked exception, it will check that there is a capability of type `CanThrow[Exc]` that can be summoned as a given. It's a compile-time error if that's not the case.
 
 How can the capability be produced? There are several possibilities:
 
-Most often, the capability is produced by having a using clause `(using CanThrow[Exc])` in some enclosing scope. This roughly corresponds to a `throws` clause
-in Java. The analogy is even stronger since alongside `CanThrow` there is also the following type alias defined in the `scala` package:
+Most often, the capability is produced by having a using clause `(using CanThrow[Exc])` in some enclosing scope. This roughly corresponds to a [`throws`](https://docs.oracle.com/javase/specs/jls/se7/html/jls-8.html#jls-8.4.6) clause in Java. The analogy is even stronger since alongside [`CanThrow`](https://scala-lang.org/api/3.x/scala/CanThrow.html) there is also the following type alias defined in the [`scala`](https://scala-lang.org/api/3.x/scala.html) package:
+```scala
+infix type A = Int
+```
 ```scala
 infix type $throws[R, +E <: Exception] = CanThrow[E] ?=> R
 ```
-That is, `R $throws E` is a context function type that takes an implicit `CanThrow[E]` parameter and that returns a value of type `R`. What's more, the compiler
-will translate an infix types with `throws` as the operator to `$throws` applications
-according to the rules
+That is, [`R $throws E`](https://scala-lang.org/api/3.x/scala/runtime.html#$throws-0) is a context function type that takes an implicit `CanThrow[E]` parameter and that returns a value of type `R`. What's more, the compiler will translate an infix types with `throws` as the operator to `$throws` applications according to the rules
 ```
                 A throws E  -->  A $throws E
     A throws E₁ | ... | Eᵢ  -->  A $throws E₁ ... $throws Eᵢ
@@ -87,14 +86,27 @@ can alternatively be expressed like this:
 ```scala
 def m(x: T): U throws E
 ```
-Multiple `CanThrow` capabilities can be combined in a single throws clause. For instance, the method
-```scala
-def m2(x: T)(using CanThrow[E1], CanThrow[E2]): U
-```
-can alternatively be expressed like this:
+Also the capability to throw multiple types of exceptions can be expressed in a few ways as shown in the examples below:
 ```scala
 def m(x: T): U throws E1 | E2
+def m(x: T): U throws E1 throws E2
+def m(x: T)(using CanThrow[E1], CanThrow[E2]): U
+def m(x: T)(using CanThrow[E1])(using CanThrow[E2]): U
+def m(x: T)(using CanThrow[E1]): U throws E2
 ```
+
+**Note 1:** A signature like
+```scala
+def m(x: T)(using CanThrow[E1 | E2]): U
+```
+would also allow throwing `E1` or `E2` inside the method's body but might cause problems when someone tried to call this method
+from another method declaring its `CanThrow` capabilities like in the earlier examples.
+This is because `CanThrow` has a contravariant type parameter so `CanThrow[E1 | E2]` is a subtype of both `CanThrow[E1]` and `CanThrow[E2]`.
+Hence the presence of a given instance of `CanThrow[E1 | E2]` in scope satisfies the requirement for `CanThrow[E1]` and `CanThrow[E2]`
+but given instances of `CanThrow[E1]` and `CanThrow[E2]` cannot be combined to provide and instance of `CanThrow[E1 | E2]`.
+
+**Note 2:** One should keep in mind that `|` binds its left and right arguments more tightly than `throws` so `A | B throws E1 | E2` means `(A | B) throws (Ex1 | Ex2)`, not `A | (B throws E1) | E2`.
+
 The `CanThrow`/`throws` combo essentially propagates the `CanThrow` requirement outwards. But where are these capabilities created in the first place? That's in the `try` expression. Given a `try` like this:
 
 ```scala
@@ -105,19 +117,31 @@ catch
   ...
   case exN: ExN => handlerN
 ```
-the compiler generates capabilities for `CanThrow[Ex1]`, ..., `CanThrow[ExN]` that are in scope as givens in `body`. It does this by augmenting the `try` roughly as follows:
+the compiler generates an accumulated capability of type `CanThrow[Ex1 | ... | Ex2]` that is available as a given in the scope of `body`. It does this by augmenting the `try` roughly as follows:
 ```scala
 try
-  erased given CanThrow[Ex1] = ???
-  ...
-  erased given CanThrow[ExN] = ???
+  erased given CanThrow[Ex1 | ... | ExN] = compiletime.erasedValue
   body
 catch ...
 ```
-Note that the right-hand side of all givens is `???` (undefined). This is OK since
-these givens are erased; they will not be executed at runtime.
+Note that the right-hand side of the synthesized given is `???` (undefined). This is OK since
+this given is erased; it will not be executed at runtime.
 
-## An Example
+**Note 1:** The [`saferExceptions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$experimental$$saferExceptions$.html) feature is designed to work only with checked exceptions. An exception type is _checked_ if it is a subtype of
+`Exception` but not of `RuntimeException`. The signature of `CanThrow` still admits `RuntimeException`s since `RuntimeException` is a proper subtype of its bound, `Exception`. But no capabilities will be generated for `RuntimeException`s. Furthermore, `throws` clauses
+also may not refer to `RuntimeException`s.
+
+**Note 2:** To keep things simple, the compiler will currently only generate capabilities
+for catch clauses of the form
+```scala
+  case ex: Ex =>
+```
+where `ex` is an arbitrary variable name (`_` is also allowed), and `Ex` is an arbitrary
+checked exception type. Constructor patterns such as `Ex(...)` or patterns with guards
+are not allowed. The compiler will issue an error if one of these is used to catch
+a checked exception and `saferExceptions` is enabled.
+
+## Example
 
 That's it. Let's see it in action in an example. First, add an import
 ```scala
@@ -133,17 +157,19 @@ def f(x: Double): Double =
 ```
 You'll get this error message:
 ```
-9 |  if x < limit then x * x else throw LimitExceeded()
-  |                               ^^^^^^^^^^^^^^^^^^^^^
-  |The capability to throw exception LimitExceeded is missing.
-  |The capability can be provided by one of the following:
-  | - A using clause `(using CanThrow[LimitExceeded])`
-  | - A `throws` clause in a result type such as `X throws LimitExceeded`
-  | - an enclosing `try` that catches LimitExceeded
-  |
-  |The following import might fix the problem:
-  |
-  |  import unsafeExceptions.canThrowAny
+  if x < limit then x * x else throw LimitExceeded()
+                               ^^^^^^^^^^^^^^^^^^^^^
+The capability to throw exception LimitExceeded is missing.
+```
+The capability can be provided by one of the following:
+
+ - Adding a using clause `(using CanThrow[LimitExceeded])` to the definition of the enclosing method
+ - Adding `throws LimitExceeded` clause after the result type of the enclosing method
+ - Wrapping this piece of code with a `try` block that catches `LimitExceeded`
+
+The following import might fix the problem:
+```scala
+  import unsafeExceptions.canThrowAny
 ```
 As the error message implies, you have to declare that `f` needs the capability to throw a `LimitExceeded` exception. The most concise way to do so is to add a `throws` clause:
 ```scala
@@ -170,7 +196,7 @@ Everything typechecks and works as expected. But wait - we have called `map` wit
 // compiler-generated code
 @main def test(xs: Double*) =
   try
-    erased given ctl: CanThrow[LimitExceeded] = ???
+    erased given ctl: CanThrow[LimitExceeded] = compiletime.erasedValue
     println(xs.map(x => f(x)(using ctl)).sum)
   catch case ex: LimitExceeded => println("too large")
 ```
@@ -179,29 +205,15 @@ closure may refer to capabilities in its free variables. This means that `map` i
 already effect polymorphic even though we did not change its signature at all.
 So the takeaway is that the effects as capabilities model naturally provides for effect polymorphism whereas this is something that other approaches struggle with.
 
-**Note 1:** The compiler will only treat checked exceptions that way. An exception type is _checked_ if it is a subtype of
-`Exception` but not of `RuntimeException`. The signature of `CanThrow` still admits `RuntimeException`s since `RuntimeException` is a proper subtype of its bound, `Exception`. But no capabilities will be generated for `RuntimeException`s. Furthermore, `throws` clauses
-also may not refer to `RuntimeException`s.
-
-**Note 2:** To keep things simple, the compiler will currently only generate capabilities
-for catch clauses of the form
-```scala
-  case ex: Ex =>
-```
-where `ex` is an arbitrary variable name (`_` is also allowed), and `Ex` is an arbitrary
-checked exception type. Constructor patterns such as `Ex(...)` or patterns with guards
-are not allowed. The compiler will issue an error if one of these is used to catch
-a checked exception and `saferExceptions` is enabled.
-
 ## Gradual Typing Via Imports
 
-Another advantage is that the model allows a gradual migration from current unchecked exceptions to safer exceptions. Imagine for a moment that `experimental.saferExceptions` is turned on everywhere. There would be lots of code that breaks since functions have not yet been properly annotated with `throws`. But it's easy to create an escape hatch that lets us ignore the breakages for a while: simply add the import
+Another advantage is that the model allows a gradual migration from current unchecked exceptions to safer exceptions. Imagine for a moment that [`experimental.saferExceptions`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$experimental$$saferExceptions$.html) is turned on everywhere. There would be lots of code that breaks since functions have not yet been properly annotated with `throws`. But it's easy to create an escape hatch that lets us ignore the breakages for a while: simply add the import
 ```scala
 import scala.unsafeExceptions.canThrowAny
 ```
-This will provide the `CanThrow` capability for any exception, and thereby allow
+This will provide the [`CanThrow`](https://scala-lang.org/api/3.x/scala/CanThrow.html) capability for any exception, and thereby allow
 all throws and all other calls, no matter what the current state of `throws` declarations is. Here's the
-definition of `canThrowAny`:
+definition of [`canThrowAny`](https://scala-lang.org/api/3.x/scala/unsafeExceptions$.html#canThrowAny-0):
 ```scala
 package scala
 object unsafeExceptions:
@@ -214,7 +226,7 @@ enable more fluid explorations of code without regard for complete exception saf
 
 To summarize, the extension for safer exception checking consists of the following elements:
 
- - It adds to the standard library the class `scala.CanThrow`, the type `scala.$throws`, and the `scala.unsafeExceptions` object, as they were described above.
+ - It adds to the standard library the class `scala.CanThrow`, the type `scala.$throws`, and the [`scala.unsafeExceptions`](https://scala-lang.org/api/3.x/scala/unsafeExceptions$.html) object, as they were described above.
  - It adds some desugaring rules ro rewrite `throws` types to cascaded `$throws` types.
  - It augments the type checking of `throw` by _demanding_ a `CanThrow` capability or the thrown exception.
  - It augments the type checking of `try` by _providing_ `CanThrow` capabilities for every caught exception.
@@ -230,7 +242,7 @@ we cannot enforce that since the function argument to `pureMap` can capture arbi
 capabilities in its free variables without them showing up in its type. One possible way to
 address this would be to introduce a pure function type (maybe written `A -> B`). Pure functions are not allowed to close over capabilities. Then `pureMap` could be written
 like this:
-```
+```scala
   def pureMap(f: A -> B): List[B]
 ```
 Another area where the lack of purity requirements shows up is when capabilities escape from bounded scopes. Consider the following function
@@ -256,13 +268,14 @@ g()
 the result will be a `LimitExceeded` exception thrown at the second line where `g` is called. What's missing is that `try` should enforce that the capabilities it generates do not escape as free variables in the result of its body. It makes sense to describe such scoped effects as _ephemeral capabilities_ - they have lifetimes that cannot be extended to delayed code in a lambda.
 
 
-# Outlook
+## Outlook
 
-We are working on a new class of type system that supports ephemeral capabilities by tracking the free variables of values. Once that research matures, it will hopefully be possible to augment the language so that we can enforce the missing properties.
+We are working on a new class of type system that supports ephemeral capabilities by tracking the free variables of values. Once that research matures, it will hopefully be possible to augment the Scala language so that we can enforce the missing properties.
 
-And it would have many other applications besides: Exceptions are a special case of _algebraic effects_, which has been a very active research area over the last 20 years and is finding its way into programming languages (e.g. Koka, Eff, Multicore OCaml, Unison). In fact, algebraic effects have been characterized as being equivalent to exceptions with an additional _resume_ operation. The techniques developed here for exceptions can probably be generalized to other classes of algebraic effects.
+And it would have many other applications besides: Exceptions are a special case of _algebraic effects_, which has been a very active research area over the last 20 years and is finding its way into programming languages (e.g. [Koka](https://koka-lang.github.io/koka/doc/book.html#why-handlers), [Eff](https://www.eff-lang.org/learn/), [Multicore OCaml](https://discuss.ocaml.org/t/multicore-ocaml-september-2021-effect-handlers-will-be-in-ocaml-5-0/8554), [Unison](https://www.unisonweb.org/docs/language-reference/#abilities-and-ability-handlers)). In fact, algebraic effects have been characterized as being equivalent to exceptions with an additional _resume_ operation. The techniques developed here for exceptions can probably be generalized to other classes of algebraic effects.
 
 But even without these additional mechanisms, exception checking is already useful as it is. It gives a clear path forward to make code that uses exceptions safer, better documented, and easier to refactor. The only loophole arises for scoped capabilities - here we have to verify manually that these capabilities do not escape. Specifically, a `try` always has to be placed in the same computation stage as the throws that it enables.
 
 Put another way: If the status quo is 0% static checking since 100% is too painful, then an alternative that gives you 95% static checking with great ergonomics looks like a win. And we might still get to 100% in the future.
 
+For more info, see also our [paper at the ACM Scala Symposium 2021](https://infoscience.epfl.ch/record/290885).

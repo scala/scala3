@@ -1,0 +1,18 @@
+scala> java.nio.file.Files.exists(java.nio.file.Files.createDirectories(java.nio.file.Paths.get("target", "test-repl-settings-outDir")))
+val res0: Boolean = true
+
+scala> val x = 1
+val x: Int = 1
+
+scala>:settings -d target/test-repl-settings-outDir
+
+scala> val y = 2
+val y: Int = 2
+
+scala> x
+val res1: Int = 1
+
+scala> y
+val res2: Int = 2
+
+scala> java.nio.file.Files.walk(java.nio.file.Paths.get("target", "test-repl-settings-outDir")).sorted(java.util.Comparator.reverseOrder).forEach(java.nio.file.Files.delete)

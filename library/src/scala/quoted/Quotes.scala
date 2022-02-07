@@ -1,6 +1,6 @@
 package scala.quoted
 
-import scala.annotation.experimental
+import scala.annotation.{ experimental, since }
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
@@ -68,6 +68,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Emits an error and aborts if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
      */
+    @since("3.1")
     def valueOrAbort(using FromExpr[T]): T
 
   end extension
@@ -238,6 +239,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  This will be true when the macro is used in a transparent inline.
        */
       def isWhileTyping: Boolean
+
+      /** Expose macro-specific settings as a list of strings.
+       *  Settings can be set from command line with help of -Xmacro-settings options.
+       *
+       *  These will be used to expand any transparent macros or any non-transparent macro that is forced to expand while expanding the transparent macro.
+       *  Non-transparent macros are not guaranteed to be expanded with the same set of settings.
+       */
+      @experimental
+      def XmacroSettings: List[String]
     }
 
 
@@ -794,15 +804,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end IdentMethods
 
     /** Pattern representing a `_` wildcard. */
+    @since("3.1")
     type Wildcard <: Ident
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Wildcard` */
+    @since("3.1")
     given WildcardTypeTest: TypeTest[Tree, Wildcard]
 
     /** Module object of `type Wildcard`  */
     val Wildcard: WildcardModule
 
     /** Methods of the module object `val Wildcard` */
+    @since("3.1")
     trait WildcardModule { this: Wildcard.type =>
       /** Create a tree representing a `_` wildcard. */
       def apply(): Wildcard
@@ -1605,15 +1618,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end WhileMethods
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypedOrTest` */
+    @since("3.1")
     given TypedOrTestTypeTest: TypeTest[Tree, TypedOrTest]
 
     /** Tree representing a type ascription or type test pattern `x: T` in the source code. */
+    @since("3.1")
     type TypedOrTest <: Tree
 
     /** Module object of `type TypedOrTest`  */
+    @since("3.1")
     val TypedOrTest: TypedOrTestModule
 
     /** Methods of the module object `val TypedOrTest` */
+    @since("3.1")
     trait TypedOrTestModule { this: TypedOrTest.type =>
 
       /** Create a type ascription `<x: Tree>: <tpt: TypeTree>` */
@@ -1626,9 +1643,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypedOrTest` available without any imports */
+    @since("3.1")
     given TypedOrTestMethods: TypedOrTestMethods
 
     /** Extension methods of `TypedOrTest` */
+    @since("3.1")
     trait TypedOrTestMethods:
       extension (self: TypedOrTest)
         def tree: Tree
@@ -2156,6 +2175,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Unapply` */
     trait UnapplyModule { this: Unapply.type =>
       /** Create an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
+      @since("3.1")
       def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
       /** Copy an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)` */
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
@@ -2269,6 +2289,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isGiven: Boolean
         /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
+        @since("3.1")
         def isErased: Boolean
     end TermParamClauseMethods
 
@@ -2554,6 +2575,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          * @return true if the dealiased type of `self` is `TupleN[T1, T2, ..., Tn]`
          */
+        @since("3.1")
         def isTupleN: Boolean
 
         /** The type <this . sym>, reduced if possible */
@@ -2571,6 +2593,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         @experimental
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr
 
+        /** The applied type arguments (empty if there is no such arguments) */
+        @experimental
+        def typeArgs: List[TypeRepr]
       end extension
     }
 
@@ -3692,6 +3717,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def memberField(name: String): Symbol
 
         /** Get named non-private fields declared or inherited */
+        @since("3.1")
         def fieldMember(name: String): Symbol
 
         /** Get all non-private fields declared or inherited */
@@ -3699,6 +3725,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def memberFields: List[Symbol]
 
         /** Get all non-private fields declared or inherited */
+        @since("3.1")
         def fieldMembers: List[Symbol]
 
         /** Get non-private named methods defined directly inside the class */
@@ -4363,6 +4390,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case New(tpt) =>
             foldTree(x, tpt)(owner)
           case Typed(expr, tpt) =>
+            foldTree(foldTree(x, expr)(owner), tpt)(owner)
+          case TypedOrTest(expr, tpt) =>
             foldTree(foldTree(x, expr)(owner), tpt)(owner)
           case NamedArg(_, arg) =>
             foldTree(x, arg)(owner)

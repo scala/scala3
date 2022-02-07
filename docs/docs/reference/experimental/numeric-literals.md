@@ -1,7 +1,7 @@
 ---
-layout: singlepage-overview
-scala3: true
+layout: doc-page
 title: "Numeric Literals"
+movedTo: https://docs.scala-lang.org/scala3/reference/experimental/numeric-literals.html
 ---
 
 **Note**: This feature is not yet part of the Scala 3 language definition. It can be made available by a language import:
@@ -24,7 +24,7 @@ val z: BigDecimal = 110_222_799_799.99
 The syntax of numeric literals is the same as before, except there are no pre-set limits
 how large they can be.
 
-### Meaning of Numeric Literals
+## Meaning of Numeric Literals
 
 The meaning of a numeric literal is determined as follows:
 
@@ -37,7 +37,7 @@ In each of these cases the conversion to a number is exactly as in Scala 2 or in
 1. If the expected type is `Int`, `Long`, `Float`, or `Double`, the literal is
    treated as a standard literal of that type.
 2. If the expected type is a fully defined type `T` that has a given instance of type
-   `scala.util.FromDigits[T]`, the literal is converted to a value of type `T` by passing it as an argument to
+   [`scala.util.FromDigits[T]`](https://scala-lang.org/api/3.x/scala/util/FromDigits.html), the literal is converted to a value of type `T` by passing it as an argument to
    the `fromDigits` method of that instance (more details below).
 3. Otherwise, the literal is treated as a `Double` literal (if it has a decimal point or an
    exponent), or as an `Int` literal (if not). (This last possibility is again as in Scala 2 or Java.)
@@ -55,9 +55,7 @@ val y: BigInt = 0x123_abc_789_def_345_678_901
 val z: BigDecimal = 111222333444.55
 ```
 
-are legal by rule (2), since both `BigInt` and `BigDecimal` have `FromDigits` instances
-(which implement the `FromDigits` subclasses `FromDigits.WithRadix` and `FromDigits.Decimal`, respectively).
-On the other hand,
+are legal by rule (2), since both `BigInt` and `BigDecimal` have [`FromDigits`](https://scala-lang.org/api/3.x/scala/util/FromDigits.html) instances (which implement the `FromDigits` subclasses [`FromDigits.WithRadix`](https://scala-lang.org/api/3.x/scala/util/FromDigits$$WithRadix.html) and [`FromDigits.Decimal`](https://scala-lang.org/api/3.x/scala/util/FromDigits$$Decimal.html), respectively). On the other hand,
 
 ```scala
 val x = -10_000_000_000
@@ -65,11 +63,10 @@ val x = -10_000_000_000
 
 gives a type error, since without an expected type `-10_000_000_000` is treated by rule (3) as an `Int` literal, but it is too large for that type.
 
-### The FromDigits Trait
+## The `FromDigits` Trait
 
 To allow numeric literals, a type simply has to define a `given` instance of the
-`scala.util.FromDigits` type class, or one of its subclasses. `FromDigits` is defined
-as follows:
+[`scala.util.FromDigits`](https://scala-lang.org/api/3.x/scala/util/FromDigits.html) type class, or one of its subclasses. `FromDigits` is defined as follows:
 
 ```scala
 trait FromDigits[T]:
@@ -82,9 +79,7 @@ The `digits` string consists of digits between `0` and `9`, possibly preceded by
 sign ("+" or "-"). Number separator characters `_` are filtered out before
 the string is passed to `fromDigits`.
 
-The companion object `FromDigits` also defines subclasses of `FromDigits` for
-whole numbers with a given radix, for numbers with a decimal point, and for
-numbers that can have both a decimal point and an exponent:
+The companion object [`FromDigits`](https://scala-lang.org/api/3.x/scala/util/FromDigits$.html) also defines subclasses of `FromDigits` for whole numbers with a given radix, for numbers with a decimal point, and for numbers that can have both a decimal point and an exponent:
 
 ```scala
 object FromDigits:
@@ -112,10 +107,10 @@ A user-defined number type can implement one of those, which signals to the comp
 that hexadecimal numbers, decimal points, or exponents are also accepted in literals
 for this type.
 
-### Error Handling
+## Error Handling
 
 `FromDigits` implementations can signal errors by throwing exceptions of some subtype
-of `FromDigitsException`. `FromDigitsException` is defined with three subclasses in the
+of [`FromDigitsException`](https://scala-lang.org/api/3.x/scala/util/FromDigits$$FromDigitsException.html). `FromDigitsException` is defined with three subclasses in the
 `FromDigits` object as follows:
 
 ```scala
@@ -126,7 +121,7 @@ class NumberTooSmall (msg: String = "number too small")         extends FromDigi
 class MalformedNumber(msg: String = "malformed number literal") extends FromDigitsException(msg)
 ```
 
-### Example
+## Example
 
 As a fully worked out example, here is an implementation of a new numeric class, `BigFloat`, that accepts numeric literals. `BigFloat` is defined in terms of a `BigInt` mantissa and an `Int` exponent:
 
@@ -183,7 +178,7 @@ assumed that only valid arguments are passed. For calls coming from the compiler
 that assumption is valid, since the compiler will first check whether a numeric
 literal has the correct format before it gets passed on to a conversion method.
 
-### Compile-Time Errors
+## Compile-Time Errors
 
 With the setup of the previous section, a literal like
 
@@ -197,7 +192,7 @@ would be expanded by the compiler to
 BigFloat.FromDigits.fromDigits("1e100000000000")
 ```
 
-Evaluating this expression throws a `NumberTooLarge` exception at run time. We would like it to
+Evaluating this expression throws a [`NumberTooLarge`](https://scala-lang.org/api/3.x/scala/util/FromDigits$$NumberTooLarge.html) exception at run time. We would like it to
 produce a compile-time error instead. We can achieve this by tweaking the `BigFloat` class
 with a small dose of metaprogramming. The idea is to turn the `fromDigits` method
 into a macro, i.e. make it an inline method with a splice as right-hand side.
