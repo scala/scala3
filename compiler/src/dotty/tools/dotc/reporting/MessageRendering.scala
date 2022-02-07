@@ -236,11 +236,12 @@ trait MessageRendering {
           sb.append(EOL).append(newBox())
           sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
           for inlinedPos <- inlineStack if inlinedPos != pos1 do
-            val (srcBefore, srcAfter, offset) = sourceLines(inlinedPos)
-            val marker = positionMarker(inlinedPos)
             sb.append(EOL).append(newBox(soft = true))
             sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
-            sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
+            if inlinedPos.source.file.exists then
+              val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
+              val marker = positionMarker(inlinedPos)
+              sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
           sb.append(EOL).append(endBox)
       }
       else sb.append(msg.message)
