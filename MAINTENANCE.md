@@ -46,3 +46,30 @@ At the end of their Tsardom, the Tsar reports to the team during the Dotty meeti
 - How many new issues were opened during their Tsardom period? Were there any areas that got a lot of issues? How many regressions from a prior Scala 3 release were there? Which were designated for an MSc project or an Issue Spree?
 - If new labels were created or old ones were removed, or there is any other feedback on how to improve the Tsardom, mention that.
 - Unassigned PRs and issues that the team failed to classify: bring them one by one so that the team can make a decision on them.
+
+# Maintenance List
+The following is the list of all the principal areas of the compiler and the core teams members who are responsible for their maintenance:
+
+- Typer: @odersky, @smarter, (@dwijnand)
+- Erasure: @smarter, @odersky
+- Enums: @bishabosha
+- Pattern Matching: @dwijnand, (@liufengyun), @sjrd
+- Inline: @nicolasstucki, @odersky
+- Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @aherlihy
+- Match types: @OlivierBlanvillain, @dwijnand
+- GADT: @abgruszecki, @dwijnand
+- Scaladoc: @KacperFKorban,  @BarkingBad, @pikinier20
+- Initialization checker: @olhotak, @liufengyun, @anatoliykmetyuk
+- Safe nulls: @noti0na1, @olhotak
+- tailrec: @sjrd, @mbovel
+- JS backend: @sjrd
+- forward compat (-scala-release): @prolativ, @Kordyjan, (@nicolasstucki)
+- Benchmarks: @anatoliykmetyuk, @mbovel
+- REPL: Dale, @anatoliykmetyuk, @prolativ
+- CI: @anatoliykmetyuk
+- Community Build: @anatoliykmetyuk
+- Vulpix: Dale, @prolativ
+- JVM backend: @sjrd (review only), @Kordyjan
+- Derivation & Mirrors: @bishabosha, (@dwijnand)
+- Linting (especially unused warnings) / Reporting UX  : VirtusLab TBD?
+- Java-compat: @Kordyjan
