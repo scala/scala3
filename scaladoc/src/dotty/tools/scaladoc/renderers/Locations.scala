@@ -34,7 +34,6 @@ trait Locations(using ctx: DocContext):
     cache.get(dri) match
       case null =>
         val path = dri match
-          // case `docsRootDRI` => List("docs", "index")
           case `apiPageDRI` =>
             if ctx.args.apiSubdirectory && ctx.staticSiteContext.nonEmpty
               then List("api", "index")

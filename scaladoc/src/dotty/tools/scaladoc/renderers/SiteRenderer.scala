@@ -22,7 +22,7 @@ trait SiteRenderer(using DocContext) extends Locations:
   def templateToPage(t: LoadedTemplate, staticSiteCtx: StaticSiteContext): Page =
     val dri = staticSiteCtx.driFor(t.file.toPath)
     val content = ResolvedTemplate(t, staticSiteCtx)
-    Page(Link(t.templateFile.title.name, dri), content, t.children.map(templateToPage(_, staticSiteCtx)))
+    Page(Link(t.templateFile.title.name, dri), content, t.children.map(templateToPage(_, staticSiteCtx)), t.hidden)
 
   private val HashRegex = "([^#]+)(#.+)".r
 

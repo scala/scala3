@@ -44,7 +44,13 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           Using(Files.walk(file)) { stream =>
             stream.iterator().asScala.toSeq
               .map(from => Resource.File(resourceFile.toPath.relativize(from).toString, from))
-          }.get
+          }.fold (
+            { t =>
+              report.warn(s"Error occured while processing _assets file.", t)
+              Seq.empty
+            },
+            identity
+          )
         }
       }
     val resources = staticSiteResources ++ allResources(allPages) ++ onlyRenderedResources
@@ -115,7 +121,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           )
         )
 
-      nav.children match
+      nav.children.filterNot(_.hidden) match
         case Nil => isSelected -> div(cls := s"ni ${if isSelected then "expanded" else ""}")(linkHtml())
         case children =>
           val nested = children.map(renderNested(_))

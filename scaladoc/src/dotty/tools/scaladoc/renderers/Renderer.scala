@@ -15,7 +15,7 @@ import java.nio.file.Files
 import java.nio.file.FileVisitOption
 import java.io.File
 
-case class Page(link: Link, content: Member | ResolvedTemplate | String, children: Seq[Page]):
+case class Page(link: Link, content: Member | ResolvedTemplate | String, children: Seq[Page], hidden: Boolean = false):
   def withNewChildren(newChildren: Seq[Page]) = copy(children = children ++ newChildren)
 
   def withTitle(newTitle: String) = copy(link = link.copy(name = newTitle))
@@ -74,12 +74,12 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
             )
           updatedTemplates.result()
 
-        val newTemplates = updateSettings(Seq(siteContext.staticSiteRoot.rootTemplate), newSettings.to(ListBuffer))
+        val newTemplates = updateSettings(Seq(rootTemplate), newSettings.to(ListBuffer))
         val templatePages = newTemplates.map(templateToPage(_, siteContext))
 
         val newRoot = newTemplates.head
 
-        if newRoot.children.size == 0 && newRoot.templateFile.rawCode == ""
+        if newRoot.children.isEmpty && newRoot.templateFile.rawCode.isEmpty
         then rootPckPage.withTitle(args.name)
         else {
           val newRootPage = templateToPage(newRoot, siteContext)
