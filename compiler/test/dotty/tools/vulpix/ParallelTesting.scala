@@ -14,13 +14,14 @@ import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors
 
 import scala.collection.mutable
 import scala.io.{Codec, Source}
+import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
 import scala.collection.mutable.ListBuffer
 
 import dotc.{Compiler, Driver}
-import dotc.core.Contexts._
+import dotc.core.Contexts.*
 import dotc.decompiler
 import dotc.report
 import dotc.interfaces.Diagnostic.ERROR
@@ -750,17 +751,26 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def compilerCrashed = reporters.exists(_.compilerCrashed)
       lazy val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
-      def hasMissingAnnotations = getMissingExpectedErrors(errorMap, reporters.iterator.flatMap(_.errors))
+      lazy val (expected, unexpected) = getMissingExpectedErrors(errorMap, reporters.iterator.flatMap(_.errors))
+      def hasMissingAnnotations = expected.nonEmpty || unexpected.nonEmpty
       def showErrors = "-> following the errors:\n" +
-        reporters.flatMap(_.allErrors.map(e => (e.pos.line + 1).toString + ": " + e.message)).mkString(start = "at ", sep = "\n at ", end = "")
+        reporters.flatMap(_.allErrors.sortBy(_.pos.line).map(e => s"${e.pos.line + 1}: ${e.message}")).mkString(" at ", "\n at ", "")
 
-      if (compilerCrashed) Some(s"Compiler crashed when compiling: ${testSource.title}")
-      else if (actualErrors == 0) Some(s"\nNo errors found when compiling neg test $testSource")
-      else if (expectedErrors == 0) Some(s"\nNo errors expected/defined in $testSource -- use // error or // nopos-error")
-      else if (expectedErrors != actualErrors) Some(s"\nWrong number of errors encountered when compiling $testSource\nexpected: $expectedErrors, actual: $actualErrors " + showErrors)
-      else if (hasMissingAnnotations) Some(s"\nErrors found on incorrect row numbers when compiling $testSource\n$showErrors")
-      else if (!errorMap.isEmpty) Some(s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap")
-      else None
+      Option {
+        if compilerCrashed then s"Compiler crashed when compiling: ${testSource.title}"
+        else if actualErrors == 0 then s"\nNo errors found when compiling neg test $testSource"
+        else if expectedErrors == 0 then s"\nNo errors expected/defined in $testSource -- use // error or // nopos-error"
+        else if expectedErrors != actualErrors then
+          s"""|Wrong number of errors encountered when compiling $testSource
+              |expected: $expectedErrors, actual: $actualErrors
+              |${expected.mkString("Unfulfilled expectations:\n", "\n", "")}
+              |${unexpected.mkString("Unexpected errors:\n", "\n", "")}
+              |$showErrors
+              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
+        else if hasMissingAnnotations then s"\nErrors found on incorrect row numbers when compiling $testSource\n$showErrors"
+        else if !errorMap.isEmpty then s"\nExpected error(s) have {<error position>=<unreported error>}: $errorMap"
+        else null
+      }
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
@@ -775,72 +785,59 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     //
     // We collect these in a map `"file:row" -> numberOfErrors`, for
     // nopos errors we save them in `"file" -> numberOfNoPosErrors`
-    def getErrorMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) = {
+    def getErrorMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) =
+      val comment = raw"//( *)(nopos-|anypos-)?error".r
       val errorMap = new HashMap[String, Integer]()
       var expectedErrors = 0
+      def bump(key: String): Unit =
+        errorMap.get(key) match
+          case null => errorMap.put(key, 1)
+          case n => errorMap.put(key, n+1)
+        expectedErrors += 1
       files.filter(isSourceFile).foreach { file =>
         Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
           source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
-            val errors = line.toSeq.sliding("// error".length).count(_.unwrap == "// error")
-            if (errors > 0)
-              errorMap.put(s"${file.getPath}:$lineNbr", errors)
-
-            val noposErrors = line.toSeq.sliding("// nopos-error".length).count(_.unwrap == "// nopos-error")
-            if (noposErrors > 0) {
-              val nopos = errorMap.get("nopos")
-              val existing: Integer = if (nopos eq null) 0 else nopos
-              errorMap.put("nopos", noposErrors + existing)
+            comment.findAllMatchIn(line).foreach { m =>
+              m.group(2) match
+                case prefix if m.group(1).isEmpty =>
+                  val what = Option(prefix).getOrElse("")
+                  echo(s"Warning: ${file.getCanonicalPath}:${lineNbr}: found `//${what}error` but expected `// ${what}error`, skipping comment")
+                case "nopos-" => bump("nopos")
+                case "anypos-" => bump("anypos")
+                case _ => bump(s"${file.getPath}:${lineNbr+1}")
             }
-
-            val anyposErrors = line.toSeq.sliding("// anypos-error".length).count(_.unwrap == "// anypos-error")
-            if (anyposErrors > 0) {
-              val anypos = errorMap.get("anypos")
-              val existing: Integer = if (anypos eq null) 0 else anypos
-              errorMap.put("anypos", anyposErrors + existing)
-            }
-
-            val possibleTypos = List("//error" -> "// error", "//nopos-error" -> "// nopos-error", "//anypos-error" -> "// anypos-error")
-            for ((possibleTypo, expected) <- possibleTypos) {
-              if (line.contains(possibleTypo))
-                echo(s"Warning: Possible typo in error tag in file ${file.getCanonicalPath}:$lineNbr: found `$possibleTypo` but expected `$expected`")
-            }
-
-            expectedErrors += anyposErrors + noposErrors + errors
           }
         }.get
       }
-
       (errorMap, expectedErrors)
-    }
+    end getErrorMapAndExpectedCount
 
-    def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[Diagnostic]) = !reporterErrors.forall { error =>
-      val pos1 = error.pos.nonInlined
-      val key = if (pos1.exists) {
-        def toRelative(path: String): String =  // For some reason, absolute paths leak from the compiler itself...
-          path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
-        val fileName = toRelative(pos1.source.file.toString)
-        s"$fileName:${pos1.line}"
+    // return unfulfilled expected errors and unexpected diagnostics
+    def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[Diagnostic]): (List[String], List[String]) =
+      val unexpected, unpositioned = ListBuffer.empty[String]
+      // For some reason, absolute paths leak from the compiler itself...
+      def relativize(path: String): String = path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
+      def seenAt(key: String): Boolean =
+        errorMap.get(key) match
+          case null => false
+          case 1 => errorMap.remove(key) ; true
+          case n => errorMap.put(key, n - 1) ; true
+      def sawDiagnostic(d: Diagnostic): Unit =
+        d.pos.nonInlined match
+          case srcpos if srcpos.exists =>
+            val key = s"${relativize(srcpos.source.file.toString)}:${srcpos.line + 1}"
+            if !seenAt(key) then unexpected += key
+          case srcpos =>
+            if !seenAt("nopos") then unpositioned += relativize(srcpos.source.file.toString)
 
-      } else "nopos"
+      reporterErrors.foreach(sawDiagnostic)
 
-      val errors = errorMap.get(key)
+      errorMap.get("anypos") match
+        case n if n == unexpected.size => errorMap.remove("anypos") ; unexpected.clear()
+        case _ =>
 
-      def missing = { echo(s"Error reported in ${pos1.source}, but no annotation found") ; false }
-
-      if (errors ne null) {
-        if (errors == 1) errorMap.remove(key)
-        else errorMap.put(key, errors - 1)
-        true
-      }
-      else if key == "nopos" then
-        missing
-      else
-        errorMap.get("anypos") match
-          case null  => missing
-          case 1     => errorMap.remove("anypos") ; true
-          case slack => if slack < 1 then missing
-                        else errorMap.put("anypos", slack - 1) ; true
-    }
+      (errorMap.asScala.keys.toList, (unexpected ++ unpositioned).toList)
+    end getMissingExpectedErrors
   }
 
   private final class NoCrashTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)

@@ -1,0 +1,8 @@
+-- Error: tests/neg/f-interpolator-tests.scala:4:19 --------------------------------------------------------------------
+4 |  def `um uh` = f"$s%d"  // error
+  |                   ^
+  |                   Found: (T.this.s : String), Required: Int, Long, Byte, Short, BigInt
+-- Error: tests/neg/f-interpolator-tests.scala:10:10 -------------------------------------------------------------------
+10 |    f"x % y = ${x % y}%d" // error: illegal conversion character 'y'
+   |          ^
+   |          illegal conversion character 'y'

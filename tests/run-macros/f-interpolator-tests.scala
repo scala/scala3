@@ -1,10 +1,9 @@
-/**
-  * These tests test all the possible formats the f interpolator has to deal with.
-  * The tests are sorted by argument category as the arguments are on https://docs.oracle.com/javase/6/docs/api/java/util/Formatter.html#detail
-  *
-  *
-  * Some tests come from https://github.com/lampepfl/dotty/pull/3894/files
-  */
+/** These tests test all the possible formats the f interpolator has to deal with.
+ *
+ *  The tests are sorted by argument category as the arguments are on https://docs.oracle.com/javase/6/docs/api/java/util/Formatter.html#detail
+ *
+ *  Some tests come from https://github.com/lampepfl/dotty/pull/3894/files
+ */
 object Test {
   def main(args: Array[String]) = {
     println(f"integer: ${5}%d")
@@ -23,6 +22,7 @@ object Test {
     dateArgsTests
     specificLiteralsTests
     argumentsTests
+    unitTests
   }
 
   def multilineTests = {
@@ -199,5 +199,209 @@ object Test {
   def argumentsTests = {
     println(f"${"a"}%s ${"b"}%s %<s")
   }
+
+  def unitTests =
+    val test = FormatInterpolatorTest()
+    test.`f interpolator baseline`
+    test.fIf
+    test.fIfNot
 }
 
+import java.text.DecimalFormat
+
+import scala.language.implicitConversions
+import scala.util.chaining._
+
+class FormatInterpolatorTest {
+  import StringContextTestUtils.*
+  implicit val stringToBoolean: Conversion[String, Boolean] = _.toBoolean
+  implicit def stringToChar(s: String): Char = s(0)
+  implicit def str2fmt(s: String): java.util.Formattable = new java.util.Formattable {
+    def formatTo(f: java.util.Formatter, g: Int, w: Int, p: Int) = f.format("%s", s)
+  }
+  import java.util.{Calendar, Locale}
+  val cal = Calendar.getInstance(Locale.US).tap(_.set(2012, Calendar.MAY, 26))
+  implicit def strToDate(x: String): Calendar = Calendar.getInstance(Locale.US).tap(_.set(2012, Calendar.MAY, 26))
+
+  def assertEquals(expected: String, actual: String): Unit =
+    assert(expected == actual, s"[$expected] != [$actual]")
+
+  def `f interpolator baseline`: Unit =
+
+    val b_true  = true
+    val b_false = false
+
+    val i = 42
+
+    val f_zero = 0.0
+    val f_zero_- = -0.0
+
+    val s = "Scala"
+
+    val fff  = new java.util.Formattable {
+      def formatTo(f: java.util.Formatter, g: Int, w: Int, p: Int) = f.format("4")
+    }
+
+    val ss = List[(String, String)] (
+      // 'b' / 'B' (category: general)
+      // -----------------------------
+      f"${b_false}%b" -> "false",
+      f"${b_true}%b"  -> "true",
+
+      f"${null}%b"  -> "false",
+      f"${false}%b" -> "false",
+      f"${true}%b"  -> "true",
+      f"${true && false}%b"                    -> "false",
+      f"${java.lang.Boolean.valueOf(false)}%b" -> "false",
+      f"${java.lang.Boolean.valueOf(true)}%b"  -> "true",
+
+      f"${null}%B"  -> "FALSE",
+      f"${false}%B" -> "FALSE",
+      f"${true}%B"  -> "TRUE",
+      f"${java.lang.Boolean.valueOf(false)}%B"  -> "FALSE",
+      f"${java.lang.Boolean.valueOf(true)}%B"   -> "TRUE",
+
+      f"${"true"}%b" -> "true",
+      f"${"false"}%b"-> "false",
+
+      // 'h' | 'H' (category: general)
+      // -----------------------------
+      f"${null}%h"   -> "null",
+      f"${f_zero}%h"   -> "0",
+      f"${f_zero_-}%h" -> "80000000",
+      f"${s}%h"       -> "4c01926",
+
+      f"${null}%H"  -> "NULL",
+      f"${s}%H"       -> "4C01926",
+
+      // 's' | 'S' (category: general)
+      // -----------------------------
+      f"${null}%s"  -> "null",
+      f"${null}%S"  -> "NULL",
+      f"${s}%s"     -> "Scala",
+      f"${s}%S"     -> "SCALA",
+      f"${5}"       -> "5",
+      f"${i}"       -> "42",
+      f"${Symbol("foo")}"    -> "Symbol(foo)",
+
+      f"${Thread.State.NEW}" -> "NEW",
+
+      // 'c' | 'C' (category: character)
+      // -------------------------------
+      f"${120:Char}%c"   -> "x",
+      f"${120:Byte}%c"   -> "x",
+      f"${120:Short}%c"  -> "x",
+      f"${120:Int}%c"    -> "x",
+      f"${java.lang.Character.valueOf('x')}%c"   -> "x",
+      f"${java.lang.Byte.valueOf(120:Byte)}%c"   -> "x",
+      f"${java.lang.Short.valueOf(120:Short)}%c" -> "x",
+      f"${java.lang.Integer.valueOf(120)}%c"     -> "x",
+
+      f"${'x' : java.lang.Character}%c"     -> "x",
+      f"${(120:Byte) : java.lang.Byte}%c"   -> "x",
+      f"${(120:Short) : java.lang.Short}%c" -> "x",
+      f"${120 : java.lang.Integer}%c"       -> "x",
+
+      f"${"Scala"}%c"   -> "S",
+
+      // 'd' | 'o' | 'x' | 'X' (category: integral)
+      // ------------------------------------------
+      f"${120:Byte}%d"    -> "120",
+      f"${120:Short}%d"   -> "120",
+      f"${120:Int}%d"     -> "120",
+      f"${120:Long}%d"    -> "120",
+      f"${60 * 2}%d"      -> "120",
+      f"${java.lang.Byte.valueOf(120:Byte)}%d"   -> "120",
+      f"${java.lang.Short.valueOf(120:Short)}%d" -> "120",
+      f"${java.lang.Integer.valueOf(120)}%d"     -> "120",
+      f"${java.lang.Long.valueOf(120)}%d"        -> "120",
+      f"${120 : java.lang.Integer}%d"        -> "120",
+      f"${120 : java.lang.Long}%d"           -> "120",
+      f"${BigInt(120)}%d"                    -> "120",
+
+      f"${new java.math.BigInteger("120")}%d" -> "120",
+
+      f"${4}%#10X" -> "       0X4",
+
+      f"She is ${fff}%#s feet tall." -> "She is 4 feet tall.",
+
+      f"Just want to say ${"hello, world"}%#s..." -> "Just want to say hello, world...",
+
+      //{ implicit val strToShort: Conversion[String, Short] = java.lang.Short.parseShort ; f"${"120"}%d" } -> "120",
+      //{ implicit val strToInt = (s: String) => 42 ; f"${"120"}%d" } -> "42",
+
+      // 'e' | 'E' | 'g' | 'G' | 'f' | 'a' | 'A' (category: floating point)
+      // ------------------------------------------------------------------
+      f"${3.4f}%e" -> locally"3.400000e+00",
+      f"${3.4}%e"  -> locally"3.400000e+00",
+      f"${3.4f : java.lang.Float}%e" -> locally"3.400000e+00",
+      f"${3.4 : java.lang.Double}%e" -> locally"3.400000e+00",
+
+      f"${BigDecimal(3.4)}%e" -> locally"3.400000e+00",
+
+      f"${new java.math.BigDecimal(3.4)}%e" -> locally"3.400000e+00",
+
+      f"${3}%e"  -> locally"3.000000e+00",
+      f"${3L}%e" -> locally"3.000000e+00",
+
+      // 't' | 'T' (category: date/time)
+      // -------------------------------
+      f"${cal}%TD"                 -> "05/26/12",
+      f"${cal.getTime}%TD"         -> "05/26/12",
+      f"${cal.getTime.getTime}%TD" -> "05/26/12",
+      f"""${"1234"}%TD"""        -> "05/26/12",
+
+      // literals and arg indexes
+      f"%%" -> "%",
+      f" mind%n------%nmatter" ->
+       """| mind
+          |------
+          |matter""".stripMargin.linesIterator.mkString(System.lineSeparator),
+      f"${i}%d %<d ${9}%d"   -> "42 42 9",
+      f"${7}%d %<d ${9}%d"   -> "7 7 9",
+      f"${7}%d %2$$d ${9}%d" -> "7 9 9",
+
+      f"${null}%d %<B" -> "null FALSE",
+
+      f"${5: Any}"      -> "5",
+      f"${5}%s%<d"      -> "55",
+      f"${3.14}%s,%<f"  -> locally"3.14,${"3.140000"}",
+
+      f"z" -> "z"
+    )
+
+    for ((f, s) <- ss) assertEquals(s, f)
+  end `f interpolator baseline`
+
+  def fIf =
+    val res = f"${if true then 2.5 else 2.5}%.2f"
+    val expected = locally"2.50"
+    assertEquals(expected, res)
+
+  def fIfNot =
+    val res = f"${if false then 2.5 else 3.5}%.2f"
+    val expected = locally"3.50"
+    assertEquals(expected, res)
+
+  // in Scala 2, [A >: Any] forced not to convert 3 to 3.0; Scala 3 harmonics should also respect lower bound.
+  def fHeteroArgs() =
+    val res = f"${3.14}%.2f rounds to ${3}%d"
+    val expected = locally"${"3.14"} rounds to 3"
+    assertEquals(expected, res)
+}
+
+object StringContextTestUtils:
+  private val decimalSeparator: Char = new DecimalFormat().getDecimalFormatSymbols().getDecimalSeparator()
+  private val numberPattern = """(\d+)\.(\d+.*)""".r
+  private def applyProperLocale(number: String): String =
+    val numberPattern(intPart, fractionalPartAndSuffix) = number
+    s"$intPart$decimalSeparator$fractionalPartAndSuffix"
+
+  extension (sc: StringContext)
+    // Use this String interpolator to avoid problems with a locale-dependent decimal mark.
+    def locally(numbers: String*): String =
+      val numbersWithCorrectLocale = numbers.map(applyProperLocale)
+      sc.s(numbersWithCorrectLocale: _*)
+
+    // Handles cases like locally"3.14" - it's prettier than locally"${"3.14"}".
+    def locally(): String = sc.parts.map(applyProperLocale).mkString
