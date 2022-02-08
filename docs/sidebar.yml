@@ -116,6 +116,7 @@ sidebar:
           - page: docs/reference/experimental/named-typeargs.md
           - page: docs/reference/experimental/numeric-literals.md
           - page: docs/reference/experimental/explicit-nulls.md
+          - page: docs/reference/experimental/cc.md
       - page: docs/reference/syntax.md
       - title: Language Versions
         index: docs/reference/language-versions/language-versions.md
