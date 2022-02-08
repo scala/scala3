@@ -43,3 +43,14 @@ object string:
    */
   @experimental
   type Matches[+S <: String, +Regex <: String] <: Boolean
+
+  /** Returns the Char type at the specified index.
+   *  An index ranges from 0 to Length[S] - 1. The first Char of
+   *  the sequence is at index 0, the next at index 1, and so on.
+   *  ```scala
+   *  val c: CharAt["hello", 0] = 'h'
+   *  ```
+   *  @syntax markdown
+   */
+  @experimental
+  type CharAt[+S <: String, +Idx <: Int] <: Char

@@ -48,6 +48,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.compiletime.ops.string$.Length",
   "scala.compiletime.ops.string$.Matches",
   "scala.compiletime.ops.string$.Substring",
+  "scala.compiletime.ops.string$.CharAt",
 
   //// New APIs: Mirror
   // Can be stabilized in 3.2.0 or later.

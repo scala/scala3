@@ -234,6 +234,7 @@ object StdNames {
     final val Plus: N                 = "+"
     final val S: N                    = "S"
     final val Substring: N            = "Substring"
+    final val CharAt: N               = "CharAt"
     final val Times: N                = "*"
     final val ToInt: N                = "ToInt"
     final val ToLong: N               = "ToLong"
