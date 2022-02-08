@@ -33,7 +33,7 @@ echo "testing that paths SourceFile annotations are relativized"
 clear_out "$OUT"
 "$SBT" "scalac -d $OUT/out.jar -sourceroot tests/pos $(pwd)/tests/pos/i10430/lib.scala $(pwd)/tests/pos/i10430/app.scala"
 "$SBT" "scalac -print-tasty -color:never $OUT/out.jar" > "$tmp"
-cat "$tmp" # for debugging
+# cat "$tmp" # for debugging
 grep -q ": i10430/lib.scala" "$tmp"
 grep -q ": i10430/app.scala" "$tmp"
 grep -q "[i10430/lib.scala]" "$tmp"
