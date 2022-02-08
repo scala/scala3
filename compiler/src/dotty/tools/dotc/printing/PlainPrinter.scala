@@ -542,7 +542,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case '"' => "\\\""
     case '\'' => "\\\'"
     case '\\' => "\\\\"
-    case _ => if ch.isControl then f"\\u${ch.toInt}%04x" else String.valueOf(ch)
+    case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch)
   }
 
   def toText(const: Constant): Text = const.tag match {
