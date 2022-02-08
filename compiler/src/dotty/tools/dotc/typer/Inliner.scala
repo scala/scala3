@@ -853,7 +853,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           evidence.tpe match
             case fail: Implicits.SearchFailureType =>
               val msg = evTyper.missingArgMsg(evidence, tpt.tpe, "")
-              errorTree(tpt, em"$msg")
+              errorTree(call, em"$msg")
             case _ =>
               evidence
         return searchImplicit(callTypeArgs.head)

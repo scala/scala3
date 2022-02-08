@@ -4,4 +4,12 @@
   |  cannot reduce inline match with
   |   scrutinee:  "f" : ("f" : String)
   |   patterns :  case _:Int
-  | This location contains code that was inlined from cannot-reduce-inline-match.scala:3
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |·····················································································································
+  |This location contains code that was inlined from cannot-reduce-inline-match.scala:3
+3 |    inline x match {
+  |           ^
+4 |      case _: Int =>
+5 |    }
+  ·---------------------------------------------------------------------------------------------------------------------
