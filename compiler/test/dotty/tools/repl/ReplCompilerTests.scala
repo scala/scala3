@@ -282,14 +282,11 @@ class ReplVerboseTests extends ReplTest(ReplTest.defaultOptions :+ "-verbose"):
 end ReplVerboseTests
 
 class FewerBracesTests extends ReplTest(ReplTest.defaultOptions :+ "-language:experimental.fewerBraces" :+ "-Ydebug-error"):
-  @Test def i13097 = fromInitialState { implicit state =>
-    given Context = state.context
+  @Test def i13097_1 = contextually {
     assert(ParseResult.isIncomplete("val x = List(42).foreach:"))
   }
 
-  @Test def i13097Part2 = fromInitialState { implicit state =>
-    given Context = state.context
+  @Test def i13097_2 = contextually {
     assert(ParseResult.isIncomplete("class C:"))
   }
-
 end FewerBracesTests

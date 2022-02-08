@@ -1247,13 +1247,17 @@ object Parsers {
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && p(in.next.token)) newLineOpt()
 
-    def colonAtEOLOpt(): Unit = {
+    def colonAtEOLOpt(): Boolean = {
       possibleColonOffset = in.lastOffset
-      if in.token == COLONEOL then in.nextToken()
+      if in.token == COLONEOL then {
+        in.nextToken()
+        true
+      } else false
     }
 
-    def argumentStart(): Unit =
-      colonAtEOLOpt()
+    // returns true if COLONEOL encountered
+    def argumentStart(): Boolean =
+      val result = colonAtEOLOpt()
       if migrateTo3 && in.token == NEWLINE && in.next.token == LBRACE then
         in.nextToken()
         if in.indentWidth(in.offset) == in.currentRegion.indentWidth then
@@ -1263,6 +1267,7 @@ object Parsers {
                |an argument to the previous expression.${rewriteNotice()}""",
             in.sourcePos())
           patch(source, Span(in.offset), "  ")
+      result
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
@@ -2304,7 +2309,7 @@ object Parsers {
     }
 
     def simpleExprRest(t: Tree, location: Location, canApply: Boolean = true): Tree = {
-      if (canApply) argumentStart()
+      val seenCOLONEOL = if (canApply) argumentStart() else false
       in.token match {
         case DOT =>
           in.nextToken()
@@ -2338,11 +2343,7 @@ object Parsers {
         if !in.isOperator && in.lookahead.isArrow && location != Location.InGuard && in.fewerBracesEnabled =>
           val app = applyToClosure(t, in.offset, convertToParams(termIdent()))
           simpleExprRest(app, location, canApply = true)
-//      Failing tests
-//        tests\pos\indent-colons.scala failed
-//        tests\pos\i12218.scala failed
-//        tests\pos\closure-args.scala failed
-        case EOF if in.fewerBracesEnabled && in.isNestedStart =>
+        case EOF if in.fewerBracesEnabled && seenCOLONEOL =>
           incompleteInputError("indented definitions expected, eof found")
           t
         case _ =>
