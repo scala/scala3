@@ -8,7 +8,7 @@ import collection.mutable
 import Symbols._, Contexts._, Types._, StdNames._, NameOps._
 import ast.Trees._
 import util.Spans._
-import typer.Applications.{isProductMatch, isGetMatch, isProductSeqMatch, productSelectors, productArity, unapplySeqTypeElemTp}
+import typer.Applications.*
 import SymUtils._
 import Flags._, Constants._
 import Decorators._
@@ -325,15 +325,16 @@ object PatternMatcher {
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
 
+        def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
+          ref(defn.RuntimeTuplesModule)
+            .select(defn.RuntimeTuples_apply)
+            .appliedTo(receiver, Literal(Constant(i)))
+            .cast(args(i).tpe.widen)
+
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
-          def tupleApp(i: Int) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
-            ref(defn.RuntimeTuplesModule)
-              .select(defn.RuntimeTuples_apply)
-              .appliedTo(ref(scrutinee), Literal(Constant(i)))
-              .cast(args(i).tpe.widen)
           val isGenericTuple = defn.isTupleClass(caseClass) && !defn.isTupleNType(tree.tpe)
-          val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp) else caseAccessors.map(tupleSel)
+          val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee))) else caseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
         else if (unapp.tpe <:< (defn.BooleanType))
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
@@ -345,6 +346,9 @@ object PatternMatcher {
                 .map(ref(unappResult).select(_))
               matchArgsPlan(selectors, args, onSuccess)
             }
+            else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
+              val components = (0 until foldApplyTupleType(unappResult.denot.info).length).toList.map(tupleApp(_, ref(unappResult)))
+              matchArgsPlan(components, args, onSuccess)
             else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.srcPos)) {
               val arity = productArity(unapp.tpe.widen, unapp.srcPos)
               unapplyProductSeqPlan(unappResult, args, arity)
