@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Explicit Nulls"
-movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/explicit-nulls.html
+movedTo: https://docs.scala-lang.org/scala3/reference/experimental/explicit-nulls.html
 ---
 
 Explicit nulls is an opt-in feature that modifies the Scala type system, which makes reference types
