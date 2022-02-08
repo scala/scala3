@@ -24,10 +24,22 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
       }
   }
 
+  /** Method loading static site structure based on YAML configuration file.
+   *
+   * The rendered static site will only contain pages that are present in YAML.
+   * The following rules are applied:
+   *  - Each subsection will be a separate directory.
+   *  - Nested subsections will result in nested directories.
+   *  - If the subsection object contains location of index and doesn't contain any item,
+   *    items are loaded using file system from the directory of the index file.
+   *  - By default, directory name is a subsection title converted to kebab case.
+   *    However, you can override default name by setting "directory" property of the subsection object.
+   *
+   */
   def loadBasedOnYaml(yamlRoot: Sidebar.Root): StaticSiteRoot = {
     val rootDest = ctx.docsPath.resolve("index.html").toFile
     val rootIndex = yamlRoot.index
-      .map(Paths.get(root.getPath, _).toFile)
+      .map(ctx.docsPath.resolve(_).toFile)
       .filter(_.exists)
       .fold(emptyTemplate(rootDest, "index")) { f =>
         val loaded = loadTemplateFile(f)
@@ -36,13 +48,13 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
         loaded
       }.copy(title = TemplateName.FilenameDefined(args.name))
 
-    def loadChild(pathFromRoot: Path): Sidebar => LoadedTemplate = {
+    def loadChild(pathFromRoot: Path): Sidebar.Child => LoadedTemplate = {
       case Sidebar.Category(optionTitle, optionIndexPath, nested, dir) =>
         val indexPageOpt = optionIndexPath
           .map(relativizeIfNeeded)
           .map(_.toFile)
           .filter(_.exists)
-          .map(loadTemplateFile)
+          .map(loadTemplateFile(_))
         val title = (
           optionTitle.map(TemplateName.SidebarDefined(_)) ++
           indexPageOpt.map(_.title)
@@ -70,18 +82,12 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
         }
 
         LoadedTemplate(indexPage, children, categoryPath.resolve("index.html").toFile)
-      case Sidebar.Page(optionTitle, pagePath) =>
+      case Sidebar.Page(optionTitle, pagePath, hidden) =>
         val path = relativizeIfNeeded(pagePath)
         val file = path.toFile
-        val templateFile = loadTemplateFile(file)
-        val withUpdatedTitle = optionTitle.fold(templateFile) { t => templateFile.title match
-          case _: TemplateName.FilenameDefined => templateFile.copy(title = TemplateName.SidebarDefined(t))
-          case _ => templateFile
-        }
-        LoadedTemplate(withUpdatedTitle, List.empty, pathFromRoot.resolve(file.getName).toFile)
-      case Sidebar.Root(_, _) =>
-        // Cannot happen
-        ???
+        val title = optionTitle.map(TemplateName.SidebarDefined(_))
+        val templateFile = loadTemplateFile(file, title)
+        LoadedTemplate(templateFile, List.empty, pathFromRoot.resolve(file.getName).toFile, hidden)
     }
     val rootTemplate = LoadedTemplate(rootIndex, yamlRoot.pages.map(c => loadChild(ctx.docsPath)(c)) ++ loadBlog(), rootDest)
     val mappings = createMapping(rootTemplate)
@@ -175,7 +181,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
 
       val children = currRoot.listFiles.toList
         .filter(_.toPath != indexPageOpt.getOrElse(null))
-      Some(LoadedTemplate(indexPage, children.flatMap(loadRecursively(_, destMappingFunc)), destMappingFunc(indexPage.file)))
+      Some(LoadedTemplate(indexPage, children.flatMap(loadRecursively(_, destMappingFunc)).sortBy(_.templateFile.title.name), destMappingFunc(indexPage.file)))
     }
     else if (currRoot.exists && ctx.siteExtensions.exists(ext => currRoot.getName.endsWith(ext))) {
       val templateFile = loadTemplateFile(currRoot)

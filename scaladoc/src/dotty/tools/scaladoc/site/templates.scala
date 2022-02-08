@@ -115,25 +115,9 @@ case class TemplateFile(
     // Library requires mutable maps..
     val mutableProperties = new JHashMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
 
-    val tag = new Tag("highlight"):
-      override def render(context: TemplateContext, nodes: Array[? <: LNode]): Object =
-        super.asString(nodes(0).render(context), context) match
-          case "diff" =>
-            s"<pre><code class=\"language-diff hljs\" data-lang=\"diff\">${super.asString(nodes(1).render(context), context)}</code></pre>\n\n"
-          case _ =>
-            report.warn("Unsupported highlight value. Currenlty supported values are: `diff`", file)(using ssctx.outerCtx)
-            s"```${super.asString(nodes(1).render(context), context)}```\n\n"
-
-    val tag2 = new Tag("link"):
-      override def render(context: TemplateContext, nodes: Array[? <: LNode]): Object =
-        super.asString(nodes(0).render(context), context) match
-          case sth =>
-            report.warn(s"Unsupported link tag. Link to $sth can't be resolved", file)(using ssctx.outerCtx)
-            "/"
-
     val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build()
 
-    val rendered = Template.parse(this.rawCode, parseSettings).`with`(tag).`with`(tag2).render(mutableProperties)
+    val rendered = Template.parse(this.rawCode, parseSettings).render(mutableProperties)
 
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else

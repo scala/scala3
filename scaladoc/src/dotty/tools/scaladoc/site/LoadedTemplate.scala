@@ -16,7 +16,8 @@ case class LazyEntry(getKey: String, value: () => String) extends JMapEntry[Stri
 case class LoadedTemplate(
   templateFile: TemplateFile,
   children: List[LoadedTemplate],
-  file: File):
+  file: File,
+  hidden: Boolean = false):
 
   private def brief(ctx: StaticSiteContext): String =
     try
