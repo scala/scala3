@@ -8,15 +8,18 @@ longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/vars.scala:13:6 ---------------------------------------------------------------
 13 |  var a: String => String = f // error
    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  the mutable variable's type {*} String -> String is not allowed to capture the root capability `*`
+   |  The mutable variable's type {*} String -> String is not allowed to capture the root capability `*`.
+   |  This usually means that a capability persists longer than its allowed lifetime.
 -- Error: tests/neg-custom-args/captures/vars.scala:15:4 ---------------------------------------------------------------
 15 |  b.head // error
    |  ^^^^^^
-   |  the expression's type {*} String -> String is not allowed to capture the root capability `*`
+   |  The expression's type {*} String -> String is not allowed to capture the root capability `*`.
+   |  This usually means that a capability persists longer than its allowed lifetime.
 -- Error: tests/neg-custom-args/captures/vars.scala:30:8 ---------------------------------------------------------------
 30 |  local { cap3 => // error
    |  ^
-   |  the expression's type {*} (x$0: ? String) -> ? String is not allowed to capture the root capability `*`
+   |  The expression's type {*} (x$0: ? String) -> ? String is not allowed to capture the root capability `*`.
+   |  This usually means that a capability persists longer than its allowed lifetime.
 31 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
 32 |    g
 33 |  }

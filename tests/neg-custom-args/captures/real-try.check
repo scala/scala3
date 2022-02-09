@@ -1,7 +1,8 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:12:2 -----------------------------------------------------------
 12 |  try  // error
    |  ^
-   |  the expression's type {*} () -> Unit is not allowed to capture the root capability `*`
+   |  The expression's type {*} () -> Unit is not allowed to capture the root capability `*`.
+   |  This usually means that a capability persists longer than its allowed lifetime.
 13 |    () => foo(1)
 14 |  catch
 15 |    case _: Ex1 => ???
@@ -9,7 +10,8 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:18:2 -----------------------------------------------------------
 18 |  try  // error
    |  ^
-   |  the expression's type {*} () -> ? Cell[Unit] is not allowed to capture the root capability `*`
+   |  The expression's type {*} () -> ? Cell[Unit] is not allowed to capture the root capability `*`.
+   |  This usually means that a capability persists longer than its allowed lifetime.
 19 |    () => Cell(foo(1))
 20 |  catch
 21 |    case _: Ex1 => ???
@@ -17,4 +19,5 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:30:4 -----------------------------------------------------------
 30 |  b.x // error
    |  ^^^
-   |  the expression's type {*} () -> Unit is not allowed to capture the root capability `*`
+   |  The expression's type {*} () -> Unit is not allowed to capture the root capability `*`.
+   |  This usually means that a capability persists longer than its allowed lifetime.

@@ -2,6 +2,13 @@
 16 |    def f = println(c)  // error
    |                    ^
    |                    (c : Cap) cannot be referenced here; it is not included in the allowed capture set {}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-this5.scala:21:15 -------------------------------------
+21 |    val x: A = this // error
+   |               ^^^^
+   |               Found:    (A.this : {c} A)
+   |               Required: A
+
+longer explanation available when compiling with `-explain`
 -- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this5.scala:7:9 ---------------------------------------
 7 |  object D extends C:   // error
   |         ^
