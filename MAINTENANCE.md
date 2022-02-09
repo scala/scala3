@@ -65,7 +65,7 @@ The following is the list of all the principal areas of the compiler and the cor
 - JS backend: @sjrd
 - forward compat (-scala-release): @prolativ, @Kordyjan, (@nicolasstucki)
 - Benchmarks: @anatoliykmetyuk, @mbovel
-- REPL: Dale, @anatoliykmetyuk, @prolativ
+- REPL: @dwijnand, @anatoliykmetyuk, @prolativ
 - CI: @anatoliykmetyuk
 - Community Build: @anatoliykmetyuk
 - Vulpix: Dale, @prolativ
