@@ -1,7 +1,6 @@
 ---
 layout: doc-page
 title: "Capture Checking"
-movedTo: https://docs.scala-lang.org/scala3/reference/experimental/cc.html
 ---
 
 Capture checking is a research project that modifies the Scala type system to track references to capabilities in values. It is currently
@@ -145,7 +144,7 @@ is the same as
 ```
 Contrast with
 ```scala
-({c} A) -> ({d} B)) -> C
+({c} A) -> ({d} B) -> C
 ```
 which is a curried pure function over argument types that can capture `c` and `d`, respectively.
 
@@ -437,6 +436,10 @@ is OK. But at the point of use, it is `*` (because `f` is no longer in scope), w
    |This usually means that a capability persists longer than its allowed lifetime.
 ```
 
+Looking at object graphs, we observe a monotonicity property: The capture set of an object `x` covers the capture sets of all objects reachable through `x`. This property is reflected in the type system by the following _monotonicity rule_:
+
+ - In a class `C` with a field `f`, the capture set `{this}` covers the capture set `{this.f}` as well as any application of the latter set to pure arguments.
+
 ## Checked Exceptions
 
 Scala enables checked exceptions through a language import. Here is an example,
@@ -515,8 +518,6 @@ To integrate exception and capture checking, only two changes are needed:
  - Escape checking is extended to `try` expressions. The result type of a `try` is not allowed to
    capture the universal capability.
 
-
-
 ## A Larger Example
 
 As a larger example, we present an implementation of lazy lists and some use cases. For simplicity,
@@ -558,10 +559,10 @@ end LzyCons
 The `LzyCons` class takes two parameters: A head `hd` and a tail `tl`, which is a function
 returning a `LzyList`. Both the function and its result can capture arbitrary capabilities.
 The result of applying the function is memoized after the first dereference of `tail` in
-the private mutable field `cache`.
+the private mutable field `cache`. Note that the typing of the assignment `cache = tl()` relies on the monotonicity rule for `{this}` capture sets.
 
 Here is an extension method to define an infix cons operator `#:` for lazy lists. It is analogous
-to `::` but it produces a lazy list (without evaluating its right operand) instead of a strict list.
+to `::` but instead of a strict list it produces a lazy list without evaluating its right operand.
 ```scala
 extension [A](x: A)
   def #:(xs1: => {*} LzyList[A]): {xs1} LzyList[A] =
@@ -585,7 +586,7 @@ Here is a use of `tabulate`:
 class LimitExceeded extends Exception
 def squares(n: Int)(using ct: CanThrow[LimitExceeded]) =
   tabulate(10) { i =>
-    if i > 9 then throw Ex1()
+    if i > 9 then throw LimitExceeded()
     i * i
   }
 ```
@@ -615,8 +616,7 @@ extension [A](xs: {*} LzyList[A])
 Their capture annotations are all as one would expect:
 
  - Mapping a lazy list produces a lazy list that captures the original list as well
-   as the (possibly impure) mapping function. Of course, it would also be possible to
-   pass a concrete function argument that is pure.
+   as the (possibly impure) mapping function.
  - Filtering a lazy list produces a lazy list that captures the original list as well
    as the (possibly impure) filtering predicate.
  - Concatenating two lazy lists produces a lazy list that captures both arguments.
@@ -634,7 +634,19 @@ argument does not show up since it is pure. Likewise, if the lazy list
 This demonstrates that capability-based
 effect systems with capture checking are naturally _effect polymorphic_.
 
-This concludes our example. It's worth mentioning that an equivalent program defining and using standard, strict lists would require no capture annotations whatsoever. It would compile exactly as written now in standard Scala 3. This fact is probably one of the greatest plus points of our approach to capture checking.
+This concludes our example. It's worth mentioning that an equivalent program defining and using standard, strict lists would require no capture annotations whatsoever. It would compile exactly as written now in standard Scala 3, yet one gets the capture checking for free. Essentially, `=>` already means "can capture anything" and since in a strict list side effecting operations are not retained in the result, there are no additional captures to record. A strict list could of course capture side-effecting closures in its elements but then tunnelling applies, since
+these elements are represented by a type variable. This means we don't need to annotate anything there either.
+
+Another possibility would be a variant of lazy lists that requires all functions passed to `map`, `filter` and other operations like it to be pure. E.g. `map` on such a list would be defined like this:
+```scala
+extension [A](xs: LzyList[A])
+  def map[B](f: A -> B): LzyList[B] = ...
+```
+That variant would not require any capture annotations either.
+
+To summarize, there are two "sweet spots" of data structure design: strict lists in
+side-effecting or resource-aware code and lazy lists in purely functional code.
+Both are already correctly capture-typed without requiring any explicit annotations. Capture annotations only come into play where the semantics gets more complicated because we deal with delayed effects such as in impure lazy lists or side-effecting iterators over strict lists. This property is probably one of the greatest plus points of our approach to capture checking compared to previous techniques which tend to be more noisy.
 
 ## Function Type Shorthands
 
@@ -682,8 +694,20 @@ that gets propagated and resolved further out.
 
 When a mapping `m` is performed on a capture set variable `C`, a new variable `Cm` is created that contains the mapped elements and that is linked with `C`. If `C` subsequently acquires further elements through propagation, these are also propagated to `Cm` after being transformed by the `m` mapping. `Cm` also gets the same supersets as `C`, mapped again using `m`.
 
+One interesting aspect of the capture checker concerns the implementation of capture tunnelling. The [foundational theory](https://infoscience.epfl.ch/record/290885) on which capture checking is based makes tunnelling explicit through so-called _box_ and
+_unbox_ operations. Boxing hides a capture set and unboxing recovers it. The capture checker inserts virtual box and unbox operations based on actual and expected types similar to the way the type checker inserts implicit conversions. When capture set variables are first introduced, any capture set in a capturing type that is an instance of a type parameter instance is marked as "boxed". A boxing operation is
+inserted if the expected type of an expression is a capturing type with
+a boxed capture set variable. The effect of the insertion is that any references
+to capabilities in the boxed expression are forgotten, which means that capture
+propagation is stopped. Dually, if the actual type of an expression has
+a boxed variable as capture set, an unbox operation is inserted, which adds all
+elements of the capture set to the environment.
+
+Boxing and unboxing has no runtime effect, so the insertion of these operations is  only simulated; the only visible effect is the retraction and insertion
+of variables in the capture sets representing the environment of the currently checked expression.
+
 The `-Ycc-debug` option provides some insight into the workings of the capture checker.
-When it is turned on, capture set variables are printed with an ID and some information about their provenance. For instance, the string `{f, xs}33M5V` indicates a capture set
+When it is turned on, boxed sets are marked explicitly and capture set variables are printed with an ID and some information about their provenance. For instance, the string `{f, xs}33M5V` indicates a capture set
 variable that is known to hold elements `f` and `xs`. The variable's ID is `33`. The `M`
 indicates that the variable was created through a mapping from a variable with ID `5`. The latter is a regular variable, as indicated
  by `V`.
