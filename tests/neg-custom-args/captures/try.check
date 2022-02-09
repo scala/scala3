@@ -3,7 +3,8 @@
 23 |    (x: CanThrow[Exception]) => x
 24 |  }{ // error
    |          ^
-   |          the expression's type {*} CT[Exception] is not allowed to capture the root capability `*`
+   |          The expression's type {*} CT[Exception] is not allowed to capture the root capability `*`.
+   |          This usually means that a capability persists longer than its allowed lifetime.
 25 |    (ex: Exception) => ???
 26 |  }
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:28:43 ------------------------------------------
@@ -23,7 +24,8 @@ longer explanation available when compiling with `-explain`
 38 |        22
 39 |  } {  // error
    |           ^
-   |           the expression's type {*} () -> Int is not allowed to capture the root capability `*`
+   |           The expression's type {*} () -> Int is not allowed to capture the root capability `*`.
+   |           This usually means that a capability persists longer than its allowed lifetime.
 40 |    (ex: Exception) => () => 22
 41 |  }
 -- Error: tests/neg-custom-args/captures/try.scala:51:2 ----------------------------------------------------------------
@@ -34,6 +36,7 @@ longer explanation available when compiling with `-explain`
 50 |      22
 51 |} {  // error
    |             ^
-   |             the expression's type {*} () -> Int is not allowed to capture the root capability `*`
+   |             The expression's type {*} () -> Int is not allowed to capture the root capability `*`.
+   |             This usually means that a capability persists longer than its allowed lifetime.
 52 |  (ex: Exception) => () => 22
 53 |}
