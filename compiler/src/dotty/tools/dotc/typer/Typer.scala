@@ -1227,8 +1227,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case mtpe: MethodType =>
         val pos = paramIndex(param.name)
         if pos < mtpe.paramInfos.length then
-          val ptype = mtpe.paramInfos(pos)
-          if ptype.isRepeatedParam then NoType else ptype
+          mtpe.paramInfos(pos)
+            // This works only if vararg annotations match up.
+            // See neg/i14367.scala for an example where the inferred type is mispredicted. 
+            // Nevertheless, the alternative would be to give up completely, so this is
+            // defensible.
         else NoType
       case _ => NoType
     if target.exists then formal <:< target
@@ -1317,10 +1320,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      */
     var fnBody = tree.body
 
-    def refersTo(arg: untpd.Tree, param: untpd.ValDef): Boolean = arg match {
+    def refersTo(arg: untpd.Tree, param: untpd.ValDef): Boolean = arg match
       case Ident(name) => name == param.name
+      case Typed(arg1, _) if untpd.isWildcardStarArg(arg) => refersTo(arg1, param)
       case _ => false
-    }
 
     /** If parameter `param` appears exactly once as an argument in `args`,
      *  the singleton list consisting of its position in `args`, otherwise `Nil`.
