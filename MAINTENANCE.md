@@ -69,7 +69,7 @@ The following is the list of all the principal areas of the compiler and the cor
 - CI: @anatoliykmetyuk
 - Community Build: @anatoliykmetyuk
 - Vulpix: @dwijnand, @prolativ
-- JVM backend: @sjrd (review only), @Kordyjan
+- JVM backend: @Kordyjan, (@sjrd)
 - Derivation & Mirrors: @bishabosha, (@dwijnand)
 - Linting (especially unused warnings) / Reporting UX  : VirtusLab TBD?
 - Java-compat: @Kordyjan
