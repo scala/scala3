@@ -265,7 +265,7 @@ object Scanners {
     val next = newTokenData
     private val prev = newTokenData
 
-    /** The current region. This is initially an Indented region with indentation width. */
+    /** The current region. This is initially an Indented region with zero indentation width. */
     var currentRegion: Region = Indented(IndentWidth.Zero, Set(), EMPTY, null)
 
 // Get next token ------------------------------------------------------------
@@ -434,8 +434,8 @@ object Scanners {
       && !migrateTo3
       && !noindentSyntax
 
-    /** The indentation width of the given offset */
-    def indentWidth(offset: Offset): IndentWidth = {
+    /** The indentation width of the given offset. */
+    def indentWidth(offset: Offset): IndentWidth =
       import IndentWidth.{Run, Conc}
       def recur(idx: Int, ch: Char, n: Int, k: IndentWidth => IndentWidth): IndentWidth =
         if (idx < 0) k(Run(ch, n))
@@ -452,7 +452,7 @@ object Scanners {
           else recur(idx - 1, ' ', 0, identity)
         }
       recur(offset - 1, ' ', 0, identity)
-    }
+    end indentWidth
 
     /** Handle newlines, possibly inserting an INDENT, OUTDENT, NEWLINE, or NEWLINES token
      *  in front of the current token. This depends on whether indentation is significant or not.
@@ -521,6 +521,7 @@ object Scanners {
           lastWidth = r.width
           newlineIsSeparating = lastWidth <= nextWidth || r.isOutermost
           indentPrefix = r.prefix
+        case _: InString => ()
         case r =>
           indentIsSignificant = indentSyntax
           r.proposeKnownWidth(nextWidth, lastToken)
@@ -1422,7 +1423,7 @@ object Scanners {
     nextToken()
     currentRegion = topLevelRegion(indentWidth(offset))
   }
-  // end Scanner
+  end Scanner
 
   /** A Region indicates what encloses the current token. It can be one of the following
    *
