@@ -113,7 +113,7 @@ def test(fs: {*} FileSystem) =
       }
   xs
 ```
-Here, the `test` method takes a `FileSystem` as a parameter. `fs` is a capability since its type has a non-empty capture set. The capability is passed the `Logger` constructor
+Here, the `test` method takes a `FileSystem` as a parameter. `fs` is a capability since its type has a non-empty capture set. The capability is passed to the `Logger` constructor
 and retained as a field in class `Logger`. Hence, the local variable `l` has type
 `{fs} Logger`: it is a `Logger` which retains the `fs` capability.
 
@@ -223,7 +223,7 @@ was declared with a result type `LazyList[Int]`, we'd get a type error. Here is 
    |                                            Found:    {fs} LazyList[Int]
    |                                            Required: LazyList[Int]
 ```
-Why does is say `{fs} LazyList[Int]` and not `{l} LazyList[Int]`, which is, after all, the type of the returned value `xs`? The reason is that `l` is a local variable in the body of `test`, so it cannot be referred to in a type outside that body. What happens instead is that the type is _widened_ to the smallest supertype that does not mention `l`. Since `l` has capture set `fs`, we have that `{fs}` covers `{l}`, and `{fs}` is acceptable as in a result type of `test`, so `{fs}` is the result of that widening.
+Why does it say `{fs} LazyList[Int]` and not `{l} LazyList[Int]`, which is, after all, the type of the returned value `xs`? The reason is that `l` is a local variable in the body of `test`, so it cannot be referred to in a type outside that body. What happens instead is that the type is _widened_ to the smallest supertype that does not mention `l`. Since `l` has capture set `fs`, we have that `{fs}` covers `{l}`, and `{fs}` is acceptable in a result type of `test`, so `{fs}` is the result of that widening.
 This widening is called _avoidance_; it is not specific to capture checking but applies to all variable references in Scala types.
 
 ## Capability Classes
@@ -277,7 +277,7 @@ itself does not refer to `fs`.
 
 ## Capture Checking of Classes
 
-The principles for capture checking closures also applies to classes. For instance, consider:
+The principles for capture checking closures also apply to classes. For instance, consider:
 ```scala
 class Logger(using fs: FileSystem):
   def log(s: String): Unit = ... summon[FileSystem] ...
@@ -369,7 +369,7 @@ again on access, the capture information "pops out" again. For instance, even th
 ```scala
 () => p.fst : {ct} () -> {ct} Int -> String
 ```
-In other words, references to capabilities "tunnel through" in generic instantiations from creation to access, they do not affect the capture set of the enclosing generic data constructor applications.
+In other words, references to capabilities "tunnel through" in generic instantiations from creation to access; they do not affect the capture set of the enclosing generic data constructor applications.
 This principle may seem surprising at first, but it is the key to make capture checking concise and practical.
 
 ## Escape Checking
@@ -429,7 +429,7 @@ val sneaky = usingLogFile { f => Cell(() => f.write(0)) }
 sneaky.x()
 ```
 At the point where the `Cell` is created, the capture set of the argument is `f`, which
-is OK. But at the point of use, it is `*`, which causes again an error:
+is OK. But at the point of use, it is `*` (because `f` is no longer in scope), which causes again an error:
 ```
    |  sneaky.x()
    |  ^^^^^^^^
@@ -662,14 +662,14 @@ Constraint variables stand for unknown capture sets. A constraint variable is in
 
 Capture sets in explicitly written types are treated as constants (before capture checking, such sets are simply ignored).
 
-The capture checker essentially rechecks the program with the usual typing rules. Every time a subtype requirement between capturing types is checked, this translates to a subcapturing test on capture sets. If the two sets are constant, this is simply as yes/no question, where a no will produce an error message.
+The capture checker essentially rechecks the program with the usual typing rules. Every time a subtype requirement between capturing types is checked, this translates to a subcapturing test on capture sets. If the two sets are constant, this is simply a yes/no question, where a no will produce an error message.
 
 If the lower set `C₁` of a comparison `C₁ <: C₂` is a variable, the set `C₂` is recorded
 as a _superset_ of `C₁`. If the upper set `C₂` is a variable, the elements of `C₁` are _propagated_ to `C₂`. Propagation of an element `x` to a set `C` means that `x` is included as an element in `C`, and it is also propagated
 to all known supersets of `C`. If such a superset is a constant, it is checked that `x` is included in it. If that's not the case, the original comparison `C₁ <: C₂` has no solution and an error is reported.
 
 The type checker also performs various maps on types, for instance when substituting actual argument types for formal parameter types in dependent functions, or mapping
-member types with as "as-seen-from" in a selection. Maps keep track of the variance
+member types with "as-seen-from" in a selection. Maps keep track of the variance
 of positions in a type. The variance is initially covariant, it flips to
 contravariant in function parameter positions, and can be either covariant,
 contravariant, or nonvariant in type arguments, depending on the variance of
