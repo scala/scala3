@@ -404,7 +404,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           case wtp @ CapturingType(parent, refs, _) =>
             refs.disallowRootCapability { () =>
               val kind = if tree.isInstanceOf[ValDef] then "mutable variable" else "expression"
-              report.error(em"the $kind's type $wtp is not allowed to capture the root capability `*`", tree.srcPos)
+              report.error(
+                em"""The $kind's type $wtp is not allowed to capture the root capability `*`.
+                    |This usually means that a capability persists longer than its allowed lifetime.""",
+                tree.srcPos)
             }
           case _ =>
       super.recheckFinish(tpe, tree, pt)
