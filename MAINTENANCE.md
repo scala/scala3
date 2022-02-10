@@ -30,7 +30,7 @@ An issue tsar needs to have all the accesses and privileges required to get thei
 - Access to the LAMP slack to be able to ask for help with the infrastructure, triaging and such
 
 ## Procedures
-To ensure proper health of the infrastructure, the Tsar regularly monitors its proper operation. If a malfunction is detected, it is the Tsar's job to ensure that there’s someone working on it (or solve it on their own).
+To ensure proper health of the infrastructure, the Tsar regularly monitors its proper operation. If a malfunction is detected, the Tsar's job is to ensure that someone is working on it (or solve it on their own).
 
 If it is unclear what area an issue belongs to, the Tsar asks for advice from other team members on Slack or GitHub. If, after asking for advice, it turns out that nobody in the team knows how to classify it, the issue must be classified with a “stat:needs triage” label.
 
