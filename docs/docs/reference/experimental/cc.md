@@ -258,7 +258,7 @@ def test(fs: FileSystem): {fs} String -> Unit =
   (x: String) => Logger(fs).log(x)
 ```
 Here, the body of `test` is a lambda that refers to the capability `fs`, which means that `fs` is retained in the lambda.
-Consequently, the type of the lambda is `{fs} String => Unit`.
+Consequently, the type of the lambda is `{fs} String -> Unit`.
 
 **Note:** Function values are always written with `=>` (or `?=>` for context functions). There is no syntactic
 distinction for pure _vs_ impure function values. The distinction is only made in their types.
@@ -271,8 +271,7 @@ def test(fs: FileSystem) =
   def g() = (x: String) => Logger(fs).log(x)
   f
 ```
-the result of `test` has type `{fs} String => Unit` even though function `f`
-itself does not refer to `fs`.
+the result of `test` has type `{fs} String -> Unit` even though function `f` itself does not refer to `fs`.
 
 ## Capture Checking of Classes
 
@@ -438,7 +437,7 @@ is OK. But at the point of use, it is `*` (because `f` is no longer in scope), w
 
 Looking at object graphs, we observe a monotonicity property: The capture set of an object `x` covers the capture sets of all objects reachable through `x`. This property is reflected in the type system by the following _monotonicity rule_:
 
- - In a class `C` with a field `f`, the capture set `{this}` covers the capture set `{this.f}` as well as any application of the latter set to pure arguments.
+ - In a class `C` with a field `f`, the capture set `{this}` covers the capture set `{this.f}` as well as the capture set of any application of `this.f` to pure arguments.
 
 ## Checked Exceptions
 
