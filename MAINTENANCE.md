@@ -36,7 +36,7 @@ If it is unclear what area an issue belongs to, the Tsar asks for advice from ot
 
 If it is unclear who should review an external PR, the Tsar asks for advice from the rest of the core team. If after asking for advice, it is still unclear who should do it, the reviewer for such a PR will be decided at the next Dotty meeting.
 
-In general, if anything else is unclear for proper fulfilment of responsibilities, the Tsar must proactively seek advice from other team members on Slack or other channels.
+In general, if anything else is unclear for proper fulfillment of responsibilities, the Tsar must proactively seek advice from other team members on Slack or other channels.
 
 ## Reporting
 At the end of their Tsardom, the Tsar reports to the team during the Dotty meeting on the following points:
