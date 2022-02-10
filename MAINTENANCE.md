@@ -11,7 +11,7 @@ Issue Tsar is responsible for:
   - Regressions from an earlier Scala 3 release must be classified with the “regression” label and assigned to the next release’s milestone.
   - Modifying issue labels to best capture information about the issues
     - Attempting to reproduce the issue (or label “stat:cannot reproduce”)
-    - Further minimising the issue or asking the reporter of the issue to minimize it correctly (or label “stat:needs minimization”)
+    - Further minimizing the issue or asking the reporter of the issue to minimize it correctly (or label “stat:needs minimization”)
 
 Other core teammates are responsible for providing information to the Issue Tsar in a timely manner when it is requested if they have that information.
 
