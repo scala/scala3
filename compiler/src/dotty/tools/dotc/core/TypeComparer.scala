@@ -769,7 +769,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // `Mode.RelaxedOverriding` is only enabled when checking Java overriding
             // in explicit nulls, and `Null` becomes a bottom type, which allows
             // `T | Null` being a subtype of `T`.
-            // A type varibale `T` from Java is translated to `T >: Nothing <: Any`.
+            // A type variable `T` from Java is translated to `T >: Nothing <: Any`.
             // However, `null` can always be a value of `T` for Java side.
             // So the best solution here is to let `Null` be bottom type temporarily.
             def isNullable(tp: Type): Boolean = ctx.mode.is(Mode.RelaxedOverriding) || {
