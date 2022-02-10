@@ -1,6 +1,5 @@
-rootIndex: index.md
-pages:
-  # - title: Blog
+index: index.md
+subsection:
   - title: Usage
     subsection:
       - page: usage/sbt-projects.md

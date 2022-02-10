@@ -36,9 +36,9 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
    *    However, you can override default name by setting "directory" property of the subsection object.
    *
    */
-  def loadBasedOnYaml(yamlRoot: Sidebar.Root): StaticSiteRoot = {
+  def loadBasedOnYaml(yamlRoot: Sidebar.Category): StaticSiteRoot = {
     val rootDest = ctx.docsPath.resolve("index.html").toFile
-    val rootIndex = yamlRoot.index
+    val rootIndex = yamlRoot.indexPath
       .map(ctx.docsPath.resolve(_).toFile)
       .filter(_.exists)
       .fold(emptyTemplate(rootDest, "index")) { f =>
@@ -48,7 +48,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
         loaded
       }.copy(title = TemplateName.FilenameDefined(args.name))
 
-    def loadChild(pathFromRoot: Path): Sidebar.Child => LoadedTemplate = {
+    def loadChild(pathFromRoot: Path): Sidebar => LoadedTemplate = {
       case Sidebar.Category(optionTitle, optionIndexPath, nested, dir) =>
         val indexPageOpt = optionIndexPath
           .map(relativizeIfNeeded)
@@ -89,7 +89,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
         val templateFile = loadTemplateFile(file, title)
         LoadedTemplate(templateFile, List.empty, pathFromRoot.resolve(file.getName).toFile, hidden)
     }
-    val rootTemplate = LoadedTemplate(rootIndex, yamlRoot.pages.map(c => loadChild(ctx.docsPath)(c)) ++ loadBlog(), rootDest)
+    val rootTemplate = LoadedTemplate(rootIndex, yamlRoot.nested.map(c => loadChild(ctx.docsPath)(c)) ++ loadBlog(), rootDest)
     val mappings = createMapping(rootTemplate)
     StaticSiteRoot(rootTemplate, mappings)
   }
