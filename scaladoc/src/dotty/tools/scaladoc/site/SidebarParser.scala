@@ -9,24 +9,15 @@ import java.util.Optional
 import scala.beans._
 
 enum Sidebar:
-  case Root(index: Option[String], pages: List[Sidebar.Child])
   case Category(
     title: Option[String],
     indexPath: Option[String],
-    nested: List[Sidebar.Child],
+    nested: List[Sidebar],
     directory: Option[String]
   )
   case Page(title: Option[String], pagePath: String, hidden: Boolean)
 
 object Sidebar:
-
-  type Child = Category | Page
-  case class RawRoot(var rootIndex: String, var pages: JList[RawInput]):
-    def this() = this("", JList())
-
-    def setRootIndex(s: String) = rootIndex = s
-    def setPages(l: JList[RawInput]) = pages = l
-
   case class RawInput(
     @BeanProperty var title: String,
     @BeanProperty var page: String,
@@ -37,9 +28,9 @@ object Sidebar:
   ):
     def this() = this("", "", "", JList(), "", false)
 
-  private object RootTypeRef extends TypeReference[RawRoot]
+  private object RawInputTypeRef extends TypeReference[RawInput]
 
-  private def toSidebar(r: RawInput)(using CompilerContext): Sidebar.Child = r match
+  private def toSidebar(r: RawInput)(using CompilerContext): Sidebar = r match
     case RawInput(title, page, index, subsection, dir, hidden) if page.nonEmpty && index.isEmpty && subsection.isEmpty() =>
       Sidebar.Page(Option.when(title.nonEmpty)(title), page, hidden)
     case RawInput(title, page, index, subsection, dir, hidden) if page.isEmpty && (!subsection.isEmpty() || !index.isEmpty()) =>
@@ -49,43 +40,43 @@ object Sidebar:
       Sidebar.Page(None, page, hidden)
 
   private def schemaMessage: String =
-    s"""Static site YAML configuration file should comply to the following description:
-      |rootIndex: <string> # optional
-      |pages:
-      |  - <subsection> | <page>
+    s"""Static site YAML configuration file should comply with the following description:
+      |The root element of static site needs to be <subsection>
+      |`title` and `directory` properties are ignored in root subsection.
       |
       |<subsection>:
-      |  title: <string> # optional
-      |  index: <string> # optional
-      |  directory: <string> # optional
-      |  subsection: # optional
+      |  title: <string> # optional - Default value is file name. Title can be also set using front-matter.
+      |  index: <string> # optional - If not provided, default empty index template is generated.
+      |  directory: <string> # optional - By default, directory name is title name in kebab case.
+      |  subsection: # optional - If not provided, pages are loaded from the index directory
       |    - <subsection> | <page>
       |  # either index or subsection needs to be present
       |<page>:
-      |  title: <string> # optional
+      |  title: <string> # optional - Default value is file name. Title can be also set using front-matter.
       |  page: <string>
-      |  hidden: <boolean> # optional
+      |  hidden: <boolean> # optional - Default value is false.
       |
       |For more information visit:
       |https://docs.scala-lang.org/scala3/guides/scaladoc/static-site.html
       |""".stripMargin
 
-  def load(content: String | java.io.File)(using CompilerContext): Sidebar.Root =
+  def load(content: String | java.io.File)(using CompilerContext): Sidebar.Category =
     import scala.util.Try
     val mapper = ObjectMapper(YAMLFactory())
     def readValue = content match
-      case s: String => mapper.readValue(s, RootTypeRef)
-      case f: java.io.File => mapper.readValue(f, RootTypeRef)
+      case s: String => mapper.readValue(s, RawInputTypeRef)
+      case f: java.io.File => mapper.readValue(f, RawInputTypeRef)
 
-    val root: RawRoot = Try(readValue)
+    val root: RawInput = Try(readValue)
       .fold(
         { e =>
           report.warn(schemaMessage, e)
-          RawRoot("", java.util.Collections.emptyList())
+          new RawInput()
         },
         identity
       )
-
-    val rootIndex: String = root.rootIndex
-    val pages: List[Sidebar.Child] = root.pages.asScala.toList.map(toSidebar)
-    Sidebar.Root(Option.when(rootIndex.nonEmpty)(rootIndex), pages)
+    toSidebar(root) match
+      case c: Sidebar.Category => c
+      case _ =>
+        report.error(s"Root element is not a subsection.\n$schemaMessage")
+        Sidebar.Category(None, None, List.empty, None)

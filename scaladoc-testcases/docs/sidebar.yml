@@ -1,5 +1,5 @@
-rootIndex: index.md
-pages:
+index: index.md
+subsection:
   - page: docs/f1.md
   - page: docs/f2.md
   - page: docs/f3.md
