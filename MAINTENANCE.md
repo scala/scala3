@@ -32,7 +32,7 @@ An issue tsar needs to have all the accesses and privileges required to get thei
 ## Procedures
 To ensure proper health of the infrastructure, the Tsar regularly monitors its proper operation. If a malfunction is detected, it is the Tsar's job to ensure that there’s someone working on it (or solve it on their own).
 
-If it is unclear what area an issue belongs to, the Tsar asks for advice from other team members, on Slack or GitHub. If, after asking for advice, it turns out that nobody in the team knows how to classify it, the issue must be classified with a “stat:needs triage” label.
+If it is unclear what area an issue belongs to, the Tsar asks for advice from other team members on Slack or GitHub. If, after asking for advice, it turns out that nobody in the team knows how to classify it, the issue must be classified with a “stat:needs triage” label.
 
 If it is unclear who should review an external PR, the Tsar asks for advice from the rest of the core team. If after asking for advice, it is still unclear who should do it, the reviewer for such a PR will be decided at the next Dotty meeting.
 
