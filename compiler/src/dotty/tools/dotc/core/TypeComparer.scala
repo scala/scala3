@@ -766,15 +766,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
             isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
+            // `Mode.RelaxedOverriding` is only enabled when checking Java overriding
+            // in explicit nulls, and `Null` becomes a bottom type, which allows
+            // `T | Null` being a subtype of `T`.
+            // A type varibale `T` from Java is translated to `T >: Nothing <: Any`.
+            // However, `null` can always be a value of `T` for Java side.
+            // So the best solution here is to let `Null` be bottom type temporarily.
             def isNullable(tp: Type): Boolean = ctx.mode.is(Mode.RelaxedOverriding) || {
-              tp.widenDealias match {
+              tp.widenDealias match
                 case tp: TypeRef => tp.symbol.isNullableClass
                 case tp: RefinedOrRecType => isNullable(tp.parent)
                 case tp: AppliedType => isNullable(tp.tycon)
                 case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
                 case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
                 case _ => false
-              }
             }
             val sym1 = tp1.symbol
             (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||

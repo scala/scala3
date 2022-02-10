@@ -125,5 +125,8 @@ object Mode {
    */
   val ForceInline: Mode = newMode(29, "ForceInline")
 
-  val RelaxedOverriding: Mode = newMode(30, "ForceInline")
+  /** This mode is enabled when we check Java overriding in explicit nulls.
+   *  Type `Null` becomes a bottom type in TypeComparer.
+   */
+  val RelaxedOverriding: Mode = newMode(30, "RelaxedOverriding")
 }
