@@ -346,9 +346,6 @@ object PatternMatcher {
                 .map(ref(unappResult).select(_))
               matchArgsPlan(selectors, args, onSuccess)
             }
-            else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
-              val components = (0 until foldApplyTupleType(unappResult.denot.info).length).toList.map(tupleApp(_, ref(unappResult)))
-              matchArgsPlan(components, args, onSuccess)
             else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.srcPos)) {
               val arity = productArity(unapp.tpe.widen, unapp.srcPos)
               unapplyProductSeqPlan(unappResult, args, arity)
@@ -356,6 +353,9 @@ object PatternMatcher {
             else if (isUnapplySeq && unapplySeqTypeElemTp(unapp.tpe.widen.finalResultType).exists) {
               unapplySeqPlan(unappResult, args)
             }
+            else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
+              val components = (0 until foldApplyTupleType(unappResult.denot.info).length).toList.map(tupleApp(_, ref(unappResult)))
+              matchArgsPlan(components, args, onSuccess)
             else {
               assert(isGetMatch(unapp.tpe))
               val argsPlan = {
