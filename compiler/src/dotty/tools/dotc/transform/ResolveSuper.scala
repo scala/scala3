@@ -113,15 +113,11 @@ object ResolveSuper {
         val accTp = acc.asSeenFrom(base.typeRef).info
         // Since the super class can be Java defined,
         // we use releaxed overriding check for explicit nulls if one of the symbols is Java defined.
-        // This forces `Null` being a subtype of reference types during override checking.
-        val overridesSuper = if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined)) then
-          val overrideCtx = ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding)
-          otherTp.overrides(accTp, matchLoosely = true)(using overrideCtx)
-        else
-          otherTp.overrides(accTp, matchLoosely = true)
-        if !overridesSuper then
+        // This forces `Null` being a bottom type during override checking.
+        val overrideCtx = if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined))
+          then ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding) else ctx
+        if !otherTp.overrides(accTp, matchLoosely = true)(using overrideCtx) then
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
-
       bcs = bcs.tail
     }
     assert(sym.exists, i"cannot rebind $acc, ${acc.targetName} $memberName")

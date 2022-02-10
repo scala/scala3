@@ -216,16 +216,13 @@ object OverridingPairs:
             }
       )
     else
-      def matchNullaryLoosely = member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack
-      // default getters are not checked for compatibility
-      member.name.is(DefaultGetterName) || {
-        if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
-          // releaxed override check for explicit nulls if one of the symbols is Java defined,
-          // force `Null` being a bottom types during override checking.
-          val overrideCtx = ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding)
-          memberTp.overrides(otherTp, matchNullaryLoosely)(using overrideCtx)
-        else
-          memberTp.overrides(otherTp, matchNullaryLoosely)
-      }
+      // releaxed override check for explicit nulls if one of the symbols is Java defined,
+      // force `Null` being a bottom types during override checking.
+      val overrideCtx = if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined))
+        then ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding) else ctx
+      member.name.is(DefaultGetterName) // default getters are not checked for compatibility
+      || memberTp.overrides(otherTp,
+            member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack
+          )(using overrideCtx)
 
 end OverridingPairs
