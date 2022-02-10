@@ -53,6 +53,7 @@ The following is the list of all the principal areas of the compiler and the cor
 - Typer: @odersky, @smarter, (@dwijnand)
 - Erasure: @smarter, @odersky
 - Enums: @bishabosha
+- Export: @bishabosha, @odersky 
 - Pattern Matching: @dwijnand, (@liufengyun), @sjrd
 - Inline: @nicolasstucki, @odersky
 - Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @aherlihy
