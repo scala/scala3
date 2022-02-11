@@ -390,7 +390,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
 
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
-          def receiverClass = qualifier.tpe.typeSymbol
+          def receiverClass = qualifier.tpe.widenTermRefExpr.finalResultType.typeSymbol
           if (sym.is(Module)) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
