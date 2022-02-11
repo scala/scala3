@@ -606,7 +606,7 @@ object Parsers {
               if startIndentWidth <= nextIndentWidth then
                 i"""Line is indented too far to the right, or a `{` is missing before:
                    |
-                   |$t"""
+                   |${t.show}"""
               else
                 in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth),
               in.next.offset

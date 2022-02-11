@@ -776,7 +776,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
           case n: Name =>
             h = nameHash(n, h)
           case elem =>
-            cannotHash(what = i"`$elem` of unknown class ${elem.getClass}", elem, tree)
+            cannotHash(what = i"`${elem.show}` of unknown class ${elem.getClass}", elem, tree)
       h
     end iteratorHash
 
