@@ -34,9 +34,8 @@ trait Locations(using ctx: DocContext):
     cache.get(dri) match
       case null =>
         val path = dri match
-          case `docsRootDRI` => List("docs", "index")
           case `apiPageDRI` =>
-            if ctx.staticSiteContext.fold(false)(_.hasIndexFile)
+            if ctx.args.apiSubdirectory && ctx.staticSiteContext.nonEmpty
               then List("api", "index")
               else List("index")
           case dri if dri.isStaticFile =>
@@ -88,6 +87,6 @@ trait Locations(using ctx: DocContext):
 
   def pathToRoot(dri: DRI): String = rawLocation(dri).drop(1).map(_ => "..") match
     case Nil => ""
-    case seq => seq.mkString("", "/", "/")
+    case seq => seq.mkString("", "/" , "/")
 
   def driExists(dri: DRI) = effectiveMembers.get(dri).isDefined || dri.isStaticFile

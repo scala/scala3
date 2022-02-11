@@ -15,7 +15,7 @@ import java.nio.file.Files
 import java.nio.file.FileVisitOption
 import java.io.File
 
-case class Page(link: Link, content: Member | ResolvedTemplate | String, children: Seq[Page]):
+case class Page(link: Link, content: Member | ResolvedTemplate | String, children: Seq[Page], hidden: Boolean = false):
   def withNewChildren(newChildren: Seq[Page]) = copy(children = children ++ newChildren)
 
   def withTitle(newTitle: String) = copy(link = link.copy(name = newTitle))
@@ -40,20 +40,12 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
     staticSite match
       case None => rootPckPage.withTitle(args.name)
       case Some(siteContext) =>
-        val (indexes, templates) = siteContext.templates.partition(f =>
-          f.templateFile.isIndexPage() && f.file.toPath.getParent() == siteContext.docsPath)
-        if (indexes.size > 1)
-          val msg = s"ERROR: Multiple index pages for doc found ${indexes.map(_.file)}"
-          report.error(msg)
+        val rootTemplate = siteContext.staticSiteRoot.rootTemplate
 
         // Below code is for walking in order the tree and modifing its nodes basing on its neighbours
 
-        // First we flatten templates to get them sorted in-order
-        def flattenedTemplates(template: LoadedTemplate): Seq[LoadedTemplate] =
-          template +: template.children.flatMap(flattenedTemplates)
-
         // We add dummy guards
-        val allTemplates: Seq[Option[LoadedTemplate]] = None +: templates.flatMap(flattenedTemplates).map(Some(_)) :+ None
+        val allTemplates: Seq[Option[LoadedTemplate]] = None +: siteContext.allTemplates.map(Some(_)) :+ None
 
         // Let's gather the list of maps for each template with its in-order neighbours
         val newSettings: List[Map[String, Object]] = allTemplates.sliding(size = 3, step = 1).map {
@@ -82,34 +74,17 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
             )
           updatedTemplates.result()
 
-        val newTemplates = updateSettings(templates, newSettings.to(ListBuffer))
+        val newTemplates = updateSettings(Seq(rootTemplate), newSettings.to(ListBuffer))
         val templatePages = newTemplates.map(templateToPage(_, siteContext))
 
-        indexes.headOption match
-          case None if templatePages.isEmpty=>
-            rootPckPage.withTitle(args.name)
-          case None =>
-            Page(Link(args.name, docsRootDRI),"", templatePages :+ rootPckPage.withTitle("API"))
-          case Some(indexPage) =>
-            val newChildren = templatePages :+ rootPckPage.withTitle("API")
-            templateToPage(indexPage, siteContext).withNewChildren(newChildren)
+        val newRoot = newTemplates.head
 
-  val hiddenPages: Seq[Page] =
-    staticSite match
-      case None =>
-        Seq(navigablePage.copy( // Add index page that is a copy of api/index.html
-          link = navigablePage.link.copy(dri = docsRootDRI),
-          children = Nil
-        ))
-      case Some(siteContext) =>
-        // In case that we do not have an index page and we do not have any API entries
-        // we want to create empty index page, so there is one
-        val actualIndexTemplate = siteContext.indexTemplate() match {
-            case None if effectiveMembers.isEmpty => Seq(siteContext.emptyIndexTemplate)
-            case templates => templates.toSeq
-          }
-
-          (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
+        if newRoot.children.isEmpty && newRoot.templateFile.rawCode.isEmpty
+        then rootPckPage.withTitle(args.name)
+        else {
+          val newRootPage = templateToPage(newRoot, siteContext)
+          newRootPage.withNewChildren(Seq(rootPckPage.withTitle("API")))
+        }
 
   val redirectPages: Seq[Page] = staticSite.fold(Seq.empty)(siteContext => siteContext.redirectTemplates.map {
     case (template, driFrom, driTo) =>
@@ -121,22 +96,10 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
    * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
    */
   val allPages: Seq[Page] =
-    def traversePages(page: Page): (Page, Seq[Page]) =
-      val (newChildren, newPagesToRemove): (Seq[Page], Seq[Page]) = page.children.map(traversePages(_)).foldLeft((Seq[Page](), Seq[Page]())) {
-        case ((pAcc, ptrAcc), (p, ptr)) => (pAcc :+ p, ptrAcc ++ ptr)
-      }
-      hiddenPages.find(_.link == page.link) match
-        case None =>
-          (page.copy(children = newChildren), newPagesToRemove)
-        case Some(newPage) =>
-          (newPage.copy(children = newChildren), newPagesToRemove :+ newPage)
-
-    val (newNavigablePage, pagesToRemove) = traversePages(navigablePage)
-
-    val all = newNavigablePage +: (hiddenPages.filterNot(pagesToRemove.contains) ++ redirectPages)
-    // We need to check for conflicts only if we have top-level member called blog or docs
+    val all = navigablePage +: redirectPages
+    // We need to check for conflicts only if we have top-level member called docs
     val hasPotentialConflict =
-      rootPackage.members.exists(m => m.name.startsWith("docs") || m.name.startsWith("blog"))
+      rootPackage.members.exists(m => m.name.startsWith("_docs"))
 
     if hasPotentialConflict then
       def walk(page: Page): Unit =

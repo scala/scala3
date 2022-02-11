@@ -22,7 +22,7 @@ trait SiteRenderer(using DocContext) extends Locations:
   def templateToPage(t: LoadedTemplate, staticSiteCtx: StaticSiteContext): Page =
     val dri = staticSiteCtx.driFor(t.file.toPath)
     val content = ResolvedTemplate(t, staticSiteCtx)
-    Page(Link(t.templateFile.title.name, dri), content, t.children.map(templateToPage(_, staticSiteCtx)))
+    Page(Link(t.templateFile.title.name, dri), content, t.children.map(templateToPage(_, staticSiteCtx)), t.hidden)
 
   private val HashRegex = "([^#]+)(#.+)".r
 
@@ -37,18 +37,28 @@ trait SiteRenderer(using DocContext) extends Locations:
       res.headOption.map(pathToPage(pageDri, _) + prefix)
 
     def processLocalLink(str: String): String =
-      Try(URL(str)).map(_ => str).toOption.orElse {
-        tryAsDri(str)
-      }.orElse {
-        Option.when(
-          Files.exists(Paths.get(content.ctx.root.toPath.toAbsolutePath.toString, str))
-        )(
-          resolveLink(pageDri, str.stripPrefix("/"))
-        )
-      }.getOrElse {
-        report.warn(s"Unable to resolve link '$str'", content.template.file)
-        str
-      }
+      val staticSiteRootPath = content.ctx.root.toPath.toAbsolutePath
+      def asValidURL: Option[String] = Try(URL(str)).toOption.map(_ => str)
+      def asAsset: Option[String] = Option.when(
+        Files.exists(staticSiteRootPath.resolve("_assets").resolve(str.stripPrefix("/")))
+      )(
+        resolveLink(pageDri, str.stripPrefix("/"))
+      )
+      def asStaticSite: Option[String] = tryAsDri(str)
+
+      /* Link resolving checks performs multiple strategies with following priority:
+        1. We check if the link is a valid URL e.g. http://dotty.epfl.ch
+        2. We check if the link leads to other static site
+        3. We check if the link leads to existing asset e.g. images/logo.svg -> <static-site-root>/_assets/images/logo.svg
+      */
+
+      asValidURL
+        .orElse(asStaticSite)
+        .orElse(asAsset)
+        .getOrElse {
+          report.warn(s"Unable to resolve link '$str'", content.template.templateFile.file)
+          str
+        }
 
     def processLocalLinkWithGuard(str: String): String =
       if str.startsWith("#") || str.isEmpty then

@@ -1,155 +1,186 @@
-sidebar:
-  - title: Blog
+index: index.md
+subsection:
   - title: Usage
     subsection:
-      - page: docs/usage/sbt-projects.md
-      - page: docs/usage/ide-support.md
-      - page: docs/usage/cbt-projects.md
-      - page: docs/usage/scaladoc
+      - page: usage/sbt-projects.md
+      - page: usage/ide-support.md
+      - page: usage/cbt-projects.md
+      - title: Scaladoc
+        index: usage/scaladoc/index.md
+        subsection:
+          - page: usage/scaladoc/docstrings.md
+          - page: usage/scaladoc/linking.md
+          - page: usage/scaladoc/search-engine.md
+          - page: usage/scaladoc/settings.md
+          - page: usage/scaladoc/site-versioning.md
+          - page: usage/scaladoc/static-site.md
   - title: Reference
     subsection:
-      - page: docs/reference/overview.md
+      - page: reference/overview.md
       - title: New Types
-        index: docs/reference/new-types/new-types.md
+        index: reference/new-types/new-types.md
         subsection:
-          - page: docs/reference/new-types/intersection-types.md
-          - page: docs/reference/new-types/union-types.md
-          - page: docs/reference/new-types/type-lambdas.md
-          - page: docs/reference/new-types/match-types.md
-          - page: docs/reference/new-types/dependent-function-types.md
-          - page: docs/reference/new-types/polymorphic-function-types.md
+          - page: reference/new-types/intersection-types.md
+          - page: reference/new-types/intersection-types-spec.md
+          - page: reference/new-types/union-types.md
+          - page: reference/new-types/union-types-spec.md
+          - page: reference/new-types/type-lambdas.md
+          - page: reference/new-types/type-lambdas-spec.md
+          - page: reference/new-types/match-types.md
+          - page: reference/new-types/dependent-function-types.md
+          - page: reference/new-types/dependent-function-types-spec.md
+          - page: reference/new-types/polymorphic-function-types.md
       - title: Enums
-        index: docs/reference/enums/enums-index.md
+        index: reference/enums/enums-index.md
         subsection:
-          - page: docs/reference/enums/enums.md
-          - page: docs/reference/enums/adts.md
-          - page: docs/reference/enums/desugarEnums.md
+          - page: reference/enums/enums.md
+          - page: reference/enums/adts.md
+          - page: reference/enums/desugarEnums.md
       - title: Contextual Abstractions
-        index: docs/reference/contextual/contextual.md
+        index: reference/contextual/contextual.md
+        directory: contextual
         subsection:
-          - page: docs/reference/contextual/givens.md
-          - page: docs/reference/contextual/using-clauses.md
-          - page: docs/reference/contextual/context-bounds.md
-          - page: docs/reference/contextual/given-imports.md
-          - page: docs/reference/contextual/extension-methods.md
-          - page: docs/reference/contextual/type-classes.md
-          - page: docs/reference/contextual/derivation.md
-          - page: docs/reference/contextual/multiversal-equality.md
-          - page: docs/reference/contextual/context-functions.md
-          - page: docs/reference/contextual/conversions.md
-          - page: docs/reference/contextual/by-name-context-parameters.md
-          - page: docs/reference/contextual/relationship-implicits.md
+          - page: reference/contextual/givens.md
+          - page: reference/contextual/using-clauses.md
+          - page: reference/contextual/context-bounds.md
+          - page: reference/contextual/given-imports.md
+          - page: reference/contextual/extension-methods.md
+          - page: reference/contextual/right-associative-extension-methods.md
+          - page: reference/contextual/type-classes.md
+          - page: reference/contextual/derivation.md
+          - page: reference/contextual/derivation-macro.md
+          - page: reference/contextual/multiversal-equality.md
+          - page: reference/contextual/context-functions.md
+          - page: reference/contextual/context-functions-spec.md
+          - page: reference/contextual/conversions.md
+          - page: reference/contextual/by-name-context-parameters.md
+          - page: reference/contextual/relationship-implicits.md
       - title: Metaprogramming
-        index: docs/reference/metaprogramming/metaprogramming.md
+        index: reference/metaprogramming/metaprogramming.md
         subsection:
-          - page: docs/reference/metaprogramming/inline.md
-          - page: docs/reference/metaprogramming/compiletime-ops.md
-          - page: docs/reference/metaprogramming/macros.md
-          - page: docs/reference/metaprogramming/staging.md
-          - page: docs/reference/metaprogramming/reflection.md
-          - page: docs/reference/metaprogramming/tasty-inspect.md
+          - page: reference/metaprogramming/inline.md
+          - page: reference/metaprogramming/compiletime-ops.md
+          - page: reference/metaprogramming/macros.md
+          - page: reference/metaprogramming/macros-spec.md
+          - page: reference/metaprogramming/staging.md
+          - page: reference/metaprogramming/reflection.md
+          - page: reference/metaprogramming/tasty-inspect.md
       - title: Other New Features
-        index: docs/reference/other-new-features/other-new-types.md
+        index: reference/other-new-features/other-new-types.md
         subsection:
-          - page: docs/reference/other-new-features/trait-parameters.md
-          - page: docs/reference/other-new-features/transparent-traits.md
-          - page: docs/reference/other-new-features/creator-applications.md
-          - page: docs/reference/other-new-features/export.md
-          - page: docs/reference/other-new-features/opaques.md
-          - page: docs/reference/other-new-features/open-classes.md
-          - page: docs/reference/other-new-features/parameter-untupling.md
-          - page: docs/reference/other-new-features/kind-polymorphism.md
-          - page: docs/reference/other-new-features/matchable.md
-          - page: docs/reference/other-new-features/threadUnsafe-annotation.md
-          - page: docs/reference/other-new-features/targetName.md
-          - page: docs/reference/other-new-features/control-syntax.md
-          - page: docs/reference/other-new-features/indentation.md
-          - page: docs/reference/other-new-features/safe-initialization.md
-          - page: docs/reference/other-new-features/type-test.md
-          - page: docs/reference/other-new-features/experimental-defs.md
+          - page: reference/other-new-features/trait-parameters.md
+          - page: reference/other-new-features/transparent-traits.md
+          - page: reference/other-new-features/creator-applications.md
+          - page: reference/other-new-features/export.md
+          - page: reference/other-new-features/opaques.md
+          - page: reference/other-new-features/opaques-details.md
+          - page: reference/other-new-features/open-classes.md
+          - page: reference/other-new-features/parameter-untupling.md
+          - page: reference/other-new-features/parameter-untupling-spec.md
+          - page: reference/other-new-features/kind-polymorphism.md
+          - page: reference/other-new-features/matchable.md
+          - page: reference/other-new-features/threadUnsafe-annotation.md
+          - page: reference/other-new-features/targetName.md
+          - page: reference/other-new-features/control-syntax.md
+          - page: reference/other-new-features/indentation.md
+          - page: reference/other-new-features/safe-initialization.md
+          - page: reference/other-new-features/type-test.md
+          - page: reference/other-new-features/experimental-defs.md
       - title: Other Changed Features
-        index: docs/reference/changed-features/changed-features.md
+        directory: changed-features
+        index: reference/changed-features/changed-features.md
         subsection:
-          - page: docs/reference/changed-features/numeric-literals.md
-          - page: docs/reference/changed-features/structural-types.md
-          - page: docs/reference/changed-features/operators.md
-          - page: docs/reference/changed-features/wildcards.md
-          - page: docs/reference/changed-features/imports.md
-          - page: docs/reference/changed-features/type-checking.md
-          - page: docs/reference/changed-features/type-inference.md
-          - page: docs/reference/changed-features/implicit-resolution.md
-          - page: docs/reference/changed-features/implicit-conversions.md
-          - page: docs/reference/changed-features/overload-resolution.md
-          - page: docs/reference/changed-features/match-syntax.md
-          - page: docs/reference/changed-features/vararg-splices.md
-          - page: docs/reference/changed-features/pattern-bindings.md
-          - page: docs/reference/changed-features/pattern-matching.md
-          - page: docs/reference/changed-features/eta-expansion.md
-          - page: docs/reference/changed-features/compiler-plugins.md
-          - page: docs/reference/changed-features/lazy-vals-init.md
-          - page: docs/reference/changed-features/main-functions.md
+          - page: reference/changed-features/numeric-literals.md
+          - page: reference/changed-features/structural-types.md
+          - page: reference/changed-features/structural-types-spec.md
+          - page: reference/changed-features/operators.md
+          - page: reference/changed-features/wildcards.md
+          - page: reference/changed-features/imports.md
+          - page: reference/changed-features/type-checking.md
+          - page: reference/changed-features/type-inference.md
+          - page: reference/changed-features/implicit-resolution.md
+          - page: reference/changed-features/implicit-conversions.md
+          - page: reference/changed-features/implicit-conversions-spec.md
+          - page: reference/changed-features/overload-resolution.md
+          - page: reference/changed-features/match-syntax.md
+          - page: reference/changed-features/vararg-splices.md
+          - page: reference/changed-features/pattern-bindings.md
+          - page: reference/changed-features/pattern-matching.md
+          - page: reference/changed-features/eta-expansion.md
+          - page: reference/changed-features/eta-expansion-spec.md
+          - page: reference/changed-features/compiler-plugins.md
+          - page: reference/changed-features/lazy-vals-init.md
+          - page: reference/changed-features/main-functions.md
       - title: Dropped Features
-        index: docs/reference/dropped-features/dropped-features.md
+        index: reference/dropped-features/dropped-features.md
         subsection:
-          - page: docs/reference/dropped-features/delayed-init.md
-          - page: docs/reference/dropped-features/macros.md
-          - page: docs/reference/dropped-features/existential-types.md
-          - page: docs/reference/dropped-features/type-projection.md
-          - page: docs/reference/dropped-features/do-while.md
-          - page: docs/reference/dropped-features/procedure-syntax.md
-          - page: docs/reference/dropped-features/package-objects.md
-          - page: docs/reference/dropped-features/early-initializers.md
-          - page: docs/reference/dropped-features/class-shadowing.md
-          - page: docs/reference/dropped-features/limit22.md
-          - page: docs/reference/dropped-features/xml.md
-          - page: docs/reference/dropped-features/symlits.md
-          - page: docs/reference/dropped-features/auto-apply.md
-          - page: docs/reference/dropped-features/weak-conformance.md
-          - page: docs/reference/dropped-features/nonlocal-returns.md
-          - page: docs/reference/dropped-features/this-qualifier.md
-          - page: docs/reference/dropped-features/wildcard-init.md
+          - page: reference/dropped-features/delayed-init.md
+          - page: reference/dropped-features/macros.md
+          - page: reference/dropped-features/existential-types.md
+          - page: reference/dropped-features/type-projection.md
+          - page: reference/dropped-features/do-while.md
+          - page: reference/dropped-features/procedure-syntax.md
+          - page: reference/dropped-features/package-objects.md
+          - page: reference/dropped-features/early-initializers.md
+          - page: reference/dropped-features/class-shadowing.md
+          - page: reference/dropped-features/class-shadowing-spec.md
+          - page: reference/dropped-features/limit22.md
+          - page: reference/dropped-features/xml.md
+          - page: reference/dropped-features/symlits.md
+          - page: reference/dropped-features/auto-apply.md
+          - page: reference/dropped-features/weak-conformance.md
+          - page: reference/dropped-features/weak-conformance-spec.md
+          - page: reference/dropped-features/nonlocal-returns.md
+          - page: reference/dropped-features/this-qualifier.md
+          - page: reference/dropped-features/wildcard-init.md
       - title: Experimental Features
+        directory: experimental
         subsection:
-          - page: docs/reference/experimental/overview.md
-          - page: docs/reference/experimental/canthrow.md
-          - page: docs/reference/experimental/erased-defs.md
-          - page: docs/reference/experimental/named-typeargs.md
-          - page: docs/reference/experimental/numeric-literals.md
-          - page: docs/reference/experimental/explicit-nulls.md
-          - page: docs/reference/experimental/cc.md
-      - page: docs/reference/syntax.md
+          - page: reference/experimental/overview.md
+          - page: reference/experimental/canthrow.md
+          - page: reference/experimental/erased-defs.md
+          - page: reference/experimental/erased-defs-spec.md
+          - page: reference/experimental/named-typeargs.md
+          - page: reference/experimental/named-typeargs-spec.md
+          - page: reference/experimental/numeric-literals.md
+          - page: reference/experimental/explicit-nulls.md
+          - page: reference/experimental/cc.md
+      - page: reference/syntax.md
       - title: Language Versions
-        index: docs/reference/language-versions/language-versions.md
+        index: reference/language-versions/language-versions.md
         subsection:
-          - page: docs/reference/language-versions/source-compatibility.md
-          - page: docs/reference/language-versions/binary-compatibility.md
+          - page: reference/language-versions/source-compatibility.md
+          - page: reference/language-versions/binary-compatibility.md
+      - page: reference/soft-modifier.md
+      - page: reference/features-classification.md
   - title: Contributing
     subsection:
-      - page: docs/contributing/contribute-knowledge.md
-      - page: docs/contributing/getting-started.md
-      - page: docs/contributing/workflow.md
-      - page: docs/contributing/testing.md
-      - page: docs/contributing/debugging.md
+      - page: contributing/contribute-knowledge.md
+      - page: contributing/getting-started.md
+      - page: contributing/workflow.md
+      - page: contributing/testing.md
+      - page: contributing/debugging.md
       - title: IDEs and Tools
+        directory: tools
         subsection:
-          - page: docs/contributing/tools/ide.md
-          - page: docs/contributing/tools/mill.md
-          - page: docs/contributing/tools/scalafix.md
+          - page: contributing/tools/ide.md
+          - page: contributing/tools/mill.md
+          - page: contributing/tools/scalafix.md
       - title: Procedures
         subsection:
-          - page: docs/contributing/procedures/release.md
-          - page: docs/contributing/procedures/vulpix.md
+          - page: contributing/procedures/release.md
+          - page: contributing/procedures/vulpix.md
   - title: Internals
     subsection:
-      - page: docs/internals/backend.md
-      - page: docs/internals/classpaths.md
-      - page: docs/internals/core-data-structures.md
-      - page: docs/internals/contexts.md
-      - page: docs/internals/dotc-scalac.md
-      - page: docs/internals/higher-kinded-v2.md
-      - page: docs/internals/overall-structure.md
-      - page: docs/internals/periods.md
-      - page: docs/internals/syntax.md
-      - page: docs/internals/type-system.md
-      - page: docs/internals/dotty-internals-1-notes.md
-      - page: docs/internals/debug-macros.md
+      - page: internals/backend.md
+      - page: internals/classpaths.md
+      - page: internals/core-data-structures.md
+      - page: internals/contexts.md
+      - page: internals/dotc-scalac.md
+      - page: internals/higher-kinded-v2.md
+      - page: internals/overall-structure.md
+      - page: internals/periods.md
+      - page: internals/syntax.md
+      - page: internals/type-system.md
+      - page: internals/dotty-internals-1-notes.md
+      - page: internals/debug-macros.md

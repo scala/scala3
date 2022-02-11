@@ -326,7 +326,7 @@ object Build {
     Seq(
       "-skip-by-regex:.+\\.internal($|\\..+)",
       "-skip-by-regex:.+\\.impl($|\\..+)",
-      "-project-logo", "docs/logo.svg",
+      "-project-logo", "docs/_assets/images/logo.svg",
       "-social-links:" +
         "github::https://github.com/lampepfl/dotty," +
         "discord::https://discord.com/invite/scala," +

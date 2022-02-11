@@ -28,7 +28,7 @@ class NavigationTest extends BaseHtmlTest:
         NavMenuTestEntry("Nested in a directory", "dir/nested.html", Nil)
       )),
       NavMenuTestEntry("Adoc", "Adoc.html", Seq()),
-      NavMenuTestEntry("API", "../api/index.html", Seq(
+      NavMenuTestEntry("API", "../index.html", Seq(
         NavMenuTestEntry("tests.site", "../tests/site.html", Seq(
           NavMenuTestEntry("BrokenLink", "../tests/site/BrokenLink.html", Nil),
           NavMenuTestEntry("BrokenLinkWiki", "../tests/site/BrokenLinkWiki.html", Nil),
@@ -44,5 +44,5 @@ class NavigationTest extends BaseHtmlTest:
       )),
     ))
 
-    testNavMenu("docs/Adoc.html", topLevelNav)
+    testNavMenu("_docs/Adoc.html", topLevelNav)
   }

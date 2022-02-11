@@ -16,7 +16,8 @@ case class LazyEntry(getKey: String, value: () => String) extends JMapEntry[Stri
 case class LoadedTemplate(
   templateFile: TemplateFile,
   children: List[LoadedTemplate],
-  file: File):
+  file: File,
+  hidden: Boolean = false):
 
   private def brief(ctx: StaticSiteContext): String =
     try
@@ -32,7 +33,7 @@ case class LoadedTemplate(
     lazy val entrySet: JSet[JMapEntry[String, Object]] =
       val site = templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]]
       site.asJava.entrySet() ++ JSet(
-        LazyEntry("url", () => ctx.relativePath(LoadedTemplate.this).toString),
+        LazyEntry("url", () => "/" ++ ctx.pathFromRoot(LoadedTemplate.this).toString),
         LazyEntry("title", () => templateFile.title.name),
         LazyEntry("excerpt", () => brief(ctx))
       )
