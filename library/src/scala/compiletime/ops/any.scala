@@ -12,7 +12,7 @@ object any:
    * ```
    * @syntax markdown
    */
-  type ==[X, Y] <: Boolean
+  type ==[+X, +Y] <: Boolean
 
   /** Inequality comparison of two singleton types.
    * ```scala
@@ -22,7 +22,7 @@ object any:
    * ```
    * @syntax markdown
    */
-  type !=[X, Y] <: Boolean
+  type !=[+X, +Y] <: Boolean
 
   /** Tests if a type is a constant.
    * ```scala
@@ -42,7 +42,7 @@ object any:
    * @syntax markdown
    */
   @experimental
-  type IsConst[X] <: Boolean
+  type IsConst[+X] <: Boolean
 
   /** String conversion of a constant singleton type.
    *  ```scala
@@ -52,4 +52,4 @@ object any:
    *  @syntax markdown
    */
   @experimental
-  type ToString[X] <: String
+  type ToString[+X] <: String
