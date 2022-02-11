@@ -994,4 +994,33 @@ class CompletionTest {
             ("annotation", Module, "scala.annotation")
           )
         )
+  @Test def completeTemplateConstrArgType: Unit = {
+    val expected = Set(
+      ("Future", Class, "scala.concurrent.Future"),
+      ("Future", Module, "scala.concurrent.Future")
+    )
+    code"""import scala.concurrent.Future
+          |class Foo(x: Fut${m1})""".withSource
+      .completion(m1, expected) 
+  }
+
+  @Test def completeTemplateParents: Unit = {
+    val expected = Set(
+      ("Future", Class, "scala.concurrent.Future"),
+      ("Future", Module, "scala.concurrent.Future")
+    )
+    code"""import scala.concurrent.Future
+          |class Foo extends Futu${m1}""".withSource
+      .completion(m1, expected) 
+  }
+
+  @Test def completeTemplateSelfType: Unit = {
+    val expected = Set(
+      ("Future", Class, "scala.concurrent.Future"),
+      ("Future", Module, "scala.concurrent.Future")
+    )
+    code"""import scala.concurrent.Future
+          |class Foo[A]{ self: Futu${m1} => }""".withSource
+      .completion(m1, expected) 
+  }
 }
