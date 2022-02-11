@@ -22,6 +22,10 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
       resultA.href = Globals.pathToRoot + p.location
       resultA.text = s"${p.fullName}"
+      resultA.onclick = (event: Event) =>
+        if (document.body.contains(rootDiv)) {
+          document.body.removeChild(rootDiv)
+        }
 
       val location = document.createElement("span")
       location.classList.add("pull-right")
@@ -53,6 +57,10 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
       resultA.href = m.pageLocation
       resultA.text = m.functionName
+      resultA.onclick = (event: Event) =>
+        if (document.body.contains(rootDiv)) {
+          document.body.removeChild(rootDiv)
+        }
 
       val packageDiv = document.createElement("div").asInstanceOf[html.Div]
       packageDiv.classList.add("scaladoc-searchbar-inkuire-package")
