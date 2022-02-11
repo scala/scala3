@@ -254,7 +254,7 @@ trait MessageRendering {
       sb.append(EOL).append(newBox())
       sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
       sb.append(EOL).append(newBox(soft = true))
-      dia.msg.explanation.split(EOL).foreach { line =>
+      dia.msg.explanation.split(raw"\R").foreach { line =>
         sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
       }
       sb.append(EOL).append(endBox)
