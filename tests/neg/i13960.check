@@ -2,5 +2,5 @@
 13 |    case A() => // error
    |         ^^^
    |          [31mA[0m is not a valid result type of an unapply method of an [35mextractor[0m.
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

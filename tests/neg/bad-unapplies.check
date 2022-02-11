@@ -5,35 +5,35 @@
    |          (x: B): Option[String]
    |          (x: A): Option[String]
    |         both match arguments (C)
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E127] Syntax Error: tests/neg/bad-unapplies.scala:23:9 -------------------------------------------------------------
 23 |    case B("2") => // error (cannot be used as an extractor)
    |         ^
    |         B cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E127] Syntax Error: tests/neg/bad-unapplies.scala:24:9 -------------------------------------------------------------
 24 |    case D("2") => // error (cannot be used as an extractor)
    |         ^
    |         D cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E050] Type Error: tests/neg/bad-unapplies.scala:25:9 ---------------------------------------------------------------
 25 |    case E("2") => // error (value unapply in object E does not take parameters)
    |         ^
    |         value unapply in object E does not take parameters
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E107] Syntax Error: tests/neg/bad-unapplies.scala:26:10 ------------------------------------------------------------
 26 |    case F("2") => // error (Wrong number of argument patterns for F; expected: ())
    |         ^^^^^^
    |         Wrong number of argument patterns for F; expected: ()
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E006] Not Found Error: tests/neg/bad-unapplies.scala:27:9 ----------------------------------------------------------
 27 |    case G("2") => // error (Not found: G)
    |         ^
    |         Not found: G
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

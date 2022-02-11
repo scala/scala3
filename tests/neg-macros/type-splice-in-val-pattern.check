@@ -2,5 +2,5 @@
 5 |    val '[ *:[$t] ] = ??? // error
   |              ^^
   |              Type splices cannot be used in val patterns. Consider using `match` instead.
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

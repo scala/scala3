@@ -13,8 +13,8 @@
   |                  Therefore, reduction cannot advance to the remaining case
   |
   |                    case B => String
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/i12049.scala:14:23 ---------------------------------------------------------------------------------
 14 |val y3: String = ??? : Last[Int *: Int *: Boolean *: String *: EmptyTuple]  // error
    |                       ^

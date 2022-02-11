@@ -3,8 +3,8 @@
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^
    |                             Found:    F[T]
    |                             Required: F[G[T]]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E008] Not Found Error: tests/neg/i6779.scala:12:31 -----------------------------------------------------------------
 12 |  def g2[T](x: T): F[G[T]] = x.f // error
    |                             ^^^
@@ -20,5 +20,5 @@ longer explanation available when compiling with `-explain`
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                             Found:    F[T]
    |                             Required: F[G[T]]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

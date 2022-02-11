@@ -7,5 +7,5 @@
   |          ^
   |          Found:    G[[A <: Int] =>> List[A]]
   |          Required: G[List]
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

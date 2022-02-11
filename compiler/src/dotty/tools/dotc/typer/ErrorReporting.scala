@@ -142,7 +142,7 @@ object ErrorReporting {
           |conforms to
           |  $expected
           |but the comparison trace ended with `false`:
-          """
+          |"""
       val c = ctx.typerState.constraint
       val constraintText =
         if c.domainLambdas.isEmpty then
@@ -150,10 +150,9 @@ object ErrorReporting {
         else
           i"""a constraint with:
              |$c"""
-      i"""
-        |${TypeComparer.explained(_.isSubType(found, expected), header)}
-        |
-        |The tests were made under $constraintText"""
+      i"""${TypeComparer.explained(_.isSubType(found, expected), header)}
+         |
+         |The tests were made under $constraintText"""
 
     /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
      *  all occurrences of `${X}` where `X` is in `paramNames` with the

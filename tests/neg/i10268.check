@@ -2,5 +2,5 @@
 2 |  def test[T] = ?//test // error
   |                ^
   |                Not found: ?
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

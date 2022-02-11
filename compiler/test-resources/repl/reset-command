@@ -22,7 +22,8 @@ scala> resetNoArgsStillWorks
 1 | resetNoArgsStillWorks
   | ^^^^^^^^^^^^^^^^^^^^^
   | Not found: resetNoArgsStillWorks
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 1 error found
 
 scala>:settings "-Dfoo=bar baz"

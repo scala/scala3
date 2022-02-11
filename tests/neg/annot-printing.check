@@ -3,5 +3,5 @@
   |                                              ^^^^^
   |                                              Found:    ("abc" : String)
   |                                              Required: Int @nowarn() @main @Foo @Bar("hello")
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

@@ -2,5 +2,5 @@
 4 |  println(ProcessHandle.current().pid()) // error: not found
   |          ^^^^^^^^^^^^^
   |          Not found: ProcessHandle
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

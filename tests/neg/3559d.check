@@ -2,5 +2,5 @@
 7 |    this(f)           // error
   |         ^
   |         Not found: f
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

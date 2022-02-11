@@ -9,5 +9,5 @@
   |                                     failed since selector  O
   |                                     does not match  case Test.Of[sup, sub] => sub
   |                                     and cannot be shown to be disjoint from it either.
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

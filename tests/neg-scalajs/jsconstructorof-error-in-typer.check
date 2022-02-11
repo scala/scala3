@@ -2,17 +2,17 @@
 9 |  val a = js.constructorOf[ScalaClass] // error
   |                           ^
   |                           Type argument ScalaClass does not conform to upper bound scala.scalajs.js.Any
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E057] Type Mismatch Error: tests/neg-scalajs/jsconstructorof-error-in-typer.scala:10:27 ----------------------------
 10 |  val b = js.constructorOf[ScalaTrait] // error
    |                           ^
    |                           Type argument ScalaTrait does not conform to upper bound scala.scalajs.js.Any
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E057] Type Mismatch Error: tests/neg-scalajs/jsconstructorof-error-in-typer.scala:11:27 ----------------------------
 11 |  val c = js.constructorOf[ScalaObject.type] // error
    |                           ^
    |                           Type argument ScalaObject.type does not conform to upper bound scala.scalajs.js.Any
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

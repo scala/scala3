@@ -3,5 +3,5 @@
   |                ^
   |                Found:    (i : Seq[Int])
   |                Required: Int
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

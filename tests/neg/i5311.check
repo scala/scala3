@@ -3,5 +3,5 @@
    |        ^^^^^^^^^^^^^^^^^^^
    |        Found:    s.T[Int] => s.T[Int]
    |        Required: m.Foo
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

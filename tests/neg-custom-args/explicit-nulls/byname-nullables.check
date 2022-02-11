@@ -3,8 +3,8 @@
    |                        ^
    |                        Found:    (x : String | Null)
    |                        Required: String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:43:32 --------------------------------------------
 43 |    if x != null then f(identity(x), 1)   // error: dropping not null check fails typing
    |                        ^^^^^^^^^^^

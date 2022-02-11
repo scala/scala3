@@ -32,5 +32,5 @@
 13 |	      1
    |	      ^
    |	      A pure expression does nothing in statement position; you may be omitting necessary parentheses
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
