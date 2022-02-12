@@ -1383,7 +1383,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** Recover identifier prefix (e.g. this) if it exists */
   def desugarIdentPrefix(tree: Ident)(using Context): Tree = tree.tpe match {
     case TermRef(prefix: TermRef, _) =>
-      ref(prefix)
+      prefix.info match
+        case mt: MethodType if mt.paramInfos.isEmpty && mt.resultType.typeSymbol.is(Module) =>
+          ref(mt.resultType.typeSymbol.sourceModule)
+        case _ =>
+          ref(prefix)
     case TermRef(prefix: ThisType, _) =>
       This(prefix.cls)
     case _ =>
