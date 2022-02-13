@@ -659,8 +659,6 @@ object Scanners {
                  && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
               then
                 () /* skip the trailing comma */
-              else if token == EOF then // e.g. when the REPL is parsing "val List(x, y, _*,"
-                () /* skip the trailing comma */
               else
                 reset()
         case END =>

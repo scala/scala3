@@ -9,6 +9,13 @@ import dotty.tools.languageserver.util.actions.CodeCompletion
 
 class CompletionTest {
 
+  @Test def aaaaaa: Unit = {
+    code"""object Test:
+          |  case class Widget(name: String, other: Int = 5)
+          |  Widget(name = , ${m1})""".withSource
+        .completion(m1, Set(("print", Method, "(x: Any): Unit")))
+  }
+/*
   @Test def completion0: Unit = {
     code"class Foo { val xyz: Int = 0; def y: Int = xy${m1} }".withSource
       .completion(m1, Set(("xyz", Field, "Int")))
@@ -994,4 +1001,5 @@ class CompletionTest {
             ("annotation", Module, "scala.annotation")
           )
         )
+*/
 }

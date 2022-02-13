@@ -881,7 +881,8 @@ object Parsers {
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
 
-    /** Is current ident a `*`, and is it followed by a `)` or `, )`? */
+    /** Is current ident a `*`, and is it followed by a `)`, `, )`, `,EOF`? The latter two are not
+        syntactically valid, but we need to include them here for error recovery. */
     def followingIsVararg(): Boolean =
       in.isIdent(nme.raw.STAR) && {
         val lookahead = in.LookaheadScanner()
@@ -890,7 +891,7 @@ object Parsers {
         || lookahead.token == COMMA
            && {
              lookahead.nextToken()
-             lookahead.token == RPAREN
+             lookahead.token == RPAREN || lookahead.token == EOF
            }
       }
 

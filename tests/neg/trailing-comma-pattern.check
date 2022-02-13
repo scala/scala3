@@ -1,0 +1,6 @@
+-- [E032] Syntax Error: tests/neg/trailing-comma-pattern.scala:4:0 -----------------------------------------------------
+4 |
+  |^
+  |pattern expected
+
+longer explanation available when compiling with `-explain`

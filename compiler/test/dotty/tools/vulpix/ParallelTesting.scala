@@ -819,7 +819,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         def toRelative(path: String): String =  // For some reason, absolute paths leak from the compiler itself...
           path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
         val fileName = toRelative(pos1.source.file.toString)
-        s"$fileName:${pos1.line}"
+        // If an annotated // error is placed on the last line of the file, EOF errors can show up past the last.
+        // Without this adjustment, it's not possible to annotate // error on errors whose position is EOF
+        // in some cases.
+        val adjustedLine = if (pos1.point == pos1.source.length && pos1.point > 0) pos1.source.offsetToLine(pos1.point - 1) else pos1.line
+        s"$fileName:$adjustedLine"
 
       } else "nopos"
 
