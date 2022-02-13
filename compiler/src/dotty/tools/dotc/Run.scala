@@ -57,40 +57,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   @volatile var isCancelled = false
 
-  /** Produces the following contexts, from outermost to innermost
-   *
-   *    bootStrap:   A context with next available runId and a scope consisting of
-   *                 the RootPackage _root_
-   *    start        A context with RootClass as owner and the necessary initializations
-   *                 for type checking.
-   *    imports      For each element of RootImports, an import context
-   */
-  protected def rootContext(using Context): Context = {
-    ctx.initialize()
-    ctx.base.setPhasePlan(comp.phases)
-    val rootScope = new MutableScope(0)
-    val bootstrap = ctx.fresh
-      .setPeriod(Period(comp.nextRunId, FirstPhaseId))
-      .setScope(rootScope)
-    rootScope.enter(ctx.definitions.RootPackage)(using bootstrap)
-    var start = bootstrap.fresh
-      .setOwner(defn.RootClass)
-      .setTyper(new Typer)
-      .addMode(Mode.ImplicitsEnabled)
-      .setTyperState(ctx.typerState.fresh(ctx.reporter))
-    if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
-      start = start.addMode(Mode.SafeNulls)
-    ctx.initialize()(using start) // re-initialize the base context with start
-    start.setRun(this)
-  }
-
   private var compiling = false
-
-  private var myCtx = rootContext(using ictx)
-
-  /** The context created for this run */
-  given runContext[Dummy_so_its_a_def]: Context = myCtx
-  assert(runContext.runId <= Periods.MaxPossibleRunId)
 
   private var myUnits: List[CompilationUnit] = _
   private var myUnitsCached: List[CompilationUnit] = _
@@ -369,4 +336,40 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     myUnits = null
     myUnitsCached = null
   }
+
+  /** Produces the following contexts, from outermost to innermost
+   *
+   *    bootStrap:   A context with next available runId and a scope consisting of
+   *                 the RootPackage _root_
+   *    start        A context with RootClass as owner and the necessary initializations
+   *                 for type checking.
+   *    imports      For each element of RootImports, an import context
+   */
+  protected def rootContext(using Context): Context = {
+    ctx.initialize()
+    ctx.base.setPhasePlan(comp.phases)
+    val rootScope = new MutableScope(0)
+    val bootstrap = ctx.fresh
+      .setPeriod(Period(comp.nextRunId, FirstPhaseId))
+      .setScope(rootScope)
+    rootScope.enter(ctx.definitions.RootPackage)(using bootstrap)
+    var start = bootstrap.fresh
+      .setOwner(defn.RootClass)
+      .setTyper(new Typer)
+      .addMode(Mode.ImplicitsEnabled)
+      .setTyperState(ctx.typerState.fresh(ctx.reporter))
+    if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
+      start = start.addMode(Mode.SafeNulls)
+    ctx.initialize()(using start) // re-initialize the base context with start
+
+    // `this` must be unchecked for safe initialization because by being passed to setRun during
+    // initialization, it is not yet considered fully initialized by the initialization checker
+    start.setRun(this: @unchecked)
+  }
+
+  private var myCtx = rootContext(using ictx)
+
+  /** The context created for this run */
+  given runContext[Dummy_so_its_a_def]: Context = myCtx
+  assert(runContext.runId <= Periods.MaxPossibleRunId)
 }
