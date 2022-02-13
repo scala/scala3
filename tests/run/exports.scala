@@ -18,8 +18,8 @@ object Test extends App {
 
   object Copier {
     val printer = new Printer
-    export printer.{given, _}
-    export Scanner.{scan => scanIt, _}
+    export printer.{given, *}
+    export Scanner.{scan => scanIt, *}
 
     val config2 = summon[Config]
   }
@@ -41,6 +41,17 @@ object Test extends App {
   test()
 
   val _: Int = B.x
+
+  object FunnyCopier:
+    def printer(id: String) =
+      println(s"new Printer $id")
+      new Printer
+    export printer("#1").*
+    export Scanner.*
+
+  FunnyCopier.print()
+  FunnyCopier.print()
+  FunnyCopier.scan()
 }
 
 final class Foo {

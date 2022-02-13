@@ -1150,7 +1150,11 @@ class Namer { typer: Typer =>
                 case tp: TermRef => tp.termSymbol.is(Private) || refersToPrivate(tp.prefix)
                 case _ => false
               val (maybeStable, mbrInfo) =
-                if sym.isStableMember && sym.isPublic && !refersToPrivate(path.tpe) then
+                if sym.isStableMember
+                    && sym.isPublic
+                    && path.tpe.isStable
+                    && !refersToPrivate(path.tpe)
+                then
                   (StableRealizable, ExprType(path.tpe.select(sym)))
                 else
                   (EmptyFlags, mbr.info.ensureMethodic)
@@ -1165,6 +1169,7 @@ class Namer { typer: Typer =>
           forwarder.addAnnotations(sym.annotations.filterConserve(_.symbol != defn.BodyAnnot))
 
           if forwarder.isType then
+            checkLegalExportPathForType(path, sym)
             buf += tpd.TypeDef(forwarder.asType).withSpan(span)
           else
             import tpd._

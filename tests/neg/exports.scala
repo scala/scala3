@@ -49,3 +49,9 @@
     val baz: Baz = new Baz
     export baz._
   }
+
+  object No:
+    def printer(id: String) =
+      println(s"new Printer $id")
+      new Printer
+    export printer("#1").*  // error

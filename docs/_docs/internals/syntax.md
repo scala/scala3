@@ -259,7 +259,7 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr													                        -- to be dropped
 IndentedExpr      ::=  indent CaseClauses | Block outdent
-Quoted            ::=  ‘'’ ‘{’ Block ‘}’  
+Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type                                     -- normal Expr allows only RefinedType here
@@ -366,9 +366,11 @@ AccessQualifier   ::=  ‘[’ id ‘]’
 Annotation        ::=  ‘@’ SimpleType1 {ParArgumentExprs}                         Apply(tpe, args)
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
                     |  SimpleRef ‘as’ id                                          Import(EmptyTree, ImportSelector(ref, id))
+Export            ::=  ‘export’ ExportExpr {‘,’ ExportExpr}
+ExportExpr        ::=  SimpleRef {‘.’ id | ParArgumentExprs} ‘.’ ImportSpec       Export(expr, sels)
+                    |  SimpleRef ‘as’ id                                          Export(EmptyTree, ImportSelector(ref, id))
 ImportSpec        ::=  NamedSelector
                     |  WildcardSelector
                     | ‘{’ ImportSelectors) ‘}’

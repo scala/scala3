@@ -3111,7 +3111,7 @@ object Parsers {
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      commaSeparated(importExpr(mkTree)) match {
+      commaSeparated(importExpr(mkTree, acceptArgs = leading == EXPORT)) match {
         case t :: rest =>
           // The first import should start at the start offset of the keyword.
           val firstPos =
@@ -3143,6 +3143,8 @@ object Parsers {
 
     /** ImportExpr       ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
      *                     |  SimpleRef ‘as’ id
+     *  ExportExpr       ::=  SimpleRef {‘.’ id | ParArgumentExprs} ‘.’ ImportSpec
+     *                     |  SimpleRef ‘as’ id
      *  ImportSpec       ::=  NamedSelector
      *                     |  WildcardSelector
      *                     | ‘{’ ImportSelectors ‘}’
@@ -3151,7 +3153,7 @@ object Parsers {
      *  NamedSelector    ::=  id [‘as’ (id | ‘_’)]
      *  WildCardSelector ::=  ‘*' | ‘given’ [InfixType]
      */
-    def importExpr(mkTree: ImportConstr): () => Tree =
+    def importExpr(mkTree: ImportConstr, acceptArgs: Boolean): () => Tree =
 
       /** ‘*' | ‘_' */
       def wildcardSelector() =
@@ -3216,6 +3218,8 @@ object Parsers {
               mkTree(qual1, namedSelector(from) :: Nil)
             case qual: Ident =>
               mkTree(EmptyTree, namedSelector(qual) :: Nil)
+        else if acceptArgs && in.token == LPAREN then
+          importSelection(atSpan(startOffset(qual)) { mkApply(qual, parArgumentExprs()) })
         else
           accept(DOT)
           in.token match

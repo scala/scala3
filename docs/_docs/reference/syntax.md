@@ -355,8 +355,10 @@ AccessQualifier   ::=  ‘[’ id ‘]’
 Annotation        ::=  ‘@’ SimpleType1 {ParArgumentExprs}
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
+                    |  SimpleRef ‘as’ id
+Export            ::=  ‘export’ ExportExpr {‘,’ ExportExpr}
+ExportExpr        ::=  SimpleRef {‘.’ id | ParArgumentExprs} ‘.’ ImportSpec
                     |  SimpleRef ‘as’ id
 ImportSpec        ::=  NamedSelector
                     |  WildcardSelector
