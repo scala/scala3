@@ -455,11 +455,6 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   // Initialization code
 
-  for ((phase, idx) <- miniPhases.zipWithIndex) {
-    phase.superPhase = this
-    phase.idxInGroup = idx
-  }
-
   /** Class#getDeclaredMethods is slow, so we cache its output */
   private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Array[java.lang.reflect.Method]]
 
@@ -563,6 +558,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val nxUnitTransPhase = init("transformUnit")
   private val nxOtherPrepPhase = init("prepareForOther")
   private val nxOtherTransPhase = init("transformOther")
+
+  for ((phase, idx) <- miniPhases.zipWithIndex) {
+    phase.superPhase = this
+    phase.idxInGroup = idx
+  }
 
   // Boilerplate snippets
 
