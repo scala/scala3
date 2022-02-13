@@ -3877,9 +3877,6 @@ object Types {
     val paramInfos: List[TypeBounds] = paramInfosExp(this)
     val resType: Type = resultTypeExp(this)
 
-    assert(resType.isInstanceOf[TermType], this)
-    assert(paramNames.nonEmpty)
-
     private def setVariances(tparams: List[LambdaParam], vs: List[Variance]): Unit =
       if tparams.nonEmpty then
         tparams.head.declaredVariance = vs.head
@@ -3931,6 +3928,9 @@ object Types {
       if isDeclaredVarianceLambda then
         s"HKTypeLambda($paramNames, $paramInfos, $resType, ${declaredVariances.map(_.flagsString)})"
       else super.toString
+
+    assert(resType.isInstanceOf[TermType], this)
+    assert(paramNames.nonEmpty)
   }
 
   /** The type of a polymorphic method. It has the same form as HKTypeLambda,
