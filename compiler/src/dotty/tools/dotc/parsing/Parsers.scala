@@ -249,11 +249,11 @@ object Parsers {
 
     /** Skip on error to next safe point.
      */
-    protected def skip(): Unit =
+    protected def skip(stopAtComma: Boolean): Unit =
       val lastRegion = in.currentRegion
       def atStop =
         in.token == EOF
-        || skipStopTokens.contains(in.token) && (in.currentRegion eq lastRegion)
+        || ((stopAtComma && in.token == COMMA) || skipStopTokens.contains(in.token)) && (in.currentRegion eq lastRegion)
       while !atStop do
         in.nextToken()
       lastErrorOffset = in.offset
@@ -278,7 +278,7 @@ object Parsers {
       if (in.token == EOF) incompleteInputError(msg)
       else
         syntaxError(msg, offset)
-        skip()
+        skip(stopAtComma = true)
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
@@ -346,7 +346,7 @@ object Parsers {
             false // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
-            skip()
+            skip(stopAtComma=false)
             true
 
       in.observeOutdented()
@@ -881,7 +881,8 @@ object Parsers {
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
 
-    /** Is current ident a `*`, and is it followed by a `)` or `, )`? */
+    /** Is current ident a `*`, and is it followed by a `)`, `, )`, `,EOF`? The latter two are not
+        syntactically valid, but we need to include them here for error recovery. */
     def followingIsVararg(): Boolean =
       in.isIdent(nme.raw.STAR) && {
         val lookahead = in.LookaheadScanner()
@@ -890,7 +891,7 @@ object Parsers {
         || lookahead.token == COMMA
            && {
              lookahead.nextToken()
-             lookahead.token == RPAREN
+             lookahead.token == RPAREN || lookahead.token == EOF
            }
       }
 
