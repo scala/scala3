@@ -4,9 +4,3 @@
   |             expression expected but [31mend[0m found
   |
   | longer explanation available when compiling with `-explain`
--- [E129] Potential Issue Warning: tests/neg/i12150.scala:1:11 ---------------------------------------------------------
-1 |def f: Unit = // error
-  |           ^
-  |           A pure expression does nothing in statement position; you may be omitting necessary parentheses
-  |
-  | longer explanation available when compiling with `-explain`

@@ -7,10 +7,10 @@ object Test {
     val is = List(1,2,3)
 
     is match {
-      case List(1, _*,) => // error: pattern expected // error
+      case List(1, _*,) => // error: pattern expected
 
-      case List(1, _*3,) => // error: pattern expected // error // error
-      //case List(1, _*3:) =>  // poor recovery by parens
+      case List(1, _*3,) => // error: pattern expected // error
+      case List(1, _*3:) =>  // error // error
       case List(1, x*) => // ok
       case List(x*, 1) => // error: pattern expected
       case (1, x*) => //ok

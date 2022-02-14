@@ -2,10 +2,10 @@ package foo
 
 // Multi-line only cases: make sure trailing commas are only supported when multi-line
 
-trait ArgumentExprs1 { validMethod(23, "bar", )(Ev0, Ev1) } // error // error
-trait ArgumentExprs2 { validMethod(23, "bar")(Ev0, Ev1, ) } // error // error
-trait ArgumentExprs3 { new ValidClass(23, "bar", )(Ev0, Ev1) } // error // error
-trait ArgumentExprs4 { new ValidClass(23, "bar")(Ev0, Ev1, ) } // error // error
+trait ArgumentExprs1 { validMethod(23, "bar", )(Ev0, Ev1) } // error
+trait ArgumentExprs2 { validMethod(23, "bar")(Ev0, Ev1, ) } // error
+trait ArgumentExprs3 { new ValidClass(23, "bar", )(Ev0, Ev1) } // error
+trait ArgumentExprs4 { new ValidClass(23, "bar")(Ev0, Ev1, ) } // error
 
 trait Params1 { def f(foo: Int, bar: String, )(implicit ev0: Ev0, ev1: Ev1, ) = 1 } // error // error
 
