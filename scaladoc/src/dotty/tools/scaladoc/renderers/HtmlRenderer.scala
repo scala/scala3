@@ -82,11 +82,14 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       script(raw(s"""var pathToRoot = "${pathToRoot(page.link.dri)}";""")),
       (page.content match
         case ResolvedTemplate(loadedTemplate, _) =>
-          val path = loadedTemplate.file.toPath
+          val path = loadedTemplate.templateFile.file.toPath
           ctx.sourceLinks.repoSummary(path) match
             case Some(DefinedRepoSummary("github", org, repo)) =>
               val tag: TagArg = ctx.sourceLinks.fullPath(relativePath(path)).fold("") { githubContributors =>
-                script(raw(s"""var githubContributorsUrl = "https://api.github.com/repos/$org/$repo/commits?path=$githubContributors";"""))
+                Seq(
+                  script(raw(s"""var githubContributorsUrl = "https://api.github.com/repos/$org/$repo";""")),
+                  script(raw(s"""var githubContributorsFilename = "$githubContributors";"""))
+                )
               }
               tag // for some reason inference fails so had to state the type explicitly
             case _ => ""

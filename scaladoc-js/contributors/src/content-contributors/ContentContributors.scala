@@ -33,46 +33,83 @@ trait Author extends js.Object:
 trait CommitTop extends js.Object:
   def commit: CommitBottom
   def author: Author
+  def url: String
 
 trait Commits extends js.Array[CommitTop]
 
-class ContentContributors:
-  document.addEventListener("DOMContentLoaded", (e: Event) => {
-    val indenticonsUrl = "https://github.com/identicons"
-    js.typeOf(Globals.githubContributorsUrl) match
-        case "undefined" =>
-          // don't do anything
-        case url =>
-          val request: Future[String] = Ajax.get(Globals.githubContributorsUrl).map(_.responseText)
-          request.onComplete {
-            case Success(json: String) =>
-              val res = JSON.parse(json).asInstanceOf[Commits]
-              val authors = res.map { commit =>
-                commit.author match
-                  case null =>
-                    FullAuthor(commit.commit.author.name, "", s"$indenticonsUrl/${commit.commit.author.name}.png")
-                  case author =>
-                    FullAuthor(author.login, author.html_url, author.avatar_url)
-              }.distinct
-              val maybeDiv = Option(document.getElementById("documentation-contributors"))
-              maybeDiv.foreach { div =>
-                authors.foreach { case FullAuthor(name, url, img) =>
-                  val divN = document.createElement("div")
-                  val imgN = document.createElement("img").asInstanceOf[html.Image]
-                  imgN.src = img
-                  val autN = document.createElement("a").asInstanceOf[html.Anchor]
-                  autN.href = url
-                  autN.text = name
-                  divN.appendChild(imgN)
-                  divN.appendChild(autN)
-                  div.appendChild(divN)
-                }
+trait CommitDescription extends js.Object:
+  def files: js.Array[FileChange]
 
-                if authors.nonEmpty then
-                  div.asInstanceOf[html.Div].parentElement.classList.toggle("hidden")
-              }
-            case Failure(_) =>
-              println(s"Couldn't fetch contributors for ${Globals.githubContributorsUrl}")
-          }
+trait FileChange extends js.Object:
+  def filename: String
+  def status: String
+  def previous_filename: String
+
+class ContentContributors:
+  val indenticonsUrl = "https://github.com/identicons"
+  def linkForFilename(filename: String) = Globals.githubContributorsUrl + s"/commits?path=$filename"
+  def getAuthorsForFilename(filename: String): Future[List[FullAuthor]] = {
+    val link = linkForFilename(filename)
+    Ajax.get(link).map(_.responseText).flatMap { json =>
+      val res = JSON.parse(json).asInstanceOf[Commits]
+      val authors = res.map { commit =>
+        commit.author match
+          case null =>
+            FullAuthor(commit.commit.author.name, "", s"$indenticonsUrl/${commit.commit.author.name}.png")
+          case author =>
+            FullAuthor(author.login, author.html_url, author.avatar_url)
+      }
+      val lastCommit = res.lastOption
+      val lastCommitDescriptionLink = lastCommit.map(_.url)
+      val previousFilename = lastCommitDescriptionLink
+        .fold(Future.successful(None)) { link =>
+          findRename(link, filename)
+        }
+      val previousAuthors = previousFilename.flatMap {
+        case Some(filename) => getAuthorsForFilename(filename)
+        case None => Future.successful(List.empty)
+      }.fallbackTo(Future.successful(List.empty))
+
+      previousAuthors.map(_ ++ authors).map(_.distinct)
+    }
+  }
+  def findRename(link: String, filename: String): Future[Option[String]] = {
+    Ajax.get(link).map(_.responseText).map { json =>
+        val res = JSON.parse(json).asInstanceOf[CommitDescription]
+        val files = res.files
+        files
+          .find(_.filename == filename)
+          .filter(_.status == "renamed")
+          .map(_.previous_filename)
+    }
+  }
+  document.addEventListener("DOMContentLoaded", (e: Event) => {
+    if js.typeOf(Globals.githubContributorsUrl) != "undefined" &&
+      js.typeOf(Globals.githubContributorsFilename) != "undefined"
+    then {
+      getAuthorsForFilename(Globals.githubContributorsFilename.stripPrefix("/")).onComplete {
+        case Success(authors) =>
+          val maybeDiv = Option(document.getElementById("documentation-contributors"))
+          maybeDiv.foreach { div =>
+            authors.foreach { case FullAuthor(name, url, img) =>
+              val divN = document.createElement("div")
+              val imgN = document.createElement("img").asInstanceOf[html.Image]
+              imgN.src = img
+              val autN = document.createElement("a").asInstanceOf[html.Anchor]
+              autN.href = url
+              autN.text = name
+              divN.appendChild(imgN)
+              divN.appendChild(autN)
+              div.appendChild(divN)
+            }
+
+            if authors.nonEmpty then
+              div.asInstanceOf[html.Div].parentElement.classList.toggle("hidden")
+        }
+        case Failure(err) =>
+          println(s"Couldn't fetch contributors. $err")
+          None
+      }
+    }
   })
 
