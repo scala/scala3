@@ -77,6 +77,16 @@ A member is _eligible_ if all of the following holds:
 
 It is a compile-time error if a simple or renaming selector does not identify any eligible members.
 
+Type members are aliased by type definitions, and term members are aliased by method definitions. For instance:
+```scala
+object O:
+  class C(val x: Int)
+  def m(c: C): Int = c.x + 1
+export O.*
+  // generates
+  //   type C = O.C
+  //   def m(c: O.C): Int = O.m(c)
+```
 The qualifier expression `qual` can contain selections as well as applications
 to arguments. However, if a type member is exported, `qual` must be a stable path.
 
@@ -89,7 +99,8 @@ export C(3).T  // error: need a path to export T
 export C(4).*  // also error since T is exported via *
 ```
 
-Type members are aliased by type definitions, and term members are aliased by method definitions. Export aliases copy the type and value parameters of the members they refer to.
+
+Export aliases copy the type and value parameters of the members they refer to.
 Export aliases are always `final`. Aliases of given instances are again defined as givens (and aliases of old-style implicits are `implicit`). Aliases of extensions are again defined as extensions. Aliases of inline methods or values are again defined `inline`. There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
 
  - Export aliases cannot be overridden, since they are final.

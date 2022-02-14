@@ -1064,14 +1064,14 @@ class Namer { typer: Typer =>
     def init(): Context = index(params)
 
     /** The forwarders defined by export `exp` */
-    private def exportForwarders(exp: Export)(using Context): List[tpd.MemberDef] =
+    private def exportForwarders(exp: Export, localDummy: Symbol)(using Context): List[tpd.MemberDef] =
       val buf = new mutable.ListBuffer[tpd.MemberDef]
       val Export(expr, selectors) = exp
       if expr.isEmpty then
         report.error(em"Export selector must have prefix and `.`", exp.srcPos)
         return Nil
 
-      val path = typedAheadExpr(expr, AnySelectionProto)
+      val path = typedAheadExpr(expr, AnySelectionProto)(using ctx.withOwner(localDummy))
       checkLegalExportPath(path, selectors)
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
@@ -1173,7 +1173,7 @@ class Namer { typer: Typer =>
             buf += tpd.TypeDef(forwarder.asType).withSpan(span)
           else
             import tpd._
-            val ref = path.select(sym.asTerm)
+            val ref = path.changeOwner(localDummy, forwarder).select(sym.asTerm)
             val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
                 ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss)))
             if forwarder.isInlineMethod then
@@ -1239,11 +1239,11 @@ class Namer { typer: Typer =>
     end exportForwarders
 
     /** Add forwarders as required by the export statements in this class */
-    private def processExports(using Context): Unit =
+    private def processExports(localDummy: Symbol)(using Context): Unit =
 
       def process(stats: List[Tree])(using Context): Unit = stats match
         case (stat: Export) :: stats1 =>
-          for forwarder <- exportForwarders(stat) do
+          for forwarder <- exportForwarders(stat, localDummy) do
             forwarder.symbol.entered
           process(stats1)
         case (stat: Import) :: stats1 =>
@@ -1440,7 +1440,8 @@ class Namer { typer: Typer =>
         if cls.is(Trait) then cls.is(NoInits)
         else cls.isNoInitsRealClass
       if ctorStable then cls.primaryConstructor.setFlag(StableRealizable)
-      processExports(using localCtx)
+      val localDummy = recordSym(newLocalDummy(cls, impl.span), impl)
+      processExports(localDummy)(using localCtx)
       defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
     }
