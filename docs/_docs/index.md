@@ -1,5 +1,6 @@
 ---
 layout: doc-page
+redirectFrom: docs/index.html
 ---
 
 Dotty is the project name for technologies that are considered for inclusion in Scala 3. Scala has
