@@ -18,7 +18,7 @@ import com.vladsch.flexmark.formatter.Formatter
 
 import scala.collection.JavaConverters._
 
-val docsRootDRI: DRI = DRI(location = "docs/index", symbolUUID = staticFileSymbolUUID)
+val docsRootDRI: DRI = DRI(location = "_docs/index", symbolUUID = staticFileSymbolUUID)
 val apiPageDRI: DRI = DRI(location = "api/index")
 
 def defaultMarkdownOptions(using ctx: StaticSiteContext): DataHolder =
