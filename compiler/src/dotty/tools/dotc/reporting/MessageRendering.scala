@@ -116,26 +116,27 @@ trait MessageRendering {
    *  ```
    *  Or if there `soft` is true,
    *  ```
-   *    |···············
+   *    |- - - - - - - -
    *  ```
    */
   private def newBox(soft: Boolean = false)(using Context, Level, Offset): String =
     val pageWidth = ctx.settings.pageWidth.value
     val prefix = " " * (offset - 1)
-    val line = (if soft then "·" else "-") * (pageWidth - offset)
+    val lineWidth = (pageWidth - offset)
+    val line = if soft then ("- " * ((lineWidth + 1) / 2)).trim else "-" * lineWidth
     hl(s"$prefix|$line")
 
   /** The end of a box section
    *
    *  ```
-   *    ·----------------
+   *     ----------------
    *  ```
    */
   private def endBox(using Context, Level, Offset): String =
     val pageWidth = ctx.settings.pageWidth.value
     val prefix = " " * (offset - 1)
     val line = "-" * (pageWidth - offset)
-    hl(s"${prefix}·$line")
+    hl(s"${prefix} $line")
 
   /** The error message (`msg`) aligned under `pos`
     *
