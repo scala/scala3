@@ -377,7 +377,7 @@ object Parsers {
       false
     }
 
-    def errorTermTree: Literal = atSpan(in.offset) { Literal(Constant(null)) }
+    def errorTermTree(start: Offset): Literal = atSpan(start, in.offset, in.offset) { Literal(Constant(null)) }
 
     private var inFunReturnType = false
     private def fromWithinReturnType[T](body: => T): T = {
@@ -1931,7 +1931,7 @@ object Parsers {
               PolyFunction(tparams, body)
             else {
               syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
-              errorTermTree
+              errorTermTree(arrowOffset)
             }
           }
         case _ =>
@@ -2298,8 +2298,9 @@ object Parsers {
             in.nextToken()
             simpleExpr(location)
           else
+            val start = in.lastOffset
             syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token)), expectedOffset)
-            errorTermTree
+            errorTermTree(start)
       }
       simpleExprRest(t, location, canApply)
     }
@@ -2738,8 +2739,9 @@ object Parsers {
       case _ =>
         if (isLiteral) literal(inPattern = true)
         else {
+          val start = in.lastOffset
           syntaxErrorOrIncomplete(IllegalStartOfSimplePattern(), expectedOffset)
-          errorTermTree
+          errorTermTree(start)
         }
     }
 
@@ -3314,8 +3316,9 @@ object Parsers {
           }
           val rhs2 =
             if rhs.isEmpty && !isAllIds then
+              val start = in.lastOffset
               syntaxError(ExpectedTokenButFound(EQUALS, in.token), Span(in.lastOffset))
-              errorTermTree
+              errorTermTree(start)
             else
               rhs
           PatDef(mods, lhs, tpt, rhs2)
@@ -3483,11 +3486,12 @@ object Parsers {
         case GIVEN =>
           givenDef(start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
+          val start = in.lastOffset
           syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
           mods.annotations match {
             case head :: Nil => head
             case Nil => EmptyTree
-            case all => Block(all, errorTermTree)
+            case all => Block(all, errorTermTree(start))
           }
       }
 
