@@ -2,6 +2,7 @@ import java.io.File
 import java.nio.file._
 
 import Modes._
+import ScaladocGeneration._
 import com.jsuereth.sbtpgp.PgpKeys
 import sbt.Keys._
 import sbt._
@@ -59,6 +60,8 @@ object DottyJSPlugin extends AutoPlugin {
 }
 
 object Build {
+  import ScaladocConfigs._
+
   val referenceVersion = "3.1.2-RC1"
 
   val baseVersion = "3.1.3-RC1"
@@ -1287,39 +1290,15 @@ object Build {
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
     )
 
-  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil, includeExternalMappings: Boolean = true) =
+  def generateDocumentation(configTask: Def.Initialize[Task[GenerationConfig]]) =
     Def.taskDyn {
-      val distLocation = (dist / pack).value
-      val projectVersion = version.value
-      IO.createDirectory(file(outDir))
-      val stdLibVersion = stdlibVersion(NonBootstrapped)
-      val scalaLib = findArtifactPath(externalCompilerClasspathTask.value, "scala-library")
-      val dottyLib = (`scala3-library` / Compile / classDirectory).value
-      // TODO add versions etc.
-      def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
-      def scalaSrcLink(v: String, s: String) = s"-source-links:${s}github://scala/scala/v$v#src/library"
-      def dottySrcLink(v: String, sourcesPrefix: String = "", outputPrefix: String = "") =
-        sys.env.get("GITHUB_SHA") match {
-          case Some(sha) =>
-            s"-source-links:${sourcesPrefix}github://${sys.env("GITHUB_REPOSITORY")}/$sha$outputPrefix"
-          case None => s"-source-links:${sourcesPrefix}github://lampepfl/dotty/$v$outputPrefix"
-        }
-
-      val revision = Seq("-revision", ref, "-project-version", projectVersion)
-      val cmd = Seq(
-        "-d",
-        outDir,
-        "-project",
-        name,
-        scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
-        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
-        dottySrcLink(referenceVersion),
-        "-Ygenerate-inkuire",
-      ) ++ scalacOptionsDocSettings(includeExternalMappings) ++ revision ++ params ++ targets
-      import _root_.scala.sys.process._
-      val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
+      val config = configTask.value
+      config.get[OutputDir].foreach { outDir =>
+        IO.createDirectory(file(outDir.value))
+      }
+      val command = generateCommand(config)
       Def.task {
-        (Compile / run).toTask(escapedCmd.mkString(" ", " ", "")).value
+        (Compile / run).toTask(command).value
       }
     }
 
@@ -1363,66 +1342,40 @@ object Build {
       Test / testcasesSourceRoot := ((`scaladoc-testcases` / baseDirectory).value / "src").getAbsolutePath.toString,
       run / baseDirectory := (ThisBuild / baseDirectory).value,
       generateSelfDocumentation := Def.taskDyn {
-        generateDocumentation(
-          (Compile / classDirectory).value.getAbsolutePath :: Nil,
-          "scaladoc", "scaladoc/output/self", VersionUtil.gitHash, Seq("-usejavacp")
-        )
+        generateDocumentation(Scaladoc)
       }.value,
+
       generateScalaDocumentation := Def.inputTaskDyn {
-        val extraArgs = spaceDelimited("[output]").parsed
-        val dest = file(extraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
-        val justAPI = extraArgs.drop(1).headOption == Some("--justAPI")
         val majorVersion = (LocalProject("scala3-library-bootstrapped") / scalaBinaryVersion).value
-        val dottyJars: Seq[java.io.File] = Seq(
-          (`stdlib-bootstrapped`/Compile/products).value,
-          (`scala3-interfaces`/Compile/products).value,
-          (`tasty-core-bootstrapped`/Compile/products).value,
-        ).flatten
 
-        val roots = dottyJars.map(_.getAbsolutePath)
+        val extraArgs = spaceDelimited("[<output-dir>] [--justAPI]").parsed
+        val outputDirOverride = extraArgs.headOption.fold(identity[GenerationConfig](_))(newDir => {
+          config: GenerationConfig => config.add(OutputDir(newDir))
+        })
+        val justAPIArg: Option[String] = extraArgs.drop(1).find(_ == "--justAPI")
+        val justAPI = justAPIArg.fold(identity[GenerationConfig](_))(_ => {
+          config: GenerationConfig => config.remove[SiteRoot]
+        })
+        val overrideFunc = outputDirOverride.andThen(justAPI)
 
-        val managedSources =
-          (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
-        val projectRoot = (ThisBuild/baseDirectory).value.toPath
-        val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
-        val docRootFile = stdLibRoot.resolve("rootdoc.txt")
+        val config = Def.task {
+          overrideFunc(Scala3.value)
+        }
 
-        val dottyManagesSources =
-          (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
+        val writeAdditionalFiles = Def.task {
+          val dest = file(config.value.get[OutputDir].get.value)
+          if (justAPIArg.isEmpty) {
+            IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
+            // This file is used by GitHub Pages when the page is available in a custom domain
+            IO.write(dest / "CNAME", "dotty.epfl.ch")
+          }
+        }
 
-        val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
-
-        def generateDocTask =
-          generateDocumentation(
-            roots, "Scala 3", dest.getAbsolutePath, "main",
-            Seq(
-              "-comment-syntax", "wiki",
-              s"-source-links:docs=github://lampepfl/dotty/main#docs",
-              "-doc-root-content", docRootFile.toString,
-              "-versions-dictionary-url",
-              "https://scala-lang.org/api/versions.json",
-              "-Ydocument-synthetic-types",
-              s"-snippet-compiler:${dottyLibRoot}/scala/quoted=compile,${dottyLibRoot}/scala/compiletime=compile"
-            ) ++ (if (justAPI) Nil else Seq("-siteroot", "docs", "-Yapi-subdirectory")), includeExternalMappings = false)
-
-        if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-        else if (justAPI) generateDocTask
-        else Def.task{
-          IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
-
-          // This file is used by GitHub Pages when the page is available in a custom domain
-          IO.write(dest / "CNAME", "dotty.epfl.ch")
-        }.dependsOn(generateDocTask)
+        writeAdditionalFiles.dependsOn(generateDocumentation(config))
       }.evaluated,
 
       generateTestcasesDocumentation := Def.taskDyn {
-        generateDocumentation(
-          (Test / Build.testcasesOutputDir).value,
-          "scaladoc testcases",
-          "scaladoc/output/testcases",
-          "main",
-          Seq("-usejavacp", "-snippet-compiler:scaladoc-testcases/docs=compile", "-siteroot", "scaladoc-testcases/docs")
-        )
+        generateDocumentation(Testcases)
       }.value,
 
       Test / buildInfoKeys := Seq[BuildInfoKey](
@@ -1801,5 +1754,125 @@ object Build {
       case NonBootstrapped => commonNonBootstrappedSettings
       case Bootstrapped => commonBootstrappedSettings
     })
+  }
+}
+
+object ScaladocConfigs {
+  import Build._
+  private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
+
+  def dottyExternalMapping = ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/"
+  def javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
+
+  lazy val DefaultGenerationConfig = Def.task {
+    def distLocation = (dist / pack).value
+    def projectVersion = version.value
+    def stdLibVersion = stdlibVersion(NonBootstrapped)
+    def scalaLib = findArtifactPath(externalCompilerClasspathTask.value, "scala-library")
+    def dottyLib = (`scala3-library` / Compile / classDirectory).value
+    def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
+    def scalaSrcLink(v: String, s: String) = s"${s}github://scala/scala/v$v#src/library"
+    def dottySrcLink(v: String, sourcesPrefix: String = "", outputPrefix: String = "") =
+      sys.env.get("GITHUB_SHA") match {
+        case Some(sha) =>
+          s"${sourcesPrefix}github://${sys.env("GITHUB_REPOSITORY")}/$sha$outputPrefix"
+        case None => s"${sourcesPrefix}github://lampepfl/dotty/$v$outputPrefix"
+      }
+
+    def defaultSourceLinks: SourceLinks = SourceLinks(
+      List(
+        scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala") + "="),
+        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty") + "=", "#library/src"),
+        dottySrcLink(referenceVersion),
+        "docs=github://lampepfl/dotty/main#docs"
+      )
+    )
+    def socialLinks = SocialLinks(List(
+      "github::https://github.com/lampepfl/dotty",
+      "discord::https://discord.com/invite/scala",
+      "twitter::https://twitter.com/scala_lang",
+    ))
+    def projectLogo = ProjectLogo("docs/_assets/images/logo.svg")
+    def skipByRegex = SkipByRegex(List(".+\\.internal($|\\..+)", ".+\\.impl($|\\..+)"))
+    def skipById = SkipById(List(
+      "scala.runtime.stdLibPatches",
+      "scala.runtime.MatchCase"
+    ))
+    def projectFooter = ProjectFooter(s"Copyright (c) 2002-$currentYear, LAMP/EPFL")
+    def defaultTemplate = DefaultTemplate("static-site-main")
+    GenerationConfig(
+      List(),
+      ProjectVersion(projectVersion),
+      GenerateInkuire(true),
+      defaultSourceLinks,
+      skipByRegex,
+      skipById,
+      projectLogo,
+      socialLinks,
+      projectFooter,
+      defaultTemplate,
+      Author(true),
+      Groups(true)
+    )
+  }
+
+  lazy val Scaladoc = Def.task {
+    DefaultGenerationConfig.value
+      .add(UseJavacp(true))
+      .add(ProjectName("scaladoc"))
+      .add(OutputDir("scaladoc/output/self"))
+      .add(Revision(VersionUtil.gitHash))
+      .add(ExternalMappings(List(dottyExternalMapping, javaExternalMapping)))
+      .withTargets((Compile / classDirectory).value.getAbsolutePath :: Nil)
+  }
+
+  lazy val Testcases = Def.task {
+    val tastyRoots = (Test / Build.testcasesOutputDir).value
+    DefaultGenerationConfig.value
+      .add(UseJavacp(true))
+      .add(OutputDir("scaladoc/output/testcases"))
+      .add(ProjectName("scaladoc testcases"))
+      .add(Revision("main"))
+      .add(SnippetCompiler(List("scaladoc-testcases/docs=compile")))
+      .add(SiteRoot("scaladoc-testcases/docs"))
+      .add(ExternalMappings(List(dottyExternalMapping, javaExternalMapping)))
+      .withTargets(tastyRoots)
+  }
+
+  lazy val Scala3 = Def.task {
+    val dottyJars: Seq[java.io.File] = Seq(
+      (`stdlib-bootstrapped`/Compile/products).value,
+      (`scala3-interfaces`/Compile/products).value,
+      (`tasty-core-bootstrapped`/Compile/products).value,
+    ).flatten
+
+    val roots = dottyJars.map(_.getAbsolutePath)
+
+    val managedSources =
+      (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
+    val projectRoot = (ThisBuild/baseDirectory).value.toPath
+    val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
+    val docRootFile = stdLibRoot.resolve("rootdoc.txt")
+
+    val dottyManagesSources =
+      (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
+
+    val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
+    DefaultGenerationConfig.value
+      .add(ProjectName("Scala 3"))
+      .add(OutputDir(file("scaladoc/output/scala3").getAbsoluteFile.getAbsolutePath))
+      .add(Revision("main"))
+      .add(ExternalMappings(List(javaExternalMapping)))
+      .add(DocRootContent(docRootFile.toString))
+      .add(CommentSyntax("wiki"))
+      .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
+      .add(DocumentSyntheticTypes(true))
+      .add(SnippetCompiler(List(
+        s"${dottyLibRoot}/scala/quoted=compile",
+        s"${dottyLibRoot}/scala/compiletime=compile"
+      )))
+      .add(SiteRoot("docs"))
+      .add(ApiSubdirectory(true))
+      .withTargets(roots)
   }
 }
