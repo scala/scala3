@@ -90,6 +90,17 @@ semantics, by binding the value and reusing the `msg` through the body of
 `factorial`. Also, note the special handling of the assignment to the private var
 `indent`. It is achieved by generating a setter method `def inline$indent_=` and calling it instead.
 
+Inline methods always have to be fully applied. For instance, a call to
+```scala
+Logger.log[String]("some op", indentSetting)
+```
+would be ill-formed and the compiler would complain that arguments are missing.
+However, it is possible to pass wildcard arguments instead. For instance,
+```scala
+Logger.log[String]("some op", indentSetting)(_)
+```
+would typecheck.
+
 ### Recursive Inline Methods
 
 Inline methods can be recursive. For instance, when called with a constant
