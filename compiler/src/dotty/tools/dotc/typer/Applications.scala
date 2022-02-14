@@ -173,6 +173,7 @@ object Applications {
       val elemTp = unapplySeqTypeElemTp(tp)
       if (elemTp.exists) args.map(Function.const(elemTp))
       else if (isProductSeqMatch(tp, args.length, pos)) productSeqSelectors(tp, args.length, pos)
+      else if tp.derivesFrom(defn.NonEmptyTupleClass) then foldApplyTupleType(tp)
       else fallback
     }
 
@@ -193,9 +194,21 @@ object Applications {
         productSelectorTypes(unapplyResult, pos)
           // this will cause a "wrong number of arguments in pattern" error later on,
           // which is better than the message in `fail`.
+      else if unapplyResult.derivesFrom(defn.NonEmptyTupleClass) then
+        foldApplyTupleType(unapplyResult)
       else fail
     }
   }
+
+  def foldApplyTupleType(tp: Type)(using Context): List[Type] =
+    object tupleFold extends TypeAccumulator[List[Type]]:
+      override def apply(accum: List[Type], t: Type): List[Type] =
+        t match
+          case AppliedType(tycon, x :: x2 :: Nil) if tycon.typeSymbol == defn.PairClass =>
+            apply(x :: accum, x2)
+          case x => foldOver(accum, x)
+    end tupleFold
+    tupleFold(Nil, tp).reverse
 
   def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
