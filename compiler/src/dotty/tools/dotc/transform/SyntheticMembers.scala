@@ -610,7 +610,16 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   def addSyntheticMembers(impl: Template)(using Context): Template = {
     val clazz = ctx.owner.asClass
+    val syntheticMembers = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz)
+    checkInlining(syntheticMembers)
     addMirrorSupport(
-      cpy.Template(impl)(body = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body))
+      cpy.Template(impl)(body = syntheticMembers ::: impl.body))
   }
+
+  private def checkInlining(syntheticMembers: List[Tree])(using Context): Unit =
+    if syntheticMembers.exists(_.existsSubTree {
+      case tree: GenericApply => tree.symbol.isAllOf(InlineMethod)
+      case tree: Select => tree.symbol.isAllOf(InlineMethod)
+      case _ => false
+    }) then ctx.compilationUnit.needsInlining = true
 }
