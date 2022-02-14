@@ -4,8 +4,6 @@ package reporting
 
 import scala.language.unsafeNulls
 
-import java.lang.System.{lineSeparator => EOL}
-
 import core.Contexts._
 import core.Decorators._
 import printing.Highlighting.{Blue, Red, Yellow}
@@ -155,7 +153,7 @@ trait MessageRendering {
 
     msg.linesIterator
       .map { line => offsetBox + (if line.isEmpty then "" else padding + line) }
-      .mkString(EOL)
+      .mkString("\n")
   }
 
   /** The source file path, line and column numbers from the given SourcePosition */
@@ -192,8 +190,8 @@ trait MessageRendering {
           |${Blue("Explanation").show}
           |${Blue("===========").show}""".stripMargin
     )
-    sb.append(EOL).append(m.explanation)
-    if (!m.explanation.endsWith(EOL)) sb.append(EOL)
+    sb.append('\n').append(m.explanation)
+    if (!m.explanation.endsWith("\n")) sb.append('\n')
     sb.toString
   }
 
@@ -207,12 +205,12 @@ trait MessageRendering {
       case _ => ""
     }
     if (hasId || category.nonEmpty)
-      sb.append(EOL).append("Matching filters for @nowarn or -Wconf:")
+      sb.append("\nMatching filters for @nowarn or -Wconf:")
       if (hasId)
-        sb.append(EOL).append("  - id=E").append(msg.errorId.errorNumber)
-        sb.append(EOL).append("  - name=").append(msg.errorId.productPrefix.stripSuffix("ID"))
+        sb.append("\n  - id=E").append(msg.errorId.errorNumber)
+        sb.append("\n  - name=").append(msg.errorId.productPrefix.stripSuffix("ID"))
       if (category.nonEmpty)
-        sb.append(EOL).append("  - cat=").append(category)
+        sb.append("\n  - cat=").append(category)
 
   /** The whole message rendered from `msg` */
   def messageAndPos(dia: Diagnostic)(using Context): String = {
@@ -226,26 +224,26 @@ trait MessageRendering {
     given Offset = Offset(maxLineNumber.toString.length + 2)
     val sb = mutable.StringBuilder()
     val posString = posStr(pos, msg, diagnosticLevel(dia))
-    if (posString.nonEmpty) sb.append(posString).append(EOL)
+    if (posString.nonEmpty) sb.append(posString).append('\n')
     if (pos.exists) {
       val pos1 = pos.nonInlined
       if (pos1.exists && pos1.source.file.exists) {
         val (srcBefore, srcAfter, offset) = sourceLines(pos1)
         val marker = positionMarker(pos1)
         val err = errorMsg(pos1, msg.message)
-        sb.append((srcBefore ::: marker :: err :: srcAfter).mkString(EOL))
+        sb.append((srcBefore ::: marker :: err :: srcAfter).mkString("\n"))
 
         if inlineStack.nonEmpty then
-          sb.append(EOL).append(newBox())
-          sb.append(EOL).append(offsetBox).append(i"Inline stack trace")
+          sb.append('\n').append(newBox())
+          sb.append('\n').append(offsetBox).append(i"Inline stack trace")
           for inlinedPos <- inlineStack if inlinedPos != pos1 do
-            sb.append(EOL).append(newBox(soft = true))
-            sb.append(EOL).append(offsetBox).append(i"This location contains code that was inlined from $pos")
+            sb.append('\n').append(newBox(soft = true))
+            sb.append('\n').append(offsetBox).append(i"This location contains code that was inlined from $pos")
             if inlinedPos.source.file.exists then
               val (srcBefore, srcAfter, _) = sourceLines(inlinedPos)
               val marker = positionMarker(inlinedPos)
-              sb.append(EOL).append((srcBefore ::: marker :: srcAfter).mkString(EOL))
-          sb.append(EOL).append(endBox)
+              sb.append('\n').append((srcBefore ::: marker :: srcAfter).mkString("\n"))
+          sb.append('\n').append(endBox)
       }
       else sb.append(msg.message)
     }
@@ -254,16 +252,16 @@ trait MessageRendering {
       appendFilterHelp(dia, sb)
 
     if Diagnostic.shouldExplain(dia) then
-      sb.append(EOL).append(newBox())
-      sb.append(EOL).append(offsetBox).append(" Explanation (enabled by `-explain`)")
-      sb.append(EOL).append(newBox(soft = true))
+      sb.append('\n').append(newBox())
+      sb.append('\n').append(offsetBox).append(" Explanation (enabled by `-explain`)")
+      sb.append('\n').append(newBox(soft = true))
       dia.msg.explanation.split(raw"\R").foreach { line =>
-        sb.append(EOL).append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
+        sb.append('\n').append(offsetBox).append(if line.isEmpty then "" else " ").append(line)
       }
-      sb.append(EOL).append(endBox)
+      sb.append('\n').append(endBox)
     else if dia.msg.canExplain then
-      sb.append(EOL).append(offsetBox)
-      sb.append(EOL).append(offsetBox).append(" longer explanation available when compiling with `-explain`")
+      sb.append('\n').append(offsetBox)
+      sb.append('\n').append(offsetBox).append(" longer explanation available when compiling with `-explain`")
 
     sb.toString
   }

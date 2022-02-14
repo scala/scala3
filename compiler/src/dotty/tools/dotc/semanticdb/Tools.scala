@@ -125,4 +125,4 @@ object Tools:
   end processOccurrence
 
   extension (sb: StringBuilder)
-    private inline def nl = sb.append(System.lineSeparator)
+    private inline def nl = sb.append('\n')

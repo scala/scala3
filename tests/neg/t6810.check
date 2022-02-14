@@ -10,23 +10,23 @@
 13 |"                     // error obviously not
    |^
    |unclosed string literal
--- Error: tests/neg/t6810.scala:24:6 -----------------------------------------------------------------------------------
-24 |  val `
+-- Error: tests/neg/t6810.scala:23:6 -----------------------------------------------------------------------------------
+23 |  val `
    |      ^
    |      unclosed quoted identifier
--- Error: tests/neg/t6810.scala:25:0 -----------------------------------------------------------------------------------
-25 |` = EOL               // error not raw string literals aka triple-quoted, multiline strings
+-- Error: tests/neg/t6810.scala:24:0 -----------------------------------------------------------------------------------
+24 |` = "\n"              // error not raw string literals aka triple-quoted, multiline strings
    |^
    |unclosed quoted identifier
--- Error: tests/neg/t6810.scala:30:10 ----------------------------------------------------------------------------------
-30 |  val b = '
+-- Error: tests/neg/t6810.scala:29:10 ----------------------------------------------------------------------------------
+29 |  val b = '
    |          ^
    |          unclosed character literal
 -- Warning: tests/neg/t6810.scala:6:0 ----------------------------------------------------------------------------------
 6 |'                     // but not embedded EOL sequences not represented as escapes
   |^
   |Line is indented too far to the left, or a `}` is missing
--- Warning: tests/neg/t6810.scala:31:0 ---------------------------------------------------------------------------------
-31 |'        // anypos-error CR seen as EOL by scanner; FSR, error only on open quote, unlike `y`
+-- Warning: tests/neg/t6810.scala:30:0 ---------------------------------------------------------------------------------
+30 |'        // anypos-error CR seen as EOL by scanner; FSR, error only on open quote, unlike `y`
    |^
    |Line is indented too far to the left, or a `}` is missing

@@ -245,7 +245,7 @@ class CodeTester(projects: List[Project]) {
             case ((project, source), file) =>
               s"""// ${file.file} in project ${project.name}
                  |${source.text}""".stripMargin
-          }.mkString(System.lineSeparator)
+          }.mkString("\n")
 
         val msg =
           s"""

@@ -117,7 +117,7 @@ object Texts {
       case _ =>
         var follow = false
         for (elem <- relems.reverse) {
-          if (follow) sb.append(System.lineSeparator)
+          if (follow) sb.append('\n')
           elem.print(sb, numberWidth)
           follow = true
         }

@@ -143,7 +143,7 @@ final class JLineTerminal extends java.io.Closeable {
       }
 
       def acceptLine = {
-        val onLastLine = !input.substring(cursor).contains(System.lineSeparator)
+        val onLastLine = !input.substring(cursor).contains("\n")
         onLastLine && !ParseResult.isIncomplete(input)
       }
 

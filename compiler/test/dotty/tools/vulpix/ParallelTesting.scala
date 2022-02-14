@@ -5,7 +5,6 @@ package vulpix
 import scala.language.unsafeNulls
 
 import java.io.{File => JFile, IOException, PrintStream, ByteArrayOutputStream}
-import java.lang.System.{lineSeparator => EOL}
 import java.net.URL
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}

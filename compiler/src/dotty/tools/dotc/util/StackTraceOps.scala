@@ -16,7 +16,6 @@ import scala.language.unsafeNulls
 
 import collection.mutable, mutable.ListBuffer
 import scala.util.chaining.given
-import java.lang.System.lineSeparator
 
 object StackTraceOps:
 
@@ -74,5 +73,5 @@ object StackTraceOps:
       end print
 
       print(t, Self, share = Array.empty, indents = 0)
-      lines.mkString(lineSeparator)
+      lines.mkString("\n")
     end formatStackTracePrefix

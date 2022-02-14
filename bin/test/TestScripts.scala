@@ -9,7 +9,6 @@ import scala.util.Using
 import java.io.{File => JFile, FileNotFoundException}
 
 class TestScripts {
-  private val lineSep = util.Properties.lineSeparator
   private def doUnlessWindows(op: => Unit) =
     if (!System.getProperty("os.name").toLowerCase.contains("windows"))
       op
@@ -54,7 +53,7 @@ class TestScripts {
     // Check correct output of building and running scalac
     assert(
       retDotc == 0,
-      s"bin/scalac script did not run properly. Output:$lineSep$dotcOutput"
+      s"bin/scalac script did not run properly. Output:\n$dotcOutput"
     )
 
     val (retDotr, dotrOutput) = executeScript("./bin/scala HelloWorld")
@@ -77,7 +76,7 @@ class TestScripts {
     val (retSecondBuild, output) = executeScript("./bin/scalac ./tests/pos/HelloWorld.scala")
     assert(
       retSecondBuild == 0 && output.contains("rebuilding"),
-      s"Rebuilding the tool should result in jar files being rebuilt. Status: $retSecondBuild, output:$lineSep$output")
+      s"Rebuilding the tool should result in jar files being rebuilt. Status: $retSecondBuild, output:\n$output")
   }
 
   /** if no changes to dotty, scalac script should be fast */
@@ -88,7 +87,7 @@ class TestScripts {
     val (ret, output) = executeScript("./bin/scalac ./tests/pos/HelloWorld.scala")
     assert(
       ret == 0 && !output.contains("rebuilding"),
-      s"Project recompiled when it didn't need to be. Status $ret, output:$lineSep$output")
+      s"Project recompiled when it didn't need to be. Status $ret, output:\n$output")
   }
 
   /** scalac script should work after corrupting .packages */

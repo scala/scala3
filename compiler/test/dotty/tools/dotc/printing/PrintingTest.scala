@@ -11,7 +11,6 @@ import reporting.TestReporter
 
 import java.io._
 import java.nio.file.{Path => JPath}
-import java.lang.System.{lineSeparator => EOL}
 import java.nio.charset.StandardCharsets
 
 import interfaces.Diagnostic.INFO

@@ -55,7 +55,7 @@ class ParsedComment(val comment: Comment) {
    */
   def renderAsMarkdown(using Context): String = {
     val buf = new StringBuilder
-    buf.append(mainDoc + System.lineSeparator + System.lineSeparator)
+    buf.append(mainDoc).append('\n').append('\n')
     val groupedSections = CommentParsing.groupedSections(content, tagIndex)
 
     for {
@@ -66,7 +66,7 @@ class ParsedComment(val comment: Comment) {
     }
     {
       buf.append(formatted)
-      buf.append(System.lineSeparator)
+      buf.append('\n')
     }
 
     buf.toString
@@ -151,8 +151,8 @@ object ParsedComment {
    * @return The list of items, in markdown.
    */
   private def toMarkdownList(ctx: Context, items: List[String]): String = {
-    val formattedItems = items.map(_.linesIterator.mkString(System.lineSeparator + "   "))
-    formattedItems.mkString(" - ", System.lineSeparator + " - ", "")
+    val formattedItems = items.map(_.linesIterator.mkString("\n   "))
+    formattedItems.mkString(" - ", "\n - ", "")
   }
 
   /**

@@ -16,7 +16,7 @@ object Reporter {
       def reset(): Unit = buffer.clear()
       def hasErrors: Boolean = buffer.exists(_.severity == Severity.Error)
       def hasWarnings: Boolean = buffer.exists(_.severity == Severity.Warn)
-      def printSummary(): Unit = println(problems.mkString(System.lineSeparator))
+      def printSummary(): Unit = println(problems.mkString("\n"))
       def problems: Array[Problem] = buffer.toArray
       def log(problem: Problem): Unit = buffer.append(problem)
       def comment(pos: xsbti.Position, msg: String): Unit = ()

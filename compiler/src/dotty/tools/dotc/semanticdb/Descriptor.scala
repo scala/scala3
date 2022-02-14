@@ -2,7 +2,6 @@ package dotty.tools.dotc.semanticdb
 
 import scala.language.unsafeNulls
 
-import java.lang.System.{lineSeparator => EOL}
 import dotty.tools.dotc.semanticdb.{Descriptor => d}
 
 class DescriptorParser(s: String) {
@@ -10,7 +9,7 @@ class DescriptorParser(s: String) {
   def fail() = {
     val message = "invalid symbol format"
     val caret = " " * i + "^"
-    sys.error(s"$message$EOL$s$EOL$caret")
+    sys.error(s"$message\n$s\n$caret")
   }
 
   val BOF = '\u0000'

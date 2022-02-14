@@ -6,7 +6,6 @@ import scala.io.Source
 import scala.util.Using
 
 import java.io.File
-import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.{Files, Paths}
 import java.nio.charset.StandardCharsets
 
@@ -27,7 +26,7 @@ object FileDiff {
 
     if (!matches(outputLines, checkLines)) Some(
       s"""|Output from '$sourceTitle' did not match check file. Actual output:
-          |${outputLines.mkString(EOL)}
+          |${outputLines.mkString("\n")}
           |""".stripMargin + "\n")
     else None
   }
@@ -47,7 +46,7 @@ object FileDiff {
 
   def dump(path: String, content: Seq[String]): Unit = {
     val outFile = dotty.tools.io.File(path)
-    outFile.writeAll(content.mkString("", EOL, EOL))
+    outFile.writeAll(content.mkString("", "\n", "\n"))
   }
 
   def checkAndDump(sourceTitle: String, actualLines: Seq[String], checkFilePath: String): Boolean = {

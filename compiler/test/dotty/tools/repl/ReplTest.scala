@@ -6,7 +6,6 @@ import scala.language.unsafeNulls
 import vulpix.TestConfiguration
 import vulpix.FileDiff
 
-import java.lang.System.{lineSeparator => EOL}
 import java.io.{ByteArrayOutputStream, File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
 
@@ -51,7 +50,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
     def evaluate(state: State, input: String) =
       try {
         val nstate = run(input.drop(prompt.length))(state)
-        val out = input + EOL + storedOutput()
+        val out = input + "\n" + storedOutput()
         (out, nstate)
       }
       catch {
@@ -95,9 +94,9 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         println(s"Wrote updated script file to $checkFile")
       else
         println("expected =========>")
-        println(expectedOutput.mkString(EOL))
+        println(expectedOutput.mkString("\n"))
         println("actual ===========>")
-        println(actualOutput.mkString(EOL))
+        println(actualOutput.mkString("\n"))
 
         fail(s"Error in script $name, expected output did not match actual")
     end if

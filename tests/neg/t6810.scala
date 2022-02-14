@@ -18,11 +18,10 @@ trait t6810 {
   val B = s"""
 """                   // or the same for interpolated strings
 
-  import System.{lineSeparator as EOL}
-  val `\u000A` = EOL  // backquoted identifiers are arbitrary string literals
+  val `\u000A` = "\n" // backquoted identifiers are arbitrary string literals
                       // anypos-error so as not to interfere with the following bad syntax
   val `
-` = EOL               // error not raw string literals aka triple-quoted, multiline strings
+` = "\n"              // error not raw string literals aka triple-quoted, multiline strings
 
   val firebreak = 42  // help parser recovery, could also use rbrace
 

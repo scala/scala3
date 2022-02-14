@@ -88,8 +88,6 @@ object printMips {
   import TwoAddr.*
   import ThreeAddr.*
 
-  private val endl = System.lineSeparator
-
   def apply(nodes: List[Assembler]): Unit = {
     var symbCount = 0L
     val symbols = new scala.collection.mutable.AnyRefMap[Scoped,Long]()
@@ -109,23 +107,23 @@ object printMips {
       ): String = {
         node match {
           case Text =>
-            s"$indent.text$endl"
+            s"$indent.text\n"
           case Comment(msg) =>
-            s"$indent#$msg$endl"
+            s"$indent#$msg\n"
           case Data =>
-            s"$indent.data$endl"
+            s"$indent.data\n"
           case Globl(Scoped(Identifier(id),_)) =>
-            s"$indent.globl $id$endl"
+            s"$indent.globl $id\n"
           case Label(Scoped(Identifier(i),-1)) =>
-            s"$i:$endl"
+            s"$i:\n"
           case Label(s @ Scoped(Identifier(i), id)) =>
-            s"${getScopedLabel(s)}: #debug: $i~$id$endl"
+            s"${getScopedLabel(s)}: #debug: $i~$id\n"
           case ControlLabel(id) =>
-            s"${evalLabels(id)}:$endl"
+            s"${evalLabels(id)}:\n"
           case Word(Constant(w)) =>
-            s"$indent.word $w$endl"
+            s"$indent.word $w\n"
           case Syscall =>
-            s"${indent}syscall$endl"
+            s"${indent}syscall\n"
           case jal: Jal =>
             oneAddr(jal,indent)(_.dest)
           case jr: Jr =>
@@ -168,7 +166,7 @@ object printMips {
             threeAddr(sle,indent)(_.dest,_.l,_.r)
           case sge: Sge =>
             threeAddr(sge,indent)(_.dest,_.l,_.r)
-          case _ => s"${indent}???$endl"
+          case _ => s"${indent}???\n"
         }
       }
 
@@ -177,7 +175,7 @@ object printMips {
       ( r: O => Dest,
       ): String = {
         val name = a.getClass.getSimpleName.toLowerCase
-        s"${indent}$name ${rsrc(r(a))}$endl"
+        s"${indent}$name ${rsrc(r(a))}\n"
       }
 
     def twoAddr[O]
@@ -186,7 +184,7 @@ object printMips {
         r: O => Dest | Constant
       ): String = {
         val name = a.getClass.getSimpleName.toLowerCase
-        s"${indent}$name ${registers(d(a))}, ${rsrc(r(a))}$endl"
+        s"${indent}$name ${registers(d(a))}, ${rsrc(r(a))}\n"
       }
 
     def threeAddr[O]
@@ -197,7 +195,7 @@ object printMips {
         r: O => Src
       ): String = {
         val name = a.getClass.getSimpleName.toLowerCase
-        s"${indent}$name ${registers(d(a))}, ${registers(l(a))}, ${rsrc(r(a))}$endl"
+        s"${indent}$name ${registers(d(a))}, ${registers(l(a))}, ${rsrc(r(a))}\n"
       }
 
     def rsrc(v: Constant | Dest): String = v match {

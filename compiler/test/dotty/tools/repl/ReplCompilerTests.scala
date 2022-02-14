@@ -270,8 +270,8 @@ object ReplCompilerTests:
 
   // Ensure 'expected' and 'actual' contain the same line separator(s).
   def assertMultiLineEquals(expected: String, actual: String): Unit =
-    val expected0 = pattern.matcher(expected).replaceAll(System.lineSeparator)
-    val actual0 = pattern.matcher(actual).replaceAll(System.lineSeparator)
+    val expected0 = pattern.matcher(expected).replaceAll("\n")
+    val actual0 = pattern.matcher(actual).replaceAll("\n")
     assertEquals(expected0, actual0)
 
 end ReplCompilerTests

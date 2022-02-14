@@ -133,7 +133,7 @@ trait RunnerOrchestration {
           childOutput = childStdout.readLine()
 
           while (childOutput != ChildJVMMain.MessageEnd && childOutput != null) {
-            sb.append(childOutput).append(System.lineSeparator)
+            sb.append(childOutput).append('\n')
             childOutput = childStdout.readLine()
           }
 
