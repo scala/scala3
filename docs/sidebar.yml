@@ -1,6 +1,7 @@
 index: index.md
 subsection:
   - title: Usage
+    directory: docs/usage
     subsection:
       - page: usage/sbt-projects.md
       - page: usage/ide-support.md
@@ -15,6 +16,7 @@ subsection:
           - page: usage/scaladoc/site-versioning.md
           - page: usage/scaladoc/static-site.md
   - title: Reference
+    directory: docs/reference
     subsection:
       - page: reference/overview.md
       - title: New Types
@@ -154,6 +156,7 @@ subsection:
       - page: reference/soft-modifier.md
       - page: reference/features-classification.md
   - title: Contributing
+    directory: docs/contributing
     subsection:
       - page: contributing/contribute-knowledge.md
       - page: contributing/getting-started.md
@@ -171,6 +174,7 @@ subsection:
           - page: contributing/procedures/release.md
           - page: contributing/procedures/vulpix.md
   - title: Internals
+    directory: docs/internals
     subsection:
       - page: internals/backend.md
       - page: internals/classpaths.md
