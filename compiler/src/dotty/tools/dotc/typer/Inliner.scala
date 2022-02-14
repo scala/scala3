@@ -499,11 +499,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       bindingFlags |= Method
     val boundSym = newSym(InlineBinderName.fresh(name.asTermName), bindingFlags, bindingType).asTerm
     val binding = {
-      var newArg = arg.changeOwner(ctx.owner, boundSym)
-      if bindingFlags.is(Inline) && argIsBottom then
-        newArg = Typed(newArg, TypeTree(formal)) // type ascribe RHS to avoid type errors in expansion. See i8612.scala
-      if isByName then DefDef(boundSym, newArg)
-      else ValDef(boundSym, newArg)
+      if (isByName) DefDef(boundSym, arg.changeOwner(ctx.owner, boundSym))
+      else ValDef(boundSym, arg)
     }.withSpan(boundSym.span)
     inlining.println(i"parameter binding: $binding, $argIsBottom")
     buf += binding
