@@ -139,7 +139,9 @@ class List {
       : includesInputValue()
 
     function includesInputValue() {
-      return elementData.name.includes(filter.value) || elementData.description.includes(filter.value);
+      const lcValue = filter.value.toLowerCase()
+      return elementData.name.toLowerCase().includes(lcValue) 
+          || elementData.description.toLowerCase().includes(lcValue);
     }
 
     function areFiltersFromElementSelected() {
