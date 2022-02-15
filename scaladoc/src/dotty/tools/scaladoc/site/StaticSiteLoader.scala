@@ -116,6 +116,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
   def loadBlog(): Option[LoadedTemplate] = {
     type Date = (String, String, String)
     val rootPath = ctx.blogPath
+    val defaultDirectory = "blog"
     if (!Files.exists(rootPath)) None
     else {
       val indexPageOpt = Seq(
@@ -131,7 +132,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
       val indexTemplateOpt = indexPageOpt.map(p => loadTemplateFile(p.toFile))
 
       val indexPage = indexTemplateOpt.getOrElse(emptyTemplate(rootPath.resolve("index.html").toFile, "Blog"))
-      val indexDest = ctx.docsPath.resolve("_blog").resolve("index.html")
+      val indexDest = ctx.docsPath.resolve(defaultDirectory).resolve("index.html")
       val regex = raw"(\d*)-(\d*)-(\d*)-(.*)".r
       def splitDateName(tf: TemplateFile): (Date, String) = tf.file.getName match
           case regex(year, month, day, name) => ((year, month, day), name)
@@ -150,7 +151,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
         .map { postFile =>
           val templateFile = loadTemplateFile(postFile)
           val ((year, month, day), name) = splitDateName(templateFile)
-          val destPath = ctx.docsPath.resolve("_blog").resolve(year).resolve(month).resolve(day).resolve(name)
+          val destPath = ctx.docsPath.resolve(defaultDirectory).resolve(year).resolve(month).resolve(day).resolve(name)
           val date = dateFrom(templateFile, s"$year-$month-$day")
           date -> LoadedTemplate(templateFile, List.empty, destPath.toFile)
         }.sortBy(_._1).reverse.map(_._2)
