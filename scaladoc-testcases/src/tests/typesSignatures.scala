@@ -35,6 +35,10 @@ class Base
   type H = () => String
 
   type I = (Int, String, Int) => (String, Int)
+
+  type J = (a: A) => a.type
+
+  type K = [A] => (a: A) => a.type
 }
 
 class Operators
