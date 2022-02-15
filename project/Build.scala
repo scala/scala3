@@ -1256,6 +1256,8 @@ object Build {
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
 
+  val generateReferenceDocumentation = taskKey[Unit]("Generate language reference documentation for Scala 3")
+
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
     settings(commonBootstrappedSettings)
@@ -1376,6 +1378,31 @@ object Build {
 
       generateTestcasesDocumentation := Def.taskDyn {
         generateDocumentation(Testcases)
+      }.value,
+
+      generateReferenceDocumentation := Def.taskDyn {
+        val temp = IO.createTemporaryDirectory
+        IO.copyDirectory(file("docs"), temp / "docs")
+        IO.delete(temp / "docs" / "_blog")
+
+        IO.copyDirectory(
+          file("project") / "resources" / "referenceReplacements",
+          temp / "docs",
+          overwrite = true
+        )
+
+        val languageReferenceConfig = Def.task {
+          Scala3.value
+            .add(OutputDir("scaladoc/output/reference"))
+            .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
+            .add(ProjectName("Scala 3 Reference"))
+            .add(SourceLinks(List(
+              dottySrcLink(referenceVersion, temp.getAbsolutePath + "=")
+            )))
+            .withTargets(List("___fake___.scala"))
+        }
+
+        generateDocumentation(languageReferenceConfig)
       }.value,
 
       Test / buildInfoKeys := Seq[BuildInfoKey](
@@ -1763,6 +1790,13 @@ object ScaladocConfigs {
 
   def dottyExternalMapping = ".*scala/.*::scaladoc3::https://dotty.epfl.ch/api/"
   def javaExternalMapping = ".*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
+  def scalaSrcLink(v: String, s: String) = s"${s}github://scala/scala/v$v#src/library"
+  def dottySrcLink(v: String, sourcesPrefix: String = "", outputPrefix: String = "") =
+    sys.env.get("GITHUB_SHA") match {
+      case Some(sha) =>
+        s"${sourcesPrefix}github://${sys.env("GITHUB_REPOSITORY")}/$sha$outputPrefix"
+      case None => s"${sourcesPrefix}github://lampepfl/dotty/$v$outputPrefix"
+    }
 
   lazy val DefaultGenerationConfig = Def.task {
     def distLocation = (dist / pack).value
@@ -1771,13 +1805,6 @@ object ScaladocConfigs {
     def scalaLib = findArtifactPath(externalCompilerClasspathTask.value, "scala-library")
     def dottyLib = (`scala3-library` / Compile / classDirectory).value
     def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
-    def scalaSrcLink(v: String, s: String) = s"${s}github://scala/scala/v$v#src/library"
-    def dottySrcLink(v: String, sourcesPrefix: String = "", outputPrefix: String = "") =
-      sys.env.get("GITHUB_SHA") match {
-        case Some(sha) =>
-          s"${sourcesPrefix}github://${sys.env("GITHUB_REPOSITORY")}/$sha$outputPrefix"
-        case None => s"${sourcesPrefix}github://lampepfl/dotty/$v$outputPrefix"
-      }
 
     def defaultSourceLinks: SourceLinks = SourceLinks(
       List(
