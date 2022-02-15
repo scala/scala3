@@ -7,5 +7,6 @@ import scala.scalajs.js.annotation.JSGlobalScope
 @JSGlobalScope
 object Globals extends js.Object {
   val githubContributorsUrl: String = js.native
+  val githubContributorsFilename: String = js.native
 }
 
