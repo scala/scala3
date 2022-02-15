@@ -1,5 +1,7 @@
 index: index.md
 subsection:
+  - title: Blog
+    directory: blog
   - title: Usage
     directory: docs/usage
     subsection:

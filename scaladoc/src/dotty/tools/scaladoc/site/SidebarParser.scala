@@ -30,14 +30,16 @@ object Sidebar:
 
   private object RawInputTypeRef extends TypeReference[RawInput]
 
-  private def toSidebar(r: RawInput)(using CompilerContext): Sidebar = r match
+  private def toSidebar(r: RawInput)(using CompilerContext): Option[Sidebar] = r match
     case RawInput(title, page, index, subsection, dir, hidden) if page.nonEmpty && index.isEmpty && subsection.isEmpty() =>
-      Sidebar.Page(Option.when(title.nonEmpty)(title), page, hidden)
+      Some(Sidebar.Page(Option.when(title.nonEmpty)(title), page, hidden))
     case RawInput(title, page, index, subsection, dir, hidden) if page.isEmpty && (!subsection.isEmpty() || !index.isEmpty()) =>
-      Sidebar.Category(Option.when(title.nonEmpty)(title), Option.when(index.nonEmpty)(index), subsection.asScala.map(toSidebar).toList, Option.when(dir.nonEmpty)(dir))
+      Some(Sidebar.Category(Option.when(title.nonEmpty)(title), Option.when(index.nonEmpty)(index), subsection.asScala.flatMap(toSidebar).toList, Option.when(dir.nonEmpty)(dir)))
+    case RawInput(title, page, index, subsection, dir, hidden) if page.isEmpty && title == "Blog" && dir.nonEmpty =>
+      Some(Sidebar.Category(Option.when(title.nonEmpty)(title), None, List.empty, Option.when(dir.nonEmpty)(dir)))
     case RawInput(title, page, index, subsection, dir, hidden) =>
       report.error(s"Error parsing YAML configuration file.\n$schemaMessage")
-      Sidebar.Page(None, page, hidden)
+      None
 
   private def schemaMessage: String =
     s"""Static site YAML configuration file should comply with the following description:
@@ -51,6 +53,7 @@ object Sidebar:
       |  subsection: # optional - If not provided, pages are loaded from the index directory
       |    - <subsection> | <page>
       |  # either index or subsection needs to be present
+      |  # the only exception is subsection representing Blog which needs title == "Blog" and directory
       |<page>:
       |  title: <string> # optional - Default value is file name. Title can be also set using front-matter.
       |  page: <string>
@@ -76,7 +79,7 @@ object Sidebar:
         identity
       )
     toSidebar(root) match
-      case c: Sidebar.Category => c
+      case Some(c: Sidebar.Category) => c
       case _ =>
         report.error(s"Root element is not a subsection.\n$schemaMessage")
         Sidebar.Category(None, None, List.empty, None)
