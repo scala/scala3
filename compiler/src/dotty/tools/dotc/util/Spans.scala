@@ -144,6 +144,10 @@ object Spans {
     def ==(that: Span): Boolean = this.coords == that.coords
     def !=(that: Span): Boolean = this.coords != that.coords
   }
+  object Span:
+    extension (span: Span)
+      def spread: Int = span.end - span.start
+  end Span
 
   private def fromOffsets(start: Int, end: Int, pointDelta: Int) =
     //assert(start <= end || start == 1 && end == 0, s"$start..$end")

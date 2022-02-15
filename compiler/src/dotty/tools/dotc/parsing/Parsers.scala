@@ -7,7 +7,7 @@ import scala.language.unsafeNulls
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, SourcePosition, NoSourcePosition }
+import util.{Property, SourceFile, SourcePosition, NoSourcePosition}
 import Tokens._
 import Scanners._
 import xml.MarkupParsers.MarkupParser
@@ -63,6 +63,8 @@ object Parsers {
     val Spliced = 1 << 1
     val QuotedPattern = 1 << 2
   }
+
+  val EnclosingSpan: Property.Key[Span] = Property.Key()
 
   extension (buf: ListBuffer[Tree])
     def +++=(x: Tree) = x match {
@@ -3283,7 +3285,7 @@ object Parsers {
     /** Import  ::= `import' ImportExpr {‘,’ ImportExpr}
      *  Export  ::= `export' ImportExpr {‘,’ ImportExpr}
      */
-    def importOrExportClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
+    def importOrExportClause(leading: Token, mkTree: ImportConstr): List[Tree] =
       val offset = accept(leading)
       commaSeparated(importExpr(mkTree)) match {
         case t :: rest =>
@@ -3291,10 +3293,12 @@ object Parsers {
           val firstPos =
             if (t.span.exists) t.span.withStart(offset)
             else Span(offset, in.lastOffset)
-          t.withSpan(firstPos) :: rest
+          val imports = t.withSpan(firstPos) :: rest
+          val enclosing = imports.head.span union imports.last.span
+          imports.foreach(_.putAttachment(EnclosingSpan, enclosing))
+          imports
         case nil => nil
       }
-    }
 
     def exportClause() =
       importOrExportClause(EXPORT, Export(_,_))

@@ -6,11 +6,14 @@ import ast.{tpd, untpd}
 import core._
 import printing.{Printer, Showable}
 import util.SimpleIdentityMap
+import util.Spans.*
 import Symbols._, Names._, Types._, Contexts._, StdNames._, Flags._
-import Implicits.RenamedImplicitRef
+import Implicits.{ImportedImplicitRef, RenamedImplicitRef}
 import StdNames.nme
 import printing.Texts.Text
 import NameKinds.QualifiedName
+
+import annotation.*
 
 object ImportInfo {
 
@@ -30,7 +33,7 @@ object ImportInfo {
       val expr = tpd.Ident(ref.refFn()) // refFn must be called in the context of ImportInfo.sym
       tpd.Import(expr, selectors).symbol
 
-    ImportInfo(sym, selectors, untpd.EmptyTree, isRootImport = true)
+    ImportInfo(sym, selectors, untpd.EmptyTree, NoSpan, isRootImport = true)
 
   extension (c: Context)
     def withRootImports(rootRefs: List[RootRef])(using Context): Context =
@@ -46,12 +49,14 @@ object ImportInfo {
  *  @param   selectors     The selector clauses
  *  @param   qualifier     The import qualifier, or EmptyTree for root imports.
  *                         Defined for all explicit imports from ident or select nodes.
+ *  @param   enclosingSpan Span of the enclosing import statement
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
  *                         scala.Predef in the start context, false otherwise.
  */
 class ImportInfo(symf: Context ?=> Symbol,
                  val selectors: List[untpd.ImportSelector],
                  val qualifier: untpd.Tree,
+                 val enclosingSpan: Span,
                  val isRootImport: Boolean = false) extends Showable {
 
   private def symNameOpt = qualifier match {
@@ -125,6 +130,11 @@ class ImportInfo(symf: Context ?=> Symbol,
       myWildcardBound = ctx.typer.importBound(selectors, isGiven = false)
     myWildcardBound
 
+  private def givenSelector = selectors.indexWhere(_.isGiven)
+  private def wildSelector = selectors.indexWhere(_.isWildcard)
+  private def selectorOf(name: Name) = selectors.indexWhere(_.name == name)
+  private def selectorOf(original: Name, rename: Name) = selectors.indexWhere(s => s.name == original && s.rename == rename)
+
   /** The implicit references imported by this import clause */
   def importedImplicits(using Context): List[ImplicitRef] =
     val pre = site
@@ -140,10 +150,11 @@ class ImportInfo(symf: Context ?=> Symbol,
               || ctx.mode.is(Mode.FindHiddenImplicits)  // consider both implicits and givens for error reporting
               || ref.symbol.is(Implicit)                // a wildcard `_` import only pulls in implicits
             val bound = if isGivenImport then givenBound else wildcardBound
-            if isEligible && ref.denot.asSingleDenotation.matchesImportBound(bound) then ref :: Nil
+            val selector = if isGivenImport then givenSelector else wildSelector
+            if isEligible && ref.denot.asSingleDenotation.matchesImportBound(bound) then ImportedImplicitRef(ref, this, selector) :: Nil
             else Nil
-          else if renamed == ref.name then ref :: Nil
-          else RenamedImplicitRef(ref, renamed) :: Nil
+          else if renamed == ref.name then ImportedImplicitRef(ref, this, selectorOf(name)) :: Nil
+          else RenamedImplicitRef(ref, this, selectorOf(name, renamed), renamed) :: Nil
       }
     else
       for
@@ -152,8 +163,8 @@ class ImportInfo(symf: Context ?=> Symbol,
       yield
         val original = reverseMapping(renamed).nn
         val ref = TermRef(pre, original, denot)
-        if renamed == original then ref
-        else RenamedImplicitRef(ref, renamed)
+        if renamed == original then ImportedImplicitRef(ref, this, selectorOf(original))
+        else RenamedImplicitRef(ref, this, selectorOf(original, renamed), renamed)
 
   /** The root import symbol hidden by this symbol, or NoSymbol if no such symbol is hidden.
    *  Note: this computation needs to work even for un-initialized import infos, and
@@ -178,7 +189,7 @@ class ImportInfo(symf: Context ?=> Symbol,
       assert(myUnimported != null)
     myUnimported.uncheckedNN
 
-  private val isLanguageImport: Boolean = untpd.languageImport(qualifier).isDefined
+  val isLanguageImport: Boolean = untpd.languageImport(qualifier).isDefined
 
   private var myUnimported: Symbol | Null = _
 
@@ -194,11 +205,14 @@ class ImportInfo(symf: Context ?=> Symbol,
     def test(prefix: TermName, feature: TermName): Option[Boolean] =
       untpd.languageImport(qualifier) match
         case Some(`prefix`) =>
-          if forwardMapping.contains(feature) then Some(true)
+          if forwardMapping.contains(feature) then
+            ctx.usages.use(this, selectors(selectorOf(feature)))
+            Some(true)
           else if excluded.contains(feature) then Some(false)
           else None
         case _ => None
     feature match
+      case _ if !isLanguageImport => None
       case QualifiedName(prefix, name) => test(prefix, name)
       case _ => test(EmptyTermName, feature)
 
@@ -225,4 +239,11 @@ class ImportInfo(symf: Context ?=> Symbol,
     featureCache(feature).nn
 
   def toText(printer: Printer): Text = printer.toText(this)
+
+  def copy(selectors: List[untpd.ImportSelector]): ImportInfo = ImportInfo(symf, selectors = selectors, qualifier, enclosingSpan, isRootImport)
+
+  override def hashCode = qualifier.##
+  override def equals(other: Any) = other match
+    case that: ImportInfo => qualifier == that.qualifier
+    case _                => false
 }

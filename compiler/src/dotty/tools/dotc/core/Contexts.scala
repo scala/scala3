@@ -6,6 +6,7 @@ import interfaces.CompilerCallback
 import Decorators._
 import Periods._
 import Names._
+import Flags.*
 import Phases._
 import Types._
 import Symbols._
@@ -20,14 +21,17 @@ import Nullables._
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config
+import config.SourceVersion.allSourceVersionNames
 import reporting._
 import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
 import printing._
-import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
+import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings, ScalaRelease}
 import classfile.ReusableDataReader
 import StdNames.nme
+import parsing.Parsers.EnclosingSpan
+import util.Spans.NoSpan
 
 import scala.annotation.internal.sharable
 
@@ -40,7 +44,9 @@ import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 
-object Contexts {
+import scala.util.chaining.given
+
+object Contexts:
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
@@ -52,8 +58,9 @@ object Contexts {
   private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
   private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,    store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (usagesLoc,          store11) = store10.newLocation[Usages]()
 
-  private val initialStore = store10
+  private val initialStore = store11
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -239,6 +246,9 @@ object Contexts {
     /** The current type assigner or typer */
     def typeAssigner: TypeAssigner = store(typeAssignerLoc)
 
+    /** Tracker for usages of elements such as import selectors. */
+    def usages: Usages = store(usagesLoc)
+
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits | Null = null
     def implicits: ContextualImplicits = {
@@ -247,9 +257,7 @@ object Contexts {
           val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
               try owner.thisType.implicitMembers
-              catch {
-                case ex: CyclicReference => Nil
-              }
+              catch case ex: CyclicReference => Nil
             else if (isImportContext) importInfo.nn.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil
@@ -475,8 +483,8 @@ object Contexts {
       else fresh.setOwner(exprOwner)
 
     /** A new context that summarizes an import statement */
-    def importContext(imp: Import[?], sym: Symbol): FreshContext =
-       fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
+    def importContext(imp: Import[?], sym: Symbol, enteringSyms: Boolean = false): FreshContext =
+      fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr, imp.attachmentOrElse(EnclosingSpan, NoSpan)).tap(importInfo => if enteringSyms && ctx.settings.WunusedHas.imports then usages += importInfo))
 
     /** Is the debug option set? */
     def debug: Boolean = base.settings.Ydebug.value
@@ -812,6 +820,7 @@ object Contexts {
     store = initialStore
       .updated(settingsStateLoc, settingsGroup.defaultState)
       .updated(notNullInfosLoc, Nil)
+      .updated(usagesLoc, Usages())
       .updated(compilationUnitLoc, NoCompilationUnit)
     searchHistory = new SearchRoot
     gadt = GadtConstraint.empty
@@ -939,7 +948,7 @@ object Contexts {
     private[dotc] var stopInlining: Boolean = false
 
     /** A variable that records that some error was reported in a globally committable context.
-     *  The error will not necessarlily be emitted, since it could still be that
+     *  The error will not necessarily be emitted, since it could still be that
      *  the enclosing context will be aborted. The variable is used as a smoke test
      *  to turn off assertions that might be wrong if the program is erroneous. To
      *  just test for `ctx.reporter.errorsReported` is not always enough, since it
@@ -996,4 +1005,49 @@ object Contexts {
       if (thread == null) thread = Thread.currentThread()
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
   }
-}
+  end ContextState
+
+  /** Collect information about the run for purposes of additional diagnostics.
+   */
+  class Usages:
+    private val selectors   = mutable.Map.empty[ImportInfo, Set[untpd.ImportSelector]].withDefaultValue(Set.empty)
+    private val importInfos = mutable.Map.empty[CompilationUnit, List[(ImportInfo, Symbol)]].withDefaultValue(Nil)
+
+    // register an import
+    def +=(info: ImportInfo)(using Context): Unit =
+      def isLanguageImport = info.isLanguageImport && allSourceVersionNames.exists(info.forwardMapping.contains)
+      if ctx.settings.WunusedHas.imports && !isLanguageImport && !ctx.owner.is(Enum) && !ctx.compilationUnit.isJava then
+        importInfos(ctx.compilationUnit) ::= ((info, ctx.owner))
+
+    // mark a selector as used
+    def use(info: ImportInfo, selector: untpd.ImportSelector)(using Context): Unit =
+      if ctx.settings.WunusedHas.imports && !info.isRootImport then
+        selectors(info) += selector
+
+    // unused import, owner, which selector
+    def unused(using Context): List[(ImportInfo, Symbol, List[untpd.ImportSelector])] =
+      if ctx.settings.WunusedHas.imports && !ctx.compilationUnit.isJava then
+        var unusages = List.empty[(ImportInfo, Symbol, List[untpd.ImportSelector])]
+        def checkUsed(info: ImportInfo, owner: Symbol): Unit =
+          val usedSelectors = selectors.remove(info).getOrElse(Set.empty)
+          var unusedSelectors = List.empty[untpd.ImportSelector]
+          def cull(toCheck: List[untpd.ImportSelector]): Unit =
+            toCheck match
+              case selector :: rest =>
+                cull(rest) // reverse
+                if !selector.isMask && !usedSelectors(selector) then
+                  unusedSelectors ::= selector
+              case _ =>
+          cull(info.selectors)
+          if unusedSelectors.nonEmpty then unusages ::= (info, owner, unusedSelectors)
+        end checkUsed
+        importInfos.remove(ctx.compilationUnit).foreach(_.foreach(checkUsed))
+        unusages
+      else
+        Nil
+    end unused
+
+    def clear()(using Context): Unit =
+      importInfos.clear()
+      selectors.clear()
+  end Usages

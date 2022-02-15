@@ -6,11 +6,11 @@ import scala.language.unsafeNulls
 import dotty.tools.dotc.config.PathResolver.Defaults
 import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
 import dotty.tools.dotc.config.SourceVersion
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
 
-import scala.util.chaining._
+import scala.util.chaining.*
 
 class ScalaSettings extends SettingGroup with AllScalaSettings
 
@@ -162,12 +162,13 @@ private sealed trait WarningSettings:
     name = "-Wunused",
     helpArg = "warning",
     descr = "Enable or disable specific `unused` warnings",
-    choices = List("nowarn", "all"),
+    choices = List("nowarn", "all", "imports"),
     default = Nil
   )
   object WunusedHas:
     def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
     def nowarn(using Context) = allOr("nowarn")
+    def imports(using Context) = allOr("imports")
 
   val Wconf: Setting[List[String]] = MultiStringSetting(
     "-Wconf",
@@ -343,5 +344,7 @@ private sealed trait YSettings:
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting("-Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
 
   val YforceInlineWhileTyping: Setting[Boolean] = BooleanSetting("-Yforce-inline-while-typing", "Make non-transparent inline methods inline when typing. Emulates the old inlining behavior of 3.0.0-M3.")
+
+  val YrewriteImports: Setting[Boolean] = BooleanSetting("-Yrewrite-imports", "Rewrite unused imports. Requires -Wunused:imports.")
 end YSettings
 

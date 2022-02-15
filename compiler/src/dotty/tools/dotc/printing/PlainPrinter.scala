@@ -8,6 +8,7 @@ import Contexts._
 import Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
 import ast.Trees._
+import ast.untpd
 import typer.Implicits._
 import typer.ImportInfo
 import Variances.varianceSign
@@ -648,12 +649,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   def toText(importInfo: ImportInfo): Text =
+    def selected(sel: untpd.ImportSelector) =
+      if sel.isGiven then "given"
+      else if sel.isWildcard then "*"
+      else if sel.name == sel.rename then sel.name.show
+      else s"${sel.name.show} as ${sel.rename.show}"
     val siteStr = importInfo.site.show
-    val exprStr = if siteStr.endsWith(".type") then siteStr.dropRight(5) else siteStr
+    val exprStr = siteStr.stripSuffix(".type")
     val selectorStr = importInfo.selectors match
-      case sel :: Nil if sel.renamed.isEmpty && sel.bound.isEmpty =>
-        if sel.isGiven then "given" else sel.name.show
-      case _ => "{...}"
+      case sel :: Nil if sel.renamed.isEmpty && sel.bound.isEmpty => selected(sel)
+      case sels => sels.map(selected).mkString("{", ", ", "}")
+      //case _ => "{...}"
     s"import $exprStr.$selectorStr"
 
   def toText(c: OrderingConstraint): Text =

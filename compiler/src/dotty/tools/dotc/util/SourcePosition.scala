@@ -33,6 +33,12 @@ extends SrcPos, interfaces.SourcePosition, Showable {
   def linesSlice: Array[Char] =
     source.content.slice(source.startOfLine(start), source.nextLine(end))
 
+  /** Extract exactly the span from the source file. */
+  def spanSlice: Array[Char] = source.content.slice(start, end)
+
+  /** Extract exactly the span from the source file as a String. */
+  def spanText: String = String(spanSlice)
+
   /** The lines of the position */
   def lines: Range = {
     val startOffset = source.offsetToLine(start)

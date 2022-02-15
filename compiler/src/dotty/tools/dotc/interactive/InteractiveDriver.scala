@@ -148,7 +148,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, toSource(uri, sourceCode))
 
   def run(uri: URI, source: SourceFile): List[Diagnostic] = {
-    import typer.ImportInfo._
+    import typer.ImportInfo.withRootImports
 
     val previousCtx = myCtx
     try {

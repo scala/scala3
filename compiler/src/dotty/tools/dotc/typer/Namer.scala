@@ -393,7 +393,7 @@ class Namer { typer: Typer =>
         setDocstring(pkg, stat)
         ctx
       case imp: Import =>
-        ctx.importContext(imp, createSymbol(imp))
+        ctx.importContext(imp, createSymbol(imp), enteringSyms = true)
       case mdef: DefTree =>
         val sym = createSymbol(mdef)
         enterSymbol(sym)

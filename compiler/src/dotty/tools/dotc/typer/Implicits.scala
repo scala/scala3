@@ -40,12 +40,17 @@ import scala.annotation.threadUnsafe
 object Implicits:
   import tpd._
 
-  /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
+  /** Pairs an imported `ImplicitRef` with its `ImportInfo` for diagnostic bookkeeping.
+   */
+  class ImportedImplicitRef(val underlyingRef: TermRef, val importInfo: ImportInfo, val selector: Int) extends ImplicitRef:
+    def implicitName(using Context): TermName = underlyingRef.implicitName
+
+  /** An implicit definition `ImplicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
    */
-  class RenamedImplicitRef(val underlyingRef: TermRef, val alias: TermName) extends ImplicitRef {
-    def implicitName(using Context): TermName = alias
-  }
+  class RenamedImplicitRef(underlyingRef: TermRef, importInfo: ImportInfo, selector: Int, val alias: TermName)
+  extends ImportedImplicitRef(underlyingRef, importInfo, selector):
+    override def implicitName(using Context): TermName = alias
 
   /** Both search candidates and successes are references with a specific nesting level. */
   sealed trait RefAndLevel {
@@ -260,7 +265,9 @@ object Implicits:
           refs.foreach(tryCandidate(extensionOnly = false))
         candidates.toList
     }
+    end filterMatching
   }
+  end ImplicitRefs
 
   /** The implicit references coming from the implicit scope of a type.
    *  @param tp              the type determining the implicit scope
@@ -1150,8 +1157,12 @@ trait Implicits:
               SearchFailure(adapted.withType(new MismatchedImplicit(ref, pt, argument)))
         }
       else
+        cand match
+          case Candidate(k: ImportedImplicitRef, _, _) => ctx.usages.use(k.importInfo, k.importInfo.selectors(k.selector))
+          case _ =>
         SearchSuccess(adapted, ref, cand.level, cand.isExtension)(ctx.typerState, ctx.gadt)
     }
+  end typedImplicit
 
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(using Context):
@@ -1272,6 +1283,7 @@ trait Implicits:
           else if diff > 0 then alt1
           else SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument), span)
         case _: SearchFailure => alt2
+      end disambiguate
 
       /** Try to find a best matching implicit term among all the candidates in `pending`.
        *  @param pending   The list of candidates that remain to be tested
@@ -1341,6 +1353,7 @@ trait Implicits:
             if (rfailures.isEmpty) found
             else found.recoverWith(_ => rfailures.reverse.maxBy(_.tree.treeSize))
         }
+      end rank
 
       def negateIfNot(result: SearchResult) =
         if (isNotGiven)

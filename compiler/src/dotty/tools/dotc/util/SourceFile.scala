@@ -11,7 +11,6 @@ import core.Contexts._
 import scala.io.Codec
 import Chars._
 import scala.annotation.internal.sharable
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.chaining.given
 
@@ -19,7 +18,6 @@ import java.io.File.separator
 import java.nio.charset.StandardCharsets
 import java.nio.file.{FileSystemException, NoSuchFileException}
 import java.util.Optional
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
 object ScriptSourceFile {
@@ -60,7 +58,6 @@ object ScriptSourceFile {
 }
 
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
-  import SourceFile._
 
   private var myContent: Array[Char] | Null = null
 
@@ -190,6 +187,10 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   /** The content of the line containing position `offset` */
   def lineContent(offset: Int): String =
     content.slice(startOfLine(offset), nextLine(offset)).mkString
+
+  /** The span of the line containing position `offset` */
+  def lineSpan(offset: Int): Span =
+    Spans.Span(startOfLine(offset), nextLine(offset))
 
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {

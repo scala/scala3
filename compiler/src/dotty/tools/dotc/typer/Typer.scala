@@ -53,6 +53,7 @@ import cc.CheckCaptures
 import config.Config
 
 import scala.annotation.constructorOnly
+import scala.util.chaining.given
 
 object Typer {
 
@@ -210,7 +211,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *  @param prevCtx     The context of the previous denotation,
      *                     or else `NoContext` if nothing was found yet.
      */
-    def findRefRecur(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type = {
+    def findRefRecur(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
       import BindingPrec._
 
       /** Check that any previously found result from an inner context
@@ -272,11 +273,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if imp.importSym.isCompleting then
               report.warning(i"cyclic ${imp.importSym}, ignored", pos)
         NoType
+      end selection
 
       /** The type representing a named import with enclosing name when imported
        *  from given `site` and `selectors`.
        */
-      def namedImportRef(imp: ImportInfo)(using Context): Type = {
+      def namedImportRef(imp: ImportInfo)(using Context): Type =
         val termName = name.toTermName
         def recur(selectors: List[untpd.ImportSelector]): Type = selectors match
           case selector :: rest =>
@@ -291,7 +293,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 if selector.name == termName then name
                 else if name.isTypeName then selector.name.toTypeName
                 else selector.name
-              checkUnambiguous(selection(imp, memberName, checkBounds = false))
+              checkUnambiguous(selection(imp, memberName, checkBounds = false)).tap(res => if res.exists then ctx.usages.use(imp, selector))
             else
               recur(rest)
 
@@ -299,14 +301,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             NoType
 
         recur(imp.selectors)
-      }
+      end namedImportRef
 
       /** The type representing a wildcard import with enclosing name when imported
        *  from given import info
        */
       def wildImportRef(imp: ImportInfo)(using Context): Type =
-        if (imp.isWildcardImport && !imp.excluded.contains(name.toTermName) && name != nme.CONSTRUCTOR)
-          selection(imp, name, checkBounds = true)
+        if imp.isWildcardImport && !imp.excluded.contains(name.toTermName) && name != nme.CONSTRUCTOR then
+          selection(imp, name, checkBounds = true).tap(res => if res.exists then ctx.usages.use(imp, imp.selectors.find(_.isWildcard).get))
         else NoType
 
       /** Is (some alternative of) the given predenotation `denot`
@@ -430,9 +432,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else if (prevPrec.ordinal < PackageClause.ordinal)
                   result = findRefRecur(found, PackageClause, ctx)(using ctx.outer)
             }
+          end if // isNewDefScope
 
-          if result.exists then result
-          else {  // find import
+          // result or find import
+          result orElse {
             val outer = ctx.outer
             val curImport = ctx.importInfo
             def updateUnimported() =
@@ -460,10 +463,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             else loop(ctx)(using outer)
           }
         }
+      end loop
 
       // begin findRefRecur
       loop(NoContext)
-    }
+    end findRefRecur
 
     findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
   }
@@ -937,7 +941,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val tag = withTag(defn.TypeTestClass.typeRef.appliedTo(pt, tpe))
           .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tpe)))
           .getOrElse(tree)
-      if tag.symbol.maybeOwner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.future) then
+      if tag.symbol.maybeOwner == defn.ClassTagClass && sourceVersion.isAtLeast(future) then
         report.warning("Use of `scala.reflect.ClassTag` for type testing may be unsound. Consider using `scala.reflect.TypeTest` instead.", tree.srcPos)
       tag
     }

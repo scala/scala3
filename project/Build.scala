@@ -193,7 +193,7 @@ object Build {
       "-deprecation",
       "-unchecked",
       //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      "-Xfatal-warnings",                         // -Werror in modern usage
+      "-Werror",
       "-encoding", "UTF8",
       "-language:implicitConversions",
     ),
@@ -791,6 +791,11 @@ object Build {
         "-Ddotty.tests.classes.dottyTastyInspector=" + jars("scala3-tasty-inspector"),
       )
     },
+    scalacOptions ++= Seq(
+      //"-Wunused:imports",
+      //"-rewrite",
+      //"-Yrewrite-imports",
+    ),
     packageAll := {
       (`scala3-compiler` / packageAll).value ++ Seq(
         "scala3-compiler" -> (Compile / packageBin).value.getAbsolutePath,
