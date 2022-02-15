@@ -376,17 +376,20 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             )
           }
         case tree: ValDef =>
+          checkAnnotationMacros(tree)
           checkErasedDef(tree)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
+          checkAnnotationMacros(tree)
           checkErasedDef(tree)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
+          checkAnnotationMacros(tree)
           val sym = tree.symbol
           if (sym.isClass)
             VarianceChecker.check(tree)
@@ -476,6 +479,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+
+    private def checkAnnotationMacros(tree: Tree)(using Context) =
+      if !ctx.compilationUnit.hasMacroAnnotations then
+        for annot <- tree.symbol.annotations do
+          if annot.tree.symbol.denot != NoDenotation && annot.tree.symbol.owner.derivesFrom(defn.QuotedMacroAnnotationClass) then
+            ctx.compilationUnit.hasMacroAnnotations = true
 
     private def checkErasedDef(tree: ValOrDefDef)(using Context): Unit =
       if tree.symbol.is(Erased, butNot = Macro) then

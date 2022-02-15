@@ -28,7 +28,10 @@ object MiMaFilters {
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.typeRef"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SymbolMethods.termRef"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeTreeModule.ref"),
-
+    // Private to the compiler - needed for forward binary compatibility
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.since"),
+
+    // Macro annotations
+    ProblemFilters.exclude[MissingClassProblem]("scala.quoted.annotation.MacroAnnotation"),
   )
 }

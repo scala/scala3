@@ -7,10 +7,14 @@ import Contexts._
 import Symbols._
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
-
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
+
+import scala.annotation.tailrec
+import scala.collection.mutable
 
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
@@ -23,9 +27,11 @@ class Inlining extends MacroTransform {
 
   override def allowsImplicitSearch: Boolean = true
 
-  override def run(using Context): Unit =
-    if ctx.compilationUnit.needsInlining then
-      try super.run
+  override def run(using ctx0: Context): Unit =
+    if ctx0.compilationUnit.needsInlining || ctx0.compilationUnit.hasMacroAnnotations then
+      try
+        val ctx = QuotesCache.init(ctx0.fresh)
+        super.run(using ctx)
       catch case _: CompilationUnit.SuspendException => ()
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
@@ -61,7 +67,21 @@ class Inlining extends MacroTransform {
       tree match
         case tree: DefTree =>
           if tree.symbol.is(Inline) then tree
-          else super.transform(tree)
+          else
+            tree match
+              case _: Bind => super.transform(tree)
+              case tree if tree.symbol.is(Param) => super.transform(tree)
+              case tree if !tree.symbol.isPrimaryConstructor =>
+                val trees = MacroAnnotationTransformer.transform(List(tree), Set(tree.symbol))
+                flatTree(trees.map(super.transform(_)))
+              case tree => super.transform(tree)
+        case ObjectTrees(valT, clsT) =>
+          val trees = MacroAnnotationTransformer.transform(List(Thicket(valT, clsT)), Set(valT.symbol, clsT.symbol))
+          assert(trees.size >= 2)
+          flatTree(trees.map{ tree =>
+            if tree.symbol.is(Inline) then tree
+            else super.transform(tree)
+          })
         case _: Typed | _: Block =>
           super.transform(tree)
         case _ if Inlines.needsInlining(tree) =>
@@ -75,6 +95,46 @@ class Inlining extends MacroTransform {
         case _ =>
           super.transform(tree)
     }
+
+    override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T  =
+      @tailrec
+      def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): T =
+        inline def recur(unchange: Boolean, stat1: Tree, rest: List[Tree])(using Context): T =
+          if unchange then
+            loop(mapped, unchanged, rest)
+          else
+            val buf = if mapped == null then new mutable.ListBuffer[Tree] else mapped
+            var xc = unchanged
+            while xc ne pending do
+              buf += xc.head
+              xc = xc.tail
+            stat1 match
+              case Thicket(stats1) => buf ++= stats1
+              case _ => buf += stat1
+            loop(buf, rest, rest)
+
+        pending match
+          case valT :: clsT :: rest if valT.symbol.is(ModuleVal) && clsT.symbol.is(ModuleClass) &&
+                                       valT.symbol.moduleClass == clsT.symbol =>
+            val stat1 = transform(Thicket(List(valT, clsT)))(using ctx)
+            val unchange = stat1 match
+              case Thicket(List(valT1, clsT1)) => (valT eq valT1) && (clsT eq clsT1)
+              case _ => false
+            recur(unchange, stat1, rest)(using ctx)
+          case stat :: rest =>
+            val statCtx = stat match
+              case _: DefTree | _: ImportOrExport => ctx
+              case _ => ctx.exprContext(stat, exprOwner)
+            val stat1 = transform(stat)(using statCtx)
+            val restCtx = stat match
+              case stat: Import => ctx.importContext(stat, stat.symbol)
+              case _ => ctx
+            recur(stat1 eq stat, stat1, rest)(using restCtx)
+          case nil =>
+            wrapResult(
+              if mapped == null then unchanged
+              else mapped.prependToList(unchanged))
+      loop(null, trees, trees)
   }
 }
 

@@ -865,6 +865,8 @@ class Definitions {
   @tu lazy val QuotedTypeModule: Symbol = QuotedTypeClass.companionModule
     @tu lazy val QuotedTypeModule_of: Symbol = QuotedTypeModule.requiredMethod("of")
 
+  @tu lazy val QuotedMacroAnnotationClass: ClassSymbol = requiredClass("scala.annotation.MacroAnnotation")
+
   @tu lazy val CanEqualClass: ClassSymbol = getClassIfDefined("scala.Eql").orElse(requiredClass("scala.CanEqual")).asClass
     def CanEqual_canEqualAny(using Context): TermSymbol =
       val methodName = if CanEqualClass.name == tpnme.Eql then nme.eqlAny else nme.canEqualAny

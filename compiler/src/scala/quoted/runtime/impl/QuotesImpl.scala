@@ -430,10 +430,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Ref extends RefModule:
       def term(tp: TermRef): Ref =
-        withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
+        withDefaultPos(withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree]))
       def apply(sym: Symbol): Ref =
         assert(sym.isTerm)
-        withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree])
+        withDefaultPos(withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree]))
     end Ref
 
     type Ident = tpd.Ident
