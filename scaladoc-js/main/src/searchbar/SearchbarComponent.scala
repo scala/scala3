@@ -6,6 +6,8 @@ import org.scalajs.dom.html.Input
 import scala.scalajs.js.timers._
 import scala.concurrent.duration._
 
+import java.net.URI
+
 class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val resultsChunkSize = 100
   extension (p: PageEntry)
@@ -22,6 +24,10 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
       resultA.href = Globals.pathToRoot + p.location
       resultA.text = s"${p.fullName}"
+      resultA.onclick = (event: Event) =>
+        if (document.body.contains(rootDiv)) {
+          document.body.removeChild(rootDiv)
+        }
 
       val location = document.createElement("span")
       location.classList.add("pull-right")
@@ -51,8 +57,17 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       icon.classList.add(m.entryType.take(2))
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href = m.pageLocation
+      resultA.href = 
+        if(new URI(m.pageLocation).isAbsolute()) {
+          m.pageLocation
+        } else {
+          Globals.pathToRoot + m.pageLocation
+        } 
       resultA.text = m.functionName
+      resultA.onclick = (event: Event) =>
+        if (document.body.contains(rootDiv)) {
+          document.body.removeChild(rootDiv)
+        }
 
       val packageDiv = document.createElement("div").asInstanceOf[html.Div]
       packageDiv.classList.add("scaladoc-searchbar-inkuire-package")

@@ -81,6 +81,7 @@ trait Locations(using ctx: DocContext):
 
   def resolveRoot(dri: DRI, path: String): String = resolveRoot(rawLocation(dri), path)
   def absolutePath(dri: DRI, extension: String = "html"): String = rawLocation(dri).mkString("", "/", s".$extension")
+  def absolutePathWithAnchor(dri: DRI, extension: String = "html"): String = s"${absolutePath(dri, extension)}#${dri.anchor}"
 
   def resolveLink(dri: DRI, url: String): String =
     if URI(url).isAbsolute then url else resolveRoot(dri, url)

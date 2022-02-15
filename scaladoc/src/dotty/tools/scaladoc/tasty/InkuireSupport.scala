@@ -4,6 +4,7 @@ import collection.JavaConverters._
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 import dotty.tools.scaladoc.Inkuire
+import dotty.tools.scaladoc.renderers.Resources
 
 import scala.util.Random
 import scala.quoted._
@@ -13,9 +14,12 @@ import SymOps._
 import NameNormalizer._
 import SyntheticsSupport._
 
-trait InkuireSupport:
+trait InkuireSupport(using DocContext) extends Resources:
   self: TastyParser =>
   import qctx.reflect._
+
+  // Unused in InkuireSupport, required for Resources
+  override def effectiveMembers: Map[DRI, Member] = Map.empty
 
   private given qctx.type = qctx
 
@@ -110,7 +114,7 @@ trait InkuireSupport:
             ),
             name = name,
             packageName = ownerName,
-            uri = methodSymbol.dri.externalLink.getOrElse(""),
+            uri = methodSymbol.dri.externalLink.getOrElse(absolutePathWithAnchor(methodSymbol.dri)),
             entryType = "def"
           )
           val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
@@ -138,7 +142,7 @@ trait InkuireSupport:
             ),
             name = name,
             packageName = ownerName,
-            uri = valSymbol.dri.externalLink.getOrElse(""),
+            uri = valSymbol.dri.externalLink.getOrElse(absolutePathWithAnchor(valSymbol.dri)),
             entryType = "val"
           )
           val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
