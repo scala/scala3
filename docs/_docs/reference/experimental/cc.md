@@ -500,7 +500,7 @@ def escaped(xs: Double*): (() => Double) throws LimitExceeded =
 val crasher = escaped(1, 2, 10e+11)
 crasher()
 ```
-This code needs to be rejected since otherwise the call to `later()` would cause
+This code needs to be rejected since otherwise the call to `crasher()` would cause
 an unhandled `LimitExceeded` exception to be thrown.
 
 Under `-Ycc`, the code is indeed rejected
