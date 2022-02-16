@@ -59,13 +59,13 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
   def mkHead(page: Page): AppliedTag =
     val resources = page.content match
       case t: ResolvedTemplate =>
-        t.resolved.resources ++ (if t.hasFrame then memberResourcesPaths else Nil)
+        t.resolved.resources ++ (if t.hasFrame then commonResourcesPaths ++ staticSiteOnlyResourcesPaths else Nil)
       case _ =>
-        memberResourcesPaths
+        commonResourcesPaths ++ apiOnlyResourcesPaths
 
     val earlyResources = page.content match
-      case t: ResolvedTemplate => if t.hasFrame then earlyMemberResourcePaths else Nil
-      case _ => earlyMemberResourcePaths
+      case t: ResolvedTemplate => if t.hasFrame then earlyCommonResourcePaths else Nil
+      case _ => earlyCommonResourcePaths
 
     head(
       meta(charset := "utf-8"),
