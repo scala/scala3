@@ -1,0 +1,29 @@
+-- Error: tests/neg/export-in-extension.scala:14:13 --------------------------------------------------------------------
+14 |      export c1.*   // error
+   |             ^^
+   |             export qualifier c1 is not a parameterless companion extension method
+-- Error: tests/neg/export-in-extension.scala:19:22 --------------------------------------------------------------------
+19 |      export cm.{bar, D}  // error
+   |                      ^
+   |                 no eligible member D at O.O2.cm
+   |                 O.O2.cm.D cannot be exported because it is a type, so it cannot be exported as extension method
+-- Error: tests/neg/export-in-extension.scala:20:18 --------------------------------------------------------------------
+20 |      export this.cm.baz  // error
+   |             ^^^^^^^
+   |             export qualifier must be a simple reference to a companion extension method
+-- Error: tests/neg/export-in-extension.scala:24:13 --------------------------------------------------------------------
+24 |      export missing.*  // error
+   |             ^^^^^^^
+   |             export qualifier missing is not a parameterless companion extension method
+-- Error: tests/neg/export-in-extension.scala:28:13 --------------------------------------------------------------------
+28 |      export cm.*   // error
+   |             ^^
+   |             export qualifier cm is not a parameterless companion extension method
+-- Error: tests/neg/export-in-extension.scala:33:13 --------------------------------------------------------------------
+33 |      export cm.*   // error
+   |             ^^
+   |             export qualifier cm is not a parameterless companion extension method
+-- Error: tests/neg/export-in-extension.scala:38:13 --------------------------------------------------------------------
+38 |      export cm.*   // error
+   |      ^^^^^^^^^^^
+   |      exports are only allowed from objects and classes

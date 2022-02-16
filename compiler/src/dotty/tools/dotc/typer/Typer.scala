@@ -2616,10 +2616,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val selectors1 = typedSelectors(imp.selectors)
     assignType(cpy.Import(imp)(expr1, selectors1), sym)
 
-  def typedExport(exp: untpd.Export)(using Context): Export =
-    val expr1 = exp.expr.removeAttachment(TypedAhead).getOrElse(EmptyTree)
-    val selectors1 = typedSelectors(exp.selectors)
-    assignType(cpy.Export(exp)(expr1, selectors1))
+  def typedExport(exp: untpd.Export)(using Context): Tree =
+    exp.expr.removeAttachment(TypedAhead) match
+      case Some(expr1) =>
+        val selectors1 = typedSelectors(exp.selectors)
+        assignType(cpy.Export(exp)(expr1, selectors1))
+      case _ =>
+        errorTree(exp, em"exports are only allowed from objects and classes")
 
   def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
     val pid1 = withMode(Mode.InPackageClauseName)(typedExpr(tree.pid, AnySelectionProto))

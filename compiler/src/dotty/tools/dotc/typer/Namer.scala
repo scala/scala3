@@ -1114,7 +1114,7 @@ class Namer { typer: Typer =>
         else if sym.isAllOf(JavaModule) then
           Skip
         else if pathMethod.exists && mbr.isType then
-          No("cannot be exported as extension method")
+          No("is a type, so it cannot be exported as extension method")
         else
           Yes
       }
@@ -1364,7 +1364,8 @@ class Namer { typer: Typer =>
           process(stats1)(using ctx.importContext(stat, symbolOfTree(stat)))
         case (stat: ExtMethods) :: stats1 =>
           for case exp: Export <- stat.methods do
-            processExport(exp, exportPathSym(exp.expr, stat))
+            val pathSym = exportPathSym(exp.expr, stat)
+            if pathSym.exists then processExport(exp, pathSym)
           process(stats1)
         case stat :: stats1 =>
           process(stats1)

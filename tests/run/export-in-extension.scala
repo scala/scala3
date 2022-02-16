@@ -13,6 +13,15 @@ object O:
     def succ2: Int = succ + 1
     def ::: (y: Int) = x - y
 
+object O2:
+  import O.C
+  extension (x: Int)
+    private def cm = new C(x)
+    export cm.{bar, baz, bam, ::}
+    def succ: Int = x + 1
+    def succ2: Int = succ + 1
+    def ::: (y: Int) = x - y
+
 @main def Test =
   import O.*
   assert(3.succ2 == 5)
