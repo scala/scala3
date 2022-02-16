@@ -42,7 +42,7 @@ object any:
    * @syntax markdown
    */
   @experimental
-  type IsConst[+X] <: Boolean
+  type IsConst[X] <: Boolean
 
   /** String conversion of a constant singleton type.
    *  ```scala
