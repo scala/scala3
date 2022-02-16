@@ -849,13 +849,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         def searchImplicit(tpt: Tree) =
           val evTyper = new Typer(ctx.nestingLevel + 1)
           val evCtx = ctx.fresh.setTyper(evTyper)
-          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
-          evidence.tpe match
-            case fail: Implicits.SearchFailureType =>
-              val msg = evTyper.missingArgMsg(evidence, tpt.tpe, "")
-              errorTree(call, em"$msg")
-            case _ =>
-              evidence
+          inContext(evCtx) {
+            val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
+            evidence.tpe match
+              case fail: Implicits.SearchFailureType =>
+                val msg = evTyper.missingArgMsg(evidence, tpt.tpe, "")
+                errorTree(call, em"$msg")
+              case _ =>
+                evidence
+          }
         return searchImplicit(callTypeArgs.head)
       }
 
