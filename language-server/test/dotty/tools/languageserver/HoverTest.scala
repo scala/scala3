@@ -231,4 +231,10 @@ class HoverTest {
            |""".withSource
       .hover(m1 to m2, hoverContent("example.TestEnum3"))
   }
+  
+  @Test def tuple: Unit = {
+    code"""|object A:
+           |  val (${m1}first${m2}, second) = (1, 2)""".withSource
+      .hover(m1 to m2, hoverContent("Int"))
+  }
 }
