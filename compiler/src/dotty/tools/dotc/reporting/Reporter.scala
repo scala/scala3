@@ -139,7 +139,7 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   def addUnreported(key: String, n: Int): Unit =
     val count = unreportedWarnings.getOrElse(key, 0)
-    unreportedWarnings = unreportedWarnings.updated(key, count + 1)
+    unreportedWarnings = unreportedWarnings.updated(key, count + n)
 
   /** Issue the diagnostic, ignoring `-Wconf` and `@nowarn` configurations,
    *  but still honouring `-nowarn`, `-Werror`, and conditional warnings. */
