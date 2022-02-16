@@ -213,4 +213,13 @@ class HoverTest {
       // sp the top-level definitions should be enclosed in an object called `Source0$package`.
       .hover(m1 to m2, hoverContent("(hello.Source0$package : hello.Source0$package.type)"))
   }
+
+  @Test def enumsRepeated: Unit = {
+    code"""|package example
+           |object SimpleEnum:
+           |  enum Color:
+           |    case ${m1}Red${m2}, Green, Blue
+           |""".withSource
+      .hover(m1 to m2, hoverContent("example.SimpleEnum.Color"))
+  }
 }

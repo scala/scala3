@@ -520,7 +520,11 @@ object desugar {
           enumCases.last.pushAttachment(DesugarEnums.DefinesEnumLookupMethods, ())
         val enumCompanionRef = TermRefTree()
         val enumImport =
-          Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
+          Import(enumCompanionRef, enumCases.flatMap(caseIds).map(
+            enumCase => 
+              ImportSelector(enumCase.withSpan(enumCase.span.startPos))
+            ) 
+          )
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
