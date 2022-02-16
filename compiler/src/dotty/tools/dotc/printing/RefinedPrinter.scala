@@ -458,7 +458,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               	// avoid the double `*` in this case.
               	toText(expr)
               case _ =>
-                toText(expr) ~ "*"
+                toText(expr) ~ ": _*"
           else
             val exprText = toText(expr)
             val line = exprText.lastLine
