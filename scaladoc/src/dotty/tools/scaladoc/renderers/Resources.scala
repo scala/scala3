@@ -75,12 +75,12 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     ).map(dottyRes)
 
 
-  val earlyMemberResources: Seq[Resource] =
+  val earlyCommonResources: Seq[Resource] =
     List(
       "scripts/theme.js"
     ).map(dottyRes)
 
-  val memberResources: Seq[Resource] =
+  val commonResources: Seq[Resource] = {
     val fromResources = List(
       "styles/nord-light.css",
       "styles/scalastyle.css",
@@ -116,13 +116,24 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "https://scastie.scala-lang.org/embedded.js"
     ).map(Resource.URL.apply)
 
-
     fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
+  }
+
+  val apiOnlyResources = List(
+    "styles/apistyles.css"
+  ).map(dottyRes)
+
+  val staticSiteOnlyResources = List(
+    "styles/staticsitestyles.css"
+  ).map(dottyRes)
 
   val searchDataPath = "scripts/searchData.js"
   val scastieConfigurationPath = "scripts/scastieConfiguration.js"
-  val memberResourcesPaths = Seq(searchDataPath) ++ Seq(scastieConfigurationPath) ++ memberResources.map(_.path)
-  val earlyMemberResourcePaths = earlyMemberResources.map(_.path)
+  val commonResourcesPaths = Seq(searchDataPath) ++ Seq(scastieConfigurationPath) ++ commonResources.map(_.path)
+  val earlyCommonResourcePaths = earlyCommonResources.map(_.path)
+
+  val apiOnlyResourcesPaths: Seq[String] = apiOnlyResources.map(_.path)
+  val staticSiteOnlyResourcesPaths: Seq[String] = staticSiteOnlyResources.map(_.path)
 
   def searchData(pages: Seq[Page]) =
     def flattenToText(signature: Signature): String =
@@ -168,37 +179,42 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     }"""")
 
 
-  def allResources(pages: Seq[Page]): Seq[Resource] = earlyMemberResources ++ memberResources ++ Seq(
-    dottyRes("favicon.ico"),
-    dottyRes("fonts/dotty-icons.woff"),
-    dottyRes("fonts/dotty-icons.ttf"),
-    dottyRes("images/scaladoc_logo.svg"),
-    dottyRes("images/scaladoc_logo_dark.svg"),
-    dottyRes("images/class.svg"),
-    dottyRes("images/class_comp.svg"),
-    dottyRes("images/object.svg"),
-    dottyRes("images/object_comp.svg"),
-    dottyRes("images/trait.svg"),
-    dottyRes("images/trait_comp.svg"),
-    dottyRes("images/enum.svg"),
-    dottyRes("images/enum_comp.svg"),
-    dottyRes("images/given.svg"),
-    dottyRes("images/method.svg"),
-    dottyRes("images/type.svg"),
-    dottyRes("images/val.svg"),
-    dottyRes("images/package.svg"),
-    dottyRes("images/static.svg"),
-    dottyRes("images/github-icon-black.png"),
-    dottyRes("images/github-icon-white.png"),
-    dottyRes("images/discord-icon-black.png"),
-    dottyRes("images/discord-icon-white.png"),
-    dottyRes("images/twitter-icon-black.png"),
-    dottyRes("images/twitter-icon-white.png"),
-    dottyRes("images/gitter-icon-black.png"),
-    dottyRes("images/gitter-icon-white.png"),
-    searchData(pages),
-    scastieConfiguration(),
-  )
+  def allResources(pages: Seq[Page]): Seq[Resource] =
+    earlyCommonResources ++
+    commonResources ++
+    apiOnlyResources ++
+    staticSiteOnlyResources ++
+    Seq(
+      dottyRes("favicon.ico"),
+      dottyRes("fonts/dotty-icons.woff"),
+      dottyRes("fonts/dotty-icons.ttf"),
+      dottyRes("images/scaladoc_logo.svg"),
+      dottyRes("images/scaladoc_logo_dark.svg"),
+      dottyRes("images/class.svg"),
+      dottyRes("images/class_comp.svg"),
+      dottyRes("images/object.svg"),
+      dottyRes("images/object_comp.svg"),
+      dottyRes("images/trait.svg"),
+      dottyRes("images/trait_comp.svg"),
+      dottyRes("images/enum.svg"),
+      dottyRes("images/enum_comp.svg"),
+      dottyRes("images/given.svg"),
+      dottyRes("images/method.svg"),
+      dottyRes("images/type.svg"),
+      dottyRes("images/val.svg"),
+      dottyRes("images/package.svg"),
+      dottyRes("images/static.svg"),
+      dottyRes("images/github-icon-black.png"),
+      dottyRes("images/github-icon-white.png"),
+      dottyRes("images/discord-icon-black.png"),
+      dottyRes("images/discord-icon-white.png"),
+      dottyRes("images/twitter-icon-black.png"),
+      dottyRes("images/twitter-icon-white.png"),
+      dottyRes("images/gitter-icon-black.png"),
+      dottyRes("images/gitter-icon-white.png"),
+      searchData(pages),
+      scastieConfiguration(),
+    )
 
   def renderResource(resource: Resource): Seq[String] =
     val normalizedPath = resource.path.replace('\\', '/')
