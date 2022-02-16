@@ -513,7 +513,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           keywordStr("throw ") ~ toText(expr)
         }
       case SeqLiteral(elems, elemtpt) =>
-        "[" ~ toTextGlobal(elems, ",") ~ " : " ~ toText(elemtpt) ~ "]"
+        "Seq[" ~ toText(elemtpt) ~ "](" ~ toTextGlobal(elems, ",") ~ ")"
       case tree @ Inlined(call, bindings, body) =>
         (("/* inlined from " ~ (if (call.isEmpty) "outside" else toText(call)) ~ " */ ") `provided`
           !homogenizedView && ctx.settings.XprintInline.value) ~
