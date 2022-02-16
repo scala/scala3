@@ -254,6 +254,12 @@ class ReplDriver(settings: Array[String],
     def extractTopLevelImports(ctx: Context): List[tpd.Import] =
       unfusedPhases(using ctx).collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
+    def contextWithNewImports(ctx: Context, imports: List[tpd.Import]): Context =
+      if imports.isEmpty then ctx
+      else
+        imports.foldLeft(ctx.fresh.setNewScope)((ctx, imp) =>
+          ctx.importContext(imp, imp.symbol(using ctx)))
+
     implicit val state = {
       val state0 = newRun(istate, parsed.reporter)
       state0.copy(context = state0.context.withSource(parsed.source))
@@ -269,7 +275,10 @@ class ReplDriver(settings: Array[String],
             var allImports = newState.imports
             if (newImports.nonEmpty)
               allImports += (newState.objectIndex -> newImports)
-            val newStateWithImports = newState.copy(imports = allImports)
+            val newStateWithImports = newState.copy(
+              imports = allImports,
+              context = contextWithNewImports(newState.context, newImports)
+            )
 
             val warnings = newState.context.reporter
               .removeBufferedMessages(using newState.context)
