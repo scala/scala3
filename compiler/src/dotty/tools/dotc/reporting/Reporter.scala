@@ -137,14 +137,17 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   var unreportedWarnings: Map[String, Int] = Map.empty
 
+  def addUnreported(key: String, n: Int): Unit =
+    val count = unreportedWarnings.getOrElse(key, 0)
+    unreportedWarnings = unreportedWarnings.updated(key, count + n)
+
   /** Issue the diagnostic, ignoring `-Wconf` and `@nowarn` configurations,
    *  but still honouring `-nowarn`, `-Werror`, and conditional warnings. */
   def issueUnconfigured(dia: Diagnostic)(using Context): Unit = dia match
     case w: Warning if ctx.settings.silentWarnings.value    =>
     case w: ConditionalWarning if w.isSummarizedConditional =>
       val key = w.enablingOption.name
-      val count = unreportedWarnings.getOrElse(key, 0)
-      unreportedWarnings = unreportedWarnings.updated(key, count + 1)
+      addUnreported(key, 1)
     case _                                                  =>
       // conditional warnings that are not enabled are not fatal
       val d = dia match
@@ -241,6 +244,8 @@ abstract class Reporter extends interfaces.ReporterResult {
   def flush()(using Context): Unit =
     val msgs = removeBufferedMessages
     if msgs.nonEmpty then msgs.foreach(ctx.reporter.report)
+    for (key, count) <- unreportedWarnings do
+      ctx.reporter.addUnreported(key, count)
 
   /** If this reporter buffers messages, all buffered messages, otherwise Nil */
   def pendingMessages(using Context): List[Diagnostic] = Nil
