@@ -10,11 +10,11 @@ package <empty> {
     this: dependent-annot$package.type =>
     def f(y: C, z: C): Unit = 
       {
-        def g(): C @ann([y,z : Any]*) = ???
+        def g(): C @ann(Seq[Any](y,z): _*) = ???
         val ac: 
           (C => Array[String]) 
             {
-              def apply(x: C): Array[String @ann([x : Any]*)]
+              def apply(x: C): Array[String @ann(Seq[Any](x): _*)]
             }
          = ???
         val dc: Array[String] = ac.apply(g())
