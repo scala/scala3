@@ -33,7 +33,10 @@ object Formatting {
     object ShowAny extends Show[Any]:
       def show(x: Any): Shown = x
 
-    class ShowImplicits1:
+    class ShowImplicits2:
+      given Show[Product] = ShowAny
+
+    class ShowImplicits1 extends ShowImplicits2:
       given Show[ImplicitRef]      = ShowAny
       given Show[Names.Designator] = ShowAny
       given Show[util.SrcPos]      = ShowAny
@@ -62,25 +65,15 @@ object Formatting {
       given Show[Class[?]]                            = ShowAny
       given Show[Exception]                           = ShowAny
       given Show[StringBuffer]                        = ShowAny
-      given Show[Atoms]                               = ShowAny
-      given Show[Highlight]                           = ShowAny
-      given Show[HighlightBuffer]                     = ShowAny
       given Show[CompilationUnit]                     = ShowAny
-      given Show[Mode]                                = ShowAny
       given Show[Phases.Phase]                        = ShowAny
-      given Show[Signature]                           = ShowAny
       given Show[TyperState]                          = ShowAny
       given Show[config.ScalaVersion]                 = ShowAny
       given Show[io.AbstractFile]                     = ShowAny
-      given Show[parsing.Scanners.IndentWidth]        = ShowAny
       given Show[parsing.Scanners.Scanner]            = ShowAny
       given Show[util.SourceFile]                     = ShowAny
       given Show[util.Spans.Span]                     = ShowAny
-      given Show[dotty.tools.tasty.TastyBuffer.Addr]  = ShowAny
       given Show[tasty.TreeUnpickler#OwnerTree]       = ShowAny
-      given Show[interactive.Completion]              = ShowAny
-      given Show[transform.sjs.JSSymUtils.JSName]     = ShowAny
-      given Show[org.scalajs.ir.Position]             = ShowAny
     end Show
   end ShownDef
   export ShownDef.{ Show, Shown }
