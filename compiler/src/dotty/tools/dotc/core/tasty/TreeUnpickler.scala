@@ -1297,8 +1297,6 @@ class TreeUnpickler(reader: TastyReader,
       }
 
       val tree = if (tag < firstLengthTreeTag) readSimpleTerm() else readLengthTerm()
-      if (!tree.isInstanceOf[TypTree]) // FIXME: Necessary to avoid self-type cyclic reference in tasty_tools
-        tree.overwriteType(tree.tpe.simplified)
       setSpan(start, tree)
     }
 
