@@ -63,9 +63,9 @@ object NavigateAST {
     pathTo(span, List(ctx.compilationUnit.untpdTree))
 
 
-  /** The reverse path from node `from` to the node that closest encloses `span`,
+  /** The reverse path from any node in `from` to the node that closest encloses `span`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
-   *  the node closest enclosing `span` and ends with `from`.
+   *  the node closest enclosing `span` and ends with one of the nodes in `from`.
    *
    *  @param skipZeroExtent  If true, skip over zero-extent nodes in the search. These nodes
    *                         do not correspond to code the user wrote since their start and
