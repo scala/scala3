@@ -559,18 +559,27 @@ object Parsers {
     def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
       inBracesOrIndented(body, rewriteWithColon)
 
-    /** part { `separator` part }
-     */
-    def tokenSeparated[T](separator: Int, part: () => T): List[T] = {
+    /** part { `,` part }
+      * @param expectedEnd If set to something other than [[EMPTY]],
+      *                    assume this comma separated list must be followed by this token.
+      *                    If the parser consumes a `part` that is not followed by a comma or this expected
+      *                    token, issue a syntax error and try to recover at the next safe point.
+      */
+    def commaSeparated[T](part: () => T, expectedEnd: Token = EMPTY): List[T] = {
       val ts = new ListBuffer[T] += part()
-      while (in.token == separator) {
+      while (in.token == COMMA) {
         in.nextToken()
         ts += part()
       }
+      if (expectedEnd != EMPTY && in.token != expectedEnd) {
+        // As a side effect, will skip to the nearest safe point, which might be a comma
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(expectedEnd, in.token))
+        if (in.token == COMMA) {
+          ts ++= commaSeparated(part, expectedEnd)
+        }
+      }
       ts.toList
     }
-
-    def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
 
     def inSepRegion[T](f: Region => Region)(op: => T): T =
       val cur = in.currentRegion
@@ -1515,7 +1524,7 @@ object Parsers {
     /**  FunParamClause ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
      */
     def funParamClause(): List[ValDef] =
-      inParens(commaSeparated(() => typedFunParam(in.offset, ident())))
+      inParens(commaSeparated(() => typedFunParam(in.offset, ident()), RPAREN))
 
     def funParamClauses(): List[List[ValDef]] =
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
@@ -1628,7 +1637,7 @@ object Parsers {
       else
         def singletonArgs(t: Tree): Tree =
           if in.token == LPAREN && in.featureEnabled(Feature.dependent)
-          then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
+          then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton, RPAREN))))
           else t
         singletonArgs(simpleType1())
 
@@ -1644,7 +1653,7 @@ object Parsers {
     def simpleType1() = simpleTypeRest {
       if in.token == LPAREN then
         atSpan(in.offset) {
-          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
+          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true, RPAREN)))
         }
       else if in.token == LBRACE then
         atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement(indentOK = false)) }
@@ -1728,7 +1737,7 @@ object Parsers {
      *                        |  NamedTypeArg {`,' NamedTypeArg}
      *    NamedTypeArg      ::=  id `=' Type
      */
-    def argTypes(namedOK: Boolean, wildOK: Boolean): List[Tree] = {
+    def argTypes(namedOK: Boolean, wildOK: Boolean, expectedEnd: Token): List[Tree] = {
 
       def argType() = {
         val t = typ()
@@ -1745,7 +1754,7 @@ object Parsers {
         val rest =
           if (in.token == COMMA) {
             in.nextToken()
-            commaSeparated(arg)
+            commaSeparated(arg, expectedEnd)
           }
           else Nil
         first :: rest
@@ -1758,7 +1767,7 @@ object Parsers {
           case firstArg =>
             otherArgs(firstArg, () => argType())
         }
-      else commaSeparated(() => argType())
+      else commaSeparated(() => argType(), expectedEnd)
     }
 
     /** FunArgType ::=  Type | `=>' Type
@@ -1787,7 +1796,7 @@ object Parsers {
     /** TypeArgs      ::= `[' Type {`,' Type} `]'
      *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
      */
-    def typeArgs(namedOK: Boolean, wildOK: Boolean): List[Tree] = inBrackets(argTypes(namedOK, wildOK))
+    def typeArgs(namedOK: Boolean, wildOK: Boolean): List[Tree] = inBrackets(argTypes(namedOK, wildOK, RBRACKET))
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
@@ -2151,7 +2160,7 @@ object Parsers {
           var mods1 = mods
           if isErased then mods1 = addModifier(mods1)
           try
-            commaSeparated(() => binding(mods1))
+            commaSeparated(() => binding(mods1), RPAREN)
           finally
             accept(RPAREN)
       else {
@@ -2383,7 +2392,7 @@ object Parsers {
     /**   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
      */
     def exprsInParensOpt(): List[Tree] =
-      if (in.token == RPAREN) Nil else commaSeparated(exprInParens)
+      if (in.token == RPAREN) Nil else commaSeparated(exprInParens, RPAREN)
 
     /** ParArgumentExprs ::= `(' [‘using’] [ExprsInParens] `)'
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `*' ')'
@@ -2393,9 +2402,9 @@ object Parsers {
         (Nil, false)
       else if isIdent(nme.using) then
         in.nextToken()
-        (commaSeparated(argumentExpr), true)
+        (commaSeparated(argumentExpr, RPAREN), true)
       else
-        (commaSeparated(argumentExpr), false)
+        (commaSeparated(argumentExpr, RPAREN), false)
     }
 
     /** ArgumentExprs ::= ParArgumentExprs
@@ -2539,7 +2548,7 @@ object Parsers {
               if (leading == LBRACE || in.token == CASE)
                 enumerators()
               else {
-                val pats = patternsOpt()
+                val pats = patternsOpt(EMPTY)
                 val pat =
                   if (in.token == RPAREN || pats.length > 1) {
                     wrappedEnums = false
@@ -2731,7 +2740,7 @@ object Parsers {
       case USCORE =>
         wildcardIdent()
       case LPAREN =>
-        atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
+        atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt(RPAREN))) }
       case QUOTE =>
         simpleExpr(Location.InPattern)
       case XMLSTART =>
@@ -2767,17 +2776,17 @@ object Parsers {
 
     /** Patterns          ::=  Pattern [`,' Pattern]
      */
-    def patterns(location: Location = Location.InPattern): List[Tree] =
-      commaSeparated(() => pattern(location))
+    def patterns(expectedEnd: Token = EMPTY, location: Location = Location.InPattern): List[Tree] =
+      commaSeparated(() => pattern(location), expectedEnd)
 
-    def patternsOpt(location: Location = Location.InPattern): List[Tree] =
-      if (in.token == RPAREN) Nil else patterns(location)
+    def patternsOpt(expectedEnd: Token, location: Location = Location.InPattern): List[Tree] =
+      if (in.token == RPAREN) Nil else patterns(expectedEnd, location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
      *                      |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
      */
     def argumentPatterns(): List[Tree] =
-      inParens(patternsOpt(Location.InPatternArgs))
+      inParens(patternsOpt(RPAREN, Location.InPatternArgs))
 
 /* -------- MODIFIERS and ANNOTATIONS ------------------------------------------- */
 
@@ -2958,7 +2967,7 @@ object Parsers {
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
-      commaSeparated(() => typeParam())
+      commaSeparated(() => typeParam(), RBRACKET)
     }
 
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
@@ -2967,7 +2976,7 @@ object Parsers {
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
      */
     def contextTypes(ofClass: Boolean, nparams: Int, impliedMods: Modifiers): List[ValDef] =
-      val tps = commaSeparated(funArgType)
+      val tps = commaSeparated(funArgType, RPAREN)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
@@ -3071,7 +3080,7 @@ object Parsers {
                 !impliedMods.is(Given)
                 || startParamTokens.contains(in.token)
                 || isIdent && (in.name == nme.inline || in.lookahead.isColon())
-              if isParams then commaSeparated(() => param())
+              if isParams then commaSeparated(() => param(), RPAREN)
               else contextTypes(ofClass, nparams, impliedMods)
           checkVarArgsRules(clause)
           clause
@@ -3765,7 +3774,7 @@ object Parsers {
       val derived =
         if (isIdent(nme.derives)) {
           in.nextToken()
-          tokenSeparated(COMMA, () => convertToTypeId(qualId()))
+          commaSeparated(() => convertToTypeId(qualId()))
         }
         else Nil
       possibleTemplateStart()

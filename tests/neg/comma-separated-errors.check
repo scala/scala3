@@ -1,0 +1,36 @@
+-- [E040] Syntax Error: tests/neg/comma-separated-errors.scala:3:21 ----------------------------------------------------
+3 |  def foo(x: Int = 5 6, y Int = 7, z: Int 5, x = 5): Unit = () // error // error // error // error
+  |                     ^
+  |                     ')' expected, but integer literal found
+-- [E040] Syntax Error: tests/neg/comma-separated-errors.scala:3:26 ----------------------------------------------------
+3 |  def foo(x: Int = 5 6, y Int = 7, z: Int 5, x = 5): Unit = () // error // error // error // error
+  |                          ^^^
+  |                          ':' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/comma-separated-errors.scala:3:42 ----------------------------------------------------
+3 |  def foo(x: Int = 5 6, y Int = 7, z: Int 5, x = 5): Unit = () // error // error // error // error
+  |                                          ^
+  |                                          ')' expected, but integer literal found
+-- [E040] Syntax Error: tests/neg/comma-separated-errors.scala:3:47 ----------------------------------------------------
+3 |  def foo(x: Int = 5 6, y Int = 7, z: Int 5, x = 5): Unit = () // error // error // error // error
+  |                                               ^
+  |                                               ':' expected, but '=' found
+-- [E040] Syntax Error: tests/neg/comma-separated-errors.scala:11:16 ---------------------------------------------------
+11 |    case Plus(4 1) => // error
+   |                ^
+   |                ')' expected, but integer literal found
+-- [E040] Syntax Error: tests/neg/comma-separated-errors.scala:12:16 ---------------------------------------------------
+12 |    case Plus(4 5 6 7, 1, 2 3) => // error // error
+   |                ^
+   |                ')' expected, but integer literal found
+-- [E040] Syntax Error: tests/neg/comma-separated-errors.scala:12:28 ---------------------------------------------------
+12 |    case Plus(4 5 6 7, 1, 2 3) => // error // error
+   |                            ^
+   |                            ')' expected, but integer literal found
+-- [E040] Syntax Error: tests/neg/comma-separated-errors.scala:14:12 ---------------------------------------------------
+14 |  val x: A[T=Int, T=Int] = ??? // error // error
+   |            ^
+   |            ']' expected, but '=' found
+-- [E040] Syntax Error: tests/neg/comma-separated-errors.scala:14:19 ---------------------------------------------------
+14 |  val x: A[T=Int, T=Int] = ??? // error // error
+   |                   ^
+   |                   ']' expected, but '=' found
