@@ -60,19 +60,19 @@ object NavigateAST {
    *  the given `span`.
    */
   def untypedPath(span: Span)(using Context): List[Positioned] =
-    pathTo(span, ctx.compilationUnit.untpdTree)
+    pathTo(span, List(ctx.compilationUnit.untpdTree))
 
 
-  /** The reverse path from node `from` to the node that closest encloses `span`,
+  /** The reverse path from any node in `from` to the node that closest encloses `span`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
-   *  the node closest enclosing `span` and ends with `from`.
+   *  the node closest enclosing `span` and ends with one of the nodes in `from`.
    *
    *  @param skipZeroExtent  If true, skip over zero-extent nodes in the search. These nodes
    *                         do not correspond to code the user wrote since their start and
    *                         end point are the same, so this is useful when trying to reconcile
    *                         nodes with source code.
    */
-  def pathTo(span: Span, from: Positioned, skipZeroExtent: Boolean = false)(using Context): List[Positioned] = {
+  def pathTo(span: Span, from: List[Positioned], skipZeroExtent: Boolean = false)(using Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       var bestFit: List[Positioned] = path
       while (it.hasNext) {
@@ -120,6 +120,6 @@ object NavigateAST {
           case _ => path
         }
       }
-    singlePath(from, Nil)
+    childPath(from.iterator, Nil)
   }
 }
