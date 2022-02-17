@@ -655,13 +655,6 @@ object Scanners {
               insert(OUTDENT, offset)
               currentRegion = r.outer
             case _ =>
-              lookAhead()
-              if isAfterLineEnd
-                 && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
-              then
-                () /* skip the trailing comma */
-              else
-                reset()
         case END =>
           if !isEndMarker then token = IDENTIFIER
         case COLON =>

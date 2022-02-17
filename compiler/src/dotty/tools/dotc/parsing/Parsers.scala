@@ -565,11 +565,18 @@ object Parsers {
       *                    If the parser consumes a `part` that is not followed by a comma or this expected
       *                    token, issue a syntax error and try to recover at the next safe point.
       */
-    def commaSeparated[T](part: () => T, expectedEnd: Token = EMPTY): List[T] = {
-      val ts = new ListBuffer[T] += part()
-      while (in.token == COMMA) {
+    def commaSeparated[T](part: () => T, expectedEnd: Token, readFirst: Boolean = true): List[T] = {
+      val ts = new ListBuffer[T]
+      if (readFirst) ts += part()
+      var done = false
+      while (in.token == COMMA && !done) {
         in.nextToken()
-        ts += part()
+        if (in.isAfterLineEnd && (in.token == OUTDENT || (expectedEnd != EMPTY && in.token == expectedEnd))) {
+          // skip the trailing comma
+          done = true
+        } else {
+          ts += part()
+        }
       }
       if (expectedEnd != EMPTY && in.token != expectedEnd) {
         // As a side effect, will skip to the nearest safe point, which might be a comma
@@ -1396,14 +1403,7 @@ object Parsers {
           else
             Function(params, t)
         }
-      def funTypeArgsRest(first: Tree, following: () => Tree) = {
-        val buf = new ListBuffer[Tree] += first
-        while (in.token == COMMA) {
-          in.nextToken()
-          buf += following()
-        }
-        buf.toList
-      }
+
       var isValParamList = false
 
       val t =
@@ -1419,11 +1419,10 @@ object Parsers {
             val ts = funArgType() match {
               case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
                 isValParamList = true
-                funTypeArgsRest(
-                    typedFunParam(paramStart, name.toTermName, imods),
-                    () => typedFunParam(in.offset, ident(), imods))
+                typedFunParam(paramStart, name.toTermName, imods) :: commaSeparated(
+                    () => typedFunParam(in.offset, ident(), imods), RPAREN, readFirst = false)
               case t =>
-                funTypeArgsRest(t, funArgType)
+                t :: commaSeparated(funArgType, RPAREN, readFirst = false)
             }
             accept(RPAREN)
             if isValParamList || in.isArrow then
@@ -3129,7 +3128,7 @@ object Parsers {
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      commaSeparated(importExpr(mkTree)) match {
+      commaSeparated(importExpr(mkTree), EMPTY) match {
         case t :: rest =>
           // The first import should start at the start offset of the keyword.
           val firstPos =
@@ -3206,9 +3205,9 @@ object Parsers {
           }
         else ImportSelector(from)
 
-      def importSelectors(idOK: Boolean): List[ImportSelector] =
+      def importSelector(idOK: Boolean)(): ImportSelector =
         val isWildcard = in.token == USCORE || in.token == GIVEN || isIdent(nme.raw.STAR)
-        val selector = atSpan(in.offset) {
+        atSpan(in.offset) {
           in.token match
             case USCORE => wildcardSelector()
             case GIVEN => givenSelector()
@@ -3218,13 +3217,6 @@ object Parsers {
                 if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
                 namedSelector(termIdent())
         }
-        val rest =
-          if in.token == COMMA then
-            in.nextToken()
-            importSelectors(idOK = idOK && !isWildcard)
-          else
-            Nil
-        selector :: rest
 
       def importSelection(qual: Tree): Tree =
         if in.isIdent(nme.as) && qual.isInstanceOf[RefTree] then
@@ -3242,7 +3234,7 @@ object Parsers {
             case GIVEN =>
               mkTree(qual, givenSelector() :: Nil)
             case LBRACE =>
-              mkTree(qual, inBraces(importSelectors(idOK = true)))
+              mkTree(qual, inBraces(commaSeparated(importSelector(idOK = true), RBRACE)))
             case _ =>
               if isIdent(nme.raw.STAR) then
                 mkTree(qual, wildcardSelector() :: Nil)
@@ -3299,7 +3291,7 @@ object Parsers {
       var lhs = first match {
         case id: Ident if in.token == COMMA =>
           in.nextToken()
-          id :: commaSeparated(() => termIdent())
+          id :: commaSeparated(() => termIdent(), EMPTY)
         case _ =>
           first :: Nil
       }
@@ -3570,7 +3562,7 @@ object Parsers {
         val id = termIdent()
         if (in.token == COMMA) {
           in.nextToken()
-          val ids = commaSeparated(() => termIdent())
+          val ids = commaSeparated(() => termIdent(), EMPTY)
           PatDef(mods1, id :: ids, TypeTree(), EmptyTree)
         }
         else {
@@ -3774,7 +3766,7 @@ object Parsers {
       val derived =
         if (isIdent(nme.derives)) {
           in.nextToken()
-          commaSeparated(() => convertToTypeId(qualId()))
+          commaSeparated(() => convertToTypeId(qualId()), EMPTY)
         }
         else Nil
       possibleTemplateStart()
