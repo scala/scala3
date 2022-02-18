@@ -127,7 +127,7 @@ class ExpandSAMs extends MiniPhase:
     val parents = List(
       defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType),
       defn.SerializableType)
-    val pfSym = newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, newScope, coord = tree.span)
+    val pfSym = newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, coord = tree.span)
 
     def overrideSym(sym: Symbol) = sym.copy(
       owner = pfSym,

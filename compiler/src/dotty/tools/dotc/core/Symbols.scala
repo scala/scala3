@@ -564,7 +564,6 @@ object Symbols {
       name: TypeName,
       flags: FlagSet,
       parentTypes: List[Type],
-      decls: Scope,
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
