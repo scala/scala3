@@ -234,7 +234,13 @@ class HoverTest {
   
   @Test def tuple: Unit = {
     code"""|object A:
-           |  val (${m1}first${m2}, second) = (1, 2)""".withSource
-      .hover(m1 to m2, hoverContent("Int"))
+           |  val (${m1}first${m2}, second) = (1.0, 2)""".withSource
+      .hover(m1 to m2, hoverContent("Double"))
+  }
+
+  @Test def multiAssigment: Unit = {
+    code"""|val ${m1}x${m2}, ${m3}y${m4} = 42.0""".withSource
+      .hover(m1 to m2, hoverContent("Double"))
+      .hover(m3 to m4, hoverContent("Double"))
   }
 }
