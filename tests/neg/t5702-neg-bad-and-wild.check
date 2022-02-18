@@ -23,11 +23,17 @@
    |
    | longer explanation available when compiling with `-explain`
 -- [E032] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:23:17 ---------------------------------------------------
-23 |    val K(ns @ _*, x) = k // error: pattern expected
+23 |    val K(ns @ _*, xx) = k // error: pattern expected
    |                 ^
    |                 pattern expected
    |
    | longer explanation available when compiling with `-explain`
+-- [E161] Naming Error: tests/neg/t5702-neg-bad-and-wild.scala:24:10 ---------------------------------------------------
+24 |    val K(x) = k // error: x is already defined as value x
+   |    ^^^^^^^^^^^^
+   |    x is already defined as value x
+   |
+   |    Note that overloaded methods must all be defined in the same group of toplevel definitions
 -- Error: tests/neg/t5702-neg-bad-and-wild.scala:10:21 -----------------------------------------------------------------
 10 |      case List(1, _*,) => // error: pattern expected // error
    |                     ^
