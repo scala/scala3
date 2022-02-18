@@ -93,12 +93,6 @@ class WorksheetTest {
         ((m1 to m2), "val res0: String = odd"))
   }
 
-  @Test def patternMatching1: Unit = {
-    ws"""${m1}val (foo, bar) = (1, 2)${m2}""".withSource
-      .run(m1,
-        ((m1 to m2), s"val foo: Int = 1${nl}val bar: Int = 2"))
-  }
-
   @Test def evaluationException: Unit = {
     ws"""${m1}val foo = 1 / 0${m2}
          ${m3}val bar = 2${m4}""".withSource

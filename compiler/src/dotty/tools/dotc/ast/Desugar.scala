@@ -1143,10 +1143,11 @@ object desugar {
           ) // no `_`
 
       val ids = for ((named, _) <- vars) yield Ident(named.name)
-      val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
       val matchExpr =
         if (tupleOptimizable) rhs
-        else Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+        else
+          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids)) 
+          Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
       vars match {
         case Nil if !mods.is(Lazy) =>
           matchExpr
@@ -1166,8 +1167,16 @@ object desugar {
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
-              if (mods.is(Lazy)) derivedDefDef(original, named, tpt, selector(n), mods &~ Lazy)
-              else derivedValDef(original, named, tpt, selector(n), mods)
+              if mods.is(Lazy) then 
+                DefDef(named.name.asTermName, Nil, tpt, selector(n))
+                  .withMods(mods &~ Lazy)
+                  .withSpan(named.span)
+              else 
+                valDef(
+                  ValDef(named.name.asTermName, tpt, selector(n))
+                    .withMods(mods)
+                    .withSpan(named.span)
+                )
           flatTree(firstDef :: restDefs)
       }
   }
