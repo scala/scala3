@@ -22,7 +22,12 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       icon.classList.add(p.kind.take(2))
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href = Globals.pathToRoot + p.location
+      resultA.href =
+        if (p.isLocationExternal) {
+          p.location
+        } else {
+          Globals.pathToRoot + p.location
+        }
       resultA.text = s"${p.fullName}"
       resultA.onclick = (event: Event) =>
         if (document.body.contains(rootDiv)) {

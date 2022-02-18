@@ -118,7 +118,9 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
       val signatureRenderer = new SignatureRenderer:
         def currentDri: DRI = page.link.dri
         def link(dri: DRI): Option[String] =
-          Some(pathToPage(currentDri, dri)).filter(_ != UnresolvedLocationLink)
+          dri.externalLink.orElse(
+            Some(pathToPage(currentDri, dri)).filter(_ != UnresolvedLocationLink)
+          )
 
       MemberRenderer(signatureRenderer).fullMember(m)
     case t: ResolvedTemplate => siteContent(page.link.dri, t)

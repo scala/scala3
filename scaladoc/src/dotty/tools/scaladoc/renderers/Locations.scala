@@ -85,6 +85,9 @@ trait Locations(using ctx: DocContext):
   def escapedAbsolutePathWithAnchor(dri: DRI, extension: String = "html"): String =
     s"${escapeUrl(absolutePath(dri, extension))}#${dri.anchor}"
 
+  def relativeInternalOrAbsoluteExternalPath(dri: DRI): String =
+    dri.externalLink.getOrElse(escapedAbsolutePathWithAnchor(dri))
+
   def resolveLink(dri: DRI, url: String): String =
     if URI(url).isAbsolute then url else resolveRoot(dri, url)
 
