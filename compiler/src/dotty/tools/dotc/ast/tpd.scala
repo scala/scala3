@@ -345,7 +345,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
       else parents
     val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
-        newScope, coord = fns.map(_.span).reduceLeft(_ union _))
+        coord = fns.map(_.span).reduceLeft(_ union _))
     val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
       val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm

@@ -199,7 +199,7 @@ object Inliner {
 
     val UnApply(fun, implicits, patterns) = unapp
     val sym = unapp.symbol
-    val cls = newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), newScope, coord = sym.coord)
+    val cls = newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
     val constr = newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
 
     val targs = fun match
