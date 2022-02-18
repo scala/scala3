@@ -133,7 +133,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       }.mkString
 
     def mkEntry(dri: DRI, name: String, text: String, descr: String, kind: String) = jsonObject(
-        "l" -> jsonString(absolutePathWithAnchor(dri)),
+        "l" -> jsonString(escapedAbsolutePathWithAnchor(dri)),
         "n" -> jsonString(name),
         "t" -> jsonString(text),
         "d" -> jsonString(descr),
