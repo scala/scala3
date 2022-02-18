@@ -79,9 +79,7 @@ abstract: |
 [contextual-abstractions]: ###################################################
 
 \newpage
-# Contextual Abstractions [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/contextual.html) {#contextual-abstractions}
-
-## Overview [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/contextual/contextual.html) {#motivation}
+# Contextual Abstractions [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/contextual/contextual.html) {#motivation}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/contextual/contextual.md
 ```
@@ -267,10 +265,6 @@ abstract: |
 ## Fewer Braces [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/other-new-features/indentation-experimental.html) {#indentation-experimental}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/other-new-features/indentation-experimental.md
-```
-## Explicit Nulls [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/other-new-features/explicit-nulls.html) {#explicit-nulls}
-```{.include shift-heading-level-by=1}
-../out/pandoc/src_managed/reference/other-new-features/explicit-nulls.md
 ```
 
 ## Safe Initialization [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/other-new-features/safe-initialization.html) {#safe-initialization}
@@ -473,19 +467,37 @@ abstract: |
 ../out/pandoc/src_managed/reference/dropped-features/this-qualifier.md
 ```
 
+## Dropped: Wildcard Initializer [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/dropped-features/wildcard-init.html) {#wildcard-init}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/dropped-features/wildcard-init.md
+```
+
 [experimental]: ##############################################################
 
 \newpage
 # Experimental Features [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/experimental/overview.html) {#experimental-features}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/experimental/overview.md
+```
 
 ## CanThrow Capabilities [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/experimental/canthrow.html) {#canthrow}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/experimental/canthrow.md
 ```
 
+## Capture Checking [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/experimental/cc.html) {#capture-checking}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/experimental/cc.md
+```
+
 ## Erased Definitions [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/experimental/erased-defs.html) {#erased-defs}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/experimental/erased-defs.md
+```
+
+## Explicit Nulls [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/experimental/explicit-nulls.html) {#explicit-nulls}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/experimental/explicit-nulls.md
 ```
 
 ## Named Type Arguments [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/experimental/named-typeargs.html) {#named-typeargs}
@@ -511,7 +523,17 @@ abstract: |
 \newpage
 # Language Versions [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/language-versions.html) {#language-versions}
 ```{.include shift-heading-level-by=1}
-../out/pandoc/src_managed/reference/language-versions.md
+../out/pandoc/src_managed/reference/language-versions/language-versions.md
+```
+
+## Source Compatibility [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/language-versions/source-compatibility.html) {#source-compatibility}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/language-versions/source-compatibility.md
+```
+
+## Binary Compatibility [![](../out/pandoc/images/external.png){width=64px}&nbsp;](https://docs.scala-lang.org/scala3/reference/language-versions/binary-compatibility.html) {#binary-compatibility}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/language-versions/binary-compatibility.md
 ```
 
 [appendix]: ##################################################################
