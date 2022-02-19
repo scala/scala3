@@ -280,6 +280,12 @@ object Parsers {
         syntaxError(msg, offset)
         skip(stopAtComma = true)
 
+    def syntaxErrorOrIncomplete(msg: Message, span: Span): Unit =
+      if (in.token == EOF) incompleteInputError(msg)
+      else
+        syntaxError(msg, span)
+        skip(stopAtComma = true)
+
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
       *
@@ -2003,7 +2009,7 @@ object Parsers {
           handler match {
             case Block(Nil, EmptyTree) =>
               assert(handlerStart != -1)
-              syntaxError(
+              syntaxErrorOrIncomplete(
                 EmptyCatchBlock(body),
                 Span(handlerStart, endOffset(handler))
               )
