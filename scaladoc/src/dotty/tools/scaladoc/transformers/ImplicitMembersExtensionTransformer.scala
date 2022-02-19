@@ -29,7 +29,7 @@ class ImplicitMembersExtensionTransformer(using DocContext) extends(Module => Mo
         case m @ Member(_, _, _, Kind.Extension(ExtensionTarget(_, _, _, _, MyDri, _), _), Origin.RegularlyDefined) =>
           val kind = m.kind match
             case d: Kind.Def => d
-            case _ => Kind.Def(Nil, Nil)
+            case _ => Kind.Def(Nil)
 
           Seq(m.withOrigin(Origin.ExtensionFrom(source.name, source.dri)).withKind(kind))
         case m @ Member(_, _, _, conversionProvider: ImplicitConversionProvider, Origin.RegularlyDefined) =>

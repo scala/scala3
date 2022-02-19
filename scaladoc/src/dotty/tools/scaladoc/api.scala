@@ -43,7 +43,7 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Transparent extends Modifier("transparent", true)
   case Infix extends Modifier("infix", true)
 
-case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList], signature: Signature, dri: DRI, position: Long)
+case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[TermParametersList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
 trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
 trait Classlike
@@ -51,14 +51,14 @@ trait Classlike
 enum Kind(val name: String):
   case RootPackage extends Kind("")
   case Package extends Kind("package")
-  case Class(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
+  case Class(typeParams: Seq[TypeParameter], argsLists: Seq[TermParametersList])
     extends Kind("class") with Classlike
   case Object extends Kind("object") with Classlike
-  case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
+  case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[TermParametersList])
     extends Kind("trait") with Classlike
-  case Enum(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList]) extends Kind("enum") with Classlike
+  case Enum(typeParams: Seq[TypeParameter], argsLists: Seq[TermParametersList]) extends Kind("enum") with Classlike
   case EnumCase(kind: Object.type | Kind.Type | Val.type | Class) extends Kind("case")
-  case Def(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
+  case Def(params: Seq[TypeParametersList | TermParametersList]) // TODO: sc
     extends Kind("def")
   case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
   case Constructor(base: Kind.Def) extends Kind("def")
@@ -94,12 +94,15 @@ object Annotation:
   case class LinkParameter(name: Option[String] = None, dri: DRI, value: String) extends AnnotationParameter
   case class UnresolvedParameter(name: Option[String] = None, unresolvedText: String) extends AnnotationParameter
 
-case class ParametersList(
-  parameters: Seq[Parameter],
+
+// type ParametersList = TermParametersList | TypeParametersList // TODO: sc
+
+case class TermParametersList(
+  parameters: Seq[TermParameter],
   modifiers: String
 )
 
-case class Parameter(
+case class TermParameter(
   annotations: Seq[Annotation],
   modifiers: String,
   name: Option[String],
@@ -107,6 +110,10 @@ case class Parameter(
   signature: Signature,
   isExtendedSymbol: Boolean = false,
   isGrouped: Boolean = false
+)
+
+case class TypeParametersList(
+  parameters: Seq[TypeParameter]
 )
 
 case class TypeParameter(

@@ -118,28 +118,25 @@ object ScalaSignatureProvider:
 
     parentsSignature(clazz, selfSignature)
 
-  private def extensionSignature(extension: Member, fun: Kind.Def, builder: SignatureBuilder): SignatureBuilder =
+  private def extensionSignature(extension: Member, fun: Kind.Def, builder: SignatureBuilder): SignatureBuilder = // TODO: sc
     val withSignature = builder
       .modifiersAndVisibility(extension, "def")
       .name(extension.name, extension.dri)
-      .generics(fun.typeParams)
-      .functionParameters(fun.argsLists)
+      .functionParameters2(fun.params)
 
       withSignature.plain(":").plain(" ").signature(extension.signature)
 
-  private def givenMethodSignature(method: Member, body: Kind.Def, builder: SignatureBuilder): SignatureBuilder = method.kind match
+  private def givenMethodSignature(method: Member, body: Kind.Def, builder: SignatureBuilder): SignatureBuilder = method.kind match // TODO: sc
     case Kind.Given(_, Some(instance), _) =>
       builder.keyword("given ")
         .name(method.name, method.dri)
-        .generics(body.typeParams)
-        .functionParameters(body.argsLists)
+        .functionParameters2(body.params)
         .plain(": ")
         .signature(instance)
     case _ =>
       builder.keyword("given ")
         .name(method.name, method.dri)
-        .generics(body.typeParams)
-        .functionParameters(body.argsLists)
+      .functionParameters2(body.params)
 
   private def givenValSignature(field: Member, builder: SignatureBuilder): SignatureBuilder = field.kind match
     case Kind.Given(_, Some(instance), _) =>
@@ -150,12 +147,12 @@ object ScalaSignatureProvider:
     case _ =>
       builder.keyword("given ").name(field.name, field.dri)
 
-  private def methodSignature(method: Member, cls: Kind.Def, builder: SignatureBuilder): SignatureBuilder =
+  private def methodSignature(method: Member, cls: Kind.Def, builder: SignatureBuilder): SignatureBuilder = // TODO: sc
     val bdr = builder
     .modifiersAndVisibility(method, "def")
     .name(method.name, method.dri)
-    .generics(cls.typeParams)
-    .functionParameters(cls.argsLists)
+    .functionParameters2(cls.params)
+
     if !method.kind.isInstanceOf[Kind.Constructor] then
       bdr.plain(": ").signature(method.signature)
     else bdr

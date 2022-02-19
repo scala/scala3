@@ -44,7 +44,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
   def annotationsBlock(d: Member): SignatureBuilder =
     d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation)}
 
-  def annotationsInline(d: Parameter): SignatureBuilder =
+  def annotationsInline(d: TermParameter): SignatureBuilder =
     d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation) }
 
   def annotationsInline(t: TypeParameter): SignatureBuilder =
@@ -87,7 +87,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
     bdr.annotationsInline(e).keyword(e.variance).tpe(e.name, Some(e.dri)).signature(e.signature)
   }
 
-  def functionParameters(params: Seq[ParametersList]) =
+  def functionParameters(params: Seq[TermParametersList]) =
     if params.isEmpty then this.plain("")
     else if params.size == 1 && params(0).parameters == Nil then this.plain("()")
     else this.list(params, separator = List(Plain(""))) { (bld, pList) =>
@@ -98,7 +98,22 @@ trait SignatureBuilder extends ScalaSignatureUtils {
         name.signature(p.signature)
       }
     }
+  /* 
+  def functionParameter = 
+    (bdr: SignatureBuilder, param: TypeParametersList | TermParametersList) => param match {
+      case types: TypeParameterList => generics(ts)
+      case terms: TermParametersList => functionParameters(terms)
+    }  */
+
+  def functionParameters2(params: Seq[TypeParametersList | TermParametersList]) = params.foldLeft(this){ (bdr, params) => params match {
+      case types: TypeParametersList => bdr.generics(types.parameters)
+      case terms: TermParametersList => bdr.functionParameters(Seq(terms))
+    }} // TODO: sc
+    
+  
 }
+
+
 
 trait ScalaSignatureUtils:
   extension (tokens: Seq[String]) def toSignatureString(): String =
