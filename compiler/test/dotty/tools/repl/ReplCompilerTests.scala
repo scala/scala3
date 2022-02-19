@@ -300,4 +300,14 @@ class ReplVerboseTests extends ReplTest(ReplTest.defaultOptions :+ "-verbose"):
     run("val a = 42")
     assert(storedOutput().trim().endsWith("val a: Int = 42"))
   }
+
+  @Test def `i4393-incomplete-catch`: Unit = contextually {
+    assert(ParseResult.isIncomplete("""|try {
+                                       |  ???
+                                       |} catch""".stripMargin))
+    assert(ParseResult.isIncomplete("""|try {
+                                       |  ???
+                                       |} catch {""".stripMargin))
+  }
+
 end ReplVerboseTests
