@@ -13,6 +13,7 @@ import Names._
 import StdNames._
 import NameOps._
 import NameKinds._
+import NullOpsDecorator._
 import ResolveSuper._
 import reporting.IllegalSuperAccessor
 
@@ -111,15 +112,12 @@ object ResolveSuper {
         val otherTp = other.asSeenFrom(base.typeRef).info
         val accTp = acc.asSeenFrom(base.typeRef).info
         // Since the super class can be Java defined,
-        // we use releaxed overriding check for explicit nulls if one of the symbols is Java defined.
-        // This forces `Null` being a subtype of reference types during override checking.
-        val relaxedCtxForNulls =
-        if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined)) then
-          ctx.retractMode(Mode.SafeNulls)
-        else ctx
-        if (!(otherTp.overrides(accTp, matchLoosely = true)(using relaxedCtxForNulls)))
+        // we use relaxed overriding check for explicit nulls if one of the symbols is Java defined.
+        // This forces `Null` to be a subtype of non-primitive value types during override checking.
+        val overrideCtx = if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined))
+          then ctx.relaxedOverrideContext else ctx
+        if !otherTp.overrides(accTp, matchLoosely = true)(using overrideCtx) then
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
-
       bcs = bcs.tail
     }
     assert(sym.exists, i"cannot rebind $acc, ${acc.targetName} $memberName")

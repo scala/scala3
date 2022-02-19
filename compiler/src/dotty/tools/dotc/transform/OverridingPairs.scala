@@ -5,6 +5,7 @@ package transform
 import core._
 import Flags._, Symbols._, Contexts._, Scopes._, Decorators._, Types.Type
 import NameKinds.DefaultGetterName
+import NullOpsDecorator._
 import collection.mutable
 import collection.immutable.BitSet
 import scala.annotation.tailrec
@@ -216,14 +217,12 @@ object OverridingPairs:
       )
     else
       // releaxed override check for explicit nulls if one of the symbols is Java defined,
-      // force `Null` being a subtype of reference types during override checking
-      val relaxedCtxForNulls =
-        if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
-          ctx.retractMode(Mode.SafeNulls)
-        else ctx
+      // force `Null` to be a subtype of non-primitive value types during override checking.
+      val overrideCtx = if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined))
+        then ctx.relaxedOverrideContext else ctx
       member.name.is(DefaultGetterName) // default getters are not checked for compatibility
       || memberTp.overrides(otherTp,
             member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack
-          )(using relaxedCtxForNulls)
+          )(using overrideCtx)
 
 end OverridingPairs
