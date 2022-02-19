@@ -26,4 +26,4 @@
 -- Error: tests/neg/export-in-extension.scala:38:13 --------------------------------------------------------------------
 38 |      export cm.*   // error
    |      ^^^^^^^^^^^
-   |      exports are only allowed from objects and classes
+   |      exports are only allowed from objects and classes, they can not belong to local blocks

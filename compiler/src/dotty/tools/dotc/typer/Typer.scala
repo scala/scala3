@@ -2622,7 +2622,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val selectors1 = typedSelectors(exp.selectors)
         assignType(cpy.Export(exp)(expr1, selectors1))
       case _ =>
-        errorTree(exp, em"exports are only allowed from objects and classes")
+        errorTree(exp, em"exports are only allowed from objects and classes, they can not belong to local blocks")
 
   def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
     val pid1 = withMode(Mode.InPackageClauseName)(typedExpr(tree.pid, AnySelectionProto))

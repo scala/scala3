@@ -1180,11 +1180,28 @@ class Namer { typer: Typer =>
                 then
                   (StableRealizable, ExprType(pathType.select(sym)))
                 else
-                  def addPathMethodParams(pt: Type, info: Type): Type = pt match
-                    case pt: MethodOrPoly =>
-                      pt.derivedLambdaType(resType = addPathMethodParams(pt.resType, info))
-                    case _ =>
-                      info
+                  def addPathMethodParams(pathType: Type, info: Type): Type =
+                    def defines(pt: Type, pname: Name): Boolean = pt match
+                      case pt: MethodOrPoly =>
+                        pt.paramNames.contains(pname) || defines(pt.resType, pname)
+                      case _ =>
+                        false
+                    def avoidNameClashes(info: Type): Type = info match
+                      case info: MethodOrPoly =>
+                        info.derivedLambdaType(
+                          paramNames = info.paramNames.mapConserve {
+                            pname => if defines(pathType, pname) then pname.freshened else pname
+                          },
+                          resType = avoidNameClashes(info.resType))
+                      case info =>
+                        info
+                    def wrap(pt: Type, info: Type): Type = pt match
+                      case pt: MethodOrPoly =>
+                        pt.derivedLambdaType(resType = wrap(pt.resType, info))
+                      case _ =>
+                        info
+                    wrap(pathType, avoidNameClashes(info))
+
                   val mbrInfo =
                     if pathMethod.exists
                     then addPathMethodParams(pathMethod.info, mbr.info.widenExpr)
