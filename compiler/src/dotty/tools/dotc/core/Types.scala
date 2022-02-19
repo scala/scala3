@@ -1112,9 +1112,7 @@ object Types {
      */
     def matches(that: Type)(using Context): Boolean = {
       record("matches")
-      val overrideCtx = if ctx.explicitNulls
-        then ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding)
-        else ctx
+      val overrideCtx = if ctx.explicitNulls then ctx.relaxedOverrideContext else ctx
       TypeComparer.matchesType(this, that, relaxed = !ctx.phase.erasedTypes)(using overrideCtx)
     }
 
