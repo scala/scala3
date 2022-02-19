@@ -219,7 +219,7 @@ object OverridingPairs:
       // releaxed override check for explicit nulls if one of the symbols is Java defined,
       // force `Null` to be a subtype of non-primitive value types during override checking.
       val overrideCtx = if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined))
-        then ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding) else ctx
+        then ctx.relaxedOverrideContext else ctx
       member.name.is(DefaultGetterName) // default getters are not checked for compatibility
       || memberTp.overrides(otherTp,
             member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack

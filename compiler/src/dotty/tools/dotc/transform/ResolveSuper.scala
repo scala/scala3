@@ -115,7 +115,7 @@ object ResolveSuper {
         // we use relaxed overriding check for explicit nulls if one of the symbols is Java defined.
         // This forces `Null` to be a subtype of non-primitive value types during override checking.
         val overrideCtx = if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined))
-          then ctx.retractMode(Mode.SafeNulls).addMode(Mode.RelaxedOverriding) else ctx
+          then ctx.relaxedOverrideContext else ctx
         if !otherTp.overrides(accTp, matchLoosely = true)(using overrideCtx) then
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
       bcs = bcs.tail
