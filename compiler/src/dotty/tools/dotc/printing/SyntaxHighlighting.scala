@@ -112,7 +112,7 @@ object SyntaxHighlighting {
               highlightPosition(tree.nameSpan, TypeColor)
             case tree: Ident if tree.isType =>
               highlightPosition(tree.span, TypeColor)
-            case _: TypTree =>
+            case _: TypeTree =>
               highlightPosition(tree.span, TypeColor)
             case _ =>
           }
