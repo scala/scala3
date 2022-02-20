@@ -1399,8 +1399,8 @@ object Trees {
               cpy.NamedArg(tree)(name, transform(arg))
             case Assign(lhs, rhs) =>
               cpy.Assign(tree)(transform(lhs), transform(rhs))
-            case Block(stats, expr) =>
-              cpy.Block(tree)(transformStats(stats, ctx.owner), transform(expr))
+            case blk: Block =>
+              transformBlock(blk)
             case If(cond, thenp, elsep) =>
               cpy.If(tree)(transform(cond), transform(thenp), transform(elsep))
             case Closure(env, meth, tpt) =>
@@ -1489,6 +1489,8 @@ object Trees {
 
       def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
         transform(trees)
+      def transformBlock(blk: Block)(using Context): Block =
+        cpy.Block(blk)(transformStats(blk.stats, ctx.owner), transform(blk.expr))
       def transform(trees: List[Tree])(using Context): List[Tree] =
         flatten(trees mapConserve (transform(_)))
       def transformSub[Tr <: Tree](tree: Tr)(using Context): Tr =

@@ -48,13 +48,7 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
   override def transform(tree: Tree)(using Context): Tree = {
     try tree match {
       case Block(stats, expr) =>
-        inContext(nestedScopeCtx(stats)) {
-          if stats.exists(_.isInstanceOf[Import]) then
-            // need to transform stats and expr together to account for import visibility
-            val stats1 = transformStats(stats :+ expr, ctx.owner)
-            cpy.Block(tree)(stats1.init, stats1.last)
-          else super.transform(tree)
-        }
+        super.transform(tree)(using nestedScopeCtx(stats))
       case tree: DefDef =>
         inContext(localCtx(tree)) {
           cpy.DefDef(tree)(

@@ -458,8 +458,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           throw ex
       }
 
-    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
-      try super.transformStats(trees, exprOwner)
+    override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =
+      try super.transformStats(trees, exprOwner, wrapResult)
       finally Checking.checkExperimentalImports(trees)
 
     /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
