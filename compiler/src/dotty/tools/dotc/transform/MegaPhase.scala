@@ -296,9 +296,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       case tree: Block =>
         inContext(prepBlock(tree, start)(using outerCtx)) {
-          val stats = transformStats(tree.stats, ctx.owner, start)
-          val expr = transformTree(tree.expr, start)
-          goBlock(cpy.Block(tree)(stats, expr), start)
+          transformBlock(tree, start)
         }
       case tree: TypeApply =>
         inContext(prepTypeApply(tree, start)(using outerCtx)) {
@@ -434,8 +432,19 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] =
     val nestedCtx = prepStats(trees, start)
-    val trees1 = trees.mapStatements(exprOwner, transformTree(_, start))(using nestedCtx)
+    val trees1 = trees.mapStatements(exprOwner, transformTree(_, start), stats1 => stats1)(using nestedCtx)
     goStats(trees1, start)(using nestedCtx)
+
+  def transformBlock(tree: Block, start: Int)(using Context): Tree =
+    val nestedCtx = prepStats(tree.stats, start)
+    val block1 = tree.stats.mapStatements(ctx.owner,
+      transformTree(_, start),
+      stats1 => ctx ?=> {
+        val stats2 = goStats(stats1, start)(using nestedCtx)
+        val expr2 = transformTree(tree.expr, start)
+        cpy.Block(tree)(stats2, expr2)
+      })(using nestedCtx)
+    goBlock(block1, start)
 
   def transformUnit(tree: Tree)(using Context): Tree = {
     val nestedCtx = prepUnit(tree, 0)
