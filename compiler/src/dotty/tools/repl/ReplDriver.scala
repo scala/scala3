@@ -391,7 +391,16 @@ class ReplDriver(settings: Array[String],
       state
 
     case Reset(arg) =>
-      resetToInitial(tokenize(arg))
+      val tokens = tokenize(arg)
+
+      if tokens.nonEmpty then
+        out.println(s"""|Resetting REPL state with the following settings:
+                        |  ${tokens.mkString("\n  ")}
+                        |""".stripMargin)
+      else
+        out.println("Resetting REPL state.")
+
+      resetToInitial(tokens)
       initialState
 
     case Imports =>

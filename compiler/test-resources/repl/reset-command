@@ -3,6 +3,8 @@ there were 1 deprecation warning(s); re-run with -deprecation for details
 def f(thread: Thread): Unit
 
 scala>:reset -deprecation
+Resetting REPL state with the following settings:
+  -deprecation
 
 scala> def f(thread: Thread) = thread.stop()
 1 warning found
@@ -16,6 +18,7 @@ scala> def resetNoArgsStillWorks = 1
 def resetNoArgsStillWorks: Int
 
 scala>:reset
+Resetting REPL state.
 
 scala> resetNoArgsStillWorks
 -- [E006] Not Found Error: -----------------------------------------------------
