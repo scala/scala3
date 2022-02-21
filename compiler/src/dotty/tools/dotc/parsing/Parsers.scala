@@ -249,8 +249,13 @@ object Parsers {
 
     /** Skip on error to next safe point.
      */
-    protected def skip(stopAtComma: Boolean): Unit =
+    protected def skip(): Unit =
       val lastRegion = in.currentRegion
+      val stopAtComma = lastRegion match {
+        case InParens(_, _, commaSeparated) => commaSeparated
+        case InBraces(_, commaSeparated) => commaSeparated
+        case _ => true
+      }
       def atStop =
         in.token == EOF
         || ((stopAtComma && in.token == COMMA) || skipStopTokens.contains(in.token)) && (in.currentRegion eq lastRegion)
@@ -278,13 +283,13 @@ object Parsers {
       if (in.token == EOF) incompleteInputError(msg)
       else
         syntaxError(msg, offset)
-        skip(stopAtComma = true)
+        skip()
 
     def syntaxErrorOrIncomplete(msg: Message, span: Span): Unit =
       if (in.token == EOF) incompleteInputError(msg)
       else
         syntaxError(msg, span)
-        skip(stopAtComma = true)
+        skip()
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
@@ -352,7 +357,7 @@ object Parsers {
             false // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
-            skip(stopAtComma=false)
+            skip()
             true
 
       in.observeOutdented()
@@ -566,6 +571,13 @@ object Parsers {
       *                    token, issue a syntax error and try to recover at the next safe point.
       */
     def commaSeparated[T](part: () => T, expectedEnd: Token, readFirst: Boolean = true): List[T] = {
+      if (expectedEnd != EMPTY) {
+        in.currentRegion match {
+          case InParens(t, outer, _) => in.currentRegion = InParens(t, outer, commaSeparated = true)
+          case InBraces(outer, _) => in.currentRegion = InBraces(outer, commaSeparated = true)
+          case _ =>
+        }
+      }
       val ts = new ListBuffer[T]
       if (readFirst) ts += part()
       var done = false
@@ -583,6 +595,14 @@ object Parsers {
         syntaxErrorOrIncomplete(ExpectedTokenButFound(expectedEnd, in.token))
         if (in.token == COMMA) {
           ts ++= commaSeparated(part, expectedEnd)
+        }
+      }
+      if (expectedEnd != EMPTY) {
+        in.currentRegion match {
+          case InParens(t, outer, true) =>
+            in.currentRegion = InParens(t, outer, commaSeparated = false)
+          case InBraces(outer, true) => in.currentRegion = InBraces(outer, commaSeparated = false)
+          case _ =>
         }
       }
       ts.toList
