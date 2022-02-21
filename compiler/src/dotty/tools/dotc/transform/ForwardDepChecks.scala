@@ -25,10 +25,10 @@ object ForwardDepChecks:
   }
 
   /** A class to help in forward reference checking */
-  class LevelInfo(outerLevelAndIndex: LevelAndIndex, stats: List[Tree])(using Context)
+  class LevelInfo(val outer: OptLevelInfo, val owner: Symbol, stats: List[Tree])(using Context)
   extends OptLevelInfo {
     override val levelAndIndex: LevelAndIndex =
-      stats.foldLeft(outerLevelAndIndex, 0) {(mi, stat) =>
+      stats.foldLeft(outer.levelAndIndex, 0) {(mi, stat) =>
         val (m, idx) = mi
         val m1 = stat match {
           case stat: MemberDef => m.updated(stat.symbol, (this, idx))
@@ -71,7 +71,7 @@ class ForwardDepChecks extends MiniPhase:
 
   override def prepareForStats(trees: List[Tree])(using Context): Context =
     if (ctx.owner.isTerm)
-      ctx.fresh.updateStore(LevelInfo, new LevelInfo(currentLevel.levelAndIndex, trees))
+      ctx.fresh.updateStore(LevelInfo, new LevelInfo(currentLevel, ctx.owner, trees))
     else ctx
 
   override def transformValDef(tree: ValDef)(using Context): ValDef =
@@ -89,19 +89,39 @@ class ForwardDepChecks extends MiniPhase:
     tree
   }
 
-  override def transformApply(tree: Apply)(using Context): Apply = {
-    if (isSelfConstrCall(tree)) {
-      assert(currentLevel.isInstanceOf[LevelInfo], s"${ctx.owner}/" + i"$tree")
-      val level = currentLevel.asInstanceOf[LevelInfo]
-      if (level.maxIndex > 0) {
-        // An implementation restriction to avoid VerifyErrors and lazyvals mishaps; see SI-4717
-        report.debuglog("refsym = " + level.refSym)
-        report.error("forward reference not allowed from self constructor invocation",
-          ctx.source.atSpan(level.refSpan))
-      }
-    }
+  /** Check that self constructor call does not contain references to vals or defs
+   *  defined later in the secondary constructor's right hand side. This is tricky
+   *  since the complete self constructor might itself be a block that originated from
+   *  expanding named and default parameters. In that case we have to go outwards
+   *  and find the enclosing expression that consists of that block. Test cases in
+   *  {pos,neg}/complex-self-call.scala.
+   */
+  private def checkSelfConstructorCall()(using Context): Unit =
+    // Find level info corresponding to constructor's RHS. This is the info of the
+    // outermost LevelInfo that has the constructor as owner.
+    def rhsLevelInfo(l: OptLevelInfo): OptLevelInfo = l match
+      case l: LevelInfo if l.owner == ctx.owner =>
+        rhsLevelInfo(l.outer) match
+          case l1: LevelInfo => l1
+          case _ => l
+      case _ =>
+        NoLevelInfo
+
+    rhsLevelInfo(currentLevel) match
+      case level: LevelInfo =>
+        if level.maxIndex > 0 then
+          report.debuglog("refsym = " + level.refSym.showLocated)
+          report.error("forward reference not allowed from self constructor invocation",
+            ctx.source.atSpan(level.refSpan))
+      case _ =>
+        assert(false, s"${ctx.owner.showLocated}")
+  end checkSelfConstructorCall
+
+  override def transformApply(tree: Apply)(using Context): Apply =
+    if (isSelfConstrCall(tree))
+      assert(ctx.owner.isConstructor)
+      checkSelfConstructorCall()
     tree
-  }
 
   override def transformNew(tree: New)(using Context): New = {
     currentLevel.enterReference(tree.tpe.typeSymbol, tree.span)

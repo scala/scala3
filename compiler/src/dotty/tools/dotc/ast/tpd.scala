@@ -1157,9 +1157,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *   - be tail-recursive where possible
      *   - don't re-allocate trees where nothing has changed
      */
-    inline def mapStatements(exprOwner: Symbol, inline op: Tree => Context ?=> Tree)(using Context): List[Tree] =
+    inline def mapStatements[T](
+        exprOwner: Symbol,
+        inline op: Tree => Context ?=> Tree,
+        inline wrapResult: List[Tree] => Context ?=> T)(using Context): T =
       @tailrec
-      def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): List[Tree] =
+      def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): T =
         pending match
           case stat :: rest =>
             val statCtx = stat match
@@ -1182,8 +1185,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
                 case _ => buf += stat1
               loop(buf, rest, rest)(using restCtx)
           case nil =>
-            if mapped == null then unchanged
-            else mapped.prependToList(unchanged)
+            wrapResult(
+              if mapped == null then unchanged
+              else mapped.prependToList(unchanged))
 
       loop(null, trees, trees)
     end mapStatements
@@ -1195,8 +1199,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *    - imports are reflected in the contexts of subsequent statements
    */
   class TreeMapWithPreciseStatContexts(cpy: TreeCopier = tpd.cpy) extends TreeMap(cpy):
-    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
-      trees.mapStatements(exprOwner, transform(_))
+    def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =
+      trees.mapStatements(exprOwner, transform(_), wrapResult)
+    final override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
+      transformStats(trees, exprOwner, sameStats)
+    override def transformBlock(blk: Block)(using Context) =
+      transformStats(blk.stats, ctx.owner,
+        stats1 => ctx ?=> cpy.Block(blk)(stats1, transform(blk.expr)))
+
+  val sameStats: List[Tree] => Context ?=> List[Tree] = stats => stats
 
   /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.
    *  Also drops Inline and Block with no statements.
