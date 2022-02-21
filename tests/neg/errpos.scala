@@ -10,7 +10,7 @@ object Test {
   val b = type // error: expression expected (on "type")
 
   1 match {
-    case            // error: pattern expected // error: cannot compare with Null
+    case            // error: pattern expected
     case 2 => ""
   }
 }
