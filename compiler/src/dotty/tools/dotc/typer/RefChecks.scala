@@ -208,15 +208,20 @@ object RefChecks {
           false
       precedesIn(parent.asClass.baseClasses)
 
-    // We can exclude pairs safely from checking only under two additional conditions
+    // We can exclude pairs safely from checking only under three additional conditions
     //   - their signatures also match in the parent class.
     //     See neg/i12828.scala for an example where this matters.
     //   - They overriding/overridden appear in linearization order.
     //     See neg/i5094.scala for an example where this matters.
+    //   - The overridden symbol is not `abstract override`. For such symbols
+    //     we need a more extensive test since the virtual super chain depends
+    //     on the precise linearization order, which might be different for the
+    //     subclass. See neg/i14415.scala.
     override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
       isOverridingPair(sym1, sym2, parent.thisType)
         .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parent.thisType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parent.thisType).signature} = $result", refcheck)
       && inLinearizationOrder(sym1, sym2, parent)
+      && !sym2.is(AbsOverride)
 
     def checkAll(checkOverride: (Symbol, Symbol) => Unit) =
       while hasNext do
