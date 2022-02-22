@@ -169,7 +169,7 @@ object MainGenericRunner {
       else
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
-
+  end process
       
   def main(args: Array[String]): Unit =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" ")).filter(_.nonEmpty)
@@ -200,11 +200,12 @@ object MainGenericRunner {
             Option.when(Jar.isJarOrZip(dotty.tools.io.Path(entryPath)))(Jar(entryPath).mainClass).flatten
           }.isDefined
         }
-        targetToRun match
+        val newSettings = targetToRun match
           case Some(fqName) =>
-            run(settings.withTargetToRun(fqName).withResidualArgs(settings.residualArgs.filter { _ != fqName }*).withExecuteMode(ExecuteMode.Run))
+            settings.withTargetToRun(fqName).copy(residualArgs = settings.residualArgs.filterNot(fqName.==)).withExecuteMode(ExecuteMode.Run)
           case None =>
-            run(settings.withExecuteMode(ExecuteMode.Repl))
+            settings.withExecuteMode(ExecuteMode.Repl)
+        run(newSettings)
       case ExecuteMode.Run =>
         val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
         val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
