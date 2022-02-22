@@ -10,15 +10,12 @@ import Decorators._
 import StdNames._
 import collection.mutable
 import ast.tpd._
-import reporting.{trace, Message}
-import config.Printers.{gadts, typr}
+import reporting.trace
+import config.Printers.typr
 import config.Feature
-import typer.Applications._
 import typer.ProtoTypes._
 import typer.ForceDegree
 import typer.Inferencing._
-import typer.IfBottom
-import reporting.TestingReporter
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe

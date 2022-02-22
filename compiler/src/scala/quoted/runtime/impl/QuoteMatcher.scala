@@ -1,10 +1,7 @@
 package scala.quoted
 package runtime.impl
 
-import scala.annotation.internal.sharable
-import scala.annotation.{Annotation, compileTimeOnly}
 
-import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*

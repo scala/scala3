@@ -1,21 +1,17 @@
 package dotty.tools
 package repl
 
-import java.io.{ StringWriter, PrintWriter }
 import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 
-import dotc.ast.tpd
 import dotc.core.Contexts._
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Flags._
 import dotc.core.Symbols.{Symbol, defn}
 import dotc.core.StdNames.{nme, str}
-import dotc.core.NameOps._
 import dotc.printing.ReplPrinter
-import dotc.reporting.{MessageRendering, Message, Diagnostic}
-import dotc.util.SourcePosition
+import dotc.reporting.Diagnostic
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a

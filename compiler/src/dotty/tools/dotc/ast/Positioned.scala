@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import util.Spans._
-import util.{SourceFile, NoSource, SourcePosition, SrcPos}
+import util.{SourceFile, SourcePosition, SrcPos}
 import core.Contexts._
 import core.Decorators._
 import core.NameOps._
@@ -12,9 +12,6 @@ import core.StdNames.nme
 import ast.Trees.mods
 import annotation.constructorOnly
 import annotation.internal.sharable
-import reporting.Reporter
-
-import java.io.{ PrintWriter }
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */

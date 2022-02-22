@@ -1,6 +1,5 @@
 package dotty.tools.dotc.semanticdb.internal
 
-import java.io.InputStream
 
 object LiteParser {
 

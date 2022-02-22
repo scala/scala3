@@ -11,9 +11,7 @@ import core.StdNames.nme
 import core.Names._
 import core.NameKinds.TempResultName
 import core.Constants._
-import ast.Trees._
 import util.Store
-import collection.mutable
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.

@@ -5,18 +5,17 @@ import core._
 import Contexts._
 import Periods._
 import Symbols._
-import Types._
 import Scopes._
 import Names.Name
 import Denotations.Denotation
-import typer.{Typer, PrepareInlineable}
-import typer.ImportInfo._
+import typer.Typer
+import typer.ImportInfo.withRootImports
 import Decorators._
-import io.{AbstractFile, PlainFile, VirtualFile}
+import io.{AbstractFile, VirtualFile}
 import Phases.unfusedPhases
 
 import util._
-import reporting.{Reporter, Suppression, Action}
+import reporting.{Suppression, Action}
 import reporting.Diagnostic
 import reporting.Diagnostic.Warning
 import rewrites.Rewrites

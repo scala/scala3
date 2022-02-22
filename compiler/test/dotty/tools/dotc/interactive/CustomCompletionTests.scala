@@ -9,7 +9,6 @@ import dotc.reporting.StoreReporter
 import dotc.util.{SourceFile, SourcePosition}
 import dotc.util.Spans.Span
 
-import org.junit.Assert._
 import org.junit.Test
 
 class CustomCompletionTests extends DottyTest:

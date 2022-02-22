@@ -3,26 +3,9 @@ package transform
 package sjs
 
 import core._
-import util.SrcPos
-import Annotations._
-import Constants._
-import Contexts._
-import Decorators._
-import DenotTransformers._
-import Flags._
 import NameKinds.DefaultGetterName
-import NameOps._
 import Names._
-import Phases._
-import Scopes._
-import StdNames._
-import Symbols._
-import SymDenotations._
-import SymUtils._
-import ast.Trees._
-import Types._
 
-import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
 /** Utilities for JS exports handling. */
 object JSExportUtils {

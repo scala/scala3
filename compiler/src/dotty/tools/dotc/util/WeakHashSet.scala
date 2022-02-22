@@ -5,7 +5,6 @@ package dotty.tools.dotc.util
 import java.lang.ref.{ReferenceQueue, WeakReference}
 
 import scala.annotation.{ constructorOnly, tailrec }
-import scala.collection.mutable
 
 /**
  * A HashSet where the elements are stored weakly. Elements in this set are eligible for GC if no other

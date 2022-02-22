@@ -12,7 +12,7 @@ import Scopes.Scope
 import dotty.tools.io.AbstractFile
 import Decorators._
 import ast._
-import ast.Trees.{LambdaTypeTree, TypeBoundsTree, ValDef, TypeDef}
+import ast.Trees.{LambdaTypeTree, TypeBoundsTree}
 import Trees.Literal
 import Variances.Variance
 import annotation.tailrec
@@ -23,7 +23,6 @@ import scala.util.control.NonFatal
 import config.Config
 import reporting._
 import collection.mutable
-import transform.TypeUtils._
 
 import scala.annotation.internal.sharable
 

@@ -8,8 +8,7 @@ import Symbols._
 import StdNames._
 import Decorators._
 import typer.ProtoTypes._
-import ast.{tpd, untpd, Trees}
-import Trees._
+import ast.{tpd, untpd}
 import scala.util.control.NonFatal
 import util.Spans.Span
 import Nullables._

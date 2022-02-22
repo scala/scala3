@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 import scala.annotation.threadUnsafe
-import util.SourcePosition
 
 object Message {
   val nonSensicalStartTag: String = "<nonsensical>"

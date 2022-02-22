@@ -5,7 +5,6 @@ package unpickleScala2
 
 import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Phases._
 import Decorators._
-import backend.sjs.JSDefinitions
 import scala.collection.mutable.ListBuffer
 
 /** Erasure logic specific to Scala 2 symbols. */

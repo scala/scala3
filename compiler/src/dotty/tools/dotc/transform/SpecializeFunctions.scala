@@ -6,7 +6,6 @@ import Contexts._, Types._, Decorators._, Symbols._, DenotTransformers._
 import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
 import MegaPhase.MiniPhase
 
-import scala.collection.mutable
 
 /** Specializes classes that inherit from `FunctionN` where there exists a
  *  specialized form.

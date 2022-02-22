@@ -2,14 +2,11 @@ package dotty.tools
 package backend
 package jvm
 
-import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, File => JFile }
+import java.io.{ DataOutputStream, FileOutputStream, IOException, File as JFile }
 import java.nio.channels.ClosedByInterruptException
-import java.nio.file.Files
 import dotty.tools.io._
 import dotty.tools.dotc.report
 
-import java.util.jar.Attributes.Name
-import scala.language.postfixOps
 
 /** Can't output a file due to the state of the file system. */
 class FileConflictException(msg: String, val file: AbstractFile) extends IOException(msg)

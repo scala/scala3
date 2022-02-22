@@ -5,7 +5,6 @@ import core._
 import MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Contexts._
 import ast._
-import Trees._
 import Flags._
 import Symbols._
 import Contexts._
@@ -14,7 +13,6 @@ import DenotTransformers._
 import ExplicitOuter.isOuterParamAccessor
 import CountOuterAccesses.mightBeDropped
 import collection.mutable
-import annotation.threadUnsafe
 
 object DropOuterAccessors:
   val name: String = "dropOuterAccessors"

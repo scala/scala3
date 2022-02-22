@@ -18,7 +18,6 @@ import Signature.MatchDegree._
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
-import config.Feature.migrateTo3
 import config.Config
 import config.Printers.overload
 import util.common._

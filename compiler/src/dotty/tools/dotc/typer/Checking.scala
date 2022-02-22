@@ -11,11 +11,9 @@ import Names._
 import StdNames._
 import Symbols._
 import Trees._
-import TreeInfo._
 import ProtoTypes._
 import Scopes._
 import CheckRealizable._
-import NullOpsDecorator._
 import ErrorReporting.errorTree
 import rewrites.Rewrites.patch
 import util.Spans.Span
@@ -43,7 +41,6 @@ import transform.TypeUtils.*
 
 import collection.mutable
 import reporting._
-import util.Chars.isOperatorPart
 
 object Checking {
   import tpd._

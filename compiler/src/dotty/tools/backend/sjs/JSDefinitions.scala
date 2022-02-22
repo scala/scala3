@@ -6,9 +6,7 @@ import scala.annotation.threadUnsafe
 import Types._
 import Contexts._
 import Symbols._
-import Names._
 import StdNames._
-import Decorators._
 
 import dotty.tools.dotc.config.SJSPlatform
 

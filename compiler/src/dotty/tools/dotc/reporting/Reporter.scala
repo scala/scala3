@@ -2,9 +2,7 @@ package dotty.tools
 package dotc
 package reporting
 
-import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
 import dotty.tools.dotc.reporting.Diagnostic._
@@ -14,7 +12,6 @@ import dotty.tools.dotc.util.NoSourcePosition
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
 import scala.collection.mutable
-import scala.util.chaining._
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */

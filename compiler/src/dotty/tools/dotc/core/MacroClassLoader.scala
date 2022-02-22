@@ -5,8 +5,6 @@ import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.reporting.trace
 import dotty.tools.io.ClassPath
 
-import scala.collection.mutable
-
 object MacroClassLoader {
 
   /** A key to be used in a context property that caches the class loader used for macro expansion */

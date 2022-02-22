@@ -1,23 +1,13 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.{TreeMapWithImplicits, TreeTypeMap, tpd, untpd}
+import dotty.tools.dotc.ast.{TreeMapWithImplicits, tpd}
 import dotty.tools.dotc.config.Printers.staging
-import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds._
-import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StagingContext._
-import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.quoted._
-import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
 import scala.annotation.constructorOnly
@@ -158,7 +148,6 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
 
 
 object TreeMapWithStages {
-  import tpd._
 
   /** A key to be used in a context property that caches the `levelOf` mapping */
   private val LevelOfKey = new Property.Key[mutable.HashMap[Symbol, Int]]

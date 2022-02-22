@@ -5,7 +5,6 @@ package core
 import Types._, Symbols._, Contexts._
 import printing.Printer
 import printing.Texts.Text
-import Decorators._
 
 object Constants {
 

@@ -3,7 +3,6 @@ package dotc
 package transform
 
 import core._
-import ast.Trees._
 import Contexts._, Phases._, Symbols._, Decorators._
 import Flags.PackageVal
 

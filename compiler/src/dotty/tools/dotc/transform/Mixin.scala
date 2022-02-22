@@ -10,7 +10,6 @@ import SymUtils._
 import Symbols._
 import SymDenotations._
 import Types._
-import Periods._
 import Decorators._
 import DenotTransformers._
 import StdNames._
@@ -18,7 +17,6 @@ import Names._
 import NameKinds._
 import NameOps._
 import ast.Trees._
-import collection.mutable
 
 object Mixin {
   val name: String = "mixin"

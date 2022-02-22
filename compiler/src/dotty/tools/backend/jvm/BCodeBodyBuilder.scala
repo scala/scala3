@@ -6,13 +6,12 @@ import scala.annotation.switch
 import scala.collection.mutable.SortedMap
 
 import scala.tools.asm
-import scala.tools.asm.{Handle, Label, Opcodes}
+import scala.tools.asm.{Handle, Opcodes}
 import BCodeHelpers.InvokeStyle
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Constants._
-import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags.{Label => LabelFlag, _}
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.StdNames.{nme, str}
@@ -915,7 +914,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         var default:  asm.Label       = null
         var indirectBlocks: List[(asm.Label, Tree)] = Nil
 
-        import scala.collection.mutable
 
         // Cases grouped by their hashCode
         val casesByHash = SortedMap.empty[Int, List[(String, Either[asm.Label, Tree])]]

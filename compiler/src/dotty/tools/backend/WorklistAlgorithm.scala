@@ -1,8 +1,6 @@
 package dotty.tools
 package backend
 
-import scala.collection.mutable
-
 /**
  * Simple implementation of a worklist algorithm. A processing
  * function is applied repeatedly to the first element in the

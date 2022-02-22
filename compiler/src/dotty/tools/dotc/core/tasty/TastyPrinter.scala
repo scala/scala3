@@ -3,13 +3,12 @@ package core
 package tasty
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
-import TastyBuffer.{Addr, NameRef}
+import TastyBuffer.NameRef
 
 import Contexts._, Decorators._
 import Names.Name
 import TastyUnpickler._
 import util.Spans.offsetToInt
-import printing.Highlighting._
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 import java.nio.file.{Files, Paths}
 import dotty.tools.io.{JarArchive, Path}

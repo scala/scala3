@@ -1,7 +1,6 @@
 package dotty.tools
 
 import dotc.ast.tpd
-import dotc.core.Names._
 import dotc.ast.tpd._
 import dotc.core.Contexts.{Context, atPhase}
 import dotty.tools.dotc.core.Phases.{typerPhase, erasurePhase}

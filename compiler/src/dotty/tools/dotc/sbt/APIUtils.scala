@@ -2,13 +2,8 @@ package dotty.tools.dotc
 package sbt
 
 import core._
-import Annotations._
 import Contexts._
-import Decorators._
-import Denotations._
 import Flags._
-import Phases._
-import Types._
 import Symbols._
 import NameOps._
 

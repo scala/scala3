@@ -4,7 +4,6 @@ package jvm
 
 import scala.tools.asm
 import scala.annotation.switch
-import scala.collection.mutable
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.report

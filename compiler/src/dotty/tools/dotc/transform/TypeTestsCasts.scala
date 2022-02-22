@@ -4,7 +4,6 @@ package transform
 
 import core._
 import Contexts._, Symbols._, Types._, Constants._, StdNames._, Decorators._
-import ast.Trees._
 import ast.untpd
 import Erasure.Boxing._
 import TypeErasure._

@@ -38,18 +38,16 @@ import collection.mutable
 import annotation.tailrec
 import Implicits._
 import util.Stats.record
-import config.Printers.{gadts, typr, debug}
+import config.Printers.{gadts, typr}
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion._
 import rewrites.Rewrites.patch
-import NavigateAST._
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting._
 import Nullables._
 import NullOpsDecorator._
-import config.Config
 
 import scala.annotation.constructorOnly
 

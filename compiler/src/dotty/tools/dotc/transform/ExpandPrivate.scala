@@ -9,7 +9,6 @@ import Flags._
 import SymDenotations._
 
 import Decorators._
-import ast.Trees._
 import MegaPhase._
 import java.io.File.separatorChar
 

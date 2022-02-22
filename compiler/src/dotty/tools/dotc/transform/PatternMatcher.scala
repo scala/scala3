@@ -6,7 +6,6 @@ import core._
 import MegaPhase._
 import collection.mutable
 import Symbols._, Contexts._, Types._, StdNames._, NameOps._
-import ast.Trees._
 import util.Spans._
 import typer.Applications.*
 import SymUtils._

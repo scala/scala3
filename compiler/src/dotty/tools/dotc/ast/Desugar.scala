@@ -4,10 +4,10 @@ package ast
 
 import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import Symbols._, StdNames._, Trees._, Phases._, ContextOps._
+import Symbols._, StdNames._, Trees._, ContextOps._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
-import typer.{TyperPhase, Namer, Checking}
+import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._

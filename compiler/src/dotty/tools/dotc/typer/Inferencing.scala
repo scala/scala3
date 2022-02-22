@@ -5,19 +5,16 @@ package typer
 import core._
 import ast._
 import Contexts._, Types._, Flags._, Symbols._
-import Trees._
 import ProtoTypes._
 import NameKinds.{AvoidNameKind, UniqueName}
 import util.Spans._
 import util.{Stats, SimpleIdentityMap}
 import Decorators._
-import config.Printers.{gadts, typr, debug}
+import config.Printers.{gadts, typr}
 import annotation.tailrec
-import reporting._
 import collection.mutable
 
 import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
 
 import config.Printers.gadts
 

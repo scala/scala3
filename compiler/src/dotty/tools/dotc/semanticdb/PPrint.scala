@@ -3,7 +3,7 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.{semanticdb => s}
 
 import scala.collection.mutable
-import dotty.tools.dotc.semanticdb.Scala3.{_, given}
+import dotty.tools.dotc.semanticdb.Scala3.given
 import SymbolInformation.Kind._
 import dotty.tools.dotc.util.SourceFile
 class SymbolInformationPrinter (symtab: PrinterSymtab):

@@ -5,7 +5,6 @@ import core._
 import Contexts._, Symbols._, Types._, Flags._, StdNames._
 import MegaPhase._
 import NameKinds.NonLocalReturnKeyName
-import config.Feature.sourceVersion
 import config.SourceVersion._
 
 object NonLocalReturns {

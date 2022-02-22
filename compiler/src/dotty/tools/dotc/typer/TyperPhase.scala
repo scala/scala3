@@ -6,17 +6,10 @@ import core._
 import Phases._
 import Contexts._
 import Symbols._
-import Decorators._
 import ImportInfo.withRootImports
-import parsing.JavaParsers.JavaParser
-import parsing.Parsers.Parser
 import parsing.{Parser => ParserPhase}
-import config.Config
-import config.Printers.{typr, default}
+import config.Printers.typr
 import util.Stats._
-import util.{ SourcePosition, NoSourcePosition }
-import scala.util.control.NonFatal
-import ast.Trees._
 
 /**
  *
@@ -31,7 +24,6 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
 
   override def isTyper: Boolean = true
 
-  import ast.tpd
 
   override def allowsImplicitSearch: Boolean = true
 

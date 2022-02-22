@@ -2,10 +2,8 @@ package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.reporting.trace
 import dotty.tools.dotc.ast.tpd
 
-import scala.collection.mutable
 
 object QuotesCache {
   import tpd._

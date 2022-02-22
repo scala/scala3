@@ -3,8 +3,6 @@ package dotc
 package util
 
 import core.Names._
-import collection.mutable
-import util.Chars
 
 import scala.annotation.internal.sharable
 

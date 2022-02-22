@@ -5,7 +5,6 @@ package core
 import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
 
-import scala.compat.Platform.currentTime
 import scala.util.control.NonFatal
 
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
@@ -19,9 +18,7 @@ import Decorators._
 
 import util.Stats
 import reporting.trace
-import config.Config
 
-import ast.Trees._
 import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser

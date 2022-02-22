@@ -13,7 +13,7 @@ import core._
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, Symbols._, StdNames._, Denotations._
 import TypeErasure.{ valueErasure, ErasedValueType }
-import NameKinds.{ExtMethName, UniqueExtMethName}
+import NameKinds.ExtMethName
 import Decorators._
 import TypeUtils._
 

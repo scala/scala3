@@ -2,11 +2,8 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Constants.Constant
 import Contexts._
 import Decorators._
-import Flags._
-import ast.Trees._
 import Definitions._
 import DenotTransformers._
 import StdNames._
@@ -15,7 +12,6 @@ import MegaPhase._
 import Types._
 import dotty.tools.dotc.ast.tpd
 
-import scala.annotation.tailrec
 
 /** Optimize generic operations on tuples */
 class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {

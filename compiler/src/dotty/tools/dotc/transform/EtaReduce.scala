@@ -6,7 +6,6 @@ import MegaPhase.MiniPhase
 import core.*
 import Symbols.*, Contexts.*, Types.*, Decorators.*
 import StdNames.nme
-import ast.Trees.*
 
 /** Rewrite `(x1, ... xN) => f(x1, ... xN)` for N >= 0 to `f`,
  *  provided `f` is a pure path of function type.

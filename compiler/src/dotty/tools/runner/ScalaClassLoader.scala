@@ -1,7 +1,6 @@
 package dotty.tools
 package runner
 
-import scala.language.implicitConversions
 
 import java.lang.ClassLoader
 import java.lang.invoke.{MethodHandles, MethodType}

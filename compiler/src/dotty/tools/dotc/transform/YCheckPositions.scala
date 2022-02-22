@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._

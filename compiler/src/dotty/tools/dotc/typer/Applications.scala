@@ -4,12 +4,10 @@ package typer
 
 import core._
 import ast.{Trees, tpd, untpd, desugar}
-import util.Spans._
 import util.Stats.record
-import util.{SrcPos, NoSourcePosition, SourceFile}
+import util.{SrcPos, NoSourcePosition}
 import Trees.Untyped
 import Contexts._
-import Phases._
 import Flags._
 import Symbols._
 import Denotations.Denotation
@@ -19,7 +17,6 @@ import ErrorReporting._
 import Trees._
 import Names._
 import StdNames._
-import NameOps._
 import ContextOps._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
@@ -28,15 +25,15 @@ import reporting._
 import transform.TypeUtils._
 import transform.SymUtils._
 import Nullables._
-import config.{Feature, Config}
+import config.Feature
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
-import Constants.{Constant, IntTag, LongTag}
+import Constants.{Constant, IntTag}
 import Denotations.SingleDenotation
-import annotation.{constructorOnly, threadUnsafe}
+import annotation.threadUnsafe
 
 import scala.util.control.NonFatal
 

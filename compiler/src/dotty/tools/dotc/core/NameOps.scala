@@ -10,7 +10,6 @@ import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import util.Chars.{isOperatorPart, digit2int}
 import Definitions._
 import nme._
-import Decorators._
 
 object NameOps {
 

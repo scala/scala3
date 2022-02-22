@@ -3,17 +3,14 @@ package dotc
 package typer
 
 import ast.{tpd, untpd}
-import ast.Trees._
 import core._
 import printing.{Printer, Showable}
 import util.SimpleIdentityMap
 import Symbols._, Names._, Types._, Contexts._, StdNames._, Flags._
 import Implicits.RenamedImplicitRef
-import config.SourceVersion
 import StdNames.nme
 import printing.Texts.Text
 import NameKinds.QualifiedName
-import Decorators._
 
 object ImportInfo {
 

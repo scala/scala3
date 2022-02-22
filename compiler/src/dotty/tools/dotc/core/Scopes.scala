@@ -14,11 +14,10 @@ import Names._
 import Contexts._
 import Phases._
 import Denotations._
-import SymDenotations._
 import printing.Texts._
 import printing.Printer
-import util.common._
 import SymDenotations.NoDenotation
+
 import collection.mutable
 
 object Scopes {

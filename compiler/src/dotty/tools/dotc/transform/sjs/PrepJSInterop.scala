@@ -4,9 +4,8 @@ package sjs
 
 import scala.collection.mutable
 
-import ast.{Trees, tpd, untpd}
+import ast.tpd
 import core._
-import reporting._
 import typer.Checking
 import util.SrcPos
 import Annotations._
@@ -16,22 +15,15 @@ import Decorators._
 import DenotTransformers._
 import Flags._
 import NameKinds.DefaultGetterName
-import NameOps._
-import Names._
-import Phases._
-import Scopes._
 import StdNames._
 import Symbols._
-import SymDenotations._
 import SymUtils._
-import Trees._
 import Types._
 
 import JSSymUtils._
 
-import org.scalajs.ir.Trees.{JSGlobalRef, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.JSGlobalRef
 
-import dotty.tools.dotc.config.SJSPlatform.sjsPlatform
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
 /** A macro transform that runs after typer and before pickler to perform
@@ -508,7 +500,6 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
     }
 
     private def checkJSNativeLoadSpecOf(pos: SrcPos, sym: Symbol)(using Context): Unit = {
-      import JSNativeLoadSpec._
 
       def checkGlobalRefName(globalRef: String): Unit = {
         if (!JSGlobalRef.isValidJSGlobalRefName(globalRef))
@@ -998,7 +989,6 @@ object PrepJSInterop {
   val description: String = "additional checks and transformations for Scala.js"
 
   private final class OwnerKind private (private val baseKinds: Int) extends AnyVal {
-    import OwnerKind._
 
     inline def isBaseKind: Boolean =
       Integer.lowestOneBit(baseKinds) == baseKinds && baseKinds != 0 // exactly 1 bit on
