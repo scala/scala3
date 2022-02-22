@@ -83,7 +83,9 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
         then rootPckPage.withTitle(args.name)
         else {
           val newRootPage = templateToPage(newRoot, siteContext)
-          newRootPage.withNewChildren(Seq(rootPckPage.withTitle("API")))
+          newRootPage.withNewChildren(
+            Seq(rootPckPage.withTitle("API")).filter(_ => rootPackage.members.nonEmpty)
+          )
         }
 
   val redirectPages: Seq[Page] = staticSite.fold(Seq.empty)(siteContext => siteContext.redirectTemplates.map {
