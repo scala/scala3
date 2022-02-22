@@ -7,7 +7,6 @@ import Symbols._, Types._, Contexts._, Decorators._, Flags._, Scopes._, Phases._
 import DenotTransformers._
 import ast.untpd
 import collection.{mutable, immutable}
-import util.Spans.Span
 import util.SrcPos
 import ContextFunctionResults.{contextResultCount, contextFunctionResultTypeAfter}
 import StdNames.nme

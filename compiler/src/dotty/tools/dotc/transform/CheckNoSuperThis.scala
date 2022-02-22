@@ -5,10 +5,8 @@ import core.*
 import MegaPhase.MiniPhase
 import Contexts.*, Types.*, Symbols.*, SymDenotations.*, Flags.*
 import ast.*
-import Trees.*
 import Decorators.*
 
-import annotation.threadUnsafe
 
 object CheckNoSuperThis:
   val name: String = "checkNoSuperThis"

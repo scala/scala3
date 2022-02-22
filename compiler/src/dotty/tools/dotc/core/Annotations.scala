@@ -1,11 +1,8 @@
 package dotty.tools.dotc
 package core
 
-import Symbols._, Types._, Contexts._, Constants._, ast.tpd._, Phases._
-import config.ScalaVersion
-import StdNames._
-import dotty.tools.dotc.ast.tpd
-import scala.util.Try
+import Symbols._, Types._, Contexts._, Constants._
+import dotty.tools.dotc.ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}
 import printing.Texts.Text
@@ -30,7 +27,7 @@ object Annotations {
       if (tree eq this.tree) this else Annotation(tree)
 
     /** All arguments to this annotation in a single flat list */
-    def arguments(using Context): List[Tree] = ast.tpd.allArguments(tree)
+    def arguments(using Context): List[Tree] = tpd.allArguments(tree)
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments

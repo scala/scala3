@@ -16,7 +16,6 @@ import StdNames._
 import dotty.tools.dotc.transform._
 import Phases._
 
-import scala.collection.mutable
 
 import Semantic._
 

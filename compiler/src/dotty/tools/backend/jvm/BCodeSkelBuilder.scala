@@ -3,16 +3,12 @@ package backend
 package jvm
 
 import scala.collection.{ mutable, immutable }
-import scala.annotation.switch
 
 import scala.tools.asm
-import scala.tools.asm.util.{TraceMethodVisitor, ASMifier}
-import java.io.PrintWriter
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.TreeTypeMap
 import dotty.tools.dotc.CompilationUnit
-import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._

@@ -11,11 +11,6 @@ import ProtoTypes._, ContextOps._
 import util.Spans._
 import util.SrcPos
 import collection.mutable
-import Constants.Constant
-import config.Printers.derive
-import Inferencing._
-import transform.TypeUtils._
-import transform.SymUtils._
 import ErrorReporting.errorTree
 
 /** A typer mixin that implements type class derivation functionality */

@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package core
 
-import util.common._
 import Symbols._
 import Flags._
 import Names._
@@ -19,7 +18,7 @@ import Decorators._
 import Denotations._
 import Periods._
 import CheckRealizable._
-import Variances.{Variance, varianceFromInt, varianceToInt, setStructuralVariances, Invariant}
+import Variances.{Variance, setStructuralVariances, Invariant}
 import typer.Nullables
 import util.Stats._
 import util.SimpleIdentitySet
@@ -31,9 +30,7 @@ import Hashable._
 import Uniques._
 import collection.mutable
 import config.Config
-import config.Feature
 import annotation.{tailrec, constructorOnly}
-import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}

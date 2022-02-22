@@ -5,7 +5,6 @@ package semanticdb
 import core._
 import Phases._
 import ast.tpd._
-import ast.untpd.given
 import ast.Trees.{mods, WithEndMarker}
 import Contexts._
 import Symbols._
@@ -15,10 +14,9 @@ import StdNames.nme
 import NameOps._
 import Denotations.StaleSymbol
 import util.Spans.Span
-import util.{SourceFile, SourcePosition}
+import util.SourceFile
 import transform.SymUtils._
 
-import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
 import scala.PartialFunction.condOpt
@@ -32,7 +30,6 @@ import dotty.tools.dotc.{semanticdb => s}
  */
 class ExtractSemanticDB extends Phase:
   import Scala3.{_, given}
-  import Symbols.given
 
   override val phaseName: String = ExtractSemanticDB.name
 
@@ -458,7 +455,6 @@ class ExtractSemanticDB extends Phase:
 
 object ExtractSemanticDB:
   import java.nio.file.Path
-  import scala.collection.JavaConverters._
   import java.nio.file.Files
   import java.nio.file.Paths
 

@@ -13,7 +13,6 @@ import core.StdNames.nme
 import core.Names._
 import core.NameOps._
 import core.NameKinds.ExpandPrefixName
-import ast.Trees._
 import SymUtils._
 import ExplicitOuter.outer
 import util.Store

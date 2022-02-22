@@ -9,16 +9,13 @@ import Contexts._
 import Symbols._
 import Constants._
 import ast.Trees._
-import ast.{TreeTypeMap, untpd}
-import util.Spans._
+import ast.TreeTypeMap
 import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd
-import typer.Implicits.SearchFailureType
 
 import scala.collection.mutable
 import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._

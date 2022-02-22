@@ -1,11 +1,8 @@
 package dotty.tools.dotc.parsing
 
-import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.config.Config
-import dotty.tools.dotc.config.Printers.{ default, typr }
 import dotty.tools.dotc.core.Contexts.{ Context, ctx }
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.{ CompilationUnit, ast, report }
 import dotty.tools.dotc.util.{ NoSourcePosition, SourcePosition }

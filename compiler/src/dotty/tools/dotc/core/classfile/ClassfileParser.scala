@@ -3,18 +3,16 @@ package dotc
 package core
 package classfile
 
-import dotty.tools.tasty.{ TastyFormat, TastyReader, TastyHeaderUnpickler }
+import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
 import Phases._
-import NameKinds.DefaultGetterName
 import ast.{ tpd, untpd }
 import ast.tpd._, util._
-import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, IOException }
+import java.io.{ ByteArrayOutputStream, IOException }
 
 import java.lang.Integer.toHexString
-import java.net.URLClassLoader
 import java.util.UUID
 
 import scala.collection.immutable
@@ -22,7 +20,7 @@ import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import tasty.TastyVersion
 import typer.Checking.checkNonCyclic
-import io.{AbstractFile, PlainFile, ZipArchive}
+import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
 
 object ClassfileParser {

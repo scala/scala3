@@ -5,22 +5,17 @@ package parsing
 import core.Names._, core.Contexts._, core.Decorators._, util.Spans._
 import core.StdNames._, core.Comments._
 import util.SourceFile
-import java.lang.Character.isDigit
 import util.Chars._
 import util.{SourcePosition, CharBuffer}
 import util.Spans.Span
 import config.Config
-import config.Printers.lexical
-import config.Settings.Setting
 import Tokens._
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
-import scala.collection.immutable.{SortedMap, BitSet}
+import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
 import config.Feature.migrateTo3
-import config.SourceVersion._
-import reporting.Message
 
 object Scanners {
 

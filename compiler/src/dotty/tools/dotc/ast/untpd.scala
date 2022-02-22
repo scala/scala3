@@ -8,7 +8,6 @@ import dotty.tools.dotc.typer.ProtoTypes
 import Symbols._, StdNames._, Trees._
 import util.{Property, SourceFile, NoSource}
 import util.Spans.Span
-import language.higherKinds
 import annotation.constructorOnly
 import annotation.internal.sharable
 import Decorators._

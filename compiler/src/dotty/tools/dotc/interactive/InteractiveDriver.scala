@@ -12,7 +12,7 @@ import java.util.zip._
 import scala.collection._
 import scala.io.Codec
 
-import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation, PlainFile, VirtualFile }
+import dotty.tools.io.{ AbstractFile, VirtualFile }
 
 import ast.{Trees, tpd}
 import core._, core.Decorators._

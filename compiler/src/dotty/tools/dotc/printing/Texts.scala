@@ -1,6 +1,5 @@
 package dotty.tools.dotc
 package printing
-import language.implicitConversions
 
 object Texts {
 

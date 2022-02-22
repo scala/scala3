@@ -13,7 +13,6 @@ import scala.annotation.tailrec
 import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation, FileZipArchive, ManifestResources}
 import dotty.tools.dotc.core.Contexts._
 import FileUtils._
-import util._
 
 /**
  * A trait providing an optional cache for classpath entries obtained from zip and jar files.

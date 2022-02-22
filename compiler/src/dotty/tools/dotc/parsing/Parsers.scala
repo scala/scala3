@@ -17,15 +17,14 @@ import NameKinds.WildcardParamName
 import NameOps._
 import ast.{Positioned, Trees}
 import ast.Trees._
-import typer.ImportInfo
 import StdNames._
 import util.Spans._
 import Constants._
-import Symbols.{defn, NoSymbol}
+import Symbols.NoSymbol
 import ScriptParsers._
 import Decorators._
 import util.Chars
-import scala.annotation.{tailrec, switch}
+import scala.annotation.tailrec
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
 import config.Feature

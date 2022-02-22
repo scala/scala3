@@ -12,7 +12,6 @@ import java.util.jar._
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import Attributes.Name
-import scala.language.postfixOps
 import scala.annotation.tailrec
 
 // Attributes.Name instances:

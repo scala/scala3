@@ -18,7 +18,6 @@ import Errors._
 
 import scala.collection.mutable
 import scala.annotation.tailrec
-import scala.annotation.constructorOnly
 
 object Semantic {
 

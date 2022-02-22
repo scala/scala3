@@ -1,10 +1,8 @@
 package dotty.tools.dotc
 package core
 
-import config.Feature._
 import Contexts._
 import Flags.JavaDefined
-import NullOpsDecorator._
 import StdNames.nme
 import Symbols._
 import Types._

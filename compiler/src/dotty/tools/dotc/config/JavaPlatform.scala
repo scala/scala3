@@ -5,7 +5,7 @@ package config
 import io._
 import classpath.AggregateClassPath
 import core._
-import Symbols._, Types._, Contexts._, SymDenotations._, StdNames._
+import Symbols._, Types._, Contexts._, StdNames._
 import Flags._
 import transform.ExplicitOuter, transform.SymUtils._
 

@@ -7,10 +7,8 @@ import core._
 import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._, NameKinds._
 import StdNames._, Denotations._, SymUtils._, Phases._, SymDenotations._
 import NameKinds.DefaultGetterName
-import Annotations._
 import util.Spans._
-import util.SrcPos
-import scala.collection.{ mutable, immutable }
+import scala.collection.mutable
 import ast._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
@@ -20,9 +18,7 @@ import typer.ErrorReporting._
 import config.Feature.{warnOnMigration, migrateTo3}
 import config.Printers.refcheck
 import reporting._
-import scala.util.matching.Regex._
 import Constants.Constant
-import NullOpsDecorator._
 
 object RefChecks {
   import tpd._

@@ -4,7 +4,6 @@ package typer
 import java.lang.ArithmeticException
 
 import ast._
-import Trees._
 import core._
 import Symbols._
 import Types._

@@ -1,14 +1,10 @@
 package dotty.tools.dotc.typer
 
 import dotty.tools.DottyTest
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
 
 import org.junit.Test
-import org.junit.Assert.{ assertFalse, assertTrue, fail }
+import org.junit.Assert.{ assertTrue, fail }
 
 class DivergenceCheckerTests extends DottyTest {
   @Test

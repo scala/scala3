@@ -1,28 +1,19 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.{TreeTypeMap, tpd, untpd}
-import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.StagingContext._
-import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.quoted._
-import dotty.tools.dotc.util.{SourceFile, SrcPos}
+import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeMapWithStages._
-import dotty.tools.dotc.typer.Implicits.SearchFailureType
-import dotty.tools.dotc.typer.Inliner
 
-import scala.collection.mutable
 
-import scala.annotation.constructorOnly
 
 /** Checks that the Phase Consistency Principle (PCP) holds and heals types.
  *
@@ -30,7 +21,6 @@ import scala.annotation.constructorOnly
  */
 class Staging extends MacroTransform {
   import tpd._
-  import Staging._
 
   override def phaseName: String = Staging.name
 

@@ -3,9 +3,9 @@ package dotc
 package config
 
 import core._
-import Contexts._, Symbols._, Names._, NameOps._, Phases._
+import Contexts._, Symbols._, Names._
 import StdNames.nme
-import Decorators.{_, given}
+import Decorators.*
 import util.{SrcPos, NoSourcePosition}
 import SourceVersion._
 import reporting.Message

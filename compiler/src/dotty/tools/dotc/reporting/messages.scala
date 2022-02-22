@@ -8,7 +8,6 @@ import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
 import NameKinds.WildcardParamName
-import util.SourcePosition
 import parsing.Scanners.Token
 import parsing.Tokens
 import printing.Highlighting._

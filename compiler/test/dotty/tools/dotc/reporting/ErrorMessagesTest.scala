@@ -3,7 +3,6 @@ package dotc
 package reporting
 
 import core.Contexts.Context
-import scala.collection.mutable
 import org.junit.Assert._
 
 trait ErrorMessagesTest extends DottyTest {

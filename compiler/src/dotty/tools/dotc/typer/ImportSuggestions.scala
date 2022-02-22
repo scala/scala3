@@ -7,10 +7,8 @@ import core._
 import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
 import Flags._, SymDenotations._
 import NameKinds.FlatName
-import NameOps._
 import StdNames._
 import config.Printers.{implicits, implicitsDetailed}
-import util.Spans.Span
 import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}

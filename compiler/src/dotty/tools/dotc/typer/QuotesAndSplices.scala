@@ -2,34 +2,27 @@ package dotty.tools.dotc
 package typer
 
 import dotty.tools.dotc.ast._
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.config.Feature._
 import dotty.tools.dotc.config.SourceVersion._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds.{UniqueName, PatMatGivenVarName}
+import dotty.tools.dotc.core.NameKinds.PatMatGivenVarName
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.reporting._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
-import dotty.tools.dotc.typer.ProtoTypes._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
 
 import scala.collection.mutable
 
-import scala.annotation.tailrec
-import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
 
 /** Type quotes `'{ ... }` and splices `${ ... }` */
 trait QuotesAndSplices {

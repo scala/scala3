@@ -7,7 +7,6 @@ import Types._
 import Contexts._
 import Flags._
 import ast._
-import Trees._
 import Decorators._
 import Symbols._
 import StdNames._
@@ -21,7 +20,6 @@ import transform.SymUtils._
 import reporting._
 import config.Printers.{exhaustivity => debug}
 import util.{SrcPos, NoSourcePosition}
-import NullOpsDecorator._
 import collection.mutable
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
@@ -321,7 +319,6 @@ object SpaceEngine {
 /** Scala implementation of space logic */
 class SpaceEngine(using Context) extends SpaceLogic {
   import tpd._
-  import SpaceEngine._
 
   private val scalaSeqFactoryClass = defn.SeqFactoryClass
   private val scalaListType        = defn.ListClass.typeRef

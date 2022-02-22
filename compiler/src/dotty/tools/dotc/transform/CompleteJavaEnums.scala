@@ -4,7 +4,7 @@ package transform
 
 import core._
 import Names._
-import StdNames.{nme, tpnme}
+import StdNames.nme
 import Types._
 import dotty.tools.dotc.transform.MegaPhase._
 import Flags._
@@ -13,10 +13,8 @@ import Symbols._
 import Constants._
 import Decorators._
 import DenotTransformers._
-import dotty.tools.dotc.ast.Trees._
 import SymUtils._
 
-import annotation.threadUnsafe
 
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"

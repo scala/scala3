@@ -7,7 +7,6 @@ import Flags._
 import MegaPhase._
 import Symbols._, Contexts._, Types._, Decorators._
 import StdNames.nme
-import ast.Trees._
 import ast.TreeTypeMap
 
 /** Rewrite an application

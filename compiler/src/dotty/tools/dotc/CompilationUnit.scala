@@ -9,7 +9,6 @@ import util.{FreshNameCreator, SourceFile, NoSource}
 import util.Spans.Span
 import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
-import typer.PrepareInlineable.InlineAccessors
 import typer.Nullables
 import transform.SymUtils._
 import core.Decorators._

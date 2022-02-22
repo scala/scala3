@@ -12,8 +12,6 @@ import core.StdNames.nme
 import SymbolInformation.{Kind => k}
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.{semanticdb => s}
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 

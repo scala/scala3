@@ -6,7 +6,6 @@ import core._
 import Flags._, Symbols._, Contexts._, Scopes._, Decorators._, Types.Type
 import NameKinds.DefaultGetterName
 import NullOpsDecorator._
-import collection.mutable
 import collection.immutable.BitSet
 import scala.annotation.tailrec
 

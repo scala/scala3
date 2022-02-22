@@ -4,12 +4,9 @@ package core
 
 import annotation.tailrec
 import Symbols._
-import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
-import util.Spans.Span
+import Contexts._, Names._, Phases._, printing.Texts._
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase
-import ast.tpd._
-import scala.language.implicitConversions
 import printing.Formatting._
 
 /** This object provides useful implicit decorators for types defined elsewhere */

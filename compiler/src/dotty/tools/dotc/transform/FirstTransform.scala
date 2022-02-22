@@ -4,7 +4,6 @@ package transform
 import core._
 import Names._
 import dotty.tools.dotc.transform.MegaPhase._
-import ast.Trees._
 import ast.untpd
 import Flags._
 import Types._
@@ -17,7 +16,6 @@ import DenotTransformers._
 import NameOps._
 import NameKinds.OuterSelectName
 import StdNames._
-import NullOpsDecorator._
 import TypeUtils.isErasedValueType
 
 object FirstTransform {

@@ -2,38 +2,20 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Decorators._
 import Flags._
-import Types._
 import Contexts._
 import Symbols._
-import Constants._
-import ast.Trees._
-import ast.{TreeTypeMap, untpd}
-import util.Spans._
 import SymUtils._
-import NameKinds._
 import dotty.tools.dotc.ast.tpd
-import typer.Implicits.SearchFailureType
-import typer.PrepareInlineable
 
-import scala.collection.mutable
-import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.StagingContext._
-import dotty.tools.dotc.quoted._
-import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Inliner
-import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 
-import scala.annotation.constructorOnly
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
 class Inlining extends MacroTransform {
   import tpd._
-  import Inlining._
 
   override def phaseName: String = Inlining.name
 

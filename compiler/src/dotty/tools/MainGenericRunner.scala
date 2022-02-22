@@ -3,17 +3,16 @@ package dotty.tools
 
 import scala.annotation.tailrec
 import scala.io.Source
-import scala.util.{ Try, Success, Failure }
+import scala.util.Try
 import java.io.File
 import java.lang.Thread
 import scala.annotation.internal.sharable
 import dotty.tools.dotc.util.ClasspathFromClassloader
 import dotty.tools.runner.ObjectRunner
 import dotty.tools.dotc.config.Properties.envOrNone
-import java.util.jar._
 import dotty.tools.io.Jar
 import dotty.tools.runner.ScalaClassLoader
-import java.nio.file.{Files, Paths, Path}
+import java.nio.file.Paths
 import dotty.tools.dotc.config.CommandLineParser
 import dotty.tools.scripting.StringDriver
 

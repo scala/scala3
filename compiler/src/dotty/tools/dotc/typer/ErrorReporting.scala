@@ -8,7 +8,6 @@ import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Implicits._, Flags._, Constants.Constant
 import Trees._
 import NameOps._
-import util.Spans._
 import util.SrcPos
 import config.Feature
 import java.util.regex.Matcher.quoteReplacement

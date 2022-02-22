@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.{semanticdb => s}
 
-import scala.collection.mutable
 
 class SyntheticsExtractor:
   import Scala3.{_, given}

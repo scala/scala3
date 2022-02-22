@@ -7,18 +7,16 @@ import core.Contexts._
 import core.Phases._
 import core.Definitions
 import core.Flags._
-import core.Names.{DerivedName, Name, SimpleName, TypeName}
+import core.Names.Name
 import core.Symbols._
 import core.TypeApplications.TypeParamInfo
 import core.TypeErasure.{erasedGlb, erasure, isGenericArrayElement}
 import core.Types._
 import core.classfile.ClassfileConstants
-import ast.Trees._
 import SymUtils._
 import TypeUtils._
 import java.lang.StringBuilder
 
-import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
 /** Helper object to generate generic java signatures, as defined in

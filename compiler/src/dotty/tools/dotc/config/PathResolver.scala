@@ -7,7 +7,6 @@ import io.{ClassPath, Directory, Path}
 import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
 import ClassPath.split
 import PartialFunction.condOpt
-import scala.language.postfixOps
 import core.Contexts._
 import Settings._
 import dotty.tools.io.File

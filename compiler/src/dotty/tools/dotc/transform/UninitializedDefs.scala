@@ -3,12 +3,8 @@ package transform
 
 import core._
 import Contexts._
-import DenotTransformers.SymTransformer
 import Flags._
-import SymDenotations._
 import Symbols._
-import Types._
-import typer.RefChecks
 import MegaPhase.MiniPhase
 import StdNames.nme
 import ast.tpd

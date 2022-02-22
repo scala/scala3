@@ -1,9 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import ast.Trees._
 import Contexts._
-import Symbols.defn
 import Types._
 
 /** Defines operations on nullable types and tree. */

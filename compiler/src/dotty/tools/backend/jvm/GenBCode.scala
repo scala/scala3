@@ -19,7 +19,6 @@ import dotty.tools.dotc.sbt.ExtractDependencies
 import Contexts._
 import Phases._
 import Symbols._
-import Decorators._
 
 import java.io.DataOutputStream
 import java.nio.channels.ClosedByInterruptException

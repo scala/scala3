@@ -4,7 +4,7 @@ package core
 
 import Types._
 import Contexts._
-import util.{SimpleIdentityMap, SimpleIdentitySet}
+import util.SimpleIdentitySet
 import reporting._
 import config.Config
 import config.Printers.constr

@@ -11,13 +11,11 @@ import scala.collection.mutable
 
 import util.SourcePosition
 import core.Contexts._
-import Reporter._
 import Diagnostic._
-import interfaces.Diagnostic.{ ERROR, WARNING, INFO }
+import interfaces.Diagnostic.{ ERROR, WARNING }
 
 class TestReporter protected (outWriter: PrintWriter, filePrintln: String => Unit, logLevel: Int)
 extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
-  import Diagnostic._
 
   protected final val _errorBuf = mutable.ArrayBuffer.empty[Diagnostic]
   final def errors: Iterator[Diagnostic] = _errorBuf.iterator

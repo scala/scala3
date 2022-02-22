@@ -5,11 +5,8 @@ package transform
 import core._
 import MegaPhase._
 import Symbols._, Contexts._, Types._, Decorators._
-import StdNames.nme
 import NameOps._
 import Names._
-import ast.Trees._
-import ast.TreeTypeMap
 
 /** Rewrite an application
  *

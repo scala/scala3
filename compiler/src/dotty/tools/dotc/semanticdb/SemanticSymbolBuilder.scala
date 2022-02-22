@@ -10,7 +10,6 @@ import Names.Name
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import dotty.tools.dotc.core.Types.TypeParamRef
 
 class SemanticSymbolBuilder:
   import Scala3.{_, given}

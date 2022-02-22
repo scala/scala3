@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 
-import org.junit.Assert._
 import org.junit.Test
 import core.Contexts._
 

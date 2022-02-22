@@ -1,10 +1,8 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.{TreeTypeMap, tpd, untpd}
+import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Annotations.BodyAnnotation
-import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -13,17 +11,13 @@ import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
-import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.core.Annotations._
 
-import scala.collection.mutable
 import dotty.tools.dotc.util.Property
 
 import scala.annotation.constructorOnly

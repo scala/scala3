@@ -1,20 +1,12 @@
 package dotty.tools.backend.sjs
 
-import scala.annotation.tailrec
-
 import scala.collection.mutable
 
-import dotty.tools.FatalError
-
 import dotty.tools.dotc.core._
-import Decorators._
-import Periods._
-import SymDenotations._
 import Contexts._
 import Flags._
 import Types._
 import Symbols._
-import Denotations._
 import NameOps._
 import Names._
 import StdNames._
@@ -27,9 +19,6 @@ import org.scalajs.ir.Names.{LocalName, LabelName, FieldName, SimpleMethodName, 
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.UTF8String
-
-import ScopedVar.withScopedVars
-import JSDefinitions._
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 

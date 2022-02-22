@@ -4,7 +4,7 @@ package typer
 
 import backend.sjs.JSDefinitions
 import core._
-import ast.{Trees, TreeTypeMap, untpd, tpd, DesugarEnums}
+import ast.{TreeTypeMap, untpd, tpd}
 import util.Spans._
 import util.Stats.{record, monitored}
 import printing.{Showable, Printer}
@@ -13,24 +13,19 @@ import Contexts._
 import Types._
 import Flags._
 import Mode.ImplicitsEnabled
-import NameOps._
 import NameKinds.{LazyImplicitName, EvidenceParamName}
 import Symbols._
-import Denotations._
 import Types._
 import Decorators._
 import Names._
 import StdNames._
-import Constants._
 import ProtoTypes._
 import ErrorReporting._
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
-import Trees._
-import transform.SymUtils._
 import transform.TypeUtils._
 import Hashable._
-import util.{SourceFile, NoSource, EqHashMap, Stats}
+import util.{EqHashMap, Stats}
 import config.{Config, Feature}
 import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}

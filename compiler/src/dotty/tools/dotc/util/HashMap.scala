@@ -6,7 +6,6 @@ package dotty.tools.dotc.util
 class HashMap[Key, Value]
     (initialCapacity: Int = 8, capacityMultiple: Int = 2)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
-  import GenericHashMap.DenseLimit
 
   /** Hashcode is left-shifted by 1, so lowest bit is not lost
    *  when taking the index.
