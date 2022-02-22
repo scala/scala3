@@ -14,7 +14,6 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.TypeErasure
 import util.Spans._
 import core.Symbols._
-import core.Definitions
 import ErrorReporting._
 import reporting._
 

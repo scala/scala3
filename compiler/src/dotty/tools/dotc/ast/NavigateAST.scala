@@ -5,7 +5,6 @@ import core.Contexts._
 import core.Decorators._
 import util.Spans._
 import Trees.{MemberDef, DefTree, WithLazyField}
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
 import dotty.tools.dotc.core.Types.AnnotatedType
 import dotty.tools.dotc.core.Types.ImportType
 import dotty.tools.dotc.core.Types.Type

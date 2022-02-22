@@ -6,7 +6,6 @@ import core._
 import Types._, Names._, NameOps._, Flags._, util.Spans._, Contexts._, Constants._
 import typer.{ ConstFold, ProtoTypes }
 import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
-import language.higherKinds
 import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text

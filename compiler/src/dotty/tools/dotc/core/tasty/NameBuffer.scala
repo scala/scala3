@@ -10,7 +10,6 @@ import collection.mutable
 import Names.{Name, chrs, SimpleName, DerivedName, TypeName}
 import NameKinds._
 import NameOps._
-import Decorators._
 import scala.io.Codec
 import NameTags.{SIGNED, TARGETSIGNED}
 

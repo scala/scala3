@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import core._
-import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
+import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._
 import Symbols._, StdNames._, Trees._
 import Decorators._
 import util.{Property, SourceFile}

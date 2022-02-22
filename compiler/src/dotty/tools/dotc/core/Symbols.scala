@@ -7,7 +7,6 @@ import Names._
 import Scopes._
 import Flags._
 import Decorators._
-import Symbols._
 import Contexts._
 import Phases._
 import SymDenotations._
@@ -25,13 +24,11 @@ import ast.tpd
 import tpd.{Tree, TreeProvider, TreeOps}
 import ast.TreeTypeMap
 import Constants.Constant
-import Variances.{Variance, varianceFromInt}
+import Variances.Variance
 import reporting.Message
 import collection.mutable
 import io.AbstractFile
-import language.implicitConversions
 import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
-import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
 

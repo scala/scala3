@@ -5,13 +5,10 @@ import core._
 import MegaPhase._
 import Contexts._
 import Symbols._
-import Types._
 import Flags._
 import StdNames._
-import ast.Trees._
 import dotty.tools.dotc.ast.tpd
 
-import scala.reflect.ClassTag
 
 
 /** This phase rewrites calls to `Array.apply` to a direct instantiation of the array in the bytecode.

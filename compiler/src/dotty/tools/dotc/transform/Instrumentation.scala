@@ -6,12 +6,9 @@ import core._
 import Contexts._
 import Symbols._
 import Flags._
-import SymDenotations._
 
 import Decorators._
-import ast.Trees._
 import MegaPhase._
-import StdNames.nme
 import Names._
 import Constants.Constant
 

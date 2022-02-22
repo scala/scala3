@@ -8,8 +8,6 @@ import core.Flags._
 import core.Symbols._
 import core.TypeError
 
-import scala.annotation.tailrec
-
 /** A TreeMap that maintains the necessary infrastructure to support
  *  contextual implicit searches (type-scope implicits are supported anyway).
  *

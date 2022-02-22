@@ -7,10 +7,7 @@ import dotc.core._
 import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 import dotc.core.Contexts._
 import dotc.core.Symbols._
-import dotc.core.Flags._
 import Types._, Symbols._, Decorators._
-import dotc.printing.Texts._
-import dotc.reporting.ConsoleReporter
 import dotc.core.Decorators._
 import dotc.ast.tpd
 import dotc.Compiler
@@ -25,7 +22,6 @@ trait DottyTest extends ContextEscapeDetection {
 
   protected def initialCtx: FreshContext = {
     val base = new ContextBase {}
-    import base.settings._
     val ctx = base.initialCtx.fresh
     initializeCtx(ctx)
     // when classpath is changed in ctx, we need to re-initialize to get the

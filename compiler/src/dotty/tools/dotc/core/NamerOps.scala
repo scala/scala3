@@ -3,10 +3,7 @@ package dotc
 package core
 
 import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, Names._, NameOps._
-import Denotations._
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
-import config.Config
-import ast.untpd
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:

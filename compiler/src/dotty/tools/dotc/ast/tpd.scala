@@ -12,12 +12,11 @@ import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
 import collection.{immutable, mutable}
-import util.{Property, SourceFile, NoSource}
+import util.{Property, SourceFile}
 import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
 
 import scala.annotation.tailrec
-import scala.io.Codec
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {

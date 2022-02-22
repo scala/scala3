@@ -1,27 +1,21 @@
 package dotty.tools.dotc.interactive
 
-import java.nio.charset.Charset
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.Printers.interactiv
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.CheckRealizable
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, TermSymbol, defn, newSymbol}
-import dotty.tools.dotc.core.Scopes.Scope
-import dotty.tools.dotc.core.StdNames.{nme, tpnme}
+import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import dotty.tools.dotc.core.TypeComparer
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NamedType, NoType, PolyType, TermRef, Type}
-import dotty.tools.dotc.printing.Texts._
-import dotty.tools.dotc.util.{NameTransformer, NoSourcePosition, SourcePosition}
+import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NoType, TermRef, Type}
+import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
 import scala.util.control.NonFatal

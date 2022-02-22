@@ -10,9 +10,7 @@ import Denotations._
 import Symbols._
 import SymUtils._
 import Constants._
-import ast.Trees._
 import MegaPhase._
-import NameKinds.TraitSetterName
 import NameOps._
 import Flags._
 import Decorators._

@@ -5,9 +5,6 @@ import core._
 import Phases._
 import ast.Trees._
 import Contexts._
-import Symbols._
-import Flags.PackageVal
-import Decorators._
 
 /** A base class for transforms.
  *  A transform contains a compiler phase which applies a tree transformer.

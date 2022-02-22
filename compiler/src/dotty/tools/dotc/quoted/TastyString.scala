@@ -1,6 +1,5 @@
 package dotty.tools.dotc.quoted
 
-import java.io._
 import java.util.Base64
 import java.nio.charset.StandardCharsets.UTF_8
 

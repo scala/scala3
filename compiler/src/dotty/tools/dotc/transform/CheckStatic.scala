@@ -7,7 +7,6 @@ import Flags._
 import Contexts._
 import Symbols._
 import dotty.tools.dotc.ast.tpd
-import Decorators._
 import reporting._
 
 import dotty.tools.dotc.transform.SymUtils._

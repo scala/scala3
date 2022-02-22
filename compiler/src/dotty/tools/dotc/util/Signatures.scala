@@ -6,13 +6,10 @@ import ast.tpd
 import core.Constants.Constant
 import core.Contexts._
 import core.Denotations.SingleDenotation
-import core.Flags.Implicit
-import core.Names.TermName
 import util.Spans.Span
 import core.Types.{ErrorType, MethodType, PolyType}
 import reporting._
 
-import scala.collection.JavaConverters._
 
 object Signatures {
 

@@ -6,14 +6,11 @@ import core._
 import StdNames.nme
 import Types._
 import transform.MegaPhase._
-import ast.Trees._
 import Flags._
 import Contexts._
 import Symbols._
-import Constants._
 import Decorators._
 import Denotations._, SymDenotations._
-import TypeErasure.erasure
 import DenotTransformers._
 import NullOpsDecorator._
 

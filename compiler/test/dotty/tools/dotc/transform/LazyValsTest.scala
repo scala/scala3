@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package transform
 
-import org.junit.Test
-import org.junit.Assert
 
 class LazyValsTest extends DottyTest {
     /* FIXME: re-enable after adapting to new scheme

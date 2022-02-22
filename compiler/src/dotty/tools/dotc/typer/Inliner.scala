@@ -3,7 +3,6 @@ package dotc
 package typer
 
 import ast.{TreeInfo, tpd, _}
-import Trees._
 import core._
 import Flags._
 import Symbols._
@@ -17,14 +16,13 @@ import Contexts._
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName, BodyRetainerName}
 import ProtoTypes.shallowSelectionProto
-import Annotations.Annotation
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
 import Scopes.newScope
 import config.Printers.inlining
 import config.Feature
 import ErrorReporting.errorTree
-import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, EqHashMap, SourceFile, SourcePosition, SrcPos}
+import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition, SrcPos}
 import dotty.tools.dotc.parsing.Parsers.Parser
 import Nullables._
 import transform.{PostTyper, Inlining}
@@ -32,7 +30,7 @@ import transform.{PostTyper, Inlining}
 import collection.mutable
 import reporting.trace
 import util.Spans.Span
-import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
+import dotty.tools.dotc.transform.Splicer
 import quoted.QuoteUtils
 
 import scala.annotation.constructorOnly

@@ -11,10 +11,9 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.reflect._
-import dotty.tools.dotc.quoted.QuoteUtils._
 import dotty.tools.dotc.core.Decorators._
 
-import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes, QuoteUtils}
+import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes}
 
 import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
 import scala.quoted.runtime.impl.printers._

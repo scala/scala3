@@ -8,13 +8,10 @@ import Flags._
 import Types._
 import Contexts._
 import Symbols._
-import Decorators._
 import Denotations.{SingleDenotation, NonSymSingleDenotation}
 import SymDenotations.SymDenotation
 import DenotTransformers._
-import TypeUtils._
 import Names._
-import ast.Trees._
 
 object ElimOpaque {
   val name: String = "elimOpaque"

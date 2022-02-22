@@ -9,7 +9,7 @@ import Types._, Flags._, Symbols._, Types._, Names._, StdNames._, Constants._
 import TypeErasure.{erasure, hasStableErasure}
 import Decorators._
 import ProtoTypes._
-import Inferencing.{fullyDefinedType, isFullyDefined}
+import Inferencing.fullyDefinedType
 import ast.untpd
 import transform.SymUtils._
 import transform.TypeUtils._

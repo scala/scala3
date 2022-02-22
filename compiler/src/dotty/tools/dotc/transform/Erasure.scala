@@ -18,7 +18,7 @@ import core.Decorators._
 import core.Constants._
 import core.Definitions._
 import core.Annotations.BodyAnnotation
-import typer.{NoChecking, LiftErased}
+import typer.NoChecking
 import typer.Inliner
 import typer.ProtoTypes._
 import typer.ErrorReporting.errorTree
@@ -26,7 +26,6 @@ import typer.Checking.checkValue
 import core.TypeErasure._
 import core.Decorators._
 import dotty.tools.dotc.ast.{tpd, untpd}
-import ast.Trees._
 import ast.TreeTypeMap
 import dotty.tools.dotc.core.{Constants, Flags}
 import ValueClasses._
@@ -36,7 +35,6 @@ import ExplicitOuter._
 import core.Mode
 import util.Property
 import reporting._
-import collection.mutable
 
 class Erasure extends Phase with DenotTransformer {
 

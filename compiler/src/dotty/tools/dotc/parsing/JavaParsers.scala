@@ -14,7 +14,6 @@ import core._
 import Contexts._
 import Names._
 import Types._
-import Symbols._
 import ast.Trees._
 import Decorators._
 import StdNames._

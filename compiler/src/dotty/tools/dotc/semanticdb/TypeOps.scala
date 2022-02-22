@@ -9,7 +9,6 @@ import core.Annotations.Annotation
 import core.Flags
 import core.Names.Name
 import core.StdNames.tpnme
-import ast.tpd._
 import scala.util.chaining.scalaUtilChainingOps
 
 import collection.mutable

@@ -10,7 +10,6 @@ import Symbols._
 import Decorators._
 import DenotTransformers._
 import Names._
-import StdNames._
 import NameOps._
 import NameKinds._
 import NullOpsDecorator._

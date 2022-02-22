@@ -3,7 +3,6 @@ package dotty.tools.repl
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
-import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -12,8 +11,8 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.reporting.Diagnostic
-import dotty.tools.dotc.transform.{PostTyper, Staging}
-import dotty.tools.dotc.typer.ImportInfo._
+import dotty.tools.dotc.transform.PostTyper
+import dotty.tools.dotc.typer.ImportInfo.{withRootImports, RootRef}
 import dotty.tools.dotc.typer.TyperPhase
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.{ParsedComment, SourceFile}

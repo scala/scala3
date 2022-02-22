@@ -6,9 +6,8 @@ import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.printing.SyntaxHighlighting
 
-import scala.Console.{BOLD, RESET, UNDERLINED}
+import scala.Console.{BOLD, RESET}
 import scala.collection.immutable.ListMap
-import scala.util.matching.Regex
 
 /**
  * A parsed doc comment.

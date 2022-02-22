@@ -8,9 +8,7 @@ import Symbols._
 import Decorators._
 import TypeUtils._
 import StdNames.nme
-import NameOps._
 import ast._
-import ast.Trees._
 
 /** Provides methods to produce fully parameterized versions of instance methods,
  *  where the `this` of the enclosing class is abstracted out in an extra leading

@@ -13,7 +13,6 @@ import Decorators._
 import Uniques._
 import config.Printers.typr
 import util.SourceFile
-import util.Property
 import TypeComparer.necessarySubType
 
 import scala.annotation.internal.sharable

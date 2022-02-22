@@ -11,8 +11,6 @@ import NameOps._
 import Decorators._
 import TypeUtils._
 import Types._
-import NameKinds.ClassifiedNameKind
-import ast.Trees._
 import util.Spans.Span
 import config.Printers.transforms
 

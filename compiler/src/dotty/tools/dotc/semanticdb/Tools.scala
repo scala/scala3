@@ -4,7 +4,7 @@ import java.nio.file._
 import java.nio.charset.StandardCharsets
 import scala.collection.JavaConverters._
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.semanticdb.Scala3.{_, given}
+import dotty.tools.dotc.semanticdb.Scala3.given
 
 object Tools:
 

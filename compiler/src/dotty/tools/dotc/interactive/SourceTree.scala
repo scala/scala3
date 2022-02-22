@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package interactive
 
-import scala.io.Codec
 
 import ast.tpd
 import core._

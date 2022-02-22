@@ -3,7 +3,6 @@ package transform
 
 import core.Symbols._
 import core.StdNames._
-import ast.Trees._
 import core.Types._
 import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Flags

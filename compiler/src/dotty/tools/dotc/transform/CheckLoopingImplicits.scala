@@ -5,10 +5,8 @@ import core.*
 import MegaPhase.MiniPhase
 import Contexts.*, Types.*, Symbols.*, SymDenotations.*, Flags.*
 import ast.*
-import Trees.*
 import Decorators.*
 
-import annotation.threadUnsafe
 
 object CheckLoopingImplicits:
   val name: String = "checkLoopingImplicits"

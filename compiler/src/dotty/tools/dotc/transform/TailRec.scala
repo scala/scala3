@@ -1,12 +1,10 @@
 package dotty.tools.dotc
 package transform
 
-import ast.Trees._
 import ast.{TreeTypeMap, tpd}
 import config.Printers.tailrec
 import core.Contexts._
 import core.Constants.Constant
-import core.Decorators._
 import core.Flags._
 import core.NameKinds.{TailLabelName, TailLocalName, TailTempName}
 import core.StdNames.nme
@@ -15,7 +13,6 @@ import reporting._
 import transform.MegaPhase.MiniPhase
 import util.LinearSet
 
-import scala.collection.mutable
 
 /** A Tail Rec Transformer.
  *

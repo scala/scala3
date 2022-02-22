@@ -2,9 +2,7 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.annotation.switch
 
-import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.Erasure
 
@@ -33,7 +31,7 @@ import dotty.tools.dotc.transform.Erasure
  */
 class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTypes: BTFS) {
   import bTypes._
-  import int.{_, given}
+  import int.given
   import DottyBackendInterface._
 
   //import global._
@@ -212,7 +210,6 @@ trait CoreBTypesProxyGlobalIndependent[BTS <: BTypes] {
  */
 final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTypes: BTFS) extends CoreBTypesProxyGlobalIndependent[BTFS] {
   import bTypes._
-  import bTypes.int._
 
   private var _coreBTypes: CoreBTypes[bTypes.type] = _
   def setBTypes(coreBTypes: CoreBTypes[BTFS]): Unit = {

@@ -14,7 +14,6 @@ import core.Decorators._
 import core.Phases._
 import core.Mode
 import typer._
-import typer.ErrorReporting._
 import reporting._
 import ast.Trees._
 import ast.{tpd, untpd}

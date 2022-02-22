@@ -11,7 +11,6 @@ import NameOps._
 import StdNames._
 import NameKinds._
 import Flags._
-import Annotations._
 import ValueClasses.isDerivedValueClass
 import Decorators._
 import Constants.Constant
@@ -19,7 +18,6 @@ import Annotations.Annotation
 import Phases._
 import ast.tpd.Literal
 
-import language.implicitConversions
 import scala.annotation.tailrec
 
 object SymUtils:

@@ -6,15 +6,11 @@ import core._
 import ast._
 import Contexts._, ContextOps._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
-import util.Spans._
 import util.SrcPos
-import config.Printers.typr
-import ast.Trees._
 import NameOps._
-import ProtoTypes._
 import collection.mutable
 import reporting._
-import Checking.{checkNoPrivateLeaks, checkNoWildcard}
+import Checking.checkNoPrivateLeaks
 
 trait TypeAssigner {
   import tpd._

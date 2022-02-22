@@ -16,18 +16,16 @@ import Denotations._
 import SymDenotations._
 import StdNames.{nme, tpnme}
 import ast.{Trees, untpd}
-import typer.{Implicits, Namer, Applications}
+import typer.{Implicits, Namer}
 import typer.ProtoTypes._
 import Trees._
 import TypeApplications._
-import Decorators._
 import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
 import transform.TypeUtils._
 import transform.SymUtils._
 
-import language.implicitConversions
-import dotty.tools.dotc.util.{NameTransformer, SourcePosition}
+import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -845,7 +843,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     paramss.foldLeft(leading)((txt, params) => txt ~ paramsText(params))
 
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
-    import untpd._
     dclTextOr(tree) {
       modText(tree.mods, tree.symbol, keywordStr(if (tree.mods.is(Mutable)) "var" else "val"), isType = false) ~~
         valDefText(nameIdText(tree)) ~ optAscription(tree.tpt) ~

@@ -7,8 +7,6 @@ import Contexts._
 import Symbols._
 import Scopes._
 import MegaPhase.MiniPhase
-import ast.Trees._
-import StdNames._
 
 /** The preceding lambda lift and flatten phases move symbols to different scopes
  *  and rename them. This miniphase cleans up afterwards and makes sure that all

@@ -11,7 +11,7 @@ import dotty.tools.dotc.report
  * the compiler cake (Global).
  */
 final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
-  import interface.{_, given}
+  import interface.given
   import DottyBackendInterface.symExtensions
 
   /**

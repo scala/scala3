@@ -1,11 +1,8 @@
 package dotty.tools.dotc
 package config
 
-import java.nio.file.{Files, Paths}
-
 import Settings._
 import core.Contexts._
-import Properties._
 
 import scala.PartialFunction.cond
 

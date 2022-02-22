@@ -4,8 +4,7 @@ import dotty.tools.DottyTest
 import dotty.tools.dotc.ast.{Trees,tpd}
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts.Context
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

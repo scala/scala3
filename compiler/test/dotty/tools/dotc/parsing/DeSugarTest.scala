@@ -3,16 +3,12 @@ package dotc
 package parsing
 
 import Tokens._, Parsers._
-import dotty.tools.io._
-import util._
 import core._
 import ast.Trees._
 import ast.desugar
-import ast.desugar._
 import core.Mode
 import Contexts.Context
 
-import scala.collection.mutable.ListBuffer
 
 class DeSugarTest extends ParserTest {
 

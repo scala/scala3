@@ -3,7 +3,6 @@ package dotc
 package parsing
 
 import core._, ast._
-import Trees._
 
 object desugarPackage extends DeSugarTest {
 

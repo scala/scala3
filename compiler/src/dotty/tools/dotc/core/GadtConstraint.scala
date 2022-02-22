@@ -11,7 +11,6 @@ import collection.mutable
 import printing._
 
 import scala.annotation.internal.sharable
-import scala.annotation.unused
 
 /** Represents GADT constraints currently in scope */
 sealed abstract class GadtConstraint extends Showable {

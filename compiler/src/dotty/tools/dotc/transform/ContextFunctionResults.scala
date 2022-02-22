@@ -8,7 +8,6 @@ import StdNames.nme
 import ast.untpd
 import ast.tpd._
 import config.Config
-import Decorators.*
 
 object ContextFunctionResults:
 

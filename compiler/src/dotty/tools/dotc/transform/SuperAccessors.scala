@@ -8,8 +8,6 @@ import ValueClasses.isMethodWithExtension
 import core._
 import Contexts._, Flags._, Symbols._, Names._, StdNames._, NameOps._, Trees._
 import TypeUtils._, SymUtils._
-import Constants.Constant
-import Annotations.Annotation
 import DenotTransformers.DenotTransformer
 import Symbols._
 import util.Spans._

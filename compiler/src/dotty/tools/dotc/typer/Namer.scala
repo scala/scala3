@@ -8,7 +8,6 @@ import Trees._, StdNames._, Scopes._, Denotations._, NamerOps._, ContextOps._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._
 import Decorators._, Comments.{_, given}
 import NameKinds.DefaultGetterName
-import TypeApplications.TypeParamInfo
 import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Spans._
@@ -29,7 +28,6 @@ import reporting._
 import config.Feature.sourceVersion
 import config.SourceVersion._
 
-import scala.annotation.constructorOnly
 
 /** This class creates symbols from definitions and imports and gives them
  *  lazy types.

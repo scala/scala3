@@ -9,9 +9,7 @@ import Decorators._
 import Flags._
 import config.Config
 import config.Printers.typr
-import reporting.trace
 import typer.ProtoTypes.{newTypeVar, representedParamRef}
-import StdNames.tpnme
 import UnificationDirection.*
 import NameKinds.AvoidNameKind
 

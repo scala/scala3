@@ -5,7 +5,6 @@ import core._
 import ast.tpd._
 import Annotations._
 import Contexts._
-import SymDenotations._
 import Symbols.newSymbol
 import Decorators._
 import Flags._

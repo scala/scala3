@@ -2,19 +2,13 @@ package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.transform.MegaPhase._
 import java.io.{File => _}
 
 import dotty.tools.dotc.core._
-import SymDenotations._
 import Contexts._
-import Types._
 import Symbols._
 import Phases._
-import dotty.tools.dotc.util.SourcePosition
-import Decorators._
-import StdNames.nme
 import dotty.tools.io.JarArchive
 import dotty.tools.backend.jvm.GenBCode
 

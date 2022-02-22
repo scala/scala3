@@ -1,38 +1,25 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
 import java.io.{File => _}
 
-import scala.annotation.threadUnsafe
-import scala.collection.generic.Clearable
-import scala.collection.mutable
 import scala.reflect.ClassTag
 import dotty.tools.io.AbstractFile
-import scala.tools.asm.AnnotationVisitor
 import dotty.tools.dotc.core._
 import Contexts._
 import Types._
 import Symbols._
 import Phases._
 
-import dotty.tools.dotc.util
-import dotty.tools.dotc.util.{Spans, ReadOnlyMap}
+import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.report
 
-import Decorators._
-import Constants._
 import tpd._
 
-import scala.tools.asm
-import StdNames.{nme, str}
-import NameKinds.{DefaultGetterName, ExpandedName, LazyBitMapName}
-import Names.TermName
-import Annotations.Annotation
+import StdNames.nme
+import NameKinds.LazyBitMapName
 import Names.Name
 
 class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context) {

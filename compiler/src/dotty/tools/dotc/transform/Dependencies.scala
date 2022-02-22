@@ -3,7 +3,6 @@ package transform
 
 import core.*
 import Symbols.*, Contexts.*, Types.*, Flags.*, Decorators.*
-import ast.Trees.*
 import SymUtils.*
 import collection.mutable.{LinkedHashMap, TreeSet}
 import annotation.constructorOnly

@@ -8,11 +8,7 @@ import core.Constants
 import core.Contexts._
 import core.Decorators._
 import core.StdNames.nme
-import core.Phases._
 import core.Symbols._
-import core.Types._
-import ast.Trees._
-import dotty.tools.dotc.ast.tpd
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 

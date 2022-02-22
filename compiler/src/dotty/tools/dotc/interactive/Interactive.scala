@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package interactive
 
-import scala.annotation.tailrec
 import scala.collection._
 
 import ast.{NavigateAST, Trees, tpd, untpd}
@@ -11,10 +10,6 @@ import Decorators._, ContextOps._
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
 import transform.SymUtils._
 import util.Spans._, util.SourceFile, util.SourcePosition
-import core.Denotations.SingleDenotation
-import NameKinds.SimpleNameKind
-import config.Printers.interactiv
-import StdNames.nme
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.
  *

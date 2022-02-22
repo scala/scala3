@@ -5,7 +5,6 @@ package transform
 import core._
 import Contexts._, Symbols._, Decorators._
 import MegaPhase._
-import ast.Trees._
 
 /** Rewrite `{ stats; expr}.f(args)` to `{ stats; expr.f(args) }` and
  *  `{ stats; expr }(args)` to `{ stats; expr(args) }` before proceeding,

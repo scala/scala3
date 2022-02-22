@@ -10,8 +10,7 @@ import TastyBuffer._
 import Contexts._
 
 import collection.mutable
-import core.Symbols.{Symbol, ClassSymbol}
-import ast.tpd
+import core.Symbols.ClassSymbol
 import Decorators._
 
 object TastyPickler {

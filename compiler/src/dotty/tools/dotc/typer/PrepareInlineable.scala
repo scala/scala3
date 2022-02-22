@@ -10,17 +10,15 @@ import Symbols._
 import Flags._
 import Types._
 import Decorators._
-import NameKinds._
 import StdNames.nme
 import Contexts._
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, UniqueInlineName}
 import NameOps._
 import Annotations._
-import transform.{AccessProxies, PCPCheckAndHeal, Splicer, TreeMapWithStages}
+import transform.{AccessProxies, PCPCheckAndHeal, Splicer}
 import config.Printers.inlining
 import util.Property
-import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 
 object PrepareInlineable {
