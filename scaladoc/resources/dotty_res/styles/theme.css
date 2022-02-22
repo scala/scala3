@@ -1,0 +1,28 @@
+@import "new-colors.css";
+
+/* text */
+.text-primary {
+  color: var(--grey12);
+};
+
+.text-secondary {
+  color: var(--grey11);
+};
+
+.text-tertiary {
+  color: var(--grey9);
+};
+
+
+.icon-default {
+  color: var(--grey11);
+};
+
+.border-default {
+
+};
+
+
+
+
+

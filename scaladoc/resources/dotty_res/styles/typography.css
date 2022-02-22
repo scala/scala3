@@ -1,0 +1,47 @@
+h700 {
+  font-size: 52;
+  line-height: 64;
+  font-weight: 500;
+}
+
+h600 {
+  font-size: 40;
+  line-height: 56;
+  font-weight: 700;
+}
+
+h500 {
+  font-size: 32;
+  line-height: 40;
+  font-weight: medium;
+}
+
+h400 {
+  font-size: 24;
+  line-height: 32;
+  font-weight: 500;
+}
+
+h300 {
+  font-size: 20;
+  line-height: 24;
+  font-weight: 700;
+}
+
+h200 {
+  font-size: 16;
+  line-height: 24;
+  font-weight: 500;
+}
+
+h100 {
+  font-size: 13;
+  line-height: 16;
+  font-weight: 500;
+}
+
+h50 {
+  font-size: 9;
+  line-height: 12;
+  font-weight: 600;
+}
