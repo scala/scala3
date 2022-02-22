@@ -62,11 +62,14 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       icon.classList.add(m.entryType.take(2))
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
+      // Inkuire pageLocation should start with e (external)
+      // or i (internal). The rest of the string is an absolute
+      // or relative URL
       resultA.href = 
-        if(new URI(m.pageLocation).isAbsolute()) {
-          m.pageLocation
+        if (m.pageLocation(0) == 'e') {
+          m.pageLocation.substring(1)
         } else {
-          Globals.pathToRoot + m.pageLocation
+          Globals.pathToRoot + m.pageLocation.substring(1)
         } 
       resultA.text = m.functionName
       resultA.onclick = (event: Event) =>

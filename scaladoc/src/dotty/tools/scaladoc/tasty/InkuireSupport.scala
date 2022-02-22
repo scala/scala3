@@ -115,6 +115,7 @@ trait InkuireSupport(using DocContext) extends Resources:
             name = name,
             packageName = ownerName,
             uri = methodSymbol.dri.externalLink.getOrElse(escapedAbsolutePathWithAnchor(methodSymbol.dri)),
+            isLocationExternal = methodSymbol.dri.externalLink.isDefined,
             entryType = "def"
           )
           val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
@@ -143,6 +144,7 @@ trait InkuireSupport(using DocContext) extends Resources:
             name = name,
             packageName = ownerName,
             uri = valSymbol.dri.externalLink.getOrElse(escapedAbsolutePathWithAnchor(valSymbol.dri)),
+            isLocationExternal = valSymbol.dri.externalLink.isDefined,
             entryType = "val"
           )
           val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
