@@ -234,7 +234,11 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   private val input: html.Input =
     val element = document.createElement("input").asInstanceOf[html.Input]
     element.id = "scaladoc-searchbar-input"
-    element.addEventListener("input", (e) => handleNewQuery(e.target.asInstanceOf[html.Input].value))
+    element.addEventListener("input", { e =>
+      val inputValue = e.target.asInstanceOf[html.Input].value
+      if inputValue.isEmpty then showHints()
+      else handleNewQuery(inputValue)
+    })
     element.autocomplete = "off"
     element
 
@@ -333,7 +337,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   private def handleEscape() = {
     // clear the search input and close the search
     input.value = ""
-    handleNewQuery("")
+    showHints()
     document.body.removeChild(rootDiv)
   }
 
@@ -362,4 +366,59 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     }
   }
 
-  handleNewQuery("")
+  private case class ListRoot(elems: Seq[ListNode])
+  private case class ListNode(value: String, nested: ListRoot)
+
+  private def ul(nodes: ListNode*) = ListRoot(nodes)
+  private def li(s: String) = ListNode(s, ListRoot(Nil))
+  private def li(s: String, nested: ListRoot) = ListNode(s, nested)
+
+  private def renderList: ListRoot => Option[html.UList] = {
+    case ListRoot(Nil) => None
+    case ListRoot(nodes) =>
+      val list = document.createElement("ul").asInstanceOf[html.UList]
+      nodes.foreach {
+        case ListNode(txt, nested) =>
+          val li = document.createElement("li").asInstanceOf[html.LI]
+          li.innerHTML = txt
+          renderList(nested).foreach(li.appendChild)
+          list.appendChild(li)
+      }
+      Some(list)
+  }
+
+  private def showHints() = {
+    def clearResults() = while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
+    val hintsDiv = document.createElement("div").asInstanceOf[html.Div]
+    hintsDiv.classList.add("searchbar-hints")
+    val icon = document.createElement("span").asInstanceOf[html.Span]
+    icon.classList.add("fas")
+    icon.classList.add("fa-lightbulb")
+    icon.classList.add("fa-5x")
+    val header = document.createElement("h1").asInstanceOf[html.Heading]
+    header.textContent = "A bunch of hints to make your life easier"
+    val listElements: ListRoot = ul(
+        li("Type a phrase to search members <b>by name</b> and static sites <b>by title</b>"),
+        li("Type abbreviations <b>cC, caCa, camCa</b> to search for <b>camelCase</b>"),
+        li(
+          "Type a function signature to search for members <b>by signature</b> using Inkuire",
+          ul(
+            li("Type <b>String => Int</b> to find <b>String.size</b>, <b>String.toInt</b>"),
+            li("Type <b>String => String => String</b> to find <b>String.mkString</b>, <b>String.stripPrefix</b>"),
+            li("Inkuire also finds field accessors. Type <b>Some[A] => A</b> to find <b>Some.value</b>"),
+            li("For more information about Inkuire see <a href=https://docs.scala-lang.org/scala3/guides/scaladoc/search-engine.html>the documentation</a>"),
+            li("The availability of this function depends on configuration used to generate Scaladoc")
+          )
+        )
+    )
+
+    val list = renderList(listElements).get
+    list.classList.add("searchbar-hints-list")
+    hintsDiv.appendChild(icon)
+    hintsDiv.appendChild(header)
+    hintsDiv.appendChild(list)
+    clearResults()
+    resultsDiv.appendChild(hintsDiv)
+  }
+
+  showHints()
