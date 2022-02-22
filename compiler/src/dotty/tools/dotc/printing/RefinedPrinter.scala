@@ -1040,7 +1040,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if (sym.is(ModuleClass) && sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE)
         nameString(sym.owner.name)
       else if (sym.is(ModuleClass))
-        nameString(sym.name.stripModuleClassSuffix)
+        nameString(sym.name.stripModuleClassSuffix) + idString(sym)
       else if (hasMeaninglessName(sym))
         simpleNameString(sym.owner) + idString(sym)
       else

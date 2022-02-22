@@ -826,11 +826,19 @@ object Symbols {
         copy.info = completer
         copy.denot match
           case cd: ClassDenotation =>
-            cd.registeredCompanion = cd.unforcedRegisteredCompanion.subst(originals, copies)
+            cd.registeredCompanion = original.registeredCompanion.subst(originals, copies)
           case _ =>
       }
 
       copies.foreach(_.ensureCompleted()) // avoid memory leak
+
+      // Update Child annotations of classes encountered previously to new values
+      // if some child is among the mapped symbols
+      for orig <- ttmap1.substFrom do
+        if orig.is(Sealed) && orig.children.exists(originals.contains) then
+          val sealedCopy = orig.subst(ttmap1.substFrom, ttmap1.substTo)
+          sealedCopy.annotations = sealedCopy.annotations.mapConserve(ttmap1.apply)
+
       copies
     }
 

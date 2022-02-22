@@ -140,7 +140,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           val parentEnum = vdef.owner.companionClass
           val children = parentEnum.children.zipWithIndex
           val candidate: Option[Int] = children.collectFirst { case (child, idx) if child == vdef => idx }
-          assert(candidate.isDefined, i"could not find child for $vdef")
+          assert(candidate.isDefined, i"could not find child for $vdef in ${parentEnum.children}%, % of $parentEnum")
           Literal(Constant(candidate.get))
 
       def toStringBody(vrefss: List[List[Tree]]): Tree =
