@@ -1,0 +1,182 @@
+:root {
+  /* Light Mode */
+
+  /* text */
+  --text-primary: var(--grey12);
+  --text-secondary: var(--grey11);
+  --text-text-tertiary: var(--grey9);
+
+  /* icon */
+  --icon-default: var(--grey11);
+
+  /* border */
+  --border-default: var(--grey5);
+  --border-background-color: var(--grey1);
+
+  /* background */
+  --background-default: var(--grey1);
+  --background-neutral: var(--grey2);
+
+  /* action */
+  --action-primary-content-default: var(--grey11);
+  --action-primary-content-hover: var(--grey12);
+  --action-primary-content-active: var(--grey12);
+  --action-primary-content-selected: var(--grey12);
+
+  --action-primary-background-default-ghost: transparent;
+  --action-primary-background-default-solid: var(--grey2);
+  --action-primary-background-hover: var(--grey3);
+  --action-primary-background-active: var(--grey3);
+  --action-primary-background-selected: var(--grey4);
+
+  --action-primary-border-default: var(--grey5);
+
+  /* code */
+  --code-props-content: var(--red11);
+  --code-props-background: var(--red3);
+
+  --code-syntax-highlighting-comment: var(--grey11);
+  --code-syntax-highlighting-quote: var(--grey11);
+  --code-syntax-highlighting-line-number: var(--grey8);
+  --code-syntax-highlighting-title: var(--mint11);
+  --code-syntax-highlighting-keyword: var(--indigo11);
+  --code-syntax-highlighting-code-fg: var(--grey12);
+  --code-syntax-highlighting-literal: var(--crimson11);
+  --code-syntax-highlighting-type: var(--grass9);
+  --code-syntax-highlighting-subst: var(--yellow11);
+  --code-syntax-highlighting-meta: var(--yellow11);
+  --code-syntax-highlighting-string: var(--lime9);
+  --code-syntax-highlighting-deletion: var(--purple9);
+  --code-syntax-highlighting-variable: var(--purple9);
+
+  --code-method-highlighting-type: var(--purple9);
+  --code-method-highlighting-type-link: var(--sky11);
+  --code-method-highlighting-code-fg: var(--grey12);
+  --code-method-highlighting-link-sig-fig: var(--sky11);
+  --code-method-highlighting-keyword: var(--crimson11);
+
+  /* api child */
+  --api-child-package-content: var(--yellow1);
+  --api-child-package-background: var(--yellow11);
+
+  --api-child-class-content: var(--mint1);
+  --api-child-class-background: var(--mint11);
+
+  --api-child-object-content: var(--indigo1);
+  --api-child-object-background: var(--indigo11);
+
+  --api-child-trait-content: var(--sky1);
+  --api-child-trait-background: var(--sky11);
+
+  --api-child-val-content: var(--lime1);
+  --api-child-val-background: var(--lime11);
+
+  --api-child-def-content: var(--lime1);
+  --api-child-def-background: var(--lime11);
+
+  --api-child-static-doc-content: var(--grey1);
+  --api-child-static-doc-background: var(--grey11);
+
+  --api-child-given-content: var(--purple1);
+  --api-child-given-background: var(--purple11);
+
+  --api-child-method-content: var(--indigo1);
+  --api-child-method-background: var(--indigo11);
+
+  --api-child-enum-content: var(--orange1);
+  --api-child-enum-background: var(--orange11);
+
+  --api-child-type-content: var(--crimson1);
+  --api-child-type-background: var(--crimson11);
+}
+
+:root {
+  /* Dark Mode */
+
+  /* text */
+  --text-primary: var(--grey12);
+  --text-secondary: var(--grey11);
+  --text-text-tertiary: var(--grey9);
+
+  /* icon */
+  --icon-default: var(--grey11);
+
+  /* border */
+  --border-default: var(--grey6);
+  --border-background-color: var(--grey1);
+
+  /* background */
+  --background-default: var(--grey1);
+  --background-neutral: var(--grey3);
+
+  /* action */
+  --action-primary-content-default: var(--grey11);
+  --action-primary-content-hover: var(--grey12);
+  --action-primary-content-active: var(--grey12);
+  --action-primary-content-selected: var(--grey12);
+
+  --action-primary-background-default-ghost: transparent;
+  --action-primary-background-default-solid: var(--grey3);
+  --action-primary-background-hover: var(--grey4);
+  --action-primary-background-active: var(--grey4);
+  --action-primary-background-selected: var(--grey5);
+  --action-primary-border-default: var(--grey6);
+
+  /* code */
+  --code-props-content: var(--red11);
+  --code-props-background: var(--red3);
+
+  --code-syntax-highlighting-comment: var(--grey11);
+  --code-syntax-highlighting-quote: var(--grey11);
+  --code-syntax-highlighting-line-number: var(--grey8);
+  --code-syntax-highlighting-title: var(--mint11);
+  --code-syntax-highlighting-keyword: var(--indigo11);
+  --code-syntax-highlighting-code-fg: var(--grey12);
+  --code-syntax-highlighting-literal: var(--crimson11);
+  --code-syntax-highlighting-type: var(--grass9);
+  --code-syntax-highlighting-subst: var(--yellow11);
+  --code-syntax-highlighting-meta: var(--yellow11);
+  --code-syntax-highlighting-string: var(--lime9);
+  --code-syntax-highlighting-deletion: var(--purple9);
+  --code-syntax-highlighting-variable: var(--purple9);
+
+  --code-method-highlighting-type: var(--purple9);
+  --code-method-highlighting-type-link: var(--sky11);
+  --code-method-highlighting-code-fg: var(--grey12);
+  --code-method-highlighting-link-sig-fig: var(--sky11);
+  --code-method-highlighting-keyword: var(--crimson11);
+
+  /* api child */
+  --api-child-package-content: var(--yellow1);
+  --api-child-package-background: var(--yellow11);
+
+  --api-child-class-content: var(--mint1);
+  --api-child-class-background: var(--mint11);
+
+  --api-child-object-content: var(--indigo1);
+  --api-child-object-background: var(--indigo11);
+
+  --api-child-trait-content: var(--sky1);
+  --api-child-trait-background: var(--sky11);
+
+  --api-child-val-content: var(--lime1);
+  --api-child-val-background: var(--lime11);
+
+  --api-child-def-content: var(--lime1);
+  --api-child-def-background: var(--lime11);
+
+  --api-child-static-doc-content: var(--grey1);
+  --api-child-static-doc-background: var(--grey11);
+
+  --api-child-given-content: var(--purple1);
+  --api-child-given-background: var(--purple11);
+
+  --api-child-method-content: var(--indigo1);
+  --api-child-method-background: var(--indigo11);
+
+  --api-child-enum-content: var(--orange1);
+  --api-child-enum-background: var(--orange11);
+
+  --api-child-type-content: var(--crimson1);
+  --api-child-type-background: var(--crimson11);
+}
