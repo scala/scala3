@@ -784,7 +784,6 @@ class Definitions {
   @tu lazy val TypeTestModule_identity: Symbol = TypeTestClass.companionModule.requiredMethod(nme.identity)
 
   @tu lazy val QuotedExprClass: ClassSymbol = requiredClass("scala.quoted.Expr")
-  @tu lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
 
   @tu lazy val QuotesClass: ClassSymbol = requiredClass("scala.quoted.Quotes")
 
@@ -826,8 +825,6 @@ class Definitions {
 
   @tu lazy val QuotedTypeModule: Symbol = QuotedTypeClass.companionModule
     @tu lazy val QuotedTypeModule_of: Symbol = QuotedTypeModule.requiredMethod("of")
-
-  @tu lazy val TastyReflectionClass: ClassSymbol = requiredClass("scala.tasty.Reflection")
 
   @tu lazy val CanEqualClass: ClassSymbol = getClassIfDefined("scala.Eql").orElse(requiredClass("scala.CanEqual")).asClass
     def CanEqual_canEqualAny(using Context): TermSymbol =
