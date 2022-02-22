@@ -848,6 +848,10 @@ footer .mode {
   content: url("../images/method.svg")
 }
 
+.micon.in {
+  content: url("../images/inkuire.svg")
+}
+
 #leftColumn .socials {
   display: none;
 }

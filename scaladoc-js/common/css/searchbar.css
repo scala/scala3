@@ -206,41 +206,42 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   overflow: auto;
 }
 
-.scaladoc-searchbar-result {
+.scaladoc-searchbar-row {
+  display: flex;
   background-color: var(--leftbar-bg);
   color: var(--leftbar-fg);
   line-height: 24px;
   padding: 4px 10px 4px 10px;
 }
 
-.scaladoc-searchbar-result-row {
-  display: flex;
+.scaladoc-searchbar-row.hidden {
+  display: none;
 }
 
-.scaladoc-searchbar-result .micon {
+.scaladoc-searchbar-row[divider] {
+  border-top: solid 1px var(--leftbar-border);
+}
+
+.scaladoc-searchbar-row .micon {
   height: 16px;
   width: 16px;
   margin: 4px 8px 0px 0px;
 }
 
-.scaladoc-searchbar-result:first-of-type {
+.scaladoc-searchbar-row:first-of-type {
   margin-top: 10px;
 }
 
-.scaladoc-searchbar-result[selected] {
+.scaladoc-searchbar-row[selected] {
   background-color: var(--leftbar-hover-bg);
   color: var(--leftbar-hover-fg);
 }
 
-.scaladoc-searchbar-result a {
-  /* for some reason, with display:block if there's a wrap between the
-   * search result text and the location span, the dead space to the
-   * left of the location span doesn't get treated as part of the block,
-   * which defeats the purpose of making the <a> a block element.
-   * But inline-block with width:100% works as desired.
-   */
-  display: inline-block;
-  width: 100%;
+.scaladoc-searchbar-row[result] {
+  flex-direction: column;
+}
+
+.scaladoc-searchbar-row[result] a {
   text-indent: -20px;
   padding-left: 20px;
 }
