@@ -77,6 +77,7 @@ enum Planet(mass: Double, radius: Double):
 end Planet
 ```
 
+### User-defined companion object of enums
 It is also possible to define an explicit companion object for an enum:
 
 ```scala
@@ -89,13 +90,15 @@ object Planet:
 end Planet
 ```
 
-As explained [later](./desugarEnums.md), enum cases are expanded in the companion object of the enum.
-Even though the enum cases are written within the lexical scope of the enum template, they may not
-reference members of the enum class. Like secondary constructors, although written inside the template,
-they are scoped outside it.
+### Restrictions on Enum Cases
 
-Similarly, they may not directly reference members of the companion object in which they expand.
-They are like default class arguments, which are also expanded in the class's companion. For example:
+Enum case declarations are similar to secondary constructors:
+they are scoped outside of the enum template, despite being declared within it.
+This means that enum case declarations cannot access inner members of the
+enum class.
+
+Similarly, enum case declarations may not directly reference members of the enum's companion object,
+even if they are imported (directly, or by renaming). For example:
 
 ```scala
 import Planet.*
@@ -110,9 +113,9 @@ object Planet:
   private final val (EarthMass @ _, EarthRadius @ _) = (5.976e+24, 6.37814e6)
 end Planet
 ```
-The fields for Mercury are not visible, and the fields for Venus may not be referenced directly.
-Since the direct reference after expansion shadows any import clause, the import statement does not make the fields available.
-Direct references using a renaming import are also disallowed.
+The fields referenced by `Mercury` are not visible, and the fields referenced by `Venus` may not
+be referenced directly (using `import Planet.*`). You must use an indirect reference,
+such as demonstrated with `Earth`.
 
 ### Deprecation of Enum Cases
 
