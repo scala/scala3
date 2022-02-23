@@ -77,6 +77,7 @@ enum Planet(mass: Double, radius: Double):
 end Planet
 ```
 
+### User-defined companion object of enums
 It is also possible to define an explicit companion object for an enum:
 
 ```scala
@@ -88,6 +89,33 @@ object Planet:
       println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 end Planet
 ```
+
+### Restrictions on Enum Cases
+
+Enum case declarations are similar to secondary constructors:
+they are scoped outside of the enum template, despite being declared within it.
+This means that enum case declarations cannot access inner members of the
+enum class.
+
+Similarly, enum case declarations may not directly reference members of the enum's companion object,
+even if they are imported (directly, or by renaming). For example:
+
+```scala
+import Planet.*
+enum Planet(mass: Double, radius: Double):
+  private final val (MercuryMass @ _, MercuryRadius @ _) = (3.303e+23, 2.4397e6)
+
+  case Mercury extends Planet(MercuryMass, MercuryRadius)             // Not found
+  case Venus   extends Planet(VenusMass, VenusRadius)                 // illegal reference
+  case Earth   extends Planet(Planet.EarthMass, Planet.EarthRadius)   // ok
+object Planet:
+  private final val (VenusMass @ _, VenusRadius @ _) = (4.869e+24, 6.0518e6)
+  private final val (EarthMass @ _, EarthRadius @ _) = (5.976e+24, 6.37814e6)
+end Planet
+```
+The fields referenced by `Mercury` are not visible, and the fields referenced by `Venus` may not
+be referenced directly (using `import Planet.*`). You must use an indirect reference,
+such as demonstrated with `Earth`.
 
 ### Deprecation of Enum Cases
 
