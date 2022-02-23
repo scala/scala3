@@ -13,7 +13,7 @@ object ScaladocGeneration {
       value match {
         case s: String => s"$key ${escape(s)}"
         case true => s"$key"
-        case list: List[String] => s"$key:${list.map(escape).mkString(",")}"
+        case list: List[String @unchecked] => s"$key:${list.map(escape).mkString(",")}"
         case _ =>
           println(s"Unsupported setting: $key -> $value")
           ""
