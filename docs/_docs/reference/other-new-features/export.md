@@ -162,9 +162,11 @@ extension (x: String)
   private def moreOps = new StringOps(x)
   export moreOps.*
 ```
-In this case the qualifier expression must be an identifier that refers to a unique parameterless extension method in the same extension clause. The export will create
-extension methods for all accessible term members
-in the result of the qualifier path. For instance, the extension above would be expanded to
+In this case the qualifier expression must be an identifier that refers to a unique parameterless extension method in the same extension clause.
+
+An export will then create extension methods for all accessible term members,
+matching the selectors, in the result of the qualifier path.
+For instance, the extension above would be expanded to
 ```scala
 extension (x: String)
   def take(n: Int): String = x.substring(0, n)
@@ -172,6 +174,38 @@ extension (x: String)
   private def moreOps = StringOps(x)
   def *(n: Int): String = moreOps.*(n)
   def capitalize: String = moreOps.capitalize
+```
+
+### A Note on Exporting Extension Methods
+**Note:** extension methods can have surprising results if exported from within an extension (i.e. they
+are exported as-if they were an ordinary method). Observe the following example:
+```scala
+class StringOps:
+  extension (x: String) def capitalize: String = ...
+  def zero: String = ""
+
+extension (s: String)
+  private def moreOps = new StringOps()
+  export moreOps.*
+```
+this would be expanded to
+```scala
+extension (s: String)
+  private def moreOps = new StringOps()
+  def capitalize(x: String): String = moreOps.capitalize(x)
+  ...
+```
+observe the extra String parameter on `capitalize`.
+It is instead recommended to export extension methods from
+outside of an extension, and to use a renaming selector to avoid them, e.g.:
+```scala
+private val myStringOps = new StringOps()
+
+extension (s: String)
+  private def moreOps = myStringOps
+  export moreOps.{capitalize as _, *}
+
+export myStringOps.capitalize
 ```
 
 ## Syntax changes:
