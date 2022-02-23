@@ -204,11 +204,23 @@ class TreeTypeMap(
       lazy val origCls = mapped.zip(syms).filter(_._1.isClass).toMap
       mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
         val origDcls = cls.info.decls.toList.filterNot(_.is(TypeParam))
-        val mappedDcls = mapSymbols(origDcls, tmap, mapAlways = true)
+        val tmap0 = tmap.withSubstitution(origCls(cls).typeParams, cls.typeParams)
+        val mappedDcls = mapSymbols(origDcls, tmap0, mapAlways = true)
         val tmap1 = tmap.withMappedSyms(
           origCls(cls).typeParams ::: origDcls,
           cls.typeParams ::: mappedDcls)
         origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
         tmap1
       }
+
+  override def toString =
+    def showSyms(syms: List[Symbol]) =
+      syms.map(sym => s"$sym#${sym.id}").mkString(", ")
+    s"""TreeTypeMap(
+       |typeMap   = $typeMap
+       |treeMap   = $treeMap
+       |oldOwners = ${showSyms(oldOwners)}
+       |newOwners = ${showSyms(newOwners)}
+       |substFrom = ${showSyms(substFrom)}
+       |substTo   = ${showSyms(substTo)}""".stripMargin
 }
