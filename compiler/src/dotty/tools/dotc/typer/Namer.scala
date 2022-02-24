@@ -1115,6 +1115,8 @@ class Namer { typer: Typer =>
           Skip
         else if pathMethod.exists && mbr.isType then
           No("is a type, so it cannot be exported as extension method")
+        else if pathMethod.exists && sym.is(ExtensionMethod) then
+          No("is already an extension method, cannot be exported into another one")
         else
           Yes
       }
