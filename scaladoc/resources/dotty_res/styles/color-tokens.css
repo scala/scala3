@@ -5,6 +5,7 @@
   --text-primary: var(--grey12);
   --text-secondary: var(--grey11);
   --text-text-tertiary: var(--grey9);
+  --text-text-inverted: var(--grey1);
 
   /* icon */
   --icon-default: var(--grey11);
@@ -31,6 +32,19 @@
 
   --action-primary-border-default: var(--grey5);
 
+  /* semantic */
+  --semantic-content-grey: var(--grey11);
+  --semantic-content-sky: var(--sky11);
+  --semantic-content-grass: var(--grass11);
+  --semantic-content-yellow: var(--yellow11);
+  --semantic-content-red: var(--red11);
+
+  --semantic-background-grey: var(--grey3);
+  --semantic-background-sky: var(--sky3);
+  --semantic-background-grass: var(--grass3);
+  --semantic-background-yellow: var(--yellow3);
+  --semantic-background-red: var(--red3);
+
   /* code */
   --code-props-content: var(--red11);
   --code-props-background: var(--red3);
@@ -56,37 +70,16 @@
   --code-method-highlighting-keyword: var(--crimson11);
 
   /* api child */
-  --api-child-package-content: var(--yellow1);
   --api-child-package-background: var(--yellow11);
-
-  --api-child-class-content: var(--mint1);
   --api-child-class-background: var(--mint11);
-
-  --api-child-object-content: var(--indigo1);
   --api-child-object-background: var(--indigo11);
-
-  --api-child-trait-content: var(--sky1);
   --api-child-trait-background: var(--sky11);
-
-  --api-child-val-content: var(--lime1);
   --api-child-val-background: var(--lime11);
-
-  --api-child-def-content: var(--lime1);
   --api-child-def-background: var(--lime11);
-
-  --api-child-static-doc-content: var(--grey1);
   --api-child-static-doc-background: var(--grey11);
-
-  --api-child-given-content: var(--purple1);
   --api-child-given-background: var(--purple11);
-
-  --api-child-method-content: var(--indigo1);
   --api-child-method-background: var(--indigo11);
-
-  --api-child-enum-content: var(--orange1);
   --api-child-enum-background: var(--orange11);
-
-  --api-child-type-content: var(--crimson1);
   --api-child-type-background: var(--crimson11);
 }
 
@@ -97,6 +90,7 @@
   --text-primary: var(--grey12);
   --text-secondary: var(--grey11);
   --text-text-tertiary: var(--grey9);
+  --text-text-inverted: var(--grey1);
 
   /* icon */
   --icon-default: var(--grey11);
@@ -146,37 +140,29 @@
   --code-method-highlighting-link-sig-fig: var(--sky11);
   --code-method-highlighting-keyword: var(--crimson11);
 
+    /* semantic */
+    --semantic-content-grey: var(--grey11);
+    --semantic-content-sky: var(--sky11);
+    --semantic-content-grass: var(--grass11);
+    --semantic-content-yellow: var(--yellow11);
+    --semantic-content-red: var(--red11);
+
+    --semantic-background-grey: var(--grey4);
+    --semantic-background-sky: var(--sky4);
+    --semantic-background-grass: var(--grass4);
+    --semantic-background-yellow: var(--yellow4);
+    --semantic-background-red: var(--red4);
+
   /* api child */
-  --api-child-package-content: var(--yellow1);
   --api-child-package-background: var(--yellow11);
-
-  --api-child-class-content: var(--mint1);
   --api-child-class-background: var(--mint11);
-
-  --api-child-object-content: var(--indigo1);
   --api-child-object-background: var(--indigo11);
-
-  --api-child-trait-content: var(--sky1);
   --api-child-trait-background: var(--sky11);
-
-  --api-child-val-content: var(--lime1);
   --api-child-val-background: var(--lime11);
-
-  --api-child-def-content: var(--lime1);
   --api-child-def-background: var(--lime11);
-
-  --api-child-static-doc-content: var(--grey1);
   --api-child-static-doc-background: var(--grey11);
-
-  --api-child-given-content: var(--purple1);
   --api-child-given-background: var(--purple11);
-
-  --api-child-method-content: var(--indigo1);
   --api-child-method-background: var(--indigo11);
-
-  --api-child-enum-content: var(--orange1);
   --api-child-enum-background: var(--orange11);
-
-  --api-child-type-content: var(--crimson1);
   --api-child-type-background: var(--crimson11);
 }
