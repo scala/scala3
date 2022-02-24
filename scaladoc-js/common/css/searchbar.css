@@ -156,6 +156,10 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   .search span:hover {
       fill: var(--link-hover-fg);
   }
+
+  #scaladoc-searchbar span.pull-right {
+    display: none;
+  }
 }
 
 #scaladoc-search {
@@ -177,12 +181,11 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   left: calc(5% + var(--side-width));
   z-index: 5;
   width: calc(90% - var(--side-width));
-  box-shadow: 0 2px 16px 0 rgba(0, 42, 76, 0.15);
+  box-shadow: 2px 2px 8px 0 var(--shadow);
   font-size: 13px;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
   background-color: var(--leftbar-bg);
   color: var(--leftbar-fg);
-  box-shadow: 0 0 2px var(--shadow);
 }
 
 #scaladoc-searchbar-input {
@@ -242,8 +245,27 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   padding-left: 20px;
 }
 
+.scaladoc-searchbar-row[loadmore] {
+  align-items: center;
+  cursor: pointer;
+}
+
+.scaladoc-searchbar-row[loadmore] > a {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.scaladoc-searchbar-row[loadmore] .i {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
 .searchbar-hints {
-  height: 60vh;
+  padding-top: 5vh;
+  padding-bottom: 5vh;
+  padding-left: 5vw;
+  padding-right: 5vw;
   display: flex;
   flex-direction: column;
   align-items: center;

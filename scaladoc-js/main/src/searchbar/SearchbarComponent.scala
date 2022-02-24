@@ -9,7 +9,8 @@ import scala.concurrent.duration._
 import java.net.URI
 
 class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
-  val resultsChunkSize = 5
+  val initialChunkSize = 5
+  val resultsChunkSize = 20
   extension (p: PageEntry)
     def toHTML =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
@@ -114,8 +115,15 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       loadMoreElement.classList.add("scaladoc-searchbar-row")
       loadMoreElement.setAttribute("loadmore", "")
       loadMoreElement.classList.add("monospace")
+      val icon = document.createElement("a").asInstanceOf[html.Anchor]
+      icon.classList.add("i")
+      icon.classList.add("fas")
+      icon.classList.add("fa-arrow-down")
+      val text = document.createElement("span").asInstanceOf[html.Span]
+      text.textContent = "Show more..."
       val anchor = document.createElement("a").asInstanceOf[html.Anchor]
-      anchor.text = "Show more..."
+      anchor.appendChild(icon)
+      anchor.appendChild(text)
       loadMoreElement.appendChild(anchor)
       loadMoreElement.addEventListener("mouseover", _ => handleHover(loadMoreElement))
       loadMoreElement
@@ -136,7 +144,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         htmlEntries.foreach(fragment.appendChild)
         fragment.appendChild(loadMoreElement)
 
-        val nextElems = htmlEntries.drop(resultsChunkSize)
+        val nextElems = htmlEntries.drop(initialChunkSize)
         if nextElems.nonEmpty then {
           nextElems.foreach(_.classList.add("hidden"))
           loadMoreResults(nextElems)
