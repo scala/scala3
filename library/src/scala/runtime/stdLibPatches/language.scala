@@ -48,11 +48,6 @@ object language:
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
 
-    /** Experimental support for using indentation for arguments
-     */
-    @compileTimeOnly("`fewerBraces` can only be used at compile time in import statements")
-    object fewerBraces
-
     /** Experimental support for typechecked exception capabilities
      *
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/canthrow]]

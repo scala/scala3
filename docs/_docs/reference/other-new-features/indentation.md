@@ -416,12 +416,6 @@ The `-indent` option only works on [new-style syntax](./control-syntax.md). So t
 
 Generally, the possible indentation regions coincide with those regions where braces `{...}` are also legal, no matter whether the braces enclose an expression or a set of definitions. There is one exception, though: Arguments to function can be enclosed in braces but they cannot be simply indented instead. Making indentation always significant for function arguments would be too restrictive and fragile.
 
-To allow such arguments to be written without braces, a variant of the indentation scheme is implemented under language import
-```scala
-import language.experimental.fewerBraces
-```
-This variant is more contentious and less stable than the rest of the significant indentation scheme. In this variant, a colon `:` at the end of a line is also one of the possible tokens that opens an indentation region. Examples:
-
 ```scala
 times(10):
   println("ah")

@@ -254,8 +254,8 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
-                    |  SimpleExpr ‘:’ IndentedExpr                              -- under language.experimental.fewerBraces
-                    |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedExpr         -- under language.experimental.fewerBraces
+                    |  SimpleExpr ‘:’ IndentedExpr
+                    |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedExpr
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr													                        -- to be dropped
 IndentedExpr      ::=  indent CaseClauses | Block outdent

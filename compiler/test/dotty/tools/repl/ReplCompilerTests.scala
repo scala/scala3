@@ -243,23 +243,10 @@ class ReplCompilerTests extends ReplTest:
 
   @Test def i14491 =
     initially {
-      run("import language.experimental.fewerBraces")
-    } andThen {
       run("""|val x = Seq(7,8,9).apply:
              |  1
              |""".stripMargin)
       assertEquals("val x: Int = 8", storedOutput().trim)
-    }
-    initially {
-      run("""|import language.experimental.fewerBraces
-             |import language.experimental.fewerBraces as _
-             |""".stripMargin)
-    } andThen {
-      run("""|val x = Seq(7,8,9).apply:
-             |  1
-             |""".stripMargin)
-      assert("expected error if fewerBraces is unimported",
-        lines().exists(_.contains("missing arguments for method apply")))
     }
 
 object ReplCompilerTests:

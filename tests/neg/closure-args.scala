@@ -1,5 +1,3 @@
-import language.experimental.fewerBraces
-
 val x = List().map (x: => Int) => // error
   ???
 val y = List() map x =>  // error

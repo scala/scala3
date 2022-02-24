@@ -1,4 +1,3 @@
-import language.experimental.fewerBraces
 object Test:
 
   locally:

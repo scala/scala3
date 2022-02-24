@@ -757,7 +757,7 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if (canRewrite && (!underColonSyntax || in.fewerBracesEnabled)) {
+      if (canRewrite && !underColonSyntax) {
         val openingPatchStr =
           if !colonRequired then ""
           else if testChar(startOpening - 1, Chars.isOperatorPart(_)) then " :"
@@ -2252,8 +2252,8 @@ object Parsers {
      *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
-     *                 |  SimpleExpr1 `:` IndentedExpr                       -- under language.experimental.fewerBraces
-     *                 |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) IndentedExpr  -- under language.experimental.fewerBraces
+     *                 |  SimpleExpr1 `:` IndentedExpr
+     *                 |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) IndentedExpr
      *  IndentedExpr  ::=  indent (CaseClauses | Block) outdent
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’
@@ -2322,7 +2322,7 @@ object Parsers {
         case LPAREN if canApply =>
           val app = atSpan(startOffset(t), in.offset) {
             val argExprs @ (args, isUsing) = argumentExprs()
-            if !isUsing && in.isArrow && location != Location.InGuard && in.fewerBracesEnabled then
+            if !isUsing && in.isArrow && location != Location.InGuard then
               val params = convertToParams(Tuple(args))
               if params.forall(_.name != nme.ERROR) then
                 applyToClosure(t, in.offset, params)
@@ -2336,13 +2336,13 @@ object Parsers {
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
           simpleExprRest(app, location, canApply = true)
         case USCORE =>
-          if in.lookahead.isArrow && location != Location.InGuard && in.fewerBracesEnabled then
+          if in.lookahead.isArrow && location != Location.InGuard then
             val app = applyToClosure(t, in.offset, convertToParams(wildcardIdent()))
             simpleExprRest(app, location, canApply = true)
           else
             atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
         case IDENTIFIER
-        if !in.isOperator && in.lookahead.isArrow && location != Location.InGuard && in.fewerBracesEnabled =>
+        if !in.isOperator && in.lookahead.isArrow && location != Location.InGuard =>
           val app = applyToClosure(t, in.offset, convertToParams(termIdent()))
           simpleExprRest(app, location, canApply = true)
         case _ =>

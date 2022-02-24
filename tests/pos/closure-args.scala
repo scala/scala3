@@ -1,5 +1,3 @@
-import language.experimental.fewerBraces
-
 val xs = List(1, 2, 3)
 val ys = xs.map x =>
   x + 1

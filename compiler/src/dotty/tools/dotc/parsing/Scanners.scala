@@ -202,15 +202,6 @@ object Scanners {
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
 
-    private var fewerBracesEnabledCache = false
-    private var fewerBracesEnabledCtx: Context = NoContext
-
-    def fewerBracesEnabled =
-      if fewerBracesEnabledCtx ne myLanguageImportContext then
-        fewerBracesEnabledCache = featureEnabled(Feature.fewerBraces)
-        fewerBracesEnabledCtx = myLanguageImportContext
-      fewerBracesEnabledCache
-
     /** All doc comments kept by their end position in a `Map`.
       *
       * Note: the map is necessary since the comments are looked up after an
@@ -655,7 +646,7 @@ object Scanners {
         case END =>
           if !isEndMarker then token = IDENTIFIER
         case COLON =>
-          if fewerBracesEnabled then observeColonEOL()
+          observeColonEOL()
         case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
         case EOF =>
