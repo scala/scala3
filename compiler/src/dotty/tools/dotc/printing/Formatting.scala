@@ -18,7 +18,7 @@ object Formatting {
   object ShownDef:
     /** Represents a value that has been "shown" and can be consumed by StringFormatter.
      *  Not just a string because it may be a Seq that StringFormatter will intersperse with the trailing separator.
-     *  Also, it's not a `String | Seq[String]` because then we'd need to a Context to call `Showable#show`.  We could
+     *  Also, it's not a `String | Seq[String]` because then we'd need a Context to call `Showable#show`.  We could
      *  make Context a requirement for a Show instance but then we'd have lots of instances instead of just one ShowAny
      *  instance.  We could also try to make `Show#show` require the Context, but then that breaks the Conversion. */
     opaque type Shown = Any

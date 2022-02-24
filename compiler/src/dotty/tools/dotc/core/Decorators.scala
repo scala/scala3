@@ -251,7 +251,7 @@ object Decorators {
         op: WrappedResult[U] ?=> String,
         printer: config.Printers.Printer = config.Printers.default)(using c: Conversion[T, U] = null): T = {
       // either the use of `$result` was driven by the expected type of `Shown`
-      // which lead to the summoning of `Conversion[T, Shown]` (which we'll invoke)
+      // which led to the summoning of `Conversion[T, Shown]` (which we'll invoke)
       // or no such conversion was found so we'll consume the result as it is instead
       val obj = if c == null then x.asInstanceOf[U] else c(x)
       printer.println(op(using WrappedResult(obj)))
@@ -259,8 +259,7 @@ object Decorators {
     }
 
     /** Instead of `toString` call `show` on `Showable` values, falling back to `toString` if an exception is raised. */
-    def show(using Context)(using z: Show[T] = null): String = x match
-      case _ if z != null => z.show(x).toString
+    def show(using Context): String = x match
       case x: Showable =>
         try x.show
         catch
