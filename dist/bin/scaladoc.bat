@@ -106,6 +106,7 @@ call :updateClasspath "scala3-compiler"
 call :updateClasspath "scala3-interfaces"
 call :updateClasspath "scala3-library"
 call :updateClasspath "tasty-core"
+call :updateClasspath "scala3-staging"
 call :updateClasspath "scala3-tasty-inspector"
 call :updateClasspath "flexmark-0"
 call :updateClasspath "flexmark-html-parser"
@@ -144,14 +145,13 @@ call :updateClasspath "flexmark-ext-tables"
 call :updateClasspath "flexmark-ext-ins"
 call :updateClasspath "flexmark-ext-superscript"
 call :updateClasspath "antlr4-runtime"
-call :updateClasspath "ST4"
 goto :eof
 
 @rem input parameter: %1=pattern for library file
 @rem output parameter: _CLASS_PATH
 :updateClasspath
 set "__PATTERN=%~1"
-for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*%__PATTERN%*"') do (
+for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*%__PATTERN%*" 2^>NUL') do (
     set "_CLASS_PATH=!_CLASS_PATH!%_LIB_DIR%\%%f%_PSEP%"
 )
 goto :eof
