@@ -103,14 +103,14 @@ even if they are imported (directly, or by renaming). For example:
 ```scala
 import Planet.*
 enum Planet(mass: Double, radius: Double):
-  private final val (MercuryMass @ _, MercuryRadius @ _) = (3.303e+23, 2.4397e6)
+  private final val (mercuryMass, mercuryRadius) = (3.303e+23, 2.4397e6)
 
-  case Mercury extends Planet(MercuryMass, MercuryRadius)             // Not found
-  case Venus   extends Planet(VenusMass, VenusRadius)                 // illegal reference
-  case Earth   extends Planet(Planet.EarthMass, Planet.EarthRadius)   // ok
+  case Mercury extends Planet(mercuryMass, mercuryRadius)             // Not found
+  case Venus   extends Planet(venusMass, venusRadius)                 // illegal reference
+  case Earth   extends Planet(Planet.earthMass, Planet.earthRadius)   // ok
 object Planet:
-  private final val (VenusMass @ _, VenusRadius @ _) = (4.869e+24, 6.0518e6)
-  private final val (EarthMass @ _, EarthRadius @ _) = (5.976e+24, 6.37814e6)
+  private final val (venusMass, venusRadius) = (4.869e+24, 6.0518e6)
+  private final val (earthMass, earthRadius) = (5.976e+24, 6.37814e6)
 end Planet
 ```
 The fields referenced by `Mercury` are not visible, and the fields referenced by `Venus` may not
