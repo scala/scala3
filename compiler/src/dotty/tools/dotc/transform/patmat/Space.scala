@@ -4,6 +4,7 @@ package patmat
 
 import core._
 import Types._
+import TypeUtils._
 import Contexts._
 import Flags._
 import ast._
@@ -333,9 +334,12 @@ class SpaceEngine(using Context) extends SpaceLogic {
       // Since projections of types don't include null, intersection with null is empty.
       Empty
     else
-      val res = TypeComparer.provablyDisjoint(tp1, tp2)
-      if res then Empty
-      else Typ(AndType(tp1, tp2), decomposed = true)
+      val intersection = Typ(AndType(tp1, tp2), decomposed = false)
+      // unrelated numeric value classes can equal each other, so let's not consider type space intersection empty
+      if tp1.classSymbol.isNumericValueClass && tp2.classSymbol.isNumericValueClass then intersection
+      else if isPrimToBox(tp1, tp2) || isPrimToBox(tp2, tp1) then intersection
+      else if TypeComparer.provablyDisjoint(tp1, tp2) then Empty
+      else intersection
   }
 
   /** Return the space that represents the pattern `pat` */
@@ -407,7 +411,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
     case tp => Typ(tp, decomposed = true)
   }
 
-  private def unapplySeqInfo(resTp: Type, pos: SrcPos)(using Context): (Int, Type, Type) = {
+  private def unapplySeqInfo(resTp: Type, pos: SrcPos): (Int, Type, Type) = {
     var resultTp = resTp
     var elemTp = unapplySeqTypeElemTp(resultTp)
     var arity = productArity(resultTp, pos)
@@ -500,35 +504,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
     }
   }
 
-  /** Numeric literals, while being constant values of unrelated types (e.g. Char and Int),
-   *  when used in a case may end up matching at runtime, because their equals may returns true.
-   *  Because these are universally available, general purpose types, it would be good to avoid
-   *  returning false positive warnings, such as in `(c: Char) match { case 67 => ... }` emitting a
-   *  reachability warning on the case.  So the type `ConstantType(Constant(67, IntTag))` is
-   *  converted to `ConstantType(Constant(67, CharTag))`.  #12805 */
-  def convertConstantType(tp: Type, pt: Type): Type = tp match
-    case tp @ ConstantType(const) =>
-      val converted = const.convertTo(pt)
-      if converted == null then tp else ConstantType(converted)
-    case _ => tp
-
-  def isPrimToBox(tp: Type, pt: Type) =
-    tp.classSymbol.isPrimitiveValueClass && (defn.boxedType(tp).classSymbol eq pt.classSymbol)
-
-  /** Adapt types by performing primitive value unboxing or boxing, or numeric constant conversion.  #12805
-   *
-   *  This makes these isSubType cases work like this:
-   *  {{{
-   *   1      <:< Integer  => (<skolem> : Integer) <:< Integer  = true
-   *  ONE     <:< Int      => (<skolem> : Int)     <:< Int      = true
-   *  Integer <:< (1: Int) => (<skolem> : Int)     <:< (1: Int) = false
-   *  }}}
-   */
-  def adaptType(tp1: Type, tp2: Type): Type = trace(i"adaptType($tp1, $tp2)", show = true) {
-    if      isPrimToBox(tp1, tp2) then defn.boxedType(tp1).narrow
-    else if isPrimToBox(tp2, tp1) then defn.unboxedType(tp1).narrow
-    else convertConstantType(tp1, tp2)
-  }
+  def isPrimToBox(tp: Type, pt: Type): Boolean =
+    tp.isPrimitiveValueType && (defn.boxedType(tp).classSymbol eq pt.classSymbol)
 
   private val isSubspaceCache = mutable.HashMap.empty[(Space, Space, Context), Boolean]
 
@@ -539,7 +516,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
   def isSubType(tp1: Type, tp2: Type): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
     if tp1 == constantNullType && !ctx.mode.is(Mode.SafeNulls)
     then tp2 == constantNullType
-    else adaptType(tp1, tp2) <:< tp2
+    else tp1 <:< tp2
   }
 
   def isSameUnapply(tp1: TermRef, tp2: TermRef): Boolean =
@@ -872,7 +849,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
   /** Return the underlying type of non-module, non-constant, non-enum case singleton types.
    *  Also widen ExprType to its result type, and rewrap any annotation wrappers.
    *  For example, with `val opt = None`, widen `opt.type` to `None.type`. */
-  def toUnderlying(tp: Type)(using Context): Type = trace(i"toUnderlying($tp)", show = true)(tp match {
+  def toUnderlying(tp: Type): Type = trace(i"toUnderlying($tp)", show = true)(tp match {
     case _: ConstantType                            => tp
     case tp: TermRef if tp.symbol.is(Module)        => tp
     case tp: TermRef if tp.symbol.isAllOf(EnumCase) => tp
