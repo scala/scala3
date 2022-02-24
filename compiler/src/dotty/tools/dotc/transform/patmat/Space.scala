@@ -334,9 +334,10 @@ class SpaceEngine(using Context) extends SpaceLogic {
       // Since projections of types don't include null, intersection with null is empty.
       Empty
     else
-      val intersection = Typ(AndType(tp1, tp2), decomposed = true)
-      // unrelated numeric value classes can equal each other, so let's not consider type space interection empty
+      val intersection = Typ(AndType(tp1, tp2), decomposed = false)
+      // unrelated numeric value classes can equal each other, so let's not consider type space intersection empty
       if tp1.classSymbol.isNumericValueClass && tp2.classSymbol.isNumericValueClass then intersection
+      else if isPrimToBox(tp1, tp2) || isPrimToBox(tp2, tp1) then intersection
       else if TypeComparer.provablyDisjoint(tp1, tp2) then Empty
       else intersection
   }
@@ -503,36 +504,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
     }
   }
 
-  /** Numeric literals, while being constant values of unrelated types (e.g. Char and Int),
-   *  when used in a case may end up matching at runtime as their equals may returns true.
-   *  Because these are universally available, general purpose types, it would be good to avoid,
-   *  for example in `(c: Char) match { case 67 => ... }`, emitting a false positive
-   *  reachability warning on the case.  So the type `ConstantType(Constant(67, IntTag))` is
-   *  converted to `ConstantType(Constant(67, CharTag))`.  #12805 */
-  def convertConstantType(tp: Type, pt: Type): Type = trace(i"convertConstantType($tp, $pt)", show = true)(tp match
-    case tp @ ConstantType(const) =>
-      val converted = const.convertTo(pt)
-      if converted == null then tp else ConstantType(converted)
-    case _ => tp
-  )
-
   def isPrimToBox(tp: Type, pt: Type): Boolean =
     tp.isPrimitiveValueType && (defn.boxedType(tp).classSymbol eq pt.classSymbol)
-
-  /** Adapt types by performing primitive value unboxing or boxing, or numeric constant conversion.  #12805
-   *
-   *  This makes these isSubType cases work like this:
-   *  {{{
-   *   1      <:< Integer  => (<skolem> : Integer) <:< Integer  = true
-   *  ONE     <:< Int      => (<skolem> : Int)     <:< Int      = true
-   *  Integer <:< (1: Int) => (<skolem> : Int)     <:< (1: Int) = false
-   *  }}}
-   */
-  def adaptType(tp1: Type, tp2: Type): Type = trace(i"adaptType($tp1, $tp2)", show = true) {
-    if      isPrimToBox(tp1, tp2) then defn.boxedType(tp1).narrow
-    else if isPrimToBox(tp2, tp1) then defn.unboxedType(tp1).narrow
-    else convertConstantType(tp1, tp2)
-  }
 
   private val isSubspaceCache = mutable.HashMap.empty[(Space, Space, Context), Boolean]
 
@@ -543,10 +516,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
   def isSubType(tp1: Type, tp2: Type): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
     if tp1 == constantNullType && !ctx.mode.is(Mode.SafeNulls)
     then tp2 == constantNullType
-    else
-      val tp1a = adaptType(tp1, tp2)
-      if tp1a eq tp1 then tp1 <:< tp2
-      else trace(i"$tp1a <:< $tp2 (adapted)", debug, show = true)(tp1a <:< tp2)
+    else tp1 <:< tp2
   }
 
   def isSameUnapply(tp1: TermRef, tp2: TermRef): Boolean =
