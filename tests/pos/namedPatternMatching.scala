@@ -5,18 +5,13 @@ class Age(val hidden: Int)
 object Age:
   def apply(years: Int): Age = new Age(years)
 
-  case class UnapplyAge(_1: Int) {
-    type _1 = "years"
-    inline def _years = _1
-    type names = "years" +: ()
-  }
-
   // TODO: Describe alternative encoding with tagged tuples
-  def unapply(age: Age): UnapplyAge = UnapplyAge(age.hidden)
+  def unapply(age: Age): Some[Int & { type Names = "years" *: EmptyTuple }] =
+    Some(age.hidden.asInstanceOf)
 
 // TODO: Doesn't work. indexOfNames doesn't extract the correct names
 object StringExample:
-  def unapply(str: String): { type _1 = "first"; type _2 = "last"} & Option[(Char, Char)]  =
+  def unapply(str: String): Option[(Char, Char) & { type Names = "first" *: "last" *: EmptyTuple }]  =
     Some((str.head, str.last)).asInstanceOf
 
 case class User(name: String, age: Age, city: String)
@@ -31,9 +26,9 @@ val annasCity = user match
 // nested patterns
 val User(name = name, age = Age(years = years)) = user
 
-// partial funtion
+// partial function
 val maybeTom = Some(user).collect {
-  case u @ User(name = "Tom") => u
+  case u @ User(name = StringExample(last = 'm')) => u
 }
 
 val berlinerNames = for
