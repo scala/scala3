@@ -13,13 +13,13 @@ object ScaladocGeneration {
       value match {
         case s: String => s"$key ${escape(s)}"
         case true => s"$key"
-        case list: List[String @unchecked] => s"$key:${list.map(escape).mkString(",")}"
+        case list: List[_] => s"$key:${list.map(x => escape(x.toString)).mkString(",")}"
         case _ =>
           println(s"Unsupported setting: $key -> $value")
           ""
       }
 
-    private def escape(s: String) = if(s.contains(" ")) s""""$s"""" else s
+    private def escape(s: String) = if (s.contains(" ")) s""""$s"""" else s
   }
   case class ProjectName(value: String) extends Arg[String] {
     def key: String = "-project"
