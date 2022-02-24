@@ -191,7 +191,7 @@ class TreePickler(pickler: TastyPickler) {
       }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
-        pickleName(sym.fullName)
+        pickleName(sym.tastyCompatibleFullName)
       }
       else if (tpe.prefix == NoPrefix) {
         writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
@@ -397,7 +397,8 @@ class TreePickler(pickler: TastyPickler) {
                 || tree.denot.asSingleDenotation.isRefinedMethod // refined methods have no defining class symbol
               if selectFromQualifier then
                 writeByte(if name.isTypeName then SELECTtpt else SELECT)
-                pickleNameAndSig(name, sig, ename)
+                val isPackage = tree.symbol.is(Package)
+                pickleNameAndSig(if isPackage then name.encode else name, sig, ename)
                 pickleTree(qual)
               else // select from owner
                 writeByte(SELECTin)

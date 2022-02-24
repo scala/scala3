@@ -82,7 +82,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else super.nameString(strippedName)
 
   override protected def simpleNameString(sym: Symbol): String =
-    nameString(if (ctx.property(XprintMode).isEmpty) sym.initial.name else sym.name)
+    val theSym: SymDenotation = if (ctx.property(XprintMode).isEmpty) sym.initial else sym
+    nameString(if homogenizedView && theSym.is(Package) then theSym.name.encode else theSym.name)
 
   override def fullNameString(sym: Symbol): String =
     if !sym.exists || isEmptyPrefix(sym.effectiveOwner) then nameString(sym)

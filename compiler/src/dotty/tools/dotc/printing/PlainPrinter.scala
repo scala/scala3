@@ -270,7 +270,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     ParamRefNameString(param.binder.paramNames(param.paramNum))
 
   /** The name of the symbol without a unique id. */
-  protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
+  protected def simpleNameString(sym: Symbol): String =
+    val doEncode = homogenizedView && sym.is(Package)
+    nameString(if doEncode then sym.name.encode else sym.name)
 
   /** If -uniqid is set, the hashcode of the lambda type, after a # */
   protected def lambdaHash(pt: LambdaType): Text =
@@ -308,7 +310,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def selectionString(tp: NamedType): String = {
     val sym = if (homogenizedView) tp.symbol else tp.currentSymbol
-    if (sym.exists) nameString(sym) else nameString(tp.name)
+    if sym.exists then
+      if homogenizedView && sym.is(Flags.Package) && !sym.isEffectiveRoot then
+        nameString(sym.name.encode)
+      else
+        nameString(sym)
+    else
+      nameString(tp.name)
   }
 
   /** The string representation of this type used as a prefix */
@@ -674,4 +682,3 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def coloredText(text: Text, color: String): Text =
     if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
-

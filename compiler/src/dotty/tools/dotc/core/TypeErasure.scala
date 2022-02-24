@@ -799,15 +799,15 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           sigName(defn.functionTypeErasure(sym))
         else
           val cls = normalizeClass(sym.asClass)
-          val fullName =
+          val tastyCompatibleFullName =
             if !ctx.erasedTypes then
               // It's important to use the initial symbol to compute the full name
               // because the current symbol might have a different name or owner
               // and signatures are required to be stable before erasure.
-              cls.initial.fullName
+              cls.initial.tastyCompatibleFullName
             else
-              cls.fullName
-          fullName.asTypeName
+              cls.tastyCompatibleFullName
+          tastyCompatibleFullName.asTypeName
       case tp: AppliedType =>
         val sym = tp.tycon.typeSymbol
         sigName( // todo: what about repeatedParam?

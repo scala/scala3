@@ -455,17 +455,18 @@ object SymDenotations {
     final def originalOwner(using Context): Symbol = initial.maybeOwner
 
     /** The encoded full path name of this denotation, where outer names and inner names
-     *  are separated by `separator` strings as indicated by the given name kind.
+     *  are separated by `separator` strings as indicated by the given prefix separator.
      *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
      */
-    def fullNameSeparated(kind: QualifiedNameKind)(using Context): Name =
-      maybeOwner.fullNameSeparated(kind, kind, name)
+    def fullNameSeparated(prefixSep: PrefixSeparator)(using Context): Name =
+      val doEncodeName = prefixSep.encodePackages && is(Package) && !isEffectiveRoot
+      maybeOwner.fullNameSeparated(prefixSep, prefixSep.kind, if doEncodeName then name.encode else name)
 
-    /** The encoded full path name of this denotation (separated by `prefixKind`),
+    /** The encoded full path name of this denotation (separated by `prefixSep.kind`),
      *  followed by the separator implied by `kind` and the given `name`.
      *  Drops package objects. Represents each term in the owner chain by a simple `_$`.
      */
-    def fullNameSeparated(prefixKind: QualifiedNameKind, kind: QualifiedNameKind, name: Name)(using Context): Name =
+    def fullNameSeparated(prefixSep: PrefixSeparator, kind: QualifiedNameKind, name: Name)(using Context): Name =
       if (symbol == NoSymbol || isEffectiveRoot || kind == FlatName && is(PackageClass))
         name
       else {
@@ -475,7 +476,7 @@ object SymDenotations {
           encl = encl.owner
           filler += "_$"
         }
-        var prefix = encl.fullNameSeparated(prefixKind)
+        var prefix = encl.fullNameSeparated(prefixSep)
         if (kind.separator == "$")
           // duplicate scalac's behavior: don't write a double '$$' for module class members.
           prefix = prefix.exclude(ModuleClassName)
@@ -490,10 +491,13 @@ object SymDenotations {
       }
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
-    def flatName(using Context): Name = fullNameSeparated(FlatName)
+    def flatName(using Context): Name = fullNameSeparated(PrefixSeparator.Flat)
 
     /** `fullName` where `.' is the separator character */
-    def fullName(using Context): Name = fullNameSeparated(QualifiedName)
+    def fullName(using Context): Name = fullNameSeparated(PrefixSeparator.Full)
+
+    /** `fullName` where `.' is the separator character, and package names are encoded */
+    def tastyCompatibleFullName(using Context): Name = fullNameSeparated(PrefixSeparator.TastyCompatibleFull)
 
     private var myTargetName: Name = null
 
@@ -1685,6 +1689,12 @@ object SymDenotations {
     final def sealedDescendants(using Context): List[Symbol] = this.symbol :: sealedStrictDescendants
   }
 
+  enum PrefixSeparator(final val kind: QualifiedNameKind, final val encodePackages: Boolean):
+    case TastyCompatibleFull extends PrefixSeparator(QualifiedName, encodePackages = true)
+    case Full extends PrefixSeparator(QualifiedName, encodePackages = false)
+    case Flat extends PrefixSeparator(FlatName, encodePackages = false)
+    case ExpandPrefix extends PrefixSeparator(ExpandPrefixName, encodePackages = false)
+
   /** The contents of a class definition during a period
    */
   class ClassDenotation private[SymDenotations] (
@@ -1701,7 +1711,7 @@ object SymDenotations {
     // ----- caches -------------------------------------------------------
 
     private var myTypeParams: List[TypeSymbol] = null
-    private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
+    private var fullNameCache: SimpleIdentityMap[PrefixSeparator, Name] = SimpleIdentityMap.empty
 
     private var myMemberCache: EqHashMap[Name, PreDenotation] = null
     private var myMemberCachePeriod: Period = Nowhere
@@ -2252,12 +2262,12 @@ object SymDenotations {
       }
     }
 
-    override final def fullNameSeparated(kind: QualifiedNameKind)(using Context): Name = {
-      val cached = fullNameCache(kind)
+    override final def fullNameSeparated(prefixKind: PrefixSeparator)(using Context): Name = {
+      val cached = fullNameCache(prefixKind)
       if (cached != null) cached
       else {
-        val fn = super.fullNameSeparated(kind)
-        fullNameCache = fullNameCache.updated(kind, fn)
+        val fn = super.fullNameSeparated(prefixKind)
+        fullNameCache = fullNameCache.updated(prefixKind, fn)
         fn
       }
     }

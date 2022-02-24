@@ -8,11 +8,11 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds.FlatName
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.SymDenotations.PrefixSeparator
 import dotty.tools.dotc.core.Denotations.staticRef
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Constants.Constant
@@ -508,7 +508,7 @@ object Splicer {
             // Take the flatten name of the class and the full package name
             val pack = tpe.classSymbol.topLevelClass.owner
             val packageName = if (pack == defn.EmptyPackageClass) "" else s"${pack.fullName}."
-            packageName + tpe.classSymbol.fullNameSeparated(FlatName).toString
+            packageName + tpe.classSymbol.fullNameSeparated(PrefixSeparator.Flat).toString
         }
 
         val sym = param.classSymbol

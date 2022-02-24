@@ -1,0 +1,3 @@
+package symbolic_>>
+
+class |+|

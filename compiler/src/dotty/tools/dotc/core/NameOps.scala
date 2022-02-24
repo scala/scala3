@@ -7,6 +7,7 @@ import java.nio.CharBuffer
 import scala.io.Codec
 import Int.MaxValue
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
+import SymDenotations.PrefixSeparator
 import util.Chars.{isOperatorPart, digit2int}
 import Definitions._
 import nme._
@@ -141,7 +142,7 @@ object NameOps {
      *  followed by `kind` and the name.
      */
     def expandedName(base: Symbol, kind: QualifiedNameKind = ExpandedName)(using Context): N =
-      likeSpacedN { base.fullNameSeparated(ExpandPrefixName, kind, name) }
+      likeSpacedN { base.fullNameSeparated(PrefixSeparator.ExpandPrefix, kind, name) }
 
     /** Revert the expanded name. */
     def unexpandedName: N = likeSpacedN {

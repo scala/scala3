@@ -2483,7 +2483,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           else None
 
         def name: String = self.denot.name.toString
-        def fullName: String = self.denot.fullName.toString
+        def fullName: String = self.denot.tastyCompatibleFullName.toString
 
         def pos: Option[Position] =
           if self.exists then Some(self.sourcePos) else None
