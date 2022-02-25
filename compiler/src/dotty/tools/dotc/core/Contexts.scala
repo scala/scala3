@@ -872,11 +872,11 @@ object Contexts {
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(using Context): SymbolLoader = platform.rootLoader(root)
 
-    // Set up some phases to get started */
-    usePhases(List(SomePhase))
-
     /** The standard definitions */
     val definitions: Definitions = new Definitions
+
+    // Set up some phases to get started */
+    usePhases(List(SomePhase))
 
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
