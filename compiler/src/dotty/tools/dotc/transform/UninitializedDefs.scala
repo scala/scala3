@@ -43,6 +43,6 @@ class UninitializedDefs extends MiniPhase:
 end UninitializedDefs
 
 object UninitializedDefs:
-  val name: String = "uninitializedDefs"
-  val description: String = "replaces `compiletime.uninitialized` by `_`"
+  val name: String = "uninitialized"
+  val description: String = "eliminates `compiletime.uninitialized`"
 end UninitializedDefs

@@ -143,14 +143,13 @@ trait CliCommand:
     protected def value(using ss: SettingsState): T = setting.valueIn(ss)
 
   extension (s: String)
-    def padLeft(width: Int): String = StringBuilder().tap(_.append(" " * (width - s.length)).append(s)).toString
+    def padLeft(width: Int): String = String.format(s"%${width}s", s)
 
   // Formatting for -help and -Vphases in two columns, handling long field1 and wrapping long field2
   class Columnator(heading1: String, heading2: String, maxField: Int, separation: Int = 2):
     def apply(texts: List[List[(String, String)]])(using Context): String = StringBuilder().tap(columnate(_, texts)).toString
 
     private def columnate(sb: StringBuilder, texts: List[List[(String, String)]])(using Context): Unit =
-      import scala.util.Properties.{lineSeparator => EOL}
       import Highlighting.*
       val colors = Seq(Green(_), Yellow(_), Magenta(_), Cyan(_), Red(_))
       val nocolor = texts.length == 1
@@ -159,6 +158,7 @@ trait CliCommand:
       val field1 = maxField.min(texts.flatten.map(_._1.length).filter(_ < maxField).max) // widest field under maxField
       val field2 = if field1 + separation + maxField < maxCol then maxCol - field1 - separation else 0 // skinny window -> terminal wrap
       val separator = " " * separation
+      val EOL = "\n"
       def formatField1(text: String): String = if text.length <= field1 then text.padLeft(field1) else text + EOL + "".padLeft(field1)
       def formatField2(text: String): String =
         def loopOverField2(fld: String): List[String] =
