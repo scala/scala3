@@ -3,5 +3,5 @@
    |                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                                                                  Found:    {xs, f} LazyList[A]
    |                                                                  Required: {Mapped.this, f} LazyList[A]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

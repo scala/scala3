@@ -38,16 +38,16 @@
    |    x is already defined as value x
    |
    |    Note that overloaded methods must all be defined in the same group of toplevel definitions
--- [E006] Not Found Error: tests/neg/t5702-neg-bad-and-wild.scala:12:20 ------------------------------------------------
+-- [E127] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:12:20 ---------------------------------------------------
 12 |      case List(1, _*3,) => // error: pattern expected // error
    |                    ^
-   |                    Not found: *
+   |                  * cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
    |
    | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/neg/t5702-neg-bad-and-wild.scala:13:20 ------------------------------------------------
+-- [E127] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:13:20 ---------------------------------------------------
 13 |      case List(1, _*3:) =>  // error // error
    |                    ^
-   |                    Not found: *
+   |                  * cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
    |
    | longer explanation available when compiling with `-explain`
 -- [E045] Cyclic Error: tests/neg/t5702-neg-bad-and-wild.scala:23:19 ---------------------------------------------------
