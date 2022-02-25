@@ -3,5 +3,5 @@
    |                                       ^
    |                                       Found:    (a : {x, y} T)
    |                                       Required: T
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

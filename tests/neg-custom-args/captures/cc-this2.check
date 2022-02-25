@@ -4,5 +4,5 @@
   |      ^
   |      illegal inheritance: self type {*} D of class D does not conform to self type C
   |      of parent class C
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

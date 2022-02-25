@@ -3,8 +3,8 @@
    |                        ^^
    |                        Found:    (z2 : {x, cap1} () -> Unit)
    |                        Required: () -> Unit
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/vars.scala:13:6 ---------------------------------------------------------------
 13 |  var a: String => String = f // error
    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^

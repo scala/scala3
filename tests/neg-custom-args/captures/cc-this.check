@@ -3,8 +3,8 @@
   |               ^^^^
   |               Found:    (C.this : {C.this.x} C)
   |               Required: C
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/cc-this.scala:10:15 -----------------------------------------------------------
 10 |  class C2(val x: () => Int): // error
    |               ^
@@ -14,5 +14,5 @@ longer explanation available when compiling with `-explain`
    |        ^
    |        illegal inheritance: self type {C4.this.f} C4 of class C4 does not conform to self type C3
    |        of parent class C3
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

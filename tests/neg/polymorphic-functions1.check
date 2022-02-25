@@ -3,5 +3,5 @@
   |                                                     ^
   |                                                     Found:    [T] => (x: Int) => Int
   |                                                     Required: [T] => (x: T) => x.type
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

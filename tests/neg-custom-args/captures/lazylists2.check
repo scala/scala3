@@ -3,8 +3,8 @@
    |          ^
    |          error overriding method tail in trait LazyList of type -> {Mapped.this} LazyList[B];
    |            method tail of type -> {xs, f} LazyList[B] has incompatible type
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:18:4 ------------------------------------
 18 |    final class Mapped extends LazyList[B]:  // error
    |    ^
@@ -15,8 +15,8 @@ longer explanation available when compiling with `-explain`
 21 |      def head: B = f(xs.head)
 22 |      def tail: {this} LazyList[B] = xs.tail.map(f)
 23 |    new Mapped
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:27:4 ------------------------------------
 27 |    final class Mapped extends LazyList[B]:  // error
    |    ^
@@ -27,8 +27,8 @@ longer explanation available when compiling with `-explain`
 30 |      def head: B = f(xs.head)
 31 |      def tail: {this} LazyList[B] = xs.tail.map(f)
 32 |    new Mapped
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/lazylists2.scala:40:20 --------------------------------------------------------
 40 |      def head: B = f(xs.head)  // error
    |                    ^
