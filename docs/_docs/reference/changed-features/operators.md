@@ -169,7 +169,5 @@ neither of its occurrences is followed by a space and a token that can start an 
 
 ## Unary operators
 
-As a minor restriction, the first parameter list of a unary operator must not be explicit and empty.
+A unary operator must not have explicit parameter lists even if they are empty.
 A unary operator is a method named "unary_`op`" where `op` is one of `+`, `-`, `!`, or `~`.
-
-The reason for this restriction is that unary operator syntax does not support supplying an argument list, even if it is empty.
