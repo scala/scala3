@@ -1318,17 +1318,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         def searchImplicit(sym: TermSymbol, tpt: Tree) = {
           val evTyper = new Typer(ctx.nestingLevel + 1)
           val evCtx = ctx.fresh.setTyper(evTyper)
-          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
-          evidence.tpe match {
-            case fail: Implicits.AmbiguousImplicits =>
-              report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.srcPos)
-              true // hard error: return true to stop implicit search here
-            case fail: Implicits.SearchFailureType =>
-              false
-            case _ =>
-              //inlining.println(i"inferred implicit $sym: ${sym.info} with $evidence: ${evidence.tpe.widen}, ${evCtx.gadt.constraint}, ${evCtx.typerState.constraint}")
-              newTermBinding(sym, evidence)
-              true
+          inContext(evCtx) {
+            val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
+            evidence.tpe match {
+              case fail: Implicits.AmbiguousImplicits =>
+                report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.srcPos)
+                true // hard error: return true to stop implicit search here
+              case fail: Implicits.SearchFailureType =>
+                false
+              case _ =>
+                //inlining.println(i"inferred implicit $sym: ${sym.info} with $evidence: ${evidence.tpe.widen}, ${evCtx.gadt.constraint}, ${evCtx.typerState.constraint}")
+                newTermBinding(sym, evidence)
+                true
+            }
           }
         }
 
