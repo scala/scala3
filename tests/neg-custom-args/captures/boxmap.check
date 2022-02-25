@@ -3,5 +3,5 @@
    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |  Found:    {f} () -> ? Box[B]
    |  Required: () -> Box[B]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

@@ -9,12 +9,12 @@
    |    ^^^^
    |    Found:    {cap1} (x$0: Int) -> Int
    |    Required: {cap2} Int -> Int
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/byname.scala:19:5 ----------------------------------------
 19 |  h(g()) // error
    |    ^^^
    |    Found:    {cap2} () ?-> I
    |    Required: {cap1} () ?-> I
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
