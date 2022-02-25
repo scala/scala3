@@ -14,8 +14,8 @@
    |                                           Required: CanThrow[Exception] => () -> Nothing
 29 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 30 |  } {
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/try.scala:39:4 ----------------------------------------------------------------
 34 |  val xx = handle {
 35 |    (x: CanThrow[Exception]) =>

@@ -3,5 +3,5 @@
    |               ^^
    |               Found:    (xs : {cap1} C)
    |               Required: C
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
