@@ -7,12 +7,12 @@
    |               ^^^^
    |               Found:    (A.this : {c} A)
    |               Required: A
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this5.scala:7:9 ---------------------------------------
 7 |  object D extends C:   // error
   |         ^
   |         illegal inheritance: self type {c} D.type of object D does not conform to self type {} C
   |         of parent class C
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
