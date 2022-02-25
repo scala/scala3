@@ -119,7 +119,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       if (kind != overallKind) {
         bad = true
         report.error(
-            em"export overload conflicts with export of $firstSym: they are of different types (${kind.show} / ${overallKind.show})",
+            em"export overload conflicts with export of $firstSym: they are of different types (${kind.tryToShow} / ${overallKind.tryToShow})",
             info.pos)
       }
     }

@@ -88,7 +88,7 @@ object Formatting {
    *     against accidentally treating an interpolated value as a margin.
    */
   class StringFormatter(protected val sc: StringContext) {
-    protected def showArg(arg: Any)(using Context): String = arg.show
+    protected def showArg(arg: Any)(using Context): String = arg.tryToShow
 
     private def treatArg(arg: Shown, suffix: String)(using Context): (Any, String) = arg match {
       case arg: Seq[?] if suffix.nonEmpty && suffix.head == '%' =>

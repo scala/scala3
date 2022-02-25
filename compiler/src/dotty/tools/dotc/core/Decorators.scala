@@ -259,7 +259,7 @@ object Decorators {
     }
 
     /** Instead of `toString` call `show` on `Showable` values, falling back to `toString` if an exception is raised. */
-    def show(using Context): String = x match
+    def tryToShow(using Context): String = x match
       case x: Showable =>
         try x.show
         catch
