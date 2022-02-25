@@ -3,26 +3,26 @@
    |                            ^^^^
    |                            Found:    (ref1 : {cap1} LazyRef[Int]{elem: {cap1} () -> Int})
    |                            Required: LazyRef[Int]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:21:35 --------------------------------------
 21 |  val ref2c: {cap2} LazyRef[Int] = ref2 // error
    |                                   ^^^^
    |                                   Found:    (ref2 : {cap2, ref1} LazyRef[Int]{elem: {*} () -> Int})
    |                                   Required: {cap2} LazyRef[Int]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:23:35 --------------------------------------
 23 |  val ref3c: {ref1} LazyRef[Int] = ref3 // error
    |                                   ^^^^
    |                                   Found:    (ref3 : {cap2, ref1} LazyRef[Int]{elem: {*} () -> Int})
    |                                   Required: {ref1} LazyRef[Int]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:25:35 --------------------------------------
 25 |  val ref4c: {cap1} LazyRef[Int] = ref4 // error
    |                                   ^^^^
    |                                   Found:    (ref4 : {cap2, cap1} LazyRef[Int]{elem: {*} () -> Int})
    |                                   Required: {cap1} LazyRef[Int]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
