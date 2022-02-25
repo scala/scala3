@@ -94,3 +94,5 @@ class Exports extends SignatureTest("exports2", SignatureTest.all, sourceFiles =
 class ContextFunctions extends SignatureTest("contextfunctions", SignatureTest.all)
 
 class MarkdownCode extends SignatureTest("markdowncode", SignatureTest.all)
+
+class FunctionTypeSignatures extends SignatureTest("functionTypeSignatures", SignatureTest.all)
