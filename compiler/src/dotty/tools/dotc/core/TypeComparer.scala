@@ -8,6 +8,7 @@ import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
+import annotation.tailrec
 import util.Stats
 import util.NoSourcePosition
 import config.Config
@@ -182,16 +183,37 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     try op finally comparedTypeLambdas = saved
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
+    inline def followAlias[T](inline tp: Type)(inline default: T)(inline f: (TypeProxy, Symbol) => T): T =
+      tp.stripAnnots.stripTypeVar match
+        case tp: (AppliedType | TypeRef) => f(tp, tp.typeSymbol)
+        case _ => default
+
+    @tailrec def dealias(tp: Type, syms: Set[Symbol]): Type =
+      followAlias(tp)(NoType) { (tp, sym) =>
+        if syms contains sym then tp
+        else if sym.isAliasType then dealias(tp.superType, syms)
+        else NoType
+      }
+
+    @tailrec def aliasedSymbols(tp: Type, result: Set[Symbol] = Set.empty): Set[Symbol] =
+      followAlias(tp)(result) { (tp, sym) =>
+        if sym.isAliasType then aliasedSymbols(tp.superType, result + sym)
+        else if sym.exists && (sym ne AnyClass) then result + sym
+        else result
+      }
+
+    val tp1dealiased = dealias(tp1, aliasedSymbols(tp2)) orElse tp1
+
     val savedApprox = approx
     val savedLeftRoot = leftRoot
     if (a == ApproxState.Fresh) {
       this.approx = ApproxState.None
-      this.leftRoot = tp1
+      this.leftRoot = tp1dealiased
     }
     else this.approx = a
-    try recur(tp1, tp2)
+    try recur(tp1dealiased, tp2)
     catch {
-      case ex: Throwable => handleRecursive("subtype", i"$tp1 <:< $tp2", ex, weight = 2)
+      case ex: Throwable => handleRecursive("subtype", i"$tp1dealiased <:< $tp2", ex, weight = 2)
     }
     finally {
       this.approx = savedApprox
@@ -1026,7 +1048,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       def isMatchingApply(tp1: Type): Boolean = tp1.widen match {
         case tp1 @ AppliedType(tycon1, args1) =>
           // We intentionally do not automatically dealias `tycon1` or `tycon2` here.
-          // `TypeApplications#appliedTo` already takes care of dealiasing type
+          // `isSubType` already takes care of dealiasing type
           // constructors when this can be done without affecting type
           // inference, doing it here would not only prevent code from compiling
           // but could also result in the wrong thing being inferred later, for example
