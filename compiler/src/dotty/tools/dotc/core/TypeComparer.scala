@@ -407,7 +407,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: NamedType =>
         tp1.info match {
           case info1: TypeAlias =>
-            if (recur(info1.alias, tp2)) return true
+            def realiasConstraint() = tp2 match {
+              case tp2: TypeParamRef =>
+                constraint.entry(tp2) match {
+                  case TypeBounds(lo, hi) =>
+                    val aliasLo = tp1 != lo && info1.alias == lo
+                    val aliasHi = tp1 != hi && info1.alias == hi
+                    if aliasLo || aliasHi then
+                      constraint = constraint.updateEntry(tp2, TypeBounds(
+                        if aliasLo then tp1 else lo,
+                        if aliasHi then tp1 else hi))
+                  case tp =>
+                    if tp1 != tp && info1.alias == tp then
+                      constraint = constraint.updateEntry(tp2, tp1)
+                }
+              case _ =>
+            }
+            val res = recur(info1.alias, tp2)
+            if (tp1.symbol.isStatic) realiasConstraint()
+            if (res) return true
             if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
             if (tp1 eq NothingType) || isBottom(tp1) then return true

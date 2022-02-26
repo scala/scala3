@@ -329,7 +329,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case dealiased: HKTypeLambda =>
         def tryReduce =
           if (!args.exists(isBounds)) {
-            val followAlias = Config.simplifyApplications && {
+            val followAlias = (Config.simplifyApplications || self.typeSymbol.isPrivate) && {
               dealiased.resType match {
                 case AppliedType(tyconBody, dealiasedArgs) =>
                   // Reduction should not affect type inference when it's
