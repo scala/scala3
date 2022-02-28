@@ -115,7 +115,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
     all
 
-  def renderContent(page: Page) = page.content match
+  def renderContent(page: Page): PageContent = page.content match
     case m: Member =>
       val signatureRenderer = new SignatureRenderer:
         def currentDri: DRI = page.link.dri
@@ -126,7 +126,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
       MemberRenderer(signatureRenderer).fullMember(m)
     case t: ResolvedTemplate => siteContent(page.link.dri, t)
-    case a: String =>  raw(a)
+    case a: String =>  PageContent(raw(a), Seq.empty)
 
 
 

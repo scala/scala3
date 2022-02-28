@@ -10,6 +10,7 @@
 
   /* Layout Settings (changes on small screens) */
   --side-width: 300px;
+  --toc-width: 300px;
   --content-padding: 24px 42px;
   --footer-height: 42px;
 }
@@ -43,6 +44,7 @@ body, button, input {
 #main-content {
   min-height: calc(100vh - var(--footer-height) - 24px);
   margin-left: var(--side-width);
+  margin-right: var(--toc-width);
   padding: var(--content-padding);
   padding-bottom: calc(24px + var(--footer-height));
 
@@ -905,6 +907,36 @@ footer .socials {
   height: 8px;
 }
 
+#toc {
+  position: fixed;
+  right: 0px;
+  top: 0px;
+  width: var(--toc-width);
+  height: 100%;
+
+  padding-top: 15vh;
+  padding-right: 10px;
+
+  display: flex;
+  flex-direction: column;
+}
+
+#toc .toc-title {
+  font-weight: bold;
+  padding-left: 16px;
+}
+
+#toc ul {
+  list-style-type: none;
+  padding-left: 16px;
+}
+
+#toc a {
+  display: block;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
+
 /* Signature coloring */
 
 :root {
@@ -941,6 +973,12 @@ footer .socials {
   }
 }
 /* Landscape phones, portait tablets */
+@media(max-width: 1200px) {
+  :root {
+    --toc-width: 0px;
+  }
+}
+
 @media(max-width: 768px) {
   :root {
     --content-padding: 12px 12px;
@@ -1086,6 +1124,7 @@ footer .socials {
   flex-direction: column;
 
   transition: color 0.5s, background-color 0.5s;
+  z-index: 3;
 }
 
 .arrows.previous, .arrows.next {
