@@ -178,7 +178,7 @@ class MarkdownCommentParser(repr: Repr)(using dctx: DocContext)
   def stringToMarkup(str: String) =
     MarkdownParser.parseToMarkdown(str, markdown.DocFlexmarkParser(resolveLink))
 
-  def markupToString(t: mdu.Node): String = t.toString()
+  def markupToString(t: mdu.Node): String = t.getChars().toString()
 
   def markupToDokka(md: mdu.Node): DocPart = md
 
