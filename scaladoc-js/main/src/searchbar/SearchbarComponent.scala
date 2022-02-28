@@ -23,9 +23,16 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         Globals.pathToRoot + p.location
       }
 
+      val extensionTargetMessage = if (p.extensionTarget.isEmpty()) {
+        ""
+      } else {
+        " extension on " + p.extensionTarget
+      }
+
       div(cls := "scaladoc-searchbar-row monospace", "result" := "")(
         a(href := location)(
           p.fullName,
+          span(i(extensionTargetMessage)),
           span(cls := "pull-right scaladoc-searchbar-location")(p.description)
         ).tap { _.onclick = (event: Event) =>
           if (document.body.contains(rootDiv)) {
