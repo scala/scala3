@@ -415,7 +415,7 @@ object RefChecks {
         def accessBoundaryOK =
           val ob = other.accessBoundary(member.owner)
           val mb = member.accessBoundary(member.owner)
-          // restriction isLocalToBlock because companionModule fails under -from-tasty
+          // restriction isLocalToBlock because companionModule fails under -from-tasty (#14508)
           def companionBoundaryOK = ob.isClass && !ob.isLocalToBlock && mb.is(Module) && (ob.companionModule eq mb.companionModule)
           ob.isContainedIn(mb) || companionBoundaryOK    // m relaxes o's access boundary,
         def otherIsJavaProtected = other.isAllOf(JavaProtected)               // or o is Java defined and protected (see #3946)
