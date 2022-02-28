@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: 0.1.2 release notes
+redirectFrom: /docs/release-notes/0.1.2.html
 ---
 
 0.1.2 will be the first public release of Dotty.
