@@ -750,6 +750,7 @@ class ClassfileParser(
           in.skip(attrLen)
           // flag test will trigger completion and cycles, thus have to be lazy
           if (sym.owner.flagsUNSAFE.isAllOf(Flags.JavaInterface)) {
+            sym.setFlag(Flags.DefaultMethod)
             sym.resetFlag(Flags.Deferred)
             sym.owner.resetFlag(Flags.PureInterface)
             report.log(s"$sym in ${sym.owner} is a java 8+ default method.")
