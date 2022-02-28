@@ -50,10 +50,11 @@ At the end of their Tsardom, the Tsar reports to the team during the Dotty meeti
 # Maintenance List
 The following is the list of all the principal areas of the compiler and the core teams members who are responsible for their maintenance:
 
+- Parser: @odersky
 - Typer: @odersky, @smarter, (@dwijnand)
 - Erasure: @smarter, @odersky
 - Enums: @bishabosha
-- Export: @bishabosha, @odersky 
+- Export: @bishabosha, @odersky
 - Pattern Matching: @dwijnand, (@liufengyun), @sjrd
 - Inline: @nicolasstucki, @odersky
 - Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @aherlihy
