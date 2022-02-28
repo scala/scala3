@@ -1713,6 +1713,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val pat1 = withMode(Mode.Pattern) {
         checkSimpleKinded(typedType(cdef.pat, mapPatternBounds = true))
       }
+      if !ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef then
+        withMode(Mode.GadtConstraintInference) {
+          TypeComparer.constrainPatternType(pat1.tpe, selType)
+        }
       val pat2 = indexPattern(cdef).transform(pat1)
       var body1 = typedType(cdef.body, pt)
       if !body1.isType then
