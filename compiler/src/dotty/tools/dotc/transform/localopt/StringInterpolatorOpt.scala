@@ -158,5 +158,5 @@ class StringInterpolatorOpt extends MiniPhase:
       case _ => tree
 
 object StringInterpolatorOpt:
-  val name: String = "stringInterpolatorOpt"
-  val description: String = "optimize s, f and raw string interpolators"
+  val name: String = "interpolators"
+  val description: String = "optimize s, f, and raw string interpolators"

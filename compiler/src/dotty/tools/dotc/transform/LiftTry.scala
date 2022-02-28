@@ -85,4 +85,4 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 }
 object LiftTry:
   val name = "liftTry"
-  val description: String = "Lifts try's that might be executed on non-empty expression stacks"
+  val description: String = "lift any try that might be executed on a non-empty expression stack"
