@@ -337,7 +337,12 @@ object PatternMatcher {
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
-          val isGenericTuple = defn.isTupleClass(caseClass) && !defn.isTupleNType(tree.tpe)
+          val isGenericTuple = defn.isTupleClass(caseClass) && {
+            val tp = tree.tpe match // widen even hard unions, to see if it's a union of tuples
+              case tp @ OrType(l, r) => (if tp.isSoft then tp else tp.derivedOrType(l, r, soft = true)).widenUnion
+              case tp                => tp
+            !defn.isTupleNType(tp)
+          }
           val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(tree.tpe.dealias, _, ref(scrutinee))) else caseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
         else if (unapp.tpe <:< (defn.BooleanType))
