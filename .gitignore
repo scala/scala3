@@ -30,22 +30,6 @@ node_modules
 .metals/
 metals.sbt
 
-# Scala-IDE specific
-.scala_dependencies
-.cache
-.cache-main
-.cache-tests
-.classpath
-.project
-.settings
-classes/
-*/bin/
-
-# Dotty IDE
-/.dotty-ide-dev-port
-/.dotty-ide-artifact
-/.dotty-ide.json
-
 # idea
 .idea
 .idea_modules
@@ -79,10 +63,6 @@ compiler/test/debug/Gen.jar
 compiler/before-pickling.txt
 compiler/after-pickling.txt
 bench/compile.txt
-*.dotty-ide-version
-
-# The vscode app for testing
-vscode-dotty/.vscode-test
 
 community-build/scala3-bootstrapped.version
 community-build/sbt-dotty-sbt

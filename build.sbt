@@ -33,7 +33,6 @@ val sjsJUnitTests = Build.sjsJUnitTests
 val sjsCompilerTests = Build.sjsCompilerTests
 
 val `sbt-test` = Build.`sbt-test`
-val `vscode-dotty` = Build.`vscode-dotty`
 
 inThisBuild(Build.thisBuildSettings)
 inScope(Global)(Build.globalSettings)
