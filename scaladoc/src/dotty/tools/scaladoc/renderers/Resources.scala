@@ -147,7 +147,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
           val descr = m.dri.asFileLocation
           def processMember(member: Member): Seq[JSON] =
             val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())().asInstanceOf[InlineSignatureBuilder]
-            val sig = Signature(Plain(s"${member.kind.name} "), Plain(member.name)) ++ signatureBuilder.names.reverse
+            val sig = Signature(Plain(member.name)) ++ signatureBuilder.names.reverse
             val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr, member.kind.name)
             val children = member
                 .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])
@@ -189,6 +189,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     dottyRes("images/val.svg"),
     dottyRes("images/package.svg"),
     dottyRes("images/static.svg"),
+    dottyRes("images/inkuire.svg"),
     dottyRes("images/github-icon-black.png"),
     dottyRes("images/github-icon-white.png"),
     dottyRes("images/discord-icon-black.png"),

@@ -9,17 +9,14 @@ import scala.concurrent.duration._
 import java.net.URI
 
 class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
-  val resultsChunkSize = 100
+  val initialChunkSize = 5
+  val resultsChunkSize = 20
   extension (p: PageEntry)
     def toHTML =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
-      wrapper.classList.add("scaladoc-searchbar-result")
-      wrapper.classList.add("scaladoc-searchbar-result-row")
+      wrapper.classList.add("scaladoc-searchbar-row")
+      wrapper.setAttribute("result", "")
       wrapper.classList.add("monospace")
-
-      val icon = document.createElement("span").asInstanceOf[html.Span]
-      icon.classList.add("micon")
-      icon.classList.add(p.kind.take(2))
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
       resultA.href =
@@ -39,7 +36,6 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       location.classList.add("scaladoc-searchbar-location")
       location.textContent = p.description
 
-      wrapper.appendChild(icon)
       wrapper.appendChild(resultA)
       resultA.appendChild(location)
       wrapper.addEventListener("mouseover", {
@@ -50,27 +46,22 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   extension (m: InkuireMatch)
     def toHTML =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
-      wrapper.classList.add("scaladoc-searchbar-result")
+      wrapper.classList.add("scaladoc-searchbar-row")
+      wrapper.setAttribute("result", "")
+      wrapper.setAttribute("inkuire-result", "")
       wrapper.classList.add("monospace")
       wrapper.setAttribute("mq", m.mq.toString)
-
-      val resultDiv = document.createElement("div").asInstanceOf[html.Div]
-      resultDiv.classList.add("scaladoc-searchbar-result-row")
-
-      val icon = document.createElement("span").asInstanceOf[html.Span]
-      icon.classList.add("micon")
-      icon.classList.add(m.entryType.take(2))
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
       // Inkuire pageLocation should start with e (external)
       // or i (internal). The rest of the string is an absolute
       // or relative URL
-      resultA.href = 
+      resultA.href =
         if (m.pageLocation(0) == 'e') {
           m.pageLocation.substring(1)
         } else {
           Globals.pathToRoot + m.pageLocation.substring(1)
-        } 
+        }
       resultA.text = m.functionName
       resultA.onclick = (event: Event) =>
         if (document.body.contains(rootDiv)) {
@@ -92,9 +83,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       signature.classList.add("scaladoc-searchbar-inkuire-signature")
       signature.textContent = m.prettifiedSignature
 
-      wrapper.appendChild(resultDiv)
-      resultDiv.appendChild(icon)
-      resultDiv.appendChild(resultA)
+      wrapper.appendChild(resultA)
       resultA.appendChild(signature)
       wrapper.appendChild(packageDiv)
       packageDiv.appendChild(packageIcon)
@@ -104,29 +93,85 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       })
       wrapper
 
+  def createKindSeparator(kind: String) =
+    val kindSeparator = document.createElement("div").asInstanceOf[html.Div]
+    val icon = document.createElement("span").asInstanceOf[html.Span]
+    icon.classList.add("micon")
+    icon.classList.add(kind.take(2))
+    val name = document.createElement("span").asInstanceOf[html.Span]
+    name.textContent = kind
+    kindSeparator.classList.add("scaladoc-searchbar-row")
+    kindSeparator.setAttribute("divider", "")
+    kindSeparator.classList.add("monospace")
+    kindSeparator.appendChild(icon)
+    kindSeparator.appendChild(name)
+    kindSeparator
+
   def handleNewFluffQuery(matchers: List[Matchers]) =
-    val result = engine.query(matchers).map(_.toHTML)
+    val result = engine.query(matchers)
+    val fragment = document.createDocumentFragment()
+    def createLoadMoreElement =
+      val loadMoreElement = document.createElement("div").asInstanceOf[html.Div]
+      loadMoreElement.classList.add("scaladoc-searchbar-row")
+      loadMoreElement.setAttribute("loadmore", "")
+      loadMoreElement.classList.add("monospace")
+      val icon = document.createElement("a").asInstanceOf[html.Anchor]
+      icon.classList.add("i")
+      icon.classList.add("fas")
+      icon.classList.add("fa-arrow-down")
+      val text = document.createElement("span").asInstanceOf[html.Span]
+      text.textContent = "Show more..."
+      val anchor = document.createElement("a").asInstanceOf[html.Anchor]
+      anchor.appendChild(icon)
+      anchor.appendChild(text)
+      loadMoreElement.appendChild(anchor)
+      loadMoreElement.addEventListener("mouseover", _ => handleHover(loadMoreElement))
+      loadMoreElement
+    result.groupBy(_.kind).map {
+      case (kind, entries) =>
+        val kindSeparator = createKindSeparator(kind)
+        val htmlEntries = entries.map(_.toHTML)
+        val loadMoreElement = createLoadMoreElement
+        def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
+          loadMoreElement.onclick = (event: Event) => {
+            entries.take(resultsChunkSize).foreach(_.classList.remove("hidden"))
+            val nextElems = entries.drop(resultsChunkSize)
+            if nextElems.nonEmpty then loadMoreResults(nextElems) else loadMoreElement.classList.add("hidden")
+          }
+        }
+
+        fragment.appendChild(kindSeparator)
+        htmlEntries.foreach(fragment.appendChild)
+        fragment.appendChild(loadMoreElement)
+
+        val nextElems = htmlEntries.drop(initialChunkSize)
+        if nextElems.nonEmpty then {
+          nextElems.foreach(_.classList.add("hidden"))
+          loadMoreResults(nextElems)
+        } else {
+          loadMoreElement.classList.add("hidden")
+        }
+
+    }
+
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
-    val fragment = document.createDocumentFragment()
-    result.take(resultsChunkSize).foreach(fragment.appendChild)
     resultsDiv.appendChild(fragment)
-    def loadMoreResults(result: List[raw.HTMLElement]): Unit = {
-      resultsDiv.onscroll = (event: Event) => {
-        if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight) {
-          val fragment = document.createDocumentFragment()
-          result.take(resultsChunkSize).foreach(fragment.appendChild)
-          resultsDiv.appendChild(fragment)
-          loadMoreResults(result.drop(resultsChunkSize))
-        }
-      }
-    }
-    loadMoreResults(result.drop(resultsChunkSize))
+
+  def createLoadingAnimation: raw.HTMLElement = {
+    val loading = document.createElement("div").asInstanceOf[html.Div]
+    loading.classList.add("loading-wrapper")
+    val animation = document.createElement("div").asInstanceOf[html.Div]
+    animation.classList.add("loading")
+    loading.appendChild(animation)
+    loading
+}
 
   extension (s: String)
     def toHTMLError =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
-      wrapper.classList.add("scaladoc-searchbar-result")
+      wrapper.classList.add("scaladoc-searchbar-row")
+      wrapper.classList.add("scaladoc-searchbar-error")
       wrapper.classList.add("monospace")
 
       val errorSpan = document.createElement("span").asInstanceOf[html.Span]
@@ -141,35 +186,30 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     clearTimeout(timeoutHandle)
     resultsDiv.scrollTop = 0
     resultsDiv.onscroll = (event: Event) => { }
-    while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
+    def clearResults() = while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
     parser.parse(query) match {
       case EngineMatchersQuery(matchers) =>
+        clearResults()
         handleNewFluffQuery(matchers)
       case BySignature(signature) =>
         timeoutHandle = setTimeout(1.second) {
-          val properResultsDiv = document.createElement("div").asInstanceOf[html.Div]
-          resultsDiv.appendChild(properResultsDiv)
-          val loading = document.createElement("div").asInstanceOf[html.Div]
-          loading.classList.add("loading-wrapper")
-          val animation = document.createElement("div").asInstanceOf[html.Div]
-          animation.classList.add("loading")
-          loading.appendChild(animation)
-          properResultsDiv.appendChild(loading)
+          val loading = createLoadingAnimation
+          val kindSeparator = createKindSeparator("inkuire")
+          clearResults()
+          resultsDiv.appendChild(loading)
+          resultsDiv.appendChild(kindSeparator)
           inkuireEngine.query(query) { (m: InkuireMatch) =>
-            val next = properResultsDiv.children.foldLeft[Option[Element]](None) {
-              case (acc, child) if !acc.isEmpty => acc
-              case (_, child) =>
-                Option.when(child.hasAttribute("mq") && Integer.parseInt(child.getAttribute("mq")) > m.mq)(child)
-            }
+            val next = resultsDiv.children
+              .find(child => child.hasAttribute("mq") && Integer.parseInt(child.getAttribute("mq")) > m.mq)
             next.fold {
-              properResultsDiv.appendChild(m.toHTML)
+              resultsDiv.appendChild(m.toHTML)
             } { next =>
-              properResultsDiv.insertBefore(m.toHTML, next)
+              resultsDiv.insertBefore(m.toHTML, next)
             }
           } { (s: String) =>
-            animation.classList.remove("loading")
-            properResultsDiv.appendChild(s.toHTMLError)
+            resultsDiv.removeChild(loading)
+            resultsDiv.appendChild(s.toHTMLError)
           }
         }
     }
@@ -202,7 +242,11 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   private val input: html.Input =
     val element = document.createElement("input").asInstanceOf[html.Input]
     element.id = "scaladoc-searchbar-input"
-    element.addEventListener("input", (e) => handleNewQuery(e.target.asInstanceOf[html.Input].value))
+    element.addEventListener("input", { e =>
+      val inputValue = e.target.asInstanceOf[html.Input].value
+      if inputValue.isEmpty then showHints()
+      else handleNewQuery(inputValue)
+    })
     element.autocomplete = "off"
     element
 
@@ -226,7 +270,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     searchIcon.addEventListener("mousedown", (e: Event) => e.stopPropagation())
     document.body.addEventListener("mousedown", (e: Event) =>
       if (document.body.contains(element)) {
-        document.body.removeChild(element)
+        handleEscape()
       }
     )
     element.addEventListener("keydown", {
@@ -245,8 +289,19 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     val selectedElement = resultsDiv.querySelector("[selected]")
     if selectedElement != null then {
       selectedElement.removeAttribute("selected")
-      val sibling = selectedElement.previousElementSibling
-      if sibling != null && sibling.classList.contains("scaladoc-searchbar-result") then {
+      def recur(elem: raw.Element): raw.Element = {
+        val prev = elem.previousElementSibling
+        if prev == null then null
+        else {
+          if !prev.classList.contains("hidden") &&
+            prev.classList.contains("scaladoc-searchbar-row") &&
+            (prev.hasAttribute("result") || prev.hasAttribute("loadmore"))
+          then prev
+          else recur(prev)
+        }
+      }
+      val sibling = recur(selectedElement)
+      if sibling != null then {
         sibling.setAttribute("selected", "")
         resultsDiv.scrollTop = sibling.asInstanceOf[html.Element].offsetTop - (2 * sibling.asInstanceOf[html.Element].clientHeight)
       }
@@ -254,8 +309,19 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   }
   private def handleArrowDown() = {
     val selectedElement = resultsDiv.querySelector("[selected]")
+    def recur(elem: raw.Element): raw.Element = {
+      val next = elem.nextElementSibling
+      if next == null then null
+      else {
+        if !next.classList.contains("hidden") &&
+          next.classList.contains("scaladoc-searchbar-row") &&
+          (next.hasAttribute("result") || next.hasAttribute("loadmore"))
+        then next
+        else recur(next)
+      }
+    }
     if selectedElement != null then {
-      val sibling = selectedElement.nextElementSibling
+      val sibling = recur(selectedElement)
       if sibling != null then {
         selectedElement.removeAttribute("selected")
         sibling.setAttribute("selected", "")
@@ -263,14 +329,10 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       }
     } else {
       val firstResult = resultsDiv.firstElementChild
-      if firstResult != null && firstResult.classList.contains("scaladoc-searchbar-result") then {
-        firstResult.setAttribute("selected", "")
-        resultsDiv.scrollTop = firstResult.asInstanceOf[html.Element].offsetTop - (2 * firstResult.asInstanceOf[html.Element].clientHeight)
-      } else if firstResult != null && firstResult.firstElementChild != null && firstResult.firstElementChild.nextElementSibling != null then {
-        // for Inkuire there is another wrapper to avoid displaying old results + the first (child) div is a loading animation wrapper | should be resolved in #12995
-        val properFirstResult = firstResult.firstElementChild.nextElementSibling
-        properFirstResult.setAttribute("selected", "")
-        resultsDiv.scrollTop = properFirstResult.asInstanceOf[html.Element].offsetTop - (2 * properFirstResult.asInstanceOf[html.Element].clientHeight)
+      if firstResult != null then {
+        val toSelect = if firstResult.classList.contains("scaladoc-searchbar-row") && firstResult.hasAttribute("result") then firstResult else recur(firstResult)
+        toSelect.setAttribute("selected", "")
+        resultsDiv.scrollTop = toSelect.asInstanceOf[html.Element].offsetTop - (2 * toSelect.asInstanceOf[html.Element].clientHeight)
       }
     }
   }
@@ -283,7 +345,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   private def handleEscape() = {
     // clear the search input and close the search
     input.value = ""
-    handleNewQuery("")
+    showHints()
     document.body.removeChild(rootDiv)
   }
 
@@ -312,4 +374,59 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     }
   }
 
-  handleNewQuery("")
+  private case class ListRoot(elems: Seq[ListNode])
+  private case class ListNode(value: String, nested: ListRoot)
+
+  private def ul(nodes: ListNode*) = ListRoot(nodes)
+  private def li(s: String) = ListNode(s, ListRoot(Nil))
+  private def li(s: String, nested: ListRoot) = ListNode(s, nested)
+
+  private def renderList: ListRoot => Option[html.UList] = {
+    case ListRoot(Nil) => None
+    case ListRoot(nodes) =>
+      val list = document.createElement("ul").asInstanceOf[html.UList]
+      nodes.foreach {
+        case ListNode(txt, nested) =>
+          val li = document.createElement("li").asInstanceOf[html.LI]
+          li.innerHTML = txt
+          renderList(nested).foreach(li.appendChild)
+          list.appendChild(li)
+      }
+      Some(list)
+  }
+
+  private def showHints() = {
+    def clearResults() = while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
+    val hintsDiv = document.createElement("div").asInstanceOf[html.Div]
+    hintsDiv.classList.add("searchbar-hints")
+    val icon = document.createElement("span").asInstanceOf[html.Span]
+    icon.classList.add("fas")
+    icon.classList.add("fa-lightbulb")
+    icon.classList.add("fa-5x")
+    val header = document.createElement("h1").asInstanceOf[html.Heading]
+    header.textContent = "A bunch of hints to make your life easier"
+    val listElements: ListRoot = ul(
+        li("Type a phrase to search members <b>by name</b> and static sites <b>by title</b>"),
+        li("Type abbreviations <b>cC, caCa, camCa</b> to search for <b>camelCase</b>"),
+        li(
+          "Type a function signature to search for members <b>by signature</b> using Inkuire",
+          ul(
+            li("Type <b>String => Int</b> to find <b>String.size</b>, <b>String.toInt</b>"),
+            li("Type <b>String => String => String</b> to find <b>String.mkString</b>, <b>String.stripPrefix</b>"),
+            li("Inkuire also finds field accessors. Type <b>Some[A] => A</b> to find <b>Some.value</b>"),
+            li("For more information about Inkuire see <a href=https://docs.scala-lang.org/scala3/guides/scaladoc/search-engine.html>the documentation</a>"),
+            li("The availability of this function depends on configuration used to generate Scaladoc")
+          )
+        )
+    )
+
+    val list = renderList(listElements).get
+    list.classList.add("searchbar-hints-list")
+    hintsDiv.appendChild(icon)
+    hintsDiv.appendChild(header)
+    hintsDiv.appendChild(list)
+    clearResults()
+    resultsDiv.appendChild(hintsDiv)
+  }
+
+  showHints()
