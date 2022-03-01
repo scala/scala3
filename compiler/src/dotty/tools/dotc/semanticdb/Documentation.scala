@@ -14,8 +14,8 @@ final case class Documentation(
     format: dotty.tools.dotc.semanticdb.Documentation.Format = dotty.tools.dotc.semanticdb.Documentation.Format.HTML
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       
       {
@@ -34,12 +34,13 @@ final case class Documentation(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -110,6 +111,7 @@ object Documentation  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
   object Format  {
     sealed trait Recognized extends Format
     
+    
     @SerialVersionUID(0L)
     case object HTML extends Format(0) with Format.Recognized {
       val index = 0
@@ -147,7 +149,6 @@ object Documentation  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
     
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Format(unrecognizedValue) with SemanticdbUnrecognizedEnum
-    
     lazy val values = scala.collection.immutable.Seq(HTML, MARKDOWN, JAVADOC, SCALADOC, KDOC)
     def fromValue(__value: _root_.scala.Int): Format = __value match {
       case 0 => HTML

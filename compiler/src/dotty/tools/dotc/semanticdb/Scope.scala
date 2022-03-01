@@ -14,8 +14,8 @@ final case class Scope(
     hardlinks: _root_.scala.Seq[dotty.tools.dotc.semanticdb.SymbolInformation] = _root_.scala.Seq.empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       symlinks.foreach { __item =>
         val __value = __item
@@ -28,12 +28,13 @@ final case class Scope(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       symlinks.foreach { __v =>
@@ -48,11 +49,11 @@ final case class Scope(
       };
     }
     def clearSymlinks = copy(symlinks = _root_.scala.Seq.empty)
-    def addSymlinks(__vs: _root_.scala.Predef.String*): Scope = addAllSymlinks(__vs)
+    def addSymlinks(__vs: _root_.scala.Predef.String *): Scope = addAllSymlinks(__vs)
     def addAllSymlinks(__vs: Iterable[_root_.scala.Predef.String]): Scope = copy(symlinks = symlinks ++ __vs)
     def withSymlinks(__v: _root_.scala.Seq[_root_.scala.Predef.String]): Scope = copy(symlinks = __v)
     def clearHardlinks = copy(hardlinks = _root_.scala.Seq.empty)
-    def addHardlinks(__vs: dotty.tools.dotc.semanticdb.SymbolInformation*): Scope = addAllHardlinks(__vs)
+    def addHardlinks(__vs: dotty.tools.dotc.semanticdb.SymbolInformation *): Scope = addAllHardlinks(__vs)
     def addAllHardlinks(__vs: Iterable[dotty.tools.dotc.semanticdb.SymbolInformation]): Scope = copy(hardlinks = hardlinks ++ __vs)
     def withHardlinks(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.SymbolInformation]): Scope = copy(hardlinks = __v)
     
