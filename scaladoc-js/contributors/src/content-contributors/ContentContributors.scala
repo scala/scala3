@@ -13,6 +13,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Success,Failure}
 
+import utils.HTML._
+
 // Contributors widget
 // see https://stackoverflow.com/a/19200303/4496364
 // Copied from https://github.com/scala/docs.scala-lang/blob/main/resources/js/functions.js and rewritten to Scala.js
@@ -90,21 +92,17 @@ class ContentContributors:
       getAuthorsForFilename(Globals.githubContributorsFilename.stripPrefix("/")).onComplete {
         case Success(authors) =>
           val maybeDiv = Option(document.getElementById("documentation-contributors"))
-          maybeDiv.foreach { div =>
-            authors.foreach { case FullAuthor(name, url, img) =>
-              val divN = document.createElement("div")
-              val imgN = document.createElement("img").asInstanceOf[html.Image]
-              imgN.src = img
-              val autN = document.createElement("a").asInstanceOf[html.Anchor]
-              autN.href = url
-              autN.text = name
-              divN.appendChild(imgN)
-              divN.appendChild(autN)
-              div.appendChild(divN)
+          maybeDiv.foreach { mdiv =>
+            authors.foreach { case FullAuthor(name, url, imgUrl) =>
+              val inner = div(
+                img(src := imgUrl)(),
+                a(href := url)(name)
+              )
+              mdiv.appendChild(inner)
             }
 
             if authors.nonEmpty then
-              div.asInstanceOf[html.Div].parentElement.classList.toggle("hidden")
+              mdiv.asInstanceOf[html.Div].parentElement.classList.toggle("hidden")
         }
         case Failure(err) =>
           println(s"Couldn't fetch contributors. $err")

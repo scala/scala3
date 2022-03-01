@@ -18,7 +18,7 @@ object HTML {
       val elem: T = elemFactory()
       def unpackTags(tags: TagArg*): Unit = tags.foreach {
         case e: domhtml.Element => elem.appendChild(e)
-        case s: String => elem.appendChild(textNode(s.escapeReservedTokens))
+        case s: String => elem.appendChild(textNode(s))
         case elemSeq: (Seq[domhtml.Element | String] @unchecked) => unpackTags(elemSeq*)
       }
 
@@ -45,7 +45,10 @@ object HTML {
       .replace("'", "&apos;")
 
   case class Attr(name: String):
-    def :=(value: String): AppliedAttr = new AppliedAttr(name, value)
+    def :=(value: String): AppliedAttr = (name, value)
+
+  extension (key: String) def :=(value: String): AppliedAttr =
+    (key, value)
 
   opaque type AppliedAttr = (String, String)
 
@@ -88,6 +91,8 @@ object HTML {
   val th = Tag[domhtml.TableCell]("th")
   val tr = Tag[domhtml.TableRow]("tr")
   val td = Tag[domhtml.TableCell]("td")
+  val b = Tag[domhtml.Element]("b")
+  val i = Tag[domhtml.Element]("i")
 
   val cls = Attr("class")
   val href = Attr("href")
