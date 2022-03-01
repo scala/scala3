@@ -1,6 +1,7 @@
 import java.io.File
 import java.nio.file._
 
+import Process._
 import Modes._
 import ScaladocGeneration._
 import com.jsuereth.sbtpgp.PgpKeys
@@ -16,8 +17,6 @@ import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
 import xerial.sbt.Sonatype.autoImport._
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
-import dotty.tools.sbtplugin.DottyIDEPlugin.{installCodeExtension, prepareCommand, runProcess}
-import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbtbuildinfo.BuildInfoPlugin
@@ -52,10 +51,6 @@ object DottyJSPlugin extends AutoPlugin {
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
-
-    // Exclude all these projects from `configureIDE/launchIDE` since they
-    // take time to compile, print a bunch of warnings, and are rarely edited.
-    excludeFromIDE := true
   )
 }
 
@@ -154,9 +149,6 @@ object Build {
   // Compiles the documentation and static site
   val genDocs = inputKey[Unit]("run scaladoc to generate static documentation site")
 
-  // Only available in vscode-dotty
-  val unpublish = taskKey[Unit]("Unpublish a package")
-
   // Settings used to configure the test language server
   val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
   val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
@@ -182,11 +174,6 @@ object Build {
     ),
 
     (Compile / compile / javacOptions) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
-
-    // Override `runCode` from DottyIDEPlugin to use the language-server and
-    // vscode extension from the source repository of dotty instead of a
-    // published version.
-    runCode := (`scala3-language-server` / run).toTask("").value,
 
     // Avoid various sbt craziness involving classloaders and parallelism
     run / fork := true,
@@ -285,7 +272,6 @@ object Build {
     crossPaths := false,
     // Do not depend on the Scala library
     autoScalaLibrary := false,
-    excludeFromIDE := true,
     disableDocSetting
   )
 
@@ -315,7 +301,6 @@ object Build {
 
     version := dottyNonBootstrappedVersion,
     scalaVersion := referenceVersion,
-    excludeFromIDE := true,
 
     disableDocSetting
   )
@@ -1033,23 +1018,6 @@ object Build {
       // Work around https://github.com/eclipse/lsp4j/issues/295
       dependencyOverrides += "org.eclipse.xtend" % "org.eclipse.xtend.lib" % "2.16.0",
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
-
-      run := Def.inputTaskDyn {
-        val inputArgs = spaceDelimited("<arg>").parsed
-
-        val mainClass = "dotty.tools.languageserver.Main"
-        val extensionPath = (`vscode-dotty` / baseDirectory).value.getAbsolutePath
-
-        val codeArgs =
-          s"--extensionDevelopmentPath=$extensionPath" +:
-            (if (inputArgs.isEmpty) List((baseDirectory.value / "..").getAbsolutePath) else inputArgs)
-
-        val clientCommand = prepareCommand(codeCommand.value ++ codeArgs)
-
-        val allArgs = "-client_command" +: clientCommand
-
-        runTask(Runtime, mainClass, allArgs: _*)
-      }.dependsOn((`vscode-dotty` / Compile / compile)).evaluated
     ).
     settings(
       ideTestsCompilerVersion := (`scala3-compiler` / version).value,
@@ -1454,60 +1422,6 @@ object Build {
         (`scaladoc` / publishLocal),
         (`scala3-bootstrapped` / publishLocal) // Needed because sbt currently hardcodes the dotty artifact
       ).evaluated
-    )
-
-  lazy val `vscode-dotty` = project.in(file("vscode-dotty")).
-    settings(commonSettings).
-    settings(
-      version := "0.1.17-snapshot", // Keep in sync with package.json
-      autoScalaLibrary := false,
-      publishArtifact := false,
-      bspEnabled := false,
-      (Compile / resourceGenerators) += Def.task {
-        // Resources that will be copied when bootstrapping a new project
-        val buildSbtFile = baseDirectory.value / "out" / "build.sbt"
-        IO.write(buildSbtFile,
-          s"""scalaVersion := "$publishedDottyVersion"""")
-        val dottyPluginSbtFile = baseDirectory.value / "out" / "scala3-plugin.sbt"
-        IO.write(dottyPluginSbtFile,
-          s"""addSbtPlugin("$dottyOrganization" % "sbt-dotty" % "$sbtDottyVersion")""")
-        Seq(buildSbtFile, dottyPluginSbtFile)
-      },
-      Compile / compile := Def.task {
-        val workingDir = baseDirectory.value
-        val coursier = workingDir / "out" / "coursier"
-        val packageJson = workingDir / "package.json"
-        if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
-          runProcess(Seq("npm", "install"), wait = true, directory = Some(workingDir))
-        val tsc = workingDir / "node_modules" / ".bin" / "tsc"
-        runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", workingDir.getAbsolutePath), wait = true)
-
-        // vscode-dotty depends on scala-lang.scala for syntax highlighting,
-        // this is not automatically installed when starting the extension in development mode
-        // (--extensionDevelopmentPath=...)
-        installCodeExtension(codeCommand.value, "scala-lang.scala")
-
-        sbt.internal.inc.Analysis.Empty
-      }.dependsOn((Compile / managedResources)).value,
-      sbt.Keys.`package`:= {
-        runProcess(Seq("vsce", "package"), wait = true, directory = Some(baseDirectory.value))
-
-        baseDirectory.value / s"dotty-${version.value}.vsix"
-      },
-      unpublish := {
-        runProcess(Seq("vsce", "unpublish"), wait = true, directory = Some(baseDirectory.value))
-      },
-      publish := {
-        runProcess(Seq("vsce", "publish"), wait = true, directory = Some(baseDirectory.value))
-      },
-      run := Def.inputTask {
-        val inputArgs = spaceDelimited("<arg>").parsed
-        val codeArgs = if (inputArgs.isEmpty) List((baseDirectory.value / "..").getAbsolutePath) else inputArgs
-        val extensionPath = baseDirectory.value.getAbsolutePath
-        val processArgs = List(s"--extensionDevelopmentPath=$extensionPath") ++ codeArgs
-
-        runProcess(codeCommand.value ++ processArgs, wait = true)
-      }.dependsOn((Compile / compile)).evaluated
     )
 
   lazy val `sbt-community-build` = project.in(file("sbt-community-build")).
