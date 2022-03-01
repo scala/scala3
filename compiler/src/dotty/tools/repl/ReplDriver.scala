@@ -35,6 +35,8 @@ import org.jline.reader._
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.Using
+import dotty.tools.dotc.util.Chars
+import dotty.tools.dotc.parsing.Tokens
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
@@ -199,6 +201,7 @@ class ReplDriver(settings: Array[String],
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
     def makeCandidate(label: String) = {
+
       new Candidate(
         /* value    = */ label,
         /* displ    = */ label, // displayed value
