@@ -21,8 +21,8 @@ final case class TextDocument(
     synthetics: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Synthetic] = _root_.scala.Seq.empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       
       {
@@ -78,12 +78,13 @@ final case class TextDocument(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -147,19 +148,19 @@ final case class TextDocument(
     def withMd5(__v: _root_.scala.Predef.String): TextDocument = copy(md5 = __v)
     def withLanguage(__v: dotty.tools.dotc.semanticdb.Language): TextDocument = copy(language = __v)
     def clearSymbols = copy(symbols = _root_.scala.Seq.empty)
-    def addSymbols(__vs: dotty.tools.dotc.semanticdb.SymbolInformation*): TextDocument = addAllSymbols(__vs)
+    def addSymbols(__vs: dotty.tools.dotc.semanticdb.SymbolInformation *): TextDocument = addAllSymbols(__vs)
     def addAllSymbols(__vs: Iterable[dotty.tools.dotc.semanticdb.SymbolInformation]): TextDocument = copy(symbols = symbols ++ __vs)
     def withSymbols(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.SymbolInformation]): TextDocument = copy(symbols = __v)
     def clearOccurrences = copy(occurrences = _root_.scala.Seq.empty)
-    def addOccurrences(__vs: dotty.tools.dotc.semanticdb.SymbolOccurrence*): TextDocument = addAllOccurrences(__vs)
+    def addOccurrences(__vs: dotty.tools.dotc.semanticdb.SymbolOccurrence *): TextDocument = addAllOccurrences(__vs)
     def addAllOccurrences(__vs: Iterable[dotty.tools.dotc.semanticdb.SymbolOccurrence]): TextDocument = copy(occurrences = occurrences ++ __vs)
     def withOccurrences(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.SymbolOccurrence]): TextDocument = copy(occurrences = __v)
     def clearDiagnostics = copy(diagnostics = _root_.scala.Seq.empty)
-    def addDiagnostics(__vs: dotty.tools.dotc.semanticdb.Diagnostic*): TextDocument = addAllDiagnostics(__vs)
+    def addDiagnostics(__vs: dotty.tools.dotc.semanticdb.Diagnostic *): TextDocument = addAllDiagnostics(__vs)
     def addAllDiagnostics(__vs: Iterable[dotty.tools.dotc.semanticdb.Diagnostic]): TextDocument = copy(diagnostics = diagnostics ++ __vs)
     def withDiagnostics(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Diagnostic]): TextDocument = copy(diagnostics = __v)
     def clearSynthetics = copy(synthetics = _root_.scala.Seq.empty)
-    def addSynthetics(__vs: dotty.tools.dotc.semanticdb.Synthetic*): TextDocument = addAllSynthetics(__vs)
+    def addSynthetics(__vs: dotty.tools.dotc.semanticdb.Synthetic *): TextDocument = addAllSynthetics(__vs)
     def addAllSynthetics(__vs: Iterable[dotty.tools.dotc.semanticdb.Synthetic]): TextDocument = copy(synthetics = synthetics ++ __vs)
     def withSynthetics(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Synthetic]): TextDocument = copy(synthetics = __v)
     

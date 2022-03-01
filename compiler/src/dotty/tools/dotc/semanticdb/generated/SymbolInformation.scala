@@ -22,8 +22,8 @@ final case class SymbolInformation(
     documentation: _root_.scala.Option[dotty.tools.dotc.semanticdb.Documentation] = _root_.scala.None
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       
       {
@@ -63,7 +63,7 @@ final case class SymbolInformation(
       
       {
         val __value = dotty.tools.dotc.semanticdb.SymbolInformation._typemapper_signature.toBase(signature)
-        if (__value != dotty.tools.dotc.semanticdb.SignatureMessage.defaultInstance) {
+        if (__value.serializedSize != 0) {
           __size += 2 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
@@ -74,7 +74,7 @@ final case class SymbolInformation(
       
       {
         val __value = dotty.tools.dotc.semanticdb.SymbolInformation._typemapper_access.toBase(access)
-        if (__value != dotty.tools.dotc.semanticdb.AccessMessage.defaultInstance) {
+        if (__value.serializedSize != 0) {
           __size += 2 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
@@ -89,12 +89,13 @@ final case class SymbolInformation(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -135,7 +136,7 @@ final case class SymbolInformation(
       };
       {
         val __v = dotty.tools.dotc.semanticdb.SymbolInformation._typemapper_signature.toBase(signature)
-        if (__v != dotty.tools.dotc.semanticdb.SignatureMessage.defaultInstance) {
+        if (__v.serializedSize != 0) {
           _output__.writeTag(17, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
@@ -143,7 +144,7 @@ final case class SymbolInformation(
       };
       {
         val __v = dotty.tools.dotc.semanticdb.SymbolInformation._typemapper_access.toBase(access)
-        if (__v != dotty.tools.dotc.semanticdb.AccessMessage.defaultInstance) {
+        if (__v.serializedSize != 0) {
           _output__.writeTag(18, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
@@ -167,12 +168,12 @@ final case class SymbolInformation(
     def withDisplayName(__v: _root_.scala.Predef.String): SymbolInformation = copy(displayName = __v)
     def withSignature(__v: dotty.tools.dotc.semanticdb.Signature): SymbolInformation = copy(signature = __v)
     def clearAnnotations = copy(annotations = _root_.scala.Seq.empty)
-    def addAnnotations(__vs: dotty.tools.dotc.semanticdb.Annotation*): SymbolInformation = addAllAnnotations(__vs)
+    def addAnnotations(__vs: dotty.tools.dotc.semanticdb.Annotation *): SymbolInformation = addAllAnnotations(__vs)
     def addAllAnnotations(__vs: Iterable[dotty.tools.dotc.semanticdb.Annotation]): SymbolInformation = copy(annotations = annotations ++ __vs)
     def withAnnotations(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Annotation]): SymbolInformation = copy(annotations = __v)
     def withAccess(__v: dotty.tools.dotc.semanticdb.Access): SymbolInformation = copy(access = __v)
     def clearOverriddenSymbols = copy(overriddenSymbols = _root_.scala.Seq.empty)
-    def addOverriddenSymbols(__vs: _root_.scala.Predef.String*): SymbolInformation = addAllOverriddenSymbols(__vs)
+    def addOverriddenSymbols(__vs: _root_.scala.Predef.String *): SymbolInformation = addAllOverriddenSymbols(__vs)
     def addAllOverriddenSymbols(__vs: Iterable[_root_.scala.Predef.String]): SymbolInformation = copy(overriddenSymbols = overriddenSymbols ++ __vs)
     def withOverriddenSymbols(__v: _root_.scala.Seq[_root_.scala.Predef.String]): SymbolInformation = copy(overriddenSymbols = __v)
     def getDocumentation: dotty.tools.dotc.semanticdb.Documentation = documentation.getOrElse(dotty.tools.dotc.semanticdb.Documentation.defaultInstance)
@@ -281,6 +282,7 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
   
   object Kind  {
     sealed trait Recognized extends Kind
+    
     
     @SerialVersionUID(0L)
     case object UNKNOWN_KIND extends Kind(0) with Kind.Recognized {
@@ -396,7 +398,6 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
     
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Kind(unrecognizedValue) with SemanticdbUnrecognizedEnum
-    
     lazy val values = scala.collection.immutable.Seq(UNKNOWN_KIND, LOCAL, FIELD, METHOD, CONSTRUCTOR, MACRO, TYPE, PARAMETER, SELF_PARAMETER, TYPE_PARAMETER, OBJECT, PACKAGE, PACKAGE_OBJECT, CLASS, TRAIT, INTERFACE)
     def fromValue(__value: _root_.scala.Int): Kind = __value match {
       case 0 => UNKNOWN_KIND
@@ -449,6 +450,7 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
   
   object Property  {
     sealed trait Recognized extends Property
+    
     
     @SerialVersionUID(0L)
     case object UNKNOWN_PROPERTY extends Property(0) with Property.Recognized {
@@ -599,7 +601,6 @@ object SymbolInformation  extends SemanticdbGeneratedMessageCompanion[dotty.tool
     
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Property(unrecognizedValue) with SemanticdbUnrecognizedEnum
-    
     lazy val values = scala.collection.immutable.Seq(UNKNOWN_PROPERTY, ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY, CASE, COVARIANT, CONTRAVARIANT, VAL, VAR, STATIC, PRIMARY, ENUM, DEFAULT, GIVEN, INLINE, OPEN, TRANSPARENT, INFIX, OPAQUE)
     def fromValue(__value: _root_.scala.Int): Property = __value match {
       case 0 => UNKNOWN_PROPERTY

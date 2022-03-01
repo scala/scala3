@@ -52,8 +52,8 @@ final case class TreeMessage(
     sealedValue: dotty.tools.dotc.semanticdb.TreeMessage.SealedValue = dotty.tools.dotc.semanticdb.TreeMessage.SealedValue.Empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (sealedValue.applyTree.isDefined) {
         val __value = sealedValue.applyTree.get
@@ -90,12 +90,13 @@ final case class TreeMessage(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       sealedValue.applyTree.foreach { __v =>
@@ -323,13 +324,13 @@ final case class ApplyTree(
     arguments: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Tree] = _root_.scala.Seq.empty
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       
       {
         val __value = dotty.tools.dotc.semanticdb.ApplyTree._typemapper_function.toBase(function)
-        if (__value != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
@@ -340,17 +341,18 @@ final case class ApplyTree(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
         val __v = dotty.tools.dotc.semanticdb.ApplyTree._typemapper_function.toBase(function)
-        if (__v != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__v.serializedSize != 0) {
           _output__.writeTag(1, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
@@ -365,7 +367,7 @@ final case class ApplyTree(
     }
     def withFunction(__v: dotty.tools.dotc.semanticdb.Tree): ApplyTree = copy(function = __v)
     def clearArguments = copy(arguments = _root_.scala.Seq.empty)
-    def addArguments(__vs: dotty.tools.dotc.semanticdb.Tree*): ApplyTree = addAllArguments(__vs)
+    def addArguments(__vs: dotty.tools.dotc.semanticdb.Tree *): ApplyTree = addAllArguments(__vs)
     def addAllArguments(__vs: Iterable[dotty.tools.dotc.semanticdb.Tree]): ApplyTree = copy(arguments = arguments ++ __vs)
     def withArguments(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Tree]): ApplyTree = copy(arguments = __v)
     
@@ -429,8 +431,8 @@ final case class FunctionTree(
     body: dotty.tools.dotc.semanticdb.Tree = dotty.tools.dotc.semanticdb.FunctionTree._typemapper_body.toCustom(dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance)
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       parameters.foreach { __item =>
         val __value = __item
@@ -439,19 +441,20 @@ final case class FunctionTree(
       
       {
         val __value = dotty.tools.dotc.semanticdb.FunctionTree._typemapper_body.toBase(body)
-        if (__value != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       parameters.foreach { __v =>
@@ -462,7 +465,7 @@ final case class FunctionTree(
       };
       {
         val __v = dotty.tools.dotc.semanticdb.FunctionTree._typemapper_body.toBase(body)
-        if (__v != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__v.serializedSize != 0) {
           _output__.writeTag(2, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
@@ -470,7 +473,7 @@ final case class FunctionTree(
       };
     }
     def clearParameters = copy(parameters = _root_.scala.Seq.empty)
-    def addParameters(__vs: dotty.tools.dotc.semanticdb.IdTree*): FunctionTree = addAllParameters(__vs)
+    def addParameters(__vs: dotty.tools.dotc.semanticdb.IdTree *): FunctionTree = addAllParameters(__vs)
     def addAllParameters(__vs: Iterable[dotty.tools.dotc.semanticdb.IdTree]): FunctionTree = copy(parameters = parameters ++ __vs)
     def withParameters(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.IdTree]): FunctionTree = copy(parameters = __v)
     def withBody(__v: dotty.tools.dotc.semanticdb.Tree): FunctionTree = copy(body = __v)
@@ -532,8 +535,8 @@ final case class IdTree(
     symbol: _root_.scala.Predef.String = ""
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       
       {
@@ -545,12 +548,13 @@ final case class IdTree(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -609,30 +613,31 @@ final case class LiteralTree(
     constant: dotty.tools.dotc.semanticdb.Constant = dotty.tools.dotc.semanticdb.LiteralTree._typemapper_constant.toCustom(dotty.tools.dotc.semanticdb.ConstantMessage.defaultInstance)
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       
       {
         val __value = dotty.tools.dotc.semanticdb.LiteralTree._typemapper_constant.toBase(constant)
-        if (__value != dotty.tools.dotc.semanticdb.ConstantMessage.defaultInstance) {
+        if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
         val __v = dotty.tools.dotc.semanticdb.LiteralTree._typemapper_constant.toBase(constant)
-        if (__v != dotty.tools.dotc.semanticdb.ConstantMessage.defaultInstance) {
+        if (__v.serializedSize != 0) {
           _output__.writeTag(1, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
@@ -691,37 +696,38 @@ final case class MacroExpansionTree(
     tpe: dotty.tools.dotc.semanticdb.Type = dotty.tools.dotc.semanticdb.MacroExpansionTree._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       
       {
         val __value = dotty.tools.dotc.semanticdb.MacroExpansionTree._typemapper_beforeExpansion.toBase(beforeExpansion)
-        if (__value != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
       
       {
         val __value = dotty.tools.dotc.semanticdb.MacroExpansionTree._typemapper_tpe.toBase(tpe)
-        if (__value != dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance) {
+        if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
         val __v = dotty.tools.dotc.semanticdb.MacroExpansionTree._typemapper_beforeExpansion.toBase(beforeExpansion)
-        if (__v != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__v.serializedSize != 0) {
           _output__.writeTag(1, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
@@ -729,7 +735,7 @@ final case class MacroExpansionTree(
       };
       {
         val __v = dotty.tools.dotc.semanticdb.MacroExpansionTree._typemapper_tpe.toBase(tpe)
-        if (__v != dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance) {
+        if (__v.serializedSize != 0) {
           _output__.writeTag(2, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
@@ -798,8 +804,8 @@ final case class OriginalTree(
     range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range] = _root_.scala.None
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (range.isDefined) {
         val __value = range.get
@@ -808,12 +814,13 @@ final case class OriginalTree(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       range.foreach { __v =>
@@ -875,13 +882,13 @@ final case class SelectTree(
     id: _root_.scala.Option[dotty.tools.dotc.semanticdb.IdTree] = _root_.scala.None
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       
       {
         val __value = dotty.tools.dotc.semanticdb.SelectTree._typemapper_qualifier.toBase(qualifier)
-        if (__value != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
@@ -892,17 +899,18 @@ final case class SelectTree(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
         val __v = dotty.tools.dotc.semanticdb.SelectTree._typemapper_qualifier.toBase(qualifier)
-        if (__v != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__v.serializedSize != 0) {
           _output__.writeTag(1, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
@@ -978,13 +986,13 @@ final case class TypeApplyTree(
     typeArguments: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Type] = _root_.scala.Seq.empty
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       
       {
         val __value = dotty.tools.dotc.semanticdb.TypeApplyTree._typemapper_function.toBase(function)
-        if (__value != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
@@ -995,17 +1003,18 @@ final case class TypeApplyTree(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
         val __v = dotty.tools.dotc.semanticdb.TypeApplyTree._typemapper_function.toBase(function)
-        if (__v != dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance) {
+        if (__v.serializedSize != 0) {
           _output__.writeTag(1, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
@@ -1020,7 +1029,7 @@ final case class TypeApplyTree(
     }
     def withFunction(__v: dotty.tools.dotc.semanticdb.Tree): TypeApplyTree = copy(function = __v)
     def clearTypeArguments = copy(typeArguments = _root_.scala.Seq.empty)
-    def addTypeArguments(__vs: dotty.tools.dotc.semanticdb.Type*): TypeApplyTree = addAllTypeArguments(__vs)
+    def addTypeArguments(__vs: dotty.tools.dotc.semanticdb.Type *): TypeApplyTree = addAllTypeArguments(__vs)
     def addAllTypeArguments(__vs: Iterable[dotty.tools.dotc.semanticdb.Type]): TypeApplyTree = copy(typeArguments = typeArguments ++ __vs)
     def withTypeArguments(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Type]): TypeApplyTree = copy(typeArguments = __v)
     

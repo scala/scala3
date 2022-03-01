@@ -15,8 +15,8 @@ final case class Diagnostic(
     message: _root_.scala.Predef.String = ""
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (range.isDefined) {
         val __value = range.get
@@ -39,12 +39,13 @@ final case class Diagnostic(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       range.foreach { __v =>
@@ -129,6 +130,7 @@ object Diagnostic  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.
   object Severity  {
     sealed trait Recognized extends Severity
     
+    
     @SerialVersionUID(0L)
     case object UNKNOWN_SEVERITY extends Severity(0) with Severity.Recognized {
       val index = 0
@@ -166,7 +168,6 @@ object Diagnostic  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.
     
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Severity(unrecognizedValue) with SemanticdbUnrecognizedEnum
-    
     lazy val values = scala.collection.immutable.Seq(UNKNOWN_SEVERITY, ERROR, WARNING, INFORMATION, HINT)
     def fromValue(__value: _root_.scala.Int): Severity = __value match {
       case 0 => UNKNOWN_SEVERITY

@@ -13,8 +13,8 @@ final case class TextDocuments(
     documents: _root_.scala.Seq[dotty.tools.dotc.semanticdb.TextDocument] = _root_.scala.Seq.empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       documents.foreach { __item =>
         val __value = __item
@@ -23,12 +23,13 @@ final case class TextDocuments(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       documents.foreach { __v =>
@@ -39,7 +40,7 @@ final case class TextDocuments(
       };
     }
     def clearDocuments = copy(documents = _root_.scala.Seq.empty)
-    def addDocuments(__vs: dotty.tools.dotc.semanticdb.TextDocument*): TextDocuments = addAllDocuments(__vs)
+    def addDocuments(__vs: dotty.tools.dotc.semanticdb.TextDocument *): TextDocuments = addAllDocuments(__vs)
     def addAllDocuments(__vs: Iterable[dotty.tools.dotc.semanticdb.TextDocument]): TextDocuments = copy(documents = documents ++ __vs)
     def withDocuments(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.TextDocument]): TextDocuments = copy(documents = __v)
     

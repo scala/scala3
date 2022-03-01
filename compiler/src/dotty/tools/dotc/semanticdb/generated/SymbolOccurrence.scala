@@ -15,8 +15,8 @@ final case class SymbolOccurrence(
     role: dotty.tools.dotc.semanticdb.SymbolOccurrence.Role = dotty.tools.dotc.semanticdb.SymbolOccurrence.Role.UNKNOWN_ROLE
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeCachedValue: _root_.scala.Int = 0
-    private[this] def __computeSerializedValue(): _root_.scala.Int = {
+    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
+    private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (range.isDefined) {
         val __value = range.get
@@ -39,12 +39,13 @@ final case class SymbolOccurrence(
       __size
     }
     override def serializedSize: _root_.scala.Int = {
-      var read = __serializedSizeCachedValue
-      if (read == 0) {
-        read = __computeSerializedValue()
-        __serializedSizeCachedValue = read
+      var __size = __serializedSizeMemoized
+      if (__size == 0) {
+        __size = __computeSerializedSize() + 1
+        __serializedSizeMemoized = __size
       }
-      read
+      __size - 1
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       range.foreach { __v =>
@@ -127,6 +128,7 @@ object SymbolOccurrence  extends SemanticdbGeneratedMessageCompanion[dotty.tools
   object Role  {
     sealed trait Recognized extends Role
     
+    
     @SerialVersionUID(0L)
     case object UNKNOWN_ROLE extends Role(0) with Role.Recognized {
       val index = 0
@@ -150,7 +152,6 @@ object SymbolOccurrence  extends SemanticdbGeneratedMessageCompanion[dotty.tools
     
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Role(unrecognizedValue) with SemanticdbUnrecognizedEnum
-    
     lazy val values = scala.collection.immutable.Seq(UNKNOWN_ROLE, REFERENCE, DEFINITION)
     def fromValue(__value: _root_.scala.Int): Role = __value match {
       case 0 => UNKNOWN_ROLE
