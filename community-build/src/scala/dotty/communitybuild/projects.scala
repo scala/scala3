@@ -397,7 +397,8 @@ object projects:
 
   lazy val shapeless = SbtCommunityProject(
     project       = "shapeless",
-    sbtTestCommand   = "test",
+    sbtTestCommand = """set deriving/scalacOptions -= "-Xfatal-warnings"; set typeable/scalacOptions -= "-Xfatal-warnings"; test""",
+      // selectively disable -Xfatal-warnings due to deprecations
     sbtDocCommand = forceDoc("typeable", "deriving", "data"),
     scalacOptions = Nil // disable -Ysafe-init, due to -Xfatal-warnings
   )
@@ -702,7 +703,14 @@ object projects:
   lazy val akka = SbtCommunityProject(
     project = "akka",
     extraSbtArgs = List(s"-Dakka.build.scalaVersion=$testedCompilerVersion"),
-    sbtTestCommand = "set every targetSystemJdk := true; akka-actor-tests/Test/compile",
+    sbtTestCommand = List(
+      "set every targetSystemJdk := true",
+      // selectively disable -Xfatal-warnings due to deprecations
+      """set actor/Compile/scalacOptions -= "-Xfatal-warnings"""",
+      """set testkit/Compile/scalacOptions -= "-Xfatal-warnings"""",
+      """set actorTests/Compile/scalacOptions -= "-Xfatal-warnings"""",
+      "akka-actor-tests/Test/compile",
+    ).mkString("; "),
     dependencies = () => List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
   )
 

@@ -1,5 +1,6 @@
 scala> def f(thread: Thread) = thread.stop()
-there were 1 deprecation warning(s); re-run with -deprecation for details
+there was 1 deprecation warning; re-run with -deprecation for details
+1 warning found
 def f(thread: Thread): Unit
 
 scala>:reset -deprecation

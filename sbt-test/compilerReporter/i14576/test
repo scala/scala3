@@ -1,0 +1,19 @@
+> compile
+> assertFeatureSummary
+> assertDeprecationSummary
+
+> resetMessages
+
+> set scalacOptions += "-feature"
+> compile
+> assertNoFeatureSummary
+> assertDeprecationSummary
+
+> resetMessages
+
+> set scalacOptions += "-deprecation"
+> compile
+> assertNoFeatureSummary
+> assertNoDeprecationSummary
+
+> resetMessages

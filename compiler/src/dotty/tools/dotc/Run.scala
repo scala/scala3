@@ -321,10 +321,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compileSources(sources)
   }
 
-  /** Print summary; return # of errors encountered */
+  /** Print summary of warnings and errors encountered */
   def printSummary(): Unit = {
     printMaxConstraint()
     val r = runContext.reporter
+    r.summarizeUnreportedWarnings
     r.printSummary
   }
 
