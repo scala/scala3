@@ -4564,7 +4564,14 @@ class JSCodeGen()(using genCtx: Context) {
         val module = annot.argumentConstantString(0).getOrElse {
           unexpected("could not read the module argument as a string literal")
         }
-        val path = annot.argumentConstantString(1).fold[List[String]](Nil)(parsePath)
+        val path = annot.argumentConstantString(1).fold {
+          if (annot.arguments.sizeIs < 2)
+            parsePath(sym.defaultJSName)
+          else
+            Nil
+        } { pathName =>
+          parsePath(pathName)
+        }
         val importSpec = Import(module, path)
         annot.argumentConstantString(2).fold[js.JSNativeLoadSpec] {
           importSpec
