@@ -135,16 +135,24 @@ object Symbols {
     private[core] def defRunId: RunId =
       if (lastDenot == null) NoRunId else lastDenot.validFor.runId
 
+    private inline def associatedFileMatches(inline filter: AbstractFile => Boolean)(using Context): Boolean =
+      try
+        val file = associatedFile
+        file != null && filter(file)
+      catch case ex: StaleSymbol =>
+        // can happen for constructor proxy companions. Test case is pos-macros/i9484.
+        false
+
     /** Does this symbol come from a currently compiled source file? */
     final def isDefinedInCurrentRun(using Context): Boolean =
-      span.exists && defRunId == ctx.runId && {
-        try
-          val file = associatedFile
-          file != null && ctx.run.files.contains(file)
-        catch case ex: StaleSymbol =>
-          // can happen for constructor proxy companions. Test case is pos-macros/i9484.
-          false
-      }
+      span.exists && defRunId == ctx.runId && associatedFileMatches(ctx.run.files.contains)
+
+    /** Is this symbol valid in the current run and has an associated file that is
+      * not a binary file. e.g. This will return true for
+      * symbols defined by the user in a prior run of the REPL, that are still valid.
+      */
+    final def isDefinedInSource(using Context): Boolean =
+      span.exists && isValidInCurrentRun && associatedFileMatches(_.extension != "class")
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =

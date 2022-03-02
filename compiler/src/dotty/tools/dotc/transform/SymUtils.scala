@@ -113,18 +113,20 @@ object SymUtils:
       self.isAllOf(Given | Method) && isCodefined(self.info)
 
     def useCompanionAsSumMirror(using Context): Boolean =
+      def companionExtendsSum(using Context): Boolean =
+        self.linkedClass.isSubClass(defn.Mirror_SumClass)
       self.linkedClass.exists
-      && !self.is(Scala2x)
-      && (
-        // If the sum type is compiled from source, and `self` is a "generic sum"
-        // then its companion object will become a sum mirror in `posttyper`. (This method
-        // can be called from `typer` when summoning a Mirror.)
-        // However if `self` is from a prior run then we should check that its companion subclasses `Mirror.Sum`.
-        // e.g. before Scala 3.1, hierarchical sum types were not considered "generic sums", so their
-        // companion would not cache the mirror. Companions from TASTy will already be typed as `Mirror.Sum`.
-        self.isDefinedInCurrentRun
-        || self.linkedClass.isSubClass(defn.Mirror_SumClass)
-      )
+        && !self.is(Scala2x)
+        && (
+          // If the sum type is compiled from source, and `self` is a "generic sum"
+          // then its companion object will become a sum mirror in `posttyper`. (This method
+          // can be called from `typer` when summoning a Mirror.)
+          // However if `self` is from a binary file, then we should check that its companion
+          // subclasses `Mirror.Sum`. e.g. before Scala 3.1, hierarchical sum types were not
+          // considered "generic sums", so their companion would not cache the mirror.
+          // Companions from TASTy will already be typed as `Mirror.Sum`.
+          self.isDefinedInSource || companionExtendsSum
+        )
 
     /** Is this a sealed class or trait for which a sum mirror is generated?
     *  It must satisfy the following conditions:
