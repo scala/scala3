@@ -492,6 +492,14 @@ object CaptureSet:
   def mapRefs(xs: Refs, tm: TypeMap, variance: Int)(using Context): CaptureSet =
     mapRefs(xs, extrapolateCaptureRef(_, tm, variance))
 
+  def subCapturesRange(arg1: TypeBounds, arg2: Type)(using Context): Boolean = arg1 match
+    case TypeBounds(CapturingType(lo, loRefs, _), CapturingType(hi, hiRefs, _)) if lo =:= hi =>
+      given VarState = VarState()
+      val cs2 = arg2.captureSet
+      hiRefs.subCaptures(cs2).isOK && cs2.subCaptures(loRefs).isOK
+    case _ =>
+      false
+
   type CompareResult = CompareResult.Type
 
   /** None = ok, Some(cs) = failure since not a subset of cs */
