@@ -161,7 +161,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           li(ul(renderTocRec(level + 1, prefix))) +: renderTocRec(level, suffix)
       }
 
-    renderTocRec(1, toc).headOption.map(toc => ul(cls := "toc-list")(toc))
+    renderTocRec(1, toc).headOption.map(toc => nav(cls := "toc-nav")(ul(cls := "toc-list")(toc)))
 
 
   private def mkFrame(link: Link, parents: Vector[Link], content: => PageContent): AppliedTag =

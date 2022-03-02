@@ -70,20 +70,12 @@ trait SiteRenderer(using DocContext) extends Locations:
 
     val document = Jsoup.parse(content.resolved.code)
 
-    val toc = document.select("h1, h2, h3, h4, h5, h6").asScala.toSeq
-      .map { elem =>
-        val content = elem.text()
-
-        if elem.select("a[href]").isEmpty then {
-          val normalizedText = content.trim.toLowerCase.split("\\s+").mkString("-")
-          val anchor = Element("a")
-            .attr("href", s"#$normalizedText")
-            .id(normalizedText)
-            .addClass("anchor")
-          elem.insertChildren(0, JList(anchor))
+    val toc = document.select("section[id]").asScala.toSeq
+      .flatMap { elem =>
+        val header = elem.selectFirst("h1, h2, h3, h4, h5, h6")
+        Option(header).map { h =>
+          TocEntry(h.tag().getName, h.text(), s"#${elem.id()}")
         }
-
-        TocEntry(elem.tag().getName, content, s"#${elem.selectFirst("a[href]").id()}")
       }
 
     document.select("a").forEach(element =>

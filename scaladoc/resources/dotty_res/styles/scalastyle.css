@@ -935,6 +935,16 @@ footer .socials {
   display: block;
   padding-top: 0.5em;
   padding-bottom: 0.5em;
+  color: var(--leftbar-fg);
+  transition-duration: 0.2s;
+}
+
+#toc li:hover > a {
+  color: var(--link-hover-fg);
+}
+
+#toc li.active > a {
+  color: var(--link-hover-fg);
 }
 
 /* Signature coloring */
