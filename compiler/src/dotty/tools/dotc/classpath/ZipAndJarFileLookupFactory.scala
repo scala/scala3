@@ -23,7 +23,7 @@ sealed trait ZipAndJarFileLookupFactory {
   private val cache = new FileBasedCache[ClassPath]
 
   def create(zipFile: AbstractFile)(using Context): ClassPath =
-    val release = Option(ctx.settings.release.value).filter(_.nonEmpty)
+    val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
     if (ctx.settings.YdisableFlatCpCaching.value || zipFile.file == null) createForZipFile(zipFile, release)
     else createUsingCache(zipFile, release)
 

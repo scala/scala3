@@ -161,7 +161,7 @@ final case class SbtCommunityProject(
 
   def withScalaRelease(release: String): SbtCommunityProject =
     this.copy(
-      scalacOptions = scalacOptions ++ Seq("-Yscala-release", release)
+      scalacOptions = scalacOptions ++ Seq("-scala-output-version", release)
     )
 
 object SbtCommunityProject:
