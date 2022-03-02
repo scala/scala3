@@ -1969,7 +1969,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             }
           else desugaredArg.withType(UnspecifiedErrorType)
         }
-        args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
+        args.zipWithConserve(tparams)(typedArg)
       }
       val paramBounds = tparams.lazyZip(args).map {
         case (tparam, untpd.WildcardTypeBoundsTree()) =>
