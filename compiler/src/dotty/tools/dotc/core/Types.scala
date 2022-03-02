@@ -6009,7 +6009,7 @@ object Types {
           if args.exists(isRange) then
             if variance > 0 then
               tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
-                case tp1: AppliedType if tp1.isUnreducibleWild =>
+                case tp1: AppliedType if tp1.isUnreducibleWild && ctx.phase != checkCapturesPhase =>
                   // don't infer a type that would trigger an error later in
                   // Checking.checkAppliedType; fall through to default handling instead
                 case tp1 =>
