@@ -4022,7 +4022,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           else if pt.isInstanceOf[PolyProto] then tree
           else
             var typeArgs = tree match
-              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree)
+              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree(_))
               case _ => Nil
             if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))

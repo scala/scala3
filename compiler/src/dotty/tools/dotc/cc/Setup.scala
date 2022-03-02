@@ -109,21 +109,45 @@ extends tpd.TreeTraverser:
           case _ => tp
       case _ => tp
 
-    /** Should a capture set variable be added on type `tp`? */
-    def canHaveInferredCapture(tp: Type): Boolean =
-      tp.typeParams.isEmpty && tp.match
+    private def superTypeIsImpure(tp: Type): Boolean = {
+      tp.dealias match
+        case CapturingType(_, refs, _) =>
+          !refs.isAlwaysEmpty
         case tp: (TypeRef | AppliedType) =>
           val sym = tp.typeSymbol
-          if sym.isClass then !sym.isValueClass && sym != defn.AnyClass
-          else canHaveInferredCapture(tp.superType.dealias)
+          if sym.isClass then tp.typeSymbol == defn.AnyClass
+          else superTypeIsImpure(tp.superType)
+        case tp: (RefinedOrRecType | MatchType) =>
+          superTypeIsImpure(tp.underlying)
+        case tp: AndType =>
+          superTypeIsImpure(tp.tp1) || canHaveInferredCapture(tp.tp2)
+        case tp: OrType =>
+          superTypeIsImpure(tp.tp1) && superTypeIsImpure(tp.tp2)
+        case _ =>
+          false
+    }.showing(i"super type is impure $tp = $result", capt)
+
+    /** Should a capture set variable be added on type `tp`? */
+    def canHaveInferredCapture(tp: Type): Boolean = {
+      tp.typeParams.isEmpty && tp.match
+        case tp: (TypeRef | AppliedType) =>
+          val tp1 = tp.dealias
+          if tp1 ne tp then canHaveInferredCapture(tp1)
+          else
+            val sym = tp1.typeSymbol
+            if sym.isClass then !sym.isValueClass && sym != defn.AnyClass
+            else superTypeIsImpure(tp1)
         case tp: (RefinedOrRecType | MatchType) =>
           canHaveInferredCapture(tp.underlying)
         case tp: AndType =>
           canHaveInferredCapture(tp.tp1) && canHaveInferredCapture(tp.tp2)
         case tp: OrType =>
           canHaveInferredCapture(tp.tp1) || canHaveInferredCapture(tp.tp2)
+        case CapturingType(_, refs, _) =>
+          refs.isConst && !refs.isAlwaysEmpty && !refs.isUniversal
         case _ =>
           false
+    }.showing(i"can have inferred capture $tp = $result", capt)
 
     /** Add a capture set variable to `tp` if necessary, or maybe pull out
      *  an embedded capture set variables from a part of `tp`.
@@ -154,7 +178,10 @@ extends tpd.TreeTraverser:
       case tp @ OrType(tp1, CapturingType(parent2, refs2, boxed2)) =>
         CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, boxed2)
       case _ if canHaveInferredCapture(tp) =>
-        CapturingType(tp, CaptureSet.Var(), CapturingKind.Regular)
+        val cs = tp.dealias match
+          case CapturingType(_, refs,_) => CaptureSet.Var(refs.elems)
+          case _ => CaptureSet.Var()
+        CapturingType(tp, cs, CapturingKind.Regular)
       case _ =>
         tp
 
