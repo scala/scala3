@@ -134,7 +134,7 @@ When the sources of a test consist of multiple source files places in a single d
 There are also other suffixes indicating how some particular files are compiled:
 * `_c${compilerVersion}` - compile a file with a specific version of the compiler instead of the one developed on the current branch
   (e.g. `Foo_c3.0.2.scala`)
-* `_r${release}` - compile a file with a given value of `-Yscala-release` flag (e.g. `Foo_r3.0.scala`)
+* `_r${release}` - compile a file with a given value of `-scala-output-version` flag (e.g. `Foo_r3.0.scala`)
 
 Different suffixes can be mixed together (their order is not important although consistency is advised), e.g. `Foo_1_r3.0`, `Bar_2_c3.0.2`.
 
