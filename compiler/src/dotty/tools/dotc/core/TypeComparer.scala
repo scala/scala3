@@ -1591,7 +1591,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ =>
             arg1 match
               case arg1: TypeBounds =>
-                compareCaptured(arg1, arg2)
+                CaptureSet.subCapturesRange(arg1, arg2) || compareCaptured(arg1, arg2)
               case ExprType(arg1res)
               if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
                    && defn.isByNameFunction(arg2.dealias) =>

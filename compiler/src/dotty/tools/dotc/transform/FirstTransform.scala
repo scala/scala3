@@ -101,9 +101,21 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     reorder(stats, Nil)
   }
 
-  /** eliminate self in Template */
+  /** Eliminate self in Template
+   *  Under -Ycc, we keep the self type `S` around in a type definition
+   *
+   *     private[this] type $this = S
+   *
+   *  This is so that the type can be checked for well-formedness in the CaptureCheck phase.
+   */
   override def transformTemplate(impl: Template)(using Context): Tree =
-    cpy.Template(impl)(self = EmptyValDef)
+    impl.self match
+      case self: ValDef if !self.tpt.isEmpty && ctx.settings.Ycc.value =>
+        val tsym = newSymbol(ctx.owner, tpnme.SELF, PrivateLocal, TypeAlias(self.tpt.tpe))
+        val tdef = untpd.cpy.TypeDef(self)(tpnme.SELF, self.tpt).withType(tsym.typeRef)
+        cpy.Template(impl)(self = EmptyValDef, body = tdef :: impl.body)
+      case _ =>
+        cpy.Template(impl)(self = EmptyValDef)
 
   override def transformDefDef(ddef: DefDef)(using Context): Tree =
     val meth = ddef.symbol.asTerm
