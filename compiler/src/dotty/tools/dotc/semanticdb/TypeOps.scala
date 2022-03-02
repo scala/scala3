@@ -15,6 +15,7 @@ import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
 import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
+import dotty.tools.dotc.core.Names.Designator
 
 class TypeOps:
   import SymbolScopeOps._
@@ -80,6 +81,10 @@ class TypeOps:
               paramRefSymtab((lam, sym.name)) = sym
             else
               enterParamRef(lam.resType)
+
+          // for CaseType `case Array[t] => t` which is represented as [t] =>> MatchCase[Array[t], t]
+          case m: MatchType =>
+            m.cases.foreach(enterParamRef)
 
           // for class constructor
           // class C[T] { ... }
@@ -276,6 +281,31 @@ class TypeOps:
         case ConstantType(const) =>
           s.ConstantType(const.toSemanticConst)
 
+        case matchType: MatchType =>
+          val scases = matchType.cases.map { caseType => caseType match {
+            case lam: HKTypeLambda => // case Array[t] => t
+              val paramSyms = lam.paramNames.flatMap { paramName =>
+                val key = (lam, paramName)
+                paramRefSymtab.get(key)
+              }.sscope
+              lam.resType match {
+                case defn.MatchCase(key, body) =>
+                  s.MatchType.CaseType(
+                    loop(key),
+                    loop(body)
+                  )
+                case _ => s.MatchType.CaseType() // shouldn't happen
+              }
+            case defn.MatchCase(key, body) =>
+              val skey = loop(key)
+              val sbody = loop(body)
+              s.MatchType.CaseType(skey, sbody)
+            case _ => s.MatchType.CaseType() // shouldn't happen
+          }}
+          val sscrutinee = loop(matchType.scrutinee)
+          val sbound = loop(matchType.bound)
+          s.MatchType(sscrutinee, scases)
+
         case rt @ RefinedType(parent, name, info) =>
           // `X { def x: Int; def y: Int }`
           // RefinedType(
@@ -404,8 +434,6 @@ class TypeOps:
 
         // Not yet supported
         case _: HKTypeLambda =>
-          s.Type.Empty
-        case _: MatchType =>
           s.Type.Empty
 
         case tvar: TypeVar =>

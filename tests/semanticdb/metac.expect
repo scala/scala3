@@ -2016,6 +2016,60 @@ Occurrences:
 Synthetics:
 [5:4..5:8):List => *.apply[Int]
 
+expect/MatchType.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => MatchType.scala
+Text => empty
+Language => Scala
+Symbols => 10 entries
+Occurrences => 29 entries
+
+Symbols:
+example/MatchType$package. => final package object example extends Object { self: example.type => +3 decls }
+example/MatchType$package.Concat# => type Concat [typeparam Xs  <: Tuple, covariant typeparam Ys  <: Tuple] = Xs match { EmptyTuple => Ys, *:[x, xs] => *:[x, Concat[xs, Ys]] }
+example/MatchType$package.Concat#[Xs] => typeparam Xs  <: Tuple
+example/MatchType$package.Concat#[Ys] => covariant typeparam Ys  <: Tuple
+example/MatchType$package.Elem# => type Elem [typeparam X ] = X match { String => Char, Array[t] => t, Iterable[t] => t }
+example/MatchType$package.Elem#[X] => typeparam X 
+local0 => case val method t 
+local1 => case val method t 
+local2 => case val method x 
+local3 => case val method xs 
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:5..2:9): Elem <- example/MatchType$package.Elem#
+[2:10..2:11): X <- example/MatchType$package.Elem#[X]
+[2:15..2:16): X -> example/MatchType$package.Elem#[X]
+[3:7..3:13): String -> scala/Predef.String#
+[3:17..3:21): Char -> scala/Char#
+[4:7..4:12): Array -> scala/Array#
+[4:13..4:14): t <- local0
+[4:19..4:20): t -> local0
+[5:7..5:15): Iterable -> scala/package.Iterable#
+[5:16..5:17): t <- local1
+[5:22..5:23): t -> local1
+[7:5..7:11): Concat <- example/MatchType$package.Concat#
+[7:12..7:14): Xs <- example/MatchType$package.Concat#[Xs]
+[7:18..7:23): Tuple -> scala/Tuple#
+[7:26..7:28): Ys <- example/MatchType$package.Concat#[Ys]
+[7:32..7:37): Tuple -> scala/Tuple#
+[7:42..7:47): Tuple -> scala/Tuple#
+[7:50..7:52): Xs -> example/MatchType$package.Concat#[Xs]
+[8:7..8:17): EmptyTuple -> scala/Tuple$package.EmptyTuple#
+[8:21..8:23): Ys -> example/MatchType$package.Concat#[Ys]
+[9:7..9:8): x <- local2
+[9:9..9:11): *: -> scala/`*:`#
+[9:12..9:14): xs <- local3
+[9:18..9:19): x -> local2
+[9:20..9:22): *: -> scala/`*:`#
+[9:23..9:29): Concat -> example/MatchType$package.Concat#
+[9:30..9:32): xs -> local3
+[9:34..9:36): Ys -> example/MatchType$package.Concat#[Ys]
+
 expect/MetacJava.scala
 ----------------------
 

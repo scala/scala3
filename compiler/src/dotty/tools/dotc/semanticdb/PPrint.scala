@@ -125,7 +125,8 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
           if (tparams.infos.nonEmpty)
             sb.append(tparams.infos.map(pprintDef).mkString("[", ", ", "]"))
           if (lo == hi) {
-            sb.append(s" = ${pprint(lo)}")
+            if (lo == Type.Empty) ()
+            else sb.append(s" = ${pprint(lo)}")
           } else {
             lo match
               case TypeRef(Type.Empty, "scala/Nothing#", Nil) => ()
@@ -191,7 +192,16 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
           s"=> ${normal(utpe)}"
         case RepeatedType(utpe) =>
           s"${normal(utpe)}*"
-        case _ =>
+        case MatchType(scrutinee, cases) =>
+          val casesStr = cases.map { caseType =>
+            s"${pprint(caseType.key)} => ${pprint(caseType.body)}"
+          }.mkString(", ")
+          s"${pprint(scrutinee)} match { ${casesStr} }"
+        case LambdaType(params, result) =>
+          val paramsStr = params.infos.map(pprintDef).mkString("[", ", ", "]")
+          val resultStr = pprint(result)
+          s"${paramsStr} =>> ${resultStr}"
+        case x =>
           "<?>"
 
       def normal(tpe: Type): String = tpe match
