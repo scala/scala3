@@ -146,7 +146,7 @@ object Checking {
         tp match
           case AppliedType(tycon, argTypes) =>
             checkAppliedType(
-              untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree))
+              untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
                 .withType(tp).withSpan(tpt.span.toSynthetic),
               tpt)
           case _ =>
