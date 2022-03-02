@@ -163,8 +163,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
-  def TypeTree(tp: Type)(using Context): TypeTree =
-    untpd.TypeTree().withType(tp)
+  def TypeTree(tp: Type, inferred: Boolean = false)(using Context): TypeTree =
+    (if inferred then new InferredTypeTree() else untpd.TypeTree()).withType(tp)
 
   def SingletonTypeTree(ref: Tree)(using Context): SingletonTypeTree =
     ta.assignType(untpd.SingletonTypeTree(ref), ref)
@@ -202,8 +202,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.UnApply(fun, implicits, patterns), proto)
   }
 
-  def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree)(using Context): ValDef =
-    ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
+  def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree, inferred: Boolean = false)(using Context): ValDef =
+    ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info, inferred), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree, flags: FlagSet = EmptyFlags)(using Context): ValDef =
     ValDef(newSymbol(ctx.owner, name, Synthetic | flags, rhs.tpe.widen, coord = rhs.span), rhs)

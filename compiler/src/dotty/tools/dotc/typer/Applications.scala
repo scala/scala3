@@ -2096,7 +2096,7 @@ trait Applications extends Compatibility {
         def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
         val formalsForArg: List[Type] = altFormals.map(_.head)
         def argTypesOfFormal(formal: Type): List[Type] =
-          formal match {
+          formal.dealias match {
             case defn.FunctionOf(args, result, isImplicit, isErased) => args
             case defn.PartialFunctionOf(arg, result) => arg :: Nil
             case _ => Nil

@@ -1229,7 +1229,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if pos < mtpe.paramInfos.length then
           mtpe.paramInfos(pos)
             // This works only if vararg annotations match up.
-            // See neg/i14367.scala for an example where the inferred type is mispredicted. 
+            // See neg/i14367.scala for an example where the inferred type is mispredicted.
             // Nevertheless, the alternative would be to give up completely, so this is
             // defensible.
         else NoType
@@ -3969,7 +3969,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           else if pt.isInstanceOf[PolyProto] then tree
           else
             var typeArgs = tree match
-              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree)
+              case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree(_))
               case _ => Nil
             if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
