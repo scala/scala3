@@ -18,10 +18,10 @@ sealed trait Type  extends SemanticdbGeneratedSealedOneof  derives CanEqual {
 
 object Type {
   case object Empty extends dotty.tools.dotc.semanticdb.Type
-
+  
   sealed trait NonEmpty extends dotty.tools.dotc.semanticdb.Type
   def defaultInstance: dotty.tools.dotc.semanticdb.Type = Empty
-
+  
   implicit val TypeTypeMapper: SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.TypeMessage, dotty.tools.dotc.semanticdb.Type] = new SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.TypeMessage, dotty.tools.dotc.semanticdb.Type] {
     override def toCustom(__base: dotty.tools.dotc.semanticdb.TypeMessage): dotty.tools.dotc.semanticdb.Type = __base.sealedValue match {
       case __v: dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.TypeRef => __v.value
@@ -38,7 +38,6 @@ object Type {
       case __v: dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.UniversalType => __v.value
       case __v: dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.ByNameType => __v.value
       case __v: dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.RepeatedType => __v.value
-      case __v: dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.LambdaType => __v.value
       case __v: dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.MatchType => __v.value
       case dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.Empty => Empty
     }
@@ -57,7 +56,6 @@ object Type {
       case __v: dotty.tools.dotc.semanticdb.UniversalType => dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.UniversalType(__v)
       case __v: dotty.tools.dotc.semanticdb.ByNameType => dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.ByNameType(__v)
       case __v: dotty.tools.dotc.semanticdb.RepeatedType => dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.RepeatedType(__v)
-      case __v: dotty.tools.dotc.semanticdb.LambdaType => dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.LambdaType(__v)
       case __v: dotty.tools.dotc.semanticdb.MatchType => dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.MatchType(__v)
       case Empty => dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.Empty
     })
@@ -127,10 +125,6 @@ final case class TypeMessage(
         val __value = sealedValue.repeatedType.get
         __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       };
-      if (sealedValue.lambdaType.isDefined) {
-        val __value = sealedValue.lambdaType.get
-        __size += 2 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
-      };
       if (sealedValue.matchType.isDefined) {
         val __value = sealedValue.matchType.get
         __size += 2 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
@@ -144,7 +138,7 @@ final case class TypeMessage(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       sealedValue.typeRef.foreach { __v =>
@@ -231,12 +225,6 @@ final case class TypeMessage(
         _output__.writeUInt32NoTag(__m.serializedSize)
         __m.writeTo(_output__)
       };
-      sealedValue.lambdaType.foreach { __v =>
-        val __m = __v
-        _output__.writeTag(24, 2)
-        _output__.writeUInt32NoTag(__m.serializedSize)
-        __m.writeTo(_output__)
-      };
       sealedValue.matchType.foreach { __v =>
         val __m = __v
         _output__.writeTag(25, 2)
@@ -272,16 +260,14 @@ final case class TypeMessage(
     def withByNameType(__v: dotty.tools.dotc.semanticdb.ByNameType): TypeMessage = copy(sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.ByNameType(__v))
     def getRepeatedType: dotty.tools.dotc.semanticdb.RepeatedType = sealedValue.repeatedType.getOrElse(dotty.tools.dotc.semanticdb.RepeatedType.defaultInstance)
     def withRepeatedType(__v: dotty.tools.dotc.semanticdb.RepeatedType): TypeMessage = copy(sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.RepeatedType(__v))
-    def getLambdaType: dotty.tools.dotc.semanticdb.LambdaType = sealedValue.lambdaType.getOrElse(dotty.tools.dotc.semanticdb.LambdaType.defaultInstance)
-    def withLambdaType(__v: dotty.tools.dotc.semanticdb.LambdaType): TypeMessage = copy(sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.LambdaType(__v))
     def getMatchType: dotty.tools.dotc.semanticdb.MatchType = sealedValue.matchType.getOrElse(dotty.tools.dotc.semanticdb.MatchType.defaultInstance)
     def withMatchType(__v: dotty.tools.dotc.semanticdb.MatchType): TypeMessage = copy(sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.MatchType(__v))
     def clearSealedValue: TypeMessage = copy(sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.Empty)
     def withSealedValue(__v: dotty.tools.dotc.semanticdb.TypeMessage.SealedValue): TypeMessage = copy(sealedValue = __v)
-
-
-
-
+    
+    
+    
+    
     def toType: dotty.tools.dotc.semanticdb.Type = dotty.tools.dotc.semanticdb.Type.TypeTypeMapper.toCustom(this)
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.Type])
 }
@@ -323,8 +309,6 @@ object TypeMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc
           __sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.ByNameType(__sealedValue.byNameType.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.ByNameType](_input__))(LiteParser.readMessage(_input__, _)))
         case 114 =>
           __sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.RepeatedType(__sealedValue.repeatedType.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.RepeatedType](_input__))(LiteParser.readMessage(_input__, _)))
-        case 194 =>
-          __sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.LambdaType(__sealedValue.lambdaType.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.LambdaType](_input__))(LiteParser.readMessage(_input__, _)))
         case 202 =>
           __sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.MatchType(__sealedValue.matchType.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.MatchType](_input__))(LiteParser.readMessage(_input__, _)))
         case tag => _input__.skipField(tag)
@@ -334,12 +318,12 @@ object TypeMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc
         sealedValue = __sealedValue
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.TypeMessage(
     sealedValue = dotty.tools.dotc.semanticdb.TypeMessage.SealedValue.Empty
   )
@@ -360,7 +344,6 @@ object TypeMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc
     def isUniversalType: _root_.scala.Boolean = false
     def isByNameType: _root_.scala.Boolean = false
     def isRepeatedType: _root_.scala.Boolean = false
-    def isLambdaType: _root_.scala.Boolean = false
     def isMatchType: _root_.scala.Boolean = false
     def typeRef: _root_.scala.Option[dotty.tools.dotc.semanticdb.TypeRef] = _root_.scala.None
     def singleType: _root_.scala.Option[dotty.tools.dotc.semanticdb.SingleType] = _root_.scala.None
@@ -376,7 +359,6 @@ object TypeMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc
     def universalType: _root_.scala.Option[dotty.tools.dotc.semanticdb.UniversalType] = _root_.scala.None
     def byNameType: _root_.scala.Option[dotty.tools.dotc.semanticdb.ByNameType] = _root_.scala.None
     def repeatedType: _root_.scala.Option[dotty.tools.dotc.semanticdb.RepeatedType] = _root_.scala.None
-    def lambdaType: _root_.scala.Option[dotty.tools.dotc.semanticdb.LambdaType] = _root_.scala.None
     def matchType: _root_.scala.Option[dotty.tools.dotc.semanticdb.MatchType] = _root_.scala.None
   }
   object SealedValue {
@@ -388,7 +370,7 @@ object TypeMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc
       override def number: _root_.scala.Int = 0
       override def value: _root_.scala.Nothing = throw new java.util.NoSuchElementException("Empty.value")
     }
-
+  
     @SerialVersionUID(0L)
     final case class TypeRef(value: dotty.tools.dotc.semanticdb.TypeRef) extends dotty.tools.dotc.semanticdb.TypeMessage.SealedValue  derives CanEqual {
       type ValueType = dotty.tools.dotc.semanticdb.TypeRef
@@ -488,13 +470,6 @@ object TypeMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc
       override def number: _root_.scala.Int = 14
     }
     @SerialVersionUID(0L)
-    final case class LambdaType(value: dotty.tools.dotc.semanticdb.LambdaType) extends dotty.tools.dotc.semanticdb.TypeMessage.SealedValue  derives CanEqual {
-      type ValueType = dotty.tools.dotc.semanticdb.LambdaType
-      override def isLambdaType: _root_.scala.Boolean = true
-      override def lambdaType: _root_.scala.Option[dotty.tools.dotc.semanticdb.LambdaType] = Some(value)
-      override def number: _root_.scala.Int = 24
-    }
-    @SerialVersionUID(0L)
     final case class MatchType(value: dotty.tools.dotc.semanticdb.MatchType) extends dotty.tools.dotc.semanticdb.TypeMessage.SealedValue  derives CanEqual {
       type ValueType = dotty.tools.dotc.semanticdb.MatchType
       override def isMatchType: _root_.scala.Boolean = true
@@ -516,7 +491,6 @@ object TypeMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc
   final val UNIVERSAL_TYPE_FIELD_NUMBER = 10
   final val BY_NAME_TYPE_FIELD_NUMBER = 13
   final val REPEATED_TYPE_FIELD_NUMBER = 14
-  final val LAMBDA_TYPE_FIELD_NUMBER = 24
   final val MATCH_TYPE_FIELD_NUMBER = 25
   def of(
     sealedValue: dotty.tools.dotc.semanticdb.TypeMessage.SealedValue
@@ -536,14 +510,14 @@ final case class TypeRef(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.TypeRef._typemapper_prefix.toBase(prefix)
         if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
-
+      
       {
         val __value = symbol
         if (!__value.isEmpty) {
@@ -563,7 +537,7 @@ final case class TypeRef(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -593,10 +567,10 @@ final case class TypeRef(
     def addTypeArguments(__vs: dotty.tools.dotc.semanticdb.Type *): TypeRef = addAllTypeArguments(__vs)
     def addAllTypeArguments(__vs: Iterable[dotty.tools.dotc.semanticdb.Type]): TypeRef = copy(typeArguments = typeArguments ++ __vs)
     def withTypeArguments(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Type]): TypeRef = copy(typeArguments = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.TypeRef])
 }
 
@@ -626,12 +600,12 @@ object TypeRef  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.sem
         typeArguments = __typeArguments.result()
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.TypeRef(
     prefix = dotty.tools.dotc.semanticdb.TypeRef._typemapper_prefix.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance),
     symbol = "",
@@ -665,14 +639,14 @@ final case class SingleType(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.SingleType._typemapper_prefix.toBase(prefix)
         if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
-
+      
       {
         val __value = symbol
         if (!__value.isEmpty) {
@@ -688,7 +662,7 @@ final case class SingleType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -708,10 +682,10 @@ final case class SingleType(
     }
     def withPrefix(__v: dotty.tools.dotc.semanticdb.Type): SingleType = copy(prefix = __v)
     def withSymbol(__v: _root_.scala.Predef.String): SingleType = copy(symbol = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.SingleType])
 }
 
@@ -737,12 +711,12 @@ object SingleType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.
         symbol = __symbol
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.SingleType(
     prefix = dotty.tools.dotc.semanticdb.SingleType._typemapper_prefix.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance),
     symbol = ""
@@ -769,7 +743,7 @@ final case class ThisType(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = symbol
         if (!__value.isEmpty) {
@@ -785,7 +759,7 @@ final case class ThisType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -796,10 +770,10 @@ final case class ThisType(
       };
     }
     def withSymbol(__v: _root_.scala.Predef.String): ThisType = copy(symbol = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.ThisType])
 }
 
@@ -821,12 +795,12 @@ object ThisType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.se
         symbol = __symbol
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.ThisType(
     symbol = ""
   )
@@ -848,14 +822,14 @@ final case class SuperType(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.SuperType._typemapper_prefix.toBase(prefix)
         if (__value.serializedSize != 0) {
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
         }
       };
-
+      
       {
         val __value = symbol
         if (!__value.isEmpty) {
@@ -871,7 +845,7 @@ final case class SuperType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -891,10 +865,10 @@ final case class SuperType(
     }
     def withPrefix(__v: dotty.tools.dotc.semanticdb.Type): SuperType = copy(prefix = __v)
     def withSymbol(__v: _root_.scala.Predef.String): SuperType = copy(symbol = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.SuperType])
 }
 
@@ -920,12 +894,12 @@ object SuperType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
         symbol = __symbol
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.SuperType(
     prefix = dotty.tools.dotc.semanticdb.SuperType._typemapper_prefix.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance),
     symbol = ""
@@ -952,7 +926,7 @@ final case class ConstantType(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.ConstantType._typemapper_constant.toBase(constant)
         if (__value.serializedSize != 0) {
@@ -968,7 +942,7 @@ final case class ConstantType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -981,10 +955,10 @@ final case class ConstantType(
       };
     }
     def withConstant(__v: dotty.tools.dotc.semanticdb.Constant): ConstantType = copy(constant = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.ConstantType])
 }
 
@@ -1006,12 +980,12 @@ object ConstantType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
         constant = dotty.tools.dotc.semanticdb.ConstantType._typemapper_constant.toCustom(__constant.getOrElse(dotty.tools.dotc.semanticdb.ConstantMessage.defaultInstance))
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.ConstantType(
     constant = dotty.tools.dotc.semanticdb.ConstantType._typemapper_constant.toCustom(dotty.tools.dotc.semanticdb.ConstantMessage.defaultInstance)
   )
@@ -1047,7 +1021,7 @@ final case class IntersectionType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       types.foreach { __v =>
@@ -1061,10 +1035,10 @@ final case class IntersectionType(
     def addTypes(__vs: dotty.tools.dotc.semanticdb.Type *): IntersectionType = addAllTypes(__vs)
     def addAllTypes(__vs: Iterable[dotty.tools.dotc.semanticdb.Type]): IntersectionType = copy(types = types ++ __vs)
     def withTypes(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Type]): IntersectionType = copy(types = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.IntersectionType])
 }
 
@@ -1086,12 +1060,12 @@ object IntersectionType  extends SemanticdbGeneratedMessageCompanion[dotty.tools
         types = __types.result()
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.IntersectionType(
     types = _root_.scala.Seq.empty
   )
@@ -1127,7 +1101,7 @@ final case class UnionType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       types.foreach { __v =>
@@ -1141,10 +1115,10 @@ final case class UnionType(
     def addTypes(__vs: dotty.tools.dotc.semanticdb.Type *): UnionType = addAllTypes(__vs)
     def addAllTypes(__vs: Iterable[dotty.tools.dotc.semanticdb.Type]): UnionType = copy(types = types ++ __vs)
     def withTypes(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Type]): UnionType = copy(types = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.UnionType])
 }
 
@@ -1166,12 +1140,12 @@ object UnionType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
         types = __types.result()
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.UnionType(
     types = _root_.scala.Seq.empty
   )
@@ -1207,7 +1181,7 @@ final case class WithType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       types.foreach { __v =>
@@ -1221,10 +1195,10 @@ final case class WithType(
     def addTypes(__vs: dotty.tools.dotc.semanticdb.Type *): WithType = addAllTypes(__vs)
     def addAllTypes(__vs: Iterable[dotty.tools.dotc.semanticdb.Type]): WithType = copy(types = types ++ __vs)
     def withTypes(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Type]): WithType = copy(types = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.WithType])
 }
 
@@ -1246,12 +1220,12 @@ object WithType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.se
         types = __types.result()
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.WithType(
     types = _root_.scala.Seq.empty
   )
@@ -1275,7 +1249,7 @@ final case class StructuralType(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.StructuralType._typemapper_tpe.toBase(tpe)
         if (__value.serializedSize != 0) {
@@ -1295,7 +1269,7 @@ final case class StructuralType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -1317,10 +1291,10 @@ final case class StructuralType(
     def getDeclarations: dotty.tools.dotc.semanticdb.Scope = declarations.getOrElse(dotty.tools.dotc.semanticdb.Scope.defaultInstance)
     def clearDeclarations: StructuralType = copy(declarations = _root_.scala.None)
     def withDeclarations(__v: dotty.tools.dotc.semanticdb.Scope): StructuralType = copy(declarations = Option(__v))
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.StructuralType])
 }
 
@@ -1346,12 +1320,12 @@ object StructuralType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.d
         declarations = __declarations
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.StructuralType(
     tpe = dotty.tools.dotc.semanticdb.StructuralType._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance),
     declarations = _root_.scala.None
@@ -1383,7 +1357,7 @@ final case class AnnotatedType(
         val __value = __item
         __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       }
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.AnnotatedType._typemapper_tpe.toBase(tpe)
         if (__value.serializedSize != 0) {
@@ -1399,7 +1373,7 @@ final case class AnnotatedType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -1422,10 +1396,10 @@ final case class AnnotatedType(
     def addAllAnnotations(__vs: Iterable[dotty.tools.dotc.semanticdb.Annotation]): AnnotatedType = copy(annotations = annotations ++ __vs)
     def withAnnotations(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Annotation]): AnnotatedType = copy(annotations = __v)
     def withTpe(__v: dotty.tools.dotc.semanticdb.Type): AnnotatedType = copy(tpe = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.AnnotatedType])
 }
 
@@ -1451,12 +1425,12 @@ object AnnotatedType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
         tpe = dotty.tools.dotc.semanticdb.AnnotatedType._typemapper_tpe.toCustom(__tpe.getOrElse(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance))
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.AnnotatedType(
     annotations = _root_.scala.Seq.empty,
     tpe = dotty.tools.dotc.semanticdb.AnnotatedType._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
@@ -1484,7 +1458,7 @@ final case class ExistentialType(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.ExistentialType._typemapper_tpe.toBase(tpe)
         if (__value.serializedSize != 0) {
@@ -1504,7 +1478,7 @@ final case class ExistentialType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -1526,10 +1500,10 @@ final case class ExistentialType(
     def getDeclarations: dotty.tools.dotc.semanticdb.Scope = declarations.getOrElse(dotty.tools.dotc.semanticdb.Scope.defaultInstance)
     def clearDeclarations: ExistentialType = copy(declarations = _root_.scala.None)
     def withDeclarations(__v: dotty.tools.dotc.semanticdb.Scope): ExistentialType = copy(declarations = Option(__v))
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.ExistentialType])
 }
 
@@ -1555,12 +1529,12 @@ object ExistentialType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.
         declarations = __declarations
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.ExistentialType(
     tpe = dotty.tools.dotc.semanticdb.ExistentialType._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance),
     declarations = _root_.scala.None
@@ -1592,7 +1566,7 @@ final case class UniversalType(
         val __value = typeParameters.get
         __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       };
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.UniversalType._typemapper_tpe.toBase(tpe)
         if (__value.serializedSize != 0) {
@@ -1608,7 +1582,7 @@ final case class UniversalType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -1630,10 +1604,10 @@ final case class UniversalType(
     def clearTypeParameters: UniversalType = copy(typeParameters = _root_.scala.None)
     def withTypeParameters(__v: dotty.tools.dotc.semanticdb.Scope): UniversalType = copy(typeParameters = Option(__v))
     def withTpe(__v: dotty.tools.dotc.semanticdb.Type): UniversalType = copy(tpe = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.UniversalType])
 }
 
@@ -1659,12 +1633,12 @@ object UniversalType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
         tpe = dotty.tools.dotc.semanticdb.UniversalType._typemapper_tpe.toCustom(__tpe.getOrElse(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance))
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.UniversalType(
     typeParameters = _root_.scala.None,
     tpe = dotty.tools.dotc.semanticdb.UniversalType._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
@@ -1691,7 +1665,7 @@ final case class ByNameType(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.ByNameType._typemapper_tpe.toBase(tpe)
         if (__value.serializedSize != 0) {
@@ -1707,7 +1681,7 @@ final case class ByNameType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -1720,10 +1694,10 @@ final case class ByNameType(
       };
     }
     def withTpe(__v: dotty.tools.dotc.semanticdb.Type): ByNameType = copy(tpe = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.ByNameType])
 }
 
@@ -1745,12 +1719,12 @@ object ByNameType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.
         tpe = dotty.tools.dotc.semanticdb.ByNameType._typemapper_tpe.toCustom(__tpe.getOrElse(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance))
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.ByNameType(
     tpe = dotty.tools.dotc.semanticdb.ByNameType._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
   )
@@ -1773,7 +1747,7 @@ final case class RepeatedType(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.RepeatedType._typemapper_tpe.toBase(tpe)
         if (__value.serializedSize != 0) {
@@ -1789,7 +1763,7 @@ final case class RepeatedType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -1802,10 +1776,10 @@ final case class RepeatedType(
       };
     }
     def withTpe(__v: dotty.tools.dotc.semanticdb.Type): RepeatedType = copy(tpe = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.RepeatedType])
 }
 
@@ -1827,12 +1801,12 @@ object RepeatedType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
         tpe = dotty.tools.dotc.semanticdb.RepeatedType._typemapper_tpe.toCustom(__tpe.getOrElse(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance))
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.RepeatedType(
     tpe = dotty.tools.dotc.semanticdb.RepeatedType._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
   )
@@ -1848,110 +1822,6 @@ object RepeatedType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
 }
 
 @SerialVersionUID(0L)
-final case class LambdaType(
-    parameters: _root_.scala.Option[dotty.tools.dotc.semanticdb.Scope] = _root_.scala.None,
-    returnType: dotty.tools.dotc.semanticdb.Type = dotty.tools.dotc.semanticdb.LambdaType._typemapper_returnType.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
-    )  extends dotty.tools.dotc.semanticdb.Type.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
-    @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
-      var __size = 0
-      if (parameters.isDefined) {
-        val __value = parameters.get
-        __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
-      };
-
-      {
-        val __value = dotty.tools.dotc.semanticdb.LambdaType._typemapper_returnType.toBase(returnType)
-        if (__value.serializedSize != 0) {
-          __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
-        }
-      };
-      __size
-    }
-    override def serializedSize: _root_.scala.Int = {
-      var __size = __serializedSizeMemoized
-      if (__size == 0) {
-        __size = __computeSerializedSize() + 1
-        __serializedSizeMemoized = __size
-      }
-      __size - 1
-
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
-      parameters.foreach { __v =>
-        val __m = __v
-        _output__.writeTag(1, 2)
-        _output__.writeUInt32NoTag(__m.serializedSize)
-        __m.writeTo(_output__)
-      };
-      {
-        val __v = dotty.tools.dotc.semanticdb.LambdaType._typemapper_returnType.toBase(returnType)
-        if (__v.serializedSize != 0) {
-          _output__.writeTag(2, 2)
-          _output__.writeUInt32NoTag(__v.serializedSize)
-          __v.writeTo(_output__)
-        }
-      };
-    }
-    def getParameters: dotty.tools.dotc.semanticdb.Scope = parameters.getOrElse(dotty.tools.dotc.semanticdb.Scope.defaultInstance)
-    def clearParameters: LambdaType = copy(parameters = _root_.scala.None)
-    def withParameters(__v: dotty.tools.dotc.semanticdb.Scope): LambdaType = copy(parameters = Option(__v))
-    def withReturnType(__v: dotty.tools.dotc.semanticdb.Type): LambdaType = copy(returnType = __v)
-
-
-
-
-    // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.LambdaType])
-}
-
-object LambdaType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.LambdaType] {
-  implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.LambdaType] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.LambdaType = {
-    var __parameters: _root_.scala.Option[dotty.tools.dotc.semanticdb.Scope] = _root_.scala.None
-    var __returnType: _root_.scala.Option[dotty.tools.dotc.semanticdb.TypeMessage] = _root_.scala.None
-    var _done__ = false
-    while (!_done__) {
-      val _tag__ = _input__.readTag()
-      _tag__ match {
-        case 0 => _done__ = true
-        case 10 =>
-          __parameters = Option(__parameters.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.Scope](_input__))(LiteParser.readMessage(_input__, _)))
-        case 18 =>
-          __returnType = _root_.scala.Some(__returnType.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.TypeMessage](_input__))(LiteParser.readMessage(_input__, _)))
-        case tag => _input__.skipField(tag)
-      }
-    }
-    dotty.tools.dotc.semanticdb.LambdaType(
-        parameters = __parameters,
-        returnType = dotty.tools.dotc.semanticdb.LambdaType._typemapper_returnType.toCustom(__returnType.getOrElse(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance))
-    )
-  }
-
-
-
-
-
-
-  lazy val defaultInstance = dotty.tools.dotc.semanticdb.LambdaType(
-    parameters = _root_.scala.None,
-    returnType = dotty.tools.dotc.semanticdb.LambdaType._typemapper_returnType.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
-  )
-  final val PARAMETERS_FIELD_NUMBER = 1
-  final val RETURN_TYPE_FIELD_NUMBER = 2
-  @transient @sharable
-  private[semanticdb] val _typemapper_returnType: SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.TypeMessage, dotty.tools.dotc.semanticdb.Type] = implicitly[SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.TypeMessage, dotty.tools.dotc.semanticdb.Type]]
-  def of(
-    parameters: _root_.scala.Option[dotty.tools.dotc.semanticdb.Scope],
-    returnType: dotty.tools.dotc.semanticdb.Type
-  ): _root_.dotty.tools.dotc.semanticdb.LambdaType = _root_.dotty.tools.dotc.semanticdb.LambdaType(
-    parameters,
-    returnType
-  )
-  // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.LambdaType])
-}
-
-@SerialVersionUID(0L)
 final case class MatchType(
     scrutinee: dotty.tools.dotc.semanticdb.Type = dotty.tools.dotc.semanticdb.MatchType._typemapper_scrutinee.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance),
     cases: _root_.scala.Seq[dotty.tools.dotc.semanticdb.MatchType.CaseType] = _root_.scala.Seq.empty
@@ -1960,7 +1830,7 @@ final case class MatchType(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-
+      
       {
         val __value = dotty.tools.dotc.semanticdb.MatchType._typemapper_scrutinee.toBase(scrutinee)
         if (__value.serializedSize != 0) {
@@ -1980,7 +1850,7 @@ final case class MatchType(
         __serializedSizeMemoized = __size
       }
       __size - 1
-
+      
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -2003,10 +1873,10 @@ final case class MatchType(
     def addCases(__vs: dotty.tools.dotc.semanticdb.MatchType.CaseType *): MatchType = addAllCases(__vs)
     def addAllCases(__vs: Iterable[dotty.tools.dotc.semanticdb.MatchType.CaseType]): MatchType = copy(cases = cases ++ __vs)
     def withCases(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.MatchType.CaseType]): MatchType = copy(cases = __v)
-
-
-
-
+    
+    
+    
+    
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.MatchType])
 }
 
@@ -2032,12 +1902,12 @@ object MatchType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
         cases = __cases.result()
     )
   }
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.MatchType(
     scrutinee = dotty.tools.dotc.semanticdb.MatchType._typemapper_scrutinee.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance),
     cases = _root_.scala.Seq.empty
@@ -2051,14 +1921,14 @@ object MatchType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
       private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
       private[this] def __computeSerializedSize(): _root_.scala.Int = {
         var __size = 0
-
+        
         {
           val __value = dotty.tools.dotc.semanticdb.MatchType.CaseType._typemapper_key.toBase(key)
           if (__value.serializedSize != 0) {
             __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
           }
         };
-
+        
         {
           val __value = dotty.tools.dotc.semanticdb.MatchType.CaseType._typemapper_body.toBase(body)
           if (__value.serializedSize != 0) {
@@ -2074,7 +1944,7 @@ object MatchType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
           __serializedSizeMemoized = __size
         }
         __size - 1
-
+        
       }
       def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
         {
@@ -2096,13 +1966,13 @@ object MatchType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
       }
       def withKey(__v: dotty.tools.dotc.semanticdb.Type): CaseType = copy(key = __v)
       def withBody(__v: dotty.tools.dotc.semanticdb.Type): CaseType = copy(body = __v)
-
-
-
-
+      
+      
+      
+      
       // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.MatchType.CaseType])
   }
-
+  
   object CaseType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.MatchType.CaseType] {
     implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.MatchType.CaseType] = this
     def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.MatchType.CaseType = {
@@ -2125,12 +1995,12 @@ object MatchType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
           body = dotty.tools.dotc.semanticdb.MatchType.CaseType._typemapper_body.toCustom(__body.getOrElse(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance))
       )
     }
-
-
-
-
-
-
+    
+    
+    
+    
+    
+    
     lazy val defaultInstance = dotty.tools.dotc.semanticdb.MatchType.CaseType(
       key = dotty.tools.dotc.semanticdb.MatchType.CaseType._typemapper_key.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance),
       body = dotty.tools.dotc.semanticdb.MatchType.CaseType._typemapper_body.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
@@ -2150,7 +2020,7 @@ object MatchType  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
     )
     // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.MatchType.CaseType])
   }
-
+  
   final val SCRUTINEE_FIELD_NUMBER = 1
   final val CASES_FIELD_NUMBER = 2
   @transient @sharable

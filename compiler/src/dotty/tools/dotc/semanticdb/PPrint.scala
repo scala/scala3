@@ -197,10 +197,6 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
             s"${pprint(caseType.key)} => ${pprint(caseType.body)}"
           }.mkString(", ")
           s"${pprint(scrutinee)} match { ${casesStr} }"
-        case LambdaType(params, result) =>
-          val paramsStr = params.infos.map(pprintDef).mkString("[", ", ", "]")
-          val resultStr = pprint(result)
-          s"${paramsStr} =>> ${resultStr}"
         case x =>
           "<?>"
 
