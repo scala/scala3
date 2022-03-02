@@ -260,13 +260,21 @@ class CheckCaptures extends Recheck, SymTransformer:
           interpolateVarsIn(tree.tpt)
 
     override def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Unit =
-      val saved = curEnv
-      val localSet = capturedVars(sym)
-      if !localSet.isAlwaysEmpty then curEnv = Env(sym, localSet, false, curEnv)
-      try super.recheckDefDef(tree, sym)
-      finally
-        interpolateVarsIn(tree.tpt)
-        curEnv = saved
+      val isExcluded =
+        sym.is(Synthetic)
+        && sym.owner.isClass
+        && ( defn.caseClassSynthesized.exists(
+                ccsym => sym.overriddenSymbol(ccsym.owner.asClass) == ccsym)
+            || sym.name == nme.fromProduct
+        )
+      if !isExcluded then
+        val saved = curEnv
+        val localSet = capturedVars(sym)
+        if !localSet.isAlwaysEmpty then curEnv = Env(sym, localSet, false, curEnv)
+        try super.recheckDefDef(tree, sym)
+        finally
+          interpolateVarsIn(tree.tpt)
+          curEnv = saved
 
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       val saved = curEnv
@@ -413,11 +421,13 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.recheckFinish(tpe, tree, pt)
 
     /** This method implements the rule outlined in #14390:
-     *  When checking an expression `e: Ca Ta` against an expected type `Cx Tx`
+     *  When checking an expression `e: T` against an expected type `Cx Tx`
      *  where the capture set of `Cx` contains this and any method inside the class
-     *  `Cls` of `this` that contains `e` has only pure parameters, drop from `Ca`
-     *  all references to variables or this references outside `Cls`. These are all
-     *  accessed through this, so are already accounted for by `Cx`.
+     *  `Cls` of `this` that contains `e` has only pure parameters, add to `Cx`
+     *  all references to variables or this-references in that capture set of `T`
+     *  that are outside `Cls`. These are all accessed through this, so we can assume
+     *  they are already accounted for by `Cx` and adding them explicitly to `Cx`
+     *  changes nothing.
      */
     override def checkConformsExpr(original: Type, actual: Type, expected: Type, tree: Tree)(using Context): Unit =
       def isPure(info: Type): Boolean = info match
@@ -428,26 +438,28 @@ class CheckCaptures extends Recheck, SymTransformer:
         if owner == limit then true
         else if !owner.exists then false
         else isPure(owner.info) && isPureContext(owner.owner, limit)
-      val actual1 = (expected, actual.widen) match
-        case (CapturingType(ecore, erefs, _), actualw @ CapturingType(acore, arefs, _)) =>
-          val arefs1 = (arefs /: erefs.elems) { (arefs1, eref) =>
-            eref match
-              case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
-                arefs1.filter {
-                  case aref1: TermRef => !eref.cls.isContainedIn(aref1.symbol.owner)
-                  case aref1: ThisType => !eref.cls.isContainedIn(aref1.cls)
-                  case _ => true
-                }
-              case _ =>
-                arefs1
-          }
-          if arefs1 eq arefs then actual
-          else actualw.derivedCapturingType(acore, arefs1)
-            .showing(i"healing $actual --> $result", capt)
+      def augment(erefs: CaptureSet, arefs: CaptureSet): CaptureSet =
+        (erefs /: erefs.elems) { (erefs, eref) =>
+          eref match
+            case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
+              erefs ++ arefs.filter {
+                case aref: TermRef => eref.cls.isContainedIn(aref.symbol.owner)
+                case aref: ThisType => eref.cls.isContainedIn(aref.cls)
+                case _ => false
+              }
+            case _ =>
+              erefs
+        }
+      val expected1 = expected match
+        case CapturingType(ecore, erefs, _) =>
+          val erefs1 = augment(erefs, actual.captureSet)
+          if erefs1 ne erefs then
+            capt.println(i"augmented $expected from ${actual.captureSet} --> $erefs1")
+          expected.derivedCapturingType(ecore, erefs1)
         case _ =>
-          actual
-      //println(i"check conforms $actual1 <<< $expected")
-      super.checkConformsExpr(original, actual1, expected, tree)
+          expected
+      //println(i"check conforms $actual <<< $expected1")
+      super.checkConformsExpr(original, actual, expected1, tree)
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       Setup(preRecheckPhase, thisPhase, recheckDef)
