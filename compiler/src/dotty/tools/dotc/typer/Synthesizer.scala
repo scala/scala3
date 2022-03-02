@@ -273,7 +273,19 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val cls = mirroredType.classSymbol
     val useCompanion = cls.useCompanionAsSumMirror
 
-    if (!mirroredType.termSymbol.isEnumCase && (cls.isGenericSum(if useCompanion then cls.linkedClass else ctx.owner))) then
+    val isDisjointed = mirroredType match {
+      case OrType(t1, t2) => TypeComparer.provablyDisjoint(t1, t2)
+      case _ => false
+    }
+
+    def isSumWithSingleton(t: Type): Boolean = {
+      t match {
+        case OrType(t1, t2) => isSumWithSingleton(t1) || isSumWithSingleton(t2)
+        case _ => t.termSymbol.isEnumCase
+      }
+    }
+
+    if (!isDisjointed && !isSumWithSingleton(mirroredType) && cls.isGenericSum(if useCompanion then cls.linkedClass else ctx.owner)) then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
