@@ -1078,4 +1078,47 @@ class CompletionTest {
            |  val x = Bar.`back${m1}"""
              .withSource.completion(m1, expected)
   }
+
+  @Test def backticksSpace: Unit = {
+    val expected = Set(
+      ("`has space`", Field, "Foo.Bar"),
+    )
+    code"""object Foo:
+           |  enum Bar:
+           |    case `has space`
+           |  
+           |  val x = Bar.`has s${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksCompleteBoth: Unit = {
+    val expected = Set(
+      ("formatted", Method, "(fmtstr: String): String"),
+      ("`foo-bar`", Field, "Int"),
+      ("foo", Field, "Int")
+    )
+    code"""object Foo:
+           |  object Bar:
+           |    val foo = 1
+           |    val `foo-bar` = 2
+           |    val `bar` = 3
+           |  
+           |  val x = Bar.fo${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksWhenNotNeeded: Unit = {
+    val expected = Set(
+      ("`formatted`", Method, "(fmtstr: String): String"),
+      ("`foo-bar`", Field, "Int"),
+      ("`foo`", Field, "Int")
+    )
+    code"""object Foo:
+           |  object Bar:
+           |    val foo = 1
+           |    val `foo-bar` = 2
+           |  
+           |  val x = Bar.`fo${m1}"""
+             .withSource.completion(m1, expected)
+  }
 }

@@ -15,7 +15,6 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeError
 import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NoType, TermRef, Type}
-import dotty.tools.dotc.parsing.Scanners
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
@@ -118,6 +117,7 @@ object Completion {
   private def computeCompletions(pos: SourcePosition, path: List[Tree])(using Context): (Int, List[Completion]) = {
     val mode = completionMode(path, pos)
     val rawPrefix = completionPrefix(path, pos)
+
     val hasBackTick = rawPrefix.headOption.contains('`')
     val prefix = if hasBackTick then rawPrefix.drop(1) else rawPrefix
 
@@ -135,7 +135,8 @@ object Completion {
       }
 
     val describedCompletions = describeCompletions(completions)
-    val backtickedCompletions = describedCompletions.map(backtickCompletions)
+    val backtickedCompletions =
+      describedCompletions.map(completion => backtickCompletions(completion, hasBackTick))
 
     val offset = completionOffset(path)
 
@@ -147,14 +148,14 @@ object Completion {
     (offset, backtickedCompletions)
   }
 
-  def backtickCompletions(completion: Completion) =
-    if needsBacktick(completion.label) then
+  def backtickCompletions(completion: Completion, hasBackTick: Boolean) =
+    if hasBackTick || needsBacktick(completion.label) then
       completion.copy(label = s"`${completion.label}`")
     else
       completion
 
   // This borrows from Metals, which itself borrows from Ammonite. This uses
-  // the same apprach, but some of the utils that already exist in Dotty.
+  // the same approach, but some of the utils that already exist in Dotty.
   // https://github.com/scalameta/metals/blob/main/mtags/src/main/scala/scala/meta/internal/mtags/KeywordWrapper.scala
   // https://github.com/com-lihaoyi/Ammonite/blob/73a874173cd337f953a3edc9fb8cb96556638fdd/amm/util/src/main/scala/ammonite/util/Model.scala
   private def needsBacktick(s: String) =
@@ -428,6 +429,7 @@ object Completion {
      */
     private def include(denot: SingleDenotation, nameInScope: Name)(using Context): Boolean =
       val sym = denot.symbol
+
 
       nameInScope.startsWith(prefix) &&
       sym.exists &&

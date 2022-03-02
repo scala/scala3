@@ -35,8 +35,6 @@ import org.jline.reader._
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.Using
-import dotty.tools.dotc.util.Chars
-import dotty.tools.dotc.parsing.Tokens
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
