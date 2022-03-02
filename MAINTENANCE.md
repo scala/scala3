@@ -48,7 +48,7 @@ At the end of their Tsardom, the Tsar reports to the team during the Dotty meeti
 - Unassigned PRs and issues that the team failed to classify: bring them one by one so that the team can make a decision on them.
 
 # Maintenance List
-The following is the list of all the principal areas of the compiler and the core teams members who are responsible for their maintenance:
+The following is the list of all the principal areas of the compiler and the core team members who are responsible for their maintenance:
 
 - Parser: @odersky
 - Typer: @odersky, @smarter, (@dwijnand)
