@@ -1489,10 +1489,11 @@ class Definitions {
    * @return true if the dealiased type of `tp` is `TupleN[T1, T2, ..., Tn]`
    */
   def isTupleNType(tp: Type)(using Context): Boolean = {
-    val arity = tp.dealias.argInfos.length
+    val tp1 = tp.dealias
+    val arity = tp1.argInfos.length
     arity <= MaxTupleArity && {
       val tupletp = TupleType(arity)
-      tupletp != null && tp.isRef(tupletp.symbol)
+      tupletp != null && tp1.isRef(tupletp.symbol)
     }
   }
 
