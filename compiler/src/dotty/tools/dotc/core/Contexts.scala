@@ -274,11 +274,11 @@ object Contexts {
     def effectiveScope(using Context): Scope =
       val co: Symbol | Null = owner
       if co != null && co.isClass then co.asClass.unforcedDecls
-      else scope
+      else
+        val s: Scope | Null = scope
+        if s == null then EmptyScope else s
 
-    def nestingLevel: Int =
-      val sc: Scope | Null = effectiveScope
-      if sc != null then sc.nestingLevel else 0
+    def nestingLevel: Int = effectiveScope.nestingLevel
 
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
