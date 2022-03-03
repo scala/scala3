@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
+import dotty.tools.dotc.core.Scopes._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
@@ -185,7 +186,7 @@ object Completion {
             .groupByName.foreach { (name, denots) =>
               addMapping(name, ScopedDenotations(denots, ctx))
             }
-        else if ctx.scope != null then
+        else if ctx.scope ne EmptyScope then
           ctx.scope.toList.filter(symbol => include(symbol, symbol.name))
             .flatMap(_.alternatives)
             .groupByName.foreach { (name, denots) =>

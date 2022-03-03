@@ -274,9 +274,7 @@ object Contexts {
     def effectiveScope(using Context): Scope =
       val co: Symbol | Null = owner
       if co != null && co.isClass then co.asClass.unforcedDecls
-      else
-        val s: Scope | Null = scope
-        if s == null then EmptyScope else s
+      else scope
 
     def nestingLevel: Int = effectiveScope.nestingLevel
 
@@ -828,6 +826,7 @@ object Contexts {
     owner = NoSymbol
     tree = untpd.EmptyTree
     moreProperties = Map(MessageLimiter -> DefaultMessageLimiter())
+    scope = EmptyScope
     source = NoSource
     store = initialStore
       .updated(settingsStateLoc, settingsGroup.defaultState)

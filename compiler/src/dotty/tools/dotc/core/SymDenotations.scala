@@ -1237,7 +1237,7 @@ object SymDenotations {
           .map(tpd.definedSym)
           .find(_.name == name)
           .getOrElse(NoSymbol)
-      else if ((ctx.scope: Scope | Null) == null) // TODO
+      else if (ctx.scope eq EmptyScope)
         NoSymbol
       else if (ctx.scope.lookup(this.name) == symbol)
         ctx.scope.lookup(name)

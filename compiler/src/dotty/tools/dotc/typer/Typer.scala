@@ -324,8 +324,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         (prevPrec.ordinal < prec.ordinal || prevPrec == prec && (prevCtx.scope eq ctx.scope))
 
       @tailrec def loop(lastCtx: Context)(using Context): Type =
-        // Can ctx.scope actually be null?
-        if ((ctx.scope: Scope | Null) == null) previous
+        if (ctx.scope eq EmptyScope) previous
         else {
           var result: Type = NoType
 
