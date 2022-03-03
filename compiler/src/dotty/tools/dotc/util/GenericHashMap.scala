@@ -151,8 +151,8 @@ abstract class GenericHashMap[Key, Value]
     else
       var idx = 0
       while idx < oldTable.length do
-        val key: Key | Null = oldTable(idx).asInstanceOf[Key | Null]
-        if key != null then addOld(key.uncheckedNN, oldTable(idx + 1).asInstanceOf[Value])
+        val key = oldTable(idx)
+        if key != null then addOld(key.asInstanceOf[Key], oldTable(idx + 1).asInstanceOf[Value])
         idx += 2
 
   protected def growTable(): Unit =

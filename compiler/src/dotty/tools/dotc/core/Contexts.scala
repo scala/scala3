@@ -269,8 +269,6 @@ object Contexts {
     /** Either the current scope, or, if the current context owner is a class,
      *  the declarations of the current class.
      */
-    // TODO: Should we change its type to nullable?
-    // We can see its value can be null in nestingLevel below.
     def effectiveScope(using Context): Scope =
       val co: Symbol | Null = owner
       if co != null && co.isClass then co.asClass.unforcedDecls

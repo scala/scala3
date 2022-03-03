@@ -259,7 +259,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
         else {
           val result = lookaheadelement.nn
           lookaheadelement = null
-          entry = entry.nn.tail // TODO
+          entry = entry.nn.tail
           result
         }
     }

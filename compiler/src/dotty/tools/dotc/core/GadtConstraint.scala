@@ -105,7 +105,6 @@ final class ProperGadtConstraint private(
               params.indexOf(tp.symbol) match {
                 case -1 =>
                   mapping(tp.symbol) match {
-                    // TODO: Improve flow typing so that ascription becomes redundant, see #11967
                     case tv: TypeVar => tv.origin
                     case null => tp
                   }
@@ -183,6 +182,7 @@ final class ProperGadtConstraint private(
   override def fullBounds(sym: Symbol)(using Context): TypeBounds | Null =
     mapping(sym) match {
       case null => null
+      // TODO: Improve flow typing so that ascription becomes redundant
       case tv: TypeVar =>
         fullBounds(tv.origin)
           // .ensuring(containsNoInternalTypes(_))
@@ -191,6 +191,7 @@ final class ProperGadtConstraint private(
   override def bounds(sym: Symbol)(using Context): TypeBounds | Null =
     mapping(sym) match {
       case null => null
+      // TODO: Improve flow typing so that ascription becomes redundant
       case tv: TypeVar =>
         def retrieveBounds: TypeBounds =
           bounds(tv.origin) match {
