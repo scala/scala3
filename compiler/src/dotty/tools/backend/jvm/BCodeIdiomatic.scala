@@ -27,14 +27,14 @@ trait BCodeIdiomatic {
 
 
   lazy val target =
-    val releaseValue = Option(ctx.settings.release.value).filter(_.nonEmpty)
-    val targetValue = Option(ctx.settings.Xtarget.value).filter(_.nonEmpty)
+    val releaseValue = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
+    val targetValue = Option(ctx.settings.XuncheckedJavaOutputVersion.value).filter(_.nonEmpty)
     val defaultTarget = "8"
     (releaseValue, targetValue) match
       case (Some(release), None) => release
       case (None, Some(target)) => target
       case (Some(release), Some(_)) =>
-        report.warning(s"The value of ${ctx.settings.Xtarget.name} was overridden by ${ctx.settings.release.name}")
+        report.warning(s"The value of ${ctx.settings.XuncheckedJavaOutputVersion.name} was overridden by ${ctx.settings.javaOutputVersion.name}")
         release
       case (None, None) => "8" // least supported version by default
 

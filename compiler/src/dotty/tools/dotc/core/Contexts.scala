@@ -486,7 +486,7 @@ object Contexts {
       fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
 
     def scalaRelease: ScalaRelease =
-      val releaseName = base.settings.YscalaRelease.value
+      val releaseName = base.settings.scalaOutputVersion.value
       if releaseName.nonEmpty then ScalaRelease.parse(releaseName).get else ScalaRelease.latest
 
     def tastyVersion: TastyVersion =
@@ -494,7 +494,7 @@ object Contexts {
       val latestRelease = ScalaRelease.latest
       val specifiedRelease = scalaRelease
       if specifiedRelease < latestRelease then
-        // This is needed to make -Yscala-release a no-op when set to the latest release for unstable versions of the compiler
+        // This is needed to make -scala-output-version a no-op when set to the latest release for unstable versions of the compiler
         // (which might have the tasty format version numbers set to higher values before they're decreased during a release)
         TastyVersion.fromStableScalaRelease(specifiedRelease.majorVersion, specifiedRelease.minorVersion)
       else
