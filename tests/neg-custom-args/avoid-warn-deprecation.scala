@@ -6,3 +6,4 @@ object A {
 object B {
   A.foo
 }
+// nopos-error there was 1 deprecation warning; re-run with -deprecation for details
