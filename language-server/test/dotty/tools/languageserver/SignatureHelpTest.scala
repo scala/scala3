@@ -361,4 +361,76 @@ class SignatureHelpTest {
           )), Some("Int"), Some("Buzzes a fizz up to bar"))
         ), None, 0)
   }
+  
+  @Test def unapplyMethod: Unit = {
+    code"""|object Main {
+           |  Option(1) match {
+           |    case Some(${m1}) =>
+           |  }
+           |}"""
+      .withSource
+      .signatureHelp(m1, List(
+        S("unapply[A]", Nil, List(List(
+          P("x$0", "Some[A]", None),
+          )), Some("Option[A]"), None)
+        ), None, 0)
+  }
+
+  @Test def unapplyMethodImplicits: Unit = {
+    code"""|
+           |object Opt:
+           |  def unapply[A](using String)(a: Option[A])(using Int) = a
+           |
+           |object Main {
+           |  given String = ""
+           |  given Int = 0
+           |  Option(1) match {
+           |    case Opt(${m1}) =>
+           |  }
+           |}"""
+      .withSource
+      .signatureHelp(m1, List(
+        S("unapply[A]", Nil, List(
+            List(
+              P("x$1", "String", None, isImplicit = true)
+            ),
+            List(
+              P("a", "Option[A]", None),
+            ),
+            List(
+              P("x$3", "Int", None, isImplicit = true)
+            )
+          ), 
+          Some("Option[A]"), None)
+        ), None, 1)
+  }
+
+  @Test def unapplyMethodImplicitsMultiple: Unit = {
+    code"""|
+           |object Opt:
+           |  def unapply[A](using String)(using Int)(a: Option[A]) = a
+           |
+           |object Main {
+           |  given String = ""
+           |  given Int = 0
+           |  Option(1) match {
+           |    case Opt(${m1}) =>
+           |  }
+           |}"""
+      .withSource
+      .signatureHelp(m1, List(
+        S("unapply[A]", Nil, List(
+            List(
+              P("x$1", "String", None, isImplicit = true)
+            ),
+            List(
+              P("x$2", "Int", None, isImplicit = true)
+            ),
+            List(
+              P("a", "Option[A]", None),
+            )
+          ), 
+          Some("Option[A]"), None)
+        ), None, 2)
+  }
 }
