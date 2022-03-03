@@ -163,7 +163,7 @@ object Names {
     override def asTermName: TermName = this
 
     @sharable // because it is only modified in the synchronized block of toTypeName.
-    private var myTypeName: TypeName = null
+    private var myTypeName: TypeName | Null = null
       // Note: no @volatile needed since type names are immutable and therefore safely published
 
     override def toTypeName: TypeName =
@@ -171,7 +171,7 @@ object Names {
         synchronized {
           if myTypeName == null then myTypeName = new TypeName(this)
         }
-      myTypeName
+      myTypeName.nn
 
     override def likeSpaced(name: Name): TermName = name.toTermName
 
@@ -187,7 +187,7 @@ object Names {
           val derivedName = new DerivedName(this, info)
           derivedNames = derivedNames.updated(info, derivedName)
           derivedName
-        case derivedName =>
+        case derivedName: DerivedName =>
           derivedName
     }
 
@@ -225,10 +225,10 @@ object Names {
     }
 
     @sharable // because it's just a cache for performance
-    private var myMangledString: String = null
+    private var myMangledString: String | Null = null
 
     @sharable // because it's just a cache for performance
-    private var myMangled: Name = null
+    private var myMangled: Name | Null = null
 
     protected[Names] def mangle: ThisName
 
@@ -240,7 +240,7 @@ object Names {
     final def mangledString: String = {
       if (myMangledString == null)
         myMangledString = qualToString(_.mangledString, _.mangled.toString)
-      myMangledString
+      myMangledString.nn
     }
 
     /** If this a qualified name, split it into underlying, last part, and separator
@@ -259,11 +259,11 @@ object Names {
 
     protected def computeToString: String
 
-    @sharable private var myToString: String = null
+    @sharable private var myToString: String | Null = null
 
-    override def toString =
+    override def toString: String =
       if myToString == null then myToString = computeToString
-      myToString
+      myToString.nn
 
   }
 
@@ -386,7 +386,7 @@ object Names {
             // because asserts are caught in exception handlers which might
             // cause other failures. In that case the first, important failure
             // is lost.
-            System.err.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
+            System.err.nn.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
             Thread.dumpStack()
             assert(false)
           }
@@ -397,8 +397,8 @@ object Names {
      *  from GenBCode or it also contains one of the whitelisted methods below.
      */
     private def toStringOK = {
-      val trace = Thread.currentThread.getStackTrace
-      !trace.exists(_.getClassName.endsWith("GenBCode")) ||
+      val trace: Array[StackTraceElement] = Thread.currentThread.nn.getStackTrace.asInstanceOf[Array[StackTraceElement]]
+      !trace.exists(_.getClassName.nn.endsWith("GenBCode")) ||
       trace.exists(elem =>
           List(
               "mangledString",
@@ -542,13 +542,13 @@ object Names {
       Stats.record(statsItem("put"))
       val myTable = currentTable // could be outdated under parallel execution
       var idx = hashValue(cs, offset, len) & (myTable.length - 1)
-      var name = myTable(idx).asInstanceOf[SimpleName]
+      var name: SimpleName | Null = myTable(idx).asInstanceOf[SimpleName | Null]
       while name != null do
-        if name.length == len && Names.equals(name.start, cs, offset, len) then
-          return name
+        if name.nn.length == len && Names.equals(name.nn.start, cs, offset, len) then
+          return name.nn
         Stats.record(statsItem("miss"))
         idx = (idx + 1) & (myTable.length - 1)
-        name = myTable(idx).asInstanceOf[SimpleName]
+        name = myTable(idx).asInstanceOf[SimpleName | Null]
       Stats.record(statsItem("addEntryAt"))
       synchronized {
         if (myTable eq currentTable) && myTable(idx) == null then
@@ -563,7 +563,7 @@ object Names {
           ensureCapacity(nc + len)
           Array.copy(cs, offset, chrs, nc, len)
           nc += len
-          addEntryAt(idx, name)
+          addEntryAt(idx, name.nn)
         else
           enterIfNew(cs, offset, len)
       }
@@ -626,10 +626,10 @@ object Names {
    *  See `sliceToTermName` in `Decorators` for a more efficient version
    *  which however requires a Context for its operation.
    */
-  def termName(s: String): SimpleName = termName(s.toCharArray, 0, s.length)
+  def termName(s: String): SimpleName = termName(s.toCharArray.nn, 0, s.length)
 
   /** Create a type name from a string */
-  def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
+  def typeName(s: String): TypeName = typeName(s.toCharArray.nn, 0, s.length)
 
   /** The type name represented by the empty string */
   val EmptyTypeName: TypeName = EmptyTermName.toTypeName

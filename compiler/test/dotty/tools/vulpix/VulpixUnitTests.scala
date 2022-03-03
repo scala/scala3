@@ -1,6 +1,8 @@
 package dotty.tools
 package vulpix
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile}
 import org.junit.Assert._
 import org.junit.{ Test, AfterClass }

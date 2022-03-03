@@ -2,6 +2,8 @@ package dotty.tools.dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader, TastyHeaderUnpickler}
 import TastyFormat.NameTags._, TastyFormat.nameTagToString
 import TastyBuffer.NameRef

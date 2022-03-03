@@ -8,6 +8,8 @@
 
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JavaIoFile, _}
 import java.nio.file.{Files, Paths}
 import java.nio.file.StandardOpenOption._

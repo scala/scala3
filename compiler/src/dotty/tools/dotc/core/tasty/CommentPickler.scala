@@ -17,7 +17,7 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docStr
 
   private def pickleComment(addr: Addr, comment: Comment): Unit =
     if addr != NoAddr then
-      val bytes = comment.raw.getBytes(StandardCharsets.UTF_8)
+      val bytes = comment.raw.getBytes(StandardCharsets.UTF_8).nn
       val length = bytes.length
       buf.writeAddr(addr)
       buf.writeNat(length)

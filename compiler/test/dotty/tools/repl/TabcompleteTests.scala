@@ -1,5 +1,7 @@
 package dotty.tools.repl
 
+import scala.language.unsafeNulls
+
 import org.junit.Assert._
 import org.junit.Test
 

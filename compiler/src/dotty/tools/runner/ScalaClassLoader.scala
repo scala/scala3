@@ -1,6 +1,7 @@
 package dotty.tools
 package runner
 
+import scala.language.unsafeNulls
 
 import java.lang.ClassLoader
 import java.lang.invoke.{MethodHandles, MethodType}
@@ -60,7 +61,7 @@ object RichClassLoader {
 object ScalaClassLoader {
   def setContext(cl: ClassLoader) = Thread.currentThread.setContextClassLoader(cl)
 
-  def fromURLsParallelCapable(urls: Seq[URL], parent: ClassLoader = null): URLClassLoader =
+  def fromURLsParallelCapable(urls: Seq[URL], parent: ClassLoader | Null = null): URLClassLoader =
     new URLClassLoader(urls.toArray, if parent == null then bootClassLoader else parent)
 
   @sharable private[this] val bootClassLoader: ClassLoader =

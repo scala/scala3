@@ -9,6 +9,7 @@ import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
 import util.Stats
+import util.NoSourcePosition
 import config.Config
 import config.Feature.migrateTo3
 import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
@@ -35,9 +36,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   protected given [DummySoItsADef]: Context = myContext
 
-  protected var state: TyperState = null
-  def constraint: Constraint = state.constraint
-  def constraint_=(c: Constraint): Unit = state.constraint = c
+  protected var state: TyperState | Null = null
+  def constraint: Constraint = state.nn.constraint
+  def constraint_=(c: Constraint): Unit = state.nn.constraint = c
 
   def init(c: Context): Unit =
     myContext = c
@@ -48,7 +49,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     needsGc = false
     if Config.checkTypeComparerReset then checkReset()
 
-  private var pendingSubTypes: util.MutableSet[(Type, Type)] = null
+  private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
   private var recCount = 0
   private var monitored = false
 
@@ -91,7 +92,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   override def checkReset() =
     super.checkReset()
-    assert(pendingSubTypes == null || pendingSubTypes.isEmpty)
+    assert(pendingSubTypes == null || pendingSubTypes.uncheckedNN.isEmpty)
     assert(canCompareAtoms == true)
     assert(successCount == 0)
     assert(totalCount == 0)
@@ -150,7 +151,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  every time we compare components of the previous pair of types.
    *  This type is used for capture conversion in `isSubArgs`.
    */
-  private [this] var leftRoot: Type = null
+  private [this] var leftRoot: Type | Null = null
 
   /** Are we forbidden from recording GADT constraints? */
   private var frozenGadt = false
@@ -219,7 +220,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
         pendingSubTypes = util.HashSet[(Type, Type)]()
-        report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
+        report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.nn.constraint.show}")
         report.log(s"!!! constraint = ${constraint.show}")
         //if (ctx.settings.YnoDeepSubtypes.value) {
         //  new Error("deep subtype").printStackTrace()
@@ -247,13 +248,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
       }
       val p = (normalize(tp1), normalize(tp2))
-      !pendingSubTypes.contains(p) && {
+      !pendingSubTypes.nn.contains(p) && {
         try {
-          pendingSubTypes += p
+          pendingSubTypes.nn += p
           firstTry
         }
         finally
-          pendingSubTypes -= p
+          pendingSubTypes.nn -= p
       }
     }
 
@@ -389,7 +390,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         thirdTry
       case tp1: TypeParamRef =>
         def flagNothingBound = {
-          if (!frozenConstraint && isBottom(tp2) && state.isGlobalCommittable) {
+          if (!frozenConstraint && isBottom(tp2) && state.nn.isGlobalCommittable) {
             def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
             if (Config.failOnInstantiationToNothing) assert(false, msg)
             else report.log(msg)
@@ -782,7 +783,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
               case _ => false
-
             val sym1 = tp1.symbol
             (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
             (sym1 eq NullClass) && isNullable(tp2)
@@ -1309,7 +1309,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val saved = constraint
       val savedGadt = ctx.gadt.fresh
       inline def restore() =
-        state.constraint = saved
+        state.nn.constraint = saved
         ctx.gadt.restore(savedGadt)
       val savedSuccessCount = successCount
       try
@@ -1319,7 +1319,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         recCount -= 1
         if !result then restore()
         else if recCount == 0 && needsGc then
-          state.gc()
+          state.nn.gc()
           needsGc = false
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
@@ -1488,11 +1488,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
          */
         def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
           case tparam: Symbol =>
-            if (leftRoot.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
-                && leftRoot.isValueType
-                && leftRoot.member(tparam.name).exists
+            val leftr = leftRoot.nn
+            if (leftr.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+                && leftr.isValueType
+                && leftr.member(tparam.name).exists
             then
-              val captured = TypeRef(leftRoot, tparam)
+              val captured = TypeRef(leftr, tparam)
               try isSubArg(captured, arg2)
               catch case ex: TypeError =>
                 // The captured reference could be illegal and cause a
@@ -2473,7 +2474,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** Does `tycon` have a field with type `tparam`? Special cased for `scala.*:`
    *  as that type is artificially added to tuples. */
   private def typeparamCorrespondsToField(tycon: Type, tparam: TypeParamInfo): Boolean =
-    productSelectorTypes(tycon, null).exists {
+    productSelectorTypes(tycon, NoSourcePosition).exists {
       case tp: TypeRef =>
         tp.designator.eq(tparam) // Bingo!
       case _ =>
@@ -2630,9 +2631,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         !(tp2 <:< tp1)
         && (provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1))
       case (tp1: NamedType, _) if gadtBounds(tp1.symbol) != null =>
-        provablyDisjoint(gadtBounds(tp1.symbol).hi, tp2) || provablyDisjoint(tp1.superType, tp2)
+        provablyDisjoint(gadtBounds(tp1.symbol).uncheckedNN.hi, tp2) || provablyDisjoint(tp1.superType, tp2)
       case (_, tp2: NamedType) if gadtBounds(tp2.symbol) != null =>
-        provablyDisjoint(tp1, gadtBounds(tp2.symbol).hi) || provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(tp1, gadtBounds(tp2.symbol).uncheckedNN.hi) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
         tp1.termSymbol != tp2.termSymbol
       case (tp1: TermRef, tp2: TypeRef) if isEnumValue(tp1) =>
@@ -2684,12 +2685,12 @@ object TypeComparer {
   }
 
   private[core] def show(res: Any)(using Context): String =
-    if ctx.settings.YexplainLowlevel.value then String.valueOf(res)
+    if ctx.settings.YexplainLowlevel.value then String.valueOf(res).nn
     else res match
       case ClassInfo(_, cls, _, _, _) => cls.showLocated
       case bounds: TypeBounds => i"type bounds [$bounds]"
       case res: printing.Showable => res.show
-      case _ => String.valueOf(res)
+      case _ => String.valueOf(res).nn
 
   /** The approximation state indicates how the pair of types currently compared
    *  relates to the types compared originally.
@@ -2843,7 +2844,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.addOneBound(param, bound, isUpper)
   }
 
-  override def gadtBounds(sym: Symbol)(using Context): TypeBounds = {
+  override def gadtBounds(sym: Symbol)(using Context): TypeBounds | Null = {
     if (sym.exists) footprint += sym.typeRef
     super.gadtBounds(sym)
   }

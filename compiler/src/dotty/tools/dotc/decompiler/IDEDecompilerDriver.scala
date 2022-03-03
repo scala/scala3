@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package decompiler
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.tasty.TastyHTMLPrinter

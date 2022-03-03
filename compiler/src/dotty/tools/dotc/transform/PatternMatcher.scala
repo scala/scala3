@@ -12,6 +12,7 @@ import SymUtils._
 import Flags._, Constants._
 import Decorators._
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
+import typer.Nullables
 import config.Printers.patmatch
 import reporting._
 import dotty.tools.dotc.ast._

@@ -10,7 +10,9 @@ import scala.annotation.tailrec
 
 class Uniques extends WeakHashSet[Type](Config.initialUniquesCapacity):
   override def hash(x: Type): Int = x.hash
-  override def isEqual(x: Type, y: Type) = x.eql(y)
+  override def isEqual(x: Type | Null, y: Type | Null) =
+    if x == null then y == null
+    else y != null && x.eql(y)
 
 /** Defines operation `unique` for hash-consing types.
  *  Also defines specialized hash sets for hash consing uniques of a specific type.
@@ -52,7 +54,7 @@ object Uniques:
         val oldHead = table(bucket)
 
         @tailrec
-        def linkedListLoop(entry: Entry[NamedType]): NamedType = entry match
+        def linkedListLoop(entry: Entry[NamedType] | Null): NamedType = entry match
           case null                    => addEntryAt(bucket, newType, h, oldHead)
           case _                       =>
             val e = entry.get
@@ -79,7 +81,7 @@ object Uniques:
         val oldHead = table(bucket)
 
         @tailrec
-        def linkedListLoop(entry: Entry[AppliedType]): AppliedType = entry match
+        def linkedListLoop(entry: Entry[AppliedType] | Null): AppliedType = entry match
           case null                    => addEntryAt(bucket, newType, h, oldHead)
           case _                       =>
             val e = entry.get

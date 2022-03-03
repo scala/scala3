@@ -21,7 +21,7 @@ class CheckLoopingImplicits extends MiniPhase:
 
   override def description: String = CheckLoopingImplicits.description
 
-  override def transformValDef(mdef: ValDef)(using Context): Tree = 
+  override def transformValDef(mdef: ValDef)(using Context): Tree =
     transform(mdef)
 
   override def transformDefDef(mdef: DefDef)(using Context): Tree =
@@ -80,7 +80,7 @@ class CheckLoopingImplicits extends MiniPhase:
         checkNotLooping(finalizer)
       case SeqLiteral(elems, _) =>
         elems.foreach(checkNotLooping)
-      case t: ValDef =>  
+      case t: ValDef =>
         checkNotLooping(t.rhs)
       case _ =>
 

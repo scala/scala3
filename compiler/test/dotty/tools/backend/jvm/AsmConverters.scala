@@ -1,5 +1,7 @@
 package dotty.tools.backend.jvm
 
+import scala.language.unsafeNulls
+
 import scala.tools.asm
 import asm._
 import asm.tree._

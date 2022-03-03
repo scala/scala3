@@ -36,7 +36,7 @@ trait CommonRunner {
           _: UndeclaredThrowableException |
           _: ExecutionException
             if x.getCause != null =>
-              rootCause(x.getCause)
+              rootCause(x.getCause.nn)
     case _ => x
   }
 }

@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.tools.asm
 import scala.annotation.switch
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}

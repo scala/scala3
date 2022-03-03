@@ -1,5 +1,7 @@
 package dotty.tools.repl
 
+import scala.language.unsafeNulls
+
 import java.util.regex.Pattern
 
 import org.junit.Assert.{assertTrue => assert, _}

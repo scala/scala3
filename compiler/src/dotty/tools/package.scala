@@ -26,12 +26,6 @@ package object tools {
 
   /** Forward-ported from the explicit-nulls branch. */
   extension [T](x: T | Null)
-
-    /** Assert `x` is non null and strip `Null` from type */
-    inline def nn: T =
-      assert(x != null)
-      x.asInstanceOf[T]
-
     /** Should be used when we know from the context that `x` is not null.
      *  Flow-typing under explicit nulls will automatically insert many necessary
      *  occurrences of uncheckedNN.
@@ -41,6 +35,17 @@ package object tools {
     inline def toOption: Option[T] =
       if x == null then None else Some(x.asInstanceOf[T])
   end extension
+
+  /** Nullable eq and ne. */
+  extension [T <: AnyRef](x: T | Null)
+    inline def eqn (y: T | Null) =
+      if x != null then
+        if y != null then
+          x eq y
+        else false
+      else y == null
+
+    inline def nen(y: T | Null): Boolean = !eqn(y)
 
   object resultWrapper {
     opaque type WrappedResult[T] = T

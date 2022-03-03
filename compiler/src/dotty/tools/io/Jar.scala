@@ -7,6 +7,8 @@
 package dotty.tools
 package io
 
+import scala.language.unsafeNulls
+
 import java.io.{ InputStream, OutputStream, DataOutputStream }
 import java.util.jar._
 import scala.jdk.CollectionConverters._

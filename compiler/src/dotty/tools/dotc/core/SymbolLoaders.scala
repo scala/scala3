@@ -135,7 +135,7 @@ object SymbolLoaders {
           if (!ok)
             report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
-                           |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
+                           |But it is found in directory     ${filePath.reverse.mkString(File.separator.nn)}""",
               tree.srcPos.focus)
           ok
         }
@@ -207,7 +207,7 @@ object SymbolLoaders {
   /** Load contents of a package
    */
   class PackageLoader(_sourceModule: TermSymbol, classPath: ClassPath) extends SymbolLoader {
-    override def sourceFileOrNull: AbstractFile = null
+    override def sourceFileOrNull: AbstractFile | Null = null
     override def sourceModule(using Context): TermSymbol = _sourceModule
     def description(using Context): String = "package loader " + sourceModule.fullName
 
@@ -222,7 +222,7 @@ object SymbolLoaders {
       override def newScopeEntry(name: Name, sym: Symbol)(using Context): ScopeEntry =
         super.newScopeEntry(name.mangled, sym)
 
-      override def lookupEntry(name: Name)(using Context): ScopeEntry = {
+      override def lookupEntry(name: Name)(using Context): ScopeEntry | Null = {
         val mangled = name.mangled
         val e = super.lookupEntry(mangled)
         if (e != null) e
@@ -295,7 +295,7 @@ object SymbolLoaders {
           val fullName = pkg.name
           val name =
             if (packageName.isEmpty) fullName
-            else fullName.substring(packageName.length + 1)
+            else fullName.substring(packageName.length + 1).nn
 
           enterPackage(root.symbol, name.toTermName,
             (module, modcls) => new PackageLoader(module, classPath))
@@ -311,7 +311,7 @@ abstract class SymbolLoader extends LazyType { self =>
   /** Load source or class file for `root`, return */
   def doComplete(root: SymDenotation)(using Context): Unit
 
-  def sourceFileOrNull: AbstractFile
+  def sourceFileOrNull: AbstractFile | Null
 
   /** Description of the resource (ClassPath, AbstractFile)
    *  being processed by this loader
@@ -331,7 +331,7 @@ abstract class SymbolLoader extends LazyType { self =>
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
       report.error(
-        if (msg eq null) "i/o error while loading " + root.name
+        if (msg == null) "i/o error while loading " + root.name
         else "error while loading " + root.name + ",\n" + msg)
     }
     try {
@@ -398,7 +398,7 @@ abstract class SymbolLoader extends LazyType { self =>
 
 class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
-  override def sourceFileOrNull: AbstractFile = classfile
+  override def sourceFileOrNull: AbstractFile | Null = classfile
 
   def description(using Context): String = "class file " + classfile.toString
 
@@ -424,7 +424,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
   def description(using Context): String = "source file " + srcfile.toString
-  override def sourceFileOrNull: AbstractFile = srcfile
+  override def sourceFileOrNull: AbstractFile | Null = srcfile
   def doComplete(root: SymDenotation)(using Context): Unit =
     ctx.run.lateCompile(srcfile, typeCheck = ctx.settings.YretainTrees.value)
 }
@@ -432,7 +432,7 @@ class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
 /** A NoCompleter which is also a SymbolLoader. */
 class NoLoader extends SymbolLoader with NoCompleter {
   def description(using Context): String = "NoLoader"
-  override def sourceFileOrNull: AbstractFile = null
+  override def sourceFileOrNull: AbstractFile | Null = null
   override def complete(root: SymDenotation)(using Context): Unit =
     super[NoCompleter].complete(root)
   def doComplete(root: SymDenotation)(using Context): Unit =

@@ -35,7 +35,7 @@ class SpecializeFunctions extends MiniPhase {
     val sym = ddef.symbol
     val cls = ctx.owner.asClass
 
-    var specName: Name = null
+    var specName: Name | Null = null
 
     def isSpecializable = {
       val paramTypes = ddef.termParamss.head.map(_.symbol.info)
@@ -48,7 +48,7 @@ class SpecializeFunctions extends MiniPhase {
 
     val specializedApply = newSymbol(
         cls,
-        specName,
+        specName.nn,
         sym.flags | Flags.Synthetic,
         sym.info
       ).entered

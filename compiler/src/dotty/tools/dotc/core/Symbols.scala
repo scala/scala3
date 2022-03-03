@@ -65,11 +65,11 @@ object Symbols {
       myCoord = c
     }
 
-    private var myDefTree: Tree = null
+    private var myDefTree: Tree | Null = null
 
     /** The tree defining the symbol at pickler time, EmptyTree if none was retained */
     def defTree: Tree =
-      if (myDefTree == null) tpd.EmptyTree else myDefTree
+      if (myDefTree == null) tpd.EmptyTree else myDefTree.nn
 
     /** Set defining tree if this symbol retains its definition tree */
     def defTree_=(tree: Tree)(using Context): Unit =
@@ -86,7 +86,7 @@ object Symbols {
       ctx.settings.YcheckInit.value        // initialization check
 
     /** The last denotation of this symbol */
-    private var lastDenot: SymDenotation = _
+    private var lastDenot: SymDenotation | Null = _
     private var checkedPeriod: Period = Nowhere
 
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
@@ -101,7 +101,7 @@ object Symbols {
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
-      val lastd = lastDenot
+      val lastd = lastDenot.nn
       if (checkedPeriod == ctx.period) lastd
       else computeDenot(lastd)
     }
@@ -123,14 +123,14 @@ object Symbols {
 
     /** The original denotation of this symbol, without forcing anything */
     final def originDenotation: SymDenotation =
-      lastDenot.initial
+      lastDenot.nn.initial
 
     /** The last known denotation of this symbol, without going through `current` */
     final def lastKnownDenotation: SymDenotation =
-      lastDenot
+      lastDenot.nn
 
     private[core] def defRunId: RunId =
-      if (lastDenot == null) NoRunId else lastDenot.validFor.runId
+      if (lastDenot == null) NoRunId else lastDenot.nn.validFor.runId
 
     private inline def associatedFileMatches(inline filter: AbstractFile => Boolean)(using Context): Boolean =
       try
@@ -153,17 +153,18 @@ object Symbols {
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =
-      (lastDenot.validFor.runId == ctx.runId || stillValid(lastDenot)) &&
-      (lastDenot.symbol eq this)
+      val d = lastDenot.nn
+      (d.validFor.runId == ctx.runId || stillValid(d)) &&
+      (d.symbol eq this)
         // the last condition is needed because under ctx.staleOK overwritten
         // members keep denotations pointing to the new symbol, so the validity
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
     final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
+      (if (defRunId == ctx.runId) lastDenot.nn else denot).isTerm
     final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
+      (if (defRunId == ctx.runId) lastDenot.nn else denot).isType
     final def asTerm(using Context): TermSymbol = {
       assert(isTerm, s"asTerm called on not-a-Term $this" );
       asInstanceOf[TermSymbol]
@@ -192,14 +193,14 @@ object Symbols {
 
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
     final def signature(using Context): Signature =
-      if (lastDenot != null && (lastDenot.isCompleted || lastDenot.is(Method)))
+      if (lastDenot != null && (lastDenot.uncheckedNN.isCompleted || lastDenot.uncheckedNN.is(Method)))
         denot.signature
       else
         Signature.NotAMethod
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(using Context): Boolean =
-      lastDenot != null && lastDenot.initial.isStatic
+      lastDenot != null && lastDenot.uncheckedNN.initial.isStatic
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(using Context): this.type = {
@@ -266,11 +267,11 @@ object Symbols {
      *  containing this symbol instead of the directly enclosing class.
      *  Overridden in ClassSymbol
      */
-    def associatedFile(using Context): AbstractFile =
-      if (lastDenot == null) null else lastDenot.topLevelClass.associatedFile
+    def associatedFile(using Context): AbstractFile | Null =
+      if (lastDenot == null) null else lastDenot.uncheckedNN.topLevelClass.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
-    final def binaryFile(using Context): AbstractFile = {
+    final def binaryFile(using Context): AbstractFile | Null = {
       val file = associatedFile
       if (file != null && file.extension == "class") file else null
     }
@@ -356,7 +357,7 @@ object Symbols {
 
     override def toString: String =
       if (lastDenot == null) s"Naked$prefixString#$id"
-      else lastDenot.toString// + "#" + id // !!! DEBUG
+      else lastDenot.nn.toString // + "#" + id // !!! DEBUG
 
     def toText(printer: Printer): Text = printer.toText(this)
 
@@ -373,7 +374,7 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile, id: Int, nestingLevel: Int)
+  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile | Null, id: Int, nestingLevel: Int)
     extends Symbol(coord, id, nestingLevel) {
 
     type ThisName = TypeName
@@ -433,7 +434,7 @@ object Symbols {
     }
 
     /** The source or class file from which this class was generated, null if not applicable. */
-    override def associatedFile(using Context): AbstractFile =
+    override def associatedFile(using Context): AbstractFile | Null =
       if assocFile != null || this.is(Package) || this.owner.is(Package) then assocFile
       else super.associatedFile
 
@@ -465,7 +466,7 @@ object Symbols {
   }
 
   @sharable object NoSymbol extends Symbol(NoCoord, 0, 0) {
-    override def associatedFile(using Context): AbstractFile = NoSource.file
+    override def associatedFile(using Context): AbstractFile | Null = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
   }
 
@@ -483,7 +484,7 @@ object Symbols {
         info: Type = sym.info,
         privateWithin: Symbol = sym.privateWithin,
         coord: Coord = NoCoord, // Can be `= owner.coord` once we bootstrap
-        associatedFile: AbstractFile = null // Can be `= owner.associatedFile` once we bootstrap
+        associatedFile: AbstractFile | Null = null // Can be `= owner.associatedFile` once we bootstrap
     ): Symbol = {
       val coord1 = if (coord == NoCoord) owner.coord else coord
       val associatedFile1 = if (associatedFile == null) owner.associatedFile else associatedFile
@@ -537,7 +538,7 @@ object Symbols {
       infoFn: ClassSymbol => Type,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile = null)(using Context): ClassSymbol
+      assocFile: AbstractFile | Null = null)(using Context): ClassSymbol
   = {
     val cls = new ClassSymbol(coord, assocFile, ctx.base.nextSymId, ctx.nestingLevel)
     val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
@@ -555,7 +556,7 @@ object Symbols {
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile = null)(using Context): ClassSymbol =
+      assocFile: AbstractFile | Null = null)(using Context): ClassSymbol =
     newClassSymbol(
         owner, name, flags,
         ClassInfo(owner.thisType, _, parents, decls, selfInfo),
@@ -572,7 +573,7 @@ object Symbols {
       selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile = null)(using Context): ClassSymbol = {
+      assocFile: AbstractFile | Null = null)(using Context): ClassSymbol = {
     def completer = new LazyType {
       def complete(denot: SymDenotation)(using Context): Unit = {
         val cls = denot.asClass.classSymbol
@@ -598,7 +599,7 @@ object Symbols {
       infoFn: (TermSymbol, ClassSymbol) => Type, // typically a ModuleClassCompleterWithDecls
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile = null)(using Context): TermSymbol
+      assocFile: AbstractFile | Null = null)(using Context): TermSymbol
   = {
     val base = owner.thisType
     val modclsFlags = clsFlags | ModuleClassCreationFlags
@@ -627,7 +628,7 @@ object Symbols {
       decls: Scope,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile = null)(using Context): TermSymbol =
+      assocFile: AbstractFile | Null = null)(using Context): TermSymbol =
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
@@ -671,7 +672,7 @@ object Symbols {
   /** Create a stub symbol that will issue a missing reference error
    *  when attempted to be completed.
    */
-  def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null)(using Context): Symbol = {
+  def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile | Null = null)(using Context): Symbol = {
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
     typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")

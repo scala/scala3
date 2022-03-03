@@ -1,11 +1,9 @@
-package dotty.tools.dotc.transform
+package dotty.tools.dotc
+package transform
 
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.transform.MegaPhase._
-import java.io.{File => _}
-
-import dotty.tools.dotc.core._
+import core._
+import ast.tpd
+import MegaPhase._
 import Contexts._
 import Symbols._
 import Phases._
@@ -38,7 +36,7 @@ class CollectEntryPoints extends MiniPhase:
 
   private def getEntryPoint(tree: tpd.TypeDef)(using Context): Option[String] =
     val sym = tree.symbol
-    import dotty.tools.dotc.core.NameOps.stripModuleClassSuffix
+    import core.NameOps.stripModuleClassSuffix
     val name = sym.fullName.stripModuleClassSuffix.toString
     Option.when(sym.isStatic && !sym.is(Flags.Trait) && ctx.platform.hasMainMethod(sym))(name)
 

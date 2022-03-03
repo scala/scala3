@@ -1,5 +1,7 @@
 package dotty.tools.dotc.classpath
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Contexts.Context
 
 import java.io.{ByteArrayOutputStream, IOException}

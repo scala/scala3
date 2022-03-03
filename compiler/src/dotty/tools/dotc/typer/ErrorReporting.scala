@@ -292,7 +292,7 @@ class ImplicitSearchError(
     }
 
     """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match {
-      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse(""))
+      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("")).nn
     })
   }
 

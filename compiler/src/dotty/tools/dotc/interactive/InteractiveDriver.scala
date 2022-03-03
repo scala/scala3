@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package interactive
 
+import scala.language.unsafeNulls
+
 import java.net.URI
 import java.io._
 import java.nio.file._

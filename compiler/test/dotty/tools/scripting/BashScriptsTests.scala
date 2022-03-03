@@ -2,6 +2,8 @@ package dotty
 package tools
 package scripting
 
+import scala.language.unsafeNulls
+
 import java.nio.file.Paths
 import org.junit.{Test, AfterClass}
 import org.junit.Assert.assertEquals
@@ -48,7 +50,7 @@ object BashScriptsTests:
   )
   val showArgsScript = testFiles.find(_.getName == "showArgs.sc").get.absPath
 
-  def testFile(name: String): String = 
+  def testFile(name: String): String =
     val file = testFiles.find(_.getName == name) match {
       case Some(f) =>
         val ff = f.absPath
@@ -78,7 +80,7 @@ class BashScriptsTests:
   // classpath tests managed by scripting.ClasspathTests.scala
 
   ////////////////////////// begin tests //////////////////////
-  
+
   /* verify that `dist/bin/scala` correctly passes args to the jvm via -J-D for script envtest.sc */
   @Test def verifyScJProperty =
     val tag = "World1"

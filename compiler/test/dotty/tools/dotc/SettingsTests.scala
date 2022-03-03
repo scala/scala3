@@ -1,6 +1,8 @@
 package dotty.tools
 package dotc
 
+import scala.language.unsafeNulls
+
 import reporting.StoreReporter
 import vulpix.TestConfiguration
 

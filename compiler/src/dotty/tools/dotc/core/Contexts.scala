@@ -178,7 +178,7 @@ object Contexts {
     final def gadt: GadtConstraint = _gadt
 
     /** The history of implicit searches that are currently active */
-    private var _searchHistory: SearchHistory = null
+    private var _searchHistory: SearchHistory = _
     protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
     final def searchHistory: SearchHistory = _searchHistory
 
@@ -242,7 +242,7 @@ object Contexts {
     def typeAssigner: TypeAssigner = store(typeAssignerLoc)
 
     /** The new implicit references that are introduced by this scope */
-    protected var implicitsCache: ContextualImplicits = null
+    protected var implicitsCache: ContextualImplicits | Null = null
     def implicits: ContextualImplicits = {
       if (implicitsCache == null)
         implicitsCache = {
@@ -263,18 +263,21 @@ object Contexts {
           if (implicitRefs.isEmpty) outerImplicits
           else new ContextualImplicits(implicitRefs, outerImplicits, isImportContext)(this)
         }
-      implicitsCache
+      implicitsCache.nn
     }
 
     /** Either the current scope, or, if the current context owner is a class,
      *  the declarations of the current class.
      */
+    // TODO: Should we change its type to nullable?
+    // We can see its value can be null in nestingLevel below.
     def effectiveScope(using Context): Scope =
-      if owner != null && owner.isClass then owner.asClass.unforcedDecls
+      val co: Symbol | Null = owner
+      if co != null && co.isClass then co.asClass.unforcedDecls
       else scope
 
     def nestingLevel: Int =
-      val sc = effectiveScope
+      val sc: Scope | Null = effectiveScope
       if sc != null then sc.nestingLevel else 0
 
     /** Sourcefile corresponding to given abstract file, memoized */
@@ -309,15 +312,15 @@ object Contexts {
     def getFile(name: String): AbstractFile = getFile(name.toTermName)
 
 
-    private var related: SimpleIdentityMap[Phase | SourceFile, Context] = null
+    private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Null = null
 
-    private def lookup(key: Phase | SourceFile): Context =
+    private def lookup(key: Phase | SourceFile): Context | Null =
       util.Stats.record("Context.related.lookup")
       if related == null then
         related = SimpleIdentityMap.empty
         null
       else
-        related(key)
+        related.nn(key)
 
     private def withPhase(phase: Phase, pid: PhaseId): Context =
       util.Stats.record("Context.withPhase")
@@ -329,7 +332,7 @@ object Contexts {
         if ctx1 == null then
           util.Stats.record("Context.withPhase.new")
           ctx1 = fresh.setPhase(pid)
-          related = related.updated(phase, ctx1)
+          related = related.nn.updated(phase, ctx1)
         ctx1
 
     final def withPhase(phase: Phase): Context = withPhase(phase, phase.id)
@@ -344,13 +347,13 @@ object Contexts {
         if ctx1 == null then
           util.Stats.record("Context.withSource.new")
           val ctx2 = fresh.setSource(source)
-          if ctx2.compilationUnit == null then
+          if ctx2.compilationUnit eq NoCompilationUnit then
             // `source` might correspond to a file not necessarily
             // in the current project (e.g. when inlining library code),
             // so set `mustExist` to false.
             ctx2.setCompilationUnit(CompilationUnit(source, mustExist = false))
           ctx1 = ctx2
-          related = related.updated(source, ctx2)
+          related = related.nn.updated(source, ctx2)
         ctx1
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
@@ -388,11 +391,7 @@ object Contexts {
     final def erasedTypes = phase.erasedTypes
 
     /** Are we in a Java compilation unit? */
-    final def isJava: Boolean =
-      // FIXME: It would be much nicer if compilationUnit was non-nullable,
-      // perhaps we need to introduce a `NoCompilationUnit` compilation unit
-      // to be used as a default value.
-      compilationUnit != null && compilationUnit.isJava
+    final def isJava: Boolean = compilationUnit.isJava
 
     /** Is current phase after TyperPhase? */
     final def isAfterTyper = base.isAfterTyper(phase)
@@ -568,7 +567,8 @@ object Contexts {
 
     override def toString: String =
       def iinfo(using Context) =
-        if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
+        val info: ImportInfo | Null = ctx.importInfo
+        if (info == null) "" else i"${info.selectors}%, %"
       def cinfo(using Context) =
         val core = s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = $iinfo"
         if (ctx ne NoContext) && (ctx.implicits ne ctx.outer.implicits) then
@@ -832,11 +832,12 @@ object Contexts {
     store = initialStore
       .updated(settingsStateLoc, settingsGroup.defaultState)
       .updated(notNullInfosLoc, Nil)
+      .updated(compilationUnitLoc, NoCompilationUnit)
     searchHistory = new SearchRoot
     gadt = EmptyGadtConstraint
   }
 
-  @sharable object NoContext extends Context(null) {
+  @sharable object NoContext extends Context((null: ContextBase | Null).uncheckedNN) {
     source = NoSource
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this)
   }
@@ -855,14 +856,15 @@ object Contexts {
     val initialCtx: Context = new InitialContext(this, settings)
 
     /** The platform, initialized by `initPlatform()`. */
-    private var _platform: Platform = _
+    private var _platform: Platform | Null = _
 
     /** The platform */
     def platform: Platform = {
-      if (_platform == null)
+      val p = _platform
+      if p == null then
         throw new IllegalStateException(
             "initialize() must be called before accessing platform")
-      _platform
+      p
     }
 
     protected def newPlatform(using Context): Platform =
@@ -912,8 +914,8 @@ object Contexts {
     /** A table for hash consing unique named types */
     private[core] val uniqueNamedTypes: NamedTypeUniques = NamedTypeUniques()
 
-    var emptyTypeBounds: TypeBounds = null
-    var emptyWildcardBounds: WildcardType = null
+    var emptyTypeBounds: TypeBounds | Null = null
+    var emptyWildcardBounds: WildcardType | Null = null
 
     /** Number of findMember calls on stack */
     private[core] var findMemberCount: Int = 0
@@ -1007,7 +1009,7 @@ object Contexts {
     // Test that access is single threaded
 
     /** The thread on which `checkSingleThreaded was invoked last */
-    @sharable private var thread: Thread = null
+    @sharable private var thread: Thread | Null = null
 
     /** Check that we are on the same thread as before */
     def checkSingleThreaded(): Unit =

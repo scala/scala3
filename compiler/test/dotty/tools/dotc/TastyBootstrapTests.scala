@@ -2,6 +2,8 @@ package dotty
 package tools
 package dotc
 
+import scala.language.unsafeNulls
+
 import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.Assert._
 import org.junit.Assume._

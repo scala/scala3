@@ -1,5 +1,7 @@
 package dotty.tools.backend.jvm
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.transform.SymUtils._

@@ -402,7 +402,7 @@ object Scala3:
         else Descriptor.None
 
       def unescapeUnicode =
-        unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
+        unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar).nn)
 
       def isJavaIdent =
         isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)

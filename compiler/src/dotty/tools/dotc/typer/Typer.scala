@@ -309,7 +309,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        */
       def isDefinedInCurrentUnit(denot: Denotation)(using Context): Boolean = denot match {
         case MultiDenotation(d1, d2) => isDefinedInCurrentUnit(d1) || isDefinedInCurrentUnit(d2)
-        case denot: SingleDenotation => ctx.compilationUnit != null && denot.symbol.source == ctx.compilationUnit.source
+        case denot: SingleDenotation => (ctx.compilationUnit ne NoCompilationUnit) && denot.symbol.source == ctx.compilationUnit.source
       }
 
       /** Is `denot` the denotation of a self symbol? */
@@ -324,7 +324,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         (prevPrec.ordinal < prec.ordinal || prevPrec == prec && (prevCtx.scope eq ctx.scope))
 
       @tailrec def loop(lastCtx: Context)(using Context): Type =
-        if (ctx.scope == null) previous
+        // Can ctx.scope actually be null?
+        if ((ctx.scope: Scope | Null) == null) previous
         else {
           var result: Type = NoType
 
@@ -429,17 +430,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if result.exists then result
           else {  // find import
             val outer = ctx.outer
-            val curImport = ctx.importInfo
+            val curImport: ImportInfo | Null = ctx.importInfo
             def updateUnimported() =
-              if (curImport.unimported ne NoSymbol) unimported += curImport.unimported
+              if (curImport.nn.unimported ne NoSymbol) unimported += curImport.nn.unimported
             if (curOwner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
-            else if (isPossibleImport(NamedImport) && (curImport ne outer.importInfo)) {
-              val namedImp = namedImportRef(curImport)
+            else if (isPossibleImport(NamedImport) && (curImport.uncheckedNN ne outer.importInfo)) {
+              val namedImp = namedImportRef(curImport.uncheckedNN)
               if (namedImp.exists)
                 recurAndCheckNewOrShadowed(namedImp, NamedImport, ctx)(using outer)
-              else if (isPossibleImport(WildImport) && !curImport.importSym.isCompleting) {
-                val wildImp = wildImportRef(curImport)
+              else if (isPossibleImport(WildImport) && !curImport.nn.importSym.isCompleting) {
+                val wildImp = wildImportRef(curImport.uncheckedNN)
                 if (wildImp.exists)
                   recurAndCheckNewOrShadowed(wildImp, WildImport, ctx)(using outer)
                 else {
@@ -780,7 +781,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
     catch {
       case ex: FromDigitsException =>
-        report.error(ex.getMessage, tree.srcPos)
+        report.error(ex.getMessage.uncheckedNN, tree.srcPos)
         tree.kind match {
           case Whole(_) => lit(0)
           case _ => lit(0.0)
@@ -1227,7 +1228,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if pos < mtpe.paramInfos.length then
           mtpe.paramInfos(pos)
             // This works only if vararg annotations match up.
-            // See neg/i14367.scala for an example where the inferred type is mispredicted. 
+            // See neg/i14367.scala for an example where the inferred type is mispredicted.
             // Nevertheless, the alternative would be to give up completely, so this is
             // defensible.
         else NoType
@@ -1649,7 +1650,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if ctx.scope.lookup(b.name) == NoSymbol then ctx.enter(sym)
           else report.error(new DuplicateBind(b, cdef), b.srcPos)
           if (!ctx.isAfterTyper) {
-            val bounds = ctx.gadt.fullBounds(sym)
+            val bounds: TypeBounds | Null = ctx.gadt.fullBounds(sym)
             if (bounds != null) sym.info = bounds
           }
           b

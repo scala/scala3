@@ -15,14 +15,14 @@ import scala.annotation.internal.sharable
 /** Represents GADT constraints currently in scope */
 sealed abstract class GadtConstraint extends Showable {
   /** Immediate bounds of `sym`. Does not contain lower/upper symbols (see [[fullBounds]]). */
-  def bounds(sym: Symbol)(using Context): TypeBounds
+  def bounds(sym: Symbol)(using Context): TypeBounds | Null
 
   /** Full bounds of `sym`, including TypeRefs to other lower/upper symbols.
    *
    * @note this performs subtype checks between ordered symbols.
    *       Using this in isSubType can lead to infinite recursion. Consider `bounds` instead.
    */
-  def fullBounds(sym: Symbol)(using Context): TypeBounds
+  def fullBounds(sym: Symbol)(using Context): TypeBounds | Null
 
   /** Is `sym1` ordered to be less than `sym2`? */
   def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean
@@ -105,6 +105,7 @@ final class ProperGadtConstraint private(
               params.indexOf(tp.symbol) match {
                 case -1 =>
                   mapping(tp.symbol) match {
+                    // TODO: Improve flow typing so that ascription becomes redundant, see #11967
                     case tv: TypeVar => tv.origin
                     case null => tp
                   }
@@ -153,7 +154,7 @@ final class ProperGadtConstraint private(
     val internalizedBound = bound match {
       case nt: NamedType =>
         val ntTvar = mapping(nt.symbol)
-        if (ntTvar ne null) stripInternalTypeVar(ntTvar) else bound
+        if (ntTvar != null) stripInternalTypeVar(ntTvar) else bound
       case _ => bound
     }
 
@@ -179,22 +180,22 @@ final class ProperGadtConstraint private(
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
     constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
 
-  override def fullBounds(sym: Symbol)(using Context): TypeBounds =
+  override def fullBounds(sym: Symbol)(using Context): TypeBounds | Null =
     mapping(sym) match {
       case null => null
-      case tv =>
+      case tv: TypeVar =>
         fullBounds(tv.origin)
           // .ensuring(containsNoInternalTypes(_))
     }
 
-  override def bounds(sym: Symbol)(using Context): TypeBounds =
+  override def bounds(sym: Symbol)(using Context): TypeBounds | Null =
     mapping(sym) match {
       case null => null
-      case tv =>
+      case tv: TypeVar =>
         def retrieveBounds: TypeBounds =
           bounds(tv.origin) match {
             case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
-              TypeAlias(reverseMapping(tpr).typeRef)
+              TypeAlias(reverseMapping(tpr).nn.typeRef)
             case tb => tb
           }
         retrieveBounds
@@ -202,7 +203,7 @@ final class ProperGadtConstraint private(
           //.ensuring(containsNoInternalTypes(_))
     }
 
-  override def contains(sym: Symbol)(using Context): Boolean = mapping(sym) ne null
+  override def contains(sym: Symbol)(using Context): Boolean = mapping(sym) != null
 
   def isNarrowing: Boolean = wasConstrained
 
@@ -267,16 +268,16 @@ final class ProperGadtConstraint private(
     }
 
   private def tvarOrError(sym: Symbol)(using Context): TypeVar =
-    mapping(sym).ensuring(_ ne null, i"not a constrainable symbol: $sym")
+    mapping(sym).ensuring(_ != null, i"not a constrainable symbol: $sym").uncheckedNN
 
   private def containsNoInternalTypes(
     tp: Type,
-    acc: TypeAccumulator[Boolean] = null
+    acc: TypeAccumulator[Boolean] | Null = null
   )(using Context): Boolean = tp match {
     case tpr: TypeParamRef => !reverseMapping.contains(tpr)
     case tv: TypeVar => !reverseMapping.contains(tv.origin)
     case tp =>
-      (if (acc ne null) acc else new ContainsNoInternalTypesAccumulator()).foldOver(true, tp)
+      (if (acc != null) acc else new ContainsNoInternalTypesAccumulator()).foldOver(true, tp)
   }
 
   private class ContainsNoInternalTypesAccumulator(using Context) extends TypeAccumulator[Boolean] {
@@ -301,8 +302,8 @@ final class ProperGadtConstraint private(
 }
 
 @sharable object EmptyGadtConstraint extends GadtConstraint {
-  override def bounds(sym: Symbol)(using Context): TypeBounds = null
-  override def fullBounds(sym: Symbol)(using Context): TypeBounds = null
+  override def bounds(sym: Symbol)(using Context): TypeBounds | Null = null
+  override def fullBounds(sym: Symbol)(using Context): TypeBounds | Null = null
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
 

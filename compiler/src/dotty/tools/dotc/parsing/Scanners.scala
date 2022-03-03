@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package parsing
 
+import scala.language.unsafeNulls
+
 import core.Names._, core.Contexts._, core.Decorators._, util.Spans._
 import core.StdNames._, core.Comments._
 import util.SourceFile

@@ -1,5 +1,7 @@
 package dotty.tools.repl
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.parsing.Scanners.Scanner
 import dotty.tools.dotc.parsing.Tokens._

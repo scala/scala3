@@ -384,13 +384,13 @@ object ProtoTypes {
           case _ =>
             targ = typerFn(arg)
             if ctx.reporter.hasUnreportedErrors then
-              if hasInnerErrors(targ) then
+              if hasInnerErrors(targ.nn) then
                 state.errorArgs += arg
             else
-              state.typedArg = state.typedArg.updated(arg, targ)
+              state.typedArg = state.typedArg.updated(arg, targ.nn)
               state.errorArgs -= arg
         }
-      targ
+      targ.nn
     }
 
     /** The typed arguments. This takes any arguments already typed using
@@ -800,7 +800,7 @@ object ProtoTypes {
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
-  private def wildApprox(tp: Type, theMap: WildApproxMap, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type = tp match {
+  private def wildApprox(tp: Type, theMap: WildApproxMap | Null, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type = tp match {
     case tp: NamedType => // default case, inlined for speed
       val isPatternBoundTypeRef = tp.isInstanceOf[TypeRef] && tp.symbol.isPatternBound
       if (isPatternBoundTypeRef) WildcardType(tp.underlying.bounds)

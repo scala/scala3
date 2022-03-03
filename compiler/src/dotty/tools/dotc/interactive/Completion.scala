@@ -1,5 +1,6 @@
 package dotty.tools.dotc.interactive
 
+import scala.language.unsafeNulls
 
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.Printers.interactiv

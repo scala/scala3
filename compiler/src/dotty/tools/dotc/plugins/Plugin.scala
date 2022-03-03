@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package plugins
 
+import scala.language.unsafeNulls
+
 import core._
 import Contexts._
 import Phases._

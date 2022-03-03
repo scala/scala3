@@ -270,15 +270,15 @@ trait SpaceLogic {
         if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) return a
 
         val range = (0 until ss1.size).toList
-        val cache = Array.fill[Space](ss2.length)(null)
+        val cache = Array.fill[Space | Null](ss2.length)(null)
         def sub(i: Int) =
           if cache(i) == null then
             cache(i) = minus(ss1(i), ss2(i))
-          cache(i)
+          cache(i).nn
         end sub
 
         if range.exists(i => isSubspace(ss1(i), sub(i))) then a
-        else if cache.forall(sub => isSubspace(sub, Empty)) then Empty
+        else if cache.forall(sub => isSubspace(sub.nn, Empty)) then Empty
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
           val spaces = LazyList(range: _*).flatMap { i =>

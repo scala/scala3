@@ -100,13 +100,13 @@ object Implicits:
      */
     def companionRefs: TermRefSet = TermRefSet.empty
 
-    private var mySingletonClass: ClassSymbol = null
+    private var mySingletonClass: ClassSymbol | Null = null
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(using Context): Type = {
       if (mySingletonClass == null) mySingletonClass = defn.SingletonClass
       val wtp = tp.widenSingleton
-      if (wtp.derivesFrom(mySingletonClass)) defn.AnyType else wtp
+      if (wtp.derivesFrom(mySingletonClass.uncheckedNN)) defn.AnyType else wtp
     }
 
     protected def isAccessible(ref: TermRef)(using Context): Boolean
@@ -267,7 +267,8 @@ object Implicits:
    *  @param companionRefs   the companion objects in the implicit scope.
    */
   class OfTypeImplicits(tp: Type, override val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
-    assert(initctx.typer != null)
+    // TODO: why do we need this assert?
+    assert((initctx.typer: Typer | Null) != null)
     implicits.println(i"implicit scope of type $tp = ${companionRefs.showAsList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
@@ -298,7 +299,7 @@ object Implicits:
    */
   class ContextualImplicits(
       val refs: List[ImplicitRef],
-      val outerImplicits: ContextualImplicits,
+      val outerImplicits: ContextualImplicits | Null,
       isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
@@ -307,15 +308,15 @@ object Implicits:
      *  Scala2 mode, since we do not want to change the implicit disambiguation then.
      */
     override val level: Int =
-      def isSameOwner = irefCtx.owner eq outerImplicits.irefCtx.owner
-      def isSameScope = irefCtx.scope eq outerImplicits.irefCtx.scope
+      def isSameOwner = irefCtx.owner eq outerImplicits.uncheckedNN.irefCtx.owner
+      def isSameScope = irefCtx.scope eq outerImplicits.uncheckedNN.irefCtx.scope
       def isLazyImplicit = refs.head.implicitName.is(LazyImplicitName)
 
       if outerImplicits == null then 1
       else if migrateTo3(using irefCtx)
               || isSameOwner && (isImport || isSameScope && !isLazyImplicit)
-      then outerImplicits.level
-      else outerImplicits.level + 1
+      then outerImplicits.uncheckedNN.level
+      else outerImplicits.uncheckedNN.level + 1
     end level
 
     /** Is this the outermost implicits? This is the case if it either the implicits
@@ -323,7 +324,7 @@ object Implicits:
      */
     private def isOuterMost = {
       val finalImplicits = NoContext.implicits
-      (this eq finalImplicits) || (outerImplicits eq finalImplicits)
+      (this eq finalImplicits) || (outerImplicits eqn finalImplicits)
     }
 
     private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
@@ -338,7 +339,7 @@ object Implicits:
       if monitored then record(s"check uncached eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
       if isOuterMost then ownEligible
-      else combineEligibles(ownEligible, outerImplicits.uncachedEligible(tp))
+      else combineEligibles(ownEligible, outerImplicits.nn.uncachedEligible(tp))
 
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[Candidate] =
@@ -365,7 +366,7 @@ object Implicits:
       if (monitored) record(s"check eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
       if isOuterMost then ownEligible
-      else combineEligibles(ownEligible, outerImplicits.eligible(tp))
+      else combineEligibles(ownEligible, outerImplicits.uncheckedNN.eligible(tp))
     }
 
     override def isAccessible(ref: TermRef)(using Context): Boolean =
@@ -382,9 +383,9 @@ object Implicits:
     def exclude(root: Symbol): ContextualImplicits =
       if (this == NoContext.implicits) this
       else {
-        val outerExcluded = outerImplicits exclude root
+        val outerExcluded = outerImplicits.uncheckedNN exclude root
         if (irefCtx.importInfo.site.termSymbol == root) outerExcluded
-        else if (outerExcluded eq outerImplicits) this
+        else if (outerExcluded eqn outerImplicits) this
         else new ContextualImplicits(refs, outerExcluded, isImport)(irefCtx)
       }
   }
@@ -843,7 +844,7 @@ trait Implicits:
     }
   }
 
-  private var synthesizer: Synthesizer = null
+  private var synthesizer: Synthesizer | Null = null
 
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.
@@ -855,7 +856,7 @@ trait Implicits:
         if fail.isAmbiguous then failed
         else
           if synthesizer == null then synthesizer = Synthesizer(this)
-          synthesizer.tryAll(formal, span).orElse(failed)
+          synthesizer.uncheckedNN.tryAll(formal, span).orElse(failed)
 
   /** Search an implicit argument and report error if not found */
   def implicitArgTree(formal: Type, span: Span)(using Context): Tree = {
@@ -1673,11 +1674,11 @@ final class SearchRoot extends SearchHistory:
   var nestedSearches: Int = 0
 
   /** The dictionary of recursive implicit types and corresponding terms for this search. */
-  var myImplicitDictionary: mutable.Map[Type, (TermRef, tpd.Tree)] = null
+  var myImplicitDictionary: mutable.Map[Type, (TermRef, tpd.Tree)] | Null = null
   private def implicitDictionary =
     if myImplicitDictionary == null then
       myImplicitDictionary = mutable.Map.empty[Type, (TermRef, tpd.Tree)]
-    myImplicitDictionary
+    myImplicitDictionary.uncheckedNN
 
   /**
    * Link a reference to an under-construction implicit for the provided type to its
@@ -1856,10 +1857,13 @@ sealed class TermRefSet(using Context):
     if !that.isEmpty then that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
-    elems.forEach((sym: TermSymbol, prefixes: Type | List[Type]) =>
-      prefixes match
-        case prefix: Type => f(TermRef(prefix, sym))
-        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym))))
+    def handle(sym: TermSymbol | Null, prefixes: Type | List[Type] | Null): Unit =
+      // We cannot use `.nn` here due to inference issue.
+      val prefixes0: Type | List[Type] = prefixes.uncheckedNN
+      prefixes0 match
+        case prefix: Type => f(TermRef(prefix, sym.uncheckedNN))
+        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym.uncheckedNN)))
+    elems.forEach(handle)
 
   // used only for debugging
   def showAsList: List[TermRef] = {

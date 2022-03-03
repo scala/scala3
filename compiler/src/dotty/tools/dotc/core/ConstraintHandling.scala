@@ -600,7 +600,8 @@ trait ConstraintHandling {
     val e = constraint.entry(param)
     if (e.exists) e.bounds
     else {
-      val pinfos = param.binder.paramInfos
+      // TODO: should we change the type of paramInfos to nullable?
+      val pinfos: List[param.binder.PInfo] | Null = param.binder.paramInfos
       if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
       else TypeBounds.empty
     }

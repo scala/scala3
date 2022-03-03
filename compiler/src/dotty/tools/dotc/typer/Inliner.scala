@@ -1366,7 +1366,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
                   // the binding is to be maximized iff it only occurs contravariantly in the type
                   val wasToBeMinimized: Boolean = {
                     val v = syms(trSym)
-                    if (v ne null) v else false
+                    if (v != null) v else false
                   }
                   syms.updated(trSym, wasToBeMinimized || variance >= 0 : java.lang.Boolean)
                 case _ =>

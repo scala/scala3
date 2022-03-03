@@ -1,5 +1,7 @@
 package dotty.tools.repl
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
 

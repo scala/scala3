@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import java.io.{ DataOutputStream, FileOutputStream, IOException, File as JFile }
 import java.nio.channels.ClosedByInterruptException
 import dotty.tools.io._

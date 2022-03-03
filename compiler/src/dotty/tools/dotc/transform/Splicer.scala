@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package transform
 
+import scala.language.unsafeNulls
+
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
 
@@ -472,7 +474,7 @@ object Splicer {
     private object MissingClassDefinedInCurrentRun {
       def unapply(targetException: NoClassDefFoundError)(using Context): Option[Symbol] = {
         val className = targetException.getMessage
-        if (className eq null) None
+        if (className == null) None
         else {
           val sym = staticRef(className.toTypeName).symbol
           if (sym.isDefinedInCurrentRun) Some(sym) else None

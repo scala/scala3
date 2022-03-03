@@ -545,7 +545,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           val globalRef =
             if (dotIndex < 0) pathName
             else pathName.substring(0, dotIndex)
-          checkGlobalRefName(globalRef)
+          checkGlobalRefName(globalRef.nn)
         }
 
         checkAndGetJSNativeLoadingSpecAnnotOf(pos, sym) match {

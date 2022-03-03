@@ -40,7 +40,7 @@ object StdNames {
     inline val Tuple                      = "Tuple"
     inline val Product                    = "Product"
 
-    def sanitize(str: String): String = str.replaceAll("""[<>]""", """\$""")
+    def sanitize(str: String): String = str.replaceAll("""[<>]""", """\$""").nn
   }
 
   abstract class DefinedNames[N <: Name] {

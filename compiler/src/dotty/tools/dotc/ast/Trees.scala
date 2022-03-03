@@ -293,10 +293,10 @@ object Trees {
   trait DefTree[-T >: Untyped] extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] <: DefTree[T]
 
-    private var myMods: untpd.Modifiers = null
+    private var myMods: untpd.Modifiers | Null = _
 
     private[dotc] def rawMods: untpd.Modifiers =
-      if (myMods == null) untpd.EmptyModifiers else myMods
+      if (myMods == null) untpd.EmptyModifiers else myMods.uncheckedNN
 
     def withAnnotations(annots: List[untpd.Tree]): ThisTree[Untyped] = withMods(rawMods.withAnnotations(annots))
 
@@ -981,7 +981,7 @@ object Trees {
   }
 
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
-    def recur(buf: ListBuffer[Tree[T]], remaining: List[Tree[T]]): ListBuffer[Tree[T]] =
+    def recur(buf: ListBuffer[Tree[T]] | Null, remaining: List[Tree[T]]): ListBuffer[Tree[T]] | Null =
       remaining match {
         case Thicket(elems) :: remaining1 =>
           var buf1 = buf

@@ -10,6 +10,7 @@ import util.{SrcPos, NoSourcePosition}
 import SourceVersion._
 import reporting.Message
 import NameKinds.QualifiedName
+import typer.ImportInfo
 
 object Feature:
 
@@ -50,7 +51,8 @@ object Feature:
    */
   def enabledByImport(feature: TermName)(using Context): Boolean =
     //atPhase(typerPhase) {
-      ctx.importInfo != null && ctx.importInfo.featureImported(feature)
+      val info: ImportInfo | Null = ctx.importInfo
+      info != null && info.featureImported(feature)
     //}
 
   /** Is `feature` enabled by either a command line setting or an import?
@@ -78,8 +80,7 @@ object Feature:
     SourceVersion.valueOf(ctx.settings.source.value)
 
   def sourceVersion(using Context): SourceVersion =
-    if ctx.compilationUnit == null then sourceVersionSetting
-    else ctx.compilationUnit.sourceVersion match
+    ctx.compilationUnit.sourceVersion match
       case Some(v) => v
       case none => sourceVersionSetting
 

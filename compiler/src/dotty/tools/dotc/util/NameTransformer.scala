@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package util
 
+import scala.language.unsafeNulls
+
 import core.Names._
 
 import scala.annotation.internal.sharable

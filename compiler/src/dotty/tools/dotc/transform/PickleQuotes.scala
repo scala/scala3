@@ -108,7 +108,7 @@ class PickleQuotes extends MacroTransform {
    *                     This transformation is only applied to definitions at staging level 1.
    *                     See `isCaptured`.
    */
-  private class QuoteReifier(outer: QuoteReifier, capturers: mutable.HashMap[Symbol, Tree => Tree],
+  private class QuoteReifier(outer: QuoteReifier | Null, capturers: mutable.HashMap[Symbol, Tree => Tree],
                              val embedded: Embedded, val owner: Symbol)(@constructorOnly ictx: Context) extends TreeMapWithStages(ictx) { self =>
 
     import StagingContext._
@@ -312,13 +312,13 @@ class PickleQuotes extends MacroTransform {
       else {
         assert(level == 1, "unexpected top splice outside quote")
         val (body1, quotes) = nested(isQuote = false).splitSplice(body)(using spliceContext)
-        val tpe = outer.embedded.getHoleType(body, splice)
+        val tpe = outer.nn.embedded.getHoleType(body, splice)
         val hole = makeHole(splice.isTerm, body1, quotes, tpe).withSpan(splice.span)
         // We do not place add the inline marker for trees that where lifted as they come from the same file as their
         // enclosing quote. Any intemediate splice will add it's own Inlined node and cancel it before splicig the lifted tree.
         // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
         // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
-        if (outer.embedded.isLiftedSymbol(body.symbol)) hole
+        if (outer.nn.embedded.isLiftedSymbol(body.symbol)) hole
         else Inlined(EmptyTree, Nil, hole).withSpan(splice.span)
       }
 
@@ -332,7 +332,7 @@ class PickleQuotes extends MacroTransform {
         cpy.Select(splice)(body1, splice.name)
       else if level == 1 then
         val (body1, quotes) = nested(isQuote = false).splitSplice(body)(using spliceContext)
-        val tpe = outer.embedded.getHoleType(body, splice)
+        val tpe = outer.nn.embedded.getHoleType(body, splice)
         makeHole(splice.isTerm, body1, quotes, tpe).withSpan(splice.span)
       else
         splice
@@ -395,7 +395,7 @@ class PickleQuotes extends MacroTransform {
        * In case the case that level == -1 the code is not in a quote, it is in an inline method,
        * hence we should take that as owner directly.
        */
-      val lambdaOwner = if (level == -1) ctx.owner else outer.owner
+      val lambdaOwner = if (level == -1) ctx.owner else outer.nn.owner
 
       val tpe = MethodType(defn.SeqType.appliedTo(defn.AnyType) :: Nil, tree.tpe.widen)
       val meth = newSymbol(lambdaOwner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
@@ -406,10 +406,10 @@ class PickleQuotes extends MacroTransform {
       val captured = mutable.LinkedHashMap.empty[Symbol, Tree]
       val captured2 = capturer(captured)
 
-      outer.localSymbols.foreach(sym => if (!sym.isInlineMethod) capturers.put(sym, captured2))
+      outer.nn.localSymbols.foreach(sym => if (!sym.isInlineMethod) capturers.put(sym, captured2))
 
       val tree2 = transform(tree)
-      capturers --= outer.localSymbols
+      capturers --= outer.nn.localSymbols
 
       val captures = captured.result().valuesIterator.toList
       if (captures.isEmpty) tree2

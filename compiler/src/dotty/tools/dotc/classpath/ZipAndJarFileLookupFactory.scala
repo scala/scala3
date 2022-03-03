@@ -4,6 +4,8 @@
 package dotty.tools.dotc
 package classpath
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.net.URL
 import java.nio.file.Files
@@ -162,7 +164,7 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveSourcePath(zipFile: File)
     extends ZipArchiveFileLookup[SourceFileEntryImpl]
     with NoClassPaths {
-    
+
     def release: Option[String] = None
 
     override def asSourcePathString: String = asClassPathString

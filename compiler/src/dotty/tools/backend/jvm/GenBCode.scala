@@ -1,5 +1,7 @@
 package dotty.tools.backend.jvm
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
