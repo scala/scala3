@@ -49,7 +49,7 @@ object Signatures {
    */
   def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
     path match {
-      case UnApply(fun, _, patterns) :: parent :: _ =>
+      case UnApply(fun, _, patterns) :: _ =>
         callInfo(span, patterns, fun, Signatures.countParams(fun))
       case Apply(fun, params) :: _ =>
         callInfo(span, params, fun, Signatures.countParams(fun))
