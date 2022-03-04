@@ -20,8 +20,8 @@ final case class Location(
     sourcePath: String
 )
 
-object Location {
-  def apply(tree: Tree)(using ctx: Context): Location = {
+object Location:
+  def apply(tree: Tree)(using ctx: Context): Location =
 
     val packageName = ctx.owner.denot.enclosingPackageClass.name.toSimpleName.toString()
     val className = ctx.owner.denot.enclosingClass.name.toSimpleName.toString()
@@ -34,5 +34,3 @@ object Location {
       ctx.owner.denot.enclosingMethod.name.toSimpleName.toString(),
       ctx.source.file.absolute.toString()
     )
-  }
-}

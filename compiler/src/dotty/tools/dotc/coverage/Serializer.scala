@@ -5,31 +5,34 @@ import java.io._
 
 import scala.io.Source
 
-object Serializer {
+/**
+ * Serializes scoverage data.
+ * @see https://github.com/scoverage/scalac-scoverage-plugin/blob/main/scalac-scoverage-plugin/src/main/scala/scoverage/Serializer.scala
+ */
+object Serializer:
 
-  val coverageFileName = "scoverage.coverage"
-  val coverageDataFormatVersion = "3.0"
-  // Write out coverage data to the given data directory, using the default coverage filename
+  private val CoverageFileName = "scoverage.coverage"
+  private val CoverageDataFormatVersion = "3.0"
+
+  /** Write out coverage data to the given data directory, using the default coverage filename */
   def serialize(coverage: Coverage, dataDir: String, sourceRoot: String): Unit =
     serialize(coverage, coverageFile(dataDir), new File(sourceRoot))
 
-  // Write out coverage data to given file.
-  def serialize(coverage: Coverage, file: File, sourceRoot: File): Unit = {
-    val writer = new BufferedWriter(new FileWriter(file))
+  /** Write out coverage data to given file. */
+  def serialize(coverage: Coverage, file: File, sourceRoot: File): Unit =
+    val writer = BufferedWriter(FileWriter(file))
     serialize(coverage, writer, sourceRoot)
     writer.close()
-  }
 
-  def serialize(coverage: Coverage, writer: Writer, sourceRoot: File): Unit = {
+  def serialize(coverage: Coverage, writer: Writer, sourceRoot: File): Unit =
 
-    def getRelativePath(filePath: String): String = {
+    def getRelativePath(filePath: String): String =
       val base = sourceRoot.getCanonicalFile().toPath()
-      val relPath = base.relativize(new File(filePath).getCanonicalFile().toPath())
+      val relPath = base.relativize(File(filePath).getCanonicalFile().toPath())
       relPath.toString
-    }
 
-    def writeHeader(writer: Writer): Unit = {
-      writer.write(s"""# Coverage data, format version: $coverageDataFormatVersion
+    def writeHeader(writer: Writer): Unit =
+      writer.write(s"""# Coverage data, format version: $CoverageDataFormatVersion
                       |# Statement data:
                       |# - id
                       |# - source path
@@ -50,8 +53,8 @@ object Serializer {
                       |# '\f' sign
                       |# ------------------------------------------
                       |""".stripMargin)
-    }
-    def writeStatement(stmt: Statement, writer: Writer): Unit = {
+
+    def writeStatement(stmt: Statement, writer: Writer): Unit =
       writer.write(s"""${stmt.id}
                       |${getRelativePath(stmt.location.sourcePath)}
                       |${stmt.location.packageName}
@@ -70,14 +73,11 @@ object Serializer {
                       |${stmt.desc}
                       |\f
                       |""".stripMargin)
-    }
 
     writeHeader(writer)
-    coverage.statements.toVector
+    coverage.statements.toSeq
       .sortBy(_.id)
       .foreach(stmt => writeStatement(stmt, writer))
-  }
 
   def coverageFile(dataDir: File): File = coverageFile(dataDir.getAbsolutePath)
-  def coverageFile(dataDir: String): File = new File(dataDir, coverageFileName)
-}
+  def coverageFile(dataDir: String): File = File(dataDir, CoverageFileName)

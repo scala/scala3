@@ -11,6 +11,7 @@ import Symbols._
 import Names._
 import NameKinds.UniqueName
 import util.Spans._
+import util.Property
 import collection.mutable
 import Trees._
 
@@ -158,23 +159,20 @@ object LiftComplex extends LiftComplex
 /** Lift complex + lift the prefixes */
 object LiftCoverage extends LiftComplex {
 
-  var liftEverything = false
+  private val LiftEverything = new Property.Key[Boolean]
 
-  /** Return true if the apply needs a lift in the coverage phase
-    Return false if the args are empty, if one or more will be lifter by a
-    complex lifter.
-   */
-  def needsLift(tree: tpd.Apply)(using Context): Boolean =
-    !tree.args.isEmpty && !tree.args.forall(super.noLift(_))
+  private def liftEverything(using Context): Boolean =
+    ctx.property(LiftEverything).contains(true)
+
+  private def liftEverythingContext(using Context): Context =
+    ctx.fresh.setProperty(LiftEverything, true)
 
   override def noLift(expr: tpd.Tree)(using Context) =
     !liftEverything && super.noLift(expr)
 
   def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
     val liftedFun = liftApp(defs, tree.fun)
-    liftEverything = true
-    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)
-    liftEverything = false
+    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftEverythingContext)
     tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
   }
 }
