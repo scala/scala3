@@ -88,8 +88,7 @@ object Feature:
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.
    */
-  def warnOnMigration(msg: Message, pos: SrcPos,
-      version: SourceVersion)(using Context): Boolean =
+  def warnOnMigration(msg: Message, pos: SrcPos, version: SourceVersion)(using Context): Boolean =
     if sourceVersion.isMigrating && sourceVersion.stable == version
        || (version == `3.0` || version == `3.1` || version == `3.2`) && migrateTo3
     then

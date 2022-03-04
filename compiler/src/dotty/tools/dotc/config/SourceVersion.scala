@@ -6,7 +6,9 @@ import core.Decorators.*
 import util.Property
 
 enum SourceVersion:
-  case `3.0-migration`, `3.0`, `3.1`, `3.2`, `future-migration`, `future`
+  case `3.0-migration`, `3.0`, `3.1` // Note: do not add `3.1-migration` here, 3.1 is the same language as 3.0.
+  case `3.2-migration`, `3.2`
+  case `future-migration`, `future`
 
   val isMigrating: Boolean = toString.endsWith("-migration")
 
@@ -16,6 +18,7 @@ enum SourceVersion:
   def isAtLeast(v: SourceVersion) = stable.ordinal >= v.ordinal
 
 object SourceVersion extends Property.Key[SourceVersion]:
+  def defaultSourceVersion = `3.0`
 
   /** language versions that may appear in a language import, are deprecated, but not removed from the standard library. */
   val illegalSourceVersionNames = List("3.1-migration").map(_.toTermName)
