@@ -75,7 +75,7 @@ class GenBCode extends Phase {
     try super.runOn(units)
     finally outputDir match {
       case jar: JarArchive =>
-        if (ctx.run.suspendedUnits.nonEmpty)
+        if (ctx.run.nn.suspendedUnits.nonEmpty)
           // If we close the jar the next run will not be able to write on the jar.
           // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
           report.error("Can not suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")

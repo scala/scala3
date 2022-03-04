@@ -2184,7 +2184,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val sup = Suppression(tree.sourcePos, filters, range.start, range.end, verbose)
     // invalid suppressions, don't report as unused
     if filters == List(MessageFilter.None) then sup.markUsed()
-    ctx.run.suppressions.addSuppression(sup)
+    ctx.run.nn.suppressions.addSuppression(sup)
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef
@@ -2937,7 +2937,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         assertPositioned(tree)
       if tree.source != ctx.source && tree.source.exists then
         typed(tree, pt, locked)(using ctx.withSource(tree.source))
-      else if ctx.run.isCancelled then
+      else if ctx.run.nn.isCancelled then
         tree.withType(WildcardType)
       else adapt(typedUnadapted(tree, pt, locked), pt, locked)
     }

@@ -29,7 +29,7 @@ object OrderingConstraint {
       empty
     else
       val result = new OrderingConstraint(boundsMap, lowerMap, upperMap)
-      ctx.run.recordConstraintSize(result, result.boundsMap.size)
+      ctx.run.nn.recordConstraintSize(result, result.boundsMap.size)
       result
 
   /** A lens for updating a single entry array in one of the three constraint maps */

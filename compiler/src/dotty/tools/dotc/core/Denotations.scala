@@ -1318,7 +1318,7 @@ object Denotations {
         recurSimple(path.length, wrap)
     }
 
-    val run: Run | Null = ctx.run
+    val run = ctx.run
     if run == null then recur(path)
     else run.staticRefs.getOrElseUpdate(path, recur(path))
   }

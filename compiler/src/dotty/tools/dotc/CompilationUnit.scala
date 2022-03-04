@@ -71,7 +71,7 @@ class CompilationUnit protected (val source: SourceFile) {
       if (ctx.settings.XprintSuspension.value)
         report.echo(i"suspended: $this")
       suspended = true
-      ctx.run.suspendedUnits += this
+      ctx.run.nn.suspendedUnits += this
       if ctx.phase == Phases.inliningPhase then
         suspendedAtInliningPhase = true
     throw CompilationUnit.SuspendException()

@@ -353,7 +353,7 @@ object Completion {
       val extMethodsFromGivensInScope = extractMemberExtensionMethods(givensInScope)
 
       // 3. The reference is of the form r.m and the extension method is defined in the implicit scope of the type of r.
-      val implicitScopeCompanions = ctx.run.implicitScope(qual.tpe).companionRefs.showAsList
+      val implicitScopeCompanions = ctx.run.nn.implicitScope(qual.tpe).companionRefs.showAsList
       val extMethodsFromImplicitScope = extractMemberExtensionMethods(implicitScopeCompanions)
 
       // 4. The reference is of the form r.m and the extension method is defined in some given instance in the implicit scope of the type of r.

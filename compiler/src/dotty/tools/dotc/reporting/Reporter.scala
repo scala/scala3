@@ -181,7 +181,7 @@ abstract class Reporter extends interfaces.ReporterResult {
     // `ctx.run` can be null in test, also in the repl when parsing the first line. The parser runs early, the Run is
     // only created in ReplDriver.compile when a line is submitted. This means that `@nowarn` doesnt work on parser
     // warnings in the first line.
-    val run: Run | Null = ctx.run
+    val run = ctx.run
     dia match
       case w: Warning if run != null =>
         val sup = run.suppressions

@@ -44,7 +44,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         typr.println("typed: " + unit.source)
         record("retained untyped trees", unit.untpdTree.treeSize)
         record("retained typed trees after typer", unit.tpdTree.treeSize)
-        ctx.run.suppressions.reportSuspendedMessages(unit.source)
+        ctx.run.nn.suppressions.reportSuspendedMessages(unit.source)
     catch
       case ex: CompilationUnit.SuspendException =>
   }
@@ -86,7 +86,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     unitContexts.foreach(javaCheck(using _)) // after typechecking to avoid cycles
 
     val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
-    ctx.run.checkSuspendedUnits(newUnits)
+    ctx.run.nn.checkSuspendedUnits(newUnits)
     newUnits
 
   def run(using Context): Unit = unsupported("run")

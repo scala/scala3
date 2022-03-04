@@ -37,7 +37,7 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
     inContext(run.runContext) {
       run.compile(List(tastyFile))
       run.printSummary()
-      val unit = ctx.run.units.head
+      val unit = ctx.run.nn.units.head
 
       val decompiled = QuotesImpl.showDecompiledTree(unit.tpdTree)
       val tree = new TastyHTMLPrinter(unit.pickled.head._2()).showContents()

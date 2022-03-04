@@ -426,7 +426,7 @@ class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
   def description(using Context): String = "source file " + srcfile.toString
   override def sourceFileOrNull: AbstractFile | Null = srcfile
   def doComplete(root: SymDenotation)(using Context): Unit =
-    ctx.run.lateCompile(srcfile, typeCheck = ctx.settings.YretainTrees.value)
+    ctx.run.nn.lateCompile(srcfile, typeCheck = ctx.settings.YretainTrees.value)
 }
 
 /** A NoCompleter which is also a SymbolLoader. */

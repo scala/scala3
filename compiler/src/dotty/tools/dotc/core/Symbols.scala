@@ -142,7 +142,7 @@ object Symbols {
 
     /** Does this symbol come from a currently compiled source file? */
     final def isDefinedInCurrentRun(using Context): Boolean =
-      span.exists && defRunId == ctx.runId && associatedFileMatches(ctx.run.files.contains)
+      span.exists && defRunId == ctx.runId && associatedFileMatches(ctx.run.nn.files.contains)
 
     /** Is this symbol valid in the current run and has an associated file that is
       * not a binary file. e.g. This will return true for

@@ -49,7 +49,7 @@ object Contexts {
   private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
   private val (compilationUnitLoc,  store5) = store4.newLocation[CompilationUnit]()
-  private val (runLoc,              store6) = store5.newLocation[Run]()
+  private val (runLoc,              store6) = store5.newLocation[Run | Null]()
   private val (profilerLoc,         store7) = store6.newLocation[Profiler]()
   private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
   private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo]()
@@ -227,7 +227,7 @@ object Contexts {
     def compilationUnit: CompilationUnit = store(compilationUnitLoc)
 
     /** The current compiler-run */
-    def run: Run = store(runLoc)
+    def run: Run | Null = store(runLoc)
 
     /**  The current compiler-run profiler */
     def profiler: Profiler = store(profilerLoc)
@@ -655,7 +655,7 @@ object Contexts {
     def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
-    def setRun(run: Run): this.type = updateStore(runLoc, run)
+    def setRun(run: Run | Null): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
     def setImportInfo(importInfo: ImportInfo): this.type =

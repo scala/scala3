@@ -1039,7 +1039,7 @@ trait Implicits:
 
   /** Try to typecheck an implicit reference */
   def typedImplicit(cand: Candidate, pt: Type, argument: Tree, span: Span)(using Context): SearchResult =  trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
-    if ctx.run.isCancelled then NoMatchingImplicitsFailure
+    if ctx.run.nn.isCancelled then NoMatchingImplicitsFailure
     else
       record("typedImplicit")
       val ref = cand.ref
@@ -1503,7 +1503,7 @@ trait Implicits:
           searchImplicit(contextual = true)
     end bestImplicit
 
-    def implicitScope(tp: Type): OfTypeImplicits = ctx.run.implicitScope(tp)
+    def implicitScope(tp: Type): OfTypeImplicits = ctx.run.nn.implicitScope(tp)
 
     /** All available implicits, without ranking */
     def allImplicits: Set[TermRef] = {
