@@ -4826,7 +4826,7 @@ object Types {
           if (constraint.entry(tp).exists) TypeComparer.fullBounds(tp)
           else NoType
         case tp: TypeRef =>
-          val bounds: TypeBounds | Null = ctx.gadt.fullBounds(tp.symbol)
+          val bounds = ctx.gadt.fullBounds(tp.symbol)
           if (bounds == null) NoType else bounds
         case tp: TypeVar =>
           tp.underlying

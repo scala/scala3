@@ -710,7 +710,7 @@ object Build {
           IO.unzip(scalaJSIRSourcesJar, trgDir)
 
           val sjsSources = (trgDir ** "*.scala").get.toSet
-    sjsSources.foreach(f => {
+          sjsSources.foreach(f => {
             val lines = IO.readLines(f)
             IO.writeLines(f, insertUnsafeNullsImport(lines))
           })

@@ -267,8 +267,6 @@ object Implicits:
    *  @param companionRefs   the companion objects in the implicit scope.
    */
   class OfTypeImplicits(tp: Type, override val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
-    // TODO: why do we need this assert?
-    assert((initctx.typer: Typer | Null) != null)
     implicits.println(i"implicit scope of type $tp = ${companionRefs.showAsList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
