@@ -125,8 +125,7 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
           if (tparams.infos.nonEmpty)
             sb.append(tparams.infos.map(pprintDef).mkString("[", ", ", "]"))
           if (lo == hi) {
-            if (lo == Type.Empty) ()
-            else sb.append(s" = ${pprint(lo)}")
+            sb.append(s" = ${pprint(lo)}")
           } else {
             lo match
               case TypeRef(Type.Empty, "scala/Nothing#", Nil) => ()

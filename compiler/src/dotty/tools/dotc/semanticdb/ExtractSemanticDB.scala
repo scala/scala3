@@ -420,19 +420,20 @@ class ExtractSemanticDB extends Phase:
       else
         val symkinds = mutable.HashSet.empty[SymbolKind]
         tree match
-        case tree: ValDef =>
-          if !tree.symbol.is(Param) then
-            symkinds += (if tree.mods is Mutable then SymbolKind.Var else SymbolKind.Val)
-          if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor) then
-            symkinds += SymbolKind.Abstract
-        case tree: DefDef =>
-          if tree.isSetterDef then
-            symkinds += SymbolKind.Setter
-          else if tree.rhs.isEmpty then
-            symkinds += SymbolKind.Abstract
-        case tree: Bind =>
-          symkinds += SymbolKind.Val
-        case _ =>
+          case tree: ValDef =>
+            if !tree.symbol.is(Param) then
+              symkinds += (if tree.mods is Mutable then SymbolKind.Var else SymbolKind.Val)
+            if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor) then
+              symkinds += SymbolKind.Abstract
+          case tree: DefDef =>
+            if tree.isSetterDef then
+              symkinds += SymbolKind.Setter
+            else if tree.rhs.isEmpty then
+              symkinds += SymbolKind.Abstract
+          // if symbol isType, it's type variable
+          case tree: Bind if (!tree.symbol.isType) =>
+            symkinds += SymbolKind.Val
+          case _ =>
         symkinds.toSet
 
     private def ctorParams(
