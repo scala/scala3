@@ -5,6 +5,7 @@ import ast.Trees._
 import ast.tpd
 import core.Constants.Constant
 import core.Contexts._
+import core.Symbols._
 import core.Denotations.SingleDenotation
 import util.Spans.Span
 import core.Types.{ErrorType, MethodType, PolyType}
@@ -50,9 +51,9 @@ object Signatures {
   def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
     path match {
       case UnApply(fun, _, patterns) :: _ =>
-        callInfo(span, patterns, fun, Signatures.countParams(fun))
+        callInfo(span, patterns, fun, Signatures.countParams(fun), isUnapply = true)
       case Apply(fun, params) :: _ =>
-        callInfo(span, params, fun, Signatures.countParams(fun))
+        callInfo(span, params, fun, Signatures.countParams(fun), isUnapply = false)
       case _ =>
         (0, 0, Nil)
     }
@@ -61,26 +62,29 @@ object Signatures {
     span: Span,
     params: List[Tree[Type]], 
     fun: Tree[Type], 
-    alreadyAppliedCount : Int
+    alreadyAppliedCount : Int,
+    isUnapply: Boolean
   )(using Context): (Int, Int, List[SingleDenotation]) =
-    val paramIndex = params.indexWhere(_.span.contains(span)) match {
-      case -1 => (params.length - 1 max 0) + alreadyAppliedCount
-      case n => n + alreadyAppliedCount
-    }
 
-    val (alternativeIndex, alternatives) = fun.tpe match {
+    lazy val defaultParamIndex =
+      params.indexWhere(_.span.contains(span)) match
+        case -1 => (params.length - 1 max 0)
+        case n => n
+
+    fun.tpe match
       case err: ErrorType =>
         val (alternativeIndex, alternatives) = alternativesFromError(err, params)
-        (alternativeIndex, alternatives)
-
+        (defaultParamIndex + alreadyAppliedCount, alternativeIndex, alternatives)
       case _ =>
         val funSymbol = fun.symbol
-        val alternatives = funSymbol.owner.info.member(funSymbol.name).alternatives
-        val alternativeIndex = alternatives.map(_.symbol).indexOf(funSymbol) max 0
-        (alternativeIndex, alternatives)
-    }
-
-    (paramIndex, alternativeIndex, alternatives)
+        val (paramIndex, signatureSymbol) = if isUnapply then
+          val (paramIndex, realSymbol) = findCaseClassSignature(funSymbol, defaultParamIndex)
+          (paramIndex + alreadyAppliedCount, realSymbol)
+        else
+          (defaultParamIndex + alreadyAppliedCount, funSymbol)
+        val alternatives = signatureSymbol.owner.info.member(signatureSymbol.name).alternatives
+        val alternativeIndex = alternatives.map(_.symbol).indexOf(signatureSymbol) max 0
+        (paramIndex, alternativeIndex, alternatives)
 
   def toSignature(denot: SingleDenotation)(using Context): Option[Signature] = {
     val symbol = denot.symbol
@@ -138,6 +142,21 @@ object Signatures {
         None
     }
   }
+
+  private def findCaseClassSignature(funSymbol: Symbol, defaultIndex: Int)(using Context): (Int, Symbol) =
+    val retType = funSymbol.info.finalResultType
+    val isSomeMatch = funSymbol.owner.companionClass == defn.SomeClass
+    val isExplicitUnapply =
+      !isSomeMatch && retType.typeSymbol == defn.OptionClass
+
+    // special case is Some, which unapply returns an option
+    if isSomeMatch then
+      (defaultIndex, funSymbol.owner.companionClass.primaryConstructor)
+    // explicit unapplies show only one parameter
+    else if isExplicitUnapply then (0, funSymbol)
+    else
+      // if unapply doesn't return option it means it's a case class
+      (defaultIndex, retType.typeSymbol.primaryConstructor)
 
   /**
    * The number of parameters that are applied in `tree`.

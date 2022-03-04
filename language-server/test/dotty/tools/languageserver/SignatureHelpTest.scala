@@ -370,9 +370,9 @@ class SignatureHelpTest {
            |}"""
       .withSource
       .signatureHelp(m1, List(
-        S("unapply[A]", Nil, List(List(
-          P("x$0", "Some[A]", None),
-          )), Some("Option[A]"), None)
+        S("Some[A]", Nil, List(List(
+            P("value", "A", None),
+          )), None, None)
         ), None, 0)
   }
 
@@ -432,5 +432,51 @@ class SignatureHelpTest {
           ), 
           Some("Option[A]"), None)
         ), None, 2)
+  }
+
+  @Test def unapplyCaseClass: Unit = {
+    code"""|
+           |case class Opt(a: String, b: Int, c : Double)
+           |
+           |object Main {
+           |  val o = Opt("", 1, 1.0)
+           |  o match {
+           |    case Opt(a, ${m1}) =>
+           |  }
+           |}"""
+      .withSource
+      .signatureHelp(m1, List(
+        S("Opt", Nil, List(
+            List(
+              P("a", "String", None),
+              P("b", "Int", None),
+              P("c", "Double", None)
+            )
+          ), 
+          None, None)
+        ), None, 1)
+  }
+
+  @Test def unapplyCaseClassFirst: Unit = {
+    code"""|
+           |case class Opt(a: String, b: Int, c : Double)
+           |
+           |object Main {
+           |  val o = Opt("", 1, 1.0)
+           |  o match {
+           |    case Opt(${m1}) =>
+           |  }
+           |}"""
+      .withSource
+      .signatureHelp(m1, List(
+        S("Opt", Nil, List(
+            List(
+              P("a", "String", None),
+              P("b", "Int", None),
+              P("c", "Double", None)
+            )
+          ), 
+          None, None)
+        ), None, 0)
   }
 }
