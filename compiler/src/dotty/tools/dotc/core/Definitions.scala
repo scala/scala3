@@ -13,6 +13,7 @@ import typer.ImportInfo.RootRef
 import Comments.CommentsContext
 import Comments.Comment
 import util.Spans.NoSpan
+import Symbols.requiredModuleRef
 
 import scala.annotation.tailrec
 
@@ -459,6 +460,8 @@ class Definitions {
     enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parents)
   }
   def NullType: TypeRef = NullClass.typeRef
+
+  @tu lazy val InvokerModuleRef = requiredMethodRef("scala.runtime.Invoker")
 
   @tu lazy val ImplicitScrutineeTypeSym =
     newPermanentSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered

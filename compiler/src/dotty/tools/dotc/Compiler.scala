@@ -46,6 +46,7 @@ class Compiler {
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
+    List(new CoverageTransformMacro) :: // Perform instrumentation for coverage transform (if -coverage is present)
     Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */

@@ -155,6 +155,30 @@ class LiftComplex extends Lifter {
 }
 object LiftComplex extends LiftComplex
 
+/** Lift complex + lift the prefixes */
+object LiftCoverage extends LiftComplex {
+
+  var liftEverything = false
+
+  /** Return true if the apply needs a lift in the coverage phase
+    Return false if the args are empty, if one or more will be lifter by a
+    complex lifter.
+   */
+  def needsLift(tree: tpd.Apply)(using Context): Boolean =
+    !tree.args.isEmpty && !tree.args.forall(super.noLift(_))
+
+  override def noLift(expr: tpd.Tree)(using Context) =
+    !liftEverything && super.noLift(expr)
+
+  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
+    val liftedFun = liftApp(defs, tree.fun)
+    liftEverything = true
+    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)
+    liftEverything = false
+    tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
+  }
+}
+
 object LiftErased extends LiftComplex:
   override def isErased = true
 
