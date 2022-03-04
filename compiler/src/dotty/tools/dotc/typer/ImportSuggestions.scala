@@ -123,8 +123,8 @@ trait ImportSuggestions:
               .filter(lookInside(_))
               .flatMap(sym => rootsIn(sym.termRef))
         val imported =
-          if ctx.importInfo eq ctx.outer.importInfo then Nil
-          else ctx.importInfo.importSym.info match
+          if ctx.importInfo eqn ctx.outer.importInfo then Nil
+          else ctx.importInfo.nn.importSym.info match
             case ImportType(expr) => rootsOnPath(expr.tpe)
             case _ => Nil
         defined ++ imported ++ recur(using ctx.outer)

@@ -429,12 +429,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if result.exists then result
           else {  // find import
             val outer = ctx.outer
-            val curImport: ImportInfo | Null = ctx.importInfo
+            val curImport = ctx.importInfo
             def updateUnimported() =
               if (curImport.nn.unimported ne NoSymbol) unimported += curImport.nn.unimported
             if (curOwner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
-            else if (isPossibleImport(NamedImport) && (curImport.uncheckedNN ne outer.importInfo)) {
+            else if (isPossibleImport(NamedImport) && (curImport nen outer.importInfo)) {
               val namedImp = namedImportRef(curImport.uncheckedNN)
               if (namedImp.exists)
                 recurAndCheckNewOrShadowed(namedImp, NamedImport, ctx)(using outer)

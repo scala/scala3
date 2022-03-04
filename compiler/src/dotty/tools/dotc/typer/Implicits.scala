@@ -384,7 +384,7 @@ object Implicits:
       if (this == NoContext.implicits) this
       else {
         val outerExcluded = outerImplicits.uncheckedNN exclude root
-        if (irefCtx.importInfo.site.termSymbol == root) outerExcluded
+        if (irefCtx.importInfo.nn.site.termSymbol == root) outerExcluded
         else if (outerExcluded eqn outerImplicits) this
         else new ContextualImplicits(refs, outerExcluded, isImport)(irefCtx)
       }

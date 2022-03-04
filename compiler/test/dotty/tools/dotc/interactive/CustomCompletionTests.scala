@@ -43,7 +43,7 @@ class CustomCompletionTests extends DottyTest:
       given ctx: Context = run.runContext.withSource(file)
       val unit = CompilationUnit(file)
       ctx
-        .run
+        .run.nn
         .compileUnits(unit :: Nil, ctx)
 
       // ignoring compilation errors here - the input code

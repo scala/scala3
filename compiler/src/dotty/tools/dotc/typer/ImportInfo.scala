@@ -218,9 +218,9 @@ class ImportInfo(symf: Context ?=> Symbol,
           case Some(bv) => bv
           case None =>
             var c = ctx.outer
-            while c.importInfo eq ctx.importInfo do c = c.outer
-            // TODO: Do we need to change importInfo to nullable?
-            ((c.importInfo: ImportInfo | Null) != null) && c.importInfo.featureImported(feature)(using c)
+            while c.importInfo eqn ctx.importInfo do c = c.outer
+            val cinfo = c.importInfo
+            (cinfo != null) && cinfo.featureImported(feature)(using c)
       )
     featureCache(feature).nn
 

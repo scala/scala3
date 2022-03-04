@@ -52,7 +52,7 @@ object Contexts {
   private val (runLoc,              store6) = store5.newLocation[Run | Null]()
   private val (profilerLoc,         store7) = store6.newLocation[Profiler]()
   private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
-  private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo]()
+  private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,    store10) = store9.newLocation[TypeAssigner](TypeAssigner)
 
   private val initialStore = store10
@@ -233,10 +233,10 @@ object Contexts {
     def profiler: Profiler = store(profilerLoc)
 
     /** The paths currently known to be not null */
-    def notNullInfos = store(notNullInfosLoc)
+    def notNullInfos: List[NotNullInfo] = store(notNullInfosLoc)
 
     /** The currently active import info */
-    def importInfo = store(importInfoLoc)
+    def importInfo: ImportInfo | Null = store(importInfoLoc)
 
     /** The current type assigner or typer */
     def typeAssigner: TypeAssigner = store(typeAssignerLoc)
@@ -252,12 +252,12 @@ object Contexts {
               catch {
                 case ex: CyclicReference => Nil
               }
-            else if (isImportContext) importInfo.importedImplicits
+            else if (isImportContext) importInfo.nn.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil
           val outerImplicits =
-            if (isImportContext && importInfo.unimported.exists)
-              outer.implicits exclude importInfo.unimported
+            if (isImportContext && importInfo.nn.unimported.exists)
+              outer.implicits exclude importInfo.nn.unimported
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
@@ -401,7 +401,7 @@ object Contexts {
     def isImportContext: Boolean =
       (this ne NoContext)
       && (outer ne NoContext)
-      && (this.importInfo ne outer.importInfo)
+      && (this.importInfo nen outer.importInfo)
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
@@ -563,7 +563,7 @@ object Contexts {
 
     override def toString: String =
       def iinfo(using Context) =
-        val info: ImportInfo | Null = ctx.importInfo
+        val info = ctx.importInfo
         if (info == null) "" else i"${info.selectors}%, %"
       def cinfo(using Context) =
         val core = s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = $iinfo"

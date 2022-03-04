@@ -51,7 +51,7 @@ object Feature:
    */
   def enabledByImport(feature: TermName)(using Context): Boolean =
     //atPhase(typerPhase) {
-      val info: ImportInfo | Null = ctx.importInfo
+      val info = ctx.importInfo
       info != null && info.featureImported(feature)
     //}
 
