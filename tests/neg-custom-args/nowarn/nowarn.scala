@@ -42,10 +42,10 @@ def t6a = f // warning (refchecks, deprecation)
 @nowarn def t6f = f
 
 def t7a = f: @nowarn("cat=deprecation")
-def t7b = f:
-  @nowarn("msg=deprecated")
-def t7c = f:          // warning (deprecation)
-  @nowarn("msg=fish") // error (unused nowarn)
+def t7b = f
+  : @nowarn("msg=deprecated")
+def t7c = f // warning (deprecation)
+  : @nowarn("msg=fish") // error (unused nowarn)
 def t7d = f: @nowarn("")
 def t7e = f: @nowarn
 
