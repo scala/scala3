@@ -158,7 +158,7 @@ object LiftComplex extends LiftComplex
 /** Lift complex + lift the prefixes */
 object LiftCoverage extends LiftComplex {
 
-  var liftEverything = false
+  private var liftEverything = false
 
   /** Return true if the apply needs a lift in the coverage phase
     Return false if the args are empty, if one or more will be lifter by a

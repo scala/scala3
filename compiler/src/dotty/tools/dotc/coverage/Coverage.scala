@@ -3,13 +3,12 @@ package coverage
 
 import scala.collection.mutable
 
-class Coverage {
+class Coverage:
   private val statementsById = mutable.Map[Int, Statement]()
 
-  def statements = statementsById.values
+  def statements: Iterable[Statement] = statementsById.values
 
-  def addStatement(stmt: Statement): Unit = statementsById.put(stmt.id, stmt)
-}
+  def addStatement(stmt: Statement): Unit = statementsById(stmt.id) = stmt
 
 case class Statement(
     source: String,
@@ -24,7 +23,9 @@ case class Statement(
     branch: Boolean,
     var count: Int = 0,
     ignored: Boolean = false
-) {
-  def invoked(): Unit = count = count + 1
-  def isInvoked = count > 0
-}
+):
+  def invoked(): Unit =
+    count += 1
+
+  def isInvoked: Boolean =
+    count > 0

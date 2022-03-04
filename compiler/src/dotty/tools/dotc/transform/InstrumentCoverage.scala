@@ -21,53 +21,54 @@ import dotty.tools.dotc.typer.LiftCoverage
 
 import scala.quoted
 
-/** Phase that implements code coverage, executed when the "-coverage
- *  OUTPUT_PATH" is added to the compilation.
- */
-class CoverageTransformMacro extends MacroTransform with IdentityDenotTransformer {
+/** Implements code coverage by inserting calls to scala.runtime.Invoker
+  * ("instruments" the source code).
+  * The result can then be consumed by the Scoverage tool.
+  */
+class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
   import ast.tpd._
 
-  override def phaseName = "coverage"
+  override def phaseName = InstrumentCoverage.name
+
+  override def description = InstrumentCoverage.description
+
+  // Enabled by argument "-coverage OUTPUT_DIR"
+  override def isEnabled(using ctx: Context) =
+    ctx.settings.coverageOutputDir.value.nonEmpty
 
   // Atomic counter used for assignation of IDs to difference statements
-  val statementId = new AtomicInteger(0)
+  private val statementId = AtomicInteger(0)
 
-  var outputPath = ""
+  private var outputPath = ""
 
   // Main class used to store all instrumented statements
-  val coverage = new Coverage
+  private val coverage = Coverage()
 
-  override def run(using ctx: Context): Unit = {
+  override def run(using ctx: Context): Unit =
+    outputPath = ctx.settings.coverageOutputDir.value
 
-    if (ctx.settings.coverageOutputDir.value.nonEmpty) {
-      outputPath = ctx.settings.coverageOutputDir.value
+    // Ensure the dir exists
+    val dataDir = new File(outputPath)
+    val newlyCreated = dataDir.mkdirs()
 
-      // Ensure the dir exists
-      val dataDir = new File(outputPath)
-      val newlyCreated = dataDir.mkdirs()
-
-      if (!newlyCreated) {
-        // If the directory existed before, let's clean it up.
-        dataDir.listFiles
-          .filter(_.getName.startsWith("scoverage"))
-          .foreach(_.delete)
-      }
-
-      super.run
-
-
-      Serializer.serialize(coverage, outputPath, ctx.settings.coverageSourceroot.value)
+    if (!newlyCreated) {
+      // If the directory existed before, let's clean it up.
+      dataDir.listFiles
+        .filter(_.getName.startsWith("scoverage"))
+        .foreach(_.delete)
     }
-  }
 
-  protected def newTransformer(using Context): Transformer =
-    new CoverageTransormer
+    super.run
 
-  class CoverageTransormer extends Transformer {
+    Serializer.serialize(coverage, outputPath, ctx.settings.coverageSourceroot.value)
+
+  override protected def newTransformer(using Context) = CoverageTransormer()
+
+  class CoverageTransormer extends Transformer:
     var instrumented = false
 
-    override def transform(tree: Tree)(using Context): Tree = {
-      tree match {
+    override def transform(tree: Tree)(using Context): Tree =
+      tree match
         case tree: If =>
           cpy.If(tree)(
             cond = transform(tree.cond),
@@ -139,10 +140,8 @@ class CoverageTransformMacro extends MacroTransform with IdentityDenotTransforme
              tree.sourcePos
           )
           super.transform(tree)
-      }
-    }
 
-    def liftApply(tree: Apply)(using Context) = {
+    def liftApply(tree: Apply)(using Context) =
       val buffer = mutable.ListBuffer[Tree]()
       // NOTE: that if only one arg needs to be lifted, we just lift everything
       val lifted = LiftCoverage.liftForCoverage(buffer, tree)
@@ -156,22 +155,18 @@ class CoverageTransformMacro extends MacroTransform with IdentityDenotTransforme
           false
         )
       )
-    }
 
-    def instrumentCasees(cases: List[CaseDef])(using Context): List[CaseDef] = {
+    def instrumentCasees(cases: List[CaseDef])(using Context): List[CaseDef] =
       cases.map(instrumentCaseDef)
-    }
 
-    def instrumentCaseDef(tree: CaseDef)(using Context): CaseDef = {
+    def instrumentCaseDef(tree: CaseDef)(using Context): CaseDef =
       cpy.CaseDef(tree)(tree.pat, transform(tree.guard), transform(tree.body))
-    }
 
-    def instrument(tree: Tree, branch: Boolean = false)(using Context): Tree = {
+    def instrument(tree: Tree, branch: Boolean = false)(using Context): Tree =
       instrument(tree, tree.sourcePos, branch)
-    }
 
-    def instrument(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Tree = {
-      if (pos.exists && !pos.span.isZeroExtent && !tree.isType) {
+    def instrument(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Tree =
+      if (pos.exists && !pos.span.isZeroExtent && !tree.isType)
         val id = statementId.incrementAndGet()
         val statement = new Statement(
           source = ctx.source.file.name,
@@ -187,18 +182,16 @@ class CoverageTransformMacro extends MacroTransform with IdentityDenotTransforme
         )
         coverage.addStatement(statement)
         Block(List(invokeCall(id)), tree)
-      } else {
+      else
         tree
-      }
-    }
 
-    def invokeCall(id: Int)(using Context): Tree = {
+    def invokeCall(id: Int)(using Context): Tree =
       ref(defn.InvokerModuleRef)
         .select("invoked".toTermName)
         .appliedToArgs(
           List(Literal(Constant(id)), Literal(Constant(outputPath)))
         )
-    }
-  }
 
-}
+object InstrumentCoverage:
+  val name: String = "instrumentCoverage"
+  val description: String = "instrument code for coverage cheking"
