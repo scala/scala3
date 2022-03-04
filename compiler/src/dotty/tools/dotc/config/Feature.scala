@@ -76,7 +76,7 @@ object Feature:
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
 
   def sourceVersionSetting(using Context): SourceVersion =
-    SourceVersion.valueOf(ctx.settings.source.value)
+    SourceVersion.lookupSourceVersion.fromSetting(ctx.settings.source.value)
 
   def sourceVersion(using Context): SourceVersion =
     ctx.compilationUnit.sourceVersion match
@@ -85,14 +85,11 @@ object Feature:
 
   def migrateTo3(using Context): Boolean = sourceVersion == `3.0-migration`
 
-  /** If current source migrates to `version`, issue given warning message
+  /** If current source migrates to a version in the series denoted by `version`, issue given warning message
    *  and return `true`, otherwise return `false`.
    */
-  def warnOnMigration(msg: Message, pos: SrcPos,
-      version: SourceVersion)(using Context): Boolean =
-    if sourceVersion.isMigrating && sourceVersion.stable == version
-       || (version == `3.0` || version == `3.1` || version == `3.2`) && migrateTo3
-    then
+  def warnOnMigration(msg: Message, pos: SrcPos, version: SourceVersion)(using Context): Boolean =
+    if sourceVersion.isMigrating && sourceVersion.series == version.series then
       report.migrationWarning(msg, pos)
       true
     else

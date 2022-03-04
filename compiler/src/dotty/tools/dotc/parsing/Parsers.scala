@@ -3140,14 +3140,14 @@ object Parsers {
           in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
           for
             case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
-            if allSourceVersionNames.contains(imported)
+            if lookupSourceVersion.fromImport.contains(imported)
           do
             if !outermost then
               syntaxError(i"source version import is only allowed at the toplevel", id.span)
             else if ctx.compilationUnit.sourceVersion.isDefined then
               syntaxError(i"duplicate source version import", id.span)
             else
-              ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+              ctx.compilationUnit.sourceVersion = Some(lookupSourceVersion.fromSetting(imported.toString))
         case None =>
       imp
 

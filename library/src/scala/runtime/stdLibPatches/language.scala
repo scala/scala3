@@ -162,19 +162,33 @@ object language:
   @compileTimeOnly("`3.1` can only be used at compile time in import statements")
   object `3.1`
 
-/* This can be added when we go to 3.2
   /** Set source version to 3.2-migration.
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
   @compileTimeOnly("`3.2-migration` can only be used at compile time in import statements")
   object `3.2-migration`
 
   /** Set source version to 3.2
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
   @compileTimeOnly("`3.2` can only be used at compile time in import statements")
   object `3.2`
+
+/* This can be added when we go to 3.3
+  /** Set source version to 3.3-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.3-migration` can only be used at compile time in import statements")
+  object `3.3-migration`
+
+  /** Set source version to 3.3
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.3` can only be used at compile time in import statements")
+  object `3.3`
 */
 end language

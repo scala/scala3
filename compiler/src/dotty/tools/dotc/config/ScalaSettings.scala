@@ -5,6 +5,7 @@ import scala.language.unsafeNulls
 
 import dotty.tools.dotc.config.PathResolver.Defaults
 import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
+import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
@@ -51,7 +52,15 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   /* Path related settings */
   val semanticdbTarget: Setting[String] = PathSetting("-semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
 
-  val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "3.1", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
+  private val SourceVersionOptions =
+    SourceVersion
+      .lookupSourceVersion.fromSetting
+      .toList
+      // we want `3.1-migration` to be before `3.1`, but both map to same SourceVersion
+      .sortBy((key, version) => (version.ordinal, !key.endsWith("-migration")))
+      .map((key, _) => key)
+
+  val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", SourceVersionOptions, SourceVersion.defaultSourceVersion.toString, aliases = List("--source"))
   val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
   val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.", aliases = List("--rewrite"))
   val fromTasty: Setting[Boolean] = BooleanSetting("-from-tasty", "Compile classes from tasty files. The arguments are .tasty or .jar files.", aliases = List("--from-tasty"))
