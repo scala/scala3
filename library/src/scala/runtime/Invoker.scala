@@ -62,13 +62,15 @@ object Invoker {
         new FileWriter(measurementFile(dataDir), true)
       )
 
-      writer.append(Integer.toString(id)).append("\n").flush()
+      writer.append(Integer.toString(id))
+      writer.append("\n")
+      writer.flush()
       ids.put(id, ())
     }
   }
 
   def measurementFile(dataDir: String): File = new File(
     dataDir,
-    MeasurementsPrefix + runtimeUUID + "." + Thread.currentThread.getId
+    MeasurementsPrefix + runtimeUUID + "." + Thread.currentThread.nn.getId
   )
 }
