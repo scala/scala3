@@ -699,10 +699,20 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** TypeRepr of this term */
         def tpe: TypeRepr
 
-        /** Replace Inlined nodes and InlineProxy references to underlying arguments */
+        /** Replace Inlined nodes and InlineProxy references to underlying arguments.
+         *  The resulting tree is useful for inspection of the value or content of a non-inline argument.
+         *
+         *  Warning: This tree may contain references that are out of scope and should not be used in the generated code.
+         *           This method should only used to port Scala 2 that used to access their outer scope unsoundly.
+         */
         def underlyingArgument: Term
 
-        /** Replace Ident nodes references to the underlying tree that defined them */
+        /** Replace Ident nodes references to the underlying tree that defined them.
+         *  The resulting tree is useful for inspection of the definition of some bindings.
+         *
+         *  Warning: This tree may contain references that are out of scope and should not be used in the generated code.
+         *           This method should only used to port Scala 2 that used to access their outer scope unsoundly.
+         */
         def underlying: Term
 
         /** Converts a partially applied term into a lambda expression */
