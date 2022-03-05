@@ -628,7 +628,15 @@ class SpaceEngine(using Context) extends SpaceLogic {
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
         tp.classSymbol.children.map(sym => Typ(sym.termRef, true))
       case tp =>
-        val children = tp.classSymbol.children
+        def getChildren(sym: Symbol): List[Symbol] =
+          sym.children.flatMap { child =>
+            if child eq sym then Nil // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
+            else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
+              List(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
+            else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)
+            else List(child)
+          }
+        val children = getChildren(tp.classSymbol)
         debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
 
         val parts = children.map { sym =>

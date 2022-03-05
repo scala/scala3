@@ -24,3 +24,4 @@
    |     Larger values might make a very large search problem succeed.
    |
    | longer explanation available when compiling with `-explain`
+there was 1 feature warning; re-run with -feature for details

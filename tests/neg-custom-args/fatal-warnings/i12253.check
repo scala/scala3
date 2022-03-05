@@ -6,3 +6,4 @@
 11 |     case extractors.InlinedLambda(_, Select(_, name)) => Expr(name) // error // error
    |                                      ^
    |                                      the type test for q1.reflect.Select cannot be checked at runtime
+there was 1 deprecation warning; re-run with -deprecation for details

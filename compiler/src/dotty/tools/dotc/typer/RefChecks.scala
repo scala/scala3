@@ -410,19 +410,21 @@ object RefChecks {
         overrideError("has weaker access privileges; it should not be private")
 
       // todo: align accessibility implication checking with isAccessible in Contexts
-      val ob = other.accessBoundary(member.owner)
-      val mb = member.accessBoundary(member.owner)
       def isOverrideAccessOK =
-           (member.flags & AccessFlags).isEmpty
-           && !member.privateWithin.exists // member is public, or
-        || (!other.is(Protected) || member.is(Protected))
-              // if o is protected, so is m, and
-           && (ob.isContainedIn(mb) || other.isAllOf(JavaProtected))
-             // m relaxes o's access boundary,
-             // or o is Java defined and protected (see #3946)
+        val memberIsPublic = (member.flags & AccessFlags).isEmpty && !member.privateWithin.exists
+        def protectedOK = !other.is(Protected) || member.is(Protected)        // if o is protected, so is m
+        def accessBoundaryOK =
+          val ob = other.accessBoundary(member.owner)
+          val mb = member.accessBoundary(member.owner)
+          // restriction isLocalToBlock because companionModule fails under -from-tasty (#14508)
+          def companionBoundaryOK = ob.isClass && !ob.isLocalToBlock && mb.is(Module) && (ob.companionModule eq mb.companionModule)
+          ob.isContainedIn(mb) || companionBoundaryOK    // m relaxes o's access boundary,
+        def otherIsJavaProtected = other.isAllOf(JavaProtected)               // or o is Java defined and protected (see #3946)
+        memberIsPublic || protectedOK && (accessBoundaryOK || otherIsJavaProtected)
+      end isOverrideAccessOK
       if !member.hasTargetName(other.targetName) then
         overrideTargetNameError()
-      else if (!isOverrideAccessOK)
+      else if !isOverrideAccessOK then
         overrideAccessError()
       else if (other.isClass)
         // direct overrides were already checked on completion (see Checking.chckWellFormed)
@@ -503,6 +505,7 @@ object RefChecks {
       else
         checkOverrideDeprecated()
     }
+    end checkOverride
 
     /* TODO enable; right now the annotation is scala-private, so cannot be seen
          * here.

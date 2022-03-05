@@ -19,6 +19,8 @@ object MiMaFilters {
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#CompilationInfoModule.XmacroSettings"),
     ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.fewerBraces"),
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$fewerBraces$"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.deriving.Mirror.fromProductTyped"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.deriving.Mirror.fromTuple"),
 
     // Private to the compiler - needed for forward binary compatibility
     ProblemFilters.exclude[MissingClassProblem]("scala.annotation.since")
