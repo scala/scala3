@@ -129,13 +129,15 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     infoDiagnostic(d.symbol.showUser, d)
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(using Context): Option[Diagnostic] =
+  def renderVal(d: Denotation)(using Context): Either[InvocationTargetException, Option[Diagnostic]] =
     val dcl = d.symbol.showUser
     def msg(s: String) = infoDiagnostic(s, d)
     try
-      if (d.symbol.is(Flags.Lazy)) Some(msg(dcl))
-      else valueOf(d.symbol).map(value => msg(s"$dcl = $value"))
-    catch case e: InvocationTargetException => Some(msg(renderError(e, d)))
+      Right(
+        if d.symbol.is(Flags.Lazy) then Some(msg(dcl))
+        else valueOf(d.symbol).map(value => msg(s"$dcl = $value"))
+      )
+    catch case e: InvocationTargetException => Left(e)
   end renderVal
 
   /** Force module initialization in the absence of members. */
@@ -144,10 +146,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       val objectName = sym.fullName.encode.toString
       Class.forName(objectName, true, classLoader())
       Nil
-    try load() catch case e: ExceptionInInitializerError => List(infoDiagnostic(renderError(e, sym.denot), sym.denot))
+    try load() catch case e: ExceptionInInitializerError => List(renderError(e, sym.denot))
 
   /** Render the stack trace of the underlying exception. */
-  private def renderError(ite: InvocationTargetException | ExceptionInInitializerError, d: Denotation)(using Context): String =
+  def renderError(ite: InvocationTargetException | ExceptionInInitializerError, d: Denotation)(using Context): Diagnostic =
     import dotty.tools.dotc.util.StackTraceOps._
     val cause = ite.getCause match
       case e: ExceptionInInitializerError => e.getCause
@@ -159,7 +161,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       ste.getClassName.startsWith(REPL_WRAPPER_NAME_PREFIX)  // d.symbol.owner.name.show is simple name
       && (ste.getMethodName == nme.STATIC_CONSTRUCTOR.show || ste.getMethodName == nme.CONSTRUCTOR.show)
 
-    cause.formatStackTracePrefix(!isWrapperInitialization(_))
+    infoDiagnostic(cause.formatStackTracePrefix(!isWrapperInitialization(_)), d)
   end renderError
 
   private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =
