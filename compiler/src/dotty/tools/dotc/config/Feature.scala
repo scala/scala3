@@ -10,7 +10,6 @@ import util.{SrcPos, NoSourcePosition}
 import SourceVersion._
 import reporting.Message
 import NameKinds.QualifiedName
-import typer.ImportInfo
 
 object Feature:
 

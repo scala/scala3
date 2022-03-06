@@ -14,7 +14,6 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.reflect._
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.NoCompilationUnit
 
 import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes}

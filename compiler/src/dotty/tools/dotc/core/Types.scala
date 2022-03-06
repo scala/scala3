@@ -4511,8 +4511,8 @@ object Types {
     def paramName: binder.ThisName = binder.paramNames(paramNum)
 
     override def underlying(using Context): Type = {
+      // TODO: update paramInfos's type to nullable
       val infos: List[Type] | Null = binder.paramInfos
-      // TODO
       if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
       else infos(paramNum)
     }

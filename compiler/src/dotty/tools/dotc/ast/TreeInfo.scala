@@ -823,9 +823,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  tree must be reachable from come tree stored in an enclosing context.
    */
   def definingStats(sym: Symbol)(using Context): List[Tree] =
-    val unit = ctx.compilationUnit
-    if (!sym.span.exists || (ctx eq NoContext) || (unit eq NoCompilationUnit)) Nil
-    else defPath(sym, unit.tpdTree) match {
+    if (!sym.span.exists || (ctx eq NoContext) || (ctx.compilationUnit eq NoCompilationUnit)) Nil
+    else defPath(sym, ctx.compilationUnit.tpdTree) match {
       case defn :: encl :: _ =>
         def verify(stats: List[Tree]) =
           if (stats exists (definedSym(_) == sym)) stats else Nil

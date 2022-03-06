@@ -270,8 +270,8 @@ object Contexts {
      *  the declarations of the current class.
      */
     def effectiveScope(using Context): Scope =
-      val co: Symbol | Null = owner
-      if co != null && co.isClass then co.asClass.unforcedDecls
+      val myOwner: Symbol | Null = owner
+      if myOwner != null && myOwner.isClass then myOwner.asClass.unforcedDecls
       else scope
 
     def nestingLevel: Int = effectiveScope.nestingLevel

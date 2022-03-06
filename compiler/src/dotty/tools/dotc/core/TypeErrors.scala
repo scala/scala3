@@ -18,9 +18,7 @@ class TypeError(msg: String) extends Exception(msg) {
   def this() = this("")
   final def toMessage(using Context): Message =
     withMode(Mode.Printing)(produceMessage)
-  def produceMessage(using Context): Message =
-    val msg: String = super.getMessage.uncheckedNN
-    msg
+  def produceMessage(using Context): Message = super.getMessage.nn
   override def getMessage: String = super.getMessage.nn
 }
 

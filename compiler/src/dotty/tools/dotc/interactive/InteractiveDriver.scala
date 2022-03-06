@@ -164,8 +164,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
       run.compileSources(List(source))
       run.printSummary()
-      val ctxrun = ctx.run.nn
-      val unit = if ctxrun.units.nonEmpty then ctxrun.units.head else ctxrun.suspendedUnits.head
+      val ctxRun = ctx.run.nn
+      val unit = if ctxRun.units.nonEmpty then ctxRun.units.head else ctxRun.suspendedUnits.head
       val t = unit.tpdTree
       cleanup(t)
       myOpenedTrees(uri) = topLevelTrees(t, source)
