@@ -39,11 +39,7 @@ package object tools {
   /** Nullable eq and ne. */
   extension [T <: AnyRef](x: T | Null)
     inline def eqn (y: T | Null) =
-      if x != null then
-        if y != null then
-          x eq y
-        else false
-      else y == null
+      x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
 
     inline def nen(y: T | Null): Boolean = !eqn(y)
 

@@ -182,13 +182,13 @@ object Names {
     private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.empty
 
     private def add(info: NameInfo): TermName = synchronized {
-      derivedNames.lookup(info) match
+      val dnOpt = derivedNames.lookup(info)
+      dnOpt match
         case null =>
           val derivedName = new DerivedName(this, info)
           derivedNames = derivedNames.updated(info, derivedName)
           derivedName
-        case derivedName: DerivedName =>
-          derivedName
+        case _ => dnOpt
     }
 
     private def rewrap(underlying: TermName) =

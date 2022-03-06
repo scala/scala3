@@ -383,6 +383,7 @@ object ProtoTypes {
             targ = arg.withType(WildcardType)
           case _ =>
             targ = typerFn(arg)
+            // TODO: invest why flow typing is not working on `targ`
             if ctx.reporter.hasUnreportedErrors then
               if hasInnerErrors(targ.nn) then
                 state.errorArgs += arg

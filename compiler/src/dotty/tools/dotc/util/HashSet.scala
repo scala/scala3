@@ -89,7 +89,7 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
       e = entryAt(idx)
     null
 
-/** Add entry at `x` at index `idx` */
+  /** Add entry at `x` at index `idx` */
   protected def addEntryAt(idx: Int, x: T): T =
     Stats.record(statsItem("addEntryAt"))
     setEntry(idx, x)
@@ -102,6 +102,7 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
+      // TODO: remove uncheckedNN when explicit-nulls is enabled for regule compiling
       if isEqual(e.uncheckedNN, x) then return e.uncheckedNN
       idx = nextIndex(idx)
       e = entryAt(idx)

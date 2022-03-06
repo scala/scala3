@@ -86,7 +86,7 @@ object Symbols {
       ctx.settings.YcheckInit.value        // initialization check
 
     /** The last denotation of this symbol */
-    private var lastDenot: SymDenotation | Null = _
+    private var lastDenot: SymDenotation = _
     private var checkedPeriod: Period = Nowhere
 
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
@@ -101,9 +101,8 @@ object Symbols {
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
-      val lastd = lastDenot.nn
-      if (checkedPeriod == ctx.period) lastd
-      else computeDenot(lastd)
+      if (checkedPeriod == ctx.period) lastDenot
+      else computeDenot(lastDenot)
     }
 
     private def computeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
@@ -123,14 +122,14 @@ object Symbols {
 
     /** The original denotation of this symbol, without forcing anything */
     final def originDenotation: SymDenotation =
-      lastDenot.nn.initial
+      lastDenot.initial
 
     /** The last known denotation of this symbol, without going through `current` */
     final def lastKnownDenotation: SymDenotation =
-      lastDenot.nn
+      lastDenot
 
     private[core] def defRunId: RunId =
-      if (lastDenot == null) NoRunId else lastDenot.nn.validFor.runId
+      lastDenot.validFor.runId
 
     private inline def associatedFileMatches(inline filter: AbstractFile => Boolean)(using Context): Boolean =
       try
@@ -153,18 +152,17 @@ object Symbols {
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =
-      val d = lastDenot.nn
-      (d.validFor.runId == ctx.runId || stillValid(d)) &&
-      (d.symbol eq this)
+      (lastDenot.validFor.runId == ctx.runId || stillValid(lastDenot)) &&
+      (lastDenot.symbol eq this)
         // the last condition is needed because under ctx.staleOK overwritten
         // members keep denotations pointing to the new symbol, so the validity
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
     final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot.nn else denot).isTerm
+      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
     final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot.nn else denot).isType
+      (if (defRunId == ctx.runId) lastDenot else denot).isType
     final def asTerm(using Context): TermSymbol = {
       assert(isTerm, s"asTerm called on not-a-Term $this" );
       asInstanceOf[TermSymbol]
@@ -181,10 +179,8 @@ object Symbols {
      *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
      *  is a class that is not yet read.
      */
-    final def isPrivate(using Context): Boolean = {
-      val d = lastDenot
-      d != null && d.flagsUNSAFE.is(Private)
-    }
+    final def isPrivate(using Context): Boolean =
+      lastDenot.flagsUNSAFE.is(Private)
 
     /** Is the symbol a pattern bound symbol?
      */
@@ -193,14 +189,14 @@ object Symbols {
 
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
     final def signature(using Context): Signature =
-      if (lastDenot != null && (lastDenot.uncheckedNN.isCompleted || lastDenot.uncheckedNN.is(Method)))
+      if lastDenot.uncheckedNN.isCompleted || lastDenot.uncheckedNN.is(Method) then
         denot.signature
       else
         Signature.NotAMethod
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(using Context): Boolean =
-      lastDenot != null && lastDenot.uncheckedNN.initial.isStatic
+      lastDenot.initial.isStatic
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(using Context): this.type = {
@@ -268,7 +264,7 @@ object Symbols {
      *  Overridden in ClassSymbol
      */
     def associatedFile(using Context): AbstractFile | Null =
-      if (lastDenot == null) null else lastDenot.uncheckedNN.topLevelClass.associatedFile
+      lastDenot.topLevelClass.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(using Context): AbstractFile | Null = {
@@ -356,8 +352,7 @@ object Symbols {
     protected def prefixString: String = "Symbol"
 
     override def toString: String =
-      if (lastDenot == null) s"Naked$prefixString#$id"
-      else lastDenot.nn.toString // + "#" + id // !!! DEBUG
+      lastDenot.toString // + "#" + id // !!! DEBUG
 
     def toText(printer: Printer): Text = printer.toText(this)
 

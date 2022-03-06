@@ -134,7 +134,7 @@ object Scopes {
     final def lookupAll(name: Name)(using Context): Iterator[Symbol] = new Iterator[Symbol] {
       var e = lookupEntry(name)
       def hasNext: Boolean = e != null
-      def next(): Symbol = { val r = e.uncheckedNN.sym; e = lookupNextEntry(e.uncheckedNN); r }
+      def next(): Symbol = { val r = e.nn.sym; e = lookupNextEntry(e.uncheckedNN); r }
     }
 
     /** Does this scope contain a reference to `sym` when looking up `name`? */
@@ -168,7 +168,8 @@ object Scopes {
           if (result == null) result = cloneScope
           result.nn.unlink(sym)
         }
-      if (result == null) this else result.nn
+      // TODO: improve flow typing to handle this case
+      if (result == null) this else result.uncheckedNN
     }
 
     def implicitDecls(using Context): List[TermRef] = Nil

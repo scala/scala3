@@ -51,6 +51,7 @@ object OrderingConstraint {
     def update(prev: OrderingConstraint, current: OrderingConstraint,
         poly: TypeLambda, idx: Int, entry: T)(using Context): OrderingConstraint = {
       var es = entries(current, poly)
+      // TODO: invest why flow typing is not working on `es`
       if (es != null && (es.nn(idx) eq entry)) current
       else {
         val result =
@@ -567,12 +568,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       boundsMap.foreachBinding { (poly, entries) =>
         for (i <- 0 until paramCount(entries))
           typeVar(entries, i) match {
-            case tv: TypeVar if !tv.inst.exists && isBounds(entries(i)) => myUninstVars.nn += tv
+            case tv: TypeVar if !tv.inst.exists && isBounds(entries(i)) => myUninstVars.uncheckedNN += tv
             case _ =>
           }
       }
     }
-    myUninstVars.nn
+    myUninstVars.uncheckedNN
   }
 
 // ---------- Checking -----------------------------------------------

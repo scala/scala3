@@ -364,7 +364,7 @@ object Implicits:
       if (monitored) record(s"check eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
       if isOuterMost then ownEligible
-      else combineEligibles(ownEligible, outerImplicits.uncheckedNN.eligible(tp))
+      else combineEligibles(ownEligible, outerImplicits.nn.eligible(tp))
     }
 
     override def isAccessible(ref: TermRef)(using Context): Boolean =
@@ -381,7 +381,7 @@ object Implicits:
     def exclude(root: Symbol): ContextualImplicits =
       if (this == NoContext.implicits) this
       else {
-        val outerExcluded = outerImplicits.uncheckedNN exclude root
+        val outerExcluded = outerImplicits.nn exclude root
         if (irefCtx.importInfo.nn.site.termSymbol == root) outerExcluded
         else if (outerExcluded eqn outerImplicits) this
         else new ContextualImplicits(refs, outerExcluded, isImport)(irefCtx)
