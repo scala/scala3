@@ -36,9 +36,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   protected given [DummySoItsADef]: Context = myContext
 
-  protected var state: TyperState | Null = null
-  def constraint: Constraint = state.nn.constraint
-  def constraint_=(c: Constraint): Unit = state.nn.constraint = c
+  protected var state: TyperState = compiletime.uninitialized
+  def constraint: Constraint = state.constraint
+  def constraint_=(c: Constraint): Unit = state.constraint = c
 
   def init(c: Context): Unit =
     myContext = c
@@ -220,7 +220,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
         pendingSubTypes = util.HashSet[(Type, Type)]()
-        report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.nn.constraint.show}")
+        report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
         report.log(s"!!! constraint = ${constraint.show}")
         //if (ctx.settings.YnoDeepSubtypes.value) {
         //  new Error("deep subtype").printStackTrace()
@@ -390,7 +390,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         thirdTry
       case tp1: TypeParamRef =>
         def flagNothingBound = {
-          if (!frozenConstraint && isBottom(tp2) && state.nn.isGlobalCommittable) {
+          if (!frozenConstraint && isBottom(tp2) && state.isGlobalCommittable) {
             def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
             if (Config.failOnInstantiationToNothing) assert(false, msg)
             else report.log(msg)
@@ -1309,7 +1309,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val saved = constraint
       val savedGadt = ctx.gadt.fresh
       inline def restore() =
-        state.nn.constraint = saved
+        state.constraint = saved
         ctx.gadt.restore(savedGadt)
       val savedSuccessCount = successCount
       try
@@ -1319,7 +1319,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         recCount -= 1
         if !result then restore()
         else if recCount == 0 && needsGc then
-          state.nn.gc()
+          state.gc()
           needsGc = false
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result

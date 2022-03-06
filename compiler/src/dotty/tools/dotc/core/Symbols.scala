@@ -91,7 +91,9 @@ object Symbols {
 
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
 
-    /** Set the denotation of this symbol */
+    /** Set the denotation of this symbol
+     *  `denot` should always be initialized when a new Symbol is created.
+     */
     private[core] def denot_=(d: SymDenotation): Unit = {
       util.Stats.record("Symbol.denot_=")
       lastDenot = d

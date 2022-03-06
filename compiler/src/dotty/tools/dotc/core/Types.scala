@@ -725,7 +725,7 @@ object Types {
           NoDenotation
       }
       def goRec(tp: RecType) =
-        // TODO: test remove this check
+        // TODO: change tp.parent to nullable or other values
         if ((tp.parent: Type | Null) == null) NoDenotation
         else if (tp eq pre) go(tp.parent)
         else {

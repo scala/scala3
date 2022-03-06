@@ -61,8 +61,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   private def computeThreshold: Int = (table.size * loadFactor).ceil.toInt
 
   protected def hash(key: A): Int
-  protected def isEqual(x: A | Null, y: A | Null): Boolean =
-    if x == null then y == null else x.equals(y)
+  protected def isEqual(x: A, y: A): Boolean = x.equals(y)
 
   /** Turn hashcode `x` into a table index */
   protected def index(x: Int): Int = x & (table.length - 1)
@@ -135,24 +134,25 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     tableLoop(0)
   }
 
-  def lookup(elem: A): A | Null = {
-    // case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
-    // case _    =>
+  // TODO: remove the `case null` when we can enable explicit nulls in regular compiling,
+  // since the type `A <: AnyRef` of `elem` can ensure the value is not null.
+  def lookup(elem: A): A | Null = (elem: A | Null) match {
+    case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
+    case _ =>
+      Stats.record(statsItem("lookup"))
+      removeStaleEntries()
+      val bucket = index(hash(elem))
 
-    Stats.record(statsItem("lookup"))
-    removeStaleEntries()
-    val bucket = index(hash(elem))
+      @tailrec
+      def linkedListLoop(entry: Entry[A] | Null): A | Null = entry match {
+        case null                    => null
+        case _                       =>
+          val entryElem = entry.get
+          if entryElem != null && isEqual(elem, entryElem) then entryElem
+          else linkedListLoop(entry.tail)
+      }
 
-    @tailrec
-    def linkedListLoop(entry: Entry[A] | Null): A | Null = entry match {
-      case null                    => null
-      case _                       =>
-        val entryElem = entry.get
-        if (isEqual(elem, entryElem)) entryElem
-        else linkedListLoop(entry.tail)
-    }
-
-    linkedListLoop(table(bucket))
+      linkedListLoop(table(bucket))
   }
 
   protected def addEntryAt(bucket: Int, elem: A, elemHash: Int, oldHead: Entry[A] | Null): A = {
@@ -175,7 +175,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
       case null                    => addEntryAt(bucket, elem, h, oldHead)
       case _                       =>
         val entryElem = entry.get
-        if (isEqual(elem, entryElem)) entryElem.uncheckedNN
+        if entryElem != null && isEqual(elem, entryElem) then entryElem.uncheckedNN
         else linkedListLoop(entry.tail)
     }
 
@@ -192,7 +192,8 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     @tailrec
     def linkedListLoop(prevEntry: Entry[A] | Null, entry: Entry[A] | Null): Unit =
       if entry != null then
-        if isEqual(elem, entry.get) then remove(bucket, prevEntry, entry)
+        val entryElem = entry.get
+        if entryElem != null && isEqual(elem, entryElem) then remove(bucket, prevEntry, entry)
         else linkedListLoop(entry, entry.tail)
 
     linkedListLoop(null, table(bucket))
