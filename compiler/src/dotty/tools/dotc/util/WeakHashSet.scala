@@ -6,7 +6,7 @@ import java.lang.ref.{ReferenceQueue, WeakReference}
 
 import scala.annotation.{ constructorOnly, tailrec }
 
-import dotty.tools.uncheckedNN
+import dotty.tools._
 
 /**
  * A HashSet where the elements are stored weakly. Elements in this set are eligible for GC if no other
@@ -92,10 +92,9 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
 
         @tailrec
         def linkedListLoop(prevEntry: Entry[A] | Null, entry: Entry[A] | Null): Unit =
-          if (stale == entry)
-            assert(entry != null)
-            remove(bucket, prevEntry, entry)
-          else if (entry != null) linkedListLoop(entry, entry.tail)
+          if entry != null then
+            if stale eq entry then remove(bucket, prevEntry, entry)
+            else linkedListLoop(entry, entry.tail)
 
         linkedListLoop(null, table(bucket))
 
