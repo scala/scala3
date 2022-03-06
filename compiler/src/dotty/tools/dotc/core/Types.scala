@@ -2067,9 +2067,9 @@ object Types {
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs */
   trait CaptureRef extends SingletonType:
-    private var myCaptureSet: CaptureSet = _
+    private var myCaptureSet: CaptureSet | Null = _
     private var myCaptureSetRunId: Int = NoRunId
-    private var mySingletonCaptureSet: CaptureSet.Const = null
+    private var mySingletonCaptureSet: CaptureSet.Const | Null = null
 
     def canBeTracked(using Context): Boolean
     final def isTracked(using Context): Boolean = canBeTracked && !captureSetOfInfo.isAlwaysEmpty
@@ -2079,11 +2079,11 @@ object Types {
     def singletonCaptureSet(using Context): CaptureSet.Const =
       if mySingletonCaptureSet == null then
         mySingletonCaptureSet = CaptureSet(this.normalizedRef)
-      mySingletonCaptureSet
+      mySingletonCaptureSet.uncheckedNN
 
     def captureSetOfInfo(using Context): CaptureSet =
-      if ctx.runId == myCaptureSetRunId then myCaptureSet
-      else if myCaptureSet eq CaptureSet.Pending then CaptureSet.empty
+      if ctx.runId == myCaptureSetRunId then myCaptureSet.nn
+      else if myCaptureSet.asInstanceOf[AnyRef] eq CaptureSet.Pending then CaptureSet.empty
       else
         myCaptureSet = CaptureSet.Pending
         val computed = CaptureSet.ofInfo(this)
