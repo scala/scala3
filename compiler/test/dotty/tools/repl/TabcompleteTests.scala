@@ -191,4 +191,20 @@ class TabcompleteTests extends ReplTest {
                      |Foo.`bac"""stripMargin))
   }
 
+  @Test def commands = initially {
+    assertEquals(
+      List(
+        ":doc",
+        ":exit",
+        ":help",
+        ":imports",
+        ":load",
+        ":quit",
+        ":reset",
+        ":settings",
+        ":type"
+      ),
+      tabComplete(":")
+    )
+  }
 }
