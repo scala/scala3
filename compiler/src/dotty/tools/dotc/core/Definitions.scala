@@ -1594,6 +1594,9 @@ class Definitions {
     yield
       nme.apply.specializedFunction(r, List(t1, t2)).asTermName
 
+  @tu lazy val FunctionSpecializedApplyNames: collection.Set[Name] =
+    Function0SpecializedApplyNames ++ Function1SpecializedApplyNames ++ Function2SpecializedApplyNames
+
   def functionArity(tp: Type)(using Context): Int = tp.dropDependentRefinement.dealias.argInfos.length - 1
 
   /** Return underlying context function type (i.e. instance of an ContextFunctionN class)
