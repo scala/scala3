@@ -261,7 +261,6 @@ object CaptureSet:
     if elems.isEmpty then empty else Const(elems)
 
   class Const private[CaptureSet] (val elems: Refs, val description: String = "") extends CaptureSet:
-    assert(elems != null)
     def isConst = true
     def isAlwaysEmpty = elems.isEmpty
 
@@ -370,7 +369,7 @@ object CaptureSet:
       val trail = this.match
         case dv: DerivedVar => dv.source.ids
         case _ => ""
-      s"$id${getClass.getSimpleName.take(1)}$trail"
+      s"$id${getClass.getSimpleName.nn.take(1)}$trail"
 
     override def toText(printer: Printer): Text = inContext(printer.printerContext) {
       for vars <- ctx.property(ShownVars) do vars += this
@@ -397,7 +396,7 @@ object CaptureSet:
     (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
   extends DerivedVar(initial.elems):
     addSub(initial)
-    val stack = if debugSets then (new Throwable).getStackTrace().take(20) else null
+    val stack = if debugSets then (new Throwable).getStackTrace().nn.take(20) else null
 
     private def whereCreated(using Context): String =
       if stack == null then ""

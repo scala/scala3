@@ -35,7 +35,8 @@ object CheckCaptures:
       else sym
   end Pre
 
-  case class Env(owner: Symbol, captured: CaptureSet, isBoxed: Boolean, outer: Env):
+  case class Env(owner: Symbol, captured: CaptureSet, isBoxed: Boolean, outer0: Env | Null):
+    def outer = outer0.nn
     def isOpen = !captured.isAlwaysEmpty && !isBoxed
 
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
