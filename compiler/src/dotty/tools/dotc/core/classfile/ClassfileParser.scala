@@ -3,6 +3,8 @@ package dotc
 package core
 package classfile
 
+import scala.language.unsafeNulls
+
 import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._

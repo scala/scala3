@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package interactive
 
+import scala.language.unsafeNulls
+
 import java.net.URI
 import java.io._
 import java.nio.file._
@@ -162,7 +164,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
       run.compileSources(List(source))
       run.printSummary()
-      val unit = if ctx.run.units.nonEmpty then ctx.run.units.head else ctx.run.suspendedUnits.head
+      val ctxRun = ctx.run.nn
+      val unit = if ctxRun.units.nonEmpty then ctxRun.units.head else ctxRun.suspendedUnits.head
       val t = unit.tpdTree
       cleanup(t)
       myOpenedTrees(uri) = topLevelTrees(t, source)

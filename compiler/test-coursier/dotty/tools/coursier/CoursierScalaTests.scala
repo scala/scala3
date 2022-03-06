@@ -2,6 +2,8 @@ package dotty
 package tools
 package coursier
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.nio.file.{Path, Paths, Files}
 import scala.sys.process._

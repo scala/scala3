@@ -12,6 +12,7 @@ import core.Names._
 import core.NameKinds.TempResultName
 import core.Constants._
 import util.Store
+import dotty.tools.uncheckedNN
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
@@ -51,10 +52,10 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
       Set(refClass(defn.ObjectClass), volatileRefClass(defn.ObjectClass))
   }
 
-  private var myRefInfo: RefInfo = null
-  private def refInfo(using Context) = {
+  private var myRefInfo: RefInfo | Null = null
+  private def refInfo(using Context): RefInfo = {
     if (myRefInfo == null) myRefInfo = new RefInfo()
-    myRefInfo
+    myRefInfo.uncheckedNN
   }
 
   private class CollectCaptured extends TreeTraverser {

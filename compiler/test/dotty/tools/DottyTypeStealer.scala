@@ -1,5 +1,7 @@
 package dotty.tools
 
+import scala.language.unsafeNulls
+
 import dotc.ast.tpd
 import dotc.ast.tpd._
 import dotc.core.Contexts.{Context, atPhase}

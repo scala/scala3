@@ -1,6 +1,7 @@
-package dotty.tools.dotc.util
+package dotty.tools.dotc
+package util
 
-import dotty.tools.dotc.core.Contexts.Context
+import core.Contexts.Context
 
 /** A class inheriting from Attachment.Container supports
  *  adding, removing and lookup of attachments. Attachments are typed key/value pairs.
@@ -15,7 +16,7 @@ object Attachment {
    *  Clients should inherit from Container instead.
    */
   trait LinkSource {
-    private[Attachment] var next: Link[?]
+    private[Attachment] var next: Link[?] | Null
 
     /** Optionally get attachment corresponding to `key` */
     final def getAttachment[V](key: Key[V]): Option[V] = {
@@ -94,16 +95,16 @@ object Attachment {
 
   /** A private, concrete implementation class linking attachments.
    */
-  private[Attachment] class Link[+V](val key: Key[V], val value: V, var next: Link[?])
+  private[Attachment] class Link[+V](val key: Key[V], val value: V, var next: Link[?] | Null)
       extends LinkSource
 
   /** A trait for objects that can contain attachments */
   trait Container extends LinkSource {
-    private[Attachment] var next: Link[?] = null
+    private[Attachment] var next: Link[?] | Null = null
 
     /** Copy the sticky attachments from `container` to this container. */
     final def withAttachmentsFrom(container: Container): this.type = {
-      var current: Link[?] = container.next
+      var current: Link[?] | Null = container.next
       while (current != null) {
         if (current.key.isInstanceOf[StickyKey[?]]) putAttachment(current.key, current.value)
         current = current.next

@@ -4,7 +4,6 @@ package transform
 package init
 
 import ast.tpd._
-
 import core._
 import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
@@ -37,7 +36,7 @@ object Errors {
         val line =
           if pos.source.exists then
             val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-            val code = SyntaxHighlighting.highlight(pos.lineContent.trim)
+            val code = SyntaxHighlighting.highlight(pos.lineContent.trim.nn)
             i"$code\t$loc"
           else
             tree.show
@@ -56,7 +55,7 @@ object Errors {
       case _ => this :: Nil
     }
 
-    override def toString() = this.getClass.getName
+    override def toString() = this.getClass.getName.nn
   }
 
   /** Access non-initialized field */

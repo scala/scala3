@@ -1,5 +1,7 @@
 package dotty.tools.backend.sjs
 
+import scala.language.unsafeNulls
+
 import scala.collection.mutable
 
 import dotty.tools.dotc.core._

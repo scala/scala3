@@ -249,7 +249,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     trace(i"constraining simple pattern type $tp >:< $pt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       (tp, pt) match {
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
-          val saved = state.constraint
+          val saved = state.nn.constraint
           val savedGadt = ctx.gadt.fresh
           val result =
             tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>

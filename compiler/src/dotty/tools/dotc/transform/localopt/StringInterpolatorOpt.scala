@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package transform.localopt
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Constants.Constant

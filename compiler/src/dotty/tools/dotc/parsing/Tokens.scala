@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package parsing
 
+import scala.language.unsafeNulls
+
 import collection.immutable.BitSet
 import core.Decorators._
 import core.StdNames.nme

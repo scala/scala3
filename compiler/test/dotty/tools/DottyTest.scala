@@ -1,6 +1,8 @@
 package dotty
 package tools
 
+import scala.language.unsafeNulls
+
 import vulpix.TestConfiguration
 
 import dotc.core._

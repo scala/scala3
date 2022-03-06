@@ -152,7 +152,8 @@ class Compiler {
 
   def reset()(using Context): Unit = {
     ctx.base.reset()
-    if (ctx.run != null) ctx.run.reset()
+    val run = ctx.run
+    if (run != null) run.reset()
   }
 
   def newRun(using Context): Run = {

@@ -28,7 +28,7 @@ class Driver {
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
-  protected def doCompile(compiler: Compiler,  files: List[AbstractFile])(using Context): Reporter =
+  protected def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
     if files.nonEmpty then
       try
         val run = compiler.newRun
@@ -36,7 +36,7 @@ class Driver {
         finish(compiler, run)
       catch
         case ex: FatalError =>
-          report.error(ex.getMessage) // signals that we should fail compilation.
+          report.error(ex.getMessage.nn) // signals that we should fail compilation.
         case ex: TypeError =>
           println(s"${ex.toMessage} while compiling ${files.map(_.path).mkString(", ")}")
           throw ex
@@ -111,7 +111,7 @@ class Driver {
         .distinct
       val ctx1 = ctx.fresh
       val fullClassPath =
-        (newEntries :+ ctx.settings.classpath.value).mkString(java.io.File.pathSeparator)
+        (newEntries :+ ctx.settings.classpath.value).mkString(java.io.File.pathSeparator.nn)
       ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
     else ctx
 
@@ -134,8 +134,8 @@ class Driver {
    *                    process. No callbacks will be executed if this is `null`.
    *  @return
    */
-  final def process(args: Array[String], simple: interfaces.SimpleReporter,
-    callback: interfaces.CompilerCallback): interfaces.ReporterResult = {
+  final def process(args: Array[String], simple: interfaces.SimpleReporter | Null,
+    callback: interfaces.CompilerCallback | Null): interfaces.ReporterResult = {
     val reporter = if (simple == null) null else Reporter.fromSimpleReporter(simple)
     process(args, reporter, callback)
   }
@@ -153,8 +153,8 @@ class Driver {
    *  @return           The `Reporter` used. Use `Reporter#hasErrors` to check
    *                    if compilation succeeded.
    */
-  final def process(args: Array[String], reporter: Reporter = null,
-    callback: interfaces.CompilerCallback = null): Reporter = {
+  final def process(args: Array[String], reporter: Reporter | Null = null,
+    callback: interfaces.CompilerCallback | Null = null): Reporter = {
     val compileCtx = initCtx.fresh
     if (reporter != null)
       compileCtx.setReporter(reporter)
@@ -172,7 +172,7 @@ class Driver {
    *  with sbt.
    */
   final def process(args: Array[String]): Reporter =
-    process(args, null: Reporter, null: interfaces.CompilerCallback)
+    process(args, null: Reporter | Null, null: interfaces.CompilerCallback | Null)
 
   /** Entry point to the compiler using a custom `Context`.
    *

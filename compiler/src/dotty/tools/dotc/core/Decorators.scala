@@ -52,7 +52,7 @@ object Decorators {
         if name.length != 0 then name.getChars(0, name.length, chars, s.length)
         termName(chars, 0, len)
       case name: TypeName => s.concat(name.toTermName)
-      case _ => termName(s.concat(name.toString))
+      case _ => termName(s.concat(name.toString).nn)
 
     def indented(width: Int): String =
       val padding = " " * width
@@ -80,9 +80,9 @@ object Decorators {
 
     final def mapconserve[U](f: T => U): List[U] = {
       @tailrec
-      def loop(mapped: ListBuffer[U], unchanged: List[U], pending: List[T]): List[U] =
+      def loop(mapped: ListBuffer[U] | Null, unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty)
-          if (mapped eq null) unchanged
+          if (mapped == null) unchanged
           else mapped.prependToList(unchanged)
         else {
           val head0 = pending.head
@@ -91,7 +91,7 @@ object Decorators {
           if (head1.asInstanceOf[AnyRef] eq head0.asInstanceOf[AnyRef])
             loop(mapped, unchanged, pending.tail)
           else {
-            val b = if (mapped eq null) new ListBuffer[U] else mapped
+            val b = if (mapped == null) new ListBuffer[U] else mapped
             var xc = unchanged
             while (xc ne pending) {
               b += xc.head
@@ -285,6 +285,6 @@ object Decorators {
       explained(em(args: _*))
 
   extension [T <: AnyRef](arr: Array[T])
-    def binarySearch(x: T): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object]], x)
+    def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 
 }

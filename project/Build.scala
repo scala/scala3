@@ -475,6 +475,24 @@ object Build {
   def findArtifactPath(classpath: Def.Classpath, name: String): String =
     findArtifact(classpath, name).getAbsolutePath
 
+  /** Insert UnsafeNulls Import after package */
+  def insertUnsafeNullsImport(lines: Seq[String]): Seq[String] = {
+    def recur(ls: Seq[String], foundPackage: Boolean): Seq[String] = ls match {
+      case Seq(l, rest @ _*) =>
+        val lt = l.trim()
+        if (foundPackage) {
+          if (!(lt.isEmpty || lt.startsWith("package ")))
+            "import scala.language.unsafeNulls" +: ls
+          else l +: recur(rest, foundPackage)
+        } else {
+          if (lt.startsWith("package ")) l +: recur(rest, true)
+          else l +: recur(rest, foundPackage)
+        }
+      case _ => ls
+    }
+    recur(lines, false)
+  }
+
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
       // Generate compiler.properties, used by sbt
@@ -691,7 +709,12 @@ object Build {
           IO.createDirectory(trgDir)
           IO.unzip(scalaJSIRSourcesJar, trgDir)
 
-          (trgDir ** "*.scala").get.toSet
+          val sjsSources = (trgDir ** "*.scala").get.toSet
+          sjsSources.foreach(f => {
+            val lines = IO.readLines(f)
+            IO.writeLines(f, insertUnsafeNullsImport(lines))
+          })
+          sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
   )
@@ -745,6 +768,9 @@ object Build {
         "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
       )
     },
+
+    Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
+
     repl := (Compile / console).value,
     Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
   )

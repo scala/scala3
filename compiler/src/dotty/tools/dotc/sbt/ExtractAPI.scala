@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package sbt
 
+import scala.language.unsafeNulls
+
 import ExtractDependencies.internalError
 import ast.{Positioned, Trees, tpd}
 import core._

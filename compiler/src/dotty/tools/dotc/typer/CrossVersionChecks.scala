@@ -122,7 +122,7 @@ class CrossVersionChecks extends MiniPhase:
           val msg = annot.argumentConstant(0).get.stringValue
           report.warning(SymbolChangedSemanticsInVersion(sym, symVersion, msg), pos)
         case Failure(ex) =>
-          report.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage), pos)
+          report.warning(SymbolHasUnparsableVersionNumber(sym, ex.getMessage.nn), pos)
         case _ =>
 
   /** Check that a deprecated val or def does not override a

@@ -1,7 +1,8 @@
 package dotty.tools.backend.sjs
 
-import scala.annotation.tailrec
+import scala.language.unsafeNulls
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 import dotty.tools.dotc.core._

@@ -113,7 +113,7 @@ object ShowPickled {
     result.toInt
   }
 
-  def printFile(buf: PickleBuffer, out: PrintStream = System.out): Unit = {
+  def printFile(buf: PickleBuffer, out: PrintStream = System.out.nn): Unit = {
     out.println("Version " + buf.readNat() + "." + buf.readNat())
     val index = buf.createIndex
     val entryList = makeEntryList(buf, index)

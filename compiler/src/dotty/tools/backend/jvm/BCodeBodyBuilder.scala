@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.annotation.switch
 import scala.collection.mutable.SortedMap
 

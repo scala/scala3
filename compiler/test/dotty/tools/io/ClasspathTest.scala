@@ -1,5 +1,7 @@
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import org.junit.Test
 
 import java.io.File
@@ -29,9 +31,9 @@ class ClasspathTest {
           for src <- libjarFiles do
             val dest = Paths.get(s"$outDir/${src.getName}")
             printf("copy: %s\n", Files.copy(src.toPath, dest))
-        
+
           val cp = Seq(s"$outDir/*", "not-a-real-directory/*").mkString(pathsep).replace('\\', '/')
-         
+
           val libjars = libjarFiles.map { _.getName }.toSet
 
           // expand wildcard classpath entries, ignoring invalid entries

@@ -1,5 +1,7 @@
 package dotty.tools.vulpix
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile}
 
 final case class TestFlags(

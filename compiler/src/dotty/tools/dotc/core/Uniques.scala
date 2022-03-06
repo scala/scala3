@@ -52,7 +52,7 @@ object Uniques:
         val oldHead = table(bucket)
 
         @tailrec
-        def linkedListLoop(entry: Entry[NamedType]): NamedType = entry match
+        def linkedListLoop(entry: Entry[NamedType] | Null): NamedType = entry match
           case null                    => addEntryAt(bucket, newType, h, oldHead)
           case _                       =>
             val e = entry.get
@@ -79,7 +79,7 @@ object Uniques:
         val oldHead = table(bucket)
 
         @tailrec
-        def linkedListLoop(entry: Entry[AppliedType]): AppliedType = entry match
+        def linkedListLoop(entry: Entry[AppliedType] | Null): AppliedType = entry match
           case null                    => addEntryAt(bucket, newType, h, oldHead)
           case _                       =>
             val e = entry.get

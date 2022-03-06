@@ -683,7 +683,7 @@ object Erasure {
           val owner = sym.maybeOwner
           if defn.specialErasure.contains(owner) then
             assert(sym.isConstructor, s"${sym.showLocated}")
-            defn.specialErasure(owner)
+            defn.specialErasure(owner).nn
           else if defn.isSyntheticFunctionClass(owner) then
             defn.functionTypeErasure(owner).typeSymbol
           else

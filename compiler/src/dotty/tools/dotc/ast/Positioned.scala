@@ -26,13 +26,13 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    *  is set, -1 otherwise.
    */
   def uniqueId: Int =
-    if ids != null && ids.containsKey(this) then ids.get(this) else -1
+    if ids != null && ids.nn.containsKey(this) then ids.nn.get(this).nn else -1
 
   private def allocateId() =
     if ids != null then
       val ownId = nextId
       nextId += 1
-      ids.put(this, ownId)
+      ids.nn.put(this, ownId)
       if ownId == debugId then
         println(s"Debug tree (id=$debugId) creation \n$this\n")
         Thread.dumpStack()
@@ -160,7 +160,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    */
   def checkPos(nonOverlapping: Boolean)(using Context): Unit = try {
     import untpd._
-    var lastPositioned: Positioned = null
+    var lastPositioned: Positioned | Null = null
     var lastSpan = NoSpan
     def check(p: Any): Unit = p match {
       case p: Positioned =>
@@ -234,7 +234,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
 
 object Positioned {
   @sharable private var debugId = Int.MinValue
-  @sharable private var ids: java.util.WeakHashMap[Positioned, Int] = null
+  @sharable private var ids: java.util.WeakHashMap[Positioned, Int] | Null = null
   @sharable private var nextId: Int = 0
 
   def init(using Context): Unit =

@@ -526,7 +526,7 @@ class Namer { typer: Typer =>
      *  body and derived clause of the synthetic module class `fromCls`.
      */
     def mergeModuleClass(mdef: Tree, modCls: TypeDef, fromCls: TypeDef): TypeDef = {
-      var res: TypeDef = null
+      var res: TypeDef | Null = null
       val Thicket(trees) = expanded(mdef)
       val merged = trees.map { tree =>
         if (tree == modCls) {
@@ -539,16 +539,17 @@ class Namer { typer: Typer =>
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
               report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
-            res.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
+            // `res` is inside a closure, so the flow-typing doesn't work here.
+            res.uncheckedNN.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
           }
-          res
+          res.uncheckedNN
         }
         else tree
       }
 
       mdef.putAttachment(ExpandedTree, Thicket(merged))
 
-      res
+      res.nn
     }
 
     /** Merge `fromCls` of `fromStat` into `toCls` of `toStat`
@@ -790,7 +791,6 @@ class Namer { typer: Typer =>
       if (Config.showCompletions && ctx.typerState != creationContext.typerState) {
         def levels(c: Context): Int =
           if (c.typerState eq creationContext.typerState) 0
-          else if (c.typerState == null) -1
           else if (c.outer.typerState == c.typerState) levels(c.outer)
           else levels(c.outer) + 1
         println(s"!!!completing ${denot.symbol.showLocated} in buried typerState, gap = ${levels(ctx)}")
@@ -810,13 +810,13 @@ class Namer { typer: Typer =>
             completer.complete(denot)
     }
 
-    private var completedTypeParamSyms: List[TypeSymbol] = null
+    private var completedTypeParamSyms: List[TypeSymbol] | Null = null
 
     def setCompletedTypeParams(tparams: List[TypeSymbol]) =
       completedTypeParamSyms = tparams
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if completedTypeParamSyms != null then completedTypeParamSyms
+      if completedTypeParamSyms != null then completedTypeParamSyms.uncheckedNN
       else Nil
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
@@ -918,8 +918,8 @@ class Namer { typer: Typer =>
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context)
   extends Completer(original)(ictx) with TypeParamsCompleter {
-    private var myTypeParams: List[TypeSymbol] = null
-    private var nestedCtx: Context = null
+    private var myTypeParams: List[TypeSymbol] | Null = null
+    private var nestedCtx: Context | Null = null
     assert(!original.isClassDef)
 
     /** If completion of the owner of the to be completed symbol has not yet started,
@@ -940,7 +940,7 @@ class Namer { typer: Typer =>
       if myTypeParams == null then
         //println(i"completing type params of $sym in ${sym.owner}")
         nestedCtx = localContext(sym).setNewScope
-        given Context = nestedCtx
+        given Context = nestedCtx.uncheckedNN
 
         def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match
           case TypeDef(_, original) =>
@@ -955,12 +955,12 @@ class Namer { typer: Typer =>
         myTypeParams = tparams.map(symbolOfTree(_).asType)
         for param <- tparams do typedAheadExpr(param)
       end if
-      myTypeParams
+      myTypeParams.uncheckedNN
     end completerTypeParams
 
     override final def typeSig(sym: Symbol): Type =
       val tparamSyms = completerTypeParams(sym)(using ictx)
-      given ctx: Context = nestedCtx
+      given ctx: Context = nestedCtx.nn
 
       def abstracted(tp: TypeBounds): TypeBounds =
         HKTypeLambda.boundsFromParams(tparamSyms, tp)
@@ -1049,7 +1049,7 @@ class Namer { typer: Typer =>
     private var localCtx: Context = _
 
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
-    private var tempInfo: TempClassInfo = _
+    private var tempInfo: TempClassInfo | Null = null
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 
@@ -1399,7 +1399,7 @@ class Namer { typer: Typer =>
       end addUsingTraits
 
       completeConstructor(denot)
-      denot.info = tempInfo
+      denot.info = tempInfo.nn
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         defn.adjustForBoxedUnit(cls,
@@ -1420,7 +1420,7 @@ class Namer { typer: Typer =>
         original.putAttachment(AttachedDeriver, deriver)
       }
 
-      denot.info = tempInfo.finalized(parentTypes)
+      denot.info = tempInfo.nn.finalized(parentTypes)
       tempInfo = null // The temporary info can now be garbage-collected
 
       Checking.checkWellFormed(cls)

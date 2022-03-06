@@ -1,5 +1,7 @@
 package dotty.tools.dotc.util
 
+import scala.language.unsafeNulls
+
 /** A specialized implementation of GenericHashMap with standard hashCode and equals
  *  as comparison
  */
@@ -71,7 +73,7 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
     setKey(idx, key)
     setValue(idx, value)
 
-  override def copyFrom(oldTable: Array[AnyRef]): Unit =
+  override def copyFrom(oldTable: Array[AnyRef | Null]): Unit =
     if isDense then
       Array.copy(oldTable, 0, table, 0, oldTable.length)
     else

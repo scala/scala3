@@ -189,7 +189,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   private def knownTupleFromElements(tpes: List[Type], elements: List[Tree])(using Context) = {
     val size = elements.size
     assert(0 < size && size <= MaxTupleArity)
-    val tupleModule = defn.TupleType(size).classSymbol.companionModule
+    val tupleModule = defn.TupleType(size).nn.classSymbol.companionModule
     ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToTermArgs(elements)
   }
 

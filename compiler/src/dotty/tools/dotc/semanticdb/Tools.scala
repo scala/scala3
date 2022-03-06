@@ -48,7 +48,7 @@ object Tools:
 
   /** Parses SemanticDB text documents from an absolute path to a `*.semanticdb` file. */
   private def parseTextDocuments(path: Path): TextDocuments =
-    val bytes = Files.readAllBytes(path) // NOTE: a semanticdb file is a TextDocuments message, not TextDocument
+    val bytes = Files.readAllBytes(path).nn // NOTE: a semanticdb file is a TextDocuments message, not TextDocument
     TextDocuments.parseFrom(bytes)
 
   def metac(doc: TextDocument, realPath: Path)(using sb: StringBuilder): StringBuilder =

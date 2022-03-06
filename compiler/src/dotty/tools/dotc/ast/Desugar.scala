@@ -521,9 +521,9 @@ object desugar {
         val enumCompanionRef = TermRefTree()
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(
-            enumCase => 
+            enumCase =>
               ImportSelector(enumCase.withSpan(enumCase.span.startPos))
-            ) 
+            )
           )
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
@@ -1134,7 +1134,7 @@ object desugar {
       val matchExpr =
         if (tupleOptimizable) rhs
         else
-          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids)) 
+          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
           Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
       vars match {
         case Nil if !mods.is(Lazy) =>
@@ -1155,11 +1155,11 @@ object desugar {
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
-              if mods.is(Lazy) then 
+              if mods.is(Lazy) then
                 DefDef(named.name.asTermName, Nil, tpt, selector(n))
                   .withMods(mods &~ Lazy)
                   .withSpan(named.span)
-              else 
+              else
                 valDef(
                   ValDef(named.name.asTermName, tpt, selector(n))
                     .withMods(mods)
@@ -1286,7 +1286,7 @@ object desugar {
     val ts = tree.trees
     val arity = ts.length
     assert(arity <= Definitions.MaxTupleArity)
-    def tupleTypeRef = defn.TupleType(arity)
+    def tupleTypeRef = defn.TupleType(arity).nn
     if (arity == 0)
       if (ctx.mode is Mode.Type) TypeTree(defn.UnitType) else unitLiteral
     else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
@@ -1349,7 +1349,7 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean, span: Span)(using Context): Block =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree | Null = null, isContextual: Boolean, span: Span)(using Context): Block =
     Block(
       DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
         .withSpan(span)

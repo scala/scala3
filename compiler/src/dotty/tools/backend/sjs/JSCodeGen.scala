@@ -1,14 +1,13 @@
 package dotty.tools.backend.sjs
 
-import scala.annotation.switch
+import scala.language.unsafeNulls
 
+import scala.annotation.switch
 import scala.collection.mutable
 
 import dotty.tools.FatalError
-
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
-
 import dotty.tools.dotc.core._
 import Contexts._
 import Decorators._

@@ -1,6 +1,9 @@
 package dotty.tools
 package dotc
 package reporting
+
+import scala.language.unsafeNulls
+
 import scala.annotation.threadUnsafe
 
 object Message {

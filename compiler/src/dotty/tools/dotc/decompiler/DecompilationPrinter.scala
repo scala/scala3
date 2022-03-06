@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package decompiler
 
+import scala.language.unsafeNulls
+
 import java.io.{OutputStream, PrintStream}
 import java.nio.charset.StandardCharsets
 

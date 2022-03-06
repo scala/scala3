@@ -1,6 +1,8 @@
 package dotty.tools
 package repl
 
+import scala.language.unsafeNulls
+
 import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 

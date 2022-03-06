@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package fromtasty
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.tasty.TastyClassName
 import dotty.tools.dotc.core.StdNames.nme.EMPTY_PACKAGE
 import dotty.tools.io.AbstractFile

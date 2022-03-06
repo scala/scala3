@@ -1,5 +1,6 @@
 package dotty.tools.dotc.interactive
 
+import scala.language.unsafeNulls
 
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.Printers.interactiv
@@ -10,6 +11,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
+import dotty.tools.dotc.core.Scopes._
 import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
@@ -184,7 +186,7 @@ object Completion {
             .groupByName.foreach { (name, denots) =>
               addMapping(name, ScopedDenotations(denots, ctx))
             }
-        else if ctx.scope != null then
+        else if ctx.scope ne EmptyScope then
           ctx.scope.toList.filter(symbol => include(symbol, symbol.name))
             .flatMap(_.alternatives)
             .groupByName.foreach { (name, denots) =>
@@ -351,7 +353,7 @@ object Completion {
       val extMethodsFromGivensInScope = extractMemberExtensionMethods(givensInScope)
 
       // 3. The reference is of the form r.m and the extension method is defined in the implicit scope of the type of r.
-      val implicitScopeCompanions = ctx.run.implicitScope(qual.tpe).companionRefs.showAsList
+      val implicitScopeCompanions = ctx.run.nn.implicitScope(qual.tpe).companionRefs.showAsList
       val extMethodsFromImplicitScope = extractMemberExtensionMethods(implicitScopeCompanions)
 
       // 4. The reference is of the form r.m and the extension method is defined in some given instance in the implicit scope of the type of r.

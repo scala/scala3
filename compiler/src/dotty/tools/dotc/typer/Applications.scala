@@ -207,7 +207,7 @@ object Applications {
     end tupleFold
     tupleFold(Nil, tp).reverse
 
-  def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
+  def wrapDefs(defs: mutable.ListBuffer[Tree] | Null, tree: Tree)(using Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
   /** Find reference to default parameter getter for parameter #n in current
@@ -743,7 +743,7 @@ trait Applications extends Compatibility {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
-    private var liftedDefs: mutable.ListBuffer[Tree] = null
+    private var liftedDefs: mutable.ListBuffer[Tree] | Null = null
     private var myNormalizedFun: Tree = fun
     init()
 
@@ -782,7 +782,7 @@ trait Applications extends Compatibility {
     override def liftFun(): Unit =
       if (liftedDefs == null) {
         liftedDefs = new mutable.ListBuffer[Tree]
-        myNormalizedFun = lifter.liftApp(liftedDefs, myNormalizedFun)
+        myNormalizedFun = lifter.liftApp(liftedDefs.uncheckedNN, myNormalizedFun)
       }
 
     /** The index of the first difference between lists of trees `xs` and `ys`
@@ -848,7 +848,7 @@ trait Applications extends Compatibility {
               scala.util.Sorting.stableSort[(Tree, Int), Int](
                 argDefBuf.zip(impureArgIndices), (arg, idx) => originalIndex(idx)).map(_._1)
             }
-            liftedDefs ++= orderedArgDefs
+            liftedDefs.nn ++= orderedArgDefs
           end if
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]

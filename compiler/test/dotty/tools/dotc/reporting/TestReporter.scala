@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.language.unsafeNulls
+
 import java.io.{ PrintStream, PrintWriter, File => JFile, FileOutputStream, StringWriter }
 import java.text.SimpleDateFormat
 import java.util.Date

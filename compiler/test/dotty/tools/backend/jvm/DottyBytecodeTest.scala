@@ -2,6 +2,8 @@ package dotty
 package tools
 package backend.jvm
 
+import scala.language.unsafeNulls
+
 import vulpix.TestConfiguration
 
 import dotc.core.Contexts.{Context, ContextBase, ctx}
