@@ -1542,7 +1542,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       ctx
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-      inlineIfNeeded(tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
+      val tree1 = inlineIfNeeded(
+          tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
+        )
+      tree1 match
+        case id: Ident if tpd.needsSelect(id.tpe) =>
+          inlining.println(i"expanding $id to selection")
+          ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
+        case _ =>
+          tree1
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
