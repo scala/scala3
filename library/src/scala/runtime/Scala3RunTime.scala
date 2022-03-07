@@ -1,5 +1,7 @@
 package scala.runtime
 
+import scala.annotation.since
+
 object Scala3RunTime:
 
   // Called by inline def assert's. Extracted to minimize the bytecode size at call site.
@@ -20,8 +22,10 @@ object Scala3RunTime:
     else x.asInstanceOf[x.type & T]
 
   extension (inline x: AnyRef | Null)
+    @since("3.2")
     inline def eq(inline y: AnyRef | Null): Boolean =
       x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
+    @since("3.2")
     inline def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)
 
