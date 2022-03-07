@@ -133,4 +133,62 @@ class TabcompleteTests extends ReplTest {
       tabComplete("import quoted.* ; def fooImpl(using Quotes): Expr[Int] = { import quotes.reflect.* ; TypeRepr.of[Int].s"))
   }
 
+  @Test def backticked = initially {
+    assertEquals(
+      List(
+        "!=",
+        "##",
+        "->",
+        "==",
+        "__system",
+        "`back-tick`",
+        "`match`",
+        "asInstanceOf",
+        "dot_product_*",
+        "ensuring",
+        "eq",
+        "equals",
+        "foo",
+        "formatted",
+        "fromOrdinal",
+        "getClass",
+        "hashCode",
+        "isInstanceOf",
+        "ne",
+        "nn",
+        "notify",
+        "notifyAll",
+        "synchronized",
+        "toString",
+        "valueOf",
+        "values",
+        "wait",
+        "→"
+      ),
+      tabComplete("""|enum Foo:
+                     |  case `back-tick`
+                     |  case `match`
+                     |  case foo
+                     |  case dot_product_*
+                     |  case __system
+                     |
+                     |Foo."""stripMargin))
+  }
+
+
+  @Test def backtickedAlready = initially {
+    assertEquals(
+      List(
+        "`back-tick`"
+      ),
+      tabComplete("""|enum Foo:
+                     |  case `back-tick`
+                     |  case `match`
+                     |  case foo
+                     |  case dot_product_*
+                     |  case __system
+                     |
+                     |Foo.`bac"""stripMargin))
+  }
+
 }

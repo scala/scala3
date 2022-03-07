@@ -1023,4 +1023,102 @@ class CompletionTest {
           |class Foo[A]{ self: Futu${m1} => }""".withSource
       .completion(m1, expected) 
   }
+
+  @Test def backticks: Unit = {
+    val expected = Set(
+      ("getClass", Method, "[X0 >: Foo.Bar.type](): Class[? <: X0]"),
+      ("ensuring", Method, "(cond: Boolean): A"),
+      ("##", Method, "=> Int"),
+      ("nn", Method, "=> Foo.Bar.type"),
+      ("==", Method, "(x$0: Any): Boolean"),
+      ("ensuring", Method, "(cond: Boolean, msg: => Any): A"),
+      ("ne", Method, "(x$0: Object): Boolean"),
+      ("valueOf", Method, "($name: String): Foo.Bar"),
+      ("equals", Method, "(x$0: Any): Boolean"),
+      ("wait", Method, "(x$0: Long): Unit"),
+      ("hashCode", Method, "(): Int"),
+      ("notifyAll", Method, "(): Unit"),
+      ("values", Method, "=> Array[Foo.Bar]"),
+      ("→", Method, "[B](y: B): (A, B)"),
+      ("!=", Method, "(x$0: Any): Boolean"),
+      ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
+      ("asInstanceOf", Method, "[X0] => X0"),
+      ("->", Method, "[B](y: B): (A, B)"),
+      ("wait", Method, "(x$0: Long, x$1: Int): Unit"),
+      ("`back-tick`", Field, "Foo.Bar"),
+      ("notify", Method, "(): Unit"),
+      ("formatted", Method, "(fmtstr: String): String"),
+      ("ensuring", Method, "(cond: A => Boolean, msg: => Any): A"),
+      ("wait", Method, "(): Unit"),
+      ("isInstanceOf", Method, "[X0] => Boolean"),
+      ("`match`", Field, "Foo.Bar"),
+      ("toString", Method, "(): String"),
+      ("ensuring", Method, "(cond: A => Boolean): A"),
+      ("eq", Method, "(x$0: Object): Boolean"),
+      ("synchronized", Method, "[X0](x$0: X0): X0")
+    )
+    code"""object Foo:
+           |  enum Bar:
+           |    case `back-tick`
+           |    case `match`
+           |  
+           |  val x = Bar.${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksPrefix: Unit = {
+    val expected = Set(
+      ("`back-tick`", Field, "Foo.Bar"),
+    )
+    code"""object Foo:
+           |  enum Bar:
+           |    case `back-tick`
+           |    case `match`
+           |  
+           |  val x = Bar.`back${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksSpace: Unit = {
+    val expected = Set(
+      ("`has space`", Field, "Foo.Bar"),
+    )
+    code"""object Foo:
+           |  enum Bar:
+           |    case `has space`
+           |  
+           |  val x = Bar.`has s${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksCompleteBoth: Unit = {
+    val expected = Set(
+      ("formatted", Method, "(fmtstr: String): String"),
+      ("`foo-bar`", Field, "Int"),
+      ("foo", Field, "Int")
+    )
+    code"""object Foo:
+           |  object Bar:
+           |    val foo = 1
+           |    val `foo-bar` = 2
+           |    val `bar` = 3
+           |  
+           |  val x = Bar.fo${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksWhenNotNeeded: Unit = {
+    val expected = Set(
+      ("`formatted`", Method, "(fmtstr: String): String"),
+      ("`foo-bar`", Field, "Int"),
+      ("`foo`", Field, "Int")
+    )
+    code"""object Foo:
+           |  object Bar:
+           |    val foo = 1
+           |    val `foo-bar` = 2
+           |  
+           |  val x = Bar.`fo${m1}"""
+             .withSource.completion(m1, expected)
+  }
 }

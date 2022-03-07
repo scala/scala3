@@ -198,12 +198,19 @@ class ReplDriver(settings: Array[String],
     state.copy(context = run.runContext)
   }
 
+  private def stripBackTicks(label: String) =
+    if label.startsWith("`") && label.endsWith("`") then
+      label.drop(1).dropRight(1)
+    else
+      label
+
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
     def makeCandidate(label: String) = {
+
       new Candidate(
         /* value    = */ label,
-        /* displ    = */ label, // displayed value
+        /* displ    = */ stripBackTicks(label), // displayed value
         /* group    = */ null,  // can be used to group completions together
         /* descr    = */ null,  // TODO use for documentation?
         /* suffix   = */ null,

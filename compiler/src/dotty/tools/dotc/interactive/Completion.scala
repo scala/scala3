@@ -17,6 +17,8 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeError
 import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NoType, TermRef, Type}
+import dotty.tools.dotc.parsing.Tokens
+import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
@@ -80,8 +82,8 @@ object Completion {
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
-  def completionPrefix(path: List[untpd.Tree], pos: SourcePosition): String =
-    path match {
+  def completionPrefix(path: List[untpd.Tree], pos: SourcePosition)(using Context): String =
+    path match
       case (sel: untpd.ImportSelector) :: _ =>
         completionPrefix(sel.imported :: Nil, pos)
 
@@ -90,13 +92,22 @@ object Completion {
           completionPrefix(selector :: Nil, pos)
         }.getOrElse("")
 
+      // We special case Select here because we want to determine if the name
+      // is an error due to an unclosed backtick.
+      case (select: untpd.Select) :: _ if (select.name == nme.ERROR) =>
+         val content = select.source.content()
+          content.lift(select.nameSpan.start) match
+            case Some(char) if char == '`' =>
+              content.slice(select.nameSpan.start, select.span.end).mkString
+            case _ =>
+              ""
       case (ref: untpd.RefTree) :: _ =>
         if (ref.name == nme.ERROR) ""
         else ref.name.toString.take(pos.span.point - ref.span.point)
 
       case _ =>
         ""
-    }
+  end completionPrefix
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
   def completionOffset(path: List[Tree]): Int =
@@ -107,7 +118,11 @@ object Completion {
 
   private def computeCompletions(pos: SourcePosition, path: List[Tree])(using Context): (Int, List[Completion]) = {
     val mode = completionMode(path, pos)
-    val prefix = completionPrefix(path, pos)
+    val rawPrefix = completionPrefix(path, pos)
+
+    val hasBackTick = rawPrefix.headOption.contains('`')
+    val prefix = if hasBackTick then rawPrefix.drop(1) else rawPrefix
+
     val completer = new Completer(mode, prefix, pos)
 
     val completions = path match {
@@ -122,15 +137,48 @@ object Completion {
       }
 
     val describedCompletions = describeCompletions(completions)
+    val backtickedCompletions =
+      describedCompletions.map(completion => backtickCompletions(completion, hasBackTick))
+
     val offset = completionOffset(path)
 
     interactiv.println(i"""completion with pos     = $pos,
                           |                prefix  = ${completer.prefix},
                           |                term    = ${completer.mode.is(Mode.Term)},
                           |                type    = ${completer.mode.is(Mode.Type)}
-                          |                results = $describedCompletions%, %""")
-    (offset, describedCompletions)
+                          |                results = $backtickCompletions%, %""")
+    (offset, backtickedCompletions)
   }
+
+  def backtickCompletions(completion: Completion, hasBackTick: Boolean) =
+    if hasBackTick || needsBacktick(completion.label) then
+      completion.copy(label = s"`${completion.label}`")
+    else
+      completion
+
+  // This borrows from Metals, which itself borrows from Ammonite. This uses
+  // the same approach, but some of the utils that already exist in Dotty.
+  // https://github.com/scalameta/metals/blob/main/mtags/src/main/scala/scala/meta/internal/mtags/KeywordWrapper.scala
+  // https://github.com/com-lihaoyi/Ammonite/blob/73a874173cd337f953a3edc9fb8cb96556638fdd/amm/util/src/main/scala/ammonite/util/Model.scala
+  private def needsBacktick(s: String) =
+    val chunks = s.split("_", -1)
+    
+    val validChunks = chunks.zipWithIndex.forall { case (chunk, index) =>
+      chunk.forall(Chars.isIdentifierPart) ||
+      (chunk.forall(Chars.isOperatorPart) &&
+        index == chunks.length - 1 &&
+        !(chunks.lift(index - 1).contains("") && index - 1 == 0))
+    }
+    
+    val validStart =
+      Chars.isIdentifierStart(s(0)) || chunks(0).forall(Chars.isOperatorPart)
+
+    val valid = validChunks && validStart && !keywords.contains(s)
+
+    !valid
+  end needsBacktick
+
+  private lazy val keywords = Tokens.keywords.map(Tokens.tokenString)
 
   /**
    * Return the list of code completions with descriptions based on a mapping from names to the denotations they refer to.
@@ -383,6 +431,7 @@ object Completion {
      */
     private def include(denot: SingleDenotation, nameInScope: Name)(using Context): Boolean =
       val sym = denot.symbol
+
 
       nameInScope.startsWith(prefix) &&
       sym.exists &&

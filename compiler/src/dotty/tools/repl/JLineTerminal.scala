@@ -120,6 +120,8 @@ final class JLineTerminal extends java.io.Closeable {
       def currentToken: TokenData /* | Null */ = {
         val source = SourceFile.virtual("<completions>", input)
         val scanner = new Scanner(source)(using ctx.fresh.setReporter(Reporter.NoReporter))
+        var lastBacktickErrorStart: Option[Int] = None
+
         while (scanner.token != EOF) {
           val start = scanner.offset
           val token = scanner.token
@@ -128,7 +130,14 @@ final class JLineTerminal extends java.io.Closeable {
 
           val isCurrentToken = cursor >= start && cursor <= end
           if (isCurrentToken)
-            return TokenData(token, start, end)
+            return TokenData(token, lastBacktickErrorStart.getOrElse(start), end)
+
+
+          // we need to enclose the last backtick, which unclosed produces ERROR token
+          if (token == ERROR && input(start) == '`') then
+            lastBacktickErrorStart = Some(start)
+          else
+            lastBacktickErrorStart = None
         }
         null
       }
