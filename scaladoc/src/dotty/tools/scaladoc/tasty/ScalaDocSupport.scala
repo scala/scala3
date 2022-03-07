@@ -3,8 +3,8 @@ package tasty
 
 import scala.jdk.CollectionConverters._
 
-import dotty.tools.scaladoc.Scaladoc.CommentSyntax
-import dotty.tools.scaladoc.tasty.comments.Comment
+import dotty.tools.scaladoc.tasty.comments.{Comment, CommentSyntax}
+import dotty.tools.scaladoc.tasty.SymOps.source
 
 import scala.quoted._
 
@@ -14,17 +14,23 @@ object ScaladocSupport:
     import reflect.report
     val preparsed = comments.Preparser.preparse(comments.Cleaner.clean(comment))
 
+    def pathBasedCommentSyntax(): CommentSyntax =
+      val path = sym.source.map(_.path)
+      summon[DocContext].commentSyntaxArgs.get(path)
+
     val commentSyntax =
       preparsed.syntax.headOption match {
         case Some(commentSetting) =>
-          CommentSyntax.parse(commentSetting).getOrElse {
-            val msg = s"not a valid comment syntax: $commentSetting, defaulting to Markdown syntax."
+          CommentSyntax.CommentSyntaxParser.parse(commentSetting).getOrElse {
+            val defaultSyntax = pathBasedCommentSyntax()
+            val msg = s"not a valid comment syntax: $commentSetting, defaulting to ${defaultSyntax} syntax."
             // we should update pos with span from documentation
             pos.fold(report.warning(msg))(report.warning(msg, _))
 
-            CommentSyntax.default
+            defaultSyntax
           }
-        case None => summon[DocContext].args.defaultSyntax
+        case None => 
+          pathBasedCommentSyntax()
       }
 
     val parser = commentSyntax match {
