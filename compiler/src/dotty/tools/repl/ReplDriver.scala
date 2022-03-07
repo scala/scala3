@@ -220,7 +220,15 @@ class ReplDriver(settings: Array[String],
     }
 
     if expr.startsWith(":") then
-      ParseResult.commands.map(command => makeCandidate(command._1))
+      ParseResult.commands.collect {
+        // If expr is only : then we return the commands with : since jline
+        // correctly handles them
+        case command if expr == ":" => makeCandidate(command._1)
+        // However if there is more than just the : we filter by it and then
+        // drop the : since jline will correctly complete it but you'll end up
+        // with ::import for example instead of :import
+        case command if command._1.startsWith(expr) => makeCandidate(command._1.drop(1))
+      }
     else
       given state: State = newRun(state0)
       compiler
