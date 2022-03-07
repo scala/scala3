@@ -290,7 +290,7 @@ object TastyFormat {
    *  compatibility, but remains backwards compatible, with all
    *  preceeding `MinorVersion`.
    */
-  final val MinorVersion: Int = 2
+  final val MinorVersion: Int = 1
 
   /** Natural Number. The `ExperimentalVersion` allows for
    *  experimentation with changes to TASTy without committing
@@ -305,8 +305,19 @@ object TastyFormat {
    *  However, tooling with an experimental TASTy version
    *  is able to read final TASTy documents if the file's
    *  `MinorVersion` is strictly less than the current value.
+   *
+   *  When the format gets fixed for a minor version of the language,
+   *  e.g. at the point of the release of Scala 3.2.0-RC1,
+   *  the experimental version number should be changed to 0 and after that
+   *  the same non-experimental verion of TASTy should be used
+   *  until the snapshot version of the next minor language release
+   *  (3.3.0-RC1-SNAPSHOT in this case) when TASTy minor version gets bumped
+   *  and the experimental version number gets set to a 1.
+   *  The period between Scala 3.3.0-RC1-SNAPSHOT and 3.3.0-RC1
+   *  is the only time when experimental TASTy version number can be incremented.
+   *  When 3.3.0-RC1 gets released the experimental version number should be set to 0 again.
    */
-  final val ExperimentalVersion: Int = 1
+  final val ExperimentalVersion: Int = 0
 
   /**This method implements a binary relation (`<:<`) between two TASTy versions.
    *
