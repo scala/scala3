@@ -1834,7 +1834,10 @@ object ScaladocConfigs {
       .add(Revision("main"))
       .add(ExternalMappings(List(javaExternalMapping)))
       .add(DocRootContent(docRootFile.toString))
-      .add(CommentSyntax(List("wiki")))
+      .add(CommentSyntax(List(
+        s"${dottyLibRoot}=markdown",
+        s"${stdLibRoot}=wiki"
+      )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
