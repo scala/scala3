@@ -20,7 +20,8 @@ import dotty.tools.dotc.core.Names.Name
  */
 enum SourceVersion:
   case `3.0-migration`, `3.0`, `3.1` // Note: do not add `3.1-migration` here, 3.1 is the same language as 3.0.
-  case `3.2`, `3.2-migration` // !!! DELETE `3.2-migration` BEFORE RELEASING 3.2.0 if we do not enable features from `future`
+  // case `3.2-migration` // !!! UNCOMMENT `3.2-migration` BEFORE RELEASING 3.2.0 if we enable features from `future`
+  case `3.2`
   case `future-migration`, `future`
 
   val isMigrating: Boolean = toString.endsWith("-migration")
