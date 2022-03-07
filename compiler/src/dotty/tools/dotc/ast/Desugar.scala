@@ -1656,10 +1656,6 @@ object desugar {
         Select(rhs, name)
       }
 
-      def checkMode(gen: GenFrom) =
-        if (gen.checkMode == GenCheckMode.Check) MatchCheck.IrrefutableGenFrom
-        else MatchCheck.None // refutable paterns were already eliminated in filter step
-
       enums match {
         case (gen: GenFrom) :: Nil =>
           Apply(rhsSelect(gen, mapName), makeLambda(gen, body))
