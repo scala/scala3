@@ -796,7 +796,7 @@ object projects:
     sbtTestCommand = "rootJVM/test",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
-    dependencies = () => List(cats, catsEffect, fs2, disciplineMunit, scalacheckEffect)
+    dependencies = () => List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
   )
 
 end projects
