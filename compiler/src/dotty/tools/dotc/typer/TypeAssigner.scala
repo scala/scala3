@@ -407,13 +407,19 @@ trait TypeAssigner {
             case _ => foldOver(ps, t)
           }
         }
-        val params = getParams(new mutable.ListBuffer[TypeSymbol](), pat).toList
-        pat.tpe match
+        val params1 = getParams(new mutable.ListBuffer[TypeSymbol](), pat).toList
+        val params2 = pat.tpe match
           case AppliedType(tycon, args) =>
             val tparams = tycon.typeParamSymbols
-            for param <- params do param.info = param.info.subst(tparams, args)
-          case _ =>
-        HKTypeLambda.fromParams(params, defn.MatchCase(pat.tpe, body.tpe))
+            params1.mapconserve { param =>
+              val info1 = param.info
+              val info2 = info1.subst(tparams, args)
+              if info2 eq info1 then param else param.copy(info = info2).asType
+            }
+          case _ => params1
+        val matchCase1 = defn.MatchCase(pat.tpe, body.tpe)
+        val matchCase2 = if params2 eq params1 then matchCase1 else matchCase1.substSym(params1, params2)
+        HKTypeLambda.fromParams(params2, matchCase2)
       }
       else body.tpe
     tree.withType(ownType)
