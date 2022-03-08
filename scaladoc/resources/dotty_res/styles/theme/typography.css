@@ -1,0 +1,108 @@
+@font-face {
+  font-family: "Inter-Bold";
+  src: url("../../fonts/Inter-Bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Inter-SemiBold";
+  src: url("../../fonts/Inter-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Inter-Medium";
+  src: url("../../fonts/Inter-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Inter-Regular";
+  src: url("../../fonts/Inter-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "FiraCode-Regular";
+  src: url("../../fonts/FiraCode-Regular.ttf");
+}
+
+.h700 {
+  font-size: 40px;
+  line-height: 40px;
+  font-family: "Inter-Bold";
+}
+
+.h600 {
+  font-size: 32px;
+  line-height: 40px;
+  font-family: "Inter-SemiBold";
+}
+
+.h500 {
+  font-size: 28px;
+  line-height: 32px;
+  font-family: "Inter-Medium";
+}
+
+.h400 {
+  font-size: 24px;
+  line-height: 32px;
+  font-family: "Inter-Medium";
+}
+
+.h300 {
+  font-size: 20px;
+  line-height: 24px;
+  font-family: "Inter-Bold";
+}
+
+.h200 {
+  font-size: 16px;
+  line-height: 24px;
+  font-family: "Inter-SemiBold";
+}
+
+.h100 {
+  font-size: 13px;
+  line-height: 16px;
+  font-family: "Inter-SemiBold";
+}
+
+.h50 {
+  font-size: 9px;
+  line-height: 12px;
+  font-family: "Inter-SemiBold";
+}
+
+.body-large {
+  font-size: 20px;
+  line-height: 24px;
+  font-family: "Inter-Regular";
+}
+
+.body-medium {
+  font-size: 16px;
+  line-height: 24px;
+  font-family: "Inter-Regular";
+}
+
+.body-small {
+  font-size: 13px;
+  line-height: 16px;
+  font-family: "Inter-Regular";
+}
+
+.mono-medium {
+  font-size: 16px;
+  line-height: 24px;
+  font-family: "FiraCode-Regular";
+}
+
+.mono-small-inline {
+  font-size: 13px;
+  line-height: 16px;
+  font-family: "FiraCode-Regular";
+}
+
+.mono-small-block {
+  font-size: 13px;
+  line-height: 20px;
+  font-family: "FiraCode-Regular";
+}
