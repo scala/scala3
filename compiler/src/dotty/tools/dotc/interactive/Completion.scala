@@ -23,10 +23,6 @@ import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
-import dotty.tools.dotc.core.Types.MatchType
-import dotty.tools.dotc.core.Types.AppliedType
-import dotty.tools.dotc.core.Types.TypeRef
-import dotty.tools.dotc.core.Types.MatchAlias
 
 /**
  * One of the results of a completion query.
@@ -369,24 +365,8 @@ object Completion {
 
     /** Completions for derived members of `MatchType`'s type. */
     def matchTypeCompletions(qual: Tree)(using Context): CompletionMap =
-      /** Extractor for match types hidden behind an AppliedType/MatchAlias */
-      object MatchTypeInDisguise {
-        def unapply(tp: AppliedType): Option[MatchType] = tp match {
-          case AppliedType(tycon: TypeRef, args) =>
-            tycon.info match {
-              case MatchAlias(alias) =>
-                alias.applyIfParameterized(args) match {
-                  case mt: MatchType => Some(mt)
-                  case _ => None
-                }
-              case _ => None
-            }
-          case _ => None
-        }
-      }
-
       qual.tpe.widenDealias match 
-        case MatchTypeInDisguise(mt) => accessibleMembers(mt.reduced).groupByName
+        case ctx.typer.MatchTypeInDisguise(mt) => accessibleMembers(mt.reduced).groupByName
         case _ => Map.empty 
       
     /** Completions from extension methods */
