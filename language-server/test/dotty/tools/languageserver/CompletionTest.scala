@@ -1121,4 +1121,20 @@ class CompletionTest {
            |  val x = Bar.`fo${m1}"""
              .withSource.completion(m1, expected)
   }
+
+  @Test def matchTypeCompletion: Unit = {
+    val expected = Set(
+      ("map", Method, "[B](f: Int => B): Foo[B]"),
+    )
+    code"""trait Foo[A] {
+           |  def map[B](f: A => B): Foo[B]
+           |}
+           |case class Bar[F[_]](bar: F[Int])
+           |type M[T] = T match {
+           |  case Int => Foo[Int]
+           |}
+           |def foo(x: Bar[M]) = x.bar.m${m1}"""
+             .withSource.completion(m1, expected)
+
+  }
 }
