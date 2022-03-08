@@ -99,19 +99,20 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         case None => ""
     )
 
-  private def buildNavigation(pageLink: Link): AppliedTag =
+  private def buildNavigation(pageLink: Link): ((Boolean, AppliedTag), (Boolean, AppliedTag)) =
     def navigationIcon(member: Member) = member match {
       case m if m.needsOwnPage => Seq(span(cls := s"micon ${member.kind.name.take(2)}"))
       case _ => Nil
     }
 
-    def renderNested(nav: Page, toplevel: Boolean = false): (Boolean, AppliedTag) =
+    def renderNested(nav: Page, apiNav: Boolean, nestLevel: Int): (Boolean, AppliedTag) =
       val isSelected = nav.link.dri == pageLink.dri
 
       def linkHtml(expanded: Boolean = false, withArrow: Boolean = false) =
         val attrs: Seq[String] = Seq(
           Option.when(isSelected)("selected h100"),
-          Option.when(expanded)("expanded")
+          Option.when(expanded)("expanded cs"),
+          Option.when(!apiNav)("de")
         ).flatten
         val icon = nav.content match {
           case m: Member => navigationIcon(m)
@@ -124,19 +125,23 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           )
         )
 
-      nav.children.filterNot(_.hidden) match
-        case Nil => isSelected -> div(cls := s"ni ${if isSelected then "expanded" else ""}")(linkHtml())
+      nav.children.filter(_.content.isInstanceOf[Member] == apiNav).filterNot(_.hidden) match
+        case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected || nestLevel == 0 then "expanded" else ""}")(linkHtml())
         case children =>
-          val nested = children.map(renderNested(_))
+          val nested = children.map(renderNested(_, apiNav, nestLevel + 1))
           val expanded = nested.exists(_._1) || isSelected
           val attr =
-            if expanded || isSelected || toplevel then Seq(cls := "ni expanded") else Seq(cls := "ni body-small")
+            if expanded || isSelected || nestLevel == 0 then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel body-small")
           (isSelected || expanded) -> div(attr)(
             linkHtml(expanded, true),
             nested.map(_._2)
           )
 
-    renderNested(navigablePage, toplevel = true)._2
+
+    val apiNav = renderNested(navigablePage, true, 0)
+    val docsNav = renderNested(navigablePage, false, 0)
+
+    (apiNav, docsNav)
 
   private def hasSocialLinks = !args.socialLinks.isEmpty
 
@@ -196,10 +201,6 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           ),
       ),
       div(id := "leftColumn")(
-        div(cls:= "switcher-container")(
-          button(cls:= "switcher h100")(raw("Docs")),
-          button(cls:= "switcher h100")(raw("API")),
-        ),
         // div(id := "logo")(
         //   projectLogo,
         //   span(
@@ -220,9 +221,17 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         //   )
         // ),
         // div(id := "paneSearch"),
-        nav(id := "sideMenu2")(
-          buildNavigation(link)
-        ),
+        buildNavigation(link) match {
+          case ((isApiActive, apiNav), (isDocsActive, docsNav)) =>
+            Seq(
+              div(cls:= "switcher-container")(
+                button(id := "docs-nav-button", cls:= s"switcher h100 ${if !isApiActive && isDocsActive then "selected" else ""}")(raw("Docs")),
+                button(id := "api-nav-button", cls:= s"switcher h100 ${if isApiActive then "selected" else ""}")(raw("API")),
+              ),
+              nav(id := "api-nav", cls := s"side-menu ${if isApiActive then "selected" else ""}")(apiNav),
+              nav(id := "docs-nav", cls := s"side-menu ${if !isApiActive && isDocsActive then "selected" else ""}")(docsNav)
+            )
+        },
       ),
       div(id := "main")(
         div (id := "leftToggler")(
