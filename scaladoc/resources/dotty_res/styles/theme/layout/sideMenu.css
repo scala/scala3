@@ -1,4 +1,4 @@
-#sideMenu2 {
+.side-menu {
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
@@ -8,50 +8,54 @@
   box-sizing: border-box;
 }
 
-/* divs in sidebar represent entry and its children */
-#sideMenu2 .ni {
-  padding-left: 0.8em;
-}
-
-#sideMenu2 > .ni {
-  padding-left: 0em;
-}
-
-#sideMenu2 .ni {
+.side-menu:not(.selected) {
   display: none;
 }
 
-#sideMenu2 > .ni {
+/* divs in sidebar represent entry and its children */
+.side-menu .ni {
+  padding-left: 0.8em;
+}
+
+.side-menu > .ni {
+  padding-left: 0em;
+}
+
+.side-menu .ni {
+  display: none;
+}
+
+.side-menu > .ni {
   display: block;
 }
 
-#sideMenu2 .nh a:only-child {
+.side-menu .nh a:only-child {
   padding-left: 20px;
 }
 
-#sideMenu2 .nh {
+.side-menu .nh {
   display: flex;
   flex-direction: row;
   align-items: center;
   border-radius: 3px;
 }
 
-#sideMenu2 .ni.expanded > .ni {
+.side-menu .ni.expanded > .ni {
   display: block;
 }
 
 /* show direct children of currently exmanded node*/
-#sideMenu2 div.expanded > div {
+.side-menu div.expanded > div {
   display: block;
 }
 
 /* always show top level entry*/
-#sideMenu2 > div {
+.side-menu > div {
   display: block;
 }
 
 /* 'a's in side menu represent text of entry with link */
-#sideMenu2 a {
+.side-menu a {
   display: flex;
   align-items: center;
   overflow-wrap: anywhere;
@@ -61,21 +65,21 @@
   box-sizing: border-box;
 }
 
-#sideMenu2 a:hover {
+.side-menu a:hover {
   color: var(--link-hover-fg);
 }
 
-#sideMenu2 a span:not(.micon) {
+.side-menu a span:not(.micon) {
   margin-right: 0.75ex;
   text-indent: -1.5em;
   padding-left: 1.5em;
 }
 
-#sideMenu2 a.selected span:not(.micon) {
+.side-menu a.selected span:not(.micon) {
   margin-right: 0.5ex;
 }
 
-#sideMenu2 .nh:hover {
+.side-menu .nh:hover {
   cursor: pointer;
 }
 /* spans represent a expand button */
