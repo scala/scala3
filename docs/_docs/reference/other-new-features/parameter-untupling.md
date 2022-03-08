@@ -39,9 +39,9 @@ def combine(i: Int, j: Int) = i + j
 xs.map(combine)
 ```
 
-Generally, a function value with `n > 1` parameters is converted to a
-pattern-matching closure using `case` if the expected type is a unary
-function type of the form `((T_1, ..., T_n)) => U`.
+Generally, a function value with `n > 1` parameters is wrapped in a
+function type of the form `((T_1, ..., T_n)) => U` if that is the expected type.
+The tuple parameter is decomposed and its elements are passed directly to the underlying function.
 
 More specifically, the adaptation is applied to the mismatching formal
 parameter list. In particular, the adaptation is not a conversion
