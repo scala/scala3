@@ -49,9 +49,8 @@ object Parsers {
     case InBlock       extends Location(false, false, false)
     case ElseWhere     extends Location(false, false, false)
 
-  @sharable object ParamOwner extends Enumeration {
-    val Class, Type, TypeParam, Def: Value = Value
-  }
+  enum ParamOwner:
+    case Class, Type, TypeParam, Def
 
   type StageKind = Int
   object StageKind {
@@ -2927,7 +2926,7 @@ object Parsers {
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypePamClause] | ‘_’) TypeBounds
      */
-    def typeParamClause(ownerKind: ParamOwner.Value): List[TypeDef] = inBrackets {
+    def typeParamClause(ownerKind: ParamOwner): List[TypeDef] = inBrackets {
 
       def variance(vflag: FlagSet): FlagSet =
         if ownerKind == ParamOwner.Def || ownerKind == ParamOwner.TypeParam then
@@ -2962,7 +2961,7 @@ object Parsers {
       commaSeparated(() => typeParam())
     }
 
-    def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
+    def typeParamClauseOpt(ownerKind: ParamOwner): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
