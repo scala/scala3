@@ -793,7 +793,7 @@ object projects:
 
   lazy val http4s = SbtCommunityProject(
     project = "http4s",
-    sbtTestCommand = "tests/test server/test client/test emberCore/test emberServer/test emberClient/test circe/test",
+    sbtTestCommand = "tests/test; server/test; client/test; emberCore/test; emberServer/test; emberClient/test; circe/test",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
     dependencies = () => List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
