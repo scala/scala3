@@ -43,20 +43,20 @@ class CommunityBuildTestB:
   @Test def disciplineMunit = projects.disciplineMunit.run()
   @Test def disciplineSpecs2 = projects.disciplineSpecs2.run()
   @Test def fs2 = projects.fs2.run()
+  @Test def monocle = projects.monocle.run()
   @Test def munit = projects.munit.run()
   @Test def munitCatsEffect = projects.munitCatsEffect.run()
   @Test def perspective = projects.perspective.run()
   @Test def scalacheckEffect = projects.scalacheckEffect.run()
   @Test def scodec = projects.scodec.run()
   @Test def scodecBits = projects.scodecBits.run()
-  @Test def monocle = projects.monocle.run()
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
+  @Test def spire = projects.spire.run()
 end CommunityBuildTestB
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestC:
   @Test def akka = projects.akka.run()
-  @Test def algebra = projects.algebra.run()
   @Test def betterfiles = projects.betterfiles.run()
   @Test def cask = projects.cask.run()
   // Temporarily disabled until problem discovered in comments to #9449 is fixed
@@ -90,7 +90,6 @@ class CommunityBuildTestC:
   @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
   @Test def shapeless = projects.shapeless.run()
-  @Test def spire = projects.spire.run()
   @Test def sourcecode = projects.sourcecode.run()
   @Test def specs2 = projects.specs2.run()
   @Test def stdLib213 = projects.stdLib213.run()
