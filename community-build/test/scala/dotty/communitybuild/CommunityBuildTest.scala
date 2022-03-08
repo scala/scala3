@@ -52,6 +52,7 @@ class CommunityBuildTestB:
   @Test def scodecBits = projects.scodecBits.run()
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
   @Test def spire = projects.spire.run()
+  @Test def http4s = projects.http4s.run()
 end CommunityBuildTestB
 
 @Category(Array(classOf[TestCategory]))
@@ -66,7 +67,6 @@ class CommunityBuildTestC:
   @Test def fansi = projects.fansi.run()
   @Test def fastparse = projects.fastparse.run()
   @Test def geny = projects.geny.run()
-  @Test def http4s = projects.http4s.run()
   @Test def intent = projects.intent.run()
   @Test def jacksonModuleScala = projects.jacksonModuleScala.run()
   @Test def libretto = projects.libretto.run()

@@ -793,9 +793,10 @@ object projects:
 
   lazy val http4s = SbtCommunityProject(
     project = "http4s",
-    sbtTestCommand = "set ThisBuild/tlFatalWarnings := false; rootJVM/test",
-    sbtPublishCommand = "set ThisBuild/tlFatalWarnings := false; publishLocal",
-    dependencies = () => Nil
+    sbtTestCommand = "rootJVM/test",
+    sbtPublishCommand = "publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
+    dependencies = () => List(cats, catsEffect, fs2, disciplineMunit, scalacheckEffect)
   )
 
 end projects
