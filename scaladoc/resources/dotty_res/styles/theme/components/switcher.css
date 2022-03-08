@@ -1,0 +1,53 @@
+/* should be used with  h100*/
+
+.switcher-container {
+  display: flex;
+  flex-flow: row;
+  width: 100%;
+  height: calc(4.5 * var(--base-spacing));
+  gap: 1px;
+  margin-bottom: calc(3 * var(--base-spacing));
+}
+
+.switcher {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  padding: calc(1.25 * var(--base-spacing)) calc(2 * var(--base-spacing));
+  background: var(--action-primary-background-default-solid);
+  color: var(--action-primary-content-default);
+  cursor: pointer;
+  border: none;
+}
+
+.switcher:first-child {
+  margin-left: calc(3 * var(--base-spacing));
+  border-radius: 4px 0px 0px 4px;
+}
+
+.switcher:last-child {
+  border-radius: 0px 4px 4px 0px;
+  margin-right: calc(3 * var(--base-spacing));
+}
+
+.switcher:hover {
+  background: var(--action-primary-background-hover);
+  color: var(--action-primary-content-hover);
+}
+
+.switcher:active {
+  background: var(--action-primary-background-active);
+  color: var(--action-primary-content-active);
+}
+
+.switcher.selected {
+  background: var(--action-primary-background-selected);
+  color: var(--action-primary-content-selected);
+}
+
+.switcher:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}

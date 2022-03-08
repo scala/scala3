@@ -1,0 +1,83 @@
+.nh {
+  color: var(--action-primary-content-default);
+  border-radius: 4px;
+  height: calc(4.5 * var(--base-spacing));
+}
+
+.nh:hover {
+  background: var(--action-primary-background-hover);
+  color: var(--action-primary-content-hover);
+}
+
+.nh.selected {
+  background: var(--action-primary-background-selected);
+  color: var(--action-primary-content-selected);
+}
+
+.micon {
+  box-sizing: content-box;
+  margin-right: calc(1 * var(--base-spacing));
+  color: transparent;
+  height: calc(2 * var(--base-spacing));
+  width: calc(2 * var(--base-spacing));
+}
+
+.theme-dark .micon {
+  filter: brightness(120%);
+}
+
+.micon.cl {
+  content: url("../../../images/class.svg");
+}
+
+.micon.cl-wc {
+  content: url("../../../images/class_comp.svg");
+}
+
+.micon.ob {
+  content: url("../../../images/object.svg");
+}
+
+.micon.ob-wc {
+  content: url("../../../images/object_comp.svg");
+}
+
+.micon.tr {
+  content: url("../../../images/trait.svg");
+}
+
+.micon.tr-wc {
+  content: url("../../../images/trait_comp.svg");
+}
+
+.micon.en {
+  content: url("../../../images/enum.svg");
+}
+
+.micon.en-wc {
+  content: url("../../../images/enum_comp.svg");
+}
+
+.micon.gi {
+  content: url("../../../images/given.svg");
+}
+
+.micon.va {
+  content: url("../../../images/val.svg");
+}
+
+.micon.ty {
+  content: url("../../../images/type.svg");
+}
+
+.micon.st {
+  content: url("../../../images/static.svg");
+}
+
+.micon.pa {
+  content: url("../../../images/package.svg");
+}
+
+.micon.de {
+  content: url("../../../images/method.svg");
+}

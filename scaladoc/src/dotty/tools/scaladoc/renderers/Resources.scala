@@ -82,9 +82,22 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   val commonResources: Seq[Resource] = {
     val fromResources = List(
+      "styles/theme/colors.css",
+      "styles/theme/color-tokens.css",
+      "styles/theme/spacing.css",
+      "styles/theme/typography.css",
+
+      // layout
+      "styles/theme/layout/container.css",
+      "styles/theme/layout/header.css",
+      "styles/theme/layout/leftMenu.css",
+      "styles/theme/layout/sideMenu.css",
+
+      // components
+      "styles/theme/components/switcher.css",
+      "styles/theme/components/navigation-item.css",
+
       "styles/nord-light.css",
-      "styles/scalastyle.css",
-      "styles/colors.css",
       "styles/dotty-icons.css",
       "styles/diagram.css",
       "styles/filter-bar.css",
@@ -189,6 +202,11 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("favicon.ico"),
       dottyRes("fonts/dotty-icons.woff"),
       dottyRes("fonts/dotty-icons.ttf"),
+      dottyRes("fonts/Inter-Bold.ttf"),
+      dottyRes("fonts/Inter-Medium.ttf"),
+      dottyRes("fonts/Inter-Regular.ttf"),
+      dottyRes("fonts/Inter-SemiBold.ttf"),
+      dottyRes("fonts/FiraCode-Regular.ttf"),
       dottyRes("images/scaladoc_logo.svg"),
       dottyRes("images/scaladoc_logo_dark.svg"),
       dottyRes("images/class.svg"),
@@ -214,6 +232,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/twitter-icon-white.png"),
       dottyRes("images/gitter-icon-black.png"),
       dottyRes("images/gitter-icon-white.png"),
+      dottyRes("images/arrow-right.svg"),
+      dottyRes("images/arrow-down.svg"),
       searchData(pages),
       scastieConfiguration()
     )

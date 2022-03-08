@@ -1,0 +1,14 @@
+#leftColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(3 * var(--base-spacing)) 0px;
+  position: absolute;
+  width: calc(35 * var(--base-spacing));
+  height: 100%;
+  left: 0px;
+  top: calc(8 * var(--base-spacing));
+  background: var(--background-default);
+  border: 1px solid var(--border-default);
+  border-top: none;
+}
