@@ -329,21 +329,16 @@ object PatternMatcher {
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
 
-        def tupleApp(tuple: Type, i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
+        def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
           ref(defn.RuntimeTuplesModule)
             .select(defn.RuntimeTuples_apply)
             .appliedTo(receiver, Literal(Constant(i)))
-            .cast(tuple.tupleElementTypes.applyOrElse(i, (_: Int) => NoType).ensuring(_ != NoType, i"Failed to find type at index $i in $tuple (${tree.sourcePos})"))
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
-          val isGenericTuple = defn.isTupleClass(caseClass) && {
-            val tp = tree.tpe match // widen even hard unions, to see if it's a union of tuples
-              case tp @ OrType(l, r) => (if tp.isSoft then tp else tp.derivedOrType(l, r, soft = true)).widenUnion
-              case tp                => tp
-            !defn.isTupleNType(tp)
-          }
-          val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(tree.tpe.dealias, _, ref(scrutinee))) else caseAccessors.map(tupleSel)
+          val isGenericTuple = defn.isTupleClass(caseClass) &&
+            !defn.isTupleNType(tree.tpe match { case tp: OrType => tp.join case tp => tp }) // widen even hard unions, to see if it's a union of tuples
+          val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee))) else caseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
         else if (unapp.tpe <:< (defn.BooleanType))
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
@@ -363,7 +358,7 @@ object PatternMatcher {
               unapplySeqPlan(unappResult, args)
             }
             else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
-              val components = (0 until foldApplyTupleType(unappResult.denot.info).length).toList.map(tupleApp(unappResult.info, _, ref(unappResult)))
+              val components = (0 until foldApplyTupleType(unappResult.denot.info).length).toList.map(tupleApp(_, ref(unappResult)))
               matchArgsPlan(components, args, onSuccess)
             else {
               assert(isGetMatch(unapp.tpe))
