@@ -1279,7 +1279,7 @@ object Build {
 
   lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).
     enablePlugins(DottyJSPlugin).
-    dependsOn(`scala3-library-bootstrappedJS`).
+    dependsOn(`scaladoc-js-common`).
     settings(
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,

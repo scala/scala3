@@ -1,10 +1,14 @@
 package dotty.tools.scaladoc
 
+import utils.HTML._
+
 import org.scalajs.dom._
 import org.scalajs.dom.ext._
 import org.scalajs.dom.html.Input
 import scala.scalajs.js.timers._
-import scala.concurrent.duration._
+import scala.concurrent.duration.{span => dspan, _}
+
+import scala.util.chaining._
 
 import java.net.URI
 
@@ -13,120 +17,71 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   val resultsChunkSize = 20
   extension (p: PageEntry)
     def toHTML =
-      val wrapper = document.createElement("div").asInstanceOf[html.Div]
-      wrapper.classList.add("scaladoc-searchbar-row")
-      wrapper.setAttribute("result", "")
-      wrapper.classList.add("monospace")
+      val location = if (p.isLocationExternal) {
+        p.location
+      } else {
+        Globals.pathToRoot + p.location
+      }
 
-      val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href =
-        if (p.isLocationExternal) {
-          p.location
-        } else {
-          Globals.pathToRoot + p.location
+      div(cls := "scaladoc-searchbar-row monospace", "result" := "")(
+        a(href := location)(
+          p.fullName,
+          span(cls := "pull-right scaladoc-searchbar-location")(p.description)
+        ).tap { _.onclick = (event: Event) =>
+          if (document.body.contains(rootDiv)) {
+            document.body.removeChild(rootDiv)
+          }
         }
-      resultA.text = s"${p.fullName}"
-      resultA.onclick = (event: Event) =>
-        if (document.body.contains(rootDiv)) {
-          document.body.removeChild(rootDiv)
-        }
-
-      val location = document.createElement("span")
-      location.classList.add("pull-right")
-      location.classList.add("scaladoc-searchbar-location")
-      location.textContent = p.description
-
-      wrapper.appendChild(resultA)
-      resultA.appendChild(location)
-      wrapper.addEventListener("mouseover", {
-        case e: MouseEvent => handleHover(wrapper)
-      })
-      wrapper
+      ).tap { wrapper => wrapper.addEventListener("mouseover", {
+          case e: MouseEvent => handleHover(wrapper)
+        })
+      }
 
   extension (m: InkuireMatch)
     def toHTML =
-      val wrapper = document.createElement("div").asInstanceOf[html.Div]
-      wrapper.classList.add("scaladoc-searchbar-row")
-      wrapper.setAttribute("result", "")
-      wrapper.setAttribute("inkuire-result", "")
-      wrapper.classList.add("monospace")
-      wrapper.setAttribute("mq", m.mq.toString)
-
-      val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      // Inkuire pageLocation should start with e (external)
-      // or i (internal). The rest of the string is an absolute
-      // or relative URL
-      resultA.href =
-        if (m.pageLocation(0) == 'e') {
+      val location = if (m.pageLocation(0) == 'e') {
           m.pageLocation.substring(1)
         } else {
           Globals.pathToRoot + m.pageLocation.substring(1)
         }
-      resultA.text = m.functionName
-      resultA.onclick = (event: Event) =>
-        if (document.body.contains(rootDiv)) {
-          document.body.removeChild(rootDiv)
-        }
 
-      val packageDiv = document.createElement("div").asInstanceOf[html.Div]
-      packageDiv.classList.add("scaladoc-searchbar-inkuire-package")
-
-      val packageIcon = document.createElement("span").asInstanceOf[html.Span]
-      packageIcon.classList.add("micon")
-      packageIcon.classList.add("pa")
-
-      val packageSpan = document.createElement("span").asInstanceOf[html.Span]
-      packageSpan.textContent = m.packageLocation
-
-      val signature = document.createElement("span")
-      signature.classList.add("pull-right")
-      signature.classList.add("scaladoc-searchbar-inkuire-signature")
-      signature.textContent = m.prettifiedSignature
-
-      wrapper.appendChild(resultA)
-      resultA.appendChild(signature)
-      wrapper.appendChild(packageDiv)
-      packageDiv.appendChild(packageIcon)
-      packageDiv.appendChild(packageSpan)
-      wrapper.addEventListener("mouseover", {
-        case e: MouseEvent => handleHover(wrapper)
-      })
-      wrapper
+      div(cls := "scaladoc-searchbar-row monospace", "result" := "", "inkuire-result" := "", "mq" := m.mq.toString)(
+        a(href := location)(
+          m.functionName,
+          span(cls := "pull-right scaladoc-searchbar-inkuire-signature")(m.prettifiedSignature)
+        ).tap { _.onclick = (event: Event) =>
+          if (document.body.contains(rootDiv)) {
+            document.body.removeChild(rootDiv)
+          }
+        },
+        div(cls := "scaladoc-searchbar-inkuire-package")(
+          span(cls := "micon pa"),
+          span(m.packageLocation)
+        )
+      ).tap { wrapper => wrapper.addEventListener("mouseover", {
+          case e: MouseEvent => handleHover(wrapper)
+        })
+      }
 
   def createKindSeparator(kind: String) =
-    val kindSeparator = document.createElement("div").asInstanceOf[html.Div]
-    val icon = document.createElement("span").asInstanceOf[html.Span]
-    icon.classList.add("micon")
-    icon.classList.add(kind.take(2))
-    val name = document.createElement("span").asInstanceOf[html.Span]
-    name.textContent = kind
-    kindSeparator.classList.add("scaladoc-searchbar-row")
-    kindSeparator.setAttribute("divider", "")
-    kindSeparator.classList.add("monospace")
-    kindSeparator.appendChild(icon)
-    kindSeparator.appendChild(name)
-    kindSeparator
+    div(cls := "scaladoc-searchbar-row monospace", "divider" := "")(
+      span(cls := s"micon ${kind.take(2)}"),
+      span(kind)
+    )
 
   def handleNewFluffQuery(matchers: List[Matchers]) =
     val result = engine.query(matchers)
     val fragment = document.createDocumentFragment()
     def createLoadMoreElement =
-      val loadMoreElement = document.createElement("div").asInstanceOf[html.Div]
-      loadMoreElement.classList.add("scaladoc-searchbar-row")
-      loadMoreElement.setAttribute("loadmore", "")
-      loadMoreElement.classList.add("monospace")
-      val icon = document.createElement("a").asInstanceOf[html.Anchor]
-      icon.classList.add("i")
-      icon.classList.add("fas")
-      icon.classList.add("fa-arrow-down")
-      val text = document.createElement("span").asInstanceOf[html.Span]
-      text.textContent = "Show more..."
-      val anchor = document.createElement("a").asInstanceOf[html.Anchor]
-      anchor.appendChild(icon)
-      anchor.appendChild(text)
-      loadMoreElement.appendChild(anchor)
-      loadMoreElement.addEventListener("mouseover", _ => handleHover(loadMoreElement))
-      loadMoreElement
+      div(cls := "scaladoc-searchbar-row monospace", "loadmore" := "")(
+        a(
+          a(cls := "i fas fa-arrow-down"),
+          span("Show more...")
+        )
+      ).tap { loadMoreElement => loadMoreElement
+        .addEventListener("mouseover", _ => handleHover(loadMoreElement))
+      }
+
     result.groupBy(_.kind).map {
       case (kind, entries) =>
         val kindSeparator = createKindSeparator(kind)
@@ -158,28 +113,15 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     resultsDiv.appendChild(fragment)
 
-  def createLoadingAnimation: raw.HTMLElement = {
-    val loading = document.createElement("div").asInstanceOf[html.Div]
-    loading.classList.add("loading-wrapper")
-    val animation = document.createElement("div").asInstanceOf[html.Div]
-    animation.classList.add("loading")
-    loading.appendChild(animation)
-    loading
-}
-
+  def createLoadingAnimation: raw.HTMLElement =
+    div(cls := "loading-wrapper")(
+      div(cls := "loading")
+    )
   extension (s: String)
     def toHTMLError =
-      val wrapper = document.createElement("div").asInstanceOf[html.Div]
-      wrapper.classList.add("scaladoc-searchbar-row")
-      wrapper.classList.add("scaladoc-searchbar-error")
-      wrapper.classList.add("monospace")
-
-      val errorSpan = document.createElement("span").asInstanceOf[html.Span]
-      errorSpan.classList.add("search-error")
-      errorSpan.textContent = s
-
-      wrapper.appendChild(errorSpan)
-      wrapper
+      div(cls := "scaladoc-searchbar-row monospace", "error" := "")(
+        span(cls := "search-error")(s)
+      )
 
   var timeoutHandle: SetTimeoutHandle = null
   def handleNewQuery(query: String) =
@@ -215,57 +157,52 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     }
 
   private val searchIcon: html.Div =
-    val span = document.createElement("span").asInstanceOf[html.Span]
-    span.innerHTML = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M19.64 18.36l-6.24-6.24a7.52 7.52 0 10-1.28 1.28l6.24 6.24zM7.5 13.4a5.9 5.9 0 115.9-5.9 5.91 5.91 0 01-5.9 5.9z"></path></svg>"""
-    span.id = "scaladoc-search"
-    span.onclick = (event: Event) =>
-      if (document.body.contains(rootDiv)) {
-        document.body.removeChild(rootDiv)
-      }
-      else {
-        document.body.appendChild(rootDiv)
-        input.focus()
-      }
-    // open the search if the user hits the `s` key when not focused on a text input
-    document.body.addEventListener("keydown", (e: KeyboardEvent) => handleGlobalKeyDown(e))
-
-    val element = createNestingDiv("search-content")(
-      createNestingDiv("search-container")(
-        createNestingDiv("search")(
-          span
+    val element = div(cls := "search-content")(
+      div(cls := "search-container")(
+        div(cls := "search")(
+          span(id := "scaladoc-search")().tap { span =>
+            span.innerHTML = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M19.64 18.36l-6.24-6.24a7.52 7.52 0 10-1.28 1.28l6.24 6.24zM7.5 13.4a5.9 5.9 0 115.9-5.9 5.91 5.91 0 01-5.9 5.9z"></path></svg>"""
+            span.onclick = (event: Event) =>
+              if (document.body.contains(rootDiv)) {
+                document.body.removeChild(rootDiv)
+              }
+              else {
+                document.body.appendChild(rootDiv)
+                inputElem.focus()
+              }
+          }
         )
       )
     )
+    // open the search if the user hits the `s` key when not focused on a text input
+    document.body.addEventListener("keydown", (e: KeyboardEvent) => handleGlobalKeyDown(e))
+
     document.getElementById("scaladoc-searchBar").appendChild(element)
     element
 
-  private val input: html.Input =
-    val element = document.createElement("input").asInstanceOf[html.Input]
-    element.id = "scaladoc-searchbar-input"
-    element.addEventListener("input", { e =>
-      val inputValue = e.target.asInstanceOf[html.Input].value
-      if inputValue.isEmpty then showHints()
-      else handleNewQuery(inputValue)
-    })
-    element.autocomplete = "off"
-    element
+  private val inputElem: html.Input =
+    input(id := "scaladoc-searchbar-input").tap { element =>
+      element.addEventListener("input", { e =>
+        val inputValue = e.target.asInstanceOf[html.Input].value
+        if inputValue.isEmpty then showHints()
+        else handleNewQuery(inputValue)
+      })
+
+      element.autocomplete = "off"
+    }
 
   private val resultsDiv: html.Div =
-    val element = document.createElement("div").asInstanceOf[html.Div]
-    element.id = "scaladoc-searchbar-results"
-    element
+    div(id := "scaladoc-searchbar-results")
 
   private val rootHiddenClasses = "hidden"
   private val rootShowClasses   = ""
 
-  private def createNestingDiv(className: String)(innerElement: html.Element): html.Div =
-    val element = document.createElement("div").asInstanceOf[html.Div]
-    element.className = className
-    element.appendChild(innerElement)
-    element
-
   private val rootDiv: html.Div =
-    val element = document.createElement("div").asInstanceOf[html.Div]
+    val element = div(id := "scaladoc-searchbar")(
+      inputElem,
+      resultsDiv
+    )
+
     element.addEventListener("mousedown", (e: Event) => e.stopPropagation())
     searchIcon.addEventListener("mousedown", (e: Event) => e.stopPropagation())
     document.body.addEventListener("mousedown", (e: Event) =>
@@ -280,9 +217,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         else if e.keyCode == 13 then handleEnter()
         else if e.keyCode == 27 then handleEscape()
     })
-    element.id = "scaladoc-searchbar"
-    element.appendChild(input)
-    element.appendChild(resultsDiv)
+
     element
 
   private def handleArrowUp() = {
@@ -344,7 +279,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   }
   private def handleEscape() = {
     // clear the search input and close the search
-    input.value = ""
+    inputElem.value = ""
     showHints()
     document.body.removeChild(rootDiv)
   }
@@ -368,63 +303,32 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
 
           document.body.appendChild(rootDiv)
           // if we focus during the event handler, the `s` gets typed into the input
-          window.setTimeout(() => input.focus(), 1.0)
+          window.setTimeout(() => inputElem.focus(), 1.0)
         }
       }
     }
   }
 
-  private case class ListRoot(elems: Seq[ListNode])
-  private case class ListNode(value: String, nested: ListRoot)
-
-  private def ul(nodes: ListNode*) = ListRoot(nodes)
-  private def li(s: String) = ListNode(s, ListRoot(Nil))
-  private def li(s: String, nested: ListRoot) = ListNode(s, nested)
-
-  private def renderList: ListRoot => Option[html.UList] = {
-    case ListRoot(Nil) => None
-    case ListRoot(nodes) =>
-      val list = document.createElement("ul").asInstanceOf[html.UList]
-      nodes.foreach {
-        case ListNode(txt, nested) =>
-          val li = document.createElement("li").asInstanceOf[html.LI]
-          li.innerHTML = txt
-          renderList(nested).foreach(li.appendChild)
-          list.appendChild(li)
-      }
-      Some(list)
-  }
-
   private def showHints() = {
     def clearResults() = while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
-    val hintsDiv = document.createElement("div").asInstanceOf[html.Div]
-    hintsDiv.classList.add("searchbar-hints")
-    val icon = document.createElement("span").asInstanceOf[html.Span]
-    icon.classList.add("fas")
-    icon.classList.add("fa-lightbulb")
-    icon.classList.add("fa-5x")
-    val header = document.createElement("h1").asInstanceOf[html.Heading]
-    header.textContent = "A bunch of hints to make your life easier"
-    val listElements: ListRoot = ul(
-        li("Type a phrase to search members <b>by name</b> and static sites <b>by title</b>"),
-        li("Type abbreviations <b>cC, caCa, camCa</b> to search for <b>camelCase</b>"),
+    val hintsDiv = div(cls := "searchbar-hints")(
+      span(cls := "fas fa-lightbulb fa-5x"),
+      h1("A bunch of hints to make your life easier"),
+      ul(cls := "searchbar-hints-list")(
+        li("Type a phrase to search members ", b("by name")," and static sites ", b("by title"),""),
+        li("Type abbreviations", b("cC, caCa, camCa")," to search for ", b("camelCase")),
         li(
-          "Type a function signature to search for members <b>by signature</b> using Inkuire",
+          "Type a function signature to search for members ", b("by signature")," using Inkuire",
           ul(
-            li("Type <b>String => Int</b> to find <b>String.size</b>, <b>String.toInt</b>"),
-            li("Type <b>String => String => String</b> to find <b>String.mkString</b>, <b>String.stripPrefix</b>"),
-            li("Inkuire also finds field accessors. Type <b>Some[A] => A</b> to find <b>Some.value</b>"),
-            li("For more information about Inkuire see <a href=https://docs.scala-lang.org/scala3/guides/scaladoc/search-engine.html>the documentation</a>"),
+            li("Type ", b("String => Int")," to find ", b("String.size"),", ", b("String.toInt"),""),
+            li("Type ", b("String => String => String")," to find ", b("String.mkString"),", ", b("String.stripPrefix"),""),
+            li("Inkuire also finds field accessors. Type ", b("Some[A] => A")," to find ", b("Some.value"),""),
+            li("For more information about Inkuire see ", a(href := "https://docs.scala-lang.org/scala3/guides/scaladoc/search-engine.html")("the documentation")),
             li("The availability of this function depends on configuration used to generate Scaladoc")
           )
         )
+      )
     )
-
-    val list = renderList(listElements).get
-    list.classList.add("searchbar-hints-list")
-    hintsDiv.appendChild(icon)
-    hintsDiv.appendChild(header)
-    hintsDiv.appendChild(list)
     clearResults()
     resultsDiv.appendChild(hintsDiv)
   }
