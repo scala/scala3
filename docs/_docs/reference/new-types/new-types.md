@@ -1,5 +1,5 @@
 ---
-layout: doc-page
+layout: index
 title: "New Types"
 movedTo: https://docs.scala-lang.org/scala3/reference/new-types.html
 ---

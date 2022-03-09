@@ -39,7 +39,7 @@ case class LoadedTemplate(
       )
 
   def resolveToHtml(ctx: StaticSiteContext): ResolvedPage =
-    val posts = children.map(_.lazyTemplateProperties(ctx))
+    val posts = children.filterNot(_.hidden).map(_.lazyTemplateProperties(ctx))
     def getMap(key: String) = templateFile.settings.getOrElse(key, Map.empty).asInstanceOf[Map[String, Object]]
 
     val sourceLinks = if !file.exists() then Nil else

@@ -1392,6 +1392,7 @@ object Build {
             .add(OutputDir("scaladoc/output/reference"))
             .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
             .add(ProjectName("Scala 3 Reference"))
+            .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
               dottySrcLink(referenceVersion, temp.getAbsolutePath + "=")
             )))

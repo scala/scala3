@@ -1,7 +1,8 @@
 ---
 layout: doc-page
-title: "Overview"
+title: "Experimental"
 movedTo: https://docs.scala-lang.org/scala3/reference/experimental/overview.html
+redirectFrom: overview.html
 ---
 
 ### Experimental language features

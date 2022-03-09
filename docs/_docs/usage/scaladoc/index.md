@@ -1,5 +1,5 @@
 ---
-layout: doc-page
+layout: index
 title: "Scaladoc"
 ---
 
