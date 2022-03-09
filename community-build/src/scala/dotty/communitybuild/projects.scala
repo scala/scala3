@@ -791,6 +791,14 @@ object projects:
     dependencies = () => List(cats, disciplineMunit)
   )
 
+  lazy val http4s = SbtCommunityProject(
+    project = "http4s",
+    sbtTestCommand = "tests/test; server/test; client/test; ember-core/test; ember-server/test; ember-client/test; circe/test",
+    sbtPublishCommand = "publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
+    dependencies = () => List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
+  )
+
 end projects
 
 lazy val forwardCompatMapping = Map[CommunityProject, CommunityProject](
@@ -892,7 +900,9 @@ def allProjects = List(
   projects.jacksonModuleScala,
   projects.specs2,
   projects.coop,
-  projects.coopForwardCompat
+  projects.coopForwardCompat,
+  projects.spire,
+  projects.http4s
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

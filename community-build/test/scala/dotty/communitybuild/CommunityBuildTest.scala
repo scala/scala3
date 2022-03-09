@@ -52,6 +52,7 @@ class CommunityBuildTestB:
   @Test def scodecBits = projects.scodecBits.run()
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
   @Test def spire = projects.spire.run()
+  @Test def http4s = projects.http4s.run()
 end CommunityBuildTestB
 
 @Category(Array(classOf[TestCategory]))
