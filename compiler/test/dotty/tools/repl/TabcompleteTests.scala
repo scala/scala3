@@ -195,6 +195,15 @@ class TabcompleteTests extends ReplTest {
                      |Foo.`bac"""stripMargin))
   }
 
+  @Test def backtickedImport = initially {
+    assertEquals(
+      List(
+        "`scalaUtilChainingOps`",
+        "`synchronized`"
+      ),
+      tabComplete("import scala.util.chaining.`s"))
+  }
+
   @Test def commands = initially {
     assertEquals(
       List(
