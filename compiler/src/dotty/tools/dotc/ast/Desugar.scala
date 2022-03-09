@@ -1431,6 +1431,20 @@ object desugar {
     Function(param :: Nil, Block(vdefs, body))
   }
 
+  /** Convert a tuple pattern with given `elems` to a sequence of `ValDefs`,
+   *  skipping elements that are not convertible.
+   */
+  def patternsToParams(elems: List[Tree])(using Context): List[ValDef] =
+    def toParam(elem: Tree, tpt: Tree): Tree =
+      elem match
+        case Annotated(elem1, _) => toParam(elem1, tpt)
+        case Typed(elem1, tpt1) => toParam(elem1, tpt1)
+        case Ident(id: TermName) => ValDef(id, tpt, EmptyTree).withFlags(Param)
+        case _ => EmptyTree
+    elems.map(param => toParam(param, TypeTree()).withSpan(param.span)).collect {
+      case vd: ValDef => vd
+    }
+
   def makeContextualFunction(formals: List[Tree], body: Tree, isErased: Boolean)(using Context): Function = {
     val mods = if (isErased) Given | Erased else Given
     val params = makeImplicitParameters(formals, mods)
