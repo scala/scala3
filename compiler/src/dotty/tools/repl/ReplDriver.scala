@@ -205,7 +205,7 @@ class ReplDriver(settings: Array[String],
       label
 
   /** Extract possible completions at the index of `cursor` in `expr` */
-  protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
+  protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] =
     def makeCandidate(label: String) = {
 
       new Candidate(
@@ -218,20 +218,26 @@ class ReplDriver(settings: Array[String],
         /* complete = */ false  // if true adds space when completing
       )
     }
-    implicit val state = newRun(state0)
-    compiler
-      .typeCheck(expr, errorsAllowed = true)
-      .map { tree =>
-        val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
-        val unit = CompilationUnit(file)(using state.context)
-        unit.tpdTree = tree
-        given Context = state.context.fresh.setCompilationUnit(unit)
-        val srcPos = SourcePosition(file, Span(cursor))
-        val (_, completions) = Completion.completions(srcPos)
-        completions.map(_.label).distinct.map(makeCandidate)
+
+    if expr.startsWith(":") then
+      ParseResult.commands.collect {
+        case command if command._1.startsWith(expr) => makeCandidate(command._1)
       }
-      .getOrElse(Nil)
-  }
+    else
+      given state: State = newRun(state0)
+      compiler
+        .typeCheck(expr, errorsAllowed = true)
+        .map { tree =>
+          val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
+          val unit = CompilationUnit(file)(using state.context)
+          unit.tpdTree = tree
+          given Context = state.context.fresh.setCompilationUnit(unit)
+          val srcPos = SourcePosition(file, Span(cursor))
+          val (_, completions) = Completion.completions(srcPos)
+          completions.map(_.label).distinct.map(makeCandidate)
+        }
+        .getOrElse(Nil)
+  end completions 
 
   private def interpret(res: ParseResult)(implicit state: State): State = {
     res match {

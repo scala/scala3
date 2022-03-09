@@ -152,6 +152,14 @@ final class JLineTerminal extends java.io.Closeable {
           // using dummy values, resulting parsed input is probably unused
           defaultParsedLine
 
+        // In the situation where we have a partial command that we want to
+        // complete we need to ensure that the :<partial-word> isn't split into
+        // 2 tokens, but rather the entire thing is treated as the "word", in
+        //   order to insure the : is replaced in the completion.
+        case ParseContext.COMPLETE if
+          ParseResult.commands.exists(command => command._1.startsWith(input)) =>
+            parsedLine(input, cursor)
+
         case ParseContext.COMPLETE =>
           // Parse to find completions (typically after a Tab).
           def isCompletable(token: Token) = isIdentifier(token) || isKeyword(token)
