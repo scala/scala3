@@ -1,52 +1,14 @@
 import scala.scalajs.js
 import scala.scalajs.js.annotation.*
 
-object A1 {
+object A {
   @js.native
   @JSGlobal // error
-  class apply extends js.Object
-
-  @js.native
-  @JSGlobal // error
-  object apply extends js.Object
+  class B extends js.Object
 
   @js.native
   @JSGlobal // error
-  class foo_= extends js.Object
-}
-
-object A2 {
-  @js.native // error
-  @JSGlobal // error
-  def foo_=(x: Int): Unit = js.native
-
-  @js.native
-  @JSGlobal // error
-  def apply(x: Int): Int = js.native
-}
-
-object B1 {
-  @js.native
-  @JSImport("bar.js") // error
-  class apply extends js.Object
-
-  @js.native
-  @JSImport("bar.js") // error
-  object apply extends js.Object
-
-  @js.native
-  @JSImport("bar.js") // error
-  class foo_= extends js.Object
-}
-
-object B2 {
-  @js.native // error
-  @JSImport("bar.js") // error
-  def foo_=(x: Int): Unit = js.native
-
-  @js.native
-  @JSImport("bar.js") // error
-  def apply(x: Int): Int = js.native
+  object C extends js.Object
 }
 
 // scala-js#2401

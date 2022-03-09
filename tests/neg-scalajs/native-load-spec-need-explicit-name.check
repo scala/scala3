@@ -1,48 +1,8 @@
 -- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:6:2 ----------------------------------------------
 6 |  @JSGlobal // error
   |  ^^^^^^^^^
-  |  Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+  |  Native JS members inside non-native objects must have an explicit name in @JSGlobal
 -- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:10:2 ---------------------------------------------
 10 |  @JSGlobal // error
    |  ^^^^^^^^^
-   |  Native JS definitions named 'apply' must have an explicit name in @JSGlobal
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:14:2 ---------------------------------------------
-14 |  @JSGlobal // error
-   |  ^^^^^^^^^
-   |  Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:20:2 ---------------------------------------------
-20 |  @JSGlobal // error
-   |  ^^^^^^^^^
-   |  Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:19:2 ---------------------------------------------
-19 |  @js.native // error
-   |  ^^^^^^^^^^
-   |  @js.native is not allowed on vars, lazy vals and setter defs
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:24:2 ---------------------------------------------
-24 |  @JSGlobal // error
-   |  ^^^^^^^^^
-   |  Native JS definitions named 'apply' must have an explicit name in @JSGlobal
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:30:3 ---------------------------------------------
-30 |  @JSImport("bar.js") // error
-   |  ^^^^^^^^^^^^^^^^^^^
-   |  Native JS definitions named 'apply' must have an explicit name in @JSImport
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:34:3 ---------------------------------------------
-34 |  @JSImport("bar.js") // error
-   |  ^^^^^^^^^^^^^^^^^^^
-   |  Native JS definitions named 'apply' must have an explicit name in @JSImport
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:38:3 ---------------------------------------------
-38 |  @JSImport("bar.js") // error
-   |  ^^^^^^^^^^^^^^^^^^^
-   |  Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:44:3 ---------------------------------------------
-44 |  @JSImport("bar.js") // error
-   |  ^^^^^^^^^^^^^^^^^^^
-   |  Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:43:2 ---------------------------------------------
-43 |  @js.native // error
-   |  ^^^^^^^^^^
-   |  @js.native is not allowed on vars, lazy vals and setter defs
--- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:48:3 ---------------------------------------------
-48 |  @JSImport("bar.js") // error
-   |  ^^^^^^^^^^^^^^^^^^^
-   |  Native JS definitions named 'apply' must have an explicit name in @JSImport
+   |  Native JS members inside non-native objects must have an explicit name in @JSGlobal
