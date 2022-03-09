@@ -1239,8 +1239,9 @@ object Semantic {
         Result(Hot, ress.flatMap(_.errors))
 
       case Inlined(call, bindings, expansion) =>
+        val trace1 = trace.add(expr)
         val ress = eval(bindings, thisV, klass)
-        eval(expansion, thisV, klass) ++ ress.flatMap(_.errors)
+        withTrace(trace1)(eval(expansion, thisV, klass)) ++ ress.flatMap(_.errors)
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
