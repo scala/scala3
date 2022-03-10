@@ -76,11 +76,11 @@ class ReportingTest:
     val docsRoot = testDocPath.resolve("conflicts-pages").toString
     checkReportedDiagnostics(_.copy(
       docsRoot = Some(docsRoot),
-      tastyFiles = tastyFiles("tests", rootPck = "_docs")
+      tastyFiles = tastyFiles("tests", rootPck = "docs")
     )){ diag =>
       assertNoWarning(diag)
       val Seq(msg) = diag.errorMsgs.map(_.toLowerCase)
-      Seq("conflict","api", "static", "page", "_docs/tests/adoc.html")
+      Seq("conflict","api", "static", "page", "docs/tests/adoc.html")
       .foreach( word =>
           Assert.assertTrue(s"Error message: $msg should contains $word", msg.contains(word))
         )

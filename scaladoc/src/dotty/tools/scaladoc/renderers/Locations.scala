@@ -47,6 +47,7 @@ trait Locations(using ctx: DocContext):
               case "<empty>" :: tail => "_empty_" :: tail
               case other => other
             if ctx.args.apiSubdirectory then "api" :: fqn else fqn
+        ctx.checkPathCompat(path)
         cache.put(dri, path)
         path
       case cached => cached

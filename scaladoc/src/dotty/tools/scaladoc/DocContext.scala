@@ -17,6 +17,8 @@ import java.io.PrintStream
 import scala.io.Codec
 import java.net.URL
 import scala.util.Try
+import scala.collection.mutable
+import dotty.tools.scaladoc.util.Check.checkJekyllIncompatPath
 
 type CompilerContext = dotty.tools.dotc.core.Contexts.Context
 
@@ -90,3 +92,18 @@ case class DocContext(args: Scaladoc.Args, compilerContext: CompilerContext):
 
 
   val externalDocumentationLinks = args.externalMappings
+
+
+  // We collect and report any generated files incompatible with Jekyll
+  private lazy val jekyllIncompatLinks = mutable.HashSet[String]()
+
+  def checkPathCompat(path: Seq[String]): Unit =
+    if checkJekyllIncompatPath(path) then jekyllIncompatLinks.add(path.mkString("/"))
+
+  def reportPathCompatIssues(): Unit =
+    if !jekyllIncompatLinks.isEmpty then
+      report.warning(
+        s"""Following generated file paths might not be compatible with Jekyll:
+          |${jekyllIncompatLinks.mkString("\n")}
+          |If using GitHub Pages consider adding a \".nojekyll\" file.
+        """.stripMargin)(using compilerContext)
