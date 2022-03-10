@@ -184,6 +184,9 @@ object Decorators {
       loop(xs, xs, 0)
     end mapWithIndexConserve
 
+    /** True if two lists have the same length.  Since calling length on linear sequences
+     *  is Θ(n), it is an inadvisable way to test length equality.  This method is Θ(n min m).
+     */
     final def hasSameLengthAs[U](ys: List[U]): Boolean = {
       @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
         if (xs.isEmpty) ys.isEmpty
