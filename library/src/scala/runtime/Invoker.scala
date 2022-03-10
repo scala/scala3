@@ -1,11 +1,8 @@
 package scala.runtime
 
-import scala.collection.mutable
-import java.nio.file.Path
+import scala.collection.mutable.{BitSet, AnyRefMap}
 import scala.collection.concurrent.TrieMap
-import java.nio.file.Paths
 import java.nio.file.Files
-import java.nio.file.StandardOpenOption
 import java.io.FileWriter
 import java.io.File
 
@@ -13,12 +10,8 @@ object Invoker {
   private val runtimeUUID = java.util.UUID.randomUUID()
 
   private val MeasurementsPrefix = "scoverage.measurements."
-  private val threadFiles = new ThreadLocal[mutable.HashMap[String, FileWriter]]
-
-  // For each data directory we maintain a thread-safe set tracking the ids
-  // that we've already seen and recorded. We're using a map as a set, so we
-  // only care about its keys and can ignore its values.
-  private val dataDirToIds = TrieMap.empty[String, TrieMap[Int, Any]]
+  private val threadFiles = new ThreadLocal[AnyRefMap[String, FileWriter]]
+  private val dataDirToSet = TrieMap.empty[String, BitSet]
 
   /** We record that the given id has been invoked by appending its id to the coverage data file.
     *
@@ -34,40 +27,24 @@ object Invoker {
     * @param dataDir
     *   the directory where the measurement data is held
     */
-  def invoked(id: Int, dataDir: String): Unit = {
-    // [sam] we can do this simple check to save writing out to a file.
-    // This won't work across JVMs but since there's no harm in writing out the same id multiple
-    // times since for coverage we only care about 1 or more, (it just slows things down to
-    // do it more than once), anything we can do to help is good. This helps especially with code
-    // that is executed many times quickly, eg tight loops.
-    if (!dataDirToIds.contains(dataDir)) {
-      // Guard against SI-7943: "TrieMap method getOrElseUpdate is not thread-safe".
-      dataDirToIds.synchronized {
-        if (!dataDirToIds.contains(dataDir)) {
-          dataDirToIds(dataDir) = TrieMap.empty[Int, Any]
-        }
+  def invoked(id: Int, dataDir: String): Unit =
+    val set = dataDirToSet.getOrElseUpdate(dataDir, BitSet.empty)
+    if !set.contains(id) then
+      val added = set.synchronized {
+        set.add(id)
       }
-    }
-    val ids = dataDirToIds(dataDir)
-    if (!ids.contains(id)) {
-      // Each thread writes to a separate measurement file, to reduce contention
-      // and because file appends via FileWriter are not atomic on Windows.
-      var files = threadFiles.get()
-      if (files == null) {
-        files = mutable.HashMap.empty[String, FileWriter]
-        threadFiles.set(files)
-      }
-      val writer = files.getOrElseUpdate(
-        dataDir,
-        new FileWriter(measurementFile(dataDir), true)
-      )
-
-      writer.append(Integer.toString(id))
-      writer.append("\n")
-      writer.flush()
-      ids.put(id, ())
-    }
-  }
+      if added then
+        var writers = threadFiles.get()
+        if writers == null then
+          writers = AnyRefMap.empty
+          threadFiles.set(writers)
+        val writer = writers.getOrElseUpdate(
+          dataDir,
+          FileWriter(measurementFile(dataDir), true)
+        )
+        writer.write(Integer.toString(id))
+        writer.write('\n')
+        writer.flush()
 
   def measurementFile(dataDir: String): File = new File(
     dataDir,
