@@ -6,7 +6,7 @@ import config.Printers.{default, typr}
 
 trait ConstraintRunInfo { self: Run =>
   private var maxSize = 0
-  private var maxConstraint: Constraint = _
+  private var maxConstraint: Constraint | Null = _
   def recordConstraintSize(c: Constraint, size: Int): Unit =
     if (size > maxSize) {
       maxSize = size
@@ -14,7 +14,7 @@ trait ConstraintRunInfo { self: Run =>
     }
   def printMaxConstraint()(using Context): Unit = {
     val printer = if (ctx.settings.YdetailedStats.value) default else typr
-    if (maxSize > 0) printer.println(s"max constraint = ${maxConstraint.show}")
+    if (maxSize > 0) printer.println(s"max constraint = ${maxConstraint.nn.show}")
   }
   protected def reset(): Unit = maxConstraint = null
 }

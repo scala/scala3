@@ -177,8 +177,8 @@ class Definitions {
   private def enterT1ParameterlessMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
     enterPolyMethod(cls, name, 1, resultTypeFn, flags)
 
-  private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[TypeRef] = {
-    val arr = new Array[TypeRef](arity + 1)
+  private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[TypeRef | Null] = {
+    val arr = new Array[TypeRef | Null](arity + 1)
     for (i <- countFrom to arity) arr(i) = requiredClassRef(name + i)
     arr
   }
@@ -1254,7 +1254,7 @@ class Definitions {
 
   @tu lazy val untestableClasses: Set[Symbol] = Set(NothingClass, NullClass, SingletonClass)
 
-  @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
+  @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
 
@@ -1277,18 +1277,18 @@ class Definitions {
     .withDefaultValue(holderImpl("LazyRef"))
   })
 
-  @tu lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
+  @tu lazy val TupleType: Array[TypeRef | Null] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
   private class FunType(prefix: String):
-    private var classRefs: Array[TypeRef] = new Array(22)
+    private var classRefs: Array[TypeRef | Null] = new Array(22)
     def apply(n: Int): TypeRef =
       while n >= classRefs.length do
-        val classRefs1 = new Array[TypeRef](classRefs.length * 2)
+        val classRefs1 = new Array[TypeRef | Null](classRefs.length * 2)
         Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
         classRefs = classRefs1
       if classRefs(n) == null then
         classRefs(n) = requiredClassRef(prefix + n.toString)
-      classRefs(n)
+      classRefs(n).nn
 
   private val erasedContextFunType = FunType("scala.ErasedContextFunction")
   private val contextFunType = FunType("scala.ContextFunction")
@@ -1438,8 +1438,7 @@ class Definitions {
 
   /** Are we compiling a java source file? */
   private def isJavaContext(using Context): Boolean =
-    val unit = ctx.compilationUnit
-    unit != null && unit.isJava
+    ctx.compilationUnit.isJava
 
   private def unqualifiedTypes(refs: List[TermRef]) =
     val types = refs.toSet[NamedType]
@@ -1491,12 +1490,18 @@ class Definitions {
    */
   def isTupleNType(tp: Type)(using Context): Boolean = {
     val arity = tp.dealias.argInfos.length
-    arity <= MaxTupleArity && TupleType(arity) != null && tp.isRef(TupleType(arity).symbol)
+    arity <= MaxTupleArity && {
+      val tupletp = TupleType(arity)
+      tupletp != null && tp.isRef(tupletp.symbol)
+    }
   }
 
   def tupleType(elems: List[Type]): Type = {
     val arity = elems.length
-    if (0 < arity && arity <= MaxTupleArity && TupleType(arity) != null) TupleType(arity).appliedTo(elems)
+    if 0 < arity && arity <= MaxTupleArity then
+      val tupletp = TupleType(arity)
+      if tupletp != null then tupletp.appliedTo(elems)
+      else TypeOps.nestedPairs(elems)
     else TypeOps.nestedPairs(elems)
   }
 
@@ -1593,6 +1598,9 @@ class Definitions {
       t2 <- Function2SpecializedParamTypes
     yield
       nme.apply.specializedFunction(r, List(t1, t2)).asTermName
+
+  @tu lazy val FunctionSpecializedApplyNames: collection.Set[Name] =
+    Function0SpecializedApplyNames ++ Function1SpecializedApplyNames ++ Function2SpecializedApplyNames
 
   def functionArity(tp: Type)(using Context): Int = tp.dropDependentRefinement.dealias.argInfos.length - 1
 

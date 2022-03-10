@@ -289,7 +289,7 @@ object Denotations {
                        name: Name,
                        site: Denotation = NoDenotation,
                        args: List[Type] = Nil,
-                       source: AbstractFile = null,
+                       source: AbstractFile | Null = null,
                        generateStubs: Boolean = true)
                       (p: Symbol => Boolean)
                       (using Context): Symbol =
@@ -1317,8 +1317,10 @@ object Denotations {
         }
         recurSimple(path.length, wrap)
     }
-    if ctx.run == null then recur(path)
-    else ctx.run.staticRefs.getOrElseUpdate(path, recur(path))
+
+    val run = ctx.run
+    if run == null then recur(path)
+    else run.staticRefs.getOrElseUpdate(path, recur(path))
   }
 
   /** If we are looking for a non-existing term name in a package,

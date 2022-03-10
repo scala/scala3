@@ -3,6 +3,8 @@ package dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import Comments.CommentsContext
 import Contexts._
 import Symbols._

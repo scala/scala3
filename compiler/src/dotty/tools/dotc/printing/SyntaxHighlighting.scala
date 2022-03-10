@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package printing
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames._

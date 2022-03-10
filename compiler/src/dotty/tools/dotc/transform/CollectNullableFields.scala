@@ -100,7 +100,7 @@ class CollectNullableFields extends MiniPhase {
 
     nullability.foreach {
       case (sym, Nullable(from)) =>
-        val bldr = result.computeIfAbsent(from, _ => new mutable.ListBuffer)
+        val bldr = result.computeIfAbsent(from, _ => new mutable.ListBuffer).nn
         bldr += sym
       case _ =>
     }

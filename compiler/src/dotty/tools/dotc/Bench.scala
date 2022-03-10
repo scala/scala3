@@ -30,7 +30,7 @@ object Bench extends Driver:
       println(s"time elapsed: ${times(i)}ms")
       if ctx.settings.Xprompt.value then
         print("hit <return> to continue >")
-        System.in.read()
+        System.in.nn.read()
         println()
     reporter
 

@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package config
 
+import scala.language.unsafeNulls
+
 import WrappedProperties.AccessControl
 import io.{ClassPath, Directory, Path}
 import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
@@ -206,7 +208,7 @@ class PathResolver(using c: Context) {
 
     // Assemble the elements!
     def basis: List[Traversable[ClassPath]] =
-      val release = Option(ctx.settings.release.value).filter(_.nonEmpty)
+      val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
 
       List(
         JrtClassPath(release),                        // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)

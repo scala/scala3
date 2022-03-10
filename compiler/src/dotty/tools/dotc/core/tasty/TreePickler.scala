@@ -3,6 +3,8 @@ package dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import dotty.tools.tasty.TastyFormat._
 import dotty.tools.tasty.TastyBuffer._
 

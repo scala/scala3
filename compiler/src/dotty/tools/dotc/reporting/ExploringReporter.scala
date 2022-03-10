@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.language.unsafeNulls
+
 import collection.mutable
 import core.Contexts.Context
 import Diagnostic._

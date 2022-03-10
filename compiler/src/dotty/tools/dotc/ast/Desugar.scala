@@ -8,7 +8,7 @@ import Symbols._, StdNames._, Trees._, ContextOps._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{Namer, Checking}
-import util.{Property, SourceFile, SourcePosition}
+import util.{Property, SourceFile, SourcePosition, Chars}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
 import collection.mutable.ListBuffer
@@ -521,9 +521,9 @@ object desugar {
         val enumCompanionRef = TermRefTree()
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(
-            enumCase => 
+            enumCase =>
               ImportSelector(enumCase.withSpan(enumCase.span.startPos))
-            ) 
+            )
           )
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
@@ -834,7 +834,8 @@ object desugar {
     val impl = mdef.impl
     val mods = mdef.mods
     val moduleName = normalizeName(mdef, impl).asTermName
-    if (mods.is(Package))
+    if mods.is(Package) then
+      checkPackageName(mdef)
       PackageDef(Ident(moduleName),
         cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
     else
@@ -949,6 +950,26 @@ object desugar {
       tree
     else tree
   }
+
+  def checkPackageName(mdef: ModuleDef | PackageDef)(using Context): Unit =
+
+    def check(name: Name, errSpan: Span): Unit = name match
+      case name: SimpleName if !errSpan.isSynthetic && name.exists(Chars.willBeEncoded) =>
+        report.warning(em"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour.", mdef.source.atSpan(errSpan))
+      case _ =>
+
+    def loop(part: RefTree): Unit = part match
+      case part @ Ident(name) => check(name, part.span)
+      case part @ Select(qual: RefTree, name) =>
+        check(name, part.nameSpan)
+        loop(qual)
+      case _ =>
+
+    mdef match
+      case pdef: PackageDef => loop(pdef.pid)
+      case mdef: ModuleDef if mdef.mods.is(Package) => check(mdef.name, mdef.nameSpan)
+      case _ =>
+  end checkPackageName
 
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
@@ -1134,7 +1155,7 @@ object desugar {
       val matchExpr =
         if (tupleOptimizable) rhs
         else
-          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids)) 
+          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
           Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
       vars match {
         case Nil if !mods.is(Lazy) =>
@@ -1155,11 +1176,11 @@ object desugar {
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
-              if mods.is(Lazy) then 
+              if mods.is(Lazy) then
                 DefDef(named.name.asTermName, Nil, tpt, selector(n))
                   .withMods(mods &~ Lazy)
                   .withSpan(named.span)
-              else 
+              else
                 valDef(
                   ValDef(named.name.asTermName, tpt, selector(n))
                     .withMods(mods)
@@ -1286,7 +1307,7 @@ object desugar {
     val ts = tree.trees
     val arity = ts.length
     assert(arity <= Definitions.MaxTupleArity)
-    def tupleTypeRef = defn.TupleType(arity)
+    def tupleTypeRef = defn.TupleType(arity).nn
     if (arity == 0)
       if (ctx.mode is Mode.Type) TypeTree(defn.UnitType) else unitLiteral
     else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
@@ -1321,6 +1342,7 @@ object desugar {
    *     (i.e. objects having the same name as a wrapped type)
    */
   def packageDef(pdef: PackageDef)(using Context): PackageDef = {
+    checkPackageName(pdef)
     val wrappedTypeNames = pdef.stats.collect {
       case stat: TypeDef if isTopLevelDef(stat) => stat.name
     }
@@ -1349,7 +1371,7 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean, span: Span)(using Context): Block =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree | Null = null, isContextual: Boolean, span: Span)(using Context): Block =
     Block(
       DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
         .withSpan(span)

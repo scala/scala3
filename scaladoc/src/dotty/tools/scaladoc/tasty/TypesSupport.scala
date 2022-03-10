@@ -199,9 +199,11 @@ trait TypesSupport:
             case Seq(rtpe) =>
               plain("()").l ++ keyword(arrow).l ++ inner(rtpe)
             case Seq(arg, rtpe) =>
+              def withParentheses(tpe: TypeRepr) = plain("(").l ++ inner(tpe) ++ plain(")").l
               val partOfSignature = arg match
-                case byName: ByNameType => plain("(").l ++ inner(byName) ++ plain(")").l
-                case _ => inner(arg)
+                case tpe @ (_:TermRef | _:TypeRef | _:ConstantType | _: ParamRef) => inner(arg)
+                case tpe: AppliedType if !tpe.isFunctionType && !tpe.isTupleN => inner(arg)
+                case _ => withParentheses(arg)
               partOfSignature ++ keyword(arrow).l ++ inner(rtpe)
             case args =>
               plain("(").l ++ commas(args.init.map(inner)) ++ plain(")").l ++ keyword(arrow).l ++ inner(args.last)

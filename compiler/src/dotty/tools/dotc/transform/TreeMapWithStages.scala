@@ -139,6 +139,11 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
         case (_:Import | _:Export) =>
           tree
 
+        case _: Template =>
+          val last = enteredSyms
+          tree.symbol.owner.info.decls.foreach(markSymbol)
+          mapOverTree(last)
+
         case _ =>
           markDef(tree)
           mapOverTree(enteredSyms)

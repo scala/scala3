@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package config
 
+import scala.language.unsafeNulls
+
 import core.Contexts._
 
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}

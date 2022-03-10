@@ -2,10 +2,11 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.collection.{ mutable, immutable }
 
 import scala.tools.asm
-
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.TreeTypeMap
 import dotty.tools.dotc.CompilationUnit

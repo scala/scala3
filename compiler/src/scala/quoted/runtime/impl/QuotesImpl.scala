@@ -1,6 +1,8 @@
 package scala.quoted
 package runtime.impl
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
@@ -12,6 +14,7 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.reflect._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.NoCompilationUnit
 
 import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes}
 
@@ -2699,7 +2702,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
         dotc.core.Symbols.defn.FunctionClass(arity, isImplicit, isErased)
       def TupleClass(arity: Int): Symbol =
-        dotc.core.Symbols.defn.TupleType(arity).classSymbol.asClass
+        dotc.core.Symbols.defn.TupleType(arity).nn.classSymbol.asClass
       def isTupleClass(sym: Symbol): Boolean =
         dotc.core.Symbols.defn.isTupleClass(sym)
       def ScalaPrimitiveValueClasses: List[Symbol] =
@@ -2795,10 +2798,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object SourceFile extends SourceFileModule {
       def current: SourceFile =
-        if ctx.compilationUnit == null then
+        val unit = ctx.compilationUnit
+        if unit eq NoCompilationUnit then
           throw new java.lang.UnsupportedOperationException(
             "`reflect.SourceFile.current` cannot be called within the TASTy ispector")
-        ctx.compilationUnit.source
+        else unit.source
     }
 
     given SourceFileMethods: SourceFileMethods with

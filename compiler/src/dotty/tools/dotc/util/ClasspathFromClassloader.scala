@@ -1,5 +1,7 @@
 package dotty.tools.dotc.util
 
+import scala.language.unsafeNulls
+
 import java.net.URLClassLoader
 import java.nio.file.Paths
 

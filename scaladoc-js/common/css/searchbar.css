@@ -156,6 +156,10 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   .search span:hover {
       fill: var(--link-hover-fg);
   }
+
+  #scaladoc-searchbar span.pull-right {
+    display: none;
+  }
 }
 
 #scaladoc-search {
@@ -177,12 +181,11 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   left: calc(5% + var(--side-width));
   z-index: 5;
   width: calc(90% - var(--side-width));
-  box-shadow: 0 2px 16px 0 rgba(0, 42, 76, 0.15);
+  box-shadow: 2px 2px 8px 0 var(--shadow);
   font-size: 13px;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
   background-color: var(--leftbar-bg);
   color: var(--leftbar-fg);
-  box-shadow: 0 0 2px var(--shadow);
 }
 
 #scaladoc-searchbar-input {
@@ -206,43 +209,72 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   overflow: auto;
 }
 
-.scaladoc-searchbar-result {
+.scaladoc-searchbar-row {
+  display: flex;
   background-color: var(--leftbar-bg);
   color: var(--leftbar-fg);
   line-height: 24px;
   padding: 4px 10px 4px 10px;
 }
 
-.scaladoc-searchbar-result-row {
-  display: flex;
+.scaladoc-searchbar-row.hidden {
+  display: none;
 }
 
-.scaladoc-searchbar-result .micon {
+.scaladoc-searchbar-row[divider] {
+  border-top: solid 1px var(--leftbar-border);
+}
+
+.scaladoc-searchbar-row .micon {
   height: 16px;
   width: 16px;
   margin: 4px 8px 0px 0px;
 }
 
-.scaladoc-searchbar-result:first-of-type {
-  margin-top: 10px;
-}
-
-.scaladoc-searchbar-result[selected] {
+.scaladoc-searchbar-row[selected] {
   background-color: var(--leftbar-hover-bg);
   color: var(--leftbar-hover-fg);
 }
 
-.scaladoc-searchbar-result a {
-  /* for some reason, with display:block if there's a wrap between the
-   * search result text and the location span, the dead space to the
-   * left of the location span doesn't get treated as part of the block,
-   * which defeats the purpose of making the <a> a block element.
-   * But inline-block with width:100% works as desired.
-   */
-  display: inline-block;
-  width: 100%;
+.scaladoc-searchbar-row[result] {
+  flex-direction: column;
+}
+
+.scaladoc-searchbar-row[result] a {
   text-indent: -20px;
   padding-left: 20px;
+}
+
+.scaladoc-searchbar-row[loadmore] {
+  align-items: center;
+  cursor: pointer;
+}
+
+.scaladoc-searchbar-row[loadmore] > a {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.scaladoc-searchbar-row[loadmore] .i {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
+.searchbar-hints {
+  padding-top: 5vh;
+  padding-bottom: 5vh;
+  padding-left: 5vw;
+  padding-right: 5vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.searchbar-hints-list {
+  font-size: medium;
+  line-height: 2em;
 }
 
 #searchBar {

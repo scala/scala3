@@ -2,6 +2,8 @@ package dotty
 package tools
 package vulpix
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile, IOException, PrintStream, ByteArrayOutputStream}
 import java.lang.System.{lineSeparator => EOL}
 import java.net.URL
@@ -216,7 +218,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         case testSource @ SeparateCompilationSource(_, dir, flags, outDir) =>
           testSource.compilationGroups.map { (group, files) =>
-            val flags1 = if group.release.isEmpty then flags else flags.and("-Yscala-release", group.release)
+            val flags1 = if group.release.isEmpty then flags else flags.and("-scala-output-version", group.release)
             if group.compiler.isEmpty then
               compile(files, flags1, suppressErrors, outDir)
             else

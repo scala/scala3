@@ -12,6 +12,7 @@ import core.Symbols._
 import reporting._
 import transform.MegaPhase.MiniPhase
 import util.LinearSet
+import dotty.tools.uncheckedNN
 
 
 /** A Tail Rec Transformer.
@@ -222,11 +223,11 @@ class TailRec extends MiniPhase {
     var failureReported: Boolean = false
 
     /** The `tailLabelN` label symbol, used to encode a `continue` from the infinite `while` loop. */
-    private var myContinueLabel: Symbol = _
+    private var myContinueLabel: Symbol | Null = _
     def continueLabel(using Context): Symbol = {
       if (myContinueLabel == null)
         myContinueLabel = newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)
-      myContinueLabel
+      myContinueLabel.uncheckedNN
     }
 
     /** The local `var` that replaces `this`, if it is modified in at least one recursive call. */

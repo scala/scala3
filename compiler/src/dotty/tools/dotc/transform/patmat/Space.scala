@@ -270,15 +270,15 @@ trait SpaceLogic {
         if (fun1.symbol.name == nme.unapply && ss1.length != ss2.length) return a
 
         val range = (0 until ss1.size).toList
-        val cache = Array.fill[Space](ss2.length)(null)
+        val cache = Array.fill[Space | Null](ss2.length)(null)
         def sub(i: Int) =
           if cache(i) == null then
             cache(i) = minus(ss1(i), ss2(i))
-          cache(i)
+          cache(i).nn
         end sub
 
         if range.exists(i => isSubspace(ss1(i), sub(i))) then a
-        else if cache.forall(sub => isSubspace(sub, Empty)) then Empty
+        else if cache.forall(sub => isSubspace(sub.nn, Empty)) then Empty
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
           val spaces = LazyList(range: _*).flatMap { i =>
@@ -628,7 +628,15 @@ class SpaceEngine(using Context) extends SpaceLogic {
       case tp if tp.classSymbol.isAllOf(JavaEnumTrait) =>
         tp.classSymbol.children.map(sym => Typ(sym.termRef, true))
       case tp =>
-        val children = tp.classSymbol.children
+        def getChildren(sym: Symbol): List[Symbol] =
+          sym.children.flatMap { child =>
+            if child eq sym then Nil // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
+            else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
+              List(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
+            else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)
+            else List(child)
+          }
+        val children = getChildren(tp.classSymbol)
         debug.println(s"candidates for ${tp.show} : [${children.map(_.show).mkString(", ")}]")
 
         val parts = children.map { sym =>

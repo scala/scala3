@@ -29,11 +29,11 @@ abstract class GenericHashMap[Key, Value]
 
   protected var used: Int = _
   protected var limit: Int = _
-  protected var table: Array[AnyRef] = _
+  protected var table: Array[AnyRef | Null] = _
   clear()
 
   private def allocate(capacity: Int) =
-    table = new Array[AnyRef](capacity * 2)
+    table = new Array[AnyRef | Null](capacity * 2)
     limit = if capacity <= DenseLimit then capacity - 1 else capacity / capacityMultiple
 
   private def roundToPower(n: Int) =
@@ -145,14 +145,14 @@ abstract class GenericHashMap[Key, Value]
     setKey(idx, key)
     setValue(idx, value)
 
-  def copyFrom(oldTable: Array[AnyRef]): Unit =
+  def copyFrom(oldTable: Array[AnyRef | Null]): Unit =
     if isDense then
       Array.copy(oldTable, 0, table, 0, oldTable.length)
     else
       var idx = 0
       while idx < oldTable.length do
-        val key = oldTable(idx).asInstanceOf[Key]
-        if key != null then addOld(key, oldTable(idx + 1).asInstanceOf[Value])
+        val key = oldTable(idx)
+        if key != null then addOld(key.asInstanceOf[Key], oldTable(idx + 1).asInstanceOf[Value])
         idx += 2
 
   protected def growTable(): Unit =

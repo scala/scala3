@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
@@ -179,9 +181,10 @@ abstract class Reporter extends interfaces.ReporterResult {
     // `ctx.run` can be null in test, also in the repl when parsing the first line. The parser runs early, the Run is
     // only created in ReplDriver.compile when a line is submitted. This means that `@nowarn` doesnt work on parser
     // warnings in the first line.
+    val run = ctx.run
     dia match
-      case w: Warning if ctx.run != null =>
-        val sup = ctx.run.suppressions
+      case w: Warning if run != null =>
+        val sup = run.suppressions
         if sup.suppressionsComplete(w.pos.source) then sup.nowarnAction(w) match
           case Action.Warning => go()
           case Action.Verbose => w.setVerbose(); go()
@@ -207,10 +210,14 @@ abstract class Reporter extends interfaces.ReporterResult {
       b += countString(warningCount, "warning") + " found"
     if (errorCount > 0)
       b += countString(errorCount, "error") + " found"
-    for ((settingName, count) <- unreportedWarnings)
-      b += s"there were $count ${settingName.tail} warning(s); re-run with $settingName for details"
     b.mkString("\n")
   }
+
+  def summarizeUnreportedWarnings(using Context): Unit =
+    for (settingName, count) <- unreportedWarnings do
+      val were = if count == 1 then "was" else "were"
+      val msg = s"there $were ${countString(count, settingName.tail + " warning")}; re-run with $settingName for details"
+      report(Warning(msg, NoSourcePosition))
 
   /** Print the summary of warnings and errors */
   def printSummary(using Context): Unit = {

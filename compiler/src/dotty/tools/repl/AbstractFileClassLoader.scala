@@ -13,6 +13,8 @@
 package dotty.tools
 package repl
 
+import scala.language.unsafeNulls
+
 import io.AbstractFile
 
 import java.net.{URL, URLConnection, URLStreamHandler}

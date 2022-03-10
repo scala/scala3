@@ -683,7 +683,7 @@ object Erasure {
           val owner = sym.maybeOwner
           if defn.specialErasure.contains(owner) then
             assert(sym.isConstructor, s"${sym.showLocated}")
-            defn.specialErasure(owner)
+            defn.specialErasure(owner).nn
           else if defn.isSyntheticFunctionClass(owner) then
             defn.functionTypeErasure(owner).typeSymbol
           else
@@ -784,9 +784,11 @@ object Erasure {
       }
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
-      val ntree = atPhase(erasurePhase)(
-        interceptTypeApply(tree.asInstanceOf[TypeApply])
-      ).withSpan(tree.span)
+      val ntree = atPhase(erasurePhase){
+        // Use erased-type semantic to intercept TypeApply in explicit nulls
+        val interceptCtx = if ctx.explicitNulls then ctx.retractMode(Mode.SafeNulls) else ctx
+        interceptTypeApply(tree.asInstanceOf[TypeApply])(using interceptCtx)
+      }.withSpan(tree.span)
 
       ntree match {
         case TypeApply(fun, args) =>

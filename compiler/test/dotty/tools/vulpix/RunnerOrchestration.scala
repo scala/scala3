@@ -2,6 +2,8 @@ package dotty
 package tools
 package vulpix
 
+import scala.language.unsafeNulls
+
 import java.io.{ File => JFile, InputStreamReader, BufferedReader, PrintStream }
 import java.nio.file.Paths
 import java.nio.charset.StandardCharsets

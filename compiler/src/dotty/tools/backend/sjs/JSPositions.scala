@@ -1,5 +1,7 @@
 package dotty.tools.backend.sjs
 
+import scala.language.unsafeNulls
+
 import java.net.{URI, URISyntaxException}
 
 import dotty.tools.dotc.core._

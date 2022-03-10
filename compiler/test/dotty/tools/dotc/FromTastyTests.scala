@@ -2,6 +2,8 @@ package dotty
 package tools
 package dotc
 
+import scala.language.unsafeNulls
+
 import org.junit.{AfterClass, Test}
 import vulpix._
 

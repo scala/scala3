@@ -32,7 +32,7 @@ scala> val name = UserName("Eve")
 val name: UserName = UserName(Eve)
 
 scala> if true then name else password
-val res2: Object & Product = UserName(Eve)
+val res2: Object = UserName(Eve)
 
 scala> val either: Password | UserName = if true then name else password
 val either: Password | UserName = UserName(Eve)

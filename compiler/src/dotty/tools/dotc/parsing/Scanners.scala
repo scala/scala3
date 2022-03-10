@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package parsing
 
+import scala.language.unsafeNulls
+
 import core.Names._, core.Contexts._, core.Decorators._, util.Spans._
 import core.StdNames._, core.Comments._
 import util.SourceFile
@@ -321,30 +323,27 @@ object Scanners {
       case _ =>
     }
 
-    /** Produce next token, filling TokenData fields of Scanner.
-     */
-    def nextToken(): Unit = {
-      val lastToken = token
-      adjustSepRegions(lastToken)
-
-      // Read a token or copy it from `next` tokenData
-      if (next.token == EMPTY) {
+    /** Read a token or copy it from `next` tokenData */
+    private def getNextToken(lastToken: Token): Unit =
+      if next.token == EMPTY then
         lastOffset = lastCharOffset
-        currentRegion match {
+        currentRegion match
           case InString(multiLine, _) if lastToken != STRINGPART => fetchStringPart(multiLine)
           case _ => fetchToken()
-        }
-        if (token == ERROR) adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
-      }
-      else {
+        if token == ERROR then adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
+      else
         this.copyFrom(next)
         next.token = EMPTY
-      }
 
-      if (isAfterLineEnd) handleNewLine(lastToken)
+    /** Produce next token, filling TokenData fields of Scanner.
+     */
+    def nextToken(): Unit =
+      val lastToken = token
+      adjustSepRegions(lastToken)
+      getNextToken(lastToken)
+      if isAfterLineEnd then handleNewLine(lastToken)
       postProcessToken()
       printState()
-    }
 
     final def printState() =
       if debugTokenStream && (showLookAheadOnDebug || !isInstanceOf[LookaheadScanner]) then
@@ -602,12 +601,10 @@ object Scanners {
         insert(OUTDENT, offset)
       case _ =>
 
-    def lookAhead() = {
+    def lookAhead() =
       prev.copyFrom(this)
-      lastOffset = lastCharOffset
-      fetchToken()
+      getNextToken(token)
       if token == END && !isEndMarker then token = IDENTIFIER
-    }
 
     def reset() = {
       next.copyFrom(this)

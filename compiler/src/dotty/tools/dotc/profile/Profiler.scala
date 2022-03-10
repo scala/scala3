@@ -1,5 +1,7 @@
 package dotty.tools.dotc.profile
 
+import scala.language.unsafeNulls
+
 import java.io.{FileWriter, PrintWriter}
 import java.lang.management.{ManagementFactory, GarbageCollectorMXBean, RuntimeMXBean, MemoryMXBean, ClassLoadingMXBean, CompilationMXBean}
 import java.util.concurrent.TimeUnit

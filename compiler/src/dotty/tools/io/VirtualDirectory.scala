@@ -4,6 +4,8 @@
 
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import scala.collection.mutable
 import java.io.{InputStream, OutputStream}
 /**

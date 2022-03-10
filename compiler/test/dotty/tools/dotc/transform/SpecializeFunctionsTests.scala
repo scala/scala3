@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package transform
 
+import scala.language.unsafeNulls
+
 import org.junit.Test
 
 import dotty.tools.backend.jvm.DottyBytecodeTest

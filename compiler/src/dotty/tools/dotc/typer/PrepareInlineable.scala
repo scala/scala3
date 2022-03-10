@@ -17,6 +17,7 @@ import NameKinds.{InlineAccessorName, UniqueInlineName}
 import NameOps._
 import Annotations._
 import transform.{AccessProxies, PCPCheckAndHeal, Splicer}
+import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
 import dotty.tools.dotc.transform.TreeMapWithStages._
@@ -61,13 +62,17 @@ object PrepareInlineable {
        *
        *  Constant vals don't need accessors since they are inlined in FirstTransform.
        *  Inline methods don't need accessors since they are inlined in Typer.
+       *
+       *  When creating accessors for staged/quoted code we only need to create accessors
+       *  for the code that is staged. This excludes code at level 0 (except if it is inlined).
        */
       def needsAccessor(sym: Symbol)(using Context): Boolean =
         sym.isTerm &&
         (sym.isOneOf(AccessFlags) || sym.privateWithin.exists) &&
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
-        !sym.isInlineMethod
+        !sym.isInlineMethod &&
+        (Inliner.inInlineMethod || StagingContext.level > 0)
 
       def preTransform(tree: Tree)(using Context): Tree
 
@@ -79,7 +84,14 @@ object PrepareInlineable {
       }
 
       override def transform(tree: Tree)(using Context): Tree =
-        postTransform(super.transform(preTransform(tree)))
+        inContext(stagingContext(tree)) {
+          postTransform(super.transform(preTransform(tree)))
+        }
+
+      private def stagingContext(tree: Tree)(using Context): Context = tree match
+        case tree: Apply if tree.symbol.isQuote => StagingContext.quoteContext
+        case tree: Apply if tree.symbol.isExprSplice => StagingContext.spliceContext
+        case _ => ctx
     }
 
     /** Direct approach: place the accessor with the accessed symbol. This has the

@@ -330,7 +330,7 @@ given eqProduct[A](using inst: K0.ProductInstances[Eq, A]): Eq[A] with
   )
 
 inline def derived[A](using gen: K0.Generic[A]): Eq[A] =
-  gen.derive(eqSum, eqProduct)
+  gen.derive(eqProduct, eqSum)
 ```
 
 The framework described here enables all three of these approaches without mandating any of them.

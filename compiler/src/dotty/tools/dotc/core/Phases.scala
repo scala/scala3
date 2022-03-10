@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._
-import parsing.{ Parser}
+import parsing.Parser
 import typer.{TyperPhase, RefChecks}
 import typer.ImportInfo.withRootImports
 import ast.tpd
@@ -344,7 +344,7 @@ object Phases {
     def initContext(ctx: FreshContext): Unit = ()
 
     private var myPeriod: Period = Periods.InvalidPeriod
-    private var myBase: ContextBase = null
+    private var myBase: ContextBase = _
     private var myErasedTypes = false
     private var myFlatClasses = false
     private var myRefChecked = false

@@ -1318,17 +1318,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         def searchImplicit(sym: TermSymbol, tpt: Tree) = {
           val evTyper = new Typer(ctx.nestingLevel + 1)
           val evCtx = ctx.fresh.setTyper(evTyper)
-          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
-          evidence.tpe match {
-            case fail: Implicits.AmbiguousImplicits =>
-              report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.srcPos)
-              true // hard error: return true to stop implicit search here
-            case fail: Implicits.SearchFailureType =>
-              false
-            case _ =>
-              //inlining.println(i"inferred implicit $sym: ${sym.info} with $evidence: ${evidence.tpe.widen}, ${evCtx.gadt.constraint}, ${evCtx.typerState.constraint}")
-              newTermBinding(sym, evidence)
-              true
+          inContext(evCtx) {
+            val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
+            evidence.tpe match {
+              case fail: Implicits.AmbiguousImplicits =>
+                report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.srcPos)
+                true // hard error: return true to stop implicit search here
+              case fail: Implicits.SearchFailureType =>
+                false
+              case _ =>
+                //inlining.println(i"inferred implicit $sym: ${sym.info} with $evidence: ${evidence.tpe.widen}, ${evCtx.gadt.constraint}, ${evCtx.typerState.constraint}")
+                newTermBinding(sym, evidence)
+                true
+            }
           }
         }
 
@@ -1364,7 +1366,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
                   // the binding is to be maximized iff it only occurs contravariantly in the type
                   val wasToBeMinimized: Boolean = {
                     val v = syms(trSym)
-                    if (v ne null) v else false
+                    if (v != null) v else false
                   }
                   syms.updated(trSym, wasToBeMinimized || variance >= 0 : java.lang.Boolean)
                 case _ =>
@@ -1540,7 +1542,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       ctx
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-      inlineIfNeeded(tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
+      val tree1 = inlineIfNeeded(
+          tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
+        )
+      tree1 match
+        case id: Ident if tpd.needsSelect(id.tpe) =>
+          inlining.println(i"expanding $id to selection")
+          ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
+        case _ =>
+          tree1
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))

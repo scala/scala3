@@ -1,6 +1,8 @@
 
 package dotty.tools.dotc.config
 
+import scala.language.unsafeNulls
+
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
 

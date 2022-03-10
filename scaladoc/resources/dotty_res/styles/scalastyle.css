@@ -560,9 +560,9 @@ footer .mode {
 
 .documentableElement .modifiers {
   display: table-cell;
-  min-width: 10em;
-  max-width: 10em;
-  width: 10em;
+  min-width: 10vw;
+  max-width: 10vw;
+  width: 10vw;
   overflow: hidden;
   text-align: right;
   white-space: nowrap;
@@ -846,6 +846,10 @@ footer .mode {
 
 .micon.de {
   content: url("../images/method.svg")
+}
+
+.micon.in {
+  content: url("../images/inkuire.svg")
 }
 
 #leftColumn .socials {

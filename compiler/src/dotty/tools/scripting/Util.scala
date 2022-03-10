@@ -1,5 +1,7 @@
 package dotty.tools.scripting
 
+import scala.language.unsafeNulls
+
 import java.nio.file.{ Path }
 import java.io.File
 import java.net.{ URLClassLoader }
