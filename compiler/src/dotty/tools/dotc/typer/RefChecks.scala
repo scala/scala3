@@ -305,7 +305,7 @@ object RefChecks {
       def info = self.memberInfo(sym1)
       val infoStr =
         if (sym1.isAliasType) i", which equals ${info.bounds.hi}"
-        else if (sym1.isAbstractOrParamType) i" with bounds$info"
+        else if (sym1.isAbstractOrParamType && info != TypeBounds.empty) i" with bounds$info"
         else if (sym1.is(Module)) ""
         else if (sym1.isTerm) i" of type $info"
         else ""
@@ -430,6 +430,10 @@ object RefChecks {
         // direct overrides were already checked on completion (see Checking.chckWellFormed)
         // the test here catches indirect overriddes between two inherited base types.
         overrideError("cannot be used here - class definitions cannot be overridden")
+      else if (other.isOpaqueAlias)
+        // direct overrides were already checked on completion (see Checking.chckWellFormed)
+        // the test here catches indirect overriddes between two inherited base types.
+        overrideError("cannot be used here - opaque type aliases cannot be overridden")
       else if (!other.is(Deferred) && member.isClass)
         overrideError("cannot be used here - classes can only override abstract types")
       else if other.isEffectivelyFinal then // (1.2)
