@@ -537,7 +537,7 @@ object Checking {
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
     checkCombination(Private, Override)
-    checkCombination(Private, Opaque)
+    if sym.isType && !sym.isClass then checkCombination(Private, Opaque)
     checkCombination(Lazy, Inline)
     // The issue with `erased inline` is that the erased semantics get lost
     // as the code is inlined and the reference is removed before the erased usage check.
