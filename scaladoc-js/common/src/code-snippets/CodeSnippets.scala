@@ -179,7 +179,7 @@ class CodeSnippets:
     val buttonsSection = getButtonsSection(snippet)
     buttonsSection.foreach(s =>
       s.appendChild(copyButton)
-      if !snippet.hasAttribute("hasContext") then {
+      if snippet.hasAttribute("runnable") then {
         s.appendChild(toScastieButton)
         s.appendChild(runButton)
         s.appendChild(exitButton)
