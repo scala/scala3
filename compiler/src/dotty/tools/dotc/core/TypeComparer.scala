@@ -133,10 +133,37 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   def necessarySubType(tp1: Type, tp2: Type): Boolean =
+    inline def followAlias[T](inline tp: Type)(inline default: T)(inline f: (TypeProxy, Symbol) => T): T =
+      tp match
+        case tp: (AppliedType | TypeRef) => f(tp, tp.typeSymbol)
+        case _ => default
+
+    @tailrec def aliasedSymbols(tp: Type, result: Set[Symbol] = Set.empty): Set[Symbol] =
+      followAlias(tp)(result) { (tp, sym) =>
+        if sym.isAliasType then aliasedSymbols(tp.superType, result + sym)
+        else if sym.exists && (sym ne AnyClass) then result + sym
+        else result
+      }
+
+    @tailrec def dealias(tp: Type, syms: Set[Symbol]): Type =
+      followAlias(tp)(NoType) { (tp, sym) =>
+        if syms contains sym then tp
+        else if sym.isAliasType then dealias(tp.superType, syms)
+        else NoType
+      }
+
     val saved = myNecessaryConstraintsOnly
     myNecessaryConstraintsOnly = true
-    try topLevelSubType(tp1, tp2)
-    finally myNecessaryConstraintsOnly = saved
+
+    try
+      val tryDealias = (tp2 ne tp1) && (tp2 ne WildcardType) && followAlias(tp1)(false) { (_, sym) => sym.isAliasType }
+      if tryDealias then
+        topLevelSubType(dealias(tp1, aliasedSymbols(tp2)) orElse tp1, tp2)
+      else
+        topLevelSubType(tp1, tp2)
+    finally
+      myNecessaryConstraintsOnly = saved
+  end necessarySubType
 
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
@@ -183,37 +210,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     try op finally comparedTypeLambdas = saved
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
-    inline def followAlias[T](inline tp: Type)(inline default: T)(inline f: (TypeProxy, Symbol) => T): T =
-      tp.stripAnnots.stripTypeVar match
-        case tp: (AppliedType | TypeRef) => f(tp, tp.typeSymbol)
-        case _ => default
-
-    @tailrec def dealias(tp: Type, syms: Set[Symbol]): Type =
-      followAlias(tp)(NoType) { (tp, sym) =>
-        if syms contains sym then tp
-        else if sym.isAliasType then dealias(tp.superType, syms)
-        else NoType
-      }
-
-    @tailrec def aliasedSymbols(tp: Type, result: Set[Symbol] = Set.empty): Set[Symbol] =
-      followAlias(tp)(result) { (tp, sym) =>
-        if sym.isAliasType then aliasedSymbols(tp.superType, result + sym)
-        else if sym.exists && (sym ne AnyClass) then result + sym
-        else result
-      }
-
-    val tp1dealiased = dealias(tp1, aliasedSymbols(tp2)) orElse tp1
-
     val savedApprox = approx
     val savedLeftRoot = leftRoot
     if (a == ApproxState.Fresh) {
       this.approx = ApproxState.None
-      this.leftRoot = tp1dealiased
+      this.leftRoot = tp1
     }
     else this.approx = a
-    try recur(tp1dealiased, tp2)
+    try recur(tp1, tp2)
     catch {
-      case ex: Throwable => handleRecursive("subtype", i"$tp1dealiased <:< $tp2", ex, weight = 2)
+      case ex: Throwable => handleRecursive("subtype", i"$tp1 <:< $tp2", ex, weight = 2)
     }
     finally {
       this.approx = savedApprox
@@ -411,14 +417,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case tp2: TypeParamRef =>
                 constraint.entry(tp2) match {
                   case TypeBounds(lo, hi) =>
-                    val aliasLo = tp1 != lo && info1.alias == lo
-                    val aliasHi = tp1 != hi && info1.alias == hi
+                    val aliasLo = (tp1 ne lo) && (info1.alias eq lo)
+                    val aliasHi = (tp1 ne hi) && (info1.alias eq hi)
                     if aliasLo || aliasHi then
                       constraint = constraint.updateEntry(tp2, TypeBounds(
                         if aliasLo then tp1 else lo,
                         if aliasHi then tp1 else hi))
                   case tp =>
-                    if tp1 != tp && info1.alias == tp then
+                    if (tp1 ne tp) && (info1.alias eq tp) then
                       constraint = constraint.updateEntry(tp2, tp1)
                 }
               case _ =>
@@ -1066,7 +1072,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       def isMatchingApply(tp1: Type): Boolean = tp1.widen match {
         case tp1 @ AppliedType(tycon1, args1) =>
           // We intentionally do not automatically dealias `tycon1` or `tycon2` here.
-          // `isSubType` already takes care of dealiasing type
+          // `necessarySubType` already takes care of dealiasing type
           // constructors when this can be done without affecting type
           // inference, doing it here would not only prevent code from compiling
           // but could also result in the wrong thing being inferred later, for example
