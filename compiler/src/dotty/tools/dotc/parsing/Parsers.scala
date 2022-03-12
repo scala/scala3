@@ -52,6 +52,9 @@ object Parsers {
   enum ParamOwner:
     case Class, Type, TypeParam, Def
 
+  enum ParseKind:
+    case Expr, Type, Pattern
+
   type StageKind = Int
   object StageKind {
     val None = 0
@@ -939,18 +942,19 @@ object Parsers {
     def infixOps(
         first: Tree, canStartOperand: Token => Boolean, operand: Location => Tree,
         location: Location,
-        isType: Boolean,
-        isOperator: => Boolean,
-        maybePostfix: Boolean = false): Tree = {
+        kind: ParseKind,
+        isOperator: => Boolean): Tree =
       val base = opStack
 
       def recur(top: Tree): Tree =
+        val isType = kind == ParseKind.Type
         if (isIdent && isOperator) {
-          val op = if (isType) typeIdent() else termIdent()
+          val op = if isType then typeIdent() else termIdent()
           val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
           colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
+          val maybePostfix = kind == ParseKind.Expr && in.postfixOpsEnabled
           if (maybePostfix && !canStartOperand(in.token)) {
             val topInfo = opStack.head
             opStack = opStack.tail
@@ -973,7 +977,7 @@ object Parsers {
         else top
 
       recur(first)
-    }
+    end infixOps
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
 
@@ -1525,8 +1529,7 @@ object Parsers {
     def infixType(): Tree = infixTypeRest(refinedType())
 
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere,
-        isType = true,
+      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg())
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
@@ -2218,10 +2221,8 @@ object Parsers {
         t
 
     def postfixExprRest(t: Tree, location: Location): Tree =
-      infixOps(t, in.canStartExprTokens, prefixExpr, location,
-        isType = false,
-        isOperator = !(location.inArgs && followingIsVararg()),
-        maybePostfix = true)
+      infixOps(t, in.canStartExprTokens, prefixExpr, location, ParseKind.Expr,
+        isOperator = !(location.inArgs && followingIsVararg()))
 
     /** PrefixExpr       ::= [PrefixOperator'] SimpleExpr
      *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
@@ -2708,8 +2709,8 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern,
-        isType = false,
+      infixOps(
+        simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern, ParseKind.Pattern,
         isOperator = in.name != nme.raw.BAR && !followingIsVararg())
 
     /** SimplePattern    ::= PatVar
