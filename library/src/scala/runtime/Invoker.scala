@@ -5,7 +5,9 @@ import scala.collection.concurrent.TrieMap
 import java.nio.file.Files
 import java.io.FileWriter
 import java.io.File
+import scala.annotation.internal.sharable
 
+@sharable // avoids false positive by -Ycheck-reentrant
 object Invoker {
   private val runtimeUUID = java.util.UUID.randomUUID()
 
