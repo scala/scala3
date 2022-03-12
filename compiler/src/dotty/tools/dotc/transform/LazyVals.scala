@@ -335,14 +335,14 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
    *             CAS(_x, lock, result)
    *             lock.release()
    *     else
-   *       if current.isInstanceOf[A] then
-   *         current.asInstanceOf[A]
+   *       if current.isInstanceOf[Evaluating] then
+   *         CAS(current, Evaluating, new Waiting)
    *       else if current.isInstanceOf[NULL] then
    *         null
    *       else if current.isInstanceOf[Waiting] then
    *         current.asInstanceOf[Waiting].awaitRelease()
-   *       else // `current` is Evaluating
-   *         CAS(current, Evaluating, new Waiting)
+   *       else
+   *         current.asInstanceOf[A]
    *   end while
    * ```
    * 
@@ -413,9 +413,9 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val current = newSymbol(methodSymbol, lazyNme.current, Synthetic, defn.ObjectType)
     val ifNotNull =
       If(
-        ref(current).select(defn.Any_isInstanceOf).appliedToType(if needsBoxing(tp) then boxIfCan(tp) else tp),
-        Return(ref(current).ensureConforms(tp), methodSymbol),
-        // not an A
+        ref(current).select(defn.Any_isInstanceOf).appliedToTypeTree(evaluating),
+        ref(discardSymb).ensureApplied,
+        // not an Evaluating
         If(
           ref(current).select(defn.Any_isInstanceOf).appliedToTypeTree(nullValued),
           Return(defaultValue(tp), methodSymbol),
@@ -423,8 +423,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
           If(
             ref(current).select(defn.Any_isInstanceOf).appliedToTypeTree(waiting),
             ref(current).select(defn.Any_asInstanceOf).appliedToTypeTree(waiting).select(lazyNme.RLazyVals.waitingAwaitRelease).ensureApplied,
-            // not a Waiting, then is an Evaluating
-            ref(discardSymb).ensureApplied
+            // not a Waiting, then is an A
+            Return(ref(current).ensureConforms(tp), methodSymbol)
           )
         )
       )
