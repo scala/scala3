@@ -1,3 +1,4 @@
+import language.postfixOps
 type Tr[+A]
 extension [A, B](tr: Tr[A]) inline def map(f: A => B): Tr[B] = ???
 
