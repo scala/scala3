@@ -176,7 +176,7 @@ class TabcompleteTests extends ReplTest {
                      |  case dot_product_*
                      |  case __system
                      |
-                     |Foo."""stripMargin))
+                     |Foo.""".stripMargin))
   }
 
 
@@ -192,7 +192,7 @@ class TabcompleteTests extends ReplTest {
                      |  case dot_product_*
                      |  case __system
                      |
-                     |Foo.`bac"""stripMargin))
+                     |Foo.`bac""".stripMargin))
   }
 
   @Test def commands = initially {
