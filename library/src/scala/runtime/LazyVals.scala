@@ -145,9 +145,9 @@ object LazyVals {
 
   def getOffset(clz: Class[_], name: String): Long = {
     if (debug)
-      clz.getDeclaredFields.foreach(println(_))
+      clz.getDeclaredFields.nn.foreach(println(_))
     val field = clz.getDeclaredField(name)
-    if java.lang.reflect.Modifier.isStatic(field.getModifiers()) then
+    if java.lang.reflect.Modifier.isStatic(field.nn.getModifiers()) then
       unsafe.staticFieldOffset(field)
     else
       unsafe.objectFieldOffset(field)

@@ -595,7 +595,7 @@ class TestBCode extends DottyBytecodeTest {
       val clsIn   = dir.lookupName("Test.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
-      assertEquals(94, instructionsFromMethod(method).size)
+      assertEquals(122, instructionsFromMethod(method).size)
     }
   }
 
