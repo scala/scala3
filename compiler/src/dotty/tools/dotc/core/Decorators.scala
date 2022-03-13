@@ -144,13 +144,13 @@ object Decorators {
      *  `xs` to themselves. Also, it is required that `ys` is at least
      *  as long as `xs`.
      */
-    def zipWithConserve[U](ys: List[U])(f: (T, U) => T): List[T] =
+    def zipWithConserve[U, V <: T](ys: List[U])(f: (T, U) => V): List[V] =
       if (xs.isEmpty || ys.isEmpty) Nil
       else {
         val x1 = f(xs.head, ys.head)
         val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
-        if ((x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) &&
-            (xs1 eq xs.tail)) xs
+        if (x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) && (xs1 eq xs.tail)
+          then xs.asInstanceOf[List[V]]
         else x1 :: xs1
       }
 
