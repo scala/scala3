@@ -334,6 +334,19 @@ class ReplCompilerTests extends ReplTest:
     assertEquals("scala.MatchError: hi (of class java.lang.String)", all.head)
   }
 
+  @Test def i14701 = initially {
+    val state = run("val _ = ???")
+    val all = lines()
+    assertEquals(3, all.length)
+    assertEquals("scala.NotImplementedError: an implementation is missing", all.head)
+    state
+  } andThen {
+    run("val _ = assert(false)")
+    val all = lines()
+    assertEquals(3, all.length)
+    assertEquals("java.lang.AssertionError: assertion failed", all.head)
+  }
+
   @Test def i14491 =
     initially {
       run("import language.experimental.fewerBraces")

@@ -142,11 +142,15 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   /** Force module initialization in the absence of members. */
   def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
+    import scala.util.control.NonFatal
     def load() =
       val objectName = sym.fullName.encode.toString
       Class.forName(objectName, true, classLoader())
       Nil
-    try load() catch case e: ExceptionInInitializerError => List(renderError(e, sym.denot))
+    try load()
+    catch
+      case e: ExceptionInInitializerError => List(renderError(e, sym.denot))
+      case NonFatal(e) => List(renderError(InvocationTargetException(e), sym.denot))
 
   /** Render the stack trace of the underlying exception. */
   def renderError(ite: InvocationTargetException | ExceptionInInitializerError, d: Denotation)(using Context): Diagnostic =
