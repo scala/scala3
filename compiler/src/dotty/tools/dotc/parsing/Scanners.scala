@@ -213,6 +213,15 @@ object Scanners {
         fewerBracesEnabledCtx = myLanguageImportContext
       fewerBracesEnabledCache
 
+    private var postfixOpsEnabledCache = false
+    private var postfixOpsEnabledCtx: Context = NoContext
+
+    def postfixOpsEnabled =
+      if postfixOpsEnabledCtx ne myLanguageImportContext then
+        postfixOpsEnabledCache = featureEnabled(nme.postfixOps)
+        postfixOpsEnabledCtx = myLanguageImportContext
+      postfixOpsEnabledCache
+
     /** All doc comments kept by their end position in a `Map`.
       *
       * Note: the map is necessary since the comments are looked up after an

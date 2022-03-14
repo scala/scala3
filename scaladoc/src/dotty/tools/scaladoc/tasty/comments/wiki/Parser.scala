@@ -461,7 +461,7 @@ final class Parser(
       stack.length > 0 && char != endOfText
     }) do {}
 
-    list mkString
+    list.mkString
   }
 
   def getInline(isInlineEnd: => Boolean, textTransform: String => String = identity): Inline = {

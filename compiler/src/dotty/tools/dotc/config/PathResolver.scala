@@ -30,7 +30,7 @@ object PathResolver {
   def ppcp(s: String): String = split(s) match {
     case Nil      => ""
     case Seq(x)   => x
-    case xs       => xs map ("\n" + _) mkString
+    case xs       => xs.map("\n" + _).mkString
   }
 
   /** Values found solely by inspecting environment or property variables.

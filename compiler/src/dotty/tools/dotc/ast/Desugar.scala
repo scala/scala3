@@ -1736,28 +1736,16 @@ object desugar {
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
         Apply(Select(Apply(scalaDot(nme.StringContext), strs), id).withSpan(tree.span), elems)
       case PostfixOp(t, op) =>
-        if ((ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR) {
+        if (ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR then
           if ctx.isJava then
             AppliedTypeTree(ref(defn.RepeatedParamType), t)
           else
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
-        }
-        else {
+        else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
-          if (!enabled(nme.postfixOps)) {
-            report.error(
-              s"""postfix operator `${op.name}` needs to be enabled
-                 |by making the implicit value scala.language.postfixOps visible.
-                 |----
-                 |This can be achieved by adding the import clause 'import scala.language.postfixOps'
-                 |or by setting the compiler option -language:postfixOps.
-                 |See the Scaladoc for value scala.language.postfixOps for a discussion
-                 |why the feature needs to be explicitly enabled.""".stripMargin, t.srcPos)
-          }
           Select(t, op.name)
-        }
       case PrefixOp(op, t) =>
         val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
         Select(t, nspace.UNARY_PREFIX ++ op.name)
