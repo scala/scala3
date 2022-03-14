@@ -140,11 +140,14 @@ class Pickler extends Phase {
   }
 
   private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(using Context) =
-    if (previous != unpickled) {
+    import java.nio.charset.StandardCharsets.UTF_8
+    def normal(s: String) = new String(s.getBytes(UTF_8), UTF_8)
+    val unequal = unpickled.length() != previous.length() || normal(unpickled) != normal(previous)
+    if unequal then
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
       report.error(s"""pickling difference for $cls in ${cls.source}, for details:
                    |
                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
-    }
+  end testSame
 }

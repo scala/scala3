@@ -696,6 +696,45 @@ object Scanners {
       recur(lastOffset, false)
     }
 
+    import Character.{isHighSurrogate, isLowSurrogate, isUnicodeIdentifierPart, isUnicodeIdentifierStart, isValidCodePoint, toCodePoint}
+
+    // f"\\u$c%04x" or f"${"\\"}u$c%04x"
+    private def toUnicode(c: Char): String = { val s = c.toInt.toHexString; "\\u" + "0" * (4 - s.length) + s }
+
+    // given char (ch) is high surrogate followed by low, codepoint passes predicate.
+    // true means supplementary chars were put to buffer.
+    // strict to require low surrogate (if not in string literal).
+    private def isSupplementary(high: Char, test: Int => Boolean, strict: Boolean = true): Boolean =
+      isHighSurrogate(high) && {
+        var res = false
+        nextChar()
+        val low = ch
+        if isLowSurrogate(low) then
+          nextChar()
+          val codepoint = toCodePoint(high, low)
+          if isValidCodePoint(codepoint) && test(codepoint) then
+            putChar(high)
+            putChar(low)
+            res = true
+          else
+            error(s"illegal character '${toUnicode(high)}${toUnicode(low)}'")
+        else if !strict then
+          putChar(high)
+          res = true
+        else
+          error(s"illegal character '${toUnicode(high)}' missing low surrogate")
+        res
+      }
+    private def atSupplementary(ch: Char, f: Int => Boolean): Boolean =
+      isHighSurrogate(ch) && {
+        val hi = ch
+        val lo = lookaheadChar()
+        isLowSurrogate(lo) && {
+          val codepoint = toCodePoint(hi, lo)
+          isValidCodePoint(codepoint) && f(codepoint)
+        }
+      }
+
     /** read next token, filling TokenData fields of Scanner.
      */
     protected final def fetchToken(): Unit = {
@@ -822,11 +861,12 @@ object Scanners {
             else ch match {
               case '{' | '[' | ' ' | '\t' if lookaheadChar() != '\'' =>
                 token = QUOTE
-              case _ if !isAtEnd && (ch != SU && ch != CR && ch != LF || isUnicodeEscape) =>
+              case _ if !isAtEnd && ch != SU && ch != CR && ch != LF =>
                 val isEmptyCharLit = (ch == '\'')
                 getLitChar()
                 if ch == '\'' then
                   if isEmptyCharLit then error("empty character literal (use '\\'' for single quote)")
+                  else if litBuf.length != 1 then error("illegal codepoint in Char constant: " + litBuf.toString.map(toUnicode).mkString("'", "", "'"))
                   else finishCharLit()
                 else if isEmptyCharLit then error("empty character literal")
                 else error("unclosed character literal")
@@ -869,9 +909,11 @@ object Scanners {
           def fetchOther() =
             if (ch == '\u21D2') {
               nextChar(); token = ARROW
+              report.deprecationWarning("The unicode arrow `⇒` is deprecated, use `=>` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
             }
             else if (ch == '\u2190') {
               nextChar(); token = LARROW
+              report.deprecationWarning("The unicode arrow `←` is deprecated, use `<-` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
             }
             else if (Character.isUnicodeIdentifierStart(ch)) {
               putChar(ch)
@@ -883,9 +925,10 @@ object Scanners {
               nextChar()
               getOperatorRest()
             }
+            else if isSupplementary(ch, isUnicodeIdentifierStart) then
+              getIdentRest()
             else {
-              // FIXME: Dotty deviation: f"" interpolator is not supported (#1814)
-              error("illegal character '\\u%04x'".format(ch: Int))
+              error(s"illegal character '${toUnicode(ch)}'")
               nextChar()
             }
           fetchOther()
@@ -1024,11 +1067,12 @@ object Scanners {
       case SU => // strangely enough, Character.isUnicodeIdentifierPart(SU) returns true!
         finishNamed()
       case _ =>
-        if (Character.isUnicodeIdentifierPart(ch)) {
+        if isUnicodeIdentifierPart(ch) then
           putChar(ch)
           nextChar()
           getIdentRest()
-        }
+        else if isSupplementary(ch, isUnicodeIdentifierPart) then
+          getIdentRest()
         else
           finishNamed()
     }
@@ -1111,7 +1155,7 @@ object Scanners {
       }
 
     // for interpolated strings
-    @annotation.tailrec private def getStringPart(multiLine: Boolean): Unit =
+    @tailrec private def getStringPart(multiLine: Boolean): Unit =
       if (ch == '"')
         if (multiLine) {
           nextRawChar()
@@ -1136,6 +1180,28 @@ object Scanners {
         getStringPart(multiLine)
       }
       else if (ch == '$') {
+        def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
+          @tailrec def loopRest(): Unit =
+            if ch != SU && isUnicodeIdentifierPart(ch) then
+              putChar(ch) ; nextRawChar()
+              loopRest()
+            else if atSupplementary(ch, isUnicodeIdentifierPart) then
+              putChar(ch) ; nextRawChar()
+              putChar(ch) ; nextRawChar()
+              loopRest()
+            else
+              finishNamedToken(IDENTIFIER, target = next)
+          end loopRest
+          setStrVal()
+          token = STRINGPART
+          next.lastOffset = charOffset - 1
+          next.offset = charOffset - 1
+          putChar(ch) ; nextRawChar()
+          if hasSupplement then
+            putChar(ch) ; nextRawChar()
+          loopRest()
+        end getInterpolatedIdentRest
+
         nextRawChar()
         if (ch == '$' || ch == '"') {
           putChar(ch)
@@ -1146,18 +1212,10 @@ object Scanners {
           setStrVal()
           token = STRINGPART
         }
-        else if (Character.isUnicodeIdentifierStart(ch) || ch == '_') {
-          setStrVal()
-          token = STRINGPART
-          next.lastOffset = charOffset - 1
-          next.offset = charOffset - 1
-          while
-            putChar(ch)
-            nextRawChar()
-            ch != SU && Character.isUnicodeIdentifierPart(ch)
-          do ()
-          finishNamedToken(IDENTIFIER, target = next)
-        }
+        else if isUnicodeIdentifierStart(ch) || ch == '_' then
+          getInterpolatedIdentRest(hasSupplement = false)
+        else if atSupplementary(ch, isUnicodeIdentifierStart) then
+          getInterpolatedIdentRest(hasSupplement = true)
         else
           error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected", off = charOffset - 2)
           putChar('$')
@@ -1205,76 +1263,73 @@ object Scanners {
         false
       }
 
-    /** copy current character into litBuf, interpreting any escape sequences,
-     *  and advance to next character.
+    /** Copy current character into cbuf, interpreting any escape sequences,
+     *  and advance to next character. Surrogate pairs are consumed (see check
+     *  at fetchSingleQuote), but orphan surrogate is allowed.
      */
     protected def getLitChar(): Unit =
-      def invalidUnicodeEscape() = {
-        error("invalid character in unicode escape sequence", charOffset - 1)
-        putChar(ch)
-      }
-      def putUnicode(): Unit = {
-        while ch == 'u' || ch == 'U' do nextChar()
-        var i = 0
-        var cp = 0
-        while (i < 4) {
-          val shift = (3 - i) * 4
-          val d = digit2int(ch, 16)
-          if(d < 0) {
-            return invalidUnicodeEscape()
-          }
-          cp += (d << shift)
-          nextChar()
-          i += 1
-        }
-        putChar(cp.asInstanceOf[Char])
-      }
-      if (ch == '\\') {
+      if ch == '\\' then
         nextChar()
-        if ('0' <= ch && ch <= '7') {
-          val start = charOffset - 2
-          val leadch: Char = ch
-          var oct: Int = digit2int(ch, 8)
-          nextChar()
-          if ('0' <= ch && ch <= '7') {
-            oct = oct * 8 + digit2int(ch, 8)
-            nextChar()
-            if (leadch <= '3' && '0' <= ch && ch <= '7') {
-              oct = oct * 8 + digit2int(ch, 8)
-              nextChar()
-            }
-          }
-          val alt = if oct == LF then raw"\n" else f"${"\\"}u$oct%04x"
-          error(s"octal escape literals are unsupported: use $alt instead", start)
-          putChar(oct.toChar)
-        }
-        else if (ch == 'u' || ch == 'U') {
-          putUnicode()
-        }
-        else {
-          ch match {
-            case 'b'  => putChar('\b')
-            case 't'  => putChar('\t')
-            case 'n'  => putChar('\n')
-            case 'f'  => putChar('\f')
-            case 'r'  => putChar('\r')
-            case '\"' => putChar('\"')
-            case '\'' => putChar('\'')
-            case '\\' => putChar('\\')
-            case _    => invalidEscape()
-          }
-          nextChar()
-        }
-      }
-      else {
+        charEscape()
+      else if !isSupplementary(ch, _ => true, strict = false) then
         putChar(ch)
         nextChar()
-      }
 
-    protected def invalidEscape(): Unit = {
+    private def charEscape(): Unit =
+      var bump = true
+      ch match
+        case 'b'  => putChar('\b')
+        case 't'  => putChar('\t')
+        case 'n'  => putChar('\n')
+        case 'f'  => putChar('\f')
+        case 'r'  => putChar('\r')
+        case '\"' => putChar('\"')
+        case '\'' => putChar('\'')
+        case '\\' => putChar('\\')
+        case 'u' |
+             'U'  => uEscape(); bump = false
+        case x if '0' <= x && x <= '7' => octalEscape(); bump = false
+        case _    => invalidEscape()
+      if bump then nextChar()
+    end charEscape
+
+    private def uEscape(): Unit =
+      while ch == 'u' || ch == 'U' do nextChar()
+      var i  = 0
+      var cp = 0
+      while i < 4 do
+        val digit = digit2int(ch, 16)
+        if digit < 0 then
+          error("invalid character in unicode escape sequence", charOffset - 1)
+          putChar(ch)
+          return
+        val shift = (3 - i) * 4
+        cp += digit << shift
+        nextChar()
+        i += 1
+      end while
+      putChar(cp.asInstanceOf[Char])
+    end uEscape
+
+    private def octalEscape(): Unit =
+      val start = charOffset - 2
+      val leadch: Char = ch
+      var oct: Int = digit2int(ch, 8)
+      nextChar()
+      if '0' <= ch && ch <= '7' then
+        oct = oct * 8 + digit2int(ch, 8)
+        nextChar()
+        if leadch <= '3' && '0' <= ch && ch <= '7' then
+          oct = oct * 8 + digit2int(ch, 8)
+          nextChar()
+      val alt = if oct == LF then raw"\n" else toUnicode(oct.toChar)
+      error(s"octal escape literals are unsupported: use $alt instead", start)
+      putChar(oct.toChar)
+    end octalEscape
+
+    protected def invalidEscape(): Unit =
       error("invalid escape character", charOffset - 1)
       putChar(ch)
-    }
 
     private def getLitChars(delimiter: Char) =
       while (ch != delimiter && !isAtEnd && (ch != SU && ch != CR && ch != LF || isUnicodeEscape))
