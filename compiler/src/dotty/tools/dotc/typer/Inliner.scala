@@ -597,7 +597,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   def addOpaqueProxies(tp: Type, span: Span, forThisProxy: Boolean)(using Context): Unit =
     tp.foreachPart {
       case ref: TermRef =>
-        for cls <- ref.widen.classSymbols do
+        for cls <- ref.widen.baseClasses do
           if cls.containsOpaques
              && (forThisProxy || inlinedMethod.isContainedIn(cls))
              && mapRef(ref).isEmpty
