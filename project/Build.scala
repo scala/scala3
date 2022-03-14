@@ -164,6 +164,7 @@ object Build {
     organizationName := "LAMP/EPFL",
     organizationHomepage := Some(url("http://lamp.epfl.ch")),
 
+    // Note: bench/profiles/projects.yml should be updated accordingly.
     scalacOptions ++= Seq(
       "-feature",
       "-deprecation",
