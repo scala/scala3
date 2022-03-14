@@ -171,7 +171,7 @@ object Build {
       "-unchecked",
       "-Xfatal-warnings",
       "-encoding", "UTF8",
-      "-language:existentials,higherKinds,implicitConversions"
+      "-language:implicitConversions"
     ),
 
     (Compile / compile / javacOptions) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
@@ -770,6 +770,7 @@ object Build {
       )
     },
 
+    // Note: bench/profiles/projects.yml should be updated accordingly.
     Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
 
     repl := (Compile / console).value,

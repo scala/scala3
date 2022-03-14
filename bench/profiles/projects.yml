@@ -26,7 +26,7 @@ charts:
 
 scripts:
     dotty:
-        - measure -feature -deprecation -unchecked -Xfatal-warnings -encoding UTF8 -language:existentials,higherKinds,implicitConversions,postfixOps -Yexplicit-nulls -with-compiler $(find $PROG_HOME/dotty/compiler/src/dotty -name *.scala -o -name *.java)
+        - measure -feature -deprecation -unchecked -Xfatal-warnings -encoding UTF8 -language:implicitConversions -Yexplicit-nulls -with-compiler $(find $PROG_HOME/dotty/compiler/src/dotty -name *.scala -o -name *.java)
 
     re2s:
         - measure $(find $PROG_HOME/tests/re2s/src -name *.scala)
