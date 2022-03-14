@@ -138,5 +138,41 @@ class SyntaxHighlightingTests extends DottyTest {
     test("val inline = 2", "<K|val> <V|inline> = <L|2>")
     test("def inline = 2", "<K|def> <V|inline> = <L|2>")
     test("def foo(inline: Int) = 2", "<K|def> <V|foo>(<V|inline>: <T|Int>) = <L|2>")
+    test(
+      """enum Foo:
+        |  case foo
+        |end Foo""".stripMargin,
+      """<K|enum> <T|Foo>:
+        |  <K|case> <T|foo>
+        |<K|end> <T|Foo>""".stripMargin
+    )
+    test(
+      """class Foo:
+        |end Foo""".stripMargin,
+      """<K|class> <T|Foo>:
+        |<K|end> <T|Foo>""".stripMargin
+    )
+    test(
+      """object Foo:
+        |end Foo""".stripMargin,
+      """<K|object> <T|Foo>:
+        |<K|end> <T|Foo>""".stripMargin
+    )
+    test(
+      """def foo =
+        |  ()
+        |end foo""".stripMargin,
+      """<K|def> <V|foo> =
+        |  ()
+        |<K|end> <V|foo>""".stripMargin
+    )
+    test(
+      """val foo =
+        |  ()
+        |end foo""".stripMargin,
+      """<K|val> <V|foo> =
+        |  ()
+        |<K|end> <V|foo>""".stripMargin
+    )
   }
 }
