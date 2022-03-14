@@ -1,9 +1,5 @@
-package example 
+package covtest
 
-/**
-  * Structural Types: https://dotty.epfl.ch/docs/reference/changed-features/structural-types.html
-  * Taken from https://github.com/scala/scala3-example-project
-  */
 object StructuralTypes:
 
   case class Record(elems: (String, Any)*) extends Selectable:
@@ -11,19 +7,8 @@ object StructuralTypes:
 
   type Person = Record {
     val name: String
-    val age: Int
   }
 
-  val person = Record("name" -> "Emma", "age" -> 42, "salary" -> 320L).asInstanceOf[Person]
-
-  val invalidPerson = Record("name" -> "John", "salary" -> 42).asInstanceOf[Person]
-
   def test(): Unit =
-    println(person.name)
-    println(person.age)
-
-    println(invalidPerson.name)
-    // age field is java.util.NoSuchElementException: None.get
-    //println(invalidPerson.age)
-
-end StructuralTypes
+    val person = Record("name" -> "Emma", "age" -> 42).asInstanceOf[Person]
+    person.name

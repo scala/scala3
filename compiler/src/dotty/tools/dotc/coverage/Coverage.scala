@@ -4,7 +4,7 @@ package coverage
 import scala.collection.mutable
 
 class Coverage:
-  private val statementsById = mutable.Map[Int, Statement]()
+  private val statementsById = new mutable.LongMap[Statement](256)
 
   def statements: Iterable[Statement] = statementsById.values
 

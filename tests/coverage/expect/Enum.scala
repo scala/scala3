@@ -1,4 +1,4 @@
-package example
+package covtest
 
 /**
   * Enum Types: https://dotty.epfl.ch/docs/reference/enums/adts.html
@@ -6,10 +6,9 @@ package example
   */
 object  EnumTypes:
 
-  enum ListEnum[+A]: 
+  enum ListEnum[+A]:
     case Cons(h: A, t: ListEnum[A])
     case Empty
-  
 
   enum Planet(mass: Double, radius: Double):
     private final val G = 6.67300E-11

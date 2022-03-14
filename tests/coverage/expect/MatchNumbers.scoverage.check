@@ -1,0 +1,105 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+1
+tests/coverage/expect/MatchNumbers.scala
+covtest
+MatchNumbers$
+Class
+covtest.MatchNumbers$
+f
+125
+126
+6
+<none>
+Literal
+false
+0
+false
+0
+
+2
+tests/coverage/expect/MatchNumbers.scala
+covtest
+MatchNumbers$
+Class
+covtest.MatchNumbers$
+f
+121
+126
+6
+<
+Apply
+false
+0
+false
+x < 0
+
+3
+tests/coverage/expect/MatchNumbers.scala
+covtest
+MatchNumbers$
+Class
+covtest.MatchNumbers$
+f
+130
+132
+6
+<none>
+Literal
+false
+0
+false
+-1
+
+4
+tests/coverage/expect/MatchNumbers.scala
+covtest
+MatchNumbers$
+Class
+covtest.MatchNumbers$
+<init>
+185
+189
+10
+f
+Apply
+false
+0
+false
+f(0)
+
+5
+tests/coverage/expect/MatchNumbers.scala
+covtest
+MatchNumbers$
+Class
+covtest.MatchNumbers$
+<init>
+192
+197
+11
+f
+Apply
+false
+0
+false
+f(1L)
+

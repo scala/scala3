@@ -161,7 +161,7 @@ object LiftCoverage extends LiftComplex {
 
   private val LiftEverything = new Property.Key[Boolean]
 
-  private def liftEverything(using Context): Boolean =
+  private inline def liftEverything(using Context): Boolean =
     ctx.property(LiftEverything).contains(true)
 
   private def liftEverythingContext(using Context): Context =

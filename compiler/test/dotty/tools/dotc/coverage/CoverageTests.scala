@@ -1,75 +1,63 @@
 package dotty.tools.dotc.coverage
 
-import java.util.stream.Collectors
-import org.junit.Assert._
-import dotty.BootstrappedOnlyTests
-import org.junit.experimental.categories.Category
 import org.junit.Test
-import java.nio.file.Files
-import dotty.tools.dotc.Main
-import scala.jdk.CollectionConverters._
+import org.junit.Assert.*
+import org.junit.experimental.categories.Category
 
-import java.io.File
+import dotty.BootstrappedOnlyTests
+import dotty.tools.dotc.Main
+
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.FileSystems
 import java.nio.file.Paths
-import java.nio.charset.StandardCharsets
-import scala.io.Source
-import java.io.BufferedOutputStream
-import java.io.FileOutputStream
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.StandardCopyOption
 
 @main def updateExpect =
-  CoverageTests().runExpectTest(updateExpectFiles = true)
+  CoverageTests().runExpectTest(updateCheckfiles = true)
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
-class CoverageTests {
+class CoverageTests:
 
-  val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
-  val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.coverage.test"))
-  val expectSrc = rootSrc.resolve("expect")
+  private val scalaFile = FileSystems.getDefault.nn.getPathMatcher("glob:**.scala").nn
+  private val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.coverage.test")).nn
+  private val expectDir = rootSrc.resolve("expect").nn
 
   @Category(Array(classOf[dotty.SlowTests]))
   @Test def expectTests: Unit =
-    if (!scala.util.Properties.isWin) runExpectTest(updateExpectFiles = false)
+    runExpectTest(dotty.Properties.testsUpdateCheckfile)
 
-  def runExpectTest(updateExpectFiles: Boolean): Unit = {
-    val target = generateCoverage(updateExpectFiles)
-    val input = Source.fromFile(new File(target.toString, "scoverage.coverage"))
-    val expectFile = new File(expectSrc.resolveSibling("scoverage.coverage.expect").toUri)
+  /** Runs the tests */
+  def runExpectTest(updateCheckfiles: Boolean): Unit =
+    val sourceRoot = if updateCheckfiles then "../" else "."
 
-    if (updateExpectFiles) {
-      val outputStream = new BufferedOutputStream(new FileOutputStream(expectFile))
-      try {
-        input.foreach(outputStream.write(_))
-      } finally outputStream.close
-    } else {
-      val expected = new String(Files.readAllBytes(expectFile.toPath), StandardCharsets.UTF_8)
-      val obtained = input.mkString
+    Files.walk(expectDir).nn.filter(scalaFile.matches).nn.forEach(p => {
+      val path = p.nn
+      val fileName = path.getFileName.nn.toString.nn.stripSuffix(".scala")
+      val targetDir = computeCoverageInTmp(Seq(path), sourceRoot).nn
+      val targetFile = targetDir.resolve(s"scoverage.coverage").nn
+      val expectFile = expectDir.resolve(s"$fileName.scoverage.check").nn
 
-      assertEquals(expected, obtained)
-    }
-  }
+      if updateCheckfiles then
+        Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
+      else
+        val expected = new String(Files.readAllBytes(expectFile), UTF_8)
+        val obtained = new String(Files.readAllBytes(targetFile), UTF_8)
+        assertEquals(expected, obtained)
 
-  def inputFiles(): List[Path] = {
-    val ls = Files.walk(expectSrc)
-    val files =
-      try ls.filter(p => scalaFile.matches(p)).collect(Collectors.toList).asScala
-      finally ls.close()
+    })
 
-    files.toList
-  }
-
-  def generateCoverage(updateExpectFiles: Boolean): Path = {
+  /** Generates the coverage report for the given input file, in a temporary directory. */
+  def computeCoverageInTmp(inputFiles: Seq[Path], sourceRoot: String): Path =
     val target = Files.createTempDirectory("coverage")
     val args = Array(
-      "-coverage",
+      "-coverage-out",
       target.toString,
       "-coverage-sourceroot",
-      if (updateExpectFiles) "../" else ".",
+      sourceRoot,
       "-usejavacp"
-    ) ++ inputFiles().map(_.toString)
+    ) ++ inputFiles.map(_.toString)
     val exit = Main.process(args)
-    assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
-    target
-  }
-}
+    assertFalse(s"Compilation failed, ${exit.errorCount} errors", exit.hasErrors)
+    target.nn

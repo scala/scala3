@@ -1,0 +1,224 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+1
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+test
+183
+191
+10
+==
+Apply
+false
+0
+false
+3 == "3"
+
+2
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+test
+175
+192
+10
+println
+Apply
+false
+0
+false
+println(3 == "3")
+
+3
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+test
+205
+213
+11
+==
+Apply
+false
+0
+false
+3 == 5.1
+
+4
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+test
+197
+214
+11
+println
+Apply
+false
+0
+false
+println(3 == 5.1)
+
+5
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+printContext
+280
+292
+14
+println
+Apply
+false
+0
+false
+println(msg)
+
+6
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+printContext
+297
+312
+15
+println
+Apply
+false
+0
+false
+println(ctx.id)
+
+7
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+getMessage
+349
+359
+17
+toString
+Apply
+false
+0
+false
+i.toString
+
+8
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+test2
+510
+511
+21
+<none>
+Literal
+false
+0
+false
+0
+
+9
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+test2
+502
+512
+21
+<init>
+Apply
+false
+0
+false
+Context(0)
+
+10
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+test2
+517
+546
+22
+printContext
+Apply
+false
+0
+false
+printContext("test")(using c)
+
+11
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+test2
+564
+579
+23
+getMessage
+Apply
+false
+0
+false
+getMessage(123)
+
+12
+tests/coverage/expect/Givens.scala
+covtest
+Givens$
+Class
+covtest.Givens$
+test2
+551
+580
+23
+printContext
+Apply
+false
+0
+false
+printContext(getMessage(123))
+

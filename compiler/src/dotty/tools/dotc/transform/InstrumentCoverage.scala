@@ -15,11 +15,9 @@ import dotty.tools.dotc.coverage.Location
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Decorators.toTermName
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.{SourcePosition, Property}
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.typer.LiftCoverage
-
-import scala.quoted
 
 /** Implements code coverage by inserting calls to scala.runtime.Invoker
   * ("instruments" the source code).
@@ -51,28 +49,39 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     val dataDir = new File(outputPath)
     val newlyCreated = dataDir.mkdirs()
 
-    if (!newlyCreated) {
+    if !newlyCreated then
       // If the directory existed before, let's clean it up.
-      dataDir.listFiles
-        .filter(_.getName.startsWith("scoverage"))
-        .foreach(_.delete)
-    }
-
+      dataDir.listFiles.nn
+        .filter(_.nn.getName.nn.startsWith("scoverage"))
+        .foreach(_.nn.delete())
+    end if
     super.run
 
     Serializer.serialize(coverage, outputPath, ctx.settings.coverageSourceroot.value)
 
   override protected def newTransformer(using Context) = CoverageTransormer()
 
+  /** Transforms trees to insert calls to Invoker.invoked to compute the coverage when the code is called */
   private class CoverageTransormer extends Transformer:
+    private val IgnoreLiterals = new Property.Key[Boolean]
 
-    override def transform(tree: Tree)(using Context): Tree =
-      println(tree.show + tree.toString)
+    private def ignoreLiteralsContext(using ctx: Context): Context =
+      ctx.fresh.setProperty(IgnoreLiterals, true)
+
+    override def transform(tree: Tree)(using ctx: Context): Tree =
       tree match
         // simple cases
-        case tree: (Literal | Import | Export) => tree
-        case tree: (New | This | Super) => instrument(tree)
+        case tree: (Import | Export | This | Super | New) => tree
         case tree if (tree.isEmpty || tree.isType) => tree // empty Thicket, Ident, TypTree, ...
+
+        // Literals must be instrumented (at least) when returned by a def,
+        // otherwise `def d = "literal"` is not covered when called from a test.
+        // They can be left untouched when passed in a parameter of an Apply.
+        case tree: Literal =>
+          if ctx.property(IgnoreLiterals).contains(true) then
+            tree
+          else
+            instrument(tree)
 
         // branches
         case tree: If =>
@@ -88,28 +97,42 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             finalizer = instrument(transform(tree.finalizer), true)
           )
 
+        // a.f(args)
+        case tree @ Apply(fun: Select, args) =>
+          // don't transform the first Select, but do transform `a.b` in `a.b.f(args)`
+          val transformedFun = cpy.Select(fun)(transform(fun.qualifier), fun.name)
+          if needsLift(tree) then
+            val transformed = cpy.Apply(tree)(transformedFun, args) // args will be transformed in instrumentLifted
+            instrumentLifted(transformed)(using ignoreLiteralsContext)
+          else
+            val transformed = cpy.Apply(tree)(transformedFun, transform(args))
+            instrument(transformed)(using ignoreLiteralsContext)
+
         // f(args)
         case tree: Apply =>
           if needsLift(tree) then
-            liftApply(tree)
+            instrumentLifted(tree)(using ignoreLiteralsContext) // see comment about Literals
           else
-            super.transform(tree)
+            instrument(super.transform(tree)(using ignoreLiteralsContext))
 
         // (f(x))[args]
-        case tree @ TypeApply(fun: Apply, args) =>
+        case TypeApply(fun: Apply, args) =>
           cpy.TypeApply(tree)(transform(fun), args)
 
         // a.b
-        case Select(qual, _) if (qual.symbol.exists && qual.symbol.is(JavaDefined)) =>
-          //Java class can't be used as a value, we can't instrument the
-          //qualifier ({<Probe>;System}.xyz() is not possible !) instrument it
-          //as it is
-          instrument(tree)
-        case tree: Select =>
-          if tree.qualifier.isInstanceOf[New] then
+        case Select(qual, name) =>
+          if qual.symbol.exists && qual.symbol.is(JavaDefined) then
+            //Java class can't be used as a value, we can't instrument the
+            //qualifier ({<Probe>;System}.xyz() is not possible !) instrument it
+            //as it is
             instrument(tree)
           else
-            cpy.Select(tree)(transform(tree.qualifier), tree.name)
+            val transformed = cpy.Select(tree)(transform(qual), name)
+            if transformed.qualifier.isDef then
+              // instrument calls to methods without parameter list
+              instrument(transformed)
+            else
+              transformed
 
         case tree: CaseDef => instrumentCaseDef(tree)
         case tree: ValDef =>
@@ -120,6 +143,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           // only transform the statements of the package
           cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
         case tree: Assign =>
+          // only transform the rhs
           cpy.Assign(tree)(tree.lhs, transform(tree.rhs))
         case tree: Template =>
           // Don't instrument the parents (extends) of a template since it
@@ -131,13 +155,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
         // For everything else just recurse and transform
         case _ =>
-          report.warning(
-            "Unmatched: " + tree.getClass + " " + tree.symbol,
-             tree.sourcePos
-          )
           super.transform(tree)
 
-    def liftApply(tree: Apply)(using Context) =
+    def instrumentLifted(tree: Apply)(using Context) =
       val buffer = mutable.ListBuffer[Tree]()
       // NOTE: that if only one arg needs to be lifted, we just lift everything
       val lifted = LiftCoverage.liftForCoverage(buffer, tree)
@@ -170,10 +190,10 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           id = id,
           start = pos.start,
           end = pos.end,
-          line = ctx.source.offsetToLine(pos.point),
+          line = pos.line,
           desc = tree.source.content.slice(pos.start, pos.end).mkString,
           symbolName = tree.symbol.name.toSimpleName.toString(),
-          treeName = tree.getClass.getSimpleName,
+          treeName = tree.getClass.getSimpleName.nn,
           branch
         )
         coverage.addStatement(statement)
@@ -209,8 +229,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       val fun = tree.fun
 
       fun.isInstanceOf[Apply] || // nested apply
-      !isBooleanOperator(fun) ||
-      !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      !isBooleanOperator(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
 
 object InstrumentCoverage:
   val name: String = "instrumentCoverage"

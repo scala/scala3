@@ -1,0 +1,139 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+1
+tests/coverage/expect/Select.scala
+covtest
+A
+Class
+covtest.A
+print
+82
+94
+6
+println
+Apply
+false
+0
+false
+println("A")
+
+2
+tests/coverage/expect/Select.scala
+covtest
+B
+Class
+covtest.B
+print
+166
+179
+11
+print
+Apply
+false
+0
+false
+super.print()
+
+3
+tests/coverage/expect/Select.scala
+covtest
+B
+Class
+covtest.B
+print
+184
+206
+12
+println
+Apply
+false
+0
+false
+println(this.instance)
+
+4
+tests/coverage/expect/Select.scala
+covtest
+Select$package$
+Class
+covtest.Select$package$
+test
+237
+240
+15
+<init>
+Apply
+false
+0
+false
+A()
+
+5
+tests/coverage/expect/Select.scala
+covtest
+Select$package$
+Class
+covtest.Select$package$
+test
+254
+259
+16
+<init>
+Apply
+false
+0
+false
+new A
+
+6
+tests/coverage/expect/Select.scala
+covtest
+Select$package$
+Class
+covtest.Select$package$
+test
+263
+281
+18
+print
+Apply
+false
+0
+false
+a.instance.print()
+
+7
+tests/coverage/expect/Select.scala
+covtest
+Select$package$
+Class
+covtest.Select$package$
+test
+345
+354
+19
+print
+Apply
+false
+0
+false
+a.print()
+

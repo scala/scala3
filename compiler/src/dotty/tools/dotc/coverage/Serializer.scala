@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package coverage
 
-import java.io._
-
-import scala.io.Source
+import java.nio.file.{Path, Paths, Files}
+import java.io.Writer
+import scala.language.unsafeNulls
 
 /**
  * Serializes scoverage data.
@@ -16,19 +16,22 @@ object Serializer:
 
   /** Write out coverage data to the given data directory, using the default coverage filename */
   def serialize(coverage: Coverage, dataDir: String, sourceRoot: String): Unit =
-    serialize(coverage, coverageFile(dataDir), new File(sourceRoot))
+    serialize(coverage, Paths.get(dataDir, CoverageFileName).toAbsolutePath, Paths.get(sourceRoot).toAbsolutePath)
 
-  /** Write out coverage data to given file. */
-  def serialize(coverage: Coverage, file: File, sourceRoot: File): Unit =
-    val writer = BufferedWriter(FileWriter(file))
-    serialize(coverage, writer, sourceRoot)
-    writer.close()
+  /** Write out coverage data to a file. */
+  def serialize(coverage: Coverage, file: Path, sourceRoot: Path): Unit =
+    val writer = Files.newBufferedWriter(file)
+    try
+      serialize(coverage, writer, sourceRoot)
+    finally
+      writer.close()
 
-  def serialize(coverage: Coverage, writer: Writer, sourceRoot: File): Unit =
+  /** Write out coverage data (info about each statement that can be covered) to a writer.
+   */
+  def serialize(coverage: Coverage, writer: Writer, sourceRoot: Path): Unit =
 
     def getRelativePath(filePath: String): String =
-      val base = sourceRoot.getCanonicalFile().toPath()
-      val relPath = base.relativize(File(filePath).getCanonicalFile().toPath())
+      val relPath = sourceRoot.relativize(Paths.get(filePath).toAbsolutePath)
       relPath.toString
 
     def writeHeader(writer: Writer): Unit =
@@ -78,6 +81,3 @@ object Serializer:
     coverage.statements.toSeq
       .sortBy(_.id)
       .foreach(stmt => writeStatement(stmt, writer))
-
-  def coverageFile(dataDir: File): File = coverageFile(dataDir.getAbsolutePath)
-  def coverageFile(dataDir: String): File = File(dataDir, CoverageFileName)

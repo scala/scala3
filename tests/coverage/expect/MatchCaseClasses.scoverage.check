@@ -1,0 +1,139 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+1
+tests/coverage/expect/MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Class
+covtest.MatchCaseClasses$
+f
+151
+163
+7
+println
+Apply
+false
+0
+false
+println("a")
+
+2
+tests/coverage/expect/MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Class
+covtest.MatchCaseClasses$
+f
+184
+196
+8
+println
+Apply
+false
+0
+false
+println("b")
+
+3
+tests/coverage/expect/MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Class
+covtest.MatchCaseClasses$
+f
+225
+237
+9
+println
+Apply
+false
+0
+false
+println("c")
+
+4
+tests/coverage/expect/MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Class
+covtest.MatchCaseClasses$
+f
+275
+285
+11
+println
+Apply
+false
+0
+false
+println(y)
+
+5
+tests/coverage/expect/MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Class
+covtest.MatchCaseClasses$
+f
+292
+304
+12
+println
+Apply
+false
+0
+false
+println("d")
+
+6
+tests/coverage/expect/MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Class
+covtest.MatchCaseClasses$
+f
+325
+337
+13
+println
+Apply
+false
+0
+false
+println("e")
+
+7
+tests/coverage/expect/MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Class
+covtest.MatchCaseClasses$
+f
+352
+368
+14
+println
+Apply
+false
+0
+false
+println("other")
+

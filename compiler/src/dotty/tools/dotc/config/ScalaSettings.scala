@@ -117,7 +117,7 @@ trait CommonScalaSettings:
   val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.", aliases = List("--language"))
   /* Coverage settings */
-  val coverageOutputDir = PathSetting("-coverage", "Destination for coverage classfiles and instrumentation data.", "")
+  val coverageOutputDir = PathSetting("-coverage-out", "Destination for coverage classfiles and instrumentation data.", "")
   val coverageSourceroot = PathSetting("-coverage-sourceroot", "An alternative root dir of your sources used to relativize.", ".")
 
   /* Other settings */

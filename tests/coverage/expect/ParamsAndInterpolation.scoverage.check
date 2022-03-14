@@ -1,0 +1,190 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+1
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+simple
+97
+112
+5
+apply
+Apply
+false
+0
+false
+$a, ${b.length}
+
+2
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+simple
+97
+112
+5
+apply
+Apply
+false
+0
+false
+$a, ${b.length}
+
+3
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+simple
+103
+111
+5
+length
+Apply
+false
+0
+false
+b.length
+
+4
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+simple
+95
+113
+5
+s
+Apply
+false
+0
+false
+s"$a, ${b.length}"
+
+5
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+test
+163
+192
+8
+apply
+Apply
+false
+0
+false
+List("d", "o", "t", "t", "y")
+
+6
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+$anonfun
+238
+244
+10
+apply
+Apply
+false
+0
+false
+$i: $s
+
+7
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+$anonfun
+238
+244
+10
+apply
+Apply
+false
+0
+false
+$i: $s
+
+8
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+$anonfun
+236
+245
+10
+s
+Apply
+false
+0
+false
+s"$i: $s"
+
+9
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+$anonfun
+228
+246
+10
+println
+Apply
+false
+0
+false
+println(s"$i: $s")
+
+10
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Class
+covtest.ParamsAndInterpolation$
+test
+198
+247
+10
+map
+Apply
+false
+0
+false
+xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
+

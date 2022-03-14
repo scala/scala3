@@ -1,0 +1,156 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+1
+tests/coverage/expect/StructuralTypes.scala
+covtest
+Record
+Class
+covtest.Record
+$anonfun
+159
+171
+5
+==
+Apply
+false
+0
+false
+_._1 == name
+
+2
+tests/coverage/expect/StructuralTypes.scala
+covtest
+Record
+Class
+covtest.Record
+selectDynamic
+148
+172
+5
+find
+Apply
+false
+0
+false
+elems.find(_._1 == name)
+
+3
+tests/coverage/expect/StructuralTypes.scala
+covtest
+StructuralTypes$
+Class
+covtest.StructuralTypes$
+test
+277
+283
+12
+ArrowAssoc
+Apply
+false
+0
+false
+"name"
+
+4
+tests/coverage/expect/StructuralTypes.scala
+covtest
+StructuralTypes$
+Class
+covtest.StructuralTypes$
+test
+277
+293
+12
+->
+Apply
+false
+0
+false
+"name" -> "Emma"
+
+5
+tests/coverage/expect/StructuralTypes.scala
+covtest
+StructuralTypes$
+Class
+covtest.StructuralTypes$
+test
+295
+300
+12
+ArrowAssoc
+Apply
+false
+0
+false
+"age"
+
+6
+tests/coverage/expect/StructuralTypes.scala
+covtest
+StructuralTypes$
+Class
+covtest.StructuralTypes$
+test
+295
+306
+12
+->
+Apply
+false
+0
+false
+"age" -> 42
+
+7
+tests/coverage/expect/StructuralTypes.scala
+covtest
+StructuralTypes$
+Class
+covtest.StructuralTypes$
+test
+270
+307
+12
+apply
+Apply
+false
+0
+false
+Record("name" -> "Emma", "age" -> 42)
+
+8
+tests/coverage/expect/StructuralTypes.scala
+covtest
+StructuralTypes$
+Class
+covtest.StructuralTypes$
+test
+333
+344
+13
+selectDynamic
+Apply
+false
+0
+false
+person.name
+
