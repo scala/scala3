@@ -403,7 +403,7 @@ object Denotations {
           }
         case denot1: SingleDenotation =>
           if (denot1 eq denot2) denot1
-          else if (denot1.matches(denot2)) mergeSingleDenot(denot1, denot2)
+          else if denot1.matches(denot2) then mergeSingleDenot(denot1, denot2)
           else NoDenotation
       }
 
@@ -438,8 +438,11 @@ object Denotations {
             else defn.RootClass)
 
         def isHidden(sym: Symbol) = sym.exists && !sym.isAccessibleFrom(pre)
-        val hidden1 = isHidden(sym1)
-        val hidden2 = isHidden(sym2)
+        // In typer phase filter out denotations with symbols that are not
+        // accessible. After typer, this is not possible since we cannot guarantee
+        // that the current owner is set correctly. See pos/14660.scala.
+        val hidden1 = isHidden(sym1) && ctx.isTyper
+        val hidden2 = isHidden(sym2) && ctx.isTyper
         if hidden1 && !hidden2 then denot2
         else if hidden2 && !hidden1 then denot1
         else
