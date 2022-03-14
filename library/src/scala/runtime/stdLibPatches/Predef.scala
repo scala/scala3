@@ -1,5 +1,7 @@
 package scala.runtime.stdLibPatches
 
+import scala.annotation.since
+
 object Predef:
   import compiletime.summonFrom
 
@@ -47,4 +49,13 @@ object Predef:
    */
   extension [T](x: T | Null) inline def nn: x.type & T =
     scala.runtime.Scala3RunTime.nn(x)
+
+  extension (inline x: AnyRef | Null)
+    @since("3.2")
+    inline def eq(inline y: AnyRef | Null): Boolean =
+      x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
+    @since("3.2")
+    inline def ne(inline y: AnyRef | Null): Boolean =
+      !(x eq y)
+
 end Predef
