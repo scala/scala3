@@ -16,6 +16,10 @@ object Singletons {
   object B
 }
 
+type SumOfK1[F[_]] = Mirror.Sum { type MirroredType[T] = F[T] }
+
+class refined extends scala.annotation.RefiningAnnotation
+
 object Test {
 
     def main(args: Array[String]): Unit = {
@@ -24,5 +28,13 @@ object Test {
       summon[Mirror.SumOf[Color.Red.type | Color.Green.type]] // error
       summon[Mirror.SumOf[Bar.A | Bar.B]] // error
       summon[Mirror.SumOf[Singletons.A.type | Singletons.B.type]] // error
+      summon[SumOfK1[[X] =>> Bar]]
+      summon[SumOfK1[[X] =>> Bar.A | Bar.B]] // error
+      summon[SumOfK1[[X] =>> (Bar.A | Bar.B) @refined]] // error
+      object opaques {
+        opaque type Query[X] = (Bar.A | Bar.B) @refined
+      }
+      summon[SumOfK1[opaques.Query]] // error
+      summon[SumOfK1[[X] =>> (Bar.A @refined) | Bar.B]] // error
     }
 }
