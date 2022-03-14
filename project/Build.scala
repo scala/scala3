@@ -770,6 +770,7 @@ object Build {
       )
     },
 
+    // Note: bench/profiles/projects.yml should be updated accordingly.
     Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
 
     repl := (Compile / console).value,
