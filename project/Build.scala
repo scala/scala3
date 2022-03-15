@@ -251,7 +251,7 @@ object Build {
     // Prevent sbt from rewriting our dependencies
     scalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(false))),
 
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
+    libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
 
     // If someone puts a source file at the root (e.g., for manual testing),
     // don't pick it up as part of any project.
@@ -1327,7 +1327,7 @@ object Build {
         "org.jsoup" % "jsoup" % "1.14.3", // Needed to process .html files for static site
         Dependencies.`jackson-dataformat-yaml`,
 
-        "com.novocode" % "junit-interface" % "0.11" % "test",
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
       ),
       Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
       Compile / buildInfoKeys := Seq[BuildInfoKey](version),
