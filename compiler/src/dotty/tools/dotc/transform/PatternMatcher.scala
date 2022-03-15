@@ -9,6 +9,7 @@ import Symbols._, Contexts._, Types._, StdNames._, NameOps._
 import util.Spans._
 import typer.Applications.*
 import SymUtils._
+import TypeUtils.*
 import Flags._, Constants._
 import Decorators._
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
@@ -332,11 +333,11 @@ object PatternMatcher {
           ref(defn.RuntimeTuplesModule)
             .select(defn.RuntimeTuples_apply)
             .appliedTo(receiver, Literal(Constant(i)))
-            .cast(args(i).tpe.widen)
 
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
-          val isGenericTuple = defn.isTupleClass(caseClass) && !defn.isTupleNType(tree.tpe)
+          val isGenericTuple = defn.isTupleClass(caseClass) &&
+            !defn.isTupleNType(tree.tpe match { case tp: OrType => tp.join case tp => tp }) // widen even hard unions, to see if it's a union of tuples
           val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee))) else caseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
         else if (unapp.tpe <:< (defn.BooleanType))
