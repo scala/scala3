@@ -57,9 +57,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.1.2-RC1"
+  val referenceVersion = "3.1.2-RC2"
 
-  val baseVersion = "3.2.0-RC1"
+  val baseVersion = "3.1.3-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -164,13 +164,14 @@ object Build {
     organizationName := "LAMP/EPFL",
     organizationHomepage := Some(url("http://lamp.epfl.ch")),
 
+    // Note: bench/profiles/projects.yml should be updated accordingly.
     scalacOptions ++= Seq(
       "-feature",
       "-deprecation",
       "-unchecked",
       "-Xfatal-warnings",
       "-encoding", "UTF8",
-      "-language:existentials,higherKinds,implicitConversions,postfixOps"
+      "-language:implicitConversions"
     ),
 
     (Compile / compile / javacOptions) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
@@ -769,6 +770,7 @@ object Build {
       )
     },
 
+    // Note: bench/profiles/projects.yml should be updated accordingly.
     Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
 
     repl := (Compile / console).value,
@@ -1279,7 +1281,7 @@ object Build {
 
   lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).
     enablePlugins(DottyJSPlugin).
-    dependsOn(`scala3-library-bootstrappedJS`).
+    dependsOn(`scaladoc-js-common`).
     settings(
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,
@@ -1488,7 +1490,7 @@ object Build {
       ).evaluated
    )
 
-  val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{scala3-bootstrapped.version,sbt-dotty-sbt}.")
+  val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{scala3-bootstrapped.version,sbt-injected-plugins}.")
 
   lazy val `community-build` = project.in(file("community-build")).
     dependsOn(dottyLibrary(Bootstrapped)).
@@ -1508,10 +1510,9 @@ object Build {
         // (publishLocal in `scala3-staging`).value
         val pluginText =
           s"""updateOptions in Global ~= (_.withLatestSnapshots(false))
-             |addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")
              |addSbtPlugin("ch.epfl.lamp" % "sbt-community-build" % "$sbtCommunityBuildVersion")
              |addSbtPlugin("org.scala-js" % "sbt-scalajs" % "$scalaJSVersion")""".stripMargin
-        IO.write(baseDirectory.value / "sbt-dotty-sbt", pluginText)
+        IO.write(baseDirectory.value / "sbt-injected-plugins", pluginText)
         IO.write(baseDirectory.value / "scala3-bootstrapped.version", dottyVersion)
         IO.delete(baseDirectory.value / "dotty-community-build-deps")  // delete any stale deps file
       },

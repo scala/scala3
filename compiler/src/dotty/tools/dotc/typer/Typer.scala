@@ -1424,33 +1424,49 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
       }
 
-    val desugared =
-      if (protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head)) {
-        val isGenericTuple =
-          protoFormals.head.derivesFrom(defn.TupleClass)
-          && !defn.isTupleClass(protoFormals.head.typeSymbol)
-        desugar.makeTupledFunction(params, fnBody, isGenericTuple)
-      }
-      else {
-        val inferredParams: List[untpd.ValDef] =
-          for ((param, i) <- params.zipWithIndex) yield
-            if (!param.tpt.isEmpty) param
-            else
-              val formal = protoFormal(i)
-              val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
-              val paramType =
-                if knownFormal then formal
-                else inferredFromTarget(param, formal, calleeType, paramIndex)
-                  .orElse(errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos))
-              val paramTpt = untpd.TypedSplice(
-                  (if knownFormal then InferredTypeTree() else untpd.TypeTree())
-                    .withType(paramType.translateFromRepeated(toArray = false))
-                    .withSpan(param.span.endPos)
-                )
-              cpy.ValDef(param)(tpt = paramTpt)
-        desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual, tree.span)
-      }
+    var desugared: untpd.Tree = EmptyTree
+    if protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head) then
+      val isGenericTuple =
+        protoFormals.head.derivesFrom(defn.TupleClass)
+        && !defn.isTupleClass(protoFormals.head.typeSymbol)
+      desugared = desugar.makeTupledFunction(params, fnBody, isGenericTuple)
+    else if protoFormals.length > 1 && params.length == 1 then
+      def isParamRef(scrut: untpd.Tree): Boolean = scrut match
+        case untpd.Annotated(scrut1, _) => isParamRef(scrut1)
+        case untpd.Ident(id) => id == params.head.name
+      fnBody match
+        case untpd.Match(scrut, untpd.CaseDef(untpd.Tuple(elems), untpd.EmptyTree, rhs) :: Nil)
+        if scrut.span.isSynthetic && isParamRef(scrut) && elems.hasSameLengthAs(protoFormals) =>
+          // If `pt` is N-ary function type, convert synthetic lambda
+          //   x$1 => x$1 match case (a1, ..., aN) => e
+          // to
+          //   (a1, ..., aN) => e
+          val params1 = desugar.patternsToParams(elems)
+          if params1.hasSameLengthAs(elems) then
+            desugared = cpy.Function(tree)(params1, rhs)
+        case _ =>
+
+    if desugared.isEmpty then
+      val inferredParams: List[untpd.ValDef] =
+        for ((param, i) <- params.zipWithIndex) yield
+          if (!param.tpt.isEmpty) param
+          else
+            val formal = protoFormal(i)
+            val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
+            val paramType =
+              if knownFormal then formal
+              else inferredFromTarget(param, formal, calleeType, paramIndex)
+                .orElse(errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos))
+            val paramTpt = untpd.TypedSplice(
+                (if knownFormal then InferredTypeTree() else untpd.TypeTree())
+                  .withType(paramType.translateFromRepeated(toArray = false))
+                  .withSpan(param.span.endPos)
+              )
+            cpy.ValDef(param)(tpt = paramTpt)
+      desugared = desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual, tree.span)
+
     typed(desugared, pt)
+      .showing(i"desugared fun $tree --> $desugared with pt = $pt", typr)
   }
 
   def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
@@ -1970,7 +1986,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             }
           else desugaredArg.withType(UnspecifiedErrorType)
         }
-        args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
+        args.zipWithConserve(tparams)(typedArg)
       }
       val paramBounds = tparams.lazyZip(args).map {
         case (tparam, untpd.WildcardTypeBoundsTree()) =>

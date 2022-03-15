@@ -825,7 +825,6 @@ object Erasure {
 
           val args0 = outers ::: ownArgs
           val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
-            .asInstanceOf[List[Tree]]
 
           def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
             val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)

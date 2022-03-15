@@ -17,7 +17,7 @@ class CompletionTest {
   @Test def completionFromScalaPredef: Unit = {
     code"class Foo { def foo: Unit = prin${m1} }".withSource
       .completion(m1, Set(
-        ("print", Method, "(x: Any): Unit"), 
+        ("print", Method, "(x: Any): Unit"),
         ("printf", Method, "(text: String, xs: Any*): Unit"),
         ("println", Method, "(x: Any): Unit"),
         ("println", Method, "(): Unit")
@@ -1122,6 +1122,15 @@ class CompletionTest {
              .withSource.completion(m1, expected)
   }
 
+  @Test def backticksImported: Unit = {
+    val expected = Set(
+      ("`scalaUtilChainingOps`", Method, "[A](a: A): scala.util.ChainingOps[A]"),
+      ("`synchronized`", Method, "[X0](x$0: X0): X0")
+    )
+    code"""import scala.util.chaining.`s${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
   @Test def matchTypeCompletions: Unit = {
     val expected = Set(
       ("fooTest", Method, "(y: Int): Int"),
@@ -1215,5 +1224,4 @@ class CompletionTest {
         |def foo(x: Bar[M]) = x.bar.ma${m1}"""
           .withSource.completion(m1, expected)
   }
-
 }

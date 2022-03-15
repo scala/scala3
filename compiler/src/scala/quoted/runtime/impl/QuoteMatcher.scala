@@ -441,7 +441,7 @@ object QuoteMatcher {
   }
 
   /** Result of matching a part of an expression */
-  private opaque type Matching = Option[Tuple]
+  private type Matching = Option[Tuple]
 
   private object Matching {
 

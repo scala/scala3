@@ -78,6 +78,22 @@ object Completion {
         Mode.None
     }
 
+  /** When dealing with <errors> in varios palces we check to see if they are
+   *  due to incomplete backticks. If so, we ensure we get the full prefix
+   *  including the backtick.
+   *
+   * @param content The source content that we'll check the positions for the prefix
+   * @param start The start position we'll start to look for the prefix at
+   * @param end The end position we'll look for the prefix at
+   * @return Either the full prefix including the ` or an empty string 
+   */
+  private def checkBacktickPrefix(content: Array[Char], start: Int, end: Int): String = 
+    content.lift(start) match
+      case Some(char) if char == '`' =>
+        content.slice(start, end).mkString
+      case _ =>
+        ""
+
   /**
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
@@ -92,15 +108,14 @@ object Completion {
           completionPrefix(selector :: Nil, pos)
         }.getOrElse("")
 
-      // We special case Select here because we want to determine if the name
-      // is an error due to an unclosed backtick.
-      case (select: untpd.Select) :: _ if (select.name == nme.ERROR) =>
-         val content = select.source.content()
-          content.lift(select.nameSpan.start) match
-            case Some(char) if char == '`' =>
-              content.slice(select.nameSpan.start, select.span.end).mkString
-            case _ =>
-              ""
+      // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
+      case (select: untpd.Select) :: _ if select.name == nme.ERROR =>
+        checkBacktickPrefix(select.source.content(), select.nameSpan.start, select.span.end)
+     
+      // import scala.util.chaining.`s<TAB> will result in a Ident(<error>)
+      case (ident: untpd.Ident) :: _ if ident.name == nme.ERROR =>
+        checkBacktickPrefix(ident.source.content(), ident.span.start, ident.span.end)
+
       case (ref: untpd.RefTree) :: _ =>
         if (ref.name == nme.ERROR) ""
         else ref.name.toString.take(pos.span.point - ref.span.point)

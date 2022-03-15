@@ -43,7 +43,7 @@ def maximum[T](xs: List[T])(using Ord[T]): T =
   xs.reduceLeft(max)
 ```
 
-`maximum` takes a context parameter of type `Ord` only to pass it on as an
+`maximum` takes a context parameter of type `Ord[T]` only to pass it on as an
 inferred argument to `max`. The name of the parameter is left out.
 
 Generally, context parameters may be defined either as a full parameter list `(p_1: T_1, ..., p_n: T_n)` or just as a sequence of types `T_1, ..., T_n`. Vararg parameters are not supported in `using` clauses.

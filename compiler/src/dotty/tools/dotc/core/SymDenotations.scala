@@ -1388,7 +1388,7 @@ object SymDenotations {
     final def accessBoundary(base: Symbol)(using Context): Symbol =
       if (this.is(Private)) owner
       else if (this.isAllOf(StaticProtected)) defn.RootClass
-      else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
+      else if (privateWithin.exists && (!ctx.phase.erasedTypes || this.is(JavaDefined))) privateWithin
       else if (this.is(Protected)) base
       else defn.RootClass
 

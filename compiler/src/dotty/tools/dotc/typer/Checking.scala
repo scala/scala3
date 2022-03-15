@@ -537,6 +537,7 @@ object Checking {
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
     checkCombination(Private, Override)
+    if sym.isType && !sym.isClass then checkCombination(Private, Opaque)
     checkCombination(Lazy, Inline)
     // The issue with `erased inline` is that the erased semantics get lost
     // as the code is inlined and the reference is removed before the erased usage check.
@@ -1408,6 +1409,7 @@ trait ReChecking extends Checking {
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
   override def checkCanThrow(tp: Type, span: Span)(using Context): Unit = ()
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
+  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {
@@ -1430,5 +1432,4 @@ trait NoChecking extends ReChecking {
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
   override def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit = ()
   override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = ()
-  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }

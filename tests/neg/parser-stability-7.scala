@@ -1,3 +1,4 @@
+import language.postfixOps
 class x0[x1] {
 def x2: x1
 }

@@ -273,7 +273,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val cls = mirroredType.classSymbol
     val useCompanion = cls.useCompanionAsSumMirror
 
-    if cls.isGenericSum(if useCompanion then cls.linkedClass else ctx.owner) then
+    def acceptable(tp: Type): Boolean = tp match
+      case tp: TermRef => false
+      case tp: TypeProxy => acceptable(tp.underlying)
+      case OrType(tp1, tp2) => acceptable(tp1) && acceptable(tp2)
+      case _            => tp.classSymbol eq cls
+
+    if acceptable(mirroredType) && cls.isGenericSum(if useCompanion then cls.linkedClass else ctx.owner) then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match

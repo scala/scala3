@@ -49,9 +49,11 @@ object Parsers {
     case InBlock       extends Location(false, false, false)
     case ElseWhere     extends Location(false, false, false)
 
-  @sharable object ParamOwner extends Enumeration {
-    val Class, Type, TypeParam, Def: Value = Value
-  }
+  enum ParamOwner:
+    case Class, Type, TypeParam, Def
+
+  enum ParseKind:
+    case Expr, Type, Pattern
 
   type StageKind = Int
   object StageKind {
@@ -940,18 +942,19 @@ object Parsers {
     def infixOps(
         first: Tree, canStartOperand: Token => Boolean, operand: Location => Tree,
         location: Location,
-        isType: Boolean,
-        isOperator: => Boolean,
-        maybePostfix: Boolean = false): Tree = {
+        kind: ParseKind,
+        isOperator: => Boolean): Tree =
       val base = opStack
 
       def recur(top: Tree): Tree =
+        val isType = kind == ParseKind.Type
         if (isIdent && isOperator) {
-          val op = if (isType) typeIdent() else termIdent()
+          val op = if isType then typeIdent() else termIdent()
           val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
           colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
+          val maybePostfix = kind == ParseKind.Expr && in.postfixOpsEnabled
           if (maybePostfix && !canStartOperand(in.token)) {
             val topInfo = opStack.head
             opStack = opStack.tail
@@ -974,7 +977,7 @@ object Parsers {
         else top
 
       recur(first)
-    }
+    end infixOps
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
 
@@ -1526,8 +1529,7 @@ object Parsers {
     def infixType(): Tree = infixTypeRest(refinedType())
 
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere,
-        isType = true,
+      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg())
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
@@ -2219,10 +2221,8 @@ object Parsers {
         t
 
     def postfixExprRest(t: Tree, location: Location): Tree =
-      infixOps(t, in.canStartExprTokens, prefixExpr, location,
-        isType = false,
-        isOperator = !(location.inArgs && followingIsVararg()),
-        maybePostfix = true)
+      infixOps(t, in.canStartExprTokens, prefixExpr, location, ParseKind.Expr,
+        isOperator = !(location.inArgs && followingIsVararg()))
 
     /** PrefixExpr       ::= [PrefixOperator'] SimpleExpr
      *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
@@ -2709,8 +2709,8 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern,
-        isType = false,
+      infixOps(
+        simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern, ParseKind.Pattern,
         isOperator = in.name != nme.raw.BAR && !followingIsVararg())
 
     /** SimplePattern    ::= PatVar
@@ -2927,7 +2927,7 @@ object Parsers {
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypePamClause] | ‘_’) TypeBounds
      */
-    def typeParamClause(ownerKind: ParamOwner.Value): List[TypeDef] = inBrackets {
+    def typeParamClause(ownerKind: ParamOwner): List[TypeDef] = inBrackets {
 
       def variance(vflag: FlagSet): FlagSet =
         if ownerKind == ParamOwner.Def || ownerKind == ParamOwner.TypeParam then
@@ -2962,7 +2962,7 @@ object Parsers {
       commaSeparated(() => typeParam())
     }
 
-    def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
+    def typeParamClauseOpt(ownerKind: ParamOwner): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}

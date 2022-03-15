@@ -51,6 +51,8 @@ object o:
 def id(x: o.T): o.T = x
 ```
 
+Opaque type aliases cannot be `private` and cannot be overridden in subclasses.
+
 ## Type Parameters of Opaque Types
 
 Opaque type aliases can have a single type parameter list. The following aliases
