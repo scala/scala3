@@ -385,7 +385,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 if !symsMatch && !suppressErrors then
                   report.errorOrMigrationWarning(
                     AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
-                    pos)
+                    pos, from = `3.0`)
                   if migrateTo3 then
                     patch(Span(pos.span.start),
                       if prevCtx.owner == refctx.owner.enclosingClass then "this."
@@ -2661,7 +2661,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case closure(_, _, _) =>
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
-        report.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen), tree.srcPos)
+        report.errorOrMigrationWarning(OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen), tree.srcPos, from = `3.0`)
         if (migrateTo3) {
           // Under -rewrite, patch `x _` to `(() => x)`
           patch(Span(tree.span.start), "(() => ")
@@ -2813,7 +2813,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     then ", use `_` to denote a higher-kinded type parameter"
                     else ""
                   val namePos = tree.sourcePos.withSpan(tree.nameSpan)
-                  report.errorOrMigrationWarning(s"`?` is not a valid type name$addendum", namePos)
+                  report.errorOrMigrationWarning(
+                    s"`?` is not a valid type name$addendum", namePos, from = `3.0`)
                 if tree.isClassDef then
                   typedClassDef(tree, sym.asClass)(using ctx.localContext(tree, sym))
                 else
@@ -3596,7 +3597,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       def isAutoApplied(sym: Symbol): Boolean =
         sym.isConstructor
         || sym.matchNullaryLoosely
-        || Feature.warnOnMigration(MissingEmptyArgumentList(sym.show), tree.srcPos)
+        || Feature.warnOnMigration(MissingEmptyArgumentList(sym.show), tree.srcPos, version = `3.0`)
            && { patch(tree.span.endPos, "()"); true }
 
       // Reasons NOT to eta expand:

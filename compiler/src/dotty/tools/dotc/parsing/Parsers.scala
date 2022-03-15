@@ -439,7 +439,7 @@ object Parsers {
         case t: Typed =>
           report.errorOrMigrationWarning(
             em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
-            in.sourcePos())
+            in.sourcePos(), from = `3.0`)
           if migrateTo3 then
             patch(source, t.span.startPos, "(")
             patch(source, t.span.endPos, ")")
@@ -1180,7 +1180,7 @@ object Parsers {
                     |or enclose in braces '{$name} if you want a quoted expression.
                     |For now, you can also `import language.deprecated.symbolLiterals` to accept
                     |the idiom, but this possibility might no longer be available in the future.""",
-                in.sourcePos())
+                in.sourcePos(), from = `3.0`)
               if migrateTo3 then
                 patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
                 patch(source, Span(in.charOffset - 1), "\")")
@@ -1272,7 +1272,7 @@ object Parsers {
             i"""This opening brace will start a new statement in Scala 3.
                |It needs to be indented to the right to keep being treated as
                |an argument to the previous expression.${rewriteNotice()}""",
-            in.sourcePos())
+            in.sourcePos(), from = `3.0`)
           patch(source, Span(in.offset), "  ")
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
@@ -1826,7 +1826,7 @@ object Parsers {
       else if in.token == VIEWBOUND then
         report.errorOrMigrationWarning(
           "view bounds `<%' are no longer supported, use a context bound `:' instead",
-          in.sourcePos())
+          in.sourcePos(), from = `3.0`)
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)
@@ -1976,7 +1976,7 @@ object Parsers {
         report.errorOrMigrationWarning(
           i"""`do <body> while <cond>` is no longer supported,
              |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
-          in.sourcePos())
+          in.sourcePos(), from = `3.0`)
         val start = in.skipToken()
         atSpan(start) {
           val body = expr()
@@ -2096,7 +2096,7 @@ object Parsers {
             report.errorOrMigrationWarning(
               em"""`_*` can be used only for last argument of method application.
                   |It is no longer allowed in operands of infix operations.""",
-              in.sourcePos(uscoreStart))
+              in.sourcePos(uscoreStart), from = `3.0`)
           else
             syntaxError(SeqWildcardPatternPos(), uscoreStart)
           Typed(t, atSpan(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
@@ -3347,7 +3347,7 @@ object Parsers {
         if migrateTo3 then
           report.errorOrMigrationWarning(
             s"Procedure syntax no longer supported; `$toInsert` should be inserted here",
-            in.sourcePos())
+            in.sourcePos(), from = `3.0`)
           patch(source, Span(in.lastOffset), toInsert)
           true
         else
@@ -3756,7 +3756,7 @@ object Parsers {
           if (in.token == LBRACE || in.token == COLONEOL) {
             report.errorOrMigrationWarning(
               "`extends` must be followed by at least one parent",
-              in.sourcePos())
+              in.sourcePos(), from = `3.0`)
             Nil
           }
           else constrApps()
