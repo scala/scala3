@@ -131,7 +131,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           val nested = children.map(renderNested(_, apiNav, nestLevel + 1))
           val expanded = nested.exists(_._1) || isSelected
           val attr =
-            if expanded || isSelected || nestLevel == 0 then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel body-small")
+            if expanded || isSelected || nestLevel == 0 then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
           (isSelected || expanded) -> div(attr)(
             linkHtml(expanded, true),
             nested.map(_._2)
@@ -200,7 +200,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             )
           ),
       ),
-      div(id := "leftColumn")(
+      div(id := "leftColumn", cls := "body-small")(
         // div(id := "logo")(
         //   projectLogo,
         //   span(

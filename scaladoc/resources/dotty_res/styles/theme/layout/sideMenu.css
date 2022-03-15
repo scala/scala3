@@ -8,42 +8,6 @@
   box-sizing: border-box;
 }
 
-.side-menu:not(.selected) {
-  display: none;
-}
-
-/* divs in sidebar represent entry and its children */
-.side-menu .ni {
-  padding-left: 0.8em;
-}
-
-.side-menu > .ni {
-  padding-left: 0em;
-}
-
-.side-menu .ni {
-  display: none;
-}
-
-.side-menu > .ni {
-  display: block;
-}
-
-.side-menu .nh a:only-child {
-  padding-left: 20px;
-}
-
-.side-menu .nh {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  border-radius: 3px;
-}
-
-.side-menu .ni.expanded > .ni {
-  display: block;
-}
-
 /* show direct children of currently exmanded node*/
 .side-menu div.expanded > div {
   display: block;
@@ -52,55 +16,4 @@
 /* always show top level entry*/
 .side-menu > div {
   display: block;
-}
-
-/* 'a's in side menu represent text of entry with link */
-.side-menu a {
-  display: flex;
-  align-items: center;
-  overflow-wrap: anywhere;
-  color: var(--leftbar-fg);
-  padding-top: 2%;
-  padding-bottom: 2%;
-  box-sizing: border-box;
-}
-
-.side-menu a:hover {
-  color: var(--link-hover-fg);
-}
-
-.side-menu a span:not(.micon) {
-  margin-right: 0.75ex;
-  text-indent: -1.5em;
-  padding-left: 1.5em;
-}
-
-.side-menu a.selected span:not(.micon) {
-  margin-right: 0.5ex;
-}
-
-.side-menu .nh:hover {
-  cursor: pointer;
-}
-/* spans represent a expand button */
-span.ar {
-  cursor: pointer;
-}
-
-span.ar::before {
-  content: url("../../../images/arrow-right.svg");
-  font-family: "dotty-icons" !important;
-  font-size: 20px;
-  color: var(--icon-color);
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-}
-.ni.expanded > .nh > span.ar::before {
-  content: url("../../../images/arrow-down.svg");
-}
-
-.div:hover > span.ar::before {
-  color: var(--leftbar-current-bg);
 }
