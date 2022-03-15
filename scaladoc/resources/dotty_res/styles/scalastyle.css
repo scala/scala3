@@ -1118,23 +1118,32 @@ footer .socials {
 
 /* Nav Icons */
 
+.arrows-wrapper {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 10px;
+}
+
 .arrows {
-  font-size: 3em;
+  color: var(--link-fg);
+  font-size: 1em;
   text-align: center;
 
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  margin: 0;
-  max-width: 150px;
-  min-width: 90px;
-
   display: flex;
-  justify-content: center;
-  flex-direction: column;
+  align-items: center;
 
   transition: color 0.5s, background-color 0.5s;
-  z-index: 3;
+}
+
+.arrows span {
+  max-width: 10vw;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.arrows i {
+  margin: 8px;
 }
 
 .arrows.previous, .arrows.next {
@@ -1143,19 +1152,16 @@ footer .socials {
 
 .arrows:hover {
   text-decoration: none;
-  color: var(--grey300);
-  background-color: var(--grey900);
+  color: var(--link-hover-fg);
   transition: background-color 0.15s, color 0.15s;
 }
 
 .previous {
-  left: var(--side-width);
-  float: left;
+  flex-direction: row-reverse;
 }
 
 .next {
-  right: 0;
-  float: right;
+  flex-direction: row;
 }
 
 @media screen and (max-width: 1000px) {

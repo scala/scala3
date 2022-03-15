@@ -59,7 +59,26 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
                 val realSiblingPath = realPath(n.file.toPath)
                 realMidPath.relativize(realSiblingPath).toString.stripPrefix("../")
               }
-            List(link(prev).map("previous" -> _), link(next).map("next" -> _)).flatten.toMap
+            List(
+              for {
+                link <- link(prev)
+                p <- prev
+              } yield (
+                "previous" -> Map(
+                  "title" -> p.templateFile.title.name,
+                  "url" -> link
+                )
+              ),
+              for {
+                link <- link(next)
+                n <- next
+              } yield (
+                "next" -> Map(
+                  "title" -> n.templateFile.title.name,
+                  "url" -> link
+                )
+              ),
+            ).flatten.toMap
         }.toList
 
         def updateSettings(templates: Seq[LoadedTemplate], additionalSettings: ListBuffer[Map[String, Object]]): List[LoadedTemplate] =
