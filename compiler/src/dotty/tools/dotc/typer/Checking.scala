@@ -117,7 +117,7 @@ object Checking {
         if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
-            tree.srcPos)
+            tree.srcPos, from = `3.0`)
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
@@ -189,7 +189,8 @@ object Checking {
   def checkRealizable(tp: Type, pos: SrcPos, what: String = "path")(using Context): Unit = {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
-      report.errorOrMigrationWarning(em"$tp is not a legal $what\nsince it${rstatus.msg}", pos)
+      report.errorOrMigrationWarning(
+        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, from = `3.0`)
   }
 
   /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
@@ -641,7 +642,7 @@ object Checking {
     }
     val notPrivate = new NotPrivate
     val info = notPrivate(sym.info)
-    notPrivate.errors.foreach(error => report.errorOrMigrationWarning(error(), sym.srcPos))
+    notPrivate.errors.foreach(error => report.errorOrMigrationWarning(error(), sym.srcPos, from = `3.0`))
     info
   }
 

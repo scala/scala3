@@ -68,7 +68,7 @@ object report:
     if ctx.settings.YdebugTypeError.value then ex.printStackTrace()
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos = NoSourcePosition,
-      from: SourceVersion = SourceVersion.defaultSourceVersion)(using Context): Unit =
+      from: SourceVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(from) then
       if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then migrationWarning(msg, pos)
       else error(msg, pos)

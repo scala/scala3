@@ -18,6 +18,7 @@ import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
 import config.Feature.migrateTo3
+import config.SourceVersion.`3.0`
 
 object Scanners {
 
@@ -255,7 +256,10 @@ object Scanners {
       def handleMigration(keyword: Token): Token =
         if scala3keywords.contains(keyword) && migrateTo3 then
           val what = tokenString(keyword)
-          report.errorOrMigrationWarning(i"$what is now a keyword, write `$what` instead of $what to keep it as an identifier", sourcePos())
+          report.errorOrMigrationWarning(
+            i"$what is now a keyword, write `$what` instead of $what to keep it as an identifier",
+            sourcePos(),
+            from = `3.0`)
           patch(source, Span(offset), "`")
           patch(source, Span(offset + identifier.length), "`")
           IDENTIFIER
@@ -427,7 +431,7 @@ object Scanners {
             em"""$what starts with an operator;
                 |it is now treated as a continuation of the $previous,
                 |not as a separate statement.""",
-            sourcePos())
+            sourcePos(), from = `3.0`)
         true
       }
 
