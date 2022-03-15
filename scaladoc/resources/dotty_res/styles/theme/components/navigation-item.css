@@ -17,7 +17,6 @@
 }
 
 .nh {
-  /* color: var(--action-primary-content-default); */
   border-radius: 4px;
   min-height: calc(4.5 * var(--base-spacing));
   position: relative;
