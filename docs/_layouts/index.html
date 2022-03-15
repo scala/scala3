@@ -7,9 +7,9 @@ layout: static-site-main
 
 <h2>Table of Contents</h2>
 <ul class="table-of-contents">
-  {% for child in site.posts %}
+  {% for subpage in site.subpages %}
       <li>
-          <a href="{{ child.url }}">{{ child.title }}</a>
+          <a href="{{ subpage.url }}">{{ subpage.title }}</a>
       </li>
   {% endfor %}
 </ul>
