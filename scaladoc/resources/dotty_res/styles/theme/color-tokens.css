@@ -81,9 +81,12 @@
   --api-child-method-background: var(--indigo11);
   --api-child-enum-background: var(--orange11);
   --api-child-type-background: var(--crimson11);
+
+  /* effects */
+  --focus-default: var(--indigo11);
 }
 
-:root {
+:root.theme-dark {
   /* Dark Mode */
 
   /* text */
@@ -140,18 +143,18 @@
   --code-method-highlighting-link-sig-fig: var(--sky11);
   --code-method-highlighting-keyword: var(--crimson11);
 
-    /* semantic */
-    --semantic-content-grey: var(--grey11);
-    --semantic-content-sky: var(--sky11);
-    --semantic-content-grass: var(--grass11);
-    --semantic-content-yellow: var(--yellow11);
-    --semantic-content-red: var(--red11);
+  /* semantic */
+  --semantic-content-grey: var(--grey11);
+  --semantic-content-sky: var(--sky11);
+  --semantic-content-grass: var(--grass11);
+  --semantic-content-yellow: var(--yellow11);
+  --semantic-content-red: var(--red11);
 
-    --semantic-background-grey: var(--grey4);
-    --semantic-background-sky: var(--sky4);
-    --semantic-background-grass: var(--grass4);
-    --semantic-background-yellow: var(--yellow4);
-    --semantic-background-red: var(--red4);
+  --semantic-background-grey: var(--grey4);
+  --semantic-background-sky: var(--sky4);
+  --semantic-background-grass: var(--grass4);
+  --semantic-background-yellow: var(--yellow4);
+  --semantic-background-red: var(--red4);
 
   /* api child */
   --api-child-package-background: var(--yellow11);
@@ -165,4 +168,7 @@
   --api-child-method-background: var(--indigo11);
   --api-child-enum-background: var(--orange11);
   --api-child-type-background: var(--crimson11);
+
+  /* effects */
+  --focus-default: var(--indigo9);
 }

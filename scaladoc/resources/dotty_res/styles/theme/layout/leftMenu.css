@@ -11,4 +11,5 @@
   background: var(--background-default);
   border: 1px solid var(--border-default);
   border-top: none;
+  border-left: none;
 }

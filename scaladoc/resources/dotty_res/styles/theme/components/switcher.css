@@ -6,7 +6,7 @@
   width: 100%;
   height: calc(4.5 * var(--base-spacing));
   gap: 1px;
-  margin-bottom: calc(3 * var(--base-spacing));
+  margin-bottom: calc(3.75 * var(--base-spacing));
 }
 
 .switcher {
@@ -50,4 +50,8 @@
 .switcher:disabled {
   opacity: 0.5;
   pointer-events: none;
+}
+
+.switcher:focus {
+  outline: none;
 }
