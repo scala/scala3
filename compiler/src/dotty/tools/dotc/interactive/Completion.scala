@@ -295,15 +295,22 @@ object Completion {
       resultMappings
     }
 
+    /** Replaces underlying type with reduced one, when it's MatchType */
+    def reduceUnderlyingMatchType(qual: Tree)(using Context): Tree=
+      qual.tpe.widen match 
+        case ctx.typer.MatchTypeInDisguise(mt) => qual.withType(mt)
+        case _ => qual
+
     /** Completions for selections from a term.
      *  Direct members take priority over members from extensions
      *  and so do members from extensions over members from implicit conversions
      */
     def selectionCompletions(qual: Tree)(using Context): CompletionMap =
-      implicitConversionMemberCompletions(qual) ++
-        extensionCompletions(qual) ++
-        matchTypeCompletions(qual) ++
-        directMemberCompletions(qual)
+      val reducedQual = reduceUnderlyingMatchType(qual)
+
+      implicitConversionMemberCompletions(reducedQual) ++
+        extensionCompletions(reducedQual) ++
+        directMemberCompletions(reducedQual)
 
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
@@ -363,12 +370,6 @@ object Completion {
           implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState()).flatMap(accessibleMembers)
         membersFromConversion.toSeq.groupByName
 
-    /** Completions for derived members of `MatchType`'s type. */
-    def matchTypeCompletions(qual: Tree)(using Context): CompletionMap =
-      qual.tpe.widenDealias match 
-        case ctx.typer.MatchTypeInDisguise(mt) => accessibleMembers(mt.reduced).groupByName
-        case _ => Map.empty 
-      
     /** Completions from extension methods */
     private def extensionCompletions(qual: Tree)(using Context): CompletionMap =
       def asDefLikeType(tpe: Type): Type = tpe match
