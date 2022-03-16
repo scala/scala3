@@ -252,14 +252,16 @@ object Parsers {
 
     /** Skip on error to next safe point.
      */
-    protected def skip(stopAtComma: Boolean): Unit =
+    protected def skip(): Unit =
       val lastRegion = in.currentRegion
+      in.skipping = true
       def atStop =
         in.token == EOF
-        || ((stopAtComma && in.token == COMMA) || skipStopTokens.contains(in.token)) && (in.currentRegion eq lastRegion)
+        || skipStopTokens.contains(in.token) && (in.currentRegion eq lastRegion)
       while !atStop do
         in.nextToken()
       lastErrorOffset = in.offset
+      in.skipping = false
 
     def warning(msg: Message, sourcePos: SourcePosition): Unit =
       report.warning(msg, sourcePos)
@@ -281,13 +283,13 @@ object Parsers {
       if (in.token == EOF) incompleteInputError(msg)
       else
         syntaxError(msg, offset)
-        skip(stopAtComma = true)
+        skip()
 
     def syntaxErrorOrIncomplete(msg: Message, span: Span): Unit =
       if (in.token == EOF) incompleteInputError(msg)
       else
         syntaxError(msg, span)
-        skip(stopAtComma = true)
+        skip()
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
@@ -355,7 +357,8 @@ object Parsers {
             false // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
-            skip(stopAtComma=false)
+            lastErrorOffset = in.offset
+            skip()
             true
 
       in.observeOutdented()
@@ -562,18 +565,12 @@ object Parsers {
     def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
       inBracesOrIndented(body, rewriteWithColon)
 
-    /** part { `separator` part }
-     */
-    def tokenSeparated[T](separator: Int, part: () => T): List[T] = {
+    def commaSeparated[T](part: () => T): List[T] =
       val ts = new ListBuffer[T] += part()
-      while (in.token == separator) {
+      while in.token == COMMA do
         in.nextToken()
         ts += part()
-      }
       ts.toList
-    }
-
-    def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
 
     def inSepRegion[T](f: Region => Region)(op: => T): T =
       val cur = in.currentRegion
@@ -3766,7 +3763,7 @@ object Parsers {
       val derived =
         if (isIdent(nme.derives)) {
           in.nextToken()
-          tokenSeparated(COMMA, () => convertToTypeId(qualId()))
+          commaSeparated(() => convertToTypeId(qualId()))
         }
         else Nil
       possibleTemplateStart()

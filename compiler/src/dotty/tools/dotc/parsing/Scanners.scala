@@ -170,6 +170,8 @@ object Scanners {
     /** A switch whether operators at the start of lines can be infix operators */
     private[Scanners] var allowLeadingInfixOperators = true
 
+    var skipping = false
+
     var debugTokenStream = false
     val showLookAheadOnDebug = false
 
