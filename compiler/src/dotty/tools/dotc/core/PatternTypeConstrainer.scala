@@ -73,7 +73,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false): Boolean = trace.force(i"constrainPatternType(${scrutRepr(scrut)}, $pat)", gadts) {
 
     def classesMayBeCompatible: Boolean = {
       import Flags._
@@ -195,6 +195,13 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       }
     }
   }
+
+  /** Show the scrutinee. Will show the path if available. */
+  private def scrutRepr(scrut: Type): String =
+    if ctx.gadt.scrutineePath != null then
+      ctx.gadt.scrutineePath.show
+    else
+      scrut.show
 
   /** Constrain "simple" patterns (see `constrainPatternType`).
    *
