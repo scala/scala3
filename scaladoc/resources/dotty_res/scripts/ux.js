@@ -1,27 +1,4 @@
 window.addEventListener("DOMContentLoaded", () => {
-  var apiNav = document.getElementById("api-nav")
-  var docsNav = document.getElementById("docs-nav")
-
-  var apiNavButton = document.getElementById("api-nav-button")
-  var docsNavButton = document.getElementById("docs-nav-button")
-
-  apiNavButton.addEventListener('click', e => {
-    if (!apiNav.classList.contains('selected')) {
-      apiNav.classList.add('selected')
-      apiNavButton.classList.add('selected')
-      docsNav.classList.remove('selected')
-      docsNavButton.classList.remove('selected')
-    }
-  })
-
-  docsNavButton.addEventListener('click', e => {
-    if (!docsNav.classList.contains('selected')) {
-      docsNav.classList.add('selected')
-      docsNavButton.classList.add('selected')
-      apiNav.classList.remove('selected')
-      apiNavButton.classList.remove('selected')
-    }
-  })
 
   var toggler = document.getElementById("leftToggler");
   if (toggler) {
