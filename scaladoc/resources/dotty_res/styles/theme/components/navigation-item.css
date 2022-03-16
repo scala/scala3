@@ -1,9 +1,5 @@
 /* api */
 
-.side-menu:not(.selected) {
-  display: none;
-}
-
 .side-menu .ni {
   display: none;
 }

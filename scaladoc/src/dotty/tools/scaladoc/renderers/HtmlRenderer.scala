@@ -99,7 +99,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         case None => ""
     )
 
-  private def buildNavigation(pageLink: Link): ((Boolean, AppliedTag), (Boolean, AppliedTag)) =
+  private def buildNavigation(pageLink: Link): (Option[(Boolean, Seq[AppliedTag])], Option[(Boolean, Seq[AppliedTag])]) =
     def navigationIcon(member: Member) = member match {
       case m if m.needsOwnPage => Seq(span(cls := s"micon ${member.kind.name.take(2)}"))
       case _ => Nil
@@ -126,20 +126,25 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         )
 
       nav.children.filterNot(_.hidden) match
-        case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected || nestLevel == 0 then "expanded" else ""}")(linkHtml())
+        case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected then "expanded" else ""}")(linkHtml())
         case children =>
           val nested = children.map(renderNested(_, nestLevel + 1))
           val expanded = nested.exists(_._1) || isSelected
           val attr =
-            if expanded || isSelected || nestLevel == 0 then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
+            if expanded || isSelected then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
           (isSelected || expanded) -> div(attr)(
             linkHtml(expanded, true),
             nested.map(_._2)
           )
 
-    // TODO: The apiNav and docsNav should be optional and based on their existence, the buttons on UI should be active or not.
-    val apiNav = rootApiPage.fold((false, span(cls := "ni")))(renderNested(_, 0))
-    val docsNav = rootDocsPage.fold((false, span(cls := "ni")))(renderNested(_, 0))
+    val isRootApiPageSelected = rootApiPage.fold(false)(_.link.dri == pageLink.dri)
+    val isDocsApiPageSelected = rootDocsPage.fold(false)(_.link.dri == pageLink.dri)
+    val apiNav = rootApiPage.map { p => p.children.map(renderNested(_, 0)) match
+      case entries => (entries.exists(_._1) || isRootApiPageSelected, entries.map(_._2))
+    }
+    val docsNav = rootDocsPage.map { p => p.children.map(renderNested(_, 0)) match
+      case entries => (entries.exists(_._1) || isDocsApiPageSelected, entries.map(_._2))
+    }
 
     (apiNav, docsNav)
 
@@ -183,6 +188,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         )).dropRight(1)
       div(cls := "breadcrumbs container")(innerTags:_*)
 
+    val (apiNavOpt, docsNavOpt): (Option[(Boolean, Seq[AppliedTag])], Option[(Boolean, Seq[AppliedTag])]) = buildNavigation(link)
+
     def textFooter: String | AppliedTag =
       args.projectFooter.fold("") { f =>
         span(id := "footer-text")(
@@ -221,17 +228,27 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         //   )
         // ),
         // div(id := "paneSearch"),
-        buildNavigation(link) match {
-          case ((isApiActive, apiNav), (isDocsActive, docsNav)) =>
-            Seq(
-              div(cls:= "switcher-container")(
-                button(id := "docs-nav-button", cls:= s"switcher h100 ${if !isApiActive && isDocsActive then "selected" else ""}")(raw("Docs")),
-                button(id := "api-nav-button", cls:= s"switcher h100 ${if isApiActive then "selected" else ""}")(raw("API")),
-              ),
-              nav(id := "api-nav", cls := s"side-menu ${if isApiActive then "selected" else ""}")(apiNav),
-              nav(id := "docs-nav", cls := s"side-menu ${if !isApiActive && isDocsActive then "selected" else ""}")(docsNav)
+        Seq(
+          div(cls:= "switcher-container")(
+            apiNavOpt match {
+              case Some(isApiActive, apiNav) =>
+                Seq(a(id := "api-nav-button", cls:= s"switcher h100 ${if isApiActive then "selected" else ""}", href := pathToPage(link.dri, rootApiPage.get.link.dri))("API"))
+              case _ => Nil
+            },
+            docsNavOpt match {
+              case Some(isDocsActive, docsNav) =>
+                Seq(a(id := "docs-nav-button", cls:= s"switcher h100 ${if isDocsActive then "selected" else ""}", href := pathToPage(link.dri, rootDocsPage.get.link.dri))("Docs"))
+              case _ => Nil
+            }
+          ),
+          apiNavOpt
+            .filter(_._1)
+            .fold(
+              nav(id := "docs-nav", cls := s"side-menu")(docsNavOpt.get._2)
+            )(
+              apiNav => nav(id := "api-nav", cls := s"side-menu")(apiNav._2)
             )
-        },
+        )
       ),
       div(id := "main")(
         div (id := "leftToggler")(
