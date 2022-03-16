@@ -35,10 +35,10 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
     val childrenPages = member.members.filter(_.needsOwnPage)
     Page(Link(member.name, member.dri), member, childrenPages.map(memberPage))
 
-  val navigablePage: Page =
-    val rootPckPage = memberPage(rootPackage)
-    staticSite match
-      case None => rootPckPage.withTitle(args.name)
+  val rootApiPage: Option[Page] = Some(memberPage(rootPackage)).filter(_.children.nonEmpty).map(_.withTitle(ctx.args.name))
+
+  val rootDocsPage: Option[Page] = staticSite match
+      case None => None
       case Some(siteContext) =>
         val rootTemplate = siteContext.staticSiteRoot.rootTemplate
 
@@ -98,14 +98,8 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
         val newRoot = newTemplates.head
 
-        if newRoot.children.isEmpty && newRoot.templateFile.rawCode.isEmpty
-        then rootPckPage.withTitle(args.name)
-        else {
-          val newRootPage = templateToPage(newRoot, siteContext)
-          newRootPage.withNewChildren(
-            Seq(rootPckPage.withTitle("API")).filter(_ => rootPackage.members.nonEmpty)
-          )
-        }
+        Some(newRoot).filter(r => r.children.nonEmpty || r.templateFile.rawCode.nonEmpty)
+          .map(templateToPage(_, siteContext))
 
   val redirectPages: Seq[Page] = staticSite.fold(Seq.empty)(siteContext => siteContext.redirectTemplates.map {
     case (template, driFrom, driTo) =>
@@ -117,7 +111,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
    * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
    */
   val allPages: Seq[Page] =
-    val all = navigablePage +: redirectPages
+    val all = rootApiPage ++ rootDocsPage ++ redirectPages
     // We need to check for conflicts only if we have top-level member called docs
     val hasPotentialConflict =
       rootPackage.members.exists(m => m.name.startsWith("_docs"))
@@ -132,7 +126,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
       all.foreach(walk)
 
-    all
+    all.toSeq
 
   def renderContent(page: Page): PageContent = page.content match
     case m: Member =>

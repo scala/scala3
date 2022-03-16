@@ -105,14 +105,14 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       case _ => Nil
     }
 
-    def renderNested(nav: Page, apiNav: Boolean, nestLevel: Int): (Boolean, AppliedTag) =
+    def renderNested(nav: Page, nestLevel: Int): (Boolean, AppliedTag) =
       val isSelected = nav.link.dri == pageLink.dri
 
       def linkHtml(expanded: Boolean = false, withArrow: Boolean = false) =
         val attrs: Seq[String] = Seq(
           Option.when(isSelected)("selected h100"),
           Option.when(expanded)("expanded cs"),
-          Option.when(!apiNav)("de")
+          Option.when(!nav.content.isInstanceOf[Member])("de")
         ).flatten
         val icon = nav.content match {
           case m: Member => navigationIcon(m)
@@ -125,10 +125,10 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           )
         )
 
-      nav.children.filter(_.content.isInstanceOf[Member] == apiNav).filterNot(_.hidden) match
+      nav.children.filterNot(_.hidden) match
         case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected || nestLevel == 0 then "expanded" else ""}")(linkHtml())
         case children =>
-          val nested = children.map(renderNested(_, apiNav, nestLevel + 1))
+          val nested = children.map(renderNested(_, nestLevel + 1))
           val expanded = nested.exists(_._1) || isSelected
           val attr =
             if expanded || isSelected || nestLevel == 0 then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
@@ -137,9 +137,9 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             nested.map(_._2)
           )
 
-
-    val apiNav = renderNested(navigablePage, true, 0)
-    val docsNav = renderNested(navigablePage, false, 0)
+    // TODO: The apiNav and docsNav should be optional and based on their existence, the buttons on UI should be active or not.
+    val apiNav = rootApiPage.fold((false, span(cls := "ni")))(renderNested(_, 0))
+    val docsNav = rootDocsPage.fold((false, span(cls := "ni")))(renderNested(_, 0))
 
     (apiNav, docsNav)
 
