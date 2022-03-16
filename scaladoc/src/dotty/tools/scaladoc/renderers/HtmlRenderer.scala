@@ -204,14 +204,80 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       }
 
     div(id := "container")(
-      div(id := "header")(
-          div(cls := "mode")(
-            span(cls :="footer-text")(raw("Mode")),
-            label(id := "theme-toggle", cls := "switch")(
-              input(`type` := "checkbox"),
-              span(cls := "slider")
-            )
-          ),
+    div(id := "header")(
+        div(cls := "header-container-left")(
+          projectLogo,
+        ),
+
+        div(cls:="header-container-center")(
+          input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
+        ),
+
+         div(cls:="header-container-right")(
+          button(id := "theme-toggle", cls := "icon-button"),
+          button(cls := "icon-button hamburger"),
+          div(id := "hamburger-dropdown", cls := "dropdown-menu body-small")(
+            span(cls := "text-button")(
+              a(href := "https://www.scala-lang.org/download/") (
+                "Download",
+              )
+            ),
+            span(cls := "text-button")(
+              a(href := "https://docs.scala-lang.org/") (
+                "Documentation",
+              )
+            ),
+            span(cls := "text-button")(
+              a(href := "https://index.scala-lang.org") (
+                "Libraries",
+              )
+            ),
+            span(cls := "text-button")(
+              a(href := "https://www.scala-lang.org/contribute/") (
+                "Contribute",
+              )
+            ),
+             span(cls := "text-button")(
+              a(href := "https://www.scala-lang.org/contribute/") (
+                "Blog",
+              )
+            ),
+            span(cls := "text-button")(
+              a(href := "https://www.scala-lang.org/blog/") (
+                "Community",
+              )
+            ),
+          )
+        ),
+
+
+        //     div(id := "logo")(
+        //   projectLogo,
+        //   span(
+        //     div(cls:="projectName")(args.name)
+        //   ),
+        //   div(id := "version")(
+        //     div(cls := "versions-dropdown")(
+        //       div(onclick := "dropdownHandler()", id := "dropdown-button", cls := "dropdownbtn dropdownbtnactive")(
+        //         args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse(""),
+        //         div(id := "dropdown-content", cls := "dropdown-content")(
+        //           input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
+        //         ),
+        //       ),
+        //     )
+        //   ),
+        //   div(cls := "socials")(
+        //     socialLinks()
+        //   )
+        // ),
+        // div(id := "paneSearch"),
+        //   div(cls := "mode")(
+        //     span(cls :="footer-text")(raw("Mode")),
+        //     label(id := "theme-toggle", cls := "switch")(
+        //       input(`type` := "checkbox"),
+        //       span(cls := "slider")
+        //     )
+        //   ),
       ),
       div(id := "leftColumn", cls := "body-small")(
         // div(id := "logo")(
