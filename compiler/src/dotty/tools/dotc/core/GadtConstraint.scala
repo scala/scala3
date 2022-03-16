@@ -37,6 +37,12 @@ sealed abstract class GadtConstraint extends Showable {
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
+  /** Scrutinee path of the current pattern matching. */
+  def scrutineePath: TermRef | Null
+
+  /** Set the scrutinee path. */
+  def withScrutineePath[T](path: TermRef)(op: => T): T
+
   /** Is the symbol registered in the constraint?
    *
    * @note this is true even if the symbol is constrained to be equal to another type, unlike [[Constraint.contains]].
@@ -63,7 +69,8 @@ final class ProperGadtConstraint private(
   private var myConstraint: Constraint,
   private var mapping: SimpleIdentityMap[Symbol, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
-  private var wasConstrained: Boolean
+  private var wasConstrained: Boolean,
+  private var myScrutineePath: TermRef
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
@@ -71,7 +78,8 @@ final class ProperGadtConstraint private(
     myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentitySet.empty),
     mapping = SimpleIdentityMap.empty,
     reverseMapping = SimpleIdentityMap.empty,
-    wasConstrained = false
+    wasConstrained = false,
+    myScrutineePath = null
   )
 
   /** Exposes ConstraintHandling.subsumes */
@@ -225,7 +233,8 @@ final class ProperGadtConstraint private(
     myConstraint,
     mapping,
     reverseMapping,
-    wasConstrained
+    wasConstrained,
+    myScrutineePath
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -234,8 +243,18 @@ final class ProperGadtConstraint private(
       this.mapping = other.mapping
       this.reverseMapping = other.reverseMapping
       this.wasConstrained = other.wasConstrained
+      this.myScrutineePath = other.myScrutineePath
     case _ => ;
   }
+
+  override def scrutineePath: TermRef | Null = myScrutineePath
+
+  override def withScrutineePath[T](path: TermRef)(op: => T): T =
+    val saved = this.myScrutineePath
+    this.myScrutineePath = path
+    val result = op
+    this.myScrutineePath = saved
+    result
 
   // ---- Protected/internal -----------------------------------------------
 
@@ -320,6 +339,10 @@ final class ProperGadtConstraint private(
   override def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
 
   override def symbols: List[Symbol] = Nil
+
+  override def scrutineePath: TermRef | Null = unsupported("EmptyGadtConstraint.scrutineePath")
+
+  override def withScrutineePath[T](path: TermRef)(op: => T): T = op
 
   override def fresh = new ProperGadtConstraint
   override def restore(other: GadtConstraint): Unit =

@@ -1750,7 +1750,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
     }
 
-    val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
+    val scrutineePath =
+      sel.tpe match {
+        case p: TermRef =>
+          tree.pat match {
+            case _: Trees.Typed[_] => p
+            case _: Trees.Ident[_] => p
+            case _: Trees.Apply[_] => p
+            case _ => null
+          }
+        case _ => null
+      }
+
+    val pat1 = gadtCtx.gadt.withScrutineePath(scrutineePath) {
+      typedPattern(tree.pat, wideSelType)(using gadtCtx)
+    }
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(
         using gadtCtx))
