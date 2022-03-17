@@ -153,12 +153,13 @@ object Scala3:
   enum SymbolKind derives CanEqual:
     kind =>
 
-    case Val, Var, Setter, Abstract
+    case Val, Var, Setter, Abstract, TypeVal
 
     def isVar: Boolean = kind match
       case Var | Setter => true
       case _            => false
     def isVal: Boolean = kind == Val
+    def isTypeVal: Boolean = kind == TypeVal
     def isVarOrVal: Boolean = kind.isVar || kind.isVal
 
   end SymbolKind
@@ -309,7 +310,9 @@ object Scala3:
           props |= SymbolInformation.Property.IMPLICIT.value
         if sym.is(Lazy, butNot=Module) then
           props |= SymbolInformation.Property.LAZY.value
-        if sym.isAllOf(Case | Module) || sym.is(CaseClass) || sym.isAllOf(EnumCase) then
+        if sym.isAllOf(Case | Module) ||
+          (sym.is(CaseClass) && !symkinds.exists(_.isTypeVal)) || // `t` of `case List[t] =>` (which has `CaseClass` flag) shouldn't be `CASE`
+          sym.isAllOf(EnumCase) then
           props |= SymbolInformation.Property.CASE.value
         if sym.is(Covariant) then
           props |= SymbolInformation.Property.COVARIANT.value

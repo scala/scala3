@@ -2034,10 +2034,10 @@ example/MatchType$package.Concat#[Xs] => typeparam Xs  <: Tuple
 example/MatchType$package.Concat#[Ys] => covariant typeparam Ys  <: Tuple
 example/MatchType$package.Elem# => type Elem [typeparam X ] = X match { String => Char, Array[t] => t, Iterable[t] => t }
 example/MatchType$package.Elem#[X] => typeparam X 
-local0 => case type t 
-local1 => case type t 
-local2 => case type x 
-local3 => case type xs  <: Tuple
+local0 => type t 
+local1 => type t 
+local2 => type x 
+local3 => type xs  <: Tuple
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -4087,9 +4087,9 @@ Occurrences => 46 entries
 Synthetics => 3 entries
 
 Symbols:
-local0 => case type N$1  <: Nat
+local0 => type N$1  <: Nat
 local1 => val local p: N$1
-local2 => case type N$2  <: Nat
+local2 => type N$2  <: Nat
 local3 => val local p: N$2
 local4 => val local Nat_this: Zero.type
 local5 => val local Nat_this: Succ[Zero.type]
@@ -4271,7 +4271,7 @@ flags/p/package.y(). => protected implicit var method y Int
 flags/p/package.z(). => method z (param pp: Int): Int
 flags/p/package.z().(pp) => param pp: Int
 local0 => val local xs2: Nothing
-local1 => case type t 
+local1 => type t 
 
 Occurrences:
 [0:8..0:13): flags <- flags/

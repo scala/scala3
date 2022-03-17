@@ -433,6 +433,8 @@ class ExtractSemanticDB extends Phase:
           // if symbol isType, it's type variable
           case tree: Bind if (!tree.symbol.isType) =>
             symkinds += SymbolKind.Val
+          case tree: Bind if (tree.symbol.isType) =>
+            symkinds += SymbolKind.TypeVal
           case _ =>
         symkinds.toSet
 
