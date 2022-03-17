@@ -287,7 +287,8 @@ object Tokens extends TokensCommon {
 
   final val endMarkerTokens = identifierTokens | BitSet(IF, WHILE, FOR, MATCH, TRY, NEW, THROW, GIVEN, VAL, THIS)
 
-  final val skipStopTokens = BitSet(SEMI, COMMA, NEWLINE, NEWLINES, RBRACE, RPAREN, RBRACKET)
+  final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
+  final val stopSkipTokens = BitSet(SEMI, COMMA, NEWLINE, NEWLINES)
 
   final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
 }

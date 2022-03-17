@@ -291,15 +291,18 @@ object Scanners {
       def atStop =
         token == EOF
         || (currentRegion eq lastRegion)
-            && (skipStopTokens.contains(token)
+            && (stopSkipTokens.contains(token)
+                || closingParens.contains(token) && lastRegion.toList.exists(_.closedBy == token)
                 || token == OUTDENT && indentWidth(offset) < lastKnownIndentWidth)
           // stop at OUTDENT if the new indentwidth is smaller than the indent width of
           // currentRegion. This corrects for the problem that sometimes we don't see an INDENT
           // when skipping and therefore might erroneously end up syncing on a nested OUTDENT.
-      // println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
+      if debugTokenStream then
+        println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       while !atStop do
         nextToken()
-      // println(s"\nSTOP SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
+      if debugTokenStream then
+        println(s"\nSTOP SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
       if token == OUTDENT then dropUntil(_.isInstanceOf[Indented])
       skipping = false
 
@@ -1521,8 +1524,9 @@ object Scanners {
    *   InBraces    a pair of braces { ... }
    *   Indented    a pair of <indent> ... <outdent> tokens
    */
-  abstract class Region:
-    /** The region enclosing this one, or `null` for the outermost region */
+  abstract class Region(val closedBy: Token):
+
+   /** The region enclosing this one, or `null` for the outermost region */
     def outer: Region | Null
 
     /** Is this region the outermost region? */
@@ -1585,16 +1589,16 @@ object Scanners {
       toList.map(r => s"(${r.indentWidth}, ${r.delimiter})").mkString(" in ")
   end Region
 
-  case class InString(multiLine: Boolean, outer: Region) extends Region
-  case class InParens(prefix: Token, outer: Region) extends Region
-  case class InBraces(outer: Region) extends Region
-  case class InCase(outer: Region) extends Region
+  case class InString(multiLine: Boolean, outer: Region) extends Region(RBRACE)
+  case class InParens(prefix: Token, outer: Region) extends Region(prefix + 1)
+  case class InBraces(outer: Region) extends Region(RBRACE)
+  case class InCase(outer: Region) extends Region(OUTDENT)
 
   /** A class describing an indentation region.
    *  @param width   The principal indendation width
    *  @param prefix  The token before the initial <indent> of the region
    */
-  case class Indented(width: IndentWidth, prefix: Token, outer: Region | Null) extends Region:
+  case class Indented(width: IndentWidth, prefix: Token, outer: Region | Null) extends Region(OUTDENT):
     knownWidth = width
 
     /** Other indendation widths > width of lines in the same region */
