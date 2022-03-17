@@ -22,7 +22,7 @@ class MarkdownRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx
     super.render()
 
   override def pageContent(page: Page, parents: Vector[Link]): AppliedTag =
-    renderContent(page)
+    renderContent(page).content
 
   private def renderResources(): Seq[String] =
     allResources(Nil).flatMap(renderResource)

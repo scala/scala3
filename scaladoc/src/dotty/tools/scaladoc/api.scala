@@ -1,6 +1,7 @@
 package dotty.tools.scaladoc
 
 import dotty.tools.scaladoc.tasty.comments.Comment
+import util.HTML.AppliedTag
 
 enum Visibility(val name: String):
   case Unrestricted extends Visibility("")
@@ -258,3 +259,18 @@ case class SnippetCompilerData(
   imports: List[String],
   position: SnippetCompilerData.Position
 )
+
+case class PageContent(content: AppliedTag, toc: Seq[TocEntry])
+
+case class TocEntry(level: Int, content: String, anchor: String)
+
+object TocEntry:
+  val tagLevels: Map[String, Int] = Map(
+    ("h1" -> 1),
+    ("h2" -> 2),
+    ("h3" -> 3),
+    ("h4" -> 4),
+    ("h5" -> 5),
+    ("h6" -> 6)
+  )
+  def apply(tag: String, content: String, anchor: String): TocEntry = TocEntry(tagLevels(tag), content, anchor)

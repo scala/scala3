@@ -8,6 +8,7 @@ import com.vladsch.flexmark.parser._
 import com.vladsch.flexmark.ext.wikilink._
 import com.vladsch.flexmark.ext.wikilink.internal.WikiLinkLinkRefProcessor
 import com.vladsch.flexmark.util.ast._
+import com.vladsch.flexmark.ast._
 import com.vladsch.flexmark.util.options._
 import com.vladsch.flexmark.util.sequence.BasedSequence
 import com.vladsch.flexmark._
@@ -27,6 +28,11 @@ case class ExtendedFencedCodeBlock(
   compilationResult: Option[SnippetCompilationResult],
   hasContext: Boolean
 ) extends BlankLine(codeBlock.getContentChars())
+
+case class Section(
+  header: Heading,
+  body: List[Node]
+) extends BlankLine(header.getContentChars())
 
 class DocFlexmarkParser(resolveLink: String => DocLink) extends Parser.ParserExtension:
 
@@ -80,7 +86,8 @@ object DocFlexmarkRenderer:
     val opts = MarkdownParser.mkMarkdownOptions(
       Seq(
         DocFlexmarkRenderer(renderLink),
-        SnippetRenderingExtension
+        SnippetRenderingExtension,
+        SectionRenderingExtension
       )
     )
     HtmlRenderer.builder(opts).build().render(node)

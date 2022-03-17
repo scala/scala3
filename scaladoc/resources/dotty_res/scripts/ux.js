@@ -20,6 +20,22 @@ window.addEventListener("DOMContentLoaded", () => {
     $(this).parent().toggleClass("expanded")
   });
 
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const id = entry.target.getAttribute('id');
+      if (entry.intersectionRatio > 0) {
+        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.add('active');
+      } else {
+        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.remove('active');
+      }
+    });
+  });
+
+
+  document.querySelectorAll('#content section[id]').forEach((section) => {
+    observer.observe(section);
+  });
+
   document.querySelectorAll("#sideMenu2 a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
   $('.names .tab').on('click', function() {
