@@ -300,6 +300,7 @@ object Scanners {
       while !atStop do
         nextToken()
       // println(s"\nSTOP SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
+      if token == OUTDENT then dropUntil(_.isInstanceOf[Indented])
       skipping = false
 
 // Get next token ------------------------------------------------------------
@@ -332,14 +333,8 @@ object Scanners {
       result
 
     private inline def dropUntil(inline matches: Region => Boolean): Unit =
-      while
-        !currentRegion.isOutermost
-        && {
-          val isLast = matches(currentRegion)
-          currentRegion = currentRegion.enclosing
-          !isLast
-        }
-      do ()
+      while !matches(currentRegion) && !currentRegion.isOutermost do
+        currentRegion = currentRegion.enclosing
 
     def adjustSepRegions(lastToken: Token): Unit = (lastToken: @switch) match {
       case LPAREN | LBRACKET =>
@@ -348,6 +343,7 @@ object Scanners {
         currentRegion = InBraces(currentRegion)
       case RBRACE =>
         dropUntil(_.isInstanceOf[InBraces])
+        if !currentRegion.isOutermost then currentRegion = currentRegion.enclosing
       case RPAREN | RBRACKET =>
         currentRegion match {
           case InParens(prefix, outer) if prefix + 1 == lastToken => currentRegion = outer
@@ -356,9 +352,7 @@ object Scanners {
       case OUTDENT =>
         currentRegion match
           case r: Indented => currentRegion = r.enclosing
-          case r =>
-            if skipping && r.enclosing.isClosedByUndentAt(indentWidth(offset)) then
-              dropUntil(_.isInstanceOf[Indented])
+          case _ =>
       case STRINGLIT =>
         currentRegion match {
           case InString(_, outer) => currentRegion = outer
@@ -597,11 +591,12 @@ object Scanners {
                       i"""The start of this line does not match any of the previous indentation widths.
                           |Indentation width of current line : $nextWidth
                           |This falls between previous widths: ${ir.width} and $lastWidth"""))
-              case r: InBraces if !closingRegionTokens.contains(token) && !skipping =>
-                report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
               case r =>
-                if skipping && r.enclosing.isClosedByUndentAt(nextWidth) then
-                  insert(OUTDENT, offset)
+                if skipping then
+                  if r.enclosing.isClosedByUndentAt(nextWidth) then
+                    insert(OUTDENT, offset)
+                else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
+                  report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
 
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
