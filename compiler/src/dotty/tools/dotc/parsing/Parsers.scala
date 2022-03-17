@@ -252,16 +252,9 @@ object Parsers {
 
     /** Skip on error to next safe point.
      */
-    protected def skip(): Unit =
-      val lastRegion = in.currentRegion
-      in.skipping = true
-      def atStop =
-        in.token == EOF
-        || skipStopTokens.contains(in.token) && (in.currentRegion eq lastRegion)
-      while !atStop do
-        in.nextToken()
+    def skip(): Unit =
+      in.skip()
       lastErrorOffset = in.offset
-      in.skipping = false
 
     def warning(msg: Message, sourcePos: SourcePosition): Unit =
       report.warning(msg, sourcePos)

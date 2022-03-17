@@ -22,11 +22,3 @@
 30 |  val b = '
    |          ^
    |          unclosed character literal
--- Warning: tests/neg/t6810.scala:6:0 ----------------------------------------------------------------------------------
-6 |'                     // but not embedded EOL sequences not represented as escapes
-  |^
-  |Line is indented too far to the left, or a `}` is missing
--- Warning: tests/neg/t6810.scala:31:0 ---------------------------------------------------------------------------------
-31 |'        // anypos-error CR seen as EOL by scanner; FSR, error only on open quote, unlike `y`
-   |^
-   |Line is indented too far to the left, or a `}` is missing
