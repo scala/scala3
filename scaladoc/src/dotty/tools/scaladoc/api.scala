@@ -83,7 +83,7 @@ enum Origin:
 
 case class Overridden(name: String, dri: DRI)
 
-case class InheritedFrom(name: String, dri: DRI)
+case class InheritedFrom(name: String, dri: DRI, isSourceSuperclassHidden: Boolean)
 
 case class Annotation(val dri: DRI, val params: List[Annotation.AnnotationParameter])
 
