@@ -107,6 +107,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
     def renderNested(nav: Page, nestLevel: Int): (Boolean, AppliedTag) =
       val isSelected = nav.link.dri == pageLink.dri
+      val isTopElement = nestLevel == 0
 
       def linkHtml(expanded: Boolean = false, withArrow: Boolean = false) =
         val attrs: Seq[String] = Seq(
@@ -119,19 +120,19 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           case _ => Nil
         }
         Seq(
-          span(cls := "nh " + attrs.mkString(" "))(
-            if withArrow then Seq(span(cls := "ar")) else Nil,
+          span(cls := s"nh ${if isTopElement then "h200 " else " "}" + attrs.mkString(" "))(
+            if withArrow && !isTopElement then Seq(span(cls := "ar")) else Nil,
             a(href := pathToPage(pageLink.dri, nav.link.dri))(icon, span(nav.link.name))
           )
         )
 
       nav.children.filterNot(_.hidden) match
-        case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected then "expanded" else ""}")(linkHtml())
+        case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected || isTopElement then "expanded" else ""}")(linkHtml())
         case children =>
           val nested = children.map(renderNested(_, nestLevel + 1))
           val expanded = nested.exists(_._1) || isSelected
           val attr =
-            if expanded || isSelected then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
+            if expanded || isSelected || isTopElement then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
           (isSelected || expanded) -> div(attr)(
             linkHtml(expanded, true),
             nested.map(_._2)
