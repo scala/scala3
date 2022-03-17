@@ -40,8 +40,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val legacySourceLink: Setting[String] =
     StringSetting("-doc-source-url", "sources", "Legacy option from Scala 2. Use -source-links instead.", "")
 
-  val syntax: Setting[String] =
-    StringSetting("-comment-syntax", "syntax", "Syntax of the comment used", "")
+  val syntax: Setting[List[String]] =
+    MultiStringSetting("-comment-syntax", "syntax", tasty.comments.CommentSyntaxArgs.usage)
 
   val revision: Setting[String] =
     StringSetting("-revision", "revision", "Revision (branch or ref) used to build project project", "")

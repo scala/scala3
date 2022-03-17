@@ -1804,6 +1804,10 @@ object ScaladocConfigs {
       .add(Revision("main"))
       .add(SnippetCompiler(List("scaladoc-testcases/docs=compile")))
       .add(SiteRoot("scaladoc-testcases/docs"))
+      .add(CommentSyntax(List(
+        "scaladoc-testcases/src/example/comment-md=markdown",
+        "scaladoc-testcases/src/example/comment-wiki=wiki"
+      )))
       .add(ExternalMappings(List(dottyExternalMapping, javaExternalMapping)))
       .withTargets(tastyRoots)
   }
@@ -1833,7 +1837,10 @@ object ScaladocConfigs {
       .add(Revision("main"))
       .add(ExternalMappings(List(javaExternalMapping)))
       .add(DocRootContent(docRootFile.toString))
-      .add(CommentSyntax("wiki"))
+      .add(CommentSyntax(List(
+        s"${dottyLibRoot}=markdown",
+        s"${stdLibRoot}=wiki"
+      )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(

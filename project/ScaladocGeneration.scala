@@ -45,7 +45,7 @@ object ScaladocGeneration {
     def key: String = "-source-links"
   }
 
-  case class CommentSyntax(value: String) extends Arg[String] {
+  case class CommentSyntax(value: List[String]) extends Arg[List[String]] {
     def key: String = "-comment-syntax"
   }
 
