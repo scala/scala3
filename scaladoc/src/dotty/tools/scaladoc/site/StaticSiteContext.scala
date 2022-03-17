@@ -46,10 +46,12 @@ class StaticSiteContext(
     allTemplates.flatMap { loadedTemplate =>
       val redirectFrom = loadedTemplate.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]].get("redirectFrom")
       def redirectToTemplate(redirectFrom: String) =
-        val fakeFile = new File(docsPath.toFile, redirectFrom)
-        val driFrom = driFor(fakeFile.toPath)
+        val path = if redirectFrom.startsWith("/")
+          then relativizeFrom.resolve(redirectFrom.drop(1))
+          else loadedTemplate.file.toPath.resolveSibling(redirectFrom)
+        val driFrom = driFor(path)
         val driTo = driFor(loadedTemplate.file.toPath)
-        (LoadedTemplate(layouts("redirect"), List.empty, fakeFile), driFrom, driTo)
+        (LoadedTemplate(layouts("redirect"), List.empty, path.toFile), driFrom, driTo)
       redirectFrom.map {
         case redirectFrom: String => Seq(redirectToTemplate(redirectFrom))
         case redirects: List[?] => redirects.asInstanceOf[List[String]].map(redirectToTemplate)

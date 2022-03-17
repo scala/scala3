@@ -2,6 +2,7 @@ index: index.md
 subsection:
   - title: Usage
     directory: docs/usage
+    index: usage/index.md
     subsection:
       - page: usage/sbt-projects.md
       - page: usage/ide-support.md
@@ -17,8 +18,8 @@ subsection:
           - page: usage/scaladoc/static-site.md
   - title: Reference
     directory: docs/reference
+    index: reference/overview.md
     subsection:
-      - page: reference/overview.md
       - title: New Types
         index: reference/new-types/new-types.md
         subsection:
@@ -137,8 +138,8 @@ subsection:
           - page: reference/dropped-features/wildcard-init.md
       - title: Experimental Features
         directory: experimental
+        index: reference/experimental/overview.md
         subsection:
-          - page: reference/experimental/overview.md
           - page: reference/experimental/canthrow.md
           - page: reference/experimental/erased-defs.md
           - page: reference/experimental/erased-defs-spec.md
@@ -157,6 +158,7 @@ subsection:
       - page: reference/features-classification.md
   - title: Contributing
     directory: docs/contributing
+    index: contributing/index.md
     subsection:
       - page: contributing/contribute-knowledge.md
       - page: contributing/getting-started.md
@@ -175,6 +177,7 @@ subsection:
           - page: contributing/procedures/vulpix.md
   - title: Internals
     directory: docs/internals
+    index: internals/index.md
     subsection:
       - page: internals/backend.md
       - page: internals/classpaths.md
