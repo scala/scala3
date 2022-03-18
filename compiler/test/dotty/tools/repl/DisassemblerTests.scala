@@ -295,3 +295,196 @@ class JavapTests extends DisassemblerTest:
       assertDisassemblyIncludes("public java.lang.String trim();", out)
     }
 end JavapTests
+
+// Test output filters
+class JavapFilterSelectionTests:
+  // test -sysinfo disassembly
+  private val listSysinfo =
+    """  Size 51190 bytes
+      |  MD5 checksum fa1f9a810f5fff1bac4c3d1ae2051ab5
+      |  Compiled from "List.scala"
+      |public abstract class scala.collection.immutable.List<A> extends scala.collection.immutable.AbstractSeq<A> implements scala.collection.immutable.LinearSeq<A>, scala.collection.StrictOptimizedLinearSeqOps<A, scala.collection.immutable.List, scala.collection.immutable.List<A>>, scala.collection.immutable.StrictOptimizedSeqOps<A, scala.collection.immutable.List, scala.collection.immutable.List<A>>, scala.collection.generic.DefaultSerializable {
+      |  public static scala.collection.SeqOps unapplySeq(scala.collection.SeqOps);
+      |  public scala.collection.LinearSeq drop(int);
+      |  public scala.collection.LinearSeq dropWhile(scala.Function1);
+      |  public java.lang.Object drop(int);
+      |  public java.lang.Object sorted(scala.math.Ordering);
+      |}
+    """.stripMargin
+
+  @Test
+  def `select drop from listSysinfo`: Unit =
+    assertEquals(
+      """|  public scala.collection.LinearSeq drop(int);
+         |  public java.lang.Object drop(int);
+         |""".stripMargin,
+      Javap.filterSelection("List#drop")(listSysinfo))
+
+  // test -l disassembly
+  private val listL =
+    """Compiled from "List.scala"
+      |public abstract class scala.collection.immutable.List<A> extends scala.collection.immutable.AbstractSeq<A> implements scala.collection.immutable.LinearSeq<A>, scala.collection.StrictOptimizedLinearSeqOps<A, scala.collection.immutable.List, scala.collection.immutable.List<A>>, scala.collection.immutable.StrictOptimizedSeqOps<A, scala.collection.immutable.List, scala.collection.immutable.List<A>>, scala.collection.generic.DefaultSerializable {
+      |  public static scala.collection.SeqOps unapplySeq(scala.collection.SeqOps);
+      |    LineNumberTable:
+      |      line 648: 4
+      |
+      |  public scala.collection.LinearSeq drop(int);
+      |    LineNumberTable:
+      |      line 79: 0
+      |    LocalVariableTable:
+      |      Start  Length  Slot  Name   Signature
+      |          0       6     0  this   Lscala/collection/immutable/List;
+      |          0       6     1     n   I
+      |
+      |  public scala.collection.LinearSeq dropWhile(scala.Function1);
+      |    LineNumberTable:
+      |      line 79: 0
+      |    LocalVariableTable:
+      |      Start  Length  Slot  Name   Signature
+      |          0       6     0  this   Lscala/collection/immutable/List;
+      |          0       6     1     p   Lscala/Function1;
+      |
+      |  public java.lang.Object drop(int);
+      |    LineNumberTable:
+      |      line 79: 0
+      |    LocalVariableTable:
+      |      Start  Length  Slot  Name   Signature
+      |          0       6     0  this   Lscala/collection/immutable/List;
+      |          0       6     1     n   I
+      |
+      |  public java.lang.Object sorted(scala.math.Ordering);
+      |    LineNumberTable:
+      |      line 79: 0
+      |    LocalVariableTable:
+      |      Start  Length  Slot  Name   Signature
+      |          0       6     0  this   Lscala/collection/immutable/List;
+      |          0       6     1   ord   Lscala/math/Ordering;
+      |}
+    """.stripMargin
+
+  @Test
+  def `select drop from listL`: Unit =
+    assertEquals(
+      """|  public scala.collection.LinearSeq drop(int);
+         |    LineNumberTable:
+         |      line 79: 0
+         |    LocalVariableTable:
+         |      Start  Length  Slot  Name   Signature
+         |          0       6     0  this   Lscala/collection/immutable/List;
+         |          0       6     1     n   I
+         |  public java.lang.Object drop(int);
+         |    LineNumberTable:
+         |      line 79: 0
+         |    LocalVariableTable:
+         |      Start  Length  Slot  Name   Signature
+         |          0       6     0  this   Lscala/collection/immutable/List;
+         |          0       6     1     n   I
+         |""".stripMargin,
+      Javap.filterSelection("List#drop")(listL))
+
+  // test -v disassembly  // TODO implement
+  private val listV =
+    """|
+    """.stripMargin
+
+  // test -s disassembly
+  private val listS =
+    """Compiled from "List.scala"
+      |public abstract class scala.collection.immutable.List<A> extends scala.collection.immutable.AbstractSeq<A> implements scala.collection.immutable.LinearSeq<A>, scala.collection.StrictOptimizedLinearSeqOps<A, scala.collection.immutable.List, scala.collection.immutable.List<A>>, scala.collection.immutable.StrictOptimizedSeqOps<A, scala.collection.immutable.List, scala.collection.immutable.List<A>>, scala.collection.generic.DefaultSerializable {
+      |  public static scala.collection.SeqOps unapplySeq(scala.collection.SeqOps);
+      |    descriptor: (Lscala/collection/SeqOps;)Lscala/collection/SeqOps;
+      |
+      |  public scala.collection.LinearSeq drop(int);
+      |    descriptor: (I)Lscala/collection/LinearSeq;
+      |
+      |  public scala.collection.LinearSeq dropWhile(scala.Function1);
+      |    descriptor: (Lscala/Function1;)Lscala/collection/LinearSeq;
+      |
+      |  public java.lang.Object drop(int);
+      |    descriptor: (I)Ljava/lang/Object;
+      |
+      |  public java.lang.Object sorted(scala.math.Ordering);
+      |    descriptor: (Lscala/math/Ordering;)Ljava/lang/Object;
+      |}
+    """.stripMargin
+
+  @Test
+  def `select drop from listS`: Unit =
+    assertEquals(
+      """|  public scala.collection.LinearSeq drop(int);
+         |    descriptor: (I)Lscala/collection/LinearSeq;
+         |  public java.lang.Object drop(int);
+         |    descriptor: (I)Ljava/lang/Object;
+         |""".stripMargin,
+      Javap.filterSelection("List#drop")(listS))
+
+  private val listC =
+    """Compiled from "List.scala"
+      |public abstract class scala.collection.immutable.List<A> extends scala.collection.immutable.AbstractSeq<A> implements scala.collection.immutable.LinearSeq<A>, scala.collection.StrictOptimizedLinearSeqOps<A, scala.collection.immutable.List, scala.collection.immutable.List<A>>, scala.collection.immutable.StrictOptimizedSeqOps<A, scala.collection.immutable.List, scala.collection.immutable.List<A>>, scala.collection.generic.DefaultSerializable {
+      |  public static scala.collection.SeqOps unapplySeq(scala.collection.SeqOps);
+      |    Code:
+      |       0: getstatic     #43                 // Field scala/collection/immutable/List$.MODULE$:Lscala/collection/immutable/List$;
+      |       3: pop
+      |       4: aload_0
+      |       5: areturn
+      |
+      |  public scala.collection.LinearSeq drop(int);
+      |    Code:
+      |       0: aload_0
+      |       1: iload_1
+      |       2: invokestatic  #223                // InterfaceMethod scala/collection/StrictOptimizedLinearSeqOps.drop$:(Lscala/collection/StrictOptimizedLinearSeqOps;I)Lscala/collection/LinearSeq;
+      |       5: areturn
+      |
+      |  public scala.collection.LinearSeq dropWhile(scala.Function1);
+      |    Code:
+      |       0: aload_0
+      |       1: aload_1
+      |       2: invokestatic  #230                // InterfaceMethod scala/collection/StrictOptimizedLinearSeqOps.dropWhile$:(Lscala/collection/StrictOptimizedLinearSeqOps;Lscala/Function1;)Lscala/collection/LinearSeq;
+      |       5: areturn
+      |
+      |  public java.lang.Object drop(int);
+      |    Code:
+      |       0: aload_0
+      |       1: iload_1
+      |       2: invokevirtual #792                // Method drop:(I)Lscala/collection/LinearSeq;
+      |       5: areturn
+      |
+      |  public java.lang.Object sorted(scala.math.Ordering);
+      |    Code:
+      |       0: aload_0
+      |       1: aload_1
+      |       2: invokestatic  #210                // InterfaceMethod scala/collection/immutable/StrictOptimizedSeqOps.sorted$:(Lscala/collection/immutable/StrictOptimizedSeqOps;Lscala/math/Ordering;)Ljava/lang/Object;
+      |       5: areturn
+      |}
+    """.stripMargin
+
+  @Test
+  def `select drop from List disassembly`: Unit =
+    assertEquals(
+      """|  public scala.collection.LinearSeq drop(int);
+         |    Code:
+         |       0: aload_0
+         |       1: iload_1
+         |       2: invokestatic  #223                // InterfaceMethod scala/collection/StrictOptimizedLinearSeqOps.drop$:(Lscala/collection/StrictOptimizedLinearSeqOps;I)Lscala/collection/LinearSeq;
+         |       5: areturn
+         |  public java.lang.Object drop(int);
+         |    Code:
+         |       0: aload_0
+         |       1: iload_1
+         |       2: invokevirtual #792                // Method drop:(I)Lscala/collection/LinearSeq;
+         |       5: areturn
+         |""".stripMargin,
+      Javap.filterSelection("List#drop")(listC))
+
+  @Test
+  def `select last method from disassembly`: Unit =
+    assertEquals(
+      """|  public java.lang.Object sorted(scala.math.Ordering);
+         |    Code:
+         |       0: aload_0
+         |       1: aload_1
+         |       2: invokestatic  #210                // InterfaceMethod scala/collection/immutable/StrictOptimizedSeqOps.sorted$:(Lscala/collection/immutable/StrictOptimizedSeqOps;Lscala/math/Ordering;)Ljava/lang/Object;
+         |       5: areturn
+         |""".stripMargin,
+      Javap.filterSelection("List#sorted")(listC))
+end JavapFilterSelectionTests
