@@ -175,7 +175,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case tp => tp
     }
 
-    def constrainTypeMembers = trace(i"constrainTypeMembers(${scrutRepr(scrut)}, $pat)") {
+    def constrainTypeMembers = trace(i"constrainTypeMembers(${scrutRepr(scrut)}, $pat)", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
+      import NameKinds.DepParamName
       val realScrutineePath = ctx.gadt.scrutineePath
       /* We reset scrutinee path so that the path will only be used at top level. */
       ctx.gadt.resetScrutineePath()
@@ -184,6 +185,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case null => SkolemType(scrut)
         case _ => realScrutineePath
       val patternPath: SkolemType = SkolemType(pat)
+
+      gadts.println(i"scrutinee path: $scrutineePath")
+      gadts.println(i"pattern path: $patternPath")
 
       val saved = state.nn.constraint
       val savedGadt = ctx.gadt.fresh
@@ -207,7 +211,18 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val scrutineeType = TypeRef(scrutineePath, scrutineeSymbol)
           val patternType = TypeRef(patternPath, patternSymbol)
 
-          isSubType(scrutineeType, patternType) && isSubType(patternType, scrutineeType)
+          def constrainSP =
+            val res = ctx.gadt.addBound(scrutineePath, scrutineeSymbol, patternType, isUpper = true)
+            gadts.println(i"after $scrutineePath.$scrutineeSymbol <:< $patternType: res = $res, gadt = ${ctx.gadt.debugBoundsDescription}")
+            res
+
+          def constrainPS =
+            val res = ctx.gadt.addBound(patternPath, patternSymbol, scrutineeType, isUpper = true)
+            gadts.println(i"after $patternPath.$patternSymbol <:< $scrutineePath: res = $res, gadt = ${ctx.gadt.debugBoundsDescription}")
+            res
+
+          constrainPS && constrainSP
+          // true
         }
       }
 

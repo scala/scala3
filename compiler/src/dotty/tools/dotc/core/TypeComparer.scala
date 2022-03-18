@@ -571,7 +571,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def compareGADT: Boolean =
           tp2.onGadtBounds(gbounds2 =>
-            isSubTypeWhenFrozen(tp1, gbounds2.lo)
+            { isSubTypeWhenFrozen(tp1, gbounds2.lo) }
             || tp1.match
                 case tp1: TypeRef if tpRegistered(tp1) =>
                   // Note: since we approximate constrained types only with their non-param bounds,
@@ -2080,7 +2080,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             gadts.println(i"narrow gadt bound of pdt $path -> ${sym}: from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(sym)}")
 
             if (bound.isRef(sym)) false
-            else false
+            else if isUpper then gadtAddUpperBound(path, sym, bound)
+            else gadtAddLowerBound(path, sym, bound)
           }
         case _ => false
 
