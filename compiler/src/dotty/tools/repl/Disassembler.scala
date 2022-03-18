@@ -3,6 +3,7 @@ package repl
 
 import scala.annotation.internal.sharable
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 import scala.util.matching.Regex
 
 import dotc.core.StdNames.*
@@ -627,3 +628,208 @@ object JavapTask:
   // introduced in JDK7 as internal API
   val taskClassName = "com.sun.tools.javap.JavapTask"
 end JavapTask
+
+/** A disassembler implemented using the ASM library (a dependency of the backend)
+ *  Supports flags similar to javap, with some additions and omissions.
+ */
+object Asmp extends Disassembler:
+  import Disassembler.*
+
+  def apply(opts: DisassemblerOptions)(using repl: DisassemblerRepl): List[DisResult] =
+    val tool = AsmpTool()
+    val clazz = DisassemblyClass(repl.classLoader)
+    tool(opts.flags)(opts.targets.map(clazz.bytes(_)))
+
+  // The flags are intended to resemble those used by javap
+  val helps = List(
+    "usage"       -> ":asmp [opts] [path or class or -]...",
+    "-help"       -> "Prints this help message",
+    "-verbose/-v" -> "Stack size, number of locals, method args",
+    "-private/-p" -> "Private classes and members",
+    "-package"    -> "Package-private classes and members",
+    "-protected"  -> "Protected classes and members",
+    "-public"     -> "Public classes and members",
+    "-c"          -> "Disassembled code",
+    "-s"          -> "Internal type signatures",
+    "-filter"     -> "Filter REPL machinery from output",
+    "-raw"        -> "Don't post-process output from ASM",  // TODO for debugging
+    "-decls"      -> "Declarations",
+    "-bridges"    -> "Bridges",
+    "-synthetics" -> "Synthetics",
+  )
+
+  override def filters(target: String, opts: DisassemblerOptions): List[String => String] =
+    val commonFilters = super.filters(target, opts)
+    if opts.flags.contains("-decls") then filterCommentsBlankLines :: commonFilters
+    else squashConsectiveBlankLines :: commonFilters   // default filters
+
+  // A filter to compress consecutive blank lines into a single blank line
+  private def squashConsectiveBlankLines(s: String) = s.replaceAll("\n{3,}", "\n\n").nn
+
+  // A filter to remove all blank lines and lines beginning with "//"
+  private def filterCommentsBlankLines(s: String): String =
+    val comment = raw"\s*// .*".r
+    def isBlankLine(s: String) = s.trim == ""
+    def isComment(s: String) = comment.matches(s)
+    filteredLines(s, t => !isComment(t) && !isBlankLine(t))
+end Asmp
+
+object AsmpOptions extends DisassemblerOptionParser(Asmp.helps):
+  val defaultToolOptions = List("-protected", "-verbose")
+
+/** Implementation of the ASM-based disassembly tool. */
+class AsmpTool extends DisassemblyTool:
+  import DisassemblyTool.*
+  import Disassembler.splitHashMember
+  import java.io.{PrintWriter, StringWriter}
+  import scala.tools.asm.{Attribute, ClassReader, Label, Opcodes}
+  import scala.tools.asm.util.{Textifier, TraceClassVisitor}
+  import dotty.tools.backend.jvm.ClassNode1
+
+  enum Mode:
+    case Verbose, Code, Signatures
+
+  /** A Textifier subclass to control the disassembly output based on flags.
+   *  The visitor methods overriden here conditionally suppress their output
+   *  based on the flags and targets supplied to the disassembly tool.
+   *
+   *  The filtering performed falls into three categories:
+   *   - operating mode: -verbose, -c, -s, etc.
+   *   - access flags: -protected, -private, -public, etc.
+   *   - member name: e.g. a target given as Klass#method
+   *
+   *  This is all bypassed if the `-raw` flag is given.
+   */
+  class FilteringTextifier(mode: Mode, accessFilter: Int => Boolean, nameFilter: Option[String])
+  extends Textifier(Opcodes.ASM9):
+    private def keep(access: Int, name: String): Boolean =
+      accessFilter(access) && nameFilter.map(_ == name).getOrElse(true)
+
+    override def visitField(access: Int, name: String, descriptor: String, signature: String, value: Any): Textifier =
+      if keep(access, name) then
+        super.visitField(access, name, descriptor, signature, value)
+        addNewTextifier(discard = (mode == Mode.Signatures))
+      else
+        addNewTextifier(discard = true)
+
+    override def visitMethod(access:Int, name: String, descriptor: String, signature: String, exceptions: Array[String | Null]): Textifier =
+      if keep(access, name) then
+        super.visitMethod(access, name, descriptor, signature, exceptions)
+        addNewTextifier(discard = (mode == Mode.Signatures))
+      else
+        addNewTextifier(discard = true)
+
+    override def visitInnerClass(name: String, outerName: String, innerName: String, access: Int): Unit =
+      if mode == Mode.Verbose && keep(access, name) then
+        super.visitInnerClass(name, outerName, innerName, access)
+
+    override def visitClassAttribute(attribute: Attribute): Unit =
+      if mode == Mode.Verbose && nameFilter.isEmpty then
+        super.visitClassAttribute(attribute)
+
+    override def visitClassAnnotation(descriptor: String, visible: Boolean): Textifier | Null =
+      // suppress ScalaSignature unless -raw given. Should we? TODO
+      if mode == Mode.Verbose && nameFilter.isEmpty && descriptor != "Lscala/reflect/ScalaSignature;" then
+        super.visitClassAnnotation(descriptor, visible)
+      else
+        addNewTextifier(discard = true)
+
+    override def visitSource(file: String, debug: String): Unit =
+      if mode == Mode.Verbose && nameFilter.isEmpty then
+        super.visitSource(file, debug)
+
+    override def visitAnnotation(descriptor: String, visible: Boolean): Textifier | Null =
+      if mode == Mode.Verbose then
+        super.visitAnnotation(descriptor, visible)
+      else
+        addNewTextifier(discard = true)
+
+    override def visitLineNumber(line: Int, start: Label): Unit =
+      if mode == Mode.Verbose then
+        super.visitLineNumber(line, start)
+
+    override def visitMaxs(maxStack: Int, maxLocals: Int): Unit =
+      if mode == Mode.Verbose then
+        super.visitMaxs(maxStack, maxLocals)
+
+    override def visitLocalVariable(name: String, descriptor: String, signature: String, start: Label, end: Label, index: Int): Unit =
+      if mode == Mode.Verbose then
+        super.visitLocalVariable(name, descriptor, signature, start, end, index)
+
+    private def isLabel(s: String) = raw"\s*L\d+\s*".r.matches(s)
+
+    // ugly hack to prevent orphaned label when local vars, max stack not displayed (e.g. in -c mode)
+    override def visitMethodEnd(): Unit = if text != null then text.size match
+      case 0 =>
+      case n =>
+        if isLabel(text.get(n - 1).toString) then
+          try text.remove(n - 1)
+          catch case _: UnsupportedOperationException => ()
+
+    private def addNewTextifier(discard: Boolean = false): Textifier =
+      val tx = FilteringTextifier(mode, accessFilter, nameFilter)
+      if !discard then text.nn.add(tx.getText())
+      tx
+  end FilteringTextifier
+
+  override def apply(options: Seq[String])(inputs: Seq[Input]): List[DisResult] =
+    def parseMode(opts: Seq[String]): Mode =
+      if opts.contains("-c") then Mode.Code
+      else if opts.contains("-s") || opts.contains("-decls") then Mode.Signatures
+      else Mode.Verbose  // default
+
+    def parseAccessLevel(opts: Seq[String]): Int =
+      if opts.contains("-public") then Opcodes.ACC_PUBLIC
+      else if opts.contains("-protected") then Opcodes.ACC_PROTECTED
+      else if opts.contains("-private") || opts.contains("-p") then Opcodes.ACC_PRIVATE
+      else 0
+
+    def accessFilter(mode: Mode, accessLevel: Int, opts: Seq[String]): Int => Boolean =
+      inline def contains(mask: Int) = (a: Int) => (a & mask) != 0
+      inline def excludes(mask: Int) = (a: Int) => (a & mask) == 0
+      val showSynthetics = opts.contains("-synthetics")
+      val showBridges = opts.contains("-bridges")
+      def accessible: Int => Boolean = accessLevel match
+        case Opcodes.ACC_PUBLIC    => contains(Opcodes.ACC_PUBLIC)
+        case Opcodes.ACC_PROTECTED => contains(Opcodes.ACC_PUBLIC | Opcodes.ACC_PROTECTED)
+        case Opcodes.ACC_PRIVATE   => _ => true
+        case _  /* package */      => excludes(Opcodes.ACC_PRIVATE)
+      def included(access: Int): Boolean = mode match
+        case Mode.Verbose => true
+        case _ =>
+          val isBridge = contains(Opcodes.ACC_BRIDGE)(access)
+          val isSynthetic = contains(Opcodes.ACC_SYNTHETIC)(access)
+          if isSynthetic && showSynthetics then true  // TODO do we have tests for -synthetics?
+          else if isBridge && showBridges then true   // TODO do we have tests for -bridges?
+          else if isSynthetic || isBridge then false
+          else true
+      a => accessible(a) && included(a)
+
+    def runInput(input: Input): DisResult = input match
+      case Input(target, _, Success(bytes)) =>
+        val sw = StringWriter()
+        val pw = PrintWriter(sw)
+        val node = ClassNode1()
+
+        val tx =
+          if options.contains("-raw") then
+            Textifier()
+          else
+            val mode = parseMode(options)
+            val accessLevel = parseAccessLevel(options)
+            val nameFilter = splitHashMember(target).map(s => if s.isEmpty then "apply" else s)
+            FilteringTextifier(mode, accessFilter(mode, accessLevel, options), nameFilter)
+
+        try
+          ClassReader(bytes).accept(node, 0)
+          node.accept(TraceClassVisitor(null, tx, pw))
+          pw.flush()
+          DisSuccess(target, sw.toString)
+        catch case NonFatal(e) => DisError(e.getMessage)
+      case Input(_, _, Failure(e)) =>
+        DisError(e.getMessage)
+    end runInput
+
+    inputs.map(runInput).toList
+  end apply
+end AsmpTool

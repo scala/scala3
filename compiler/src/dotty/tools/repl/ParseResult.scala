@@ -52,6 +52,10 @@ object Load {
   val command: String = ":load"
 }
 
+/** Run the ASM based disassembler on the given target(s) */
+case class AsmpOf(args: String) extends Command
+object AsmpOf:
+  val command: String = ":asmp"
 
 /** Run the javap disassembler on the given target(s) */
 case class JavapOf(args: String) extends Command
@@ -119,6 +123,7 @@ case object Help extends Command {
       |:imports                 show import history
       |:reset [options]         reset the repl to its initial state, forgetting all session entries
       |:settings <options>      update compiler options, if possible
+      |:asmp <path|class>       disassemble a file or class name (experimental)
       |:javap <path|class>      disassemble a file or class name
     """.stripMargin
 }
@@ -144,6 +149,7 @@ object ParseResult {
     TypeOf.command -> (arg => TypeOf(arg)),
     DocOf.command -> (arg => DocOf(arg)),
     Settings.command -> (arg => Settings(arg)),
+    AsmpOf.command -> (arg => AsmpOf(arg)),
     JavapOf.command -> (arg => JavapOf(arg))
   )
 
