@@ -55,6 +55,7 @@ trait PropertiesTrait {
 
   def envOrElse(name: String, alt: String): String      = Option(System getenv name) getOrElse alt
   def envOrNone(name: String): Option[String]           = Option(System getenv name)
+  def envOrSome(name: String, alt: => Option[String])   = envOrNone(name) orElse alt
 
   // for values based on propFilename
   def scalaPropOrElse(name: String, alt: String): String = scalaProps.getProperty(name, alt)

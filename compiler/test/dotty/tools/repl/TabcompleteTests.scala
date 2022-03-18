@@ -211,6 +211,7 @@ class TabcompleteTests extends ReplTest {
         ":exit",
         ":help",
         ":imports",
+        ":javap",
         ":load",
         ":quit",
         ":reset",

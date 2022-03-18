@@ -248,3 +248,50 @@ abstract class DisassemblerTest extends ReplDisassemblerTest:
     assert(!out.linesIterator.exists(_.contains(line)),
       s"disassembly unexpectedly contained `$line`")
 end DisassemblerTest
+
+// Test disassembly using `:javap`
+class JavapTests extends DisassemblerTest:
+  override val packageSeparator = "."
+
+  @Test def `simple end-to-end` =
+    eval("class Foo1").andThen {
+      run(":javap -c Foo1")
+      assertDisassemblyIncludes(s"public class ${line(1, "Foo1")} {")
+    }
+
+  @Test def `multiple classes in prev entry` =
+    eval {
+      """class Foo2
+        |trait Bar2
+        |""".stripMargin
+    } andThen {
+      run(":javap -c -")
+      assertDisassemblyIncludes(List(
+        s"public class ${line(1, "Foo2")} {",
+        s"public interface ${line(1, "Bar2")} {",
+      ))
+    }
+
+  @Test def `private selected method` =
+    eval {
+      """class Baz1:
+        |  private def one = 1
+        |  private def two = 2
+        |""".stripMargin
+    } andThen {
+      run(":javap -p -c Baz1#one")
+      val out = storedOutput()
+      assertDisassemblyIncludes("private int one();", out)
+      assertDisassemblyExcludes("private int two();", out)
+    }
+
+  @Test def `java.lang.String signatures` =
+    initially {
+      run(":javap -s java.lang.String")
+      val out = storedOutput()
+      assertDisassemblyIncludes("public static java.lang.String format(java.lang.String, java.lang.Object...);", out)
+      assertDisassemblyIncludes("public static java.lang.String join(java.lang.CharSequence, java.lang.Iterable<? extends java.lang.CharSequence>);", out)
+      assertDisassemblyIncludes("public java.lang.String concat(java.lang.String);", out)
+      assertDisassemblyIncludes("public java.lang.String trim();", out)
+    }
+end JavapTests
