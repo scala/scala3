@@ -19,8 +19,8 @@ trait CommonRunner {
    *  @throws java.lang.reflect.InvocationTargetException
    */
   def run(urls: Seq[URL], objectName: String, arguments: Seq[String]): Unit = {
-    import RichClassLoader._
-    ScalaClassLoader.fromURLsParallelCapable(urls).run(objectName, arguments)
+    import ClassLoaderOps._
+    ScalaClassLoader.fromURLsParallelCapable(urls).runMain(objectName, arguments)
   }
 
   /** Catches any non-fatal exception thrown by run (in the case of InvocationTargetException,

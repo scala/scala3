@@ -31,7 +31,7 @@ import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io._
-import dotty.tools.runner.ScalaClassLoader.*
+import dotty.tools.runner.ClassLoaderOps.*
 import org.jline.reader._
 
 import scala.annotation.tailrec

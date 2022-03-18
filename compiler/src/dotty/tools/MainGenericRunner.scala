@@ -170,7 +170,7 @@ object MainGenericRunner {
         val newSettings = if arg.startsWith("-") then settings else settings.withPossibleEntryPaths(arg).withModeShouldBePossibleRun
         process(tail, newSettings.withResidualArgs(arg))
   end process
-      
+
   def main(args: Array[String]): Unit =
     val scalaOpts = envOrNone("SCALA_OPTS").toArray.flatMap(_.split(" ")).filter(_.nonEmpty)
     val allArgs = scalaOpts ++ args
@@ -193,7 +193,7 @@ object MainGenericRunner {
 
       case ExecuteMode.PossibleRun =>
         val newClasspath = (settings.classPath :+ ".").flatMap(_.split(classpathSeparator).filter(_.nonEmpty)).map(File(_).toURI.toURL)
-        import dotty.tools.runner.RichClassLoader._
+        import dotty.tools.runner.ClassLoaderOps._
         val newClassLoader = ScalaClassLoader.fromURLsParallelCapable(newClasspath)
         val targetToRun = settings.possibleEntryPaths.to(LazyList).find { entryPath =>
           newClassLoader.tryToLoadClass(entryPath).orElse {
