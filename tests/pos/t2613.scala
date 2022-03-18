@@ -7,5 +7,5 @@ object Test {
 
   type M = MyRelation[_ <: Row, _ <: MyRelation[_, _]]
 
-  val (x,y): (String, M) = null
+  val (x,y): (String, M) = null : Any
 }

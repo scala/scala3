@@ -243,7 +243,23 @@ object TypeTestsCasts {
             else foundClasses.exists(check)
           end checkSensical
 
-          if (expr.tpe <:< testType)
+          def hasUncheckedPrefix(tpe: Type): Boolean = tpe.stripped match
+            case tpe: TermRef =>
+              tpe.symbol.info.hasAnnotation(defn.UncheckedAnnot)
+              || hasUncheckedPrefix(tpe.prefix)
+            case tpe: TypeRef =>
+              tpe.symbol.hasAnnotation(defn.UncheckedAnnot)
+              || hasUncheckedPrefix(tpe.prefix)
+            case tpe: AndOrType =>
+              hasUncheckedPrefix(tpe.tp1) || hasUncheckedPrefix(tpe.tp2)
+            case tpe: AppliedType =>
+              hasUncheckedPrefix(tpe.tycon) || tpe.args.exists(hasUncheckedPrefix)
+            case tpe: TypeProxy =>
+              hasUncheckedPrefix(tpe.underlying)
+            case _ =>
+              false
+
+          if expr.tpe <:< testType && !hasUncheckedPrefix(expr.tpe) then
             if (expr.tpe.isNotNull) {
               if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.srcPos)
               constant(expr, Literal(Constant(true)))
