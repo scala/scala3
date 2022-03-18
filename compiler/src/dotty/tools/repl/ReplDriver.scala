@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.config.CommandLineParser.tokenize
 import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts._
@@ -20,7 +21,7 @@ import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols.{Symbol, defn}
+import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
@@ -114,6 +115,8 @@ class ReplDriver(settings: Array[String],
     compiler = new ReplCompiler
     rendering = new Rendering(classLoader)
   }
+
+  private[repl] def replClassLoader()(using Context) = rendering.classLoader()
 
   private var rootCtx: Context = _
   private var shouldStart: Boolean = _
@@ -325,7 +328,27 @@ class ReplDriver(settings: Array[String],
       )
   }
 
-  private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): (State, Seq[Diagnostic]) = {
+  private def collectTypeDefs[A](sym: Symbol)(f: Denotation => A)(using Context): Seq[A] =
+    sym.info.memberClasses.collect {
+      case x if !x.symbol.isSyntheticCompanion && !x.symbol.name.isReplWrapperName =>
+        f(x)
+    }
+
+  private def extractDefMembers(sym: Symbol)(using Context): Seq[Denotation] =
+    sym.info.bounds.hi.finalResultType
+      .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
+      .filterNot(denot =>
+        defn.topClasses.contains(denot.symbol.owner)
+        || denot.symbol.isConstructor
+        || denot.symbol.name.is(DefaultGetterName)
+      )
+
+  private def extractValMembers(sym: Symbol)(using Context): Seq[Denotation] =
+    sym.info.fields
+      .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Artifact | Module))
+      .filter(_.symbol.name.is(SimpleNameKind))
+
+  private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): (State, Seq[Diagnostic]) =
     given Context = state.context
 
     def resAndUnit(denot: Denotation) = {
@@ -339,62 +362,40 @@ class ReplDriver(settings: Array[String],
       name.startsWith(str.REPL_RES_PREFIX) && hasValidNumber && sym.info == defn.UnitType
     }
 
-    def extractAndFormatMembers(symbol: Symbol): (State, Seq[Diagnostic]) = if (tree.symbol.info.exists) {
-      val info = symbol.info
-      val defs =
-        info.bounds.hi.finalResultType
-          .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
-          .filterNot { denot =>
-            defn.topClasses.contains(denot.symbol.owner) || denot.symbol.isConstructor
-             || denot.symbol.name.is(DefaultGetterName)
-          }
+    def extractAndFormatMembers(symbol: Symbol): (State, Seq[Diagnostic]) =
+      if tree.symbol.info.exists then
+        val defs = extractDefMembers(symbol)
+        val vals = extractValMembers(symbol)
+        val typeAliases = symbol.info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
 
-      val vals =
-        info.fields
-          .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Artifact | Module))
-          .filter(_.symbol.name.is(SimpleNameKind))
+        // The wrapper object may fail to initialize if the rhs of a ValDef throws.
+        // In that case, don't attempt to render any subsequent vals, and mark this
+        // wrapper object index as invalid.
+        var failedInit = false
+        val renderedVals =
+          val buf = mutable.ListBuffer[Diagnostic]()
+          for d <- vals do if !failedInit then rendering.renderVal(d) match
+            case Right(Some(v)) =>
+              buf += v
+            case Left(e) =>
+              buf += rendering.renderError(e, d)
+              failedInit = true
+            case _ =>
+          buf.toList
 
-      val typeAliases =
-        info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
-
-      // The wrapper object may fail to initialize if the rhs of a ValDef throws.
-      // In that case, don't attempt to render any subsequent vals, and mark this
-      // wrapper object index as invalid.
-      var failedInit = false
-      val renderedVals =
-        val buf = mutable.ListBuffer[Diagnostic]()
-        for d <- vals do if !failedInit then rendering.renderVal(d) match
-          case Right(Some(v)) =>
-            buf += v
-          case Left(e) =>
-            buf += rendering.renderError(e, d)
-            failedInit = true
-          case _ =>
-        buf.toList
-
-      if failedInit then
-        // We limit the returned diagnostics here to `renderedVals`, which will contain the rendered error
-        // for the val which failed to initialize. Since any other defs, aliases, imports, etc. from this
-        // input line will be inaccessible, we avoid rendering those so as not to confuse the user.
-        (state.copy(invalidObjectIndexes = state.invalidObjectIndexes + state.objectIndex), renderedVals)
-      else
-        val formattedMembers =
-          typeAliases.map(rendering.renderTypeAlias)
-          ++ defs.map(rendering.renderMethod)
-          ++ renderedVals
-        val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
-        (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
-    }
-    else (state, Seq.empty)
-
-    def isSyntheticCompanion(sym: Symbol) =
-      sym.is(Module) && sym.is(Synthetic)
-
-    def typeDefs(sym: Symbol): Seq[Diagnostic] = sym.info.memberClasses
-      .collect {
-        case x if !isSyntheticCompanion(x.symbol) && !x.symbol.name.isReplWrapperName =>
-          rendering.renderTypeDef(x)
-      }
+        if failedInit then
+          // We limit the returned diagnostics here to `renderedVals`, which will contain the rendered error
+          // for the val which failed to initialize. Since any other defs, aliases, imports, etc. from this
+          // input line will be inaccessible, we avoid rendering those so as not to confuse the user.
+          (state.copy(invalidObjectIndexes = state.invalidObjectIndexes + state.objectIndex), renderedVals)
+        else
+          val formattedMembers =
+            typeAliases.map(rendering.renderTypeAlias)
+            ++ defs.map(rendering.renderMethod)
+            ++ renderedVals
+          val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
+          (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
+      else (state, Seq.empty)
 
     atPhase(typerPhase.next) {
       // Display members of wrapped module:
@@ -404,7 +405,7 @@ class ReplDriver(settings: Array[String],
           val (newState, formattedMembers) = extractAndFormatMembers(wrapperModule.symbol)
           val formattedTypeDefs =  // don't render type defs if wrapper initialization failed
             if newState.invalidObjectIndexes.contains(state.objectIndex) then Seq.empty
-            else typeDefs(wrapperModule.symbol)
+            else collectTypeDefs(wrapperModule.symbol)(rendering.renderTypeDef)
           val highlighted = (formattedTypeDefs ++ formattedMembers)
             .map(d => new Diagnostic(d.msg.mapMsg(SyntaxHighlighting.highlight), d.pos, d.level))
           (newState, highlighted)
@@ -414,7 +415,7 @@ class ReplDriver(settings: Array[String],
           (state, Seq.empty)
         }
     }
-  }
+  end renderDefinitions
 
   /** Interpret `cmd` to action and propagate potentially new `state` */
   private def interpretCommand(cmd: Command)(implicit state: State): State = cmd match {
@@ -498,6 +499,19 @@ class ReplDriver(settings: Array[String],
       state
   }
 
+  private def disassemble(tool: Disassembler, opts: DisassemblerOptions)(using DisassemblerRepl): Unit =
+    if opts.targets.isEmpty || opts.flags.contains("-help") then
+      out.println(tool.helpText)
+    else
+      import DisResult._
+      tool(opts).foreach {
+        case DisSuccess(target, results) =>
+          val filter = tool.outputFilter(target, opts)
+          out.println(filter(results))
+        case DisError(err) =>
+          out.println(err)
+      }
+
   /** shows all errors nicely formatted */
   private def displayErrors(errs: Seq[Diagnostic])(implicit state: State): State = {
     errs.foreach(printDiagnostic)
@@ -516,5 +530,91 @@ class ReplDriver(settings: Array[String],
   private def printDiagnostic(dia: Diagnostic)(implicit state: State) = dia.level match
     case interfaces.Diagnostic.INFO => out.println(dia.msg) // print REPL's special info diagnostics directly to out
     case _                          => ReplConsoleReporter.doReport(dia)(using state.context)
+
+  extension (sym: Symbol)(using Context)
+    // borrowed from ExtractDependencies#recordDependency and adapted to handle @targetName
+    private def binaryClassName: String =
+      val builder = new StringBuilder
+      val pkg = sym.enclosingPackageClass
+      if !pkg.isEffectiveRoot then
+        builder.append(pkg.fullName.mangledString)
+        builder.append(".")
+      import dotty.tools.dotc.core.NameKinds._
+      val flatName = sym.maybeOwner.fullNameSeparated(FlatName, FlatName, sym.targetName)
+      val clsFlatName = if sym.is(JavaDefined) then flatName.stripModuleClassSuffix else flatName
+      builder.append(clsFlatName.mangledString)
+      builder.toString
+
+    private def isSyntheticCompanion =
+      sym.is(Module) && sym.is(Synthetic)
+  end extension
+
+  /** Returns a list of disassembly targets for the most recent REPL input.
+   *  This computes the targets when "-" is given to the :javap or :asmp command.
+   *  The targets include all top level classes defined by the REPL input,
+   *  plus the REPL wrapper object itself if any vals or defs were defined.
+   */
+  def disassemblyTargetsLastWrapper(state0: State): List[String] =
+    given state: State = newRun(state0)
+    given Context = state.context
+
+    def hasMembers(sym: Symbol): Boolean =
+      extractDefMembers(sym).nonEmpty || extractValMembers(sym).nonEmpty
+
+    val lastWrapper = s"${str.REPL_SESSION_LINE}${state0.objectIndex}"
+    val wrapperModuleClass = List(lastWrapper + "$")
+
+    compiler.typeCheck(lastWrapper).map(tree =>
+      tree.rhs match
+        case Block(id :: Nil, _) =>
+          val sym = id.tpe.typeSymbol
+          collectTypeDefs(sym)(_.symbol.binaryClassName).toList
+          ++ (if hasMembers(sym) then wrapperModuleClass else Nil)
+    )
+    .toOption
+    .filterNot(_.isEmpty)
+    .getOrElse(wrapperModuleClass)
+  end disassemblyTargetsLastWrapper
+
+  /** Is `name` a type symbol in REPL scope?
+   *  Returns Some containing its binary class name if so, otherwise None
+   */
+  def binaryClassOfType(name: String)(using state0: State): Option[String] =
+    given state: State = newRun(state0)
+    given Context = state.context
+
+    val typeName =
+      if name.endsWith("$") then s"${name.init}.type"
+      else name
+
+    compiler.typeCheck(s"type $$_ = $typeName", errorsAllowed = true).toOption.flatMap(tree =>
+      tree.rhs match
+        case Block(List(TypeDef(_, x)), _) =>
+          val sym = x.tpe.widenDealias.typeSymbol
+          Option.when(sym.exists && sym.isClass)(sym.binaryClassName)
+    )
+  end binaryClassOfType
+
+  /** Is `name` a symbol in some enclosing class scope?
+   *  Returns Some containing its binary class name if so, otherwise None
+   */
+  def binaryClassOfTerm(name: String)(using state0: State): Option[String] =
+    given state: State = newRun(state0)
+    given Context = state.context
+
+    def extractSymbol(tree: tpd.Tree): Symbol = tree match
+      case tpd.closureDef(defdef) => defdef.rhs.symbol
+      case _ => tree.symbol
+
+    compiler.typeCheck(s"val $$_ = $name").toOption.flatMap(tree =>
+      tree.rhs match
+        case Block((valdef: tpd.ValDef) :: Nil, _) =>
+          val sym = extractSymbol(valdef.rhs)
+          val encl =
+            if sym.is(ModuleVal) then sym.moduleClass
+            else sym.lexicallyEnclosingClass
+          Option.when(encl.exists)(encl.binaryClassName)
+    )
+  end binaryClassOfTerm
 
 end ReplDriver

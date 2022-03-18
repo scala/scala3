@@ -34,6 +34,16 @@ object ClassLoaderOps:
       catching(classOf[ClassNotFoundException], classOf[SecurityException]) opt
         Class.forName(path, initialize, self).asInstanceOf[Class[T]]
 
+    /** The actual bytes for a class file, or an empty array if it can't be found. */
+    def classBytes(className: String): Array[Byte] = classAsStream(className) match
+      case null   => Array()
+      case stream => dotty.tools.io.Streamable.bytes(stream)
+
+    private inline def classAsStream(className: String) = self.getResourceAsStream {
+      if className.endsWith(".class") then className
+      else s"${className.replace('.', '/')}.class"  // classNameToPath
+    }
+
     /** Run the main method of a class to be loaded by this classloader */
     def runMain(objectName: String, arguments: Seq[String]): Unit =
       val clsToRun = tryToInitializeClass(objectName).getOrElse(throw ClassNotFoundException(objectName))
