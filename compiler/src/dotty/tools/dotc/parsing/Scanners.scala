@@ -67,6 +67,7 @@ object Scanners {
     }
 
     def isNewLine = token == NEWLINE || token == NEWLINES
+    def isStatSep = isNewLine || token == SEMI
     def isIdent = token == IDENTIFIER || token == BACKQUOTED_IDENT
     def isIdent(name: Name) = token == IDENTIFIER && this.name == name
 
@@ -291,8 +292,9 @@ object Scanners {
       def atStop =
         token == EOF
         || (currentRegion eq lastRegion)
-            && (stopSkipTokens.contains(token)
+            && (isStatSep
                 || closingParens.contains(token) && lastRegion.toList.exists(_.closedBy == token)
+                || token == COMMA && lastRegion.toList.exists(_.commasExpected)
                 || token == OUTDENT && indentWidth(offset) < lastKnownIndentWidth)
           // stop at OUTDENT if the new indentwidth is smaller than the indent width of
           // currentRegion. This corrects for the problem that sometimes we don't see an INDENT
@@ -1569,6 +1571,17 @@ object Scanners {
      */
     protected def coversIndent(w: IndentWidth): Boolean =
       knownWidth != null && w == indentWidth
+
+    private var myCommasExpected: Boolean = false
+
+    inline def withCommasExpected[T](inline op: => T): T =
+      val saved = myCommasExpected
+      myCommasExpected = true
+      val res = op
+      myCommasExpected = false
+      res
+
+    def commasExpected = myCommasExpected
 
     def toList: List[Region] =
       this :: (if outer == null then Nil else outer.toList)

@@ -225,7 +225,7 @@ object Parsers {
       || allowedMods.contains(in.token)
       || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
 
-    def isStatSep: Boolean = in.isNewLine || in.token == SEMI
+    def isStatSep: Boolean = in.isStatSep
 
     /** A '$' identifier is treated as a splice if followed by a `{`.
      *  A longer identifier starting with `$` is treated as a splice/id combination
@@ -292,13 +292,13 @@ object Parsers {
       *
       * @return The offset at the start of the token to accept
       */
-    def accept(token: Int): Int = {
+    def accept(token: Int): Int =
       val offset = in.offset
-      if (in.token != token)
+      def assumedOutdent = token == OUTDENT && in.token == EOF
+      if in.token != token /*&& !assumedOutdent*/ then
         syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token))
-      if (in.token == token) in.nextToken()
+      if in.token == token then in.nextToken()
       offset
-    }
 
     def accept(name: Name): Int = {
       val offset = in.offset
@@ -562,11 +562,13 @@ object Parsers {
       inBracesOrIndented(body, rewriteWithColon)
 
     def commaSeparated[T](part: () => T): List[T] =
-      val ts = new ListBuffer[T] += part()
-      while in.token == COMMA do
-        in.nextToken()
-        ts += part()
-      ts.toList
+      in.currentRegion.withCommasExpected {
+        val ts = new ListBuffer[T] += part()
+        while in.token == COMMA do
+          in.nextToken()
+          ts += part()
+        ts.toList
+      }
 
     def inSepRegion[T](f: Region => Region)(op: => T): T =
       val cur = in.currentRegion
