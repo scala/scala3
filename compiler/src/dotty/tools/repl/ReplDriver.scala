@@ -35,6 +35,7 @@ import dotty.tools.runner.ScalaClassLoader.*
 import org.jline.reader._
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.collection.JavaConverters._
 import scala.util.Using
 
@@ -55,12 +56,15 @@ import scala.util.Using
  *  @param objectIndex the index of the next wrapper
  *  @param valIndex    the index of next value binding for free expressions
  *  @param imports     a map from object index to the list of user defined imports
+ *  @param invalidObjectIndexes the set of object indexes that failed to initialize
  *  @param context     the latest compiler context
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
-                 context: Context)
+                 invalidObjectIndexes: Set[Int],
+                 context: Context):
+  def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -94,7 +98,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState: State = State(0, 0, Map.empty, rootCtx)
+  final def initialState: State = State(0, 0, Map.empty, Set.empty, rootCtx)
 
   /** Reset state of repl to the initial state
    *
@@ -237,7 +241,7 @@ class ReplDriver(settings: Array[String],
           completions.map(_.label).distinct.map(makeCandidate)
         }
         .getOrElse(Nil)
-  end completions 
+  end completions
 
   private def interpret(res: ParseResult)(implicit state: State): State = {
     res match {
@@ -353,14 +357,33 @@ class ReplDriver(settings: Array[String],
       val typeAliases =
         info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
 
-      val formattedMembers =
-        typeAliases.map(rendering.renderTypeAlias) ++
-        defs.map(rendering.renderMethod) ++
-        vals.flatMap(rendering.renderVal)
+      // The wrapper object may fail to initialize if the rhs of a ValDef throws.
+      // In that case, don't attempt to render any subsequent vals, and mark this
+      // wrapper object index as invalid.
+      var failedInit = false
+      val renderedVals =
+        val buf = mutable.ListBuffer[Diagnostic]()
+        for d <- vals do if !failedInit then rendering.renderVal(d) match
+          case Right(Some(v)) =>
+            buf += v
+          case Left(e) =>
+            buf += rendering.renderError(e, d)
+            failedInit = true
+          case _ =>
+        buf.toList
 
-      val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
-
-      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
+      if failedInit then
+        // We limit the returned diagnostics here to `renderedVals`, which will contain the rendered error
+        // for the val which failed to initialize. Since any other defs, aliases, imports, etc. from this
+        // input line will be inaccessible, we avoid rendering those so as not to confuse the user.
+        (state.copy(invalidObjectIndexes = state.invalidObjectIndexes + state.objectIndex), renderedVals)
+      else
+        val formattedMembers =
+          typeAliases.map(rendering.renderTypeAlias)
+          ++ defs.map(rendering.renderMethod)
+          ++ renderedVals
+        val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
+        (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
     }
     else (state, Seq.empty)
 
@@ -378,8 +401,10 @@ class ReplDriver(settings: Array[String],
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)
         .map { wrapperModule =>
-          val formattedTypeDefs = typeDefs(wrapperModule.symbol)
           val (newState, formattedMembers) = extractAndFormatMembers(wrapperModule.symbol)
+          val formattedTypeDefs =  // don't render type defs if wrapper initialization failed
+            if newState.invalidObjectIndexes.contains(state.objectIndex) then Seq.empty
+            else typeDefs(wrapperModule.symbol)
           val highlighted = (formattedTypeDefs ++ formattedMembers)
             .map(d => new Diagnostic(d.msg.mapMsg(SyntaxHighlighting.highlight), d.pos, d.level))
           (newState, highlighted)
@@ -420,7 +445,7 @@ class ReplDriver(settings: Array[String],
 
     case Imports =>
       for {
-        objectIndex <- 1 to state.objectIndex
+        objectIndex <- state.validObjectIndexes
         imp <- state.imports.getOrElse(objectIndex, Nil)
       } out.println(imp.show(using state.context))
       state
