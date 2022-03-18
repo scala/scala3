@@ -353,7 +353,6 @@ object Parsers {
             false // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
-            lastErrorOffset = in.offset
             skip()
             true
 
