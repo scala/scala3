@@ -100,6 +100,7 @@ object LazyVals {
   }
 
   def getOffset(clz: Class[_], name: String): Long = {
+    @annotation.nowarn("cat=deprecation")
     val r = unsafe.objectFieldOffset(clz.getDeclaredField(name))
     if (debug)
       println(s"getOffset($clz, $name) = $r")
