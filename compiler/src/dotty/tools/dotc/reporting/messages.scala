@@ -2177,13 +2177,9 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class TypeTestAlwaysSucceeds(scrutTp: Type, testTp: Type)(using Context) extends SyntaxMsg(TypeTestAlwaysSucceedsID) {
-    def msg = {
-      val addendum =
-        if (scrutTp != testTp) s" is a subtype of ${testTp.show}"
-        else " is the same as the tested type"
-      s"The highlighted type test will always succeed since the scrutinee type ${scrutTp.show}" + addendum
-    }
+  class TypeTestAlwaysDiverges(scrutTp: Type, testTp: Type)(using Context) extends SyntaxMsg(TypeTestAlwaysDivergesID) {
+    def msg =
+      s"This type test will never return a result since the scrutinee type ${scrutTp.show} does not contain any value."
     def explain = ""
   }
 
