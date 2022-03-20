@@ -332,6 +332,7 @@ final class ProperGadtConstraint private(
 
     typeMembers.nonEmpty && {
       val typeMemberSymbols: List[Symbol] = typeMembers map { x => x.symbol }
+
       val poly1 = PolyType(typeMembers map { d => DepParamName.fresh(d.name.toTypeName) })(
         pt => typeMembers map { typeMember =>
           def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
@@ -353,6 +354,7 @@ final class ProperGadtConstraint private(
                   case tv: TypeVar => tv.origin
                   case null => tp
                 }
+              case tv: TypeVar => if isUpper then defn.AnyType else defn.NothingType
               case tp => tp
 
             loop(tp)
@@ -381,24 +383,27 @@ final class ProperGadtConstraint private(
         pt => defn.AnyType
       )
 
-      val tvars = typeMemberSymbols lazyZip poly1.paramRefs map { (sym, paramRef) =>
-        val tv = TypeVar(paramRef, creatorState = null)
+      def register: Boolean =
+        val tvars = typeMemberSymbols lazyZip poly1.paramRefs map { (sym, paramRef) =>
+          val tv = TypeVar(paramRef, creatorState = null)
 
-        val externalType = TypeRef(path, sym)
-        pathDepMapping = pathDepMapping.updated(path, {
-          val old: SimpleIdentityMap[Symbol, TypeVar] = pathDepMapping(path) match
-            case null => SimpleIdentityMap.empty
-            case m => m
+          val externalType = TypeRef(path, sym)
+          pathDepMapping = pathDepMapping.updated(path, {
+            val old: SimpleIdentityMap[Symbol, TypeVar] = pathDepMapping(path) match
+              case null => SimpleIdentityMap.empty
+              case m => m
 
-          old.updated(sym, tv)
-        })
-        pathDepReverseMapping = pathDepReverseMapping.updated(tv.origin, externalType)
+            old.updated(sym, tv)
+          })
+          pathDepReverseMapping = pathDepReverseMapping.updated(tv.origin, externalType)
 
-        tv
-      }
+          tv
+        }
 
-      addToConstraint(poly1, tvars)
-        .showing(i"added to constraint: [$poly1] $path\n$debugBoundsDescription", gadts)
+        addToConstraint(poly1, tvars)
+          .showing(i"added to constraint: [$poly1] $path\n$debugBoundsDescription", gadts)
+
+      register
     }
   }
 
@@ -406,7 +411,7 @@ final class ProperGadtConstraint private(
     val buf = new mutable.StringBuilder
     buf ++= "{\n"
     typeMembers foreach { denot =>
-      buf ++= i"  ${denot.symbol}: ${denot.info.bounds}\n"
+      buf ++= i"  ${denot.symbol}: ${denot.info.bounds} ${denot.info.bounds.toString}\n"
     }
     buf ++= "}"
     buf.result
