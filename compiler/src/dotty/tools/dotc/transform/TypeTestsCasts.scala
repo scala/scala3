@@ -247,6 +247,8 @@ object TypeTestsCasts {
             if expr.tpe.isNotNull then constant(expr, Literal(Constant(true)))
             else expr.testNotNull
           else {
+            if expr.tpe.isBottomType then
+              report.warning(TypeTestAlwaysDiverges(expr.tpe, testType), tree.srcPos)
             val nestedCtx = ctx.fresh.setNewTyperState()
             val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
             val sensical = checkSensical(foundClsSyms)(using nestedCtx)
