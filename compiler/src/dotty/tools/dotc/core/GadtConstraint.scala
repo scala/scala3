@@ -11,7 +11,7 @@ import collection.mutable
 import printing._
 
 import scala.annotation.internal.sharable
-import Denotations.Denotation
+import Denotations.{Denotation, SingleDenotation}
 
 /** Types that represent a path. Can either be a TermRef or a SkolemType. */
 type PathType = TermRef | SkolemType
@@ -58,6 +58,12 @@ sealed abstract class GadtConstraint extends Showable {
   /** Further constrain a path-dependent type already present in the constraint. */
   def addBound(p: PathType, sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
+  def addEquality(p: PathType, q: PathType): Unit
+
+  def isEquivalent(p: PathType, q: PathType): Boolean
+
+  def reprOf(p: PathType): PathType | Null
+
   /** Scrutinee path of the current pattern matching. */
   def scrutineePath: TermRef | Null
 
@@ -78,6 +84,9 @@ sealed abstract class GadtConstraint extends Showable {
 
   /** Checks whether a path-dependent type is registered in the handler. */
   def contains(path: PathType, sym: Symbol)(using Context): Boolean
+
+  /** Checks whether a given path-dependent type is constrainable. */
+  def isConstrainablePDT(path: PathType, sym: Symbol)(using Context): Boolean
 
   def registeredTypeMembers(path: PathType): List[Symbol]
 
@@ -104,7 +113,8 @@ final class ProperGadtConstraint private(
   private var pathDepMapping: SimpleIdentityMap[PathType, SimpleIdentityMap[Symbol, TypeVar]],
   private var pathDepReverseMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
   private var wasConstrained: Boolean,
-  private var myScrutineePath: TermRef
+  private var myScrutineePath: TermRef,
+  private var myUnionFind: SimpleIdentityMap[PathType, PathType]
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
@@ -115,16 +125,112 @@ final class ProperGadtConstraint private(
     pathDepMapping = SimpleIdentityMap.empty,
     pathDepReverseMapping = SimpleIdentityMap.empty,
     wasConstrained = false,
-    myScrutineePath = null
+    myScrutineePath = null,
+    myUnionFind = SimpleIdentityMap.empty
   )
 
-  /** Exposes ConstraintHandling.subsumes */
+  // /** Exposes ConstraintHandling.subsumes */
+  // def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
+  //   def extractConstraint(g: GadtConstraint) = g match {
+  //     case s: ProperGadtConstraint => s.constraint
+  //     case EmptyGadtConstraint => OrderingConstraint.empty
+  //   }
+  //   subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
+  // }
+
+  /** Whether `left` subsumes `right`?
+    *
+    * `left` and `right` both stem from the constraint `pre`, with different type reasoning performed,
+    * during which new types might be registered in GadtConstraint. This function will take such newly
+    * registered types into consideration.
+    */
   def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
+    def checkSubsumes(c1: Constraint, c2: Constraint, pre: Constraint): Boolean = {
+      if (c2 eq pre) true
+      else if (c1 eq pre) false
+      else {
+        val saved = constraint
+
+        def computeNewParams =
+          val params1 = c1.domainParams.toSet
+          val params2 = c2.domainParams.toSet
+          val preParams = pre.domainParams.toSet
+          /** Type parameter registered after branching */
+          (params1.diff(preParams), params2.diff(preParams))
+
+        val (newParams1, newParams2) = computeNewParams
+
+        // When new types are registered after pre, for left to subsume right, it should contain all types
+        // newly registered in right.
+        def checkNewParams: Boolean = (left, right) match {
+          case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
+            newParams2 forall { p2 =>
+              val tp2 = right.externalize(p2)
+              left.tvarOf(tp2) != null
+            }
+          case _ => true
+        }
+
+        checkNewParams && {
+          // compute mappings between the newly-registered type params in the two branches
+          def createMappings = {
+            var mapping1: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
+            var mapping2: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
+
+            (left, right) match {
+              case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
+                newParams1 foreach { p1 =>
+                  val tp1 = left.externalize(p1)
+                  right.tvarOf(tp1) match {
+                    case null =>
+                    case tvar2 =>
+                      mapping1 = mapping1.updated(p1, tvar2.origin)
+                      mapping2 = mapping2.updated(tvar2.origin, p1)
+                  }
+                }
+              case _ =>
+            }
+
+            def mapTypeParam(m: SimpleIdentityMap[TypeParamRef, TypeParamRef])(tpr: TypeParamRef) =
+              m(tpr) match
+                case null => tpr
+                case tpr1 => tpr1
+
+            (mapTypeParam(mapping1), mapTypeParam(mapping2))
+          }
+
+          // bridge between the newly-registered types in c2 and c1
+          val (mapping1, mapping2) = createMappings
+
+          try {
+            // checks existing type parameters in `pre`
+            def existing: Boolean = pre.forallParams { p =>
+              c1.contains(p) &&
+                c2.upper(p).forall { q =>
+                  c1.isLess(p, mapping1(q))
+                } && isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p))
+            }
+
+            // checks new type parameters in `c1`
+            def added: Boolean = newParams1 forall { p1 =>
+              val p2 = mapping1(p1)
+              c2.upper(p2).forall { q =>
+                c1.isLess(p1, mapping2(q))
+              } && isSubTypeWhenFrozen(c1.nonParamBounds(p1), c2.nonParamBounds(p2))
+            }
+
+            existing && checkNewParams && added
+          } finally constraint = saved
+        }
+      }
+    }
+
     def extractConstraint(g: GadtConstraint) = g match {
       case s: ProperGadtConstraint => s.constraint
       case EmptyGadtConstraint => OrderingConstraint.empty
     }
-    subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
+
+    checkSubsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
   }
 
   override protected def legalBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Type =
@@ -160,14 +266,33 @@ final class ProperGadtConstraint private(
       val denot1 = tp.nonPrivateMember(denot.name)
       val tb = denot.info
 
-      def isConstrainableAlias: Boolean = tb match
+      // We want to constrain type members whose bounds are type alias
+      // even if they are not deferred.
+      //
+      // For example: when constraining { type A } >:< { type A = Int }
+      //   we want to take the bound (:= Int) of RHS into consideration.
+      def isTypeAlias: Boolean = tb match
         case TypeAlias(_) => true
         case _ => false
 
-      (denot1.symbol.is(Flags.Deferred) || isConstrainableAlias)
+      (denot1.symbol.is(Flags.Deferred) || isTypeAlias)
       && !denot1.symbol.is(Flags.Opaque)
       && !denot1.symbol.isClass
     }
+
+  private def isConstrainableTypeMember(path: PathType, sym: Symbol)(using Context): Boolean =
+    val mbr = path.nonPrivateMember(sym.name)
+    mbr.isInstanceOf[SingleDenotation] && {
+      val denot1 = path.nonPrivateMember(mbr.name)
+      val tb = mbr.info
+
+      denot1.symbol.is(Flags.Deferred)
+      && !denot1.symbol.is(Flags.Opaque)
+      && !denot1.symbol.isClass
+    }
+
+  override def isConstrainablePDT(path: PathType, sym: Symbol)(using Context): Boolean =
+    isConstrainablePath(path) && isConstrainableTypeMember(path, sym)
 
   private def tvarOf(path: PathType, sym: Symbol)(using Context): TypeVar | Null =
     pathDepMapping(path) match
@@ -185,8 +310,14 @@ final class ProperGadtConstraint private(
           case _ => null
       case tv => tv
 
+  /** Try to retrieve the internal type variable for a NamedType. */
   private def tvarOf(ntp: NamedType)(using Context): TypeVar | Null =
     ntp match
+      case tp: TypeRef => tvarOf(tp)
+      case _ => null
+
+  private def tvarOf(tp: Type)(using Context): TypeVar | Null =
+    tp match
       case tp: TypeRef => tvarOf(tp)
       case _ => null
 
@@ -279,6 +410,8 @@ final class ProperGadtConstraint private(
     }
     buf ++= "}"
     buf.result
+
+  override def reprOf(p: PathType): PathType | Null = lookupPath(p)
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = {
     import NameKinds.DepParamName
@@ -411,6 +544,32 @@ final class ProperGadtConstraint private(
     result
   }
 
+  private def lookupPath(p: PathType): PathType | Null =
+    def recur(p: PathType, steps: Int = 0): PathType | Null = myUnionFind(p) match
+      case null => null
+      case q if p eq q => q
+      case q =>
+        if steps <= 1024 then
+          recur(q, steps + 1)
+        else
+          assert(false, "lookup step exceeding the threshold, possibly because of a loop in the union find")
+    recur(p)
+
+  override def addEquality(p: PathType, q: PathType): Unit =
+    val newRep = lookupPath(p) match
+      case null => lookupPath(q) match
+        case null => p
+        case r => r
+      case r => r
+
+    myUnionFind = myUnionFind.updated(p, newRep)
+    myUnionFind = myUnionFind.updated(q, newRep)
+
+  override def isEquivalent(p: PathType, q: PathType): Boolean =
+    lookupPath(p) match
+      case null => false
+      case p0 => p0 eq lookupPath(q)
+
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
     constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
 
@@ -505,7 +664,8 @@ final class ProperGadtConstraint private(
     pathDepMapping,
     pathDepReverseMapping,
     wasConstrained,
-    myScrutineePath
+    myScrutineePath,
+    myUnionFind
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -517,6 +677,7 @@ final class ProperGadtConstraint private(
       this.pathDepReverseMapping = other.pathDepReverseMapping
       this.wasConstrained = other.wasConstrained
       this.myScrutineePath = other.myScrutineePath
+      this.myUnionFind = other.myUnionFind
     case _ => ;
   }
 
@@ -626,6 +787,8 @@ final class ProperGadtConstraint private(
   override def bounds(tp: TypeRef)(using Context): TypeBounds | Null = null
   override def fullBounds(tp: TypeRef)(using Context): TypeBounds | Null = null
 
+  override def reprOf(p: PathType): PathType | Null = null
+
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
   override def isLess(tp1: NamedType, tp2: NamedType)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
 
@@ -637,6 +800,8 @@ final class ProperGadtConstraint private(
 
   override def contains(path: PathType, symbol: Symbol)(using Context) = false
 
+  override def isConstrainablePDT(path: PathType, symbol: Symbol)(using Context) = false
+
   override def registeredTypeMembers(path: PathType): List[Symbol] = Nil
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
@@ -644,7 +809,11 @@ final class ProperGadtConstraint private(
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
   override def addBound(path: PathType, sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
-  override def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
+  override def addEquality(p: PathType, q: PathType) = ()
+
+  override def isEquivalent(p: PathType, q: PathType) = false
+
+  override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
 
   override def symbols: List[Symbol] = Nil
 

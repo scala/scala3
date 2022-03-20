@@ -570,18 +570,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
 
         def compareGADT: Boolean =
-          tp2.onGadtBounds(gbounds2 =>
-            { isSubTypeWhenFrozen(tp1, gbounds2.lo) }
-            || tp1.match
-                case tp1: TypeRef if tpRegistered(tp1) =>
-                  // Note: since we approximate constrained types only with their non-param bounds,
-                  // we need to manually handle the case when we're comparing two constrained types,
-                  // one of which is constrained to be a subtype of another.
-                  // We do not need similar code in fourthTry, since we only need to care about
-                  // comparing two constrained types, and that case will be handled here first.
-                  { ctx.gadt.isLess(tp1, tp2) } && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
-                case _ => false
-            || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
+          { tp2.onGadtBounds(gbounds2 =>
+              { isSubTypeWhenFrozen(tp1, gbounds2.lo) }
+              || tp1.match
+                  case tp1: TypeRef if tpRegistered(tp1) =>
+                    // Note: since we approximate constrained types only with their non-param bounds,
+                    // we need to manually handle the case when we're comparing two constrained types,
+                    // one of which is constrained to be a subtype of another.
+                    // We do not need similar code in fourthTry, since we only need to care about
+                    // comparing two constrained types, and that case will be handled here first.
+                    { ctx.gadt.isLess(tp1, tp2) } && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
+                  case _ => false)
+            || narrowGADTBounds(tp2, tp1, approx, isUpper = false) }
           && (isBottom(tp1) || GADTusage(tp2.symbol))
 
         isSubApproxHi(tp1, info2.lo.boxedIfTypeParam(tp2.symbol)) && (trustBounds || isSubApproxHi(tp1, info2.hi))
@@ -887,10 +887,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp1.info match {
           case info1 @ TypeBounds(lo1, hi1) =>
             def compareGADT =
-              tp1.onGadtBounds(gbounds1 =>
-                isSubTypeWhenFrozen(gbounds1.hi, tp2)
-                || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
-              && (tp2.isAny || GADTusage(tp1.symbol))
+              { tp1.onGadtBounds(gbounds1 =>
+                  isSubTypeWhenFrozen(gbounds1.hi, tp2))
+                || narrowGADTBounds(tp1, tp2, approx, isUpper = true)
+              } && (tp2.isAny || GADTusage(tp1.symbol))
 
             (!caseLambda.exists || canWidenAbstract)
                 && isSubType(hi1.boxedIfTypeParam(tp1.symbol), tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
@@ -1872,10 +1872,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       ctx.gadt.restore(preGadt)
       if op2 then
         if allSubsumes(op1Gadt, ctx.gadt, op1Constraint, constraint) then
-          gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $op1Gadt")
+          gadts.println(i"GADT CUT - prefer op2 ${ctx.gadt} over $op1Gadt")
           constr.println(i"CUT - prefer $constraint over $op1Constraint")
         else if allSubsumes(ctx.gadt, op1Gadt, constraint, op1Constraint) then
-          gadts.println(i"GADT CUT - prefer $op1Gadt over ${ctx.gadt}")
+          gadts.println(i"GADT CUT - prefer op1 $op1Gadt over ${ctx.gadt}")
           constr.println(i"CUT - prefer $op1Constraint over $constraint")
           constraint = op1Constraint
           ctx.gadt.restore(op1Gadt)
@@ -2075,8 +2075,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       def narrowPathDepType = tr match
         case TypeRef(path: PathType, _) =>
-          ctx.gadt.contains(path, tr.symbol) && {
-            val sym = tr.symbol
+          val sym = tr.symbol
+
+          def isConstrainable: Boolean =
+            ctx.gadt.contains(path, sym) || {
+              ctx.gadt.isConstrainablePDT(path, tr.symbol) && {
+                gadts.println(i"!!! registering path on the fly path=$path sym=$sym")
+                ctx.gadt.addToConstraint(path) && ctx.gadt.contains(path, sym)
+              }
+            }
+
+          isConstrainable && {
             gadts.println(i"narrow gadt bound of pdt $path -> ${sym}: from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(sym)}")
 
             if (bound.isRef(sym)) false
@@ -2302,6 +2311,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case Atoms.Range(lo2, hi2) =>
                 if hi1.subsetOf(lo2) then return tp2
                 if hi2.subsetOf(lo1) then return tp1
+
+                def getReprSet(ps: Set[Type]): Set[Type] =
+                  ps.map { x =>
+                    x match
+                      case p: PathType =>
+                        val rep = ctx.gadt.reprOf(p)
+                        if rep == null then p else rep
+                      case t => t
+                  }
+                val (repLo1, repHi1, repLo2, repHi2) = (getReprSet(lo1), getReprSet(hi1), getReprSet(lo2), getReprSet(hi2))
+                if repHi2.subsetOf(repLo1) then return tp1
+                if repHi1.subsetOf(repLo2) then return tp2
+
                 if (hi1 & hi2).isEmpty then return orType(tp1, tp2)
               case none =>
           case none =>

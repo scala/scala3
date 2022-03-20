@@ -73,7 +73,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false, typeMembersTouched: Boolean = false): Boolean = trace(i"constrainPatternType(${scrutRepr(scrut)}, $pat)", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false, typeMembersTouched: Boolean = false): Boolean = trace(i"constrainPatternType(${scrutRepr(scrut)}, $pat)", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
 
     def classesMayBeCompatible: Boolean = {
       import Flags._
@@ -192,6 +192,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       val saved = state.nn.constraint
       val savedGadt = ctx.gadt.fresh
 
+      ctx.gadt.addEquality(scrutineePath, patternPath)
+
       def registerScrutinee = ctx.gadt.contains(scrutineePath) || ctx.gadt.addToConstraint(scrutineePath)
       def registerPattern = ctx.gadt.addToConstraint(patternPath)   // Pattern path is a freshly-created skolem,
                                                                     // so it will always be un-registered at this point
@@ -222,7 +224,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
             res
 
           constrainPS && constrainSP
-          // true
         }
       }
 
