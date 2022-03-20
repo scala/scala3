@@ -771,12 +771,12 @@ final class ProperGadtConstraint private(
     sb ++= constraint.show
     sb += '\n'
     mapping.foreachBinding { case (sym, _) =>
-      sb ++= i"$sym: ${bounds(sym)}\n"
+      sb ++= i"$sym: ${fullBounds(sym)}\n"
     }
     sb += '\n'
     pathDepMapping foreachBinding { case (path, m) =>
       m foreachBinding { case (sym, _) =>
-        sb ++= i"$path.$sym: ${bounds(TypeRef(path, sym))}\n"
+        sb ++= i"$path.$sym: ${fullBounds(TypeRef(path, sym))}\n"
       }
     }
     sb.result

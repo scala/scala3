@@ -1208,10 +1208,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   var touchedGADTs = false
                   var gadtIsInstantiated = false
 
-                  extension (sym: Symbol)
+                  extension (tp: TypeRef)
                     inline def byGadtBounds(inline op: TypeBounds => Boolean): Boolean =
                       touchedGADTs = true
-                      sym.onGadtBounds(
+                      tp.onGadtBounds(
                         b => op(b) && { gadtIsInstantiated = b.isInstanceOf[TypeAlias]; true })
 
                   def byGadtOrdering: Boolean =
@@ -1219,11 +1219,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     && ctx.gadt.contains(tycon2sym)
                     && ctx.gadt.isLess(tycon1sym, tycon2sym)
 
+                  def byPathDepGadtOrdering: Boolean =
+                    (tycon1, tycon2) match
+                      case (TypeRef(p1: PathType, _), TypeRef(p2: PathType, _)) =>
+                        ctx.gadt.contains(p1, tycon1sym)
+                        && ctx.gadt.contains(p2, tycon2sym)
+                        && ctx.gadt.isLess(tycon1, tycon2)
+                      case _ => false
+
                   val res = (
                     tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
-                    || tycon1sym.byGadtBounds(b => isSubTypeWhenFrozen(b.hi, tycon2))
-                    || tycon2sym.byGadtBounds(b => isSubTypeWhenFrozen(tycon1, b.lo))
-                    || byGadtOrdering
+                    || tycon1.byGadtBounds(b => isSubTypeWhenFrozen(b.hi, tycon2))
+                    || tycon2.byGadtBounds(b => isSubTypeWhenFrozen(tycon1, b.lo))
+                    || byGadtOrdering || byPathDepGadtOrdering
                   ) && {
                     // There are two cases in which we can assume injectivity.
                     // First we check if either sym is a class.
@@ -2085,10 +2093,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               }
             }
 
-          isConstrainable && {
-            gadts.println(i"narrow gadt bound of pdt $path -> ${sym}: from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(sym)}")
+          def isRef: Boolean = bound match
+            case TypeRef(q: PathType, _) => (path eq q) && bound.isRef(sym)
+            case _ => false
 
-            if (bound.isRef(sym)) false
+          isConstrainable && {
+            gadts.println(i"narrow gadt bound of pdt $path -> ${sym}: from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${isRef}")
+
+            if isRef then false
             else if isUpper then gadtAddUpperBound(path, sym, bound)
             else gadtAddLowerBound(path, sym, bound)
           }
