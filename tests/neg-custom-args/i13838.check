@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/i13838.scala:10:5 ----------------------------------------------------------------------
 10 |  foo  // error
    |     ^
-   |no implicit argument of type Order[X] was found for parameter x$1 of method foo in object FooT
+   |no given instance of type Order[X] was found for parameter x$1 of method foo in object FooT
    |
    |where:    X is a type variable
    |.
