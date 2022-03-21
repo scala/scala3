@@ -150,7 +150,7 @@ object TypeTestsCasts {
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, _)  => recur(X, t)
-      case _: RefinedType       => false
+      case tp2: RefinedType     => recur(X, tp2.parent) && TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2)
       case _                    => true
     })
 
