@@ -294,8 +294,7 @@ object Parsers {
       */
     def accept(token: Int): Int =
       val offset = in.offset
-      def assumedOutdent = token == OUTDENT && in.token == EOF
-      if in.token != token /*&& !assumedOutdent*/ then
+      if in.token != token then
         syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token))
       if in.token == token then in.nextToken()
       offset
