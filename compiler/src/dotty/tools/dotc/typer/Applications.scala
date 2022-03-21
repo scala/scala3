@@ -1876,7 +1876,7 @@ trait Applications extends Compatibility {
      *       formal parameter that is a unary function.
      */
     def normArg(alts: List[TermRef], arg: untpd.Tree, idx: Int): untpd.Tree = arg match
-      case Block(Nil, expr) => normArg(alts, expr, idx)
+      case Block(Nil, expr) if !expr.isEmpty => normArg(alts, expr, idx)
       case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
 
         // If ref refers to a method whose parameter at index `idx` is a function type,
