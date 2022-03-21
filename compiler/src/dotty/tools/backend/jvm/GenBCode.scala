@@ -275,8 +275,9 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
             catch case ex: ClosedByInterruptException =>
               try
                 outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
-              catch case _: Throwable =>
-                throw ex
+              catch
+                case _: Throwable =>
+              throw ex
             finally outstream.close()
 
             val uuid = new TastyHeaderUnpickler(binary()).readHeader()
