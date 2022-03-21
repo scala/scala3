@@ -519,7 +519,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.1.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.2.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
@@ -1392,6 +1392,7 @@ object Build {
             .add(OutputDir("scaladoc/output/reference"))
             .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
             .add(ProjectName("Scala 3 Reference"))
+            .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
               dottySrcLink(referenceVersion, temp.getAbsolutePath + "=")
             )))
@@ -1803,6 +1804,10 @@ object ScaladocConfigs {
       .add(Revision("main"))
       .add(SnippetCompiler(List("scaladoc-testcases/docs=compile")))
       .add(SiteRoot("scaladoc-testcases/docs"))
+      .add(CommentSyntax(List(
+        "scaladoc-testcases/src/example/comment-md=markdown",
+        "scaladoc-testcases/src/example/comment-wiki=wiki"
+      )))
       .add(ExternalMappings(List(dottyExternalMapping, javaExternalMapping)))
       .withTargets(tastyRoots)
   }
@@ -1832,7 +1837,10 @@ object ScaladocConfigs {
       .add(Revision("main"))
       .add(ExternalMappings(List(javaExternalMapping)))
       .add(DocRootContent(docRootFile.toString))
-      .add(CommentSyntax("wiki"))
+      .add(CommentSyntax(List(
+        s"${dottyLibRoot}=markdown",
+        s"${stdLibRoot}=wiki"
+      )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(

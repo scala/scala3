@@ -8,10 +8,12 @@ import java.net.URL
 import dotty.tools.scaladoc.site._
 import scala.util.Try
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 import java.nio.file.Paths
 import java.nio.file.Path
 import java.nio.file.Files
 import java.io.File
+import scala.util.chaining._
 
 case class ResolvedTemplate(template: LoadedTemplate, ctx: StaticSiteContext):
   val resolved = template.resolveToHtml(ctx)
@@ -26,7 +28,7 @@ trait SiteRenderer(using DocContext) extends Locations:
 
   private val HashRegex = "([^#]+)(#.+)".r
 
-  def siteContent(pageDri: DRI, content: ResolvedTemplate): AppliedTag =
+  def siteContent(pageDri: DRI, content: ResolvedTemplate): PageContent =
     import content.ctx
     def tryAsDri(str: String): Option[String] =
       val (path, prefix) = str match
@@ -67,10 +69,19 @@ trait SiteRenderer(using DocContext) extends Locations:
         processLocalLink(str)
 
     val document = Jsoup.parse(content.resolved.code)
+
+    val toc = document.select("section[id]").asScala.toSeq
+      .flatMap { elem =>
+        val header = elem.selectFirst("h1, h2, h3, h4, h5, h6")
+        Option(header).map { h =>
+          TocEntry(h.tag().getName, h.text(), s"#${elem.id()}")
+        }
+      }
+
     document.select("a").forEach(element =>
       element.attr("href", processLocalLinkWithGuard(element.attr("href")))
     )
     document.select("img").forEach { element =>
       element.attr("src", processLocalLink(element.attr("src")))
     } // foreach does not work here. Why?
-    raw(document.outerHtml())
+    PageContent(raw(document.outerHtml()), toc)

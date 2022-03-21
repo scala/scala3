@@ -59,7 +59,26 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
                 val realSiblingPath = realPath(n.file.toPath)
                 realMidPath.relativize(realSiblingPath).toString.stripPrefix("../")
               }
-            List(link(prev).map("previous" -> _), link(next).map("next" -> _)).flatten.toMap
+            List(
+              for {
+                link <- link(prev)
+                p <- prev
+              } yield (
+                "previous" -> Map(
+                  "title" -> p.templateFile.title.name,
+                  "url" -> link
+                )
+              ),
+              for {
+                link <- link(next)
+                n <- next
+              } yield (
+                "next" -> Map(
+                  "title" -> n.templateFile.title.name,
+                  "url" -> link
+                )
+              ),
+            ).flatten.toMap
         }.toList
 
         def updateSettings(templates: Seq[LoadedTemplate], additionalSettings: ListBuffer[Map[String, Object]]): List[LoadedTemplate] =
@@ -115,7 +134,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
     all
 
-  def renderContent(page: Page) = page.content match
+  def renderContent(page: Page): PageContent = page.content match
     case m: Member =>
       val signatureRenderer = new SignatureRenderer:
         def currentDri: DRI = page.link.dri
@@ -126,7 +145,7 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
       MemberRenderer(signatureRenderer).fullMember(m)
     case t: ResolvedTemplate => siteContent(page.link.dri, t)
-    case a: String =>  raw(a)
+    case a: String =>  PageContent(raw(a), Seq.empty)
 
 
 

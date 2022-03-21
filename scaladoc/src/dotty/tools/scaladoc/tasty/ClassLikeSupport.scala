@@ -183,7 +183,7 @@ trait ClassLikeSupport:
   }
 
   private def parseInheritedMember(c: ClassDef)(s: Tree): Option[Member] =
-    def inheritance = Some(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.dri))
+    def inheritance = Some(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.dri, s.symbol.owner.isHiddenByVisibility))
     processTreeOpt(s)(s match
       case c: ClassDef if c.symbol.shouldDocumentClasslike => Some(parseClasslike(c, signatureOnly = true))
       case other => {

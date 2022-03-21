@@ -1,4 +1,4 @@
 -- Error: tests/neg/i11066.scala:15:37 ---------------------------------------------------------------------------------
 15 |val x = Greeter.greet("Who's there?") // error
    |                                     ^
-   |ambiguous implicit arguments: both given instance joesPrompt in object JoesPrefs and given instance jillsPrompt in object JillsPrefs match type PreferredPrompt of parameter prompt of method greet in object Greeter
+   |ambiguous given instances: both given instance joesPrompt in object JoesPrefs and given instance jillsPrompt in object JillsPrefs match type PreferredPrompt of parameter prompt of method greet in object Greeter

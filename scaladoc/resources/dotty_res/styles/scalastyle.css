@@ -10,6 +10,7 @@
 
   /* Layout Settings (changes on small screens) */
   --side-width: 300px;
+  --toc-width: 300px;
   --content-padding: 24px 42px;
   --footer-height: 42px;
 }
@@ -43,6 +44,7 @@ body, button, input {
 #main-content {
   min-height: calc(100vh - var(--footer-height) - 24px);
   margin-left: var(--side-width);
+  margin-right: var(--toc-width);
   padding: var(--content-padding);
   padding-bottom: calc(24px + var(--footer-height));
 
@@ -905,6 +907,46 @@ footer .socials {
   height: 8px;
 }
 
+#toc {
+  position: fixed;
+  right: 0px;
+  top: 0px;
+  width: var(--toc-width);
+  height: 100%;
+
+  padding-top: 15vh;
+  padding-right: 10px;
+
+  display: flex;
+  flex-direction: column;
+}
+
+#toc .toc-title {
+  font-weight: bold;
+  padding-left: 16px;
+}
+
+#toc ul {
+  list-style-type: none;
+  padding-left: 16px;
+}
+
+#toc a {
+  display: block;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  color: var(--leftbar-fg);
+  transition-duration: 0.2s;
+}
+
+#toc li:hover > a {
+  color: var(--link-hover-fg);
+}
+
+#toc li.active > a {
+  color: var(--link-hover-fg);
+}
+
 /* Signature coloring */
 
 :root {
@@ -941,6 +983,12 @@ footer .socials {
   }
 }
 /* Landscape phones, portait tablets */
+@media(max-width: 1200px) {
+  :root {
+    --toc-width: 0px;
+  }
+}
+
 @media(max-width: 768px) {
   :root {
     --content-padding: 12px 12px;
@@ -1070,22 +1118,33 @@ footer .socials {
 
 /* Nav Icons */
 
+.arrows-wrapper {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
 .arrows {
-  font-size: 3em;
+  color: var(--link-fg);
+  font-size: 1em;
   text-align: center;
 
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  margin: 0;
-  max-width: 150px;
-  min-width: 90px;
-
   display: flex;
-  justify-content: center;
-  flex-direction: column;
+  align-items: center;
 
   transition: color 0.5s, background-color 0.5s;
+}
+
+.arrows span {
+  max-width: 10vw;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.arrows i {
+  margin: 8px;
 }
 
 .arrows.previous, .arrows.next {
@@ -1094,19 +1153,16 @@ footer .socials {
 
 .arrows:hover {
   text-decoration: none;
-  color: var(--grey300);
-  background-color: var(--grey900);
+  color: var(--link-hover-fg);
   transition: background-color 0.15s, color 0.15s;
 }
 
 .previous {
-  left: var(--side-width);
-  float: left;
+  flex-direction: row-reverse;
 }
 
 .next {
-  right: 0;
-  float: right;
+  flex-direction: row;
 }
 
 @media screen and (max-width: 1000px) {

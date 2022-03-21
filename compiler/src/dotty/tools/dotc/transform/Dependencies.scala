@@ -179,6 +179,18 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         if enclClass.isContainedIn(thisClass) then thisClass
         else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
 
+    def setLogicOwner(local: Symbol) =
+      val encClass = local.owner.enclosingClass
+      val preferEncClass =
+        encClass.isStatic
+          // non-static classes can capture owners, so should be avoided
+        && (encClass.isProperlyContainedIn(local.topLevelClass)
+             // can be false for symbols which are defined in some weird combination of supercalls.
+            || encClass.is(ModuleClass, butNot = Package)
+                // needed to not cause deadlocks in classloader. see t5375.scala
+            )
+      logicOwner(sym) = if preferEncClass then encClass else local.enclosingPackageClass 
+
     tree match
       case tree: Ident =>
         if isLocal(sym) then
@@ -194,7 +206,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
       case tree: This =>
         narrowTo(tree.symbol.asClass)
       case tree: MemberDef if isExpr(sym) && sym.owner.isTerm =>
-        logicOwner(sym) = sym.enclosingPackageClass
+        setLogicOwner(sym)
           // this will make methods in supercall constructors of top-level classes owned
           // by the enclosing package, which means they will be static.
           // On the other hand, all other methods will be indirectly owned by their
@@ -205,8 +217,8 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         // the class itself. This is done so that the constructor inherits
         // the free variables of the class.
         symSet(called, sym) += sym.owner
-      case tree: TypeDef =>
-        if sym.owner.isTerm then logicOwner(sym) = sym.topLevelClass.owner
+      case tree: TypeDef if sym.owner.isTerm =>
+        setLogicOwner(sym)
       case _ =>
   end process
 

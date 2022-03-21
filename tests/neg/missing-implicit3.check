@@ -1,9 +1,9 @@
 -- Error: tests/neg/missing-implicit3.scala:13:36 ----------------------------------------------------------------------
 13 |val sortedFoos = sort(List(new Foo)) // error
    |                                    ^
-   |no implicit argument of type ord.Ord[ord.Foo] was found for an implicit parameter of method sort in package ord.
-   |I found:
+   |   no given instance of type ord.Ord[ord.Foo] was found for an implicit parameter of method sort in package ord.
+   |   I found:
    |
-   |    ord.Ord.ordered[ord.Foo](/* missing */summon[ord.Foo => Comparable[? >: ord.Foo]])
+   |       ord.Ord.ordered[ord.Foo](/* missing */summon[ord.Foo => Comparable[? >: ord.Foo]])
    |
-   |But no implicit values were found that match type ord.Foo => Comparable[? >: ord.Foo].
+   |   But no implicit values were found that match type ord.Foo => Comparable[? >: ord.Foo].

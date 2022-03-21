@@ -107,7 +107,7 @@ An example of this would be:
 To be rendered as templates, each blog post should have front-matter and a
 `layout` declaration.
 
-The posts are also available in the variable `site.posts` throughout the site.
+The posts are also available in the variable `site.subpages` throughout the site.
 The fields of these objects are the same as in
 `[BlogPost](dotty.tools.dottydoc.staticsite.BlogPost)`.
 

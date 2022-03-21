@@ -1,5 +1,5 @@
 ---
-layout: doc-page
+layout: index
 title: "Dropped Features"
 movedTo: https://docs.scala-lang.org/scala3/reference/dropped-features.html
 ---

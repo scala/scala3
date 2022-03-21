@@ -39,7 +39,7 @@ case class LoadedTemplate(
       )
 
   def resolveToHtml(ctx: StaticSiteContext): ResolvedPage =
-    val posts = children.map(_.lazyTemplateProperties(ctx))
+    val subpages = children.filterNot(_.hidden).map(_.lazyTemplateProperties(ctx))
     def getMap(key: String) = templateFile.settings.getOrElse(key, Map.empty).asInstanceOf[Map[String, Object]]
 
     val sourceLinks = if !file.exists() then Nil else
@@ -50,7 +50,7 @@ case class LoadedTemplate(
         ctx.sourceLinks.pathTo(actualPath, operation = "edit", optionalRevision = Some("master")).map("editSource" -> _)
 
     val updatedSettings = templateFile.settings ++ ctx.projectWideProperties +
-      ("site" -> (getMap("site") + ("posts" -> posts))) + ("urls" -> sourceLinks.toMap) +
+      ("site" -> (getMap("site") + ("subpages" -> subpages))) + ("urls" -> sourceLinks.toMap) +
       ("page" -> (getMap("page") + ("title" -> templateFile.title.name)))
 
     templateFile.resolveInner(RenderingContext(updatedSettings, ctx.layouts))(using ctx)

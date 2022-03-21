@@ -35,6 +35,7 @@ dist/target/pack/bin/scaladoc \
   "-skip-by-id:scala.runtime.stdLibPatches" \
   "-skip-by-id:scala.runtime.MatchCase" \
   "-snippet-compiler:scaladoc-testcases/docs=compile" \
+  "-comment-syntax:scaladoc-testcases/src/example/comment-md=markdown,scaladoc-testcases/src/example/comment-wiki=wiki" \
   -siteroot scaladoc-testcases/docs \
   -project-footer "Copyright (c) 2002-2022, LAMP/EPFL" \
   -default-template static-site-main \

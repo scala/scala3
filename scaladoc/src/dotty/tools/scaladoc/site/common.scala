@@ -15,6 +15,7 @@ import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
 import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.formatter.Formatter
+import com.vladsch.flexmark.html.HtmlRenderer
 
 import scala.collection.JavaConverters._
 
@@ -24,21 +25,21 @@ val apiPageDRI: DRI = DRI(location = "api/index")
 def defaultMarkdownOptions(using ctx: StaticSiteContext): DataHolder =
   new MutableDataSet()
     .setFrom(ParserEmulationProfile.COMMONMARK.getOptions)
-    .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
-    .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
     .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")
     .set(WikiLinkExtension.LINK_ESCAPE_CHARS, "")
     .set(Parser.EXTENSIONS, java.util.Arrays.asList(
       TablesExtension.create(),
       TaskListExtension.create(),
       AutolinkExtension.create(),
-      AnchorLinkExtension.create(),
       EmojiExtension.create(),
       YamlFrontMatterExtension.create(),
       StrikethroughExtension.create(),
       WikiLinkExtension.create(),
-      tasty.comments.markdown.SnippetRenderingExtension
+      tasty.comments.markdown.SnippetRenderingExtension,
+      tasty.comments.markdown.SectionRenderingExtension
     ))
+    .set(HtmlRenderer.GENERATE_HEADER_ID, false)
+    .set(HtmlRenderer.RENDER_HEADER_ID, false)
 
 def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
   file = file,
