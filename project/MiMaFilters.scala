@@ -21,6 +21,11 @@ object MiMaFilters {
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.deriving.Mirror.fromTuple"),
 
     // Private to the compiler - needed for forward binary compatibility
-    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.since")
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.since"),
+
+    // Private inner classes, but we emit all classes as public in Java bytecode
+    ProblemFilters.exclude[InaccessibleClassProblem]("scala.quoted.FromExpr$PrimitiveFromExpr"),
+    ProblemFilters.exclude[InaccessibleClassProblem]("scala.quoted.Type$ValueOf$"),
+    ProblemFilters.exclude[InaccessibleClassProblem]("scala.reflect.Selectable$DefaultSelectable"),
   )
 }

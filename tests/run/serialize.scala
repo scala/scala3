@@ -1,3 +1,14 @@
+package a {
+  object Outer extends Serializable {
+    private object Inner extends Serializable
+
+    val inner: AnyRef = Inner
+  }
+  class Bar extends Serializable {
+    val x: AnyRef = Outer.inner
+  }
+}
+
 object Test {
   def serializeDeserialize[T <: AnyRef](obj: T): T = {
     import java.io.*
@@ -26,5 +37,9 @@ object Test {
 
     val baz = serializeDeserialize(Baz)
     assert(baz ne Baz)
+
+    val bar = new a.Bar
+    val bar1 = serializeDeserialize(bar)
+    assert(bar.x eq bar1.x)
   }
 }
