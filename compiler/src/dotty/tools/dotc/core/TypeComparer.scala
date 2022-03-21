@@ -1813,6 +1813,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           || symInfo.isInstanceOf[MethodType]
               && symInfo.signature.consistentParams(info2.signature)
 
+        def tp1IsSingleton: Boolean = tp1.isInstanceOf[SingletonType]
+
         // A relaxed version of isSubType, which compares method types
         // under the standard arrow rule which is contravarient in the parameter types,
         // but under the condition that signatures might have to match (see sigsOK)
@@ -1827,8 +1829,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   matchingMethodParams(info1, info2, precise = false)
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType)
                   && sigsOK(symInfo1, info2)
-                case _ => isSubType(info1, info2)
-            case _ => isSubType(info1, info2)
+                case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
+            case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
 
         val info1 = m.info.widenExpr
         isSubInfo(info1, tp2.refinedInfo.widenExpr, m.symbol.info.orElse(info1))
