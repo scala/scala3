@@ -233,12 +233,8 @@ class TypeOps:
           val ssym = sym.symbolName
           s.TypeRef(spre, ssym, Seq.empty)
 
-        case TypeRef(pre, sym: Name) =>
-          // val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
-          // Craft semanticdb symbol
-          // prefix symbol (e.g. "scala/") + name (e.g. "Nothing") + Global symbol suffix ("#")
-          // see: https://scalameta.org/docs/semanticdb/specification.html#symbol
-          val ssym = s"${pre.typeSymbol.symbolName}${sym.mangledString}#"
+        case tr @ TypeRef(_, _: Name) =>
+          val ssym = tr.symbol.symbolName
           s.TypeRef(s.Type.Empty, ssym, Seq.empty)
 
         case TermRef(pre, sym: Symbol) =>
