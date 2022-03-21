@@ -1839,7 +1839,8 @@ object ScaladocConfigs {
       .add(DocRootContent(docRootFile.toString))
       .add(CommentSyntax(List(
         s"${dottyLibRoot}=markdown",
-        s"${stdLibRoot}=wiki"
+        s"${stdLibRoot}=wiki",
+        "wiki"
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
