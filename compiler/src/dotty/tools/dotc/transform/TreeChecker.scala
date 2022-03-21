@@ -418,7 +418,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree =
-      assert(tree.qual.tpe.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
+      assert(tree.qual.typeOpt.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
 
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =

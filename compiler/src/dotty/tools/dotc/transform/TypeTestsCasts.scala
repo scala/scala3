@@ -243,13 +243,12 @@ object TypeTestsCasts {
             else foundClasses.exists(check)
           end checkSensical
 
-          if (expr.tpe <:< testType)
-            if (expr.tpe.isNotNull) {
-              if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.srcPos)
-              constant(expr, Literal(Constant(true)))
-            }
+          if (expr.tpe <:< testType) && inMatch then
+            if expr.tpe.isNotNull then constant(expr, Literal(Constant(true)))
             else expr.testNotNull
           else {
+            if expr.tpe.isBottomType then
+              report.warning(TypeTestAlwaysDiverges(expr.tpe, testType), tree.srcPos)
             val nestedCtx = ctx.fresh.setNewTyperState()
             val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
             val sensical = checkSensical(foundClsSyms)(using nestedCtx)

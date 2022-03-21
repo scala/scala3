@@ -131,7 +131,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID]:
     DoubleDefinitionID,
     MatchCaseOnlyNullWarningID,
     ImportRenamedTwiceID,
-    TypeTestAlwaysSucceedsID,
+    TypeTestAlwaysDivergesID,
     TermMemberNeedsNeedsResultTypeForImplicitSearchID,
     ClassCannotExtendEnumID,
     ValueClassParameterMayNotBeCallByNameID,
