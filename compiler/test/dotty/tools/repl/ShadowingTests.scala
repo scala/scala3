@@ -32,7 +32,8 @@ object ShadowingTests:
   def createSubDir(name: String): Path =
     val subdir = dir.resolve(name)
     try Files.createDirectory(subdir)
-    catch case _: java.nio.file.FileAlreadyExistsException =>
+    catch
+      case _: java.nio.file.FileAlreadyExistsException =>
     assert(Files.isDirectory(subdir), s"failed to create shadowed subdirectory $subdir")
     subdir
 
