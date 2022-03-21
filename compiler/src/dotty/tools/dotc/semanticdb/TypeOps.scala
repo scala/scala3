@@ -228,18 +228,14 @@ class TypeOps:
           val stpe = loop(tpe)
           s.ByNameType(stpe)
 
-        case TypeRef(pre, sym: Symbol) =>
+        case tr @ TypeRef(pre, _) =>
           val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
-          val ssym = sym.symbolName
+          val ssym = tr.symbol.symbolName
           s.TypeRef(spre, ssym, Seq.empty)
 
-        case tr @ TypeRef(_, _: Name) =>
-          val ssym = tr.symbol.symbolName
-          s.TypeRef(s.Type.Empty, ssym, Seq.empty)
-
-        case TermRef(pre, sym: Symbol) =>
+        case tr @ TermRef(pre, _) =>
           val spre = if(tpe.hasTrivialPrefix) s.Type.Empty else loop(pre)
-          val ssym = sym.symbolName
+          val ssym = tr.symbol.symbolName
           s.SingleType(spre, ssym)
 
         case ThisType(TypeRef(_, sym: Symbol)) =>
@@ -453,10 +449,10 @@ class TypeOps:
       def checkTrivialPrefix(pre: Type, sym: Symbol)(using Context): Boolean =
         pre =:= sym.owner.thisType
       tpe match {
-        case TypeRef(pre, sym: Symbol) =>
-          checkTrivialPrefix(pre, sym)
-        case TermRef(pre, sym: Symbol) =>
-          checkTrivialPrefix(pre, sym)
+        case tr @ TypeRef(pre, _) =>
+          checkTrivialPrefix(pre, tr.symbol)
+        case tr @ TermRef(pre, _) =>
+          checkTrivialPrefix(pre, tr.symbol)
         case _ => false
       }
 
