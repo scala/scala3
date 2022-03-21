@@ -474,7 +474,11 @@ object RefChecks {
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
-      else if member.is(Override) && other.is(Accessor, butNot = Deferred) && other.accessedFieldOrGetter.is(Mutable, butNot = Lazy) then
+      else if member.is(Override)
+          && (other.is(Mutable)
+              || other.is(Accessor, butNot = Deferred)
+                  && other.accessedFieldOrGetter.is(Mutable, butNot = Lazy))
+      then
         overrideError("cannot override a mutable variable")
       else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
