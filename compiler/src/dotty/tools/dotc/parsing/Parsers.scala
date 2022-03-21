@@ -225,7 +225,7 @@ object Parsers {
       || allowedMods.contains(in.token)
       || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
 
-    def isStatSep: Boolean = in.isNewLine || in.token == SEMI
+    def isStatSep: Boolean = in.isStatSep
 
     /** A '$' identifier is treated as a splice if followed by a `{`.
      *  A longer identifier starting with `$` is treated as a splice/id combination
@@ -252,13 +252,8 @@ object Parsers {
 
     /** Skip on error to next safe point.
      */
-    protected def skip(stopAtComma: Boolean): Unit =
-      val lastRegion = in.currentRegion
-      def atStop =
-        in.token == EOF
-        || ((stopAtComma && in.token == COMMA) || skipStopTokens.contains(in.token)) && (in.currentRegion eq lastRegion)
-      while !atStop do
-        in.nextToken()
+    def skip(): Unit =
+      in.skip()
       lastErrorOffset = in.offset
 
     def warning(msg: Message, sourcePos: SourcePosition): Unit =
@@ -272,35 +267,37 @@ object Parsers {
 
     /** Issue an error at current offset that input is incomplete */
     def incompleteInputError(msg: Message): Unit =
-      report.incompleteInputError(msg, source.atSpan(Span(in.offset)))
+      if in.offset != lastErrorOffset then
+        report.incompleteInputError(msg, source.atSpan(Span(in.offset)))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
     def syntaxErrorOrIncomplete(msg: Message, offset: Int = in.offset): Unit =
-      if (in.token == EOF) incompleteInputError(msg)
+      if in.token == EOF then
+        incompleteInputError(msg)
       else
         syntaxError(msg, offset)
-        skip(stopAtComma = true)
+        skip()
 
     def syntaxErrorOrIncomplete(msg: Message, span: Span): Unit =
-      if (in.token == EOF) incompleteInputError(msg)
+      if in.token == EOF then
+        incompleteInputError(msg)
       else
         syntaxError(msg, span)
-        skip(stopAtComma = true)
+        skip()
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
       *
       * @return The offset at the start of the token to accept
       */
-    def accept(token: Int): Int = {
+    def accept(token: Int): Int =
       val offset = in.offset
-      if (in.token != token)
+      if in.token != token then
         syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token))
-      if (in.token == token) in.nextToken()
+      if in.token == token then in.nextToken()
       offset
-    }
 
     def accept(name: Name): Int = {
       val offset = in.offset
@@ -355,7 +352,7 @@ object Parsers {
             false // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
-            skip(stopAtComma=false)
+            skip()
             true
 
       in.observeOutdented()
@@ -562,18 +559,14 @@ object Parsers {
     def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
       inBracesOrIndented(body, rewriteWithColon)
 
-    /** part { `separator` part }
-     */
-    def tokenSeparated[T](separator: Int, part: () => T): List[T] = {
-      val ts = new ListBuffer[T] += part()
-      while (in.token == separator) {
-        in.nextToken()
-        ts += part()
+    def commaSeparated[T](part: () => T): List[T] =
+      in.currentRegion.withCommasExpected {
+        val ts = new ListBuffer[T] += part()
+        while in.token == COMMA do
+          in.nextToken()
+          ts += part()
+        ts.toList
       }
-      ts.toList
-    }
-
-    def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
 
     def inSepRegion[T](f: Region => Region)(op: => T): T =
       val cur = in.currentRegion
@@ -3766,7 +3759,7 @@ object Parsers {
       val derived =
         if (isIdent(nme.derives)) {
           in.nextToken()
-          tokenSeparated(COMMA, () => convertToTypeId(qualId()))
+          commaSeparated(() => convertToTypeId(qualId()))
         }
         else Nil
       possibleTemplateStart()
