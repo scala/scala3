@@ -1,0 +1,16 @@
+-- [E007] Type Mismatch Error: tests/neg/i14363.scala:2:13 -------------------------------------------------------------
+2 |def test = f(1)  // error
+  |             ^
+  |             Found:    (1 : Int)
+  |             Required: T
+  |
+  |             where:    T is a type variable with constraint <: Ordered[T]
+  |
+  |
+  |             One of the following imports might fix the problem:
+  |
+  |               import math.BigDecimal.int2bigDecimal
+  |               import math.BigInt.int2bigInt
+  |
+  |
+  | longer explanation available when compiling with `-explain`
