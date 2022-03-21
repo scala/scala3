@@ -352,6 +352,9 @@ trait ConstraintHandling {
     val pKept    = if level1 <= level2 then p1 else p2
     val pRemoved = if level1 <= level2 then p2 else p1
 
+    val down = constraint.exclusiveLower(p2, p1)
+    val up = constraint.exclusiveUpper(p1, p2)
+
     constraint = constraint.addLess(p2, p1, direction = if pKept eq p1 then KeepParam2 else KeepParam1)
 
     val boundKept    = constraint.nonParamBounds(pKept).substParam(pRemoved, pKept)
@@ -370,9 +373,6 @@ trait ConstraintHandling {
       //     >: Int & Singleton <: Singleton
       if !isSub(lo, hi) then
         boundRemoved = TypeBounds(lo & hi, hi)
-
-    val down = constraint.exclusiveLower(p2, p1)
-    val up = constraint.exclusiveUpper(p1, p2)
 
     val newBounds = (boundKept & boundRemoved).bounds
     constraint = constraint.updateEntry(pKept, newBounds).replace(pRemoved, pKept)
