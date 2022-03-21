@@ -17,10 +17,14 @@ object CommentSyntax:
   val default = CommentSyntax.Markdown
 
 case class CommentSyntaxArgs(csFormats: PathBased[CommentSyntax]):
+  val defaultSyntax = csFormats.get(csFormats.projectRoot)
+    .map(_.elem)
+    .getOrElse(CommentSyntax.default)
+
   def get(path: Option[Path]): CommentSyntax =
     path
       .flatMap(p => csFormats.get(p).map(_.elem))
-      .getOrElse(CommentSyntax.default)
+      .getOrElse(defaultSyntax)
 
 object CommentSyntaxArgs:
   val usage =
