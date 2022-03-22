@@ -1,0 +1,9 @@
+-- [E008] Not Found Error: tests/neg/i12573.scala:23:38 ----------------------------------------------------------------
+23 |val w: Value[8] = DFBits(Value[8](8)).getDFType.width // error
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         value getDFType is not a member of DFBits[(8 : Int)].
+   |         Extension methods were tried, but the search failed with:
+   |
+   |             method getDFType cannot be accessed as a member of DFType.type from module class i12573$package$.
+   |              Access to protected method getDFType not permitted because enclosing package object i12573$package
+   |              is not a subclass of object DFType where target is defined

@@ -208,7 +208,7 @@ object ErrorReporting {
         i""".
            |Extension methods were tried, but the search failed with:
            |
-           |    ${nested.head.explanation}"""
+           |${nested.head.explanation.indented(4)}"""
       else if tree.hasAttachment(desugar.MultiLineInfix) then
         i""".
            |Note that `${tree.name}` is treated as an infix operator in Scala 3.

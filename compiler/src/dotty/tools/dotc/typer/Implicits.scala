@@ -1108,7 +1108,9 @@ trait Implicits:
         ctx.reporter.removeBufferedMessages
         adapted.tpe match {
           case _: SearchFailureType => SearchFailure(adapted)
-          case _ =>
+          case error: PreviousErrorType if !adapted.symbol.isAccessibleFrom(cand.ref.prefix) => 
+            SearchFailure(adapted.withType(new NestedFailure(error.msg, pt)))
+          case _ => 
             // Special case for `$conforms` and `<:<.refl`. Showing them to the users brings
             // no value, so we instead report a `NoMatchingImplicitsFailure`
             if (adapted.symbol == defn.Predef_conforms || adapted.symbol == defn.SubType_refl)
