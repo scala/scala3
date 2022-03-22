@@ -43,9 +43,13 @@
    |             ^
    |             trailing separator is not allowed
 -- Error: tests/neg/t6124.scala:24:12 ----------------------------------------------------------------------------------
-24 |  val x5 = 0_x52 // error
+24 |  val x5 = 0_x52 // error // error
    |            ^
    |            trailing separator is not allowed
+-- Error: tests/neg/t6124.scala:24:11 ----------------------------------------------------------------------------------
+24 |  val x5 = 0_x52 // error // error
+   |           ^
+   |           Invalid literal number
 -- Error: tests/neg/t6124.scala:26:13 ----------------------------------------------------------------------------------
 26 |  val x8 = 0x52_ // error
    |             ^

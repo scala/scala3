@@ -21,6 +21,8 @@ import config.Feature.migrateTo3
 import config.SourceVersion.`3.0`
 import reporting.{NoProfile, Profile}
 
+import java.lang.Character.isDigit
+
 object Scanners {
 
   /** Offset into source character array */
@@ -152,9 +154,9 @@ object Scanners {
       strVal = litBuf.toString
       litBuf.clear()
 
-    @inline def isNumberSeparator(c: Char): Boolean = c == '_'
+    inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
-    @inline def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
+    inline def removeNumberSeparators(s: String): String = if s.indexOf('_') == -1 then s else s.replace("_", "")
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
@@ -887,7 +889,7 @@ object Scanners {
               //case 'b' | 'B' => base = 2  ; nextChar()
               case _         => base = 10 ; putChar('0')
             }
-            if (base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0)
+            if base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0 then
               error("invalid literal number")
           }
           fetchLeadingZero()
@@ -967,7 +969,7 @@ object Scanners {
         case '.' =>
           nextChar()
           if ('0' <= ch && ch <= '9') {
-            putChar('.'); getFraction(); setStrVal()
+            putChar('.'); getFraction()
           }
           else
             token = DOT
@@ -1427,7 +1429,7 @@ object Scanners {
     /** read fractional part and exponent of floating point number
      *  if one is present.
      */
-    protected def getFraction(): Unit = {
+    protected def getFraction(): Unit =
       token = DECILIT
       while ('0' <= ch && ch <= '9' || isNumberSeparator(ch)) {
         putChar(ch)
@@ -1465,41 +1467,44 @@ object Scanners {
         token = FLOATLIT
       }
       checkNoLetter()
-    }
+      setStrVal()
+    end getFraction
     def checkNoLetter(): Unit =
       if (isIdentifierPart(ch) && ch >= ' ')
         error("Invalid literal number")
 
     /** Read a number into strVal and set base
     */
-    protected def getNumber(): Unit = {
-      while (isNumberSeparator(ch) || digit2int(ch, base) >= 0) {
-        putChar(ch)
+    protected def getNumber(): Unit =
+      def consumeDigits(): Unit =
+        while isNumberSeparator(ch) || digit2int(ch, base) >= 0 do
+          putChar(ch)
+          nextChar()
+      // at dot with digit following
+      def restOfNonIntegralNumber(): Unit =
+        putChar('.')
         nextChar()
-      }
-      checkNoTrailingSeparator()
-      token = INTLIT
-      if (base == 10 && ch == '.') {
-        val lch = lookaheadChar()
-        if ('0' <= lch && lch <= '9') {
-          putChar('.')
-          nextChar()
-          getFraction()
-        }
-      }
-      else (ch: @switch) match {
-        case 'e' | 'E' | 'f' | 'F' | 'd' | 'D' =>
-          if (base == 10) getFraction()
-        case 'l' | 'L' =>
-          nextChar()
-          token = LONGLIT
-        case _ =>
-      }
+        getFraction()
+      // 1l is an acknowledged bad practice
+      def lintel(): Unit =
+        if ch == 'l' then
+          val msg = "Lowercase el for long is not recommended because it is easy to confuse with numeral 1; use uppercase L instead"
+          report.deprecationWarning(msg, sourcePos(offset + litBuf.length))
+      // after int: 5e7f, 42L, 42.toDouble but not 42b.
+      def restOfNumber(): Unit =
+        ch match
+        case 'e' | 'E' | 'f' | 'F' | 'd' | 'D' => getFraction()
+        case 'l' | 'L' => lintel() ; token = LONGLIT ; setStrVal() ; nextChar()
+        case _         => token = INTLIT  ; setStrVal() ; checkNoLetter()
+
+      // consume leading digits
+      consumeDigits()
 
       checkNoTrailingSeparator()
 
-      setStrVal()
-    }
+      val detectedFloat: Boolean = base == 10 && ch == '.' && isDigit(lookaheadChar())
+      if detectedFloat then restOfNonIntegralNumber() else restOfNumber()
+    end getNumber
 
     private def finishCharLit(): Unit = {
       nextChar()

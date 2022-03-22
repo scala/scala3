@@ -21,7 +21,7 @@ trait T {
   val x1 = _52 // error
   val x3 = 52_ // error
 
-  val x5 = 0_x52 // error
+  val x5 = 0_x52 // error // error
   val x6 = 0x_52
   val x8 = 0x52_ // error
   val x9 = 0_52
