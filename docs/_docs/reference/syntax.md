@@ -10,7 +10,7 @@ referring to the ASCII fragment `\u0000` – `\u007F`.
 _Unicode escapes_ are used to represent the [Unicode character](https://www.w3.org/International/articles/definitions-characters/) with the given
 hexadecimal code:
 
-```
+```ebnf
 UnicodeEscape ::= ‘\’ ‘u’ {‘u’} hexDigit hexDigit hexDigit hexDigit
 hexDigit      ::= ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | … | ‘f’
 ```
@@ -22,7 +22,7 @@ Informal descriptions are typeset as `“some comment”`.
 The lexical syntax of Scala is given by the following grammar in EBNF
 form.
 
-```
+```ebnf
 whiteSpace       ::=  ‘\u0020’ | ‘\u0009’ | ‘\u000D’ | ‘\u000A’
 upper            ::=  ‘A’ | … | ‘Z’ | ‘\$’ | ‘_’  “… and Unicode category Lu”
 lower            ::=  ‘a’ | … | ‘z’ “… and Unicode category Ll”
@@ -97,7 +97,7 @@ to indicate a token sequence `ts` that is either enclosed in a pair of braces `{
 notation `:<<< ts >>>` indicates a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent` that follows
 a `:` at the end of a line.
 
-```
+```ebnf
  <<< ts >>>   ::=  ‘{’ ts ‘}’
                 |  indent ts outdent
 :<<< ts >>>   ::=  [nl] ‘{’ ts ‘}’
@@ -108,7 +108,7 @@ a `:` at the end of a line.
 
 ### Regular keywords
 
-```
+```ebnf
 abstract  case      catch     class     def       do        else
 enum      export    extends   false     final     finally   for
 given     if        implicit  import    lazy      match     new
@@ -121,7 +121,7 @@ type      val       var       while     with      yield
 
 ### Soft keywords
 
-```
+```ebnf
 as  derives  end  extension  infix  inline  opaque  open  throws
 transparent  using  |  *  +  -
 ```
@@ -135,7 +135,7 @@ The context-free syntax of Scala is given by the following EBNF
 grammar:
 
 ### Literals and Paths
-```
+```ebnf
 SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  [‘-’] floatingPointLiteral
                     |  booleanLiteral
@@ -157,7 +157,7 @@ ClassQualifier    ::=  ‘[’ id ‘]’
 ```
 
 ### Types
-```
+```ebnf
 Type              ::=  FunType
                     |  HkTypeParamClause ‘=>>’ Type
                     |  FunParamClause ‘=>>’ Type
@@ -203,7 +203,7 @@ Types             ::=  Type {‘,’ Type}
 ```
 
 ### Expressions
-```
+```ebnf
 Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr
                     |  HkTypeParamClause ‘=>’ Expr
                     |  Expr1
@@ -306,7 +306,7 @@ ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
 ```
 
 ### Type and Value Parameters
-```
+```ebnf
 ClsTypeParamClause::=  ‘[’ ClsTypeParam {‘,’ ClsTypeParam} ‘]’
 ClsTypeParam      ::=  {Annotation} [‘+’ | ‘-’] id [HkTypeParamClause] TypeParamBounds
 
@@ -334,7 +334,7 @@ DefParam          ::=  {Annotation} [‘inline’] Param
 ```
 
 ### Bindings and Imports
-```
+```ebnf
 Bindings          ::=  ‘(’ [Binding {‘,’ Binding}] ‘)’
 Binding           ::=  (id | ‘_’) [‘:’ Type]
 
@@ -372,7 +372,7 @@ EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | �
 ```
 
 ### Declarations and Definitions
-```
+```ebnf
 RefineDcl         ::=  ‘val’ ValDcl
                     |  ‘def’ DefDcl
                     |  ‘type’ {nl} TypeDcl
