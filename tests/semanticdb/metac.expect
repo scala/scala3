@@ -71,8 +71,8 @@ advanced/Structural# => class Structural extends Object { self: Structural => +6
 advanced/Structural#T# => trait T [typeparam A ] extends Object { self: T[A] => +4 decls }
 advanced/Structural#T#[A] => typeparam A 
 advanced/Structural#T#`<init>`(). => primary ctor <init> [typeparam A ](): T[A]
-advanced/Structural#T#bar(). => method bar (param b: <?>): Unit
-advanced/Structural#T#bar().(b) => param b: <?>
+advanced/Structural#T#bar(). => method bar (param b: foo.B): Unit
+advanced/Structural#T#bar().(b) => param b: foo.B
 advanced/Structural#T#foo. => val method foo Object { type B  = A }
 advanced/Structural#`<init>`(). => primary ctor <init> (): Structural
 advanced/Structural#s1(). => method s1 => Object { abstract val method x Int }
@@ -3702,6 +3702,46 @@ Occurrences:
 [4:14..4:17): Seq -> scala/package.Seq#
 [4:18..4:21): Int -> scala/Int#
 [4:26..4:30): Unit -> scala/Unit#
+
+expect/dep-match.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => dep-match.scala
+Text => empty
+Language => Scala
+Symbols => 8 entries
+Occurrences => 17 entries
+
+Symbols:
+_empty_/Test_depmatch. => final object Test_depmatch extends Object { self: Test_depmatch.type => +4 decls }
+_empty_/Test_depmatch.Bar# => type Bar [typeparam T ] = T match { Unit => Unit }
+_empty_/Test_depmatch.Bar#[T] => typeparam T 
+_empty_/Test_depmatch.Foo# => type Foo  = Int { type U  }
+_empty_/Test_depmatch.baz(). => inline macro baz (param foo: Foo): Unit
+_empty_/Test_depmatch.baz().(foo) => param foo: Foo
+local0 => type U 
+local1 => val local v: Bar[foo.U]
+
+Occurrences:
+[0:7..0:20): Test_depmatch <- _empty_/Test_depmatch.
+[1:7..1:10): Foo <- _empty_/Test_depmatch.Foo#
+[1:13..1:16): Int -> scala/Int#
+[1:24..1:25): U <- local0
+[2:7..2:10): Bar <- _empty_/Test_depmatch.Bar#
+[2:11..2:12): T <- _empty_/Test_depmatch.Bar#[T]
+[2:16..2:17): T -> _empty_/Test_depmatch.Bar#[T]
+[3:9..3:13): Unit -> scala/Unit#
+[3:17..3:21): Unit -> scala/Unit#
+[5:13..5:16): baz <- _empty_/Test_depmatch.baz().
+[5:17..5:20): foo <- _empty_/Test_depmatch.baz().(foo)
+[5:22..5:25): Foo -> _empty_/Test_depmatch.Foo#
+[5:28..5:32): Unit -> scala/Unit#
+[6:8..6:9): v <- local1
+[6:11..6:14): Bar -> _empty_/Test_depmatch.Bar#
+[6:15..6:18): foo -> _empty_/Test_depmatch.baz().(foo)
+[6:24..6:27): ??? -> scala/Predef.`???`().
 
 expect/exports-example-Codec.scala
 ----------------------------------

@@ -34,7 +34,7 @@ class TypeOps:
     )(using Context): Option[Symbol] =
       symtab.get((binder, name))
 
-  extension [T <: LambdaType](symtab: mutable.Map[(T, Name), Symbol])
+  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
     private def lookupOrErr(
       binder: T,
       name: Name,
@@ -228,25 +228,44 @@ class TypeOps:
           val stpe = loop(tpe)
           s.ByNameType(stpe)
 
-        case TypeRef(pre, sym: Symbol) =>
-          val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
-          val ssym = sym.symbolName
-          s.TypeRef(spre, ssym, Seq.empty)
-
+        // sym of `TypeRef(_, sym)` may not be a Symbol but Name in some cases
+        // e.g. in MatchType,
+        // case x *: xs => x *: Concat[xs, Ys]
+        // x and xs should have a typebounds <: Any, >: Nothing
+        // but Any (and Nothing) are represented as TypeRef(<scala>, "Any" <- Name)
         case tr @ TypeRef(pre, _) if tr.symbol != NoSymbol =>
           val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
           val ssym = tr.symbol.symbolName
           s.TypeRef(spre, ssym, Seq.empty)
 
-        case TermRef(pre, sym: Symbol) =>
+        // when TypeRef refers the refinement of RefinedType e.g.
+        // TypeRef for `foo.B` in `trait T[A] { val foo: { type B = A } = ???; def bar(b: foo.B) = () }` has NoSymbol
+        case TypeRef(pre, name: Name) =>
           val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
-          val ssym = sym.symbolName
-          s.SingleType(spre, ssym)
+          val maybeSym = pre.widen.dealias match
+            case rt: RefinedType =>
+              refinementSymtab.lookupOrErr(rt, name, rt.typeSymbol)
+            case _ => None
+          maybeSym match
+            case Some(sym) =>
+              s.TypeRef(spre, sym.symbolName, Seq.empty)
+            case None => s.Type.Empty
 
         case tr @ TermRef(pre, _) if tr.symbol != NoSymbol =>
           val spre = if(tpe.hasTrivialPrefix) s.Type.Empty else loop(pre)
           val ssym = tr.symbol.symbolName
           s.SingleType(spre, ssym)
+
+        case TermRef(pre, name: Name) =>
+          val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
+          val maybeSym = pre.widen.dealias match
+            case rt: RefinedType =>
+              refinementSymtab.lookupOrErr(rt, name, rt.typeSymbol)
+            case _ => None
+          maybeSym match
+            case Some(sym) =>
+              s.SingleType(spre, sym.symbolName)
+            case None => s.Type.Empty
 
         case ThisType(TypeRef(_, sym: Symbol)) =>
           s.ThisType(sym.symbolName)
@@ -458,9 +477,6 @@ class TypeOps:
     private def hasTrivialPrefix(using Context): Boolean =
       def checkTrivialPrefix(pre: Type, sym: Symbol)(using Context): Boolean =
         pre =:= sym.owner.thisType
-      // Make sure `tr.symbol != NoSymbol` where `tr @ TypeRef(...)`, that happens
-      // when TypeRef refers the refinement of RefinedType e.g.
-      // TypeRef for `foo.B` in `trait T[A] { val foo: { type B = A } = ???; def bar(b: foo.B) = () }` has NoSymbol
       tpe match {
         case TypeRef(pre, sym: Symbol) =>
           checkTrivialPrefix(pre, sym)
