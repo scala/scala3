@@ -1120,7 +1120,14 @@ object Semantic {
 
       case Call(ref, argss) =>
         // check args
-        val (errors, args) = evalArgs(argss.flatten, thisV, klass)
+        val (argErrors, args) = evalArgs(argss.flatten, thisV, klass)
+        // Allow cold args for static methods with non-matchable params
+        val methodType = ref.symbol.info.stripPoly
+        val allMatchable = methodType.paramInfoss.flatten.forall { (info) => info <:< defn.MatchableType }
+        val isStatic = ref.symbol.isStatic
+        val errors = if isStatic && allMatchable then
+          argErrors.filterNot(e => e.isInstanceOf[UnsafePromotion])
+        else argErrors
 
         ref match
         case Select(supert: Super, _) =>
