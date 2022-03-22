@@ -42,11 +42,11 @@ trait MoreSadness {
   def tooHuge: Float     = { 3.4028236E38f } // error: floating point number too large
 
   def twoHuge: Double    = { 1.7976931348623159e308 } // error: double precision floating point number too large
-} // error: Found: Unit etc, sad
+}
 
 trait Lengthy {
 
   def bad = 1l
 
   def worse = 123l
-} // error: Found: Unit etc, sad // anypos-error: '}' expected, but eof found, sad
+}

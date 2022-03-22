@@ -1182,9 +1182,9 @@ object Parsers {
             case EXPOLIT => return Number(digits, NumberKind.Floating)
             case _ =>
           }
-        import scala.util.FromDigits._
+        import scala.util.FromDigits.*
         val value =
-          try token match {
+          try token match
             case INTLIT                        => intFromDigits(digits, in.base)
             case LONGLIT                       => longFromDigits(digits, in.base)
             case FLOATLIT                      => floatFromDigits(digits)
@@ -1194,15 +1194,11 @@ object Parsers {
             case TRUE                          => true
             case FALSE                         => false
             case NULL                          => null
-            case _                             =>
-              syntaxErrorOrIncomplete(IllegalLiteral())
-              null
-          }
-          catch {
-            case ex: FromDigitsException => syntaxErrorOrIncomplete(ex.getMessage)
-          }
+            case _                             => syntaxErrorOrIncomplete(IllegalLiteral()); null
+          catch case ex: FromDigitsException => syntaxError(ex.getMessage)
         Literal(Constant(value))
       }
+      end literalOf
 
       if (inStringInterpolation) {
         val t = in.token match {
@@ -1252,6 +1248,7 @@ object Parsers {
         }
       }
     }
+    end literal
 
     private def interpolatedString(inPattern: Boolean = false): Tree = atSpan(in.offset) {
       val segmentBuf = new ListBuffer[Tree]
