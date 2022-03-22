@@ -130,6 +130,7 @@ class TreeChecker extends Phase with SymTransformer {
       assert(ctx.typerState.constraint.domainLambdas.isEmpty,
         i"non-empty constraint at end of $fusedPhase: ${ctx.typerState.constraint}, ownedVars = ${ctx.typerState.ownedVars.toList}%, %")
       assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
+      TreeNodeChecker.run(ctx.compilationUnit.tpdTree)
     }
 
     val checkingCtx = ctx
@@ -306,7 +307,6 @@ class TreeChecker extends Phase with SymTransformer {
       sym.isEffectivelyErased && sym.is(Private) && !sym.initial.is(Private)
 
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = {
-      TreeNodeChecker.run(tree)
       val tpdTree = super.typed(tree, pt)
       Typer.assertPositioned(tree)
       if (ctx.erasedTypes)
