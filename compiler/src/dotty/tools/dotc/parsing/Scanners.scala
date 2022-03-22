@@ -891,9 +891,10 @@ object Scanners {
             }
             if base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0 then
               error("invalid literal number")
+            else
+              getNumber()
           }
           fetchLeadingZero()
-          getNumber()
         case '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
           base = 10
           getNumber()
