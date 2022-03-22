@@ -14,6 +14,7 @@ class Structural {
   def s2: { val x: Int } = new { val x: Int = ??? }
   def s3: { def m(x: Int): Int } = new { def m(x: Int): Int = ??? }
   def s4(a: Int): { val x: Int } = ???
+  trait T[A] { val foo: { type B = A } = ???; def bar(b: foo.B) = () } // from tests/pos/t8177e.scala
 }
 
 class Wildcards {

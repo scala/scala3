@@ -228,12 +228,22 @@ class TypeOps:
           val stpe = loop(tpe)
           s.ByNameType(stpe)
 
-        case tr @ TypeRef(pre, _) =>
+        case TypeRef(pre, sym: Symbol) =>
+          val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
+          val ssym = sym.symbolName
+          s.TypeRef(spre, ssym, Seq.empty)
+
+        case tr @ TypeRef(pre, _) if tr.symbol != NoSymbol =>
           val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
           val ssym = tr.symbol.symbolName
           s.TypeRef(spre, ssym, Seq.empty)
 
-        case tr @ TermRef(pre, _) =>
+        case TermRef(pre, sym: Symbol) =>
+          val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
+          val ssym = sym.symbolName
+          s.SingleType(spre, ssym)
+
+        case tr @ TermRef(pre, _) if tr.symbol != NoSymbol =>
           val spre = if(tpe.hasTrivialPrefix) s.Type.Empty else loop(pre)
           val ssym = tr.symbol.symbolName
           s.SingleType(spre, ssym)
@@ -448,10 +458,17 @@ class TypeOps:
     private def hasTrivialPrefix(using Context): Boolean =
       def checkTrivialPrefix(pre: Type, sym: Symbol)(using Context): Boolean =
         pre =:= sym.owner.thisType
+      // Make sure `tr.symbol != NoSymbol` where `tr @ TypeRef(...)`, that happens
+      // when TypeRef refers the refinement of RefinedType e.g.
+      // TypeRef for `foo.B` in `trait T[A] { val foo: { type B = A } = ???; def bar(b: foo.B) = () }` has NoSymbol
       tpe match {
-        case tr @ TypeRef(pre, _) =>
+        case TypeRef(pre, sym: Symbol) =>
+          checkTrivialPrefix(pre, sym)
+        case tr @ TypeRef(pre, _) if tr.symbol != NoSymbol =>
           checkTrivialPrefix(pre, tr.symbol)
-        case tr @ TermRef(pre, _) =>
+        case TermRef(pre, sym: Symbol) =>
+          checkTrivialPrefix(pre, sym)
+        case tr @ TermRef(pre, _) if tr.symbol != NoSymbol =>
           checkTrivialPrefix(pre, tr.symbol)
         case _ => false
       }
