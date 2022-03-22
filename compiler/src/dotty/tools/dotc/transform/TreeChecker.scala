@@ -306,7 +306,7 @@ class TreeChecker extends Phase with SymTransformer {
       sym.isEffectivelyErased && sym.is(Private) && !sym.initial.is(Private)
 
     override def typed(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree = {
-      checkTreeNode(tree)
+      TreeNodeChecker.run(tree)
       val tpdTree = super.typed(tree, pt)
       Typer.assertPositioned(tree)
       if (ctx.erasedTypes)
@@ -648,102 +648,21 @@ object TreeChecker {
     }
   }.apply(tp0)
 
-  private val PrivateErased = allOf(Private, Erased)
-
   /** Check that the tree only contains legal children trees */
-  def checkTreeNode(tree: untpd.Tree)(implicit ctx: Context): Unit = {
-    def assertNotTypeTree(t: untpd.Tree): Unit = assert(!t.isInstanceOf[untpd.TypeTree], tree)
-
-    // TODO add many more sanity checks
-    tree match {
-//      case Ident(name) =>
-       case Select(qualifier, name) =>
-        // FIXME this assertion fails only in tests/run/scala2trait-lazyval.scala
-        // assertNotTypeTree(qual)
- //      case This(qual) =>
-//
-//      case Super(qual, mix) =>
-       case Apply(fun, args) =>
-        assertNotTypeTree(fun)
-        for (arg <- args) {
-          assertNotTypeTree(arg)
-        }
-       case TypeApply(fun, args) =>
-        assertNotTypeTree(fun)
- //      case Literal(const) =>
-//
-//      case New(tpt) =>
-       case Typed(expr, tpt) =>
-        assertNotTypeTree(expr)
- //      case NamedArg(name, arg) =>
-       case Assign(lhs, rhs) =>
-        assertNotTypeTree(lhs)
-        assertNotTypeTree(rhs)
-       case Block(stats, expr) =>
-        for (stat <- stats) {
-          assertNotTypeTree(stat)
-        }
-        assertNotTypeTree(expr)
-       case If(cond, thenp, elsep) =>
-        assertNotTypeTree(cond)
-        assertNotTypeTree(thenp)
-        assertNotTypeTree(elsep)
- //      case Closure(env, meth, tpt) =>
-       case Match(selector, cases) =>
-        assertNotTypeTree(selector)
-       case CaseDef(pat, guard, body) =>
-        assertNotTypeTree(guard)
-        assertNotTypeTree(body)
-       case Return(expr, from) =>
-        assertNotTypeTree(expr)
-       case Try(block, handler, finalizer) =>
-        assertNotTypeTree(block)
-        assertNotTypeTree(finalizer)
-       case SeqLiteral(elems, elemtpt) =>
-        for (elem <- elems) {
-          assertNotTypeTree(elem)
-        }
-       case Inlined(call, bindings, expansion) =>
-        assertNotTypeTree(call)
- //      case TypeTree() =>
-//
-//      case SingletonTypeTree(ref) =>
-//
-//      case AndTypeTree(left, right) =>
-//
-//      case OrTypeTree(left, right) =>
-//
-//      case RefinedTypeTree(tpt, refinements) =>
-//
-//      case AppliedTypeTree(tpt, args) =>
-//
-//      case LambdaTypeTree(tparams, body) =>
-//
-//      case ByNameTypeTree(result) =>
-//
-//      case TypeBoundsTree(lo, hi) =>
-//
-//      case Bind(name, body) =>
-//
-//      case Alternative(trees) =>
-//
-//      case UnApply(fun, implicits, patterns) =>
-       case tree @ ValDef(name, tpt, _) =>
-        assertNotTypeTree(tree.rhs)
-       case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
-        assertNotTypeTree(tree.rhs)
- //      case TypeDef(name, rhs) =>
-//
-//      case tree @ Template(constr, parents, self, _) =>
-//
-//      case Import(expr, selectors) =>
-//
-//      case PackageDef(pid, stats) =>
-//
-//      case Annotated(arg, annot) =>
-//
-//      case Thicket(ts) =>
-       case _ =>
-    }
-  }
+  object TreeNodeChecker extends untpd.TreeTraverser:
+    import untpd._
+    def run(tree: Tree)(using Context) = if !tree.isInstanceOf[TypeTree] then traverse(tree)
+    def traverse(tree: Tree)(using Context) = tree match
+      case t: TypeTree                             => assert(assertion = false, t)
+      case t @ TypeApply(fun, _targs)              => traverse(fun)
+      case t @ New(_tpt)                           =>
+      case t @ Typed(expr, _tpt)                   => traverse(expr)
+      case t @ Closure(env, meth, _tpt)            => traverse(env); traverse(meth)
+      case t @ SeqLiteral(elems, _elemtpt)         => traverse(elems)
+      case t @ ValDef(_, _tpt, _)                  => traverse(t.rhs)
+      case t @ DefDef(_, paramss, _tpt, _)         => for params <- paramss do traverse(params); traverse(t.rhs)
+      case t @ TypeDef(_, _rhs)                    =>
+      case t @ Template(constr, _parents, self, _) => traverse(constr); traverse(self); traverse(t.body)
+      case t                                       => traverseChildren(t)
+    end traverse
 }

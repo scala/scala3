@@ -1638,6 +1638,7 @@ object Trees {
 
     abstract class TreeTraverser extends TreeAccumulator[Unit] {
       def traverse(tree: Tree)(using Context): Unit
+      def traverse(trees: List[Tree])(using Context) = apply((), trees)
       def apply(x: Unit, tree: Tree)(using Context): Unit = traverse(tree)
       protected def traverseChildren(tree: Tree)(using Context): Unit = foldOver((), tree)
     }
