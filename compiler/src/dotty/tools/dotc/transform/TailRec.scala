@@ -277,11 +277,23 @@ class TailRec extends MiniPhase {
     def yesTailTransform(tree: Tree)(using Context): Tree =
       transform(tree, tailPosition = true)
 
+    /** If not in tail position a tree traversal may not be needed.
+     *
+     *  A recursive  call may still be in tail position if within the return
+     *  expression of a labeled block.
+     *  A tree traversal may also be needed to report a failure to transform
+     *  a recursive call of a @tailrec annotated method (i.e. `isMandatory`).
+     */
+    private def isTraversalNeeded =
+      isMandatory || tailPositionLabeledSyms.size > 0
+
     def noTailTransform(tree: Tree)(using Context): Tree =
-      transform(tree, tailPosition = false)
+      if (isTraversalNeeded) transform(tree, tailPosition = false)
+      else tree
 
     def noTailTransforms[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
-      trees.mapConserve(noTailTransform).asInstanceOf[List[Tr]]
+      if (isTraversalNeeded) trees.mapConserve(noTailTransform).asInstanceOf[List[Tr]]
+      else trees
 
     override def transform(tree: Tree)(using Context): Tree = {
       /* Rewrite an Apply to be considered for tail call transformation. */
@@ -432,7 +444,7 @@ class TailRec extends MiniPhase {
 
         case Return(expr, from) =>
           val fromSym = from.symbol
-          val inTailPosition = !fromSym.is(Label) || tailPositionLabeledSyms.contains(fromSym)
+          val inTailPosition = fromSym.is(Label) && tailPositionLabeledSyms.contains(fromSym)
           cpy.Return(tree)(transform(expr, inTailPosition), from)
 
         case _ =>
