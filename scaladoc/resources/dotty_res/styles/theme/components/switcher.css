@@ -20,6 +20,8 @@
   color: var(--action-primary-content-default);
   cursor: pointer;
   border: none;
+
+  text-decoration: none;
 }
 
 .switcher:first-child {
@@ -35,6 +37,8 @@
 .switcher:hover {
   background: var(--action-primary-background-hover);
   color: var(--action-primary-content-hover);
+
+  text-decoration: none;
 }
 
 .switcher:active {

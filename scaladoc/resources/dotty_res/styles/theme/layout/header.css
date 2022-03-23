@@ -1,4 +1,5 @@
 #header {
+  --header-height: calc(8 * var(--base-spacing));
   box-sizing: border-box;
   display: flex;
   flex-direction: row;
@@ -6,7 +7,7 @@
   align-items: center;
   padding: calc(1.75 * var(--base-spacing)) calc(3 * var(--base-spacing));
   position: absolute;
-  height: calc(8 * var(--base-spacing));
+  height: var(--header-height);
   left: 0px;
   right: 0px;
   top: 0px;

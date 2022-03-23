@@ -106,35 +106,40 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     }
 
     def renderNested(nav: Page, nestLevel: Int): (Boolean, AppliedTag) =
+      val isApi = nav.content.isInstanceOf[Member]
       val isSelected = nav.link.dri == pageLink.dri
       val isTopElement = nestLevel == 0
 
+      val isTopLevelDocs = !isApi && isTopElement
+
       def linkHtml(expanded: Boolean = false, withArrow: Boolean = false) =
         val attrs: Seq[String] = Seq(
-          Option.when(isSelected)("selected h100"),
-          Option.when(expanded)("expanded cs"),
-          Option.when(!nav.content.isInstanceOf[Member])("de")
+          Option.when((isSelected || expanded) && !isTopLevelDocs)("h100"),
+          Option.when(isSelected)("selected"),
+          Option.when(expanded || isTopLevelDocs)("expanded cs"),
+          Option.when(!isApi)("de"),
+          Option.when(isTopLevelDocs)("h200")
         ).flatten
         val icon = nav.content match {
           case m: Member => navigationIcon(m)
           case _ => Nil
         }
         Seq(
-          span(cls := s"nh ${if isTopElement then "h200 " else " "}" + attrs.mkString(" "))(
-            if withArrow && !isTopElement then Seq(span(cls := "ar")) else Nil,
+          span(cls := s"nh " + attrs.mkString(" "))(
+            if withArrow then Seq(span(cls := "ar")) else Nil,
             a(href := pathToPage(pageLink.dri, nav.link.dri))(icon, span(nav.link.name))
           )
         )
 
       nav.children.filterNot(_.hidden) match
-        case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected || isTopElement then "expanded" else ""}")(linkHtml())
+        case Nil => isSelected -> div(cls := s"ni n$nestLevel ${if isSelected then "expanded" else ""}")(linkHtml())
         case children =>
           val nested = children.map(renderNested(_, nestLevel + 1))
-          val expanded = nested.exists(_._1) || isSelected
+          val expanded = nested.exists(_._1)
           val attr =
-            if expanded || isSelected || isTopElement then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
+            if expanded || isSelected || isTopLevelDocs then Seq(cls := s"ni n$nestLevel expanded") else Seq(cls := s"ni n$nestLevel")
           (isSelected || expanded) -> div(attr)(
-            linkHtml(expanded, true),
+            linkHtml(expanded, !isTopLevelDocs),
             nested.map(_._2)
           )
 
@@ -228,11 +233,9 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           ),
           apiNavOpt
             .filter(_._1)
-            .fold(
-              nav(id := "docs-nav", cls := s"side-menu")(docsNavOpt.get._2)
-            )(
-              apiNav => nav(id := "api-nav", cls := s"side-menu")(apiNav._2)
-            )
+            .map(apiNav => nav(id := "api-nav", cls := s"side-menu")(apiNav._2))
+            .orElse(docsNavOpt.map(docsNav => nav(id := "docs-nav", cls := s"side-menu")(docsNav._2)))
+            .get
         )
       ),
       div(id := "main")(
