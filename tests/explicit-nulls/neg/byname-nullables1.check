@@ -1,4 +1,4 @@
--- Error: tests/neg-custom-args/explicit-nulls/byname-nullables1.scala:10:6 --------------------------------------------
+-- Error: tests/explicit-nulls/neg/byname-nullables1.scala:10:6 --------------------------------------------------------
 10 |    f(x.fld != null) // error
    |      ^^^^^^^^^^^^^
    |      This argument was typed using flow assumptions about mutable variables

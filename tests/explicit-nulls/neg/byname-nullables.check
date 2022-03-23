@@ -1,11 +1,11 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:19:24 -----------------------
+-- [E007] Type Mismatch Error: tests/explicit-nulls/neg/byname-nullables.scala:19:24 -----------------------------------
 19 |    if x != null then f(x)   // error: f is call-by-name
    |                        ^
    |                        Found:    (x : String | Null)
    |                        Required: String
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:43:32 --------------------------------------------
+-- Error: tests/explicit-nulls/neg/byname-nullables.scala:43:32 --------------------------------------------------------
 43 |    if x != null then f(identity(x), 1)   // error: dropping not null check fails typing
    |                        ^^^^^^^^^^^
    |                     This argument was typed using flow assumptions about mutable variables
@@ -13,7 +13,7 @@
    |                     Wrapping the argument in `byName(...)` fixes the problem by disabling the flow assumptions.
    |
    |                     `byName` needs to be imported from the `scala.compiletime` package.
--- Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:68:24 --------------------------------------------
+-- Error: tests/explicit-nulls/neg/byname-nullables.scala:68:24 --------------------------------------------------------
 68 |    if x != null then f(x, 1)   // error: dropping not null check typechecks OK, but gives incompatible result type
    |                        ^
    |                     This argument was typed using flow assumptions about mutable variables
@@ -21,7 +21,7 @@
    |                     Wrapping the argument in `byName(...)` fixes the problem by disabling the flow assumptions.
    |
    |                     `byName` needs to be imported from the `scala.compiletime` package.
--- [E134] Type Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:81:22 --------------------------------
+-- [E134] Type Error: tests/explicit-nulls/neg/byname-nullables.scala:81:22 --------------------------------------------
 81 |    if x != null then f(byName(x), 1)   // error: none of the overloaded methods match argument types
    |                      ^
    |                      None of the overloaded alternatives of method f in object Test7 with types
