@@ -161,7 +161,7 @@ object Completion {
                           |                prefix  = ${completer.prefix},
                           |                term    = ${completer.mode.is(Mode.Term)},
                           |                type    = ${completer.mode.is(Mode.Type)}
-                          |                results = $backtickCompletions%, %""")
+                          |                results = $backtickedCompletions%, %""")
     (offset, backtickedCompletions)
   }
 
