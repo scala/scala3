@@ -186,9 +186,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case _ => realScrutineePath
       val patternPath: SkolemType = SkolemType(pat)
 
-      gadts.println(i"scrutinee path: $scrutineePath")
-      gadts.println(i"pattern path: $patternPath")
-
       val saved = state.nn.constraint
       val savedGadt = ctx.gadt.fresh
 
@@ -214,24 +211,22 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val patternType = TypeRef(patternPath, patternSymbol)
 
           def constrainSP =
-            val res = ctx.gadt.addBound(scrutineePath, scrutineeSymbol, patternType, isUpper = true)
-            gadts.println(i"after $scrutineePath.$scrutineeSymbol <:< $patternType: res = $res, gadt = ${ctx.gadt.debugBoundsDescription}")
-            res
+            ctx.gadt.addBound(scrutineePath, scrutineeSymbol, patternType, isUpper = true)
+              .showing(i"after $scrutineePath.$scrutineeSymbol <:< $patternType: result = $result, gadt = ${ctx.gadt.debugBoundsDescription}", gadts)
 
           def constrainPS =
-            val res = ctx.gadt.addBound(patternPath, patternSymbol, scrutineeType, isUpper = true)
-            gadts.println(i"after $patternPath.$patternSymbol <:< $scrutineePath: res = $res, gadt = ${ctx.gadt.debugBoundsDescription}")
-            res
+            ctx.gadt.addBound(patternPath, patternSymbol, scrutineeType, isUpper = true)
+              .showing(i"after $patternPath.$patternSymbol <:< $scrutineePath: result = $result, gadt = ${ctx.gadt.debugBoundsDescription}", gadts)
 
           constrainPS && constrainSP
         }
       }
 
-      if !result then
+      if !res then
         constraint = saved
         ctx.gadt.restore(savedGadt)
 
-      result
+      res
     }
 
     def constrainTypeParams =
