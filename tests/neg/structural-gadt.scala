@@ -18,11 +18,11 @@ object Test {
       val i: Int = ??? : A // limitation // error
 
     case _: IntExpr =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // limitation // error
 
     case _: Expr { type T = Int } =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // limitation // error
   }
 
@@ -36,11 +36,11 @@ object Test {
       val i: Int = ??? : A // error
 
     case _: IntExpr =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // error
 
     case _: Expr { type T = Int } =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // error
   }
 

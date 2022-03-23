@@ -39,11 +39,11 @@ object Test {
       val i: Int = ??? : A // limitation // error
 
     case _: IndirectIntExpr =>
-      val a: A = 0 // limitation // error
-      val i: Int = ??? : A // limitation // error
+      val a: A = 0
+      val i: Int = ??? : A
 
     case _: IndirectExprExact[Int] =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // limitation // error
   }
 
@@ -61,11 +61,11 @@ object Test {
       val i: Int = ??? : A // error
 
     case _: IndirectIntExpr =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // error
 
     case _: IndirectExprExact[Int] =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // error
   }
 }

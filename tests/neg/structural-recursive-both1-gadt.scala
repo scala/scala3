@@ -28,23 +28,23 @@ object Test {
   def foo[A](e: IndirectExprExact[A]) = e match {
     case _: AltIndirectIntLit =>
       val a: A = 0 // error
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
 
     case _: AltIndirectExprSub[Int] =>
       val a: A = 0 // error
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
 
     case _: AltIndirectExprSub2[Int] =>
       val a: A = 0 // error
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
 
     case _: AltIndirectIntExpr =>
-      val a: A = 0 // limitation // error
-      val i: Int = ??? : A // limitation // error
+      val a: A = 0
+      val i: Int = ??? : A
 
     case _: AltIndirectExprExact[Int] =>
-      val a: A = 0 // limitation // error
-      val i: Int = ??? : A // limitation // error
+      val a: A = 0
+      val i: Int = ??? : A
   }
 
   def bar[A](e: IndirectExprSub[A]) = e match {
@@ -83,11 +83,11 @@ object Test {
       val i: Int = ??? : A // error
 
     case _: AltIndirectIntExpr =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // error
 
     case _: AltIndirectExprExact[Int] =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // error
   }
 }
