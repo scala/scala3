@@ -3270,7 +3270,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               if isExtension then return found
               else
                 checkImplicitConversionUseOK(found)
-                return typedSelect(tree, pt, found)
+                return withoutMode(Mode.ImplicitsEnabled)(typedSelect(tree, pt, found))
             case failure: SearchFailure =>
               if failure.isAmbiguous then
                 return
