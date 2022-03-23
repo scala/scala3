@@ -1224,4 +1224,25 @@ class CompletionTest {
         |def foo(x: Bar[M]) = x.bar.ma${m1}"""
           .withSource.completion(m1, expected)
   }
+
+  @Test def packageCompletionsOutsideImport: Unit = {
+    val expected = Set(
+      ("java", Module, "java"),
+      ("javax", Module, "javax"),
+    )
+    code"""object Foo { ja${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def topLevelPackagesCompletionsOutsideImport: Unit = {
+    val expected = Set(
+      ("example", Module, "example"),
+    )
+    code"""package example:
+          |    def foo = ""
+          |
+          |def main = exa${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
 }

@@ -416,7 +416,7 @@ object Completion {
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
       val termCompleter = new Completer(Mode.Term, prefix, pos)
       val extMethodsInScope = termCompleter.scopeCompletions.toList.flatMap {
-        case (name, denots) => denots.collect { case d: SymDenotation => (d.termRef, name.asTermName) }
+        case (name, denots) => denots.collect { case d: SymDenotation if d.isTerm => (d.termRef, name.asTermName) }
       }
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
@@ -467,8 +467,8 @@ object Completion {
       !sym.isPackageObject &&
       !sym.is(Artifact) &&
       (
-           (mode.is(Mode.Term) && sym.isTerm)
-        || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember))
+           (mode.is(Mode.Term) && (sym.isTerm || sym.is(ModuleClass))
+        || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
       )
 
     /** @param site The type to inspect.
