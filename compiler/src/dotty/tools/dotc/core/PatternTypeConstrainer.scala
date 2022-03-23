@@ -195,7 +195,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       def registerPattern = ctx.gadt.addToConstraint(patternPath)   // Pattern path is a freshly-created skolem,
                                                                     // so it will always be un-registered at this point
 
-      val result = registerScrutinee && registerPattern && {
+      val res = !registerScrutinee || !registerPattern || {
         val scrutineeTypeMembers = Map.from {
           ctx.gadt.registeredTypeMembers(scrutineePath) map { x => x.name -> x }
         }
