@@ -236,7 +236,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case AndType(scrut1, scrut2) =>
           constrainPatternType(pat, scrut1, typeMembersTouched = true) && constrainPatternType(pat, scrut2, typeMembersTouched = true)
         case scrut: RefinedOrRecType =>
-          constrainPatternType(pat, stripRefinement(scrut))
+          constrainPatternType(pat, stripRefinement(scrut), typeMembersTouched = true)
         case scrut => dealiasDropNonmoduleRefs(pat) match {
           case OrType(pat1, pat2) =>
             either(constrainPatternType(pat1, scrut, typeMembersTouched = true), constrainPatternType(pat2, scrut, typeMembersTouched = true))
