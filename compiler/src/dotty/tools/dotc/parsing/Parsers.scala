@@ -2617,7 +2617,14 @@ object Parsers {
         (pattern(), guard())
       }
       CaseDef(pat, grd, atSpan(accept(ARROW)) {
-        if exprOnly then expr() else block()
+        if exprOnly then
+          if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
+            warning(i"""Misleading indentation: this expression forms part of the preceding catch case.
+                       |If this is intended, it should be indented for clarity.
+                       |Otherwise, if the handler is intended to be empty, use a multi-line catch with
+                       |an indented case.""")
+          expr()
+        else block()
       })
     }
 
