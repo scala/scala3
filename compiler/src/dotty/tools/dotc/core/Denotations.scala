@@ -469,11 +469,12 @@ object Denotations {
                 else if sym1.is(Method) && !sym2.is(Method) then 1
                 else 0
 
+          val relaxedOverriding = ctx.explicitNulls && (sym1.is(JavaDefined) || sym2.is(JavaDefined))
           val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
 
-          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false) then
+          if symScore <= 0 && info2.overrides(info1, relaxedOverriding, matchLoosely, checkClassInfo = false) then
             denot2
-          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false) then
+          else if symScore >= 0 && info1.overrides(info2, relaxedOverriding, matchLoosely, checkClassInfo = false) then
             denot1
           else
             val jointInfo = infoMeet(info1, info2, safeIntersection)
