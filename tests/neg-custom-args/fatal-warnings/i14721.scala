@@ -1,4 +1,3 @@
-import scala.util.chaining.given
 
 class C:
   def op: Unit = println("op")
