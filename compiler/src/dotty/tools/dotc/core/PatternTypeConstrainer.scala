@@ -255,10 +255,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
   /** Show the scrutinee. Will show the path if available. */
   private def scrutRepr(scrut: Type): String =
-    if ctx.gadt.scrutineePath != null then
-      ctx.gadt.scrutineePath.show
-    else
-      scrut.show
+    ctx.gadt.scrutineePath match
+      case null => scrut.show
+      case p: PathType => p.show
 
   /** Constrain "simple" patterns (see `constrainPatternType`).
    *

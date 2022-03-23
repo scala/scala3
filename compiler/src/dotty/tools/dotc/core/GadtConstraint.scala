@@ -71,7 +71,7 @@ sealed abstract class GadtConstraint extends Showable {
   def resetScrutineePath(): Unit
 
   /** Set the scrutinee path. */
-  def withScrutineePath[T](path: TermRef)(op: => T): T
+  def withScrutineePath[T](path: TermRef | Null)(op: => T): T
 
   /** Is the symbol registered in the constraint?
    *
@@ -113,7 +113,7 @@ final class ProperGadtConstraint private(
   private var pathDepMapping: SimpleIdentityMap[PathType, SimpleIdentityMap[Symbol, TypeVar]],
   private var pathDepReverseMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
   private var wasConstrained: Boolean,
-  private var myScrutineePath: TermRef,
+  private var myScrutineePath: TermRef | Null,
   private var myUnionFind: SimpleIdentityMap[PathType, PathType]
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
@@ -183,7 +183,7 @@ final class ProperGadtConstraint private(
                   val tp1 = left.externalize(p1)
                   right.tvarOf(tp1) match {
                     case null =>
-                    case tvar2 =>
+                    case tvar2: TypeVar =>
                       mapping1 = mapping1.updated(p1, tvar2.origin)
                       mapping2 = mapping2.updated(tvar2.origin, p1)
                   }
@@ -194,7 +194,7 @@ final class ProperGadtConstraint private(
             def mapTypeParam(m: SimpleIdentityMap[TypeParamRef, TypeParamRef])(tpr: TypeParamRef) =
               m(tpr) match
                 case null => tpr
-                case tpr1 => tpr1
+                case tpr1: TypeParamRef => tpr1
 
             (mapTypeParam(mapping1), mapTypeParam(mapping2))
           }
@@ -297,7 +297,7 @@ final class ProperGadtConstraint private(
   private def tvarOf(path: PathType, sym: Symbol)(using Context): TypeVar | Null =
     pathDepMapping(path) match
       case null => null
-      case innerMapping => innerMapping(sym)
+      case innerMapping => innerMapping.nn(sym)
 
   /** Try to retrieve type variable for some TypeRef.
    * Both type parameters and path-dependent types are considered.
@@ -391,7 +391,7 @@ final class ProperGadtConstraint private(
           pathDepMapping = pathDepMapping.updated(path, {
             val old: SimpleIdentityMap[Symbol, TypeVar] = pathDepMapping(path) match
               case null => SimpleIdentityMap.empty
-              case m => m
+              case m => m.nn
 
             old.updated(sym, tv)
           })
@@ -552,8 +552,8 @@ final class ProperGadtConstraint private(
   private def lookupPath(p: PathType): PathType | Null =
     def recur(p: PathType, steps: Int = 0): PathType | Null = myUnionFind(p) match
       case null => null
-      case q if p eq q => q
-      case q =>
+      case q: PathType if q eq p => q
+      case q: PathType =>
         if steps <= 1024 then
           recur(q, steps + 1)
         else
@@ -561,11 +561,11 @@ final class ProperGadtConstraint private(
     recur(p)
 
   override def addEquality(p: PathType, q: PathType): Unit =
-    val newRep = lookupPath(p) match
+    val newRep: PathType = lookupPath(p) match
       case null => lookupPath(q) match
         case null => p
-        case r => r
-      case r => r
+        case r: PathType => r
+      case r: PathType => r
 
     myUnionFind = myUnionFind.updated(p, newRep)
     myUnionFind = myUnionFind.updated(q, newRep)
@@ -573,7 +573,9 @@ final class ProperGadtConstraint private(
   override def isEquivalent(p: PathType, q: PathType): Boolean =
     lookupPath(p) match
       case null => false
-      case p0 => p0 eq lookupPath(q)
+      case p0: PathType => lookupPath(q) match
+        case null => false
+        case q0: PathType => p0 eq q0
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
     constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
@@ -593,7 +595,7 @@ final class ProperGadtConstraint private(
   override def fullBounds(p: PathType, sym: Symbol)(using Context): TypeBounds | Null =
     tvarOf(p, sym) match {
       case null => null
-      case tv => fullBounds(tv.origin)
+      case tv => fullBounds(tv.nn.origin)
     }
 
   override def fullBounds(tp: TypeRef)(using Context): TypeBounds | Null =
@@ -622,7 +624,7 @@ final class ProperGadtConstraint private(
             case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
               TypeAlias(reverseMapping(tpr).nn.typeRef)
             case TypeAlias(tpr: TypeParamRef) if pathDepReverseMapping.contains(tpr) =>
-              TypeAlias(pathDepReverseMapping(tpr))
+              TypeAlias(pathDepReverseMapping(tpr).nn)
             case tb => tb
           }
         retrieveBounds
@@ -640,7 +642,7 @@ final class ProperGadtConstraint private(
 
   override def contains(path: PathType, sym: Symbol)(using Context): Boolean = pathDepMapping(path) match
     case null => false
-    case innerMapping => innerMapping(sym) != null
+    case innerMapping => innerMapping.nn(sym) != null
 
   override def registeredTypeMembers(path: PathType): List[Symbol] = pathDepMapping(path).nn.keys
 
@@ -690,7 +692,7 @@ final class ProperGadtConstraint private(
 
   override def resetScrutineePath(): Unit = myScrutineePath = null
 
-  override def withScrutineePath[T](path: TermRef)(op: => T): T =
+  override def withScrutineePath[T](path: TermRef | Null)(op: => T): T =
     val saved = this.myScrutineePath
     this.myScrutineePath = path
     val result = op
@@ -826,7 +828,7 @@ final class ProperGadtConstraint private(
 
   override def resetScrutineePath(): Unit = ()
 
-  override def withScrutineePath[T](path: TermRef)(op: => T): T = op
+  override def withScrutineePath[T](path: TermRef | Null)(op: => T): T = op
 
   override def fresh = new ProperGadtConstraint
   override def restore(other: GadtConstraint): Unit =
