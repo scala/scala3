@@ -324,7 +324,7 @@ final class ProperGadtConstraint private(
   override def addToConstraint(path: PathType)(using Context): Boolean = isConstrainablePath(path) && {
     import NameKinds.DepParamName
     val pathType = path.widen
-    val typeMembers = constrainableTypeMembers(path)
+    val typeMembers = constrainableTypeMembers(path).filterNot(_.symbol eq NoSymbol)
 
     gadts.println(i"> trying to add $path into constraint ...")
     gadts.println(i"  path.widen = $pathType")
