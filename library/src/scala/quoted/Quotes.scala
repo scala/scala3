@@ -12,7 +12,6 @@ import scala.reflect.TypeTest
  *     ...
  *  }
  *  ```
- *  @syntax markdown
  */
 transparent inline def quotes(using inline q: Quotes): q.type = q
 
@@ -36,7 +35,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *    case '{...} => true // where the contents of the pattern are the contents of `that`
     *    case _ => false
     *  ```
-    *  @syntax markdown
     */
     def matches(that: Expr[Any]): Boolean
 
@@ -97,7 +95,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *
    *  See `reflectModule` for full API.
    *
-   *  @syntax markdown
    */
   val reflect: reflectModule
 
@@ -316,7 +313,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  package foo.bar
      *  // package stats
      *  ```
-     *  @syntax markdown
      */
     type PackageClause <: Tree
 
@@ -490,7 +486,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *    ???
          *  }
          *  ```
-         *  @syntax markdown
          */
         def self: Option[ValDef]
         /** Statements within the class
@@ -500,7 +495,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *    ??? // statements
          *  }
          *  ```
-         *  @syntax markdown
          */
         def body: List[Statement]
       end extension
@@ -553,7 +547,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  //}
          *  extension (a: A) def f[T]() = ???
          *  ```
-         *  @syntax markdown
          */
         def leadingTypeParams: List[TypeDef]
 
@@ -568,7 +561,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  //}
          *  extension (a: A) def f[T]() = ???
          *  ```
-         *  @syntax markdown
          */
         def trailingParamss: List[ParamClause]
 
@@ -622,7 +614,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *    }
        *  }
        *  ```
-       *  @syntax markdown
        */
       def let(owner: Symbol, name: String, rhs: Term)(body: Ref => Term): Term
 
@@ -636,7 +627,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *    }
        *  }
        *  ```
-       *  @syntax markdown
        */
       def let(owner: Symbol, rhs: Term)(body: Ref => Term): Term =
         let(owner, "x", rhs)(body)
@@ -649,7 +639,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *     ...
        *  }
        *  ```
-       *  @syntax markdown
        */
       def let(owner: Symbol, terms: List[Term])(body: List[Ref] => Term): Term
     }
@@ -1088,7 +1077,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```
          *  - `fun` is `f(1)` in the `Apply` of `f(1)(2)`
          *  - `fun` is `f` in the `Apply` of `f(1)`
-         *  @syntax markdown
          */
         def fun: Term
         /** The arguments (implicitly) passed to the method
@@ -1100,7 +1088,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```
          *  - `args` is `(2)` in the `Apply` of `f(1)(2)`
          *  - `args` is `(1)` in the `Apply` of `f(1)`
-         *  @syntax markdown
          */
         def args: List[Term]
       end extension
@@ -1149,7 +1136,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  // f(1)[Int](2)
          *  ```
          *  - `fun` is `f(1)` in the `TypeApply` of `f(1)[Int]`
-         *  @syntax markdown
          */
         def fun: Term
         /** The (inferred) type arguments passed to the method
@@ -1168,7 +1154,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  // f(1)[Int](2)
          *  ```
          *  - `fun` is `[Int]` in the `TypeApply` of `f(1)[Int]`
-         *  @syntax markdown
          */
         def args: List[TypeTree]
       end extension
@@ -1357,7 +1342,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  @note Due to the encoding, in pattern matches the case for `Lambda`
      *        should come before the case for `Block` to avoid mishandling
      *        of `Lambda`.
-     *  @syntax markdown
      */
     val Lambda: LambdaModule
 
@@ -1368,7 +1352,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  Block((DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
        *  ```
        *  Extracts the parameter definitions and body.
-       *  @syntax markdown
        */
       def unapply(tree: Block): Option[(List[ValDef], Term)]
 
@@ -1401,7 +1384,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param owner: owner of the generated `meth` symbol
        *  @param tpe: Type of the definition
        *  @param rhsFn: Function that receives the `meth` symbol and the a list of references to the `params`
-       *  @syntax markdown
        */
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
     }
@@ -2305,7 +2287,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *    case TypeParamClause(params: List[TypeDef])
      *    case TermParamClause(params: List[ValDef])
      *  ```
-     *  @syntax markdown
      */
     type ParamClause <: AnyRef
 
@@ -2548,7 +2529,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *  }
         *  //}
         *  ```
-        *  @syntax markdown
         */
         def asType: Type[?]
 
@@ -2941,7 +2921,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  ```scala
      *    def foo: Int = ???
      *  ```
-     *  @syntax markdown
      */
     type ByNameType <: TypeRepr
 
@@ -3581,7 +3560,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  ```
        *
        *  For a macro splice, it is the symbol of the definition where the macro expansion happens.
-       *  @syntax markdown
        */
       def spliceOwner: Symbol
 
@@ -3898,7 +3876,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *          // No need to use `changeOwner` in this case.
          *          '{ val x = ???; x }.asTerm
          *  ```
-         *  @syntax markdown
          */
         @experimental
         def asQuotes: Nested
@@ -4458,7 +4435,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ???
     *  }
     *  ```
-    *  @syntax markdown
     */
     trait TreeAccumulator[X]:
 
@@ -4563,7 +4539,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ???
     *  }
     *  ```
-    *  @syntax markdown
     */
     trait TreeTraverser extends TreeAccumulator[Unit]:
 
@@ -4586,7 +4561,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Use `Symbol.asQuotes` to create quotes with the correct owner within the TreeMap.
     *
-    *  @syntax markdown
     */
     trait TreeMap:
 
