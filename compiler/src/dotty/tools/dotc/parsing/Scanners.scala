@@ -700,6 +700,7 @@ object Scanners {
             case _ =>
               lookAhead()
               if isAfterLineEnd
+                 && currentRegion.commasExpected
                  && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
               then
                 () /* skip the trailing comma */

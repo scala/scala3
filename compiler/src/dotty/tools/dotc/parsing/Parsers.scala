@@ -559,19 +559,24 @@ object Parsers {
     def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
       inBracesOrIndented(body, rewriteWithColon)
 
-    /**
-      * @param readFirst If true, assume we have not read the first `part`. Otherwise,
-      *                  expect that we have (i.e the next thing to expect is a [[COMMA]]).
-      */
-    def commaSeparated[T](part: () => T, readFirst: Boolean = true): List[T] =
+    /** <part> {`,` <part>} */
+    def commaSeparated[T](part: () => T): List[T] =
       in.currentRegion.withCommasExpected {
-        val ts = new ListBuffer[T]
-        if (readFirst) ts += part()
+        commaSeparatedRest(part(), part)
+      }
+
+    /** {`,` <part>}
+     *
+     *  currentRegion.commasExpected has to be set separately.
+     */
+    def commaSeparatedRest[T](leading: T, part: () => T): List[T] =
+      if in.token == COMMA then
+        val ts = new ListBuffer[T] += leading
         while in.token == COMMA do
           in.nextToken()
           ts += part()
         ts.toList
-      }
+      else leading :: Nil
 
     def inSepRegion[T](f: Region => Region)(op: => T): T =
       val cur = in.currentRegion
@@ -1402,13 +1407,15 @@ object Parsers {
           else {
             if isErased then imods = addModifier(imods)
             val paramStart = in.offset
-            val ts = funArgType() match {
-              case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
-                isValParamList = true
-                typedFunParam(paramStart, name.toTermName, imods) :: commaSeparated(
-                    () => typedFunParam(in.offset, ident(), imods), readFirst = false)
-              case t =>
-                t :: commaSeparated(funArgType, readFirst = false)
+            val ts = in.currentRegion.withCommasExpected {
+              funArgType() match
+                case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
+                  isValParamList = true
+                  commaSeparatedRest(
+                    typedFunParam(paramStart, name.toTermName, imods),
+                    () => typedFunParam(in.offset, ident(), imods))
+                case t =>
+                  commaSeparatedRest(t, funArgType)
             }
             accept(RPAREN)
             if isValParamList || in.isArrow then
@@ -3188,8 +3195,7 @@ object Parsers {
           }
         else ImportSelector(from)
 
-      def importSelector(idOK: Boolean)(): ImportSelector =
-        val isWildcard = in.token == USCORE || in.token == GIVEN || isIdent(nme.raw.STAR)
+      def importSelector(idOK: Boolean): ImportSelector =
         atSpan(in.offset) {
           in.token match
             case USCORE => wildcardSelector()
@@ -3199,6 +3205,14 @@ object Parsers {
               else
                 if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
                 namedSelector(termIdent())
+        }
+
+      def importSelectors(): List[ImportSelector] =
+        var idOK = true
+        commaSeparated { () =>
+          val isWildcard = in.token == USCORE || in.token == GIVEN || isIdent(nme.raw.STAR)
+          try importSelector(idOK)
+          finally idOK &= !isWildcard
         }
 
       def importSelection(qual: Tree): Tree =
@@ -3217,7 +3231,7 @@ object Parsers {
             case GIVEN =>
               mkTree(qual, givenSelector() :: Nil)
             case LBRACE =>
-              mkTree(qual, inBraces(commaSeparated(importSelector(idOK = true))))
+              mkTree(qual, inBraces(importSelectors()))
             case _ =>
               if isIdent(nme.raw.STAR) then
                 mkTree(qual, wildcardSelector() :: Nil)
