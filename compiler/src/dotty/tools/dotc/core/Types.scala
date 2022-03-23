@@ -1080,7 +1080,7 @@ object Types {
         case tp @ MethodType(Nil) => tp.resultType
         case _ => tp
       }
-      val overrideCtx = if relaxedCheck && !ctx.mode.is(Mode.RelaxedOverriding) then ctx.relaxedOverrideContext else ctx
+      val overrideCtx = if relaxedCheck then ctx.relaxedOverrideContext else ctx
       inContext(overrideCtx) {
         !checkClassInfo && this.isInstanceOf[ClassInfo]
         || (this.widenExpr frozen_<:< that.widenExpr)

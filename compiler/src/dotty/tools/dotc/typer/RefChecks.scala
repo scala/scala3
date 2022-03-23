@@ -767,7 +767,7 @@ object RefChecks {
           for (mbrd <- self.member(name).alternatives) {
             val mbr = mbrd.symbol
             val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
-            if (!mbrType.overrides(mbrd.info, false, matchLoosely = true))
+            if (!mbrType.overrides(mbrd.info, relaxedCheck = false, matchLoosely = true))
               report.errorOrMigrationWarning(
                 em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
                     |  its type             $mbrType
