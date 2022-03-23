@@ -14,7 +14,6 @@
 
 .nh {
   border-radius: 4px;
-  min-height: calc(4.5 * var(--base-spacing));
   position: relative;
   display: flex;
   flex-direction: row;
@@ -213,24 +212,30 @@ span.ar::before {
 }
 
 #api-nav .nh a {
-  position: absolute;
+  position: relative;
 }
 
 /* docs */
+
+/* Hardcode visibility of children of top-level entry */
+#docs-nav .ni.n0 > .ni {
+  display: block;
+}
+
 #docs-nav .n0 > .nh {
   padding-left: calc(1.5 * var(--base-spacing));
 }
 
 #docs-nav .n1 > .nh {
-  padding-left: calc(6.5 * var(--base-spacing));
+  padding-left: calc(1.5 * var(--base-spacing));
 }
 
 #docs-nav .n2 > .nh {
-  padding-left: calc(11.5 * var(--base-spacing));
+  padding-left: calc(6.5 * var(--base-spacing));
 }
 
 #docs-nav .n3 > .nh {
-  padding-left: calc(16.5 * var(--base-spacing));
+  padding-left: calc(11.5 * var(--base-spacing));
 }
 
 #docs-nav span.ar {

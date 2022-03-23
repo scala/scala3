@@ -5,4 +5,5 @@ body {
 }
 
 #container {
+  --header-height: calc(8 * var(--base-spacing));
 }

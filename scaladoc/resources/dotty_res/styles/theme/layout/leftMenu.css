@@ -5,7 +5,7 @@
   padding: calc(3 * var(--base-spacing)) 0px;
   position: absolute;
   width: calc(35 * var(--base-spacing));
-  height: 100%;
+  height: calc(100% - var(--header-height));
   left: 0px;
   top: calc(8 * var(--base-spacing));
   background: var(--background-default);
