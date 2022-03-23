@@ -229,7 +229,11 @@ class TypeApplications(val self: Type) extends AnyVal {
       (alias ne self) && alias.hasSimpleKind
     }
 
-  /** The top type with the same kind as `self`. */
+  /** The top type with the same kind as `self`. This is largest type capturing
+   *  the parameter shape of a type without looking at precise bounds.
+   *    - The top-type of simple-kinded types is Any
+   *    - A kind like (* -> *) -> * is represented by the top type [X1 <: [X2] =>> Any] =>> Any
+   */
   def topType(using Context): Type =
     if self.hasSimpleKind then
       defn.AnyType
@@ -257,19 +261,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     case self: TypeProxy => self.superType.hkResult
     case _ => NoType
   }
-
-  /** The kind of a type is the largest type capturing the parameter shape
-   *  of a type without looking at precise bounds.
-   *    - The kind of single-kinded types is Any
-   *    - A kind like (* -> *) -> * is represented as [X1 <: [X2] =>> Any] =>> Any
-   */
-  def kind(using Context): Type = self.hkResult match
-    case NoType => defn.AnyType
-    case self: TypeRef if self.symbol == defn.AnyKindClass => self
-    case rt =>
-      HKTypeLambda(
-        self.typeParams.map(tparam => TypeBounds.upper(tparam.paramInfo.hiBound.kind)),
-        rt.kind)
 
   /** Do self and other have the same kinds (not counting bounds and variances)?
    *  Note: An any-kinded type "has the same kind" as any other type.
