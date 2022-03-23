@@ -2627,6 +2627,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def show(using printer: Printer[Symbol]): String = printer.show(self)
 
+        def asQuotes: Nested = new QuotesImpl(using ctx.withOwner(self))
+
       end extension
 
       private def appliedTypeRef(sym: Symbol): TypeRepr =
@@ -2918,6 +2920,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                    |which has the AST representation
                    |${Printer.TreeStructure.show(tree)}
                    |
+                   |
+                   |
+                   |Tip: The owner of a tree can be changed using method `Tree.changeOwner`.
+                   |Tip: The default owner of definitions created in quotes can be changed using method `Symbol.asQuotes`.
                    |""".stripMargin)
             case _ => traverseChildren(t)
       }.traverse(tree)
