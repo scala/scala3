@@ -258,6 +258,19 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => NoType
   }
 
+  /** The kind of a type is the largest type capturing the parameter shape
+   *  of a type without looking at precise bounds.
+   *    - The kind of single-kinded types is Any
+   *    - A kind like (* -> *) -> * is represented as [X1 <: [X2] =>> Any] =>> Any
+   */
+  def kind(using Context): Type = self.hkResult match
+    case NoType => defn.AnyType
+    case self: TypeRef if self.symbol == defn.AnyKindClass => self
+    case rt =>
+      HKTypeLambda(
+        self.typeParams.map(tparam => TypeBounds.upper(tparam.paramInfo.hiBound.kind)),
+        rt.kind)
+
   /** Do self and other have the same kinds (not counting bounds and variances)?
    *  Note: An any-kinded type "has the same kind" as any other type.
    */
