@@ -22,7 +22,7 @@
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 test
 183
@@ -39,7 +39,7 @@ false
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 test
 175
@@ -56,7 +56,7 @@ println(3 == "3")
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 test
 205
@@ -73,7 +73,7 @@ false
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 test
 197
@@ -90,7 +90,7 @@ println(3 == 5.1)
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 printContext
 280
@@ -107,7 +107,7 @@ println(msg)
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 printContext
 297
@@ -124,7 +124,7 @@ println(ctx.id)
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 getMessage
 349
@@ -141,29 +141,12 @@ i.toString
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 test2
-510
-511
-21
-<none>
-Literal
-false
-0
-false
-0
-
-9
-tests/coverage/expect/Givens.scala
-covtest
-Givens$
-Class
-covtest.Givens$
-test2
-502
-512
-21
+400
+410
+20
 <init>
 Apply
 false
@@ -171,16 +154,16 @@ false
 false
 Context(0)
 
-10
+9
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 test2
-517
-546
-22
+415
+444
+21
 printContext
 Apply
 false
@@ -188,16 +171,16 @@ false
 false
 printContext("test")(using c)
 
-11
+10
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 test2
-564
-579
-23
+462
+477
+22
 getMessage
 Apply
 false
@@ -205,16 +188,16 @@ false
 false
 getMessage(123)
 
-12
+11
 tests/coverage/expect/Givens.scala
 covtest
 Givens$
-Class
+Object
 covtest.Givens$
 test2
-551
-580
-23
+449
+478
+22
 printContext
 Apply
 false

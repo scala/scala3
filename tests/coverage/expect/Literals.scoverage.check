@@ -22,7 +22,7 @@
 tests/coverage/expect/Literals.scala
 <empty>
 Literals$package$
-Class
+Object
 <empty>.Literals$package$
 mustBeInstrumented
 26
@@ -39,7 +39,7 @@ false
 tests/coverage/expect/Literals.scala
 <empty>
 Literals$package$
-Class
+Object
 <empty>.Literals$package$
 thisOneToo
 56
@@ -56,7 +56,7 @@ println("not this")
 tests/coverage/expect/Literals.scala
 <empty>
 Literals$package$
-Class
+Object
 <empty>.Literals$package$
 thisOneToo
 144
@@ -73,7 +73,7 @@ false
 tests/coverage/expect/Literals.scala
 <empty>
 Literals$package$
-Class
+Object
 <empty>.Literals$package$
 main
 246

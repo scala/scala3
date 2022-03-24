@@ -1,0 +1,173 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+1
+tests/coverage/expect/Inheritance.scala
+covtest
+B
+Class
+covtest.B
+<init>
+73
+80
+3
+<init>
+Apply
+false
+0
+false
+A(x, 0)
+
+2
+tests/coverage/expect/Inheritance.scala
+covtest
+C1
+Class
+covtest.C1
+<init>
+101
+117
+4
+println
+Apply
+false
+0
+false
+println("block")
+
+3
+tests/coverage/expect/Inheritance.scala
+covtest
+C1
+Class
+covtest.C1
+<init>
+98
+122
+4
+<init>
+Apply
+false
+0
+false
+B({println("block"); 1})
+
+4
+tests/coverage/expect/Inheritance.scala
+covtest
+C2
+Class
+covtest.C2
+<init>
+142
+148
+5
+<init>
+Apply
+false
+0
+false
+A(2,2)
+
+5
+tests/coverage/expect/Inheritance.scala
+covtest
+C2
+Class
+covtest.C2
+<init>
+140
+151
+5
+<init>
+Apply
+false
+0
+false
+B(A(2,2).x)
+
+6
+tests/coverage/expect/Inheritance.scala
+covtest
+Inheritance$package$
+Object
+covtest.Inheritance$package$
+testInheritance
+185
+189
+8
+<init>
+Apply
+false
+0
+false
+C1()
+
+7
+tests/coverage/expect/Inheritance.scala
+covtest
+Inheritance$package$
+Object
+covtest.Inheritance$package$
+testInheritance
+177
+192
+8
+println
+Apply
+false
+0
+false
+println(C1().x)
+
+8
+tests/coverage/expect/Inheritance.scala
+covtest
+Inheritance$package$
+Object
+covtest.Inheritance$package$
+testInheritance
+235
+239
+10
+<init>
+Apply
+false
+0
+false
+C2()
+
+9
+tests/coverage/expect/Inheritance.scala
+covtest
+Inheritance$package$
+Object
+covtest.Inheritance$package$
+testInheritance
+227
+242
+10
+println
+Apply
+false
+0
+false
+println(C2().x)
+

@@ -18,7 +18,6 @@ object Givens:
   def getMessage(i: Int): String = i.toString
 
   def test2() =
-    // TODO FIXME: this does not work if we remove the def declaration (compiler crash in LambdaLift)
     given c: Context = Context(0)
     printContext("test")(using c)
     printContext(getMessage(123))

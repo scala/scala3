@@ -52,6 +52,7 @@ class CoverageTests:
   def computeCoverageInTmp(inputFiles: Seq[Path], sourceRoot: String): Path =
     val target = Files.createTempDirectory("coverage")
     val args = Array(
+      "-Ycheck:instrumentCoverage",
       "-coverage-out",
       target.toString,
       "-coverage-sourceroot",

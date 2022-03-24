@@ -21,13 +21,64 @@
 1
 tests/coverage/expect/Lifting.scala
 covtest
+Vals
+Class
+covtest.Vals
+<init>
+39
+46
+3
+apply
+Apply
+false
+0
+false
+List(1)
+
+2
+tests/coverage/expect/Lifting.scala
+covtest
+Vals
+Class
+covtest.Vals
+<init>
+63
+74
+4
+apply
+Apply
+false
+0
+false
+List(1,2,3)
+
+3
+tests/coverage/expect/Lifting.scala
+covtest
+Vals
+Class
+covtest.Vals
+<init>
+58
+74
+4
+::
+Apply
+false
+0
+false
+l :: List(1,2,3)
+
+4
+tests/coverage/expect/Lifting.scala
+covtest
 A
 Class
 covtest.A
 msg
-62
-70
-3
+121
+129
+7
 <none>
 Literal
 false
@@ -35,16 +86,16 @@ false
 false
 "string"
 
-2
+5
 tests/coverage/expect/Lifting.scala
 covtest
 A
 Class
 covtest.A
 integer
-92
-93
-4
+151
+152
+8
 <none>
 Literal
 false
@@ -52,16 +103,16 @@ false
 false
 0
 
-3
+6
 tests/coverage/expect/Lifting.scala
 covtest
 Lifting$package$
-Class
+Object
 covtest.Lifting$package$
 test
-151
-154
-8
+210
+213
+12
 <init>
 Apply
 false
@@ -69,16 +120,16 @@ false
 false
 A()
 
-4
+7
 tests/coverage/expect/Lifting.scala
 covtest
 Lifting$package$
-Class
+Object
 covtest.Lifting$package$
 test
-165
-168
-9
+224
+227
+13
 <none>
 Literal
 false
@@ -86,16 +137,33 @@ false
 false
 123
 
-5
+8
 tests/coverage/expect/Lifting.scala
 covtest
 Lifting$package$
-Class
+Object
+covtest.Lifting$package$
+f
+240
+242
+14
+<none>
+Literal
+false
+0
+false
+-1
+
+9
+tests/coverage/expect/Lifting.scala
+covtest
+Lifting$package$
+Object
 covtest.Lifting$package$
 test
-171
-193
-10
+245
+267
+15
 msg
 Apply
 false
@@ -103,20 +171,54 @@ false
 false
 a.msg(i, 0, a.integer)
 
-6
+10
 tests/coverage/expect/Lifting.scala
 covtest
 Lifting$package$
-Class
+Object
 covtest.Lifting$package$
 test
-196
-224
-11
+270
+298
+16
 msg
 Apply
 false
 0
 false
 a.ex.msg(i, 0, a.ex.integer)
+
+11
+tests/coverage/expect/Lifting.scala
+covtest
+Lifting$package$
+Object
+covtest.Lifting$package$
+test
+307
+310
+17
+f
+Apply
+false
+0
+false
+f()
+
+12
+tests/coverage/expect/Lifting.scala
+covtest
+Lifting$package$
+Object
+covtest.Lifting$package$
+test
+301
+317
+17
+msg
+Apply
+false
+0
+false
+a.msg(f(), 0, i)
 

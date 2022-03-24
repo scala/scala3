@@ -62,7 +62,7 @@ surfaceGravity
 359
 367
 14
-*
+invoked
 Apply
 false
 0
@@ -70,6 +70,23 @@ false
 G * mass
 
 4
+tests/coverage/expect/Enum.scala
+covtest
+Planet
+Class
+covtest.Planet
+surfaceGravity
+359
+367
+14
+*
+Apply
+false
+0
+false
+G * mass
+
+5
 tests/coverage/expect/Enum.scala
 covtest
 Planet
@@ -86,7 +103,7 @@ false
 false
 radius * radius
 
-5
+6
 tests/coverage/expect/Enum.scala
 covtest
 Planet
@@ -103,7 +120,7 @@ false
 false
 G * mass / (radius * radius
 
-6
+7
 tests/coverage/expect/Enum.scala
 covtest
 Planet
@@ -120,11 +137,147 @@ false
 false
 otherMass * surfaceGravity
 
-7
+8
+tests/coverage/expect/Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+485
+512
+17
+<init>
+Apply
+false
+0
+false
+Planet(3.303e+23, 2.4397e6)
+
+9
+tests/coverage/expect/Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+538
+565
+18
+<init>
+Apply
+false
+0
+false
+Planet(4.869e+24, 6.0518e6)
+
+10
+tests/coverage/expect/Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+591
+619
+19
+<init>
+Apply
+false
+0
+false
+Planet(5.976e+24, 6.37814e6)
+
+11
+tests/coverage/expect/Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+645
+672
+20
+<init>
+Apply
+false
+0
+false
+Planet(6.421e+23, 3.3972e6)
+
+12
+tests/coverage/expect/Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+698
+725
+21
+<init>
+Apply
+false
+0
+false
+Planet(1.9e+27,   7.1492e7)
+
+13
+tests/coverage/expect/Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+751
+778
+22
+<init>
+Apply
+false
+0
+false
+Planet(5.688e+26, 6.0268e7)
+
+14
+tests/coverage/expect/Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+804
+831
+23
+<init>
+Apply
+false
+0
+false
+Planet(8.686e+25, 2.5559e7)
+
+15
+tests/coverage/expect/Enum.scala
+covtest
+$anon
+Class
+covtest.$anon
+<init>
+857
+884
+24
+<init>
+Apply
+false
+0
+false
+Planet(1.024e+26, 2.4746e7)
+
+16
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 1004
@@ -137,11 +290,11 @@ false
 false
 ListEnum.Cons(3, ListEnum.Empty)
 
-8
+17
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 987
@@ -154,11 +307,11 @@ false
 false
 ListEnum.Cons(2, ListEnum.Cons(3, ListEnum.Empty))
 
-9
+18
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 970
@@ -171,11 +324,11 @@ false
 false
 ListEnum.Cons(1, ListEnum.Cons(2, ListEnum.Cons(3, ListEnum.Empty)))
 
-10
+19
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 1051
@@ -188,11 +341,11 @@ false
 false
 "Example 1: \n"+emptyList
 
-11
+20
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 1043
@@ -205,11 +358,11 @@ false
 false
 println("Example 1: \n"+emptyList)
 
-12
+21
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 1092
@@ -222,11 +375,28 @@ false
 false
 ${list}\n
 
-13
+22
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
+covtest.EnumTypes$
+test
+1092
+1101
+31
+invoked
+Apply
+false
+0
+false
+${list}\n
+
+23
+tests/coverage/expect/Enum.scala
+covtest
+EnumTypes$
+Object
 covtest.EnumTypes$
 test
 1092
@@ -239,11 +409,11 @@ false
 false
 ${list}\n
 
-14
+24
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 1090
@@ -256,11 +426,11 @@ false
 false
 s"${list}\n"
 
-15
+25
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 1082
@@ -273,11 +443,11 @@ false
 false
 println(s"${list}\n")
 
-16
+26
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 calculateEarthWeightOnPlanets
 1183
@@ -290,11 +460,11 @@ false
 false
 earthWeight/Planet.Earth.surfaceGravity
 
-17
+27
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 calculateEarthWeightOnPlanets
 1238
@@ -307,11 +477,11 @@ false
 false
 Planet.values
 
-18
+28
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 $anonfun
 1273
@@ -324,11 +494,28 @@ false
 false
 Your weight on $p is ${p.surfaceWeight(mass)}
 
-19
+29
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
+covtest.EnumTypes$
+$anonfun
+1273
+1318
+36
+invoked
+Apply
+false
+0
+false
+Your weight on $p is ${p.surfaceWeight(mass)}
+
+30
+tests/coverage/expect/Enum.scala
+covtest
+EnumTypes$
+Object
 covtest.EnumTypes$
 $anonfun
 1273
@@ -341,11 +528,11 @@ false
 false
 Your weight on $p is ${p.surfaceWeight(mass)}
 
-20
+31
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 $anonfun
 1296
@@ -358,11 +545,11 @@ false
 false
 p.surfaceWeight(mass)
 
-21
+32
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 $anonfun
 1271
@@ -375,11 +562,11 @@ false
 false
 s"Your weight on $p is ${p.surfaceWeight(mass)}"
 
-22
+33
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 $anonfun
 1263
@@ -392,11 +579,11 @@ false
 false
 println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
-23
+34
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 calculateEarthWeightOnPlanets
 1229
@@ -410,11 +597,11 @@ false
 for p <- Planet.values do
         println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
-24
+35
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 1326
@@ -427,11 +614,11 @@ false
 false
 println("Example 2:")
 
-25
+36
 tests/coverage/expect/Enum.scala
 covtest
 EnumTypes$
-Class
+Object
 covtest.EnumTypes$
 test
 1352

@@ -22,7 +22,7 @@
 tests/coverage/expect/MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
-Class
+Object
 covtest.MatchCaseClasses$
 f
 151
@@ -39,7 +39,7 @@ println("a")
 tests/coverage/expect/MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
-Class
+Object
 covtest.MatchCaseClasses$
 f
 184
@@ -56,7 +56,7 @@ println("b")
 tests/coverage/expect/MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
-Class
+Object
 covtest.MatchCaseClasses$
 f
 225
@@ -73,7 +73,7 @@ println("c")
 tests/coverage/expect/MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
-Class
+Object
 covtest.MatchCaseClasses$
 f
 275
@@ -90,7 +90,7 @@ println(y)
 tests/coverage/expect/MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
-Class
+Object
 covtest.MatchCaseClasses$
 f
 292
@@ -107,7 +107,7 @@ println("d")
 tests/coverage/expect/MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
-Class
+Object
 covtest.MatchCaseClasses$
 f
 325
@@ -124,7 +124,7 @@ println("e")
 tests/coverage/expect/MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
-Class
+Object
 covtest.MatchCaseClasses$
 f
 352

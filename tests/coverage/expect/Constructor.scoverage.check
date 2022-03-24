@@ -19,70 +19,70 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/MatchNumbers.scala
+tests/coverage/expect/Constructor.scala
 covtest
-MatchNumbers$
-Object
-covtest.MatchNumbers$
-f
-121
-126
-6
-<
-Apply
-false
-0
-false
-x < 0
-
-2
-tests/coverage/expect/MatchNumbers.scala
-covtest
-MatchNumbers$
-Object
-covtest.MatchNumbers$
-f
-130
-132
-6
+C
+Class
+covtest.C
+x
+56
+57
+4
 <none>
 Literal
 false
 0
 false
--1
+1
+
+2
+tests/coverage/expect/Constructor.scala
+covtest
+C
+Class
+covtest.C
+<init>
+60
+64
+5
+f
+Apply
+false
+0
+false
+f(x)
 
 3
-tests/coverage/expect/MatchNumbers.scala
+tests/coverage/expect/Constructor.scala
 covtest
-MatchNumbers$
+O$
 Object
-covtest.MatchNumbers$
-<init>
-185
-189
-10
-f
-Apply
+covtest.O$
+y
+106
+107
+9
+<none>
+Literal
 false
 0
 false
-f(0)
+1
 
 4
-tests/coverage/expect/MatchNumbers.scala
+tests/coverage/expect/Constructor.scala
 covtest
-MatchNumbers$
+O$
 Object
-covtest.MatchNumbers$
+covtest.O$
 <init>
-192
-197
-11
-f
+110
+114
+10
+g
 Apply
 false
 0
 false
-f(1L)
+g(y)
 

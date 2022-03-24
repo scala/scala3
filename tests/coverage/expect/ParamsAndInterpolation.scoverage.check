@@ -22,7 +22,7 @@
 tests/coverage/expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
-Class
+Object
 covtest.ParamsAndInterpolation$
 simple
 97
@@ -39,7 +39,24 @@ $a, ${b.length}
 tests/coverage/expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
-Class
+Object
+covtest.ParamsAndInterpolation$
+simple
+97
+112
+5
+invoked
+Apply
+false
+0
+false
+$a, ${b.length}
+
+3
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Object
 covtest.ParamsAndInterpolation$
 simple
 97
@@ -52,11 +69,11 @@ false
 false
 $a, ${b.length}
 
-3
+4
 tests/coverage/expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
-Class
+Object
 covtest.ParamsAndInterpolation$
 simple
 103
@@ -69,11 +86,11 @@ false
 false
 b.length
 
-4
+5
 tests/coverage/expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
-Class
+Object
 covtest.ParamsAndInterpolation$
 simple
 95
@@ -86,11 +103,11 @@ false
 false
 s"$a, ${b.length}"
 
-5
+6
 tests/coverage/expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
-Class
+Object
 covtest.ParamsAndInterpolation$
 test
 163
@@ -103,28 +120,11 @@ false
 false
 List("d", "o", "t", "t", "y")
 
-6
-tests/coverage/expect/ParamsAndInterpolation.scala
-covtest
-ParamsAndInterpolation$
-Class
-covtest.ParamsAndInterpolation$
-$anonfun
-238
-244
-10
-apply
-Apply
-false
-0
-false
-$i: $s
-
 7
 tests/coverage/expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
-Class
+Object
 covtest.ParamsAndInterpolation$
 $anonfun
 238
@@ -141,7 +141,41 @@ $i: $s
 tests/coverage/expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
-Class
+Object
+covtest.ParamsAndInterpolation$
+$anonfun
+238
+244
+10
+invoked
+Apply
+false
+0
+false
+$i: $s
+
+9
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Object
+covtest.ParamsAndInterpolation$
+$anonfun
+238
+244
+10
+apply
+Apply
+false
+0
+false
+$i: $s
+
+10
+tests/coverage/expect/ParamsAndInterpolation.scala
+covtest
+ParamsAndInterpolation$
+Object
 covtest.ParamsAndInterpolation$
 $anonfun
 236
@@ -154,11 +188,11 @@ false
 false
 s"$i: $s"
 
-9
+11
 tests/coverage/expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
-Class
+Object
 covtest.ParamsAndInterpolation$
 $anonfun
 228
@@ -171,11 +205,11 @@ false
 false
 println(s"$i: $s")
 
-10
+12
 tests/coverage/expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
-Class
+Object
 covtest.ParamsAndInterpolation$
 test
 198

@@ -1,0 +1,190 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+1
+tests/coverage/expect/Trait.scala
+covtest
+T1
+Trait
+covtest.T1
+x
+37
+38
+3
+<none>
+Literal
+false
+0
+false
+0
+
+2
+tests/coverage/expect/Trait.scala
+covtest
+Impl2
+Class
+covtest.Impl2
+<init>
+108
+118
+8
+<init>
+Apply
+false
+0
+false
+T2("test")
+
+3
+tests/coverage/expect/Trait.scala
+covtest
+Impl3
+Class
+covtest.Impl3
+<init>
+150
+157
+9
+<init>
+Apply
+false
+0
+false
+Impl2()
+
+4
+tests/coverage/expect/Trait.scala
+covtest
+Impl3
+Class
+covtest.Impl3
+<init>
+147
+160
+9
+<init>
+Apply
+false
+0
+false
+T2(Impl2().p)
+
+5
+tests/coverage/expect/Trait.scala
+covtest
+Trait$package$
+Object
+covtest.Trait$package$
+testTrait
+188
+195
+12
+<init>
+Apply
+false
+0
+false
+Impl1()
+
+6
+tests/coverage/expect/Trait.scala
+covtest
+Trait$package$
+Object
+covtest.Trait$package$
+testTrait
+180
+198
+12
+println
+Apply
+false
+0
+false
+println(Impl1().x)
+
+7
+tests/coverage/expect/Trait.scala
+covtest
+Trait$package$
+Object
+covtest.Trait$package$
+testTrait
+214
+221
+13
+<init>
+Apply
+false
+0
+false
+Impl2()
+
+8
+tests/coverage/expect/Trait.scala
+covtest
+Trait$package$
+Object
+covtest.Trait$package$
+testTrait
+206
+224
+13
+println
+Apply
+false
+0
+false
+println(Impl2().p)
+
+9
+tests/coverage/expect/Trait.scala
+covtest
+Trait$package$
+Object
+covtest.Trait$package$
+testTrait
+243
+250
+14
+<init>
+Apply
+false
+0
+false
+Impl3()
+
+10
+tests/coverage/expect/Trait.scala
+covtest
+Trait$package$
+Object
+covtest.Trait$package$
+testTrait
+235
+253
+14
+println
+Apply
+false
+0
+false
+println(Impl3().p)
+

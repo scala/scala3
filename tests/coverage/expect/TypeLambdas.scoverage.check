@@ -22,7 +22,7 @@
 tests/coverage/expect/TypeLambdas.scala
 covtest
 TypeLambdas$
-Class
+Object
 covtest.TypeLambdas$
 test
 310
@@ -39,7 +39,7 @@ false
 tests/coverage/expect/TypeLambdas.scala
 covtest
 TypeLambdas$
-Class
+Object
 covtest.TypeLambdas$
 test
 310
@@ -56,7 +56,7 @@ false
 tests/coverage/expect/TypeLambdas.scala
 covtest
 TypeLambdas$
-Class
+Object
 covtest.TypeLambdas$
 test
 306
@@ -73,7 +73,7 @@ Map(1 -> "1")
 tests/coverage/expect/TypeLambdas.scala
 covtest
 TypeLambdas$
-Class
+Object
 covtest.TypeLambdas$
 test
 324
@@ -90,7 +90,7 @@ println(m)
 tests/coverage/expect/TypeLambdas.scala
 covtest
 TypeLambdas$
-Class
+Object
 covtest.TypeLambdas$
 test
 367
@@ -107,7 +107,7 @@ false
 tests/coverage/expect/TypeLambdas.scala
 covtest
 TypeLambdas$
-Class
+Object
 covtest.TypeLambdas$
 test
 382

@@ -56,7 +56,7 @@ elems.find(_._1 == name)
 tests/coverage/expect/StructuralTypes.scala
 covtest
 StructuralTypes$
-Class
+Object
 covtest.StructuralTypes$
 test
 277
@@ -73,7 +73,7 @@ false
 tests/coverage/expect/StructuralTypes.scala
 covtest
 StructuralTypes$
-Class
+Object
 covtest.StructuralTypes$
 test
 277
@@ -90,7 +90,7 @@ false
 tests/coverage/expect/StructuralTypes.scala
 covtest
 StructuralTypes$
-Class
+Object
 covtest.StructuralTypes$
 test
 295
@@ -107,7 +107,7 @@ false
 tests/coverage/expect/StructuralTypes.scala
 covtest
 StructuralTypes$
-Class
+Object
 covtest.StructuralTypes$
 test
 295
@@ -124,7 +124,7 @@ false
 tests/coverage/expect/StructuralTypes.scala
 covtest
 StructuralTypes$
-Class
+Object
 covtest.StructuralTypes$
 test
 270
@@ -141,7 +141,7 @@ Record("name" -> "Emma", "age" -> 42)
 tests/coverage/expect/StructuralTypes.scala
 covtest
 StructuralTypes$
-Class
+Object
 covtest.StructuralTypes$
 test
 333

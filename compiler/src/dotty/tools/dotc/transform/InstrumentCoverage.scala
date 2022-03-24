@@ -6,18 +6,16 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import collection.mutable
 import core.Flags.JavaDefined
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
-import dotty.tools.dotc.coverage.Coverage
-import dotty.tools.dotc.coverage.Statement
-import dotty.tools.dotc.coverage.Serializer
-import dotty.tools.dotc.coverage.Location
-import dotty.tools.dotc.core.Symbols.defn
-import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Decorators.toTermName
-import dotty.tools.dotc.util.{SourcePosition, Property}
-import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.typer.LiftCoverage
+import core.Contexts.{Context, ctx, inContext}
+import core.DenotTransformers.IdentityDenotTransformer
+import core.Symbols.{defn, Symbol}
+import core.Decorators.{toTermName, i}
+import core.Constants.Constant
+import typer.LiftCoverage
+import util.{SourcePosition, Property}
+import util.Spans.Span
+import coverage.*
+import dotty.tools.dotc.util.SourceFile
 
 /** Implements code coverage by inserting calls to scala.runtime.Invoker
   * ("instruments" the source code).
@@ -105,7 +103,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             val transformed = cpy.Apply(tree)(transformedFun, args) // args will be transformed in instrumentLifted
             instrumentLifted(transformed)(using ignoreLiteralsContext)
           else
-            val transformed = cpy.Apply(tree)(transformedFun, transform(args))
+            val transformed = cpy.Apply(tree)(transformedFun, transform(args)(using ignoreLiteralsContext))
             instrument(transformed)(using ignoreLiteralsContext)
 
         // f(args)
@@ -136,41 +134,47 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
         case tree: CaseDef => instrumentCaseDef(tree)
         case tree: ValDef =>
-          // only transform the rhs
-          cpy.ValDef(tree)(rhs = transform(tree.rhs))
+          // only transform the rhs, in the local context
+          val rhs = transform(tree.rhs)(using localCtx(tree))
+          cpy.ValDef(tree)(rhs=rhs)
+
+        case tree: DefDef =>
+          // only transform the params (for the default values) and the rhs
+          val defCtx = localCtx(tree)
+          val paramss = transformParamss(tree.paramss)(using defCtx)
+          val rhs = transform(tree.rhs)(using defCtx)
+          cpy.DefDef(tree)(tree.name, paramss, tree.tpt, rhs)
 
         case tree: PackageDef =>
           // only transform the statements of the package
-          cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
+          cpy.PackageDef(tree)(tree.pid, transform(tree.stats)(using localCtx(tree)))
         case tree: Assign =>
           // only transform the rhs
           cpy.Assign(tree)(tree.lhs, transform(tree.rhs))
-        case tree: Template =>
-          // Don't instrument the parents (extends) of a template since it
-          // causes problems if the parent constructor takes parameters
-          cpy.Template(tree)(
-            constr = super.transformSub(tree.constr),
-            body = transform(tree.body)
-          )
 
         // For everything else just recurse and transform
+        // Special care for Templates: it's important to set the owner of the `stats`, like super.transform
         case _ =>
           super.transform(tree)
 
+    /** Lifts and instruments an application.
+      * Note that if only one arg needs to be lifted, we just lift everything.
+      */
     def instrumentLifted(tree: Apply)(using Context) =
-      val buffer = mutable.ListBuffer[Tree]()
-      // NOTE: that if only one arg needs to be lifted, we just lift everything
-      val lifted = LiftCoverage.liftForCoverage(buffer, tree)
-      val instrumented = buffer.toList.map(transform)
-      // We can now instrument the apply as it is with a custom position to point to the function
-      Block(
-        instrumented,
-        instrument(
-          lifted,
-          tree.sourcePos,
-          false
-        )
-      )
+      // withSource is necessary to position inlined code properly
+      inContext(ctx.withSource(tree.source)) {
+        // lifting
+        val buffer = mutable.ListBuffer[Tree]()
+        val liftedApply = LiftCoverage.liftForCoverage(buffer, tree)
+
+        // instrumentation
+        val instrumentedArgs = buffer.toList.map(transform)
+        val instrumentedApply = instrument(liftedApply)
+        Block(
+          instrumentedArgs,
+          instrumentedApply
+        ).withSpan(instrumentedApply.span)
+      }
 
     def instrumentCases(cases: List[CaseDef])(using Context): List[CaseDef] =
       cases.map(instrumentCaseDef)
@@ -197,16 +201,19 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           branch
         )
         coverage.addStatement(statement)
-        Block(List(invokeCall(id)), tree)
+        inContext(ctx.withSource(tree.source)) {
+          val span = Span(pos.start, pos.end) // synthetic span
+          Block(List(invokeCall(id, span)), tree).withSpan(span)
+        }
       else
         tree
 
-    def invokeCall(id: Int)(using Context): Tree =
-      ref(defn.InvokerModuleRef)
-        .select("invoked".toTermName)
+    def invokeCall(id: Int, span: Span)(using Context): Tree =
+      ref(defn.InvokerModuleRef).withSpan(span)
+        .select("invoked".toTermName).withSpan(span)
         .appliedToArgs(
           List(Literal(Constant(id)), Literal(Constant(outputPath)))
-        )
+        ).withSpan(span)
 
     /**
      * Checks if the apply needs a lift in the coverage phase.

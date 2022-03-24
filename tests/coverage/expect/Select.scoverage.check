@@ -41,6 +41,23 @@ covtest
 B
 Class
 covtest.B
+<init>
+134
+135
+9
+<init>
+Apply
+false
+0
+false
+A
+
+3
+tests/coverage/expect/Select.scala
+covtest
+B
+Class
+covtest.B
 print
 166
 179
@@ -52,7 +69,7 @@ false
 false
 super.print()
 
-3
+4
 tests/coverage/expect/Select.scala
 covtest
 B
@@ -69,11 +86,11 @@ false
 false
 println(this.instance)
 
-4
+5
 tests/coverage/expect/Select.scala
 covtest
 Select$package$
-Class
+Object
 covtest.Select$package$
 test
 237
@@ -86,11 +103,11 @@ false
 false
 A()
 
-5
+6
 tests/coverage/expect/Select.scala
 covtest
 Select$package$
-Class
+Object
 covtest.Select$package$
 test
 254
@@ -103,11 +120,11 @@ false
 false
 new A
 
-6
+7
 tests/coverage/expect/Select.scala
 covtest
 Select$package$
-Class
+Object
 covtest.Select$package$
 test
 263
@@ -120,11 +137,11 @@ false
 false
 a.instance.print()
 
-7
+8
 tests/coverage/expect/Select.scala
 covtest
 Select$package$
-Class
+Object
 covtest.Select$package$
 test
 345
