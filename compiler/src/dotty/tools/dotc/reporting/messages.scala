@@ -245,12 +245,15 @@ import transform.SymUtils._
     extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
-    // the idea is that if the bounds are also not-subtypes of each other to report
+    // and the bounds are not f-bounds.
+    // The idea is that if the bounds are also not-subtypes of each other to report
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
-    // these are usually easier to analyze.
+    // these are usually easier to analyze. We exclude F-bounds since these would
+    // lead to a recursive infinite expansion.
     object reported extends TypeMap:
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
+      var fbounded = false
       def apply(tp: Type): Type = tp match
         case tp: TypeParamRef =>
           constraint.entry(tp) match
@@ -260,15 +263,21 @@ import transform.SymUtils._
               else tp
             case NoType => tp
             case instType => apply(instType)
-        case tp: TypeVar => apply(tp.stripTypeVar)
-        case _ => mapOver(tp)
+        case tp: TypeVar =>
+          apply(tp.stripTypeVar)
+        case tp: LazyRef =>
+          fbounded = true
+          tp
+        case _ =>
+          mapOver(tp)
 
     def msg =
       val found1 = reported(found)
       reported.setVariance(-1)
       val expected1 = reported(expected)
       val (found2, expected2) =
-        if (found1 frozen_<:< expected1) (found, expected) else (found1, expected1)
+        if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
+        else (found1, expected1)
       val postScript = addenda.find(!_.isEmpty) match
         case Some(p) => p
         case None =>
