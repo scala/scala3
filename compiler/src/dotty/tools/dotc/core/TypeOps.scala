@@ -827,7 +827,7 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
-      maximizeType(protoTp1, NoSpan, fromScala2x = false)
+      maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }
 

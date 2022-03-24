@@ -1326,8 +1326,6 @@ trait Applications extends Compatibility {
         unapp
     }
 
-    def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
-
     unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramInfos.length == 1 =>
         val unapplyArgType = mt.paramInfos.head
@@ -1343,7 +1341,7 @@ trait Applications extends Compatibility {
             // Constraining only fails if the pattern cannot possibly match,
             // but useless pattern checks detect more such cases, so we simply rely on them instead.
             withMode(Mode.GadtConstraintInference)(TypeComparer.constrainPatternType(unapplyArgType, selType))
-            val patternBound = maximizeType(unapplyArgType, tree.span, fromScala2x)
+            val patternBound = maximizeType(unapplyArgType, tree.span)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType

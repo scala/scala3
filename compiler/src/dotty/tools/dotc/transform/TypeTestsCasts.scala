@@ -109,7 +109,7 @@ object TypeTestsCasts {
       // which conform to the skeleton pre.F[_] and X. Then we have to make
       // sure all of them are actually of the type P, which implies that the
       // type arguments in P are trivial (no runtime check needed).
-      maximizeType(P1, span, fromScala2x = false)
+      maximizeType(P1, span)
 
       debug.println("after " + ctx.typerState.constraint.show)
 
