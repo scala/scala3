@@ -162,8 +162,7 @@ object ProtoTypes {
      *    1. The type has Nothing or Wildcard as a prefix or underlying type
      *    2. The type is an abstract type with a lower bound that has a unknown
      *       members and an upper bound that is both provisional and has unknown members.
-     *    3. The type is a type param ref or uninstiated type var with a lower
-     *       that has unknown members.
+     *    3. The type is an uninstiated type var with a lower that has unknown members.
      *    4. Type proxies have unknown members if their super types do
      */
     private def hasUnknownMembers(tp: Type)(using Context): Boolean = tp match
@@ -171,8 +170,8 @@ object ProtoTypes {
       case NoType => true
       case tp: TypeRef =>
         val sym = tp.symbol
-        defn.isBottomClass(sym)
-        || !sym.isClass
+        sym == defn.NothingClass
+        ||     !sym.isClass
             && !sym.isStatic
             && {
                 hasUnknownMembers(tp.prefix)
@@ -180,7 +179,8 @@ object ProtoTypes {
                      bound.isProvisional && hasUnknownMembers(bound)
                   } && hasUnknownMembers(tp.info.loBound)
               }
-      case tp: TypeParamRef => hasUnknownMembers(TypeComparer.bounds(tp).lo)
+      case tp: TypeVar =>
+        !tp.isInstantiated && hasUnknownMembers(TypeComparer.bounds(tp.origin).lo)
       case tp: AppliedType => hasUnknownMembers(tp.tycon) || hasUnknownMembers(tp.superType)
       case tp: TypeProxy => hasUnknownMembers(tp.superType)
       // It woukd make sense to also include And/OrTypes, but that leads to
