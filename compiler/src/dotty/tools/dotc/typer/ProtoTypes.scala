@@ -157,28 +157,35 @@ object ProtoTypes {
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
-    /** Is the set of members of this type unknown? This is the case if:
-     *  1. The type has Nothing or Wildcard as a prefix or underlying type
-     *  2. The type has an uninstantiated TypeVar as a prefix or underlying type,
-     *  or as an upper bound of a prefix or underlying type.
+    /** Is the set of members of this type unknown, in the sense that we
+     *  cannot compute a non-trivial upper approximation? This is the case if:
+     *    1. The type has Nothing or Wildcard as a prefix or underlying type
+     *    2. The type is an abstract type with a lower bound that has a unknown
+     *       members and an upper bound that is both provisional and has unknown members.
+     *    3. The type is an uninstiated type var with a lower that has unknown members.
+     *    4. Type proxies have unknown members if their super types do
      */
-    private def hasUnknownMembers(tp: Type)(using Context): Boolean = tp match {
-      case tp: TypeVar => !tp.isInstantiated
+    private def hasUnknownMembers(tp: Type)(using Context): Boolean = tp match
       case tp: WildcardType => true
       case NoType => true
       case tp: TypeRef =>
         val sym = tp.symbol
-        sym == defn.NothingClass ||
-        !sym.isStatic && {
-          hasUnknownMembers(tp.prefix) || {
-            val bound = tp.info.hiBound
-            bound.isProvisional && hasUnknownMembers(bound)
-          }
-        }
+        sym == defn.NothingClass
+        ||     !sym.isClass
+            && !sym.isStatic
+            && {
+                hasUnknownMembers(tp.prefix)
+                || { val bound = tp.info.hiBound
+                     bound.isProvisional && hasUnknownMembers(bound)
+                  } && hasUnknownMembers(tp.info.loBound)
+              }
+      case tp: TypeVar if !tp.isInstantiated =>
+        hasUnknownMembers(TypeComparer.bounds(tp.origin).lo)
       case tp: AppliedType => hasUnknownMembers(tp.tycon) || hasUnknownMembers(tp.superType)
       case tp: TypeProxy => hasUnknownMembers(tp.superType)
+      // It woukd make sense to also include And/OrTypes, but that leads to
+      // infinite recursions, as observed for instance for t2399.scala.
       case _ => false
-    }
 
     override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean =
       name == nme.WILDCARD || hasUnknownMembers(tp1) ||
