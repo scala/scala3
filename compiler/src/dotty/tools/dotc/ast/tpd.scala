@@ -571,7 +571,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else foldOver(sym, tree)
   }
 
-  /** The owner to be used in a local context when traversin a tree */
+  /** The owner to be used in a local context when traversing a tree */
   def localOwner(tree: Tree)(using Context): Symbol =
     val sym = tree.symbol
     (if sym.is(PackageVal) then sym.moduleClass else sym).orElse(ctx.owner)
