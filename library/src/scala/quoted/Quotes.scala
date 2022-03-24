@@ -222,7 +222,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *
    *  ```
    *
-   * @syntax markdown
    */
   trait reflectModule { self: reflect.type =>
 
