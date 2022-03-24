@@ -78,6 +78,50 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     }
   end synthesizedTypeTest
 
+  val synthesizedTupleFunction: SpecialHandler = (formal, span) =>
+    formal match
+      case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
+        def functionTypeEqual(baseFun: Type, actualArgs: List[Type],
+            actualRet: Type, expected: Type) =
+          expected =:= defn.FunctionOf(actualArgs, actualRet,
+            defn.isContextFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
+        val arity: Int =
+          if defn.isErasedFunctionType(fun) || defn.isErasedFunctionType(fun) then -1 // TODO support?
+          else if defn.isFunctionType(fun) then
+            // TupledFunction[(...) => R, ?]
+            fun.dropDependentRefinement.dealias.argInfos match
+              case funArgs :+ funRet
+              if functionTypeEqual(fun, defn.tupleType(funArgs) :: Nil, funRet, tupled) =>
+                // TupledFunction[(...funArgs...) => funRet, ?]
+                funArgs.size
+              case _ => -1
+          else if defn.isFunctionType(tupled) then
+            // TupledFunction[?, (...) => R]
+            tupled.dropDependentRefinement.dealias.argInfos match
+              case tupledArgs :: funRet :: Nil =>
+                defn.tupleTypes(tupledArgs.dealias) match
+                  case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
+                    // TupledFunction[?, ((...funArgs...)) => funRet]
+                    funArgs.size
+                  case _ => -1
+              case _ => -1
+          else
+            // TupledFunction[?, ?]
+            -1
+        if arity == -1 then
+          EmptyTree
+        else if arity <= Definitions.MaxImplementedFunctionArity then
+          ref(defn.RuntimeTupleFunctionsModule)
+            .select(s"tupledFunction$arity".toTermName)
+            .appliedToTypes(funArgs)
+        else
+          ref(defn.RuntimeTupleFunctionsModule)
+            .select("tupledFunctionXXL".toTermName)
+            .appliedToTypes(funArgs)
+      case _ =>
+        EmptyTree
+  end synthesizedTupleFunction
+
   /** If `formal` is of the form CanEqual[T, U], try to synthesize an
     *  `CanEqual.canEqualAny[T, U]` as solution.
     */
@@ -489,6 +533,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     defn.TypeTestClass        -> synthesizedTypeTest,
     defn.CanEqualClass        -> synthesizedCanEqual,
     defn.ValueOfClass         -> synthesizedValueOf,
+    defn.TupledFunctionClass  -> synthesizedTupleFunction,
     defn.Mirror_ProductClass  -> synthesizedProductMirror,
     defn.Mirror_SumClass      -> synthesizedSumMirror,
     defn.MirrorClass          -> synthesizedMirror,

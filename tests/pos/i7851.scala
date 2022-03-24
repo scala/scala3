@@ -8,12 +8,11 @@ object Wrapper { type Aux[T <: Tuple, WrappedT0 <: Tuple] = Wrapper[T] { type Wr
 
 given Wrapper[EmptyTuple] with { type WrappedT = EmptyTuple }
 
-given [T: Wrappable]: Wrapper[T] with with { type WrappedT = Wrapped[T] }
+given [T: Wrappable]: Wrapper[T] with { type WrappedT = Wrapped[T] }
 
-given [H: Wrappable, T <: Tuple, WrappedT0 <: Tuple]
-      (using Wrapper.Aux[T, WrappedT0])
-      as Wrapper[H *: T]:
+given [H: Wrappable, T <: Tuple, WrappedT0 <: Tuple](using Wrapper.Aux[T, WrappedT0]): Wrapper[H *: T] with {
   type WrappedT = Wrapped[H] *: WrappedT0
+}
 
 def wrappedFunction[F, FArgs <: Tuple, WrapperFArgs <: Tuple, R: Wrappable](
   function: F
