@@ -179,8 +179,8 @@ object ProtoTypes {
                      bound.isProvisional && hasUnknownMembers(bound)
                   } && hasUnknownMembers(tp.info.loBound)
               }
-      case tp: TypeVar =>
-        !tp.isInstantiated && hasUnknownMembers(TypeComparer.bounds(tp.origin).lo)
+      case tp: TypeVar if !tp.isInstantiated =>
+        hasUnknownMembers(TypeComparer.bounds(tp.origin).lo)
       case tp: AppliedType => hasUnknownMembers(tp.tycon) || hasUnknownMembers(tp.superType)
       case tp: TypeProxy => hasUnknownMembers(tp.superType)
       // It woukd make sense to also include And/OrTypes, but that leads to
