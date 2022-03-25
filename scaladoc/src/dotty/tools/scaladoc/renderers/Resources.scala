@@ -151,7 +151,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
             val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr, member.kind.name)
             val children = member
                 .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])
-                .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.fold(false)(_.isSourceSuperclassHidden))
+                .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.fold(true)(_.isSourceSuperclassHidden))
             Seq(entry) ++ children.flatMap(processMember)
 
           processMember(m)
