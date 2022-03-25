@@ -3635,6 +3635,9 @@ object Types {
             if ann.refersToParamOf(thisLambdaType) then TrueDeps
             else compute(status, parent, theAcc)
           case _: ThisType | _: BoundType | NoPrefix => status
+          case t: LazyRef =>
+            if t.completed then compute(status, t.ref, theAcc)
+            else Unknown
           case _ =>
             (if theAcc != null then theAcc else DepAcc()).foldOver(status, tp)
       compute(initial, tp, null)
