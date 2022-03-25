@@ -1,7 +1,9 @@
-package example
+package tests
+package groups
 
 /** Groups
  * @groupname foo Foo-group
+ * @groupprio bazz 10
  * @groupdesc bar Description of group
  * bar
  */
