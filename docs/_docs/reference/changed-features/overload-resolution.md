@@ -4,11 +4,12 @@ title: "Changes in Overload Resolution"
 movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/overload-resolution.html
 ---
 
-Overload resolution in Scala 3 improves on Scala 2 in two ways.
+Overload resolution in Scala 3 improves on Scala 2 in three ways.
 First, it takes all argument lists into account instead of
 just the first argument list.
 Second, it can infer parameter types of function values even if they
 are in the first argument list.
+Third, default arguments are no longer relevant for prioritization.
 
 ## Looking Beyond the First Argument List
 
@@ -90,3 +91,12 @@ x => x match { case P1 => B1 ... case P_n => B_n }
 ```
 
 and is therefore also approximated with a `? => ?` type.
+
+## Default Arguments Are No longer Relevant for Prioritization
+
+In Scala 2 if among several applicative alternatives one alternative had default arguments, that alternative was dropped from consideration. This has the unfortunate
+side effect that adding a default parameter to a method can change render this method
+invisible in overloaded calls.
+
+Scala 3 drops this distinction. Methods with default parameters are not treated
+to have lower priority than other methods.
