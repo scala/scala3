@@ -95,7 +95,7 @@ and is therefore also approximated with a `? => ?` type.
 ## Default Arguments Are No longer Relevant for Prioritization
 
 In Scala 2 if among several applicative alternatives one alternative had default arguments, that alternative was dropped from consideration. This has the unfortunate
-side effect that adding a default parameter to a method can change render this method
+side effect that adding a default to a parameter of a method can render this method
 invisible in overloaded calls.
 
 Scala 3 drops this distinction. Methods with default parameters are not treated
