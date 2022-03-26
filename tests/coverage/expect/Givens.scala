@@ -4,7 +4,7 @@ import scala.language.strictEquality
 
 class Context(val id: Int)
 
-object Givens:
+class Givens:
 
   def test(): Unit =
     given CanEqual[Int, String] = CanEqual.derived

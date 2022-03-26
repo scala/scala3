@@ -5,17 +5,18 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
 import collection.mutable
-import core.Flags.JavaDefined
+import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
 import core.Symbols.{defn, Symbol}
 import core.Decorators.{toTermName, i}
 import core.Constants.Constant
+import core.NameOps.isContextFunction
+import core.Types.*
 import typer.LiftCoverage
 import util.{SourcePosition, Property}
 import util.Spans.Span
 import coverage.*
-import dotty.tools.dotc.util.SourceFile
 
 /** Implements code coverage by inserting calls to scala.runtime.Invoker
   * ("instruments" the source code).
@@ -98,20 +99,26 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // a.f(args)
         case tree @ Apply(fun: Select, args) =>
           // don't transform the first Select, but do transform `a.b` in `a.b.f(args)`
-          val transformedFun = cpy.Select(fun)(transform(fun.qualifier), fun.name)
-          if needsLift(tree) then
-            val transformed = cpy.Apply(tree)(transformedFun, args) // args will be transformed in instrumentLifted
-            instrumentLifted(transformed)(using ignoreLiteralsContext)
+          if canInstrumentApply(tree) then
+            val transformedFun = cpy.Select(fun)(transform(fun.qualifier), fun.name)
+            if needsLift(tree) then
+              val transformed = cpy.Apply(tree)(transformedFun, args) // args will be transformed in instrumentLifted
+              instrumentLifted(transformed)(using ignoreLiteralsContext)
+            else
+              val transformed = cpy.Apply(tree)(transformedFun, transform(args)(using ignoreLiteralsContext))
+              instrument(transformed)(using ignoreLiteralsContext)
           else
-            val transformed = cpy.Apply(tree)(transformedFun, transform(args)(using ignoreLiteralsContext))
-            instrument(transformed)(using ignoreLiteralsContext)
+            tree
 
         // f(args)
         case tree: Apply =>
-          if needsLift(tree) then
-            instrumentLifted(tree)(using ignoreLiteralsContext) // see comment about Literals
+          if canInstrumentApply(tree) then
+            if needsLift(tree) then
+              instrumentLifted(tree)(using ignoreLiteralsContext) // see comment about Literals
+            else
+              instrument(super.transform(tree)(using ignoreLiteralsContext))
           else
-            instrument(super.transform(tree)(using ignoreLiteralsContext))
+            tree
 
         // (f(x))[args]
         case TypeApply(fun: Apply, args) =>
@@ -226,17 +233,48 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * should not be changed to {val $x = f(); T($x)}(1) but to {val $x = f(); val $y = 1; T($x)($y)}
      */
     def needsLift(tree: Apply)(using Context): Boolean =
-      // We don't want to lift a || getB(), to avoid calling getB if a is true.
-      // Same idea with a && getB(): if a is false, getB shouldn't be called.
       def isBooleanOperator(fun: Tree) =
-        fun.symbol.exists &&
-        fun.symbol.isInstanceOf[Symbol] &&
-        fun.symbol == defn.Boolean_&& || fun.symbol == defn.Boolean_||
+        // We don't want to lift a || getB(), to avoid calling getB if a is true.
+        // Same idea with a && getB(): if a is false, getB shouldn't be called.
+        val sym = fun.symbol
+        sym.exists &&
+        sym == defn.Boolean_&& || sym == defn.Boolean_||
+
+      def isContextual(fun: Apply): Boolean =
+        val args = fun.args
+        args.nonEmpty && args.head.symbol.isAllOf(Given | Implicit)
 
       val fun = tree.fun
+      val nestedApplyNeedsLift = fun match
+        case a: Apply => needsLift(a)
+        case _ => false
 
-      fun.isInstanceOf[Apply] || // nested apply
+      nestedApplyNeedsLift ||
       !isBooleanOperator(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+
+    def canInstrumentApply(tree: Apply)(using Context): Boolean =
+      val tpe = tree.typeOpt
+      tpe match
+        case AppliedType(tycon: NamedType, _) =>
+          /* If the last expression in a block is a context function, we'll try to
+             summon its arguments at the current point, even if the expected type
+             is a function application. Therefore, this is not valid:
+            ```
+            def f = (t: Exception) ?=> (c: String) ?=> result
+
+            ({
+              invoked()
+              f(using e)
+            })(using s)
+            ```
+          */
+          !tycon.name.isContextFunction
+        case m: MethodType =>
+          // def f(a: Ta)(b: Tb)
+          // f(a)(b) cannot be rewritten to {invoked();f(a)}(b)
+          false
+        case _ =>
+          true
 
 object InstrumentCoverage:
   val name: String = "instrumentCoverage"
