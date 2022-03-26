@@ -29,7 +29,8 @@ case class CaptureAnnotation(refs: CaptureSet, kind: CapturingKind) extends Anno
     if kind == CapturingKind.ByName then defn.RetainsByNameAnnot else defn.RetainsAnnot
 
   override def derivedAnnotation(tree: Tree)(using Context): Annotation =
-    unsupported("derivedAnnotation(Tree)")
+    if refs == CaptureSet.universal then this
+    else unsupported("derivedAnnotation(Tree)")
 
   def derivedAnnotation(refs: CaptureSet, kind: CapturingKind)(using Context): Annotation =
     if (this.refs eq refs) && (this.kind == kind) then this
