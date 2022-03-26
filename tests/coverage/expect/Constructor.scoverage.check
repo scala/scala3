@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/Constructor.scala
+expect/Constructor.scala
 covtest
 C
 Class
@@ -36,7 +36,7 @@ false
 1
 
 2
-tests/coverage/expect/Constructor.scala
+expect/Constructor.scala
 covtest
 C
 Class
@@ -53,7 +53,7 @@ false
 f(x)
 
 3
-tests/coverage/expect/Constructor.scala
+expect/Constructor.scala
 covtest
 O$
 Object
@@ -70,7 +70,7 @@ false
 1
 
 4
-tests/coverage/expect/Constructor.scala
+expect/Constructor.scala
 covtest
 O$
 Object

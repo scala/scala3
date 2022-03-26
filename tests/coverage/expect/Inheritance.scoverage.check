@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/Inheritance.scala
+expect/Inheritance.scala
 covtest
 B
 Class
@@ -36,7 +36,7 @@ false
 A(x, 0)
 
 2
-tests/coverage/expect/Inheritance.scala
+expect/Inheritance.scala
 covtest
 C1
 Class
@@ -53,7 +53,7 @@ false
 println("block")
 
 3
-tests/coverage/expect/Inheritance.scala
+expect/Inheritance.scala
 covtest
 C1
 Class
@@ -70,7 +70,7 @@ false
 B({println("block"); 1})
 
 4
-tests/coverage/expect/Inheritance.scala
+expect/Inheritance.scala
 covtest
 C2
 Class
@@ -87,7 +87,7 @@ false
 A(2,2)
 
 5
-tests/coverage/expect/Inheritance.scala
+expect/Inheritance.scala
 covtest
 C2
 Class
@@ -104,7 +104,7 @@ false
 B(A(2,2).x)
 
 6
-tests/coverage/expect/Inheritance.scala
+expect/Inheritance.scala
 covtest
 Inheritance$package$
 Object
@@ -121,7 +121,7 @@ false
 C1()
 
 7
-tests/coverage/expect/Inheritance.scala
+expect/Inheritance.scala
 covtest
 Inheritance$package$
 Object
@@ -138,7 +138,7 @@ false
 println(C1().x)
 
 8
-tests/coverage/expect/Inheritance.scala
+expect/Inheritance.scala
 covtest
 Inheritance$package$
 Object
@@ -155,7 +155,7 @@ false
 C2()
 
 9
-tests/coverage/expect/Inheritance.scala
+expect/Inheritance.scala
 covtest
 Inheritance$package$
 Object

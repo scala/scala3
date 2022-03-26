@@ -138,6 +138,9 @@ object Build {
   // Run tests with filter through vulpix test suite
   val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
+  // Run code coverage instrumentation tests
+  val testCoverage = inputKey[Unit]("runs code coverage instrumentation test")
+
   // Used to compile files similar to ./bin/scalac script
   val scalac = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
 
@@ -604,6 +607,20 @@ object Build {
             (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
             (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
           (Test / testOnly).toTask(cmd)
+        }
+      }.evaluated,
+
+      testCoverage := Def.inputTaskDyn {
+        val args = spaceDelimited("<arg>").parsed
+        if (args.contains("--help")) {
+          println("usage: testCoverage [--update-checkfiles]")
+          (Test / testOnly).toTask(" not.a.test")
+        } else {
+          val updateCheckfile = args.contains("--update-checkfiles")
+          val test = "dotty.tools.dotc.coverage.CoverageTests"
+          val argUpdateCheckfile = if (updateCheckfile) "-Ddotty.tests.updateCheckfiles=TRUE" else ""
+          val cmd = s" $test -- $argUpdateCheckfile"
+          (Test/testOnly).toTask(cmd)
         }
       }.evaluated,
 

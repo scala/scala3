@@ -1,64 +1,74 @@
 package dotty.tools.dotc.coverage
 
 import org.junit.Test
+import org.junit.AfterClass
 import org.junit.Assert.*
 import org.junit.experimental.categories.Category
 
-import dotty.BootstrappedOnlyTests
+import dotty.{BootstrappedOnlyTests, Properties}
+import dotty.tools.vulpix.TestConfiguration.*
+import dotty.tools.vulpix.*
+
+import java.nio.file.{Files, FileSystems, Path, Paths, StandardCopyOption}
+import scala.jdk.CollectionConverters.*
+import scala.language.unsafeNulls
 import dotty.tools.dotc.Main
-
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.FileSystems
-import java.nio.file.Paths
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.StandardCopyOption
-
-@main def updateExpect =
-  CoverageTests().runExpectTest(updateCheckfiles = true)
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class CoverageTests:
+  import CoverageTests.*
+  import CoverageTests.given
 
-  private val scalaFile = FileSystems.getDefault.nn.getPathMatcher("glob:**.scala").nn
-  private val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.coverage.test")).nn
-  private val expectDir = rootSrc.resolve("expect").nn
+  private val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
+  private val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.coverage.test"))
+  private val expectDir = rootSrc.resolve("expect")
 
-  @Category(Array(classOf[dotty.SlowTests]))
-  @Test def expectTests: Unit =
-    runExpectTest(dotty.Properties.testsUpdateCheckfile)
+  @Test
+  def checkInstrumentedCode(): Unit =
+    given TestGroup = TestGroup("instrumentCoverage")
+    val updateCheckfiles = dotty.Properties.testsUpdateCheckfile
+    val sourceRoot = rootSrc.toString
 
-  /** Runs the tests */
-  def runExpectTest(updateCheckfiles: Boolean): Unit =
-    val sourceRoot = if updateCheckfiles then "../" else "."
-
-    Files.walk(expectDir).nn.filter(scalaFile.matches).nn.forEach(p => {
-      val path = p.nn
-      val fileName = path.getFileName.nn.toString.nn.stripSuffix(".scala")
-      val targetDir = computeCoverageInTmp(Seq(path), sourceRoot).nn
-      val targetFile = targetDir.resolve(s"scoverage.coverage").nn
-      val expectFile = expectDir.resolve(s"$fileName.scoverage.check").nn
+    Files.walk(expectDir).filter(scalaFile.matches).forEach(p => {
+      val path = p
+      val fileName = path.getFileName.toString.stripSuffix(".scala")
+      val targetDir = computeCoverageInTmp(path, sourceRoot)
+      val targetFile = targetDir.resolve(s"scoverage.coverage")
+      val expectFile = expectDir.resolve(s"$fileName.scoverage.check")
 
       if updateCheckfiles then
         Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
       else
-        val expected = new String(Files.readAllBytes(expectFile), UTF_8)
-        val obtained = new String(Files.readAllBytes(targetFile), UTF_8)
-        assertEquals(expected, obtained)
+        val expected = Files.readAllLines(expectFile).asScala
+        val obtained = Files.readAllLines(targetFile).asScala
+        if expected != obtained then
+          for ((exp, actual),i) <- expected.zip(obtained).filter(_ != _).zipWithIndex do
+            Console.err.println(s"wrong line ${i+1}:")
+            Console.err.println(s"  expected: $exp")
+            Console.err.println(s"  actual  : $actual")
+          fail(s"$targetFile differs from expected $expectFile")
 
     })
 
   /** Generates the coverage report for the given input file, in a temporary directory. */
-  def computeCoverageInTmp(inputFiles: Seq[Path], sourceRoot: String): Path =
+  def computeCoverageInTmp(inputFile: Path, sourceRoot: String)(using TestGroup): Path =
     val target = Files.createTempDirectory("coverage")
-    val args = Array(
-      "-Ycheck:instrumentCoverage",
-      "-coverage-out",
-      target.toString,
-      "-coverage-sourceroot",
-      sourceRoot,
-      "-usejavacp"
-    ) ++ inputFiles.map(_.toString)
-    val exit = Main.process(args)
-    assertFalse(s"Compilation failed, ${exit.errorCount} errors", exit.hasErrors)
-    target.nn
+    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-coverage-sourceroot", sourceRoot)
+    compileFile(inputFile.toString, options).checkCompile()
+    target
+
+object CoverageTests extends ParallelTesting:
+  import scala.concurrent.duration.*
+
+  def maxDuration = 30.seconds
+  def numberOfSlaves = 1
+
+  def safeMode = Properties.testsSafeMode
+  def testFilter = Properties.testsFilter
+  def isInteractive = SummaryReport.isInteractive
+  def updateCheckFiles = Properties.testsUpdateCheckfile
+
+  given summaryReport: SummaryReporting = SummaryReport()
+  @AfterClass def tearDown(): Unit =
+    super.cleanup()
+    summaryReport.echoSummary()

@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 T1
 Trait
@@ -36,7 +36,7 @@ false
 0
 
 2
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 Impl2
 Class
@@ -53,7 +53,7 @@ false
 T2("test")
 
 3
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 Impl3
 Class
@@ -70,7 +70,7 @@ false
 Impl2()
 
 4
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 Impl3
 Class
@@ -87,7 +87,7 @@ false
 T2(Impl2().p)
 
 5
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 Trait$package$
 Object
@@ -104,7 +104,7 @@ false
 Impl1()
 
 6
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 Trait$package$
 Object
@@ -121,7 +121,7 @@ false
 println(Impl1().x)
 
 7
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 Trait$package$
 Object
@@ -138,7 +138,7 @@ false
 Impl2()
 
 8
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 Trait$package$
 Object
@@ -155,7 +155,7 @@ false
 println(Impl2().p)
 
 9
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 Trait$package$
 Object
@@ -172,7 +172,7 @@ false
 Impl3()
 
 10
-tests/coverage/expect/Trait.scala
+expect/Trait.scala
 covtest
 Trait$package$
 Object

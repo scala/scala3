@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/Literals.scala
+expect/Literals.scala
 <empty>
 Literals$package$
 Object
@@ -36,7 +36,7 @@ false
 "literal"
 
 2
-tests/coverage/expect/Literals.scala
+expect/Literals.scala
 <empty>
 Literals$package$
 Object
@@ -53,7 +53,7 @@ false
 println("not this")
 
 3
-tests/coverage/expect/Literals.scala
+expect/Literals.scala
 <empty>
 Literals$package$
 Object
@@ -70,7 +70,7 @@ false
 12
 
 4
-tests/coverage/expect/Literals.scala
+expect/Literals.scala
 <empty>
 Literals$package$
 Object

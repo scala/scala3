@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Vals
 Class
@@ -36,7 +36,7 @@ false
 List(1)
 
 2
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Vals
 Class
@@ -53,7 +53,7 @@ false
 List(1,2,3)
 
 3
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Vals
 Class
@@ -70,7 +70,7 @@ false
 l :: List(1,2,3)
 
 4
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 A
 Class
@@ -87,7 +87,7 @@ false
 "string"
 
 5
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 A
 Class
@@ -104,7 +104,7 @@ false
 0
 
 6
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Lifting$package$
 Object
@@ -121,7 +121,7 @@ false
 A()
 
 7
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Lifting$package$
 Object
@@ -138,7 +138,7 @@ false
 123
 
 8
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Lifting$package$
 Object
@@ -155,7 +155,7 @@ false
 -1
 
 9
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Lifting$package$
 Object
@@ -172,7 +172,7 @@ false
 a.msg(i, 0, a.integer)
 
 10
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Lifting$package$
 Object
@@ -189,7 +189,7 @@ false
 a.ex.msg(i, 0, a.ex.integer)
 
 11
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Lifting$package$
 Object
@@ -206,7 +206,7 @@ false
 f()
 
 12
-tests/coverage/expect/Lifting.scala
+expect/Lifting.scala
 covtest
 Lifting$package$
 Object

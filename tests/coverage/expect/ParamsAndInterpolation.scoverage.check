@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -36,7 +36,7 @@ false
 $a, ${b.length}
 
 2
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -53,7 +53,7 @@ false
 $a, ${b.length}
 
 3
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -70,7 +70,7 @@ false
 $a, ${b.length}
 
 4
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -87,7 +87,7 @@ false
 b.length
 
 5
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -104,7 +104,7 @@ false
 s"$a, ${b.length}"
 
 6
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -121,7 +121,7 @@ false
 List("d", "o", "t", "t", "y")
 
 7
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -138,7 +138,7 @@ false
 $i: $s
 
 8
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -155,7 +155,7 @@ false
 $i: $s
 
 9
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -172,7 +172,7 @@ false
 $i: $s
 
 10
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -189,7 +189,7 @@ false
 s"$i: $s"
 
 11
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object
@@ -206,7 +206,7 @@ false
 println(s"$i: $s")
 
 12
-tests/coverage/expect/ParamsAndInterpolation.scala
+expect/ParamsAndInterpolation.scala
 covtest
 ParamsAndInterpolation$
 Object

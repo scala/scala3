@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -36,7 +36,7 @@ false
 1
 
 2
-library/src/scala/runtime/stdLibPatches/Predef.scala
+../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -53,7 +53,7 @@ false
 l == 1
 
 3
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -67,10 +67,10 @@ Select
 false
 0
 false
-
+scala.runtime.Scala3RunTime
 
 4
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -84,10 +84,10 @@ Apply
 false
 0
 false
-
+scala.runtime.Scala3RunTime.assertFailed()
 
 5
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -101,10 +101,10 @@ Block
 true
 0
 false
-
+scala.runtime.Scala3RunTime.assertFailed()
 
 6
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -121,7 +121,7 @@ false
 List(l)
 
 7
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -138,7 +138,7 @@ false
 l == List(l).length
 
 8
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -152,10 +152,10 @@ Select
 false
 0
 false
-
+scala.runtime.Scala3RunTime
 
 9
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -169,10 +169,10 @@ Apply
 false
 0
 false
-
+scala.runtime.Scala3RunTime.assertFailed()
 
 10
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -186,10 +186,10 @@ Block
 true
 0
 false
-
+scala.runtime.Scala3RunTime.assertFailed()
 
 11
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -206,7 +206,7 @@ false
 List(l)
 
 12
-library/src/scala/runtime/stdLibPatches/Predef.scala
+../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -223,7 +223,7 @@ false
 List(l).length == 1
 
 13
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -237,10 +237,10 @@ Select
 false
 0
 false
-
+scala.runtime.Scala3RunTime
 
 14
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -254,10 +254,10 @@ Apply
 false
 0
 false
-
+scala.runtime.Scala3RunTime.assertFailed()
 
 15
-tests/coverage/expect/Inlined.scala
+expect/Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -271,5 +271,5 @@ Block
 true
 0
 false
-
+scala.runtime.Scala3RunTime.assertFailed()
 

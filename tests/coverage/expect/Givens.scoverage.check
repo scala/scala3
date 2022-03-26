@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -36,7 +36,7 @@ false
 3 == "3"
 
 2
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -53,7 +53,7 @@ false
 println(3 == "3")
 
 3
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -70,7 +70,7 @@ false
 3 == 5.1
 
 4
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -87,7 +87,7 @@ false
 println(3 == 5.1)
 
 5
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -104,7 +104,7 @@ false
 println(msg)
 
 6
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -121,7 +121,7 @@ false
 println(ctx.id)
 
 7
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -138,7 +138,7 @@ false
 i.toString
 
 8
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -155,7 +155,7 @@ false
 Context(0)
 
 9
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -172,7 +172,7 @@ false
 printContext("test")(using c)
 
 10
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object
@@ -189,7 +189,7 @@ false
 getMessage(123)
 
 11
-tests/coverage/expect/Givens.scala
+expect/Givens.scala
 covtest
 Givens$
 Object

@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-tests/coverage/expect/StructuralTypes.scala
+expect/StructuralTypes.scala
 covtest
 Record
 Class
@@ -36,7 +36,7 @@ false
 _._1 == name
 
 2
-tests/coverage/expect/StructuralTypes.scala
+expect/StructuralTypes.scala
 covtest
 Record
 Class
@@ -53,7 +53,7 @@ false
 elems.find(_._1 == name)
 
 3
-tests/coverage/expect/StructuralTypes.scala
+expect/StructuralTypes.scala
 covtest
 StructuralTypes$
 Object
@@ -70,7 +70,7 @@ false
 "name"
 
 4
-tests/coverage/expect/StructuralTypes.scala
+expect/StructuralTypes.scala
 covtest
 StructuralTypes$
 Object
@@ -87,7 +87,7 @@ false
 "name" -> "Emma"
 
 5
-tests/coverage/expect/StructuralTypes.scala
+expect/StructuralTypes.scala
 covtest
 StructuralTypes$
 Object
@@ -104,7 +104,7 @@ false
 "age"
 
 6
-tests/coverage/expect/StructuralTypes.scala
+expect/StructuralTypes.scala
 covtest
 StructuralTypes$
 Object
@@ -121,7 +121,7 @@ false
 "age" -> 42
 
 7
-tests/coverage/expect/StructuralTypes.scala
+expect/StructuralTypes.scala
 covtest
 StructuralTypes$
 Object
@@ -138,7 +138,7 @@ false
 Record("name" -> "Emma", "age" -> 42)
 
 8
-tests/coverage/expect/StructuralTypes.scala
+expect/StructuralTypes.scala
 covtest
 StructuralTypes$
 Object
