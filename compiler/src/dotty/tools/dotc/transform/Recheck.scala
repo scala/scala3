@@ -133,7 +133,7 @@ abstract class Recheck extends Phase, SymTransformer:
           //val pre = ta.maybeSkolemizePrefix(qualType, name)
           val mbr = qualType.findMember(name, qualType,
               excluded = if tree.symbol.is(Private) then EmptyFlags else Private
-            ).suchThat(tree.symbol ==)
+            ).suchThat(tree.symbol == _)
           constFold(tree, qualType.select(name, mbr))
             //.showing(i"recheck select $qualType . $name : ${mbr.symbol.info} = $result")
 
