@@ -68,7 +68,7 @@ class Pickler extends Phase {
       if ctx.settings.YtestPickler.value then
         beforePickling(cls) = tree.show
         picklers(cls) = pickler
-      val treePkl = pickler.treePkl
+      val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
       val positionWarnings = new mutable.ListBuffer[String]()
       val pickledF = inContext(ctx.fresh) {
