@@ -40,42 +40,42 @@ import transform.SymUtils._
   */
 
   abstract class SyntaxMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Syntax"
+    def kind = MessageKind.Syntax
 
   abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Type"
+    def kind = MessageKind.Type
 
   trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
     override def msgSuffix: String = matchReductionAddendum(tps*)
 
   abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
   extends Message(errorId), ShowMatchTrace(found, expected):
-    def kind = "Type Mismatch"
+    def kind = MessageKind.TypeMismatch
     def explain = err.whyNoMatchStr(found, expected)
     override def canExplain = true
 
   abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Naming"
+    def kind = MessageKind.Naming
 
   abstract class DeclarationMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Declaration"
+    def kind = MessageKind.Declaration
 
   /** A simple not found message (either for idents, or member selection.
    *  Messages of this class are sometimes dropped in favor of other, more
    *  specific messages.
    */
   abstract class NotFoundMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Not Found"
+    def kind = MessageKind.NotFound
     def name: Name
 
   abstract class PatternMatchMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Pattern Match"
+    def kind = MessageKind.PatternMatch
 
   abstract class CyclicMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Cyclic"
+    def kind = MessageKind.Cyclic
 
   abstract class ReferenceMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Reference"
+    def kind = MessageKind.Reference
 
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
   extends SyntaxMsg(EmptyCatchOrFinallyBlockID) {
@@ -638,7 +638,7 @@ import transform.SymUtils._
 
   class ProperDefinitionNotFound()(using Context)
   extends Message(ProperDefinitionNotFoundID) {
-    def kind: String = "Doc Comment"
+    def kind = MessageKind.DocComment
     def msg = em"""Proper definition was not found in ${hl("@usecase")}"""
 
     def explain = {
@@ -818,14 +818,14 @@ import transform.SymUtils._
 
   class LossyWideningConstantConversion(sourceType: Type, targetType: Type)(using Context)
   extends Message(LossyWideningConstantConversionID):
-    def kind = "Lossy Conversion"
+    def kind = MessageKind.LossyConversion
     def msg = em"""|Widening conversion from $sourceType to $targetType loses precision.
                    |Write `.to$targetType` instead.""".stripMargin
     def explain = ""
 
   class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
   extends Message(PatternMatchExhaustivityID) {
-    def kind = "Pattern Match Exhaustivity"
+    def kind = MessageKind.PatternMatchExhaustivity
     lazy val uncovered = uncoveredFn
     def msg =
       val addendum = if hasMore then "(More unmatched cases are elided)" else ""
@@ -856,7 +856,7 @@ import transform.SymUtils._
 
   class MatchCaseUnreachable()(using Context)
   extends Message(MatchCaseUnreachableID) {
-    def kind = "Match case Unreachable"
+    def kind = MessageKind.MatchCaseUnreachable
     def msg = "Unreachable case"
     def explain = ""
   }
@@ -1783,7 +1783,7 @@ import transform.SymUtils._
 
   class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using Context)
     extends Message(FailureToEliminateExistentialID) {
-    def kind: String = "Compatibility"
+    def kind = MessageKind.Compatibility
     def msg =
       val originalType = ctx.printer.dclsText(boundSyms, "; ").show
       em"""An existential type that came from a Scala-2 classfile for $classRoot
@@ -2228,7 +2228,7 @@ import transform.SymUtils._
 
   class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)(using Context)
     extends Message(PureExpressionInStatementPositionID) {
-    def kind = "Potential Issue"
+    def kind = MessageKind.PotentialIssue
     def msg = "A pure expression does nothing in statement position; you may be omitting necessary parentheses"
     def explain =
       em"""The pure expression $stat doesn't have any side effect and its result is not assigned elsewhere.
