@@ -20,6 +20,8 @@
   align-items: center;
   padding-top: calc(1.25 * var(--base-spacing));
   padding-bottom: calc(1.25 * var(--base-spacing));
+  padding-right: calc(1.25 * var(--base-spacing));
+  overflow: hidden;
 }
 
 .nh > a {
@@ -31,16 +33,13 @@
   box-sizing: border-box;
 }
 
-#api-nav .nh > *:last-child {
-  margin-right: calc(1.5 * var(--base-spacing));
-}
-
 #api-nav .n0 > .nh > .ar {
   left: calc(1.5 * var(--base-spacing));
 }
 
 #api-nav .n0 > .nh > a {
   left: calc(4.5 * var(--base-spacing));
+  max-width: calc(23 * var(--base-spacing));
 }
 
 #api-nav .n1 > .nh > .ar {
@@ -49,6 +48,7 @@
 
 #api-nav .n1 > .nh > a {
   left: calc(7.5 * var(--base-spacing));
+  max-width: calc(20 * var(--base-spacing));
 }
 
 #api-nav .n2 > .nh > .ar {
@@ -57,6 +57,7 @@
 
 #api-nav .n2 > .nh > a {
   left: calc(10.5 * var(--base-spacing));
+  max-width: calc(17 * var(--base-spacing));
 }
 
 #api-nav .n3 > .nh > .ar {
@@ -65,6 +66,7 @@
 
 #api-nav .n3 > .nh > a {
   left: calc(13.5 * var(--base-spacing));
+  max-width: calc(14 * var(--base-spacing));
 }
 
 #api-nav .n4 > .nh > .ar {
@@ -73,6 +75,7 @@
 
 #api-nav .n4 > .nh > a {
   left: calc(16.5 * var(--base-spacing));
+  max-width: calc(11 * var(--base-spacing));
 }
 
 /* arrows */
