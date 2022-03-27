@@ -1,4 +1,4 @@
-package scala.runtime
+package scala.runtime.coverage
 
 import scala.collection.mutable.{BitSet, AnyRefMap}
 import scala.collection.concurrent.TrieMap

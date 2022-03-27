@@ -461,7 +461,7 @@ class Definitions {
   }
   def NullType: TypeRef = NullClass.typeRef
 
-  @tu lazy val InvokerModuleRef = requiredMethodRef("scala.runtime.Invoker")
+  @tu lazy val InvokerModuleRef = requiredModuleRef("scala.runtime.coverage.Invoker")
 
   @tu lazy val ImplicitScrutineeTypeSym =
     newPermanentSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
