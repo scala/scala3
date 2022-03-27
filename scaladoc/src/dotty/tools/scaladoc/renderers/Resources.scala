@@ -96,6 +96,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       // components
       "styles/theme/components/switcher.css",
       "styles/theme/components/navigation-item.css",
+      "styles/theme/components/button/icon-button.css",
+
 
       "styles/nord-light.css",
       "styles/dotty-icons.css",
@@ -252,6 +254,31 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/arrow-right-dark.svg"),
       dottyRes("images/arrow-right-selected.svg"),
       dottyRes("images/arrow-right.svg"),
+
+      dottyRes("images/icon-buttons/sun/dark/active.svg"),
+      dottyRes("images/icon-buttons/sun/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/sun/dark/focus.svg"),
+      dottyRes("images/icon-buttons/sun/dark/hover.svg"),
+      dottyRes("images/icon-buttons/sun/dark/selected.svg"),
+      dottyRes("images/icon-buttons/sun/dark/default.svg"),
+      dottyRes("images/icon-buttons/sun/light/active.svg"),
+      dottyRes("images/icon-buttons/sun/light/disabled.svg"),
+      dottyRes("images/icon-buttons/sun/light/focus.svg"),
+      dottyRes("images/icon-buttons/sun/light/hover.svg"),
+      dottyRes("images/icon-buttons/sun/light/selected.svg"),
+      dottyRes("images/icon-buttons/sun/light/default.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/active.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/focus.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/hover.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/selected.svg"),
+      dottyRes("images/icon-buttons/hamburger/dark/default.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/active.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/disabled.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/focus.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/hover.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/selected.svg"),
+      dottyRes("images/icon-buttons/hamburger/light/default.svg"),
       searchData(pages),
       scastieConfiguration()
     )

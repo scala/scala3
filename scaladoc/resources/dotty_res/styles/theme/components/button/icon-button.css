@@ -1,0 +1,10 @@
+.icon-button {
+}
+
+.icon-button.sun::after {
+  content: url("../../../../images/icon-buttons/sun/dark/default.svg");
+}
+
+.icon-button.hamburger::after {
+  content: url("../../../../images/icon-buttons/hamburger/dark/default.svg");
+}
