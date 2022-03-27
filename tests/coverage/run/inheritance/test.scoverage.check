@@ -19,15 +19,15 @@
 # '' sign
 # ------------------------------------------
 1
-expect/Inheritance.scala
-covtest
+inheritance/test.scala
+<empty>
 B
 Class
-covtest.B
+<empty>.B
 <init>
-73
-80
-3
+56
+63
+1
 <init>
 Apply
 false
@@ -36,15 +36,15 @@ false
 A(x, 0)
 
 2
-expect/Inheritance.scala
-covtest
+inheritance/test.scala
+<empty>
 C1
 Class
-covtest.C1
+<empty>.C1
 <init>
-101
-117
-4
+84
+100
+2
 println
 Apply
 false
@@ -53,15 +53,15 @@ false
 println("block")
 
 3
-expect/Inheritance.scala
-covtest
+inheritance/test.scala
+<empty>
 C1
 Class
-covtest.C1
+<empty>.C1
 <init>
-98
-122
-4
+81
+105
+2
 <init>
 Apply
 false
@@ -70,15 +70,15 @@ false
 B({println("block"); 1})
 
 4
-expect/Inheritance.scala
-covtest
+inheritance/test.scala
+<empty>
 C2
 Class
-covtest.C2
+<empty>.C2
 <init>
-142
-148
-5
+125
+131
+3
 <init>
 Apply
 false
@@ -87,15 +87,15 @@ false
 A(2,2)
 
 5
-expect/Inheritance.scala
-covtest
+inheritance/test.scala
+<empty>
 C2
 Class
-covtest.C2
+<empty>.C2
 <init>
-140
-151
-5
+123
+134
+3
 <init>
 Apply
 false
@@ -104,15 +104,15 @@ false
 B(A(2,2).x)
 
 6
-expect/Inheritance.scala
-covtest
-Inheritance$package$
+inheritance/test.scala
+<empty>
+test$package$
 Object
-covtest.Inheritance$package$
-testInheritance
-185
-189
-8
+<empty>.test$package$
+Test
+169
+173
+7
 <init>
 Apply
 false
@@ -121,15 +121,15 @@ false
 C1()
 
 7
-expect/Inheritance.scala
-covtest
-Inheritance$package$
+inheritance/test.scala
+<empty>
+test$package$
 Object
-covtest.Inheritance$package$
-testInheritance
-177
-192
-8
+<empty>.test$package$
+Test
+161
+176
+7
 println
 Apply
 false
@@ -138,15 +138,15 @@ false
 println(C1().x)
 
 8
-expect/Inheritance.scala
-covtest
-Inheritance$package$
+inheritance/test.scala
+<empty>
+test$package$
 Object
-covtest.Inheritance$package$
-testInheritance
-235
-239
-10
+<empty>.test$package$
+Test
+219
+223
+9
 <init>
 Apply
 false
@@ -155,15 +155,15 @@ false
 C2()
 
 9
-expect/Inheritance.scala
-covtest
-Inheritance$package$
+inheritance/test.scala
+<empty>
+test$package$
 Object
-covtest.Inheritance$package$
-testInheritance
-227
-242
-10
+<empty>.test$package$
+Test
+211
+226
+9
 println
 Apply
 false

@@ -19,15 +19,15 @@
 # '' sign
 # ------------------------------------------
 1
-expect/Trait.scala
-covtest
+trait/test.scala
+<empty>
 T1
 Trait
-covtest.T1
+<empty>.T1
 x
-37
-38
-3
+20
+21
+1
 <none>
 Literal
 false
@@ -36,15 +36,15 @@ false
 0
 
 2
-expect/Trait.scala
-covtest
+trait/test.scala
+<empty>
 Impl2
 Class
-covtest.Impl2
+<empty>.Impl2
 <init>
-108
-118
-8
+91
+101
+6
 <init>
 Apply
 false
@@ -53,15 +53,15 @@ false
 T2("test")
 
 3
-expect/Trait.scala
-covtest
+trait/test.scala
+<empty>
 Impl3
 Class
-covtest.Impl3
+<empty>.Impl3
 <init>
-150
-157
-9
+133
+140
+7
 <init>
 Apply
 false
@@ -70,15 +70,15 @@ false
 Impl2()
 
 4
-expect/Trait.scala
-covtest
+trait/test.scala
+<empty>
 Impl3
 Class
-covtest.Impl3
+<empty>.Impl3
 <init>
-147
-160
-9
+130
+143
+7
 <init>
 Apply
 false
@@ -87,15 +87,15 @@ false
 T2(Impl2().p)
 
 5
-expect/Trait.scala
-covtest
-Trait$package$
+trait/test.scala
+<empty>
+test$package$
 Object
-covtest.Trait$package$
-testTrait
-188
-195
-12
+<empty>.test$package$
+Test
+178
+185
+11
 <init>
 Apply
 false
@@ -104,15 +104,15 @@ false
 Impl1()
 
 6
-expect/Trait.scala
-covtest
-Trait$package$
+trait/test.scala
+<empty>
+test$package$
 Object
-covtest.Trait$package$
-testTrait
-180
-198
-12
+<empty>.test$package$
+Test
+170
+188
+11
 println
 Apply
 false
@@ -121,15 +121,15 @@ false
 println(Impl1().x)
 
 7
-expect/Trait.scala
-covtest
-Trait$package$
+trait/test.scala
+<empty>
+test$package$
 Object
-covtest.Trait$package$
-testTrait
-214
-221
-13
+<empty>.test$package$
+Test
+204
+211
+12
 <init>
 Apply
 false
@@ -138,15 +138,15 @@ false
 Impl2()
 
 8
-expect/Trait.scala
-covtest
-Trait$package$
+trait/test.scala
+<empty>
+test$package$
 Object
-covtest.Trait$package$
-testTrait
-206
-224
-13
+<empty>.test$package$
+Test
+196
+214
+12
 println
 Apply
 false
@@ -155,15 +155,15 @@ false
 println(Impl2().p)
 
 9
-expect/Trait.scala
-covtest
-Trait$package$
+trait/test.scala
+<empty>
+test$package$
 Object
-covtest.Trait$package$
-testTrait
-243
-250
-14
+<empty>.test$package$
+Test
+233
+240
+13
 <init>
 Apply
 false
@@ -172,15 +172,15 @@ false
 Impl3()
 
 10
-expect/Trait.scala
-covtest
-Trait$package$
+trait/test.scala
+<empty>
+test$package$
 Object
-covtest.Trait$package$
-testTrait
-235
-253
-14
+<empty>.test$package$
+Test
+225
+243
+13
 println
 Apply
 false

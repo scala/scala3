@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-expect/Enum.scala
+Enum.scala
 covtest
 Planet
 Class
@@ -36,7 +36,7 @@ false
 6.67300E-11
 
 2
-expect/Enum.scala
+Enum.scala
 covtest
 Planet
 Class
@@ -53,7 +53,7 @@ false
 G * mass
 
 3
-expect/Enum.scala
+Enum.scala
 covtest
 Planet
 Class
@@ -70,7 +70,7 @@ false
 G * mass
 
 4
-expect/Enum.scala
+Enum.scala
 covtest
 Planet
 Class
@@ -87,7 +87,7 @@ false
 G * mass
 
 5
-expect/Enum.scala
+Enum.scala
 covtest
 Planet
 Class
@@ -104,7 +104,7 @@ false
 radius * radius
 
 6
-expect/Enum.scala
+Enum.scala
 covtest
 Planet
 Class
@@ -121,7 +121,7 @@ false
 G * mass / (radius * radius
 
 7
-expect/Enum.scala
+Enum.scala
 covtest
 Planet
 Class
@@ -138,7 +138,7 @@ false
 otherMass * surfaceGravity
 
 8
-expect/Enum.scala
+Enum.scala
 covtest
 $anon
 Class
@@ -155,7 +155,7 @@ false
 Planet(3.303e+23, 2.4397e6)
 
 9
-expect/Enum.scala
+Enum.scala
 covtest
 $anon
 Class
@@ -172,7 +172,7 @@ false
 Planet(4.869e+24, 6.0518e6)
 
 10
-expect/Enum.scala
+Enum.scala
 covtest
 $anon
 Class
@@ -189,7 +189,7 @@ false
 Planet(5.976e+24, 6.37814e6)
 
 11
-expect/Enum.scala
+Enum.scala
 covtest
 $anon
 Class
@@ -206,7 +206,7 @@ false
 Planet(6.421e+23, 3.3972e6)
 
 12
-expect/Enum.scala
+Enum.scala
 covtest
 $anon
 Class
@@ -223,7 +223,7 @@ false
 Planet(1.9e+27,   7.1492e7)
 
 13
-expect/Enum.scala
+Enum.scala
 covtest
 $anon
 Class
@@ -240,7 +240,7 @@ false
 Planet(5.688e+26, 6.0268e7)
 
 14
-expect/Enum.scala
+Enum.scala
 covtest
 $anon
 Class
@@ -257,7 +257,7 @@ false
 Planet(8.686e+25, 2.5559e7)
 
 15
-expect/Enum.scala
+Enum.scala
 covtest
 $anon
 Class
@@ -274,7 +274,7 @@ false
 Planet(1.024e+26, 2.4746e7)
 
 16
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -291,7 +291,7 @@ false
 ListEnum.Cons(3, ListEnum.Empty)
 
 17
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -308,7 +308,7 @@ false
 ListEnum.Cons(2, ListEnum.Cons(3, ListEnum.Empty))
 
 18
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -325,7 +325,7 @@ false
 ListEnum.Cons(1, ListEnum.Cons(2, ListEnum.Cons(3, ListEnum.Empty)))
 
 19
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -342,7 +342,7 @@ false
 "Example 1: \n"+emptyList
 
 20
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -359,7 +359,7 @@ false
 println("Example 1: \n"+emptyList)
 
 21
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -376,7 +376,7 @@ false
 ${list}\n
 
 22
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -393,7 +393,7 @@ false
 ${list}\n
 
 23
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -410,7 +410,7 @@ false
 ${list}\n
 
 24
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -427,7 +427,7 @@ false
 s"${list}\n"
 
 25
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -444,7 +444,7 @@ false
 println(s"${list}\n")
 
 26
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -461,7 +461,7 @@ false
 earthWeight/Planet.Earth.surfaceGravity
 
 27
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -478,7 +478,7 @@ false
 Planet.values
 
 28
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -495,7 +495,7 @@ false
 Your weight on $p is ${p.surfaceWeight(mass)}
 
 29
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -512,7 +512,7 @@ false
 Your weight on $p is ${p.surfaceWeight(mass)}
 
 30
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -529,7 +529,7 @@ false
 Your weight on $p is ${p.surfaceWeight(mass)}
 
 31
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -546,7 +546,7 @@ false
 p.surfaceWeight(mass)
 
 32
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -563,7 +563,7 @@ false
 s"Your weight on $p is ${p.surfaceWeight(mass)}"
 
 33
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -580,7 +580,7 @@ false
 println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
 34
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -598,7 +598,7 @@ for p <- Planet.values do
         println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
 35
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object
@@ -615,7 +615,7 @@ false
 println("Example 2:")
 
 36
-expect/Enum.scala
+Enum.scala
 covtest
 EnumTypes$
 Object

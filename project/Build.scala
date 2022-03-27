@@ -613,13 +613,15 @@ object Build {
       testCoverage := Def.inputTaskDyn {
         val args = spaceDelimited("<arg>").parsed
         if (args.contains("--help")) {
-          println("usage: testCoverage [--update-checkfiles]")
+          println("usage: testCoverage [--update-checkfiles] [<args>]")
           (Test / testOnly).toTask(" not.a.test")
         } else {
           val updateCheckfile = args.contains("--update-checkfiles")
+          val otherArgs = args.filter(_ != "--update-checkfiles")
           val test = "dotty.tools.dotc.coverage.CoverageTests"
           val argUpdateCheckfile = if (updateCheckfile) "-Ddotty.tests.updateCheckfiles=TRUE" else ""
-          val cmd = s" $test -- $argUpdateCheckfile"
+          val argCustom = if (otherArgs.nonEmpty) otherArgs.mkString(" ") else ""
+          val cmd = s" $test -- $argUpdateCheckfile $argCustom"
           (Test/testOnly).toTask(cmd)
         }
       }.evaluated,

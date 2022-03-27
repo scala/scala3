@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-expect/Select.scala
+Select.scala
 covtest
 A
 Class
@@ -36,7 +36,7 @@ false
 println("A")
 
 2
-expect/Select.scala
+Select.scala
 covtest
 B
 Class
@@ -53,7 +53,7 @@ false
 A
 
 3
-expect/Select.scala
+Select.scala
 covtest
 B
 Class
@@ -70,7 +70,7 @@ false
 super.print()
 
 4
-expect/Select.scala
+Select.scala
 covtest
 B
 Class
@@ -87,7 +87,7 @@ false
 println(this.instance)
 
 5
-expect/Select.scala
+Select.scala
 covtest
 Select$package$
 Object
@@ -104,7 +104,7 @@ false
 A()
 
 6
-expect/Select.scala
+Select.scala
 covtest
 Select$package$
 Object
@@ -121,7 +121,7 @@ false
 new A
 
 7
-expect/Select.scala
+Select.scala
 covtest
 Select$package$
 Object
@@ -138,7 +138,7 @@ false
 a.instance.print()
 
 8
-expect/Select.scala
+Select.scala
 covtest
 Select$package$
 Object

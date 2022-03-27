@@ -19,70 +19,70 @@
 # '' sign
 # ------------------------------------------
 1
-expect/Literals.scala
-<empty>
-Literals$package$
+MatchNumbers.scala
+covtest
+MatchNumbers$
 Object
-<empty>.Literals$package$
-mustBeInstrumented
-26
-35
-1
-<none>
-Literal
-false
-0
-false
-"literal"
-
-2
-expect/Literals.scala
-<empty>
-Literals$package$
-Object
-<empty>.Literals$package$
-thisOneToo
-56
-75
-4
-println
+covtest.MatchNumbers$
+f
+121
+126
+6
+<
 Apply
 false
 0
 false
-println("not this")
+x < 0
 
-3
-expect/Literals.scala
-<empty>
-Literals$package$
+2
+MatchNumbers.scala
+covtest
+MatchNumbers$
 Object
-<empty>.Literals$package$
-thisOneToo
-144
-146
-5
+covtest.MatchNumbers$
+f
+130
+132
+6
 <none>
 Literal
 false
 0
 false
-12
+-1
 
-4
-expect/Literals.scala
-<empty>
-Literals$package$
+3
+MatchNumbers.scala
+covtest
+MatchNumbers$
 Object
-<empty>.Literals$package$
-main
-246
-257
+covtest.MatchNumbers$
+<init>
+185
+189
 10
 f
 Apply
 false
 0
 false
-f(0,1,2)(3)
+f(0)
+
+4
+MatchNumbers.scala
+covtest
+MatchNumbers$
+Object
+covtest.MatchNumbers$
+<init>
+192
+197
+11
+f
+Apply
+false
+0
+false
+f(1L)
 

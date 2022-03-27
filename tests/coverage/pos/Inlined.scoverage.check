@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -36,7 +36,7 @@ false
 1
 
 2
-../../library/src/scala/runtime/stdLibPatches/Predef.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -53,7 +53,7 @@ false
 l == 1
 
 3
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -70,7 +70,7 @@ false
 scala.runtime.Scala3RunTime
 
 4
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -87,7 +87,7 @@ false
 scala.runtime.Scala3RunTime.assertFailed()
 
 5
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -104,7 +104,7 @@ false
 scala.runtime.Scala3RunTime.assertFailed()
 
 6
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -121,7 +121,7 @@ false
 List(l)
 
 7
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -138,7 +138,7 @@ false
 l == List(l).length
 
 8
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -155,7 +155,7 @@ false
 scala.runtime.Scala3RunTime
 
 9
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -172,7 +172,7 @@ false
 scala.runtime.Scala3RunTime.assertFailed()
 
 10
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -189,7 +189,7 @@ false
 scala.runtime.Scala3RunTime.assertFailed()
 
 11
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -206,7 +206,7 @@ false
 List(l)
 
 12
-../../library/src/scala/runtime/stdLibPatches/Predef.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -223,7 +223,7 @@ false
 List(l).length == 1
 
 13
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -240,7 +240,7 @@ false
 scala.runtime.Scala3RunTime
 
 14
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -257,7 +257,7 @@ false
 scala.runtime.Scala3RunTime.assertFailed()
 
 15
-expect/Inlined.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object

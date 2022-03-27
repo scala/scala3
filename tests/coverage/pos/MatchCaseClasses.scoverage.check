@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-expect/MatchCaseClasses.scala
+MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
@@ -36,7 +36,7 @@ false
 println("a")
 
 2
-expect/MatchCaseClasses.scala
+MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
@@ -53,7 +53,7 @@ false
 println("b")
 
 3
-expect/MatchCaseClasses.scala
+MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
@@ -70,7 +70,7 @@ false
 println("c")
 
 4
-expect/MatchCaseClasses.scala
+MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
@@ -87,7 +87,7 @@ false
 println(y)
 
 5
-expect/MatchCaseClasses.scala
+MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
@@ -104,7 +104,7 @@ false
 println("d")
 
 6
-expect/MatchCaseClasses.scala
+MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
@@ -121,7 +121,7 @@ false
 println("e")
 
 7
-expect/MatchCaseClasses.scala
+MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object

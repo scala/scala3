@@ -19,7 +19,7 @@
 # '' sign
 # ------------------------------------------
 1
-expect/Constructor.scala
+Constructor.scala
 covtest
 C
 Class
@@ -36,7 +36,7 @@ false
 1
 
 2
-expect/Constructor.scala
+Constructor.scala
 covtest
 C
 Class
@@ -53,7 +53,7 @@ false
 f(x)
 
 3
-expect/Constructor.scala
+Constructor.scala
 covtest
 O$
 Object
@@ -70,7 +70,7 @@ false
 1
 
 4
-expect/Constructor.scala
+Constructor.scala
 covtest
 O$
 Object
