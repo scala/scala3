@@ -285,20 +285,20 @@ def position(s: String)(ch: Char, n: Int): Int =
 Here are the syntax changes for extension methods and collective extensions relative
 to the [current syntax](../syntax.md).
 
-```
-BlockStat         ::=  ... | Extension
-TemplateStat      ::=  ... | Extension
-TopStat           ::=  ... | Extension
+```ebnf
+BlockStat         ::=  ... | Extension ;
+TemplateStat      ::=  ... | Extension ;
+TopStat           ::=  ... | Extension ;
 Extension         ::=  ‘extension’ [DefTypeParamClause] {UsingParamClause}
-                       ‘(’ DefParam ‘)’ {UsingParamClause} ExtMethods
-ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
-ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
+                       ‘(’ DefParam ‘)’ {UsingParamClause} ExtMethods ;
+ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>> ;
+ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef ;
 ```
 
 In the above the notation `<<< ts >>>` in the production rule `ExtMethods` is defined as follows :
 
-```
-<<< ts >>>        ::=  ‘{’ ts ‘}’ | indent ts outdent
+```ebnf
+<<< ts >>>        ::=  ‘{’ ts ‘}’ | indent ts outdent ;
 ```
 
 `extension` is a soft keyword. It is recognized as a keyword only if it appears

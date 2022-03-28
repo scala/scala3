@@ -69,14 +69,18 @@ h1, h2, h3 {
   font-variant-ligatures: none;
   /* padding: 8px; */
 }
-pre, code, .hljs {
+pre, .hljs {
   font-family: var(--mono-font);
   background: var(--code-bg);
   font-variant-ligatures: none;
 }
 code {
   font-size: .8em;
-  padding: 0 .3em;
+  font-weight: 500;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--code-fg);
+  background-color: var(--code-bg);
 }
 pre {
   overflow-x: auto;

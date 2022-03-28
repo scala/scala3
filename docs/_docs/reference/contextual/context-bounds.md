@@ -40,7 +40,7 @@ done automatically under `-rewrite`.
 
 ## Syntax
 
-```
-TypeParamBounds   ::=  [SubtypeBounds] {ContextBound}
-ContextBound      ::=  ‘:’ Type
+```ebnf
+TypeParamBounds   ::=  [SubtypeBounds] {ContextBound} ;
+ContextBound      ::=  ‘:’ Type ;
 ```

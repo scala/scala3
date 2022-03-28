@@ -1,7 +1,7 @@
 /* Snippets */
 
 .snippet {
-  padding: 12px 8px 10px 12px;
+  position: relative;
   background: var(--code-bg);
   margin: 1em 0px;
   border-radius: 2px;
@@ -35,6 +35,9 @@
 
 .snippet .buttons {
   --icon-size: 16px;
+  position: absolute;
+  right: 0;
+  top: 0.5em
 }
 
 .snippet-showhide {
@@ -134,6 +137,14 @@ input:checked + .slider:before {
 }
 
 .snippet .buttons {
+  transition: all .2s ease;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.snippet:hover .buttons {
+  opacity: 1;
+  visibility: visible;
   display: flex;
   flex-direction: row-reverse;
   justify-content: flex-start;

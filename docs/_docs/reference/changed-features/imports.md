@@ -46,14 +46,14 @@ are offered under settings `-source 3.1-migration -rewrite`.
 
 ### Syntax
 
-```
-Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
+```ebnf
+Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr} ;
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec ;
 ImportSpec        ::=  NamedSelector
                     |  WildcardSelector
-                    | ‘{’ ImportSelectors) ‘}’
-NamedSelector     ::=  id [‘as’ (id | ‘_’)]
-WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
+                    | ‘{’ ImportSelectors) ‘}’ ;
+NamedSelector     ::=  id [‘as’ (id | ‘_’)] ;
+WildCardSelector  ::=  ‘*' | ‘given’ [InfixType] ;
 ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector}
+                    |  WildCardSelector {‘,’ WildCardSelector} ;
 ```
