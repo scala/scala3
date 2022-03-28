@@ -757,6 +757,32 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val MethodNameAndType(mname, methodType) = asmUnboxTo(boxType)
           bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
 
+
+        case Apply(fun, List(This(clazz))) if fun.symbol == defn.ScalaCaseClassMethodsModule_caseHashCode =>
+          val clazzTpe = classBTypeFromSymbol(claszSymbol).toASMType
+          val clazzDesc = clazzTpe.getDescriptor
+
+          // Boostrap method arguments: `Class<?>` of the receiver and `MethodHandle` of getters
+          val bsmArgs = Array.newBuilder[AnyRef]
+          bsmArgs += clazzTpe
+          for (accessor <- clazz.symbol.caseAccessors) {
+            bsmArgs += new asm.Handle(
+              Opcodes.H_GETFIELD,
+              clazzTpe.getInternalName,
+              accessor.javaSimpleName,
+              toTypeKind(accessor.info.finalResultType).toASMType.getDescriptor,
+              false // isInterface
+            )
+          }
+
+          mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
+          mnode.visitInvokeDynamicInsn(
+            "hashCode",
+            "(" + clazzDesc + ")I",
+            caseClassMethodsBootstrapHandle,
+            bsmArgs.result(): _*
+          )
+
         case app @ Apply(fun, args) =>
           val sym = fun.symbol
 
@@ -1735,4 +1761,12 @@ object BCodeBodyBuilder {
     "bootstrap",
     "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/invoke/CallSite;",
     /* itf = */ false)
+
+  val caseClassMethodsBootstrapHandle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    "scala/runtime/CaseClassMethods",
+    "bootstrap",
+    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/Class;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/invoke/ConstantCallSite;",
+    /* itf = */ false)
+
 }

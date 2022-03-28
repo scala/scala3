@@ -244,7 +244,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def equals(that: Any): Boolean =
      *    (this eq that) || {
      *      that match {
-     *        case x$0 @ (_: C @unchecked) => this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
+     *        case that$0 @ (_: C @unchecked) => this.x == that$0.x && this.y == that$0.y && that$0.canEqual(this)
      *        case _ => false
      *     }
      *  ```
@@ -328,7 +328,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (clazz.is(ModuleClass))
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString.hashCode))
       else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
-        caseHashCodeBody
+        ref(defn.ScalaCaseClassMethodsModule_caseHashCode).appliedTo(This(clazz)) // caseHashCodeBody
       else
         ref(defn.ScalaRuntime__hashCode).appliedTo(This(clazz))
 

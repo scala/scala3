@@ -483,6 +483,10 @@ class Definitions {
     @tu lazy val ScalaRuntime_toArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toArray)
     @tu lazy val ScalaRuntime_toObjectArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toObjectArray)
 
+  @tu lazy val ScalaCaseClassMethodsModule: Symbol = requiredModule("scala.runtime.CaseClassMethods")
+    @tu lazy val ScalaCaseClassMethodsModule_caseHashCode: Symbol =
+      ScalaCaseClassMethodsModule.requiredMethodRef(nme.caseHashCode).symbol
+
   @tu lazy val BoxesRunTimeModule: Symbol = requiredModule("scala.runtime.BoxesRunTime")
     @tu lazy val BoxesRunTimeModule_externalEquals: Symbol = BoxesRunTimeModule.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
   @tu lazy val ScalaStaticsModule: Symbol = requiredModule("scala.runtime.Statics")

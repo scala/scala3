@@ -444,6 +444,7 @@ object StdNames {
     val bytes: N                = "bytes"
     val canEqual_ : N           = "canEqual"
     val canEqualAny : N         = "canEqualAny"
+    val caseHashCode : N        = "caseHashCode"
     val checkInitialized: N     = "checkInitialized"
     val ClassManifestFactory: N = "ClassManifestFactory"
     val classOf: N              = "classOf"
