@@ -279,6 +279,18 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/icon-buttons/hamburger/light/hover.svg"),
       dottyRes("images/icon-buttons/hamburger/light/selected.svg"),
       dottyRes("images/icon-buttons/hamburger/light/default.svg"),
+      dottyRes("images/icon-buttons/moon/dark/active.svg"),
+      dottyRes("images/icon-buttons/moon/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/moon/dark/focus.svg"),
+      dottyRes("images/icon-buttons/moon/dark/hover.svg"),
+      dottyRes("images/icon-buttons/moon/dark/selected.svg"),
+      dottyRes("images/icon-buttons/moon/dark/default.svg"),
+      dottyRes("images/icon-buttons/moon/light/active.svg"),
+      dottyRes("images/icon-buttons/moon/light/disabled.svg"),
+      dottyRes("images/icon-buttons/moon/light/focus.svg"),
+      dottyRes("images/icon-buttons/moon/light/hover.svg"),
+      dottyRes("images/icon-buttons/moon/light/selected.svg"),
+      dottyRes("images/icon-buttons/moon/light/default.svg"),
       searchData(pages),
       scastieConfiguration()
     )

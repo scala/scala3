@@ -1,4 +1,4 @@
-;(function () {
+; (function () {
   const supportsLocalStorage = (() => {
     try {
       localStorage.setItem('test', 'test');
@@ -32,16 +32,14 @@
 
   /* Wait for the DOM to be loaded before we try to attach event listeners to things in the DOM */
   window.addEventListener("DOMContentLoaded", () => {
-    const themeToggler = document.querySelector('#theme-toggle input');
-    themeToggler.checked = !currentlyDark;
-    themeToggler.addEventListener("change", e => {
-      toggleDarkTheme(!e.target.checked);
+    const themeToggler = document.querySelector('#theme-toggle');
+    themeToggler.addEventListener("click", e => {
+      toggleDarkTheme(!currentlyDark);
     });
 
     /* Auto-swap the dark/light theme if the user changes it in their system */
     colorSchemePrefMql.addEventListener('change', e => {
       const preferDark = e.matches;
-      themeToggler.checked = !preferDark;
       toggleDarkTheme(preferDark);
     });
   });
