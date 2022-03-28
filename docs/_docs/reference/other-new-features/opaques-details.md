@@ -6,9 +6,9 @@ movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/opaques
 
 ## Syntax
 
-```
+```ebnf
 Modifier          ::=  ...
-                    |  ‘opaque’
+                    |  ‘opaque’ ;
 ```
 
 `opaque` is a [soft modifier](../soft-modifier.md). It can still be used as a normal identifier when it is not in front of a definition keyword.

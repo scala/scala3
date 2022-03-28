@@ -6,11 +6,11 @@ movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/structura
 
 ## Syntax
 
-```
-SimpleType    ::= ... | Refinement
-Refinement    ::= ‘{’ RefineStatSeq ‘}’
-RefineStatSeq ::=  RefineStat {semi RefineStat}
-RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl
+```ebnf
+SimpleType    ::= ... | Refinement ;
+Refinement    ::= ‘{’ RefineStatSeq ‘}’ ;
+RefineStatSeq ::=  RefineStat {semi RefineStat} ;
+RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl ;
 ```
 
 ## Implementation of Structural Types
