@@ -1555,8 +1555,7 @@ object Parsers {
         if in.token == LBRACE || in.token == INDENT then
           t
         else
-          if sourceVersion.isAtLeast(future) then
-            deprecationWarning(DeprecatedWithOperator(), withOffset)
+          deprecationWarning(DeprecatedWithOperator(), withOffset)
           atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t
 
