@@ -78,7 +78,7 @@ import transform.SymUtils._
     def kind = MessageKind.Reference
 
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
-  extends SyntaxMsg(EmptyCatchOrFinallyBlockID) {
+  extends SyntaxMsg(errNo) {
     def explain = {
       val tryString = tryBody match {
         case Block(Nil, untpd.EmptyTree) => "{}"
