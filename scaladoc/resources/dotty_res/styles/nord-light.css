@@ -73,3 +73,6 @@ pre, .hljs {
 .hljs-deletion {
   color: var(--hljs-deletion);
 }
+.hljs-attribute {
+  color: var(--hljs-type);
+}
