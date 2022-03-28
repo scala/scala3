@@ -249,6 +249,8 @@ object QuoteMatcher {
                         case TermRef(qual: TermRef, _) => tpd.ref(qual) =?= qual2
                         case TermRef(qual: ThisType, _) if qual.classSymbol.is(Module, butNot = Package) =>
                           tpd.ref(qual.classSymbol.companionModule) =?= qual2
+                        case TermRef(qual, _) if qual.typeSymbol.isClass && qual2.symbol == defn.QuotedRuntimePatterns_patternHole =>
+                          tpd.desugarIdentPrefix(ref) =?= qual2
                         case _ => matched
                 /* Match reference */
                 case _: Ident if symbolMatch(scrutinee, pattern) => matched
