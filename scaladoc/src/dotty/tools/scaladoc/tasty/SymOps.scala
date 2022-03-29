@@ -157,7 +157,7 @@ object SymOps:
         defPosition <- method.symbol.pos
         defStart <- scala.util.Try(defPosition.start).toOption
       } yield {
-        method.paramss.partition(_.params.headOption.map(_.symbol.pos.get.start < defStart).getOrElse(false))
+        method.paramss.partition(_.params.headOption.flatMap(_.symbol.pos.map(_.start < defStart)).getOrElse(false))
       }).getOrElse(List.empty, List.empty)
 
     def extendedTypeParams: List[reflect.TypeDef] =
