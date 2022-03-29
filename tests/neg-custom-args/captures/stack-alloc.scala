@@ -14,4 +14,5 @@ def withFreshPooled[T](op: ({*} Pooled) => T): T =
   ret
 
 def test() =
-  withFreshPooled(pooled => () => pooled.toString ) // error
+  val pooledClosure = withFreshPooled(pooled => () => pooled.toString) // error
+  pooledClosure()
