@@ -4621,6 +4621,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case Bind(_, body) => foldTree(x, body)(owner)
           case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun)(owner), implicits)(owner), patterns)(owner)
           case Alternatives(patterns) => foldTrees(x, patterns)(owner)
+          case _ => throw MatchError(tree.show(using Printer.TreeStructure))
         }
       }
     end TreeAccumulator
@@ -4685,6 +4686,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             Alternatives.copy(pattern)(transformTrees(pattern.patterns)(owner))
           case TypedOrTest(inner, tpt) =>
             TypedOrTest.copy(tree)(transformTree(inner)(owner), transformTypeTree(tpt)(owner))
+          case _ =>
+            throw MatchError(tree.show(using Printer.TreeStructure))
         }
       }
 
@@ -4713,6 +4716,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Export =>
             tree
+          case _ =>
+            throw MatchError(tree.show(using Printer.TreeStructure))
         }
       }
 
@@ -4758,6 +4763,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             Repeated.copy(tree)(transformTerms(elems)(owner), transformTypeTree(elemtpt)(owner))
           case Inlined(call, bindings, expansion) =>
             Inlined.copy(tree)(call, transformSubTrees(bindings)(owner), transformTerm(expansion)(owner))
+          case _ =>
+            throw MatchError(tree.show(using Printer.TreeStructure))
         }
       }
 
@@ -4786,6 +4793,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           TypeBind.copy(tree)(tree.name, tree.body)
         case tree: TypeBlock =>
           TypeBlock.copy(tree)(tree.aliases, tree.tpt)
+        case _ =>
+          throw MatchError(tree.show(using Printer.TreeStructure))
       }
 
       def transformCaseDef(tree: CaseDef)(owner: Symbol): CaseDef = {
