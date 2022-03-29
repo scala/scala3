@@ -23,8 +23,10 @@ import scala.tasty.inspector.*
           }
         }
       }
+      val mapper = new TreeMap { }
       tastys.foreach{ tasty =>
         traverser.traverseTree(tasty.ast)(tasty.ast.symbol)
+        mapper.transformTree(tasty.ast)(tasty.ast.symbol)
       }
     }
   }

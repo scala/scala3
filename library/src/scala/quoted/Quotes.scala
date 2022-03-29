@@ -4664,7 +4664,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def transformTree(tree: Tree)(owner: Symbol): Tree = {
         tree match {
           case tree: PackageClause =>
-            PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(tree.symbol))
+            PackageClause.copy(tree)(transformTerm(tree.pid)(owner).asInstanceOf[Ref], transformTrees(tree.stats)(tree.symbol))
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Export =>
@@ -4712,7 +4712,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             val owner = tree.symbol
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))
           case tree: ClassDef =>
-            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.self, tree.body)
+            val constructor @ DefDef(_, _, _, _) = transformStatement(tree.constructor)(tree.symbol)
+            val parents = tree.parents.map(transformTree(_)(tree.symbol))
+            val body = tree.body.map(transformStatement(_)(tree.symbol))
+            ClassDef.copy(tree)(tree.name, constructor, parents, tree.self, body)
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Export =>
@@ -4764,6 +4767,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             Repeated.copy(tree)(transformTerms(elems)(owner), transformTypeTree(elemtpt)(owner))
           case Inlined(call, bindings, expansion) =>
             Inlined.copy(tree)(call, transformSubTrees(bindings)(owner), transformTerm(expansion)(owner))
+          case SummonFrom(cases) =>
+            SummonFrom.copy(tree)(transformCaseDefs(cases)(owner))
           case _ =>
             throw MatchError(tree.show(using Printer.TreeStructure))
         }
