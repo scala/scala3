@@ -969,6 +969,10 @@ footer .socials {
   color: var(--type);
 }
 
+.groupHeader *[t="t"]:not([href]) { /* Types without links in group headers */
+  color: var(--type);
+}
+
 .signature *[t="t"] { /* Types with links */
   color: var(--type-link);
 }

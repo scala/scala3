@@ -26,7 +26,7 @@ class ImplicitMembersExtensionTransformer(using DocContext) extends(Module => Mo
 
       val MyDri = c.dri
       def collectApplicableMembers(source: Member): Seq[Member] = source.members.flatMap {
-        case m @ Member(_, _, _, Kind.Extension(ExtensionTarget(_, _, _, _, MyDri, _), _), Origin.RegularlyDefined) =>
+        case m @ Member(_, _, _, Kind.Extension(ExtensionTarget(_, _, _, MyDri, _), _), Origin.RegularlyDefined) =>
           val kind = m.kind match
             case Kind.Extension(_, d) => d
             case _ => Kind.Def(Nil, Nil)
