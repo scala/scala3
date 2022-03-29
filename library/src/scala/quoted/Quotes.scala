@@ -4621,6 +4621,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case Bind(_, body) => foldTree(x, body)(owner)
           case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun)(owner), implicits)(owner), patterns)(owner)
           case Alternatives(patterns) => foldTrees(x, patterns)(owner)
+          case SummonFrom(cases) => foldTrees(x, cases)(owner)
           case _ => throw MatchError(tree.show(using Printer.TreeStructure))
         }
       }
