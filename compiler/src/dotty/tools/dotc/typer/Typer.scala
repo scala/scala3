@@ -2115,7 +2115,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val sym = newPatternBoundSymbol(name, symTp, tree.span)
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
-            report.error(i"Illegal variable ${sym.name} in pattern alternative", tree.srcPos)
+            report.error(IllegalVariableInPatternAlternative(sym.name), tree.srcPos)
           assignType(cpy.Bind(tree)(name, body1), sym)
         }
     }
