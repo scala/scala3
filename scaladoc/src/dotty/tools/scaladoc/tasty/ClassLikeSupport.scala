@@ -136,7 +136,7 @@ trait ClassLikeSupport:
           val termParams = dd.symbol.extendedTermParamLists.zipWithIndex.flatMap { case (paramList, index) =>
             memberInfo.paramLists(index) match
               case EvidenceOnlyParameterList => Nil
-              case info: RegularParameterList => 
+              case info: RegularParameterList =>
                 Seq(ParametersList(paramList.params.map(mkParameter(_, memberInfo = info)), paramListModifier(paramList.params)))
           }
           val target = ExtensionTarget(
