@@ -738,9 +738,9 @@ import transform.SymUtils._
     }
   }
 
-  class IllegalVariableInPatternAlternative()(using Context)
+  class IllegalVariableInPatternAlternative(name: Name)(using Context)
   extends SyntaxMsg(IllegalVariableInPatternAlternativeID) {
-    def msg = "Variables are not allowed in alternative patterns"
+    def msg = em"Illegal variable $name in pattern alternative"
     def explain = {
       val varInAlternative =
         """|def g(pair: (Int,Int)): Int = pair match {
