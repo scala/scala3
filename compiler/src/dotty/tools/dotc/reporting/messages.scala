@@ -589,9 +589,8 @@ import transform.SymUtils._
     def explain =
       em"""|An abstract declaration must have a return type. For example:
            |
-           |trait Shape {hl(
-           |  def area: Double // abstract declaration returning a ${"Double"}
-           |)}"""
+           |trait Shape:
+           |  ${hl("def area: Double")} // abstract declaration returning a Double"""
   }
 
   class MissingReturnTypeWithReturnStatement(method: Symbol)(using Context)
