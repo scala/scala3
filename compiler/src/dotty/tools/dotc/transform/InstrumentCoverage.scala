@@ -140,20 +140,21 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
           case tree: CaseDef => instrumentCaseDef(tree)
           case tree: ValDef =>
-            // only transform the rhs, in the local context
-            val rhs = transform(tree.rhs)(using localCtx(tree))
+            // only transform the rhs
+            val rhs = transform(tree.rhs)
             cpy.ValDef(tree)(rhs=rhs)
 
           case tree: DefDef =>
             // only transform the params (for the default values) and the rhs
-            val defCtx = localCtx(tree)
-            val paramss = transformParamss(tree.paramss)(using defCtx)
-            val rhs = transform(tree.rhs)(using defCtx)
+            // force instrumentation of literals and other small trees in the rhs,
+            // to ensure that the method call are recorded
+            val paramss = transformParamss(tree.paramss)
+            val rhs = transform(tree.rhs)
             cpy.DefDef(tree)(tree.name, paramss, tree.tpt, rhs)
 
           case tree: PackageDef =>
             // only transform the statements of the package
-            cpy.PackageDef(tree)(tree.pid, transform(tree.stats)(using localCtx(tree)))
+            cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
           case tree: Assign =>
             // only transform the rhs
             cpy.Assign(tree)(tree.lhs, transform(tree.rhs))
