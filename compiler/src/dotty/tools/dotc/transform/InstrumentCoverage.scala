@@ -18,7 +18,7 @@ import util.{SourcePosition, Property}
 import util.Spans.Span
 import coverage.*
 
-/** Implements code coverage by inserting calls to scala.runtime.Invoker
+/** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
   * The result can then be consumed by the Scoverage tool.
   */
@@ -29,20 +29,18 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
   override def description = InstrumentCoverage.description
 
-  // Enabled by argument "-coverage OUTPUT_DIR"
+  // Enabled by argument "-coverage-out OUTPUT_DIR"
   override def isEnabled(using ctx: Context) =
     ctx.settings.coverageOutputDir.value.nonEmpty
 
-  // Atomic counter used for assignation of IDs to difference statements
-  private val statementId = AtomicInteger(0)
+  // counter to assign a unique id to each statement
+  private var statementId = 0
 
-  private var outputPath = ""
-
-  // Main class used to store all instrumented statements
+  // stores all instrumented statements
   private val coverage = Coverage()
 
   override def run(using ctx: Context): Unit =
-    outputPath = ctx.settings.coverageOutputDir.value
+    val outputPath = ctx.settings.coverageOutputDir.value
 
     // Ensure the dir exists
     val dataDir = new File(outputPath)
@@ -56,132 +54,131 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     end if
     super.run
 
-    Serializer.serialize(coverage, outputPath, ctx.settings.coverageSourceroot.value)
+    Serializer.serialize(coverage, outputPath, ctx.settings.sourceroot.value)
 
-  override protected def newTransformer(using Context) = CoverageTransormer()
+  override protected def newTransformer(using Context) = CoverageTransformer()
 
   /** Transforms trees to insert calls to Invoker.invoked to compute the coverage when the code is called */
-  private class CoverageTransormer extends Transformer:
+  private class CoverageTransformer extends Transformer:
     private val IgnoreLiterals = new Property.Key[Boolean]
 
     private def ignoreLiteralsContext(using ctx: Context): Context =
       ctx.fresh.setProperty(IgnoreLiterals, true)
 
     override def transform(tree: Tree)(using ctx: Context): Tree =
-      tree match
-        // simple cases
-        case tree: (Import | Export | This | Super | New) => tree
-        case tree if (tree.isEmpty || tree.isType) => tree // empty Thicket, Ident, TypTree, ...
+      inContext(transformCtx(tree)) { // necessary to position inlined code properly
+        tree match
+          // simple cases
+          case tree: (Import | Export | This | Super | New) => tree
+          case tree if tree.isEmpty || tree.isType => tree // empty Thicket, Ident, TypTree, ...
 
-        // Literals must be instrumented (at least) when returned by a def,
-        // otherwise `def d = "literal"` is not covered when called from a test.
-        // They can be left untouched when passed in a parameter of an Apply.
-        case tree: Literal =>
-          if ctx.property(IgnoreLiterals).contains(true) then
-            tree
-          else
-            instrument(tree)
-
-        // branches
-        case tree: If =>
-          cpy.If(tree)(
-            cond = transform(tree.cond),
-            thenp = instrument(transform(tree.thenp), branch = true),
-            elsep = instrument(transform(tree.elsep), branch = true)
-          )
-        case tree: Try =>
-          cpy.Try(tree)(
-            expr = instrument(transform(tree.expr), branch = true),
-            cases = instrumentCases(tree.cases),
-            finalizer = instrument(transform(tree.finalizer), true)
-          )
-
-        // a.f(args)
-        case tree @ Apply(fun: Select, args) =>
-          // don't transform the first Select, but do transform `a.b` in `a.b.f(args)`
-          if canInstrumentApply(tree) then
-            val transformedFun = cpy.Select(fun)(transform(fun.qualifier), fun.name)
-            if needsLift(tree) then
-              val transformed = cpy.Apply(tree)(transformedFun, args) // args will be transformed in instrumentLifted
-              instrumentLifted(transformed)(using ignoreLiteralsContext)
+          // Literals must be instrumented (at least) when returned by a def,
+          // otherwise `def d = "literal"` is not covered when called from a test.
+          // They can be left untouched when passed in a parameter of an Apply.
+          case tree: Literal =>
+            if ctx.property(IgnoreLiterals).contains(true) then
+              tree
             else
-              val transformed = cpy.Apply(tree)(transformedFun, transform(args)(using ignoreLiteralsContext))
-              instrument(transformed)(using ignoreLiteralsContext)
-          else
-            tree
+              instrument(tree)
 
-        // f(args)
-        case tree: Apply =>
-          if canInstrumentApply(tree) then
-            if needsLift(tree) then
-              instrumentLifted(tree)(using ignoreLiteralsContext) // see comment about Literals
+          // branches
+          case tree: If =>
+            cpy.If(tree)(
+              cond = transform(tree.cond),
+              thenp = instrument(transform(tree.thenp), branch = true),
+              elsep = instrument(transform(tree.elsep), branch = true)
+            )
+          case tree: Try =>
+            cpy.Try(tree)(
+              expr = instrument(transform(tree.expr), branch = true),
+              cases = instrumentCases(tree.cases),
+              finalizer = instrument(transform(tree.finalizer), true)
+            )
+
+          // a.f(args)
+          case tree @ Apply(fun: Select, args) =>
+            // don't transform the first Select, but do transform `a.b` in `a.b.f(args)`
+            if canInstrumentApply(tree) then
+              val transformedFun = cpy.Select(fun)(transform(fun.qualifier), fun.name)
+              if needsLift(tree) then
+                val transformed = cpy.Apply(tree)(transformedFun, args) // args will be transformed in instrumentLifted
+                instrumentLifted(transformed)(using ignoreLiteralsContext)
+              else
+                val transformed = cpy.Apply(tree)(transformedFun, transform(args)(using ignoreLiteralsContext))
+                instrument(transformed)(using ignoreLiteralsContext)
             else
-              instrument(super.transform(tree)(using ignoreLiteralsContext))
-          else
-            tree
+              tree
 
-        // (f(x))[args]
-        case TypeApply(fun: Apply, args) =>
-          cpy.TypeApply(tree)(transform(fun), args)
-
-        // a.b
-        case Select(qual, name) =>
-          if qual.symbol.exists && qual.symbol.is(JavaDefined) then
-            //Java class can't be used as a value, we can't instrument the
-            //qualifier ({<Probe>;System}.xyz() is not possible !) instrument it
-            //as it is
-            instrument(tree)
-          else
-            val transformed = cpy.Select(tree)(transform(qual), name)
-            if transformed.qualifier.isDef then
-              // instrument calls to methods without parameter list
-              instrument(transformed)
+          // f(args)
+          case tree: Apply =>
+            if canInstrumentApply(tree) then
+              if needsLift(tree) then
+                instrumentLifted(tree)(using ignoreLiteralsContext) // see comment about Literals
+              else
+                instrument(super.transform(tree)(using ignoreLiteralsContext))
             else
-              transformed
+              tree
 
-        case tree: CaseDef => instrumentCaseDef(tree)
-        case tree: ValDef =>
-          // only transform the rhs, in the local context
-          val rhs = transform(tree.rhs)(using localCtx(tree))
-          cpy.ValDef(tree)(rhs=rhs)
+          // (f(x))[args]
+          case TypeApply(fun: Apply, args) =>
+            cpy.TypeApply(tree)(transform(fun), args)
 
-        case tree: DefDef =>
-          // only transform the params (for the default values) and the rhs
-          val defCtx = localCtx(tree)
-          val paramss = transformParamss(tree.paramss)(using defCtx)
-          val rhs = transform(tree.rhs)(using defCtx)
-          cpy.DefDef(tree)(tree.name, paramss, tree.tpt, rhs)
+          // a.b
+          case Select(qual, name) =>
+            if qual.symbol.exists && qual.symbol.is(JavaDefined) then
+              //Java class can't be used as a value, we can't instrument the
+              //qualifier ({<Probe>;System}.xyz() is not possible !) instrument it
+              //as it is
+              instrument(tree)
+            else
+              val transformed = cpy.Select(tree)(transform(qual), name)
+              if transformed.qualifier.isDef then
+                // instrument calls to methods without parameter list
+                instrument(transformed)
+              else
+                transformed
 
-        case tree: PackageDef =>
-          // only transform the statements of the package
-          cpy.PackageDef(tree)(tree.pid, transform(tree.stats)(using localCtx(tree)))
-        case tree: Assign =>
-          // only transform the rhs
-          cpy.Assign(tree)(tree.lhs, transform(tree.rhs))
+          case tree: CaseDef => instrumentCaseDef(tree)
+          case tree: ValDef =>
+            // only transform the rhs, in the local context
+            val rhs = transform(tree.rhs)(using localCtx(tree))
+            cpy.ValDef(tree)(rhs=rhs)
 
-        // For everything else just recurse and transform
-        // Special care for Templates: it's important to set the owner of the `stats`, like super.transform
-        case _ =>
-          super.transform(tree)
+          case tree: DefDef =>
+            // only transform the params (for the default values) and the rhs
+            val defCtx = localCtx(tree)
+            val paramss = transformParamss(tree.paramss)(using defCtx)
+            val rhs = transform(tree.rhs)(using defCtx)
+            cpy.DefDef(tree)(tree.name, paramss, tree.tpt, rhs)
+
+          case tree: PackageDef =>
+            // only transform the statements of the package
+            cpy.PackageDef(tree)(tree.pid, transform(tree.stats)(using localCtx(tree)))
+          case tree: Assign =>
+            // only transform the rhs
+            cpy.Assign(tree)(tree.lhs, transform(tree.rhs))
+
+          // For everything else just recurse and transform
+          // Special care for Templates: it's important to set the owner of the `stats`, like super.transform
+          case _ =>
+            super.transform(tree)
+        }
 
     /** Lifts and instruments an application.
       * Note that if only one arg needs to be lifted, we just lift everything.
       */
     def instrumentLifted(tree: Apply)(using Context) =
-      // withSource is necessary to position inlined code properly
-      inContext(ctx.withSource(tree.source)) {
-        // lifting
-        val buffer = mutable.ListBuffer[Tree]()
-        val liftedApply = LiftCoverage.liftForCoverage(buffer, tree)
+      // lifting
+      val buffer = mutable.ListBuffer[Tree]()
+      val liftedApply = LiftCoverage.liftForCoverage(buffer, tree)
 
-        // instrumentation
-        val instrumentedArgs = buffer.toList.map(transform)
-        val instrumentedApply = instrument(liftedApply)
-        Block(
-          instrumentedArgs,
-          instrumentedApply
-        ).withSpan(instrumentedApply.span)
-      }
+      // instrumentation
+      val instrumentedArgs = buffer.toList.map(transform)
+      val instrumentedApply = instrument(liftedApply)
+      Block(
+        instrumentedArgs,
+        instrumentedApply
+      ).withSpan(instrumentedApply.span)
 
     def instrumentCases(cases: List[CaseDef])(using Context): List[CaseDef] =
       cases.map(instrumentCaseDef)
@@ -194,7 +191,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     def instrument(tree: Tree, pos: SourcePosition, branch: Boolean)(using ctx: Context): Tree =
       if pos.exists && !pos.span.isZeroExtent then
-        val id = statementId.incrementAndGet()
+        statementId += 1
+        val id = statementId
         val statement = new Statement(
           source = ctx.source.file.name,
           location = Location(tree),
@@ -208,16 +206,14 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           branch
         )
         coverage.addStatement(statement)
-        inContext(ctx.withSource(tree.source)) {
-          val span = Span(pos.start, pos.end) // synthetic span
-          Block(List(invokeCall(id, span)), tree).withSpan(span)
-        }
+        val span = Span(pos.start, pos.end) // synthetic span
+        Block(List(invokeCall(id, span)), tree).withSpan(span)
       else
         tree
 
     def invokeCall(id: Int, span: Span)(using Context): Tree =
-      ref(defn.InvokerModuleRef).withSpan(span)
-        .select("invoked".toTermName).withSpan(span)
+      val outputPath = ctx.settings.coverageOutputDir.value
+      ref(defn.InvokedMethodRef).withSpan(span)
         .appliedToArgs(
           List(Literal(Constant(id)), Literal(Constant(outputPath)))
         ).withSpan(span)

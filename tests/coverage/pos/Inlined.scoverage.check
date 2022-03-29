@@ -36,7 +36,7 @@ false
 1
 
 2
-../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -53,7 +53,7 @@ false
 l == 1
 
 3
-Inlined.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -70,7 +70,7 @@ false
 scala.runtime.Scala3RunTime
 
 4
-Inlined.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -87,7 +87,7 @@ false
 scala.runtime.Scala3RunTime.assertFailed()
 
 5
-Inlined.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -138,7 +138,7 @@ false
 l == List(l).length
 
 8
-Inlined.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -155,7 +155,7 @@ false
 scala.runtime.Scala3RunTime
 
 9
-Inlined.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -172,7 +172,7 @@ false
 scala.runtime.Scala3RunTime.assertFailed()
 
 10
-Inlined.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -206,7 +206,7 @@ false
 List(l)
 
 12
-../../../library/src/scala/runtime/stdLibPatches/Predef.scala
+Inlined.scala
 covtest
 Inlined$package$
 Object
@@ -223,7 +223,7 @@ false
 List(l).length == 1
 
 13
-Inlined.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -240,7 +240,7 @@ false
 scala.runtime.Scala3RunTime
 
 14
-Inlined.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object
@@ -257,7 +257,7 @@ false
 scala.runtime.Scala3RunTime.assertFailed()
 
 15
-Inlined.scala
+../../../library/src/scala/runtime/stdLibPatches/Predef.scala
 covtest
 Inlined$package$
 Object

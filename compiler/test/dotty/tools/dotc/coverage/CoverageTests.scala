@@ -6,20 +6,21 @@ import org.junit.Assert.*
 import org.junit.experimental.categories.Category
 
 import dotty.{BootstrappedOnlyTests, Properties}
-import dotty.tools.vulpix.TestConfiguration.*
 import dotty.tools.vulpix.*
+import dotty.tools.vulpix.TestConfiguration.*
+import dotty.tools.dotc.Main
 
 import java.nio.file.{Files, FileSystems, Path, Paths, StandardCopyOption}
 import scala.jdk.CollectionConverters.*
+import scala.util.Properties.userDir
 import scala.language.unsafeNulls
-import dotty.tools.dotc.Main
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class CoverageTests:
   import CoverageTests.{*, given}
 
   private val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
-  private val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.coverage.test"))
+  private val rootSrc = Paths.get(userDir, "tests", "coverage")
 
   @Test
   def checkCoverageStatements(): Unit =
@@ -54,7 +55,7 @@ class CoverageTests:
   /** Generates the coverage report for the given input file, in a temporary directory. */
   def computeCoverageInTmp(inputFile: Path, sourceRoot: Path, run: Boolean)(using TestGroup): Path =
     val target = Files.createTempDirectory("coverage")
-    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-coverage-sourceroot", sourceRoot.toString)
+    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", sourceRoot.toString)
     val test = compileFile(inputFile.toString, options)
     if run then
       test.checkRuns()

@@ -30,8 +30,8 @@ object Serializer:
    */
   def serialize(coverage: Coverage, writer: Writer, sourceRoot: Path): Unit =
 
-    def getRelativePath(filePath: String): String =
-      val relPath = sourceRoot.relativize(Paths.get(filePath).toAbsolutePath)
+    def getRelativePath(filePath: Path): String =
+      val relPath = sourceRoot.relativize(filePath)
       relPath.toString
 
     def writeHeader(writer: Writer): Unit =

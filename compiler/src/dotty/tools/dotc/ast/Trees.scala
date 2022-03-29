@@ -1367,13 +1367,19 @@ object Trees {
     /** The context to use when mapping or accumulating over a tree */
     def localCtx(tree: Tree)(using Context): Context
 
+    /** The context to use when transforming a tree.
+      * It ensures that the source information is correct.
+      * TODO: ensure transform is always called with the correct context as argument
+      * @see https://github.com/lampepfl/dotty/pull/13880#discussion_r836395977
+      */
+    def transformCtx(tree: Tree)(using Context): Context =
+      if tree.source.exists && tree.source != ctx.source
+      then ctx.withSource(tree.source)
+      else ctx
+
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
       def transform(tree: Tree)(using Context): Tree = {
-        inContext(
-          if tree.source != ctx.source && tree.source.exists
-          then ctx.withSource(tree.source)
-          else ctx
-        ){
+        inContext(transformCtx(tree)){
           Stats.record(s"TreeMap.transform/$getClass")
           if (skipTransform(tree)) tree
           else tree match {
