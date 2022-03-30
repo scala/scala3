@@ -54,6 +54,8 @@ class TypeOps:
 
   private def symbolNotFound(binder: Type, name: Name, parent: Symbol)(using ctx: Context): Unit =
     warn(s"Ignoring ${name} of symbol ${parent}, type ${binder}")
+  private def symbolNotFound(name: Name, parent: Symbol)(using ctx: Context): Unit =
+    warn(s"Ignoring ${name} of symbol ${parent}")
 
   private def warn(msg: String)(using ctx: Context): Unit =
     report.warning(
@@ -64,6 +66,24 @@ class TypeOps:
     fakeSymbols.add(sym)
 
   extension (tpe: Type)
+    def lookupSym(name: Name)(using Context): Option[SemanticSymbol] = {
+      def loop(ty: Type): Option[SemanticSymbol] = ty match
+        case rt: RefinedType =>
+          refinementSymtab.lookup(rt, name).orElse(
+            loop(rt.parent)
+          )
+        case rec: RecType =>
+          loop(rec.parent)
+        case AndType(tp1, tp2) =>
+          loop(tp1).orElse(loop(tp2))
+        case OrType(tp1, tp2) =>
+          loop(tp1).orElse(loop(tp2))
+        case _ =>
+          symbolNotFound(name, tpe.typeSymbol)
+          None
+      loop(tpe)
+    }
+
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
       def enterParamRef(tpe: Type): Unit =
         tpe match {
@@ -241,22 +261,8 @@ class TypeOps:
         // when TypeRef refers the refinement of RefinedType e.g.
         // TypeRef for `foo.B` in `trait T[A] { val foo: { type B = A } = ???; def bar(b: foo.B) = () }` has NoSymbol
         case TypeRef(pre, name: Name) =>
-          def lookupSym(tpe: Type): Option[SemanticSymbol] = {
-            tpe match {
-              case rt: RefinedType =>
-                refinementSymtab.lookupOrErr(rt, name, rt.typeSymbol)
-              case rec: RecType =>
-                lookupSym(rec.parent)
-              case AndType(tp1, tp2) =>
-                lookupSym(tp1).orElse(lookupSym(tp2))
-              case OrType(tp1, tp2) =>
-                lookupSym(tp1).orElse(lookupSym(tp2))
-              case _ =>
-                None
-            }
-          }
           val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
-          val maybeSym = lookupSym(pre.widen.dealias)
+          val maybeSym = pre.widen.dealias.lookupSym(name)
           maybeSym match
             case Some(sym) =>
               s.TypeRef(spre, sym.symbolName, Seq.empty)

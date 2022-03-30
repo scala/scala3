@@ -49,7 +49,7 @@ Uri => Advanced.scala
 Text => empty
 Language => Scala
 Symbols => 62 entries
-Occurrences => 130 entries
+Occurrences => 132 entries
 Synthetics => 4 entries
 
 Symbols:
@@ -169,6 +169,7 @@ Occurrences:
 [16:50..16:53): bar <- advanced/Structural#T#bar().
 [16:54..16:55): b <- advanced/Structural#T#bar().(b)
 [16:57..16:60): foo -> advanced/Structural#T#foo.
+[16:61..16:62): B -> local12
 [19:6..19:15): Wildcards <- advanced/Wildcards#
 [20:6..20:8): e1 <- advanced/Wildcards#e1().
 [20:10..20:14): List -> scala/package.List#
@@ -230,6 +231,7 @@ Occurrences:
 [46:106..46:109): ??? -> scala/Predef.`???`().
 [47:6..47:9): bar <- advanced/Test.bar().
 [47:11..47:14): foo -> advanced/Test.foo.
+[47:15..47:16): A -> local19
 [47:19..47:22): foo -> advanced/Test.foo.
 [52:6..52:13): HKClass <- advanced/HKClass#
 [52:14..52:15): F <- advanced/HKClass#[F]
