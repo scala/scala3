@@ -4280,6 +4280,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is this symbol marked as a macro. An inline method containing top level splices */
       def Macro: Flags
 
+      /** Is this symbol `def` */
       def Method: Flags
 
       /** Is this symbol an object or its class (used for a ValDef or a ClassDef extends Modifier respectively) */
