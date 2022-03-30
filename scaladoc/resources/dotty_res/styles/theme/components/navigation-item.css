@@ -1,0 +1,360 @@
+/* api */
+
+.side-menu .ni {
+  display: none;
+}
+
+.side-menu > .ni {
+  display: block;
+}
+
+.side-menu .ni.expanded > .ni {
+  display: block;
+}
+
+.nh {
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-top: calc(1.25 * var(--base-spacing));
+  padding-bottom: calc(1.25 * var(--base-spacing));
+  padding-right: calc(1.25 * var(--base-spacing));
+  overflow: hidden;
+}
+
+.nh > a {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  overflow-wrap: anywhere;
+  color: var(--action-primary-content-default);
+  box-sizing: border-box;
+}
+
+#api-nav .n0 > .nh > .ar {
+  left: calc(1.5 * var(--base-spacing));
+}
+
+#api-nav .n0 > .nh > a {
+  left: calc(4.5 * var(--base-spacing));
+  max-width: calc(23 * var(--base-spacing));
+}
+
+#api-nav .n1 > .nh > .ar {
+  left: calc(4.5 * var(--base-spacing));
+}
+
+#api-nav .n1 > .nh > a {
+  left: calc(7.5 * var(--base-spacing));
+  max-width: calc(20 * var(--base-spacing));
+}
+
+#api-nav .n2 > .nh > .ar {
+  left: calc(7.5 * var(--base-spacing));
+}
+
+#api-nav .n2 > .nh > a {
+  left: calc(10.5 * var(--base-spacing));
+  max-width: calc(17 * var(--base-spacing));
+}
+
+#api-nav .n3 > .nh > .ar {
+  left: calc(10.5 * var(--base-spacing));
+}
+
+#api-nav .n3 > .nh > a {
+  left: calc(13.5 * var(--base-spacing));
+  max-width: calc(14 * var(--base-spacing));
+}
+
+#api-nav .n4 > .nh > .ar {
+  left: calc(13.5 * var(--base-spacing));
+}
+
+#api-nav .n4 > .nh > a {
+  left: calc(16.5 * var(--base-spacing));
+  max-width: calc(11 * var(--base-spacing));
+}
+
+/* arrows */
+
+/* default light*/
+span.ar::before {
+  content: url("../../../images/arrow-right.svg");
+  font-family: "dotty-icons" !important;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.ni.expanded > .nh > span.ar::before {
+  content: url("../../../images/arrow-down.svg");
+}
+
+/* active light*/
+.ni.expanded > .nh:active > span.ar::before {
+  content: url("../../../images/arrow-down-selected.svg");
+}
+
+.ni > .nh:active > span.ar::before {
+  content: url("../../../images/arrow-right-selected.svg");
+}
+
+/* selected light*/
+.ni.expanded > .nh.selected > span.ar::before {
+  content: url("../../../images/arrow-down-selected.svg");
+}
+
+.ni > .nh.selected > span.ar::before {
+  content: url("../../../images/arrow-right-selected.svg");
+}
+
+/* child selected light */
+.ni > .nh.cs > span.ar::before {
+  content: url("../../../images/arrow-right-selected.svg");
+}
+
+.ni.expanded > .nh.cs > span.ar::before {
+  content: url("../../../images/arrow-down-selected.svg");
+}
+
+/* default dark */
+.theme-dark .ni > .nh > span.ar::before {
+  content: url("../../../images/arrow-right-dark.svg");
+}
+
+.theme-dark .ni.expanded > .nh > span.ar::before {
+  content: url("../../../images/arrow-down-dark.svg");
+}
+
+/* active dark */
+.theme-dark .ni.expanded > .nh:active > span.ar::before {
+  content: url("../../../images/arrow-down-dark-active.svg");
+}
+
+.theme-dark .ni > .nh:active > span.ar::before {
+  content: url("../../../images/arrow-right-dark-active.svg");
+}
+
+/* selected dark */
+.theme-dark .ni > .nh.selected > span.ar::before {
+  content: url("../../../images/arrow-right-dark-selected.svg");
+}
+
+.theme-dark .ni.expanded > .nh.selected > span.ar::before {
+  content: url("../../../images/arrow-down-dark-selected.svg");
+}
+
+/* child selected dark */
+.theme-dark .ni > .nh.cs > span.ar::before {
+  content: url("../../../images/arrow-right-dark-selected.svg");
+}
+
+.theme-dark .ni.expanded > .nh.cs > span.ar::before {
+  content: url("../../../images/arrow-down-dark-selected.svg");
+}
+
+.nh:hover {
+  background: var(--action-primary-background-hover);
+  cursor: pointer;
+}
+
+.nh:hover > a {
+  color: var(--action-primary-content-hover);
+}
+
+.nh:active {
+  background: var(--action-primary-background-hover);
+  cursor: pointer;
+}
+
+.nh:active > a {
+  color: var(--action-primary-content-active);
+}
+
+.nh:active > .ar::before {
+  filter: var(--arrow-active);
+}
+
+.nh:focus {
+  box-shadow: 0px 0px 0px 2px var(--focus-default);
+}
+
+.nh.selected {
+  background: var(--action-primary-background-selected);
+}
+
+.nh.selected > a {
+  color: var(--action-primary-content-selected);
+}
+
+.nh.selected > .ar::before {
+  filter: var(--arrow-selected);
+}
+
+.nh.cs > a {
+  color: var(--action-primary-content-selected);
+}
+
+.nh.cs > .ar::before {
+  filter: var(--arrow-selected);
+}
+
+.micon {
+  box-sizing: content-box;
+  margin-right: calc(1 * var(--base-spacing));
+  color: transparent;
+}
+
+#api-nav span.ar {
+  cursor: pointer;
+  position: absolute;
+}
+
+#api-nav .nh a {
+  position: relative;
+}
+
+/* docs */
+
+/* Hardcode visibility of children of top-level entry */
+#docs-nav .ni.n0 > .ni {
+  display: block;
+}
+
+#docs-nav .n0 > .nh {
+  padding-left: calc(1.5 * var(--base-spacing));
+}
+
+#docs-nav .n1 > .nh {
+  padding-left: calc(1.5 * var(--base-spacing));
+}
+
+#docs-nav .n2 > .nh {
+  padding-left: calc(6.5 * var(--base-spacing));
+}
+
+#docs-nav .n3 > .nh {
+  padding-left: calc(11.5 * var(--base-spacing));
+}
+
+#docs-nav span.ar {
+  margin-right: calc(1 * var(--base-spacing));
+}
+
+/* icons light*/
+.micon.cl {
+  content: url("../../../images/class.svg");
+}
+
+.micon.cl-wc {
+  content: url("../../../images/class_comp.svg");
+}
+
+.micon.ob {
+  content: url("../../../images/object.svg");
+}
+
+.micon.ob-wc {
+  content: url("../../../images/object_comp.svg");
+}
+
+.micon.tr {
+  content: url("../../../images/trait.svg");
+}
+
+.micon.tr-wc {
+  content: url("../../../images/trait_comp.svg");
+}
+
+.micon.en {
+  content: url("../../../images/enum.svg");
+}
+
+.micon.en-wc {
+  content: url("../../../images/enum_comp.svg");
+}
+
+.micon.gi {
+  content: url("../../../images/given.svg");
+}
+
+.micon.va {
+  content: url("../../../images/val.svg");
+}
+
+.micon.ty {
+  content: url("../../../images/type.svg");
+}
+
+.micon.st {
+  content: url("../../../images/static.svg");
+}
+
+.micon.pa {
+  content: url("../../../images/package.svg");
+}
+
+.micon.de {
+  content: url("../../../images/method.svg");
+}
+
+/* icons dark */
+.theme-dark .micon.cl {
+  content: url("../../../images/class-dark.svg");
+}
+
+.theme-dark .micon.cl-wc {
+  content: url("../../../images/class_comp.svg");
+}
+
+.theme-dark .micon.ob {
+  content: url("../../../images/object-dark.svg");
+}
+
+.theme-dark .micon.ob-wc {
+  content: url("../../../images/object_comp.svg");
+}
+
+.theme-dark .micon.tr {
+  content: url("../../../images/trait-dark.svg");
+}
+
+.theme-dark .micon.tr-wc {
+  content: url("../../../images/trait_comp.svg");
+}
+
+.theme-dark .micon.en {
+  content: url("../../../images/enum-dark.svg");
+}
+
+.theme-dark .micon.en-wc {
+  content: url("../../../images/enum_comp.svg");
+}
+
+.theme-dark .micon.gi {
+  content: url("../../../images/given-dark.svg");
+}
+
+.theme-dark .micon.va {
+  content: url("../../../images/val-dark.svg");
+}
+
+.theme-dark .micon.ty {
+  content: url("../../../images/type-dark.svg");
+}
+
+.theme-dark .micon.st {
+  content: url("../../../images/static-dark.svg");
+}
+
+.theme-dark .micon.pa {
+  content: url("../../../images/package-dark.svg");
+}
+
+.theme-dark .micon.de {
+  content: url("../../../images/method-dark.svg");
+}

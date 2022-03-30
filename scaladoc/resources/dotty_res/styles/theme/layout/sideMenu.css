@@ -1,0 +1,19 @@
+.side-menu {
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  height: 100%;
+  padding-left: calc(1.5 * var(--base-spacing));
+  padding-right: calc(1.5 * var(--base-spacing));
+  box-sizing: border-box;
+}
+
+/* show direct children of currently exmanded node*/
+.side-menu div.expanded > div {
+  display: block;
+}
+
+/* always show top level entry*/
+.side-menu > div {
+  display: block;
+}

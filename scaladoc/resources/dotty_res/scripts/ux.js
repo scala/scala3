@@ -1,4 +1,5 @@
 window.addEventListener("DOMContentLoaded", () => {
+
   var toggler = document.getElementById("leftToggler");
   if (toggler) {
     toggler.onclick = function () {
@@ -16,11 +17,11 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  $("#sideMenu2 span").on('click', function(){
+  $(".side-menu span").on('click', function(){
     $(this).parent().toggleClass("expanded")
   });
 
-  document.querySelectorAll("#sideMenu2 a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
+  document.querySelectorAll(".side-menu a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
   $('.names .tab').on('click', function() {
     parent = $(this).parents(".tabs").first()
