@@ -18,24 +18,24 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-1
+0
 trait/test.scala
 <empty>
 T1
 Trait
 <empty>.T1
 x
-20
-21
+12
+17
 1
-<none>
-Literal
+x
+DefDef
 false
 0
 false
-0
+def x
 
-2
+1
 trait/test.scala
 <empty>
 Impl2
@@ -52,7 +52,7 @@ false
 false
 T2("test")
 
-3
+2
 trait/test.scala
 <empty>
 Impl3
@@ -69,7 +69,7 @@ false
 false
 Impl2()
 
-4
+3
 trait/test.scala
 <empty>
 Impl3
@@ -86,7 +86,7 @@ false
 false
 T2(Impl2().p)
 
-5
+4
 trait/test.scala
 <empty>
 test$package$
@@ -103,7 +103,7 @@ false
 false
 Impl1()
 
-6
+5
 trait/test.scala
 <empty>
 test$package$
@@ -120,7 +120,7 @@ false
 false
 println(Impl1().x)
 
-7
+6
 trait/test.scala
 <empty>
 test$package$
@@ -137,7 +137,7 @@ false
 false
 Impl2()
 
-8
+7
 trait/test.scala
 <empty>
 test$package$
@@ -154,7 +154,7 @@ false
 false
 println(Impl2().p)
 
-9
+8
 trait/test.scala
 <empty>
 test$package$
@@ -171,7 +171,7 @@ false
 false
 Impl3()
 
-10
+9
 trait/test.scala
 <empty>
 test$package$
@@ -187,4 +187,22 @@ false
 0
 false
 println(Impl3().p)
+
+10
+trait/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+145
+159
+10
+Test
+DefDef
+false
+0
+false
+@main
+def Test
 

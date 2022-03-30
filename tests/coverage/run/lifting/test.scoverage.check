@@ -18,7 +18,7 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-1
+0
 lifting/test.scala
 <empty>
 Vals
@@ -35,7 +35,7 @@ false
 false
 List(1)
 
-2
+1
 lifting/test.scala
 <empty>
 Vals
@@ -52,7 +52,7 @@ false
 false
 List(1,2,3)
 
-3
+2
 lifting/test.scala
 <empty>
 Vals
@@ -69,24 +69,7 @@ false
 false
 l :: List(1,2,3)
 
-4
-lifting/test.scala
-<empty>
-A
-Class
-<empty>.A
-msg
-104
-112
-5
-<none>
-Literal
-false
-0
-false
-"string"
-
-5
+3
 lifting/test.scala
 <empty>
 A
@@ -103,7 +86,7 @@ false
 false
 "string" + a
 
-6
+4
 lifting/test.scala
 <empty>
 A
@@ -120,7 +103,7 @@ false
 false
 "string" + a + "."
 
-7
+5
 lifting/test.scala
 <empty>
 A
@@ -137,7 +120,7 @@ false
 false
 "string" + a + "." + b
 
-8
+6
 lifting/test.scala
 <empty>
 A
@@ -154,7 +137,7 @@ false
 false
 "string" + a + "." + b + "."
 
-9
+7
 lifting/test.scala
 <empty>
 A
@@ -171,22 +154,56 @@ false
 false
 "string" + a + "." + b + "." + c
 
-10
+8
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+msg
+70
+77
+5
+msg
+DefDef
+false
+0
+false
+def msg
+
+9
 lifting/test.scala
 <empty>
 A
 Class
 <empty>.A
 integer
-158
-159
+139
+150
 6
-<none>
-Literal
+integer
+DefDef
 false
 0
 false
+def integer
+
+10
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+ex
+162
+168
+7
+ex
+DefDef
+false
 0
+false
+def ex
 
 11
 lifting/test.scala
@@ -211,35 +228,18 @@ lifting/test.scala
 test$package$
 Object
 <empty>.test$package$
-Test
-235
-238
-12
-<none>
-Literal
-false
-0
-false
-123
-
-13
-lifting/test.scala
-<empty>
-test$package$
-Object
-<empty>.test$package$
 f
-251
-253
+241
+246
 13
-<none>
-Literal
+f
+DefDef
 false
 0
 false
--1
+def f
 
-14
+13
 lifting/test.scala
 <empty>
 test$package$
@@ -256,7 +256,7 @@ false
 false
 a.msg(i, 0, a.integer)
 
-15
+14
 lifting/test.scala
 <empty>
 test$package$
@@ -273,7 +273,7 @@ false
 false
 println(x)
 
-16
+15
 lifting/test.scala
 <empty>
 test$package$
@@ -290,7 +290,7 @@ false
 false
 a.ex.msg(i, 0, a.ex.integer)
 
-17
+16
 lifting/test.scala
 <empty>
 test$package$
@@ -307,7 +307,7 @@ false
 false
 println(x)
 
-18
+17
 lifting/test.scala
 <empty>
 test$package$
@@ -324,7 +324,7 @@ false
 false
 f()
 
-19
+18
 lifting/test.scala
 <empty>
 test$package$
@@ -341,7 +341,7 @@ false
 false
 a.msg(f(), 0, i)
 
-20
+19
 lifting/test.scala
 <empty>
 test$package$
@@ -357,4 +357,22 @@ false
 0
 false
 println(x)
+
+20
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+188
+202
+10
+Test
+DefDef
+false
+0
+false
+@main
+def Test
 

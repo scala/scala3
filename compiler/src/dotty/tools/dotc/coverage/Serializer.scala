@@ -58,6 +58,7 @@ object Serializer:
                       |""".stripMargin)
 
     def writeStatement(stmt: Statement, writer: Writer): Unit =
+      // Note: we write 0 for the count because we have not measured the actual coverage at this point
       writer.write(s"""${stmt.id}
                       |${getRelativePath(stmt.location.sourcePath)}
                       |${stmt.location.packageName}
@@ -71,7 +72,7 @@ object Serializer:
                       |${stmt.symbolName}
                       |${stmt.treeName}
                       |${stmt.branch}
-                      |${stmt.count}
+                      |0
                       |${stmt.ignored}
                       |${stmt.desc}
                       |\f

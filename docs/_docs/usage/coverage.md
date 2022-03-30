@@ -15,7 +15,8 @@ In Scala 2, all these steps were performed by external tools. In particular, ste
 
 In Scala 3, the compiler itself takes care of step 1. To use this feature, add the compile option `-coverage-out:DIR`, where `DIR` is the destination of the measurement files.
 
-You can also set `-coverage-sourceroot:PATHS_ROOT` to customize how the path of your source files are resolved.
+You can also set `-sourceroot:PATHS_ROOT` to customize how the path of your source files are resolved.
+Note that `-sourceroot` also sets the root path of the SemanticDB files.
 
 ## How-to with sbt
 

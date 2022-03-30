@@ -610,7 +610,7 @@ object Trees {
     override def toString = s"InlineMatch($selector, $cases)"
   }
 
-  /** case pat if guard => body; only appears as child of a Match */
+  /** case pat if guard => body */
   case class CaseDef[-T >: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = CaseDef[T]

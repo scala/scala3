@@ -18,33 +18,16 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-1
-Literals.scala
-<empty>
-Literals$package$
-Object
-<empty>.Literals$package$
-mustBeInstrumented
-26
-35
-1
-<none>
-Literal
-false
 0
-false
-"literal"
-
-2
 Literals.scala
-<empty>
+covtest
 Literals$package$
 Object
-<empty>.Literals$package$
-thisOneToo
-56
-75
-4
+covtest.Literals$package$
+block
+31
+50
+3
 println
 Apply
 false
@@ -52,37 +35,71 @@ false
 false
 println("not this")
 
-3
+1
 Literals.scala
-<empty>
+covtest
 Literals$package$
 Object
-<empty>.Literals$package$
-thisOneToo
-144
-146
-5
-<none>
-Literal
+covtest.Literals$package$
+block
+17
+26
+2
+block
+DefDef
 false
 0
 false
-12
+def block
 
-4
+2
 Literals.scala
-<empty>
+covtest
 Literals$package$
 Object
-<empty>.Literals$package$
+covtest.Literals$package$
+f
+137
+142
+8
+f
+DefDef
+false
+0
+false
+def f
+
+3
+Literals.scala
+covtest
+Literals$package$
+Object
+covtest.Literals$package$
 main
-249
-260
-10
+201
+212
+11
 f
 Apply
 false
 0
 false
 f(0,1,2)(3)
+
+4
+Literals.scala
+covtest
+Literals$package$
+Object
+covtest.Literals$package$
+main
+182
+190
+10
+main
+DefDef
+false
+0
+false
+def main
 

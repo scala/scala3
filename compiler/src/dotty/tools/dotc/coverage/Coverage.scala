@@ -23,12 +23,5 @@ case class Statement(
     symbolName: String,
     treeName: String,
     branch: Boolean,
-    var count: Int = 0,
     ignored: Boolean = false
-):
-  /** Records that this statement has been invoked one more time. */
-  def invoked(): Unit =
-    count += 1
-
-  def isInvoked: Boolean =
-    count > 0
+)

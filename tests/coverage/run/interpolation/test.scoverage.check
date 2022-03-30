@@ -18,58 +18,7 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-1
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-simple
-62
-77
-3
-apply
-Apply
-false
 0
-false
-$a, ${b.length}
-
-2
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-simple
-62
-77
-3
-invoked
-Apply
-false
-0
-false
-$a, ${b.length}
-
-3
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-simple
-62
-77
-3
-apply
-Apply
-false
-0
-false
-$a, ${b.length}
-
-4
 interpolation/test.scala
 <empty>
 Test$
@@ -86,7 +35,7 @@ false
 false
 b.length
 
-5
+1
 interpolation/test.scala
 <empty>
 Test$
@@ -103,7 +52,24 @@ false
 false
 s"$a, ${b.length}"
 
-6
+2
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+simple
+16
+26
+2
+simple
+DefDef
+false
+0
+false
+def simple
+
+3
 interpolation/test.scala
 <empty>
 Test$
@@ -120,58 +86,7 @@ false
 false
 List("d", "o", "t", "t", "y")
 
-7
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-$anonfun
-222
-228
-8
-apply
-Apply
-false
-0
-false
-$i: $s
-
-8
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-$anonfun
-222
-228
-8
-invoked
-Apply
-false
-0
-false
-$i: $s
-
-9
-interpolation/test.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-$anonfun
-222
-228
-8
-apply
-Apply
-false
-0
-false
-$i: $s
-
-10
+4
 interpolation/test.scala
 <empty>
 Test$
@@ -188,7 +103,7 @@ false
 false
 s"$i: $s"
 
-11
+5
 interpolation/test.scala
 <empty>
 Test$
@@ -205,7 +120,7 @@ false
 false
 println(s"$i: $s")
 
-12
+6
 interpolation/test.scala
 <empty>
 Test$
@@ -221,4 +136,21 @@ false
 0
 false
 xs.zipWithIndex.map((s, i) => println(s"$i: $s"))
+
+7
+interpolation/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+82
+90
+5
+main
+DefDef
+false
+0
+false
+def main
 

@@ -18,7 +18,7 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-1
+0
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -34,6 +34,23 @@ false
 0
 false
 println("a")
+
+1
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+135
+147
+7
+<none>
+Block
+false
+0
+false
+case Pat1(0)
 
 2
 MatchCaseClasses.scala
@@ -59,6 +76,23 @@ MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
+168
+180
+8
+<none>
+Block
+false
+0
+false
+case Pat1(_)
+
+4
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
 225
 237
 9
@@ -69,7 +103,24 @@ false
 false
 println("c")
 
-4
+5
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+201
+221
+9
+<none>
+Block
+false
+0
+false
+case p @ Pat2(1, -1)
+
+6
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -86,7 +137,7 @@ false
 false
 println(y)
 
-5
+7
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -103,7 +154,24 @@ false
 false
 println("d")
 
-6
+8
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+242
+265
+10
+<none>
+Block
+false
+0
+false
+case Pat2(_, y: String)
+
+9
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -120,7 +188,24 @@ false
 false
 println("e")
 
-7
+10
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+309
+321
+13
+<none>
+Block
+false
+0
+false
+case p: Pat2
+
+11
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -136,4 +221,38 @@ false
 0
 false
 println("other")
+
+12
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+342
+348
+14
+<none>
+Block
+false
+0
+false
+case _
+
+13
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+101
+106
+6
+f
+DefDef
+false
+0
+false
+def f
 

@@ -18,7 +18,7 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-1
+0
 Givens.scala
 covtest
 Givens
@@ -35,7 +35,7 @@ false
 false
 3 == "3"
 
-2
+1
 Givens.scala
 covtest
 Givens
@@ -52,7 +52,7 @@ false
 false
 println(3 == "3")
 
-3
+2
 Givens.scala
 covtest
 Givens
@@ -69,7 +69,7 @@ false
 false
 3 == 5.1
 
-4
+3
 Givens.scala
 covtest
 Givens
@@ -85,6 +85,23 @@ false
 0
 false
 println(3 == 5.1)
+
+4
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
+test
+100
+108
+8
+test
+DefDef
+false
+0
+false
+def test
 
 5
 Givens.scala
@@ -126,6 +143,23 @@ covtest
 Givens
 Class
 covtest.Givens
+printContext
+217
+233
+13
+printContext
+DefDef
+false
+0
+false
+def printContext
+
+8
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
 getMessage
 348
 358
@@ -137,7 +171,24 @@ false
 false
 i.toString
 
-8
+9
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
+getMessage
+315
+329
+17
+getMessage
+DefDef
+false
+0
+false
+def getMessage
+
+10
 Givens.scala
 covtest
 Givens
@@ -154,7 +205,7 @@ false
 false
 Context(0)
 
-9
+11
 Givens.scala
 covtest
 Givens
@@ -171,7 +222,7 @@ false
 false
 printContext("test")(using c)
 
-10
+12
 Givens.scala
 covtest
 Givens
@@ -188,7 +239,7 @@ false
 false
 getMessage(123)
 
-11
+13
 Givens.scala
 covtest
 Givens
@@ -204,4 +255,21 @@ false
 0
 false
 printContext(getMessage(123))
+
+14
+Givens.scala
+covtest
+Givens
+Class
+covtest.Givens
+test2
+362
+371
+19
+test2
+DefDef
+false
+0
+false
+def test2
 

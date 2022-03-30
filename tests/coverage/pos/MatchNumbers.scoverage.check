@@ -18,6 +18,23 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
+0
+MatchNumbers.scala
+covtest
+MatchNumbers$
+Object
+covtest.MatchNumbers$
+f
+106
+126
+6
+<none>
+Block
+false
+0
+false
+case x: Int if x < 0
+
 1
 MatchNumbers.scala
 covtest
@@ -42,17 +59,51 @@ MatchNumbers$
 Object
 covtest.MatchNumbers$
 f
-130
-132
-6
+137
+148
+7
 <none>
-Literal
+Block
 false
 0
 false
--1
+case x: Int
 
 3
+MatchNumbers.scala
+covtest
+MatchNumbers$
+Object
+covtest.MatchNumbers$
+f
+158
+170
+8
+<none>
+Block
+false
+0
+false
+case y: Long
+
+4
+MatchNumbers.scala
+covtest
+MatchNumbers$
+Object
+covtest.MatchNumbers$
+f
+69
+74
+5
+f
+DefDef
+false
+0
+false
+def f
+
+5
 MatchNumbers.scala
 covtest
 MatchNumbers$
@@ -69,7 +120,7 @@ false
 false
 f(0)
 
-4
+6
 MatchNumbers.scala
 covtest
 MatchNumbers$

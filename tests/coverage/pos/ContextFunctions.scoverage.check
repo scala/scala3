@@ -18,41 +18,41 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
+0
+ContextFunctions.scala
+covtest
+OnError
+Class
+covtest.OnError
+onError
+56
+67
+3
+onError
+DefDef
+false
+0
+false
+def onError
+
 1
 ContextFunctions.scala
 covtest
 Imperative
 Class
 covtest.Imperative
-$anonfun
-178
-184
-8
-<none>
-Literal
+readName2
+121
+134
+7
+readName2
+DefDef
 false
 0
 false
-"name"
+def readName2
 
 2
-ContextFunctions.scala
-covtest
-Imperative
-Class
-covtest.Imperative
-readPerson
-243
-247
-12
-<none>
-Literal
-false
-0
-false
-null
-
-3
 ContextFunctions.scala
 covtest
 Imperative
@@ -69,7 +69,7 @@ false
 false
 readName2(using e)(using s)
 
-4
+3
 ContextFunctions.scala
 covtest
 Imperative
@@ -86,7 +86,7 @@ false
 false
 OnError((e) => readName2(using e)(using s))
 
-5
+4
 ContextFunctions.scala
 covtest
 Imperative
@@ -97,6 +97,23 @@ $anonfun
 294
 13
 invoked
+Apply
+false
+0
+false
+readName2(using e)(using s)
+
+5
+ContextFunctions.scala
+covtest
+Imperative
+Class
+covtest.Imperative
+$anonfun
+267
+294
+13
+apply
 Apply
 false
 0
@@ -109,23 +126,6 @@ covtest
 Imperative
 Class
 covtest.Imperative
-$anonfun
-267
-294
-13
-apply
-Apply
-false
-0
-false
-readName2(using e)(using s)
-
-7
-ContextFunctions.scala
-covtest
-Imperative
-Class
-covtest.Imperative
 readPerson
 252
 295
@@ -137,7 +137,7 @@ false
 false
 OnError((e) => readName2(using e)(using s))
 
-8
+7
 ContextFunctions.scala
 covtest
 Imperative
@@ -154,7 +154,7 @@ false
 false
 OnError((e) => readName2(using e)(using s))
 
-9
+8
 ContextFunctions.scala
 covtest
 Imperative
@@ -170,4 +170,21 @@ false
 0
 false
 OnError((e) => readName2(using e)(using s)).onError(None)
+
+9
+ContextFunctions.scala
+covtest
+Imperative
+Class
+covtest.Imperative
+readPerson
+192
+206
+11
+readPerson
+DefDef
+false
+0
+false
+def readPerson
 

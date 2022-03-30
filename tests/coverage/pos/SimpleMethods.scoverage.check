@@ -1,0 +1,241 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+a
+28
+33
+3
+a
+DefDef
+false
+0
+false
+def a
+
+1
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+b
+46
+51
+4
+b
+DefDef
+false
+0
+false
+def b
+
+2
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+c
+69
+74
+5
+c
+DefDef
+false
+0
+false
+def c
+
+3
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+d
+88
+93
+6
+d
+DefDef
+false
+0
+false
+def d
+
+4
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+e
+106
+111
+7
+e
+DefDef
+false
+0
+false
+def e
+
+5
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+block
+128
+137
+9
+block
+DefDef
+false
+0
+false
+def block
+
+6
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+cond
+206
+210
+14
+<none>
+Literal
+true
+0
+false
+true
+
+7
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+cond
+220
+225
+15
+<none>
+Literal
+true
+0
+false
+false
+
+8
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+cond
+168
+176
+13
+cond
+DefDef
+false
+0
+false
+def cond
+
+9
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+new1
+229
+237
+17
+new1
+DefDef
+false
+0
+false
+def new1
+
+10
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+tryCatch
+282
+284
+20
+<none>
+Literal
+true
+0
+false
+()
+
+11
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+tryCatch
+301
+318
+22
+<none>
+Block
+false
+0
+false
+case e: Exception
+
+12
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+tryCatch
+253
+265
+19
+tryCatch
+DefDef
+false
+0
+false
+def tryCatch
+

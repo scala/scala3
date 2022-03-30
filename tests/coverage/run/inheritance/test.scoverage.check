@@ -18,7 +18,7 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-1
+0
 inheritance/test.scala
 <empty>
 B
@@ -35,7 +35,7 @@ false
 false
 A(x, 0)
 
-2
+1
 inheritance/test.scala
 <empty>
 C1
@@ -52,7 +52,7 @@ false
 false
 println("block")
 
-3
+2
 inheritance/test.scala
 <empty>
 C1
@@ -69,7 +69,7 @@ false
 false
 B({println("block"); 1})
 
-4
+3
 inheritance/test.scala
 <empty>
 C2
@@ -86,7 +86,7 @@ false
 false
 A(2,2)
 
-5
+4
 inheritance/test.scala
 <empty>
 C2
@@ -103,7 +103,7 @@ false
 false
 B(A(2,2).x)
 
-6
+5
 inheritance/test.scala
 <empty>
 test$package$
@@ -120,7 +120,7 @@ false
 false
 C1()
 
-7
+6
 inheritance/test.scala
 <empty>
 test$package$
@@ -137,7 +137,7 @@ false
 false
 println(C1().x)
 
-8
+7
 inheritance/test.scala
 <empty>
 test$package$
@@ -154,7 +154,7 @@ false
 false
 C2()
 
-9
+8
 inheritance/test.scala
 <empty>
 test$package$
@@ -170,4 +170,22 @@ false
 0
 false
 println(C2().x)
+
+9
+inheritance/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+136
+150
+6
+Test
+DefDef
+false
+0
+false
+@main
+def Test
 

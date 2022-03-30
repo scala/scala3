@@ -1,9 +1,10 @@
+package covtest
 
-def mustBeInstrumented = "literal"
-
-def thisOneToo =
+def block =
   println("not this") // this literal should not be instrumented, only the println call
-  12 // this literal must be instrumented
+  12
+  true
+  null
 
 def f(x: Int, y: Int, z: Int)(t: Int) = ???
 

@@ -18,6 +18,23 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
+0
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+f
+28
+33
+3
+f
+DefDef
+false
+0
+false
+def f
+
 1
 Constructor.scala
 covtest
@@ -25,15 +42,15 @@ C
 Class
 covtest.C
 x
-56
-57
+48
+53
 4
-<none>
-Literal
+x
+DefDef
 false
 0
 false
-1
+def x
 
 2
 Constructor.scala
@@ -58,18 +75,35 @@ covtest
 O$
 Object
 covtest.O$
-y
-106
-107
-9
-<none>
-Literal
+g
+78
+83
+8
+g
+DefDef
 false
 0
 false
-1
+def g
 
 4
+Constructor.scala
+covtest
+O$
+Object
+covtest.O$
+y
+98
+103
+9
+y
+DefDef
+false
+0
+false
+def y
+
+5
 Constructor.scala
 covtest
 O$

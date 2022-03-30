@@ -18,7 +18,7 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-1
+0
 currying/test.scala
 <empty>
 Test$
@@ -35,7 +35,7 @@ false
 false
 a+b
 
-2
+1
 currying/test.scala
 <empty>
 Test$
@@ -51,6 +51,23 @@ false
 0
 false
 a+b+c
+
+2
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+f1
+15
+21
+1
+f1
+DefDef
+false
+0
+false
+def f1
 
 3
 currying/test.scala
@@ -92,6 +109,23 @@ currying/test.scala
 Test$
 Object
 <empty>.Test$
+f2
+56
+62
+2
+f2
+DefDef
+false
+0
+false
+def f2
+
+6
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
 $anonfun
 166
 169
@@ -103,7 +137,7 @@ false
 false
 a+b
 
-6
+7
 currying/test.scala
 <empty>
 Test$
@@ -120,7 +154,24 @@ false
 false
 a+b+c
 
-7
+8
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+g1
+114
+120
+5
+g1
+DefDef
+false
+0
+false
+def g1
+
+9
 currying/test.scala
 <empty>
 Test$
@@ -137,7 +188,7 @@ false
 false
 a+b
 
-8
+10
 currying/test.scala
 <empty>
 Test$
@@ -154,7 +205,24 @@ false
 false
 a+b+c
 
-9
+11
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+g2
+175
+181
+8
+g2
+DefDef
+false
+0
+false
+def g2
+
+12
 currying/test.scala
 <empty>
 Test$
@@ -171,7 +239,7 @@ false
 false
 f1(0)(1)(2)
 
-10
+13
 currying/test.scala
 <empty>
 Test$
@@ -188,7 +256,7 @@ false
 false
 println(f1(0)(1)(2))
 
-11
+14
 currying/test.scala
 <empty>
 Test$
@@ -205,7 +273,7 @@ false
 false
 f2(0)
 
-12
+15
 currying/test.scala
 <empty>
 Test$
@@ -222,7 +290,7 @@ false
 false
 f2(0)(1)
 
-13
+16
 currying/test.scala
 <empty>
 Test$
@@ -239,7 +307,7 @@ false
 false
 f2(0)(1)(2)
 
-14
+17
 currying/test.scala
 <empty>
 Test$
@@ -256,7 +324,7 @@ false
 false
 println(f2(0)(1)(2))
 
-15
+18
 currying/test.scala
 <empty>
 Test$
@@ -273,7 +341,7 @@ false
 false
 g1(using 0)(using 1)(using 2)
 
-16
+19
 currying/test.scala
 <empty>
 Test$
@@ -290,7 +358,7 @@ false
 false
 println(g1(using 0)(using 1)(using 2))
 
-17
+20
 currying/test.scala
 <empty>
 Test$
@@ -307,7 +375,7 @@ false
 false
 g2(using 0)(using 1)(using 2)
 
-18
+21
 currying/test.scala
 <empty>
 Test$
@@ -323,4 +391,21 @@ false
 0
 false
 println(g2(using 0)(using 1)(using 2))
+
+22
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+235
+243
+10
+main
+DefDef
+false
+0
+false
+def main
 

@@ -105,12 +105,14 @@ object MainProxies {
         .filterNot(_.matches(defn.MainAnnot))
         .map(annot => insertTypeSplices.transform(annot.tree))
       val mainMeth = DefDef(nme.main, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
-        .withFlags(JavaStatic)
+        .withFlags(JavaStatic | Synthetic)
         .withAnnotations(annots)
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
         .withFlags(Final | Invisible)
-      if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
+
+      if (!ctx.reporter.hasErrors)
+        result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
     }
     result
   }

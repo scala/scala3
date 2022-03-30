@@ -18,7 +18,7 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
-1
+0
 Select.scala
 covtest
 A
@@ -35,7 +35,41 @@ false
 false
 println("A")
 
+1
+Select.scala
+covtest
+A
+Class
+covtest.A
+print
+68
+77
+6
+print
+DefDef
+false
+0
+false
+def print
+
 2
+Select.scala
+covtest
+A
+Class
+covtest.A
+instance
+97
+109
+7
+instance
+DefDef
+false
+0
+false
+def instance
+
+3
 Select.scala
 covtest
 B
@@ -52,7 +86,7 @@ false
 false
 A
 
-3
+4
 Select.scala
 covtest
 B
@@ -69,7 +103,7 @@ false
 false
 super.print()
 
-4
+5
 Select.scala
 covtest
 B
@@ -86,7 +120,24 @@ false
 false
 println(this.instance)
 
-5
+6
+Select.scala
+covtest
+B
+Class
+covtest.B
+print
+139
+157
+10
+print
+DefDef
+false
+0
+false
+override def print
+
+7
 Select.scala
 covtest
 Select$package$
@@ -103,7 +154,7 @@ false
 false
 A()
 
-6
+8
 Select.scala
 covtest
 Select$package$
@@ -120,7 +171,7 @@ false
 false
 new A
 
-7
+9
 Select.scala
 covtest
 Select$package$
@@ -137,7 +188,7 @@ false
 false
 a.instance.print()
 
-8
+10
 Select.scala
 covtest
 Select$package$
@@ -153,4 +204,21 @@ false
 0
 false
 a.print()
+
+11
+Select.scala
+covtest
+Select$package$
+Object
+covtest.Select$package$
+test
+208
+216
+14
+test
+DefDef
+false
+0
+false
+def test
 
