@@ -48,9 +48,9 @@ Schema => SemanticDB v4
 Uri => Advanced.scala
 Text => empty
 Language => Scala
-Symbols => 55 entries
-Occurrences => 114 entries
-Synthetics => 3 entries
+Symbols => 62 entries
+Occurrences => 130 entries
+Synthetics => 4 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
@@ -80,10 +80,12 @@ advanced/Structural#s2(). => method s2 => Object { abstract val method x Int }
 advanced/Structural#s3(). => method s3 => Object { abstract method m (param x: Int): Int }
 advanced/Structural#s4(). => method s4 (param a: Int): Object { abstract val method x Int }
 advanced/Structural#s4().(a) => param a: Int
-advanced/Test. => final object Test extends Object { self: Test.type => +11 decls }
+advanced/Test. => final object Test extends Object { self: Test.type => +13 decls }
+advanced/Test.bar(). => method bar => foo.A
 advanced/Test.e. => val method e Wildcards
 advanced/Test.e1. => val method e1 List[_] forSome { type _  }
 advanced/Test.e1x. => val method e1x Any
+advanced/Test.foo. => lazy val method foo Selectable { abstract type A  = Int } & Selectable { abstract field a: local20; abstract type A  = Int }
 advanced/Test.s. => val method s Structural
 advanced/Test.s1. => val method s1 Object { abstract val method x Int }
 advanced/Test.s1x. => val method s1x Int
@@ -108,6 +110,11 @@ local11 => abstract val method x Int
 local12 => type B  = A
 local13 => val local e3: List[local14]
 local15 => val local e3x: local14
+local16 => type A  = Int
+local17 => type A  = Int
+local18 => abstract val method a A
+local19 => abstract type A  = Int
+local21 => abstract field a: A
 
 Occurrences:
 [0:8..0:16): advanced <- advanced/
@@ -208,27 +215,44 @@ Occurrences:
 [40:12..40:15): e3x <- local15
 [40:18..40:20): e3 -> local13
 [40:21..40:25): head -> scala/collection/IterableOps#head().
-[48:6..48:13): HKClass <- advanced/HKClass#
-[48:14..48:15): F <- advanced/HKClass#[F]
-[48:20..48:21): T <- advanced/HKClass#`<init>`().[F][T]
-[48:28..48:29): U <- advanced/HKClass#`<init>`().[F][U]
-[48:36..48:37): U -> advanced/HKClass#`<init>`().[F][U]
-[48:39..48:40): T -> advanced/HKClass#`<init>`().[F][T]
-[49:6..49:9): foo <- advanced/HKClass#foo().
-[49:10..49:11): T <- advanced/HKClass#foo().[T]
-[49:12..49:13): U <- advanced/HKClass#foo().[U]
-[49:15..49:16): x <- advanced/HKClass#foo().(x)
-[49:18..49:19): F -> advanced/HKClass#[F]
-[49:20..49:21): T -> advanced/HKClass#foo().[T]
-[49:23..49:24): U -> advanced/HKClass#foo().[U]
-[49:28..49:34): String -> scala/Predef.String#
-[49:37..49:38): x -> advanced/HKClass#foo().(x)
-[49:39..49:47): toString -> scala/Tuple2#toString().
+[46:11..46:14): foo <- advanced/Test.foo.
+[46:17..46:24): reflect -> scala/reflect/
+[46:25..46:35): Selectable -> scala/reflect/Selectable#
+[46:43..46:44): A <- local16
+[46:47..46:50): Int -> scala/Int#
+[46:54..46:55): & -> scala/`&`#
+[46:57..46:64): reflect -> scala/reflect/
+[46:65..46:75): Selectable -> scala/reflect/Selectable#
+[46:83..46:84): A <- local17
+[46:87..46:90): Int -> scala/Int#
+[46:96..46:97): a <- local18
+[46:99..46:100): A -> local17
+[46:106..46:109): ??? -> scala/Predef.`???`().
+[47:6..47:9): bar <- advanced/Test.bar().
+[47:11..47:14): foo -> advanced/Test.foo.
+[47:19..47:22): foo -> advanced/Test.foo.
+[52:6..52:13): HKClass <- advanced/HKClass#
+[52:14..52:15): F <- advanced/HKClass#[F]
+[52:20..52:21): T <- advanced/HKClass#`<init>`().[F][T]
+[52:28..52:29): U <- advanced/HKClass#`<init>`().[F][U]
+[52:36..52:37): U -> advanced/HKClass#`<init>`().[F][U]
+[52:39..52:40): T -> advanced/HKClass#`<init>`().[F][T]
+[53:6..53:9): foo <- advanced/HKClass#foo().
+[53:10..53:11): T <- advanced/HKClass#foo().[T]
+[53:12..53:13): U <- advanced/HKClass#foo().[U]
+[53:15..53:16): x <- advanced/HKClass#foo().(x)
+[53:18..53:19): F -> advanced/HKClass#[F]
+[53:20..53:21): T -> advanced/HKClass#foo().[T]
+[53:23..53:24): U -> advanced/HKClass#foo().[U]
+[53:28..53:34): String -> scala/Predef.String#
+[53:37..53:38): x -> advanced/HKClass#foo().(x)
+[53:39..53:47): toString -> scala/Tuple2#toString().
 
 Synthetics:
 [27:12..27:16):s.s1 => reflectiveSelectable(*)
 [29:12..29:16):s.s2 => reflectiveSelectable(*)
 [31:12..31:16):s.s3 => reflectiveSelectable(*)
+[47:19..47:24):foo.a => *[foo.A]
 
 expect/Annotations.scala
 ------------------------

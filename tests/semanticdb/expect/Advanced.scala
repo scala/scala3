@@ -42,6 +42,10 @@ object Test {
         ()
     }
   }
+
+  // see: https://github.com/lampepfl/dotty/pull/14608#discussion_r835642563
+  lazy val foo: (reflect.Selectable { type A = Int }) & (reflect.Selectable { type A = Int; val a: A }) = ???
+  def bar: foo.A = foo.a
 }
 
 

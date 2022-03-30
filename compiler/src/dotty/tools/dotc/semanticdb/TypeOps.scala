@@ -20,26 +20,26 @@ import dotty.tools.dotc.core.Names.Designator
 class TypeOps:
   import SymbolScopeOps._
   import Scala3.given
-  private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
-  private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
+  private val paramRefSymtab = mutable.Map[(LambdaType, Name), SemanticSymbol]()
+  private val refinementSymtab = mutable.Map[(RefinedType, Name), SemanticSymbol]()
 
   // save generated fake symbols so we can insert them into symbols section of SemanticDB
   val fakeSymbols = mutable.Set[FakeSymbol]()
   given typeOps: TypeOps = this
 
-  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
+  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), SemanticSymbol])
     private def lookup(
       binder: T,
       name: Name,
-    )(using Context): Option[Symbol] =
+    )(using Context): Option[SemanticSymbol] =
       symtab.get((binder, name))
 
-  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
+  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), SemanticSymbol])
     private def lookupOrErr(
       binder: T,
       name: Name,
       parent: Symbol,
-    )(using Context): Option[Symbol] =
+    )(using Context): Option[SemanticSymbol] =
       // In case refinement or type param cannot be accessed from traverser and
       // no symbols are registered to the symbol table, fall back to Type.member
       symtab.lookup(binder, name) match
@@ -241,11 +241,22 @@ class TypeOps:
         // when TypeRef refers the refinement of RefinedType e.g.
         // TypeRef for `foo.B` in `trait T[A] { val foo: { type B = A } = ???; def bar(b: foo.B) = () }` has NoSymbol
         case TypeRef(pre, name: Name) =>
+          def lookupSym(tpe: Type): Option[SemanticSymbol] = {
+            tpe match {
+              case rt: RefinedType =>
+                refinementSymtab.lookupOrErr(rt, name, rt.typeSymbol)
+              case rec: RecType =>
+                lookupSym(rec.parent)
+              case AndType(tp1, tp2) =>
+                lookupSym(tp1).orElse(lookupSym(tp2))
+              case OrType(tp1, tp2) =>
+                lookupSym(tp1).orElse(lookupSym(tp2))
+              case _ =>
+                None
+            }
+          }
           val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
-          val maybeSym = pre.widen.dealias match
-            case rt: RefinedType =>
-              refinementSymtab.lookupOrErr(rt, name, rt.typeSymbol)
-            case _ => None
+          val maybeSym = lookupSym(pre.widen.dealias)
           maybeSym match
             case Some(sym) =>
               s.TypeRef(spre, sym.symbolName, Seq.empty)
@@ -368,7 +379,9 @@ class TypeOps:
 
           val decls: List[SemanticSymbol] = refinedInfos.map { (name, info) =>
             refinementSymtab.lookup(rt, name).getOrElse {
-              RefinementSymbol(sym, name, info).tap(registerFakeSymbol)
+              val fakeSym = RefinementSymbol(sym, name, info).tap(registerFakeSymbol)
+              refinementSymtab((rt, name)) = fakeSym
+              fakeSym
             }
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
