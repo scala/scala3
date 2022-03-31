@@ -50,6 +50,9 @@ object Formatting {
       given [A: Show, B: Show]: Show[(A, B)] with
         def show(x: (A, B)) = (Show[A].show(x._1), Show[B].show(x._2))
 
+      given [X: Show]: Show[X | Null] with
+        def show(x: X | Null) = if x == null then "null" else Show[X].show(x.nn)
+
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString
 

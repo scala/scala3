@@ -249,7 +249,7 @@ object Decorators {
   extension [T](x: T)
     def showing[U](
         op: WrappedResult[U] ?=> String,
-        printer: config.Printers.Printer = config.Printers.default)(using c: Conversion[T, U] = null): T = {
+        printer: config.Printers.Printer = config.Printers.default)(using c: Conversion[T, U] | Null = null): T = {
       // either the use of `$result` was driven by the expected type of `Shown`
       // which led to the summoning of `Conversion[T, Shown]` (which we'll invoke)
       // or no such conversion was found so we'll consume the result as it is instead
@@ -268,7 +268,7 @@ object Decorators {
               if !ctx.mode.is(Mode.PrintShowExceptions) && !ctx.settings.YshowPrintErrors.value =>
             val msg = ex match { case te: TypeError => te.toMessage case _ => ex.getMessage }
             s"[cannot display due to $msg, raw string = $x]"
-      case _ => String.valueOf(x)
+      case _ => String.valueOf(x).nn
 
   extension [T](x: T)
     def assertingErrorsReported(using Context): T = {
