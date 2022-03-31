@@ -766,11 +766,22 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           val bsmArgs = Array.newBuilder[AnyRef]
           bsmArgs += clazzTpe
           for (accessor <- clazz.symbol.caseAccessors) {
+
+            /* When possible, using a field method handle will be more efficient.
+             * However, a virtual call to the getter will always work if we can't
+             * otherwise be certain the case class field won't be overriden.
+             */
+            val useField = claszSymbol.is(Final) || accessor.is(Final)
+            val handleDescriptor = if (useField) {
+              toTypeKind(accessor.info.finalResultType).toASMType.getDescriptor
+            } else {
+              asmMethodType(accessor).descriptor
+            }
             bsmArgs += new asm.Handle(
-              Opcodes.H_GETFIELD,
+              if (useField) Opcodes.H_GETFIELD else Opcodes.H_INVOKEVIRTUAL,
               clazzTpe.getInternalName,
               accessor.javaSimpleName,
-              toTypeKind(accessor.info.finalResultType).toASMType.getDescriptor,
+              handleDescriptor,
               false // isInterface
             )
           }
