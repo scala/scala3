@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.ast.{Trees, tpd, untpd}
+import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
 import scala.collection.mutable
 import core._
 import dotty.tools.dotc.typer.Checking
@@ -255,6 +255,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       if tree.symbol.is(ConstructorProxy) then
         report.error(em"constructor proxy ${tree.symbol} cannot be used as a value", tree.srcPos)
 
+    def checkStableSelection(tree: Tree)(using Context): Unit =
+      def check(qual: Tree) =
+        if !qual.tpe.isStable then
+          report.error(em"Parameter untupling cannot be used for call-by-name parameters", tree.srcPos)
+      tree match
+        case Select(qual, _) => check(qual)    // simple select _n
+        case Apply(TypeApply(Select(qual, _), _), _) => check(qual) // generic select .apply[T](n)
+
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         // TODO move CaseDef case lower: keep most probable trees first for performance
@@ -356,6 +364,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: ValDef =>
           checkErasedDef(tree)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          if tree1.removeAttachment(desugar.UntupledParam).isDefined then
+            checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
           checkErasedDef(tree)

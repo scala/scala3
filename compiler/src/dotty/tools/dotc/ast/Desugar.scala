@@ -39,6 +39,10 @@ object desugar {
    */
   val MultiLineInfix: Property.Key[Unit] = Property.StickyKey()
 
+  /** An attachment key to indicate that a ValDef originated from parameter untupling.
+   */
+  val UntupledParam: Property.Key[Unit] = Property.StickyKey()
+
   /** What static check should be applied to a Match? */
   enum MatchCheck {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
@@ -1426,7 +1430,9 @@ object desugar {
     val vdefs =
       params.zipWithIndex.map {
         case (param, idx) =>
-          DefDef(param.name, Nil, param.tpt, selector(idx)).withSpan(param.span)
+          ValDef(param.name, param.tpt, selector(idx))
+            .withSpan(param.span)
+            .withAttachment(UntupledParam, ())
       }
     Function(param :: Nil, Block(vdefs, body))
   }
