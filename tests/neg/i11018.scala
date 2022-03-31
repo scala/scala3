@@ -13,9 +13,19 @@ trait CTrait[+A](val a: A) {
 trait DTrait[+B] extends CTrait[B]
 trait DClass[+B] extends CClass[B]
 
-final class F1 extends DTrait[Foo] with CTrait[Bar](new Bar) // error: illegal parameter
-final class F2 extends CTrait[Bar](new Bar) with DTrait[Foo] // error: illegal parameter
-final class F3 extends DClass[Foo] with CClass[Bar](new Bar) // error: illegal parameter
-final class F4 extends CClass[Bar](new Bar) with DClass[Foo] // error: illegal parameter
+final class F1 // error: illegal inheritance
+  extends DTrait[Foo]
+  with CTrait[Bar](new Bar) // error: illegal parameter
+final class F2 // error: illegal inheritance
+  extends CTrait[Bar](new Bar) // error: illegal parameter
+  with DTrait[Foo]
+final class F3 // error: illegal inheritance
+  extends DClass[Foo]
+  with CClass[Bar](new Bar) // error: illegal parameter
+final class F4 // error: illegal inheritance
+  extends CClass[Bar](new Bar) // error: illegal parameter
+  with DClass[Foo]
 
-final class F5 extends DTrait[Foo] with CTrait[Foo & Bar](new Bar with Foo { def name = "hello"}) // ok
+final class F5 // error: illegal inheritance
+  extends DTrait[Foo]
+  with CTrait[Foo & Bar](new Bar with Foo { def name = "hello"})

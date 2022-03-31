@@ -2074,9 +2074,9 @@ object SymDenotations {
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): Denotation =
       membersNamedNoShadowingBasedOnFlags(name, required, excluded).asSeenFrom(pre).toDenot(pre)
 
-    /** Compute tp.baseType(this) */
-    final def baseTypeOf(tp: Type)(using Context): Type = {
-      val btrCache = baseTypeCache
+    /** Compute tp.baseType(this) or tp.baseType(this, without) */
+    final def baseTypeOf(tp: Type, without: Option[Symbol] = None)(using Context): Type = {
+      val btrCache = if without.isEmpty then baseTypeCache else new BaseTypeMap()
       def inCache(tp: Type) = tp match
         case tp: CachedType => btrCache.contains(tp)
         case _ => false
@@ -2130,6 +2130,8 @@ object SymDenotations {
                   val baseTp =
                     if (tpSym eq symbol)
                       tp
+                    else if without.exists(tpSym eq _) then
+                      defn.AnyType
                     else if (isOwnThis)
                       if (clsd.baseClassSet.contains(symbol))
                         if (symbol.isStatic && symbol.typeParams.isEmpty) symbol.typeRef
@@ -2156,6 +2158,7 @@ object SymDenotations {
               btrCache(tp) = NoPrefix
               val baseTp =
                 if (tycon.typeSymbol eq symbol) tp
+                else if without.exists(tycon.typeSymbol eq _) then defn.AnyType
                 else (tycon.typeParams: @unchecked) match {
                   case LambdaParam(_, _) :: _ =>
                     recur(tp.superType)

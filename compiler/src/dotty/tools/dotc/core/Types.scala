@@ -1129,6 +1129,12 @@ object Types {
       }
     }
 
+    /** `basetype`, but ignoring any base classes that have the given `without` class symbol. */
+    final def baseTypeWithout(base: Symbol, without: Symbol)(using Context): Type =
+      base.denot match
+        case classd: ClassDenotation => classd.baseTypeOf(this, Some(without))
+        case _ => NoType
+
     def & (that: Type)(using Context): Type = {
       record("&")
       TypeComparer.glb(this, that)

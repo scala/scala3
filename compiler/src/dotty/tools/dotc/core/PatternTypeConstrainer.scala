@@ -209,8 +209,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  are used to infer type arguments to Unapply trees.
    *
    *  ## Invariant refinement
-   *  Essentially, we say that `D[B] extends C[B]` s.t. refines parameter `A` of `trait C[A]` invariantly if
-   *  when `c: C[T]` and `c` is instance of `D`, then necessarily `c: D[T]`. This is violated if `A` is variant:
+   *  Essentially, we say that `D[B] extends C[B]` refines parameter `A` of `trait C[A]` invariantly if
+   *  when `c: C[T]` and `c` is instance of `D`, then necessarily `c: D[T]`.
+   *  This is violated if `A` is variant and `C` is mixed in with an incompatible type argument:
    *
    *     trait C[+A]
    *     trait D[+B](val b: B) extends C[B]
@@ -224,29 +225,30 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *     }
    *
    *  It'd be unsound for us to say that `t <: T`, even though that follows from `D[t] <: C[T]`.
-   *  Note, however, that if `D` was a final class, we *could* rely on that relationship.
-   *  To support typical case classes, we also assume that this relationship holds for them and their parent traits.
-   *  This is enforced by checking that classes inheriting from case classes do not extend the parent traits of those
-   *  case classes without also appropriately extending the relevant case class
-   *  (see `RefChecks#checkCaseClassInheritanceInvariant`).
+   *  Note, however, that if `D` was a concrete class, we can rely on that relationship.
+   *  We can assume this relationship holds for them and their parent traits
+   *  by checking that classes inheriting from those classes do not mix-in any parent traits
+   *  with a type parameter that isn't the same type, a subtype, or a super type, depending on if the
+   *  trait's parameter is invariant, covariant or contravariant, respectively
+   *  (see `RefChecks#checkClassInheritanceInvariant`).
    */
   def constrainSimplePatternType(patternTp: Type, scrutineeTp: Type, forceInvariantRefinement: Boolean): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
       case tp: SingletonType => true
-      case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
+      case tp: ClassInfo => tp.cls.is(Final)
       case tp: TypeProxy => refinementIsInvariant(tp.superType)
       case _ => false
     }
+    def refinementIsInvariant2(tp: Type): Boolean = tp match
+      case tp: SingletonType => true
+      case tp: ClassInfo     => !tp.cls.isOneOf(AbstractOrTrait) || tp.cls.isOneOf(Private | Sealed)
+      case tp: TypeProxy     => refinementIsInvariant2(tp.superType)
+      case _                 => false
 
-    def widenVariantParams(tp: Type) = tp match {
-      case tp @ AppliedType(tycon, args) =>
-        val args1 = args.zipWithConserve(tycon.typeParams)((arg, tparam) =>
-          if (tparam.paramVarianceSign != 0) TypeBounds.empty else arg
-        )
-        tp.derivedAppliedType(tycon, args1)
-      case tp =>
-        tp
-    }
+    extension (tp: Type) def isAbstract: Boolean = tp.stripped match
+      case _: TypeParamRef => true
+      case tp: TypeRef     => !tp.symbol.isClass
+      case _               => false
 
     val patternCls = patternTp.classSymbol
     val scrutineeCls = scrutineeTp.classSymbol
@@ -269,10 +271,11 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val result =
             tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
               val variance = param.paramVarianceSign
-              if variance == 0 || assumeInvariantRefinement ||
+              if variance == 0 || assumeInvariantRefinement
+                || refinementIsInvariant2(patternTp) && (argP.isAbstract || patternTp.argInfos.contains(argP))
                 // As a special case, when pattern and scrutinee types have the same type constructor,
                 // we infer better bounds for pattern-bound abstract types.
-                argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
+                || argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
               then
                 val TypeBounds(loS, hiS) = argS.bounds
                 val TypeBounds(loP, hiP) = argP.bounds

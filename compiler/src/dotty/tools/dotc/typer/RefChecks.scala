@@ -770,16 +770,18 @@ object RefChecks {
           }
       }
 
-      /** Check that inheriting a case class does not constitute a variant refinement
-       *  of a base type of the case class. It is because of this restriction that we
-       *  can assume invariant refinement for case classes in `constrainPatternType`.
+      /** Check that inheriting a class does not constitute a variant refinement
+       *  of a base type of the class. It is because of this restriction that we
+       *  can assume invariant refinement for concrete classes in `constrainPatternType`.
        */
-      def checkCaseClassInheritanceInvariant() =
-        for (caseCls <- clazz.info.baseClasses.tail.find(_.is(Case)))
-          for (baseCls <- caseCls.info.baseClasses.tail)
+      def checkClassInheritanceInvariant() =
+        for (middle <- clazz.info.baseClasses.tail.filter(!_.isTransparentTrait))
+          for (baseCls <- middle.info.baseClasses.tail)
             if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
-              for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
+              val middleStr = if middle.is(Case) then "case " else ""
+              for (problem <- variantInheritanceProblems(baseCls, middle, "variant", middleStr))
                 report.errorOrMigrationWarning(problem(), clazz.srcPos, from = `3.0`)
+
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
@@ -788,7 +790,7 @@ object RefChecks {
         report.error(abstractErrorMessage, clazz.srcPos)
 
       checkMemberTypesOK()
-      checkCaseClassInheritanceInvariant()
+      checkClassInheritanceInvariant()
     }
 
     if (!clazz.is(Trait)) {
@@ -825,16 +827,28 @@ object RefChecks {
      */
     def variantInheritanceProblems(
         baseCls: Symbol, middle: Symbol, baseStr: String, middleStr: String): Option[() => String] = {
+      if baseCls == middle then return None
       val superBT = self.baseType(middle)
-      val thisBT = self.baseType(baseCls)
       val combinedBT = superBT.baseType(baseCls)
-      if (combinedBT =:= thisBT) None // ok
+      val withoutMiddleBT = self.baseTypeWithout(baseCls, middle)
+      val allOk = (combinedBT, withoutMiddleBT) match
+        case (AppliedType(tycon, args1), AppliedType(_, args2)) =>
+          val superBTArgs = superBT.argInfos.toSet
+          tycon.typeParams.lazyZip(args1).lazyZip(args2).forall { (param, arg1, arg2) =>
+            if superBTArgs.contains(arg1) then
+              val variance = param.paramVarianceSign
+              (variance > 0 || (arg2 <:< arg1)) &&
+              (variance < 0 || (arg1 <:< arg2))
+            else true // e.g. CovBoth in neg/i11834
+          }
+        case _ => combinedBT =:= self.baseType(baseCls)
+      if allOk then None // ok
       else
         Some(() =>
           em"""illegal inheritance: $clazz inherits conflicting instances of $baseStr base $baseCls.
               |
-              |  Direct basetype: $thisBT
-              |  Basetype via $middleStr$middle: $combinedBT""")
+              |  Basetype via $middleStr$middle: $combinedBT
+              |  Basetype without $middleStr$middle: $withoutMiddleBT""")
     }
 
     /* Returns whether there is a symbol declared in class `inclazz`
