@@ -10,14 +10,19 @@ window.addEventListener("DOMContentLoaded", () => {
   var elements = document.getElementsByClassName("documentableElement")
   if (elements) {
     for (i = 0; i < elements.length; i++) {
-      elements[i].onclick = function(e) {
-        if(!$(e.target).is("a") && e.fromSnippet !== true)
+      elements[i].onclick = function (e) {
+        if (!$(e.target).is("a") && e.fromSnippet !== true)
           this.classList.toggle("expand")
       }
     }
   }
 
-  $(".side-menu span").on('click', function(){
+  $(".icon-button.hamburger").on('click', function () {
+    $("#hamburger-dropdown").toggleClass("expanded")
+    $(this).toggleClass("selected")
+  });
+
+  $(".side-menu span").on('click', function () {
     $(this).parent().toggleClass("expanded")
   });
 
@@ -39,7 +44,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   document.querySelectorAll(".side-menu a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
-  $('.names .tab').on('click', function() {
+  $('.names .tab').on('click', function () {
     parent = $(this).parents(".tabs").first()
     shown = $(this).hasClass('selected')
     single = parent.hasClass("single")
@@ -51,7 +56,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!shown) { myTab.addClass('selected') }
     if (shown && !single) myTab.removeClass('selected')
 
-    if(!shown && $(this).filter(".showGraph").length > 0) {
+    if (!shown && $(this).filter(".showGraph").length > 0) {
       showGraph()
       $(this).find(".showGraph").removeClass("showGraph")
     }
@@ -71,7 +76,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   var logo = document.getElementById("logo");
   if (logo) {
-    logo.onclick = function() {
+    logo.onclick = function () {
       window.location = pathToRoot; // global variable pathToRoot is created by the html renderer
     };
   }
@@ -136,7 +141,7 @@ var transform;
 function showGraph() {
   if ($("svg#graph").children().length == 0) {
     var dotNode = document.querySelector("#dot")
-    if (dotNode){
+    if (dotNode) {
       var svg = d3.select("#graph");
       var radialGradient = svg.append("defs").append("radialGradient").attr("id", "Gradient");
       radialGradient.append("stop").attr("stop-color", "var(--aureole)").attr("offset", "20%");
@@ -146,7 +151,7 @@ function showGraph() {
 
       // Set up zoom support
       zoom = d3.zoom()
-        .on("zoom", function({transform}) {
+        .on("zoom", function ({ transform }) {
           inner.attr("transform", transform);
         });
       svg.call(zoom);
@@ -168,7 +173,7 @@ function showGraph() {
       });
       g.setParent("node0", "node0Cluster");
 
-      g.edges().forEach(function(v) {
+      g.edges().forEach(function (v) {
         g.setEdge(v, {
           arrowhead: "vee"
         });
@@ -179,11 +184,11 @@ function showGraph() {
       var bounds = svg.node().getBBox();
       var parent = svg.node().parentElement;
       var fullWidth = parent.clientWidth || parent.parentNode.clientWidth,
-          fullHeight = parent.clientHeight || parent.parentNode.clientHeight;
+        fullHeight = parent.clientHeight || parent.parentNode.clientHeight;
       var width = bounds.width,
-          height = bounds.height;
+        height = bounds.height;
       var midX = bounds.x + width / 2,
-          midY = bounds.y + height / 2;
+        midY = bounds.y + height / 2;
       if (width == 0 || height == 0) return; // nothing to fit
       var scale = Math.min(fullWidth / width, fullHeight / height) * 0.99; // 0.99 to make a little padding
       var translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];

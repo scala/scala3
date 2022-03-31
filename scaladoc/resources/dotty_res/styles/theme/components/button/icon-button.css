@@ -2,9 +2,25 @@
   background: unset;
   border: none;
   cursor: pointer;
+  outline: none !important;
+  padding: 0;
 }
 
-/* sun button */
+.icon-button::after {
+  width: calc(2 * var(--base-spacing));
+  height: calc(2 * var(--base-spacing));
+}
+
+.icon-button:focus {
+  box-shadow: 0px 0px 0px 2px var(--focus-default);
+  border-radius: 4px;
+}
+
+/* theme-toggle button */
+#theme-toggle {
+  margin-right: calc(2 * var(--base-spacing));
+}
+
 #theme-toggle.icon-button::after {
   content: url("../../../../images/icon-buttons/moon/light/default.svg");
 }

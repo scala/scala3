@@ -97,6 +97,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/components/switcher.css",
       "styles/theme/components/navigation-item.css",
       "styles/theme/components/button/icon-button.css",
+      "styles/theme/components/button/text-button.css",
+      "styles/theme/components/dropdown-menu.css",
 
 
       "styles/nord-light.css",

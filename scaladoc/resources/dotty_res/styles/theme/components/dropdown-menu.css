@@ -1,0 +1,22 @@
+/* should be used with body-small */
+.dropdown-menu {
+  background-color: var(--action-primary-background-default-solid);
+  border-radius: 4px;
+  box-shadow: 0px 10px 38px -10px var(--shadow-first),
+    0px 10px 20px -15px var(--shadow-second),
+    inset 0px 0px 0px 1px var(--shadow-inset);
+  flex-direction: column;
+  display: none;
+  position: absolute;
+  padding: calc(3 * var(--base-spacing));
+  top: calc(6 * var(--base-spacing));
+  right: calc(2 * var(--base-spacing));
+}
+
+.dropdown-menu > *:not(:last-child) {
+  margin-bottom: calc(2 * var(--base-spacing));
+}
+
+.dropdown-menu.expanded {
+  display: flex;
+}

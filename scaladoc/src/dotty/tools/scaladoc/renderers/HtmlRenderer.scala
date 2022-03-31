@@ -204,7 +204,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       }
 
     div(id := "container")(
-    div(id := "header")(
+      div(id := "header")(
         div(cls := "header-container-left")(
           projectLogo,
         ),

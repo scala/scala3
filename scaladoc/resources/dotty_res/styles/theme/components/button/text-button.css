@@ -1,0 +1,24 @@
+.text-button a {
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+}
+
+.text-button:hover a {
+  color: var(--action-primary-content-hover);
+}
+
+.text-button:active a {
+  color: var(--action-primary-content-active);
+}
+
+.text-button.selected a {
+  color: var(--action-primary-content-selected);
+}
+
+.text-button:focus a {
+  box-shadow: 0px 0px 0px 2px var(--focus-default);
+}
+
+.text-button:disabled a {
+  opacity: 0.5;
+}
