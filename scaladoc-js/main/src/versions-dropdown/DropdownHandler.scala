@@ -23,9 +23,9 @@ class DropdownHandler:
 
   private def addVersionsList(json: String) =
     val ver = JSON.parse(json).asInstanceOf[Versions]
-    val ddc = document.getElementById("dropdown-content")
+    val ddc = document.getElementById("version-dropdown")
     for (k, v) <- ver.versions do
-      var child = a(href := v)(k)
+      val child = span(cls := "text-button", href := v)(k)
       ddc.appendChild(child)
     val arrow = span(cls := "ar")()
     document.getElementById("dropdown-button").appendChild(arrow)
@@ -68,24 +68,7 @@ end DropdownHandler
 
 @JSExportTopLevel("dropdownHandler")
 def dropdownHandler() =
-  if document.getElementById("dropdown-content").getElementsByTagName("a").size > 0 &&
-     window.getSelection.toString.length == 0 then
-    document.getElementById("dropdown-content").classList.toggle("show")
-    document.getElementById("dropdown-button").classList.toggle("expanded")
-    document.getElementById("dropdown-input").asInstanceOf[html.Input].focus()
-
-@JSExportTopLevel("filterFunction")
-def filterFunction() =
-  val input = document.getElementById("dropdown-input").asInstanceOf[html.Input]
-  val filter = input.value.toUpperCase
-  val div = document.getElementById("dropdown-content")
-  val as = div.getElementsByTagName("a")
-
-  as.foreach { a =>
-    val txtValue = a.innerText
-    val cl = a.asInstanceOf[html.Anchor].classList
-    if txtValue.toUpperCase.indexOf(filter) > -1 then
-      cl.remove("filtered")
-    else
-      cl.add("filtered")
-  }
+  // if document.getElementById("dropdown-content").getElementsByTagName("a").size > 0 &&
+  //    window.getSelection.toString.length == 0 then
+    document.getElementById("version-dropdown").classList.toggle("expanded")
+    // document.getElementById("dropdown-button").classList.toggle("expanded")

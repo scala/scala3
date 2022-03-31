@@ -17,11 +17,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  $(".icon-button.hamburger").on('click', function () {
-    $("#hamburger-dropdown").toggleClass("expanded")
-    $(this).toggleClass("selected")
-  });
-
   $(".side-menu span").on('click', function () {
     $(this).parent().toggleClass("expanded")
   });

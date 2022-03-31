@@ -207,6 +207,18 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       div(id := "header")(
         div(cls := "header-container-left")(
           projectLogo,
+          span(onclick := "dropdownHandler()", cls := "text-button")(
+            a()(
+              args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
+            ),
+            div(id := "version-dropdown", cls := "dropdown-menu") (
+              span(cls := "text-button")(
+                a() (
+                "Download",
+                )
+              ),
+            )
+          ),
         ),
 
         div(cls:="header-container-center")(
@@ -214,40 +226,38 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         ),
 
          div(cls:="header-container-right")(
+          span(cls := "text-button")(
+            a(href := "https://www.scala-lang.org/download/") (
+              "Download",
+            )
+          ),
+          span(cls := "text-button")(
+            a(href := "https://docs.scala-lang.org/") (
+              "Documentation",
+            )
+          ),
+          span(cls := "text-button")(
+            a(href := "https://index.scala-lang.org") (
+              "Libraries",
+            )
+          ),
+          span(cls := "text-button")(
+            a(href := "https://www.scala-lang.org/contribute/") (
+              "Contribute",
+            )
+          ),
+          span(cls := "text-button")(
+            a(href := "https://www.scala-lang.org/contribute/") (
+              "Blog",
+            )
+          ),
+          span(cls := "text-button")(
+            a(href := "https://www.scala-lang.org/blog/") (
+              "Community",
+            )
+          ),
           button(id := "theme-toggle", cls := "icon-button"),
-          button(cls := "icon-button hamburger"),
-          div(id := "hamburger-dropdown", cls := "dropdown-menu body-small")(
-            span(cls := "text-button")(
-              a(href := "https://www.scala-lang.org/download/") (
-                "Download",
-              )
-            ),
-            span(cls := "text-button")(
-              a(href := "https://docs.scala-lang.org/") (
-                "Documentation",
-              )
-            ),
-            span(cls := "text-button")(
-              a(href := "https://index.scala-lang.org") (
-                "Libraries",
-              )
-            ),
-            span(cls := "text-button")(
-              a(href := "https://www.scala-lang.org/contribute/") (
-                "Contribute",
-              )
-            ),
-             span(cls := "text-button")(
-              a(href := "https://www.scala-lang.org/contribute/") (
-                "Blog",
-              )
-            ),
-            span(cls := "text-button")(
-              a(href := "https://www.scala-lang.org/blog/") (
-                "Community",
-              )
-            ),
-          )
+
         ),
 
 
@@ -285,16 +295,6 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         //   span(
         //     div(cls:="projectName")(args.name)
         //   ),
-        //   div(id := "version")(
-        //     div(cls := "versions-dropdown")(
-        //       div(onclick := "dropdownHandler()", id := "dropdown-button", cls := "dropdownbtn dropdownbtnactive")(
-        //         args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse(""),
-        //         div(id := "dropdown-content", cls := "dropdown-content")(
-        //           input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
-        //         ),
-        //       ),
-        //     )
-        //   ),
         //   div(cls := "socials")(
         //     socialLinks()
         //   )
@@ -324,7 +324,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         div (id := "leftToggler")(
           span(cls := "icon-toggler")
         ),
-        div(id := "scaladoc-searchBar"),
+        // div(id := "scaladoc-searchBar"),
         // main(id := "main-content")(
         //   parentsHtml,
         //   div(id := "content")(content),

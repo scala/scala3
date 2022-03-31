@@ -9,8 +9,7 @@
   display: none;
   position: absolute;
   padding: calc(3 * var(--base-spacing));
-  top: calc(6 * var(--base-spacing));
-  right: calc(2 * var(--base-spacing));
+  z-index: 2;
 }
 
 .dropdown-menu > *:not(:last-child) {

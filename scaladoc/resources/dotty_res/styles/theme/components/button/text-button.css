@@ -1,6 +1,7 @@
 .text-button a {
   color: var(--action-primary-content-default);
   text-decoration: none;
+  cursor: pointer;
 }
 
 .text-button:hover a {
