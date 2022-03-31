@@ -244,14 +244,10 @@ object QuoteMatcher {
                 case Select(qual2, _) if symbolMatch(scrutinee, pattern) =>
                   ref match
                     case Select(qual1, _) => qual1 =?= qual2
-                    case ref: Ident =>
-                      ref.tpe match
-                        case TermRef(qual: TermRef, _) => tpd.ref(qual) =?= qual2
-                        case TermRef(qual: ThisType, _) if qual.classSymbol.is(Module, butNot = Package) =>
-                          tpd.ref(qual.classSymbol.companionModule) =?= qual2
-                        case TermRef(qual, _) if qual.typeSymbol.isClass && qual2.symbol == defn.QuotedRuntimePatterns_patternHole =>
-                          tpd.desugarIdentPrefix(ref) =?= qual2
-                        case _ => matched
+                    case ref: Ident if qual2.symbol == defn.QuotedRuntimePatterns_patternHole =>
+                      tpd.desugarIdentPrefix(ref) =?= qual2
+                    case ref: Ident => matched
+
                 /* Match reference */
                 case _: Ident if symbolMatch(scrutinee, pattern) => matched
                 /* Match type */
