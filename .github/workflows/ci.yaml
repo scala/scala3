@@ -586,11 +586,10 @@ jobs:
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Publish Release
+      - name: Prepare Release
         run: |
           ./project/scripts/sbt dist/packArchive
           sha256sum dist/target/scala3-* > dist/target/sha256sum.txt
-          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
           echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
       - name: Create GitHub Release
@@ -601,9 +600,9 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: ${{ github.ref }}
-          body:
-          draft: false
-          prerelease: ${{ contains(env.RELEASE_TAG, 'M') }}
+          body_path: ./changelogs/${{ env.RELEASE_TAG }}.md
+          draft: true
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
 
       - name: Upload zip archive to GitHub Release
         uses: actions/upload-release-asset@v1
@@ -634,6 +633,10 @@ jobs:
           asset_path: ./dist/target/sha256sum.txt
           asset_name: sha256sum.txt
           asset_content_type: text/plain
+
+      - name: Publish Release
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+
 
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]
