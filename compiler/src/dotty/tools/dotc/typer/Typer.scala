@@ -1603,7 +1603,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
                 if (!checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `future-migration`)
                   if (isPatDef) patch(Span(tree.selector.span.end), ": @unchecked")
-                  else patch(Span(pat.span.start), "case ")
+                  else patch(Span(tree.span.start), "case ")
 
                 // skip exhaustivity check in later phase
                 // TODO: move the check above to patternMatcher phase
