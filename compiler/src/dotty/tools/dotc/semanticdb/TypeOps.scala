@@ -162,6 +162,12 @@ class TypeOps:
             enterRefined(expr.resType)
           case m: LambdaType =>
             enterRefined(m.resType)
+          case AndType(t1, t2) =>
+            enterRefined(t1)
+            enterRefined(t2)
+          case OrType(t1, t2) =>
+            enterRefined(t1)
+            enterRefined(t2)
           case _ => ()
         }
       if sym.exists && sym.owner.exists then
