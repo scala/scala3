@@ -413,7 +413,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Ident(tp)
     else
       val pre = tp.prefix
-      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias)).select(tp)
+      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias, needLoad)).select(tp)
       else
         val res = Select(TypeTree(pre), tp)
         if needLoad && !res.symbol.isStatic then
@@ -431,11 +431,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       t
   }
 
-  def singleton(tp: Type)(using Context): Tree = tp.dealias match {
-    case tp: TermRef => ref(tp)
+  def singleton(tp: Type, needLoad: Boolean = true)(using Context): Tree = tp.dealias match {
+    case tp: TermRef => ref(tp, needLoad)
     case tp: ThisType => This(tp.cls)
-    case tp: SkolemType => singleton(tp.narrow)
-    case SuperType(qual, _) => singleton(qual)
+    case tp: SkolemType => singleton(tp.narrow, needLoad)
+    case SuperType(qual, _) => singleton(qual, needLoad)
     case ConstantType(value) => Literal(value)
   }
 
