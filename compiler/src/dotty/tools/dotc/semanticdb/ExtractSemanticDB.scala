@@ -109,16 +109,13 @@ class ExtractSemanticDB extends Phase:
       || sym.isOldStyleImplicitConversion(forImplicitClassOnly = true)
 
     /** Uses of this symbol where the reference has given span should be excluded from semanticdb */
-    private def excludeUse(qualifier: Option[Symbol], sym: SemanticSymbol)(using Context): Boolean =
-      sym match
-        case sym: Symbol =>
-          !sym.exists
-          || excludeDefOrUse(sym)
-          || sym.isConstructor && sym.owner.isAnnotation
-          || sym == defn.Any_typeCast
-          || sym.owner == defn.OpsPackageClass
-          || qualifier.exists(excludeQual)
-        case fake: FakeSymbol => false // do not exclude fake symbols
+    private def excludeUse(qualifier: Option[Symbol], sym: Symbol)(using Context): Boolean =
+      !sym.exists
+      || excludeDefOrUse(sym)
+      || sym.isConstructor && sym.owner.isAnnotation
+      || sym == defn.Any_typeCast
+      || sym.owner == defn.OpsPackageClass
+      || qualifier.exists(excludeQual)
 
     private def traverseAnnotsOfDefinition(sym: Symbol)(using Context): Unit =
       for annot <- sym.annotations do
@@ -337,11 +334,11 @@ class ExtractSemanticDB extends Phase:
         occurrences += occ
         generated += occ
 
-    private def registerUseGuarded(qualSym: Option[Symbol], sym: SemanticSymbol, span: Span, treeSource: SourceFile)(using Context) =
+    private def registerUseGuarded(qualSym: Option[Symbol], sym: Symbol, span: Span, treeSource: SourceFile)(using Context) =
       if !excludeUse(qualSym, sym) && !span.isZeroExtent then
         registerUse(sym, span, treeSource)
 
-    private def registerUse(sym: SemanticSymbol, span: Span, treeSource: SourceFile)(using Context): Unit =
+    private def registerUse(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Unit =
       registerUse(sym.symbolName, span, treeSource)
 
     private def registerUse(symbol: String, span: Span, treeSource: SourceFile)(using Context): Unit =

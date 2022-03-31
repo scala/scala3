@@ -20,26 +20,26 @@ import dotty.tools.dotc.core.Names.Designator
 class TypeOps:
   import SymbolScopeOps._
   import Scala3.given
-  private val paramRefSymtab = mutable.Map[(LambdaType, Name), SemanticSymbol]()
-  private val refinementSymtab = mutable.Map[(RefinedType, Name), SemanticSymbol]()
+  private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
+  private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
 
   // save generated fake symbols so we can insert them into symbols section of SemanticDB
   val fakeSymbols = mutable.Set[FakeSymbol]()
   given typeOps: TypeOps = this
 
-  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), SemanticSymbol])
+  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
     private def lookup(
       binder: T,
       name: Name,
-    )(using Context): Option[SemanticSymbol] =
+    )(using Context): Option[Symbol] =
       symtab.get((binder, name))
 
-  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), SemanticSymbol])
+  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
     private def lookupOrErr(
       binder: T,
       name: Name,
       parent: Symbol,
-    )(using Context): Option[SemanticSymbol] =
+    )(using Context): Option[Symbol] =
       // In case refinement or type param cannot be accessed from traverser and
       // no symbols are registered to the symbol table, fall back to Type.member
       symtab.lookup(binder, name) match
@@ -66,8 +66,8 @@ class TypeOps:
     fakeSymbols.add(sym)
 
   extension (tpe: Type)
-    def lookupSym(name: Name)(using Context): Option[SemanticSymbol] = {
-      def loop(ty: Type): Option[SemanticSymbol] = ty match
+    def lookupSym(name: Name)(using Context): Option[Symbol] = {
+      def loop(ty: Type): Option[Symbol] = ty match
         case rt: RefinedType =>
           refinementSymtab.lookup(rt, name).orElse(
             loop(rt.parent)
@@ -391,9 +391,7 @@ class TypeOps:
 
           val decls: List[SemanticSymbol] = refinedInfos.map { (name, info) =>
             refinementSymtab.lookup(rt, name).getOrElse {
-              val fakeSym = RefinementSymbol(sym, name, info).tap(registerFakeSymbol)
-              refinementSymtab((rt, name)) = fakeSym
-              fakeSym
+              RefinementSymbol(sym, name, info).tap(registerFakeSymbol)
             }
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
