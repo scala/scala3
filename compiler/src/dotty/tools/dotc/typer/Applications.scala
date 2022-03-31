@@ -705,7 +705,7 @@ trait Applications extends Compatibility {
     def fail(msg: Message): Unit =
       ok = false
     def appPos: SrcPos = NoSourcePosition
-    @threadUnsafe lazy val normalizedFun:   Tree = ref(methRef)
+    @threadUnsafe lazy val normalizedFun: Tree = ref(methRef, needLoad = false)
     init()
   }
 

@@ -404,18 +404,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A tree representing the same reference as the given type */
-  def ref(tp: NamedType)(using Context): Tree =
+  def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree =
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
     else if (tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass))
       followOuterLinks(This(tp.symbol.moduleClass.asClass))
     else if (tp.symbol hasAnnotation defn.ScalaStaticAnnot)
       Ident(tp)
-    else {
+    else
       val pre = tp.prefix
       if (pre.isSingleton) followOuterLinks(singleton(pre.dealias)).select(tp)
-      else Select(TypeTree(pre), tp)
-    }
+      else
+        val res = Select(TypeTree(pre), tp)
+        if needLoad && !res.symbol.isStatic then
+          throw new TypeError(em"cannot establish a reference to $res")
+        res
 
   def ref(sym: Symbol)(using Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
