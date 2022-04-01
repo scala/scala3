@@ -81,7 +81,7 @@ class TypeOps:
         case _ =>
           symbolNotFound(name, tpe.typeSymbol)
           None
-      loop(tpe)
+      loop(tpe.dealias)
     }
 
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =

@@ -4,6 +4,6 @@ object Test_depmatch/*<-_empty_::Test_depmatch.*/ {
     case Unit/*->scala::Unit#*/ => Unit/*->scala::Unit#*/
   }
   inline def baz/*<-_empty_::Test_depmatch.baz().*/(foo/*<-_empty_::Test_depmatch.baz().(foo)*/: Foo/*->_empty_::Test_depmatch.Foo#*/): Unit/*->scala::Unit#*/ = {
-    val v/*<-local1*/: Bar/*->_empty_::Test_depmatch.Bar#*/[foo/*->_empty_::Test_depmatch.baz().(foo)*/.U] = ???/*->scala::Predef.`???`().*/
+    val v/*<-local1*/: Bar/*->_empty_::Test_depmatch.Bar#*/[foo/*->_empty_::Test_depmatch.baz().(foo)*/.U/*->local0*/] = ???/*->scala::Predef.`???`().*/
   }
 }

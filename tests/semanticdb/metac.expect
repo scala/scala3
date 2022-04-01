@@ -3736,7 +3736,7 @@ Uri => dep-match.scala
 Text => empty
 Language => Scala
 Symbols => 8 entries
-Occurrences => 17 entries
+Occurrences => 18 entries
 
 Symbols:
 _empty_/Test_depmatch. => final object Test_depmatch extends Object { self: Test_depmatch.type => +4 decls }
@@ -3765,6 +3765,7 @@ Occurrences:
 [6:8..6:9): v <- local1
 [6:11..6:14): Bar -> _empty_/Test_depmatch.Bar#
 [6:15..6:18): foo -> _empty_/Test_depmatch.baz().(foo)
+[6:19..6:20): U -> local0
 [6:24..6:27): ??? -> scala/Predef.`???`().
 
 expect/exports-example-Codec.scala
