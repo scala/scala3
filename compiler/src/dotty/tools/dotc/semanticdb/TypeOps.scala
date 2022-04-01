@@ -79,7 +79,6 @@ class TypeOps:
         case OrType(tp1, tp2) =>
           loop(tp1).orElse(loop(tp2))
         case _ =>
-          symbolNotFound(name, tpe.typeSymbol)
           None
       loop(tpe.dealias)
     }
