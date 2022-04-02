@@ -10,6 +10,6 @@
   |         no given instance of type quoted.ToExpr[Unit] was found for parameter x$2 of method apply in object Expr.
   |         I found:
   |
-  |             quoted.ToExpr.IntToExpr[T]
+  |             quoted.ToExpr.ClassToExpr[T]
   |
-  |         But given instance IntToExpr in object ToExpr does not match type quoted.ToExpr[Unit].
+  |         But given instance ClassToExpr in object ToExpr does not match type quoted.ToExpr[Unit].
