@@ -40,6 +40,11 @@ object Inliner {
 
   private type DefBuffer = mutable.ListBuffer[ValOrDefDef]
 
+  /** An exception signalling that an inline info cannot be computed due to a
+   *  cyclic reference. i14772.scala shows a case where this happens.
+   */
+  private[typer] class MissingInlineInfo extends Exception
+
   /** `sym` is an inline method with a known body to inline.
    */
   def hasBodyToInline(sym: SymDenotation)(using Context): Boolean =
@@ -154,7 +159,10 @@ object Inliner {
       if bindings.nonEmpty then
         cpy.Block(tree)(bindings.toList, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
-        val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
+        val body =
+          try bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
+          catch case _: MissingInlineInfo =>
+            throw CyclicReference(ctx.owner)
         new Inliner(tree, body).inlined(tree.srcPos)
       else
         ctx.base.stopInlining = true
