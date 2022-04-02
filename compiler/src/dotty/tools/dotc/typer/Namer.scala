@@ -1064,10 +1064,22 @@ class Namer { typer: Typer =>
     /** The forwarders defined by export `exp` */
     private def exportForwarders(exp: Export)(using Context): List[tpd.MemberDef] =
       val buf = new mutable.ListBuffer[tpd.MemberDef]
-      val Export(expr, selectors) = exp
+      val Export(expr, selectors0) = exp
       if expr.isEmpty then
         report.error(em"Export selector must have prefix and `.`", exp.srcPos)
         return Nil
+
+      val renamed = mutable.Set[Name]()
+      val selectors = selectors0 map {
+        case sel @ ImportSelector(imported, id @ Ident(alias), bound) if alias != nme.WILDCARD =>
+          if renamed.contains(alias) then
+            report.error(i"duplicate rename target", id.srcPos)
+            cpy.ImportSelector(sel)(imported, EmptyTree, bound).asInstanceOf[ImportSelector]
+          else
+            renamed += alias
+            sel
+        case sel => sel
+      }
 
       val path = typedAheadExpr(expr, AnySelectionProto)
       checkLegalExportPath(path, selectors)
@@ -1083,6 +1095,8 @@ class Namer { typer: Typer =>
           Skip
         else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
           No(i"is already a member of $cls")
+        else if renamed.contains(sym.name.toTermName) then
+          No(i"clashes with a renamed export")
         else if sym.is(Override) then
           sym.allOverriddenSymbols.find(
             other => cls.derivesFrom(other.owner) && !other.is(Deferred)
