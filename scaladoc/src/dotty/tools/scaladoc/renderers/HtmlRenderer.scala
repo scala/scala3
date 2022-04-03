@@ -220,12 +220,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             )
           ),
         ),
-
-        div(cls:="header-container-center")(
-          input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
-        ),
-
          div(cls:="header-container-right")(
+          button(id := "search-toggle", cls := "icon-button"),
           span(cls := "text-button")(
             a(href := "https://www.scala-lang.org/download/") (
               "Download",
@@ -257,7 +253,6 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             )
           ),
           button(id := "theme-toggle", cls := "icon-button"),
-
         ),
 
 

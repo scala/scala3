@@ -68,6 +68,7 @@ end DropdownHandler
 
 @JSExportTopLevel("dropdownHandler")
 def dropdownHandler() =
+  console.log("ddc", document.getElementById("version-dropdown"))
   if document.getElementById("version-dropdown").getElementsByTagName("a").size > 0 &&
      window.getSelection.toString.length == 0 then
     document.getElementById("version-dropdown").classList.toggle("show")
