@@ -1072,9 +1072,14 @@ class Namer { typer: Typer =>
       val renamed = mutable.Set[Name]()
       val selectors = selectors0 map {
         case sel @ ImportSelector(imported, id @ Ident(alias), bound) if alias != nme.WILDCARD =>
+          def noAliasSelector =
+            cpy.ImportSelector(sel)(imported, EmptyTree, bound).asInstanceOf[ImportSelector]
           if renamed.contains(alias) then
             report.error(i"duplicate rename target", id.srcPos)
-            cpy.ImportSelector(sel)(imported, EmptyTree, bound).asInstanceOf[ImportSelector]
+            noAliasSelector
+          else if alias == imported.name then
+            report.warning(i"redundant rename in export", id.srcPos)
+            noAliasSelector
           else
             renamed += alias
             sel
@@ -1086,7 +1091,7 @@ class Namer { typer: Typer =>
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
 
-      def canForward(mbr: SingleDenotation): CanForward = {
+      def canForward(mbr: SingleDenotation, alias: TermName): CanForward = {
         import CanForward.*
         val sym = mbr.symbol
         if !sym.isAccessibleFrom(path.tpe) then
@@ -1095,7 +1100,7 @@ class Namer { typer: Typer =>
           Skip
         else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
           No(i"is already a member of $cls")
-        else if renamed.contains(sym.name.toTermName) then
+        else if alias == mbr.name.toTermName && renamed.contains(alias) then
           No(i"clashes with a renamed export")
         else if sym.is(Override) then
           sym.allOverriddenSymbols.find(
@@ -1139,7 +1144,7 @@ class Namer { typer: Typer =>
             case _ =>
               acc.reverse ::: prefss
 
-        if canForward(mbr) == CanForward.Yes then
+        if canForward(mbr, alias) == CanForward.Yes then
           val sym = mbr.symbol
           val hasDefaults = sym.hasDefaultParams // compute here to ensure HasDefaultParams and NoDefaultParams flags are set
           val forwarder =
@@ -1196,7 +1201,7 @@ class Namer { typer: Typer =>
         val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
         mbrs.foreach(addForwarder(alias, _, span))
         if buf.size == size then
-          val reason = mbrs.map(canForward).collect {
+          val reason = mbrs.map(canForward(_, alias)).collect {
             case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
           }.headOption.getOrElse("")
           report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))

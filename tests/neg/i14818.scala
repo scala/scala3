@@ -18,3 +18,6 @@ object T3:
 object T4:
   export M.{A as C, B as C} // error
 
+object T5:
+  export M.{A as B, B as A}  // OK
+
