@@ -12,7 +12,7 @@ import util.Stats
 import util.NoSourcePosition
 import config.Config
 import config.Feature.migrateTo3
-import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
+import config.Printers.{Printer, default, subtyping, gadts, matchTypes, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import Variances.{Variance, variancesConform}
@@ -2672,6 +2672,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     inSubComparer(cmp)(op)
     cmp.lastTrace(header)
 
+  def showing[T](op: TypeComparer => T, printer: Printer)(using Context): T =
+    val cmp = explainingTypeComparer
+    inSubComparer(cmp)(op).showing(cmp.lastTrace("").stripPrefix("\n"), printer)
+
   def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
     inSubComparer(trackingTypeComparer)(op)
 }
@@ -2827,6 +2831,9 @@ object TypeComparer {
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
     comparing(_.explained(op, header))
+
+  def showing[T](op: TypeComparer => T, printer: Printer = default)(using Context): T =
+    comparing(_.showing(op, printer))
 
   def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
     comparing(_.tracked(op))
