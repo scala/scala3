@@ -14,3 +14,25 @@
   background: var(--background-default);
   border-bottom: 1px solid var(--border-default);
 }
+
+.header-container-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-container-left span {
+  margin-right: calc(2 * var(--base-spacing));
+}
+
+.header-container-right {
+  display: flex;
+  align-items: center;
+}
+
+.header-container-right .text-button {
+  margin-left: calc(3 * var(--base-spacing));
+}
+
+.header-container-right #theme-toggle {
+  margin-left: calc(3 * var(--base-spacing));
+}

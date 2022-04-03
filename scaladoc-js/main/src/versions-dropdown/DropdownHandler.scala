@@ -25,7 +25,7 @@ class DropdownHandler:
     val ver = JSON.parse(json).asInstanceOf[Versions]
     val ddc = document.getElementById("version-dropdown")
     for (k, v) <- ver.versions do
-      val child = span(cls := "text-button", href := v)(k)
+      val child = a(cls := "text-button", href := v)(k)
       ddc.appendChild(child)
     val arrow = span(cls := "ar")()
     document.getElementById("dropdown-button").appendChild(arrow)
@@ -59,7 +59,7 @@ class DropdownHandler:
         addVersionsList(json)
 
   document.addEventListener("click", (e: Event) => {
-    document.getElementById("dropdown-content").classList.remove("show")
+    document.getElementById("version-dropdown").classList.remove("show")
     document.getElementById("dropdown-button").classList.remove("expanded")
   })
 
@@ -68,7 +68,24 @@ end DropdownHandler
 
 @JSExportTopLevel("dropdownHandler")
 def dropdownHandler() =
-  // if document.getElementById("dropdown-content").getElementsByTagName("a").size > 0 &&
-  //    window.getSelection.toString.length == 0 then
-    document.getElementById("version-dropdown").classList.toggle("expanded")
-    // document.getElementById("dropdown-button").classList.toggle("expanded")
+  if document.getElementById("version-dropdown").getElementsByTagName("a").size > 0 &&
+     window.getSelection.toString.length == 0 then
+    document.getElementById("version-dropdown").classList.toggle("show")
+    document.getElementById("dropdown-button").classList.toggle("expanded")
+    document.getElementById("dropdown-input").asInstanceOf[html.Input].focus()
+
+@JSExportTopLevel("filterFunction")
+def filterFunction() =
+  val input = document.getElementById("dropdown-input").asInstanceOf[html.Input]
+  val filter = input.value.toUpperCase
+  val div = document.getElementById("version-dropdown")
+  val as = div.getElementsByTagName("a")
+
+  as.foreach { a =>
+    val txtValue = a.innerText
+    val cl = a.asInstanceOf[html.Anchor].classList
+    if txtValue.toUpperCase.indexOf(filter) > -1 then
+      cl.remove("filtered")
+    else
+      cl.add("filtered")
+  }
