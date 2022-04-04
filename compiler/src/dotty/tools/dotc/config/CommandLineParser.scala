@@ -95,19 +95,17 @@ object CommandLineParser:
 
   def tokenize(line: String): List[String] = tokenize(line, x => throw new ParseException(x))
 
-  /**
-   * Expands all arguments starting with @ to the contents of the
-   * file named like each argument.
+  /** Expands all arguments starting with @ to the contents of the file named like each argument.
    */
   def expandArg(arg: String): List[String] =
-    def stripComment(s: String) = s takeWhile (_ != '#')
-    val path = Paths.get(arg stripPrefix "@")
-    if (!Files.exists(path))
+    val path = Paths.get(arg.stripPrefix("@"))
+    if !Files.exists(path) then
       System.err.nn.println(s"Argument file ${path.nn.getFileName} could not be found")
       Nil
     else
-      val lines = Files.readAllLines(path).nn // default to UTF-8 encoding
-      val params = lines.asScala map stripComment mkString " "
+      def stripComment(s: String) = s.indexOf('#') match { case -1 => s case i => s.substring(0, i) }
+      val lines = Files.readAllLines(path).nn
+      val params = lines.asScala.map(stripComment).filter(!_.nn.isEmpty).mkString(" ")
       tokenize(params)
 
   class ParseException(msg: String) extends RuntimeException(msg)

@@ -69,7 +69,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
     val expectedOutput = lines.filter(nonBlank)
     val actualOutput = {
-      val opts = toolArgsParse(lines.take(1))
+      val opts = toolArgsFor(ToolName.Scalac)(lines.take(1))
       val (optsLine, inputLines) = if opts.isEmpty then ("", lines) else (lines.head, lines.drop(1))
       resetToInitial(opts)
 

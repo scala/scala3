@@ -448,14 +448,27 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           throw e
 
     protected def compile(files0: Array[JFile], flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
+      import scala.util.Properties.*
+
       def flattenFiles(f: JFile): Array[JFile] =
         if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
         else Array(f)
 
       val files: Array[JFile] = files0.flatMap(flattenFiles)
 
+      val toolArgs = toolArgsFor(files.toList.map(_.toPath), getCharsetFromEncodingOpt(flags0))
+
+      val spec = raw"(\d+)(\+)?".r
+      val testFilter = toolArgs.get(ToolName.Test) match
+        case Some("-jvm" :: spec(n, more) :: Nil) =>
+          if more == "+" then isJavaAtLeast(n) else javaSpecVersion == n
+        case Some(args) => throw new IllegalStateException(args.mkString("unknown test option: ", ", ", ""))
+        case None => true
+
+      def scalacOptions = toolArgs.get(ToolName.Scalac).getOrElse(Nil)
+
       val flags = flags0
-        .and(toolArgsFor(files.toList.map(_.toPath), getCharsetFromEncodingOpt(flags0)): _*)
+        .and(scalacOptions: _*)
         .and("-d", targetDir.getPath)
         .withClasspath(targetDir.getPath)
 
@@ -493,18 +506,21 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       val allArgs = flags.all
 
-      // If a test contains a Java file that cannot be parsed by Dotty's Java source parser, its
-      // name must contain the string "JAVA_ONLY".
-      val dottyFiles = files.filterNot(_.getName.contains("JAVA_ONLY")).map(_.getPath)
-      driver.process(allArgs ++ dottyFiles, reporter = reporter)
+      if testFilter then
+        // If a test contains a Java file that cannot be parsed by Dotty's Java source parser, its
+        // name must contain the string "JAVA_ONLY".
+        val dottyFiles = files.filterNot(_.getName.contains("JAVA_ONLY")).map(_.getPath)
+        driver.process(allArgs ++ dottyFiles, reporter = reporter)
 
-      val javaFiles = files.filter(_.getName.endsWith(".java")).map(_.getPath)
-      val javaErrors = compileWithJavac(javaFiles)
+        // todo a better mechanism than ONLY. test: -scala-only?
+        val javaFiles = files.filter(_.getName.endsWith(".java")).filterNot(_.getName.contains("SCALA_ONLY")).map(_.getPath)
+        val javaErrors = compileWithJavac(javaFiles)
 
-      if (javaErrors.isDefined) {
-        echo(s"\njava compilation failed: \n${ javaErrors.get }")
-        fail(failure = JavaCompilationFailure(javaErrors.get))
-      }
+        if (javaErrors.isDefined) {
+          echo(s"\njava compilation failed: \n${ javaErrors.get }")
+          fail(failure = JavaCompilationFailure(javaErrors.get))
+        }
+      end if
 
       reporter
     }
