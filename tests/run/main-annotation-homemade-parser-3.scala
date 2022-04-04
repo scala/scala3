@@ -1,3 +1,4 @@
+import scala.annotation.newMain
 import scala.util.CommandLineParser.FromString
 
 given FromString[Int] with
@@ -8,7 +9,7 @@ object myProgram:
   given FromString[Int] with
     override def fromString(s: String) = -1 * s.toInt // Should be ignored, because not top-level
 
-  @main def add(num: Int, inc: Int): Unit =
+  @newMain def add(num: Int, inc: Int): Unit =
     println(s"$num + $inc = ${num + inc}")
 
 end myProgram

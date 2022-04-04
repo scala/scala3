@@ -1,8 +1,10 @@
+import scala.annotation.newMain
+
 // Sample main method
 object myProgram:
 
   /** Adds two numbers */
-  @main def add(num: Int = 0, inc: Int = 1): Unit =
+  @newMain def add(num: Int = 0, inc: Int = 1): Unit =
     println(s"$num + $inc = ${num + inc}")
 
 end myProgram

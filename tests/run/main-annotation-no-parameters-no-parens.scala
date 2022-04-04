@@ -1,8 +1,10 @@
+import scala.annotation.newMain
+
 // Sample main method
 object myProgram:
 
   /** Does nothing, except confirming that it runs */
-  @main def run: Unit =
+  @newMain def run: Unit =
     println("I run properly!")
 
 end myProgram

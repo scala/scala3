@@ -1,3 +1,5 @@
+import scala.annotation.newMain
+
 /**
   * Wishes a happy birthday to lucky people!
   *
@@ -5,7 +7,7 @@
   * @param name the name of the luckiest person!
   * @param others all the other lucky people
   */
-@main def happyBirthday(age: Int, name: String, others: String*) =
+@newMain def happyBirthday(age: Int, name: String, others: String*) =
   val suffix =
     age % 100 match
     case 11 | 12 | 13 => "th"

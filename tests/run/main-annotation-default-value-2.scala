@@ -1,7 +1,9 @@
+import scala.annotation.newMain
+
 // Sample main method
 object myProgram:
 
-  @main def alwaysPassParam(forbiddenParam: Int = throw new IllegalStateException("This should not be evaluated!")): Unit =
+  @newMain def alwaysPassParam(forbiddenParam: Int = throw new IllegalStateException("This should not be evaluated!")): Unit =
     println(forbiddenParam)
 
 end myProgram

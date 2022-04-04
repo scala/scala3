@@ -2,17 +2,17 @@ Here's what I got:
 int - 2
 double - 3.0
 string - 4
-boolean - true
+byte - 1
 
 Here's what I got:
 int - -1
 double - 3.4567890987654456E18
 string - false
-boolean - false
+byte - 127
 
 Here's what I got:
 int - 2147483647
 double - 3.1415926535
 string - Hello world!
-boolean - true
+byte - 0
 

@@ -21,4 +21,3 @@ class mainNoArgs extends MainAnnotation[FromString, Any]:
   def varargGetter[T](param: Parameter, args: Seq[String])(using p: FromString[T]): () => Seq[T] = ???
 
   def run(program: () => Any): Unit = program()
-

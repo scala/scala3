@@ -1,5 +1,5 @@
 import scala.concurrent._
-import scala.annotation.MainAnnotation
+import scala.annotation.*
 import scala.collection.mutable
 import ExecutionContext.Implicits.global
 import duration._

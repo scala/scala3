@@ -1,6 +1,8 @@
+import scala.annotation.newMain
+
 object myProgram:
 
-  @main def nop[T](t: T): T = // error
+  @newMain def nop[T](t: T): T = // error
     t
 
 end myProgram

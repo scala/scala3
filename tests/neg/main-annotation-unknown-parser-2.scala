@@ -1,8 +1,9 @@
+import scala.annotation.newMain
 import scala.util.CommandLineParser.FromString
 
 object myProgram:
 
-  @main def add(num: Test.MyNumber, inc: Test.MyNumber): Unit = // error
+  @newMain def add(num: Test.MyNumber, inc: Test.MyNumber): Unit = // error
     val numV = Test.value(num)
     val incV = Test.value(inc)
     println(s"$numV + $incV = ${numV + incV}")

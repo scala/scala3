@@ -4,28 +4,34 @@ Usage: helpOverride1 [--notHelp] <Int>
 A method that should let --help and -h display help.
 Arguments:
   --notHelp - Int
-Error: invalid argument for help: --help
+Error: missing argument for --help
+Error: missing argument for help
 Usage: helpOverride2 [--help] <Int>
 Usage: helpOverride3 [-h] <Int>
 
 A method that should let --help display help, but not -h.
 Arguments:
   -h - Int
-Error: invalid argument for help: --help
+Error: missing argument for --help
+Error: missing argument for help
 Error: missing argument for h
 Usage: helpOverride4 [--help] <Int> [-h] <Int>
-Error: invalid argument for notHelp: --help
+Error: missing argument for --help
+Error: missing argument for notHelp
 Usage: helpOverride5 [--notHelp | --help] <Int>
 Usage: helpOverride6 [--notHelp | -h] <Int>
 
 A method that should let --help display help, but not -h.
 Arguments:
   --notHelp (-h) - Int
-Error: invalid argument for notHelp: --help
+Error: missing argument for --help
+Error: missing argument for notHelp
 Error: missing argument for notH
 Usage: helpOverride7 [--notHelp | --help] <Int> [--notH | -h] <Int>
-Error: invalid argument for notHelp: --help
-Usage: helpOverride8 [--notHelp | --help | -h] <Int>
+Error: missing argument for --help
+Error: missing argument for notHelp
+Usage: helpOverride8 [--notHelp | -h | --help] <Int>
+helpOverride9: true
 ##### -h
 Usage: helpOverride1 [--notHelp] <Int>
 
@@ -37,9 +43,11 @@ Usage: helpOverride2 [--help] <Int>
 A method that should let -h display help, but not --help.
 Arguments:
   --help - Int
-Error: invalid argument for h: -h
+Error: missing argument for -h
+Error: missing argument for h
 Usage: helpOverride3 [-h] <Int>
-Error: invalid argument for help: -h
+Error: missing argument for -h
+Error: missing argument for help
 Error: missing argument for h
 Usage: helpOverride4 [--help] <Int> [-h] <Int>
 Usage: helpOverride5 [--notHelp | --help] <Int>
@@ -47,10 +55,14 @@ Usage: helpOverride5 [--notHelp | --help] <Int>
 A method that should let -h display help, but not --help.
 Arguments:
   --notHelp (--help) - Int
-Error: invalid argument for notHelp: -h
+Error: missing argument for -h
+Error: missing argument for notHelp
 Usage: helpOverride6 [--notHelp | -h] <Int>
-Error: invalid argument for notHelp: -h
+Error: missing argument for -h
+Error: missing argument for notHelp
 Error: missing argument for notH
 Usage: helpOverride7 [--notHelp | --help] <Int> [--notH | -h] <Int>
-Error: invalid argument for notHelp: -h
-Usage: helpOverride8 [--notHelp | --help | -h] <Int>
+Error: missing argument for -h
+Error: missing argument for notHelp
+Usage: helpOverride8 [--notHelp | -h | --help] <Int>
+helpOverride9: true

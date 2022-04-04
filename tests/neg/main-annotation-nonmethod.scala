@@ -1,9 +1,11 @@
+import scala.annotation.newMain
+
 object myProgram:
 
-  @main val n = 2 // error
+  @newMain val n = 2 // error
 
-  @main class A // error
+  @newMain class A // error
 
-  @main val f = ((s: String) => println(s)) // error
+  @newMain val f = ((s: String) => println(s)) // error
 
 end myProgram

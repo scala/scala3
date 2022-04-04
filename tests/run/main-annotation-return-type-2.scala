@@ -1,3 +1,5 @@
+import scala.annotation.newMain
+
 class MyResult(val result: Int):
   override def toString: String = result.toString
 
@@ -5,7 +7,7 @@ class MyResult(val result: Int):
 object myProgram:
 
   /** Adds two numbers and returns them */
-  @main def add(num: Int, inc: Int) =
+  @newMain def add(num: Int, inc: Int) =
     println(MyResult(num + inc))
 
 end myProgram

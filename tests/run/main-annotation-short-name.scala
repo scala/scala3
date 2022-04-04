@@ -1,7 +1,9 @@
+import scala.annotation.newMain
+
 object myProgram:
 
   /** Adds two numbers */
-  @main def add(n: Int, i: Int): Unit =
+  @newMain def add(n: Int, i: Int): Unit =
     println(s"$n + $i = ${n + i}")
 
 end myProgram

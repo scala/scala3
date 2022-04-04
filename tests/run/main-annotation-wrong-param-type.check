@@ -1,14 +1,8 @@
-Error: invalid argument for inc: true
-Usage: add [--num] <Int> [--inc] <Int>
-Error: invalid argument for num: 2.1
-Usage: add [--num] <Int> [--inc] <Int>
-Error: invalid argument for inc: 3.1415921535
-Usage: add [--num] <Int> [--inc] <Int>
-Error: invalid argument for num: 192.168.1.1
-Usage: add [--num] <Int> [--inc] <Int>
-Error: invalid argument for num: false
-Error: invalid argument for inc: true
-Usage: add [--num] <Int> [--inc] <Int>
-Error: invalid argument for num: Hello
-Error: invalid argument for inc: world!
-Usage: add [--num] <Int> [--inc] <Int>
+Error: could not parse argument for `inc` of type Int: true
+Error: could not parse argument for `num` of type Int: 2.1
+Error: could not parse argument for `inc` of type Int: 3.1415921535
+Error: could not parse argument for `num` of type Int: 192.168.1.1
+Error: could not parse argument for `num` of type Int: false
+Error: could not parse argument for `inc` of type Int: true
+Error: could not parse argument for `num` of type Int: Hello
+Error: could not parse argument for `inc` of type Int: world!

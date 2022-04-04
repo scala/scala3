@@ -1,31 +1,37 @@
+import scala.annotation.newMain
+import scala.annotation.newMain.alias
 import scala.util.Try
 
 object myProgram:
 
   /** A method that should let --help and -h display help. */
-  @main def helpOverride1(notHelp: Int) = ???
+  @newMain def helpOverride1(notHelp: Int) = ???
 
   /** A method that should let -h display help, but not --help. */
-  @main def helpOverride2(help: Int) = ???
+  @newMain def helpOverride2(help: Int) = ???
 
   /** A method that should let --help display help, but not -h. */
-  @main def helpOverride3(h: Int) = ???
+  @newMain def helpOverride3(h: Int) = ???
 
   /** A method that should not let --help and -h display help. */
-  @main def helpOverride4(help: Int, h: Int) = ???
+  @newMain def helpOverride4(help: Int, h: Int) = ???
 
 
   /** A method that should let -h display help, but not --help. */
-  @main def helpOverride5(@main.Alias("help") notHelp: Int) = ???
+  @newMain def helpOverride5(@alias("help") notHelp: Int) = ???
 
   /** A method that should let --help display help, but not -h. */
-  @main def helpOverride6(@main.Alias("h") notHelp: Int) = ???
+  @newMain def helpOverride6(@alias("h") notHelp: Int) = ???
 
   /** A method that should not let --help and -h display help. */
-  @main def helpOverride7(@main.Alias("help") notHelp: Int, @main.Alias("h") notH: Int) = ???
+  @newMain def helpOverride7(@alias("help") notHelp: Int, @alias("h") notH: Int) = ???
 
   /** A method that should not let --help and -h display help. */
-  @main def helpOverride8(@main.Alias("help", "h") notHelp: Int) = ???
+  @newMain def helpOverride8(@alias("help") @alias("h") notHelp: Int) = ???
+
+  /** A method that should not let --help and -h display help. */
+  // Probably the correct way to override help flags.
+  @newMain def helpOverride9(@alias("h") help: Boolean) = println(s"helpOverride9: $help")
 
 end myProgram
 

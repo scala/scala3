@@ -1,31 +1,34 @@
+import scala.annotation.newMain
+import scala.annotation.newMain.alias
+
 object myProgram:
-  @main def altName1(
-    @main.Alias("myNum") num: Int,
+  @newMain def altName1(
+    @alias("myNum") num: Int,
     inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
-  @main def altName2(
-    @main.Alias("myNum") num: Int,
-    @main.Alias("myInc") inc: Int
+  @newMain def altName2(
+    @alias("myNum") num: Int,
+    @alias("myInc") inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
-  @main def shortName1(
-    @main.Alias("n") num: Int,
+  @newMain def shortName1(
+    @alias("n") num: Int,
     inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
-  @main def shortName2(
-    @main.Alias("n") num: Int,
-    @main.Alias("i") inc: Int
+  @newMain def shortName2(
+    @alias("n") num: Int,
+    @alias("i") inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
-  @main def mix1(
-    @main.Alias("myNum") @main.Alias("n") num: Int,
-    @main.Alias("i") @main.Alias("myInc") inc: Int
+  @newMain def mix1(
+    @alias("myNum") @alias("n") num: Int,
+    @alias("i") @alias("myInc") inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
@@ -40,15 +43,15 @@ object myProgram:
   def myInc = {new Exception("myInc")}.getMessage
   def myShortInc = () => "i"
 
-  @main def mix2(
-    @main.Alias(myNum) @main.Alias(myShortNum) num: Int,
-    @main.Alias(myShortInc()) @main.Alias(myInc) inc: Int
+  @newMain def mix2(
+    @alias(myNum) @alias(myShortNum) num: Int,
+    @alias(myShortInc()) @alias(myInc) inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 
-  @main def multiple(
-    @main.Alias("myNum", "n") num: Int,
-    @main.Alias("i", "myInc") inc: Int
+  @newMain def multiple(
+    @alias("myNum") @alias("n") num: Int,
+    @alias("i") @alias("myInc") inc: Int
   ): Unit =
     println(s"$num + $inc = ${num + inc}")
 end myProgram

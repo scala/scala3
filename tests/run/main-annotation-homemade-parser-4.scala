@@ -1,3 +1,4 @@
+import scala.annotation.newMain
 import scala.util.CommandLineParser.FromString
 
 given [T : FromString]: FromString[Option[T]] with
@@ -22,9 +23,9 @@ given [T : FromString]: FromString[Either[T, String]] with
 
 object myProgram:
 
-  @main def getOption(o: Option[Int] = Some(42)) = println(o)
+  @newMain def getOption(o: Option[Int] = Some(42)) = println(o)
 
-  @main def getEither(e: Either[Int, String] = Right("No argument given")) = println(e)
+  @newMain def getEither(e: Either[Int, String] = Right("No argument given")) = println(e)
 
 end myProgram
 

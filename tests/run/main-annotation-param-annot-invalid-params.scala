@@ -1,17 +1,20 @@
+import scala.annotation.newMain
+import scala.annotation.newMain.alias
+
 import java.lang.reflect.InvocationTargetException
 
 object myProgram:
 
-  @main def empty(
-    @main.Alias("") i: Int,
+  @newMain def empty(
+    @alias("") i: Int,
   ): Unit = ()
 
-  @main def space(
-    @main.Alias(" ") i: Int,
+  @newMain def space(
+    @alias(" ") i: Int,
   ): Unit = ()
 
-  @main def nonLetter(
-    @main.Alias("1") i: Int,
+  @newMain def nonLetter(
+    @alias("1") i: Int,
   ): Unit = ()
 
 end myProgram

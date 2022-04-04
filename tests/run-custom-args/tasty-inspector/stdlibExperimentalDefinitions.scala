@@ -32,6 +32,13 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.MainAnnotation",
   "scala.annotation.MainAnnotation$",
 
+  //// New feature: prototype of new version of @main
+  // This will never be stabilized. When it is ready it should replace the old @main annotation (requires scala.annotation.MainAnnotation).
+  // Needs user feedback.
+  "scala.annotation.newMain",
+  "scala.annotation.newMain$",
+  "scala.annotation.newMain$.alias",
+
   //// New APIs: Mirror
   // Can be stabilized in 3.3.0 or later.
   "scala.deriving.Mirror$.fromProductTyped", // This API is a bit convoluted. We may need some more feedback before we can stabilize it.

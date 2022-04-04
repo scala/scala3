@@ -1,8 +1,10 @@
+import scala.annotation.newMain
+
 // Sample main method
 object myProgram:
 
   /** Checks that the correct amount of parameters were passed */
-  @main def count(count: Int, elems: String*): Unit =
+  @newMain def count(count: Int, elems: String*): Unit =
     if (elems.length == count)
       println("Correct")
     else

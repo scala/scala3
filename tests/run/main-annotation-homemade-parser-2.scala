@@ -1,3 +1,4 @@
+import scala.annotation.newMain
 import scala.util.CommandLineParser.FromString
 
 given FromString[Test.MyNumber] with
@@ -5,7 +6,7 @@ given FromString[Test.MyNumber] with
 
 object myProgram:
 
-  @main def add(num: Test.MyNumber, inc: Test.MyNumber): Unit =
+  @newMain def add(num: Test.MyNumber, inc: Test.MyNumber): Unit =
     val numV = Test.value(num)
     val incV = Test.value(inc)
     println(s"$numV + $incV = ${numV + incV}")

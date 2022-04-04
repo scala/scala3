@@ -1,9 +1,11 @@
+import scala.annotation.newMain
+
 /** Adds two numbers */
-@main def add(num: Int, inc: Int): Unit =
+@newMain def add(num: Int, inc: Int): Unit =
   println(s"$num + $inc = ${num + inc}")
 
 /** Adds any amount of numbers */
-@main def addAll(num: Int = 0, incs: Int*): Unit =
+@newMain def addAll(num: Int = 0, incs: Int*): Unit =
   print(num)
   if (incs.length > 0) {
     print(" + ")

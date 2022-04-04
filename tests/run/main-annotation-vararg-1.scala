@@ -1,8 +1,10 @@
+import scala.annotation.newMain
+
 // Sample main method
 object myProgram:
 
   /** Adds any amount of numbers */
-  @main def add(nums: Int*): Unit =
+  @newMain def add(nums: Int*): Unit =
     if (nums.isEmpty)
       println("No number input")
     else

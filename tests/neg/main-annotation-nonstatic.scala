@@ -1,2 +1,4 @@
+import scala.annotation.newMain
+
 class A:
-  @main def foo(bar: Int) = () // error
+  @newMain def foo(bar: Int) = () // error

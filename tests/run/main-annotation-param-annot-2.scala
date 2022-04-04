@@ -1,27 +1,30 @@
+import scala.annotation.newMain
+import scala.annotation.newMain.alias
+
 object myProgram:
-  @main def multipleSameShortNames1(
-    @main.Alias("n") num: Int,
-    @main.Alias("n") inc: Int
+  @newMain def multipleSameShortNames1(
+    @alias("n") num: Int,
+    @alias("n") inc: Int
   ): Unit = ()
 
-  @main def multipleSameShortNames2(
-    @main.Alias("n") @main.Alias("n") num: Int,
+  @newMain def multipleSameShortNames2(
+    @alias("n") @alias("n") num: Int,
     inc: Int
   ): Unit = ()
 
-  @main def multipleSameNames1(
-    @main.Alias("arg") num: Int,
-    @main.Alias("arg") inc: Int
+  @newMain def multipleSameNames1(
+    @alias("arg") num: Int,
+    @alias("arg") inc: Int
   ): Unit = ()
 
-  @main def multipleSameNames2(
-    @main.Alias("arg") @main.Alias("arg") num: Int,
+  @newMain def multipleSameNames2(
+    @alias("arg") @alias("arg") num: Int,
     inc: Int
   ): Unit = ()
 
-  @main def multipleSameNames3(
+  @newMain def multipleSameNames3(
     num: Int,
-    @main.Alias("num") inc: Int
+    @alias("num") inc: Int
   ): Unit = ()
 end myProgram
 

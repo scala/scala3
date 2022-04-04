@@ -1,3 +1,4 @@
+import scala.annotation.newMain
 import scala.util.CommandLineParser.FromString
 
 given intParser: FromString[Int => Int] with
@@ -8,7 +9,7 @@ given stringParser: FromString[String => String] with
 
 object myProgram:
 
-  @main def show(getI: Int => Int, getS: String => String) =
+  @newMain def show(getI: Int => Int, getS: String => String) =
     println(getI(3))
     println(getS(" world!"))
 
