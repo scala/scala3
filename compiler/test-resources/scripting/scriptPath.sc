@@ -5,7 +5,6 @@
 
     Option(sys.props("script.path")) match {
     case Some(path) =>
-<<<<<<< HEAD
       if ! path.endsWith("scriptPath.sc") then
         printf( s"incorrect script.path defined as [$path]")
       else
@@ -17,10 +16,8 @@
       val pathEntries = System.getenv("PATH").split(psep).toList
       System.err.printf("sun.java.command: %s\n", sys.props("sun.java.command"))
       System.err.printf("first 5 PATH entries:\n%s\n",pathEntries.take(5).mkString("\n"))
-=======
       printf("script.path: %s\n",path.norm)
       assert(path.endsWith("scriptPath.sc"),s"actual path [$path]")
->>>>>>> refactor CliCommand.expandArg method; fix script.path regression, Windows classpath regression
     }
 
   extension(s: String)

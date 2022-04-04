@@ -172,8 +172,7 @@ class BashScriptsTests:
    */
   @Test def verifyScalaOpts =
     val scriptFile = testFiles.find(_.getName == "classpathReport.sc").get
-    printf("===> verify SCALA_OPTS -classpath setting in argument file seen by script [%s]\n", scriptFile.getName)
-    val argsfile = createArgsFile() // avoid problems caused by drive letter
+    printf("===> verify SCALA_OPTS='@argsfile' is properly handled by `dist/bin/scala`\n")
     val envPairs = List(("SCALA_OPTS", s"@$argsfile"))
     val (validTest, exitCode, stdout, stderr) = bashCommand(scriptFile.absPath, envPairs)
     printf("stdout: %s\n", stdout.mkString("\n","\n",""))
@@ -228,4 +227,3 @@ class BashScriptsTests:
     printf("stderr: %s\n", stderr.mkString("\n","\n",""))
     if verifyValid(validTest) then
       assert(result.contains(expected), s"expression [$expression] did not send [$expected] to stdout")
-

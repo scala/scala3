@@ -783,6 +783,20 @@ object projects:
     sbtPublishCommand = "publishLocal",
     dependencies = () => List(cats, disciplineMunit)
   )
+
+  lazy val specs2 = SbtCommunityProject(
+    project = "specs2",
+    sbtTestCommand = "core/testOnly -- exclude ci",
+    sbtPublishCommand = "core/publishLocal",
+    dependencies = () => List()
+  )
+
+  lazy val spire = SbtCommunityProject(
+    project = "spire",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = () => List(cats, disciplineMunit)
+  )
 end projects
 
 lazy val forwardCompatMapping = Map[CommunityProject, CommunityProject](
