@@ -4723,7 +4723,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
                 case self: ValDef => self
             }
             val body = tree.body.map(transformStatement(_)(tree.symbol))
-            ClassDef.copy(tree)(tree.name, constructor, parents, self, body)
+            ClassDef.copy(tree)(tree.name, constructor.asInstanceOf[DefDef], parents, self, body) // cast as workaround for lampepfl/dotty#14821. TODO remove when referenceVersion >= 3.2.0-RC1
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Export =>
