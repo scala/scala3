@@ -156,29 +156,20 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         }
     }
 
-  private val searchIcon: html.Div =
-    val element = div(cls := "search-content")(
-      div(cls := "search-container")(
-        div(cls := "search")(
-          span(id := "scaladoc-search")().tap { span =>
-            span.innerHTML = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M19.64 18.36l-6.24-6.24a7.52 7.52 0 10-1.28 1.28l6.24 6.24zM7.5 13.4a5.9 5.9 0 115.9-5.9 5.91 5.91 0 01-5.9 5.9z"></path></svg>"""
-            span.onclick = (event: Event) =>
-              if (document.body.contains(rootDiv)) {
-                document.body.removeChild(rootDiv)
-              }
-              else {
-                document.body.appendChild(rootDiv)
-                inputElem.focus()
-              }
-          }
-        )
-      )
-    )
+  private val searchIcon: html.Button =
+    val icon = document.getElementById("search-toggle").asInstanceOf[html.Button]
+    icon.onclick = (event: Event) =>
+      if (document.body.contains(rootDiv)) {
+        document.body.removeChild(rootDiv)
+      }
+      else {
+        document.body.appendChild(rootDiv)
+        input.focus()
+      }
     // open the search if the user hits the `s` key when not focused on a text input
     document.body.addEventListener("keydown", (e: KeyboardEvent) => handleGlobalKeyDown(e))
 
-    document.getElementById("scaladoc-searchBar").appendChild(element)
-    element
+    icon
 
   private val inputElem: html.Input =
     input(id := "scaladoc-searchbar-input").tap { element =>
@@ -198,11 +189,8 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   private val rootShowClasses   = ""
 
   private val rootDiv: html.Div =
-    val element = div(id := "scaladoc-searchbar")(
-      inputElem,
-      resultsDiv
-    )
-
+    val rootParent = document.createElement("div").asInstanceOf[html.Div]
+    val element = document.createElement("div").asInstanceOf[html.Div]
     element.addEventListener("mousedown", (e: Event) => e.stopPropagation())
     searchIcon.addEventListener("mousedown", (e: Event) => e.stopPropagation())
     document.body.addEventListener("mousedown", (e: Event) =>
@@ -217,8 +205,14 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         else if e.keyCode == 13 then handleEnter()
         else if e.keyCode == 27 then handleEscape()
     })
-
-    element
+    element.id = "scaladoc-searchbar"
+    element.appendChild(input)
+    element.appendChild(resultsDiv)
+    // element
+    rootParent.id = "searchbar-container"
+    rootParent.appendChild(element)
+    rootParent.addEventListener("mousedown", (e: Event) => handleEscape())
+    rootParent
 
   private def handleArrowUp() = {
     val selectedElement = resultsDiv.querySelector("[selected]")

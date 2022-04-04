@@ -319,7 +319,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         div (id := "leftToggler")(
           span(cls := "icon-toggler")
         ),
-        // div(id := "scaladoc-searchBar"),
+        div(id := "scaladoc-searchBar"),
         // main(id := "main-content")(
         //   parentsHtml,
         //   div(id := "content")(content),
