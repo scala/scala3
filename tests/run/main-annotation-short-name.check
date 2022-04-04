@@ -1,0 +1,7 @@
+2 + 3 = 5
+2 + 3 = 5
+Error: missing argument for n
+Error: missing argument for i
+Error: unknown argument name: --n
+Error: unknown argument name: --i
+Usage: add [-n] <Int> [-i] <Int>

@@ -11,12 +11,6 @@ import NameKinds.DefaultGetterName
 import Annotations.Annotation
 
 object MainProxies {
-
-  /** Generate proxy classes for @main functions and @myMain functions where myMain <:< MainAnnotation */
-  def proxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
-    mainAnnotationProxies(stats) ++ mainProxies(stats)
-  }
-
   /** Generate proxy classes for @main functions.
    *  A function like
    *
@@ -35,7 +29,7 @@ object MainProxies {
    *         catch case err: ParseError => showError(err)
    *       }
    */
-  private def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
+  def mainProxiesOld(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
     def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
@@ -45,11 +39,11 @@ object MainProxies {
       case _ =>
         Nil
     }
-    mainMethods(stats).flatMap(mainProxy)
+    mainMethods(stats).flatMap(mainProxyOld)
   }
 
   import untpd._
-  private def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
+  def mainProxyOld(mainFun: Symbol)(using Context): List[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
     val argsRef = Ident(nme.args)
@@ -171,7 +165,7 @@ object MainProxies {
    *       }
    *     }
    */
-  private def mainAnnotationProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
+  def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
     import tpd._
 
     /**
@@ -194,12 +188,12 @@ object MainProxies {
     def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, ParameterAnnotationss, DefaultValueSymbols, Option[Comment])] = stats.flatMap {
       case stat: DefDef =>
         val sym = stat.symbol
-        sym.annotations.filter(_.matches(defn.MainAnnotationClass)) match {
+        sym.annotations.filter(_.matches(defn.MainAnnot)) match {
           case Nil =>
             Nil
           case _ :: Nil =>
             val paramAnnotations = stat.paramss.flatMap(_.map(
-              valdef => valdef.symbol.annotations.filter(_.matches(defn.MainAnnotationParameterAnnotation))
+              valdef => valdef.symbol.annotations.filter(_.matches(defn.MainAnnotParameterAnnotation))
             ))
             (sym, paramAnnotations.toVector, defaultValueSymbols(scope, sym), stat.rawComment) :: Nil
           case mainAnnot :: others =>
@@ -213,7 +207,7 @@ object MainProxies {
     }
 
     // Assuming that the top-level object was already generated, all main methods will have a scope
-    mainMethods(EmptyTree, stats).flatMap(mainAnnotationProxy)
+    mainMethods(EmptyTree, stats).flatMap(mainProxy)
   }
 
   private def mainAnnotationProxy(mainFun: Symbol, paramAnnotations: ParameterAnnotationss, defaultValueSymbols: DefaultValueSymbols, docComment: Option[Comment])(using Context): Option[TypeDef] = {
@@ -367,7 +361,7 @@ object MainProxies {
             case tree => super.transform(tree)
       }
       val annots = mainFun.annotations
-        .filterNot(_.matches(defn.MainAnnotationClass))
+        .filterNot(_.matches(defn.MainAnnot))
         .map(annot => insertTypeSplices.transform(annot.tree))
       val mainMeth = DefDef(nme.main, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
         .withFlags(JavaStatic)

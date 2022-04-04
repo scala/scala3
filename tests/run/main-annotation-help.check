@@ -1,0 +1,158 @@
+Usage: doc1 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+  --inc - Int
+Usage: doc1 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+  --inc - Int
+Usage: doc1 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+  --inc - Int
+Usage: doc1 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+  --inc - Int
+Usage: doc2 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+  --inc - Int
+Usage: doc3 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+  --inc - Int
+Usage: doc4 [--num] <Int> [[--inc] <Int>]
+
+Adds two numbers.
+Arguments:
+  --num - Int
+    the first number
+  --inc - Int (optional)
+    the second number
+Usage: doc5 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+    the first number
+  --inc - Int
+Usage: doc6 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+  --inc - Int
+Usage: doc7 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+    the first number
+  --inc - Int
+    the second number
+Usage: doc8 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+    the first number
+  --inc - Int
+    the second number
+Usage: doc9 [--num] <Int> [--inc] <Int>
+
+Adds two numbers. Same as doc1.
+Arguments:
+  --num - Int
+    the first number
+  --inc - Int
+    the second number
+Usage: doc10 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+This should be on another line.
+And this also.
+Arguments:
+  --num - Int
+    I might have to write this on two lines
+  --inc - Int
+    I might even have to write this one on three lines
+Usage: doc11 [--num] <Int> [--inc] <Int>
+
+Adds two numbers.
+Arguments:
+  --num - Int
+    the first number
+    Oh, a new line!
+  --inc - Int
+    the second number
+    And another one!
+Usage: doc12 [--num] <Int> [--inc] <Int>
+
+Adds two numbers. It seems that I have a very long line of documentation and therefore might need to be cut at some
+point to fit a small terminal screen.
+Arguments:
+  --num - Int
+  --inc - Int
+Usage: doc13 [--num] <Int> [--inc] <Int>
+
+Addstwonumbers.ItseemsthatIhaveaverylonglineofdocumentationandthereforemightneedtobecutatsomepointtofitasmallterminalscreen.
+Arguments:
+  --num - Int
+  --inc - Int
+Usage: doc14 [--arg1] <String> [--arg2] <Int> [--arg3] <String> [--arg4] <Int> [--arg5] <String> [--arg6] <Int>
+             [--arg7] <String> [--arg8] <Int> [[--arg9] <String>] [[--arg10] <Int>] [[--arg11] <String>]
+             [[--arg12] <Int>] [[--arg13] <String>] [[--arg14] <Int>] [[--arg15] <String>] [<Int> [<Int> [...]]]
+
+Loudly judges the number of argument you gave to this poor function.
+Arguments:
+  --arg1 - String
+  --arg2 - Int
+  --arg3 - String
+  --arg4 - Int
+  --arg5 - String
+  --arg6 - Int
+  --arg7 - String
+  --arg8 - Int
+  --arg9 - String (optional)
+  --arg10 - Int (optional)
+  --arg11 - String (optional)
+  --arg12 - Int (optional)
+  --arg13 - String (optional)
+  --arg14 - Int (optional)
+  --arg15 - String (optional)
+  --arg16 - Int (vararg)
+Usage: doc15 [--myNum] <MyNumber> [--myInc] <MyNumber>
+
+Adds two instances of MyNumber.
+Arguments:
+  --myNum - MyNumber
+    my first number to add
+  --myInc - MyNumber
+    my second number to add
+Usage: doc16 [--first] <MyGeneric[Int]> [--second] <MyGeneric[Int]>
+
+Compares two instances of MyGeneric.
+Arguments:
+  --first - MyGeneric[Int]
+    my first element
+  --second - MyGeneric[Int]
+    my second element
+Usage: doc17 [-a] <Int> [-b] <Int> [-c] <String>
+
+Arguments:
+  -a - Int
+  -b - Int
+  -c - String
