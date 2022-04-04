@@ -72,6 +72,10 @@ object report:
       if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then migrationWarning(msg, pos)
       else error(msg, pos)
 
+  def gradualErrorOrMigrationWarning(msg: Message, pos: SrcPos = NoSourcePosition, warnFrom: SourceVersion, errorFrom: SourceVersion)(using Context): Unit =
+    if sourceVersion.isAtLeast(errorFrom) then errorOrMigrationWarning(msg, pos, errorFrom)
+    else if sourceVersion.isAtLeast(warnFrom) then warning(msg, pos)
+
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)
 
