@@ -2356,25 +2356,32 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     /** If `ref` is an implicitly parameterized trait, pass an implicit argument list.
      *  Otherwise, if `ref` is a parameterized trait, error.
-     *  Note: Traits and classes currently always have at least an empty parameter list ()
-     *        before the implicit parameters (this is inserted if not given in source).
-     *        We skip this parameter list when deciding whether a trait is parameterless or not.
+     *  Note: Traits and classes have sometimes a synthesized empty parameter list ()
+     *  in front or after the implicit parameter(s). See NamerOps.normalizeIfConstructor.
+     *  We synthesize a () argument at the correct place in this case.
      *  @param ref   The tree referring to the (parent) trait
      *  @param psym  Its type symbol
-     *  @param cinfo The info of its constructor
      */
-    def maybeCall(ref: Tree, psym: Symbol): Tree = psym.primaryConstructor.info.stripPoly match
-      case cinfo @ MethodType(Nil) if cinfo.resultType.isImplicitMethod =>
+    def maybeCall(ref: Tree, psym: Symbol): Tree =
+      def appliedRef =
         typedExpr(untpd.New(untpd.TypedSplice(ref)(using superCtx), Nil))(using superCtx)
-      case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
-        ref
-      case cinfo: MethodType =>
-        if !ctx.erasedTypes then // after constructors arguments are passed in super call.
-          typr.println(i"constr type: $cinfo")
-          report.error(ParameterizedTypeLacksArguments(psym), ref.srcPos)
-        ref
-      case _ =>
-        ref
+      def dropContextual(tp: Type): Type = tp.stripPoly match
+        case mt: MethodType if mt.isContextualMethod => dropContextual(mt.resType)
+        case _ => tp
+      psym.primaryConstructor.info.stripPoly match
+        case cinfo @ MethodType(Nil)
+        if cinfo.resultType.isImplicitMethod && !cinfo.resultType.isContextualMethod =>
+          appliedRef
+        case cinfo =>
+          val cinfo1 = dropContextual(cinfo)
+          cinfo1 match
+            case cinfo1 @ MethodType(Nil) if !cinfo1.resultType.isInstanceOf[MethodType] =>
+              if cinfo1 ne cinfo then appliedRef else ref
+            case cinfo1: MethodType if !ctx.erasedTypes =>
+              report.error(ParameterizedTypeLacksArguments(psym), ref.srcPos)
+              ref
+            case _ =>
+              ref
 
     val seenParents = mutable.Set[Symbol]()
 

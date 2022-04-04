@@ -585,12 +585,16 @@ object desugar {
 
     // new C[Ts](paramss)
     lazy val creatorExpr = {
-      val vparamss = constrVparamss match {
-        case (vparam :: _) :: _ if vparam.mods.isOneOf(GivenOrImplicit) => // add a leading () to match class parameters
+      val vparamss = constrVparamss match
+        case (vparam :: _) :: _ if vparam.mods.is(Implicit) => // add a leading () to match class parameters
           Nil :: constrVparamss
         case _ =>
-          constrVparamss
-      }
+          if constrVparamss.nonEmpty && constrVparamss.forall {
+            case vparam :: _ => vparam.mods.is(Given)
+            case _ => false
+          }
+          then constrVparamss :+ Nil // add a trailing () to match class parameters
+          else constrVparamss
       val nu = vparamss.foldLeft(makeNew(classTypeRef)) { (nu, vparams) =>
         val app = Apply(nu, vparams.map(refOfDef))
         vparams match {
@@ -818,7 +822,7 @@ object desugar {
     }
 
     flatTree(cdef1 :: companions ::: implicitWrappers ::: enumScaffolding)
-  }.showing(i"desugared: $result", Printers.desugar)
+  }.showing(i"desugared: $cdef --> $result", Printers.desugar)
 
   /** Expand
    *
