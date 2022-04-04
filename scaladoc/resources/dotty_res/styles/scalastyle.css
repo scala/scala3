@@ -88,6 +88,7 @@ pre {
   margin: 0px;
 }
 pre code, pre code.hljs {
+  font-family: var(--mono-font);
   font-size: 1em;
   padding: 0;
 }
