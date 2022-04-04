@@ -27,7 +27,7 @@ import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import typer.Nullables._
 import util.Spans._
-import util.SourceFile
+import util.{SourceFile, Property}
 import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
@@ -1135,7 +1135,23 @@ class TreeUnpickler(reader: TastyReader,
               tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTerm()
-              tpd.Apply(fn, until(end)(readTerm()))
+              val args = until(end)(readTerm())
+              // Adapt constructor calls where class has only using clauses from old to new scheme.
+              // Old: leading (), new: trailing ().
+              // This is neccessary so that we can read pre-3.2 Tasty correctly. There,
+              // constructor calls use the old scheme, but constructor definitions already
+              // use the new scheme, since they are reconstituted with normalizeIfConstructor.
+              if fn.symbol.isConstructor && fn.tpe.widen.isContextualMethod && args.isEmpty then
+                fn.withAttachment(SuppressedApplyToNone, ())
+              else
+                val res = tpd.Apply(fn, args)
+                if fn.removeAttachment(SuppressedApplyToNone).isEmpty then
+                  res
+                else res.tpe.widen match
+                  case MethodType(Nil) =>
+                    res.appliedToNone
+                  case mt: MethodType if mt.isContextualMethod =>
+                    res.withAttachment(SuppressedApplyToNone, ())
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
             case TYPED =>
@@ -1523,4 +1539,9 @@ object TreeUnpickler {
   inline val AllDefs = 2          // add everything
 
   class TreeWithoutOwner extends Exception
+
+  /** An attachment key indicating that an old-style leading () in a constructor
+   *  call that has otherwise only using clauses was suppressed.
+   */
+  val SuppressedApplyToNone: Property.Key[Unit] = Property.Key()
 }
