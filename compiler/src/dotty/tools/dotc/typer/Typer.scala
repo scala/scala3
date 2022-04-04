@@ -3408,7 +3408,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           def isContextBoundParams = wtp.stripPoly match
             case MethodType(EvidenceParamName(_) :: _) => true
             case _ => false
-          if sourceVersion == `future-migration` && isContextBoundParams
+          if sourceVersion == `future-migration` && isContextBoundParams && pt.args.nonEmpty
           then // Under future-migration, don't infer implicit arguments yet for parameters
                // coming from context bounds. Issue a warning instead and offer a patch.
             report.migrationWarning(
