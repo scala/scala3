@@ -1,0 +1,30 @@
+-- Error: tests/neg/i2887b.scala:11:7 ----------------------------------------------------------------------------------
+11 |    baz(new A { type S[X[_] <: [_] =>> Any, Y[_]] = [Z] =>> X[Z][Y[Z]]; type I[X] = X })(1) // error
+   |       ^
+   |       Recursion limit exceeded.
+   |       Maybe there is an illegal cyclic reference?
+   |       If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
+   |       A recurring operation is (inner to outer):
+   |
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         ...
+   |
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
+   |         try to instantiate Z[Z]
