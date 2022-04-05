@@ -115,10 +115,6 @@ jobs:
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
-      - name: MiMa
-        run: |
-          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues"
-
   test_windows_fast:
     runs-on: [self-hosted, Windows]
     if: "(
@@ -188,6 +184,47 @@ jobs:
       - name: Scala.js Test
         run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
+
+  mima:
+    name: MiMa
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || github.event_name == 'push'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip mima]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
+         )"
+    steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: MiMa
+        run: |
+          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues"
 
   community_build_a:
     runs-on: [self-hosted, Linux]
@@ -472,7 +509,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, community_build_forward_compat, test_sbt, test_java8]
+    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, community_build_forward_compat, test_sbt, test_java8]
     if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
@@ -573,7 +610,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
+    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
     if: "github.event_name == 'push'
          && startsWith(github.event.ref, 'refs/tags/')"
 
