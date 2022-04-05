@@ -33,7 +33,7 @@ object WrappedSnippet:
     ps.startHide()
     ps.println(s"package ${packageName.getOrElse("snippets")}")
     imports.foreach(i => ps.println(s"import $i"))
-    val classInfoSize = if classInfos.isEmpty then 1 else classInfos.length + (if usingQuotes then 1 else 0)
+    val nestLevels = if classInfos.isEmpty then 1 else classInfos.length + (if usingQuotes then 1 else 0)
     if classInfos.isEmpty then 
       ps.println("object Snippet {")
     else
@@ -46,16 +46,16 @@ object WrappedSnippet:
     if usingQuotes then 
       ps.printlnWithIndent(classInfos.length * indent, "def f(using Quotes) = {")
     ps.endHide()
-    str.split('\n').foreach(ps.printlnWithIndent(classInfoSize * indent, _))
+    str.split('\n').foreach(ps.printlnWithIndent(nestLevels * indent, _))
     ps.startHide()
-    (0 to classInfoSize -1).reverse.foreach( i => ps.printlnWithIndent(i * indent, "}"))
+    (0 to nestLevels -1).reverse.foreach( i => ps.printlnWithIndent(i * indent, "}"))
     ps.endHide()
     WrappedSnippet(
       baos.toString,
       outerLineOffset,
       outerColumnOffset,
-      classInfoSize + classInfos.flatMap(_.names).size + packageName.size + 2 /*Hide tokens*/,
-      classInfoSize * indent
+      nestLevels + classInfos.flatMap(_.names).size + packageName.size + 2 /*Hide tokens*/,
+      nestLevels * indent
     )
 
   extension (ps: PrintStream)
