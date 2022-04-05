@@ -17,7 +17,7 @@ object WrappedSnippet:
     imports: List[String],
     outerLineOffset: Int,
     outerColumnOffset: Int,
-    flag: SCFlags,
+    isMacro: Boolean = false,
   ): WrappedSnippet =
     val baos = new ByteArrayOutputStream()
     val ps = new PrintStream(baos)
@@ -26,7 +26,7 @@ object WrappedSnippet:
     imports.foreach(i => ps.println(s"import $i"))
     val nonEmptyClassInfos = if classInfos.isEmpty then Seq(SnippetCompilerData.ClassInfo(None, Nil, None)) else classInfos
 
-    if flag == SCFlags.MacroCompile then
+    if isMacro then
       ps.println("object Snippet {")
     else
       nonEmptyClassInfos.zipWithIndex.foreach { (info, i) =>
@@ -37,7 +37,7 @@ object WrappedSnippet:
       }
 
     ps.endHide()
-    val (indentsMade, createdVals) = if flag == SCFlags.MacroCompile then
+    val (indentsMade, createdVals) = if isMacro then
       (1, 1)
     else
       (nonEmptyClassInfos.size, nonEmptyClassInfos.flatMap(_.names).size)

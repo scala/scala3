@@ -52,7 +52,7 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
         data.map(_.imports).getOrElse(Nil),
         lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
         data.fold(0)(_.position.column) + constantColumnOffset,
-        arg.flag
+        arg.flag == SCFlags.MacroCompile
       )
       Some(compiler.compile(wrapped, arg, sourceFile))
     else
