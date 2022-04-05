@@ -13,33 +13,35 @@ When a users annotates a method with an annotation that extends `MainAnnotation`
  *  @param first Fist number to sum
  *  @param rest The rest of the numbers to sum
  */
-@myMain def sum(first: Int, rest: Int*): Int = first + rest.sum
+@myMain def sum(first: Int, second: Int = 0, rest: Int*): Int = first + second + rest.sum
 ```
 
 ```scala
 object foo {
   def main(args: Array[String]): Unit = {
-
-    val cmd = new myMain().command(
-      info = new CommandInfo(
-        name = "sum",
-        documentation = "Sum all the numbers",
-        parameters = Seq(
-          new ParameterInfo("first", "scala.Int", hasDefault=false, isVarargs=false, "Fist number to sum", Seq()),
-          new ParameterInfo("rest", "scala.Int" , hasDefault=false, isVarargs=true, "The rest of the numbers to sum", Seq())
-        )
-      ),
-      args = args
+    val mainAnnot = new myMain()
+    val info = new Info(
+      name = "foo.main",
+      documentation = "Sum all the numbers",
+      parameters = Seq(
+        new Parameter("first", "scala.Int", hasDefault=false, isVarargs=false, "Fist number to sum", Seq()),
+        new Parameter("second", "scala.Int", hasDefault=true, isVarargs=false, "", Seq()),
+        new Parameter("rest", "scala.Int" , hasDefault=false, isVarargs=true, "The rest of the numbers to sum", Seq())
+      )
     )
-    val args0 = cmd.argGetter[Int](0, None) // using a parser of Int
-    val args1 = cmd.varargGetter[Int] // using a parser of Int
-    cmd.run(() => sum(args0(), args1()*))
+    val mainArgsOpt = mainAnnot.command(info, args)
+    if mainArgsOpt.isDefined then
+      val mainArgs = mainArgsOpt.get
+      val args0 = mainAnnot.argGetter[Int](info.parameters(0), mainArgs(0), None) // using a parser of Int
+      val args1 = mainAnnot.argGetter[Int](info.parameters(1), mainArgs(1), Some(() => sum$default$1())) // using a parser of Int
+      val args2 = mainAnnot.varargGetter[Int](info.parameters(2), mainArgs.drop(2)) // using a parser of Int
+      mainAnnot.run(() => sum(args0(), args1(), args2()*))
   }
 }
 ```
 
-The implementation of the `main` method first instantiates the annotation and then creates a `Command`.
-When creating the `Command`, the arguments can be checked and preprocessed.
+The implementation of the `main` method first instantiates the annotation and then call `command`.
+When calling the `command`, the arguments can be checked and preprocessed.
 Then it defines a series of argument getters calling `argGetter` for each parameter and `varargGetter` for the last one if it is a varargs. `argGetter` gets an optional lambda that computes the default argument.
 Finally, the `run` method is called to run the application. It receives a by-name argument that contains the call the annotated method with the instantiations arguments (using the lambdas from `argGetter`/`varargGetter`).
 
@@ -50,42 +52,46 @@ Example of implementation of `myMain` that takes all arguments positionally. It 
 // Parser used to parse command line arguments
 import scala.util.CommandLineParser.FromString[T]
 
-// Result type of the annotated method is Int
-class myMain extends MainAnnotation:
-  import MainAnnotation.{ ParameterInfo, Command }
+// Result type of the annotated method is Int and arguments are parsed using FromString
+@experimental class myMain extends MainAnnotation[FromString, Int]:
+  import MainAnnotation.{ Info, Parameter }
 
-  /** A new command with arguments from `args` */
-  def command(info: CommandInfo, args: Array[String]): Command[FromString, Int] =
+  def command(info: Info, args: Seq[String]): Option[Seq[String]] =
     if args.contains("--help") then
       println(info.documentation)
-      // TODO: Print documentation of the parameters
-      System.exit(0)
-    assert(info.parameters.forall(!_.hasDefault), "Default arguments are not supported")
-    val (plainArgs, varargs) =
-      if info.parameters.last.isVarargs then
-        val numPlainArgs = info.parameters.length - 1
-        assert(numPlainArgs <= args.length, "Not enough arguments")
-        (args.take(numPlainArgs), args.drop(numPlainArgs))
+      None // do not parse or run the program
+    else if info.parameters.exists(_.hasDefault) then
+      println("Default arguments are not supported")
+      None
+    else if info.hasVarargs then
+      val numPlainArgs = info.parameters.length - 1
+      if numPlainArgs <= args.length then
+        println("Not enough arguments")
+        None
       else
-        assert(info.parameters.length <= args.length, "Not enough arguments")
-        assert(info.parameters.length >= args.length, "Too many arguments")
-        (args, Array.empty[String])
-    new MyCommand(plainArgs, varargs)
+        Some(args)
+    else
+      if info.parameters.length <= args.length then
+        println("Not enough arguments")
+        None
+      else if info.parameters.length >= args.length then
+        println("Too many arguments")
+        None
+      else
+        Some(args)
 
-  @experimental
-  class MyCommand(plainArgs: Seq[String], varargs: Seq[String]) extends Command[FromString, Int]:
+  def argGetter[T](param: Parameter, arg: String, defaultArgument: Option[() => T])(using parser: FromString[T]): () => T =
+    () => parser.fromString(arg)
 
-    def argGetter[T](idx: Int, defaultArgument: Option[() => T])(using parser: FromString[T]): () => T =
-      () => parser.fromString(plainArgs(idx))
+  def varargGetter[T](param: Parameter, args: Seq[String])(using parser: FromString[T]): () => Seq[T] =
+    () => args.map(arg => parser.fromString(arg))
 
-    def varargGetter[T](using parser: FromString[T]): () => Seq[T] =
-      () => varargs.map(arg => parser.fromString(arg))
+  def run(program: () => Int): Unit =
+    println("executing program")
 
-    def run(program: () => Int): Unit =
-      println("executing program")
+    try {
       val result = program()
       println("result: " + result)
       println("executed program")
-  end MyCommand
 end myMain
 ```

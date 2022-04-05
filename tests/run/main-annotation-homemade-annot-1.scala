@@ -29,17 +29,18 @@ object Test:
 end Test
 
 @experimental
-class mainAwait(timeout: Int = 2) extends MainAnnotation:
+class mainAwait(timeout: Int = 2) extends MainAnnotation[FromString, Future[Any]]:
   import MainAnnotation.*
 
   // This is a toy example, it only works with positional args
-  def command(info: CommandInfo, args: Array[String]): Command[FromString, Future[Any]] =
-    new Command[FromString, Future[Any]]:
-      override def argGetter[T](idx: Int, defaultArgument: Option[() => T])(using p: FromString[T]): () => T =
-        () => p.fromString(args(idx))
+  def command(info: Info, args: Seq[String]): Option[Seq[String]] = Some(args)
 
-      override def varargGetter[T](using p: FromString[T]): () => Seq[T] =
-        () => for i <- ((info.parameters.length-1) until args.length) yield p.fromString(args(i))
+  def argGetter[T](param: Parameter, arg: String, defaultArgument: Option[() => T])(using p: FromString[T]): () => T =
+    () => p.fromString(arg)
 
-      override def run(f: () => Future[Any]): Unit = println(Await.result(f(), Duration(timeout, SECONDS)))
+  def varargGetter[T](param: Parameter, args: Seq[String])(using p: FromString[T]): () => Seq[T] =
+    () => for arg <- args yield p.fromString(arg)
+
+  def run(f: () => Future[Any]): Unit = println(Await.result(f(), Duration(timeout, SECONDS)))
+
 end mainAwait

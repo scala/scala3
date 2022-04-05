@@ -143,6 +143,7 @@ object MainProxies {
    *       */
    *     @myMain(80) def f(
    *       @myMain.Alias("myX") x: S,
+   *       y: S,
    *       ys: T*
    *     ) = ...
    *
@@ -150,22 +151,23 @@ object MainProxies {
    *
    *     final class f {
    *       static def main(args: Array[String]): Unit = {
-   *         val cmd = new myMain(80).command(
-   *           info = new CommandInfo(
-   *             name = "f",
-   *             documentation = "Lorem ipsum dolor sit amet consectetur adipiscing elit.",
-   *             parameters = Seq(
-   *               new scala.annotation.MainAnnotation.ParameterInfo("x", "S", false, false, "my param x", Seq(new scala.main.Alias("myX")))
-   *               new scala.annotation.MainAnnotation.ParameterInfo("ys", "T", false, false, "all my params y", Seq())
-   *             )
+   *         val annotation = new myMain(80)
+   *         val info = new Info(
+   *           name = "f",
+   *           documentation = "Lorem ipsum dolor sit amet consectetur adipiscing elit.",
+   *           parameters = Seq(
+   *             new scala.annotation.MainAnnotation.Parameter("x", "S", false, false, "my param x", Seq(new scala.main.Alias("myX"))),
+   *             new scala.annotation.MainAnnotation.Parameter("y", "S", true, false, "", Seq()),
+   *             new scala.annotation.MainAnnotation.Parameter("ys", "T", false, true, "all my params y", Seq())
    *           )
-   *           args = args
-   *         )
-   *
-   *         val args0: () => S = cmd.argGetter[S](0, None)
-   *         val args1: () => Seq[T] = cmd.varargGetter[T]
-   *
-   *         cmd.run(() => f(args0(), args1()*))
+   *         ),
+   *         val command = annotation.command(info, args)
+   *         if command.isDefined then
+   *           val cmd = command.get
+   *           val args0: () => S = annotation.argGetter[S](info.parameters(0), cmd(0), None)
+   *           val args1: () => S = annotation.argGetter[S](info.parameters(1), mainArgs(1), Some(() => sum$default$1()))
+   *           val args2: () => Seq[T] = annotation.varargGetter[T](info.parameters(2), cmd.drop(2))
+   *           annotation.run(() => f(args0(), args1(), args2()*))
    *       }
    *     }
    */
@@ -229,7 +231,7 @@ object MainProxies {
      *
      *  A ParamInfo has the following shape
      *  ```
-     *  new scala.annotation.MainAnnotation.ParameterInfo("x", "S", false, false, "my param x", Seq(new scala.main.Alias("myX")))
+     *  new scala.annotation.MainAnnotation.Parameter("x", "S", false, false, "my param x", Seq(new scala.main.Alias("myX")))
      *  ```
      */
     def parameterInfos(mt: MethodType): List[Tree] =
@@ -252,33 +254,34 @@ object MainProxies {
         val constructorArgs = List(param, paramTypeStr, hasDefault, isRepeated, paramDoc)
           .map(value => Literal(Constant(value)))
 
-        New(TypeTree(defn.MainAnnotationParameterInfo.typeRef), List(constructorArgs :+ paramAnnots))
+        New(TypeTree(defn.MainAnnotationParameter.typeRef), List(constructorArgs :+ paramAnnots))
 
     end parameterInfos
 
     /**
       * Creates a list of references and definitions of arguments.
       * The goal is to create the
-      *   `val args0: () => S = cmd.argGetter[S](0, None)`
+      *   `val args0: () => S = annotation.argGetter[S](0, cmd(0), None)`
       * part of the code.
       */
     def argValDefs(mt: MethodType): List[ValDef] =
       for ((formal, paramName), idx) <- mt.paramInfos.zip(mt.paramNames).zipWithIndex yield
-          val argName = nme.args ++ idx.toString
-          val isRepeated = formal.isRepeatedParam
-          val formalType = if isRepeated then formal.argTypes.head else formal
-          val getterName = if isRepeated then nme.varargGetter else nme.argGetter
-          val defaultValueGetterOpt = defaultValueSymbols.get(idx) match
-            case None => ref(defn.NoneModule.termRef)
-            case Some(dvSym) =>
-               val value = unitToValue(ref(dvSym.termRef))
-               Apply(ref(defn.SomeClass.companionModule.termRef), value)
-          val argGetter0 = TypeApply(Select(Ident(nme.cmd), getterName), TypeTree(formalType) :: Nil)
-          val argGetter =
-            if isRepeated then argGetter0
-            else Apply(argGetter0, List(Literal(Constant(idx)), defaultValueGetterOpt))
-
-          ValDef(argName, TypeTree(), argGetter)
+        val argName = nme.args ++ idx.toString
+        val isRepeated = formal.isRepeatedParam
+        val formalType = if isRepeated then formal.argTypes.head else formal
+        val getterName = if isRepeated then nme.varargGetter else nme.argGetter
+        val defaultValueGetterOpt = defaultValueSymbols.get(idx) match
+          case None => ref(defn.NoneModule.termRef)
+          case Some(dvSym) =>
+              val value = unitToValue(ref(dvSym.termRef))
+              Apply(ref(defn.SomeClass.companionModule.termRef), value)
+        val argGetter0 = TypeApply(Select(Ident(nme.annotation), getterName), TypeTree(formalType) :: Nil)
+        val index = Literal(Constant(idx))
+        val paramInfo = Apply(Select(Ident(nme.info), nme.parameters), index)
+        val argGetter =
+          if isRepeated then Apply(argGetter0, List(paramInfo, Apply(Select(Ident(nme.cmd), nme.drop), List(index))))
+          else Apply(argGetter0, List(paramInfo, Apply(Ident(nme.cmd), List(index)), defaultValueGetterOpt))
+        ValDef(argName, TypeTree(), argGetter)
     end argValDefs
 
 
@@ -318,18 +321,39 @@ object MainProxies {
         val nameTree = Literal(Constant(mainFun.showName))
         val docTree = Literal(Constant(documentation.mainDoc))
         val paramInfos = Apply(ref(defn.SeqModule.termRef), parameterInfos)
-        New(TypeTree(defn.MainAnnotationCommandInfo.typeRef), List(List(nameTree, docTree, paramInfos)))
+        New(TypeTree(defn.MainAnnotationInfo.typeRef), List(List(nameTree, docTree, paramInfos)))
 
-      val cmd = ValDef(
-        nme.cmd,
+      val annotVal = ValDef(
+        nme.annotation,
+        TypeTree(),
+        instantiateAnnotation(mainAnnot)
+      )
+      val infoVal = ValDef(
+        nme.info,
+        TypeTree(),
+        cmdInfo
+      )
+      val command = ValDef(
+        nme.command,
         TypeTree(),
         Apply(
-          Select(instantiateAnnotation(mainAnnot), nme.command),
-          List(cmdInfo, Ident(nme.args))
+          Select(Ident(nme.annotation), nme.command),
+          List(Ident(nme.info), Ident(nme.args))
         )
       )
-      val run = Apply(Select(Ident(nme.cmd), nme.run), mainCall)
-      val body = Block(cmdInfo :: cmd :: args, run)
+      val argsVal = ValDef(
+        nme.cmd,
+        TypeTree(),
+        Select(Ident(nme.command), nme.get)
+      )
+      val run = Apply(Select(Ident(nme.annotation), nme.run), mainCall)
+      val body0 = If(
+        Select(Ident(nme.command), nme.isDefined),
+        Block(argsVal :: args, run),
+        EmptyTree
+      )
+      val body = Block(List(annotVal, infoVal, command), body0) // TODO add `if (cmd.nonEmpty)`
+
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
       /** Replace typed `Ident`s that have been typed with a TypeSplice with the reference to the symbol.

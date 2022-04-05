@@ -17,83 +17,90 @@ package scala.annotation
  *   *  @param first Fist number to sum
  *   *  @param rest The rest of the numbers to sum
  *   */
- *  @myMain def sum(first: Int, rest: Int*): Int = first + rest.sum
+ *  @myMain def sum(first: Int, second: Int = 0, rest: Int*): Int = first + second + rest.sum
  *  ```
  *  generates
  *  ```scala
  *  object foo {
  *    def main(args: Array[String]): Unit = {
- *      val cmd = new myMain().command(
- *        info = new CommandInfo(
- *          name = "foo.main",
- *          documentation = "Sum all the numbers",
- *          parameters = Seq(
- *            new ParameterInfo("first", "scala.Int", hasDefault=false, isVarargs=false, "Fist number to sum"),
- *            new ParameterInfo("rest", "scala.Int" , hasDefault=false, isVarargs=true, "The rest of the numbers to sum")
- *          )
+ *      val mainAnnot = new myMain()
+ *      val info = new Info(
+ *        name = "foo.main",
+ *        documentation = "Sum all the numbers",
+ *        parameters = Seq(
+ *          new Parameter("first", "scala.Int", hasDefault=false, isVarargs=false, "Fist number to sum"),
+ *          new Parameter("rest", "scala.Int" , hasDefault=false, isVarargs=true, "The rest of the numbers to sum")
  *        )
- *        args = args
  *      )
- *      val args0 = cmd.argGetter[Int](0, None) // using cmd.Parser[Int]
- *      val args1 = cmd.varargGetter[Int] // using cmd.Parser[Int]
- *      cmd.run(() => sum(args0(), args1()*))
+ *      val mainArgsOpt = mainAnnot.command(info, args)
+ *      if mainArgsOpt.isDefined then
+ *        val mainArgs = mainArgsOpt.get
+ *        val args0 = mainAnnot.argGetter[Int](info.parameters(0), mainArgs(0), None) // using parser Int
+ *        val args1 = mainAnnot.argGetter[Int](info.parameters(1), mainArgs(1), Some(() => sum$default$1())) // using parser Int
+ *        val args2 = mainAnnot.varargGetter[Int](info.parameters(2), mainArgs.drop(2)) // using parser Int
+ *        mainAnnot.run(() => sum(args0(), args1(), args2()*))
  *    }
  *  }
  *  ```
  *
+ *  @param Parser The class used for argument string parsing and arguments into a `T`
+ *  @param Result The required result type of the main method.
+ *                If this type is Any or Unit, any type will be accepted.
  */
 @experimental
-trait MainAnnotation extends StaticAnnotation:
-  import MainAnnotation.{Command, CommandInfo}
+trait MainAnnotation[Parser[_], Result] extends StaticAnnotation:
+  import MainAnnotation.{Info, Parameter}
 
-  /** A new command with arguments from `args`
+  /** Process the command arguments before parsing them.
+   *
+   *  Return `Some` of the sequence of arguments that will be parsed to be passed to the main method.
+   *  This sequence needs to have the same length as the number of parameters of the main method (i.e. `info.parameters.size`).
+   *  If there is a varags parameter, then the sequence must be at least of length `info.parameters.size - 1`.
+   *
+   *  Returns `None` if the arguments are invalid and parsing and run should be stopped.
    *
    *  @param info The information about the command (name, documentation and info about parameters)
    *  @param args The command line arguments
    */
-  def command(info: CommandInfo, args: Array[String]): Command[?, ?]
+  def command(info: Info, args: Seq[String]): Option[Seq[String]]
+
+  /** The getter for the `idx`th argument of type `T`
+   *
+   *   @param idx The index of the argument
+   *   @param defaultArgument Optional lambda to instantiate the default argument
+   */
+  def argGetter[T](param: Parameter, arg: String, defaultArgument: Option[() => T])(using Parser[T]): () => T
+
+  /** The getter for a final varargs argument of type `T*` */
+  def varargGetter[T](param: Parameter, args: Seq[String])(using Parser[T]): () => Seq[T]
+
+  /** Run `program` if all arguments are valid if all arguments are valid
+   *
+   *  @param program A function containing the call to the main method and instantiation of its arguments
+   */
+  def run(program: () => Result): Unit
 
 end MainAnnotation
 
 @experimental
 object MainAnnotation:
 
-  /** A class representing a command to run
-   *
-   *  @param Parser The class used for argument string parsing and arguments into a `T`
-   *  @param Result The required result type of the main method.
-   *                If this type is Any or Unit, any type will be accepted.
-   */
-  trait Command[Parser[_], Result]:
-
-    /** The getter for the `idx`th argument of type `T`
-     *
-     *   @param idx The index of the argument
-     *   @param defaultArgument Optional lambda to instantiate the default argument
-     */
-    def argGetter[T](idx: Int, defaultArgument: Option[() => T])(using Parser[T]): () => T
-
-    /** The getter for a final varargs argument of type `T*` */
-    def varargGetter[T](using Parser[T]): () => Seq[T]
-
-    /** Run `program` if all arguments are valid if all arguments are valid
-     *
-     *  @param program A function containing the call to the main method and instantiation of its arguments
-     */
-    def run(program: () => Result): Unit
-  end Command
-
   /** Information about the main method
    *
    *  @param name The name of the main method
-   *  @param documentation The documentation of the main method without the `@param` documentation (see ParameterInfo.documentaion)
+   *  @param documentation The documentation of the main method without the `@param` documentation (see Parameter.documentaion)
    *  @param parameters Information about the parameters of the main method
    */
-  final class CommandInfo(
+  final class Info(
     val name: String,
     val documentation: String,
-    val parameters: Seq[ParameterInfo],
-  )
+    val parameters: Seq[Parameter],
+  ):
+
+    /** If the method ends with a varargs parameter */
+    def hasVarargs: Boolean = parameters.nonEmpty && parameters.last.isVarargs
+
+  end Info
 
   /** Information about a parameter of a main method
    *
@@ -104,7 +111,7 @@ object MainAnnotation:
    *  @param documentation The documentation of the parameter (from `@param` documentation in the main method)
    *  @param annotations The annotations of the parameter that extend `ParameterAnnotation`
    */
-  final class ParameterInfo (
+  final class Parameter(
     val name: String,
     val typeName: String,
     val hasDefault: Boolean,
@@ -113,7 +120,7 @@ object MainAnnotation:
     val annotations: Seq[ParameterAnnotation],
   )
 
-  /** Marker trait for annotations that will be included in the ParameterInfo annotations. */
+  /** Marker trait for annotations that will be included in the Parameter annotations. */
   trait ParameterAnnotation extends StaticAnnotation
 
 end MainAnnotation

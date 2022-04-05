@@ -11,14 +11,14 @@ object Test:
 end Test
 
 @experimental
-class mainManyArgs(i1: Int, s2: String, i3: Int) extends MainAnnotation:
+class mainManyArgs(i1: Int, s2: String, i3: Int) extends MainAnnotation[FromString, Any]:
   import MainAnnotation.*
 
-  def command(info: CommandInfo, args: Array[String]): Command[FromString, Any] =
-    new Command[FromString, Any]:
-      override def argGetter[T](idx: Int, optDefaultGetter: Option[() => T])(using p: FromString[T]): () => T = ???
+  def command(info: Info, args: Seq[String]): Option[Seq[String]] = Some(args)
 
-      override def varargGetter[T](using p: FromString[T]): () => Seq[T] = ???
+  def argGetter[T](param: Parameter, arg: String, defaultArgument: Option[() => T])(using p: FromString[T]): () => T = ???
 
-      override def run(program: () => Any): Unit = program()
-  end command
+  def varargGetter[T](param: Parameter, args: Seq[String])(using p: FromString[T]): () => Seq[T] = ???
+
+
+  def run(program: () => Any): Unit = program()

@@ -21,39 +21,42 @@ object Test:
 end Test
 
 @experimental
-class myMain extends MainAnnotation:
-  import MainAnnotation.{ Command, CommandInfo, ParameterInfo }
+class myMain extends MainAnnotation[FromString, Int]:
+  import MainAnnotation.{ Info, Parameter }
 
-  /** A new command with arguments from `args` */
-  def command(info: CommandInfo, args: Array[String]): Command[FromString, Int] =
+  def command(info: Info, args: Seq[String]): Option[Seq[String]] =
     if args.contains("--help") then
       println(info.documentation)
-      System.exit(0)
-    assert(info.parameters.forall(!_.hasDefault), "Default arguments are not supported")
-    val (plainArgs, varargs) =
-      if info.parameters.last.isVarargs then
-        val numPlainArgs = info.parameters.length - 1
-        assert(numPlainArgs <= args.length, "Not enough arguments")
-        (args.take(numPlainArgs), args.drop(numPlainArgs))
+      None // do not parse or run the program
+    else if info.parameters.exists(_.hasDefault) then
+      println("Default arguments are not supported")
+      None
+    else if info.hasVarargs then
+      val numPlainArgs = info.parameters.length - 1
+      if numPlainArgs > args.length then
+        println("Not enough arguments")
+        None
       else
-        assert(info.parameters.length <= args.length, "Not enough arguments")
-        assert(info.parameters.length >= args.length, "Too many arguments")
-        (args, Array.empty[String])
-    new MyCommand(plainArgs, varargs)
+        Some(args)
+    else
+      if info.parameters.length > args.length then
+        println("Not enough arguments")
+        None
+      else if info.parameters.length < args.length then
+        println("Too many arguments")
+        None
+      else
+        Some(args)
 
-  @experimental
-  class MyCommand(plainArgs: Seq[String], varargs: Seq[String]) extends Command[FromString, Int]:
+  def argGetter[T](param: Parameter, arg: String, defaultArgument: Option[() => T])(using parser: FromString[T]): () => T =
+    () => parser.fromString(arg)
 
-    def argGetter[T](idx: Int, defaultArgument: Option[() => T])(using parser: FromString[T]): () => T =
-      () => parser.fromString(plainArgs(idx))
+  def varargGetter[T](param: Parameter, args: Seq[String])(using parser: FromString[T]): () => Seq[T] =
+    () => args.map(arg => parser.fromString(arg))
 
-    def varargGetter[T](using parser: FromString[T]): () => Seq[T] =
-      () => varargs.map(arg => parser.fromString(arg))
-
-    def run(program: () => Int): Unit =
-      println("executing program")
-      val result = program()
-      println("result: " + result)
-      println("executed program")
-  end MyCommand
+  def run(program: () => Int): Unit =
+    println("executing program")
+    val result = program()
+    println("result: " + result)
+    println("executed program")
 end myMain

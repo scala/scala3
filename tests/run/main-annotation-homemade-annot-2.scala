@@ -29,22 +29,21 @@ end Test
 
 // This is a toy example, it only works with positional args
 @experimental
-class myMain(runs: Int = 3)(after: String*) extends MainAnnotation:
+class myMain(runs: Int = 3)(after: String*) extends MainAnnotation[FromString, Any]:
   import MainAnnotation.*
 
-  def command(info: CommandInfo, args: Array[String]): Command[FromString, Any] =
-    new Command[FromString, Any]:
+  def command(info: Info, args: Seq[String]): Option[Seq[String]] = Some(args)
 
-      override def argGetter[T](idx: Int, defaultArgument: Option[() => T])(using p: FromString[T]): () => T =
-        () => p.fromString(args(idx))
+  def argGetter[T](param: Parameter, arg: String, defaultArgument: Option[() => T])(using p: FromString[T]): () => T =
+    () => p.fromString(arg)
 
-      override def varargGetter[T](using p: FromString[T]): () => Seq[T] =
-        () => for i <- (info.parameters.length until args.length) yield p.fromString(args(i))
+  def varargGetter[T](param: Parameter, args: Seq[String])(using p: FromString[T]): () => Seq[T] =
+    () => for arg <- args yield p.fromString(arg)
 
-      override def run(f: () => Any): Unit =
-        for (_ <- 1 to runs)
-          f()
-          if after.length > 0 then println(after.mkString(", "))
-      end run
-  end command
+  def run(f: () => Any): Unit =
+    for (_ <- 1 to runs)
+      f()
+      if after.length > 0 then println(after.mkString(", "))
+  end run
+
 end myMain
