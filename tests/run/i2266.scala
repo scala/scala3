@@ -1,8 +1,13 @@
 object Test extends App {
-  def f = {
-    lazy val x: true = { println("X"); true }
-    println(x)
+  lazy val x: true = { println("X"); true }
+  println(x)
+
+  object Inner {
+    println("Y")  // not printed
+    inline val y = 1
   }
-  f
+  println(Inner.y)
+
+  inline val MV = Int.MaxValue
 }
 

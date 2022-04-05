@@ -1694,11 +1694,6 @@ class Namer { typer: Typer =>
         case _ =>
           approxTp
 
-    // println(s"final inherited for $sym: ${inherited.toString}") !!!
-    // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-    // TODO Scala 3.1: only check for inline vals (no final ones)
-    def isInlineVal = sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
-
     var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
     if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
@@ -1732,7 +1727,7 @@ class Namer { typer: Typer =>
         // don't strip @uncheckedVariance annot for default getters
         TypeOps.simplify(tp.widenTermRefExpr,
             if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null) match
-          case ctp: ConstantType if isInlineVal => ctp
+          case ctp: ConstantType if sym.isInlineVal => ctp
           case tp => TypeComparer.widenInferred(tp, pt)
 
     // Replace aliases to Unit by Unit itself. If we leave the alias in
@@ -1743,7 +1738,7 @@ class Namer { typer: Typer =>
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
-      if (isInlineVal) lhsType else inherited
+      if sym.isInlineVal then lhsType else inherited
     else {
       if (sym.is(Implicit))
         mdef match {

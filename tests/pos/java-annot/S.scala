@@ -1,5 +1,5 @@
 object C {
-  val cs: "cs" = "cs"
+  final val cs: "cs" = "cs"
 }
 
 object S {

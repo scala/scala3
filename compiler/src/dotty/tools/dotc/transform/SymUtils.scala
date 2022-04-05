@@ -110,6 +110,11 @@ object SymUtils:
           self.isCoDefinedGiven(res.typeSymbol)
       self.isAllOf(Given | Method) && isCodefined(self.info)
 
+    // TODO Scala 3.x: only check for inline vals (no final ones)
+    def isInlineVal(using Context) =
+      self.isOneOf(FinalOrInline, butNot = Mutable)
+      && (!self.is(Method) || self.is(Accessor))
+
     def useCompanionAsSumMirror(using Context): Boolean =
       def companionExtendsSum(using Context): Boolean =
         self.linkedClass.isSubClass(defn.Mirror_SumClass)
