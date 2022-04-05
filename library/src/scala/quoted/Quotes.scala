@@ -2533,11 +2533,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Convert this `TypeRepr` to an `Type[?]`
         *
         *  Usage:
-        *  ```scala sc:usingquotes
-        *  val typeRepr: TypeRepr = ???
-        *  typeRepr.asType match
-        *    case '[t] =>
-        *      '{ val x: t = ??? }
+        *  ```scala
+        *  //{
+        *  def f(using Quotes) = {
+        *    val typeRepr: TypeRepr = ???
+        *  //}
+        *    typeRepr.asType match
+        *      case '[t] =>
+        *        '{ val x: t = ??? }
+        *  //{
+        *  }
+        *  //}
         *  ```
         */
         def asType: Type[?]

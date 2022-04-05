@@ -16,9 +16,15 @@ object Varargs {
    *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
    *
    *  Usage:
-   *  ```scala sc:usingquotes
-   *  import quotes.reflect.*
-   *  '{ List(${Varargs(List('{1}, '{2}, '{3}))}: _*) } // equivalent to '{ List(1, 2, 3) }
+   *  ```scala
+   *  //{
+   *  def f(using Quotes) = {
+   *    import quotes.reflect.*
+   *  //}
+   *    '{ List(${Varargs(List('{1}, '{2}, '{3}))}: _*) } // equivalent to '{ List(1, 2, 3) }
+   *  //{
+   *  }
+   *  //}
    *  ```
    */
   def apply[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] = {

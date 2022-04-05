@@ -26,13 +26,20 @@ object Type:
    *  Returns None if the type is not a singleton constant type.
    *
    *  Example usage:
-   *  ```scala sc:usingquotes
+   *  ```scala
+   *  //{
    *  import scala.deriving.*
-   *  import quotes.reflect.*
-   *  val expr: Expr[Any] = ???
-   *  expr match
-   *    case '{ $mirrorExpr : Mirror.Sum { type MirroredLabel = label } } =>
-   *      Type.valueOfConstant[label] // Option[String]
+   *  def f(using Quotes) = {
+   *    import quotes.reflect.*
+   *    val expr: Expr[Any] = ???
+   *  //}
+   *    expr match {
+   *      case '{ $mirrorExpr : Mirror.Sum { type MirroredLabel = label } } =>
+   *        Type.valueOfConstant[label] // Option[String]
+   *    }
+   *  //{
+   *  }
+   *  //}
    *  ```
    */
   def valueOfConstant[T](using Type[T])(using Quotes): Option[T] =
@@ -43,14 +50,20 @@ object Type:
    *  Returns None if the type is not a tuple singleton constant types.
    *
    *  Example usage:
-   *  ```scala sc:usingquotes
+   *  ```scala
    *  //{
    *  import scala.deriving.*
-   *  import quotes.reflect.*
-   *  val expr: Expr[Any] = ???
-   *  expr match
-   *    case '{ type label <: Tuple; $mirrorExpr : Mirror.Sum { type MirroredElemLabels = `label` } } =>
-   *      Type.valueOfTuple[label] // Option[Tuple]
+   *  def f(using Quotes) = {
+   *    import quotes.reflect.*
+   *    val expr: Expr[Any] = ???
+   *  //}
+   *    expr match {
+   *      case '{ type label <: Tuple; $mirrorExpr : Mirror.Sum { type MirroredElemLabels = `label` } } =>
+   *        Type.valueOfTuple[label] // Option[Tuple]
+   *    }
+   *  //{
+   *  }
+   *  //}
    *  ```
    */
   @since("3.1")

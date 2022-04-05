@@ -44,28 +44,19 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     lineOffset: SnippetChecker.LineOffset,
     sourceFile: SourceFile
   ): Option[SnippetCompilationResult] = {
-    arg.flag match 
-      case flag @ (SCFlags.Compile | SCFlags.Fail | SCFlags.UsingQuotes) => 
-        val wrapped = WrappedSnippet(
-          snippet,
-          data.map(_.packageName),
-          data.fold(Nil)(_.classInfos),
-          data.map(_.imports).getOrElse(Nil),
-          lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
-          data.fold(0)(_.position.column) + constantColumnOffset,
-          flag == SCFlags.UsingQuotes
-        )
-        Some(compiler.compile(wrapped, arg, sourceFile))
-      case SCFlags.MacroCompile =>
-        val wrapped = WrappedSnippet(
-          snippet, 
-          data.map(_.packageName),
-          data.map(_.imports).getOrElse(Nil),
-          lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
-          data.fold(0)(_.position.column) + constantColumnOffset
-        )
-        Some(compiler.compile(wrapped, arg, sourceFile))
-      case SCFlags.NoCompile => None
+    if arg.flag != SCFlags.NoCompile then
+      val wrapped = WrappedSnippet(
+        snippet,
+        data.map(_.packageName),
+        data.fold(Nil)(_.classInfos),
+        data.map(_.imports).getOrElse(Nil),
+        lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
+        data.fold(0)(_.position.column) + constantColumnOffset,
+        arg.flag
+      )
+      Some(compiler.compile(wrapped, arg, sourceFile))
+    else
+      None
 
   }
 

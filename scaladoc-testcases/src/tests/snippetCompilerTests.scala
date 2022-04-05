@@ -56,21 +56,15 @@ class B { }
 
 /**
  * ```scala sc:macrocompile
- *    inline def sum(args: Int*): Int = ${ sumExpr('args) }
- *    def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
- *      case Varargs(Exprs(args)) => ???
- *        // args: Seq[Int]
+ * import scala.quoted._
+ * inline def sum(args: Int*): Int = ${ sumExpr('args) }
+ * def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
+ *   case Varargs(Exprs(args)) => ???
+ *   // args: Seq[Int]
  * ```
  */
-class C { }
 
-/**
-   * ```scala sc:usingquotes
-   *    import quotes.reflect.*
-   *    '{ List(${Varargs(List('{1}, '{2}, '{3}))}: _*) } // equivalent to '{ List(1, 2, 3) }
-   * ```
-   */
-class D { }
+class C { }
 
 trait Quotes {
   val reflect: reflectModule = ???
