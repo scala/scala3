@@ -153,6 +153,7 @@ abstract class Reporter extends interfaces.ReporterResult {
         case w: Warning if ctx.settings.XfatalWarnings.value => w.toError
         case _                                               => dia
       if !isHidden(d) then // avoid isHidden test for summarized warnings so that message is not forced
+        markReported(d)
         withMode(Mode.Printing)(doReport(d))
         d match {
           case _: Warning => _warningCount += 1
@@ -235,6 +236,8 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Should this diagnostic not be reported at all? */
   def isHidden(dia: Diagnostic)(using Context): Boolean =
     ctx.mode.is(Mode.Printing)
+
+  def markReported(dia: Diagnostic)(using Context): Unit = ()
 
   /** Does this reporter contain errors that have yet to be reported by its outer reporter ?
    *  Note: this is always false when there is no outer reporter.

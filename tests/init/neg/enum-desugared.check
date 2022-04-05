@@ -5,5 +5,7 @@
    |
    |          The unsafe promotion may cause the following problem:
    |          Calling the external method method name may cause initialization errors. Calling trace:
-   |           -> Array(this.LazyErrorId, this.NoExplanationID) // error	[ enum-desugared.scala:17 ]
-   |            -> override def productPrefix: String = this.name()	[ enum-desugared.scala:29 ]
+   |          -> Array(this.LazyErrorId, this.NoExplanationID) // error	[ enum-desugared.scala:17 ]
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          -> override def productPrefix: String = this.name()	[ enum-desugared.scala:29 ]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

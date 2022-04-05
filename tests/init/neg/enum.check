@@ -5,4 +5,5 @@
   |
   |        The unsafe promotion may cause the following problem:
   |        Calling the external method method name may cause initialization errors. Calling trace:
-  |         -> NoExplanationID // error	[ enum.scala:4 ]
+  |        -> NoExplanationID // error	[ enum.scala:4 ]
+  |           ^
