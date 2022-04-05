@@ -4,12 +4,3 @@
   |       Overloaded or recursive method impl needs return type
   |
   | longer explanation available when compiling with `-explain`
--- Error: tests/neg/i14772.scala:8:12 ----------------------------------------------------------------------------------
-8 |    Expr(())  // error
-  |            ^
-  |         no given instance of type quoted.ToExpr[Unit] was found for parameter x$2 of method apply in object Expr.
-  |         I found:
-  |
-  |             quoted.ToExpr.ClassToExpr[T]
-  |
-  |         But given instance ClassToExpr in object ToExpr does not match type quoted.ToExpr[Unit].

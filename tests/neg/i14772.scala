@@ -5,6 +5,6 @@ object A {
 
   def impl(a: Expr[Any])(using Quotes)/*: Expr[Any]*/ = {
     foo(a)    // error
-    Expr(())  // error
+    ???
   }
 }
