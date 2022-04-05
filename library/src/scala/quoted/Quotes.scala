@@ -6,10 +6,11 @@ import scala.reflect.TypeTest
 /** Current Quotes in scope
  *
  *  Usage:
- *  ```scala sc:nocompile
+ *  ```scala
+ *  import scala.quoted._
  *  def myExpr[T](using Quotes): Expr[T] = {
  *     import quotes.reflect._
- *     ...
+ *     ???
  *  }
  *  ```
  */
@@ -2532,17 +2533,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Convert this `TypeRepr` to an `Type[?]`
         *
         *  Usage:
-        *  ```scala
-        *  //{
-        *  def f(using Quotes) = {
+        *  ```scala sc:usingquotes
         *  val typeRepr: TypeRepr = ???
-        *  //}
         *  typeRepr.asType match
         *    case '[t] =>
         *      '{ val x: t = ??? }
-        *  //{
-        *  }
-        *  //}
         *  ```
         */
         def asType: Type[?]

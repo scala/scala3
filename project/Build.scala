@@ -1845,8 +1845,7 @@ object ScaladocConfigs {
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(
-        s"${dottyLibRoot}/scala/quoted=compile",
-        s"${dottyLibRoot}/scala/compiletime=compile"
+        s"${dottyLibRoot}/scala=compile",
       )))
       .add(SiteRoot("docs"))
       .add(ApiSubdirectory(true))

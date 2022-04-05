@@ -6,14 +6,12 @@ import java.nio.file.Path
 case class SnippetCompilerArg(flag: SCFlags):
   def overrideFlag(f: SCFlags): SnippetCompilerArg = copy(flag = f)
 
-sealed trait SCFlags(val flagName: String)
-
-object SCFlags:
-  case object Compile extends SCFlags("compile")
-  case object NoCompile extends SCFlags("nocompile")
-  case object Fail extends SCFlags("fail")
-
-  def values: Seq[SCFlags] = Seq(Compile, NoCompile, Fail)
+enum SCFlags(val flagName: String):
+  case Compile extends SCFlags("compile")
+  case MacroCompile extends SCFlags("macrocompile")
+  case UsingQuotes extends SCFlags("usingquotes")
+  case NoCompile extends SCFlags("nocompile")
+  case Fail extends SCFlags("fail")
 
 case class SnippetCompilerArgs(scFlags: PathBased[SCFlags], defaultFlag: SCFlags):
   def get(member: Member): SnippetCompilerArg =
@@ -41,6 +39,8 @@ object SnippetCompilerArgs:
     |
     |Available flags:
     |compile - Enables snippet checking.
+    |macrocompile - Enables snippet checking for macros. 
+    |usingquotes - Enables checking snippet additionally wrapped in `scala.quoted.Quotes` impilicit scope.
     |nocompile - Disables snippet checking.
     |fail - Enables snippet checking, asserts that snippet doesn't compile.
     |

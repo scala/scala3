@@ -156,11 +156,11 @@ object Tuple {
   /** Filters out those members of the tuple for which the predicate `P` returns `false`.
    *  A predicate `P[X]` is a type that can be either `true` or `false`. For example:
    *  ```scala
-   *  type IsString[x] = x match {
+   *  type IsString[x] <: Boolean = x match {
    *    case String => true
    *    case _ => false
    *  }
-   *  Filter[(1, "foo", 2, "bar"), IsString] =:= ("foo", "bar")
+   *  summon[Tuple.Filter[(1, "foo", 2, "bar"), IsString] =:= ("foo", "bar")]
    *  ```
    *  @syntax markdown
    */
