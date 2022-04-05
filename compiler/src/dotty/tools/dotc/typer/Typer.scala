@@ -3539,14 +3539,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val namedArgs = wtp.paramNames.lazyZip(args).flatMap { (pname, arg) =>
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
-            tryEither {
-              val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-              if (wtp.isContextualMethod) app.setApplyKind(ApplyKind.Using)
-              typr.println(i"try with default implicit args $app")
-              typed(app, pt, locked)
-            } { (_, _) =>
-              issueErrors()
-            }
+            val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
+            if (wtp.isContextualMethod) app.setApplyKind(ApplyKind.Using)
+            typr.println(i"try with default implicit args $app")
+            typed(app, pt, locked)
           else issueErrors()
         }
         else tree match {
