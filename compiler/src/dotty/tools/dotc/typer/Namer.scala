@@ -103,6 +103,10 @@ class Namer { typer: Typer =>
     }
   }
 
+  def hasDefinedSymbol(tree: Tree)(using Context): Boolean =
+    val xtree = expanded(tree)
+    xtree.hasAttachment(TypedAhead) || xtree.hasAttachment(SymOfTree)
+
   /** The enclosing class with given name; error if none exists */
   def enclosingClassNamed(name: TypeName, span: Span)(using Context): Symbol =
     if (name.isEmpty) NoSymbol
@@ -837,6 +841,10 @@ class Namer { typer: Typer =>
     private def addInlineInfo(sym: Symbol) = original match {
       case original: untpd.DefDef if sym.isInlineMethod =>
         def rhsToInline(using Context): tpd.Tree =
+          if !original.symbol.exists && !hasDefinedSymbol(original) then
+            throw
+              if sym.isCompleted then Inliner.MissingInlineInfo()
+              else CyclicReference(sym)
           val mdef = typedAheadExpr(original).asInstanceOf[tpd.DefDef]
           PrepareInlineable.wrapRHS(original, mdef.tpt, mdef.rhs)
         PrepareInlineable.registerInlineInfo(sym, rhsToInline)(using localContext(sym))
