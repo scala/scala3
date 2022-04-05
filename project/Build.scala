@@ -138,9 +138,6 @@ object Build {
   // Run tests with filter through vulpix test suite
   val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
-  // Run code coverage instrumentation tests
-  val testCoverage = inputKey[Unit]("runs code coverage instrumentation test")
-
   // Used to compile files similar to ./bin/scalac script
   val scalac = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
 
@@ -586,7 +583,8 @@ object Build {
             s"""
                |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [<filter>]
                |
-               |By default runs tests in dotty.tools.dotc.*CompilationTests excluding tests tagged with dotty.SlowTests.
+               |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
+               |excluding tests tagged with dotty.SlowTests.
                |
                |  --help                show this message
                |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
@@ -601,27 +599,11 @@ object Build {
           val updateCheckfile = args.contains("--update-checkfiles")
           val fromTasty = args.contains("--from-tasty")
           val args1 = if (updateCheckfile | fromTasty) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty") else args
-          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests"
+          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests dotty.tools.dotc.coverage.*"
           val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
             (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
             (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
           (Test / testOnly).toTask(cmd)
-        }
-      }.evaluated,
-
-      testCoverage := Def.inputTaskDyn {
-        val args = spaceDelimited("<arg>").parsed
-        if (args.contains("--help")) {
-          println("usage: testCoverage [--update-checkfiles] [<args>]")
-          (Test / testOnly).toTask(" not.a.test")
-        } else {
-          val updateCheckfile = args.contains("--update-checkfiles")
-          val otherArgs = args.filter(_ != "--update-checkfiles")
-          val test = "dotty.tools.dotc.coverage.CoverageTests"
-          val argUpdateCheckfile = if (updateCheckfile) "-Ddotty.tests.updateCheckfiles=TRUE" else ""
-          val argCustom = if (otherArgs.nonEmpty) otherArgs.mkString(" ") else ""
-          val cmd = s" $test -- $argUpdateCheckfile $argCustom"
-          (Test/testOnly).toTask(cmd)
         }
       }.evaluated,
 
