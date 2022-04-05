@@ -2,4 +2,5 @@
 8 |    scala.runtime.Scala3RunTime.assertFailed(message) // error
   |                                             ^^^^^^^
   |Cannot prove that the value is fully initialized. Only initialized values may be used as arguments. Calling trace:
-  | -> Assertion.failAssert(this)	[ inlined-method.scala:2 ]
+  |-> Assertion.failAssert(this)	[ inlined-method.scala:2 ]
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^

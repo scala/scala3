@@ -52,11 +52,15 @@ jobs:
       - name: Generate testcases documentation
         run: ./project/scripts/sbt scaladoc/generateTestcasesDocumentation
 
-      - name: Generate reference documentation
-        run: ./project/scripts/sbt scaladoc/generateReferenceDocumentation
+      - name: Generate reference documentation and check links stability
+        run: |
+          ./project/scripts/sbt scaladoc/generateReferenceDocumentation
+          ./project/scripts/docsLinksStability ./scaladoc/output/reference ./project/scripts/expected-links/reference-expected-links.txt
 
-      - name: Generate Scala 3 documentation
-        run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
+      - name: Generate Scala 3 documentation and check links stability
+        run: |
+          ./project/scripts/sbt scaladoc/generateScalaDocumentation
+          ./project/scripts/docsLinksStability ./scaladoc/output/scala3 ./project/scripts/expected-links/scala3-expected-links.txt
 
       - name: Generate documentation for example project using dotty-sbt
         run: ./project/scripts/sbt "sbt-test/scripted sbt-dotty/scaladoc"
@@ -74,7 +78,7 @@ jobs:
             DOC_DEST=$(echo pr-${PR_NUMBER:-${GITHUB_REF##*/}} | tr -d -c "[-A-Za-z0-9]")
             echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
             az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
-            az storage blob upload-batch -s scaladoc/output -d $DOC_DEST --account-name scala3docstorage
+            az storage blob upload-batch --overwrite true -s scaladoc/output -d $DOC_DEST --account-name scala3docstorage
 
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest

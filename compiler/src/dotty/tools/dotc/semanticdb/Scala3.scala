@@ -12,6 +12,7 @@ import core.StdNames.nme
 import SymbolInformation.{Kind => k}
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.core.Names.Designator
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 
@@ -34,7 +35,7 @@ object Scala3:
     val (endLine, endCol) = lineCol(span.end)
     Some(Range(startLine, startCol, endLine, endCol))
 
-  def namePresentInSource(sym: Symbol, span: Span, source:SourceFile)(using Context): Boolean =
+  def namePresentInSource(desig: Designator, span: Span, source:SourceFile)(using Context): Boolean =
     if !span.exists then false
     else
       val content = source.content()
@@ -42,15 +43,22 @@ object Scala3:
         if content.lift(span.end - 1).exists(_ == '`') then
           (span.start + 1, span.end - 1)
         else (span.start, span.end)
+      // println(s"${start}, $end")
       val nameInSource = content.slice(start, end).mkString
       // for secondary constructors `this`
-      if sym.isConstructor && nameInSource == nme.THISkw.toString then
-        true
-      else
-        val target =
-          if sym.isPackageObject then sym.owner
-          else sym
-        nameInSource == target.name.stripModuleClassSuffix.lastPart.toString
+      desig match
+        case sym: Symbol =>
+          if sym.isConstructor && nameInSource == nme.THISkw.toString then
+            true
+          else
+            val target =
+              if sym.isPackageObject then sym.owner
+              else sym
+            nameInSource == target.name.stripModuleClassSuffix.lastPart.toString
+        case name: Name =>
+          // println(nameInSource)
+          // println(name.mangledString)
+          nameInSource == name.mangledString
 
   sealed trait FakeSymbol {
     private[Scala3] var sname: Option[String] = None
@@ -153,12 +161,13 @@ object Scala3:
   enum SymbolKind derives CanEqual:
     kind =>
 
-    case Val, Var, Setter, Abstract
+    case Val, Var, Setter, Abstract, TypeVal
 
     def isVar: Boolean = kind match
       case Var | Setter => true
       case _            => false
     def isVal: Boolean = kind == Val
+    def isTypeVal: Boolean = kind == TypeVal
     def isVarOrVal: Boolean = kind.isVar || kind.isVal
 
   end SymbolKind
@@ -309,7 +318,9 @@ object Scala3:
           props |= SymbolInformation.Property.IMPLICIT.value
         if sym.is(Lazy, butNot=Module) then
           props |= SymbolInformation.Property.LAZY.value
-        if sym.isAllOf(Case | Module) || sym.is(CaseClass) || sym.isAllOf(EnumCase) then
+        if sym.isAllOf(Case | Module) ||
+          (sym.is(CaseClass) && !symkinds.exists(_.isTypeVal)) || // `t` of `case List[t] =>` (which has `CaseClass` flag) shouldn't be `CASE`
+          sym.isAllOf(EnumCase) then
           props |= SymbolInformation.Property.CASE.value
         if sym.is(Covariant) then
           props |= SymbolInformation.Property.COVARIANT.value

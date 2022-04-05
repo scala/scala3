@@ -140,14 +140,14 @@ input:checked + .slider:before {
   transition: all .2s ease;
   opacity: 0;
   visibility: hidden;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
 }
 
 .snippet:hover .buttons {
   opacity: 1;
   visibility: visible;
-  display: flex;
-  flex-direction: row-reverse;
-  justify-content: flex-start;
 }
 
 .snippet .buttons button {

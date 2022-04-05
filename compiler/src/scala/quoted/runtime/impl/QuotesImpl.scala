@@ -2816,8 +2816,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def startColumn: Int = self.startColumn
         def endColumn: Int = self.endColumn
         def sourceCode: Option[String] =
-          // TODO detect when we do not have a source and return None
-          Some(new String(self.source.content(), self.start, self.end - self.start))
+          val contents = self.source.content()
+          if contents.length < self.end then None
+          else Some(new String(contents, self.start, self.end - self.start))
       end extension
     end PositionMethods
 

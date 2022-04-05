@@ -20,7 +20,7 @@ object Test {
 // good syntax, bad semantics, detected by typer
 //gowild.scala:14: error: star patterns must correspond with varargs parameters
     val K(x @ _*) = k
-    val K(ns @ _*, xx) = k // error: pattern expected
+    val K(ns @ _*, xx) = k // error: pattern expected // error
     val K(x) = k // error: x is already defined as value x
     val (b, _ * ) = (5,6) // ok
 // no longer complains
