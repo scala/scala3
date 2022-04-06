@@ -4206,7 +4206,7 @@ object Types {
      *  This is the case if tycon is higher-kinded. This means
      *  it is a subtype of a hk-lambda, but not a match alias.
      *  (normal parameterized aliases are removed in `appliedTo`).
-     *  Applications of hgher-kinded type constructors to wildcard arguments
+     *  Applications of higher-kinded type constructors to wildcard arguments
      *  are equivalent to existential types, which are not supported.
      */
     def isUnreducibleWild(using Context): Boolean =
