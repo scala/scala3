@@ -795,26 +795,55 @@ trait Checking {
 
   /** Check that pattern `pat` is irrefutable for scrutinee type `sel.tpe`.
    *  This means `sel` is either marked @unchecked or `sel.tpe` conforms to the
-   *  pattern's type. If pattern is an UnApply, do the check recursively.
+   *  pattern's type. If pattern is an UnApply, also check that the extractor is
+   *  irrefutable, and do the check recursively.
    */
   def checkIrrefutable(sel: Tree, pat: Tree, isPatDef: Boolean)(using Context): Boolean = {
     val pt = sel.tpe
 
-    def fail(pat: Tree, pt: Type): Boolean = {
-      var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
-      if (!pat.tpe.isSingleton) reportedPt = reportedPt.widen
-      val problem = if (pat.tpe <:< reportedPt) "is more specialized than" else "does not match"
-      val fix = if (isPatDef) "adding `: @unchecked` after the expression" else "writing `case ` before the full pattern"
-      val pos = if (isPatDef) sel.srcPos else pat.srcPos
+    enum Reason:
+      case NonConforming, RefutableExtractor
+
+    def fail(pat: Tree, pt: Type, reason: Reason): Boolean = {
+      import Reason._
+      val message = reason match
+        case NonConforming =>
+          var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
+          if !pat.tpe.isSingleton then reportedPt = reportedPt.widen
+          val problem = if pat.tpe <:< reportedPt then "is more specialized than" else "does not match"
+          ex"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
+        case RefutableExtractor =>
+          val extractor =
+            val UnApply(fn, _, _) = pat: @unchecked
+            fn match
+              case Select(id, _) => id
+              case TypeApply(Select(id, _), _) => id
+          em"pattern binding uses refutable extractor `$extractor`"
+
+      val fix =
+        if isPatDef then "adding `: @unchecked` after the expression"
+        else "adding the `case` keyword before the full pattern"
+      val addendum =
+        if isPatDef then "may result in a MatchError at runtime"
+        else "will result in a filtering for expression (using `withFilter`)"
+      val usage = reason match
+        case NonConforming => "the narrowing"
+        case RefutableExtractor => "this usage"
+      val pos =
+        if isPatDef then reason match
+          case NonConforming => sel.srcPos
+          case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
+        else pat.srcPos
       report.warning(
-        ex"""pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt
+        em"""$message
             |
-            |If the narrowing is intentional, this can be communicated by $fix.${err.rewriteNotice}""",
+            |If $usage is intentional, this can be communicated by $fix,
+            |which $addendum.${err.rewriteNotice}""",
           pos)
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt)
+    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(future) || // only for 3.x for now since mitigations work only after this PR
@@ -825,7 +854,7 @@ trait Checking {
             recur(pat1, pt)
           case UnApply(fn, _, pats) =>
             check(pat, pt) &&
-            (isIrrefutable(fn, pats.length) || fail(pat, pt)) && {
+            (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
