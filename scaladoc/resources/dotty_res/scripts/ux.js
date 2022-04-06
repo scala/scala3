@@ -17,11 +17,12 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  $(".ar").on('click', function () {
+  $(".ar").on('click', function (e) {
     $(this).parent().parent().toggleClass("expanded")
+    e.stopPropagation()
   });
 
-  document.querySelectorAll(".side-menu a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
+  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => el.lastChild.click()))
 
   $('.names .tab').on('click', function () {
     parent = $(this).parents(".tabs").first()
