@@ -167,7 +167,7 @@ object SymOps:
         }
 
       sym.tree match
-        case tree: DefDef => 
+        case tree: DefDef =>
           tree.paramss.partition(_.params.headOption.flatMap(param =>
             comparePositionStarts(param.symbol.pos, tree.symbol.pos)).getOrElse(false)
           )
@@ -176,7 +176,7 @@ object SymOps:
     def extendedTypeParams: List[reflect.TypeDef] =
       import reflect.*
       sym.tree match
-        case tree: DefDef => 
+        case tree: DefDef =>
           tree.leadingTypeParams
         case _ => Nil
 
