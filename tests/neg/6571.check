@@ -1,0 +1,26 @@
+-- [E007] Type Mismatch Error: tests/neg/6571.scala:6:39 ---------------------------------------------------------------
+6 |  def foo: M[Inv[Int] & Inv[String]] = "" // error
+  |                                       ^^
+  |                                       Found:    ("" : String)
+  |                                       Required: Test.M[Test.Inv[Int] & Test.Inv[String]]
+  |
+  |                                       Note: a match type could not be fully reduced:
+  |
+  |                                         trying to reduce  Test.M[Test.Inv[Int] & Test.Inv[String]]
+  |                                         failed since selector  Test.Inv[Int] & Test.Inv[String]
+  |                                         is uninhabited (there are no values of that type).
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6571.scala:7:39 ---------------------------------------------------------------
+7 |  def bar: M[Inv[String] & Inv[Int]] = 0 // error
+  |                                       ^
+  |                                       Found:    (0 : Int)
+  |                                       Required: Test.M[Test.Inv[String] & Test.Inv[Int]]
+  |
+  |                                       Note: a match type could not be fully reduced:
+  |
+  |                                         trying to reduce  Test.M[Test.Inv[String] & Test.Inv[Int]]
+  |                                         failed since selector  Test.Inv[String] & Test.Inv[Int]
+  |                                         is uninhabited (there are no values of that type).
+  |
+  | longer explanation available when compiling with `-explain`
