@@ -152,23 +152,38 @@ object SymOps:
 
     def splitExtensionParamList: (List[reflect.ParamClause], List[reflect.ParamClause]) =
       import reflect.*
-      val method = sym.tree.asInstanceOf[DefDef]
-      (for {
-        defPosition <- method.symbol.pos
-        defStart <- scala.util.Try(defPosition.start).toOption
-      } yield {
-        method.paramss.partition(_.params.headOption.flatMap(_.symbol.pos.map(_.start < defStart)).getOrElse(false))
-      }).getOrElse(List.empty, List.empty)
+
+      def getPositionStartOption(pos: Option[Position]): Option[Int] = pos.flatMap {
+        case dotty.tools.dotc.util.NoSourcePosition => None
+        case pos: Position => Some(pos.start)
+      }
+
+      def comparePositionStarts(posA: Option[Position], posB: Option[Position]): Option[Boolean] =
+        for {
+          startA <- getPositionStartOption(posA)
+          startB <- getPositionStartOption(posB)
+        } yield {
+          startA < startB
+        }
+
+      sym.tree match
+        case tree: DefDef => 
+          tree.paramss.partition(_.params.headOption.flatMap(param =>
+            comparePositionStarts(param.symbol.pos, tree.symbol.pos)).getOrElse(false)
+          )
+        case _ => Nil -> Nil
 
     def extendedTypeParams: List[reflect.TypeDef] =
       import reflect.*
-      val method = sym.tree.asInstanceOf[DefDef]
-      method.leadingTypeParams
+      sym.tree match
+        case tree: DefDef => 
+          tree.leadingTypeParams
+        case _ => Nil
 
     def extendedTermParamLists: List[reflect.TermParamClause] =
       import reflect.*
-      sym.splitExtensionParamList._1.collect { 
-        case tpc: TermParamClause => tpc 
+      sym.splitExtensionParamList._1.collect {
+        case tpc: TermParamClause => tpc
       }
 
     def nonExtensionTermParamLists: List[reflect.TermParamClause] =
