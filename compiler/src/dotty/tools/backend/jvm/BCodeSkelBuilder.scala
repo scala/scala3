@@ -4,6 +4,8 @@ package jvm
 
 import scala.language.unsafeNulls
 
+import scala.annotation.tailrec
+
 import scala.collection.{ mutable, immutable }
 
 import scala.tools.asm
@@ -484,6 +486,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         slots.getOrElse(locSym, makeLocal(locSym))
       }
 
+      def reuseLocal(sym: Symbol, loc: Local): Unit =
+        val existing = slots.put(sym, loc)
+        if (existing.isDefined)
+          report.error("attempt to create duplicate local var.", ctx.source.atSpan(sym.span))
+
+      def reuseThisSlot(sym: Symbol): Unit =
+        reuseLocal(sym, Local(symInfoTK(sym), sym.javaSimpleName, 0, sym.is(Synthetic)))
+
       private def makeLocal(sym: Symbol, tk: BType): Local = {
         assert(nxtIdx != -1, "not a valid start index")
         val loc = Local(tk, sym.javaSimpleName, nxtIdx, sym.is(Synthetic))
@@ -753,18 +763,47 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
-      initJMethod(flags, params.map(_.symbol))
+      val paramSyms = params.map(_.symbol)
+      initJMethod(flags, paramSyms)
 
 
       if (!isAbstractMethod && !isNative) {
+        // #14773 Reuse locals slots for tailrec-generated mutable vars
+        val trimmedRhs: Tree =
+          @tailrec def loop(stats: List[Tree]): List[Tree] =
+            stats match
+              case (tree @ ValDef(TailLocalName(_, _), _, _)) :: rest if tree.symbol.isAllOf(Mutable | Synthetic) =>
+                tree.rhs match
+                  case This(_) =>
+                    locals.reuseThisSlot(tree.symbol)
+                    loop(rest)
+                  case rhs: Ident if paramSyms.contains(rhs.symbol) =>
+                    locals.reuseLocal(tree.symbol, locals(rhs.symbol))
+                    loop(rest)
+                  case _ =>
+                    stats
+              case _ =>
+                stats
+          end loop
+
+          rhs match
+            case Block(stats, expr) =>
+              val trimmedStats = loop(stats)
+              if trimmedStats eq stats then
+                rhs
+              else
+                Block(trimmedStats, expr)
+            case _ =>
+              rhs
+        end trimmedRhs
 
         def emitNormalMethodBody(): Unit = {
           val veryFirstProgramPoint = currProgramPoint()
-          genLoad(rhs, returnType)
+          genLoad(trimmedRhs, returnType)
 
-          rhs match {
+          trimmedRhs match {
             case (_: Return) | Block(_, (_: Return)) => ()
-            case (_: Apply) | Block(_, (_: Apply)) if rhs.symbol eq defn.throwMethod => ()
+            case (_: Apply) | Block(_, (_: Apply)) if trimmedRhs.symbol eq defn.throwMethod => ()
             case tpd.EmptyTree =>
               report.error("Concrete method has no definition: " + dd + (
                 if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
