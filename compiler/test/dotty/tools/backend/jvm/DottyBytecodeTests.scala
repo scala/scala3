@@ -946,6 +946,113 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  @Test def i14773TailRecReuseParamSlots(): Unit = {
+    val source =
+      s"""class Foo {
+         |  @scala.annotation.tailrec // explicit @tailrec here
+         |  final def fact(n: Int, acc: Int): Int =
+         |    if n == 0 then acc
+         |    else fact(n - 1, acc * n)
+         |}
+         |
+         |class IntList(head: Int, tail: IntList | Null) {
+         |  // implicit @tailrec
+         |  final def sum(acc: Int): Int =
+         |    val t = tail
+         |    if t == null then acc + head
+         |    else t.sum(acc + head)
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      // The mutable local vars for n and acc reuse the slots of the params n and acc
+
+      val fooClass = loadClassNode(dir.lookupName("Foo.class", directory = false).input)
+      val factMeth = getMethod(fooClass, "fact")
+
+      assertSameCode(factMeth, List(
+        VarOp(ALOAD, 0),
+        VarOp(ASTORE, 3),
+        VarOp(ILOAD, 2),
+        VarOp(ISTORE, 4),
+        VarOp(ILOAD, 1),
+        VarOp(ISTORE, 5),
+        Label(6),
+        VarOp(ILOAD, 5),
+        Op(ICONST_0),
+        Jump(IF_ICMPNE, Label(13)),
+        VarOp(ILOAD, 4),
+        Jump(GOTO, Label(32)),
+        Label(13),
+        VarOp(ALOAD, 3),
+        VarOp(ASTORE, 6),
+        VarOp(ILOAD, 5),
+        Op(ICONST_1),
+        Op(ISUB),
+        VarOp(ISTORE, 7),
+        VarOp(ILOAD, 4),
+        VarOp(ILOAD, 5),
+        Op(IMUL),
+        VarOp(ISTORE, 8),
+        VarOp(ALOAD, 6),
+        VarOp(ASTORE, 3),
+        VarOp(ILOAD, 7),
+        VarOp(ISTORE, 5),
+        VarOp(ILOAD, 8),
+        VarOp(ISTORE, 4),
+        Jump(GOTO, Label(35)),
+        Label(32),
+        Op(IRETURN),
+        Label(35),
+        Jump(GOTO, Label(6)),
+        Op(ATHROW),
+        Op(ATHROW),
+      ))
+
+      // The mutable local vars for this and acc reuse the slots of `this` and of the param acc
+
+      val intListClass = loadClassNode(dir.lookupName("IntList.class", directory = false).input)
+      val sumMeth = getMethod(intListClass, "sum")
+
+      assertSameCode(sumMeth, List(
+        VarOp(ALOAD, 0),
+        VarOp(ASTORE, 2),
+        VarOp(ILOAD, 1),
+        VarOp(ISTORE, 3),
+        Label(4),
+        VarOp(ALOAD, 2),
+        Field(GETFIELD, "IntList", "tail", "LIntList;"),
+        VarOp(ASTORE, 4),
+        VarOp(ALOAD, 4),
+        Jump(IFNONNULL, Label(16)),
+        VarOp(ILOAD, 3),
+        VarOp(ALOAD, 2),
+        Field(GETFIELD, "IntList", "head", "I"),
+        Op(IADD),
+        Jump(GOTO, Label(30)),
+        Label(16),
+        VarOp(ALOAD, 4),
+        VarOp(ASTORE, 5),
+        VarOp(ILOAD, 3),
+        VarOp(ALOAD, 2),
+        Field(GETFIELD, "IntList", "head", "I"),
+        Op(IADD),
+        VarOp(ISTORE, 6),
+        VarOp(ALOAD, 5),
+        VarOp(ASTORE, 2),
+        VarOp(ILOAD, 6),
+        VarOp(ISTORE, 3),
+        Jump(GOTO, Label(33)),
+        Label(30),
+        Op(IRETURN),
+        Label(33),
+        Jump(GOTO, Label(4)),
+        Op(ATHROW),
+        Op(ATHROW),
+      ))
+    }
+  }
+
   @Test
   def getClazz: Unit = {
     val source = """
