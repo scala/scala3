@@ -1252,7 +1252,7 @@ object Build {
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
 
-  val generateReferenceDocumentation = taskKey[Unit]("Generate language reference documentation for Scala 3")
+  val generateReferenceDocumentation = inputKey[Unit]("Generate language reference documentation for Scala 3")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
@@ -1376,7 +1376,9 @@ object Build {
         generateDocumentation(Testcases)
       }.value,
 
-      generateReferenceDocumentation := Def.taskDyn {
+      generateReferenceDocumentation := Def.inputTaskDyn {
+        val shouldRegenerateExpectedLinks = literal("--no-regenerate-expected-links").?.parsed.isEmpty
+
         val temp = IO.createTemporaryDirectory
         IO.copyDirectory(file("docs"), temp / "docs")
         IO.delete(temp / "docs" / "_blog")
@@ -1399,8 +1401,18 @@ object Build {
             .withTargets(List("___fake___.scala"))
         }
 
-        generateDocumentation(languageReferenceConfig)
-      }.value,
+        val expectedLinksRegeneration = Def.task {
+          if (shouldRegenerateExpectedLinks) {
+            val script = (file("project") / "scripts" / "regenerateExpectedLinks").toString
+            val outputDir = languageReferenceConfig.value.get[OutputDir].get.value
+            val expectedLinksFile = (file("project") / "scripts" / "expected-links" / "reference-expected-links.txt").toString
+            import _root_.scala.sys.process._
+            s"$script $outputDir $expectedLinksFile" !
+          }
+        }
+
+        expectedLinksRegeneration.dependsOn(generateDocumentation(languageReferenceConfig))
+      }.evaluated,
 
       Test / buildInfoKeys := Seq[BuildInfoKey](
         (Test / Build.testcasesOutputDir),
