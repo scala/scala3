@@ -1234,9 +1234,9 @@ object Semantic {
 
       case SeqLiteral(elems, elemtpt) =>
         val ress = elems.map { elem =>
-          eval(elem, thisV, klass).ensureHot("May only use initialized value as method arguments", elem)
+          eval(elem, thisV, klass)
         }
-        Result(Hot, ress.flatMap(_.errors))
+        Result(ress.map(_.value).join, ress.flatMap(_.errors))
 
       case Inlined(call, bindings, expansion) =>
         val trace1 = trace.add(expr)
