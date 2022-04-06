@@ -577,21 +577,28 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         // blocks returning a class literal alone, even if they're idempotent.
         tree1
       case ConstantType(value) =>
-        if (isIdempotentExpr(tree1)) Literal(value).withSpan(tree.span)
-        else {
-          def keepPrefix(pre: Tree) =
+        def dropOp(t: Tree): Tree = t match
+          case Select(pre, _) if t.tpe.isInstanceOf[ConstantType] =>
+            // it's a primitive unary operator
+            pre
+          case Apply(TypeApply(Select(pre, nme.getClass_), _), Nil) =>
+            pre
+          case _ =>
+            tree1
+            
+        val countsAsPure =
+          if dropOp(tree1).symbol.isInlineVal
+          then isIdempotentExpr(tree1)
+          else isPureExpr(tree1)
+          
+        if countsAsPure then Literal(value).withSpan(tree.span)
+        else
+          val pre = dropOp(tree1)
+          if pre eq tree1 then tree1
+          else
+            // it's a primitive unary operator or getClass call;
+            // Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
             Block(pre :: Nil, Literal(value)).withSpan(tree.span)
-
-          tree1 match {
-            case Select(pre, _) if tree1.tpe.isInstanceOf[ConstantType] =>
-              // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
-              keepPrefix(pre)
-            case Apply(TypeApply(Select(pre, nme.getClass_), _), Nil) =>
-              keepPrefix(pre)
-            case _ =>
-              tree1
-          }
-        }
       case _ => tree1
     }
   }
