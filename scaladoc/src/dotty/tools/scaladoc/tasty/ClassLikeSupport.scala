@@ -126,6 +126,8 @@ trait ClassLikeSupport:
   private def isDocumentableExtension(s: Symbol) =
     !s.isHiddenByVisibility && !s.isSyntheticFunc && s.isExtensionMethod
 
+  private def _debugStringParamLists(name: String, l: List[Any]) = l.mkString(s"$name:\n  ","\n  ", "\n")
+
   private def parseMember(c: ClassDef)(s: Tree): Option[Member] = processTreeOpt(s) { s match
       case dd: DefDef if isDocumentableExtension(dd.symbol) =>
         dd.symbol.extendedSymbol.map { extSym =>
@@ -142,16 +144,66 @@ trait ClassLikeSupport:
               case Left(types: TypeParameterList) =>
                 throw new Error(s"Mismatch between extendedTermParamLists and memberInfo.paramLists: \n ${dd.symbol.extendedTermParamLists.mkString("extendedTermParamLists:\n  ","\n  ", "\n")} \n ${memberInfo.paramLists.mkString("memberInfo.paramLists:\n  ","\n  ", "\n")}")
           }*/
-          assert(dd.symbol.extendedParamLists.length == memberInfo.extendedParamLists.length)
-          val paramss: List[Either[List[TypeParameter], TermParametersList]] = (dd.symbol.extendedParamLists zip memberInfo.extendedParamLists).flatMap{
+          val mismatchString = s"""Mismatch between extendedParamLists and memberInfo.extendedParamLists:
+                               |${dd.symbol.extendedParamLists.mkString("extendedParamLists:\n  ","\n  ", "\n")}
+                               |${memberInfo.paramLists.mkString("memberInfo.paramLists:\n  ","\n  ", "\n")}
+                               |""".stripMargin
+          // We match clauses in dd.symbol.extendedParamLists and X by the'r first element (which we call the representative)
+          // TODO: handle the case EvidenceOnlyParameterList
+          val paramss: List[Either[List[TypeParameter], TermParametersList]] = dd.symbol.extendedParamLists.map{
+            case TermParamClause(terms) =>
+              val representative: ValDef = terms.head // RegularParameterList = Map[String, TypeRepr]
+              val ValDef(name: String, _, _) = representative
+
+              val candidates = memberInfo.paramLists.collect{ case Right(info: RegularParameterList) => info }.filter( _ contains name )
+              val extradebug = s"""
+                               |representative: $representative
+                               |name: $name
+                               |candidates: $candidates
+                               |size: ${candidates.size}
+                               |
+                               |"""
+              if(candidates.size != 1){
+                throw new Error(extradebug + mismatchString)
+              }else{
+                val info = candidates.head
+                Right(TermParametersList(terms.map(mkParameter(_, memberMap = info)), paramListModifier(terms)))
+              }
+              
+            case TypeParamClause(types) =>
+              val representative = types.head
+              val TypeDef(name: String, _) = representative
+
+              ???
+          }
+
+          /*
+          extendedParamLists:
+            List(TypeDef(A,TypeBoundsTree(TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Nothing)],TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Any)],EmptyTree)))
+            List(ValDef(a,Ident(A),EmptyTree))
+            List(ValDef(x$2,Ident(Int),EmptyTree))
+
+          memberInfo.paramLists:
+            Left(Map(A -> TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Nothing),TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Any))))
+            Right(Map(a -> TypeParamRef(A)))
+            Right(Map(x$2 -> TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Int)))
+            Left(Map(B -> TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Nothing),TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),Any))))
+            Right(Map(b -> TypeParamRef(B)))
+          */
+          
+          // not valid assumption, will have to find members with the same name !
+          //assert(dd.symbol.extendedParamLists.length == memberInfo.paramLists.length, mismatchString)
+          /*
+          val paramss: List[Either[List[TypeParameter], TermParametersList]] = (dd.symbol.extendedParamLists zip memberInfo.paramLists).flatMap{
               case (terms: TermParamClause, Right(EvidenceOnlyParameterList)) => None
               case (terms: TermParamClause, Right(info: RegularParameterList)) =>
                 Some(Right(TermParametersList(terms.params.map(mkParameter(_, memberMap = info)), paramListModifier(terms.params))))
               case (TypeParamClause(types), Left(info: TypeParameterList)) =>
                 Some(Left(types.map(mkTypeArgument(_, info))))
               case _ =>
-                throw new Error(s"Mismatch between extendedParamLists and memberInfo.paramLists: \n ${dd.symbol.extendedParamLists.mkString("extendedParamLists:\n  ","\n  ", "\n")} \n ${memberInfo.paramLists.mkString("memberInfo.paramLists:\n  ","\n  ", "\n")}")
+                throw new Error(mismatchString)
           }
+          */
           val typeParams = paramss.collect{case Left(types: List[TypeParameter]) => types}.lift(0).getOrElse(List())
           val termParamss = paramss.collect{case Right(terms: TermParametersList) => terms}
           val target = ExtensionTarget(
@@ -526,21 +578,17 @@ trait ClassLikeSupport:
   type ParameterList = Either[TypeParameterList, TermParameterList]
 
   case class MemberInfo(
-    extendedParamLists: List[ParameterList],
-    nonExtensionParamLists: List[ParameterList],
+    paramLists: List[ParameterList],
     res: TypeRepr,
     contextBounds: Map[String, DSignature] = Map.empty,
   ){
-    def typeParamLists: List[TypeParameterList] = paramLists.collect{case Left(tps) => tps}
-    def paramLists = extendedParamLists ++ nonExtensionParamLists
+    //def typeParamLists: List[TypeParameterList] = paramLists.collect{case Left(tps) => tps}
   }
 
 
   def unwrapMemberInfo(c: ClassDef, symbol: Symbol): MemberInfo =
     
     val defCoord = symbol.pos.get.start
-    // Incomplete: doesn't handle right assos
-    def isExtensionTarget(t: MethodType | PolyType) = t.typeSymbol.pos.map(_.start < defCoord).getOrElse{println(t.show); true}
 
     def isSyntheticEvidence(name: String) =
       if !name.startsWith(NameKinds.EvidenceParamName.separator) then false else
@@ -556,11 +604,7 @@ trait ClassLikeSupport:
     def handlePolyType(memberInfo: MemberInfo, polyType: PolyType): MemberInfo = 
       val paramList = Left(polyType.paramNames.zip(polyType.paramBounds).toMap)
 
-      if(isExtensionTarget(polyType)){
-        memberInfo.copy(extendedParamLists     = memberInfo.extendedParamLists :+ paramList,     res = polyType.resType)
-      }else{
-        memberInfo.copy(nonExtensionParamLists = memberInfo.nonExtensionParamLists :+ paramList, res = polyType.resType)
-      }
+      memberInfo.copy(memberInfo.paramLists :+ paramList, polyType.resType)
 
     def handleMethodType(memberInfo: MemberInfo, methodType: MethodType): MemberInfo =
       val rawParams = methodType.paramNames.zip(methodType.paramTypes).toMap
@@ -597,12 +641,8 @@ trait ClassLikeSupport:
         then EvidenceOnlyParameterList
         else newParams
       )
-
-      if(isExtensionTarget(methodType)){
-        memberInfo.copy(extendedParamLists     = memberInfo.extendedParamLists :+ paramList,     res = methodType.resType, contextBounds = newContextBounds.toMap)
-      }else{
-        memberInfo.copy(nonExtensionParamLists = memberInfo.nonExtensionParamLists :+ paramList, res = methodType.resType, contextBounds = newContextBounds.toMap)
-      }
+      
+      memberInfo.copy(memberInfo.paramLists :+ paramList, methodType.resType, contextBounds = newContextBounds.toMap)
 
     def handleByNameType(memberInfo: MemberInfo, byNameType: ByNameType): MemberInfo =
       memberInfo.copy(res = byNameType.underlying)
@@ -614,7 +654,7 @@ trait ClassLikeSupport:
       case _ => memberInfo
     
     val baseTypeRepr: TypeRepr = ssMemberInfo(c, symbol)
-    recursivelyCalculateMemberInfo(MemberInfo(List.empty, List.empty, res = baseTypeRepr))
+    recursivelyCalculateMemberInfo(MemberInfo(List.empty, baseTypeRepr))
 
   private def paramListModifier(parameters: Seq[ValDef]): String =
     if parameters.size > 0 then
