@@ -3245,6 +3245,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       rememberSearchFailure(qual,
         SearchFailure(qual.withType(NestedFailure(ex.toMessage, selectionProto))))
 
+    if qual.symbol.isNoValue then return EmptyTree
+
     // try an extension method in scope
     try
       val nestedCtx = ctx.fresh.setNewTyperState()
