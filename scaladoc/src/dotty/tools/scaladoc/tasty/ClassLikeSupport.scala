@@ -150,7 +150,7 @@ trait ClassLikeSupport:
                                |""".stripMargin
           // We match clauses in dd.symbol.extendedParamLists and X by the'r first element (which we call the representative)
           // TODO: handle the case EvidenceOnlyParameterList
-          val paramss: List[Either[List[TypeParameter], TermParametersList]] = dd.symbol.extendedParamLists.map{
+          val paramss: List[Either[List[TypeParameter], TermParametersList]] = dd.symbol.extendedParamLists.flatMap{
             case TermParamClause(terms) =>
               val representative: ValDef = terms.head // RegularParameterList = Map[String, TypeRepr]
               val ValDef(name: String, _, _) = representative
@@ -163,18 +163,31 @@ trait ClassLikeSupport:
                                |size: ${candidates.size}
                                |
                                |"""
+              
               if(candidates.size != 1){
-                throw new Error(extradebug + mismatchString)
+                if(candidates.size == 0 && memberInfo.paramLists.exists{ case Right(EvidenceOnlyParameterList) => true; case _ => false}){
+                  // In this case it is possible the matching info was actually the EvidenceOnlyParameterList
+                  None
+                } else{
+                  throw new Error(extradebug + mismatchString)
+                }
               }else{
                 val info = candidates.head
-                Right(TermParametersList(terms.map(mkParameter(_, memberMap = info)), paramListModifier(terms)))
+                Some(Right(TermParametersList(terms.map(mkParameter(_, memberMap = info)), paramListModifier(terms))))
               }
               
             case TypeParamClause(types) =>
               val representative = types.head
               val TypeDef(name: String, _) = representative
 
-              ???
+              val candidates = memberInfo.paramLists.collect{ case Left(info: TypeParameterList) => info }.filter( _ contains name ) // TypeBounds
+
+              if(candidates.size != 1){
+                throw new Error(mismatchString)
+              }else{
+                val info = candidates.head
+                Some(Left(types.map(mkTypeArgument(_, info))))
+              }
           }
 
           /*
