@@ -652,7 +652,7 @@ object TreeChecker {
   object TreeNodeChecker extends untpd.TreeTraverser:
     import untpd._
     def traverse(tree: Tree)(using Context) = tree match
-      case t: TypeTree                             => assert(assertion = false, t)
+      case t: TypeTree                             => assert(assertion = false, i"TypeTree not expected: $t")
       case t @ TypeApply(fun, _targs)              => traverse(fun)
       case t @ New(_tpt)                           =>
       case t @ Typed(expr, _tpt)                   => traverse(expr)
