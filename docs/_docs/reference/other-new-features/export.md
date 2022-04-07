@@ -100,6 +100,15 @@ def f: c.T = ...
 
  1. Export clauses can appear in classes or they can appear at the top-level. An   export clause cannot appear as a statement in a block.
  1. If an export clause contains a wildcard or given selector, it is forbidden for its qualifier path to refer to a package. This is because it is not yet known how to safely track wildcard dependencies to a package for the purposes of incremental compilation.
+ 1. An export renaming hides un-renamed exports matching the target name. For instance, the following
+    clause would be invalid since `B` is hidden by the renaming `A as B`.
+    ```scala
+    export {A as B, B}        // error: B is hidden
+    ```
+
+ 1. Renamings in an export clause must have pairwise different target names. For instance, the following clause would be invalid:
+    ```scala
+    export {A as C, B as C}   // error: duplicate renaming
 
  1. Simple renaming exports like
     ```scala
