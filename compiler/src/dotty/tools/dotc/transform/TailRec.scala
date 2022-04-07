@@ -253,7 +253,7 @@ class TailRec extends MiniPhase {
           val tpe =
             if (enclosingClass.is(Module)) enclosingClass.thisType
             else enclosingClass.classInfo.selfType
-          val sym = newSymbol(method, nme.SELF, Synthetic | Mutable, tpe)
+          val sym = newSymbol(method, TailLocalName.fresh(nme.SELF), Synthetic | Mutable, tpe)
           varForRewrittenThis = Some(sym)
           sym
       }
