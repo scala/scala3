@@ -158,6 +158,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private inline def inFrozenGadt[T](inline op: T): T =
     inFrozenGadtIf(true)(op)
 
+  /** A flag to prevent recursive joins when comparing AndTypes on the left */
+  private var joined = false
+
   private inline def inFrozenGadtIf[T](cond: Boolean)(inline op: T): T = {
     val savedFrozenGadt = frozenGadt
     frozenGadt ||= cond
@@ -477,11 +480,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         widenOK
         || joinOK
         || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
-        || containsAnd(tp1) && inFrozenGadt(recur(tp1.join, tp2))
+        || containsAnd(tp1)
+            && !joined
+            && {
+              joined = true
+              try inFrozenGadt(recur(tp1.join, tp2))
+              finally joined = false
+            }
             // An & on the left side loses information. We compensate by also trying the join.
             // This is less ad-hoc than it looks since we produce joins in type inference,
             // and then need to check that they are indeed supertypes of the original types
             // under -Ycheck. Test case is i7965.scala.
+            // On the other hand, we could get a combinatorial explosion by applying such joins
+            // recursively, so we do it only once. See i14870.scala as a test case, which would
+            // loop for a very long time without the recursion brake.
 
      case tp1: MatchType =>
         val reduced = tp1.reduced
