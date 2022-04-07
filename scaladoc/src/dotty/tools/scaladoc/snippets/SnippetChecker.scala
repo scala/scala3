@@ -48,11 +48,8 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
       val wrapped = WrappedSnippet(
         snippet,
         data.map(_.packageName),
-        data.fold(Nil)(_.classInfos),
-        data.map(_.imports).getOrElse(Nil),
         lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
-        data.fold(0)(_.position.column) + constantColumnOffset,
-        arg.flag == SCFlags.MacroCompile
+        data.fold(0)(_.position.column) + constantColumnOffset
       )
       Some(compiler.compile(wrapped, arg, sourceFile))
     else

@@ -12,8 +12,6 @@ class SnippetCompilerTest {
   def wrapFn: String => WrappedSnippet = (str: String) => WrappedSnippet(
     str,
     Some("test"),
-    Nil,
-    Nil,
     0,
     0,
   )

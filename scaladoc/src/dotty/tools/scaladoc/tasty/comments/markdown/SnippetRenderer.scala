@@ -133,10 +133,10 @@ object SnippetRenderer:
     div(cls := "snippet-label")(name)
   ).toString
 
-  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], hasContext: Boolean, success: Boolean): String =
+  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], success: Boolean): String =
     val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).apply(codeLines).map(_.toHTML)
     val codeHTML = s"""<code class="language-scala">${transformedLines.mkString("")}</code>"""
-    val isRunnable = !hasContext && success
+    val isRunnable = success
     val attrs = Seq(
       Option.when(isRunnable)(Attr("runnable") := "")
     ).flatten
@@ -153,6 +153,5 @@ object SnippetRenderer:
       node.name,
       node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
       node.compilationResult.toSeq.flatMap(_.messages),
-      node.hasContext,
       node.compilationResult.fold(false)(_.isSuccessful)
     )

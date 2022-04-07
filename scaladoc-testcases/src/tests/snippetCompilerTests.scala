@@ -55,7 +55,7 @@ class A {
 class B { }
 
 /**
- * ```scala sc:macrocompile
+ * ```scala
  * import scala.quoted._
  * inline def sum(args: Int*): Int = ${ sumExpr('args) }
  * def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match

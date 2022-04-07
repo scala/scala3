@@ -8,7 +8,6 @@ case class SnippetCompilerArg(flag: SCFlags):
 
 enum SCFlags(val flagName: String):
   case Compile extends SCFlags("compile")
-  case MacroCompile extends SCFlags("macrocompile")
   case NoCompile extends SCFlags("nocompile")
   case Fail extends SCFlags("fail")
 
@@ -38,7 +37,6 @@ object SnippetCompilerArgs:
     |
     |Available flags:
     |compile - Enables snippet checking.
-    |macrocompile - Enables snippet checking for macros.
     |nocompile - Disables snippet checking.
     |fail - Enables snippet checking, asserts that snippet doesn't compile.
     |

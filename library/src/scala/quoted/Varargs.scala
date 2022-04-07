@@ -35,7 +35,7 @@ object Varargs {
   /** Matches a literal sequence of expressions and return a sequence of expressions.
    *
    *  Usage:
-   *  ```scala sc:macrocompile
+   *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
    *    case Varargs(argVarargs) => ???

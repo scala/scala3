@@ -11,7 +11,7 @@ import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 import dotty.tools.scaladoc.tasty.comments.PreparsedComment
 
 object FlexmarkSnippetProcessor:
-  def processSnippets[T <: mdu.Node](root: T, preparsed: Option[PreparsedComment], checkingFunc: => SnippetChecker.SnippetCheckingFunc, withContext: Boolean)(using CompilerContext): T = {
+  def processSnippets[T <: mdu.Node](root: T, preparsed: Option[PreparsedComment], checkingFunc: => SnippetChecker.SnippetCheckingFunc)(using CompilerContext): T = {
     lazy val cf: SnippetChecker.SnippetCheckingFunc = checkingFunc
 
     val nodes = root.getDescendants().asScala.collect {
@@ -68,23 +68,15 @@ object FlexmarkSnippetProcessor:
 
         val fullSnippet = Seq(snippetImports, snippet).mkString("\n").trim
         val snippetCompilationResult = cf(fullSnippet, lineOffset, argOverride) match {
-          case Some(result @ SnippetCompilationResult(wrapped, _, _, messages)) if !withContext =>
+          case Some(result @ SnippetCompilationResult(wrapped, _, _, messages)) =>
             node.setContentString(fullSnippet)
-            val innerLineOffset = wrapped.innerLineOffset
-            Some(result.copy(messages = result.messages.map {
-              case m @ SnippetCompilerMessage(Some(pos), _, _) =>
-                m.copy(position = Some(pos.copy(relativeLine = pos.relativeLine - innerLineOffset)))
-              case m => m
-            }))
-          case result@Some(SnippetCompilationResult(wrapped, _, _, _)) =>
-            node.setContentString(wrapped.snippet)
-            result
+            Some(result)
           case result =>
             node.setContentString(fullSnippet)
             result
         }
 
-        node.insertBefore(ExtendedFencedCodeBlock(id, node, snippetCompilationResult, withContext))
+        node.insertBefore(ExtendedFencedCodeBlock(id, node, snippetCompilationResult))
         node.unlink()
         id.fold(snippetMap)(id =>
           val snippetAsImport = s"""|//{i:$id

@@ -200,7 +200,7 @@ class MarkdownCommentParser(repr: Repr)(using dctx: DocContext)
       .mapValues(stringToMarkup).to(SortedMap)
 
   def processSnippets(root: mdu.Node, preparsed: PreparsedComment): mdu.Node =
-    FlexmarkSnippetProcessor.processSnippets(root, Some(preparsed), snippetCheckingFunc(owner), withContext = true)
+    FlexmarkSnippetProcessor.processSnippets(root, Some(preparsed), snippetCheckingFunc(owner))
 }
 
 class WikiCommentParser(repr: Repr)(using DocContext)

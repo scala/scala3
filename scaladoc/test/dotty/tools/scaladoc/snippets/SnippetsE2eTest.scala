@@ -82,8 +82,8 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
 
     def checkRelativeLines(msg: Message, cmsg: SnippetCompilerMessage): Seq[String] =
       val pos = cmsg.position.get
-      if !(pos.relativeLine == pos.srcPos.line + ws.innerLineOffset - ws.outerLineOffset + 1) then Seq(
-        s"Expected ${msg.level.text} message at relative line: ${pos.srcPos.line + ws.innerLineOffset - ws.outerLineOffset + 1} " +
+      if !(pos.relativeLine == pos.srcPos.line - ws.outerLineOffset) then Seq(
+        s"Expected ${msg.level.text} message at relative line: ${pos.srcPos.line - ws.outerLineOffset} " +
           s"but found at ${pos.relativeLine}"
       ) else Nil
 
