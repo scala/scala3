@@ -1553,7 +1553,7 @@ object desugar {
           Function(derivedValDef(gen.pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
         case _ =>
           val matchCheckMode =
-            if (gen.checkMode == GenCheckMode.Check) MatchCheck.IrrefutableGenFrom
+            if (gen.checkMode == GenCheckMode.Check || gen.checkMode == GenCheckMode.CheckAndFilter) MatchCheck.IrrefutableGenFrom
             else MatchCheck.None
           makeCaseLambda(CaseDef(gen.pat, EmptyTree, body) :: Nil, matchCheckMode)
       }
@@ -1640,13 +1640,11 @@ object desugar {
         case IdPattern(_) => true
         case _ => false
 
-      def needsNoFilter(gen: GenFrom): Boolean =
-        if (gen.checkMode == GenCheckMode.FilterAlways) // pattern was prefixed by `case`
-          false
-        else
-          gen.checkMode != GenCheckMode.FilterNow
-          || isVarBinding(gen.pat)
-          || isIrrefutable(gen.pat, gen.expr)
+      def needsNoFilter(gen: GenFrom): Boolean = gen.checkMode match
+        case GenCheckMode.FilterAlways => false  // pattern was prefixed by `case`
+        case GenCheckMode.FilterNow | GenCheckMode.CheckAndFilter => isVarBinding(gen.pat) || isIrrefutable(gen.pat, gen.expr)
+        case GenCheckMode.Check => true
+        case GenCheckMode.Ignore => true
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.

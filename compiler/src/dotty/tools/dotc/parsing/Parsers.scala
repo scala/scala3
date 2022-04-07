@@ -2512,9 +2512,10 @@ object Parsers {
     def generatorRest(pat: Tree, casePat: Boolean): GenFrom =
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
-          if (casePat) GenCheckMode.FilterAlways
-          else if sourceVersion.isAtLeast(future) then GenCheckMode.Check
-          else GenCheckMode.FilterNow  // filter for now, to keep backwards compat
+          if casePat then GenCheckMode.FilterAlways
+          else if sourceVersion.isAtLeast(`3.2`) then GenCheckMode.CheckAndFilter
+          else if sourceVersion.isAtLeast(`future`) then GenCheckMode.Check
+          else GenCheckMode.FilterNow  // filter on source version < 3.2, for backward compat
         GenFrom(pat, subExpr(), checkMode)
       }
 
