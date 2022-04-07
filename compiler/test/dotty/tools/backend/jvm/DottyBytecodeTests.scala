@@ -597,7 +597,7 @@ class TestBCode extends DottyBytecodeTest {
       val clsIn   = dir.lookupName("Test.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
-      assertEquals(94, instructionsFromMethod(method).size)
+      assertEquals(93, instructionsFromMethod(method).size)
     }
   }
 
@@ -990,11 +990,11 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ISTORE, 1),
         VarOp(ILOAD, 4),
         VarOp(ISTORE, 2),
-        Jump(GOTO, Label(25)),
+        Jump(GOTO, Label(0)),
         Label(22),
         Op(IRETURN),
-        Label(25),
-        Jump(GOTO, Label(0)),
+        Op(NOP),
+        Op(NOP),
         Op(NOP),
         Op(ATHROW),
       ))
@@ -1028,12 +1028,12 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ASTORE, 0),
         VarOp(ILOAD, 4),
         VarOp(ISTORE, 1),
-        Jump(GOTO, Label(29)),
+        Jump(GOTO, Label(0)),
         Label(26),
         Op(IRETURN),
-        Label(29),
-        Jump(GOTO, Label(0)),
         Op(NOP),
+        Op(NOP),
+        Op(ATHROW),
         Op(ATHROW),
       ))
     }
