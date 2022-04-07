@@ -661,7 +661,7 @@ object TreeChecker {
       case t @ ValDef(_, _tpt, _)                  => traverse(t.rhs)
       case t @ DefDef(_, paramss, _tpt, _)         => for params <- paramss do traverse(params); traverse(t.rhs)
       case t @ TypeDef(_, _rhs)                    =>
-      case t @ Template(constr, _parents, self, _) => traverse(constr); traverse(self); traverse(t.body)
+      case t @ Template(constr, parents, self, _)  => traverse(constr); traverse(parents); traverse(self); traverse(t.body)
       case t                                       => traverseChildren(t)
     end traverse
 }
