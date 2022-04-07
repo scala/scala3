@@ -469,12 +469,6 @@ object Scanners {
         true
       }
 
-    def isContinuing(lastToken: Token) =
-      (openParensTokens.contains(token) || lastToken == RETURN)
-      && !pastBlankLine
-      && !migrateTo3
-      && !noindentSyntax
-
     /** The indentation width of the given offset. */
     def indentWidth(offset: Offset): IndentWidth =
       import IndentWidth.{Run, Conc}
@@ -565,6 +559,25 @@ object Scanners {
           handler(r)
         case _ =>
 
+      /** Is this line seen as a continuation of last line? We assume that
+       *   - last line ended in a token that can end a statement
+       *   - current line starts with a token that can start a statement
+       *   - current line does not start with a leading infix operator
+       *  The answer is different for Scala-2 and Scala-3.
+       *   - In Scala 2: Only `{` is treated as continuing, irrespective of indentation.
+       *     But this is in fact handled by Parser.argumentStart which skips a NEWLINE,
+       *     so we always assume false here.
+       *   - In Scala 3: Only indented statements are treated as continuing, as long as
+       *     they start with `(`, `[` or `{`, or the last statement ends in a `return`.
+       *   The Scala 2 rules apply under source `3.0-migration` or under `-no-indent`.
+       */
+      def isContinuing =
+        lastWidth < nextWidth
+        && (openParensTokens.contains(token) || lastToken == RETURN)
+        && !pastBlankLine
+        && !migrateTo3
+        && !noindentSyntax
+
       currentRegion match
         case r: Indented =>
           indentIsSignificant = indentSyntax
@@ -582,7 +595,7 @@ object Scanners {
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
          && !isLeadingInfixOperator(nextWidth)
-         && !(lastWidth < nextWidth && isContinuing(lastToken))
+         && !isContinuing
       then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if indentIsSignificant then
