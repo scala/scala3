@@ -215,13 +215,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _                            => false
   }
 
-  /** Is this pattern node a synthetic catch-all case, added during PartialFuction synthesis before we know
-    * whether the user provided cases are exhaustive. */
-  def isSyntheticDefaultCase(cdef: CaseDef): Boolean = unsplice(cdef) match {
-    case CaseDef(Bind(nme.DEFAULT_CASE, _), EmptyTree, _) => true
-    case _                                                  => false
-  }
-
   /** Does this CaseDef catch Throwable? */
   def catchesThrowable(cdef: CaseDef)(using Context): Boolean =
     catchesAllOf(cdef, defn.ThrowableType)

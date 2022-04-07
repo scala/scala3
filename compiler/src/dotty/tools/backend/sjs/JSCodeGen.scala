@@ -1702,11 +1702,6 @@ class JSCodeGen()(using genCtx: Context) {
     tree match {
       /** Local val or var declaration */
       case tree @ ValDef(name, _, _) =>
-        /* Must have been eliminated by the tail call transform performed
-         * by genMethodBody(). */
-        assert(name != nme.THIS,
-            s"ValDef(_, nme.THIS, _, _) found at ${tree.span}")
-
         val sym = tree.symbol
         val rhs = tree.rhs
         val rhsTree = genExpr(rhs)
