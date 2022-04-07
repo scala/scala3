@@ -130,7 +130,7 @@ class TreeChecker extends Phase with SymTransformer {
       assert(ctx.typerState.constraint.domainLambdas.isEmpty,
         i"non-empty constraint at end of $fusedPhase: ${ctx.typerState.constraint}, ownedVars = ${ctx.typerState.ownedVars.toList}%, %")
       assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
-      TreeNodeChecker.run(ctx.compilationUnit.tpdTree)
+      TreeNodeChecker.traverse(ctx.compilationUnit.tpdTree)
     }
 
     val checkingCtx = ctx
@@ -651,7 +651,6 @@ object TreeChecker {
   /** Check that the tree only contains legal children trees */
   object TreeNodeChecker extends untpd.TreeTraverser:
     import untpd._
-    def run(tree: Tree)(using Context) = if !tree.isInstanceOf[TypeTree] then traverse(tree)
     def traverse(tree: Tree)(using Context) = tree match
       case t: TypeTree                             => assert(assertion = false, t)
       case t @ TypeApply(fun, _targs)              => traverse(fun)
