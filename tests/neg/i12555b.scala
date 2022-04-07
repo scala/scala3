@@ -10,9 +10,9 @@ import Noop.*
 
 final case class User(name: String, age: Int)
 
-inline given Noop[User] = a => a
+inline given Noop[User] = a => a  // error
 
 val u = User("hello", 45)
 
 @main
-def run = println(Noop.noop(u)) // error
+def run = println(Noop.noop(u))
