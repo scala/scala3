@@ -153,11 +153,6 @@ object ErrorReporting {
          |
          |The tests were made under $constraintText"""
 
-    /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
-     *  all occurrences of `${X}` where `X` is in `paramNames` with the
-     *  corresponding shown type in `args`.
-     */
-
     def rewriteNotice: String =
       if Feature.migrateTo3 then "\nThis patch can be inserted automatically under -rewrite."
       else ""
@@ -285,6 +280,10 @@ class ImplicitSearchError(
       }
   }
 
+  /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
+   *  all occurrences of `${X}` where `X` is in `paramNames` with the
+   *  corresponding shown type in `args`.
+   */
   private def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type]): String = {
     def translate(name: String): Option[String] = {
       val idx = paramNames.indexOf(name)
