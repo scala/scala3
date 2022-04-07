@@ -293,9 +293,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
 
       tree match {
-        case ValDef(nme.THIS, _, _) =>
-          report.debuglog("skipping trivial assign to _$this: " + tree)
-
         case tree@ValDef(_, _, _) =>
           val sym = tree.symbol
           /* most of the time, !locals.contains(sym), unless the current activation of genLoad() is being called
