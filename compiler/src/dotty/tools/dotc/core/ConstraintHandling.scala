@@ -9,9 +9,7 @@ import Decorators._
 import Flags._
 import config.Config
 import config.Printers.typr
-import reporting.trace
 import typer.ProtoTypes.{newTypeVar, representedParamRef}
-import StdNames.tpnme
 import UnificationDirection.*
 import NameKinds.AvoidNameKind
 
@@ -354,6 +352,9 @@ trait ConstraintHandling {
     val pKept    = if level1 <= level2 then p1 else p2
     val pRemoved = if level1 <= level2 then p2 else p1
 
+    val down = constraint.exclusiveLower(p2, p1)
+    val up = constraint.exclusiveUpper(p1, p2)
+
     constraint = constraint.addLess(p2, p1, direction = if pKept eq p1 then KeepParam2 else KeepParam1)
 
     val boundKept    = constraint.nonParamBounds(pKept).substParam(pRemoved, pKept)
@@ -372,9 +373,6 @@ trait ConstraintHandling {
       //     >: Int & Singleton <: Singleton
       if !isSub(lo, hi) then
         boundRemoved = TypeBounds(lo & hi, hi)
-
-    val down = constraint.exclusiveLower(p2, p1)
-    val up = constraint.exclusiveUpper(p1, p2)
 
     val newBounds = (boundKept & boundRemoved).bounds
     constraint = constraint.updateEntry(pKept, newBounds).replace(pRemoved, pKept)
@@ -602,7 +600,8 @@ trait ConstraintHandling {
     val e = constraint.entry(param)
     if (e.exists) e.bounds
     else {
-      val pinfos = param.binder.paramInfos
+      // TODO: should we change the type of paramInfos to nullable?
+      val pinfos: List[param.binder.PInfo] | Null = param.binder.paramInfos
       if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
       else TypeBounds.empty
     }

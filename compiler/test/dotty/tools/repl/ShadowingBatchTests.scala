@@ -1,15 +1,16 @@
 package dotty.tools
 package repl
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.nio.file.Files
 
-import org.junit.{ After, AfterClass, BeforeClass, Ignore, Test }
+import org.junit.{ After, AfterClass, BeforeClass, Test }
 import org.junit.Assert._
 import io.{ Directory, PlainDirectory }
 import dotc.core.Contexts._
 import dotc.reporting.{ ErrorMessagesTest, StoreReporter }
-import vulpix.TestConfiguration
 
 object ShadowingBatchTests:
   val dir = Directory(Files.createTempDirectory("batch-shadow"))

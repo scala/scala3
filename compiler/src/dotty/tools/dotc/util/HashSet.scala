@@ -1,5 +1,7 @@
 package dotty.tools.dotc.util
 
+import dotty.tools.uncheckedNN
+
 object HashSet:
 
   /** The number of elements up to which dense packing is used.
@@ -29,12 +31,12 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
 
   private var used: Int = _
   private var limit: Int = _
-  private var table: Array[AnyRef] = _
+  private var table: Array[AnyRef | Null] = _
 
   clear()
 
   private def allocate(capacity: Int) =
-    table = new Array[AnyRef](capacity)
+    table = new Array[AnyRef | Null](capacity)
     limit = if capacity <= DenseLimit then capacity - 1 else capacity / capacityMultiple
 
   private def roundToPower(n: Int) =
@@ -67,27 +69,27 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
   /** Turn hashcode `x` into a table index */
   protected def index(x: Int): Int = x & (table.length - 1)
 
-  protected def currentTable: Array[AnyRef] = table
+  protected def currentTable: Array[AnyRef | Null] = table
 
   protected def firstIndex(x: T) = if isDense then 0 else index(hash(x))
   protected def nextIndex(idx: Int) =
     Stats.record(statsItem("miss"))
     index(idx + 1)
 
-  protected def entryAt(idx: Int) = table(idx).asInstanceOf[T]
-  protected def setEntry(idx: Int, x: T) = table(idx) = x.asInstanceOf[AnyRef]
+  protected def entryAt(idx: Int): T | Null = table(idx).asInstanceOf[T | Null]
+  protected def setEntry(idx: Int, x: T) = table(idx) = x.asInstanceOf[AnyRef | Null]
 
   def lookup(x: T): T | Null =
     Stats.record(statsItem("lookup"))
     var idx = firstIndex(x)
-    var e = entryAt(idx)
+    var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e, x) then return e
+      if isEqual(e.uncheckedNN, x) then return e
       idx = nextIndex(idx)
       e = entryAt(idx)
     null
 
-/** Add entry at `x` at index `idx` */
+  /** Add entry at `x` at index `idx` */
   protected def addEntryAt(idx: Int, x: T): T =
     Stats.record(statsItem("addEntryAt"))
     setEntry(idx, x)
@@ -98,9 +100,10 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
   def put(x: T): T =
     Stats.record(statsItem("put"))
     var idx = firstIndex(x)
-    var e = entryAt(idx)
+    var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e, x) then return e
+      // TODO: remove uncheckedNN when explicit-nulls is enabled for regule compiling
+      if isEqual(e.uncheckedNN, x) then return e.uncheckedNN
       idx = nextIndex(idx)
       e = entryAt(idx)
     addEntryAt(idx, x)
@@ -110,22 +113,22 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
   def remove(x: T): Boolean =
     Stats.record(statsItem("remove"))
     var idx = firstIndex(x)
-    var e = entryAt(idx)
+    var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e, x) then
+      if isEqual(e.uncheckedNN, x) then
         var hole = idx
         while
           idx = nextIndex(idx)
           e = entryAt(idx)
           e != null
         do
-          val eidx = index(hash(e))
+          val eidx = index(hash(e.uncheckedNN))
           if isDense
             || index(eidx - (hole + 1)) > index(idx - (hole + 1))
                // entry `e` at `idx` can move unless `index(hash(e))` is in
                // the (ring-)interval [hole + 1 .. idx]
           then
-            setEntry(hole, e)
+            setEntry(hole, e.uncheckedNN)
             hole = idx
         table(hole) = null
         used -= 1
@@ -146,14 +149,14 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
       e = entryAt(idx)
     setEntry(idx, x)
 
-  def copyFrom(oldTable: Array[AnyRef]): Unit =
+  def copyFrom(oldTable: Array[AnyRef | Null]): Unit =
     if isDense then
       Array.copy(oldTable, 0, table, 0, oldTable.length)
     else
       var idx = 0
       while idx < oldTable.length do
-        val e = oldTable(idx).asInstanceOf[T]
-        if e != null then addOld(e)
+        val e: T | Null = oldTable(idx).asInstanceOf[T | Null]
+        if e != null then addOld(e.uncheckedNN)
         idx += 1
 
   protected def growTable(): Unit =
@@ -165,14 +168,14 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
     copyFrom(oldTable)
 
   abstract class EntryIterator extends Iterator[T]:
-    def entry(idx: Int): T
+    def entry(idx: Int): T | Null
     private var idx = 0
     def hasNext =
       while idx < table.length && table(idx) == null do idx += 1
       idx < table.length
     def next() =
       require(hasNext)
-      try entry(idx) finally idx += 1
+      try entry(idx).uncheckedNN finally idx += 1
 
   def iterator: Iterator[T] = new EntryIterator():
     def entry(idx: Int) = entryAt(idx)

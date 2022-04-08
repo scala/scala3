@@ -41,7 +41,6 @@ object Type:
    *  }
    *  //}
    *  ```
-   *  @syntax markdown
    */
   def valueOfConstant[T](using Type[T])(using Quotes): Option[T] =
     ValueOf.unapply(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]
@@ -66,7 +65,6 @@ object Type:
    *  }
    *  //}
    *  ```
-   *  @syntax markdown
    */
   @since("3.1")
   def valueOfTuple[T <: Tuple](using Type[T])(using Quotes): Option[T] =

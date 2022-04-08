@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package util
 
+import scala.language.unsafeNulls
+
 import dotty.tools.io._
 import Spans._
 import core.Contexts._
@@ -58,7 +60,7 @@ object ScriptSourceFile {
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   import SourceFile._
 
-  private var myContent: Array[Char] = null
+  private var myContent: Array[Char] | Null = null
 
   def content(): Array[Char] = {
     if (myContent == null) myContent = computeContent
@@ -210,7 +212,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     var idx = startOfLine(offset)
     val pad = new StringBuilder
     while (idx != offset) {
-      pad.append(if (idx < length && content()(idx) == '\t') '\t' else ' ')
+      pad.append(if (idx < content().length && content()(idx) == '\t') '\t' else ' ')
       idx += 1
     }
     pad.result()
@@ -267,10 +269,10 @@ object SourceFile {
   /** Return true if file is a script:
    *  if filename extension is not .scala and has a script header.
    */
-  def isScript(file: AbstractFile, content: Array[Char]): Boolean =
+  def isScript(file: AbstractFile | Null, content: Array[Char]): Boolean =
     ScriptSourceFile.hasScriptHeader(content)
 
-  def apply(file: AbstractFile, codec: Codec): SourceFile =
+  def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
     // see note above re: Files.exists is remarkably slow
     val chars =
     try

@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package plugins
 
+import scala.language.unsafeNulls
+
 import core._
 import Contexts._
 import Phases._
@@ -10,7 +12,6 @@ import transform.MegaPhase.MiniPhase
 import java.io.InputStream
 import java.util.Properties
 
-import scala.collection.mutable
 import scala.util.{ Try, Success, Failure }
 
 trait PluginPhase extends MiniPhase {

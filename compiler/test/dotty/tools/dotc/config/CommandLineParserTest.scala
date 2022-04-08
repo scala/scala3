@@ -1,11 +1,13 @@
 
 package dotty.tools.dotc.config
 
+import scala.language.unsafeNulls
+
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
 
 class CommandLineParserTest:
-  import CommandLineParser.{tokenize, ParseException}
+  import CommandLineParser.tokenize
 
   private def check(tokens: String*)(input: String): Unit = assertEquals(tokens, tokenize(input))
 

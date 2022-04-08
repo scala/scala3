@@ -5,7 +5,8 @@ package dotty.tools.dotc.util
 import java.lang.ref.{ReferenceQueue, WeakReference}
 
 import scala.annotation.{ constructorOnly, tailrec }
-import scala.collection.mutable
+
+import dotty.tools._
 
 /**
  * A HashSet where the elements are stored weakly. Elements in this set are eligible for GC if no other
@@ -50,7 +51,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   /**
    * the underlying table of entries which is an array of Entry linked lists
    */
-  protected var table = new Array[Entry[A]](computeCapacity)
+  protected var table = new Array[Entry[A] | Null](computeCapacity)
 
   /**
    * the limit at which we'll increase the size of the hash table
@@ -68,7 +69,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   /**
    * remove a single entry from a linked list in a given bucket
    */
-  private def remove(bucket: Int, prevEntry: Entry[A], entry: Entry[A]): Unit = {
+  private def remove(bucket: Int, prevEntry: Entry[A] | Null, entry: Entry[A]): Unit = {
     Stats.record(statsItem("remove"))
     prevEntry match {
       case null => table(bucket) = entry.tail
@@ -81,7 +82,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
    * remove entries associated with elements that have been gc'ed
    */
   protected def removeStaleEntries(): Unit = {
-    def poll(): Entry[A] = queue.poll().asInstanceOf[Entry[A]]
+    def poll(): Entry[A] | Null = queue.poll().asInstanceOf
 
     @tailrec
     def queueLoop(): Unit = {
@@ -90,8 +91,10 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
         val bucket = index(stale.hash)
 
         @tailrec
-        def linkedListLoop(prevEntry: Entry[A], entry: Entry[A]): Unit = if (stale eq entry) remove(bucket, prevEntry, entry)
-        else if (entry != null) linkedListLoop(entry, entry.tail)
+        def linkedListLoop(prevEntry: Entry[A] | Null, entry: Entry[A] | Null): Unit =
+          if entry != null then
+            if stale eq entry then remove(bucket, prevEntry, entry)
+            else linkedListLoop(entry, entry.tail)
 
         linkedListLoop(null, table(bucket))
 
@@ -108,13 +111,13 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   protected def resize(): Unit = {
     Stats.record(statsItem("resize"))
     val oldTable = table
-    table = new Array[Entry[A]](oldTable.size * 2)
+    table = new Array[Entry[A] | Null](oldTable.size * 2)
     threshold = computeThreshold
 
     @tailrec
     def tableLoop(oldBucket: Int): Unit = if (oldBucket < oldTable.size) {
       @tailrec
-      def linkedListLoop(entry: Entry[A]): Unit = entry match {
+      def linkedListLoop(entry: Entry[A] | Null): Unit = entry match {
         case null => ()
         case _ =>
           val bucket = index(entry.hash)
@@ -130,26 +133,28 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     tableLoop(0)
   }
 
-  def lookup(elem: A): A | Null = elem match {
+  // TODO: remove the `case null` when we can enable explicit nulls in regular compiling,
+  // since the type `A <: AnyRef` of `elem` can ensure the value is not null.
+  def lookup(elem: A): A | Null = (elem: A | Null) match {
     case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
-    case _    =>
+    case _ =>
       Stats.record(statsItem("lookup"))
       removeStaleEntries()
       val bucket = index(hash(elem))
 
       @tailrec
-      def linkedListLoop(entry: Entry[A]): A = entry match {
-        case null                    => null.asInstanceOf[A]
+      def linkedListLoop(entry: Entry[A] | Null): A | Null = entry match {
+        case null                    => null
         case _                       =>
           val entryElem = entry.get
-          if (isEqual(elem, entryElem)) entryElem
+          if entryElem != null && isEqual(elem, entryElem) then entryElem
           else linkedListLoop(entry.tail)
       }
 
       linkedListLoop(table(bucket))
   }
 
-  protected def addEntryAt(bucket: Int, elem: A, elemHash: Int, oldHead: Entry[A]): A = {
+  protected def addEntryAt(bucket: Int, elem: A, elemHash: Int, oldHead: Entry[A] | Null): A = {
     Stats.record(statsItem("addEntryAt"))
     table(bucket) = new Entry(elem, elemHash, oldHead, queue)
     count += 1
@@ -157,7 +162,9 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     elem
   }
 
-  def put(elem: A): A = elem match {
+  // TODO: remove the `case null` when we can enable explicit nulls in regular compiling,
+  // since the type `A <: AnyRef` of `elem` can ensure the value is not null.
+  def put(elem: A): A = (elem: A | Null) match {
     case null => throw new NullPointerException("WeakHashSet cannot hold nulls")
     case _    =>
       Stats.record(statsItem("put"))
@@ -167,11 +174,11 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
       val oldHead = table(bucket)
 
       @tailrec
-      def linkedListLoop(entry: Entry[A]): A = entry match {
+      def linkedListLoop(entry: Entry[A] | Null): A = entry match {
         case null                    => addEntryAt(bucket, elem, h, oldHead)
         case _                       =>
           val entryElem = entry.get
-          if (isEqual(elem, entryElem)) entryElem
+          if entryElem != null && isEqual(elem, entryElem) then entryElem.uncheckedNN
           else linkedListLoop(entry.tail)
       }
 
@@ -180,27 +187,25 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
 
   def +=(elem: A): Unit = put(elem)
 
-  def -=(elem: A): Unit = elem match {
+  def -=(elem: A): Unit = (elem: A | Null) match {
     case null =>
     case _ =>
       Stats.record(statsItem("-="))
       removeStaleEntries()
       val bucket = index(hash(elem))
 
-
-
       @tailrec
-      def linkedListLoop(prevEntry: Entry[A], entry: Entry[A]): Unit = entry match {
-        case null => ()
-        case _ if isEqual(elem, entry.get) => remove(bucket, prevEntry, entry)
-        case _ => linkedListLoop(entry, entry.tail)
-      }
+      def linkedListLoop(prevEntry: Entry[A] | Null, entry: Entry[A] | Null): Unit =
+        if entry != null then
+          val entryElem = entry.get
+          if entryElem != null && isEqual(elem, entryElem) then remove(bucket, prevEntry, entry)
+          else linkedListLoop(entry, entry.tail)
 
       linkedListLoop(null, table(bucket))
   }
 
   def clear(): Unit = {
-    table = new Array[Entry[A]](table.size)
+    table = new Array[Entry[A] | Null](table.size)
     threshold = computeThreshold
     count = 0
 
@@ -228,12 +233,12 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
       /**
        * the entry that was last examined
        */
-      private var entry: Entry[A] = null
+      private var entry: Entry[A] | Null = null
 
       /**
        * the element that will be the result of the next call to next()
        */
-      private var lookaheadelement: A = null.asInstanceOf[A]
+      private var lookaheadelement: A | Null = null
 
       @tailrec
       def hasNext: Boolean = {
@@ -242,27 +247,26 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
           entry = table(currentBucket)
         }
 
-        if (entry == null) false
+        val e = entry
+        if (e == null) false
         else {
-          lookaheadelement = entry.get
-          if (lookaheadelement == null) {
+          lookaheadelement = e.get
+          if lookaheadelement == null then
             // element null means the weakref has been cleared since we last did a removeStaleEntries(), move to the next entry
-            entry = entry.tail
+            entry = e.tail
             hasNext
-          }
-          else
-            true
+          else true
         }
       }
 
-      def next(): A = if (lookaheadelement == null)
-        throw new IndexOutOfBoundsException("next on an empty iterator")
-      else {
-        val result = lookaheadelement
-        lookaheadelement = null.asInstanceOf[A]
-        entry = entry.tail
-        result
-      }
+      def next(): A =
+        if lookaheadelement == null then
+          throw new IndexOutOfBoundsException("next on an empty iterator")
+        else
+          val result = lookaheadelement.nn
+          lookaheadelement = null
+          entry = entry.nn.tail
+          result
     }
   }
 
@@ -292,7 +296,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
           assert(entry.get != null, s"$entry had a null value indicated that gc activity was happening during diagnostic validation or that a null value was inserted")
           computedCount += 1
           val cachedHash = entry.hash
-          val realHash = hash(entry.get)
+          val realHash = hash(entry.get.uncheckedNN)
           assert(cachedHash == realHash, s"for $entry cached hash was $cachedHash but should have been $realHash")
           val computedBucket = index(realHash)
           assert(computedBucket == bucket, s"for $entry the computed bucket was $computedBucket but should have been $bucket")
@@ -309,7 +313,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     /**
      *  Produces a diagnostic dump of the table that underlies this hash set.
      */
-    def dump: String = java.util.Arrays.toString(table.asInstanceOf[Array[AnyRef]])
+    def dump: String = java.util.Arrays.toString(table.asInstanceOf[Array[AnyRef | Null]])
 
     /**
      * Number of buckets that hold collisions. Useful for diagnosing performance issues.
@@ -340,6 +344,6 @@ object WeakHashSet {
    * A single entry in a WeakHashSet. It's a WeakReference plus a cached hash code and
    * a link to the next Entry in the same bucket
    */
-  class Entry[A](@constructorOnly element: A, val hash:Int, var tail: Entry[A], @constructorOnly queue: ReferenceQueue[A]) extends WeakReference[A](element, queue)
+  class Entry[A](@constructorOnly element: A, val hash:Int, var tail: Entry[A] | Null, @constructorOnly queue: ReferenceQueue[A]) extends WeakReference[A](element, queue)
 
 }

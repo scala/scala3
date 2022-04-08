@@ -14,14 +14,14 @@ TASTy version number has the format of `<major_version>.<minor_version>-<experim
 Being able to bump the compiler version in a project without having to wait for all of its dependencies to do the same is already a big leap forward when compared to Scala 2. However, we might still try to do better, especially from the perspective of authors of libraries.
 If you maintain a library and you would like it to be usable as a dependency for all Scala 3 projects, you would have to always emit TASTy in a version that would be readble by everyone, which would normally mean getting stuck at 3.0.x forever.
 
-To solve this problem a new experimental compiler flag `-Yscala-release <release-version>` (available since 3.1.2-RC1) has been added. Setting this flag makes the compiler produce TASTy files that should be possible to use by all Scala 3 compilers in version `<release-version>` or newer (this flag was inspired by how `-release` works for specifying the target version of JDK). More specifically this enforces emitting TASTy files in an older format ensuring that:
-* the code contains no references to parts of the standard library which were added to the API after `<release-version>` and would crash at runtime when a program is executed with the older version of the standard library on the classpath
-* no dependency found on the classpath during compilation (except for the standard library itself) contains TASTy files produced by a compiler newer than `<release-version>` (otherwise they could potentially leak such disallowed references to the standard library).
+To solve this problem a new experimental compiler flag `-scala-output-version <version>` (available since 3.1.2) has been added. Setting this flag makes the compiler produce TASTy files that should be possible to use by all Scala 3 compilers in version `<version>` or newer. This flag was inspired by how `-java-output-version` (formerly `-release`) works for specifying the target version of JDK. More specifically this enforces emitting TASTy files in an older format ensuring that:
+* the code contains no references to parts of the standard library which were added to the API after `<version>` and would crash at runtime when a program is executed with the older version of the standard library on the classpath
+* no dependency found on the classpath during compilation (except for the standard library itself) contains TASTy files produced by a compiler newer than `<version>` (otherwise they could potentially leak such disallowed references to the standard library).
 
 If any of the checks above is not fulfilled or for any other reason older TASTy cannot be emitted (e.g. the code uses some new language features which cannot be expressed the the older format) the entire compilation fails (with errors reported for each of such issues).
 
 As this feature is experimental it does not have any special support in build tools yet (at least not in sbt 1.6.1 or lower).
-E.g. when a project gets compiled with Scala compiler `3.x1.y1` and `-Yscala-release 3.x2` option and then published using sbt
+E.g. when a project gets compiled with Scala compiler `3.x1.y1` and `-scala-output-version 3.x2` option and then published using sbt
 then the standard library in version `3.x1.y1` gets added to the project's dependencies instead of `3.x2.y2`.
 When the dependencies are added to the classpath during compilation with Scala `3.x2.y2` the compiler will crash while trying to read TASTy files in the newer format.
 A currently known workaround is to modify the build definition of the dependent project by explicitly overriding the version of Scala standard library in dependencies, e.g.
@@ -33,4 +33,4 @@ dependencyOverrides ++= Seq(
 )
 ```
 
-The behaviour of `-Yscala-release` flag might still change in the future, especially it's not guaranteed that every new version of the compiler would be able to generate TASTy in all older formats going back to the one produced by `3.0.x` compiler.
+The behaviour of `-scala-output-version` flag might still change in the future, especially it's not guaranteed that every new version of the compiler would be able to generate TASTy in all older formats going back to the one produced by `3.0.x` compiler.

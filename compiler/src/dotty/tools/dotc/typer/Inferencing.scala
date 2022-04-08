@@ -5,19 +5,16 @@ package typer
 import core._
 import ast._
 import Contexts._, Types._, Flags._, Symbols._
-import Trees._
 import ProtoTypes._
 import NameKinds.{AvoidNameKind, UniqueName}
 import util.Spans._
 import util.{Stats, SimpleIdentityMap}
 import Decorators._
-import config.Printers.{gadts, typr, debug}
+import config.Printers.{gadts, typr}
 import annotation.tailrec
-import reporting._
 import collection.mutable
 
 import scala.annotation.internal.sharable
-import scala.annotation.threadUnsafe
 
 import config.Printers.gadts
 
@@ -402,7 +399,7 @@ object Inferencing {
    *  @return   The list of type symbols that were created
    *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type, span: Span, fromScala2x: Boolean)(using Context): List[Symbol] = {
+  def maximizeType(tp: Type, span: Span)(using Context): List[Symbol] = {
     Stats.record("maximizeType")
     val vs = variances(tp)
     val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
@@ -412,7 +409,7 @@ object Inferencing {
         else if (v == -1) tvar.instantiate(fromBelow = true)
         else {
           val bounds = TypeComparer.fullBounds(tvar.origin)
-          if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
+          if bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) then
             tvar.instantiate(fromBelow = false)
           else {
             // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.

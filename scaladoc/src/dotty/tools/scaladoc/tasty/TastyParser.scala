@@ -37,7 +37,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
     // however, path-dependent types disallow doing so w/o using casts
     inline def hackForeachTree(thunk: reflect.Tree => Unit): Unit =
       given dctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-      dctx.run.units.foreach { compilationUnit =>
+      dctx.run.nn.units.foreach { compilationUnit =>
         // mirrors code from TastyInspector
         thunk(compilationUnit.tpdTree.asInstanceOf[reflect.Tree])
       }

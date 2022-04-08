@@ -6,9 +6,9 @@ movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features/opaques
 
 ## Syntax
 
-```
+```ebnf
 Modifier          ::=  ...
-                    |  ‘opaque’
+                    |  ‘opaque’ ;
 ```
 
 `opaque` is a [soft modifier](../soft-modifier.md). It can still be used as a normal identifier when it is not in front of a definition keyword.
@@ -50,6 +50,8 @@ object o:
   val x: Int = id(2)
 def id(x: o.T): o.T = x
 ```
+
+Opaque type aliases cannot be `private` and cannot be overridden in subclasses.
 
 ## Type Parameters of Opaque Types
 

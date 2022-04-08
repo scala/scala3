@@ -2,17 +2,15 @@ package dotty.tools
 package dotc
 package transform
 
-import org.junit.Assert._
+import scala.language.unsafeNulls
+
 import org.junit.Test
 
 import dotty.tools.backend.jvm.DottyBytecodeTest
 
 class SpecializeFunctionsTests extends DottyBytecodeTest {
 
-  import dotty.tools.backend.jvm.ASMConverters._
-  import dotty.tools.backend.jvm.AsmNode._
   import scala.collection.JavaConverters._
-  import scala.tools.asm.tree.MethodNode
 
   @Test def specializeParentIntToInt = {
     val source = """

@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package plugins
 
+import scala.language.unsafeNulls
+
 import core._
 import Contexts._
 import config.{ PathResolver, Feature }
@@ -34,8 +36,8 @@ trait Plugins {
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
     errors foreach (_.recover[Any] {
       // legacy behavior ignores altogether, so at least warn devs
-      case e: MissingPluginException => report.warning(e.getMessage)
-      case e: Exception              => report.inform(e.getMessage)
+      case e: MissingPluginException => report.warning(e.getMessage.nn)
+      case e: Exception              => report.inform(e.getMessage.nn)
     })
 
     goods map (_.get)

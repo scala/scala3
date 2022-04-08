@@ -18,7 +18,7 @@ import core.Decorators._
 import core.Constants._
 import core.Definitions._
 import core.Annotations.BodyAnnotation
-import typer.{NoChecking, LiftErased}
+import typer.NoChecking
 import typer.Inliner
 import typer.ProtoTypes._
 import typer.ErrorReporting.errorTree
@@ -26,7 +26,6 @@ import typer.Checking.checkValue
 import core.TypeErasure._
 import core.Decorators._
 import dotty.tools.dotc.ast.{tpd, untpd}
-import ast.Trees._
 import ast.TreeTypeMap
 import dotty.tools.dotc.core.{Constants, Flags}
 import ValueClasses._
@@ -36,7 +35,6 @@ import ExplicitOuter._
 import core.Mode
 import util.Property
 import reporting._
-import collection.mutable
 
 class Erasure extends Phase with DenotTransformer {
 
@@ -685,7 +683,7 @@ object Erasure {
           val owner = sym.maybeOwner
           if defn.specialErasure.contains(owner) then
             assert(sym.isConstructor, s"${sym.showLocated}")
-            defn.specialErasure(owner)
+            defn.specialErasure(owner).nn
           else if defn.isSyntheticFunctionClass(owner) then
             defn.functionTypeErasure(owner).typeSymbol
           else
@@ -786,9 +784,11 @@ object Erasure {
       }
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
-      val ntree = atPhase(erasurePhase)(
-        interceptTypeApply(tree.asInstanceOf[TypeApply])
-      ).withSpan(tree.span)
+      val ntree = atPhase(erasurePhase){
+        // Use erased-type semantic to intercept TypeApply in explicit nulls
+        val interceptCtx = if ctx.explicitNulls then ctx.retractMode(Mode.SafeNulls) else ctx
+        interceptTypeApply(tree.asInstanceOf[TypeApply])(using interceptCtx)
+      }.withSpan(tree.span)
 
       ntree match {
         case TypeApply(fun, args) =>
@@ -825,7 +825,6 @@ object Erasure {
 
           val args0 = outers ::: ownArgs
           val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
-            .asInstanceOf[List[Tree]]
 
           def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
             val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)

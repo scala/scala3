@@ -1,0 +1,8 @@
+-- Error: tests/explicit-nulls/neg/byname-nullables1.scala:10:6 --------------------------------------------------------
+10 |    f(x.fld != null) // error
+   |      ^^^^^^^^^^^^^
+   |      This argument was typed using flow assumptions about mutable variables
+   |      but it is passed to a by-name parameter where such flow assumptions are unsound.
+   |      Wrapping the argument in `byName(...)` fixes the problem by disabling the flow assumptions.
+   |
+   |      `byName` needs to be imported from the `scala.compiletime` package.

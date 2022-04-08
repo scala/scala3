@@ -1,8 +1,10 @@
 package dotty.tools
 package dotc
 package reporting
+
+import scala.language.unsafeNulls
+
 import scala.annotation.threadUnsafe
-import util.SourcePosition
 
 object Message {
   val nonSensicalStartTag: String = "<nonsensical>"
@@ -49,7 +51,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     * This will be printed as "$kind Error", "$kind Warning", etc, on the first
     * line of the message.
     */
-  def kind: String
+  def kind: MessageKind
 
   /** The explanation should provide a detailed description of why the error
     * occurred and use examples from the user's own code to illustrate how to
@@ -138,7 +140,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
 class NoExplanation(msgFn: => String) extends Message(ErrorMessageID.NoExplanationID) {
   def msg: String = msgFn
   def explain: String = ""
-  val kind: String = ""
+  val kind: MessageKind = MessageKind.NoKind
 
   override def toString(): String = msg
 }

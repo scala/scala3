@@ -17,7 +17,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type S[N <: Int] <: Int
+  type S[+N <: Int] <: Int
 
   /** Addition of two `Int` singleton types.
    *  ```scala
@@ -25,7 +25,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type +[X <: Int, Y <: Int] <: Int
+  type +[+X <: Int, +Y <: Int] <: Int
 
   /** Subtraction of two `Int` singleton types.
    *  ```scala
@@ -33,7 +33,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type -[X <: Int, Y <: Int] <: Int
+  type -[+X <: Int, +Y <: Int] <: Int
 
   /** Multiplication of two `Int` singleton types.
    *  ```scala
@@ -41,7 +41,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type *[X <: Int, Y <: Int] <: Int
+  type *[+X <: Int, +Y <: Int] <: Int
 
   /** Integer division of two `Int` singleton types.
    *  ```scala
@@ -49,7 +49,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type /[X <: Int, Y <: Int] <: Int
+  type /[+X <: Int, +Y <: Int] <: Int
 
   /** Remainder of the division of `X` by `Y`.
    *  ```scala
@@ -57,7 +57,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type %[X <: Int, Y <: Int] <: Int
+  type %[+X <: Int, +Y <: Int] <: Int
 
   /** Binary left shift of `X` by `Y`.
    *  ```scala
@@ -65,7 +65,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type <<[X <: Int, Y <: Int] <: Int
+  type <<[+X <: Int, +Y <: Int] <: Int
 
   /** Binary right shift of `X` by `Y`.
    *  ```scala
@@ -73,7 +73,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type >>[X <: Int, Y <: Int] <: Int
+  type >>[+X <: Int, +Y <: Int] <: Int
 
   /** Binary right shift of `X` by `Y`, filling the left with zeros.
    *  ```scala
@@ -81,7 +81,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type >>>[X <: Int, Y <: Int] <: Int
+  type >>>[+X <: Int, +Y <: Int] <: Int
 
   /** Bitwise xor of `X` and `Y`.
    *  ```scala
@@ -89,7 +89,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type ^[X <: Int, Y <: Int] <: Int
+  type ^[+X <: Int, +Y <: Int] <: Int
 
   /** Less-than comparison of two `Int` singleton types.
    *  ```scala
@@ -98,7 +98,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type <[X <: Int, Y <: Int] <: Boolean
+  type <[+X <: Int, +Y <: Int] <: Boolean
 
   /** Greater-than comparison of two `Int` singleton types.
    *  ```scala
@@ -107,7 +107,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type >[X <: Int, Y <: Int] <: Boolean
+  type >[+X <: Int, +Y <: Int] <: Boolean
 
   /** Greater-or-equal comparison of two `Int` singleton types.
    *  ```scala
@@ -116,7 +116,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type >=[X <: Int, Y <: Int] <: Boolean
+  type >=[+X <: Int, +Y <: Int] <: Boolean
 
   /** Less-or-equal comparison of two `Int` singleton types.
    *  ```scala
@@ -125,7 +125,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type <=[X <: Int, Y <: Int] <: Boolean
+  type <=[+X <: Int, +Y <: Int] <: Boolean
 
   /** Bitwise and of `X` and `Y`.
    *  ```scala
@@ -134,7 +134,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type BitwiseAnd[X <: Int, Y <: Int] <: Int
+  type BitwiseAnd[+X <: Int, +Y <: Int] <: Int
 
   /** Bitwise or of `X` and `Y`.
    *  ```scala
@@ -142,7 +142,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type BitwiseOr[X <: Int, Y <: Int] <: Int
+  type BitwiseOr[+X <: Int, +Y <: Int] <: Int
 
   /** Absolute value of an `Int` singleton type.
    *  ```scala
@@ -150,7 +150,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type Abs[X <: Int] <: Int
+  type Abs[+X <: Int] <: Int
 
   /** Negation of an `Int` singleton type.
    *  ```scala
@@ -159,7 +159,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type Negate[X <: Int] <: Int
+  type Negate[+X <: Int] <: Int
 
   /** Minimum of two `Int` singleton types.
    *  ```scala
@@ -167,7 +167,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type Min[X <: Int, Y <: Int] <: Int
+  type Min[+X <: Int, +Y <: Int] <: Int
 
   /** Maximum of two `Int` singleton types.
    *  ```scala
@@ -175,7 +175,7 @@ object int:
    *  ```
    *  @syntax markdown
    */
-  type Max[X <: Int, Y <: Int] <: Int
+  type Max[+X <: Int, +Y <: Int] <: Int
 
   /** String conversion of an `Int` singleton type.
    *  ```scala
@@ -184,7 +184,7 @@ object int:
    *  @syntax markdown
    */
   //@deprecated("Use compiletime.ops.any.ToString instead.","3.2.0") // uncomment when reaching 3.2.0
-  type ToString[X <: Int] <: String
+  type ToString[+X <: Int] <: String
 
   /** Long conversion of an `Int` singleton type.
    *  ```scala
@@ -193,7 +193,7 @@ object int:
    *  @syntax markdown
    */
   @experimental
-  type ToLong[X <: Int] <: Long
+  type ToLong[+X <: Int] <: Long
 
   /** Float conversion of an `Int` singleton type.
    *  ```scala
@@ -202,7 +202,7 @@ object int:
    *  @syntax markdown
    */
   @experimental
-  type ToFloat[X <: Int] <: Float
+  type ToFloat[+X <: Int] <: Float
 
   /** Double conversion of an `Int` singleton type.
    *  ```scala
@@ -211,7 +211,7 @@ object int:
    *  @syntax markdown
    */
   @experimental
-  type ToDouble[X <: Int] <: Double
+  type ToDouble[+X <: Int] <: Double
 
   /** Number of zero bits preceding the highest-order ("leftmost")
    * one-bit in the two's complement binary representation of the specified `Int` singleton type.
@@ -226,4 +226,4 @@ object int:
    *  @syntax markdown
    */
   @experimental
-  type NumberOfLeadingZeros[X <: Int] <: Int
+  type NumberOfLeadingZeros[+X <: Int] <: Int

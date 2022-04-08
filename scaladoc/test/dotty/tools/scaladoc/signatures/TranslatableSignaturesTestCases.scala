@@ -58,6 +58,8 @@ class InheritanceLoop extends SignatureTest("inheritanceLoop", SignatureTest.all
 class InheritedMembers extends SignatureTest("inheritedMembers2", SignatureTest.all.filter(_ != "class"),
   sourceFiles = List("inheritedMembers1", "inheritedMembers2"))
 
+class InheritedFromHiddenClasslike extends SignatureTest("inheritedMembersFromHidden", SignatureTest.all)
+
 class ComplexNames extends SignatureTest("complexNames", Seq("def", "class"))
 
 class WrongDocumentationLinks extends SignatureTest("links", Seq("def"))
@@ -94,3 +96,5 @@ class Exports extends SignatureTest("exports2", SignatureTest.all, sourceFiles =
 class ContextFunctions extends SignatureTest("contextfunctions", SignatureTest.all)
 
 class MarkdownCode extends SignatureTest("markdowncode", SignatureTest.all)
+
+class FunctionTypeSignatures extends SignatureTest("functionTypeSignatures", SignatureTest.all)

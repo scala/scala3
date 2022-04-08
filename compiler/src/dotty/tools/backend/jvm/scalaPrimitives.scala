@@ -12,8 +12,6 @@ import dotc.report
 import dotc.util.ReadOnlyMap
 
 import scala.annotation.threadUnsafe
-import scala.collection.immutable
-
 
 /** Scala primitive operations are represented as methods in `Any` and
  *  `AnyVal` subclasses. Here we demultiplex them by providing a mapping

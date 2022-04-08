@@ -7,7 +7,6 @@ import Contexts._
 import Symbols._
 import Types._
 import StdNames._
-import ast.Trees._
 import dotty.tools.dotc.ast.tpd
 
 

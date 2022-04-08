@@ -2,7 +2,6 @@ package dotty.tools.backend.sjs
 
 import dotty.tools.dotc.core._
 import Names.TermName
-import StdNames._
 import Types._
 import Contexts._
 import Symbols._
@@ -11,8 +10,6 @@ import dotty.tools.dotc.ast.tpd._
 import dotty.tools.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.report
 import dotty.tools.dotc.util.ReadOnlyMap
-
-import scala.collection.mutable
 
 object JSPrimitives {
 
@@ -60,7 +57,6 @@ object JSPrimitives {
 
 class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
   import JSPrimitives._
-  import dotty.tools.backend.ScalaPrimitivesOps._
 
   private lazy val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives(using ictx)
 

@@ -1,5 +1,7 @@
 package dotty.tools.backend.jvm
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
@@ -19,7 +21,6 @@ import dotty.tools.dotc.sbt.ExtractDependencies
 import Contexts._
 import Phases._
 import Symbols._
-import Decorators._
 
 import java.io.DataOutputStream
 import java.nio.channels.ClosedByInterruptException
@@ -74,7 +75,7 @@ class GenBCode extends Phase {
     try super.runOn(units)
     finally outputDir match {
       case jar: JarArchive =>
-        if (ctx.run.suspendedUnits.nonEmpty)
+        if (ctx.run.nn.suspendedUnits.nonEmpty)
           // If we close the jar the next run will not be able to write on the jar.
           // But if we do not close it we cannot use it as part of the macro classpath of the suspended files.
           report.error("Can not suspend and output to a jar at the same time. See suspension with -Xprint-suspension.")
@@ -274,7 +275,8 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
             catch case ex: ClosedByInterruptException =>
               try
                 outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
-              catch case _: Throwable =>
+              catch
+                case _: Throwable =>
               throw ex
             finally outstream.close()
 

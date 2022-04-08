@@ -5,7 +5,6 @@ package core
 import Types._, Symbols._, Contexts._
 import printing.Printer
 import printing.Texts.Text
-import Decorators._
 
 object Constants {
 
@@ -149,7 +148,7 @@ object Constants {
 
     /** Convert constant value to conform to given type.
      */
-    def convertTo(pt: Type)(using Context): Constant = {
+    def convertTo(pt: Type)(using Context): Constant | Null = {
       def classBound(pt: Type): Type = pt.dealias.stripTypeVar match {
         case tref: TypeRef if !tref.symbol.isClass && tref.info.exists =>
           classBound(tref.info.bounds.lo)

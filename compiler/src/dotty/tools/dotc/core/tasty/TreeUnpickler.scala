@@ -3,9 +3,10 @@ package dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import Comments.CommentsContext
 import Contexts._
-import Phases._
 import Symbols._
 import Types._
 import Scopes._
@@ -27,10 +28,9 @@ import typer.Checking.checkNonCyclic
 import typer.Nullables._
 import util.Spans._
 import util.SourceFile
-import ast.{TreeTypeMap, Trees, tpd, untpd}
+import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
-import transform.SymUtils._
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
@@ -39,11 +39,9 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable
 import config.Printers.pickling
-import quoted.PickledQuotes
 
 import dotty.tools.tasty.TastyFormat._
 
-import scala.quoted
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 
@@ -1297,8 +1295,6 @@ class TreeUnpickler(reader: TastyReader,
       }
 
       val tree = if (tag < firstLengthTreeTag) readSimpleTerm() else readLengthTerm()
-      if (!tree.isInstanceOf[TypTree]) // FIXME: Necessary to avoid self-type cyclic reference in tasty_tools
-        tree.overwriteType(tree.tpe.simplified)
       setSpan(start, tree)
     }
 

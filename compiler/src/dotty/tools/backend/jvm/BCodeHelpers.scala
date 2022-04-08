@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.annotation.threadUnsafe
 import scala.tools.asm
 import scala.tools.asm.AnnotationVisitor
@@ -62,7 +64,6 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = requiredClass("java.lang.annotation.Annotation")
 
   val bCodeAsmCommon: BCodeAsmCommon[int.type] = new BCodeAsmCommon(int)
-  import bCodeAsmCommon._
 
   /*
    * must-single-thread
@@ -479,7 +480,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   } // end of trait BCAnnotGen
 
   trait BCJGenSigGen {
-    import int.{_, given}
+    import int.given
 
     def getCurrentCUnit(): CompilationUnit
 

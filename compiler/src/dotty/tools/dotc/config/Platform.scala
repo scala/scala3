@@ -5,7 +5,6 @@ package config
 import io.{ClassPath, AbstractFile}
 import core.Contexts._, core.Symbols._
 import core.SymbolLoader
-import core.SymDenotations.SymDenotation
 import core.StdNames.nme
 import core.Flags.Module
 

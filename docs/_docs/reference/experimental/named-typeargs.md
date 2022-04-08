@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: "Named Type Arguments"
-redirectFrom: reference/other-new-features/named-typeargs.html
+redirectFrom: /docs/reference/other-new-features/named-typeargs.html
 movedTo: https://docs.scala-lang.org/scala3/reference/experimental/named-typeargs.html
 ---
 

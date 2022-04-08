@@ -1,6 +1,5 @@
 package dotty.tools.dotc.transform
 
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase

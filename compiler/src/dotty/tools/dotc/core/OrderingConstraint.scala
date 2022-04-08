@@ -29,12 +29,12 @@ object OrderingConstraint {
       empty
     else
       val result = new OrderingConstraint(boundsMap, lowerMap, upperMap)
-      ctx.run.recordConstraintSize(result, result.boundsMap.size)
+      ctx.run.nn.recordConstraintSize(result, result.boundsMap.size)
       result
 
   /** A lens for updating a single entry array in one of the three constraint maps */
   abstract class ConstraintLens[T <: AnyRef: ClassTag] {
-    def entries(c: OrderingConstraint, poly: TypeLambda): Array[T]
+    def entries(c: OrderingConstraint, poly: TypeLambda): Array[T] | Null
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[T])(using Context): OrderingConstraint
     def initial: T
 
@@ -51,20 +51,24 @@ object OrderingConstraint {
     def update(prev: OrderingConstraint, current: OrderingConstraint,
         poly: TypeLambda, idx: Int, entry: T)(using Context): OrderingConstraint = {
       var es = entries(current, poly)
-      if (es != null && (es(idx) eq entry)) current
+      // TODO: investigate why flow typing is not working on `es`
+      if (es != null && (es.nn(idx) eq entry)) current
       else {
         val result =
           if (es == null) {
             es = Array.fill(poly.paramNames.length)(initial)
-            updateEntries(current, poly, es)
+            updateEntries(current, poly, es.nn)
           }
-          else if (es ne entries(prev, poly))
-            current // can re-use existing entries array.
           else {
-            es = es.clone
-            updateEntries(current, poly, es)
+            val prev_es = entries(prev, poly)
+            if (prev_es == null || (es.nn ne prev_es.nn))
+              current // can re-use existing entries array.
+            else {
+              es = es.nn.clone
+              updateEntries(current, poly, es.nn)
+            }
           }
-        es(idx) = entry
+        es.nn(idx) = entry
         result
       }
     }
@@ -83,7 +87,7 @@ object OrderingConstraint {
   }
 
   val boundsLens: ConstraintLens[Type] = new ConstraintLens[Type] {
-    def entries(c: OrderingConstraint, poly: TypeLambda): Array[Type] =
+    def entries(c: OrderingConstraint, poly: TypeLambda): Array[Type] | Null =
       c.boundsMap(poly)
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[Type])(using Context): OrderingConstraint =
       newConstraint(c.boundsMap.updated(poly, entries), c.lowerMap, c.upperMap)
@@ -91,7 +95,7 @@ object OrderingConstraint {
   }
 
   val lowerLens: ConstraintLens[List[TypeParamRef]] = new ConstraintLens[List[TypeParamRef]] {
-    def entries(c: OrderingConstraint, poly: TypeLambda): Array[List[TypeParamRef]] =
+    def entries(c: OrderingConstraint, poly: TypeLambda): Array[List[TypeParamRef]] | Null =
       c.lowerMap(poly)
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[List[TypeParamRef]])(using Context): OrderingConstraint =
       newConstraint(c.boundsMap, c.lowerMap.updated(poly, entries), c.upperMap)
@@ -99,7 +103,7 @@ object OrderingConstraint {
   }
 
   val upperLens: ConstraintLens[List[TypeParamRef]] = new ConstraintLens[List[TypeParamRef]] {
-    def entries(c: OrderingConstraint, poly: TypeLambda): Array[List[TypeParamRef]] =
+    def entries(c: OrderingConstraint, poly: TypeLambda): Array[List[TypeParamRef]] | Null =
       c.upperMap(poly)
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[List[TypeParamRef]])(using Context): OrderingConstraint =
       newConstraint(c.boundsMap, c.lowerMap, c.upperMap.updated(poly, entries))
@@ -201,11 +205,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   def typeVarOfParam(param: TypeParamRef): Type = {
     val entries = boundsMap(param.binder)
-    if (entries == null) NoType
-    else {
-      val tvar = typeVar(entries, param.paramNum)
-      if (tvar != null) tvar else NoType
-    }
+    if entries == null then NoType
+    else typeVar(entries, param.paramNum)
   }
 
 // ---------- Adding TypeLambdas --------------------------------------------------
@@ -247,7 +248,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       NoType
     case tp: TypeBounds =>
       val lo1 = stripParams(tp.lo, todos, !isUpper).orElse(defn.NothingType)
-      val hi1 = stripParams(tp.hi, todos, isUpper).orElse(defn.AnyKindType)
+      val hi1 = stripParams(tp.hi, todos, isUpper).orElse(tp.topType)
       tp.derivedTypeBounds(lo1, hi1)
     case tp: AndType if isUpper =>
       val tp1 = stripParams(tp.tp1, todos, isUpper)
@@ -470,7 +471,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   }
 
   def isRemovable(pt: TypeLambda): Boolean = {
-    val entries = boundsMap(pt)
+    val entries = boundsMap(pt).nn
     @tailrec def allRemovable(last: Int): Boolean =
       if (last < 0) true
       else typeVar(entries, last) match {
@@ -489,7 +490,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     (this.typeVarOfParam(tl.paramRefs(0)) ne that.typeVarOfParam(tl.paramRefs(0)))
 
   def subst(from: TypeLambda, to: TypeLambda)(using Context): OrderingConstraint =
-    def swapKey[T](m: ArrayValuedMap[T]) = m.remove(from).updated(to, m(from))
+    def swapKey[T](m: ArrayValuedMap[T]) = m.remove(from).updated(to, m(from).nn)
     var current = newConstraint(swapKey(boundsMap), swapKey(lowerMap), swapKey(upperMap))
     def subst[T <: Type](x: T): T = x.subst(from, to).asInstanceOf[T]
     current.foreachParam {(p, i) =>
@@ -558,21 +559,21 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         i += 1
     }
 
-  private var myUninstVars: mutable.ArrayBuffer[TypeVar] = _
+  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = _
 
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar] = {
-    if (myUninstVars == null || myUninstVars.exists(_.inst.exists)) {
+    if (myUninstVars == null || myUninstVars.uncheckedNN.exists(_.inst.exists)) {
       myUninstVars = new mutable.ArrayBuffer[TypeVar]
       boundsMap.foreachBinding { (poly, entries) =>
         for (i <- 0 until paramCount(entries))
           typeVar(entries, i) match {
-            case tv: TypeVar if !tv.inst.exists && isBounds(entries(i)) => myUninstVars += tv
+            case tv: TypeVar if !tv.inst.exists && isBounds(entries(i)) => myUninstVars.uncheckedNN += tv
             case _ =>
           }
       }
     }
-    myUninstVars
+    myUninstVars.uncheckedNN
   }
 
 // ---------- Checking -----------------------------------------------
@@ -615,7 +616,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       case TypeParamRef(binder: TypeLambda, _) => !contains(binder)
       case _ => false
 
-    def checkClosedType(tp: Type, where: String) =
+    def checkClosedType(tp: Type | Null, where: String) =
       if tp != null then
         assert(!tp.existsPart(isFreeTypeParamRef), i"unclosed constraint: $this refers to $tp in $where")
 

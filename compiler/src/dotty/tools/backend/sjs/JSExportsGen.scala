@@ -1,10 +1,10 @@
 package dotty.tools.backend.sjs
 
-import scala.annotation.tailrec
+import scala.language.unsafeNulls
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core._
 
 import Contexts._
@@ -14,23 +14,16 @@ import Flags._
 import Names._
 import NameKinds.DefaultGetterName
 import NameOps._
-import Periods._
 import Phases._
-import StdNames._
 import Symbols._
-import SymDenotations._
 import Types._
 import TypeErasure.ErasedValueType
 
-import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.util.{SourcePosition, SrcPos}
-import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.report
 
-import org.scalajs.ir
-import org.scalajs.ir.{ClassKind, Position, Names => jsNames, Trees => js, Types => jstpe}
-import org.scalajs.ir.Names.{ClassName, DefaultModuleID, MethodName, SimpleMethodName}
-import org.scalajs.ir.OriginalName
+import org.scalajs.ir.{Position, Names => jsNames, Trees => js, Types => jstpe}
+import org.scalajs.ir.Names.DefaultModuleID
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position.NoPosition
 import org.scalajs.ir.Trees.OptimizerHints

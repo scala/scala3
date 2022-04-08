@@ -5,18 +5,17 @@ import core._
 import Contexts._
 import Periods._
 import Symbols._
-import Types._
 import Scopes._
 import Names.Name
 import Denotations.Denotation
-import typer.{Typer, PrepareInlineable}
-import typer.ImportInfo._
+import typer.Typer
+import typer.ImportInfo.withRootImports
 import Decorators._
-import io.{AbstractFile, PlainFile, VirtualFile}
+import io.{AbstractFile, VirtualFile}
 import Phases.unfusedPhases
 
 import util._
-import reporting.{Reporter, Suppression, Action}
+import reporting.{Suppression, Action}
 import reporting.Diagnostic
 import reporting.Diagnostic.Warning
 import rewrites.Rewrites
@@ -59,8 +58,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   private var compiling = false
 
-  private var myUnits: List[CompilationUnit] = _
-  private var myUnitsCached: List[CompilationUnit] = _
+  private var myUnits: List[CompilationUnit] = Nil
+  private var myUnitsCached: List[CompilationUnit] = Nil
   private var myFiles: Set[AbstractFile] = _
 
   // `@nowarn` annotations by source file, populated during typer
@@ -74,7 +73,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     // When the REPL creates a new run (ReplDriver.compile), parsing is already done in the old context, with the
     // previous Run. Parser warnings were suspended in the old run and need to be copied over so they are not lost.
     // Same as scala/scala/commit/79ca1408c7.
-    def initSuspendedMessages(oldRun: Run) = if oldRun != null then
+    def initSuspendedMessages(oldRun: Run | Null) = if oldRun != null then
       mySuspendedMessages.clear()
       mySuspendedMessages ++= oldRun.mySuspendedMessages
 
@@ -171,7 +170,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       compileSources(sources)
     catch
       case NonFatal(ex) =>
-        if units != null then report.echo(i"exception occurred while compiling $units%, %")
+        if units.nonEmpty then report.echo(i"exception occurred while compiling $units%, %")
         else report.echo(s"exception occurred while compiling ${files.map(_.name).mkString(", ")}")
         throw ex
 
@@ -310,7 +309,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       val uuid = java.util.UUID.randomUUID().toString
       val ext = if (isJava) ".java" else ".scala"
       val virtualFile = new VirtualFile(s"compileFromString-$uuid.$ext")
-      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name)) // buffering is still advised by javadoc
+      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.nn.name)) // buffering is still advised by javadoc
       writer.write(source)
       writer.close()
       new SourceFile(virtualFile, Codec.UTF8)
@@ -322,10 +321,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compileSources(sources)
   }
 
-  /** Print summary; return # of errors encountered */
+  /** Print summary of warnings and errors encountered */
   def printSummary(): Unit = {
     printMaxConstraint()
     val r = runContext.reporter
+    r.summarizeUnreportedWarnings
     r.printSummary
   }
 
@@ -333,8 +333,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     super[ImplicitRunInfo].reset()
     super[ConstraintRunInfo].reset()
     myCtx = null
-    myUnits = null
-    myUnitsCached = null
+    myUnits = Nil
+    myUnitsCached = Nil
   }
 
   /** Produces the following contexts, from outermost to innermost
@@ -367,9 +367,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     start.setRun(this: @unchecked)
   }
 
-  private var myCtx = rootContext(using ictx)
+  private var myCtx: Context | Null = rootContext(using ictx)
 
   /** The context created for this run */
-  given runContext[Dummy_so_its_a_def]: Context = myCtx
+  given runContext[Dummy_so_its_a_def]: Context = myCtx.nn
   assert(runContext.runId <= Periods.MaxPossibleRunId)
 }

@@ -2,10 +2,11 @@ package dotty.tools
 package dotc
 package semanticdb
 
+import scala.language.unsafeNulls
+
 import core._
 import Phases._
 import ast.tpd._
-import ast.untpd.given
 import ast.Trees.{mods, WithEndMarker}
 import Contexts._
 import Symbols._
@@ -15,10 +16,9 @@ import StdNames.nme
 import NameOps._
 import Denotations.StaleSymbol
 import util.Spans.Span
-import util.{SourceFile, SourcePosition}
+import util.SourceFile
 import transform.SymUtils._
 
-import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
 import scala.PartialFunction.condOpt
@@ -32,7 +32,6 @@ import dotty.tools.dotc.{semanticdb => s}
  */
 class ExtractSemanticDB extends Phase:
   import Scala3.{_, given}
-  import Symbols.given
 
   override val phaseName: String = ExtractSemanticDB.name
 
@@ -235,7 +234,12 @@ class ExtractSemanticDB extends Phase:
           val sym = tree.symbol.adjustIfCtorTyparam
           if qualSpan.exists && qualSpan.hasLength then
             traverse(qual)
-          registerUseGuarded(qual.symbol.ifExists, sym, selectSpan(tree), tree.source)
+          if (sym != NoSymbol)
+            registerUseGuarded(qual.symbol.ifExists, sym, selectSpan(tree), tree.source)
+          else
+            qual.symbol.info.lookupSym(tree.name).foreach(sym =>
+              registerUseGuarded(qual.symbol.ifExists, sym, selectSpan(tree), tree.source)
+            )
         case tree: Import =>
           if tree.span.exists && tree.span.hasLength then
             traverseChildren(tree)
@@ -423,19 +427,22 @@ class ExtractSemanticDB extends Phase:
       else
         val symkinds = mutable.HashSet.empty[SymbolKind]
         tree match
-        case tree: ValDef =>
-          if !tree.symbol.is(Param) then
-            symkinds += (if tree.mods is Mutable then SymbolKind.Var else SymbolKind.Val)
-          if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor) then
-            symkinds += SymbolKind.Abstract
-        case tree: DefDef =>
-          if tree.isSetterDef then
-            symkinds += SymbolKind.Setter
-          else if tree.rhs.isEmpty then
-            symkinds += SymbolKind.Abstract
-        case tree: Bind =>
-          symkinds += SymbolKind.Val
-        case _ =>
+          case tree: ValDef =>
+            if !tree.symbol.is(Param) then
+              symkinds += (if tree.mods is Mutable then SymbolKind.Var else SymbolKind.Val)
+            if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor) then
+              symkinds += SymbolKind.Abstract
+          case tree: DefDef =>
+            if tree.isSetterDef then
+              symkinds += SymbolKind.Setter
+            else if tree.rhs.isEmpty then
+              symkinds += SymbolKind.Abstract
+          // if symbol isType, it's type variable
+          case tree: Bind if (!tree.symbol.isType) =>
+            symkinds += SymbolKind.Val
+          case tree: Bind if (tree.symbol.isType) =>
+            symkinds += SymbolKind.TypeVal
+          case _ =>
         symkinds.toSet
 
     private def ctorParams(
@@ -458,7 +465,6 @@ class ExtractSemanticDB extends Phase:
 
 object ExtractSemanticDB:
   import java.nio.file.Path
-  import scala.collection.JavaConverters._
   import java.nio.file.Files
   import java.nio.file.Paths
 

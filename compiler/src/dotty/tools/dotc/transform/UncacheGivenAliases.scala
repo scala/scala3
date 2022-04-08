@@ -7,10 +7,6 @@ import core.Symbols._
 import core.Contexts._
 import core.Types._
 import core.Flags._
-import core.StdNames.nme
-import core.Constants.Constant
-import core.Decorators._
-import core.TypeErasure.erasure
 import ast.tpd
 
 object UncacheGivenAliases:

@@ -18,7 +18,6 @@ import Errors._
 
 import scala.collection.mutable
 import scala.annotation.tailrec
-import scala.annotation.constructorOnly
 
 object Semantic {
 
@@ -1235,13 +1234,14 @@ object Semantic {
 
       case SeqLiteral(elems, elemtpt) =>
         val ress = elems.map { elem =>
-          eval(elem, thisV, klass).ensureHot("May only use initialized value as method arguments", elem)
+          eval(elem, thisV, klass)
         }
-        Result(Hot, ress.flatMap(_.errors))
+        Result(ress.map(_.value).join, ress.flatMap(_.errors))
 
       case Inlined(call, bindings, expansion) =>
+        val trace1 = trace.add(expr)
         val ress = eval(bindings, thisV, klass)
-        eval(expansion, thisV, klass) ++ ress.flatMap(_.errors)
+        withTrace(trace1)(eval(expansion, thisV, klass)) ++ ress.flatMap(_.errors)
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala

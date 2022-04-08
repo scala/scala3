@@ -7,10 +7,8 @@ import core._
 import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._, NameKinds._
 import StdNames._, Denotations._, SymUtils._, Phases._, SymDenotations._
 import NameKinds.DefaultGetterName
-import Annotations._
 import util.Spans._
-import util.SrcPos
-import scala.collection.{ mutable, immutable }
+import scala.collection.mutable
 import ast._
 import MegaPhase._
 import config.Printers.{checks, noPrinter}
@@ -18,11 +16,10 @@ import Decorators._
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting._
 import config.Feature.{warnOnMigration, migrateTo3}
+import config.SourceVersion.`3.0`
 import config.Printers.refcheck
 import reporting._
-import scala.util.matching.Regex._
 import Constants.Constant
-import NullOpsDecorator._
 
 object RefChecks {
   import tpd._
@@ -208,15 +205,20 @@ object RefChecks {
           false
       precedesIn(parent.asClass.baseClasses)
 
-    // We can exclude pairs safely from checking only under two additional conditions
+    // We can exclude pairs safely from checking only under three additional conditions
     //   - their signatures also match in the parent class.
     //     See neg/i12828.scala for an example where this matters.
     //   - They overriding/overridden appear in linearization order.
     //     See neg/i5094.scala for an example where this matters.
+    //   - The overridden symbol is not `abstract override`. For such symbols
+    //     we need a more extensive test since the virtual super chain depends
+    //     on the precise linearization order, which might be different for the
+    //     subclass. See neg/i14415.scala.
     override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
       isOverridingPair(sym1, sym2, parent.thisType)
         .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parent.thisType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parent.thisType).signature} = $result", refcheck)
       && inLinearizationOrder(sym1, sym2, parent)
+      && !sym2.is(AbsOverride)
 
     def checkAll(checkOverride: (Symbol, Symbol) => Unit) =
       while hasNext do
@@ -304,7 +306,7 @@ object RefChecks {
       def info = self.memberInfo(sym1)
       val infoStr =
         if (sym1.isAliasType) i", which equals ${info.bounds.hi}"
-        else if (sym1.isAbstractOrParamType) i" with bounds$info"
+        else if (sym1.isAbstractOrParamType && info != TypeBounds.empty) i" with bounds$info"
         else if (sym1.is(Module)) ""
         else if (sym1.isTerm) i" of type $info"
         else ""
@@ -344,7 +346,7 @@ object RefChecks {
           isOverridingPair(member, memberTp, other, otherTp,
             fallBack = warnOnMigration(
               overrideErrorMsg("no longer has compatible type"),
-              (if (member.owner == clazz) member else clazz).srcPos))
+              (if (member.owner == clazz) member else clazz).srcPos, version = `3.0`))
         catch case ex: MissingType =>
           // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
           // because in that case we might access types that are not members of the qualifier.
@@ -409,24 +411,30 @@ object RefChecks {
         overrideError("has weaker access privileges; it should not be private")
 
       // todo: align accessibility implication checking with isAccessible in Contexts
-      val ob = other.accessBoundary(member.owner)
-      val mb = member.accessBoundary(member.owner)
       def isOverrideAccessOK =
-           (member.flags & AccessFlags).isEmpty
-           && !member.privateWithin.exists // member is public, or
-        || (!other.is(Protected) || member.is(Protected))
-              // if o is protected, so is m, and
-           && (ob.isContainedIn(mb) || other.isAllOf(JavaProtected))
-             // m relaxes o's access boundary,
-             // or o is Java defined and protected (see #3946)
+        val memberIsPublic = (member.flags & AccessFlags).isEmpty && !member.privateWithin.exists
+        def protectedOK = !other.is(Protected) || member.is(Protected)        // if o is protected, so is m
+        def accessBoundaryOK =
+          val ob = other.accessBoundary(member.owner)
+          val mb = member.accessBoundary(member.owner)
+          // restriction isLocalToBlock because companionModule fails under -from-tasty (#14508)
+          def companionBoundaryOK = ob.isClass && !ob.isLocalToBlock && mb.is(Module) && (ob.companionModule eq mb.companionModule)
+          ob.isContainedIn(mb) || companionBoundaryOK    // m relaxes o's access boundary,
+        def otherIsJavaProtected = other.isAllOf(JavaProtected)               // or o is Java defined and protected (see #3946)
+        memberIsPublic || protectedOK && (accessBoundaryOK || otherIsJavaProtected)
+      end isOverrideAccessOK
       if !member.hasTargetName(other.targetName) then
         overrideTargetNameError()
-      else if (!isOverrideAccessOK)
+      else if !isOverrideAccessOK then
         overrideAccessError()
       else if (other.isClass)
         // direct overrides were already checked on completion (see Checking.chckWellFormed)
         // the test here catches indirect overriddes between two inherited base types.
         overrideError("cannot be used here - class definitions cannot be overridden")
+      else if (other.isOpaqueAlias)
+        // direct overrides were already checked on completion (see Checking.chckWellFormed)
+        // the test here catches indirect overriddes between two inherited base types.
+        overrideError("cannot be used here - opaque type aliases cannot be overridden")
       else if (!other.is(Deferred) && member.isClass)
         overrideError("cannot be used here - classes can only override abstract types")
       else if other.isEffectivelyFinal then // (1.2)
@@ -446,7 +454,9 @@ object RefChecks {
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
             other.owner.isAllOf(JavaInterface) &&
-            warnOnMigration("`override` modifier required when a Java 8 default method is re-implemented", member.srcPos))
+            warnOnMigration(
+              "`override` modifier required when a Java 8 default method is re-implemented",
+              member.srcPos, version = `3.0`))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
           () // OK, don't complain about type aliases which are equal
@@ -464,7 +474,7 @@ object RefChecks {
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
-      else if member.is(Override) && other.is(Accessor, butNot = Deferred) && other.accessedFieldOrGetter.is(Mutable, butNot = Lazy) then
+      else if member.is(Override) && other.is(Mutable) then
         overrideError("cannot override a mutable variable")
       else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
@@ -477,7 +487,7 @@ object RefChecks {
       else if (member.is(ModuleVal) && !other.isRealMethod && !other.isOneOf(Deferred | Lazy))
         overrideError("may not override a concrete non-lazy value")
       else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
-                 !warnOnMigration(overrideErrorMsg("may not override a non-lazy value"), member.srcPos))
+                 !warnOnMigration(overrideErrorMsg("may not override a non-lazy value"), member.srcPos, version = `3.0`))
         overrideError("may not override a non-lazy value")
       else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy))
         overrideError("must be declared lazy to override a lazy value")
@@ -502,6 +512,7 @@ object RefChecks {
       else
         checkOverrideDeprecated()
     }
+    end checkOverride
 
     /* TODO enable; right now the annotation is scala-private, so cannot be seen
          * here.
@@ -756,12 +767,12 @@ object RefChecks {
           for (mbrd <- self.member(name).alternatives) {
             val mbr = mbrd.symbol
             val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
-            if (!mbrType.overrides(mbrd.info, matchLoosely = true))
+            if (!mbrType.overrides(mbrd.info, relaxedCheck = false, matchLoosely = true))
               report.errorOrMigrationWarning(
                 em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
                     |  its type             $mbrType
                     |  does not conform to  ${mbrd.info}""",
-                (if (mbr.owner == clazz) mbr else clazz).srcPos)
+                (if (mbr.owner == clazz) mbr else clazz).srcPos, from = `3.0`)
           }
       }
 
@@ -774,7 +785,7 @@ object RefChecks {
           for (baseCls <- caseCls.info.baseClasses.tail)
             if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
               for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
-                report.errorOrMigrationWarning(problem(), clazz.srcPos)
+                report.errorOrMigrationWarning(problem(), clazz.srcPos, from = `3.0`)
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
@@ -1046,9 +1057,9 @@ object RefChecks {
       val matches = referencePattern.findAllIn(s)
       for reference <- matches do
         val referenceOffset = matches.start
-        val prefixlessReference = reference.replaceFirst("""\$\{\s*""", "")
+        val prefixlessReference = reference.replaceFirst("""\$\{\s*""", "").nn
         val variableOffset = referenceOffset + reference.length - prefixlessReference.length
-        val variableName = prefixlessReference.replaceFirst("""\s*\}""", "")
+        val variableName = prefixlessReference.replaceFirst("""\s*\}""", "").nn
         f(variableName, variableOffset)
 
   end checkImplicitNotFoundAnnotation

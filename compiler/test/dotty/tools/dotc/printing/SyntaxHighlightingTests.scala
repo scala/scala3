@@ -1,5 +1,7 @@
 package dotty.tools.dotc.printing
 
+import scala.language.unsafeNulls
+
 import dotty.tools.DottyTest
 import org.junit.Assert._
 import org.junit.{Ignore, Test}
@@ -23,7 +25,9 @@ class SyntaxHighlightingTests extends DottyTest {
 
     if (expected != highlighted) {
       // assertEquals produces weird expected/found message
-      fail(s"expected: $expected but was: $highlighted")
+      fail(s"""|
+               |expected:      $expected
+               |highlighted:   $highlighted""".stripMargin)
     }
   }
 
@@ -41,6 +45,8 @@ class SyntaxHighlightingTests extends DottyTest {
     test("type Foo = Int", "<K|type> <T|Foo> = <T|Int>")
     test("type A = String | Int", "<K|type> <T|A> = <T|String> <T||> <T|Int>")
     test("type B = String & Int", "<K|type> <T|B> = <T|String> <T|&> <T|Int>")
+    test("type Id[A] = A", "<K|type> <T|Id>[<T|A>] = <T|A>")
+    test("type Foo = [X] =>> List[X]", "<K|type> <T|Foo> = [<T|X>] =>> <T|List>[<T|X>]")
   }
 
   @Test
@@ -88,6 +94,10 @@ class SyntaxHighlightingTests extends DottyTest {
     test("val foo",       "<K|val> <V|foo>")
     test("val foo =",     "<K|val> <V|foo> =")
     test("val foo = 123", "<K|val> <V|foo> = <L|123>")
+    test(
+      "val foo: List[List[Int]] = List(List(1))",
+      "<K|val> <V|foo>: <T|List>[<T|List>[<T|Int>]] = List(List(<L|1>))"
+    )
 
     test("var",                "<K|var>")
     test("var foo",            "<K|var> <V|foo>")
@@ -111,7 +121,7 @@ class SyntaxHighlightingTests extends DottyTest {
     test("def f1(x: Int) = 123", "<K|def> <V|f1>(<V|x>: <T|Int>) = <L|123>")
     test("def f2[T](x: T) = { 123 }", "<K|def> <V|f2>[<T|T>](<V|x>: <T|T>) = { <L|123> }")
 
-    test("def f3[T[_", "<K|def> <V|f3>[<T|T>[<T|_>")
+    test("def f3[T[_", "<K|def> <V|f3>[<T|T>[_")
   }
 
   @Test
@@ -130,5 +140,41 @@ class SyntaxHighlightingTests extends DottyTest {
     test("val inline = 2", "<K|val> <V|inline> = <L|2>")
     test("def inline = 2", "<K|def> <V|inline> = <L|2>")
     test("def foo(inline: Int) = 2", "<K|def> <V|foo>(<V|inline>: <T|Int>) = <L|2>")
+    test(
+      """enum Foo:
+        |  case foo
+        |end Foo""".stripMargin,
+      """<K|enum> <T|Foo>:
+        |  <K|case> <T|foo>
+        |<K|end> <T|Foo>""".stripMargin
+    )
+    test(
+      """class Foo:
+        |end Foo""".stripMargin,
+      """<K|class> <T|Foo>:
+        |<K|end> <T|Foo>""".stripMargin
+    )
+    test(
+      """object Foo:
+        |end Foo""".stripMargin,
+      """<K|object> <T|Foo>:
+        |<K|end> <T|Foo>""".stripMargin
+    )
+    test(
+      """def foo =
+        |  ()
+        |end foo""".stripMargin,
+      """<K|def> <V|foo> =
+        |  ()
+        |<K|end> <V|foo>""".stripMargin
+    )
+    test(
+      """val foo =
+        |  ()
+        |end foo""".stripMargin,
+      """<K|val> <V|foo> =
+        |  ()
+        |<K|end> <V|foo>""".stripMargin
+    )
   }
 }

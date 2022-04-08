@@ -1,27 +1,21 @@
 package dotty.tools.backend.sjs
 
-import scala.annotation.switch
+import scala.language.unsafeNulls
 
+import scala.annotation.switch
 import scala.collection.mutable
 
 import dotty.tools.FatalError
-
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Phases.Phase
-
 import dotty.tools.dotc.core._
-import Periods._
-import SymDenotations._
 import Contexts._
 import Decorators._
 import Flags._
-import dotty.tools.dotc.ast.Trees._
 import Names._
 import NameKinds.DefaultGetterName
 import Types._
 import Symbols._
-import Denotations._
 import Phases._
 import StdNames._
 import TypeErasure.ErasedValueType
@@ -29,7 +23,6 @@ import TypeErasure.ErasedValueType
 import dotty.tools.dotc.transform.{Erasure, ValueClasses}
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.report
 
 import org.scalajs.ir
@@ -2580,7 +2573,6 @@ class JSCodeGen()(using genCtx: Context) {
   /** Gen JS code for a simple binary operation. */
   private def genSimpleBinaryOp(tree: Apply, lhs: Tree, rhs: Tree, code: Int): js.Tree = {
     import dotty.tools.backend.ScalaPrimitivesOps._
-    import js.UnaryOp._
 
     implicit val pos: SourcePosition = tree.sourcePos
 

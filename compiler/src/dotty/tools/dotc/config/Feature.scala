@@ -3,9 +3,9 @@ package dotc
 package config
 
 import core._
-import Contexts._, Symbols._, Names._, NameOps._, Phases._
+import Contexts._, Symbols._, Names._
 import StdNames.nme
-import Decorators.{_, given}
+import Decorators.*
 import util.{SrcPos, NoSourcePosition}
 import SourceVersion._
 import reporting.Message
@@ -50,7 +50,8 @@ object Feature:
    */
   def enabledByImport(feature: TermName)(using Context): Boolean =
     //atPhase(typerPhase) {
-      ctx.importInfo != null && ctx.importInfo.featureImported(feature)
+      val info = ctx.importInfo
+      info != null && info.featureImported(feature)
     //}
 
   /** Is `feature` enabled by either a command line setting or an import?
@@ -78,8 +79,7 @@ object Feature:
     SourceVersion.valueOf(ctx.settings.source.value)
 
   def sourceVersion(using Context): SourceVersion =
-    if ctx.compilationUnit == null then sourceVersionSetting
-    else ctx.compilationUnit.sourceVersion match
+    ctx.compilationUnit.sourceVersion match
       case Some(v) => v
       case none => sourceVersionSetting
 
@@ -89,9 +89,9 @@ object Feature:
    *  and return `true`, otherwise return `false`.
    */
   def warnOnMigration(msg: Message, pos: SrcPos,
-      version: SourceVersion = defaultSourceVersion)(using Context): Boolean =
+      version: SourceVersion)(using Context): Boolean =
     if sourceVersion.isMigrating && sourceVersion.stable == version
-       || (version == `3.0` || version == `3.1`) && migrateTo3
+       || (version == `3.0` || version == `3.1` || version == `3.2`) && migrateTo3
     then
       report.migrationWarning(msg, pos)
       true

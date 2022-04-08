@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package core.tasty
 
+import scala.language.unsafeNulls
+
 import core.Comments.Comment
 import util.Spans.Span
 import util.HashMap

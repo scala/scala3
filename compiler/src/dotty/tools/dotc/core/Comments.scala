@@ -2,8 +2,10 @@ package dotty.tools
 package dotc
 package core
 
+import scala.language.unsafeNulls
+
 import ast.{ untpd, tpd }
-import Decorators._, Symbols._, Contexts._
+import Symbols._, Contexts._
 import util.{SourceFile, ReadOnlyMap}
 import util.Spans._
 import util.CommentParsing._

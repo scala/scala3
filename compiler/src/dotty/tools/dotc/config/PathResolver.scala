@@ -2,12 +2,13 @@ package dotty.tools
 package dotc
 package config
 
+import scala.language.unsafeNulls
+
 import WrappedProperties.AccessControl
 import io.{ClassPath, Directory, Path}
 import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
 import ClassPath.split
 import PartialFunction.condOpt
-import scala.language.postfixOps
 import core.Contexts._
 import Settings._
 import dotty.tools.io.File
@@ -29,7 +30,7 @@ object PathResolver {
   def ppcp(s: String): String = split(s) match {
     case Nil      => ""
     case Seq(x)   => x
-    case xs       => xs map ("\n" + _) mkString
+    case xs       => xs.map("\n" + _).mkString
   }
 
   /** Values found solely by inspecting environment or property variables.
@@ -207,7 +208,7 @@ class PathResolver(using c: Context) {
 
     // Assemble the elements!
     def basis: List[Traversable[ClassPath]] =
-      val release = Option(ctx.settings.release.value).filter(_.nonEmpty)
+      val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
 
       List(
         JrtClassPath(release),                        // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)

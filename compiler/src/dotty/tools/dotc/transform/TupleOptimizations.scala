@@ -2,11 +2,8 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Constants.Constant
 import Contexts._
 import Decorators._
-import Flags._
-import ast.Trees._
 import Definitions._
 import DenotTransformers._
 import StdNames._
@@ -15,7 +12,6 @@ import MegaPhase._
 import Types._
 import dotty.tools.dotc.ast.tpd
 
-import scala.annotation.tailrec
 
 /** Optimize generic operations on tuples */
 class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
@@ -193,7 +189,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   private def knownTupleFromElements(tpes: List[Type], elements: List[Tree])(using Context) = {
     val size = elements.size
     assert(0 < size && size <= MaxTupleArity)
-    val tupleModule = defn.TupleType(size).classSymbol.companionModule
+    val tupleModule = defn.TupleType(size).nn.classSymbol.companionModule
     ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToTermArgs(elements)
   }
 

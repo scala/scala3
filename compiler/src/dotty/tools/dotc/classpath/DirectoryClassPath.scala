@@ -3,6 +3,8 @@
  */
 package dotty.tools.dotc.classpath
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile}
 import java.net.URL
 import java.nio.file.{FileSystems, Files}

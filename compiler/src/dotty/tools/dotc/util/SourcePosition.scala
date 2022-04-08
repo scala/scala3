@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package util
 
+import scala.language.unsafeNulls
+
 import printing.{Showable, Printer}
 import printing.Texts._
 import core.Contexts.Context

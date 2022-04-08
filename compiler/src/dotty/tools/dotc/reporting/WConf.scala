@@ -2,12 +2,13 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.SourcePosition
 
 import java.util.regex.PatternSyntaxException
 import scala.annotation.internal.sharable
-import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
 
 enum MessageFilter:

@@ -22,7 +22,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     html(
       mkHead(page),
       body(
-        if !page.hasFrame then renderContent(page)
+        if !page.hasFrame then renderContent(page).content
         else mkFrame(page.link, parents, renderContent(page))
       )
     )
@@ -164,7 +164,23 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       )
     }
 
-  private def mkFrame(link: Link, parents: Vector[Link], content: => AppliedTag): AppliedTag =
+  private def renderTableOfContents(toc: Seq[TocEntry]): Option[AppliedTag] =
+    def renderTocRec(level: Int, rest: Seq[TocEntry]): Seq[AppliedTag] =
+      rest match {
+        case Nil => Nil
+        case head :: tail if head.level == level =>
+          val (nested, rest) = tail.span(_.level > level)
+          val nestedList = if nested.nonEmpty then Seq(ul(renderTocRec(level + 1, nested))) else Nil
+          li(a(href := head.anchor)(head.content), nestedList) +: renderTocRec(level, rest)
+        case rest @ (head :: tail) if head.level > level =>
+          val (prefix, suffix) = rest.span(_.level > level)
+          li(ul(renderTocRec(level + 1, prefix))) +: renderTocRec(level, suffix)
+      }
+
+    renderTocRec(1, toc).headOption.map(toc => nav(cls := "toc-nav")(ul(cls := "toc-list")(toc)))
+
+
+  private def mkFrame(link: Link, parents: Vector[Link], content: => PageContent): AppliedTag =
     val projectLogo =
       args.projectLogo.map { path =>
         val fileName = Paths.get(path).getFileName()
@@ -282,5 +298,11 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           //   )
           // )
         )
-      )
+      ),
+      renderTableOfContents(content.toc).fold(Nil) { toc =>
+        div(id := "toc")(
+          span(cls := "toc-title")("In this article"),
+          toc
+        )
+      }
     )

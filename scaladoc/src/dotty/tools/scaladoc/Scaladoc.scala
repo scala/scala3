@@ -18,18 +18,6 @@ import dotty.tools.scaladoc.Inkuire
 import dotty.tools.scaladoc.Inkuire._
 
 object Scaladoc:
-  enum CommentSyntax:
-    case Wiki
-    case Markdown
-
-  object CommentSyntax:
-    def parse(str: String) = str match
-        case "wiki" => Some(CommentSyntax.Wiki)
-        case "markdown" => Some(CommentSyntax.Markdown)
-        case _ => None
-
-    val default = CommentSyntax.Markdown
-
   case class Args(
     name: String,
     tastyDirs: Seq[File] = Nil,
@@ -41,7 +29,7 @@ object Scaladoc:
     projectVersion: Option[String] = None,
     projectLogo: Option[String] = None,
     projectFooter: Option[String] = None,
-    defaultSyntax: CommentSyntax = CommentSyntax.Markdown,
+    defaultSyntax: List[String] = Nil,
     sourceLinks: List[String] = Nil,
     revision: Option[String] = None,
     externalMappings: List[ExternalDocLink] = Nil,
@@ -164,12 +152,6 @@ object Scaladoc:
         report.warning("Destination is not provided, please provide '-d' parameter pointing to directory where docs should be created")
         File("output")
 
-      val parseSyntax: CommentSyntax = syntax.nonDefault.fold(CommentSyntax.default){ str =>
-        CommentSyntax.parse(str).getOrElse{
-          report.error(s"unrecognized value for -syntax option: $str")
-          CommentSyntax.default
-        }
-      }
       val legacySourceLinkList = if legacySourceLink.get.nonEmpty then List(legacySourceLink.get) else Nil
 
       val externalMappings =
@@ -219,7 +201,7 @@ object Scaladoc:
         projectVersion.nonDefault,
         projectLogo.nonDefault,
         projectFooter.nonDefault,
-        parseSyntax,
+        syntax.get,
         sourceLinks.get ++ legacySourceLinkList,
         revision.nonDefault,
         externalMappings ++ legacyExternalMappings,

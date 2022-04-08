@@ -94,7 +94,7 @@ A usage of a variadic extractor is irrefutable if one of the following condition
 ## Boolean Match
 
 - `U =:= Boolean`
-- Pattern-matching on exactly `0` pattern
+- Pattern-matching on exactly `0` patterns
 
 For example:
 

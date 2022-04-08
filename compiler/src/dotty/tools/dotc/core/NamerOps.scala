@@ -3,10 +3,8 @@ package dotc
 package core
 
 import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, Names._, NameOps._
-import Denotations._
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
-import config.Config
-import ast.untpd
+import TypeApplications.EtaExpansion
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -75,6 +73,15 @@ object NamerOps:
   /** The flags of an `apply` method that serves as a constructor proxy */
   val ApplyProxyFlags = Synthetic | ConstructorProxy | Inline | Method
 
+  /** If this is a reference to a class and the reference has a stable prefix, the reference
+   *  otherwise NoType
+   */
+  private def underlyingStableClassRef(tp: Type)(using Context): TypeRef | NoType.type = tp match
+    case EtaExpansion(tp1) => underlyingStableClassRef(tp1)
+    case _ => tp.underlyingClassRef(refinementOK = false) match
+      case ref: TypeRef if ref.prefix.isStable => ref
+      case _ => NoType
+
   /** Does symbol `sym` need constructor proxies to be generated? */
   def needsConstructorProxies(sym: Symbol)(using Context): Boolean =
     sym.isClass
@@ -82,9 +89,7 @@ object NamerOps:
     && !sym.isAnonymousClass
     ||
     sym.isType && sym.is(Exported)
-    && sym.info.loBound.underlyingClassRef(refinementOK = false).match
-      case tref: TypeRef => tref.prefix.isStable
-      case _ => false
+    && underlyingStableClassRef(sym.info.loBound).exists
 
   /** The completer of a constructor proxy apply method */
   class ApplyProxyCompleter(constr: Symbol)(using Context) extends LazyType:
@@ -155,7 +160,7 @@ object NamerOps:
             then
               classConstructorCompanion(mbr).entered
           case _ =>
-            mbr.info.loBound.underlyingClassRef(refinementOK = false) match
+            underlyingStableClassRef(mbr.info.loBound): @unchecked match
               case ref: TypeRef =>
                 val proxy = ref.symbol.registeredCompanion
                 if proxy.is(ConstructorProxy) && !memberExists(cls, mbr.name.toTermName) then

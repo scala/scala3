@@ -6,17 +6,10 @@ import core._
 import Phases._
 import Contexts._
 import Symbols._
-import Decorators._
 import ImportInfo.withRootImports
-import parsing.JavaParsers.JavaParser
-import parsing.Parsers.Parser
 import parsing.{Parser => ParserPhase}
-import config.Config
-import config.Printers.{typr, default}
+import config.Printers.typr
 import util.Stats._
-import util.{ SourcePosition, NoSourcePosition }
-import scala.util.control.NonFatal
-import ast.Trees._
 
 /**
  *
@@ -31,7 +24,6 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
 
   override def isTyper: Boolean = true
 
-  import ast.tpd
 
   override def allowsImplicitSearch: Boolean = true
 
@@ -52,7 +44,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         typr.println("typed: " + unit.source)
         record("retained untyped trees", unit.untpdTree.treeSize)
         record("retained typed trees after typer", unit.tpdTree.treeSize)
-        ctx.run.suppressions.reportSuspendedMessages(unit.source)
+        ctx.run.nn.suppressions.reportSuspendedMessages(unit.source)
     catch
       case ex: CompilationUnit.SuspendException =>
   }
@@ -94,7 +86,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     unitContexts.foreach(javaCheck(using _)) // after typechecking to avoid cycles
 
     val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
-    ctx.run.checkSuspendedUnits(newUnits)
+    ctx.run.nn.checkSuspendedUnits(newUnits)
     newUnits
 
   def run(using Context): Unit = unsupported("run")

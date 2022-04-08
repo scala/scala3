@@ -5,7 +5,6 @@ import core._
 import Flags._
 import Contexts._
 import Symbols._
-import Decorators._
 import DenotTransformers.SymTransformer
 import Types.MethodType
 import Annotations.Annotation
@@ -14,7 +13,6 @@ import Names.Name
 import StdNames.nme
 import NameOps._
 
-import reporting._
 import ast._
 
 import SymUtils._

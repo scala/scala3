@@ -3,6 +3,8 @@ package dotc
 package parsing
 package xml
 
+import scala.language.unsafeNulls
+
 import scala.collection.mutable
 import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
@@ -131,7 +133,7 @@ object MarkupParsers {
             try handle.parseAttribute(Span(start, curOffset, mid), tmp)
             catch {
               case e: RuntimeException =>
-                errorAndResult("error parsing attribute value", parser.errorTermTree)
+                errorAndResult("error parsing attribute value", parser.errorTermTree(parser.in.offset))
             }
 
           case '{'  =>
@@ -334,7 +336,7 @@ object MarkupParsers {
       finally parser.in.resume(saved)
 
       if (output == null)
-        parser.errorTermTree
+        parser.errorTermTree(parser.in.offset)
       else
         output
     }

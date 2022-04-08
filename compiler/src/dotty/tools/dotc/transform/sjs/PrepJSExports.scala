@@ -2,27 +2,18 @@ package dotty.tools.dotc
 package transform
 package sjs
 
-import dotty.tools.dotc.ast.{Trees, tpd, untpd}
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core._
-import Annotations._
 import Contexts._
 import Decorators._
 import Denotations._
-import DenotTransformers._
 import Flags._
-import Names._
 import NameKinds.DefaultGetterName
-import NameOps._
-import Phases._
-import Scopes._
 import StdNames._
 import Symbols._
-import SymDenotations._
 import SymUtils._
-import Trees._
 import Types._
 
-import reporting._
 import util.Spans.Span
 import util.SrcPos
 

@@ -4,7 +4,6 @@ package transform
 import core._
 import Contexts.*
 import DenotTransformers.IdentityDenotTransformer
-import Decorators.*
 import SyntheticMembers.*
 import ast.tpd.*
 

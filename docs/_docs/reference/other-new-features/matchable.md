@@ -119,10 +119,10 @@ For instance, consider the definitions
 
 ```scala
 opaque type Meter = Double
-def Meter(x: Double) = x
+def Meter(x: Double): Meter = x
 
 opaque type Second = Double
-def Second(x: Double) = x
+def Second(x: Double): Second = x
 ```
 
 Here, universal `equals` will return true for
@@ -134,6 +134,7 @@ Here, universal `equals` will return true for
 even though this is clearly false mathematically. With [multiversal equality](../contextual/multiversal-equality.md) one can mitigate that problem somewhat by turning
 
 ```scala
+  import scala.language.strictEquality
   Meter(10) == Second(10)
 ```
 

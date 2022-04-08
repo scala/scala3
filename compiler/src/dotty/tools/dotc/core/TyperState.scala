@@ -4,7 +4,7 @@ package core
 
 import Types._
 import Contexts._
-import util.{SimpleIdentityMap, SimpleIdentitySet}
+import util.SimpleIdentitySet
 import reporting._
 import config.Config
 import config.Printers.constr
@@ -45,7 +45,7 @@ class TyperState() {
   private var myId: Int = _
   def id: Int = myId
 
-  private var previous: TyperState /* | Null */ = _
+  private var previous: TyperState | Null = _
 
   private var myReporter: Reporter = _
 
@@ -75,7 +75,7 @@ class TyperState() {
     this
 
   def isGlobalCommittable: Boolean =
-    isCommittable && (previous == null || previous.isGlobalCommittable)
+    isCommittable && (previous == null || previous.uncheckedNN.isGlobalCommittable)
 
   private var isCommitted: Boolean = _
 
@@ -92,7 +92,7 @@ class TyperState() {
   /** Initializes all fields except reporter, isCommittable, which need to be
    *  set separately.
    */
-  private[core] def init(previous: TyperState /* | Null */, constraint: Constraint): this.type =
+  private[core] def init(previous: TyperState | Null, constraint: Constraint): this.type =
     this.myId = TyperState.nextId
     TyperState.nextId += 1
     this.previous = previous
@@ -117,7 +117,7 @@ class TyperState() {
    *  which is not yet committed, or which does not have a parent.
    */
   def uncommittedAncestor: TyperState =
-    if (isCommitted) previous.uncommittedAncestor else this
+    if (isCommitted && previous != null) previous.uncheckedNN.uncommittedAncestor else this
 
   /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated
@@ -179,7 +179,7 @@ class TyperState() {
       var ts = this
       while ts.constraint.domainLambdas.contains(tl) do
         ts.constraint = ts.constraint.subst(tl, tl1)
-        ts = ts.previous
+        ts = ts.previous.nn
 
   /** Integrate the constraints from `that` into this TyperState.
    *
@@ -235,14 +235,14 @@ class TyperState() {
    *       each tvar can only be instantiated by one TyperState.
    */
   private def includeVar(tvar: TypeVar)(using Context): Unit =
-    val oldState = tvar.owningState.get
+    val oldState = tvar.owningState.nn.get
     assert(oldState == null || !oldState.isCommittable,
       i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
     tvar.owningState = new WeakReference(this)
     ownedVars += tvar
 
   private def isOwnedAnywhere(ts: TyperState, tvar: TypeVar): Boolean =
-    ts.ownedVars.contains(tvar) || ts.previous != null && isOwnedAnywhere(ts.previous, tvar)
+    ts.ownedVars.contains(tvar) || ts.previous != null && isOwnedAnywhere(ts.previous.uncheckedNN, tvar)
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
@@ -253,7 +253,8 @@ class TyperState() {
       Stats.record("typerState.gc")
       val toCollect = new mutable.ListBuffer[TypeLambda]
       for tvar <- ownedVars do
-        assert(tvar.owningState.get eq this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvar.owningState.get}")
+        val tvarState = tvar.owningState.nn.get
+        assert(tvarState eqn this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvarState}")
         assert(!tvar.inst.exists, s"Inconsistent state in $this: it owns $tvar which is already instantiated")
         val inst = constraint.instType(tvar)
         if inst.exists then
@@ -266,9 +267,9 @@ class TyperState() {
   override def toString: String = {
     def ids(state: TyperState): List[String] =
       s"${state.id}${if (state.isCommittable) "" else "X"}" ::
-        (if (state.previous == null) Nil else ids(state.previous))
+        (if (state.previous == null) Nil else ids(state.previous.uncheckedNN))
     s"TS[${ids(this).mkString(", ")}]"
   }
 
-  def stateChainStr: String = s"$this${if (previous == null) "" else previous.stateChainStr}"
+  def stateChainStr: String = s"$this${if (previous == null) "" else previous.uncheckedNN.stateChainStr}"
 }

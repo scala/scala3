@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package parsing
 
+import scala.language.unsafeNulls
+
 import collection.immutable.BitSet
 import core.Decorators._
 import core.StdNames.nme
@@ -285,7 +287,7 @@ object Tokens extends TokensCommon {
 
   final val endMarkerTokens = identifierTokens | BitSet(IF, WHILE, FOR, MATCH, TRY, NEW, THROW, GIVEN, VAL, THIS)
 
-  final val skipStopTokens = BitSet(SEMI, NEWLINE, NEWLINES, RBRACE, RPAREN, RBRACKET, OUTDENT)
+  final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
 
   final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
 }

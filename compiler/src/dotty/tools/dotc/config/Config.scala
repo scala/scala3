@@ -1,5 +1,4 @@
 package dotty.tools.dotc.config
-import annotation.internal.sharable
 
 object Config {
 

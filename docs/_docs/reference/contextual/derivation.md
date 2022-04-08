@@ -330,7 +330,7 @@ given eqProduct[A](using inst: K0.ProductInstances[Eq, A]): Eq[A] with
   )
 
 inline def derived[A](using gen: K0.Generic[A]): Eq[A] =
-  gen.derive(eqSum, eqProduct)
+  gen.derive(eqProduct, eqSum)
 ```
 
 The framework described here enables all three of these approaches without mandating any of them.
@@ -354,12 +354,12 @@ hand side of this definition in the same way as an instance defined in ADT compa
 
 ### Syntax
 
-```
-Template          ::=  InheritClauses [TemplateBody]
-EnumDef           ::=  id ClassConstr InheritClauses EnumBody
-InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
+```ebnf
+Template          ::=  InheritClauses [TemplateBody] ;
+EnumDef           ::=  id ClassConstr InheritClauses EnumBody ;
+InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}] ;
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
-                    |  ConstrApp {‘,’ ConstrApp}
+                    |  ConstrApp {‘,’ ConstrApp} ;
 ```
 
 **Note:** To align `extends` clauses and `derives` clauses, Scala 3 also allows multiple

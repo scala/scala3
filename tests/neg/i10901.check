@@ -38,4 +38,4 @@
    |
    |              Test.foo("abc")(/* missing */summon[C])    failed with
    |
-   |                  no implicit argument of type C was found for parameter x$2 of method foo in object Test
+   |                  no given instance of type C was found for parameter x$2 of method foo in object Test

@@ -4,12 +4,10 @@ package typer
 
 import core._
 import ast.{Trees, tpd, untpd, desugar}
-import util.Spans._
 import util.Stats.record
-import util.{SrcPos, NoSourcePosition, SourceFile}
+import util.{SrcPos, NoSourcePosition}
 import Trees.Untyped
 import Contexts._
-import Phases._
 import Flags._
 import Symbols._
 import Denotations.Denotation
@@ -19,7 +17,6 @@ import ErrorReporting._
 import Trees._
 import Names._
 import StdNames._
-import NameOps._
 import ContextOps._
 import NameKinds.DefaultGetterName
 import ProtoTypes._
@@ -28,15 +25,15 @@ import reporting._
 import transform.TypeUtils._
 import transform.SymUtils._
 import Nullables._
-import config.{Feature, Config}
+import config.Feature
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
 import TypeApplications._
 
-import Constants.{Constant, IntTag, LongTag}
+import Constants.{Constant, IntTag}
 import Denotations.SingleDenotation
-import annotation.{constructorOnly, threadUnsafe}
+import annotation.threadUnsafe
 
 import scala.util.control.NonFatal
 
@@ -210,7 +207,7 @@ object Applications {
     end tupleFold
     tupleFold(Nil, tp).reverse
 
-  def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
+  def wrapDefs(defs: mutable.ListBuffer[Tree] | Null, tree: Tree)(using Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
   /** Find reference to default parameter getter for parameter #n in current
@@ -746,7 +743,7 @@ trait Applications extends Compatibility {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
-    private var liftedDefs: mutable.ListBuffer[Tree] = null
+    private var liftedDefs: mutable.ListBuffer[Tree] | Null = null
     private var myNormalizedFun: Tree = fun
     init()
 
@@ -785,7 +782,7 @@ trait Applications extends Compatibility {
     override def liftFun(): Unit =
       if (liftedDefs == null) {
         liftedDefs = new mutable.ListBuffer[Tree]
-        myNormalizedFun = lifter.liftApp(liftedDefs, myNormalizedFun)
+        myNormalizedFun = lifter.liftApp(liftedDefs.uncheckedNN, myNormalizedFun)
       }
 
     /** The index of the first difference between lists of trees `xs` and `ys`
@@ -851,7 +848,7 @@ trait Applications extends Compatibility {
               scala.util.Sorting.stableSort[(Tree, Int), Int](
                 argDefBuf.zip(impureArgIndices), (arg, idx) => originalIndex(idx)).map(_._1)
             }
-            liftedDefs ++= orderedArgDefs
+            liftedDefs.nn ++= orderedArgDefs
           end if
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
@@ -1329,8 +1326,6 @@ trait Applications extends Compatibility {
         unapp
     }
 
-    def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
-
     unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramInfos.length == 1 =>
         val unapplyArgType = mt.paramInfos.head
@@ -1346,7 +1341,7 @@ trait Applications extends Compatibility {
             // Constraining only fails if the pattern cannot possibly match,
             // but useless pattern checks detect more such cases, so we simply rely on them instead.
             withMode(Mode.GadtConstraintInference)(TypeComparer.constrainPatternType(unapplyArgType, selType))
-            val patternBound = maximizeType(unapplyArgType, tree.span, fromScala2x)
+            val patternBound = maximizeType(unapplyArgType, tree.span)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType
@@ -1879,7 +1874,7 @@ trait Applications extends Compatibility {
      *       formal parameter that is a unary function.
      */
     def normArg(alts: List[TermRef], arg: untpd.Tree, idx: Int): untpd.Tree = arg match
-      case Block(Nil, expr) => normArg(alts, expr, idx)
+      case Block(Nil, expr) if !expr.isEmpty => normArg(alts, expr, idx)
       case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
 
         // If ref refers to a method whose parameter at index `idx` is a function type,
@@ -1942,12 +1937,12 @@ trait Applications extends Compatibility {
 
         record("resolveOverloaded.FunProto", alts.length)
         val alts1 = narrowBySize(alts)
-        //report.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
+        overload.println(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
         if isDetermined(alts1) then alts1
         else
           record("resolveOverloaded.narrowedBySize", alts1.length)
           val alts2 = narrowByShapes(alts1)
-          //report.log(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
+          overload.println(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
           if isDetermined(alts2) then alts2
           else
             record("resolveOverloaded.narrowedByShape", alts2.length)
@@ -1980,8 +1975,14 @@ trait Applications extends Compatibility {
            *   new java.io.ObjectOutputStream(f)
            */
           pt match {
-            case SAMType(mtp) => narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
-            case _ => compat
+            case SAMType(mtp) =>
+              narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+            case _ =>
+              // pick any alternatives that are not methods since these might be convertible
+              // to the expected type, or be used as extension method arguments.
+              val convertible = alts.filterNot(alt =>
+                  normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
+              if convertible.length == 1 then convertible else compat
           }
         else compat
     }

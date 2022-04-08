@@ -1,6 +1,5 @@
 package dotty.tools.dotc
 package printing
-import language.implicitConversions
 
 object Texts {
 
@@ -66,7 +65,7 @@ object Texts {
       else appendIndented(that)(width)
 
     private def lengthWithoutAnsi(str: String): Int =
-      str.replaceAll("\u001b\\[\\d+m", "").length
+      str.replaceAll("\u001b\\[\\d+m", "").nn.length
 
     def layout(width: Int): Text = this match {
       case Str(s, _) =>

@@ -12,7 +12,6 @@ import Flags._
 import ValueClasses._
 import SymUtils._
 import NameOps._
-import collection.mutable
 
 
 /** Performs the following rewritings for fields of a class:

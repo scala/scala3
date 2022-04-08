@@ -6,7 +6,6 @@ import Symbols._, Types._, Contexts._, DenotTransformers._, Flags._
 import util.Spans._
 import SymUtils._
 import StdNames._, NameOps._
-import Decorators._
 
 class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._

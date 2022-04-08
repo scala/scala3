@@ -1,5 +1,7 @@
 package dotty.tools.repl
 
+import scala.language.unsafeNulls
+
 import java.util.regex.Pattern
 
 import org.junit.Assert.{assertTrue => assert, _}
@@ -241,6 +243,110 @@ class ReplCompilerTests extends ReplTest:
     assertEquals(List("// defined class C"), lines())
   }
 
+  def assertNotFoundError(id: String): Unit =
+    val lines = storedOutput().linesIterator
+    assert(lines.next().startsWith("-- [E006] Not Found Error:"))
+    assert(lines.drop(2).next().trim().endsWith(s"Not found: $id"))
+
+  @Test def i4416 = initially {
+    val state = run("val x = 1 / 0")
+    val all = lines()
+    assertEquals(2, all.length)
+    assert(all.head.startsWith("java.lang.ArithmeticException:"))
+    state
+  } andThen {
+    val state = run("def foo = x")
+    assertNotFoundError("x")
+    state
+  } andThen {
+    run("x")
+    assertNotFoundError("x")
+  }
+
+  @Test def i4416b = initially {
+    val state = run("val a = 1234")
+    val _ = storedOutput() // discard output
+    state
+  } andThen {
+    val state = run("val a = 1; val x = ???; val y = x")
+    val all = lines()
+    assertEquals(3, all.length)
+    assertEquals("scala.NotImplementedError: an implementation is missing", all.head)
+    state
+  } andThen {
+    val state = run("x")
+    assertNotFoundError("x")
+    state
+  } andThen {
+    val state = run("y")
+    assertNotFoundError("y")
+    state
+  } andThen {
+    run("a")   // `a` should retain its original binding
+    assertEquals("val res0: Int = 1234", storedOutput().trim)
+  }
+
+  @Test def i4416_imports = initially {
+    run("import scala.collection.mutable")
+  } andThen {
+    val state = run("import scala.util.Try; val x = ???")
+    val _ = storedOutput() // discard output
+    state
+  } andThen {
+    run(":imports")  // scala.util.Try should not be imported
+    assertEquals("import scala.collection.mutable", storedOutput().trim)
+  }
+
+  @Test def i4416_types_defs_aliases = initially {
+    val state =
+      run("""|type Foo = String
+             |trait Bar
+             |def bar: Bar = ???
+             |val x = ???
+             |""".stripMargin)
+    val all = lines()
+    assertEquals(3, all.length)
+    assertEquals("scala.NotImplementedError: an implementation is missing", all.head)
+    assert("type alias in failed wrapper should not be rendered",
+      !all.exists(_.startsWith("// defined alias type Foo = String")))
+    assert("type definitions in failed wrapper should not be rendered",
+      !all.exists(_.startsWith("// defined trait Bar")))
+    assert("defs in failed wrapper should not be rendered",
+      !all.exists(_.startsWith("def bar: Bar")))
+    state
+  } andThen {
+    val state = run("def foo: Foo = ???")
+    assertNotFoundError("type Foo")
+    state
+  } andThen {
+    val state = run("type B = Bar")
+    assertNotFoundError("type Bar")
+    state
+  } andThen {
+    run("bar")
+    assertNotFoundError("bar")
+  }
+
+  @Test def i14473 = initially {
+    run("""val (x,y) = if true then "hi" else (42,17)""")
+    val all = lines()
+    assertEquals(2, all.length)
+    assertEquals("scala.MatchError: hi (of class java.lang.String)", all.head)
+  }
+
+  @Test def i14701 = initially {
+    val state = run("val _ = ???")
+    val all = lines()
+    assertEquals(3, all.length)
+    assertEquals("scala.NotImplementedError: an implementation is missing", all.head)
+    state
+  } andThen {
+    run("val _ = assert(false)")
+    val all = lines()
+    assertEquals(3, all.length)
+    assertEquals("java.lang.AssertionError: assertion failed", all.head)
+  }
+
   @Test def i14491 =
     initially {
       run("import language.experimental.fewerBraces")
@@ -300,4 +406,14 @@ class ReplVerboseTests extends ReplTest(ReplTest.defaultOptions :+ "-verbose"):
     run("val a = 42")
     assert(storedOutput().trim().endsWith("val a: Int = 42"))
   }
+
+  @Test def `i4393-incomplete-catch`: Unit = contextually {
+    assert(ParseResult.isIncomplete("""|try {
+                                       |  ???
+                                       |} catch""".stripMargin))
+    assert(ParseResult.isIncomplete("""|try {
+                                       |  ???
+                                       |} catch {""".stripMargin))
+  }
+
 end ReplVerboseTests

@@ -5,10 +5,10 @@ import collection.mutable.ListBuffer
 /** A simple linked map with `eq` as the key comparison, optimized for small maps.
  *  It has linear complexity for `apply`, `updated`, and `remove`.
  */
-abstract class SimpleIdentityMap[K <: AnyRef, +V >: Null <: AnyRef] extends (K => V) {
+abstract class SimpleIdentityMap[K <: AnyRef, +V <: AnyRef] extends (K => V | Null) {
   final def isEmpty: Boolean = this eq SimpleIdentityMap.myEmpty
   def size: Int
-  def apply(k: K): V
+  def apply(k: K): V | Null
   def remove(k: K): SimpleIdentityMap[K, V]
   def updated[V1 >: V <: AnyRef](k: K, v: V1): SimpleIdentityMap[K, V1]
   def contains(k: K): Boolean = apply(k) != null
@@ -32,25 +32,25 @@ object SimpleIdentityMap {
 
   private val CompactifyThreshold = 4
 
-  private object myEmpty extends SimpleIdentityMap[AnyRef, Null] {
+  private object myEmpty extends SimpleIdentityMap[AnyRef, Nothing] {
     def size = 0
     def apply(k: AnyRef) = null
     def remove(k: AnyRef) = this
-    def updated[V1 >: Null <: AnyRef](k: AnyRef, v: V1) = new Map1(k, v)
-    def mapValuesNow[V1 >: Null <: AnyRef](f: (AnyRef, V1) => V1) = this
-    def foreachBinding(f: (AnyRef, Null) => Unit) = ()
-    def forallBinding(f: (AnyRef, Null) => Boolean) = true
+    def updated[V1 <: AnyRef](k: AnyRef, v: V1) = new Map1(k, v)
+    def mapValuesNow[V1 <: AnyRef](f: (AnyRef, V1) => V1) = this
+    def foreachBinding(f: (AnyRef, Nothing) => Unit) = ()
+    def forallBinding(f: (AnyRef, Nothing) => Boolean) = true
   }
 
-  def empty[K <: AnyRef]: SimpleIdentityMap[K, Null] = myEmpty.asInstanceOf[SimpleIdentityMap[K, Null]]
+  def empty[K <: AnyRef]: SimpleIdentityMap[K, Nothing] = myEmpty.asInstanceOf[SimpleIdentityMap[K, Nothing]]
 
-  class Map1[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V) extends SimpleIdentityMap[K, V] {
+  class Map1[K <: AnyRef, +V <: AnyRef] (k1: K, v1: V) extends SimpleIdentityMap[K, V] {
     def size: Int = 1
-    def apply(k: K): V =
+    def apply(k: K): V | Null =
       if (k eq k1) v1
       else null
     def remove(k: K): SimpleIdentityMap[K, V] =
-      if (k eq k1) empty.asInstanceOf[SimpleIdentityMap[K, V]]
+      if (k eq k1) empty
       else this
     def updated[V1 >: V <: AnyRef](k: K, v: V1): SimpleIdentityMap[K, V1] =
       if (k eq k1) new Map1(k, v)
@@ -63,9 +63,9 @@ object SimpleIdentityMap {
     def forallBinding(f: (K, V) => Boolean): Boolean = f(k1, v1)
   }
 
-  class Map2[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V) extends SimpleIdentityMap[K, V] {
+  class Map2[K <: AnyRef, +V <: AnyRef] (k1: K, v1: V, k2: K, v2: V) extends SimpleIdentityMap[K, V] {
     def size: Int = 2
-    def apply(k: K): V =
+    def apply(k: K): V | Null =
       if (k eq k1) v1
       else if (k eq k2) v2
       else null
@@ -86,9 +86,9 @@ object SimpleIdentityMap {
     def forallBinding(f: (K, V) => Boolean): Boolean = f(k1, v1) && f(k2, v2)
   }
 
-  class Map3[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V) extends SimpleIdentityMap[K, V] {
+  class Map3[K <: AnyRef, +V <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V) extends SimpleIdentityMap[K, V] {
     def size: Int = 3
-    def apply(k: K): V =
+    def apply(k: K): V | Null =
       if (k eq k1) v1
       else if (k eq k2) v2
       else if (k eq k3) v3
@@ -112,9 +112,9 @@ object SimpleIdentityMap {
     def forallBinding(f: (K, V) => Boolean): Boolean = f(k1, v1) && f(k2, v2) && f(k3, v3)
   }
 
-  class Map4[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V) extends SimpleIdentityMap[K, V] {
+  class Map4[K <: AnyRef, +V <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V) extends SimpleIdentityMap[K, V] {
     def size: Int = 4
-    def apply(k: K): V =
+    def apply(k: K): V | Null =
       if (k eq k1) v1
       else if (k eq k2) v2
       else if (k eq k3) v3
@@ -141,14 +141,14 @@ object SimpleIdentityMap {
     def forallBinding(f: (K, V) => Boolean): Boolean = f(k1, v1) && f(k2, v2) && f(k3, v3) && f(k4, v4)
   }
 
-  class MapMore[K <: AnyRef, +V >: Null <: AnyRef](bindings: Array[AnyRef]) extends SimpleIdentityMap[K, V] {
+  class MapMore[K <: AnyRef, +V <: AnyRef](bindings: Array[AnyRef]) extends SimpleIdentityMap[K, V] {
     private def key(i: Int): K = bindings(i).asInstanceOf[K]
     private def value(i: Int): V = bindings(i + 1).asInstanceOf[V]
 
     def size: Int = bindings.length / 2
     Stats.record(s"SimpleIdentityMap/$size")
 
-    def apply(k: K): V = {
+    def apply(k: K): V | Null = {
       var i = 0
       while (i < bindings.length) {
         if (bindings(i) eq k) return value(i)

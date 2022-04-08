@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.tools.asm
 
 /**
@@ -15,7 +17,7 @@ import scala.tools.asm
 abstract class BTypes {
 
   val int: DottyBackendInterface
-  import int.{_, given}
+  import int.given
   /**
    * A map from internal names to ClassBTypes. Every ClassBType is added to this map on its
    * construction.

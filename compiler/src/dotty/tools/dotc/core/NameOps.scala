@@ -10,12 +10,11 @@ import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import util.Chars.{isOperatorPart, digit2int}
 import Definitions._
 import nme._
-import Decorators._
 
 object NameOps {
 
   object compactify {
-    lazy val md5: MessageDigest = MessageDigest.getInstance("MD5")
+    lazy val md5: MessageDigest = MessageDigest.getInstance("MD5").nn
 
     inline val CLASSFILE_NAME_CHAR_LIMIT = 240
 
@@ -43,9 +42,9 @@ object NameOps {
         val suffix = s.takeRight(edge)
 
         val cs = s.toArray
-        val bytes = Codec.toUTF8(CharBuffer.wrap(cs))
+        val bytes = Codec.toUTF8(CharBuffer.wrap(cs).nn)
         md5.update(bytes)
-        val md5chars = md5.digest().map(b => (b & 0xFF).toHexString).mkString
+        val md5chars = md5.digest().nn.map(b => (b & 0xFF).toHexString).mkString
 
         prefix + marker + md5chars + marker + suffix
       }

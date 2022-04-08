@@ -1,6 +1,8 @@
 package dotty
 package tools
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8

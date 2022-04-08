@@ -4,6 +4,8 @@
 package dotty.tools
 package dotc.classpath
 
+import scala.language.unsafeNulls
+
 import java.net.URL
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.immutable.ArraySeq

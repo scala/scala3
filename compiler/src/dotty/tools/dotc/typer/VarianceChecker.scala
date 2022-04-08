@@ -7,7 +7,6 @@ import Types._, Contexts._, Flags._, Symbols._, Trees._
 import Decorators._
 import Variances._
 import NameKinds._
-import util.Spans._
 import util.SrcPos
 import config.Printers.variances
 import config.Feature.migrateTo3

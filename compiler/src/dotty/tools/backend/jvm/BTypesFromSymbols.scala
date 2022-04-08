@@ -296,7 +296,11 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    */
   final def javaFlags(sym: Symbol): Int = {
 
-    val privateFlag = sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
+    // Classes are always emitted as public. This matches the behavior of Scala 2
+    // and is necessary for object deserialization to work properly, otherwise
+    // ModuleSerializationProxy may fail with an accessiblity error (see
+    // tests/run/serialize.scala and https://github.com/typelevel/cats-effect/pull/2360).
+    val privateFlag = !sym.isClass && (sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass))
 
     val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable) && !sym.enclosingClass.is(Trait)
 

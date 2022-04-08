@@ -8,7 +8,6 @@ import TastyFormat.SOURCE
 import TastyBuffer.{Addr, NameRef}
 
 import util.Spans._
-import collection.{mutable, Map}
 import Names.TermName
 
 /** Unpickler for tree positions */

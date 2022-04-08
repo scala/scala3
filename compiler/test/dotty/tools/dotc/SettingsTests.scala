@@ -1,6 +1,8 @@
 package dotty.tools
 package dotc
 
+import scala.language.unsafeNulls
+
 import reporting.StoreReporter
 import vulpix.TestConfiguration
 
@@ -104,7 +106,7 @@ class SettingsTests {
         false
 
     val default = Settings.defaultState
-    assertThrows[IllegalArgumentException](checkMessage("found: not an option of type java.lang.String, required: Boolean")) {
+    dotty.tools.assertThrows[IllegalArgumentException](checkMessage("found: not an option of type java.lang.String, required: Boolean")) {
       Settings.option.updateIn(default, "not an option")
     }
 

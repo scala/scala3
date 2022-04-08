@@ -4,6 +4,9 @@ import scala.scalajs.js
 import org.scalajs.dom._
 import org.scalajs.dom.ext._
 
+import utils.HTML._
+import scala.util.chaining._
+
 import CodeSnippetsGlobals._
 
 class CodeSnippets:
@@ -35,22 +38,13 @@ class CodeSnippets:
       case _ =>
     }
     def createShowHideButton(toggleRoot: html.Element) = {
-      val div = document.createElement("div")
-      div.classList.add("snippet-showhide")
-      val p = document.createElement("p")
-      p.textContent = "Show collapsed lines"
-      val showHideButton = document.createElement("label")
-      showHideButton.classList.add("snippet-showhide-button")
-      val checkbox = document.createElement("input").asInstanceOf[html.Input]
-      checkbox.`type` = "checkbox"
-      val slider = document.createElement("span")
-      slider.classList.add("slider")
-      showHideButton.appendChild(checkbox)
-      showHideButton.appendChild(slider)
-      checkbox.addEventListener("change", _ => toggleHide(toggleRoot))
-      div.appendChild(showHideButton)
-      div.appendChild(p)
-      div
+      div(cls := "snippet-showhide")(
+        label(cls := "snippet-showhide-button")(
+          input("type" := "checkbox").tap(_.addEventListener("change", _ => toggleHide(toggleRoot))),
+          span(cls := "slider")
+        ),
+        p("Show collapsed lines")
+      )
     }
 
     toggleHide(snippet)
@@ -65,8 +59,7 @@ class CodeSnippets:
   private def snippetAnchor(snippet: html.Element): Unit = snippet.querySelector(".snippet-meta .snippet-label") match {
     case e: html.Element =>
       val name = e.textContent.trim
-      val anchor = document.createElement("a").asInstanceOf[html.Anchor]
-      anchor.id = s"snippet-$name"
+      val anchor = a(id := s"snippet-$name")
       snippet.insertBefore(anchor, snippet.firstChild)
     case _ =>
   }
@@ -75,23 +68,20 @@ class CodeSnippets:
     val included = snippet.querySelectorAll("code span.include")
     val pre = snippet.querySelector("pre")
     if included != null && included.nonEmpty && pre != null then {
-      val includesDiv = document.createElement("div")
-      includesDiv.classList.add("included-section")
-      includesDiv.classList.add("hideable")
-      included
+      val includes = included
         .collect { case e: html.Element => e }
         .toList
         .filter(_.hasAttribute("name"))
         .map(_.getAttribute("name"))
         .distinct
         .map { name =>
-          val a = document.createElement("a").asInstanceOf[html.Anchor]
-          a.classList.add("unselectable")
-          a.href = s"#snippet-$name"
-          a.innerHTML = s"included <b>$name</b>"
-          a
+          a(cls := "unselectable", href := s"#snippet-$name")(
+            "included",
+            b(name)
+          )
         }
-        .foreach(a => includesDiv.appendChild(a))
+
+      val includesDiv = div(cls := "included-section hideable")(includes)
 
       snippet.insertBefore(includesDiv, pre)
     }
@@ -99,30 +89,21 @@ class CodeSnippets:
 
   private def copyRunButtons(snippet: html.Element) = {
     def copyButton = {
-      val div = document.createElement("div")
-      val button = document.createElement("button")
-      val icon = document.createElement("i")
-      icon.classList.add("far")
-      icon.classList.add("fa-clone")
-      button.appendChild(icon)
-      button.classList.add("copy-button")
-      button.addEventListener("click", _ => {
-        val code = snippet.querySelectorAll("code>span:not(.hidden)")
-          .map(_.textContent)
-          .mkString
-        window.navigator.clipboard.writeText(code)
-      })
-      div.appendChild(button)
-      div
+      div(
+        button(cls := "copy-button")(
+          i(cls := "far fa-clone")
+        ).tap(_.addEventListener("click", _ => {
+          val code = snippet.querySelectorAll("code>span:not(.hidden)")
+            .map(_.textContent)
+            .mkString
+          window.navigator.clipboard.writeText(code)
+        }))
+      )
     }
     def runButton = {
-      val div = document.createElement("div").asInstanceOf[html.Div]
-      val runButton = document.createElement("button").asInstanceOf[html.Button]
-      val runIcon = document.createElement("i")
-      runIcon.classList.add("fas")
-      runIcon.classList.add("fa-play")
-      runButton.classList.add("run-button")
-      runButton.appendChild(runIcon)
+      val runButton = button(cls := "run-button")(
+        i(cls := "fas fa-play")
+      )
 
       runButton.addEventListener("click", _ =>
         if !runButton.hasAttribute("opened") then {
@@ -148,18 +129,14 @@ class CodeSnippets:
         }
       )
 
-      div.appendChild(runButton)
-      div
+      div(runButton)
     }
     def exitButton = {
-      val div = document.createElement("div").asInstanceOf[html.Div]
-      val exitButton = document.createElement("button").asInstanceOf[html.Element]
-      val exitIcon = document.createElement("i")
-      exitIcon.classList.toggle("fas")
-      exitIcon.classList.toggle("fa-times")
-      exitButton.classList.add("exit-button")
-      div.style = "display:none;"
-      exitButton.appendChild(exitIcon)
+      val exitButton = button(cls := "exit-button")(
+        i(cls := "fas fa-times")
+      )
+
+      val bdiv = div(style := "display:none;")(exitButton)
 
       exitButton.addEventListener("click", _ =>
         snippet.querySelector("pre") match {
@@ -178,22 +155,16 @@ class CodeSnippets:
           case btn: html.Element => btn.parentElement.style = "display:none;"
           case _ =>
         }
-        div.style = "display:none;"
+        bdiv.style = "display:none;"
       )
 
-      div.appendChild(exitButton)
-      div
+      bdiv
     }
-    def toScastieButton = {
-      val div = document.createElement("div").asInstanceOf[html.Div]
-      val toScastieButton = document.createElement("button").asInstanceOf[html.Element]
-      val toScastieIcon = document.createElement("i").asInstanceOf[html.Image]
 
-      toScastieIcon.classList.add("fas")
-      toScastieIcon.classList.add("fa-external-link-alt")
-      toScastieButton.classList.add("to-scastie-button")
-      div.style = "display:none;"
-      toScastieButton.appendChild(toScastieIcon)
+    def toScastieButton = {
+      val toScastieButton = button(cls := "to-scastie-button")(
+        i(cls := "fas fa-external-link-alt")
+      )
 
       toScastieButton.addEventListener("click", _ =>
         snippet.querySelector(".embedded-menu li.logo") match {
@@ -202,13 +173,13 @@ class CodeSnippets:
         }
       )
 
-      div.appendChild(toScastieButton)
-      div
+      div("style" := "display:none;")(toScastieButton)
     }
+
     val buttonsSection = getButtonsSection(snippet)
     buttonsSection.foreach(s =>
       s.appendChild(copyButton)
-      if !snippet.hasAttribute("hasContext") then {
+      if snippet.hasAttribute("runnable") then {
         s.appendChild(toScastieButton)
         s.appendChild(runButton)
         s.appendChild(exitButton)

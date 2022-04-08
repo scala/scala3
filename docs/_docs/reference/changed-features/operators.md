@@ -6,9 +6,12 @@ movedTo: https://docs.scala-lang.org/scala3/reference/changed-features/operators
 
 The rules for infix operators have changed in some parts:
 
-First, an alphanumeric method can be used as an infix operator only if its definition carries an `infix` modifier. Second, it is recommended (but not enforced) to
-augment definitions of symbolic operators with [`@targetName` annotations](../other-new-features/targetName.md). Finally,
-a syntax change allows infix operators to be written on the left in a multi-line expression.
+First, an alphanumeric method can be used as an infix operator only if its definition carries an `infix` modifier.
+
+Second, it is recommended (but not enforced) to augment definitions of symbolic operators
+with [`@targetName` annotations](../other-new-features/targetName.md).
+
+Finally, a syntax change allows infix operators to be written on the left in a multi-line expression.
 
 ## The `infix` Modifier
 
@@ -163,3 +166,8 @@ Another example:
 
 This code is recognized as three different statements. `???` is syntactically a symbolic identifier, but
 neither of its occurrences is followed by a space and a token that can start an expression.
+
+## Unary operators
+
+A unary operator must not have explicit parameter lists even if they are empty.
+A unary operator is a method named "unary_`op`" where `op` is one of `+`, `-`, `!`, or `~`.

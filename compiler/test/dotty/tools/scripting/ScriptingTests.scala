@@ -2,6 +2,8 @@ package dotty
 package tools
 package scripting
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.nio.file.Path
 
@@ -116,7 +118,7 @@ class ScriptingTests:
       printf("success: script created file %s\n", touchedFile)
     if touchedFile.exists then printf("success: created file %s\n", touchedFile)
     assert( touchedFile.exists, s"expected to find file ${touchedFile}" )
-   
+
   /*
    * Compile touchFile.sc to create executable jar, verify jar execution succeeds.
    */
@@ -150,7 +152,7 @@ class ScriptingTests:
 
   def touchedFile = File("touchedFile.out")
 
-  def script2jar(scriptFile: File) = 
+  def script2jar(scriptFile: File) =
     val jarName = s"${scriptFile.getName.dropExtension}.jar"
     File(scriptFile.getParent, jarName)
 
