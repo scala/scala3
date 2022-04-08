@@ -153,10 +153,6 @@ object ErrorReporting {
          |
          |The tests were made under $constraintText"""
 
-    def rewriteNotice: String =
-      if Feature.migrateTo3 then "\nThis patch can be inserted automatically under -rewrite."
-      else ""
-
     def whyFailedStr(fail: FailedExtension) =
       i"""    failed with
          |
