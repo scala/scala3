@@ -63,18 +63,8 @@ object SyntheticsSupport:
       }.toList
   }
 
-  private def hackGetSupertypes(using Quotes)(rdef: reflect.ClassDef) = {
-    import reflect._
-    import dotty.tools.dotc
-    given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-    val classdef = rdef.asInstanceOf[dotc.ast.tpd.TypeDef]
-    val ref = classdef.symbol.info.asInstanceOf[dotc.core.Types.ClassInfo].appliedRef
-    val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] =
-      ref.baseClasses.map(b => b -> ref.baseType(b))
-    baseTypes.asInstanceOf[List[(Symbol, TypeRepr)]]
-  }
-
-  def getSupertypes(using Quotes)(c: reflect.ClassDef) = hackGetSupertypes(c).tail
+  def getSupertypes(using Quotes)(c: reflect.ClassDef) =
+    c.symbol.typeRef.baseClasses.map(b => b -> c.symbol.typeRef.baseType(b)).tail
 
   def typeForClass(using Quotes)(c: reflect.ClassDef): reflect.TypeRepr =
     import reflect._
