@@ -713,7 +713,7 @@ object Checking {
 
   def checkValue(tree: Tree)(using Context): Unit =
     val sym = tree.tpe.termSymbol
-    if sym.is(Flags.Package) || sym.isAllOf(Flags.JavaModule) && !ctx.isJava then
+    if sym.isNoValue && !ctx.isJava then
       report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 
   def checkValue(tree: Tree, proto: Type)(using Context): tree.type =

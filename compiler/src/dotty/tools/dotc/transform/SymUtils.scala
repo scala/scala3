@@ -64,6 +64,8 @@ object SymUtils:
 
     def isSuperAccessor(using Context): Boolean = self.name.is(SuperAccessorName)
 
+    def isNoValue(using Context): Boolean = self.is(Package) || self.isAllOf(JavaModule)
+
     /** Is this a type or term parameter or a term parameter accessor? */
     def isParamOrAccessor(using Context): Boolean =
       self.is(Param) || self.is(ParamAccessor)
