@@ -3,6 +3,7 @@ package transform
 
 import core._
 import Contexts._, Types._, MegaPhase._, ast.Trees._, Symbols._, Decorators._, Flags._
+import SymUtils.*
 
 /** Transform references of the form
  *
@@ -30,7 +31,7 @@ class ExplicitSelf extends MiniPhase {
 
   private def castQualifier(tree: RefTree, cls: ClassSymbol, thiz: Tree)(using Context) =
     val selfType = cls.classInfo.selfType
-    if selfType.classSymbols.exists(_.isValueClass) then
+    if selfType.classSymbols.exists(_.isValueClass) && !cls.isUniversalTrait then
       report.error(em"self type $selfType of $cls may not be a value class", thiz.srcPos)
     cpy.Select(tree)(thiz.cast(AndType(selfType, thiz.tpe)), tree.name)
 
