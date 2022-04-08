@@ -349,10 +349,13 @@ class TailRec extends MiniPhase {
             yield
               (getVarForRewrittenParam(param), arg)
 
-            val assignThisAndParamPairs =
-              if (prefix eq EmptyTree) assignParamPairs
-              else
-                // TODO Opt: also avoid assigning `this` if the prefix is `this.`
+            val assignThisAndParamPairs = prefix match
+              case EmptyTree =>
+                assignParamPairs
+              case prefix: This if prefix.symbol == enclosingClass =>
+                // Avoid assigning `this = this`
+                assignParamPairs
+              case _ =>
                 (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
 
             val assignments = assignThisAndParamPairs match {
