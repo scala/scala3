@@ -67,11 +67,7 @@ object SyntheticsSupport:
     c.symbol.typeRef.baseClasses.map(b => b -> c.symbol.typeRef.baseType(b)).tail
 
   def typeForClass(using Quotes)(c: reflect.ClassDef): reflect.TypeRepr =
-    import reflect._
-    import dotty.tools.dotc
-    given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-    val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
-    cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[TypeRepr]
+    c.symbol.typeRef.appliedTo(c.symbol.typeMembers.filter(_.isTypeParam).map(_.typeRef))
 
   def memberInfo(using Quotes)(c: reflect.ClassDef, symbol: reflect.Symbol): reflect.TypeRepr =
     import reflect._
