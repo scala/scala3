@@ -49,19 +49,6 @@ object SyntheticsSupport:
   They are valdefs that describe case companion objects and cases from enum.
   TASTY crashed when calling _.tree on them.
   */
-  private def hackGetmembers(using Quotes)(rsym: reflect.Symbol): List[reflect.Symbol] = {
-    import reflect._
-    import dotty.tools.dotc
-    given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-    val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
-    sym.namedType.allMembers.iterator.map(_.symbol)
-      .collect {
-         case sym if
-          (!sym.is(dotc.core.Flags.ModuleVal) || sym.is(dotc.core.Flags.Given)) &&
-          !sym.flags.isAllOf(dotc.core.Flags.Enum | dotc.core.Flags.Case | dotc.core.Flags.JavaStatic) =>
-              sym.asInstanceOf[Symbol]
-      }.toList
-  }
 
   def getSupertypes(using Quotes)(c: reflect.ClassDef) =
     c.symbol.typeRef.baseClasses.map(b => b -> c.symbol.typeRef.baseType(b)).tail
@@ -76,3 +63,17 @@ object SyntheticsSupport:
     typeForClass(c).asInstanceOf[dotc.core.Types.Type]
       .memberInfo(symbol.asInstanceOf[dotc.core.Symbols.Symbol])
       .asInstanceOf[TypeRepr]
+
+  private def hackGetmembers(using Quotes)(rsym: reflect.Symbol): List[reflect.Symbol] = {
+    import reflect._
+    import dotty.tools.dotc
+    given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
+    sym.namedType.allMembers.iterator.map(_.symbol)
+      .collect {
+         case sym if
+          (!sym.is(dotc.core.Flags.ModuleVal) || sym.is(dotc.core.Flags.Given)) &&
+          !sym.flags.isAllOf(dotc.core.Flags.Enum | dotc.core.Flags.Case | dotc.core.Flags.JavaStatic) =>
+              sym.asInstanceOf[Symbol]
+      }.toList
+  }
