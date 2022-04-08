@@ -19,6 +19,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   $(".ar").on('click', function (e) {
     $(this).parent().parent().toggleClass("expanded")
+    $(this).toggleClass("expanded")
     e.stopPropagation()
   });
 
