@@ -5,17 +5,6 @@ import scala.quoted._
 
 object SyntheticsSupport:
 
-  extension (using Quotes)(t: reflect.TypeRepr)
-
-    def isCompiletimeAppliedType: Boolean = t.hackIsCompiletimeAppliedType(t)
-
-    private def hackIsCompiletimeAppliedType(rtpe: reflect.TypeRepr): Boolean =
-      import dotty.tools.dotc
-      given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-      val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
-      ctx.definitions.isCompiletimeAppliedType(tpe.typeSymbol)
-  end extension
-
   extension (using Quotes)(s: reflect.Symbol)
     def isSyntheticFunc: Boolean =
       import reflect._
