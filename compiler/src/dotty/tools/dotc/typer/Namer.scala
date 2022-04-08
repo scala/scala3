@@ -1072,33 +1072,17 @@ class Namer { typer: Typer =>
     /** The forwarders defined by export `exp` */
     private def exportForwarders(exp: Export)(using Context): List[tpd.MemberDef] =
       val buf = new mutable.ListBuffer[tpd.MemberDef]
-      val Export(expr, selectors0) = exp
+      val Export(expr, selectors) = exp
       if expr.isEmpty then
         report.error(em"Export selector must have prefix and `.`", exp.srcPos)
         return Nil
-
-      val renamed = mutable.Set[Name]()
-      val selectors = selectors0 map {
-        case sel @ ImportSelector(imported, id @ Ident(alias), bound) if alias != nme.WILDCARD =>
-          def noAliasSelector =
-            cpy.ImportSelector(sel)(imported, EmptyTree, bound).asInstanceOf[ImportSelector]
-          if renamed.contains(alias) then
-            report.error(i"duplicate rename target", id.srcPos)
-            noAliasSelector
-          else if alias == imported.name then
-            report.warning(i"redundant rename in export", id.srcPos)
-            noAliasSelector
-          else
-            renamed += alias
-            sel
-        case sel => sel
-      }
 
       val path = typedAheadExpr(expr, AnySelectionProto)
       checkLegalExportPath(path, selectors)
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
 
+      val targets = mutable.Set[Name]()
       def canForward(mbr: SingleDenotation, alias: TermName): CanForward = {
         import CanForward.*
         val sym = mbr.symbol
@@ -1108,8 +1092,8 @@ class Namer { typer: Typer =>
           Skip
         else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
           No(i"is already a member of $cls")
-        else if alias == mbr.name.toTermName && renamed.contains(alias) then
-          No(i"clashes with a renamed export")
+        else if targets.contains(alias) then
+          No(i"clashes with another export in the same export clause")
         else if sym.is(Override) then
           sym.allOverriddenSymbols.find(
             other => cls.derivesFrom(other.owner) && !other.is(Deferred)
@@ -1208,6 +1192,7 @@ class Namer { typer: Typer =>
         val size = buf.size
         val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
         mbrs.foreach(addForwarder(alias, _, span))
+        targets += alias
         if buf.size == size then
           val reason = mbrs.map(canForward(_, alias)).collect {
             case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
