@@ -23,7 +23,11 @@ window.addEventListener("DOMContentLoaded", () => {
     e.stopPropagation()
   });
 
-  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => el.lastChild.click()))
+  document.querySelectorAll(".nh").forEach(el => el.addEventListener('click', () => {
+    el.lastChild.click()
+    el.first.addClass("expanded")
+    el.parent.addClass("expanded")
+  }))
 
   $('.names .tab').on('click', function () {
     parent = $(this).parents(".tabs").first()

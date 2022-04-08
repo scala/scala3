@@ -20,6 +20,7 @@
   padding-bottom: calc(1.25 * var(--base-spacing));
   padding-right: calc(1.25 * var(--base-spacing));
   overflow: hidden;
+  position: relative;
 }
 
 .nh > a {
@@ -99,7 +100,7 @@
 }
 
 .nh.selected > a {
-  color: var(--action-primary-content-selected);
+  color: var(--action-primary-content-selected) !important;
 }
 
 .nh.cs > a {
@@ -112,9 +113,13 @@
   color: transparent;
 }
 
-span.ar {
+button.ar {
   cursor: pointer;
   position: absolute;
+}
+
+button.ar:active ~ a:not(.nh:active) {
+  color: var(--action-primary-content-default);
 }
 
 .nh a {

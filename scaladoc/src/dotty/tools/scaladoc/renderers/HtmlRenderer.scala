@@ -123,7 +123,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         }
         Seq(
           span(cls := s"nh " + attrs.mkString(" "))(
-            if withArrow then Seq(span(cls := "ar icon-button")) else Nil,
+            if withArrow then Seq(button(cls := s"ar icon-button ${if isSelected || expanded then "expanded" else ""}")) else Nil,
             a(href := pathToPage(pageLink.dri, nav.link.dri))(icon, span(nav.link.name))
           )
         )
