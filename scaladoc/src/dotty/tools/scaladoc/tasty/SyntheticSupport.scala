@@ -29,8 +29,6 @@ object SyntheticsSupport:
       import reflect._
       s.flags.is(Flags.Opaque)
 
-    def isInfix: Boolean = hackIsInfix(s)
-
     def getmembers: List[reflect.Symbol] = hackGetmembers(s)
 
   end extension
@@ -50,14 +48,6 @@ object SyntheticsSupport:
       c.constructor.leadingTypeParams.nonEmpty && end <= typesEnd + 1
     }
 
-  // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
-  private def hackIsInfix(using Quotes)(rsym: reflect.Symbol): Boolean = {
-    import reflect._
-    import dotty.tools.dotc
-    given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-    val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
-    ctx.definitions.isInfix(sym)
-  }
   /* We need there to filter out symbols with certain flagsets, because these symbols come from compiler and TASTY can't handle them well.
   They are valdefs that describe case companion objects and cases from enum.
   TASTY crashed when calling _.tree on them.
