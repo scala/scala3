@@ -705,7 +705,7 @@ trait Applications extends Compatibility {
     def fail(msg: Message): Unit =
       ok = false
     def appPos: SrcPos = NoSourcePosition
-    @threadUnsafe lazy val normalizedFun:   Tree = ref(methRef)
+    @threadUnsafe lazy val normalizedFun: Tree = ref(methRef, needLoad = false)
     init()
   }
 
@@ -2268,7 +2268,7 @@ trait Applications extends Compatibility {
       case TypeApply(fun, args) => TypeApply(replaceCallee(fun, replacement), args)
       case _ => replacement
 
-    val methodRefTree = ref(methodRef)
+    val methodRefTree = ref(methodRef, needLoad = false)
     val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
     val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
     val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))

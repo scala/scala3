@@ -404,18 +404,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A tree representing the same reference as the given type */
-  def ref(tp: NamedType)(using Context): Tree =
+  def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree =
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
     else if (tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass))
       followOuterLinks(This(tp.symbol.moduleClass.asClass))
     else if (tp.symbol hasAnnotation defn.ScalaStaticAnnot)
       Ident(tp)
-    else {
+    else
       val pre = tp.prefix
-      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias)).select(tp)
-      else Select(TypeTree(pre), tp)
-    }
+      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias, needLoad)).select(tp)
+      else
+        val res = Select(TypeTree(pre), tp)
+        if needLoad && !res.symbol.isStatic then
+          throw new TypeError(em"cannot establish a reference to $res")
+        res
 
   def ref(sym: Symbol)(using Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
@@ -428,11 +431,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       t
   }
 
-  def singleton(tp: Type)(using Context): Tree = tp.dealias match {
-    case tp: TermRef => ref(tp)
+  def singleton(tp: Type, needLoad: Boolean = true)(using Context): Tree = tp.dealias match {
+    case tp: TermRef => ref(tp, needLoad)
     case tp: ThisType => This(tp.cls)
-    case tp: SkolemType => singleton(tp.narrow)
-    case SuperType(qual, _) => singleton(qual)
+    case tp: SkolemType => singleton(tp.narrow, needLoad)
+    case SuperType(qual, _) => singleton(qual, needLoad)
     case ConstantType(value) => Literal(value)
   }
 
