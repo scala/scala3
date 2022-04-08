@@ -354,7 +354,8 @@ object TypeTestsCasts {
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
           if (!isTrusted && !checkable(expr.tpe, argType, tree.span))
             report.uncheckedWarning(i"the type test for $argType cannot be checked at runtime", expr.srcPos)
-          transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
+          transformTypeTest(expr, tree.args.head.tpe,
+            flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }
         else if (sym.isTypeCast)
           transformAsInstanceOf(erasure(tree.args.head.tpe))
