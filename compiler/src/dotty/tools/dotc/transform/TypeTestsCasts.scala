@@ -245,9 +245,10 @@ object TypeTestsCasts {
 
           if (expr.tpe <:< testType) && inMatch then
             if expr.tpe.isNotNull then constant(expr, Literal(Constant(true)))
+            else if testCls == defn.NullClass then expr.testNull
             else expr.testNotNull
           else {
-            if expr.tpe.isBottomType then
+            if expr.tpe.widen.isNothingType then
               report.warning(TypeTestAlwaysDiverges(expr.tpe, testType), tree.srcPos)
             val nestedCtx = ctx.fresh.setNewTyperState()
             val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
@@ -263,6 +264,8 @@ object TypeTestsCasts {
                 case _ =>
                   transformIsInstanceOf(
                     expr, defn.boxedType(testCls.typeRef), testCls.typeRef, flagUnrelated)
+            else if testCls == defn.NullClass then
+              expr.testNull
             else
               derivedTree(expr, defn.Any_isInstanceOf, testType)
           }
@@ -370,5 +373,5 @@ object TypeTestsCasts {
       case _ => EmptyTree
     }
     interceptWith(expr)
-  }
+  }//.showing(i"intercept $tree -> $result")
 }

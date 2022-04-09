@@ -1005,15 +1005,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else if (!ctx.erasedTypes) cast(tp)
       else Erasure.Boxing.adaptToType(tree, tp)
 
+    /** `tree eq null` (might need a cast to be type correct) */
+    def testNull(using Context): Tree = nullTest(defn.Object_eq)
+
     /** `tree ne null` (might need a cast to be type correct) */
-    def testNotNull(using Context): Tree = {
+    def testNotNull(using Context): Tree = nullTest(defn.Object_ne)
+
+    private def nullTest(op: Symbol)(using Context) =
       val receiver = if (tree.tpe.isBottomType)
         // If the receiver is of type `Nothing` or `Null`, add an ascription so that the selection
         // succeeds: e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
         Typed(tree, TypeTree(defn.AnyRefType))
       else tree.ensureConforms(defn.ObjectType)
-      receiver.select(defn.Object_ne).appliedTo(nullLiteral).withSpan(tree.span)
-    }
+      receiver.select(op).appliedTo(nullLiteral).withSpan(tree.span)
 
     /** If inititializer tree is `_`, the default value of its type,
      *  otherwise the tree itself.
