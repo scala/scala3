@@ -182,6 +182,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      */
     def productElementBody(arity: Int, index: Tree)(using Context): Tree = {
+      ref(defn.ScalaCaseClassMethodsModule_caseProductElement).appliedTo(This(clazz), index)
+
+      /*
       // case N => _${N + 1}
       val cases = 0.until(arity).map { i =>
         val sel = This(clazz).select(nme.selectorName(i), _.info.isParameterless)
@@ -189,6 +192,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       }
 
       Match(index, (cases :+ generateIOBECase(index)).toList)
+      */
     }
 
     /** The class
@@ -276,8 +280,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val matchExpr = Match(that, List(matchingCase, defaultCase))
       if (isDerivedValueClass(clazz)) matchExpr
       else {
-        val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
-        eqCompare or matchExpr
+        ref(defn.ScalaCaseClassMethodsModule_caseEquals).appliedTo(This(clazz), that)
+       // val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
+       // eqCompare or matchExpr
       }
     }
 

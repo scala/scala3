@@ -690,6 +690,41 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
 
+    /** Generate bootstrap method arguments for a case class
+      *
+      * @param classSym case class
+      */
+    private def genCaseBootstrapMethodArgs(classSym: Symbol): Array[AnyRef] = {
+      val classTpe = classBTypeFromSymbol(classSym).toASMType
+
+      // Boostrap method arguments: `Class<?>` of the receiver and `MethodHandle` of getters
+      val bsmArgs = Array.newBuilder[AnyRef]
+      bsmArgs += classTpe
+      for (accessor <- classSym.caseAccessors) {
+
+        /* When possible, using a field method handle will be more efficient.
+         * However, a virtual call to the getter will always work if we can't
+         * otherwise be certain the case class field won't be overriden.
+         */
+        val useField = claszSymbol.is(Final) || accessor.is(Final)
+        val handleDescriptor = if (useField) {
+          toTypeKind(accessor.info.finalResultType).toASMType.getDescriptor
+        } else {
+          asmMethodType(accessor).descriptor
+        }
+        bsmArgs += new asm.Handle(
+          if (useField) Opcodes.H_GETFIELD else Opcodes.H_INVOKEVIRTUAL,
+          classTpe.getInternalName,
+          accessor.javaSimpleName,
+          handleDescriptor,
+          false // isInterface
+        )
+      }
+
+      bsmArgs.result()
+    }
+
+
     private def genApply(app: Apply, expectedType: BType): BType = {
       var generatedType = expectedType
       lineNumber(app)
@@ -758,40 +793,33 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
 
 
-        case Apply(fun, List(This(clazz))) if fun.symbol == defn.ScalaCaseClassMethodsModule_caseHashCode =>
-          val clazzTpe = classBTypeFromSymbol(claszSymbol).toASMType
-          val clazzDesc = clazzTpe.getDescriptor
-
-          // Boostrap method arguments: `Class<?>` of the receiver and `MethodHandle` of getters
-          val bsmArgs = Array.newBuilder[AnyRef]
-          bsmArgs += clazzTpe
-          for (accessor <- clazz.symbol.caseAccessors) {
-
-            /* When possible, using a field method handle will be more efficient.
-             * However, a virtual call to the getter will always work if we can't
-             * otherwise be certain the case class field won't be overriden.
-             */
-            val useField = claszSymbol.is(Final) || accessor.is(Final)
-            val handleDescriptor = if (useField) {
-              toTypeKind(accessor.info.finalResultType).toASMType.getDescriptor
-            } else {
-              asmMethodType(accessor).descriptor
-            }
-            bsmArgs += new asm.Handle(
-              if (useField) Opcodes.H_GETFIELD else Opcodes.H_INVOKEVIRTUAL,
-              clazzTpe.getInternalName,
-              accessor.javaSimpleName,
-              handleDescriptor,
-              false // isInterface
-            )
-          }
-
-          mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
+        case Apply(fun, List(arg @ This(clazz))) if fun.symbol == defn.ScalaCaseClassMethodsModule_caseHashCode =>
+          genLoad(arg)
           mnode.visitInvokeDynamicInsn(
             "hashCode",
-            "(" + clazzDesc + ")I",
+            "(" + toTypeKind(arg.tpe).descriptor + ")I",
             caseClassMethodsBootstrapHandle,
-            bsmArgs.result(): _*
+            genCaseBootstrapMethodArgs(clazz.symbol): _*
+          )
+
+        case Apply(fun, List(arg @ This(clazz), other)) if fun.symbol == defn.ScalaCaseClassMethodsModule_caseEquals =>
+          genLoad(arg)
+          genLoad(other)
+          mnode.visitInvokeDynamicInsn(
+            "equals",
+            "(" + toTypeKind(arg.tpe).descriptor + "Ljava/lang/Object;)Z",
+            caseClassMethodsBootstrapHandle,
+            genCaseBootstrapMethodArgs(clazz.symbol): _*
+          )
+
+        case Apply(fun, List(arg @ This(clazz), index)) if fun.symbol == defn.ScalaCaseClassMethodsModule_caseProductElement =>
+          genLoad(arg)
+          genLoad(index)
+          mnode.visitInvokeDynamicInsn(
+            "productElement",
+            "(" + toTypeKind(arg.tpe).descriptor + "I)Ljava/lang/Object;",
+            caseClassMethodsBootstrapHandle,
+            genCaseBootstrapMethodArgs(clazz.symbol): _*
           )
 
         case app @ Apply(fun, args) =>
