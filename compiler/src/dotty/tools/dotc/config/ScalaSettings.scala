@@ -261,6 +261,7 @@ private sealed trait YSettings:
   val YdebugTreeWithId: Setting[Int] = IntSetting("-Ydebug-tree-with-id", "Print the stack trace when the tree with the given id is created.", Int.MinValue)
   val YdebugTypeError: Setting[Boolean] = BooleanSetting("-Ydebug-type-error", "Print the stack trace when a TypeError is caught", false)
   val YdebugError: Setting[Boolean] = BooleanSetting("-Ydebug-error", "Print the stack trace when any error is caught.", false)
+  val YdebugUnpickling: Setting[Boolean] = BooleanSetting("-Ydebug-unpickling", "Print the stack trace when an error occurs when reading Tasty.", false)
   val YtermConflict: Setting[String] = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog: Setting[List[String]] = PhasesSetting("-Ylog", "Log operations during")
   val YlogClasspath: Setting[Boolean] = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")

@@ -115,10 +115,25 @@ class TreeUnpickler(reader: TastyReader,
     val owner = ctx.owner
     val source = ctx.source
     def complete(denot: SymDenotation)(using Context): Unit =
-      treeAtAddr(currentAddr) = atPhaseBeforeTransforms {
-        new TreeReader(reader).readIndexedDef()(
-          using ctx.withOwner(owner).withSource(source))
-      }
+      def fail(ex: Throwable) =
+        def where =
+          val f = denot.symbol.associatedFile
+          if f == null then "" else s" in $f"
+        if ctx.settings.YdebugUnpickling.value then throw ex
+        else throw TypeError(
+          em"""Could not read definition of $denot$where
+              |An exception was encountered:
+              |  $ex
+              |Run with -Ydebug-unpickling to see full stack trace.""")
+      treeAtAddr(currentAddr) =
+        try
+          atPhaseBeforeTransforms {
+            new TreeReader(reader).readIndexedDef()(
+              using ctx.withOwner(owner).withSource(source))
+          }
+        catch
+          case ex: AssertionError => fail(ex)
+          case ex: Exception => fail(ex)
   }
 
   class TreeReader(val reader: TastyReader) {
