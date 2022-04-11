@@ -6,7 +6,7 @@ import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._, ContextOps._
 import Decorators._, transform.SymUtils._
-import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
+import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition, Chars}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
@@ -1109,8 +1109,12 @@ object desugar {
    *  ValDef or DefDef.
    */
   def makePatDef(original: Tree, mods: Modifiers, pat: Tree, rhs: Tree)(using Context): Tree = pat match {
-    case IdPattern(named, tpt) =>
-      derivedValDef(original, named, tpt, rhs, mods)
+    case IdPattern(id, tpt) =>
+      val id1 =
+        if id.name == nme.WILDCARD
+        then cpy.Ident(id)(WildcardParamName.fresh())
+        else id
+      derivedValDef(original, id1, tpt, rhs, mods)
     case _ =>
 
       def filterWildcardGivenBinding(givenPat: Bind): Boolean =
