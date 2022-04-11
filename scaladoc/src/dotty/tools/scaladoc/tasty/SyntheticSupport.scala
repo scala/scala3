@@ -34,25 +34,16 @@ object SyntheticsSupport:
       c.constructor.leadingTypeParams.nonEmpty && end <= typesEnd + 1
     }
 
-  /* We need there to filter out symbols with certain flagsets, because these symbols come from compiler and TASTY can't handle them well.
-  They are valdefs that describe case companion objects and cases from enum.
-  TASTY crashed when calling _.tree on them.
-  */
-
   def getSupertypes(using Quotes)(c: reflect.ClassDef) =
     c.symbol.typeRef.baseClasses.map(b => b -> c.symbol.typeRef.baseType(b)).tail
 
   def typeForClass(using Quotes)(c: reflect.ClassDef): reflect.TypeRepr =
     c.symbol.typeRef.appliedTo(c.symbol.typeMembers.filter(_.isTypeParam).map(_.typeRef))
 
-  def memberInfo(using Quotes)(c: reflect.ClassDef, symbol: reflect.Symbol): reflect.TypeRepr =
-    import reflect._
-    import dotty.tools.dotc
-    given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-    typeForClass(c).asInstanceOf[dotc.core.Types.Type]
-      .memberInfo(symbol.asInstanceOf[dotc.core.Symbols.Symbol])
-      .asInstanceOf[TypeRepr]
-
+  /* We need there to filter out symbols with certain flagsets, because these symbols come from compiler and TASTY can't handle them well.
+    They are valdefs that describe case companion objects and cases from enum.
+    TASTY crashed when calling _.tree on them.
+    */
   private def hackGetmembers(using Quotes)(rsym: reflect.Symbol): List[reflect.Symbol] = {
     import reflect._
     import dotty.tools.dotc

@@ -485,7 +485,7 @@ trait ClassLikeSupport:
 
 
   def unwrapMemberInfo(c: ClassDef, symbol: Symbol): MemberInfo =
-    val baseTypeRepr = memberInfo(c, symbol)
+    val baseTypeRepr = typeForClass(c).memberType(symbol)
 
     def isSyntheticEvidence(name: String) =
       if !name.startsWith(NameKinds.EvidenceParamName.separator) then false else
