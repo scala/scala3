@@ -8,6 +8,7 @@ import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+
 import static java.lang.invoke.MethodType.methodType;
 
 /** Exposes bootstrap method for abstracting away boilerplate implementations
@@ -74,7 +75,8 @@ public final class CaseClassMethods {
 
       PRIMITIVE_HASHER_HANDLES = new HashMap<Class<?>, MethodHandle>();
       final var primHashTypes = Arrays.asList(
-        byte.class, short.class, char.class, int.class, boolean.class
+        byte.class, short.class, char.class, int.class, boolean.class,
+        BoxedUnit.class, Null$.class
       );
       for (final var primType : primHashTypes) {
         PRIMITIVE_HASHER_HANDLES.put(
@@ -141,6 +143,7 @@ public final class CaseClassMethods {
     TABLESWITCH_HANDLE = tableSwitchHandle;
   }
 
+  private CaseClassMethods() { }
 
   public static ConstantCallSite bootstrap(
     MethodHandles.Lookup lookup,
@@ -235,12 +238,11 @@ public final class CaseClassMethods {
 
     // Accumulator of type `(LMyCaseClass;LMyCaseClass;)Z`
     var accEqual = shortCutTrue;
-    final var accType = accEqual.type();
 
     // Invoke `canEqual`
     if (canEqualHandle != null) {
       accEqual = MethodHandles.guardWithTest(
-        canEqualHandle.asType(accType),
+        canEqualHandle.asType(accEqual.type()),
         accEqual,
         shortCutFalse
       );
@@ -318,6 +320,7 @@ public final class CaseClassMethods {
       MethodHandles.filterReturnValue(productPrefixHandle, STRINGHASHCODE_HANDLE),
       MethodHandles.insertArguments(MIX_HANDLE, 0, 0xcafebabe)
     );
+    final var accHashType = accHash.type();
 
     // Fold over fields, adding each field into the `accHash` handle
     for (final var fieldHandle : fieldHandles) {
@@ -326,13 +329,13 @@ public final class CaseClassMethods {
       // Handle of type `(LMyCaseClass;)I` for hashing just this field
       final var fieldHash = MethodHandles.filterReturnValue(
         fieldHandle,
-        PRIMITIVE_HASHER_HANDLES.getOrDefault(fieldType, ANYHASH_HANDLE.asType(methodType(int.class, fieldType)))
+        fieldHashHandle(fieldType)
       );
 
       // Mix this field's hasher back into the accumulator hasher
       accHash = MethodHandles.permuteArguments(
         MethodHandles.filterArguments(MIX_HANDLE, 0, accHash, fieldHash),
-        accHash.type(),
+        accHashType,
         0,
         0
       );
@@ -345,6 +348,21 @@ public final class CaseClassMethods {
     );
 
     return finalizedHash;
+  }
+
+  /**
+   * Hash a single field of the specified type.
+   *
+   * @param fieldType field to hash
+   * @return handle taking the field type as input and returning an `int`
+   */
+  private static MethodHandle fieldHashHandle(Class<?> fieldType) {
+    final var hasher = PRIMITIVE_HASHER_HANDLES.get(fieldType);
+    if (hasher != null) {
+      return hasher;
+    } else {
+      return ANYHASH_HANDLE.asType(methodType(int.class, fieldType));
+    }
   }
 
   /**
@@ -487,5 +505,11 @@ public final class CaseClassMethods {
   }
   private static int hash(int a) {
     return a;
+  }
+  private static int hash(BoxedUnit a) {
+    return 0;
+  }
+  private static int hash(Null$ a) {
+    return 0;
   }
 }
