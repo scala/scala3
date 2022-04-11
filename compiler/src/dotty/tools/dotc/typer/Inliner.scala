@@ -205,6 +205,7 @@ object Inliner {
       case _ => Nil
     val unapplyInfo = sym.info match
       case info: PolyType => info.instantiate(targs.map(_.tpe))
+      case MethodTpe(_, _, rest) if sym.flags.is(ExtensionMethod) => rest
       case info => info
 
     val unappplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
