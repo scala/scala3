@@ -244,15 +244,23 @@ abstract class Reporter extends interfaces.ReporterResult {
    */
   def hasUnreportedErrors: Boolean = false
 
+  /** Does this reporter contain any message that have yet to be reported by its outer reporter ?
+   *  This includes any warning stored in `unreportedWarnings` which need to be propagated to
+   *  get an accurate count of unreported warnings in the outer reporter.
+   */
+  def hasUnreportedMessages(using Context): Boolean =
+    pendingMessages.nonEmpty || unreportedWarnings.nonEmpty
+
   /** If this reporter buffers messages, remove and return all buffered messages. */
   def removeBufferedMessages(using Context): List[Diagnostic] = Nil
 
-  /** Issue all error messages in this reporter to next outer one, or make sure they are written. */
+  /** Issue all messages in this reporter to next outer one, or make sure they are written. */
   def flush()(using Context): Unit =
     val msgs = removeBufferedMessages
     if msgs.nonEmpty then msgs.foreach(ctx.reporter.report)
     for (key, count) <- unreportedWarnings do
       ctx.reporter.addUnreported(key, count)
+    unreportedWarnings = Map.empty
 
   /** If this reporter buffers messages, all buffered messages, otherwise Nil */
   def pendingMessages(using Context): List[Diagnostic] = Nil
