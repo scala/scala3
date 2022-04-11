@@ -947,8 +947,11 @@ object Types {
     final def possibleSamMethods(using Context): Seq[SingleDenotation] = {
       record("possibleSamMethods")
       atPhaseNoLater(erasurePhase) {
-        abstractTermMembers.toList.filterConserve(m =>
-          !m.symbol.matchingMember(defn.ObjectType).exists && !m.symbol.isSuperAccessor)
+        abstractTermMembers.toList.filterConserve { m =>
+          !m.symbol.matchingMember(defn.ObjectType).exists
+          && !m.symbol.isSuperAccessor
+          && !m.symbol.isInlineMethod
+        }
       }.map(_.current)
     }
 
@@ -5353,6 +5356,7 @@ object Types {
    *
    *   - has a single abstract method with a method type (ExprType
    *     and PolyType not allowed!) whose result type is not an implicit function type
+   *     and which is not marked inline.
    *   - can be instantiated without arguments or with just () as argument.
    *
    *  The pattern `SAMType(sam)` matches a SAM type, where `sam` is the
