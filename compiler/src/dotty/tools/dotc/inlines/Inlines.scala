@@ -190,20 +190,13 @@ object Inlines:
     val cls = newNormalizedClassSymbol(ctx.owner, tpnme.ANON_CLASS, Synthetic | Final, List(defn.ObjectType), coord = sym.coord)
     val constr = newConstructor(cls, Synthetic, Nil, Nil, coord = sym.coord).entered
 
-    val targs = fun match
-      case TypeApply(_, targs) => targs
-      case _ => Nil
-    val unapplyInfo = sym.info match
-      case info: PolyType => info.instantiate(targs.map(_.tpe))
-      case info => info
-
-    val unappplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
-    val unapply = DefDef(unappplySym, argss =>
-      inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
+    val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, fun.tpe.widen, coord = sym.coord).entered
+    val unapply = DefDef(unapplySym, argss =>
+      inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unapplySym))
     )
     val cdef = ClassDef(cls, DefDef(constr), List(unapply))
     val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
-    val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
+    val newFun = newUnapply.select(unapplySym).withSpan(unapp.span)
     cpy.UnApply(unapp)(newFun, implicits, patterns)
   end inlinedUnapply
 
