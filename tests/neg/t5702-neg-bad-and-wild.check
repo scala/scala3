@@ -1,0 +1,58 @@
+-- [E032] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:10:22 ---------------------------------------------------
+10 |      case List(1, _*,) => // error: pattern expected
+   |                      ^
+   |                      pattern expected
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E032] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:12:23 ---------------------------------------------------
+12 |      case List(1, _*3,) => // error: pattern expected // error
+   |                       ^
+   |                       pattern expected
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E040] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:13:23 ---------------------------------------------------
+13 |      case List(1, _*3:) =>  // error // error
+   |                       ^
+   |                       an identifier expected, but ')' found
+-- [E032] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:15:18 ---------------------------------------------------
+15 |      case List(x*, 1) => // error: pattern expected
+   |                  ^
+   |                  pattern expected
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E031] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:17:18 ---------------------------------------------------
+17 |      case (1, x: _*) => // error: bad use of _* (sequence pattern not allowed)
+   |                  ^
+   |                  * can be used only for last argument
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E032] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:23:17 ---------------------------------------------------
+23 |    val K(ns @ _*, xx) = k // error: pattern expected // error
+   |                 ^
+   |                 pattern expected
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E161] Naming Error: tests/neg/t5702-neg-bad-and-wild.scala:24:10 ---------------------------------------------------
+24 |    val K(x) = k // error: x is already defined as value x
+   |    ^^^^^^^^^^^^
+   |    x is already defined as value x
+   |
+   |    Note that overloaded methods must all be defined in the same group of toplevel definitions
+-- [E006] Not Found Error: tests/neg/t5702-neg-bad-and-wild.scala:12:20 ------------------------------------------------
+12 |      case List(1, _*3,) => // error: pattern expected // error
+   |                    ^
+   |                    Not found: *
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/t5702-neg-bad-and-wild.scala:13:20 ------------------------------------------------
+13 |      case List(1, _*3:) =>  // error // error
+   |                    ^
+   |                    Not found: *
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E045] Cyclic Error: tests/neg/t5702-neg-bad-and-wild.scala:23:19 ---------------------------------------------------
+23 |    val K(ns @ _*, xx) = k // error: pattern expected // error
+   |                   ^
+   |                   Recursive value $1$ needs type
+   |
+   | longer explanation available when compiling with `-explain`

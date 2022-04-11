@@ -7,6 +7,8 @@
 package dotty.tools
 package io
 
+import scala.language.unsafeNulls
+
 import java.net.MalformedURLException
 import java.net.URL
 import java.util.regex.PatternSyntaxException

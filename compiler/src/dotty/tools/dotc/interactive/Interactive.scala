@@ -2,7 +2,8 @@ package dotty.tools
 package dotc
 package interactive
 
-import scala.annotation.tailrec
+import scala.language.unsafeNulls
+
 import scala.collection._
 
 import ast.{NavigateAST, Trees, tpd, untpd}
@@ -11,10 +12,6 @@ import Decorators._, ContextOps._
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
 import transform.SymUtils._
 import util.Spans._, util.SourceFile, util.SourcePosition
-import core.Denotations.SingleDenotation
-import NameKinds.SimpleNameKind
-import config.Printers.interactiv
-import StdNames.nme
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.
  *
@@ -252,14 +249,14 @@ object Interactive {
    *  the tree closest enclosing `pos` and ends with an element of `trees`.
    */
   def pathTo(trees: List[SourceTree], pos: SourcePosition)(using Context): List[Tree] =
-    trees.find(_.pos.contains(pos)) match {
-      case Some(tree) => pathTo(tree.tree, pos.span)
-      case None => Nil
-    }
+    pathTo(trees.map(_.tree), pos.span)
 
   def pathTo(tree: Tree, span: Span)(using Context): List[Tree] =
-    if (tree.span.contains(span))
-      NavigateAST.pathTo(span, tree, skipZeroExtent = true)
+    pathTo(List(tree), span)
+
+  private def pathTo(trees: List[Tree], span: Span)(using Context): List[Tree] =
+    if (trees.exists(_.span.contains(span)))
+      NavigateAST.pathTo(span, trees, skipZeroExtent = true)
         .collect { case t: untpd.Tree => t }
         .dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
     else Nil

@@ -6,13 +6,11 @@ import ast.tpd
 import core.Constants.Constant
 import core.Contexts._
 import core.Denotations.SingleDenotation
-import core.Flags.Implicit
-import core.Names.TermName
 import util.Spans.Span
 import core.Types.{ErrorType, MethodType, PolyType}
 import reporting._
 
-import scala.collection.JavaConverters._
+import dotty.tools.dotc.core.Types.Type
 
 object Signatures {
 
@@ -51,30 +49,38 @@ object Signatures {
    */
   def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
     path match {
+      case UnApply(fun, _, patterns) :: _ =>
+        callInfo(span, patterns, fun, Signatures.countParams(fun))
       case Apply(fun, params) :: _ =>
-        val alreadyAppliedCount = Signatures.countParams(fun)
-        val paramIndex = params.indexWhere(_.span.contains(span)) match {
-          case -1 => (params.length - 1 max 0) + alreadyAppliedCount
-          case n => n + alreadyAppliedCount
-        }
-
-        val (alternativeIndex, alternatives) = fun.tpe match {
-          case err: ErrorType =>
-            val (alternativeIndex, alternatives) = alternativesFromError(err, params)
-            (alternativeIndex, alternatives)
-
-          case _ =>
-            val funSymbol = fun.symbol
-            val alternatives = funSymbol.owner.info.member(funSymbol.name).alternatives
-            val alternativeIndex = alternatives.map(_.symbol).indexOf(funSymbol) max 0
-            (alternativeIndex, alternatives)
-        }
-
-        (paramIndex, alternativeIndex, alternatives)
-
+        callInfo(span, params, fun, Signatures.countParams(fun))
       case _ =>
         (0, 0, Nil)
     }
+
+  def callInfo(
+    span: Span,
+    params: List[Tree[Type]], 
+    fun: Tree[Type], 
+    alreadyAppliedCount : Int
+  )(using Context): (Int, Int, List[SingleDenotation]) =
+    val paramIndex = params.indexWhere(_.span.contains(span)) match {
+      case -1 => (params.length - 1 max 0) + alreadyAppliedCount
+      case n => n + alreadyAppliedCount
+    }
+
+    val (alternativeIndex, alternatives) = fun.tpe match {
+      case err: ErrorType =>
+        val (alternativeIndex, alternatives) = alternativesFromError(err, params)
+        (alternativeIndex, alternatives)
+
+      case _ =>
+        val funSymbol = fun.symbol
+        val alternatives = funSymbol.owner.info.member(funSymbol.name).alternatives
+        val alternativeIndex = alternatives.map(_.symbol).indexOf(funSymbol) max 0
+        (alternativeIndex, alternatives)
+    }
+
+    (paramIndex, alternativeIndex, alternatives)
 
   def toSignature(denot: SingleDenotation)(using Context): Option[Signature] = {
     val symbol = denot.symbol

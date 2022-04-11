@@ -3,9 +3,7 @@ package dotty.tools
 import org.junit.Test
 import org.junit.Assert.{ assertFalse, assertTrue, fail }
 
-import dotc.ast.Trees._
-import dotc.core.Decorators._
-import dotc.core.Contexts.{Context, ctx}
+import dotc.core.Contexts.Context
 
 class CheckTypeTest extends DottyTest {
   @Test

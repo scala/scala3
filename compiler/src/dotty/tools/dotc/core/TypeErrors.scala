@@ -18,8 +18,8 @@ class TypeError(msg: String) extends Exception(msg) {
   def this() = this("")
   final def toMessage(using Context): Message =
     withMode(Mode.Printing)(produceMessage)
-  def produceMessage(using Context): Message = super.getMessage
-  override def getMessage: String = super.getMessage
+  def produceMessage(using Context): Message = super.getMessage.nn
+  override def getMessage: String = super.getMessage.nn
 }
 
 class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name]) extends TypeError {
@@ -78,7 +78,7 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
   }
 
   override def fillInStackTrace(): Throwable = this
-  override def getStackTrace(): Array[StackTraceElement] = previous.getStackTrace()
+  override def getStackTrace(): Array[StackTraceElement] = previous.getStackTrace().asInstanceOf
 }
 
 /** Post-process exceptions that might result from StackOverflow to add
@@ -95,7 +95,7 @@ object handleRecursive {
         case _: RecursionOverflow =>
           throw new RecursionOverflow(op, details, exc, weight)
         case _ =>
-          var e = exc
+          var e: Throwable | Null = exc
           while (e != null && !e.isInstanceOf[StackOverflowError]) e = e.getCause
           if (e != null) throw new RecursionOverflow(op, details, e, weight)
           else throw exc
@@ -155,7 +155,8 @@ object CyclicReference {
     val ex = new CyclicReference(denot)
     if (!(ctx.mode is Mode.CheckCyclic) || ctx.settings.Ydebug.value) {
       cyclicErrors.println(s"Cyclic reference involving! $denot")
-      for (elem <- ex.getStackTrace take 200)
+      val sts = ex.getStackTrace.asInstanceOf[Array[StackTraceElement]]
+      for (elem <- sts take 200)
         cyclicErrors.println(elem.toString)
     }
     ex

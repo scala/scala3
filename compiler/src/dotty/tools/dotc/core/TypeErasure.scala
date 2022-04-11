@@ -77,7 +77,7 @@ object TypeErasure {
   def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
       if (defn.specialErasure.contains(cls))
-        return defn.specialErasure(cls)
+        return defn.specialErasure(cls).uncheckedNN
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass
     }
@@ -688,7 +688,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
   private def erasePair(tp: Type)(using Context): Type = {
     val arity = tp.tupleArity
     if (arity < 0) defn.ProductClass.typeRef
-    else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity)
+    else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity).nn
     else defn.TupleXXLClass.typeRef
   }
 

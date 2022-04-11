@@ -16,18 +16,16 @@ import Denotations._
 import SymDenotations._
 import StdNames.{nme, tpnme}
 import ast.{Trees, untpd}
-import typer.{Implicits, Namer, Applications}
+import typer.{Implicits, Namer}
 import typer.ProtoTypes._
 import Trees._
 import TypeApplications._
-import Decorators._
 import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
 import transform.TypeUtils._
 import transform.SymUtils._
 
-import language.implicitConversions
-import dotty.tools.dotc.util.{NameTransformer, SourcePosition}
+import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -558,9 +556,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case TypeBoundsTree(lo, hi, alias) =>
         if (lo eq hi) && alias.isEmpty then optText(lo)(" = " ~ _)
         else optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _) ~ optText(alias)(" = " ~ _)
-      case Bind(name, body) =>
+      case bind @ Bind(name, body) =>
         keywordText("given ").provided(tree.symbol.isOneOf(GivenOrImplicit) && !homogenizedView) ~ // Used for scala.quoted.Type in quote patterns (not pickled)
-        changePrec(InfixPrec) { toText(name) ~ " @ " ~ toText(body) }
+        changePrec(InfixPrec) { nameIdText(bind) ~ " @ " ~ toText(body) }
       case Alternative(trees) =>
         changePrec(OrPrec) { toText(trees, " | ") }
       case UnApply(fun, implicits, patterns) =>
@@ -845,7 +843,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     paramss.foldLeft(leading)((txt, params) => txt ~ paramsText(params))
 
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
-    import untpd._
     dclTextOr(tree) {
       modText(tree.mods, tree.symbol, keywordStr(if (tree.mods.is(Mutable)) "var" else "val"), isType = false) ~~
         valDefText(nameIdText(tree)) ~ optAscription(tree.tpt) ~
@@ -1040,7 +1037,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if (sym.is(ModuleClass) && sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE)
         nameString(sym.owner.name)
       else if (sym.is(ModuleClass))
-        nameString(sym.name.stripModuleClassSuffix)
+        nameString(sym.name.stripModuleClassSuffix) + idString(sym)
       else if (hasMeaninglessName(sym))
         simpleNameString(sym.owner) + idString(sym)
       else

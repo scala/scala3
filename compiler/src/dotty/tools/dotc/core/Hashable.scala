@@ -8,13 +8,17 @@ import annotation.tailrec
 object Hashable {
 
   /** A null terminated list of BindingTypes. We use `null` here for efficiency */
-  class Binders(val tp: BindingType, val next: Binders)
+  class SomeBinders(val tp: BindingType, val next: Binders)
+
+  type Binders = SomeBinders | Null
 
   /** A null terminated list of pairs of BindingTypes. Used for isomorphism tests. */
-  class BinderPairs(tp1: BindingType, tp2: BindingType, next: BinderPairs) {
+  class SomeBinderPairs(tp1: BindingType, tp2: BindingType, next: BinderPairs) {
     @tailrec final def matches(t1: Type, t2: Type): Boolean =
       (t1 `eq` tp1) && (t2 `eq` tp2) || next != null && next.matches(t1, t2)
   }
+
+  type BinderPairs = SomeBinderPairs | Null
 
   /** A hash value indicating that the underlying type is not
    *  cached in uniques.

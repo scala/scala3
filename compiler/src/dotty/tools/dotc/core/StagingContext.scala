@@ -2,14 +2,9 @@ package dotty.tools.dotc.core
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.transform.PCPCheckAndHeal
-
-import scala.collection.mutable
 
 object StagingContext {
 

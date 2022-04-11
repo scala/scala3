@@ -9,7 +9,6 @@ import dotc.reporting.StoreReporter
 import dotc.util.{SourceFile, SourcePosition}
 import dotc.util.Spans.Span
 
-import org.junit.Assert._
 import org.junit.Test
 
 class CustomCompletionTests extends DottyTest:
@@ -44,7 +43,7 @@ class CustomCompletionTests extends DottyTest:
       given ctx: Context = run.runContext.withSource(file)
       val unit = CompilationUnit(file)
       ctx
-        .run
+        .run.nn
         .compileUnits(unit :: Nil, ctx)
 
       // ignoring compilation errors here - the input code

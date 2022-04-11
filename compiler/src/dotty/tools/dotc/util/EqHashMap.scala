@@ -6,7 +6,6 @@ package dotty.tools.dotc.util
 class EqHashMap[Key, Value]
     (initialCapacity: Int = 8, capacityMultiple: Int = 2)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
-  import GenericHashMap.DenseLimit
 
   /** Hashcode is identityHashCode left-shifted by 1, so lowest bit is not lost
    *  when taking the index.
@@ -69,7 +68,7 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
     setKey(idx, key)
     setValue(idx, value)
 
-  override def copyFrom(oldTable: Array[AnyRef]): Unit =
+  override def copyFrom(oldTable: Array[AnyRef | Null]): Unit =
     if isDense then
       Array.copy(oldTable, 0, table, 0, oldTable.length)
     else

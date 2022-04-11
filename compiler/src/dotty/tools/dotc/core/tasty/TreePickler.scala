@@ -3,22 +3,18 @@ package dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import dotty.tools.tasty.TastyFormat._
 import dotty.tools.tasty.TastyBuffer._
 
 import ast.Trees._
 import ast.{untpd, tpd}
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
-import Denotations.MultiDenotation
 import Comments.{Comment, CommentsContext}
-import typer.Inliner
 import NameKinds._
 import StdNames.nme
 import transform.SymUtils._
-import printing.Printer
-import printing.Texts._
-import util.SourceFile
-import annotation.constructorOnly
 import collection.mutable
 import dotty.tools.tasty.TastyFormat.ASTsSection
 

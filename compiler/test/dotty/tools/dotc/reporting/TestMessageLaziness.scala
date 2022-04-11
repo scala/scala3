@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 
-import org.junit.Assert._
 import org.junit.Test
 import core.Contexts._
 
@@ -17,7 +16,7 @@ class TestMessageLaziness extends DottyTest {
   }
 
   case class LazyError() extends Message(ErrorMessageID.LazyErrorId) {
-    val kind = "Test"
+    val kind = MessageKind.NoKind
     def msg = throw new Error("Didn't stay lazy.")
     def explain = ""
   }

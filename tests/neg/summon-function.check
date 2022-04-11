@@ -1,4 +1,4 @@
 -- Error: tests/neg/summon-function.scala:2:23 -------------------------------------------------------------------------
 2 |  summon[Int => String] // error
   |                       ^
-  |            no implicit argument of type Int => String was found for parameter x of method summon in object Predef
+  |               no given instance of type Int => String was found for parameter x of method summon in object Predef

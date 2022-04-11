@@ -1,8 +1,9 @@
 package dotty.tools.scripting
 
+import scala.language.unsafeNulls
+
 import java.nio.file.{ Files, Paths, Path }
 import java.io.File
-import java.net.{ URLClassLoader }
 
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts, Contexts.{ Context, ctx }

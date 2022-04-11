@@ -18,7 +18,6 @@ import Signature.MatchDegree._
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
-import config.Feature.migrateTo3
 import config.Config
 import config.Printers.overload
 import util.common._
@@ -290,7 +289,7 @@ object Denotations {
                        name: Name,
                        site: Denotation = NoDenotation,
                        args: List[Type] = Nil,
-                       source: AbstractFile = null,
+                       source: AbstractFile | Null = null,
                        generateStubs: Boolean = true)
                       (p: Symbol => Boolean)
                       (using Context): Symbol =
@@ -404,7 +403,7 @@ object Denotations {
           }
         case denot1: SingleDenotation =>
           if (denot1 eq denot2) denot1
-          else if (denot1.matches(denot2)) mergeSingleDenot(denot1, denot2)
+          else if denot1.matches(denot2) then mergeSingleDenot(denot1, denot2)
           else NoDenotation
       }
 
@@ -439,8 +438,11 @@ object Denotations {
             else defn.RootClass)
 
         def isHidden(sym: Symbol) = sym.exists && !sym.isAccessibleFrom(pre)
-        val hidden1 = isHidden(sym1)
-        val hidden2 = isHidden(sym2)
+        // In typer phase filter out denotations with symbols that are not
+        // accessible. After typer, this is not possible since we cannot guarantee
+        // that the current owner is set correctly. See pos/14660.scala.
+        val hidden1 = isHidden(sym1) && ctx.isTyper
+        val hidden2 = isHidden(sym2) && ctx.isTyper
         if hidden1 && !hidden2 then denot2
         else if hidden2 && !hidden1 then denot1
         else
@@ -467,11 +469,12 @@ object Denotations {
                 else if sym1.is(Method) && !sym2.is(Method) then 1
                 else 0
 
+          val relaxedOverriding = ctx.explicitNulls && (sym1.is(JavaDefined) || sym2.is(JavaDefined))
           val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
 
-          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false) then
+          if symScore <= 0 && info2.overrides(info1, relaxedOverriding, matchLoosely, checkClassInfo = false) then
             denot2
-          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false) then
+          else if symScore >= 0 && info1.overrides(info2, relaxedOverriding, matchLoosely, checkClassInfo = false) then
             denot1
           else
             val jointInfo = infoMeet(info1, info2, safeIntersection)
@@ -1318,8 +1321,10 @@ object Denotations {
         }
         recurSimple(path.length, wrap)
     }
-    if ctx.run == null then recur(path)
-    else ctx.run.staticRefs.getOrElseUpdate(path, recur(path))
+
+    val run = ctx.run
+    if run == null then recur(path)
+    else run.staticRefs.getOrElseUpdate(path, recur(path))
   }
 
   /** If we are looking for a non-existing term name in a package,

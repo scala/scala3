@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import util.Spans._
-import util.{SourceFile, NoSource, SourcePosition, SrcPos}
+import util.{SourceFile, SourcePosition, SrcPos}
 import core.Contexts._
 import core.Decorators._
 import core.NameOps._
@@ -12,9 +12,6 @@ import core.StdNames.nme
 import ast.Trees.mods
 import annotation.constructorOnly
 import annotation.internal.sharable
-import reporting.Reporter
-
-import java.io.{ PrintWriter }
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
@@ -29,13 +26,13 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    *  is set, -1 otherwise.
    */
   def uniqueId: Int =
-    if ids != null && ids.containsKey(this) then ids.get(this) else -1
+    if ids != null && ids.nn.containsKey(this) then ids.nn.get(this).nn else -1
 
   private def allocateId() =
     if ids != null then
       val ownId = nextId
       nextId += 1
-      ids.put(this, ownId)
+      ids.nn.put(this, ownId)
       if ownId == debugId then
         println(s"Debug tree (id=$debugId) creation \n$this\n")
         Thread.dumpStack()
@@ -163,7 +160,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    */
   def checkPos(nonOverlapping: Boolean)(using Context): Unit = try {
     import untpd._
-    var lastPositioned: Positioned = null
+    var lastPositioned: Positioned | Null = null
     var lastSpan = NoSpan
     def check(p: Any): Unit = p match {
       case p: Positioned =>
@@ -237,7 +234,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
 
 object Positioned {
   @sharable private var debugId = Int.MinValue
-  @sharable private var ids: java.util.WeakHashMap[Positioned, Int] = null
+  @sharable private var ids: java.util.WeakHashMap[Positioned, Int] | Null = null
   @sharable private var nextId: Int = 0
 
   def init(using Context): Unit =

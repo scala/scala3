@@ -5,10 +5,8 @@ import core._
 import MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Contexts._
 import ast._
-import Trees._
 import Flags._
 import Symbols._
-import Decorators._
 import ExplicitOuter.isOuterParamAccessor
 
 import collection.mutable

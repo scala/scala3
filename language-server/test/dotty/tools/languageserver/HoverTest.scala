@@ -213,4 +213,34 @@ class HoverTest {
       // sp the top-level definitions should be enclosed in an object called `Source0$package`.
       .hover(m1 to m2, hoverContent("(hello.Source0$package : hello.Source0$package.type)"))
   }
+
+  @Test def enumsRepeated: Unit = {
+    code"""|package example
+           |object SimpleEnum:
+           |  enum Color:
+           |    case ${m1}Red${m2}, Green, Blue
+           |""".withSource
+      .hover(m1 to m2, hoverContent("example.SimpleEnum.Color"))
+  }
+  
+  @Test def enums: Unit = {
+    code"""|package example
+           |enum TestEnum3:
+           | case ${m1}A${m2} // no tooltip
+           |
+           |""".withSource
+      .hover(m1 to m2, hoverContent("example.TestEnum3"))
+  }
+  
+  @Test def tuple: Unit = {
+    code"""|object A:
+           |  val (${m1}first${m2}, second) = (1.0, 2)""".withSource
+      .hover(m1 to m2, hoverContent("Double"))
+  }
+
+  @Test def multiAssigment: Unit = {
+    code"""|val ${m1}x${m2}, ${m3}y${m4} = 42.0""".withSource
+      .hover(m1 to m2, hoverContent("Double"))
+      .hover(m3 to m4, hoverContent("Double"))
+  }
 }

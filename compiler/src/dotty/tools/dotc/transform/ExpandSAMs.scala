@@ -8,10 +8,7 @@ import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Consta
 import MegaPhase._
 import SymUtils._
 import NullOpsDecorator._
-import ast.Trees._
 import ast.untpd
-import reporting._
-import dotty.tools.dotc.util.Spans.Span
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
  *  These fall into five categories
@@ -127,7 +124,7 @@ class ExpandSAMs extends MiniPhase:
     val parents = List(
       defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType),
       defn.SerializableType)
-    val pfSym = newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, newScope, coord = tree.span)
+    val pfSym = newNormalizedClassSymbol(anonSym.owner, tpnme.ANON_CLASS, Synthetic | Final, parents, coord = tree.span)
 
     def overrideSym(sym: Symbol) = sym.copy(
       owner = pfSym,

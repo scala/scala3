@@ -14,7 +14,7 @@ object ErrorMessageID {
   final val NoExplanationID = $new(1, "NoExplanationID")
 
   private[this] val $values: Array[ErrorMessageID] =
-    Array(this.LazyErrorId, this.NoExplanationID) // error // error
+    Array(this.LazyErrorId, this.NoExplanationID) // error
 
   def values: Array[ErrorMessageID] = $values.clone()
 

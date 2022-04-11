@@ -14,7 +14,6 @@ import core._
 import Contexts._
 import Names._
 import Types._
-import Symbols._
 import ast.Trees._
 import Decorators._
 import StdNames._
@@ -595,7 +594,7 @@ object JavaParsers {
           val vparams = formalParams()
           if (!isVoid) rtpt = optArrayBrackets(rtpt)
           optThrows()
-          val bodyOk = !inInterface || mods.isOneOf(Flags.DefaultMethod | Flags.JavaStatic)
+          val bodyOk = !inInterface || mods.isOneOf(Flags.DefaultMethod | Flags.JavaStatic | Flags.Private)
           val body =
             if (bodyOk && in.token == LBRACE)
               methodBody()

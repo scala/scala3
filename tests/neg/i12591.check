@@ -1,4 +1,4 @@
 -- Error: tests/neg/i12591/Inner.scala:12:31 ---------------------------------------------------------------------------
 12 |val badSummon = summon[TC[Bar]] // error here
    |                               ^
-   |ambiguous implicit arguments: both outer.inner.Foo.ofFoo and outer.Foo.ofFoo match type outer.inner.Foo.TC[outer.Bar] of parameter x of method summon in object Predef
+   |ambiguous given instances: both outer.inner.Foo.ofFoo and outer.Foo.ofFoo match type outer.inner.Foo.TC[outer.Bar] of parameter x of method summon in object Predef

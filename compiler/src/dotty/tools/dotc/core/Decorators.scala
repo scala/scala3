@@ -4,12 +4,9 @@ package core
 
 import annotation.tailrec
 import Symbols._
-import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
-import util.Spans.Span
+import Contexts._, Names._, Phases._, printing.Texts._
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase
-import ast.tpd._
-import scala.language.implicitConversions
 import printing.Formatting._
 
 /** This object provides useful implicit decorators for types defined elsewhere */
@@ -55,7 +52,7 @@ object Decorators {
         if name.length != 0 then name.getChars(0, name.length, chars, s.length)
         termName(chars, 0, len)
       case name: TypeName => s.concat(name.toTermName)
-      case _ => termName(s.concat(name.toString))
+      case _ => termName(s.concat(name.toString).nn)
 
     def indented(width: Int): String =
       val padding = " " * width
@@ -83,9 +80,9 @@ object Decorators {
 
     final def mapconserve[U](f: T => U): List[U] = {
       @tailrec
-      def loop(mapped: ListBuffer[U], unchanged: List[U], pending: List[T]): List[U] =
+      def loop(mapped: ListBuffer[U] | Null, unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty)
-          if (mapped eq null) unchanged
+          if (mapped == null) unchanged
           else mapped.prependToList(unchanged)
         else {
           val head0 = pending.head
@@ -94,7 +91,7 @@ object Decorators {
           if (head1.asInstanceOf[AnyRef] eq head0.asInstanceOf[AnyRef])
             loop(mapped, unchanged, pending.tail)
           else {
-            val b = if (mapped eq null) new ListBuffer[U] else mapped
+            val b = if (mapped == null) new ListBuffer[U] else mapped
             var xc = unchanged
             while (xc ne pending) {
               b += xc.head
@@ -147,13 +144,13 @@ object Decorators {
      *  `xs` to themselves. Also, it is required that `ys` is at least
      *  as long as `xs`.
      */
-    def zipWithConserve[U](ys: List[U])(f: (T, U) => T): List[T] =
+    def zipWithConserve[U, V <: T](ys: List[U])(f: (T, U) => V): List[V] =
       if (xs.isEmpty || ys.isEmpty) Nil
       else {
         val x1 = f(xs.head, ys.head)
         val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
-        if ((x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) &&
-            (xs1 eq xs.tail)) xs
+        if (x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) && (xs1 eq xs.tail)
+          then xs.asInstanceOf[List[V]]
         else x1 :: xs1
       }
 
@@ -288,6 +285,6 @@ object Decorators {
       explained(em(args: _*))
 
   extension [T <: AnyRef](arr: Array[T])
-    def binarySearch(x: T): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object]], x)
+    def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 
 }

@@ -1,13 +1,14 @@
 package dotty.tools.dotc
 package config
 
+import scala.language.unsafeNulls
+
 import core.Contexts._
 
 import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
 
 import annotation.tailrec
 import collection.mutable.ArrayBuffer
-import language.existentials
 import reflect.ClassTag
 import scala.util.{Success, Failure}
 

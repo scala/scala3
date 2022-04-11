@@ -4,11 +4,11 @@ package ast
 
 import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import Symbols._, StdNames._, Trees._, Phases._, ContextOps._
+import Symbols._, StdNames._, Trees._, ContextOps._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
-import typer.{TyperPhase, Namer, Checking}
-import util.{Property, SourceFile, SourcePosition}
+import typer.{Namer, Checking}
+import util.{Property, SourceFile, SourcePosition, Chars}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
 import collection.mutable.ListBuffer
@@ -520,7 +520,11 @@ object desugar {
           enumCases.last.pushAttachment(DesugarEnums.DefinesEnumLookupMethods, ())
         val enumCompanionRef = TermRefTree()
         val enumImport =
-          Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
+          Import(enumCompanionRef, enumCases.flatMap(caseIds).map(
+            enumCase =>
+              ImportSelector(enumCase.withSpan(enumCase.span.startPos))
+            )
+          )
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
@@ -693,23 +697,11 @@ object desugar {
     // For all other classes, the parent is AnyRef.
     val companions =
       if (isCaseClass) {
-
-        // true if access to the apply method has to be restricted
-        // i.e. if the case class constructor is either private or qualified private
-        def restrictedAccess = {
-          val mods = constr1.mods
-          mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
-        }
-
         val applyMeths =
           if (mods.is(Abstract)) Nil
           else {
-            val copiedFlagsMask = copiedAccessFlags & Private
-            val appMods = {
-              val mods = Modifiers(Synthetic | constr1.mods.flags & copiedFlagsMask)
-              if (restrictedAccess) mods.withPrivateWithin(constr1.mods.privateWithin)
-              else mods
-            }
+            val appMods =
+              Modifiers(Synthetic | constr1.mods.flags & copiedAccessFlags).withPrivateWithin(constr1.mods.privateWithin)
             val appParamss =
               derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
                 ap.withMods(ap.mods | (cp.mods.flags & HasDefault)))
@@ -842,7 +834,8 @@ object desugar {
     val impl = mdef.impl
     val mods = mdef.mods
     val moduleName = normalizeName(mdef, impl).asTermName
-    if (mods.is(Package))
+    if mods.is(Package) then
+      checkPackageName(mdef)
       PackageDef(Ident(moduleName),
         cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
     else
@@ -957,6 +950,26 @@ object desugar {
       tree
     else tree
   }
+
+  def checkPackageName(mdef: ModuleDef | PackageDef)(using Context): Unit =
+
+    def check(name: Name, errSpan: Span): Unit = name match
+      case name: SimpleName if !errSpan.isSynthetic && name.exists(Chars.willBeEncoded) =>
+        report.warning(em"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour.", mdef.source.atSpan(errSpan))
+      case _ =>
+
+    def loop(part: RefTree): Unit = part match
+      case part @ Ident(name) => check(name, part.span)
+      case part @ Select(qual: RefTree, name) =>
+        check(name, part.nameSpan)
+        loop(qual)
+      case _ =>
+
+    mdef match
+      case pdef: PackageDef => loop(pdef.pid)
+      case mdef: ModuleDef if mdef.mods.is(Package) => check(mdef.name, mdef.nameSpan)
+      case _ =>
+  end checkPackageName
 
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
@@ -1139,10 +1152,11 @@ object desugar {
           ) // no `_`
 
       val ids = for ((named, _) <- vars) yield Ident(named.name)
-      val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
       val matchExpr =
         if (tupleOptimizable) rhs
-        else Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+        else
+          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
+          Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
       vars match {
         case Nil if !mods.is(Lazy) =>
           matchExpr
@@ -1154,7 +1168,7 @@ object desugar {
             mods & Lazy | Synthetic | (if (ctx.owner.isClass) PrivateLocal else EmptyFlags)
           val firstDef =
             ValDef(tmpName, TypeTree(), matchExpr)
-              .withSpan(pat.span.union(rhs.span)).withMods(patMods)
+              .withSpan(pat.span.startPos).withMods(patMods)
           val useSelectors = vars.length <= 22
           def selector(n: Int) =
             if useSelectors then Select(Ident(tmpName), nme.selectorName(n))
@@ -1162,8 +1176,16 @@ object desugar {
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
-              if (mods.is(Lazy)) derivedDefDef(original, named, tpt, selector(n), mods &~ Lazy)
-              else derivedValDef(original, named, tpt, selector(n), mods)
+              if mods.is(Lazy) then
+                DefDef(named.name.asTermName, Nil, tpt, selector(n))
+                  .withMods(mods &~ Lazy)
+                  .withSpan(named.span)
+              else
+                valDef(
+                  ValDef(named.name.asTermName, tpt, selector(n))
+                    .withMods(mods)
+                    .withSpan(named.span)
+                )
           flatTree(firstDef :: restDefs)
       }
   }
@@ -1285,7 +1307,7 @@ object desugar {
     val ts = tree.trees
     val arity = ts.length
     assert(arity <= Definitions.MaxTupleArity)
-    def tupleTypeRef = defn.TupleType(arity)
+    def tupleTypeRef = defn.TupleType(arity).nn
     if (arity == 0)
       if (ctx.mode is Mode.Type) TypeTree(defn.UnitType) else unitLiteral
     else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
@@ -1320,6 +1342,7 @@ object desugar {
    *     (i.e. objects having the same name as a wrapped type)
    */
   def packageDef(pdef: PackageDef)(using Context): PackageDef = {
+    checkPackageName(pdef)
     val wrappedTypeNames = pdef.stats.collect {
       case stat: TypeDef if isTopLevelDef(stat) => stat.name
     }
@@ -1348,7 +1371,7 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean, span: Span)(using Context): Block =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree | Null = null, isContextual: Boolean, span: Span)(using Context): Block =
     Block(
       DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
         .withSpan(span)
@@ -1407,6 +1430,20 @@ object desugar {
       }
     Function(param :: Nil, Block(vdefs, body))
   }
+
+  /** Convert a tuple pattern with given `elems` to a sequence of `ValDefs`,
+   *  skipping elements that are not convertible.
+   */
+  def patternsToParams(elems: List[Tree])(using Context): List[ValDef] =
+    def toParam(elem: Tree, tpt: Tree): Tree =
+      elem match
+        case Annotated(elem1, _) => toParam(elem1, tpt)
+        case Typed(elem1, tpt1) => toParam(elem1, tpt1)
+        case Ident(id: TermName) => ValDef(id, tpt, EmptyTree).withFlags(Param)
+        case _ => EmptyTree
+    elems.map(param => toParam(param, TypeTree()).withSpan(param.span)).collect {
+      case vd: ValDef => vd
+    }
 
   def makeContextualFunction(formals: List[Tree], body: Tree, isErased: Boolean)(using Context): Function = {
     val mods = if (isErased) Given | Erased else Given
@@ -1699,28 +1736,16 @@ object desugar {
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
         Apply(Select(Apply(scalaDot(nme.StringContext), strs), id).withSpan(tree.span), elems)
       case PostfixOp(t, op) =>
-        if ((ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR) {
+        if (ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR then
           if ctx.isJava then
             AppliedTypeTree(ref(defn.RepeatedParamType), t)
           else
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
-        }
-        else {
+        else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
-          if (!enabled(nme.postfixOps)) {
-            report.error(
-              s"""postfix operator `${op.name}` needs to be enabled
-                 |by making the implicit value scala.language.postfixOps visible.
-                 |----
-                 |This can be achieved by adding the import clause 'import scala.language.postfixOps'
-                 |or by setting the compiler option -language:postfixOps.
-                 |See the Scaladoc for value scala.language.postfixOps for a discussion
-                 |why the feature needs to be explicitly enabled.""".stripMargin, t.srcPos)
-          }
           Select(t, op.name)
-        }
       case PrefixOp(op, t) =>
         val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
         Select(t, nspace.UNARY_PREFIX ++ op.name)
@@ -1844,7 +1869,7 @@ object desugar {
         elems foreach collect
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree, shouldAddGiven))
-          report.error(IllegalVariableInPatternAlternative(), vble.srcPos)
+          report.error(IllegalVariableInPatternAlternative(vble.symbol.name), vble.srcPos)
       case Annotated(arg, _) =>
         collect(arg)
       case InterpolatedString(_, segments) =>

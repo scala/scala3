@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package core
 
-import scala.language.implicitConversions
 import scala.collection.mutable
 import scala.annotation.switch
 import Names._
@@ -41,7 +40,7 @@ object StdNames {
     inline val Tuple                      = "Tuple"
     inline val Product                    = "Product"
 
-    def sanitize(str: String): String = str.replaceAll("""[<>]""", """\$""")
+    def sanitize(str: String): String = str.replaceAll("""[<>]""", """\$""").nn
   }
 
   abstract class DefinedNames[N <: Name] {

@@ -3,11 +3,8 @@ package dotty.tools.dotc.config
 import dotty.tools.dotc.core._
 import Contexts._
 import Symbols._
-import SymDenotations._
 
 import dotty.tools.backend.sjs.JSDefinitions
-
-import org.scalajs.ir.Trees.JSNativeLoadSpec
 
 object SJSPlatform {
   /** The `SJSPlatform` for the current context. */

@@ -7,17 +7,17 @@ import collection.immutable
  *  map for sizes <= 4 (where immutable maps have specialized, compact
  *  representations) and as a HashMap for larger sizes.
  */
-opaque type LinearMap[K <: AnyRef, V >: Null <: AnyRef] =
+opaque type LinearMap[K <: AnyRef, V <: AnyRef | Null] =
   immutable.Map[K, V] | HashMap[K, V]
 
 object LinearMap:
 
-  def empty[K <: AnyRef, V >: Null <: AnyRef]: LinearMap[K, V] =
+  def empty[K <: AnyRef, V <: AnyRef | Null]: LinearMap[K, V] =
     immutable.Map.empty[K, V]
 
-  extension [K <: AnyRef, V >: Null <: AnyRef](m: LinearMap[K, V])
+  extension [K <: AnyRef, V <: AnyRef | Null](m: LinearMap[K, V])
 
-    def lookup(key: K): V /*| Null*/ = (m: @unchecked) match
+    def lookup(key: K): V | Null = (m: @unchecked) match
       case m: immutable.AbstractMap[K, V] @unchecked =>
         if m.contains(key) then m(key) else null
       case m: HashMap[K, V] @unchecked =>

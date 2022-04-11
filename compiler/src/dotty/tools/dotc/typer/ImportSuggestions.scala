@@ -7,10 +7,8 @@ import core._
 import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
 import Flags._, SymDenotations._
 import NameKinds.FlatName
-import NameOps._
 import StdNames._
 import config.Printers.{implicits, implicitsDetailed}
-import util.Spans.Span
 import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}
@@ -125,8 +123,8 @@ trait ImportSuggestions:
               .filter(lookInside(_))
               .flatMap(sym => rootsIn(sym.termRef))
         val imported =
-          if ctx.importInfo eq ctx.outer.importInfo then Nil
-          else ctx.importInfo.importSym.info match
+          if ctx.importInfo eqn ctx.outer.importInfo then Nil
+          else ctx.importInfo.nn.importSym.info match
             case ImportType(expr) => rootsOnPath(expr.tpe)
             case _ => Nil
         defined ++ imported ++ recur(using ctx.outer)
@@ -150,7 +148,7 @@ trait ImportSuggestions:
    */
   private def importSuggestions(pt: Type)(using Context): (List[TermRef], List[TermRef]) =
     val timer = new Timer()
-    val allotted = ctx.run.importSuggestionBudget
+    val allotted = ctx.run.nn.importSuggestionBudget
     if allotted <= 1 then return (Nil, Nil)
     implicits.println(i"looking for import suggestions, timeout = ${allotted}ms")
     val start = System.currentTimeMillis()
@@ -162,7 +160,7 @@ trait ImportSuggestions:
     val alreadyAvailableCandidates: Set[Symbol] = {
       val wildProto = wildApprox(pt)
       val contextualCandidates = ctx.implicits.eligible(wildProto)
-      val implicitScopeCandidates = ctx.run.implicitScope(wildProto).eligible
+      val implicitScopeCandidates = ctx.run.nn.implicitScope(wildProto).eligible
       val allCandidates = contextualCandidates ++ implicitScopeCandidates
       allCandidates.map(_.implicitRef.underlyingRef.symbol).toSet
     }
@@ -198,7 +196,7 @@ trait ImportSuggestions:
         val task = new TimerTask:
           def run() =
             println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
-            ctx.run.isCancelled = true
+            ctx.run.nn.isCancelled = true
         val span = ctx.owner.srcPos.span
         val (expectedType, argument, kind) = pt match
           case ViewProto(argType, resType) =>
@@ -214,11 +212,12 @@ trait ImportSuggestions:
           typedImplicit(candidate, expectedType, argument, span)(
             using testContext()).isSuccess
         finally
+          val run = ctx.run.nn
           if task.cancel() then // timer task has not run yet
-            assert(!ctx.run.isCancelled)
+            assert(!run.isCancelled)
           else
-            while !ctx.run.isCancelled do () // wait until timer task has run to completion
-            ctx.run.isCancelled = false
+            while !run.isCancelled do () // wait until timer task has run to completion
+            run.isCancelled = false
       }
     end deepTest
 
@@ -267,8 +266,9 @@ trait ImportSuggestions:
    *  for current search, but but never less than to half of the previous budget.
    */
   private def reduceTimeBudget(used: Int)(using Context) =
-    ctx.run.importSuggestionBudget =
-      (ctx.run.importSuggestionBudget - used) max (ctx.run.importSuggestionBudget / 2)
+    val run = ctx.run.nn
+    run.importSuggestionBudget =
+      (run.importSuggestionBudget - used) max (run.importSuggestionBudget / 2)
 
   /** The `ref` parts of this list of pairs, discarding subsequent elements that
    *  have the same String part. Elements are sorted by their String parts.

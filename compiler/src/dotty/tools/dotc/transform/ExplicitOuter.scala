@@ -13,7 +13,6 @@ import core.Decorators._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
-import ast.Trees._
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
 

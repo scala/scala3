@@ -12,12 +12,12 @@ import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
 import collection.{immutable, mutable}
-import util.{Property, SourceFile, NoSource}
+import util.{Property, SourceFile}
 import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
 
 import scala.annotation.tailrec
-import scala.io.Codec
+import scala.collection.mutable.ListBuffer
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -249,7 +249,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         (rtp, tparams :: paramss)
       case tp: MethodType =>
         val isParamDependent = tp.isParamDependent
-        val previousParamRefs = if isParamDependent then mutable.ListBuffer[TermRef]() else null
+        val previousParamRefs: ListBuffer[TermRef] =
+          // It is ok to assign `null` here.
+          // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
+          if isParamDependent then mutable.ListBuffer[TermRef]() else (null: ListBuffer[TermRef] | Null).uncheckedNN
 
         def valueParam(name: TermName, origInfo: Type): TermSymbol =
           val maybeImplicit =
@@ -345,7 +348,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
       else parents
     val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, Synthetic | Final, parents1,
-        newScope, coord = fns.map(_.span).reduceLeft(_ union _))
+        coord = fns.map(_.span).reduceLeft(_ union _))
     val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
       val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
@@ -568,7 +571,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else foldOver(sym, tree)
   }
 
-  /** The owner to be used in a local context when traversin a tree */
+  /** The owner to be used in a local context when traversing a tree */
   def localOwner(tree: Tree)(using Context): Symbol =
     val sym = tree.symbol
     (if sym.is(PackageVal) then sym.moduleClass else sym).orElse(ctx.owner)
@@ -1157,9 +1160,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *   - be tail-recursive where possible
      *   - don't re-allocate trees where nothing has changed
      */
-    inline def mapStatements(exprOwner: Symbol, inline op: Tree => Context ?=> Tree)(using Context): List[Tree] =
+    inline def mapStatements[T](
+        exprOwner: Symbol,
+        inline op: Tree => Context ?=> Tree,
+        inline wrapResult: List[Tree] => Context ?=> T)(using Context): T =
       @tailrec
-      def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): List[Tree] =
+      def loop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): T =
         pending match
           case stat :: rest =>
             val statCtx = stat match
@@ -1182,8 +1188,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
                 case _ => buf += stat1
               loop(buf, rest, rest)(using restCtx)
           case nil =>
-            if mapped == null then unchanged
-            else mapped.prependToList(unchanged)
+            wrapResult(
+              if mapped == null then unchanged
+              else mapped.prependToList(unchanged))
 
       loop(null, trees, trees)
     end mapStatements
@@ -1195,8 +1202,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *    - imports are reflected in the contexts of subsequent statements
    */
   class TreeMapWithPreciseStatContexts(cpy: TreeCopier = tpd.cpy) extends TreeMap(cpy):
-    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
-      trees.mapStatements(exprOwner, transform(_))
+    def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =
+      trees.mapStatements(exprOwner, transform(_), wrapResult)
+    final override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
+      transformStats(trees, exprOwner, sameStats)
+    override def transformBlock(blk: Block)(using Context) =
+      transformStats(blk.stats, ctx.owner,
+        stats1 => ctx ?=> cpy.Block(blk)(stats1, transform(blk.expr)))
+
+  val sameStats: List[Tree] => Context ?=> List[Tree] = stats => stats
 
   /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.
    *  Also drops Inline and Block with no statements.
@@ -1236,13 +1250,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
 
-    private var myTrees: List[Tree] = null
+    private var myTrees: List[Tree] | Null = _
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(using Context): List[Tree] =
       if (ctx.settings.YretainTrees.value) {
         if (myTrees == null) myTrees = computeRootTrees
-        myTrees
+        myTrees.uncheckedNN
       }
       else computeRootTrees
 
@@ -1465,7 +1479,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** Creates the tuple type tree repesentation of the type trees in `ts` */
   def tupleTypeTree(elems: List[Tree])(using Context): Tree = {
     val arity = elems.length
-    if (arity <= Definitions.MaxTupleArity && defn.TupleType(arity) != null) AppliedTypeTree(TypeTree(defn.TupleType(arity)), elems)
+    if arity <= Definitions.MaxTupleArity then
+      val tupleTp = defn.TupleType(arity)
+      if tupleTp != null then
+        AppliedTypeTree(TypeTree(tupleTp), elems)
+      else nestedPairsTypeTree(elems)
     else nestedPairsTypeTree(elems)
   }
 

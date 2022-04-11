@@ -29,7 +29,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case _ => Nil
 
   def inheritedFrom(m: Member) = m.inheritedFrom match
-    case Some(InheritedFrom(name, dri)) => tableRow("Inherited from:", signatureRenderer.renderLink(name, dri))
+    case Some(InheritedFrom(name, dri, isSourceSuperclassHidden)) =>
+      val hiddenNameSuffix = if isSourceSuperclassHidden then " (hidden)" else "" 
+      tableRow("Inherited from:", signatureRenderer.renderLink(name + hiddenNameSuffix, dri))
     case _ => Nil
 
   def docAttributes(m: Member): Seq[AppliedTag] =
@@ -387,7 +389,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     div(cls := "filterLowerContainer")()
   )
 
-  def fullMember(m: Member): AppliedTag =
+  def fullMember(m: Member): PageContent =
     val intro = m.kind match
       case Kind.RootPackage =>Seq(h1(summon[DocContext].args.name))
       case _ =>
@@ -401,11 +403,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
             memberSignature(m)
           )
         )
-
-    div(
-      intro,
-      memberInfo(m, withBrief = false),
-      classLikeParts(m),
-      buildDocumentableFilter, // TODO Need to make it work in JS :(
-      buildMembers(m)
+    PageContent(
+      div(
+        intro,
+        memberInfo(m, withBrief = false),
+        classLikeParts(m),
+        buildDocumentableFilter, // TODO Need to make it work in JS :(
+        buildMembers(m)
+      ),
+      Seq.empty // For now, we don't support table of contents in members
     )

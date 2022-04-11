@@ -7,11 +7,8 @@ import scala.annotation.tailrec
 import dotty.tools.dotc.core._
 import Constants._
 import Contexts._
-import Decorators._
 import Flags._
 import Names._
-import NameOps._
-import Phases._
 import Scopes._
 import Symbols._
 import StdNames._

@@ -6,7 +6,6 @@ import core._
 import Types._, Names._, NameOps._, Flags._, util.Spans._, Contexts._, Constants._
 import typer.{ ConstFold, ProtoTypes }
 import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
-import language.higherKinds
 import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
@@ -294,10 +293,10 @@ object Trees {
   trait DefTree[-T >: Untyped] extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] <: DefTree[T]
 
-    private var myMods: untpd.Modifiers = null
+    private var myMods: untpd.Modifiers | Null = _
 
     private[dotc] def rawMods: untpd.Modifiers =
-      if (myMods == null) untpd.EmptyModifiers else myMods
+      if (myMods == null) untpd.EmptyModifiers else myMods.uncheckedNN
 
     def withAnnotations(annots: List[untpd.Tree]): ThisTree[Untyped] = withMods(rawMods.withAnnotations(annots))
 
@@ -982,7 +981,7 @@ object Trees {
   }
 
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
-    def recur(buf: ListBuffer[Tree[T]], remaining: List[Tree[T]]): ListBuffer[Tree[T]] =
+    def recur(buf: ListBuffer[Tree[T]] | Null, remaining: List[Tree[T]]): ListBuffer[Tree[T]] | Null =
       remaining match {
         case Thicket(elems) :: remaining1 =>
           var buf1 = buf
@@ -1399,8 +1398,8 @@ object Trees {
               cpy.NamedArg(tree)(name, transform(arg))
             case Assign(lhs, rhs) =>
               cpy.Assign(tree)(transform(lhs), transform(rhs))
-            case Block(stats, expr) =>
-              cpy.Block(tree)(transformStats(stats, ctx.owner), transform(expr))
+            case blk: Block =>
+              transformBlock(blk)
             case If(cond, thenp, elsep) =>
               cpy.If(tree)(transform(cond), transform(thenp), transform(elsep))
             case Closure(env, meth, tpt) =>
@@ -1489,6 +1488,8 @@ object Trees {
 
       def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
         transform(trees)
+      def transformBlock(blk: Block)(using Context): Block =
+        cpy.Block(blk)(transformStats(blk.stats, ctx.owner), transform(blk.expr))
       def transform(trees: List[Tree])(using Context): List[Tree] =
         flatten(trees mapConserve (transform(_)))
       def transformSub[Tr <: Tree](tree: Tr)(using Context): Tr =

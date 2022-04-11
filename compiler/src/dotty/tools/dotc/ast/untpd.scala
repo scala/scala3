@@ -8,7 +8,6 @@ import dotty.tools.dotc.typer.ProtoTypes
 import Symbols._, StdNames._, Trees._
 import util.{Property, SourceFile, NoSource}
 import util.Spans.Span
-import language.higherKinds
 import annotation.constructorOnly
 import annotation.internal.sharable
 import Decorators._
@@ -512,7 +511,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     vdef.withMods(mods | Param)
   }
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = SyntheticTermParam)(using Context): ValDef =
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree | Null = null, flags: FlagSet = SyntheticTermParam)(using Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
 

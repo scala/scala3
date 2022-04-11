@@ -1,9 +1,11 @@
 package dotty.tools
 package repl
 
+import scala.language.unsafeNulls
+
 import java.io.{Reader, StringWriter}
 import javax.script.{AbstractScriptEngine, Bindings, ScriptContext, ScriptEngine => JScriptEngine, ScriptEngineFactory, ScriptException, SimpleBindings}
-import dotc.core.StdNames.{nme, str}
+import dotc.core.StdNames.str
 
 /** A JSR 223 (Scripting API) compatible wrapper around the REPL for improved
  *  interoperability with software that supports it.

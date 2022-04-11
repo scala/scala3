@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.report
@@ -11,7 +13,7 @@ import dotty.tools.dotc.report
  * the compiler cake (Global).
  */
 final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
-  import interface.{_, given}
+  import interface.given
   import DottyBackendInterface.symExtensions
 
   /**

@@ -9,9 +9,10 @@ import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
 import util.Stats
+import util.NoSourcePosition
 import config.Config
 import config.Feature.migrateTo3
-import config.Printers.{constr, subtyping, gadts, matchTypes, noPrinter}
+import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import Variances.{Variance, variancesConform}
@@ -22,7 +23,6 @@ import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
-import NullOpsDecorator._
 import annotation.constructorOnly
 
 /** Provides methods to compare types.
@@ -36,7 +36,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   protected given [DummySoItsADef]: Context = myContext
 
-  protected var state: TyperState = null
+  protected var state: TyperState = compiletime.uninitialized
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
 
@@ -49,7 +49,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     needsGc = false
     if Config.checkTypeComparerReset then checkReset()
 
-  private var pendingSubTypes: util.MutableSet[(Type, Type)] = null
+  private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
   private var recCount = 0
   private var monitored = false
 
@@ -92,7 +92,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   override def checkReset() =
     super.checkReset()
-    assert(pendingSubTypes == null || pendingSubTypes.isEmpty)
+    assert(pendingSubTypes == null || pendingSubTypes.uncheckedNN.isEmpty)
     assert(canCompareAtoms == true)
     assert(successCount == 0)
     assert(totalCount == 0)
@@ -151,7 +151,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  every time we compare components of the previous pair of types.
    *  This type is used for capture conversion in `isSubArgs`.
    */
-  private [this] var leftRoot: Type = null
+  private [this] var leftRoot: Type | Null = null
 
   /** Are we forbidden from recording GADT constraints? */
   private var frozenGadt = false
@@ -248,13 +248,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
       }
       val p = (normalize(tp1), normalize(tp2))
-      !pendingSubTypes.contains(p) && {
+      !pendingSubTypes.nn.contains(p) && {
         try {
-          pendingSubTypes += p
+          pendingSubTypes.nn += p
           firstTry
         }
         finally
-          pendingSubTypes -= p
+          pendingSubTypes.nn -= p
       }
     }
 
@@ -744,8 +744,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     def tryBaseType(cls2: Symbol) = {
+      val allowBaseType = !caseLambda.exists || (tp1 match {
+        case tp: TypeRef if tp.symbol.isClass => true
+        case AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => true
+        case _ => false
+      })
       val base = nonExprBaseType(tp1, cls2)
-      if (base.exists && (base `ne` tp1))
+      if (base.exists && base.ne(tp1) && allowBaseType)
         isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
         base.isInstanceOf[OrType] && fourthTry
           // if base is a disjunction, this might have come from a tp1 type that
@@ -764,16 +769,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
+            !caseLambda.exists && isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
-            def isNullable(tp: Type): Boolean = tp.widenDealias match {
-              case tp: TypeRef => tp.symbol.isNullableClass
+            // `Mode.RelaxedOverriding` is only enabled when checking Java overriding
+            // in explicit nulls, and `Null` becomes a bottom type, which allows
+            // `T | Null` being a subtype of `T`.
+            // A type variable `T` from Java is translated to `T >: Nothing <: Any`.
+            // However, `null` can always be a value of `T` for Java side.
+            // So the best solution here is to let `Null` be a subtype of non-primitive
+            // value types temporarily.
+            def isNullable(tp: Type): Boolean = tp.widenDealias match
+              case tp: TypeRef =>
+                val tpSym = tp.symbol
+                ctx.mode.is(Mode.RelaxedOverriding) && !tpSym.isPrimitiveValueClass ||
+                tpSym.isNullableClass
               case tp: RefinedOrRecType => isNullable(tp.parent)
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
               case _ => false
-            }
             val sym1 = tp1.symbol
             (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
             (sym1 eq NullClass) && isNullable(tp2)
@@ -1479,11 +1493,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
          */
         def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
           case tparam: Symbol =>
-            if (leftRoot.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
-                && leftRoot.isValueType
-                && leftRoot.member(tparam.name).exists
+            val leftr = leftRoot.nn
+            if (leftr.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+                && leftr.isValueType
+                && leftr.member(tparam.name).exists
             then
-              val captured = TypeRef(leftRoot, tparam)
+              val captured = TypeRef(leftr, tparam)
               try isSubArg(captured, arg2)
               catch case ex: TypeError =>
                 // The captured reference could be illegal and cause a
@@ -1754,11 +1769,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case _ => false
 
   /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of
-   *  the normalized type of the refinement `tp2`?
+   *  the normalized type of the refinement of `tp2`?
    *  Normalization is as follows: If `tp2` contains a skolem to its refinement type,
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
-  protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
+  def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
     trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) {
 
       def qualifies(m: SingleDenotation): Boolean =
@@ -1803,6 +1818,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           || symInfo.isInstanceOf[MethodType]
               && symInfo.signature.consistentParams(info2.signature)
 
+        def tp1IsSingleton: Boolean = tp1.isInstanceOf[SingletonType]
+
         // A relaxed version of isSubType, which compares method types
         // under the standard arrow rule which is contravarient in the parameter types,
         // but under the condition that signatures might have to match (see sigsOK)
@@ -1817,8 +1834,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   matchingMethodParams(info1, info2, precise = false)
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType)
                   && sigsOK(symInfo1, info2)
-                case _ => isSubType(info1, info2)
-            case _ => isSubType(info1, info2)
+                case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
+            case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
 
         val info1 = m.info.widenExpr
         isSubInfo(info1, tp2.refinedInfo.widenExpr, m.symbol.info.orElse(info1))
@@ -2464,7 +2481,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** Does `tycon` have a field with type `tparam`? Special cased for `scala.*:`
    *  as that type is artificially added to tuples. */
   private def typeparamCorrespondsToField(tycon: Type, tparam: TypeParamInfo): Boolean =
-    productSelectorTypes(tycon, null).exists {
+    productSelectorTypes(tycon, NoSourcePosition).exists {
       case tp: TypeRef =>
         tp.designator.eq(tparam) // Bingo!
       case _ =>
@@ -2523,8 +2540,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
       override def apply(x: Boolean, t: Type) =
         x && {
-          t match {
-            case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
+          t.dealias match {
+            case tp: TypeRef if !tp.symbol.isClass => false
             case _: SkolemType | _: TypeVar | _: TypeParamRef => false
             case _ => foldOver(x, t)
           }
@@ -2621,9 +2638,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         !(tp2 <:< tp1)
         && (provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1))
       case (tp1: NamedType, _) if gadtBounds(tp1.symbol) != null =>
-        provablyDisjoint(gadtBounds(tp1.symbol).hi, tp2) || provablyDisjoint(tp1.superType, tp2)
+        provablyDisjoint(gadtBounds(tp1.symbol).uncheckedNN.hi, tp2) || provablyDisjoint(tp1.superType, tp2)
       case (_, tp2: NamedType) if gadtBounds(tp2.symbol) != null =>
-        provablyDisjoint(tp1, gadtBounds(tp2.symbol).hi) || provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(tp1, gadtBounds(tp2.symbol).uncheckedNN.hi) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
         tp1.termSymbol != tp2.termSymbol
       case (tp1: TermRef, tp2: TypeRef) if isEnumValue(tp1) =>
@@ -2675,12 +2692,12 @@ object TypeComparer {
   }
 
   private[core] def show(res: Any)(using Context): String =
-    if ctx.settings.YexplainLowlevel.value then String.valueOf(res)
+    if ctx.settings.YexplainLowlevel.value then String.valueOf(res).nn
     else res match
       case ClassInfo(_, cls, _, _, _) => cls.showLocated
       case bounds: TypeBounds => i"type bounds [$bounds]"
       case res: printing.Showable => res.show
-      case _ => String.valueOf(res)
+      case _ => String.valueOf(res).nn
 
   /** The approximation state indicates how the pair of types currently compared
    *  relates to the types compared originally.
@@ -2739,6 +2756,9 @@ object TypeComparer {
 
   def matchesType(tp1: Type, tp2: Type, relaxed: Boolean)(using Context): Boolean =
     comparing(_.matchesType(tp1, tp2, relaxed))
+
+  def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType)(using Context): Boolean =
+    comparing(_.hasMatchingMember(name, tp1, tp2))
 
   def matchingMethodParams(tp1: MethodType, tp2: MethodType)(using Context): Boolean =
     comparing(_.matchingMethodParams(tp1, tp2))
@@ -2834,7 +2854,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.addOneBound(param, bound, isUpper)
   }
 
-  override def gadtBounds(sym: Symbol)(using Context): TypeBounds = {
+  override def gadtBounds(sym: Symbol)(using Context): TypeBounds | Null = {
     if (sym.exists) footprint += sym.typeRef
     super.gadtBounds(sym)
   }

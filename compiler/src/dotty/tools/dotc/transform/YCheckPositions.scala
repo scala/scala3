@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
@@ -23,7 +22,7 @@ class YCheckPositions extends Phase {
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
-        new TreeTraverser {
+        val checker = new TreeTraverser {
           private var sources: List[SourceFile] = ctx.source :: Nil
           def traverse(tree: tpd.Tree)(using Context): Unit = {
 
@@ -37,23 +36,26 @@ class YCheckPositions extends Phase {
                 assert(tree.source == currentSource, i"wrong source set for $tree # ${tree.uniqueId} of ${tree.getClass}, set to ${tree.source} but context had $currentSource\n ${tree.symbol.flagsString}")
 
             // Recursivlely check children while keeping track of current source
-            tree match {
-              case Inlined(EmptyTree, bindings, expansion) =>
-                assert(bindings.isEmpty)
-                val old = sources
-                sources = old.tail
-                traverse(expansion)(using inlineContext(EmptyTree).withSource(sources.head))
-                sources = old
-              case Inlined(call, bindings, expansion) =>
-                // bindings.foreach(traverse(_)) // TODO check inline proxies (see tests/tun/lst)
-                sources = call.symbol.topLevelClass.source :: sources
-                if (!isMacro(call)) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
-                  traverse(expansion)(using inlineContext(call).withSource(sources.head))
-                sources = sources.tail
-              case _ => traverseChildren(tree)
+            reporting.trace(i"check pos ${tree.getClass} ${tree.source} ${sources.head} $tree") {
+              tree match {
+                case Inlined(EmptyTree, bindings, expansion) =>
+                  assert(bindings.isEmpty)
+                  val old = sources
+                  sources = old.tail
+                  traverse(expansion)(using inlineContext(EmptyTree).withSource(sources.head))
+                  sources = old
+                case Inlined(call, bindings, expansion) =>
+                  // bindings.foreach(traverse(_)) // TODO check inline proxies (see tests/tun/lst)
+                  sources = call.symbol.topLevelClass.source :: sources
+                  if (!isMacro(call)) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
+                    traverse(expansion)(using inlineContext(call).withSource(sources.head))
+                  sources = sources.tail
+                case _ => traverseChildren(tree)
+              }
             }
           }
-        }.traverse(tree)
+        }
+        checker.traverse(tree)
       case _ =>
     }
 

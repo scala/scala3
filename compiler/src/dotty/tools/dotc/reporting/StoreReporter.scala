@@ -17,27 +17,28 @@ import Diagnostic._
   * - The reporter is not flushed and the message containers capture a
   *   `Context` (about 4MB)
   */
-class StoreReporter(outer: Reporter = Reporter.NoReporter, fromTyperState: Boolean = false) extends Reporter {
+class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState: Boolean = false) extends Reporter {
 
-  protected var infos: mutable.ListBuffer[Diagnostic] = null
+  protected var infos: mutable.ListBuffer[Diagnostic] | Null = null
 
   def doReport(dia: Diagnostic)(using Context): Unit = {
     typr.println(s">>>> StoredError: ${dia.message}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
-    infos += dia
+    infos.uncheckedNN += dia
   }
 
   override def hasUnreportedErrors: Boolean =
-    outer != null && infos != null && infos.exists(_.isInstanceOf[Error])
+    outer != null && infos != null && infos.uncheckedNN.exists(_.isInstanceOf[Error])
 
   override def hasStickyErrors: Boolean =
-    infos != null && infos.exists(_.isInstanceOf[StickyError])
+    infos != null && infos.uncheckedNN.exists(_.isInstanceOf[StickyError])
 
   override def removeBufferedMessages(using Context): List[Diagnostic] =
-    if (infos != null) try infos.toList finally infos = null
+    if (infos != null) try infos.uncheckedNN.toList finally infos = null
     else Nil
 
-  override def pendingMessages(using Context): List[Diagnostic] = if (infos != null) infos.toList else Nil
+  override def pendingMessages(using Context): List[Diagnostic] =
+    if (infos != null) infos.uncheckedNN.toList else Nil
 
   override def errorsReported: Boolean = hasErrors || (outer != null && outer.errorsReported)
 

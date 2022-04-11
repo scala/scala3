@@ -6,7 +6,6 @@ import Contexts._, Types._, Decorators._, Symbols._, DenotTransformers._
 import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
 import MegaPhase.MiniPhase
 
-import scala.collection.mutable
 
 /** Specializes classes that inherit from `FunctionN` where there exists a
  *  specialized form.
@@ -36,7 +35,7 @@ class SpecializeFunctions extends MiniPhase {
     val sym = ddef.symbol
     val cls = ctx.owner.asClass
 
-    var specName: Name = null
+    var specName: Name | Null = null
 
     def isSpecializable = {
       val paramTypes = ddef.termParamss.head.map(_.symbol.info)
@@ -49,7 +48,7 @@ class SpecializeFunctions extends MiniPhase {
 
     val specializedApply = newSymbol(
         cls,
-        specName,
+        specName.nn,
         sym.flags | Flags.Synthetic,
         sym.info
       ).entered

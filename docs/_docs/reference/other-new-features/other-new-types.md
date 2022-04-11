@@ -1,5 +1,5 @@
 ---
-layout: doc-page
+layout: index
 title: "Other New Features"
 movedTo: https://docs.scala-lang.org/scala3/reference/other-new-features.html
 ---

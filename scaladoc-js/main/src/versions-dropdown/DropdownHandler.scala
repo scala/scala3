@@ -11,6 +11,8 @@ import org.scalajs.dom.ext.Ajax
 import scala.scalajs.js
 import scala.scalajs.js.JSON
 
+import utils.HTML._
+
 trait Versions extends js.Object:
   def versions: js.Dictionary[String]
 
@@ -23,12 +25,9 @@ class DropdownHandler:
     val ver = JSON.parse(json).asInstanceOf[Versions]
     val ddc = document.getElementById("dropdown-content")
     for (k, v) <- ver.versions do
-      var child = document.createElement("a").asInstanceOf[html.Anchor]
-      child.href = v
-      child.text = k
+      var child = a(href := v)(k)
       ddc.appendChild(child)
-    val arrow = document.createElement("span").asInstanceOf[html.Span]
-    arrow.classList.add("ar")
+    val arrow = span(cls := "ar")()
     document.getElementById("dropdown-button").appendChild(arrow)
 
   private def disableButton() =

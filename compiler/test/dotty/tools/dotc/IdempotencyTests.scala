@@ -2,6 +2,8 @@ package dotty
 package tools
 package dotc
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile}
 import java.nio.file.{Files, Path, Paths}
 

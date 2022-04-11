@@ -9,12 +9,10 @@ import Types._
 import Flags._
 import Symbols._
 import Names._
-import StdNames._
 import NameKinds.UniqueName
 import util.Spans._
 import collection.mutable
 import Trees._
-import Decorators._
 
 /** A class that handles argument lifting. Argument lifting is needed in the following
  *  scenarios:

@@ -2,6 +2,8 @@ package dotty
 package tools
 package scripting
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.nio.file.{Path, Paths, Files}
 
@@ -30,7 +32,7 @@ object ScriptTestEnv {
     val dirstr = if testCwd.nonEmpty then
       if verbose then printf("TEST_CWD set to [%s]\n", testCwd)
       testCwd
-    else 
+    else
       userDir // userDir, if TEST_CWD not set
 
     // issue warning if things don't look right
@@ -82,7 +84,7 @@ object ScriptTestEnv {
       }
     out
 
-  def whichExe(basename: String): String = 
+  def whichExe(basename: String): String =
     val exeName = if (osname.toLowerCase.startsWith("windows")) s"$basename.exe" else basename
     which(exeName)
 
@@ -149,7 +151,7 @@ object ScriptTestEnv {
 
   def exec(cmd: String *): Seq[String] = Process(cmd).lazyLines_!.toList
 
-  def script2jar(scriptFile: File) = 
+  def script2jar(scriptFile: File) =
     val jarName = s"${scriptFile.getName.dropExtension}.jar"
     File(scriptFile.getParent, jarName)
 
@@ -235,7 +237,7 @@ object ScriptTestEnv {
     val scala = s"$workingDirectory/dist/target/pack/bin/scala".toPath.normalize
     (scalac.norm, scala.norm)
   }
-    
+
 
   // use optional TEST_BASH if defined, otherwise, bash must be in PATH
 

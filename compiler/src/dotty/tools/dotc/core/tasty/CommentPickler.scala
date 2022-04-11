@@ -1,8 +1,7 @@
 package dotty.tools.dotc.core.tasty
 
 import dotty.tools.dotc.ast.{tpd, untpd}
-import dotty.tools.dotc.core.Comments.{Comment, CommentsContext, ContextDocstrings}
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Comments.Comment
 
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr}
@@ -18,7 +17,7 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docStr
 
   private def pickleComment(addr: Addr, comment: Comment): Unit =
     if addr != NoAddr then
-      val bytes = comment.raw.getBytes(StandardCharsets.UTF_8)
+      val bytes = comment.raw.getBytes(StandardCharsets.UTF_8).nn
       val length = bytes.length
       buf.writeAddr(addr)
       buf.writeNat(length)

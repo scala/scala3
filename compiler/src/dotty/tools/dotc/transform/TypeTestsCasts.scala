@@ -2,9 +2,10 @@ package dotty.tools
 package dotc
 package transform
 
+import scala.language.unsafeNulls as _
+
 import core._
 import Contexts._, Symbols._, Types._, Constants._, StdNames._, Decorators._
-import ast.Trees._
 import ast.untpd
 import Erasure.Boxing._
 import TypeErasure._
@@ -108,7 +109,7 @@ object TypeTestsCasts {
       // which conform to the skeleton pre.F[_] and X. Then we have to make
       // sure all of them are actually of the type P, which implies that the
       // type arguments in P are trivial (no runtime check needed).
-      maximizeType(P1, span, fromScala2x = false)
+      maximizeType(P1, span)
 
       debug.println("after " + ctx.typerState.constraint.show)
 
@@ -149,7 +150,7 @@ object TypeTestsCasts {
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, _)  => recur(X, t)
-      case _: RefinedType       => false
+      case tp2: RefinedType     => recur(X, tp2.parent) && TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2)
       case _                    => true
     })
 
@@ -242,13 +243,12 @@ object TypeTestsCasts {
             else foundClasses.exists(check)
           end checkSensical
 
-          if (expr.tpe <:< testType)
-            if (expr.tpe.isNotNull) {
-              if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.srcPos)
-              constant(expr, Literal(Constant(true)))
-            }
+          if (expr.tpe <:< testType) && inMatch then
+            if expr.tpe.isNotNull then constant(expr, Literal(Constant(true)))
             else expr.testNotNull
           else {
+            if expr.tpe.isBottomType then
+              report.warning(TypeTestAlwaysDiverges(expr.tpe, testType), tree.srcPos)
             val nestedCtx = ctx.fresh.setNewTyperState()
             val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
             val sensical = checkSensical(foundClsSyms)(using nestedCtx)

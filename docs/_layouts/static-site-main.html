@@ -7,19 +7,19 @@ layout: main
       <nav class="navigation" role="menu">
         <ul class="navigation-menu">
           <li class="navigation-menu-item">
-            <a href="https://docs.scala-lang.org/" class="active">Documentation</a>
+            <a href="https://docs.scala-lang.org/" class="active">Learn</a>
           </li>
           <li class="navigation-menu-item">
-            <a href="https://www.scala-lang.org/download/">Download</a>
+            <a href="https://www.scala-lang.org/download/">Install</a>
+          </li>
+          <li class="navigation-menu-item">
+            <a href="https://scastie.scala-lang.org">Playground</a>
+          </li>
+          <li class="navigation-menu-item">
+            <a href="https://index.scala-lang.org">Find A Library</a>
           </li>
           <li class="navigation-menu-item">
             <a href="https://www.scala-lang.org/community/">Community</a>
-          </li>
-          <li class="navigation-menu-item">
-            <a href="https://index.scala-lang.org">Libraries</a>
-          </li>
-          <li class="navigation-menu-item">
-            <a href="https://www.scala-lang.org/contribute/">Contribute</a>
           </li>
           <li class="navigation-menu-item">
             <a href="https://www.scala-lang.org/blog/">Blog</a>
@@ -36,14 +36,20 @@ layout: main
   {{ content }}
   <nav class="arrows-wrapper" aria-label="Page navigation">
     {% if page.previous %}
-    <a rel="prev" href="{{ page.previous }}" class="arrows previous" aria-keyshortcuts="Left">
+    <a rel="prev" href="{{ page.previous.url }}" class="arrows previous" aria-keyshortcuts="Left">
+        <span>{{ page.previous.title }}</span>
         <i class="fa fa-angle-left"></i>
     </a>
     {% endif %}
     {% if page.next %}
-    <a rel="next" href="{{ page.next }}" class="arrows next" aria-keyshortcuts="Right">
+    <a rel="next" href="{{ page.next.url }}" class="arrows next" aria-keyshortcuts="Right">
+        <span>{{ page.next.title }}</span>
         <i class="fa fa-angle-right"></i>
     </a>
     {% endif %}
   </nav>
+  <div class="content-contributors hidden">
+    <span><b>Contributors to this page</b></span>
+    <div id="documentation-contributors" class="contributors-container"></div>
+  </div>
 </div>

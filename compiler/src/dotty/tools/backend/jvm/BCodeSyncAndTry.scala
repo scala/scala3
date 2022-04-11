@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.collection.immutable
 import scala.tools.asm
 
@@ -9,7 +11,6 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.tpd.TreeOps
 
 /*
  *
@@ -18,7 +19,7 @@ import dotty.tools.dotc.ast.tpd.TreeOps
  *
  */
 trait BCodeSyncAndTry extends BCodeBodyBuilder {
-  import int.{_, given}
+  import int.given
   import tpd._
   import bTypes._
   import coreBTypes._

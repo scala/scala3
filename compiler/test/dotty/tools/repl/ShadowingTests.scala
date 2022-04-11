@@ -1,6 +1,8 @@
 package dotty.tools
 package repl
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.nio.file.{Path, Files}
 import java.util.Comparator
@@ -31,7 +33,7 @@ object ShadowingTests:
     val subdir = dir.resolve(name)
     try Files.createDirectory(subdir)
     catch case _: java.nio.file.FileAlreadyExistsException =>
-    assert(Files.isDirectory(subdir), s"failed to create shadowed subdirectory $subdir")
+      assert(Files.isDirectory(subdir), s"failed to create shadowed subdirectory $subdir")
     subdir
 
   // The directory on the classpath containing artifacts to be shadowed

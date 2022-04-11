@@ -140,7 +140,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           val parentEnum = vdef.owner.companionClass
           val children = parentEnum.children.zipWithIndex
           val candidate: Option[Int] = children.collectFirst { case (child, idx) if child == vdef => idx }
-          assert(candidate.isDefined, i"could not find child for $vdef")
+          assert(candidate.isDefined, i"could not find child for $vdef in ${parentEnum.children}%, % of $parentEnum")
           Literal(Constant(candidate.get))
 
       def toStringBody(vrefss: List[List[Tree]]): Tree =
@@ -610,7 +610,16 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   def addSyntheticMembers(impl: Template)(using Context): Template = {
     val clazz = ctx.owner.asClass
+    val syntheticMembers = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz)
+    checkInlining(syntheticMembers)
     addMirrorSupport(
-      cpy.Template(impl)(body = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body))
+      cpy.Template(impl)(body = syntheticMembers ::: impl.body))
   }
+
+  private def checkInlining(syntheticMembers: List[Tree])(using Context): Unit =
+    if syntheticMembers.exists(_.existsSubTree {
+      case tree: GenericApply => tree.symbol.isAllOf(InlineMethod)
+      case tree: Select => tree.symbol.isAllOf(InlineMethod)
+      case _ => false
+    }) then ctx.compilationUnit.needsInlining = true
 }

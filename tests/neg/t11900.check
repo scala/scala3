@@ -1,0 +1,18 @@
+-- Error: tests/neg/t11900.scala:44:16 ---------------------------------------------------------------------------------
+44 |      a => a + 1,   // error: weird comma
+   |                ^
+   |                end of statement expected but ',' found
+-- Error: tests/neg/t11900.scala:48:16 ---------------------------------------------------------------------------------
+48 |    println("a"),   // error: weird comma
+   |                ^
+   |                end of statement expected but ',' found
+-- Error: tests/neg/t11900.scala:52:16 ---------------------------------------------------------------------------------
+52 |    println("b"),   // error: weird comma
+   |                ^
+   |                end of statement expected but ',' found
+-- [E032] Syntax Error: tests/neg/t11900.scala:64:8 --------------------------------------------------------------------
+64 |      _*, // error
+   |        ^
+   |        pattern expected
+   |
+   | longer explanation available when compiling with `-explain`

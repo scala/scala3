@@ -3,12 +3,8 @@ package transform
 
 import core._
 import Contexts._
-import DenotTransformers.SymTransformer
 import Flags._
-import SymDenotations._
 import Symbols._
-import Types._
-import typer.RefChecks
 import MegaPhase.MiniPhase
 import StdNames.nme
 import ast.tpd
@@ -47,6 +43,6 @@ class UninitializedDefs extends MiniPhase:
 end UninitializedDefs
 
 object UninitializedDefs:
-  val name: String = "uninitializedDefs"
-  val description: String = "replaces `compiletime.uninitialized` by `_`"
+  val name: String = "uninitialized"
+  val description: String = "eliminates `compiletime.uninitialized`"
 end UninitializedDefs

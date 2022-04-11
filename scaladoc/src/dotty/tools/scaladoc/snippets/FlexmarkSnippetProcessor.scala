@@ -11,7 +11,7 @@ import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 import dotty.tools.scaladoc.tasty.comments.PreparsedComment
 
 object FlexmarkSnippetProcessor:
-  def processSnippets(root: mdu.Node, preparsed: Option[PreparsedComment], checkingFunc: => SnippetChecker.SnippetCheckingFunc, withContext: Boolean)(using CompilerContext): mdu.Node = {
+  def processSnippets[T <: mdu.Node](root: T, preparsed: Option[PreparsedComment], checkingFunc: => SnippetChecker.SnippetCheckingFunc, withContext: Boolean)(using CompilerContext): T = {
     lazy val cf: SnippetChecker.SnippetCheckingFunc = checkingFunc
 
     val nodes = root.getDescendants().asScala.collect {

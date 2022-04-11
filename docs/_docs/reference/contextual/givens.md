@@ -55,7 +55,7 @@ the implemented type(s).
 
 ```scala
 given_Ord_Int
-given_Ord_List_T
+given_Ord_List
 ```
 
 The precise rules for synthesizing names are found [here](./relationship-implicits.html#anonymous-given-instances). These rules do not guarantee absence of name conflicts between
@@ -173,14 +173,14 @@ is created for each reference.
 
 Here is the syntax for given instances:
 
-```
+```ebnf
 TmplDef             ::=  ...
-                     |   ‘given’ GivenDef
+                     |   ‘given’ GivenDef ;
 GivenDef            ::=  [GivenSig] StructuralInstance
                      |   [GivenSig] AnnotType ‘=’ Expr
-                     |   [GivenSig] AnnotType
-GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’
-StructuralInstance  ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
+                     |   [GivenSig] AnnotType ;
+GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’ ;
+StructuralInstance  ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody ;
 ```
 
 A given instance starts with the reserved word `given` and an optional _signature_. The signature

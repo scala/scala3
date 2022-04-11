@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
@@ -13,7 +12,7 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object InterceptedMethods {
   val name: String = "intercepted"
-  val description: String = "handling of `==`, `|=`, `getClass` methods"
+  val description: String = "rewrite universal `!=`, `##` methods"
 }
 
 /** Replace member references as follows:

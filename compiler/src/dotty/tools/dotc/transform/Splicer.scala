@@ -1,21 +1,22 @@
 package dotty.tools.dotc
 package transform
 
+import scala.language.unsafeNulls
+
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds.FlatName
-import dotty.tools.dotc.core.Names.{Name, TermName}
+import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Denotations.staticRef
-import dotty.tools.dotc.core.{NameKinds, TypeErasure}
+import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Constants.Constant
 
 import scala.util.control.NonFatal
@@ -473,7 +474,7 @@ object Splicer {
     private object MissingClassDefinedInCurrentRun {
       def unapply(targetException: NoClassDefFoundError)(using Context): Option[Symbol] = {
         val className = targetException.getMessage
-        if (className eq null) None
+        if (className == null) None
         else {
           val sym = staticRef(className.toTypeName).symbol
           if (sym.isDefinedInCurrentRun) Some(sym) else None

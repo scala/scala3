@@ -1,5 +1,7 @@
 package dotty.tools
 
+import scala.language.unsafeNulls
+
 import javax.tools._
 import java.io._
 import java.nio.file._

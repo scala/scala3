@@ -5,7 +5,7 @@ package transform
 import core._
 import Flags._, Symbols._, Contexts._, Scopes._, Decorators._, Types.Type
 import NameKinds.DefaultGetterName
-import collection.mutable
+import NullOpsDecorator._
 import collection.immutable.BitSet
 import scala.annotation.tailrec
 
@@ -121,7 +121,7 @@ object OverridingPairs:
     var overridden: Symbol = _
 
     //@M: note that next is called once during object initialization
-    final def hasNext: Boolean = nextEntry ne null
+    final def hasNext: Boolean = nextEntry != null
 
     /**  @post
      *     curEntry   = the next candidate that may override something else
@@ -130,10 +130,10 @@ object OverridingPairs:
      */
     private def nextOverriding(): Unit = {
       @tailrec def loop(): Unit =
-        if (curEntry ne null) {
-          overriding = curEntry.sym
+        if (curEntry != null) {
+          overriding = curEntry.uncheckedNN.sym
           if (visited.contains(overriding)) {
-            curEntry = curEntry.prev
+            curEntry = curEntry.uncheckedNN.prev
             loop()
           }
         }
@@ -148,10 +148,10 @@ object OverridingPairs:
      */
     @tailrec final def next(): Unit =
       if nextEntry != null then
-        nextEntry = decls.lookupNextEntry(nextEntry)
+        nextEntry = decls.lookupNextEntry(nextEntry.uncheckedNN)
         if nextEntry != null then
           try
-            overridden = nextEntry.sym
+            overridden = nextEntry.uncheckedNN.sym
             if overriding.owner != overridden.owner && matches(overriding, overridden) then
               visited += overridden
               if !isHandledByParent(overriding, overridden) then return
@@ -160,7 +160,7 @@ object OverridingPairs:
             // The root cause in this example is an illegal "override" of an inner trait
             report.error(ex, base.srcPos)
         else
-          curEntry = curEntry.prev
+          curEntry = curEntry.nn.prev
           nextOverriding()
         next()
 
@@ -216,14 +216,10 @@ object OverridingPairs:
       )
     else
       // releaxed override check for explicit nulls if one of the symbols is Java defined,
-      // force `Null` being a subtype of reference types during override checking
-      val relaxedCtxForNulls =
-        if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
-          ctx.retractMode(Mode.SafeNulls)
-        else ctx
+      // force `Null` to be a subtype of non-primitive value types during override checking.
+      val relaxedOverriding = ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined))
       member.name.is(DefaultGetterName) // default getters are not checked for compatibility
-      || memberTp.overrides(otherTp,
-            member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack
-          )(using relaxedCtxForNulls)
+      || memberTp.overrides(otherTp, relaxedOverriding,
+            member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)
 
 end OverridingPairs
