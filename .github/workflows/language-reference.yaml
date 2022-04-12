@@ -22,6 +22,7 @@ jobs:
         with:
           path: 'dotty'
           ref: 'language-reference-stable'
+          fetch-depth: 0
           ssh-key: ${{ secrets.DOCS_KEY }}
 
       - name: Cache Coursier
