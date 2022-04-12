@@ -32,10 +32,25 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   private def scaladocVersionFile = Resource.Text("scaladoc.version", BuildInfo.version)
 
-  private def projectLogo = ctx.args.projectLogo.toSeq.map { p =>
+  lazy val projectLogo = ctx.args.projectLogo.map { p =>
       val path = Paths.get(p)
       Resource.File(s"project-logo/${path.getFileName()}", path)
   }
+
+  lazy val darkProjectLogo = ctx.args.projectLogo.map(p => Paths.get(p))
+    .map { p =>
+      val darkFileName = p.getFileName.toString.split('.').toList match
+        case Nil => "logo_dark"
+        case oneElem :: Nil => oneElem + "_dark"
+        case list =>
+          val (init, last) = (list.init, list.last)
+          init.mkString(".") + "_dark." + last
+      p.resolveSibling(darkFileName)
+    }
+    .filter(p => Files.exists(p))
+    .map { path =>
+      Resource.File(s"project-logo/${path.getFileName()}", path)
+    }
 
   private def dottyRes(path: String) = Resource.Classpath(path, s"dotty_res/$path")
 
@@ -134,7 +149,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "https://scastie.scala-lang.org/embedded.js"
     ).map(Resource.URL.apply)
 
-    fromResources ++ urls ++ projectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
+    fromResources ++ urls ++ projectLogo ++ darkProjectLogo ++ Seq(scaladocVersionFile, dynamicJsData)
   }
 
   val apiOnlyResources = List(

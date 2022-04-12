@@ -15,6 +15,18 @@
   border-bottom: 1px solid var(--border-default);
 }
 
+#dark-project-logo {
+  display:none;
+}
+
+:root.theme-dark #dark-project-logo {
+  display:unset;
+}
+
+:root.theme-dark #project-logo {
+  display:none;
+}
+
 .header-container-left {
   display: flex;
   align-items: center;

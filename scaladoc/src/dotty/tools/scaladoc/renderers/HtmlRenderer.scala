@@ -181,11 +181,19 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
 
 
   private def mkFrame(link: Link, parents: Vector[Link], content: => PageContent): AppliedTag =
-    val projectLogo =
-      args.projectLogo.map { path =>
-        val fileName = Paths.get(path).getFileName()
-        span(img(src := resolveRoot(link.dri, s"project-logo/$fileName")))
-      }.toSeq
+    val projectLogoElem =
+      projectLogo.flatMap {
+        case Resource.File(path, _) =>
+          Some(span(id := "project-logo", cls := "project-logo")(img(src := resolveRoot(link.dri, path))))
+        case _ => None
+      }
+
+    val darkProjectLogoElem =
+      darkProjectLogo.flatMap {
+        case Resource.File(path, _) =>
+          Some(span(id := "dark-project-logo", cls := "project-logo")(img(src := resolveRoot(link.dri, path))))
+        case _ => None
+      }.orElse(projectLogoElem)
 
     val parentsHtml =
       val innerTags = parents.flatMap[TagArg](b => Seq(
@@ -206,7 +214,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     div(id := "container")(
       div(id := "header")(
         div(cls := "header-container-left")(
-          projectLogo,
+          projectLogoElem.toSeq,
+          darkProjectLogoElem.toSeq,
           span(onclick := "dropdownHandler(event)", cls := "text-button with-arrow")(
             a()(
               args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
