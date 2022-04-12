@@ -761,6 +761,14 @@ object projects:
     dependencies = List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
   )
 
+  lazy val parboiled2 = SbtCommunityProject(
+    project = "parboiled2",
+    sbtTestCommand = "parboiledCoreJVM/test; parboiledJVM/test",
+    sbtPublishCommand = "publishLocal",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
+    dependencies = () => List(utest, scalatest)
+  )
+
 end projects
 
 def allProjects = List(
@@ -841,7 +849,8 @@ def allProjects = List(
   projects.specs2,
   projects.coop,
   projects.spire,
-  projects.http4s
+  projects.http4s,
+  projects.parboiled2,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
