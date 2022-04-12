@@ -7,7 +7,7 @@ on:
   pull_request:
     branches:
       - 'language-reference-stable'
-  workflow_dispatch
+  workflow_dispatch:
 
 jobs:
   build-and-push:
