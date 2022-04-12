@@ -27,11 +27,9 @@ class DropdownHandler:
     for (k, v) <- ver.versions do
       val child = a(cls := "text-button", href := v)(k)
       ddc.appendChild(child)
-    val arrow = span(cls := "ar")()
-    document.getElementById("dropdown-button").appendChild(arrow)
 
   private def disableButton() =
-    val btn = document.getElementById("dropdown-button").asInstanceOf[html.Button]
+    val btn = document.getElementById("version-dropdown").asInstanceOf[html.Button]
     btn.disabled = true
     btn.classList.remove("dropdownbtnactive")
 
@@ -59,21 +57,18 @@ class DropdownHandler:
         addVersionsList(json)
 
   document.addEventListener("click", (e: Event) => {
-    document.getElementById("version-dropdown").classList.remove("show")
-    document.getElementById("dropdown-button").classList.remove("expanded")
+    document.getElementById("version-dropdown").classList.remove("expanded")
   })
 
-  document.getElementById("version").asInstanceOf[html.Span].addEventListener("click", (e: Event) => e.stopPropagation())
+  document.getElementById("version-dropdown").asInstanceOf[html.Span].addEventListener("click", (e: Event) => e.stopPropagation())
 end DropdownHandler
 
 @JSExportTopLevel("dropdownHandler")
-def dropdownHandler() =
-  console.log("ddc", document.getElementById("version-dropdown"))
+def dropdownHandler(e: Event) =
+  e.stopPropagation()
   if document.getElementById("version-dropdown").getElementsByTagName("a").size > 0 &&
      window.getSelection.toString.length == 0 then
-    document.getElementById("version-dropdown").classList.toggle("show")
-    document.getElementById("dropdown-button").classList.toggle("expanded")
-    document.getElementById("dropdown-input").asInstanceOf[html.Input].focus()
+    document.getElementById("version-dropdown").classList.toggle("expanded")
 
 @JSExportTopLevel("filterFunction")
 def filterFunction() =

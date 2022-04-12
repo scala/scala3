@@ -207,16 +207,12 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       div(id := "header")(
         div(cls := "header-container-left")(
           projectLogo,
-          span(onclick := "dropdownHandler()", cls := "text-button")(
+          span(onclick := "dropdownHandler(event)", cls := "text-button with-arrow")(
             a()(
               args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
             ),
             div(id := "version-dropdown", cls := "dropdown-menu") (
-              span(cls := "text-button")(
-                a() (
-                "Download",
-                )
-              ),
+              span(cls := "text-button")()
             )
           ),
         ),

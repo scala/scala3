@@ -1,3 +1,7 @@
+.text-button {
+  display: flex;
+}
+
 .text-button a {
   color: var(--action-primary-content-default);
   text-decoration: none;
@@ -16,10 +20,23 @@
   color: var(--action-primary-content-selected);
 }
 
-.text-button:focus a {
+.text-button:focus-visible a {
   box-shadow: 0px 0px 0px 2px var(--focus-default);
 }
 
 .text-button:disabled a {
   opacity: 0.5;
+}
+
+.text-button::after {
+  margin-left: calc(1 * var(--base-spacing));
+}
+
+/* button with arrow */
+.text-button.with-arrow::after {
+  content: url("../../../../images/icon-buttons/hamburger/dark/default.svg");
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
 }

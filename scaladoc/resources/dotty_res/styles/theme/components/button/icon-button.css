@@ -11,7 +11,7 @@
   height: calc(2 * var(--base-spacing));
 }
 
-.icon-button:focus {
+.icon-button:focus-visible {
   box-shadow: 0px 0px 0px 2px var(--focus-default);
   border-radius: 4px;
 }
