@@ -123,11 +123,13 @@ public class PositionBridge implements Position {
 
   @Override
   public String toString() {
-    Optional<String> path = sourcePath();
-    if (path.isPresent())
-      return path.get() + ":" + line().orElse(-1).toString();
+    String path = sourcePath().orElse("");
+    Optional<Integer> l = line();
+    Integer column = pointer().orElse(1);
+    if (l.isPresent())
+      return String.format("%s:%d:%d", path, l.get(), column);
     else
-      return "";
+      return path;
   }
   
   @Override
