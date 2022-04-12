@@ -164,7 +164,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       }
       else {
         document.body.appendChild(rootDiv)
-        input.focus()
+        inputElem.focus()
       }
     // open the search if the user hits the `s` key when not focused on a text input
     document.body.addEventListener("keydown", (e: KeyboardEvent) => handleGlobalKeyDown(e))
@@ -206,7 +206,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         else if e.keyCode == 27 then handleEscape()
     })
     element.id = "scaladoc-searchbar"
-    element.appendChild(input)
+    element.appendChild(inputElem)
     element.appendChild(resultsDiv)
     // element
     rootParent.id = "searchbar-container"
