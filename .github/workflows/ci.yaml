@@ -551,6 +551,10 @@ jobs:
         run: |
           ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
 
+      - name: Trigger unmanaged community build
+        continue-on-error: true
+        run: .github/workflows/scripts/triggerUnmanagedCommunityBuild.sh "${{ secrets.BUILD_TOKEN }}" "$THISBUILD_VERSION"
+
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
