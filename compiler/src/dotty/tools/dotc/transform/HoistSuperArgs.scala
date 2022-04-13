@@ -107,19 +107,18 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
       /** Type of a reference implies that it needs to be hoisted */
       def refNeedsHoist(tp: Type): Boolean = tp match {
-        case tp: ThisType => !tp.cls.isStaticOwner && tp.cls != cls
+        case tp: ThisType => !tp.cls.isStaticOwner && !cls.isContainedIn(tp.cls)
         case tp: TermRef  => refNeedsHoist(tp.prefix)
         case _            => false
       }
 
       /** Super call argument is complex, needs to be hoisted */
-      def needsHoist(tree: Tree) = tree match {
+      def needsHoist(tree: Tree) = tree match
         case _: DefDef            => true
         case _: Template          => true
         case _: New               => !tree.tpe.typeSymbol.isStatic
         case _: RefTree | _: This => refNeedsHoist(tree.tpe)
         case _                    => false
-      }
 
       /** Only rewire types that are owned by the current Hoister and is an param or accessor */
       def needsRewire(tp: Type) = tp match {
