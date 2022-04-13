@@ -812,7 +812,7 @@ object Trees {
   case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T], ValOrTypeDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
-    assert(isEmpty || tpt != genericEmptyTree)
+    assert(isEmpty || (tpt ne genericEmptyTree))
     def unforced: LazyTree[T] = preRhs
     protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
   }
@@ -822,7 +822,7 @@ object Trees {
       paramss: List[ParamClause[T]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
-    assert(tpt != genericEmptyTree)
+    assert(tpt ne genericEmptyTree)
     def unforced: LazyTree[T] = preRhs
     protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
 
