@@ -220,43 +220,29 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             a()(
               args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
             ),
-            div(id := "version-dropdown", cls := "dropdown-menu") (
-              span(cls := "text-button")()
-            )
           ),
+          div(id := "version-dropdown", cls := "dropdown-menu") ()
         ),
          div(cls:="header-container-right")(
           button(id := "search-toggle", cls := "icon-button"),
-          span(cls := "text-button")(
-            a(href := "https://www.scala-lang.org/download/") (
+            a(href := "https://www.scala-lang.org/download/", cls := "text-button") (
               "Download",
-            )
-          ),
-          span(cls := "text-button")(
-            a(href := "https://docs.scala-lang.org/") (
+            ),
+            a(href := "https://docs.scala-lang.org/", cls := "text-button") (
               "Documentation",
-            )
-          ),
-          span(cls := "text-button")(
-            a(href := "https://index.scala-lang.org") (
+            ),
+            a(href := "https://index.scala-lang.org", cls := "text-button") (
               "Libraries",
-            )
-          ),
-          span(cls := "text-button")(
-            a(href := "https://www.scala-lang.org/contribute/") (
+            ),
+            a(href := "https://www.scala-lang.org/contribute/", cls := "text-button") (
               "Contribute",
-            )
-          ),
-          span(cls := "text-button")(
-            a(href := "https://www.scala-lang.org/contribute/") (
+            ),
+            a(href := "https://www.scala-lang.org/contribute/", cls := "text-button") (
               "Blog",
-            )
-          ),
-          span(cls := "text-button")(
-            a(href := "https://www.scala-lang.org/blog/") (
+            ),
+            a(href := "https://www.scala-lang.org/blog/", cls := "text-button") (
               "Community",
-            )
-          ),
+            ),
           button(id := "theme-toggle", cls := "icon-button"),
         ),
 

@@ -10,13 +10,18 @@
   position: absolute;
   padding: calc(3 * var(--base-spacing));
   z-index: 2;
-  top: calc(6 * var(--base-spacing));
 }
 
-/* .dropdown-menu > *:not(:last-child) {
+.dropdown-menu > *:not(:last-child) {
   margin-bottom: calc(2 * var(--base-spacing));
-} */
+}
 
 .dropdown-menu.expanded {
   display: flex;
+}
+
+/* version dropdown */
+#version-dropdown {
+  top: calc(6 * var(--base-spacing));
+  left: calc(34.25 * var(--base-spacing));
 }
