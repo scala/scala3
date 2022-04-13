@@ -113,16 +113,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    def genThrow(expr: Tree): Unit = {
-      val thrownKind = tpeTK(expr)
-      // `throw null` is valid although scala.Null (as defined in src/libray-aux) isn't a subtype of Throwable.
-      // Similarly for scala.Nothing (again, as defined in src/libray-aux).
-      assert(thrownKind.isNullType || thrownKind.isNothingType || thrownKind.asClassBType.isSubtypeOf(ThrowableReference))
-      genLoad(expr, thrownKind)
-      lineNumber(expr)
-      emit(asm.Opcodes.ATHROW) // ICode enters here into enterIgnoreMode, we'll rely instead on DCE at ClassNode level.
-    }
-
     /* Generate code for primitive arithmetic operations. */
     def genArithmeticOp(tree: Tree, code: Int): BType = tree match{
       case Apply(fun @ DesugaredSelect(larg, _), args) =>
@@ -211,7 +201,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       generatedType
     }
 
-    def genLoadIf(tree: If, expectedType: BType): BType = tree match{
+    def genLoadIfTo(tree: If, expectedType: BType, dest: LoadDestination): BType = tree match{
       case If(condp, thenp, elsep) =>
 
       val success = new asm.Label
@@ -221,25 +211,37 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case Literal(value) if value.tag == UnitTag => false
         case _ => true
       })
-      val postIf  = if (hasElse) new asm.Label else failure
 
       genCond(condp, success, failure, targetIfNoJump = success)
       markProgramPoint(success)
 
-      val thenKind      = tpeTK(thenp)
-      val elseKind      = if (!hasElse) UNIT else tpeTK(elsep)
-      def hasUnitBranch = (thenKind == UNIT || elseKind == UNIT) && expectedType == UNIT
-      val resKind       = if (hasUnitBranch) UNIT else tpeTK(tree)
+      if dest == LoadDestination.FallThrough then
+        if hasElse then
+          val thenKind      = tpeTK(thenp)
+          val elseKind      = tpeTK(elsep)
+          def hasUnitBranch = (thenKind == UNIT || elseKind == UNIT) && expectedType == UNIT
+          val resKind       = if (hasUnitBranch) UNIT else tpeTK(tree)
 
-      genLoad(thenp, resKind)
-      if (hasElse) { bc goTo postIf }
-      markProgramPoint(failure)
-      if (hasElse) {
-        genLoad(elsep, resKind)
-        markProgramPoint(postIf)
-      }
-
-      resKind
+          val postIf = new asm.Label
+          genLoadTo(thenp, resKind, LoadDestination.Jump(postIf))
+          markProgramPoint(failure)
+          genLoadTo(elsep, resKind, LoadDestination.FallThrough)
+          markProgramPoint(postIf)
+          resKind
+        else
+          genLoad(thenp, UNIT)
+          markProgramPoint(failure)
+          UNIT
+        end if
+      else
+        genLoadTo(thenp, expectedType, dest)
+        markProgramPoint(failure)
+        if hasElse then
+          genLoadTo(elsep, expectedType, dest)
+        else
+          genAdaptAndSendToDest(UNIT, expectedType, dest)
+        expectedType
+      end if
     }
 
     def genPrimitiveOp(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
@@ -285,8 +287,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     /* Generate code for trees that produce values on the stack */
-    def genLoad(tree: Tree, expectedType: BType): Unit = {
+    def genLoad(tree: Tree, expectedType: BType): Unit =
+      genLoadTo(tree, expectedType, LoadDestination.FallThrough)
+
+    /* Generate code for trees that produce values, sent to a given `LoadDestination`. */
+    def genLoadTo(tree: Tree, expectedType: BType, dest: LoadDestination): Unit =
       var generatedType = expectedType
+      var generatedDest = LoadDestination.FallThrough
 
       lineNumber(tree)
 
@@ -307,24 +314,29 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           generatedType = UNIT
 
         case t @ If(_, _, _) =>
-          generatedType = genLoadIf(t, expectedType)
+          generatedType = genLoadIfTo(t, expectedType, dest)
+          generatedDest = dest
 
         case t @ Labeled(_, _) =>
-          generatedType = genLabeled(t)
+          generatedType = genLabeledTo(t, expectedType, dest)
+          generatedDest = dest
 
         case r: Return =>
           genReturn(r)
-          generatedType = expectedType
+          generatedDest = LoadDestination.Return
 
         case t @ WhileDo(_, _) =>
-          generatedType = genWhileDo(t, expectedType)
+          generatedDest = genWhileDo(t)
+          generatedType = UNIT
 
         case t @ Try(_, _, _) =>
           generatedType = genLoadTry(t)
 
         case t: Apply if t.fun.symbol eq defn.throwMethod =>
-          genThrow(t.args.head)
-          generatedType = expectedType
+          val thrownExpr = t.args.head
+          val thrownKind = tpeTK(thrownExpr)
+          genLoadTo(thrownExpr, thrownKind, LoadDestination.Throw)
+          generatedDest = LoadDestination.Throw
 
         case New(tpt) =>
           abort(s"Unexpected New(${tpt.tpe.showSummary()}/$tpt) reached GenBCode.\n" +
@@ -425,12 +437,18 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
         case blck @ Block(stats, expr) =>
           if(stats.isEmpty)
-            genLoad(expr, expectedType)
-          else genBlock(blck, expectedType)
+            genLoadTo(expr, expectedType, dest)
+          else
+            genBlockTo(blck, expectedType, dest)
+          generatedDest = dest
 
-        case Typed(Super(_, _), _) => genLoad(tpd.This(claszSymbol.asClass), expectedType)
+        case Typed(Super(_, _), _) =>
+          genLoadTo(tpd.This(claszSymbol.asClass), expectedType, dest)
+          generatedDest = dest
 
-        case Typed(expr, _) => genLoad(expr, expectedType)
+        case Typed(expr, _) =>
+          genLoadTo(expr, expectedType, dest)
+          generatedDest = dest
 
         case Assign(_, _) =>
           generatedType = UNIT
@@ -440,7 +458,8 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           generatedType = genArrayValue(av)
 
         case mtch @ Match(_, _) =>
-          generatedType = genMatch(mtch)
+          generatedType = genMatchTo(mtch, expectedType, dest)
+          generatedDest = dest
 
         case tpd.EmptyTree => if (expectedType != UNIT) { emitZeroOf(expectedType) }
 
@@ -451,12 +470,29 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case _ => abort(s"Unexpected tree in genLoad: $tree/${tree.getClass} at: ${tree.span}")
       }
 
-      // emit conversion
-      if (generatedType != expectedType) {
-        adapt(generatedType, expectedType)
-      }
+      // emit conversion and send to the right destination
+      if generatedDest == LoadDestination.FallThrough then
+        genAdaptAndSendToDest(generatedType, expectedType, dest)
+    end genLoadTo
 
-    } // end of GenBCode.genLoad()
+    def genAdaptAndSendToDest(generatedType: BType, expectedType: BType, dest: LoadDestination): Unit =
+      if generatedType != expectedType then
+        adapt(generatedType, expectedType)
+
+      dest match
+        case LoadDestination.FallThrough =>
+          ()
+        case LoadDestination.Jump(label) =>
+          bc goTo label
+        case LoadDestination.Return =>
+          bc emitRETURN returnType
+        case LoadDestination.Throw =>
+          val thrownType = expectedType
+          // `throw null` is valid although scala.Null (as defined in src/libray-aux) isn't a subtype of Throwable.
+          // Similarly for scala.Nothing (again, as defined in src/libray-aux).
+          assert(thrownType.isNullType || thrownType.isNothingType || thrownType.asClassBType.isSubtypeOf(ThrowableReference))
+          emit(asm.Opcodes.ATHROW)
+    end genAdaptAndSendToDest
 
     // ---------------- field load and store ----------------
 
@@ -533,13 +569,23 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    private def genLabeled(tree: Labeled): BType = tree match {
+    private def genLabeledTo(tree: Labeled, expectedType: BType, dest: LoadDestination): BType = tree match {
       case Labeled(bind, expr) =>
 
-      val resKind = tpeTK(tree)
-      genLoad(expr, resKind)
-      markProgramPoint(programPoint(bind.symbol))
-      resKind
+      val labelSym = bind.symbol
+
+      if dest == LoadDestination.FallThrough then
+        val resKind = tpeTK(tree)
+        val jumpTarget = new asm.Label
+        registerJumpDest(labelSym, resKind, LoadDestination.Jump(jumpTarget))
+        genLoad(expr, resKind)
+        markProgramPoint(jumpTarget)
+        resKind
+      else
+        registerJumpDest(labelSym, expectedType, dest)
+        genLoadTo(expr, expectedType, dest)
+        expectedType
+      end if
     }
 
     private def genReturn(r: Return): Unit = {
@@ -548,17 +594,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       if (NoSymbol == fromSym) {
         // return from enclosing method
-        val returnedKind = tpeTK(expr)
-        genLoad(expr, returnedKind)
-        adapt(returnedKind, returnType)
-        val saveReturnValue = (returnType != UNIT)
-        lineNumber(r)
-
         cleanups match {
           case Nil =>
             // not an assertion: !shouldEmitCleanup (at least not yet, pendingCleanups() may still have to run, and reset `shouldEmitCleanup`.
-            bc emitRETURN returnType
+            genLoadTo(expr, returnType, LoadDestination.Return)
           case nextCleanup :: rest =>
+            genLoad(expr, returnType)
+            lineNumber(r)
+            val saveReturnValue = (returnType != UNIT)
             if (saveReturnValue) {
               // regarding return value, the protocol is: in place of a `return-stmt`, a sequence of `adapt, store, jump` are inserted.
               if (earlyReturnVar == null) {
@@ -578,54 +621,39 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
          * that cross cleanup boundaries. However, in theory such crossings are valid, so we should take care
          * of them.
          */
-        val resultKind = toTypeKind(fromSym.info)
-        genLoad(expr, resultKind)
-        lineNumber(r)
-        bc goTo programPoint(fromSym)
+        val (exprExpectedType, exprDest) = findJumpDest(fromSym)
+        genLoadTo(expr, exprExpectedType, exprDest)
       }
     } // end of genReturn()
 
-    def genWhileDo(tree: WhileDo, expectedType: BType): BType = tree match{
+    def genWhileDo(tree: WhileDo): LoadDestination = tree match{
       case WhileDo(cond, body) =>
 
       val isInfinite = cond == tpd.EmptyTree
 
+      val loop = new asm.Label
+      markProgramPoint(loop)
+
       if isInfinite then
-        body match
-          case Labeled(bind, expr) if tpeTK(body) == UNIT =>
-            // this is the shape of tailrec methods
-            val loop = programPoint(bind.symbol)
-            markProgramPoint(loop)
-            genLoad(expr, UNIT)
-            bc goTo loop
-          case _ =>
-            val loop = new asm.Label
-            markProgramPoint(loop)
-            genLoad(body, UNIT)
-            bc goTo loop
-        end match
-        expectedType
+        val dest = LoadDestination.Jump(loop)
+        genLoadTo(body, UNIT, dest)
+        dest
       else
         body match
           case Literal(value) if value.tag == UnitTag =>
             // this is the shape of do..while loops
-            val loop = new asm.Label
-            markProgramPoint(loop)
             val exitLoop = new asm.Label
             genCond(cond, loop, exitLoop, targetIfNoJump = exitLoop)
             markProgramPoint(exitLoop)
           case _ =>
-            val loop = new asm.Label
             val success = new asm.Label
             val failure = new asm.Label
-            markProgramPoint(loop)
             genCond(cond, success, failure, targetIfNoJump = success)
             markProgramPoint(success)
-            genLoad(body, UNIT)
-            bc goTo loop
+            genLoadTo(body, UNIT, LoadDestination.Jump(loop))
             markProgramPoint(failure)
         end match
-        UNIT
+        LoadDestination.FallThrough
     }
 
     def genTypeApply(t: TypeApply): BType = (t: @unchecked) match {
@@ -848,11 +876,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      * Int/String values to use as keys, and a code block. The exception is the "default" case
      * clause which doesn't list any key (there is exactly one of these per match).
      */
-    private def genMatch(tree: Match): BType = tree match {
+    private def genMatchTo(tree: Match, expectedType: BType, dest: LoadDestination): BType = tree match {
       case Match(selector, cases) =>
       lineNumber(tree)
-      val generatedType = tpeTK(tree)
-      val postMatch = new asm.Label
+
+      val (generatedType, postMatch, postMatchDest) =
+        if dest == LoadDestination.FallThrough then
+          val postMatch = new asm.Label
+          (tpeTK(tree), postMatch, LoadDestination.Jump(postMatch))
+        else
+          (expectedType, null, dest)
 
       // Only two possible selector types exist in `Match` trees at this point: Int and String
       if (tpeTK(selector) == INT) {
@@ -902,8 +935,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         for (sb <- switchBlocks.reverse) {
           val (caseLabel, caseBody) = sb
           markProgramPoint(caseLabel)
-          genLoad(caseBody, generatedType)
-          bc goTo postMatch
+          genLoadTo(caseBody, generatedType, postMatchDest)
         }
       } else {
 
@@ -968,13 +1000,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         }
 
         // Push the hashCode of the string (or `0` it is `null`) onto the stack and switch on it
-        genLoadIf(
+        genLoadIfTo(
           If(
             tree.selector.select(defn.Any_==).appliedTo(nullLiteral),
             Literal(Constant(0)),
             tree.selector.select(defn.Any_hashCode).appliedToNone
           ),
-          INT
+          INT,
+          LoadDestination.FallThrough
         )
         bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default, MIN_SWITCH_DENSITY)
 
@@ -993,8 +1026,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
                 val thisCaseMatches = new asm.Label
                 genCond(condp, thisCaseMatches, keepGoing, targetIfNoJump = thisCaseMatches)
                 markProgramPoint(thisCaseMatches)
-                genLoad(caseBody, generatedType)
-                bc goTo postMatch
+                genLoadTo(caseBody, generatedType, postMatchDest)
             }
             markProgramPoint(keepGoing)
           }
@@ -1004,22 +1036,22 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         // emit blocks for common patterns
         for ((caseLabel, caseBody) <- indirectBlocks.reverse) {
           markProgramPoint(caseLabel)
-          genLoad(caseBody, generatedType)
-          bc goTo postMatch
+          genLoadTo(caseBody, generatedType, postMatchDest)
         }
       }
 
-      markProgramPoint(postMatch)
+      if postMatch != null then
+        markProgramPoint(postMatch)
       generatedType
     }
 
-    def genBlock(tree: Block, expectedType: BType) = tree match {
+    def genBlockTo(tree: Block, expectedType: BType, dest: LoadDestination): Unit = tree match {
       case Block(stats, expr) =>
 
       val savedScope = varsInScope
       varsInScope = Nil
       stats foreach genStat
-      genLoad(expr, expectedType)
+      genLoadTo(expr, expectedType, dest)
       val end = currProgramPoint()
       if (emitVars) {
         // add entries to LocalVariableTable JVM attribute

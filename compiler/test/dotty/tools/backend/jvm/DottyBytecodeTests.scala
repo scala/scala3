@@ -597,7 +597,7 @@ class TestBCode extends DottyBytecodeTest {
       val clsIn   = dir.lookupName("Test.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
-      assertEquals(93, instructionsFromMethod(method).size)
+      assertEquals(88, instructionsFromMethod(method).size)
     }
   }
 
@@ -938,7 +938,7 @@ class TestBCode extends DottyBytecodeTest {
         Label(0), Ldc(LDC, ""), VarOp(ASTORE, 1),
         Label(5), VarOp(ALOAD, 1), Jump(IFNULL, Label(19)),
         Label(10), VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "C", "foo", "()V", false), Label(14), Op(ACONST_NULL), VarOp(ASTORE, 1), Jump(GOTO, Label(5)),
-        Label(19), VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "C", "bar", "()V", false), Label(24), Op(RETURN), Label(26)))
+        Label(19), VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "C", "bar", "()V", false), Op(RETURN), Label(25)))
       val labels = instructions collect { case l: Label => l }
       val x = convertMethod(t).localVars.find(_.name == "x").get
       assertEquals(x.start, labels(1))
@@ -976,7 +976,7 @@ class TestBCode extends DottyBytecodeTest {
         Op(ICONST_0),
         Jump(IF_ICMPNE, Label(7)),
         VarOp(ILOAD, 2),
-        Jump(GOTO, Label(22)),
+        Op(IRETURN),
         Label(7),
         VarOp(ILOAD, 1),
         Op(ICONST_1),
@@ -991,12 +991,6 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ILOAD, 4),
         VarOp(ISTORE, 2),
         Jump(GOTO, Label(0)),
-        Label(22),
-        Op(IRETURN),
-        Op(NOP),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
       ))
 
       // The mutable local vars for this and acc reuse the slots of `this` and of the param acc
@@ -1015,7 +1009,7 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ALOAD, 0),
         Field(GETFIELD, "IntList", "head", "I"),
         Op(IADD),
-        Jump(GOTO, Label(26)),
+        Op(IRETURN),
         Label(12),
         VarOp(ALOAD, 2),
         VarOp(ASTORE, 3),
@@ -1029,12 +1023,6 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ILOAD, 4),
         VarOp(ISTORE, 1),
         Jump(GOTO, Label(0)),
-        Label(26),
-        Op(IRETURN),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Op(ATHROW),
       ))
     }
   }
@@ -1079,7 +1067,7 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ALOAD, 4),
         VarOp(ASTORE, 6),
         VarOp(ILOAD, 5),
-        Jump(GOTO, Label(47)),
+        Op(IRETURN),
         Label(19),
         Field(GETSTATIC, "scala/package$", "MODULE$", "Lscala/package$;"),
         Invoke(INVOKEVIRTUAL, "scala/package$", "Nil", "()Lscala/collection/immutable/Nil$;", false),
@@ -1097,15 +1085,13 @@ class TestBCode extends DottyBytecodeTest {
         Jump(IFEQ, Label(40)),
         Label(36),
         IntOp(BIPUSH, 20),
-        Jump(GOTO, Label(47)),
+        Op(IRETURN),
         Label(40),
         TypeOp(NEW, "scala/MatchError"),
         Op(DUP),
         VarOp(ALOAD, 2),
         Invoke(INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
         Op(ATHROW),
-        Label(47),
-        Op(IRETURN),
       ))
 
       // ---------------
@@ -1143,18 +1129,16 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ALOAD, 5),
         VarOp(ASTORE, 6),
         IntOp(BIPUSH, 10),
-        Jump(GOTO, Label(46)),
+        Op(IRETURN),
         Label(34),
         VarOp(ILOAD, 4),
         VarOp(ISTORE, 7),
         VarOp(ALOAD, 5),
         VarOp(ASTORE, 8),
         VarOp(ILOAD, 7),
-        Jump(GOTO, Label(46)),
+        Op(IRETURN),
         Label(42),
         IntOp(BIPUSH, 20),
-        Jump(GOTO, Label(46)),
-        Label(46),
         Op(IRETURN),
       ))
     }
@@ -1191,39 +1175,21 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ILOAD, 1),
         VarOp(ISTORE, 2),
         VarOp(ILOAD, 2),
-        LookupSwitch(LOOKUPSWITCH, Label(40), List(1, 7, 8, 9), List(Label(4), Label(13), Label(22), Label(31))),
+        LookupSwitch(LOOKUPSWITCH, Label(20), List(1, 7, 8, 9), List(Label(4), Label(8), Label(12), Label(16))),
         Label(4),
         IntOp(BIPUSH, 10),
-        Jump(GOTO, Label(52)),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Label(13),
+        Op(IRETURN),
+        Label(8),
         IntOp(BIPUSH, 20),
-        Jump(GOTO, Label(52)),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Label(22),
+        Op(IRETURN),
+        Label(12),
         IntOp(BIPUSH, 30),
-        Jump(GOTO, Label(52)),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Label(31),
+        Op(IRETURN),
+        Label(16),
         IntOp(BIPUSH, 40),
-        Jump(GOTO, Label(52)),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Label(40),
+        Op(IRETURN),
+        Label(20),
         VarOp(ILOAD, 1),
-        Jump(GOTO, Label(52)),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Op(ATHROW),
-        Label(52),
         Op(IRETURN),
       ))
 
@@ -1235,46 +1201,31 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ILOAD, 1),
         VarOp(ISTORE, 2),
         VarOp(ILOAD, 2),
-        LookupSwitch(LOOKUPSWITCH, Label(31), List(1, 2, 7, 8), List(Label(4), Label(4), Label(13), Label(22))),
+        LookupSwitch(LOOKUPSWITCH, Label(16), List(1, 2, 7, 8), List(Label(4), Label(4), Label(8), Label(12))),
         Label(4),
         IntOp(BIPUSH, 10),
-        Jump(GOTO, Label(56)),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Label(13),
+        Op(IRETURN),
+        Label(8),
         IntOp(BIPUSH, 20),
-        Jump(GOTO, Label(56)),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Label(22),
+        Op(IRETURN),
+        Label(12),
         IntOp(BIPUSH, 30),
-        Jump(GOTO, Label(56)),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Label(31),
+        Op(IRETURN),
+        Label(16),
         VarOp(ILOAD, 2),
         VarOp(ISTORE, 3),
         VarOp(ILOAD, 3),
         IntOp(BIPUSH, 100),
-        Jump(IF_ICMPLE, Label(40)),
+        Jump(IF_ICMPLE, Label(25)),
         IntOp(BIPUSH, 20),
-        Jump(GOTO, Label(56)),
-        Label(40),
+        Op(IRETURN),
+        Label(25),
         TypeOp(NEW, "scala/MatchError"),
         Op(DUP),
         VarOp(ILOAD, 2),
         Invoke(INVOKESTATIC, "scala/runtime/BoxesRunTime", "boxToInteger", "(I)Ljava/lang/Integer;", false),
         Invoke(INVOKESPECIAL, "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false),
         Op(ATHROW),
-        Op(NOP),
-        Op(NOP),
-        Op(ATHROW),
-        Op(ATHROW),
-        Label(56),
-        Op(IRETURN),
       ))
     }
   }
@@ -1283,6 +1234,7 @@ class TestBCode extends DottyBytecodeTest {
     /* This is a test case coming from the Scala.js linker, where in Scala 2 we
      * had to introduce a "useless" `return` to make the bytecode size smaller,
      * measurably increasing performance (!).
+     * In dotc, with or without the explicit `return`, the generated code is the same.
      */
 
     val source =
@@ -1360,12 +1312,11 @@ class TestBCode extends DottyBytecodeTest {
         VarOp(ILOAD, 3),
         Op(IADD),
         Invoke(INVOKEVIRTUAL, "java/io/Writer", "write", "(I)V", false),
-        Jump(GOTO, Label(31)),
+        Op(RETURN),
         Label(26),
         VarOp(ALOAD, 0),
         VarOp(ILOAD, 3),
         Invoke(INVOKESPECIAL, "SourceMapWriter", "writeBase64VLQSlowPath$1", "(I)V", false),
-        Label(31),
         Op(RETURN),
       ))
 
