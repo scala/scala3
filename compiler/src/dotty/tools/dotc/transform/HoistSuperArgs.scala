@@ -173,13 +173,23 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       }
     }
 
+    /** Hoist super arg from a lifted parameter that gets evaluated before the call */
+    def hoistSuperArgFromDef(paramDef: Tree, cdef: DefDef): Tree = paramDef match
+      case vdef: ValDef =>
+        cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef))
+      case ddef: DefDef =>
+        cpy.DefDef(ddef)(rhs = hoistSuperArg(ddef.rhs, cdef))
+      case _ =>
+        paramDef
+
     /** Hoist complex arguments in super call out of the class. */
-    def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef): Tree = superCall match {
+    def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef): Tree = superCall match
+      case Block(defs, expr) =>
+        cpy.Block(superCall)(defs.mapconserve(hoistSuperArgFromDef(_, cdef)), hoistSuperArgsFromCall(expr, cdef))
       case Apply(fn, args) =>
         cpy.Apply(superCall)(hoistSuperArgsFromCall(fn, cdef), args.mapconserve(hoistSuperArg(_, cdef)))
       case _ =>
         superCall
-    }
 
     /** Hoist complex arguments in this-constructor call of secondary constructor out of the class. */
     def hoistSuperArgsFromConstr(stat: Tree): Tree = stat match {
