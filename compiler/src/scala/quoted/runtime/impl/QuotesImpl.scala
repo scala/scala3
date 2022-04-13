@@ -1893,6 +1893,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end AppliedTypeTypeTest
 
     object AppliedType extends AppliedTypeModule:
+      def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType =
+        Types.AppliedType(tycon, args)
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr]) =
         (AppliedTypeMethods.tycon(x), AppliedTypeMethods.args(x))
     end AppliedType
