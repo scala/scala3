@@ -60,11 +60,12 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
     /** If argument is complex, hoist it out into its own method and refer to the
      *  method instead.
-     *  @param   arg   The argument that might be hoisted
-     *  @param   cdef  The definition of the constructor from which the call is made
+     *  @param   arg    The argument that might be hoisted
+     *  @param   cdef   The definition of the constructor from which the call is made
+     *  @param   lifted Argument definitions that were lifted out in a call prefix
      *  @return  The argument after possible hoisting
      */
-    private def hoistSuperArg(arg: Tree, cdef: DefDef): Tree = {
+    private def hoistSuperArg(arg: Tree, cdef: DefDef, lifted: List[Symbol]): Tree = {
       val constr = cdef.symbol
       lazy val origParams = // The parameters that can be accessed in the supercall
         if (constr == cls.primaryConstructor)
@@ -92,11 +93,14 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         val argTypeWrtConstr = argType.widenTermRefExpr.subst(origParams, allParamRefs(constr.info))
         // argType with references to paramRefs of the primary constructor instead of
         // local parameter accessors
+        val abstractedArgType =
+          if lifted.isEmpty then argTypeWrtConstr
+          else MethodType.fromSymbols(lifted, argTypeWrtConstr)
         newSymbol(
           owner = methOwner,
           name = SuperArgName.fresh(cls.name.toTermName),
           flags = Synthetic | Private | Method | staticFlag,
-          info = replaceResult(constr.info, argTypeWrtConstr),
+          info = replaceResult(constr.info, abstractedArgType),
           coord = constr.coord
         ).enteredAfter(thisPhase)
       }
@@ -122,6 +126,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         case ntp: NamedType =>
           val owner = ntp.symbol.maybeOwner
           (owner == cls || owner == constr) && ntp.symbol.isParamOrAccessor
+          || lifted.contains(ntp.symbol)
         case _ => false
       }
 
@@ -134,7 +139,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
               if pref.isType then pref.tpe.typeSymbol else pref.symbol)
             val tmap = new TreeTypeMap(
               typeMap = new TypeMap {
-                lazy val origToParam = origParams.zip(paramSyms).toMap
+                lazy val origToParam = (origParams ::: lifted).zip(paramSyms).toMap
                 def apply(tp: Type) = tp match {
                   case tp: NamedType if needsRewire(tp) =>
                     origToParam.get(tp.symbol) match {
@@ -164,45 +169,52 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
               Nil
           }
           val (typeParams, termParams) = origParams.span(_.isType)
-          val res = ref(superMeth)
+          var res = ref(superMeth)
             .appliedToTypes(typeParams.map(_.typeRef))
             .appliedToArgss(termParamRefs(constr.info, termParams))
+          if lifted.nonEmpty then
+            res = res.appliedToArgs(lifted.map(ref))
           report.log(i"hoist $arg, cls = $cls = $res")
           res
         case _ => arg
       }
     }
 
-    /** Hoist super arg from a lifted parameter that gets evaluated before the call */
-    def hoistSuperArgFromDef(paramDef: Tree, cdef: DefDef): Tree = paramDef match
-      case vdef: ValDef =>
-        cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef))
-      case ddef: DefDef =>
-        cpy.DefDef(ddef)(rhs = hoistSuperArg(ddef.rhs, cdef))
-      case _ =>
-        paramDef
-
     /** Hoist complex arguments in super call out of the class. */
-    def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef): Tree = superCall match
+    def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef, lifted: mutable.ListBuffer[Symbol]): Tree = superCall match
       case Block(defs, expr) =>
-        cpy.Block(superCall)(defs.mapconserve(hoistSuperArgFromDef(_, cdef)), hoistSuperArgsFromCall(expr, cdef))
+        cpy.Block(superCall)(
+          stats = defs.mapconserve {
+            case vdef: ValDef =>
+              try cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef, lifted.toList))
+              finally lifted += vdef.symbol
+            case ddef: DefDef =>
+              try cpy.DefDef(ddef)(rhs = hoistSuperArg(ddef.rhs, cdef, lifted.toList))
+              finally lifted += ddef.symbol
+            case stat =>
+              stat
+          },
+          expr = hoistSuperArgsFromCall(expr, cdef, lifted))
       case Apply(fn, args) =>
-        cpy.Apply(superCall)(hoistSuperArgsFromCall(fn, cdef), args.mapconserve(hoistSuperArg(_, cdef)))
+        cpy.Apply(superCall)(
+          hoistSuperArgsFromCall(fn, cdef, lifted),
+          args.mapconserve(hoistSuperArg(_, cdef, lifted.toList)))
       case _ =>
         superCall
 
     /** Hoist complex arguments in this-constructor call of secondary constructor out of the class. */
     def hoistSuperArgsFromConstr(stat: Tree): Tree = stat match {
-      case stat: DefDef if stat.symbol.isClassConstructor =>
-        cpy.DefDef(stat)(rhs =
-          stat.rhs match {
-            case Block(superCall :: stats, expr) =>
-              val superCall1 = hoistSuperArgsFromCall(superCall, stat)
-              if (superCall1 eq superCall) stat.rhs
-              else cpy.Block(stat.rhs)(superCall1 :: stats, expr)
+      case constr: DefDef if constr.symbol.isClassConstructor =>
+        val lifted = new mutable.ListBuffer[Symbol]
+        cpy.DefDef(constr)(rhs =
+          constr.rhs match
+            case Block(stats @ (superCall :: stats1), expr: Literal) =>
+              cpy.Block(constr.rhs)(
+                stats.derivedCons(hoistSuperArgsFromCall(superCall, constr, lifted), stats1),
+                expr)
             case _ =>
-              hoistSuperArgsFromCall(stat.rhs, stat)
-          })
+              hoistSuperArgsFromCall(constr.rhs, constr, lifted)
+          )
       case _ =>
         stat
     }
@@ -212,7 +224,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
     tdef.rhs match {
       case impl @ Template(cdef, superCall :: others, _, _) =>
         val hoist = new Hoister(tdef.symbol)
-        val hoistedSuperCall = hoist.hoistSuperArgsFromCall(superCall, cdef)
+        val hoistedSuperCall = hoist.hoistSuperArgsFromCall(superCall, cdef, new mutable.ListBuffer)
         val hoistedBody = impl.body.mapconserve(hoist.hoistSuperArgsFromConstr)
         if (hoist.superArgDefs.isEmpty) tdef
         else {
