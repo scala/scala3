@@ -213,7 +213,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
         div(cls := "header-container-left")(
           projectLogoElem.toSeq,
           darkProjectLogoElem.toSeq,
-          span(onclick := "dropdownHandler(event)", cls := "text-button with-arrow")(
+          span(onclick := "dropdownHandler(event)", cls := "text-button with-arrow", id := "dropdown-trigger")(
             a()(
               args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
             ),

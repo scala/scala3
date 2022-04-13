@@ -29,9 +29,8 @@ class DropdownHandler:
       ddc.appendChild(child)
 
   private def disableButton() =
-    val btn = document.getElementById("version-dropdown").asInstanceOf[html.Button]
-    btn.disabled = true
-    btn.classList.remove("dropdownbtnactive")
+    val btn = document.getElementById("dropdown-trigger").asInstanceOf[html.Span]
+    btn.classList.add("disabled")
 
   private def getURLContent(url: String): Future[String] = Ajax.get(url).map(_.responseText)
 
@@ -66,6 +65,7 @@ end DropdownHandler
 @JSExportTopLevel("dropdownHandler")
 def dropdownHandler(e: Event) =
   e.stopPropagation()
+  console.log("clikc")
   if document.getElementById("version-dropdown").getElementsByTagName("a").size > 0 &&
      window.getSelection.toString.length == 0 then
     document.getElementById("version-dropdown").classList.toggle("expanded")
