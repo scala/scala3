@@ -1,0 +1,268 @@
+.icon-button {
+  background: unset;
+  border: none;
+  cursor: pointer;
+  outline: none !important;
+  padding: 0;
+}
+
+.icon-button::after {
+  width: calc(2 * var(--base-spacing));
+  height: calc(2 * var(--base-spacing));
+}
+
+.icon-button:focus-visible {
+  box-shadow: 0px 0px 0px 2px var(--focus-default);
+  border-radius: 4px;
+}
+
+.icon-button:disabled {
+  opacity: 0.5;
+}
+
+/* theme-toggle button */
+
+#theme-toggle.icon-button::after {
+  content: url("../../../../images/icon-buttons/moon/light/default.svg");
+}
+
+#theme-toggle.icon-button:hover::after {
+  content: url("../../../../images/icon-buttons/moon/light/hover.svg");
+}
+
+#theme-toggle.icon-button:active::after {
+  content: url("../../../../images/icon-buttons/moon/light/active.svg");
+}
+
+#theme-toggle.icon-button:disabled::after {
+  content: url("../../../../images/icon-buttons/moon/light/disabled.svg");
+}
+
+#theme-toggle.icon-button:focus::after {
+  content: url("../../../../images/icon-buttons/moon/light/focus.svg");
+}
+
+#theme-toggle.icon-button.selected::after {
+  content: url("../../../../images/icon-buttons/moon/light/selected.svg");
+}
+
+.theme-dark #theme-toggle.icon-button::after {
+  content: url("../../../../images/icon-buttons/sun/dark/default.svg");
+}
+
+.theme-dark #theme-toggle.icon-button:hover::after {
+  content: url("../../../../images/icon-buttons/sun/dark/hover.svg");
+}
+
+.theme-dark #theme-toggle.icon-button:active::after {
+  content: url("../../../../images/icon-buttons/sun/dark/active.svg");
+}
+
+.theme-dark #theme-toggle.icon-button:disabled::after {
+  content: url("../../../../images/icon-buttons/sun/dark/disabled.svg");
+}
+
+.theme-dark #theme-toggle.icon-button:focus::after {
+  content: url("../../../../images/icon-buttons/sun/dark/focus.svg");
+}
+
+.theme-dark #theme-toggle.icon-button.selected::after {
+  content: url("../../../../images/icon-buttons/sun/dark/selected.svg");
+}
+
+/* search-toggle button */
+
+#search-toggle.icon-button::after {
+  content: url("../../../../images/icon-buttons/search/light/default.svg");
+}
+
+#search-toggle.icon-button:hover::after {
+  content: url("../../../../images/icon-buttons/search/light/hover.svg");
+}
+
+#search-toggle.icon-button:active::after {
+  content: url("../../../../images/icon-buttons/search/light/active.svg");
+}
+
+#search-toggle.icon-button:disabled::after {
+  content: url("../../../../images/icon-buttons/search/light/disabled.svg");
+}
+
+#search-toggle.icon-button:focus::after {
+  content: url("../../../../images/icon-buttons/search/light/focus.svg");
+}
+
+#search-toggle.icon-button.selected::after {
+  content: url("../../../../images/icon-buttons/search/light/selected.svg");
+}
+
+.theme-dark #search-toggle.icon-button::after {
+  content: url("../../../../images/icon-buttons/search/dark/default.svg");
+}
+
+.theme-dark #search-toggle.icon-button:hover::after {
+  content: url("../../../../images/icon-buttons/search/dark/hover.svg");
+}
+
+.theme-dark #search-toggle.icon-button:active::after {
+  content: url("../../../../images/icon-buttons/search/dark/active.svg");
+}
+
+.theme-dark #search-toggle.icon-button:disabled::after {
+  content: url("../../../../images/icon-buttons/search/dark/disabled.svg");
+}
+
+.theme-dark #search-toggle.icon-button:focus::after {
+  content: url("../../../../images/icon-buttons/search/dark/focus.svg");
+}
+
+.theme-dark #search-toggle.icon-button.selected::after {
+  content: url("../../../../images/icon-buttons/search/dark/selected.svg");
+}
+
+/* hamburger button */
+.icon-button.hamburger::after {
+  content: url("../../../../images/icon-buttons/hamburger/light/default.svg");
+}
+
+.icon-button.hamburger:hover::after {
+  content: url("../../../../images/icon-buttons/hamburger/light/hover.svg");
+}
+
+.icon-button.hamburger:active::after {
+  content: url("../../../../images/icon-buttons/hamburger/light/active.svg");
+}
+
+.icon-button.hamburger:disabled::after {
+  content: url("../../../../images/icon-buttons/hamburger/light/disabled.svg");
+}
+
+.icon-button.hamburger:focus::after {
+  content: url("../../../../images/icon-buttons/hamburger/light/focus.svg");
+}
+
+.icon-button.hamburger.selected::after {
+  content: url("../../../../images/icon-buttons/hamburger/light/selected.svg");
+}
+
+.theme-dark .icon-button.hamburger::after {
+  content: url("../../../../images/icon-buttons/hamburger/dark/default.svg");
+}
+
+.theme-dark .icon-button.hamburger:hover::after {
+  content: url("../../../../images/icon-buttons/hamburger/dark/hover.svg");
+}
+
+.theme-dark .icon-button.hamburger:active::after {
+  content: url("../../../../images/icon-buttons/hamburger/dark/active.svg");
+}
+
+.theme-dark .icon-button.hamburger:disabled::after {
+  content: url("../../../../images/icon-buttons/hamburger/dark/disabled.svg");
+}
+
+.theme-dark .icon-button.hamburger:focus::after {
+  content: url("../../../../images/icon-buttons/hamburger/dark/focus.svg");
+}
+
+.theme-dark .icon-button.hamburger.selected::after {
+  content: url("../../../../images/icon-buttons/hamburger/dark/selected.svg");
+}
+
+/*navigation arrow button */
+
+.ar.icon-button::after {
+  content: url("../../../../images/icon-buttons/arrow-right/light/default.svg");
+}
+
+.ar.icon-button:hover::after {
+  content: url("../../../../images/icon-buttons/arrow-right/light/hover.svg");
+}
+
+.ar.icon-button:active::after {
+  content: url("../../../../images/icon-buttons/arrow-right/light/active.svg");
+}
+
+.ar.icon-button:disabled::after {
+  content: url("../../../../images/icon-buttons/arrow-right/light/disabled.svg");
+}
+
+.ar.icon-button:focus::after {
+  content: url("../../../../images/icon-buttons/arrow-right/light/focus.svg");
+}
+
+.ar.icon-button.selected::after {
+  content: url("../../../../images/icon-buttons/arrow-right/light/selected.svg");
+}
+
+.theme-dark .ar.icon-button::after {
+  content: url("../../../../images/icon-buttons/arrow-right/dark/default.svg");
+}
+
+.theme-dark .ar.icon-button:hover::after {
+  content: url("../../../../images/icon-buttons/arrow-right/dark/hover.svg");
+}
+
+.theme-dark .ar.icon-button:active::after {
+  content: url("../../../../images/icon-buttons/arrow-right/dark/active.svg");
+}
+
+.theme-dark .ar.icon-button:disabled::after {
+  content: url("../../../../images/icon-buttons/arrow-right/dark/disabled.svg");
+}
+
+.theme-dark .ar.icon-button:focus::after {
+  content: url("../../../../images/icon-buttons/arrow-right/dark/focus.svg");
+}
+
+.theme-dark .ar.icon-button.selected::after {
+  content: url("../../../../images/icon-buttons/arrow-right/dark/selected.svg");
+}
+
+.ar.icon-button.expanded::after {
+  content: url("../../../../images/icon-buttons/arrow-down/light/default.svg");
+}
+
+.ar.icon-button.expanded:hover::after {
+  content: url("../../../../images/icon-buttons/arrow-down/light/hover.svg");
+}
+
+.ar.icon-button.expanded:active::after {
+  content: url("../../../../images/icon-buttons/arrow-down/light/active.svg");
+}
+
+.ar.icon-button.expanded:disabled::after {
+  content: url("../../../../images/icon-buttons/arrow-down/light/disabled.svg");
+}
+
+.ar.icon-button.expanded:focus::after {
+  content: url("../../../../images/icon-buttons/arrow-down/light/focus.svg");
+}
+
+.ar.icon-button.expanded.selected::after {
+  content: url("../../../../images/icon-buttons/arrow-down/light/selected.svg");
+}
+
+.theme-dark .ar.icon-button.expanded::after {
+  content: url("../../../../images/icon-buttons/arrow-down/dark/default.svg");
+}
+
+.theme-dark .ar.icon-button.expanded:hover::after {
+  content: url("../../../../images/icon-buttons/arrow-down/dark/hover.svg");
+}
+
+.theme-dark .ar.icon-button.expanded:active::after {
+  content: url("../../../../images/icon-buttons/arrow-down/dark/active.svg");
+}
+
+.theme-dark .ar.icon-button.expanded:disabled::after {
+  content: url("../../../../images/icon-buttons/arrow-down/dark/disabled.svg");
+}
+
+.theme-dark .ar.icon-button.expanded:focus::after {
+  content: url("../../../../images/icon-buttons/arrow-down/dark/focus.svg");
+}
+
+.theme-dark .ar.icon-button.expanded.selected::after {
+  content: url("../../../../images/icon-buttons/arrow-down/dark/selected.svg");
+}

@@ -873,7 +873,7 @@ footer .mode {
 }
 
 .micon.in {
-  content: url("../images/inkuire.svg")
+  content: url("../images/inkuire.svg");
 }
 
 #leftColumn .socials {

@@ -7,3 +7,8 @@ body {
 #container {
   --header-height: calc(8 * var(--base-spacing));
 }
+
+::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
+}
