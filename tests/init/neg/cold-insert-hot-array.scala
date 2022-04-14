@@ -3,7 +3,7 @@ object A:
 
 class B {
   var a = new Array[B](2)
-  A.foo(this, a) //error
+  A.foo(this, a) // error
   println(a(0).i)
   val i = 99
 }
