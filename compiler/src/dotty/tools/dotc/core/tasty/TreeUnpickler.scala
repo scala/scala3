@@ -515,16 +515,28 @@ class TreeUnpickler(reader: TastyReader,
       flags
     }
 
-    def isAbstractType(ttag: Int)(using Context): Boolean = nextUnsharedTag match {
+    def isAbstractType(name: Name)(using Context): Boolean = nextByte match
+      case SHAREDtype =>
+        val lookAhead = fork
+        lookAhead.reader.readByte()
+        val sharedReader = forkAt(lookAhead.reader.readAddr())
+        sharedReader.isAbstractType(name)
       case LAMBDAtpt =>
         val rdr = fork
         rdr.reader.readByte()  // tag
         rdr.reader.readNat()   // length
         rdr.skipParams()       // tparams
-        rdr.isAbstractType(rdr.nextUnsharedTag)
-      case TYPEBOUNDS | TYPEBOUNDStpt => true
+        rdr.isAbstractType(name)
+      case TYPEBOUNDS =>
+        val rdr = fork
+        rdr.reader.readByte()  // tag
+        val end = rdr.reader.readEnd()
+        rdr.skipTree()         // alias, or lower bound
+        val res = !rdr.nothingButMods(end)
+        //if !res then println(i"NOT ABSTRACT $name, ${rdr.reader.nextByte}")
+        res
+      case TYPEBOUNDStpt => true
       case _ => false
-    }
 
     /** Create symbol of definition node and enter in symAtAddr map
      *  @return  the created symbol
@@ -569,7 +581,7 @@ class TreeUnpickler(reader: TastyReader,
       if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
       skipParams()
       val ttag = nextUnsharedTag
-      val isAbsType = isAbstractType(ttag)
+      val isAbsType = isAbstractType(name)
       val isClass = ttag == TEMPLATE
       val templateStart = currentAddr
       skipTree() // tpt
@@ -577,7 +589,7 @@ class TreeUnpickler(reader: TastyReader,
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annotFns, privateWithin) = readModifiers(end)
-      pickling.println(i"creating symbol $name at $start with flags $givenFlags")
+      pickling.println(i"creating symbol $name at $start with flags ${givenFlags.flagsString}, isAbsType = $isAbsType, $ttag")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
         if (flags.is(Module)) adjustModuleCompleter(completer, name) else completer
