@@ -1,47 +1,99 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package printing
 
 import scala.language.unsafeNulls
 
+import scala.collection.mutable
+
 import core._
 import Texts._, Types._, Flags._, Symbols._, Contexts._
-import collection.mutable
 import Decorators._
-import scala.util.control.NonFatal
 import reporting.Message
 import util.DiffUtil
 import Highlighting._
 
 object Formatting {
 
+  object ShownDef:
+    /** Represents a value that has been "shown" and can be consumed by StringFormatter.
+     *  Not just a string because it may be a Seq that StringFormatter will intersperse with the trailing separator.
+     *  Also, it's not a `String | Seq[String]` because then we'd need a Context to call `Showable#show`.  We could
+     *  make Context a requirement for a Show instance but then we'd have lots of instances instead of just one ShowAny
+     *  instance.  We could also try to make `Show#show` require the Context, but then that breaks the Conversion. */
+    opaque type Shown = Any
+    object Shown:
+      given [A: Show]: Conversion[A, Shown] = Show[A].show(_)
+
+    sealed abstract class Show[-T]:
+      /** Show a value T by returning a "shown" result. */
+      def show(x: T): Shown
+
+    /** The base implementation, passing the argument to StringFormatter which will try to `.show` it. */
+    object ShowAny extends Show[Any]:
+      def show(x: Any): Shown = x
+
+    class ShowImplicits2:
+      given Show[Product] = ShowAny
+
+    class ShowImplicits1 extends ShowImplicits2:
+      given Show[ImplicitRef]      = ShowAny
+      given Show[Names.Designator] = ShowAny
+      given Show[util.SrcPos]      = ShowAny
+
+    object Show extends ShowImplicits1:
+      inline def apply[A](using inline z: Show[A]): Show[A] = z
+
+      given [X: Show]: Show[Seq[X]] with
+        def show(x: Seq[X]) = x.map(Show[X].show)
+
+      given [A: Show, B: Show]: Show[(A, B)] with
+        def show(x: (A, B)) = (Show[A].show(x._1), Show[B].show(x._2))
+
+      given [X: Show]: Show[X | Null] with
+        def show(x: X | Null) = if x == null then "null" else Show[X].show(x.nn)
+
+      given Show[FlagSet] with
+        def show(x: FlagSet) = x.flagsString
+
+      given Show[TypeComparer.ApproxState] with
+        def show(x: TypeComparer.ApproxState) = TypeComparer.ApproxState.Repr.show(x)
+
+      given Show[Showable]                            = ShowAny
+      given Show[Shown]                               = ShowAny
+      given Show[Int]                                 = ShowAny
+      given Show[Char]                                = ShowAny
+      given Show[Boolean]                             = ShowAny
+      given Show[String]                              = ShowAny
+      given Show[Class[?]]                            = ShowAny
+      given Show[Exception]                           = ShowAny
+      given Show[StringBuffer]                        = ShowAny
+      given Show[CompilationUnit]                     = ShowAny
+      given Show[Phases.Phase]                        = ShowAny
+      given Show[TyperState]                          = ShowAny
+      given Show[config.ScalaVersion]                 = ShowAny
+      given Show[io.AbstractFile]                     = ShowAny
+      given Show[parsing.Scanners.Scanner]            = ShowAny
+      given Show[util.SourceFile]                     = ShowAny
+      given Show[util.Spans.Span]                     = ShowAny
+      given Show[tasty.TreeUnpickler#OwnerTree]       = ShowAny
+    end Show
+  end ShownDef
+  export ShownDef.{ Show, Shown }
+
   /** General purpose string formatter, with the following features:
    *
-   *  1) On all Showables, `show` is called instead of `toString`
-   *  2) Exceptions raised by a `show` are handled by falling back to `toString`.
-   *  3) Sequences can be formatted using the desired separator between two `%` signs,
+   *  1. Invokes the `show` extension method on the interpolated arguments.
+   *  2. Sequences can be formatted using the desired separator between two `%` signs,
    *     eg `i"myList = (${myList}%, %)"`
-   *  4) Safe handling of multi-line margins. Left margins are skipped om the parts
+   *  3. Safe handling of multi-line margins. Left margins are stripped on the parts
    *     of the string context *before* inserting the arguments. That way, we guard
    *     against accidentally treating an interpolated value as a margin.
    */
   class StringFormatter(protected val sc: StringContext) {
-    protected def showArg(arg: Any)(using Context): String = arg match {
-      case arg: Showable =>
-        try arg.show
-        catch {
-          case ex: CyclicReference => "... (caught cyclic reference) ..."
-          case NonFatal(ex)
-          if !ctx.mode.is(Mode.PrintShowExceptions) &&
-             !ctx.settings.YshowPrintErrors.value =>
-            val msg = ex match
-              case te: TypeError => te.toMessage
-              case _ => ex.getMessage
-            s"[cannot display due to $msg, raw string = ${arg.toString}]"
-        }
-      case _ => String.valueOf(arg)
-    }
+    protected def showArg(arg: Any)(using Context): String = arg.tryToShow
 
-    private def treatArg(arg: Any, suffix: String)(using Context): (Any, String) = arg match {
+    private def treatArg(arg: Shown, suffix: String)(using Context): (Any, String) = arg match {
       case arg: Seq[?] if suffix.nonEmpty && suffix.head == '%' =>
         val (rawsep, rest) = suffix.tail.span(_ != '%')
         val sep = StringContext.processEscapes(rawsep)
@@ -51,7 +103,7 @@ object Formatting {
         (showArg(arg), suffix)
     }
 
-    def assemble(args: Seq[Any])(using Context): String = {
+    def assemble(args: Seq[Shown])(using Context): String = {
       def isLineBreak(c: Char) = c == '\n' || c == '\f' // compatible with StringLike#isLineBreak
       def stripTrailingPart(s: String) = {
         val (pre, post) = s.span(c => !isLineBreak(c))
@@ -76,18 +128,6 @@ object Formatting {
   class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc):
     override protected def showArg(arg: Any)(using Context): String =
       wrapNonSensical(arg, super.showArg(arg)(using errorMessageCtx))
-
-  class SyntaxFormatter(sc: StringContext) extends StringFormatter(sc) {
-    override protected def showArg(arg: Any)(using Context): String =
-      arg match {
-        case hl: Highlight =>
-          hl.show
-        case hb: HighlightBuffer =>
-          hb.toString
-        case _ =>
-          SyntaxHighlighting.highlight(super.showArg(arg))
-      }
-  }
 
   private def wrapNonSensical(arg: Any, str: String)(using Context): String = {
     import Message._

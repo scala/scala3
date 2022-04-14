@@ -1759,7 +1759,9 @@ import transform.SymUtils._
 
   class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(using Context)
     extends NamingMsg(ClassAndCompanionNameClashID) {
-    def msg = em"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
+    def msg =
+      val name = cls.name.stripModuleClassSuffix
+      em"Name clash: both ${cls.owner} and its companion object defines $name"
     def explain =
       em"""|A ${cls.kindString} and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
            |  - ${cls.owner} defines ${cls}

@@ -1197,7 +1197,7 @@ trait Checking {
     case _: TypeTree =>
     case _ =>
       if tree.tpe.typeParams.nonEmpty then
-        val what = if tree.symbol.exists then tree.symbol else i"type $tree"
+        val what = if tree.symbol.exists then tree.symbol.show else i"type $tree"
         report.error(em"$what takes type parameters", tree.srcPos)
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */

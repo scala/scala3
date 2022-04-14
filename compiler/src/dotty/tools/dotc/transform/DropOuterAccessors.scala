@@ -80,7 +80,7 @@ class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
             cpy.Block(rhs)(inits.filterNot(dropOuterInit), expr)
         })
     assert(droppedParamAccessors.isEmpty,
-      i"""Failed to eliminate: $droppedParamAccessors
+      i"""Failed to eliminate: ${droppedParamAccessors.toList}
           when dropping outer accessors for ${ctx.owner} with
           $impl""")
     cpy.Template(impl)(constr = constr1, body = body1)
