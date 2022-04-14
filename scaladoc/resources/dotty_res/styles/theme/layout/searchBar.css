@@ -10,11 +10,13 @@
 
 #scaladoc-searchbar {
   z-index: 5;
+  width: calc(125 * var(--base-spacing));
 }
 
 #scaladoc-searchbar-input {
   width: 100%;
   background-color: var(--action-primary-background-default-solid);
+  color: var(--action-primary-content-active);
   background-image: url("../../../images/icon-buttons/search/dark/default.svg");
   background-repeat: no-repeat;
   padding: calc(2 * var(--base-spacing)) calc(2 * var(--base-spacing))
@@ -22,4 +24,42 @@
   border-radius: 4px;
   background-size: 16px;
   background-position: 10px 15px;
+  border: none;
+}
+
+#scaladoc-searchbar-input:focus-visible {
+  border: none;
+  outline: none;
+}
+
+#scaladoc-searchbar-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  height: 1em;
+  width: 1em;
+  border-radius: 50em;
+  background: url("../../../images/icon-buttons/close/light/default.svg")
+    no-repeat 50% 50%;
+  background-size: contain;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-dark #scaladoc-searchbar-input::-webkit-search-cancel-button {
+  background: url("../../../images/icon-buttons/close/dark/default.svg")
+    no-repeat 50% 50%;
+}
+
+#scaladoc-searchbar-input:focus::-webkit-search-cancel-button {
+  opacity: 1;
+  pointer-events: all;
+}
+
+#scaladoc-searchbar-input.dark::-webkit-search-cancel-button {
+  filter: invert(1);
+}
+
+#scaladoc-searchbar-results {
+  background-color: var(--background-default);
+  border-radius: 4px;
+  margin-top: calc(1.5 * var(--base-spacing));
 }

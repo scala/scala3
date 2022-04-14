@@ -25,7 +25,7 @@ class DropdownHandler:
     val ver = JSON.parse(json).asInstanceOf[Versions]
     val ddc = document.getElementById("version-dropdown")
     for (k, v) <- ver.versions do
-      val child = a(cls := "text-button", href := v)(k)
+      var child = a(cls := "text-button", href := v)(k)
       ddc.appendChild(child)
 
   private def disableButton() =
@@ -57,6 +57,7 @@ class DropdownHandler:
 
   document.addEventListener("click", (e: Event) => {
     document.getElementById("version-dropdown").classList.remove("expanded")
+    document.getElementById("dropdown-trigger").classList.remove("selected")
   })
 
   document.getElementById("version-dropdown").asInstanceOf[html.Span].addEventListener("click", (e: Event) => e.stopPropagation())
@@ -69,6 +70,7 @@ def dropdownHandler(e: Event) =
   if document.getElementById("version-dropdown").getElementsByTagName("a").size > 0 &&
      window.getSelection.toString.length == 0 then
     document.getElementById("version-dropdown").classList.toggle("expanded")
+    document.getElementById("dropdown-trigger").classList.toggle("selected")
 
 @JSExportTopLevel("filterFunction")
 def filterFunction() =

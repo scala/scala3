@@ -172,7 +172,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     icon
 
   private val inputElem: html.Input =
-    input(id := "scaladoc-searchbar-input").tap { element =>
+    input(id := "scaladoc-searchbar-input", `type` := "search").tap { element =>
       element.addEventListener("input", { e =>
         val inputValue = e.target.asInstanceOf[html.Input].value
         if inputValue.isEmpty then showHints()

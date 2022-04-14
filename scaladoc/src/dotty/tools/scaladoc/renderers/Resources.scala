@@ -333,6 +333,8 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/icon-buttons/arrow-right/light/hover.svg"),
       dottyRes("images/icon-buttons/arrow-right/light/selected.svg"),
       dottyRes("images/icon-buttons/arrow-right/light/default.svg"),
+      dottyRes("images/icon-buttons/close/light/default.svg"),
+      dottyRes("images/icon-buttons/close/dark/default.svg"),
       searchData(pages),
       scastieConfiguration(),
     )

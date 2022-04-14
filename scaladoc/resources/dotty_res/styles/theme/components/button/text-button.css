@@ -48,3 +48,19 @@
 .theme-dark .text-button.with-arrow::after {
   content: url("../../../../images/icon-buttons/arrow-down/dark/default.svg");
 }
+
+.text-button.with-arrow:hover::after {
+  content: url("../../../../images/icon-buttons/arrow-down/light/hover.svg");
+}
+
+.theme-dark .text-button.with-arrow:hover::after {
+  content: url("../../../../images/icon-buttons/arrow-down/dark/hover.svg");
+}
+
+.text-button.with-arrow.selected::after {
+  content: url("../../../../images/icon-buttons/arrow-down/light/selected.svg");
+}
+
+.theme-dark .text-button.with-arrow.selected::after {
+  content: url("../../../../images/icon-buttons/arrow-down/dark/selected.svg");
+}
