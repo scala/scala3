@@ -123,7 +123,7 @@ class TreeUnpickler(reader: TastyReader,
         else throw TypeError(
           em"""Could not read definition of $denot$where
               |An exception was encountered:
-              |  $ex
+              |  ${ex.tryToShow}
               |Run with -Ydebug-unpickling to see full stack trace.""")
       treeAtAddr(currentAddr) =
         try
