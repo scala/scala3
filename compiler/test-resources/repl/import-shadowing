@@ -25,3 +25,31 @@ def f: Int
 
 scala> val x3 = f
 val x3: Int = 1
+
+scala> import A._; def f = 5
+def f: Int
+
+scala> val x4 = f
+val x4: Int = 5
+
+scala> def f = 6; println(f); import A._; println(f);  // import shadowing should only work on toplevel definitions in next runs
+6
+6
+def f: Int
+
+scala> import A._; println(f); def f = 7; println(f)
+7
+7
+def f: Int
+
+scala> def f = 8; import A.f
+def f: Int
+
+scala> val x5 = f
+val x5: Int = 1
+
+scala> import A.f; def f = 9
+def f: Int
+
+scala> val x6 = f
+val x6: Int = 9
