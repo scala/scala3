@@ -14,6 +14,7 @@ import java.nio.file.{Files, FileSystems, Path, Paths, StandardCopyOption}
 import scala.jdk.CollectionConverters.*
 import scala.util.Properties.userDir
 import scala.language.unsafeNulls
+import scala.collection.mutable.Buffer
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class CoverageTests:
@@ -31,6 +32,15 @@ class CoverageTests:
     checkCoverageIn(rootSrc.resolve("run"), true)
 
   def checkCoverageIn(dir: Path, run: Boolean)(using TestGroup): Unit =
+    /** Converts \ to / on windows, to make the tests pass without changing the serialization. */
+    def fixWindowsPaths(lines: Buffer[String]): Buffer[String] =
+      val separator = java.io.File.separatorChar
+      if separator != '/' then
+        lines.map(_.replace("\\" + separator, "/")) // escape the separator
+      else
+        lines
+    end fixWindowsPaths
+
     Files.walk(dir).filter(scalaFile.matches).forEach(p => {
       val path = p
       val fileName = path.getFileName.toString.stripSuffix(".scala")
@@ -41,8 +51,8 @@ class CoverageTests:
       if updateCheckFiles then
         Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
       else
-        val expected = Files.readAllLines(expectFile).asScala
-        val obtained = Files.readAllLines(targetFile).asScala
+        val expected = fixWindowsPaths(Files.readAllLines(expectFile).asScala)
+        val obtained = fixWindowsPaths(Files.readAllLines(targetFile).asScala)
         if expected != obtained then
           for ((exp, actual),i) <- expected.zip(obtained).filter(_ != _).zipWithIndex do
             Console.err.println(s"wrong line ${i+1}:")
