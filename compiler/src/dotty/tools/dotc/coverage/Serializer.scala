@@ -32,7 +32,7 @@ object Serializer:
 
     def getRelativePath(filePath: Path): String =
       val relPath = sourceRoot.relativize(filePath)
-      relPath.toString
+      relPath.toString.replace("\\", "/") // stick to unix path format
 
     def writeHeader(writer: Writer): Unit =
       writer.write(s"""# Coverage data, format version: $CoverageDataFormatVersion
