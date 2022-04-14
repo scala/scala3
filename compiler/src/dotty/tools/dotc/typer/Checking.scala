@@ -473,8 +473,7 @@ object Checking {
     if sym.isInlineMethod && !sym.is(Deferred) && sym.allOverriddenSymbols.nonEmpty then
       checkInlineOverrideParameters(sym)
     if (sym.is(Implicit)) {
-      if (sym.owner.is(Package))
-        fail(TopLevelCantBeImplicit(sym))
+      assert(!sym.owner.is(Package), s"top-level implicit $sym should be wrapped by a package after typer")
       if sym.isType && (!sym.isClass || sym.is(Trait)) then
         fail(TypesAndTraitsCantBeImplicit())
     }
