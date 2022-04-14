@@ -68,6 +68,7 @@
 ./experimental/erased-defs.html
 ./experimental/explicit-nulls.html
 ./experimental/index.html
+./experimental/main-annotation.html
 ./experimental/named-typeargs-spec.html
 ./experimental/named-typeargs.html
 ./experimental/numeric-literals.html

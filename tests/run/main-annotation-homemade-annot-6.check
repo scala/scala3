@@ -1,0 +1,25 @@
+command(
+  Array(1, 2),
+  foo,
+  "Foo docs",
+  Seq(
+    Parameter(name="i", typeName="scala.Int", hasDefault=false, isVarargs=false, documentation="", annotations=List()),
+    Parameter(name="j", typeName="java.lang.String", hasDefault=true, isVarargs=false, documentation="", annotations=List())
+  )*
+)
+run()
+foo(42, abc)
+
+command(
+  Array(1, 2),
+  bar,
+  "Bar docs",
+  Seq(
+    Parameter(name="i", typeName="scala.collection.immutable.List[Int]", hasDefault=false, isVarargs=false, documentation="the first parameter", annotations=List(MyParamAnnot(3))),
+    Parameter(name="rest", typeName="scala.Int", hasDefault=false, isVarargs=true, documentation="", annotations=List())
+  )*
+)
+varargGetter()
+run()
+bar(List(42), 42, 42)
+
