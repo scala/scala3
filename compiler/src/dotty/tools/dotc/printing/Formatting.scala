@@ -66,7 +66,7 @@ object Formatting {
       given Show[Boolean]                             = ShowAny
       given Show[String]                              = ShowAny
       given Show[Class[?]]                            = ShowAny
-      given Show[Exception]                           = ShowAny
+      given Show[Throwable]                           = ShowAny
       given Show[StringBuffer]                        = ShowAny
       given Show[CompilationUnit]                     = ShowAny
       given Show[Phases.Phase]                        = ShowAny
