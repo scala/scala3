@@ -1557,11 +1557,11 @@ object TreeUnpickler {
   class TreeWithoutOwner extends Exception
 
   /** An attachment key indicating that an old-style leading () in a constructor
-   *  call that has otherwise only using clauses was suppressed.
+   *  call that is followed by a using clause was suppressed.
    */
   val SuppressedApplyToNone: Property.Key[Unit] = Property.Key()
 
-  /** An attachment key indicating that an trailing () in a constructor
+  /** An attachment key indicating that a trailing () in a constructor
    *  call that has otherwise only using clauses was inserted.
    */
   val InsertedApplyToNone: Property.Key[Unit] = Property.Key()
