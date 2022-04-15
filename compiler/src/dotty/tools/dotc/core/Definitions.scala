@@ -2003,7 +2003,7 @@ class Definitions {
     add(MatchableClass,
     """/** The base trait of types that can be safely pattern matched against.
       | *
-      | *   See [[https://dotty.epfl.ch/docs/reference/other-new-features/matchable.html]].
+      | *   See [[https://docs.scala-lang.org/scala3/reference/other-new-features/matchable.html]].
       | */
     """.stripMargin)
 
@@ -2112,21 +2112,21 @@ class Definitions {
     add(AnyKindClass,
     """/** The super-type of all types.
       | *
-      | *   See [[https://dotty.epfl.ch/docs/reference/other-new-features/kind-polymorphism.html]].
+      | *   See [[https://docs.scala-lang.org/scala3/reference/other-new-features/kind-polymorphism.html]].
       | */
     """.stripMargin)
 
     add(andType,
     """/** The intersection of two types.
       | *
-      | *   See [[https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html]].
+      | *   See [[https://docs.scala-lang.org/scala3/reference/new-types/intersection-types.html]].
       | */
     """.stripMargin)
 
     add(orType,
     """/** The union of two types.
       | *
-      | *   See [[https://dotty.epfl.ch/docs/reference/new-types/union-types.html]].
+      | *   See [[https://docs.scala-lang.org/scala3/reference/new-types/union-types.html]].
       | */
     """.stripMargin)
 
