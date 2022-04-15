@@ -36,7 +36,7 @@ class CoverageTests:
     def fixWindowsPaths(lines: Buffer[String]): Buffer[String] =
       val separator = java.io.File.separatorChar
       if separator != '/' then
-        lines.map(_.replace("\\" + separator, "/")) // escape the separator
+        lines.map(_.replace(separator, '/'))
       else
         lines
     end fixWindowsPaths
