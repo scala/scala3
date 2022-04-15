@@ -3674,14 +3674,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 tree.symbol != defn.StringContext_f &&
                 tree.symbol != defn.StringContext_s)
           if (ctx.settings.XignoreScala2Macros.value) {
-            report.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.srcPos.startPos)
+            report.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html", tree.srcPos.startPos)
             Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
               .withType(tree.tpe)
               .withSpan(tree.span)
           }
           else {
             report.error(
-              """Scala 2 macro cannot be used in Dotty. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html
+              """Scala 2 macro cannot be used in Dotty. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html
                 |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""".stripMargin, tree.srcPos.startPos)
             tree
           }
