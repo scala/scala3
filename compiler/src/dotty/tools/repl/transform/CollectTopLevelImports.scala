@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.StdNames.ScalaTermNames
+import dotty.tools.dotc.core.StdNames.nme
 
 
 /** This phase collects and transforms top-level Import trees to handle definition shadowing.
@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.StdNames.ScalaTermNames
  *
  *  Import transformation is necessary for excluding its members when they are shadowed in the same run.
  *  This is done by finding all members defined after the Import clause calculating
- *  their intersection with available members from selectors
+ *  their intersection with available members from selectors including renaming.
  *
  *  This step is necessary for proper new run initialization since we need to import the previous run
  *  into Context. It is accomplished in the following order:
@@ -40,6 +40,8 @@ class CollectTopLevelImports extends Phase {
   /** Transforms top-level imports to exclude intersecting members declared after the Import clause.
    *  To properly handle imports such as: `import A.f; def f = 3`  consequently making sure that original selectors are
    *  filtered to eliminate potential duplications that would result in compilation error.
+   *
+   *  Transformed imports of which selectors were all shadowed will be ignored in the future runs.
    */
   private def transformTopLevelImports(trees: List[Tree])(using Context): List[Import] =
     val definitions = collectTopLevelMemberDefs(trees)
@@ -47,16 +49,30 @@ class CollectTopLevelImports extends Phase {
     trees.collect {
       case tree @ Import(expr, selectors) =>
         val definitionsAfterImport = definitions.filter(_._2 > tree.endPos.end).map(_._1)
-        val membersIntersection = expr.tpe.allMembers.map(_.name).intersect(definitionsAfterImport)
 
-        val transformedSelectors = membersIntersection.map(collidingMember => {
-          untpd.ImportSelector(untpd.Ident(collidingMember), untpd.Ident(CollectTopLevelImports.nme.WILDCARD))
-        }).toList
+        val importedNames: List[Name] = (if selectors.exists(_.isWildcard) then
+          val allImportTypeMembers = expr.tpe.allMembers.map(_.name)
+          val nonWildcardSelectors = selectors.filter(_.isWildcard)
+          val renamedMembers = nonWildcardSelectors.map(_.imported.name)
+          nonWildcardSelectors.map(_.rename) ++ allImportTypeMembers.filterNot(renamedMembers.contains)
+        else
+          selectors.map(_.rename)
+        )
 
-        val filteredSelectors = selectors.filterNot(importSelector => membersIntersection.contains(importSelector.imported.name))
+        val shadowedMembers = importedNames.intersect(definitionsAfterImport)
+        val adjustedSelectors = shadowedMembers.map(collidingMember => {
+          untpd.ImportSelector(untpd.Ident(collidingMember), untpd.Ident(nme.WILDCARD))
+        })
 
-        Import(expr, transformedSelectors.toList  ::: filteredSelectors)
-    }
+        val remainingSelectors = selectors.filterNot(importSelector => {
+            shadowedMembers.contains(importSelector.rename)
+        })
+
+        if remainingSelectors.isEmpty then
+          None
+        else
+          Some(Import(expr, adjustedSelectors ++ remainingSelectors))
+    }.flatten
 
   private def collectTopLevelMemberDefs(trees: List[Tree])(using Context): List[(Name, Int)] =
     trees.collect {
@@ -65,9 +81,5 @@ class CollectTopLevelImports extends Phase {
       case tree: TypeDef => tree.name -> tree.endPos.end
     }
 
-}
-
-object CollectTopLevelImports {
-  private lazy val nme: ScalaTermNames = new ScalaTermNames
 }
 
