@@ -1599,7 +1599,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         result match {
           case result @ Match(sel, CaseDef(pat, _, _) :: _) =>
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
-              case Some(checkMode) =>
+              case Some(checkMode) if !sel.tpe.hasAnnotation(defn.UncheckedAnnot) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
                 if (!checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `future-migration`)
                   if (isPatDef) patch(Span(tree.selector.span.end), ": @unchecked")
