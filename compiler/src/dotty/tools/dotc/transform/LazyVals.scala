@@ -464,7 +464,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val claz = x.symbol.owner.asClass
     val thizClass = Literal(Constant(claz.info))
     val helperModule = requiredModule(runtimeModule)
-    var offsetSymbol: TermSymbol = null
+    var offsetSymbol: TermSymbol | Null = null
 
     def offsetName(id: Int) = s"${StdNames.nme.LAZY_FIELD_OFFSET}${if (x.symbol.owner.is(Module)) "_m_" else ""}$id".toTermName
 
