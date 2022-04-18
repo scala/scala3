@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package transform.localopt
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Constants.Constant
@@ -158,5 +160,5 @@ class StringInterpolatorOpt extends MiniPhase:
       case _ => tree
 
 object StringInterpolatorOpt:
-  val name: String = "stringInterpolatorOpt"
-  val description: String = "optimize s, f and raw string interpolators"
+  val name: String = "interpolators"
+  val description: String = "optimize s, f, and raw string interpolators"

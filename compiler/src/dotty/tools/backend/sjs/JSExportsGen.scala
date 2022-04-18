@@ -1,7 +1,8 @@
 package dotty.tools.backend.sjs
 
-import scala.annotation.tailrec
+import scala.language.unsafeNulls
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 import dotty.tools.dotc.core._
@@ -118,7 +119,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       if (kind != overallKind) {
         bad = true
         report.error(
-            em"export overload conflicts with export of $firstSym: they are of different types ($kind / $overallKind)",
+            em"export overload conflicts with export of $firstSym: they are of different types (${kind.tryToShow} / ${overallKind.tryToShow})",
             info.pos)
       }
     }

@@ -3,6 +3,8 @@ package dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import dotty.tools.tasty.{TastyBuffer, TastyFormat, TastyHash}
 import TastyFormat._
 import TastyBuffer._
@@ -79,6 +81,4 @@ class TastyPickler(val rootCls: ClassSymbol) {
     assert(all.length == totalSize && all.bytes.length == totalSize, s"totalSize = $totalSize, all.length = ${all.length}, all.bytes.length = ${all.bytes.length}")
     all.bytes
   }
-
-  val treePkl: TreePickler = new TreePickler(this)
 }

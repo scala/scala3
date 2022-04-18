@@ -64,7 +64,7 @@ Anonymous given instances get compiler synthesized names, which are generated in
 
 ```scala
 given given_Ord_Int: Ord[Int] with { ... }
-given given_Ord_List_T[T](using ord: Ord[T]): Ord[List[T]] with { ... }
+given given_Ord_List[T](using ord: Ord[T]): Ord[List[T]] with { ... }
 ```
 
 The synthesized type names are formed from

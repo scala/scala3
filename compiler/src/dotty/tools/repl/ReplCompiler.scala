@@ -61,7 +61,7 @@ class ReplCompiler extends Compiler {
         val rootCtx = super.rootContext.fresh
           .setOwner(defn.EmptyPackageClass)
           .withRootImports
-        (1 to state.objectIndex).foldLeft(rootCtx)((ctx, id) =>
+        (state.validObjectIndexes).foldLeft(rootCtx)((ctx, id) =>
           importPreviousRun(id)(using ctx))
       }
     }
@@ -163,8 +163,8 @@ class ReplCompiler extends Compiler {
 
   private def runCompilationUnit(unit: CompilationUnit, state: State): Result[(CompilationUnit, State)] = {
     val ctx = state.context
-    ctx.run.compileUnits(unit :: Nil)
-    ctx.run.printSummary() // this outputs "2 errors found" like normal - but we might decide that's needlessly noisy for the REPL
+    ctx.run.nn.compileUnits(unit :: Nil)
+    ctx.run.nn.printSummary() // this outputs "2 errors found" like normal - but we might decide that's needlessly noisy for the REPL
 
     if (!ctx.reporter.hasErrors) (unit, state).result
     else ctx.reporter.removeBufferedMessages(using ctx).errors
@@ -291,7 +291,7 @@ class ReplCompiler extends Compiler {
       wrapped(expr, src, state).flatMap { pkg =>
         val unit = CompilationUnit(src)
         unit.untpdTree = pkg
-        ctx.run.compileUnits(unit :: Nil, ctx)
+        ctx.run.nn.compileUnits(unit :: Nil, ctx)
 
         if (errorsAllowed || !ctx.reporter.hasErrors)
           unwrapped(unit.tpdTree, src)

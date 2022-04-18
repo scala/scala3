@@ -1,0 +1,86 @@
+name: language-reference-documentation
+
+on:
+  push:
+    branches:
+      - 'language-reference-stable'
+  pull_request:
+    branches:
+      - 'language-reference-stable'
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          path: 'dotty'
+          ref: 'language-reference-stable'
+          ssh-key: ${{ secrets.DOCS_KEY }}
+
+      - name: Cache Coursier
+        uses: actions/cache@v1
+        with:
+          path: ~/.cache/coursier
+          key: sbt-coursier-cache
+
+      - name: Cache SBT
+        uses: actions/cache@v1
+        with:
+          path: ~/.sbt
+          key: sbt-${{ hashFiles('**/build.sbt') }}
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Generate reference documentation and test links
+        run: |
+          ./dotty/project/scripts/sbt scaladoc/generateReferenceDocumentation --no-regenerate-expected-links
+          ./dotty/project/scripts/docsLinksStability ./dotty/scaladoc/output/reference ./dotty/project/scripts/expected-links/reference-expected-links.txt
+
+      - name: Push changes to scala3-reference-docs
+        if: github.event_name == 'push'
+        uses: actions/checkout@v3
+        with:
+          repository: lampepfl/scala3-reference-docs
+          fetch-depth: 0
+          submodules: true
+          ssh-key: ${{ secrets.DOCS_DEPLOY_KEY }}
+          path: 'scala3-reference-docs'
+
+      - if: github.event_name == 'push'
+        run: |
+          \cp -a dotty/scaladoc/output/reference/. scala3-reference-docs/
+          cd scala3-reference-docs
+          git config user.name gh-actions
+          git config user.email actions@github.com
+          git add .
+          git commit -m "UPDATE ${{ steps.date.outputs.date }}"
+          git push
+          cd ..
+
+      - name: Merge changes to main
+        if: github.event_name == 'push'
+        run: |
+          cd dotty
+          git fetch origin main:main
+          git checkout main
+          git merge language-reference-stable
+          cd ..
+
+      - name: Create pull reuqest with backport to main
+        if: github.event_name == 'push'
+        uses: peter-evans/create-pull-request@v4
+        with:
+          path: dotty
+          branch: language-reference-backport
+          labels: area:documentation
+

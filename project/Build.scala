@@ -1,6 +1,7 @@
 import java.io.File
 import java.nio.file._
 
+import Process._
 import Modes._
 import ScaladocGeneration._
 import com.jsuereth.sbtpgp.PgpKeys
@@ -16,8 +17,6 @@ import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
 import xerial.sbt.Sonatype.autoImport._
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
-import dotty.tools.sbtplugin.DottyIDEPlugin.{installCodeExtension, prepareCommand, runProcess}
-import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbtbuildinfo.BuildInfoPlugin
@@ -52,19 +51,15 @@ object DottyJSPlugin extends AutoPlugin {
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
-
-    // Exclude all these projects from `configureIDE/launchIDE` since they
-    // take time to compile, print a bunch of warnings, and are rarely edited.
-    excludeFromIDE := true
   )
 }
 
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.1.2-RC1"
+  val referenceVersion = "3.1.3-RC2"
 
-  val baseVersion = "3.1.3-RC1"
+  val baseVersion = "3.2.0-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -80,7 +75,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.1.1"
+  val previousDottyVersion = "3.1.2"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -154,9 +149,6 @@ object Build {
   // Compiles the documentation and static site
   val genDocs = inputKey[Unit]("run scaladoc to generate static documentation site")
 
-  // Only available in vscode-dotty
-  val unpublish = taskKey[Unit]("Unpublish a package")
-
   // Settings used to configure the test language server
   val ideTestsCompilerVersion = taskKey[String]("Compiler version to use in IDE tests")
   val ideTestsCompilerArguments = taskKey[Seq[String]]("Compiler arguments to use in IDE tests")
@@ -172,21 +164,17 @@ object Build {
     organizationName := "LAMP/EPFL",
     organizationHomepage := Some(url("http://lamp.epfl.ch")),
 
+    // Note: bench/profiles/projects.yml should be updated accordingly.
     scalacOptions ++= Seq(
       "-feature",
       "-deprecation",
       "-unchecked",
       "-Xfatal-warnings",
       "-encoding", "UTF8",
-      "-language:existentials,higherKinds,implicitConversions,postfixOps"
+      "-language:implicitConversions"
     ),
 
     (Compile / compile / javacOptions) ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
-
-    // Override `runCode` from DottyIDEPlugin to use the language-server and
-    // vscode extension from the source repository of dotty instead of a
-    // published version.
-    runCode := (`scala3-language-server` / run).toTask("").value,
 
     // Avoid various sbt craziness involving classloaders and parallelism
     run / fork := true,
@@ -263,7 +251,7 @@ object Build {
     // Prevent sbt from rewriting our dependencies
     scalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(false))),
 
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
+    libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
 
     // If someone puts a source file at the root (e.g., for manual testing),
     // don't pick it up as part of any project.
@@ -285,7 +273,6 @@ object Build {
     crossPaths := false,
     // Do not depend on the Scala library
     autoScalaLibrary := false,
-    excludeFromIDE := true,
     disableDocSetting
   )
 
@@ -315,7 +302,6 @@ object Build {
 
     version := dottyNonBootstrappedVersion,
     scalaVersion := referenceVersion,
-    excludeFromIDE := true,
 
     disableDocSetting
   )
@@ -490,6 +476,24 @@ object Build {
   def findArtifactPath(classpath: Def.Classpath, name: String): String =
     findArtifact(classpath, name).getAbsolutePath
 
+  /** Insert UnsafeNulls Import after package */
+  def insertUnsafeNullsImport(lines: Seq[String]): Seq[String] = {
+    def recur(ls: Seq[String], foundPackage: Boolean): Seq[String] = ls match {
+      case Seq(l, rest @ _*) =>
+        val lt = l.trim()
+        if (foundPackage) {
+          if (!(lt.isEmpty || lt.startsWith("package ")))
+            "import scala.language.unsafeNulls" +: ls
+          else l +: recur(rest, foundPackage)
+        } else {
+          if (lt.startsWith("package ")) l +: recur(rest, true)
+          else l +: recur(rest, foundPackage)
+        }
+      case _ => ls
+    }
+    recur(lines, false)
+  }
+
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
       // Generate compiler.properties, used by sbt
@@ -515,7 +519,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.1.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.2.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
@@ -568,8 +572,8 @@ object Build {
         )
       },
 
-      javaOptions += (
-        s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}"
+      javaOptions ++= Seq(
+        s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
       ),
 
       testCompilation := Def.inputTaskDyn {
@@ -579,7 +583,8 @@ object Build {
             s"""
                |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [<filter>]
                |
-               |By default runs tests in dotty.tools.dotc.*CompilationTests excluding tests tagged with dotty.SlowTests.
+               |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
+               |excluding tests tagged with dotty.SlowTests.
                |
                |  --help                show this message
                |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
@@ -594,7 +599,7 @@ object Build {
           val updateCheckfile = args.contains("--update-checkfiles")
           val fromTasty = args.contains("--from-tasty")
           val args1 = if (updateCheckfile | fromTasty) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty") else args
-          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests"
+          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests dotty.tools.dotc.coverage.*"
           val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
             (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
             (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
@@ -706,7 +711,12 @@ object Build {
           IO.createDirectory(trgDir)
           IO.unzip(scalaJSIRSourcesJar, trgDir)
 
-          (trgDir ** "*.scala").get.toSet
+          val sjsSources = (trgDir ** "*.scala").get.toSet
+          sjsSources.foreach(f => {
+            val lines = IO.readLines(f)
+            IO.writeLines(f, insertUnsafeNullsImport(lines))
+          })
+          sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
   )
@@ -760,6 +770,10 @@ object Build {
         "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
       )
     },
+
+    // Note: bench/profiles/projects.yml should be updated accordingly.
+    Compile / scalacOptions ++= Seq("-Yexplicit-nulls"),
+
     repl := (Compile / console).value,
     Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
   )
@@ -1033,23 +1047,6 @@ object Build {
       // Work around https://github.com/eclipse/lsp4j/issues/295
       dependencyOverrides += "org.eclipse.xtend" % "org.eclipse.xtend.lib" % "2.16.0",
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
-
-      run := Def.inputTaskDyn {
-        val inputArgs = spaceDelimited("<arg>").parsed
-
-        val mainClass = "dotty.tools.languageserver.Main"
-        val extensionPath = (`vscode-dotty` / baseDirectory).value.getAbsolutePath
-
-        val codeArgs =
-          s"--extensionDevelopmentPath=$extensionPath" +:
-            (if (inputArgs.isEmpty) List((baseDirectory.value / "..").getAbsolutePath) else inputArgs)
-
-        val clientCommand = prepareCommand(codeCommand.value ++ codeArgs)
-
-        val allArgs = "-client_command" +: clientCommand
-
-        runTask(Runtime, mainClass, allArgs: _*)
-      }.dependsOn((`vscode-dotty` / Compile / compile)).evaluated
     ).
     settings(
       ideTestsCompilerVersion := (`scala3-compiler` / version).value,
@@ -1256,7 +1253,7 @@ object Build {
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
 
-  val generateReferenceDocumentation = taskKey[Unit]("Generate language reference documentation for Scala 3")
+  val generateReferenceDocumentation = inputKey[Unit]("Generate language reference documentation for Scala 3")
 
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
     dependsOn(`scala3-compiler-bootstrapped`).
@@ -1285,7 +1282,7 @@ object Build {
 
   lazy val `scaladoc-js-contributors` = project.in(file("scaladoc-js/contributors")).
     enablePlugins(DottyJSPlugin).
-    dependsOn(`scala3-library-bootstrappedJS`).
+    dependsOn(`scaladoc-js-common`).
     settings(
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,
@@ -1331,7 +1328,7 @@ object Build {
         "org.jsoup" % "jsoup" % "1.14.3", // Needed to process .html files for static site
         Dependencies.`jackson-dataformat-yaml`,
 
-        "com.novocode" % "junit-interface" % "0.11" % "test",
+        "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
       ),
       Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
       Compile / buildInfoKeys := Seq[BuildInfoKey](version),
@@ -1380,7 +1377,9 @@ object Build {
         generateDocumentation(Testcases)
       }.value,
 
-      generateReferenceDocumentation := Def.taskDyn {
+      generateReferenceDocumentation := Def.inputTaskDyn {
+        val shouldRegenerateExpectedLinks = literal("--no-regenerate-expected-links").?.parsed.isEmpty
+
         val temp = IO.createTemporaryDirectory
         IO.copyDirectory(file("docs"), temp / "docs")
         IO.delete(temp / "docs" / "_blog")
@@ -1396,14 +1395,25 @@ object Build {
             .add(OutputDir("scaladoc/output/reference"))
             .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
             .add(ProjectName("Scala 3 Reference"))
+            .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
               dottySrcLink(referenceVersion, temp.getAbsolutePath + "=")
             )))
             .withTargets(List("___fake___.scala"))
         }
 
-        generateDocumentation(languageReferenceConfig)
-      }.value,
+        val expectedLinksRegeneration = Def.task {
+          if (shouldRegenerateExpectedLinks) {
+            val script = (file("project") / "scripts" / "regenerateExpectedLinks").toString
+            val outputDir = languageReferenceConfig.value.get[OutputDir].get.value
+            val expectedLinksFile = (file("project") / "scripts" / "expected-links" / "reference-expected-links.txt").toString
+            import _root_.scala.sys.process._
+            s"$script $outputDir $expectedLinksFile" !
+          }
+        }
+
+        expectedLinksRegeneration.dependsOn(generateDocumentation(languageReferenceConfig))
+      }.evaluated,
 
       Test / buildInfoKeys := Seq[BuildInfoKey](
         (Test / Build.testcasesOutputDir),
@@ -1456,60 +1466,6 @@ object Build {
       ).evaluated
     )
 
-  lazy val `vscode-dotty` = project.in(file("vscode-dotty")).
-    settings(commonSettings).
-    settings(
-      version := "0.1.17-snapshot", // Keep in sync with package.json
-      autoScalaLibrary := false,
-      publishArtifact := false,
-      bspEnabled := false,
-      (Compile / resourceGenerators) += Def.task {
-        // Resources that will be copied when bootstrapping a new project
-        val buildSbtFile = baseDirectory.value / "out" / "build.sbt"
-        IO.write(buildSbtFile,
-          s"""scalaVersion := "$publishedDottyVersion"""")
-        val dottyPluginSbtFile = baseDirectory.value / "out" / "scala3-plugin.sbt"
-        IO.write(dottyPluginSbtFile,
-          s"""addSbtPlugin("$dottyOrganization" % "sbt-dotty" % "$sbtDottyVersion")""")
-        Seq(buildSbtFile, dottyPluginSbtFile)
-      },
-      Compile / compile := Def.task {
-        val workingDir = baseDirectory.value
-        val coursier = workingDir / "out" / "coursier"
-        val packageJson = workingDir / "package.json"
-        if (!coursier.exists || packageJson.lastModified > coursier.lastModified)
-          runProcess(Seq("npm", "install"), wait = true, directory = Some(workingDir))
-        val tsc = workingDir / "node_modules" / ".bin" / "tsc"
-        runProcess(Seq(tsc.getAbsolutePath, "--pretty", "--project", workingDir.getAbsolutePath), wait = true)
-
-        // vscode-dotty depends on scala-lang.scala for syntax highlighting,
-        // this is not automatically installed when starting the extension in development mode
-        // (--extensionDevelopmentPath=...)
-        installCodeExtension(codeCommand.value, "scala-lang.scala")
-
-        sbt.internal.inc.Analysis.Empty
-      }.dependsOn((Compile / managedResources)).value,
-      sbt.Keys.`package`:= {
-        runProcess(Seq("vsce", "package"), wait = true, directory = Some(baseDirectory.value))
-
-        baseDirectory.value / s"dotty-${version.value}.vsix"
-      },
-      unpublish := {
-        runProcess(Seq("vsce", "unpublish"), wait = true, directory = Some(baseDirectory.value))
-      },
-      publish := {
-        runProcess(Seq("vsce", "publish"), wait = true, directory = Some(baseDirectory.value))
-      },
-      run := Def.inputTask {
-        val inputArgs = spaceDelimited("<arg>").parsed
-        val codeArgs = if (inputArgs.isEmpty) List((baseDirectory.value / "..").getAbsolutePath) else inputArgs
-        val extensionPath = baseDirectory.value.getAbsolutePath
-        val processArgs = List(s"--extensionDevelopmentPath=$extensionPath") ++ codeArgs
-
-        runProcess(codeCommand.value ++ processArgs, wait = true)
-      }.dependsOn((Compile / compile)).evaluated
-    )
-
   lazy val `sbt-community-build` = project.in(file("sbt-community-build")).
     enablePlugins(SbtPlugin).
     settings(commonSettings).
@@ -1548,7 +1504,7 @@ object Build {
       ).evaluated
    )
 
-  val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{scala3-bootstrapped.version,sbt-dotty-sbt}.")
+  val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{scala3-bootstrapped.version,sbt-injected-plugins}.")
 
   lazy val `community-build` = project.in(file("community-build")).
     dependsOn(dottyLibrary(Bootstrapped)).
@@ -1568,10 +1524,9 @@ object Build {
         // (publishLocal in `scala3-staging`).value
         val pluginText =
           s"""updateOptions in Global ~= (_.withLatestSnapshots(false))
-             |addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")
              |addSbtPlugin("ch.epfl.lamp" % "sbt-community-build" % "$sbtCommunityBuildVersion")
              |addSbtPlugin("org.scala-js" % "sbt-scalajs" % "$scalaJSVersion")""".stripMargin
-        IO.write(baseDirectory.value / "sbt-dotty-sbt", pluginText)
+        IO.write(baseDirectory.value / "sbt-injected-plugins", pluginText)
         IO.write(baseDirectory.value / "scala3-bootstrapped.version", dottyVersion)
         IO.delete(baseDirectory.value / "dotty-community-build-deps")  // delete any stale deps file
       },
@@ -1862,6 +1817,10 @@ object ScaladocConfigs {
       .add(Revision("main"))
       .add(SnippetCompiler(List("scaladoc-testcases/docs=compile")))
       .add(SiteRoot("scaladoc-testcases/docs"))
+      .add(CommentSyntax(List(
+        "scaladoc-testcases/src/example/comment-md=markdown",
+        "scaladoc-testcases/src/example/comment-wiki=wiki"
+      )))
       .add(ExternalMappings(List(dottyExternalMapping, javaExternalMapping)))
       .withTargets(tastyRoots)
   }
@@ -1891,7 +1850,11 @@ object ScaladocConfigs {
       .add(Revision("main"))
       .add(ExternalMappings(List(javaExternalMapping)))
       .add(DocRootContent(docRootFile.toString))
-      .add(CommentSyntax("wiki"))
+      .add(CommentSyntax(List(
+        s"${dottyLibRoot}=markdown",
+        s"${stdLibRoot}=wiki",
+        "wiki"
+      )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
       .add(DocumentSyntheticTypes(true))
       .add(SnippetCompiler(List(

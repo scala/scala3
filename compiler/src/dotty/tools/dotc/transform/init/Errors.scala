@@ -4,8 +4,8 @@ package transform
 package init
 
 import ast.tpd._
-
 import core._
+import util.SourcePosition
 import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
 
@@ -27,26 +27,42 @@ object Errors {
     def toErrors: Errors = this :: Nil
 
     def stacktrace(using Context): String = if (trace.isEmpty) "" else " Calling trace:\n" + {
-      var indentCount = 0
       var last: String = ""
       val sb = new StringBuilder
       trace.foreach { tree =>
-        indentCount += 1
         val pos = tree.sourcePos
-        val prefix = s"${ " " * indentCount }-> "
+        val prefix = "-> "
         val line =
           if pos.source.exists then
             val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-            val code = SyntaxHighlighting.highlight(pos.lineContent.trim)
+            val code = SyntaxHighlighting.highlight(pos.lineContent.trim.nn)
             i"$code\t$loc"
           else
             tree.show
+        val positionMarkerLine =
+          if pos.exists && pos.source.exists then
+            positionMarker(pos)
+          else ""
 
-        if (last != line)  sb.append(prefix + line + "\n")
+        if (last != line)  sb.append(prefix + line + "\n" + positionMarkerLine )
 
         last = line
       }
       sb.toString
+    }
+
+    /** Used to underline source positions in the stack trace
+     *  pos.source must exist
+     */
+    private def positionMarker(pos: SourcePosition): String = {
+      val trimmed = pos.lineContent.takeWhile(c => c.isWhitespace).length
+      val padding = pos.startColumnPadding.substring(trimmed).nn + "   "
+      val carets =
+        if (pos.startLine == pos.endLine)
+          "^" * math.max(1, pos.endColumn - pos.startColumn)
+        else "^"
+
+      s"$padding$carets\n"
     }
 
     /** Flatten UnsafePromotion errors
@@ -56,7 +72,7 @@ object Errors {
       case _ => this :: Nil
     }
 
-    override def toString() = this.getClass.getName
+    override def toString() = this.getClass.getName.nn
   }
 
   /** Access non-initialized field */

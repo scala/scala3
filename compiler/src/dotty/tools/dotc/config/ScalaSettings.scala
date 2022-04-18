@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package config
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.config.PathResolver.Defaults
 import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
 import dotty.tools.dotc.core.Contexts._
@@ -14,7 +16,7 @@ class ScalaSettings extends SettingGroup with AllScalaSettings
 object ScalaSettings:
   // Keep synchronized with `classfileVersion` in `BCodeIdiomatic`
   private val minTargetVersion = 8
-  private val maxTargetVersion = 17
+  private val maxTargetVersion = 18
 
   def supportedTargetVersions: List[String] =
     (minTargetVersion to maxTargetVersion).toList.map(_.toString)
@@ -99,11 +101,13 @@ trait CommonScalaSettings:
   val color: Setting[String] = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/, aliases = List("--color"))
   val verbose: Setting[Boolean] = BooleanSetting("-verbose", "Output messages about what the compiler is doing.", aliases = List("--verbose"))
   val version: Setting[Boolean] = BooleanSetting("-version", "Print product version and exit.", aliases = List("--version"))
-  val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options.", aliases = List("--help"))
+  val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options.", aliases = List("--help", "-h"))
   val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", ScalaSettings.defaultPageWidth, aliases = List("--page-width"))
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.", aliases = List("--no-warnings"))
 
-  val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", ScalaSettings.supportedReleaseVersions, "", aliases = List("--release"))
+  val javaOutputVersion: Setting[String] = ChoiceSetting("-java-output-version", "version", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version. Corresponds to -release flag in javac.", ScalaSettings.supportedReleaseVersions, "", aliases = List("-release", "--release"))
+  val scalaOutputVersion: Setting[String] = ChoiceSetting("-scala-output-version", "version", "Emit TASTy files that can be consumed by specified version of the compiler. The compilation will fail if for any reason valid TASTy cannot be produced (e.g. the code contains references to some parts of the standard library API that are missing in the older stdlib or uses language features unexpressible in the older version of TASTy format)", ScalaSettings.supportedScalaReleaseVersions, "")
+
   val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.", aliases = List("--deprecation"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain"))
@@ -112,6 +116,9 @@ trait CommonScalaSettings:
   val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail (deprecated, use -explain instead).", aliases = List("--explain-types", "-explaintypes"))
   val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.", aliases = List("--language"))
+
+  /* Coverage settings */
+  val coverageOutputDir = PathSetting("-coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = List("--coverage-out"))
 
   /* Other settings */
   val encoding: Setting[String] = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
@@ -134,6 +141,7 @@ private sealed trait VerboseSettings:
   self: SettingGroup =>
   val Vhelp: Setting[Boolean] = BooleanSetting("-V", "Print a synopsis of verbose options.")
   val Xprint: Setting[List[String]] = PhasesSetting("-Vprint", "Print out program after", aliases = List("-Xprint"))
+  val XshowPhases: Setting[Boolean] = BooleanSetting("-Vphases", "List compiler phases.", aliases = List("-Xshow-phases"))
 
 /** -W "Warnings" settings
  */
@@ -215,13 +223,12 @@ private sealed trait XSettings:
   val XprintInline: Setting[Boolean] = BooleanSetting("-Xprint-inline", "Show where inlined code comes from.")
   val XprintSuspension: Setting[Boolean] = BooleanSetting("-Xprint-suspension", "Show when code is suspended until macros are compiled.")
   val Xprompt: Setting[Boolean] = BooleanSetting("-Xprompt", "Display a prompt after each error (debugging option).")
-  val XshowPhases: Setting[Boolean] = BooleanSetting("-Xshow-phases", "Print all compiler phases.")
   val XreplDisableDisplay: Setting[Boolean] = BooleanSetting("-Xrepl-disable-display", "Do not display definitions in REPL.")
   val XverifySignatures: Setting[Boolean] = BooleanSetting("-Xverify-signatures", "Verify generic signatures in generated bytecode.")
   val XignoreScala2Macros: Setting[Boolean] = BooleanSetting("-Xignore-scala2-macros", "Ignore errors when compiling code that calls Scala2 macros, these will fail at runtime.")
   val XimportSuggestionTimeout: Setting[Int] = IntSetting("-Ximport-suggestion-timeout", "Timeout (in ms) for searching for import suggestions when errors are reported.", 8000)
   val Xsemanticdb: Setting[Boolean] = BooleanSetting("-Xsemanticdb", "Store information in SemanticDB.", aliases = List("-Ysemanticdb"))
-  val Xtarget: Setting[String] = ChoiceSetting("-Xtarget", "target", "Emit bytecode for the specified version of the Java platform. This might produce bytecode that will break at runtime. When on JDK 9+, consider -release as a safer alternative.", ScalaSettings.supportedTargetVersions, "", aliases = List("--Xtarget"))
+  val XuncheckedJavaOutputVersion: Setting[String] = ChoiceSetting("-Xunchecked-java-output-version", "target", "Emit bytecode for the specified version of the Java platform. This might produce bytecode that will break at runtime. Corresponds to -target flag in javac. When on JDK 9+, consider -java-output-version as a safer alternative.", ScalaSettings.supportedTargetVersions, "", aliases = List("-Xtarget", "--Xtarget"))
   val XcheckMacros: Setting[Boolean] = BooleanSetting("-Xcheck-macros", "Check some invariants of macro generated code while expanding macros", aliases = List("--Xcheck-macros"))
   val XmainClass: Setting[String] = StringSetting("-Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XimplicitSearchLimit: Setting[Int] = IntSetting("-Ximplicit-search-limit", "Maximal number of expressions to be generated in an implicit search", 50000)
@@ -257,6 +264,7 @@ private sealed trait YSettings:
   val YdebugTreeWithId: Setting[Int] = IntSetting("-Ydebug-tree-with-id", "Print the stack trace when the tree with the given id is created.", Int.MinValue)
   val YdebugTypeError: Setting[Boolean] = BooleanSetting("-Ydebug-type-error", "Print the stack trace when a TypeError is caught", false)
   val YdebugError: Setting[Boolean] = BooleanSetting("-Ydebug-error", "Print the stack trace when any error is caught.", false)
+  val YdebugUnpickling: Setting[Boolean] = BooleanSetting("-Ydebug-unpickling", "Print the stack trace when an error occurs when reading Tasty.", false)
   val YtermConflict: Setting[String] = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val Ylog: Setting[List[String]] = PhasesSetting("-Ylog", "Log operations during")
   val YlogClasspath: Setting[Boolean] = BooleanSetting("-Ylog-classpath", "Output information about what classpath is being applied.")
@@ -310,7 +318,6 @@ private sealed trait YSettings:
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
-  val YscalaRelease: Setting[String] = ChoiceSetting("-Yscala-release", "release", "Emit TASTy files that can be consumed by specified version of the compiler. The compilation will fail if for any reason valid TASTy cannot be produced (e.g. the code contains references to some parts of the standard library API that are missing in the older stdlib or uses language features unexpressible in the older version of TASTy format)", ScalaSettings.supportedScalaReleaseVersions, "", aliases = List("--Yscala-release"))
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

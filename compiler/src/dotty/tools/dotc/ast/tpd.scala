@@ -17,6 +17,7 @@ import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
 
 import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -248,7 +249,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         (rtp, tparams :: paramss)
       case tp: MethodType =>
         val isParamDependent = tp.isParamDependent
-        val previousParamRefs = if isParamDependent then mutable.ListBuffer[TermRef]() else null
+        val previousParamRefs: ListBuffer[TermRef] =
+          // It is ok to assign `null` here.
+          // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
+          if isParamDependent then mutable.ListBuffer[TermRef]() else (null: ListBuffer[TermRef] | Null).uncheckedNN
 
         def valueParam(name: TermName, origInfo: Type): TermSymbol =
           val maybeImplicit =
@@ -400,18 +404,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A tree representing the same reference as the given type */
-  def ref(tp: NamedType)(using Context): Tree =
+  def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree =
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
     else if (tp.symbol.is(Module) && ctx.owner.isContainedIn(tp.symbol.moduleClass))
       followOuterLinks(This(tp.symbol.moduleClass.asClass))
     else if (tp.symbol hasAnnotation defn.ScalaStaticAnnot)
       Ident(tp)
-    else {
+    else
       val pre = tp.prefix
-      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias)).select(tp)
-      else Select(TypeTree(pre), tp)
-    }
+      if (pre.isSingleton) followOuterLinks(singleton(pre.dealias, needLoad)).select(tp)
+      else
+        val res = Select(TypeTree(pre), tp)
+        if needLoad && !res.symbol.isStatic then
+          throw new TypeError(em"cannot establish a reference to $res")
+        res
 
   def ref(sym: Symbol)(using Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
@@ -424,11 +431,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       t
   }
 
-  def singleton(tp: Type)(using Context): Tree = tp.dealias match {
-    case tp: TermRef => ref(tp)
+  def singleton(tp: Type, needLoad: Boolean = true)(using Context): Tree = tp.dealias match {
+    case tp: TermRef => ref(tp, needLoad)
     case tp: ThisType => This(tp.cls)
-    case tp: SkolemType => singleton(tp.narrow)
-    case SuperType(qual, _) => singleton(qual)
+    case tp: SkolemType => singleton(tp.narrow, needLoad)
+    case SuperType(qual, _) => singleton(qual, needLoad)
     case ConstantType(value) => Literal(value)
   }
 
@@ -567,7 +574,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else foldOver(sym, tree)
   }
 
-  /** The owner to be used in a local context when traversin a tree */
+  /** The owner to be used in a local context when traversing a tree */
   def localOwner(tree: Tree)(using Context): Symbol =
     val sym = tree.symbol
     (if sym.is(PackageVal) then sym.moduleClass else sym).orElse(ctx.owner)
@@ -1246,13 +1253,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
 
-    private var myTrees: List[Tree] = null
+    private var myTrees: List[Tree] | Null = _
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(using Context): List[Tree] =
       if (ctx.settings.YretainTrees.value) {
         if (myTrees == null) myTrees = computeRootTrees
-        myTrees
+        myTrees.uncheckedNN
       }
       else computeRootTrees
 
@@ -1475,7 +1482,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** Creates the tuple type tree repesentation of the type trees in `ts` */
   def tupleTypeTree(elems: List[Tree])(using Context): Tree = {
     val arity = elems.length
-    if (arity <= Definitions.MaxTupleArity && defn.TupleType(arity) != null) AppliedTypeTree(TypeTree(defn.TupleType(arity)), elems)
+    if arity <= Definitions.MaxTupleArity then
+      val tupleTp = defn.TupleType(arity)
+      if tupleTp != null then
+        AppliedTypeTree(TypeTree(tupleTp), elems)
+      else nestedPairsTypeTree(elems)
     else nestedPairsTypeTree(elems)
   }
 

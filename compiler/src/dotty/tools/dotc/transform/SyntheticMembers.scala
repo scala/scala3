@@ -140,7 +140,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           val parentEnum = vdef.owner.companionClass
           val children = parentEnum.children.zipWithIndex
           val candidate: Option[Int] = children.collectFirst { case (child, idx) if child == vdef => idx }
-          assert(candidate.isDefined, i"could not find child for $vdef")
+          assert(candidate.isDefined, i"could not find child for $vdef in ${parentEnum.children}%, % of $parentEnum")
           Literal(Constant(candidate.get))
 
       def toStringBody(vrefss: List[List[Tree]]): Tree =
@@ -262,7 +262,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       // compare primitive fields first, slow equality checks of non-primitive fields can be skipped when primitives differ
       val sortedAccessors = accessors.sortBy(accessor => if (accessor.info.typeSymbol.isPrimitiveValueClass) 0 else 1)
       val comparisons = sortedAccessors.map { accessor =>
-        This(clazz).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
+        This(clazz).withSpan(ctx.owner.span.focus).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
       var rhs = // this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
         if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
       val canEqualMeth = existingDef(defn.Product_canEqual, clazz)

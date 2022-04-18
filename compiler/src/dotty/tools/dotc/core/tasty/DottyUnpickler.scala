@@ -3,6 +3,8 @@ package dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import Contexts._, SymDenotations._,  Decorators._
 import dotty.tools.dotc.ast.tpd
 import TastyUnpickler._

@@ -52,6 +52,9 @@ jobs:
       - name: Generate testcases documentation
         run: ./project/scripts/sbt scaladoc/generateTestcasesDocumentation
 
+      - name: Generate reference documentation
+        run: ./project/scripts/sbt scaladoc/generateReferenceDocumentation --no-regenerate-expected-links
+
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
@@ -68,10 +71,10 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
           inlineScript: |
-            DOC_DEST=pr-${PR_NUMBER:-${GITHUB_REF##*/}}
+            DOC_DEST=$(echo pr-${PR_NUMBER:-${GITHUB_REF##*/}} | tr -d -c "[-A-Za-z0-9]")
             echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
             az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
-            az storage blob upload-batch -s scaladoc/output -d $DOC_DEST --account-name scala3docstorage
+            az storage blob upload-batch --overwrite true -s scaladoc/output -d $DOC_DEST --account-name scala3docstorage
 
   stdlib-sourcelinks-test:
     runs-on: ubuntu-latest

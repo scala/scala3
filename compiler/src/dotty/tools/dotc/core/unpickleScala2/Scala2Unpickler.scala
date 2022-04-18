@@ -3,6 +3,8 @@ package dotc
 package core
 package unpickleScala2
 
+import scala.language.unsafeNulls
+
 import java.io.IOException
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
@@ -511,7 +513,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
                 // can also show up before initialization, if that's the case
                 // we'll need to study more closely how Scala 2 handles type
                 // parameter unpickling and try to emulate it.
-                !completer.isInitialized
+                !completer.areParamsInitialized
               case _ =>
                 true)
 
@@ -660,11 +662,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       atReadPos(index(infoRef), () => readTypeParams()(using ctx))
 
     /** Have the type params of this class already been unpickled? */
-    def isInitialized: Boolean = myTypeParams ne null
+    def areParamsInitialized: Boolean = myTypeParams ne null
 
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
     def init()(using Context): List[TypeSymbol] =
-      if !isInitialized then loadTypeParams()
+      if !areParamsInitialized then loadTypeParams()
       myTypeParams
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =

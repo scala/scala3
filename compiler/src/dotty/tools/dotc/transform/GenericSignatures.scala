@@ -167,7 +167,7 @@ object GenericSignatures {
     // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
     def fullNameInSig(sym: Symbol): Unit = {
       val name = atPhase(genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
-      builder.append('L').append(name)
+      builder.append('L').nn.append(name)
     }
 
     def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
@@ -211,7 +211,7 @@ object GenericSignatures {
 
             // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
             val delimiter = if (builder.charAt(builder.length() - 1) == '>') '.' else '$'
-            builder.append(delimiter).append(sanitizeName(sym.name))
+            builder.append(delimiter).nn.append(sanitizeName(sym.name))
           }
           else fullNameInSig(sym)
         }
@@ -253,7 +253,7 @@ object GenericSignatures {
             typeParamSig(sym.name.lastPart)
           }
           else if (defn.specialErasure.contains(sym))
-            jsig(defn.specialErasure(sym).typeRef)
+            jsig(defn.specialErasure(sym).nn.typeRef)
           else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
             jsig(defn.BoxedUnitClass.typeRef)
           else if (sym == defn.NothingClass)

@@ -2,6 +2,8 @@ package dotty
 package tools
 package backend.jvm
 
+import scala.language.unsafeNulls
+
 import vulpix.TestConfiguration
 
 import dotc.core.Contexts.{Context, ContextBase, ctx}
@@ -120,7 +122,7 @@ trait DottyBytecodeTest {
   def assertSameCode(method: MethodNode, expected: List[Instruction]): Unit =
     assertSameCode(instructionsFromMethod(method).dropNonOp, expected)
   def assertSameCode(actual: List[Instruction], expected: List[Instruction]): Unit = {
-    assert(actual === expected, s"\nExpected: $expected\nActual  : $actual")
+    assert(actual === expected, "\n" + diffInstructions(actual, expected))
   }
 
   def assertInvoke(m: MethodNode, receiver: String, method: String): Unit =
@@ -294,4 +296,3 @@ trait DottyBytecodeTest {
 object DottyBytecodeTest {
   extension [T](l: List[T]) def stringLines = l.mkString("\n")
 }
-

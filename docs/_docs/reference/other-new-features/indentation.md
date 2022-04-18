@@ -170,11 +170,11 @@ In each case, the `:` at the end of line can be replaced without change of meani
 
 The syntax changes allowing this are as follows:
 
-```
-Template    ::=  InheritClauses [colonEol] [TemplateBody]
-EnumDef     ::=  id ClassConstr InheritClauses [colonEol] EnumBody
-Packaging   ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’
-SimpleExpr  ::=  ‘new’ ConstrApp {‘with’ ConstrApp} [[colonEol] TemplateBody]
+```ebnf
+Template    ::=  InheritClauses [colonEol] [TemplateBody] ;
+EnumDef     ::=  id ClassConstr InheritClauses [colonEol] EnumBody ;
+Packaging   ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’ ;
+SimpleExpr  ::=  ‘new’ ConstrApp {‘with’ ConstrApp} [[colonEol] TemplateBody] ;
 ```
 
 Here, `colonEol` stands for ": at end of line", as described above.
@@ -242,6 +242,38 @@ case 5 => print("V")
 
 println(".")
 ```
+
+### Using Indentation to Signal Statement Continuation
+
+Indentation is used in some situations to decide whether to insert a virtual semicolon between
+two consecutive lines or to treat them as one statement. Virtual semicolon insertion is
+suppressed if the second line is indented more relative to the first one, and either the second line
+starts with "`(`", "`[`", or "`{`" or the first line ends with `return`. Examples:
+
+```scala
+f(x + 1)
+  (2, 3)        // equivalent to  `f(x + 1)(2, 3)`
+
+g(x + 1)
+(2, 3)          // equivalent to  `g(x + 1); (2, 3)`
+
+h(x + 1)
+  {}            // equivalent to  `h(x + 1){}`
+
+i(x + 1)
+{}              // equivalent to  `i(x + 1); {}`
+
+if x < 0 then return
+  a + b         // equivalent to  `if x < 0 then return a + b`
+
+if x < 0 then return
+println(a + b)  // equivalent to  `if x < 0 then return; println(a + b)`
+```
+In Scala 2, a line starting with "`{`" always continues the function call on the preceding line,
+irrespective of indentation, whereas a virtual semicolon is inserted in all other cases.
+The Scala-2 behavior is retained under source `-no-indent` or `-source 3.0-migration`.
+
+
 
 ### The End Marker
 
@@ -340,13 +372,13 @@ If none of these criteria apply, it's often better to not use an end marker sinc
 
 #### Syntax
 
-```
-EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
+```ebnf
+EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL ;
 EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | ‘try’
-                    |  ‘new’ | ‘this’ | ‘given’ | ‘extension’ | ‘val’
-BlockStat         ::=  ... | EndMarker
-TemplateStat      ::=  ... | EndMarker
-TopStat           ::=  ... | EndMarker
+                    |  ‘new’ | ‘this’ | ‘given’ | ‘extension’ | ‘val’ ;
+BlockStat         ::=  ... | EndMarker ;
+TemplateStat      ::=  ... | EndMarker ;
+TopStat           ::=  ... | EndMarker ;
 ```
 
 ### Example
@@ -404,7 +436,7 @@ end IndentWidth
 
 ### Settings and Rewrites
 
-Significant indentation is enabled by default. It can be turned off by giving any of the options `-no-indent`, `-old-syntax` and `-language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
+Significant indentation is enabled by default. It can be turned off by giving any of the options `-no-indent`, `-old-syntax` and `-source 3.0-migration`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
 
 The Scala 3 compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to

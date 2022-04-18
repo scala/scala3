@@ -77,7 +77,7 @@ object TypeErasure {
   def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
       if (defn.specialErasure.contains(cls))
-        return defn.specialErasure(cls)
+        return defn.specialErasure(cls).uncheckedNN
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass
     }
@@ -682,13 +682,16 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
   private def eraseArray(tp: Type)(using Context) = {
     val defn.ArrayOf(elemtp) = tp
     if (isGenericArrayElement(elemtp, isScala2 = sourceLanguage.isScala2)) defn.ObjectType
-    else JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, wildcardOK)(elemtp))
+    else
+      try JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, isSymbol, wildcardOK)(elemtp))
+      catch case ex: Throwable =>
+        handleRecursive("erase array type", tp.show, ex)
   }
 
   private def erasePair(tp: Type)(using Context): Type = {
     val arity = tp.tupleArity
     if (arity < 0) defn.ProductClass.typeRef
-    else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity)
+    else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity).nn
     else defn.TupleXXLClass.typeRef
   }
 

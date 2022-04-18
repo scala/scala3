@@ -34,6 +34,7 @@ class MatchersTest:
     s"$kind $name",
     "",
     "",
+    false,
     s"$name",
     kind,
     StringUtils.createCamelCaseTokens(name)

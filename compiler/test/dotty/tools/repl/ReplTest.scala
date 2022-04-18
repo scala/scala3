@@ -1,6 +1,8 @@
 package dotty.tools
 package repl
 
+import scala.language.unsafeNulls
+
 import vulpix.TestConfiguration
 import vulpix.FileDiff
 

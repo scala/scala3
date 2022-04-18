@@ -122,7 +122,7 @@ object TypeOps:
     pre.isStable || !ctx.phase.isTyper
 
   /** Implementation of Types#simplified */
-  def simplify(tp: Type, theMap: SimplifyMap)(using Context): Type = {
+  def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = {
     def mapOver = (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
     tp match {
       case tp: NamedType =>
@@ -796,7 +796,7 @@ object TypeOps:
     //
     // See tests/patmat/i3938.scala
     class InferPrefixMap extends TypeMap {
-      var prefixTVar: Type = null
+      var prefixTVar: Type | Null = null
       def apply(tp: Type): Type = tp match {
         case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
           if (tref.symbol.is(Module))
@@ -807,7 +807,7 @@ object TypeOps:
             prefixTVar = WildcardType  // prevent recursive call from assigning it
             val tref2 = this(tref.applyIfParameterized(tref.typeParams.map(_ => TypeBounds.empty)))
             prefixTVar = newTypeVar(TypeBounds.upper(tref2))
-            prefixTVar
+            prefixTVar.uncheckedNN
           }
         case tp => mapOver(tp)
       }
@@ -827,7 +827,7 @@ object TypeOps:
     }
 
     def instantiate(): Type = {
-      maximizeType(protoTp1, NoSpan, fromScala2x = false)
+      maximizeType(protoTp1, NoSpan)
       wildApprox(protoTp1)
     }
 

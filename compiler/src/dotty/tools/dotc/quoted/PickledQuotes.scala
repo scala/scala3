@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter }
+import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter, TreePickler }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.report
@@ -154,7 +154,7 @@ object PickledQuotes {
   private def pickle(tree: Tree)(using Context): Array[Byte] = {
     quotePickling.println(i"**** pickling quote of\n$tree")
     val pickler = new TastyPickler(defn.RootClass)
-    val treePkl = pickler.treePkl
+    val treePkl = new TreePickler(pickler)
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then

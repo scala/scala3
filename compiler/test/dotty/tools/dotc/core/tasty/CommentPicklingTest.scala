@@ -1,5 +1,7 @@
 package dotty.tools.dotc.core.tasty
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.{Driver, Main}

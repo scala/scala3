@@ -94,20 +94,7 @@ object LambdaLift:
     private def liftLocals()(using Context): Unit = {
       for ((local, lOwner) <- deps.logicalOwner) {
         val (newOwner, maybeStatic) =
-          if (lOwner is Package) {
-            val encClass = local.enclosingClass
-            val topClass = local.topLevelClass
-            val preferEncClass =
-              encClass.isStatic &&
-                // non-static classes can capture owners, so should be avoided
-              (encClass.isProperlyContainedIn(topClass) ||
-                // can be false for symbols which are defined in some weird combination of supercalls.
-               encClass.is(ModuleClass, butNot = Package)
-                // needed to not cause deadlocks in classloader. see t5375.scala
-              )
-            if (preferEncClass) (encClass, EmptyFlags)
-            else (topClass, JavaStatic)
-          }
+          if lOwner is Package then (local.topLevelClass, JavaStatic)
           else (lOwner, EmptyFlags)
         // Drop Module because class is no longer a singleton in the lifted context.
         var initFlags = local.flags &~ Module | Private | Lifted | maybeStatic

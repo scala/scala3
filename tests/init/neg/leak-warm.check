@@ -1,8 +1,4 @@
 -- Error: tests/init/neg/leak-warm.scala:18:26 -------------------------------------------------------------------------
-18 |    val l: List[A] = List(c, d) // error // error
-   |                          ^
-   |           Cannot prove that the value is fully initialized. May only use initialized value as method arguments.
--- Error: tests/init/neg/leak-warm.scala:18:29 -------------------------------------------------------------------------
-18 |    val l: List[A] = List(c, d) // error // error
-   |                             ^
-   |           Cannot prove that the value is fully initialized. May only use initialized value as method arguments.
+18 |    val l: List[A] = List(c, d) // error
+   |                          ^^^^
+   |             Cannot prove that the value is fully initialized. Only initialized values may be used as arguments.

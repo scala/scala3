@@ -4,7 +4,6 @@ package site
 import java.io.File
 import java.nio.file.{Files, Paths}
 
-import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
@@ -25,6 +24,7 @@ import scala.collection.JavaConverters._
 
 import scala.io.Source
 import dotty.tools.scaladoc.snippets._
+import scala.util.chaining._
 
 /** RenderingContext stores information about defined properties, layouts and sites being resolved
  *
@@ -123,9 +123,12 @@ case class TemplateFile(
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
       // Snippet compiler currently supports markdown only
       val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
-      val parsedMd = parser.parse(rendered)
-      val processed = FlexmarkSnippetProcessor.processSnippets(parsedMd, None, snippetCheckingFunc, withContext = false)(using ssctx.outerCtx)
-      HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
+      val parsedMd = parser.parse(rendered).pipe { md =>
+        FlexmarkSnippetProcessor.processSnippets(md, None, snippetCheckingFunc, withContext = false)(using ssctx.outerCtx)
+      }.pipe { md =>
+        FlexmarkSectionWrapper(md)
+      }
+      HtmlRenderer.builder(defaultMarkdownOptions).build().render(parsedMd)
 
     // If we have a layout template, we need to embed rendered content in it. Otherwise, we just leave the content as is.
     layoutTemplate match {

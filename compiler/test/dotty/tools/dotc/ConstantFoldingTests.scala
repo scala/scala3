@@ -1,5 +1,7 @@
 package dotty.tools.dotc
 
+import scala.language.unsafeNulls
+
 import org.junit.Assert._
 import org.junit.Test
 import dotty.tools.backend.jvm._

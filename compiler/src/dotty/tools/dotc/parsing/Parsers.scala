@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package parsing
 
+import scala.language.unsafeNulls
+
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
@@ -47,9 +49,11 @@ object Parsers {
     case InBlock       extends Location(false, false, false)
     case ElseWhere     extends Location(false, false, false)
 
-  @sharable object ParamOwner extends Enumeration {
-    val Class, Type, TypeParam, Def: Value = Value
-  }
+  enum ParamOwner:
+    case Class, Type, TypeParam, Def
+
+  enum ParseKind:
+    case Expr, Type, Pattern
 
   type StageKind = Int
   object StageKind {
@@ -168,7 +172,7 @@ object Parsers {
   class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source)
-    //in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
+    // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
      *  Overridden by ScriptParser
@@ -221,7 +225,7 @@ object Parsers {
       || allowedMods.contains(in.token)
       || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
 
-    def isStatSep: Boolean = in.isNewLine || in.token == SEMI
+    def isStatSep: Boolean = in.isStatSep
 
     /** A '$' identifier is treated as a splice if followed by a `{`.
      *  A longer identifier starting with `$` is treated as a splice/id combination
@@ -248,13 +252,8 @@ object Parsers {
 
     /** Skip on error to next safe point.
      */
-    protected def skip(stopAtComma: Boolean): Unit =
-      val lastRegion = in.currentRegion
-      def atStop =
-        in.token == EOF
-        || ((stopAtComma && in.token == COMMA) || skipStopTokens.contains(in.token)) && (in.currentRegion eq lastRegion)
-      while !atStop do
-        in.nextToken()
+    def skip(): Unit =
+      in.skip()
       lastErrorOffset = in.offset
 
     def warning(msg: Message, sourcePos: SourcePosition): Unit =
@@ -268,35 +267,37 @@ object Parsers {
 
     /** Issue an error at current offset that input is incomplete */
     def incompleteInputError(msg: Message): Unit =
-      report.incompleteInputError(msg, source.atSpan(Span(in.offset)))
+      if in.offset != lastErrorOffset then
+        report.incompleteInputError(msg, source.atSpan(Span(in.offset)))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
     def syntaxErrorOrIncomplete(msg: Message, offset: Int = in.offset): Unit =
-      if (in.token == EOF) incompleteInputError(msg)
+      if in.token == EOF then
+        incompleteInputError(msg)
       else
         syntaxError(msg, offset)
-        skip(stopAtComma = true)
+        skip()
 
     def syntaxErrorOrIncomplete(msg: Message, span: Span): Unit =
-      if (in.token == EOF) incompleteInputError(msg)
+      if in.token == EOF then
+        incompleteInputError(msg)
       else
         syntaxError(msg, span)
-        skip(stopAtComma = true)
+        skip()
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
       *
       * @return The offset at the start of the token to accept
       */
-    def accept(token: Int): Int = {
+    def accept(token: Int): Int =
       val offset = in.offset
-      if (in.token != token)
+      if in.token != token then
         syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token))
-      if (in.token == token) in.nextToken()
+      if in.token == token then in.nextToken()
       offset
-    }
 
     def accept(name: Name): Int = {
       val offset = in.offset
@@ -351,7 +352,7 @@ object Parsers {
             false // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
-            skip(stopAtComma=false)
+            skip()
             true
 
       in.observeOutdented()
@@ -435,7 +436,7 @@ object Parsers {
         case t: Typed =>
           report.errorOrMigrationWarning(
             em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
-            in.sourcePos())
+            in.sourcePos(), from = `3.0`)
           if migrateTo3 then
             patch(source, t.span.startPos, "(")
             patch(source, t.span.endPos, ")")
@@ -558,18 +559,24 @@ object Parsers {
     def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
       inBracesOrIndented(body, rewriteWithColon)
 
-    /** part { `separator` part }
-     */
-    def tokenSeparated[T](separator: Int, part: () => T): List[T] = {
-      val ts = new ListBuffer[T] += part()
-      while (in.token == separator) {
-        in.nextToken()
-        ts += part()
+    /** <part> {`,` <part>} */
+    def commaSeparated[T](part: () => T): List[T] =
+      in.currentRegion.withCommasExpected {
+        commaSeparatedRest(part(), part)
       }
-      ts.toList
-    }
 
-    def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
+    /** {`,` <part>}
+     *
+     *  currentRegion.commasExpected has to be set separately.
+     */
+    def commaSeparatedRest[T](leading: T, part: () => T): List[T] =
+      if in.token == COMMA then
+        val ts = new ListBuffer[T] += leading
+        while in.token == COMMA do
+          in.nextToken()
+          ts += part()
+        ts.toList
+      else leading :: Nil
 
     def inSepRegion[T](f: Region => Region)(op: => T): T =
       val cur = in.currentRegion
@@ -599,7 +606,7 @@ object Parsers {
               if startIndentWidth <= nextIndentWidth then
                 i"""Line is indented too far to the right, or a `{` is missing before:
                    |
-                   |$t"""
+                   |${t.tryToShow}"""
               else
                 in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth),
               in.next.offset
@@ -938,18 +945,19 @@ object Parsers {
     def infixOps(
         first: Tree, canStartOperand: Token => Boolean, operand: Location => Tree,
         location: Location,
-        isType: Boolean,
-        isOperator: => Boolean,
-        maybePostfix: Boolean = false): Tree = {
+        kind: ParseKind,
+        isOperator: => Boolean): Tree =
       val base = opStack
 
       def recur(top: Tree): Tree =
+        val isType = kind == ParseKind.Type
         if (isIdent && isOperator) {
-          val op = if (isType) typeIdent() else termIdent()
+          val op = if isType then typeIdent() else termIdent()
           val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
           colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
+          val maybePostfix = kind == ParseKind.Expr && in.postfixOpsEnabled
           if (maybePostfix && !canStartOperand(in.token)) {
             val topInfo = opStack.head
             opStack = opStack.tail
@@ -972,7 +980,7 @@ object Parsers {
         else top
 
       recur(first)
-    }
+    end infixOps
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
 
@@ -1175,7 +1183,7 @@ object Parsers {
                     |or enclose in braces '{$name} if you want a quoted expression.
                     |For now, you can also `import language.deprecated.symbolLiterals` to accept
                     |the idiom, but this possibility might no longer be available in the future.""",
-                in.sourcePos())
+                in.sourcePos(), from = `3.0`)
               if migrateTo3 then
                 patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
                 patch(source, Span(in.charOffset - 1), "\")")
@@ -1267,7 +1275,7 @@ object Parsers {
             i"""This opening brace will start a new statement in Scala 3.
                |It needs to be indented to the right to keep being treated as
                |an argument to the previous expression.${rewriteNotice()}""",
-            in.sourcePos())
+            in.sourcePos(), from = `3.0`)
           patch(source, Span(in.offset), "  ")
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
@@ -1386,14 +1394,7 @@ object Parsers {
           else
             Function(params, t)
         }
-      def funTypeArgsRest(first: Tree, following: () => Tree) = {
-        val buf = new ListBuffer[Tree] += first
-        while (in.token == COMMA) {
-          in.nextToken()
-          buf += following()
-        }
-        buf.toList
-      }
+
       var isValParamList = false
 
       val t =
@@ -1406,14 +1407,15 @@ object Parsers {
           else {
             if isErased then imods = addModifier(imods)
             val paramStart = in.offset
-            val ts = funArgType() match {
-              case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
-                isValParamList = true
-                funTypeArgsRest(
+            val ts = in.currentRegion.withCommasExpected {
+              funArgType() match
+                case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
+                  isValParamList = true
+                  commaSeparatedRest(
                     typedFunParam(paramStart, name.toTermName, imods),
                     () => typedFunParam(in.offset, ident(), imods))
-              case t =>
-                funTypeArgsRest(t, funArgType)
+                case t =>
+                  commaSeparatedRest(t, funArgType)
             }
             accept(RPAREN)
             if isValParamList || in.isArrow then
@@ -1524,8 +1526,7 @@ object Parsers {
     def infixType(): Tree = infixTypeRest(refinedType())
 
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere,
-        isType = true,
+      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg())
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
@@ -1822,7 +1823,7 @@ object Parsers {
       else if in.token == VIEWBOUND then
         report.errorOrMigrationWarning(
           "view bounds `<%' are no longer supported, use a context bound `:' instead",
-          in.sourcePos())
+          in.sourcePos(), from = `3.0`)
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)
@@ -1972,7 +1973,7 @@ object Parsers {
         report.errorOrMigrationWarning(
           i"""`do <body> while <cond>` is no longer supported,
              |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
-          in.sourcePos())
+          in.sourcePos(), from = `3.0`)
         val start = in.skipToken()
         atSpan(start) {
           val body = expr()
@@ -2092,7 +2093,7 @@ object Parsers {
             report.errorOrMigrationWarning(
               em"""`_*` can be used only for last argument of method application.
                   |It is no longer allowed in operands of infix operations.""",
-              in.sourcePos(uscoreStart))
+              in.sourcePos(uscoreStart), from = `3.0`)
           else
             syntaxError(SeqWildcardPatternPos(), uscoreStart)
           Typed(t, atSpan(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
@@ -2217,10 +2218,8 @@ object Parsers {
         t
 
     def postfixExprRest(t: Tree, location: Location): Tree =
-      infixOps(t, in.canStartExprTokens, prefixExpr, location,
-        isType = false,
-        isOperator = !(location.inArgs && followingIsVararg()),
-        maybePostfix = true)
+      infixOps(t, in.canStartExprTokens, prefixExpr, location, ParseKind.Expr,
+        isOperator = !(location.inArgs && followingIsVararg()))
 
     /** PrefixExpr       ::= [PrefixOperator'] SimpleExpr
      *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’
@@ -2618,7 +2617,14 @@ object Parsers {
         (pattern(), guard())
       }
       CaseDef(pat, grd, atSpan(accept(ARROW)) {
-        if exprOnly then expr() else block()
+        if exprOnly then
+          if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
+            warning(i"""Misleading indentation: this expression forms part of the preceding catch case.
+                       |If this is intended, it should be indented for clarity.
+                       |Otherwise, if the handler is intended to be empty, use a multi-line catch with
+                       |an indented case.""")
+          expr()
+        else block()
       })
     }
 
@@ -2707,8 +2713,8 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern,
-        isType = false,
+      infixOps(
+        simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern, ParseKind.Pattern,
         isOperator = in.name != nme.raw.BAR && !followingIsVararg())
 
     /** SimplePattern    ::= PatVar
@@ -2925,7 +2931,7 @@ object Parsers {
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypePamClause] | ‘_’) TypeBounds
      */
-    def typeParamClause(ownerKind: ParamOwner.Value): List[TypeDef] = inBrackets {
+    def typeParamClause(ownerKind: ParamOwner): List[TypeDef] = inBrackets {
 
       def variance(vflag: FlagSet): FlagSet =
         if ownerKind == ParamOwner.Def || ownerKind == ParamOwner.TypeParam then
@@ -2960,7 +2966,7 @@ object Parsers {
       commaSeparated(() => typeParam())
     }
 
-    def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
+    def typeParamClauseOpt(ownerKind: ParamOwner): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
@@ -3196,9 +3202,8 @@ object Parsers {
           }
         else ImportSelector(from)
 
-      def importSelectors(idOK: Boolean): List[ImportSelector] =
-        val isWildcard = in.token == USCORE || in.token == GIVEN || isIdent(nme.raw.STAR)
-        val selector = atSpan(in.offset) {
+      def importSelector(idOK: Boolean): ImportSelector =
+        atSpan(in.offset) {
           in.token match
             case USCORE => wildcardSelector()
             case GIVEN => givenSelector()
@@ -3208,13 +3213,14 @@ object Parsers {
                 if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
                 namedSelector(termIdent())
         }
-        val rest =
-          if in.token == COMMA then
-            in.nextToken()
-            importSelectors(idOK = idOK && !isWildcard)
-          else
-            Nil
-        selector :: rest
+
+      def importSelectors(): List[ImportSelector] =
+        var idOK = true
+        commaSeparated { () =>
+          val isWildcard = in.token == USCORE || in.token == GIVEN || isIdent(nme.raw.STAR)
+          try importSelector(idOK)
+          finally idOK &= !isWildcard
+        }
 
       def importSelection(qual: Tree): Tree =
         if in.isIdent(nme.as) && qual.isInstanceOf[RefTree] then
@@ -3232,7 +3238,7 @@ object Parsers {
             case GIVEN =>
               mkTree(qual, givenSelector() :: Nil)
             case LBRACE =>
-              mkTree(qual, inBraces(importSelectors(idOK = true)))
+              mkTree(qual, inBraces(importSelectors()))
             case _ =>
               if isIdent(nme.raw.STAR) then
                 mkTree(qual, wildcardSelector() :: Nil)
@@ -3345,7 +3351,7 @@ object Parsers {
         if migrateTo3 then
           report.errorOrMigrationWarning(
             s"Procedure syntax no longer supported; `$toInsert` should be inserted here",
-            in.sourcePos())
+            in.sourcePos(), from = `3.0`)
           patch(source, Span(in.lastOffset), toInsert)
           true
         else
@@ -3754,7 +3760,7 @@ object Parsers {
           if (in.token == LBRACE || in.token == COLONEOL) {
             report.errorOrMigrationWarning(
               "`extends` must be followed by at least one parent",
-              in.sourcePos())
+              in.sourcePos(), from = `3.0`)
             Nil
           }
           else constrApps()
@@ -3764,7 +3770,7 @@ object Parsers {
       val derived =
         if (isIdent(nme.derives)) {
           in.nextToken()
-          tokenSeparated(COMMA, () => convertToTypeId(qualId()))
+          commaSeparated(() => convertToTypeId(qualId()))
         }
         else Nil
       possibleTemplateStart()

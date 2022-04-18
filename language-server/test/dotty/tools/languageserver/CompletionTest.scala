@@ -1023,4 +1023,226 @@ class CompletionTest {
           |class Foo[A]{ self: Futu${m1} => }""".withSource
       .completion(m1, expected) 
   }
+
+  @Test def backticks: Unit = {
+    val expected = Set(
+      ("getClass", Method, "[X0 >: Foo.Bar.type](): Class[? <: X0]"),
+      ("ensuring", Method, "(cond: Boolean): A"),
+      ("##", Method, "=> Int"),
+      ("nn", Method, "=> Foo.Bar.type"),
+      ("==", Method, "(x$0: Any): Boolean"),
+      ("ensuring", Method, "(cond: Boolean, msg: => Any): A"),
+      ("ne", Method, "(x$0: Object): Boolean"),
+      ("valueOf", Method, "($name: String): Foo.Bar"),
+      ("equals", Method, "(x$0: Any): Boolean"),
+      ("wait", Method, "(x$0: Long): Unit"),
+      ("hashCode", Method, "(): Int"),
+      ("notifyAll", Method, "(): Unit"),
+      ("values", Method, "=> Array[Foo.Bar]"),
+      ("→", Method, "[B](y: B): (A, B)"),
+      ("!=", Method, "(x$0: Any): Boolean"),
+      ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
+      ("asInstanceOf", Method, "[X0] => X0"),
+      ("->", Method, "[B](y: B): (A, B)"),
+      ("wait", Method, "(x$0: Long, x$1: Int): Unit"),
+      ("`back-tick`", Field, "Foo.Bar"),
+      ("notify", Method, "(): Unit"),
+      ("formatted", Method, "(fmtstr: String): String"),
+      ("ensuring", Method, "(cond: A => Boolean, msg: => Any): A"),
+      ("wait", Method, "(): Unit"),
+      ("isInstanceOf", Method, "[X0] => Boolean"),
+      ("`match`", Field, "Foo.Bar"),
+      ("toString", Method, "(): String"),
+      ("ensuring", Method, "(cond: A => Boolean): A"),
+      ("eq", Method, "(x$0: Object): Boolean"),
+      ("synchronized", Method, "[X0](x$0: X0): X0")
+    )
+    code"""object Foo:
+           |  enum Bar:
+           |    case `back-tick`
+           |    case `match`
+           |  
+           |  val x = Bar.${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksPrefix: Unit = {
+    val expected = Set(
+      ("`back-tick`", Field, "Foo.Bar"),
+    )
+    code"""object Foo:
+           |  enum Bar:
+           |    case `back-tick`
+           |    case `match`
+           |  
+           |  val x = Bar.`back${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksSpace: Unit = {
+    val expected = Set(
+      ("`has space`", Field, "Foo.Bar"),
+    )
+    code"""object Foo:
+           |  enum Bar:
+           |    case `has space`
+           |  
+           |  val x = Bar.`has s${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksCompleteBoth: Unit = {
+    val expected = Set(
+      ("formatted", Method, "(fmtstr: String): String"),
+      ("`foo-bar`", Field, "Int"),
+      ("foo", Field, "Int")
+    )
+    code"""object Foo:
+           |  object Bar:
+           |    val foo = 1
+           |    val `foo-bar` = 2
+           |    val `bar` = 3
+           |  
+           |  val x = Bar.fo${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksWhenNotNeeded: Unit = {
+    val expected = Set(
+      ("`formatted`", Method, "(fmtstr: String): String"),
+      ("`foo-bar`", Field, "Int"),
+      ("`foo`", Field, "Int")
+    )
+    code"""object Foo:
+           |  object Bar:
+           |    val foo = 1
+           |    val `foo-bar` = 2
+           |  
+           |  val x = Bar.`fo${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def backticksImported: Unit = {
+    val expected = Set(
+      ("`scalaUtilChainingOps`", Method, "[A](a: A): scala.util.ChainingOps[A]"),
+      ("`synchronized`", Method, "[X0](x$0: X0): X0")
+    )
+    code"""import scala.util.chaining.`s${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def matchTypeCompletions: Unit = {
+    val expected = Set(
+      ("fooTest", Method, "(y: Int): Int"),
+    )
+    code"""case class Foo(x: Int) {
+           |  def fooTest(y: Int): Int = ???
+           |}
+           |type Elem[X] = X match {
+           |  case Int => Foo
+           |  case Any => X
+           |}
+           |def elem[X](x: X): Elem[X] = x match {
+           |  case x: Int => Foo(x)
+           |  case x: Any => x
+           |}
+           |object Test: 
+           |  elem(1).foo${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def higherKindedMatchTypeDeclaredCompletion: Unit = {
+    val expected = Set(
+      ("map", Method, "[B](f: Int => B): Foo[B]"),
+    )
+    code"""trait Foo[A] {
+           |  def map[B](f: A => B): Foo[B] = ???
+           |}
+           |case class Bar[F[_]](bar: F[Int])
+           |type M[T] = T match {
+           |  case Int => Foo[Int]
+           |}
+           |object Test:
+           |  val x = Bar[M](new Foo[Int]{})
+           |  x.bar.m${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def higherKindedMatchTypeLazyCompletion: Unit = {
+    val expected = Set(
+      ("map", Method, "[B](f: Int => B): Foo[B]"),
+    )
+    code"""trait Foo[A] {
+           |  def map[B](f: A => B): Foo[B] = ???
+           |}
+           |case class Bar[F[_]](bar: F[Int])
+           |type M[T] = T match {
+           |  case Int => Foo[Int]
+           |}
+           |def foo(x: Bar[M]) = x.bar.m${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  // This test is not passing due to https://github.com/lampepfl/dotty/issues/14687
+  // @Test def higherKindedMatchTypeImplicitConversionCompletion: Unit = {
+  //   val expected = Set(
+  //     ("mapBoo", Method, "[B](op: Int => B): Boo[B]"),
+  //     ("mapFoo", Method, "[B](op: Int => B): Foo[B]"),
+  //   )
+  //   code"""import scala.language.implicitConversions
+  //          |case class Foo[A](x: A) {
+  //          |  def mapFoo[B](op: A => B): Foo[B] = ???
+  //          |}
+  //          |case class Boo[A](x: A) {
+  //          |  def mapBoo[B](op: A => B): Boo[B] = ???
+  //          |}
+  //          |type M[A] = A match {
+  //          |  case Int => Foo[Int]
+  //          |}
+  //          |implicit def fooToBoo[A](x: Foo[A]): Boo[A] = Boo(x.x)
+  //          |case class Bar[F[_]](bar: F[Int])
+  //          |def foo(x: Bar[M]) = x.bar.m${m1}"""
+  //            .withSource.completion(m1, expected)
+  // }
+
+  @Test def higherKindedMatchTypeExtensionMethodCompletion: Unit = {
+    val expected = Set(
+      ("mapFoo", Method, "[B](f: Int => B): Foo[B]"),
+      ("mapExtensionMethod", Method, "[B](f: Int => B): Foo[B]"),
+    )
+    code"""trait Foo[A] {
+        |  def mapFoo[B](f: A => B): Foo[B] = ???
+        |}
+        |extension[A] (x: Foo[A]) {
+        |  def mapExtensionMethod[B](f: A => B): Foo[B] = ???
+        |}
+        |case class Baz[F[_]](baz: F[Int])
+        |type M[T] = T match {
+        |  case Int => Foo[Int]
+        |}
+        |case class Bar[F[_]](bar: F[Int])
+        |def foo(x: Bar[M]) = x.bar.ma${m1}"""
+          .withSource.completion(m1, expected)
+  }
+
+  @Test def packageCompletionsOutsideImport: Unit = {
+    val expected = Set(
+      ("java", Module, "java"),
+      ("javax", Module, "javax"),
+    )
+    code"""object Foo { ja${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
+  @Test def topLevelPackagesCompletionsOutsideImport: Unit = {
+    val expected = Set(
+      ("example", Module, "example"),
+    )
+    code"""package example:
+          |    def foo = ""
+          |
+          |def main = exa${m1}"""
+             .withSource.completion(m1, expected)
+  }
+
 }

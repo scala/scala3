@@ -5,6 +5,8 @@
 
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import java.io.RandomAccessFile
 import java.nio.file._
 import java.net.{URI, URL}
@@ -50,7 +52,7 @@ object Path {
 
   def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toList
 
-  def apply(path: String): Path = apply(Paths.get(path))
+  def apply(path: String): Path = apply(new java.io.File(path).toPath)
   def apply(jpath: JPath): Path = try {
     if (Files.isRegularFile(jpath)) new File(jpath)
     else if (Files.isDirectory(jpath)) new Directory(jpath)

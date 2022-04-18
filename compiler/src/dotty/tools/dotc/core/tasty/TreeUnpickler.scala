@@ -3,6 +3,8 @@ package dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import Comments.CommentsContext
 import Contexts._
 import Symbols._
@@ -113,10 +115,25 @@ class TreeUnpickler(reader: TastyReader,
     val owner = ctx.owner
     val source = ctx.source
     def complete(denot: SymDenotation)(using Context): Unit =
-      treeAtAddr(currentAddr) = atPhaseBeforeTransforms {
-        new TreeReader(reader).readIndexedDef()(
-          using ctx.withOwner(owner).withSource(source))
-      }
+      def fail(ex: Throwable) =
+        def where =
+          val f = denot.symbol.associatedFile
+          if f == null then "" else s" in $f"
+        if ctx.settings.YdebugUnpickling.value then throw ex
+        else throw TypeError(
+          em"""Could not read definition of $denot$where
+              |An exception was encountered:
+              |  $ex
+              |Run with -Ydebug-unpickling to see full stack trace.""")
+      treeAtAddr(currentAddr) =
+        try
+          atPhaseBeforeTransforms {
+            new TreeReader(reader).readIndexedDef()(
+              using ctx.withOwner(owner).withSource(source))
+          }
+        catch
+          case ex: AssertionError => fail(ex)
+          case ex: Exception => fail(ex)
   }
 
   class TreeReader(val reader: TastyReader) {
@@ -498,16 +515,28 @@ class TreeUnpickler(reader: TastyReader,
       flags
     }
 
-    def isAbstractType(ttag: Int)(using Context): Boolean = nextUnsharedTag match {
+    def isAbstractType(name: Name)(using Context): Boolean = nextByte match
+      case SHAREDtype =>
+        val lookAhead = fork
+        lookAhead.reader.readByte()
+        val sharedReader = forkAt(lookAhead.reader.readAddr())
+        sharedReader.isAbstractType(name)
       case LAMBDAtpt =>
         val rdr = fork
         rdr.reader.readByte()  // tag
         rdr.reader.readNat()   // length
         rdr.skipParams()       // tparams
-        rdr.isAbstractType(rdr.nextUnsharedTag)
-      case TYPEBOUNDS | TYPEBOUNDStpt => true
+        rdr.isAbstractType(name)
+      case TYPEBOUNDS =>
+        val rdr = fork
+        rdr.reader.readByte()  // tag
+        val end = rdr.reader.readEnd()
+        rdr.skipTree()         // alias, or lower bound
+        val res = !rdr.nothingButMods(end)
+        //if !res then println(i"NOT ABSTRACT $name, ${rdr.reader.nextByte}")
+        res
+      case TYPEBOUNDStpt => true
       case _ => false
-    }
 
     /** Create symbol of definition node and enter in symAtAddr map
      *  @return  the created symbol
@@ -552,7 +581,7 @@ class TreeUnpickler(reader: TastyReader,
       if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
       skipParams()
       val ttag = nextUnsharedTag
-      val isAbsType = isAbstractType(ttag)
+      val isAbsType = isAbstractType(name)
       val isClass = ttag == TEMPLATE
       val templateStart = currentAddr
       skipTree() // tpt
@@ -560,7 +589,7 @@ class TreeUnpickler(reader: TastyReader,
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annotFns, privateWithin) = readModifiers(end)
-      pickling.println(i"creating symbol $name at $start with flags $givenFlags")
+      pickling.println(i"creating symbol $name at $start with flags ${givenFlags.flagsString}, isAbsType = $isAbsType, $ttag")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
         if (flags.is(Module)) adjustModuleCompleter(completer, name) else completer

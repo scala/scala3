@@ -37,3 +37,18 @@ class LocationTests:
       "../../annotation",
       path("api/scala/annotation/meta/beanGetter", "api/scala/annotation"),
     )
+
+  @Test
+  def testAnchorLinks() =
+    def pathWithAnchor(location: String, anchor: String) =
+      locations.escapedAbsolutePathWithAnchor(new DRI(location, anchor))
+
+    assertEquals(
+      "scala/%23::.html#abcde",
+      pathWithAnchor("scala.#::", "abcde")
+    )
+
+    assertEquals(
+      "scala/collection/immutable/LazyList$$%23$.html#abcde",
+      pathWithAnchor("scala.collection.immutable.LazyList$$#$", "abcde")
+    )

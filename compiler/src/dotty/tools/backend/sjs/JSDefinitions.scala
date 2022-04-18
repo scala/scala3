@@ -1,8 +1,10 @@
 package dotty.tools.backend.sjs
 
-import dotty.tools.dotc.core._
+import scala.language.unsafeNulls
 
 import scala.annotation.threadUnsafe
+
+import dotty.tools.dotc.core._
 import Types._
 import Contexts._
 import Symbols._

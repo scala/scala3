@@ -8,12 +8,10 @@ object Car {
 }
 
 object Test {
-  def main(args: Array[String]) = {
-    List(new Car, new Volvo, Car, Car.car)
-      .map(_.getClass.getModifiers)
-      .foreach { m =>
-        println(Modifier.isPrivate(m))
-        println(Modifier.isFinal(m))
-      }
+  def main(args: Array[String]): Unit = {
+    val l =  List(new Car, new Volvo, Car, Car.car)
+      .map(_.getClass)
+      .map(cls => s"${Modifier.toString(cls.getModifiers)} $cls")
+    println(l.mkString("\n"))
   }
 }

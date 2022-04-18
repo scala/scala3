@@ -214,6 +214,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
                 initFlags = stat.symbol.flags | PrivateLocal
               ).installAfter(thisPhase)
               stat.symbol.enteredAfter(thisPhase)
+            case _ =>
           }
           (scall, stats ::: inits, args)
       case _ =>

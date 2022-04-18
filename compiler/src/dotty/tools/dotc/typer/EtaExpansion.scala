@@ -11,6 +11,7 @@ import Symbols._
 import Names._
 import NameKinds.UniqueName
 import util.Spans._
+import util.Property
 import collection.mutable
 import Trees._
 
@@ -154,6 +155,27 @@ class LiftComplex extends Lifter {
   override def exprLifter: Lifter = LiftToDefs
 }
 object LiftComplex extends LiftComplex
+
+/** Lift complex + lift the prefixes */
+object LiftCoverage extends LiftComplex {
+
+  private val LiftEverything = new Property.Key[Boolean]
+
+  private inline def liftEverything(using Context): Boolean =
+    ctx.property(LiftEverything).contains(true)
+
+  private def liftEverythingContext(using Context): Context =
+    ctx.fresh.setProperty(LiftEverything, true)
+
+  override def noLift(expr: tpd.Tree)(using Context) =
+    !liftEverything && super.noLift(expr)
+
+  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
+    val liftedFun = liftApp(defs, tree.fun)
+    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftEverythingContext)
+    tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
+  }
+}
 
 object LiftErased extends LiftComplex:
   override def isErased = true

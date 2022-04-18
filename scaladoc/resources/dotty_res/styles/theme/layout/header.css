@@ -1,0 +1,15 @@
+#header {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(1.75 * var(--base-spacing)) calc(3 * var(--base-spacing));
+  position: absolute;
+  height: var(--header-height);
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  background: var(--background-default);
+  border-bottom: 1px solid var(--border-default);
+}

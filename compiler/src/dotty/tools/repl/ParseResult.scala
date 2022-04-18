@@ -127,7 +127,7 @@ object ParseResult {
     stats
   }
 
-  private val commands: List[(String, String => ParseResult)] = List(
+  private[repl] val commands: List[(String, String => ParseResult)] = List(
     Quit.command -> (_ => Quit),
     Quit.alias -> (_ => Quit),
     Help.command -> (_  => Help),

@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package transform
 package init
 
-
 import dotty.tools.dotc._
 import ast.tpd
 import tpd._

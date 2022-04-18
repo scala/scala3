@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.tools.asm.tree.{AbstractInsnNode}
 import java.io.PrintWriter
 import scala.tools.asm.util.{TraceClassVisitor, TraceMethodVisitor, Textifier}

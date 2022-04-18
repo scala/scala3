@@ -59,6 +59,7 @@ class Compiler {
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
   protected def transformPhases: List[List[Phase]] =
+    List(new InstrumentCoverage) ::  // Perform instrumentation for code coverage (if -coverage-out is set)
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
@@ -152,7 +153,8 @@ class Compiler {
 
   def reset()(using Context): Unit = {
     ctx.base.reset()
-    if (ctx.run != null) ctx.run.reset()
+    val run = ctx.run
+    if (run != null) run.reset()
   }
 
   def newRun(using Context): Run = {

@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package sbt
 
+import scala.language.unsafeNulls
+
 import core._
 import Contexts._
 import Flags._

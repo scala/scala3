@@ -1,5 +1,7 @@
 package dotty.tools.backend.jvm
 
+import scala.language.unsafeNulls
+
 import java.lang.reflect.Modifier
 import scala.tools.asm
 import asm._

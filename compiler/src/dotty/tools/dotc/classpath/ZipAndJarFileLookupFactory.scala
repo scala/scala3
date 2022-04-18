@@ -4,6 +4,8 @@
 package dotty.tools.dotc
 package classpath
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.net.URL
 import java.nio.file.Files
@@ -23,7 +25,7 @@ sealed trait ZipAndJarFileLookupFactory {
   private val cache = new FileBasedCache[ClassPath]
 
   def create(zipFile: AbstractFile)(using Context): ClassPath =
-    val release = Option(ctx.settings.release.value).filter(_.nonEmpty)
+    val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
     if (ctx.settings.YdisableFlatCpCaching.value || zipFile.file == null) createForZipFile(zipFile, release)
     else createUsingCache(zipFile, release)
 
@@ -162,7 +164,7 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveSourcePath(zipFile: File)
     extends ZipArchiveFileLookup[SourceFileEntryImpl]
     with NoClassPaths {
-    
+
     def release: Option[String] = None
 
     override def asSourcePathString: String = asClassPathString

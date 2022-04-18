@@ -2,6 +2,8 @@ package dotty
 package tools
 package dotc
 
+import scala.language.unsafeNulls
+
 import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.Assert._
 import org.junit.Assume._
@@ -33,7 +35,6 @@ class CompilationTests {
       compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings", "-deprecation", "-feature")),
-      compileFile("tests/pos-special/avoid-warn-deprecation.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions),
       compileFilesInDir("tests/pos-special/strawman-collections", allowDeepSubtypes),
       compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")),
@@ -51,13 +52,11 @@ class CompilationTests {
       ),
       compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
       compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),
       compileFile("tests/pos-special/i7575.scala", defaultOptions.andLanguageFeature("dynamics")),
       compileFile("tests/pos-special/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/pos-special/kind-projector-underscores.scala", defaultOptions.and("-Ykind-projector:underscores")),
       compileFile("tests/run/i5606.scala", defaultOptions.and("-Yretain-trees")),
-      compileFile("tests/pos-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
       compileFile("tests/pos-custom-args/i8875.scala", defaultOptions.and("-Xprint:getters")),
       compileFile("tests/pos-custom-args/i9267.scala", defaultOptions.and("-Ystop-after:erasure")),
       compileFile("tests/pos-special/extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration")),
@@ -137,10 +136,10 @@ class CompilationTests {
       compileFilesInDir("tests/neg-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings),
       compileFilesInDir("tests/neg-custom-args/allow-deep-subtypes", allowDeepSubtypes),
-      compileFilesInDir("tests/neg-custom-args/explicit-nulls", defaultOptions.and("-Yexplicit-nulls")),
       compileFilesInDir("tests/neg-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
       compileDir("tests/neg-custom-args/impl-conv", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileDir("tests/neg-custom-args/i13946", defaultOptions.and("-Xfatal-warnings", "-feature")),
+      compileFile("tests/neg-custom-args/avoid-warn-deprecation.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/implicit-conversions.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/implicit-conversions-old.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/i3246.scala", scala2CompatMode),
@@ -178,7 +177,6 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/neg-custom-args/kind-projector-underscores.scala", defaultOptions.and("-Ykind-projector:underscores")),
       compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-language:experimental.erasedDefinitions")),
-      compileFile("tests/neg-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
       compileFile("tests/neg-custom-args/deptypes.scala", defaultOptions.and("-language:experimental.dependent")),
       compileFile("tests/neg-custom-args/matchable.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
       compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
@@ -200,6 +198,7 @@ class CompilationTests {
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     aggregateTests(
+      compileFile("tests/run-custom-args/typeclass-derivation1.scala", defaultOptions.without(yCheckOptions: _*)),
       compileFile("tests/run-custom-args/tuple-cons.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/fors.scala", defaultOptions.and("-source", "future")),
@@ -249,6 +248,7 @@ class CompilationTests {
       compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions),
       compileFilesInDir("tests/explicit-nulls/pos-patmat", explicitNullsOptions and "-Xfatal-warnings"),
       compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls"),
+      compileFile("tests/explicit-nulls/pos-special/i14682.scala", explicitNullsOptions and "-Ysafe-init"),
     )
   }.checkCompile()
 

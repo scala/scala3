@@ -2,6 +2,8 @@ package dotty
 package tools
 package scripting
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.nio.file.Path
 
@@ -40,7 +42,7 @@ class ClasspathTests:
       // classpathReport.sc is expected to produce two lines:
       // cwd: <current-working-directory-seen-by-the-script>
       // classpath: <classpath-seen-by-the-script>
-      
+
       val scriptOutput: Seq[String] = exec(cmd:_*)
       val scriptCwd: String = findTaggedLine("cwd", scriptOutput) // the value tagged "cwd: "
       printf("script ran in directory [%s]\n", scriptCwd)
@@ -49,7 +51,7 @@ class ClasspathTests:
       // convert scriptCp to a list of files
       val hashbangJars: List[File] = scriptCp.split(psep).map { _.toFile }.toList
       val hashbangClasspathJars = hashbangJars.map { _.name }.sorted.distinct // get jar basenames, remove duplicates
-      val packlibDir = s"$scriptCwd/$packLibDir" // classpathReport.sc specifies a wildcard classpath in this directory 
+      val packlibDir = s"$scriptCwd/$packLibDir" // classpathReport.sc specifies a wildcard classpath in this directory
       val packlibJars: List[File] = listJars(packlibDir) // classpath entries expected to have been reported by the script
 
       printf("%d jar files in dist/target/pack/lib\n", packlibJars.size)

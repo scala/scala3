@@ -281,9 +281,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       else {
         if (ms.nonEmpty)
           for (m <- ms)
-            assert(flags.isAllOf(m.flags) ||
-                   m.isInstanceOf[Mod.Private] && !privateWithin.isEmpty,
-                   s"unaccounted modifier: $m in $this when adding $ms")
+            assert(flags.isAllOf(m.flags)
+                || m.isInstanceOf[Mod.Private] && !privateWithin.isEmpty
+                || (m.isInstanceOf[Mod.Abstract] || m.isInstanceOf[Mod.Override]) && flags.is(AbsOverride),
+                s"unaccounted modifier: $m in $this with flags ${flags.flagsString} when adding $ms")
         copy(mods = ms)
       }
 
@@ -511,7 +512,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     vdef.withMods(mods | Param)
   }
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = null, flags: FlagSet = SyntheticTermParam)(using Context): ValDef =
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree | Null = null, flags: FlagSet = SyntheticTermParam)(using Context): ValDef =
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
 

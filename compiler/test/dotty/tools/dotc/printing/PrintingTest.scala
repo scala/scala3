@@ -2,6 +2,8 @@ package dotty
 package tools
 package dotc
 
+import scala.language.unsafeNulls
+
 import vulpix.FileDiff
 import vulpix.TestConfiguration
 import vulpix.TestConfiguration

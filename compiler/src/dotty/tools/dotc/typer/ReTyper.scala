@@ -51,6 +51,9 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
   override def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree =
     promote(tree)
 
+  override def typedImport(tree: untpd.Import, sym: Symbol)(using Context): Tree =
+    promote(tree)
+
   override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree = {
     assertTyped(tree)
 
@@ -107,7 +110,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(using Context): Tree = fun.tpe match {
     case mt: MethodType =>
-      val args: List[Tree] = tree.args.zipWithConserve(mt.paramInfos)(typedExpr(_, _)).asInstanceOf[List[Tree]]
+      val args: List[Tree] = tree.args.zipWithConserve(mt.paramInfos)(typedExpr)
       assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
     case _ =>
       super.handleUnexpectedFunType(tree, fun)

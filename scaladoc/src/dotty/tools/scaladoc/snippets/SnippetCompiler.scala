@@ -85,7 +85,7 @@ class SnippetCompiler(
 
   private def additionalMessages(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, sourceFile: SourceFile, context: Context): Seq[SnippetCompilerMessage] = {
       Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
-        SnippetCompilerMessage(None, "Snippet should not compile but compiled succesfully", MessageLevel.Error)
+        SnippetCompilerMessage(None, "Snippet should not compile but compiled successfully", MessageLevel.Error)
       ).toList
   }
 

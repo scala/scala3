@@ -15,6 +15,6 @@ object leakWarm {
     }
     val c = new C(1, 2)
     val d = new D(3, 4)
-    val l: List[A] = List(c, d) // error // error
+    val l: List[A] = List(c, d) // error
     val l2 = l.map(_.m())
 }
