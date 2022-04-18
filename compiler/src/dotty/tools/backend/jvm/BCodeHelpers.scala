@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.annotation.threadUnsafe
 import scala.tools.asm
 import scala.tools.asm.AnnotationVisitor

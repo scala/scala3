@@ -1,0 +1,4 @@
+-- [E008] Not Found Error: tests/neg/i12487.scala:19:10 ----------------------------------------------------------------
+19 |  example notCombine example  // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  value notCombine is not a member of A

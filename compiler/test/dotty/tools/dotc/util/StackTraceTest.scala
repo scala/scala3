@@ -1,6 +1,8 @@
 
 package dotty.tools.dotc.util
 
+import scala.language.unsafeNulls
+
 import scala.util.{Failure, Success, Try}
 import scala.util.chaining.given
 

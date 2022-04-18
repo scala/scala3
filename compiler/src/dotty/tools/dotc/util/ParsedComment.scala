@@ -1,5 +1,7 @@
 package dotty.tools.dotc.util
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Names.TermName
@@ -51,24 +53,26 @@ class ParsedComment(val comment: Comment) {
    *
    * The different sections are formatted according to the mapping in `knownTags`.
    */
-  def renderAsMarkdown(using Context): String = {
+  def renderAsMarkdown(using Context): String =
     val buf = new StringBuilder
-    buf.append(mainDoc + System.lineSeparator + System.lineSeparator)
+    buf.append(mainDoc)
     val groupedSections = CommentParsing.groupedSections(content, tagIndex)
 
-    for {
+    val sections = for {
       (tag, formatter) <- ParsedComment.knownTags
       boundss <- groupedSections.get(tag)
       texts = boundss.map { case (start, end) => clean(content.slice(start, end)) }
       formatted <- formatter(texts)
-    }
-    {
-      buf.append(formatted)
-      buf.append(System.lineSeparator)
-    }
+    } yield formatted
 
+    if sections.nonEmpty then
+      buf.append(System.lineSeparator + System.lineSeparator)
+      sections.foreach { section =>
+        buf.append(section)
+        buf.append(System.lineSeparator)
+      }
     buf.toString
-  }
+  end renderAsMarkdown
 
   /**
    * The `@param` section corresponding to `name`.

@@ -1,5 +1,5 @@
 ---
-layout: doc-page
+layout: index
 title: "Enums"
 movedTo: https://docs.scala-lang.org/scala3/reference/enums.html
 ---

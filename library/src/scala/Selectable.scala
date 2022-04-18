@@ -47,7 +47,7 @@ object Selectable:
    *  on the precise `paramTypes`. Subtypes of `WithoutPreciseParameterTypes`
    *  can have more relaxed subtyping rules for refinements. They do not need
    *  the additional restriction that the signatures of the refinement and
-   *  the definition that implements the refinment must match.
+   *  the definition that implements the refinement must match.
    */
   @since("3.1")
   trait WithoutPreciseParameterTypes extends Selectable

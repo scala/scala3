@@ -1,6 +1,5 @@
 index: reference/overview.md
 subsection:
-  - page: reference/overview.md
   - title: New Types
     index: reference/new-types/new-types.md
     subsection:
@@ -119,8 +118,8 @@ subsection:
       - page: reference/dropped-features/wildcard-init.md
   - title: Experimental Features
     directory: experimental
+    index: reference/experimental/overview.md
     subsection:
-      - page: reference/experimental/overview.md
       - page: reference/experimental/canthrow.md
       - page: reference/experimental/erased-defs.md
       - page: reference/experimental/erased-defs-spec.md
@@ -128,6 +127,7 @@ subsection:
       - page: reference/experimental/named-typeargs-spec.md
       - page: reference/experimental/numeric-literals.md
       - page: reference/experimental/explicit-nulls.md
+      - page: reference/experimental/main-annotation.md
       - page: reference/experimental/cc.md
   - page: reference/syntax.md
   - title: Language Versions

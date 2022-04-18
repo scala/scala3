@@ -39,7 +39,7 @@ object TastyPrinter:
       else if arg.startsWith("-") then println(s"bad option '$arg' was ignored")
       else if arg.endsWith(".tasty") then {
         val path = Paths.get(arg)
-        if Files.exists(path) then printTasty(arg, Files.readAllBytes(path))
+        if Files.exists(path) then printTasty(arg, Files.readAllBytes(path).nn)
         else println("File not found: " + arg)
       }
       else if arg.endsWith(".jar") then {

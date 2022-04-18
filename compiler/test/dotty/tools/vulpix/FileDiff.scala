@@ -1,5 +1,7 @@
 package dotty.tools.vulpix
 
+import scala.language.unsafeNulls
+
 import scala.io.Source
 import scala.util.Using
 

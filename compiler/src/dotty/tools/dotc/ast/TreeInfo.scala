@@ -215,13 +215,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _                            => false
   }
 
-  /** Is this pattern node a synthetic catch-all case, added during PartialFuction synthesis before we know
-    * whether the user provided cases are exhaustive. */
-  def isSyntheticDefaultCase(cdef: CaseDef): Boolean = unsplice(cdef) match {
-    case CaseDef(Bind(nme.DEFAULT_CASE, _), EmptyTree, _) => true
-    case _                                                  => false
-  }
-
   /** Does this CaseDef catch Throwable? */
   def catchesThrowable(cdef: CaseDef)(using Context): Boolean =
     catchesAllOf(cdef, defn.ThrowableType)
@@ -577,21 +570,28 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         // blocks returning a class literal alone, even if they're idempotent.
         tree1
       case ConstantType(value) =>
-        if (isIdempotentExpr(tree1)) Literal(value).withSpan(tree.span)
-        else {
-          def keepPrefix(pre: Tree) =
+        def dropOp(t: Tree): Tree = t match
+          case Select(pre, _) if t.tpe.isInstanceOf[ConstantType] =>
+            // it's a primitive unary operator
+            pre
+          case Apply(TypeApply(Select(pre, nme.getClass_), _), Nil) =>
+            pre
+          case _ =>
+            tree1
+            
+        val countsAsPure =
+          if dropOp(tree1).symbol.isInlineVal
+          then isIdempotentExpr(tree1)
+          else isPureExpr(tree1)
+          
+        if countsAsPure then Literal(value).withSpan(tree.span)
+        else
+          val pre = dropOp(tree1)
+          if pre eq tree1 then tree1
+          else
+            // it's a primitive unary operator or getClass call;
+            // Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
             Block(pre :: Nil, Literal(value)).withSpan(tree.span)
-
-          tree1 match {
-            case Select(pre, _) if tree1.tpe.isInstanceOf[ConstantType] =>
-              // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
-              keepPrefix(pre)
-            case Apply(TypeApply(Select(pre, nme.getClass_), _), Nil) =>
-              keepPrefix(pre)
-            case _ =>
-              tree1
-          }
-        }
       case _ => tree1
     }
   }
@@ -823,7 +823,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  tree must be reachable from come tree stored in an enclosing context.
    */
   def definingStats(sym: Symbol)(using Context): List[Tree] =
-    if (!sym.span.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Nil
+    if (!sym.span.exists || (ctx eq NoContext) || (ctx.compilationUnit eq NoCompilationUnit)) Nil
     else defPath(sym, ctx.compilationUnit.tpdTree) match {
       case defn :: encl :: _ =>
         def verify(stats: List[Tree]) =

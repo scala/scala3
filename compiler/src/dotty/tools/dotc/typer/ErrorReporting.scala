@@ -208,7 +208,7 @@ object ErrorReporting {
         i""".
            |Extension methods were tried, but the search failed with:
            |
-           |    ${nested.head.explanation}"""
+           |${nested.head.explanation.indented(4)}"""
       else if tree.hasAttachment(desugar.MultiLineInfix) then
         i""".
            |Note that `${tree.name}` is treated as an infix operator in Scala 3.
@@ -292,7 +292,7 @@ class ImplicitSearchError(
     }
 
     """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match {
-      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse(""))
+      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("")).nn
     })
   }
 
@@ -306,15 +306,13 @@ class ImplicitSearchError(
 
   private def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
-  private def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) = {
-    formatMsg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
-      s"ambiguous implicit arguments of type ${pt.show} found${location("for")}"
+  private def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) =
+    formatMsg(s"ambiguous given instances: ${ambi.explanation}${location("of")}")(
+      s"ambiguous given instances of type ${pt.show} found${location("for")}"
     )
-  }
 
-  private def defaultImplicitNotFoundMessage = {
-    ex"no implicit argument of type $pt was found${location("for")}"
-  }
+  private def defaultImplicitNotFoundMessage =
+    ex"no given instance of type $pt was found${location("for")}"
 
   /** Construct a custom error message given an ambiguous implicit
    *  candidate `alt` and a user defined message `raw`.

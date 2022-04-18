@@ -518,7 +518,7 @@ object JavaScanners {
       val limit: Double =
         if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
       try {
-        val value: Double = java.lang.Double.valueOf(strVal.toString).doubleValue()
+        val value: Double = java.lang.Double.valueOf(strVal.toString).nn.doubleValue()
         if (value > limit)
           error("floating point number too large")
         if (negated) -value else value

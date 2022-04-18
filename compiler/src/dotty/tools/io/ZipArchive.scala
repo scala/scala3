@@ -5,6 +5,8 @@
 
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import java.net.URL
 import java.io.{ IOException, InputStream, OutputStream, FilterInputStream }
 import java.nio.file.Files

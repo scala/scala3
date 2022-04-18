@@ -3,7 +3,7 @@ package dotty.tools.dotc.config
 object Printers {
 
   class Printer {
-    def println(msg: => String): Unit = System.out.println(msg)
+    def println(msg: => String): Unit = System.out.nn.println(msg)
   }
 
   object noPrinter extends Printer {

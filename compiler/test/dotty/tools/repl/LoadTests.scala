@@ -1,5 +1,7 @@
 package dotty.tools.repl
 
+import scala.language.unsafeNulls
+
 import java.nio.file.{Path, Files}
 import java.util.Comparator
 import java.util.regex.Pattern

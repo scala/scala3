@@ -247,6 +247,8 @@ object QuoteMatcher {
                     case ref: Ident =>
                       ref.tpe match
                         case TermRef(qual: TermRef, _) => tpd.ref(qual) =?= qual2
+                        case TermRef(qual: ThisType, _) if qual.classSymbol.is(Module, butNot = Package) =>
+                          tpd.ref(qual.classSymbol.companionModule) =?= qual2
                         case _ => matched
                 /* Match reference */
                 case _: Ident if symbolMatch(scrutinee, pattern) => matched
@@ -441,7 +443,7 @@ object QuoteMatcher {
   }
 
   /** Result of matching a part of an expression */
-  private opaque type Matching = Option[Tuple]
+  private type Matching = Option[Tuple]
 
   private object Matching {
 

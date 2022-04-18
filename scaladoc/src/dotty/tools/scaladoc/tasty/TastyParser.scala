@@ -37,7 +37,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
     // however, path-dependent types disallow doing so w/o using casts
     inline def hackForeachTree(thunk: reflect.Tree => Unit): Unit =
       given dctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-      dctx.run.units.foreach { compilationUnit =>
+      dctx.run.nn.units.foreach { compilationUnit =>
         // mirrors code from TastyInspector
         thunk(compilationUnit.tpdTree.asInstanceOf[reflect.Tree])
       }
@@ -123,27 +123,17 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
         topLevels ++= parser.parseRootTree(treeRoot)
     }
 
-    val defn = ctx.compilerContext.definitions
-
     if ctx.args.documentSyntheticTypes then
-      val intrinsicClassDefs = Seq(
-        defn.AnyClass,
-        defn.MatchableClass,
-        defn.AnyKindClass,
-        defn.AnyValClass,
-        defn.NullClass,
-        defn.NothingClass,
-        defn.SingletonClass,
-        defn.andType,
-        defn.orType,
-      ).map { s =>
-        "scala" -> s.asInstanceOf[parser.qctx.reflect.Symbol].tree.match {
-          case cd: parser.qctx.reflect.ClassDef => parser.parseClasslike(cd)
-          case td: parser.qctx.reflect.TypeDef  => parser.parseTypeDef(td)
-        }
+      import parser.qctx.reflect._
+      val intrinsicTypeDefs = parser.intrinsicTypeDefs.toSeq.map { s =>
+        "scala" -> parser.parseTypeDef(s.tree.asInstanceOf[TypeDef])
+      }
+      val intrinsicClassDefs = parser.intrinsicClassDefs.toSeq.map { s =>
+        "scala" -> parser.parseClasslike(s.tree.asInstanceOf[ClassDef])
       }
       topLevels ++= intrinsicClassDefs
-      val scalaPckg = defn.ScalaPackageVal.asInstanceOf[parser.qctx.reflect.Symbol]
+      topLevels ++= intrinsicTypeDefs
+      val scalaPckg = defn.ScalaPackage
       given parser.qctx.type = parser.qctx
       topLevels += "scala" -> Member(scalaPckg.fullName, scalaPckg.dri, Kind.Package)
       topLevels += mergeAnyRefAliasAndObject(parser)
@@ -167,12 +157,13 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
     }.toList -> rootDoc
 
   def mergeAnyRefAliasAndObject(parser: TastyParser) =
-    val defn = ctx.compilerContext.definitions
-    val oM = parser.parseClasslike(defn.ObjectClass.asInstanceOf[parser.qctx.reflect.Symbol].tree.asInstanceOf[parser.qctx.reflect.ClassDef])
-    val aM = parser.parseTypeDef(defn.AnyRefAlias.asInstanceOf[parser.qctx.reflect.Symbol].tree.asInstanceOf[parser.qctx.reflect.TypeDef])
+    import parser.qctx.reflect._
+    val javaLangObjectDef = defn.ObjectClass.tree.asInstanceOf[ClassDef]
+    val objectMembers = parser.extractPatchedMembers(javaLangObjectDef)
+    val aM = parser.parseTypeDef(defn.AnyRefClass.tree.asInstanceOf[TypeDef])
     "scala" -> aM.copy(
-      kind = oM.kind,
-      members = oM.members
+      kind = Kind.Class(Nil, Nil),
+      members = objectMembers
     )
 /** Parses a single Tasty compilation unit. */
 case class TastyParser(
@@ -187,6 +178,25 @@ case class TastyParser(
 
   private given qctx.type = qctx
 
+  val intrinsicClassDefs = Set(
+    defn.AnyClass,
+    defn.MatchableClass,
+    defn.ScalaPackage.typeMember("AnyKind"),
+    defn.AnyValClass,
+    defn.NullClass,
+    defn.NothingClass,
+    defn.ScalaPackage.typeMember("Singleton"),
+  )
+
+  val noPosClassDefs = intrinsicClassDefs ++ Set(
+    defn.ObjectClass,
+    defn.AnyRefClass
+  )
+
+  val intrinsicTypeDefs = Set(
+    defn.ScalaPackage.typeMember("&"),
+    defn.ScalaPackage.typeMember("|"),
+  )
   def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch
     case e: Exception  =>
       report.warning(throwableToString(e), tree.pos)

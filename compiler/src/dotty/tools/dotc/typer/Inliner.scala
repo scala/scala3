@@ -40,6 +40,11 @@ object Inliner {
 
   private type DefBuffer = mutable.ListBuffer[ValOrDefDef]
 
+  /** An exception signalling that an inline info cannot be computed due to a
+   *  cyclic reference. i14772.scala shows a case where this happens.
+   */
+  private[typer] class MissingInlineInfo extends Exception
+
   /** `sym` is an inline method with a known body to inline.
    */
   def hasBodyToInline(sym: SymDenotation)(using Context): Boolean =
@@ -154,7 +159,10 @@ object Inliner {
       if bindings.nonEmpty then
         cpy.Block(tree)(bindings.toList, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
-        val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
+        val body =
+          try bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
+          catch case _: MissingInlineInfo =>
+            throw CyclicReference(ctx.owner)
         new Inliner(tree, body).inlined(tree.srcPos)
       else
         ctx.base.stopInlining = true
@@ -597,7 +605,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   def addOpaqueProxies(tp: Type, span: Span, forThisProxy: Boolean)(using Context): Unit =
     tp.foreachPart {
       case ref: TermRef =>
-        for cls <- ref.widen.classSymbols do
+        for cls <- ref.widen.baseClasses do
           if cls.containsOpaques
              && (forThisProxy || inlinedMethod.isContainedIn(cls))
              && mapRef(ref).isEmpty
@@ -903,6 +911,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     def inlinedFromOutside(tree: Tree)(span: Span): Tree =
       Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
 
+    // InlineCopier is a more fault-tolerant copier that does not cause errors when
+    // function types in applications are undefined. This is necessary since we copy at
+    // the same time as establishing the proper context in which the copied tree should
+    // be evaluated. This matters for opaque types, see neg/i14653.scala.
+    class InlineCopier() extends TypedTreeCopier:
+      override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+        if fun.tpe.widen.exists then super.Apply(tree)(fun, args)
+        else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
+
     // InlinerMap is a TreeTypeMap with special treatment for inlined arguments:
     // They are generally left alone (not mapped further, and if they wrap a type
     // the type Inlined wrapper gets dropped
@@ -913,7 +930,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         newOwners: List[Symbol],
         substFrom: List[Symbol],
         substTo: List[Symbol])(using Context)
-      extends TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo):
+      extends TreeTypeMap(
+        typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
 
       override def copy(
           typeMap: Type => Type,
@@ -1318,17 +1336,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         def searchImplicit(sym: TermSymbol, tpt: Tree) = {
           val evTyper = new Typer(ctx.nestingLevel + 1)
           val evCtx = ctx.fresh.setTyper(evTyper)
-          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
-          evidence.tpe match {
-            case fail: Implicits.AmbiguousImplicits =>
-              report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.srcPos)
-              true // hard error: return true to stop implicit search here
-            case fail: Implicits.SearchFailureType =>
-              false
-            case _ =>
-              //inlining.println(i"inferred implicit $sym: ${sym.info} with $evidence: ${evidence.tpe.widen}, ${evCtx.gadt.constraint}, ${evCtx.typerState.constraint}")
-              newTermBinding(sym, evidence)
-              true
+          inContext(evCtx) {
+            val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
+            evidence.tpe match {
+              case fail: Implicits.AmbiguousImplicits =>
+                report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.srcPos)
+                true // hard error: return true to stop implicit search here
+              case fail: Implicits.SearchFailureType =>
+                false
+              case _ =>
+                //inlining.println(i"inferred implicit $sym: ${sym.info} with $evidence: ${evidence.tpe.widen}, ${evCtx.gadt.constraint}, ${evCtx.typerState.constraint}")
+                newTermBinding(sym, evidence)
+                true
+            }
           }
         }
 
@@ -1364,7 +1384,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
                   // the binding is to be maximized iff it only occurs contravariantly in the type
                   val wasToBeMinimized: Boolean = {
                     val v = syms(trSym)
-                    if (v ne null) v else false
+                    if (v != null) v else false
                   }
                   syms.updated(trSym, wasToBeMinimized || variance >= 0 : java.lang.Boolean)
                 case _ =>
@@ -1540,7 +1560,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       ctx
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-      inlineIfNeeded(tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
+      val tree1 = inlineIfNeeded(
+          tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
+        )
+      tree1 match
+        case id: Ident if tpd.needsSelect(id.tpe) =>
+          inlining.println(i"expanding $id to selection")
+          ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
+        case _ =>
+          tree1
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))

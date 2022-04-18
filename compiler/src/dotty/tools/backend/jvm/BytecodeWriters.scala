@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import java.io.{ DataOutputStream, FileOutputStream, IOException, File as JFile }
 import java.nio.channels.ClosedByInterruptException
 import dotty.tools.io._
@@ -98,7 +100,7 @@ trait BytecodeWriters {
       super.writeClass(label, jclassName, jclassBytes, outfile)
 
       val segments = jclassName.split("[./]")
-      val asmpFile = segments.foldLeft(baseDir: Path)(_ / _) changeExtension "asmp" toFile;
+      val asmpFile = segments.foldLeft(baseDir: Path)(_ / _).changeExtension("asmp").toFile
 
       asmpFile.parent.createDirectory()
       emitAsmp(jclassBytes, asmpFile)
@@ -115,7 +117,8 @@ trait BytecodeWriters {
       catch case ex: ClosedByInterruptException =>
         try
           outfile.delete() // don't leave an empty or half-written classfile around after an interrupt
-        catch case _: Throwable =>
+        catch
+          case _: Throwable =>
         throw ex
       finally outstream.close()
       report.informProgress("wrote '" + label + "' to " + outfile)
@@ -129,7 +132,7 @@ trait BytecodeWriters {
       super.writeClass(label, jclassName, jclassBytes, outfile)
 
       val pathName = jclassName
-      val dumpFile = pathName.split("[./]").foldLeft(baseDir: Path) (_ / _) changeExtension "class" toFile;
+      val dumpFile = pathName.split("[./]").foldLeft(baseDir: Path) (_ / _).changeExtension("class").toFile
       dumpFile.parent.createDirectory()
       val outstream = new DataOutputStream(new FileOutputStream(dumpFile.path))
 

@@ -158,10 +158,11 @@ object Nullables:
   def isTracked(ref: TermRef)(using Context) =
     ref.isStable
     || { val sym = ref.symbol
+         val unit = ctx.compilationUnit
          !ref.usedOutOfOrder
          && sym.span.exists
-         && ctx.compilationUnit != null // could be null under -Ytest-pickler
-         && ctx.compilationUnit.assignmentSpans.contains(sym.span.start)
+         && (unit ne NoCompilationUnit) // could be null under -Ytest-pickler
+         && unit.assignmentSpans.contains(sym.span.start)
       }
 
   /** The nullability context to be used after a case that matches pattern `pat`.

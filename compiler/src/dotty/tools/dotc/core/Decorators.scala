@@ -2,12 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import annotation.tailrec
-import Symbols._
-import Contexts._, Names._, Phases._, printing.Texts._
-import collection.mutable.ListBuffer
-import dotty.tools.dotc.transform.MegaPhase
-import printing.Formatting._
+import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
+import scala.util.control.NonFatal
+
+import Contexts._, Names._, Phases._, Symbols._
+import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
+import transform.MegaPhase
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -52,7 +53,7 @@ object Decorators {
         if name.length != 0 then name.getChars(0, name.length, chars, s.length)
         termName(chars, 0, len)
       case name: TypeName => s.concat(name.toTermName)
-      case _ => termName(s.concat(name.toString))
+      case _ => termName(s.concat(name.toString).nn)
 
     def indented(width: Int): String =
       val padding = " " * width
@@ -80,9 +81,9 @@ object Decorators {
 
     final def mapconserve[U](f: T => U): List[U] = {
       @tailrec
-      def loop(mapped: ListBuffer[U], unchanged: List[U], pending: List[T]): List[U] =
+      def loop(mapped: ListBuffer[U] | Null, unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty)
-          if (mapped eq null) unchanged
+          if (mapped == null) unchanged
           else mapped.prependToList(unchanged)
         else {
           val head0 = pending.head
@@ -91,7 +92,7 @@ object Decorators {
           if (head1.asInstanceOf[AnyRef] eq head0.asInstanceOf[AnyRef])
             loop(mapped, unchanged, pending.tail)
           else {
-            val b = if (mapped eq null) new ListBuffer[U] else mapped
+            val b = if (mapped == null) new ListBuffer[U] else mapped
             var xc = unchanged
             while (xc ne pending) {
               b += xc.head
@@ -144,13 +145,13 @@ object Decorators {
      *  `xs` to themselves. Also, it is required that `ys` is at least
      *  as long as `xs`.
      */
-    def zipWithConserve[U](ys: List[U])(f: (T, U) => T): List[T] =
+    def zipWithConserve[U, V <: T](ys: List[U])(f: (T, U) => V): List[V] =
       if (xs.isEmpty || ys.isEmpty) Nil
       else {
         val x1 = f(xs.head, ys.head)
         val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
-        if ((x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) &&
-            (xs1 eq xs.tail)) xs
+        if (x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) && (xs1 eq xs.tail)
+          then xs.asInstanceOf[List[V]]
         else x1 :: xs1
       }
 
@@ -246,12 +247,28 @@ object Decorators {
       }
 
   extension [T](x: T)
-    def showing(
-        op: WrappedResult[T] ?=> String,
-        printer: config.Printers.Printer = config.Printers.default): T = {
-      printer.println(op(using WrappedResult(x)))
+    def showing[U](
+        op: WrappedResult[U] ?=> String,
+        printer: config.Printers.Printer = config.Printers.default)(using c: Conversion[T, U] | Null = null): T = {
+      // either the use of `$result` was driven by the expected type of `Shown`
+      // which led to the summoning of `Conversion[T, Shown]` (which we'll invoke)
+      // or no such conversion was found so we'll consume the result as it is instead
+      val obj = if c == null then x.asInstanceOf[U] else c(x)
+      printer.println(op(using WrappedResult(obj)))
       x
     }
+
+    /** Instead of `toString` call `show` on `Showable` values, falling back to `toString` if an exception is raised. */
+    def tryToShow(using Context): String = x match
+      case x: Showable =>
+        try x.show
+        catch
+          case ex: CyclicReference => "... (caught cyclic reference) ..."
+          case NonFatal(ex)
+              if !ctx.mode.is(Mode.PrintShowExceptions) && !ctx.settings.YshowPrintErrors.value =>
+            val msg = ex match { case te: TypeError => te.toMessage case _ => ex.getMessage }
+            s"[cannot display due to $msg, raw string = $x]"
+      case _ => String.valueOf(x).nn
 
   extension [T](x: T)
     def assertingErrorsReported(using Context): T = {
@@ -269,22 +286,22 @@ object Decorators {
 
   extension (sc: StringContext)
     /** General purpose string formatting */
-    def i(args: Any*)(using Context): String =
+    def i(args: Shown*)(using Context): String =
       new StringFormatter(sc).assemble(args)
 
     /** Formatting for error messages: Like `i` but suppress follow-on
      *  error messages after the first one if some of their arguments are "non-sensical".
      */
-    def em(args: Any*)(using Context): String =
+    def em(args: Shown*)(using Context): String =
       new ErrorMessageFormatter(sc).assemble(args)
 
     /** Formatting with added explanations: Like `em`, but add explanations to
      *  give more info about type variables and to disambiguate where needed.
      */
-    def ex(args: Any*)(using Context): String =
+    def ex(args: Shown*)(using Context): String =
       explained(em(args: _*))
 
   extension [T <: AnyRef](arr: Array[T])
-    def binarySearch(x: T): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object]], x)
+    def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 
 }

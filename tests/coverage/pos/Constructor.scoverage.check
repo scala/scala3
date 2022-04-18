@@ -1,0 +1,122 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+f
+28
+33
+3
+f
+DefDef
+false
+0
+false
+def f
+
+1
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+x
+48
+53
+4
+x
+DefDef
+false
+0
+false
+def x
+
+2
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+<init>
+60
+64
+5
+f
+Apply
+false
+0
+false
+f(x)
+
+3
+Constructor.scala
+covtest
+O$
+Object
+covtest.O$
+g
+78
+83
+8
+g
+DefDef
+false
+0
+false
+def g
+
+4
+Constructor.scala
+covtest
+O$
+Object
+covtest.O$
+y
+98
+103
+9
+y
+DefDef
+false
+0
+false
+def y
+
+5
+Constructor.scala
+covtest
+O$
+Object
+covtest.O$
+<init>
+110
+114
+10
+g
+Apply
+false
+0
+false
+g(y)
+

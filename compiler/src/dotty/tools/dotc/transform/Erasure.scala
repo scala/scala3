@@ -266,7 +266,7 @@ object Erasure {
     def constant(tree: Tree, const: Tree)(using Context): Tree =
       (if (isPureExpr(tree)) const else Block(tree :: Nil, const)).withSpan(tree.span)
 
-    final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
+    final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary()}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(tycon, _) =>
           New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
@@ -286,7 +286,7 @@ object Erasure {
       }
     }
 
-    def unbox(tree: Tree, pt: Type)(using Context): Tree = trace(i"unboxing ${tree.showSummary}: ${tree.tpe} as a $pt") {
+    def unbox(tree: Tree, pt: Type)(using Context): Tree = trace(i"unboxing ${tree.showSummary()}: ${tree.tpe} as a $pt") {
       pt match {
         case ErasedValueType(tycon, underlying) =>
           def unboxedTree(t: Tree) =
@@ -683,7 +683,7 @@ object Erasure {
           val owner = sym.maybeOwner
           if defn.specialErasure.contains(owner) then
             assert(sym.isConstructor, s"${sym.showLocated}")
-            defn.specialErasure(owner)
+            defn.specialErasure(owner).nn
           else if defn.isSyntheticFunctionClass(owner) then
             defn.functionTypeErasure(owner).typeSymbol
           else
@@ -784,9 +784,11 @@ object Erasure {
       }
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
-      val ntree = atPhase(erasurePhase)(
-        interceptTypeApply(tree.asInstanceOf[TypeApply])
-      ).withSpan(tree.span)
+      val ntree = atPhase(erasurePhase){
+        // Use erased-type semantic to intercept TypeApply in explicit nulls
+        val interceptCtx = if ctx.explicitNulls then ctx.retractMode(Mode.SafeNulls) else ctx
+        interceptTypeApply(tree.asInstanceOf[TypeApply])(using interceptCtx)
+      }.withSpan(tree.span)
 
       ntree match {
         case TypeApply(fun, args) =>
@@ -823,7 +825,6 @@ object Erasure {
 
           val args0 = outers ::: ownArgs
           val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
-            .asInstanceOf[List[Tree]]
 
           def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
             val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)
@@ -1030,7 +1031,7 @@ object Erasure {
     }
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =
-      trace(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
+      trace(i"adapting ${tree.showSummary()}: ${tree.tpe} to $pt", show = true) {
         if ctx.phase != erasurePhase && ctx.phase != erasurePhase.next then
           // this can happen when reading annotations loaded during erasure,
           // since these are loaded at phase typer.

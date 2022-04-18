@@ -119,6 +119,16 @@ object RegressionTestScala3 {
       def bar(x: Long = 0): Foo = new Foo(x)
     }
   }
+
+  object Issue14896 {
+    val obj = new js.Object {
+      val a = 42
+      val b = "foo"
+    }
+
+    val entries = js.Object.entries(obj)
+    val js.Tuple2(k, v) = entries(0): @unchecked
+  }
 }
 
 // This class needs to be at the top-level, not in an object, to reproduce the issue

@@ -27,7 +27,7 @@
    |
    | longer explanation available when compiling with `-explain`
 -- [E032] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:23:17 ---------------------------------------------------
-23 |    val K(ns @ _*, xx) = k // error: pattern expected
+23 |    val K(ns @ _*, xx) = k // error: pattern expected // error
    |                 ^
    |                 pattern expected
    |
@@ -48,5 +48,11 @@
 13 |      case List(1, _*3:) =>  // error // error
    |                    ^
    |                    Not found: *
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E045] Cyclic Error: tests/neg/t5702-neg-bad-and-wild.scala:23:19 ---------------------------------------------------
+23 |    val K(ns @ _*, xx) = k // error: pattern expected // error
+   |                   ^
+   |                   Recursive value $1$ needs type
    |
    | longer explanation available when compiling with `-explain`

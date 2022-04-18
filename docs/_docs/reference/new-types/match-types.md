@@ -67,7 +67,7 @@ use of the match type as the return type):
 ```scala
 def leafElem[X](x: X): LeafElem[X] = x match
   case x: String      => x.charAt(0)
-  case x: Array[t]    => leafElem(x(9))
+  case x: Array[t]    => leafElem(x(0))
   case x: Iterable[t] => leafElem(x.head)
   case x: AnyVal      => x
 ```

@@ -30,7 +30,7 @@ class Inlining extends MacroTransform {
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val newUnits = super.runOn(units).filterNot(_.suspended)
-    ctx.run.checkSuspendedUnits(newUnits)
+    ctx.run.nn.checkSuspendedUnits(newUnits)
     newUnits
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =

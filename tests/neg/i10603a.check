@@ -1,4 +1,4 @@
 -- Error: tests/neg/i10603a.scala:2:35 ---------------------------------------------------------------------------------
 2 |  val x = implicitly[List[Boolean]] // error
   |                                   ^
-  |        no implicit argument of type List[Boolean] was found for parameter e of method implicitly in object Predef
+  |           no given instance of type List[Boolean] was found for parameter e of method implicitly in object Predef

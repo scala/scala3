@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.tools.asm
 import scala.annotation.switch
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}
@@ -26,14 +28,14 @@ trait BCodeIdiomatic {
 
 
   lazy val target =
-    val releaseValue = Option(ctx.settings.release.value).filter(_.nonEmpty)
-    val targetValue = Option(ctx.settings.Xtarget.value).filter(_.nonEmpty)
+    val releaseValue = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
+    val targetValue = Option(ctx.settings.XuncheckedJavaOutputVersion.value).filter(_.nonEmpty)
     val defaultTarget = "8"
     (releaseValue, targetValue) match
       case (Some(release), None) => release
       case (None, Some(target)) => target
       case (Some(release), Some(_)) =>
-        report.warning(s"The value of ${ctx.settings.Xtarget.name} was overridden by ${ctx.settings.release.name}")
+        report.warning(s"The value of ${ctx.settings.XuncheckedJavaOutputVersion.name} was overridden by ${ctx.settings.javaOutputVersion.name}")
         release
       case (None, None) => "8" // least supported version by default
 
@@ -50,6 +52,7 @@ trait BCodeIdiomatic {
     case "15" => asm.Opcodes.V15
     case "16" => asm.Opcodes.V16
     case "17" => asm.Opcodes.V17
+    case "18" => asm.Opcodes.V18
   }
 
   lazy val majorVersion: Int = (classfileVersion & 0xFF)

@@ -1,6 +1,8 @@
 package dotty.tools
 package repl
 
+import scala.language.unsafeNulls
+
 import java.io.{Reader, StringWriter}
 import javax.script.{AbstractScriptEngine, Bindings, ScriptContext, ScriptEngine => JScriptEngine, ScriptEngineFactory, ScriptException, SimpleBindings}
 import dotc.core.StdNames.str

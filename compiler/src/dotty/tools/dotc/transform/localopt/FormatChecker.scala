@@ -74,7 +74,7 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     def loop(remaining: List[String], n: Int): Unit =
       remaining match
         case part0 :: more =>
-          def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage, index = n, offset = 0))
+          def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage.nn, index = n, offset = 0))
           val part = try StringContext.processEscapes(part0) catch badPart
           val matches = formatPattern.findAllMatchIn(part)
 

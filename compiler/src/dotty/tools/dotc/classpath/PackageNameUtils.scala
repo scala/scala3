@@ -19,7 +19,7 @@ object PackageNameUtils {
     if (lastDotIndex == -1)
       (RootPackage, fullClassName)
     else
-      (fullClassName.substring(0, lastDotIndex), fullClassName.substring(lastDotIndex + 1))
+      (fullClassName.substring(0, lastDotIndex).nn, fullClassName.substring(lastDotIndex + 1).nn)
   }
 
   def packagePrefix(inPackage: String): String = if (inPackage == RootPackage) "" else inPackage + "."

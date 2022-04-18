@@ -249,24 +249,17 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     trace(i"constraining simple pattern type $tp >:< $pt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       (tp, pt) match {
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
-          val saved = state.constraint
+          val saved = state.nn.constraint
           val savedGadt = ctx.gadt.fresh
           val result =
             tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
               val variance = param.paramVarianceSign
               if variance != 0 && !assumeInvariantRefinement then true
-              else if argS.isInstanceOf[TypeBounds] || argP.isInstanceOf[TypeBounds] then
-                // This line was added here as a quick fix for issue #13998,
-                // to extract GADT constraints from wildcard type arguments.
-                // The proper fix would involve inspecting the bounds right here and performing the
-                // correct subtyping checks, the ones that are already performed by `isSubType` below,
-                // for the same reasons for which we stopped using `SkolemType` here to begin with
-                // (commit 10fe5374dc2d).
-                isSubType(SkolemType(patternTp), scrutineeTp)
               else {
+                val TypeBounds(loS, hiS) = argS.bounds
                 var res = true
-                if variance <  1 then res &&= isSubType(argS, argP)
-                if variance > -1 then res &&= isSubType(argP, argS)
+                if variance <  1 then res &&= isSubType(loS, argP)
+                if variance > -1 then res &&= isSubType(argP, hiS)
                 res
               }
             }

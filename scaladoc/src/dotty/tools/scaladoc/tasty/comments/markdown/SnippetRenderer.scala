@@ -5,7 +5,6 @@ import com.vladsch.flexmark.html._
 import util.HTML._
 
 import dotty.tools.scaladoc.snippets._
-import dotty.tools.scaladoc.util.HTML._
 
 case class SnippetLine(content: String, lineNo: Int, classes: Set[String] = Set.empty, messages: Seq[String] = Seq.empty, attributes: Map[String, String] = Map.empty):
   def withClass(cls: String) = this.copy(classes = classes + cls)
@@ -134,15 +133,26 @@ object SnippetRenderer:
     div(cls := "snippet-label")(name)
   ).toString
 
-  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], hasContext: Boolean): String =
+  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], hasContext: Boolean, success: Boolean): String =
     val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).apply(codeLines).map(_.toHTML)
     val codeHTML = s"""<code class="language-scala">${transformedLines.mkString("")}</code>"""
-    s"""<div class="snippet" scala-snippet ${if hasContext then "hasContext" else ""}><div class="buttons"></div><pre>$codeHTML</pre>${snippetName.fold("")(snippetLabel(_))}</div>"""
+    val isRunnable = !hasContext && success
+    val attrs = Seq(
+      Option.when(isRunnable)(Attr("runnable") := "")
+    ).flatten
+    div(cls := "snippet", Attr("scala-snippet") := "", attrs)(
+      div(cls := "buttons")(),
+      pre(
+        raw(codeHTML)
+      ),
+      raw(snippetName.fold("")(snippetLabel(_)))
+    ).toString
 
   def renderSnippetWithMessages(node: ExtendedFencedCodeBlock): String =
     renderSnippetWithMessages(
       node.name,
       node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
       node.compilationResult.toSeq.flatMap(_.messages),
-      node.hasContext
+      node.hasContext,
+      node.compilationResult.fold(false)(_.isSuccessful)
     )

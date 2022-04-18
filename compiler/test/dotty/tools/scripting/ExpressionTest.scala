@@ -2,6 +2,8 @@ package dotty
 package tools
 package scripting
 
+import scala.language.unsafeNulls
+
 import java.nio.file.Paths
 import org.junit.{Test, AfterClass}
 import org.junit.Assert.assertEquals
@@ -10,7 +12,7 @@ import vulpix.TestConfiguration
 
 import ScriptTestEnv.*
 
-/** 
+/**
  *   +. test scala -e <expression>
  */
 class ExpressionTest:
@@ -41,7 +43,7 @@ class ExpressionTest:
     printf("stdout: %s\n", stdout.mkString("|"))
     printf("stderr: %s\n", stderr.mkString("\n", "\n", ""))
     stdout.filter(_.nonEmpty).mkString("")
-    
+
   def testExpression(expression: String)(check: (result: String) => Boolean): Boolean =
     val result = getResult(expression)
     check(result)

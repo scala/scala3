@@ -3,6 +3,8 @@
 package dotty.tools
 package dotc.config
 
+import scala.language.unsafeNulls
+
 import scala.annotation.internal.sharable
 import scala.util.{Try, Success, Failure}
 

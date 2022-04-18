@@ -5,6 +5,8 @@
 
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import java.io.InputStream
 
 /** A distinguished object so you can avoid both null

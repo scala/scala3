@@ -70,7 +70,7 @@ object CommandLineParser:
         else if qpos(0) == start && qpos(1) == pos then line.substring(start+1, pos-1)
         else copyText()
       qpos.clear()
-      res
+      res.nn
 
     inline def badquote() = errorFn(s"Unmatched quote [${qpos.last}](${line.charAt(qpos.last)})")
 
@@ -103,10 +103,10 @@ object CommandLineParser:
     def stripComment(s: String) = s takeWhile (_ != '#')
     val path = Paths.get(arg stripPrefix "@")
     if (!Files.exists(path))
-      System.err.println(s"Argument file ${path.getFileName} could not be found")
+      System.err.nn.println(s"Argument file ${path.nn.getFileName} could not be found")
       Nil
     else
-      val lines = Files.readAllLines(path) // default to UTF-8 encoding
+      val lines = Files.readAllLines(path).nn // default to UTF-8 encoding
       val params = lines.asScala map stripComment mkString " "
       tokenize(params)
 

@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.SourcePosition
 

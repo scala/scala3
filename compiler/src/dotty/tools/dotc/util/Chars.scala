@@ -93,4 +93,7 @@ object Chars {
          '|' | '/' | '\\' => true
     case c => isSpecial(c)
   }
+
+  /** Would the character be encoded by `NameTransformer.encode`? */
+  def willBeEncoded(c : Char) : Boolean = !JCharacter.isJavaIdentifierPart(c)
 }

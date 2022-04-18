@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package config
 
+import scala.language.unsafeNulls
+
 /** For placing a wrapper function around property functions.
  *  Motivated by places like google app engine throwing exceptions
  *  on property lookups.

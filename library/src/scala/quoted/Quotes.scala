@@ -12,7 +12,6 @@ import scala.reflect.TypeTest
  *     ...
  *  }
  *  ```
- *  @syntax markdown
  */
 transparent inline def quotes(using inline q: Quotes): q.type = q
 
@@ -36,7 +35,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *    case '{...} => true // where the contents of the pattern are the contents of `that`
     *    case _ => false
     *  ```
-    *  @syntax markdown
     */
     def matches(that: Expr[Any]): Boolean
 
@@ -97,7 +95,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *
    *  See `reflectModule` for full API.
    *
-   *  @syntax markdown
    */
   val reflect: reflectModule
 
@@ -225,7 +222,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *
    *  ```
    *
-   * @syntax markdown
    */
   trait reflectModule { self: reflect.type =>
 
@@ -316,7 +312,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  package foo.bar
      *  // package stats
      *  ```
-     *  @syntax markdown
      */
     type PackageClause <: Tree
 
@@ -464,6 +459,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ClassDef` */
     trait ClassDefModule { this: ClassDef.type =>
+      /** Create a class definition tree
+       *
+       *  @param cls The class symbol. A new class symbol can be created using `Symbol.newClass`.
+       *  @param parents The parents trees class. The trees must align with the parent types of `cls`.
+       *                 Parents can be `TypeTree`s if they don't have term parameter,
+       *                 otherwise the can be `Term` containing the `New` applied to the parameters of the extended class.
+       *  @param body List of members of the class. The members must align with the members of `cls`.
+       */
+      @experimental def apply(cls: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): ClassDef
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
     }
@@ -490,7 +494,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *    ???
          *  }
          *  ```
-         *  @syntax markdown
          */
         def self: Option[ValDef]
         /** Statements within the class
@@ -500,7 +503,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *    ??? // statements
          *  }
          *  ```
-         *  @syntax markdown
          */
         def body: List[Statement]
       end extension
@@ -524,6 +526,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  The `rhsFn` is a function that receives references to its parameters and should return
        *  `Some` containing the implementation of the method. Returns `None` the method has no implementation.
        *  Any definition directly inside the implementation should have `symbol` as owner.
+       *
+       *  Use `Symbol.asQuotes` to create the rhs using quoted code.
        *
        *  See also: `Tree.changeOwner`
        */
@@ -551,7 +555,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  //}
          *  extension (a: A) def f[T]() = ???
          *  ```
-         *  @syntax markdown
          */
         def leadingTypeParams: List[TypeDef]
 
@@ -566,7 +569,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  //}
          *  extension (a: A) def f[T]() = ???
          *  ```
-         *  @syntax markdown
          */
         def trailingParamss: List[ParamClause]
 
@@ -602,20 +604,50 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  Returns `None` the method has no implementation.
        *  Any definition directly inside the implementation should have `symbol` as owner.
        *
+       *  Use `Symbol.asQuotes` to create the rhs using quoted code.
+       *
        *  See also: `Tree.changeOwner`
        */
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term])
 
-      /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }` */
+      /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }`
+       *
+       *  Usage:
+       *  ```
+       *  ValDef.let(owner, "x", rhs1) { x =>
+       *    ValDef.let(x.symbol.owner, "y", rhs2) { y =>
+       *      // use `x` and `y`
+       *    }
+       *  }
+       *  ```
+       */
       def let(owner: Symbol, name: String, rhs: Term)(body: Ref => Term): Term
 
-      /** Creates a block `{ val x = <rhs: Term>; <body(x): Term> }` */
+      /** Creates a block `{ val x = <rhs: Term>; <body(x): Term> }`
+       *
+       *  Usage:
+       *  ```
+       *  ValDef.let(owner, rhs1) { x =>
+       *    ValDef.let(owner, rhs2) { y =>
+       *      // use `x` and `y`
+       *    }
+       *  }
+       *  ```
+       */
       def let(owner: Symbol, rhs: Term)(body: Ref => Term): Term =
         let(owner, "x", rhs)(body)
 
-      /** Creates a block `{ val x1 = <terms(0): Term>; ...; val xn = <terms(n-1): Term>; <body(List(x1, ..., xn)): Term> }` */
+      /** Creates a block `{ val x1 = <terms(0): Term>; ...; val xn = <terms(n-1): Term>; <body(List(x1, ..., xn)): Term> }`
+       *
+       *  Usage:
+       *  ```
+       *  ValDef.let(owner, rhsList) { xs =>
+       *     ...
+       *  }
+       *  ```
+       */
       def let(owner: Symbol, terms: List[Term])(body: List[Ref] => Term): Term
     }
 
@@ -699,10 +731,20 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** TypeRepr of this term */
         def tpe: TypeRepr
 
-        /** Replace Inlined nodes and InlineProxy references to underlying arguments */
+        /** Replace Inlined nodes and InlineProxy references to underlying arguments.
+         *  The resulting tree is useful for inspection of the value or content of a non-inline argument.
+         *
+         *  Warning: This tree may contain references that are out of scope and should not be used in the generated code.
+         *           This method should only used to port Scala 2 that used to access their outer scope unsoundly.
+         */
         def underlyingArgument: Term
 
-        /** Replace Ident nodes references to the underlying tree that defined them */
+        /** Replace Ident nodes references to the underlying tree that defined them.
+         *  The resulting tree is useful for inspection of the definition of some bindings.
+         *
+         *  Warning: This tree may contain references that are out of scope and should not be used in the generated code.
+         *           This method should only used to port Scala 2 that used to access their outer scope unsoundly.
+         */
         def underlying: Term
 
         /** Converts a partially applied term into a lambda expression */
@@ -1043,7 +1085,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```
          *  - `fun` is `f(1)` in the `Apply` of `f(1)(2)`
          *  - `fun` is `f` in the `Apply` of `f(1)`
-         *  @syntax markdown
          */
         def fun: Term
         /** The arguments (implicitly) passed to the method
@@ -1055,7 +1096,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```
          *  - `args` is `(2)` in the `Apply` of `f(1)(2)`
          *  - `args` is `(1)` in the `Apply` of `f(1)`
-         *  @syntax markdown
          */
         def args: List[Term]
       end extension
@@ -1104,7 +1144,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  // f(1)[Int](2)
          *  ```
          *  - `fun` is `f(1)` in the `TypeApply` of `f(1)[Int]`
-         *  @syntax markdown
          */
         def fun: Term
         /** The (inferred) type arguments passed to the method
@@ -1123,7 +1162,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  // f(1)[Int](2)
          *  ```
          *  - `fun` is `[Int]` in the `TypeApply` of `f(1)[Int]`
-         *  @syntax markdown
          */
         def args: List[TypeTree]
       end extension
@@ -1312,7 +1350,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  @note Due to the encoding, in pattern matches the case for `Lambda`
      *        should come before the case for `Block` to avoid mishandling
      *        of `Lambda`.
-     *  @syntax markdown
      */
     val Lambda: LambdaModule
 
@@ -1323,7 +1360,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  Block((DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
        *  ```
        *  Extracts the parameter definitions and body.
-       *  @syntax markdown
        */
       def unapply(tree: Block): Option[(List[ValDef], Term)]
 
@@ -1331,10 +1367,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  ```scala sc:nocompile
        *  Block((DefDef(_, _, params :: Nil, _, Some(rhsFn(meth, paramRefs)))) :: Nil, Closure(meth, _))
        *  ```
+       *
+       * Usage:
+       *  ```
+       *  val mtpe = MethodType(List("arg1"))(_ => List(TypeRepr.of[Int]), _ => TypeRepr.of[Int])
+       *  Lambda(owner, mtpe, {
+       *    case (methSym, List(arg1: Term)) =>
+       *      ValDef.let(methSym, f(arg1)) { ... }
+       *    }
+       *  )
+       *  ```
+       *
+       *  Usage with quotes:
+       *  ```
+       *  val mtpe = MethodType(List("arg1"))(_ => List(TypeRepr.of[Int]), _ => TypeRepr.of[Int])
+       *  Lambda(owner, mtpe, {
+       *    case (methSym, List(arg1: Term)) =>
+       *      given Quotes = methSym.asQuotes
+       *      '{ ... }
+       *    }
+       *  )
+       *  ```
+       *
        *  @param owner: owner of the generated `meth` symbol
        *  @param tpe: Type of the definition
        *  @param rhsFn: Function that receives the `meth` symbol and the a list of references to the `params`
-       *  @syntax markdown
        */
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
     }
@@ -1670,6 +1727,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeTreeModule { this: TypeTree.type =>
       /** Returns the tree of type or kind (TypeTree) of T */
       def of[T <: AnyKind](using Type[T]): TypeTree
+
+      /** Returns a type tree reference to the symbol
+       *
+       *  @param sym  The type symbol for which we are creating a type tree reference.
+       */
+      @experimental
+      def ref(typeSymbol: Symbol): TypeTree
     }
 
     /** Makes extension methods on `TypeTree` available without any imports */
@@ -2238,7 +2302,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *    case TypeParamClause(params: List[TypeDef])
      *    case TermParamClause(params: List[ValDef])
      *  ```
-     *  @syntax markdown
      */
     type ParamClause <: AnyRef
 
@@ -2481,7 +2544,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *  }
         *  //}
         *  ```
-        *  @syntax markdown
         */
         def asType: Type[?]
 
@@ -2524,6 +2586,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def typeSymbol: Symbol
         def termSymbol: Symbol
         def isSingleton: Boolean
+
+       /** The type of `member` as seen from prefix `self`.
+        *
+        *  Also see `typeRef` and `termRef`
+        */
         def memberType(member: Symbol): TypeRepr
 
         /** The base classes of this type with the class itself as first element. */
@@ -2874,7 +2941,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  ```scala
      *    def foo: Int = ???
      *  ```
-     *  @syntax markdown
      */
     type ByNameType <: TypeRepr
 
@@ -3514,7 +3580,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  ```
        *
        *  For a macro splice, it is the symbol of the definition where the macro expansion happens.
-       *  @syntax markdown
        */
       def spliceOwner: Symbol
 
@@ -3533,19 +3598,73 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** The class Symbol of a global class definition */
       def classSymbol(fullName: String): Symbol
 
+      /** Generates a new class symbol for a class with a parameterless constructor.
+       *
+       *  Example usage:
+       *  ```
+       *  val name: String = "myClass"
+       *  val parents = List(TypeTree.of[Object], TypeTree.of[Foo])
+       *  def decls(cls: Symbol): List[Symbol] =
+       *    List(Symbol.newMethod(cls, "foo", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit])))
+       *
+       *  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents = parents.map(_.tpe), decls, selfInfo = None)
+       *  val fooSym = cls.declaredMethod("foo").head
+       *
+       *  val fooDef = DefDef(fooSym, argss => Some('{println(s"Calling foo")}.asTerm))
+       *  val clsDef = ClassDef(cls, parents, body = List(fooDef))
+       *  val newCls = Typed(Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil), TypeTree.of[Foo])
+       *
+       *  Block(List(clsDef), newCls).asExprOf[Foo]
+       *  ```
+       *  constructs the equivalent to
+       *   ```
+       *  '{
+       *    class myClass() extends Object with Foo {
+       *      def foo(): Unit = println("Calling foo")
+       *    }
+       *    new myClass(): Foo
+       *  }
+       *  ```
+       *
+       *  @param parent The owner of the class
+       *  @param name The name of the class
+       *  @param parents The parent classes of the class. The first parent must not be a trait.
+       *  @param decls The member declarations of the class provided the symbol of this class
+       *  @param selfType The self type of the class if it has one
+       *
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to the ClassDef constructor.
+       *
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
+       */
+      @experimental def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
+
       /** Generates a new method symbol with the given parent, name and type.
-      *
-      *  This symbol starts without an accompanying definition.
-      *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
-      *  this symbol to the DefDef constructor.
-      *
-      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
-      *        direct or indirect children of the reflection context's owner.
-      */
+       *
+       *  To define a member method of a class, use the `newMethod` within the `decls` function of `newClass`.
+       *
+       *  @param parent The owner of the method
+       *  @param name The name of the method
+       *  @param tpe The type of the method (MethodType, PolyType, ByNameType)
+       *
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to the DefDef constructor.
+       *
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
+       */
       def newMethod(parent: Symbol, name: String, tpe: TypeRepr): Symbol
 
       /** Works as the other newMethod, but with additional parameters.
       *
+      *  To define a member method of a class, use the `newMethod` within the `decls` function of `newClass`.
+      *
+      *  @param parent The owner of the method
+      *  @param name The name of the method
+      *  @param tpe The type of the method (MethodType, PolyType, ByNameType)
       *  @param flags extra flags to with which the symbol should be constructed
       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
       */
@@ -3559,6 +3678,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *
       *  Note: Also see reflect.let
       *
+      *  @param parent The owner of the val/var/lazy val
+      *  @param name The name of the val/var/lazy val
+      *  @param tpe The type of the val/var/lazy val
       *  @param flags extra flags to with which the symbol should be constructed
       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
@@ -3572,7 +3694,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
       *  this symbol to the BindDef constructor.
       *
+      *  @param parent The owner of the binding
+      *  @param name The name of the binding
       *  @param flags extra flags to with which the symbol should be constructed
+      *  @param tpe The type of the binding
       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
       *        direct or indirect children of the reflection context's owner.
       */
@@ -3634,9 +3759,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *      symbol.tree.tpe
          *
-         *  It should be replaced by the following code:
+         *  It should be replaced by one of the following:
          *
          *      tp.memberType(symbol)
+         *      symbol.typeRef
+         *      symbol.termRef
          *
          */
         def tree: Tree
@@ -3807,6 +3934,47 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Case class or case object children of a sealed trait or cases of an `enum`. */
         def children: List[Symbol]
+
+        /** Returns a nested quote with this symbol as splice owner (`Symbol.spliceOwner`).
+         *
+         *  Changes the owner under which the definition in a quote are created.
+         *
+         *  Usages:
+         *  ```scala
+         *  def rhsExpr(using Quotes): Expr[Unit] = '{ val y = ???; (y, y) }
+         *  def aValDef(using Quotes)(owner: Symbol) =
+         *    val sym = Symbol.newVal(owner, "x", TypeRepr.of[Unit], Flags.EmptyFlags, Symbol.noSymbol)
+         *    val rhs = rhsExpr(using sym.asQuotes).asTerm
+         *    ValDef(sym, Some(rhs))
+         *  ```
+         *
+         *  ```scala
+         *  new TreeMap:
+         *    override def transformTerm(tree: Term)(owner: Symbol): Term =
+         *      tree match
+         *        case tree: Ident =>
+         *          given Quotes = owner.asQuotes
+         *          // Definitions contained in the quote will be owned by `owner`.
+         *          // No need to use `changeOwner` in this case.
+         *          '{ val x = ???; x }.asTerm
+         *  ```
+         */
+        @experimental
+        def asQuotes: Nested
+
+        /** Type reference to the symbol usable in the scope of its owner.
+         *
+         *  To get a reference to a symbol from a specific prefix `tp`, use `tp.select(symbol)` instead.
+         *  @see TypeReprMethods.select
+         *
+         *  @pre symbol.isType returns true
+         */
+        @experimental
+        def typeRef: TypeRef
+
+        /** Term reference to the symbol usable in the scope of its owner. */
+        @experimental
+        def termRef: TermRef
       end extension
     }
 
@@ -4112,6 +4280,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is this symbol marked as a macro. An inline method containing top level splices */
       def Macro: Flags
 
+      /** Is this symbol `def` */
       def Method: Flags
 
       /** Is this symbol an object or its class (used for a ValDef or a ClassDef extends Modifier respectively) */
@@ -4362,7 +4531,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ???
     *  }
     *  ```
-    *  @syntax markdown
     */
     trait TreeAccumulator[X]:
 
@@ -4454,6 +4622,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case Bind(_, body) => foldTree(x, body)(owner)
           case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun)(owner), implicits)(owner), patterns)(owner)
           case Alternatives(patterns) => foldTrees(x, patterns)(owner)
+          case SummonFrom(cases) => foldTrees(x, cases)(owner)
+          case _ => throw MatchError(tree.show(using Printer.TreeStructure))
         }
       }
     end TreeAccumulator
@@ -4467,7 +4637,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ???
     *  }
     *  ```
-    *  @syntax markdown
     */
     trait TreeTraverser extends TreeAccumulator[Unit]:
 
@@ -4487,14 +4656,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *    override def transformTree(tree: Tree)(owner: Symbol): Tree = ???
     *  }
     *  ```
-    *  @syntax markdown
+    *
+    *  Use `Symbol.asQuotes` to create quotes with the correct owner within the TreeMap.
+    *
     */
     trait TreeMap:
 
       def transformTree(tree: Tree)(owner: Symbol): Tree = {
         tree match {
           case tree: PackageClause =>
-            PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(tree.symbol))
+            PackageClause.copy(tree)(transformTerm(tree.pid)(owner).asInstanceOf[Ref], transformTrees(tree.stats)(tree.symbol))
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Export =>
@@ -4517,6 +4688,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             Alternatives.copy(pattern)(transformTrees(pattern.patterns)(owner))
           case TypedOrTest(inner, tpt) =>
             TypedOrTest.copy(tree)(transformTree(inner)(owner), transformTypeTree(tpt)(owner))
+          case _ =>
+            throw MatchError(tree.show(using Printer.TreeStructure))
         }
       }
 
@@ -4540,11 +4713,20 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             val owner = tree.symbol
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))
           case tree: ClassDef =>
-            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.self, tree.body)
+            val constructor @ DefDef(_, _, _, _) = transformStatement(tree.constructor)(tree.symbol)
+            val parents = tree.parents.map(transformTree(_)(tree.symbol))
+            val self = tree.self.map { slf =>
+              transformStatement(slf)(tree.symbol) match
+                case self: ValDef => self
+            }
+            val body = tree.body.map(transformStatement(_)(tree.symbol))
+            ClassDef.copy(tree)(tree.name, constructor, parents, self, body)
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Export =>
             tree
+          case _ =>
+            throw MatchError(tree.show(using Printer.TreeStructure))
         }
       }
 
@@ -4590,6 +4772,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             Repeated.copy(tree)(transformTerms(elems)(owner), transformTypeTree(elemtpt)(owner))
           case Inlined(call, bindings, expansion) =>
             Inlined.copy(tree)(call, transformSubTrees(bindings)(owner), transformTerm(expansion)(owner))
+          case SummonFrom(cases) =>
+            SummonFrom.copy(tree)(transformCaseDefs(cases)(owner))
+          case _ =>
+            throw MatchError(tree.show(using Printer.TreeStructure))
         }
       }
 
@@ -4618,6 +4804,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           TypeBind.copy(tree)(tree.name, tree.body)
         case tree: TypeBlock =>
           TypeBlock.copy(tree)(tree.aliases, tree.tpt)
+        case _ =>
+          throw MatchError(tree.show(using Printer.TreeStructure))
       }
 
       def transformCaseDef(tree: CaseDef)(owner: Symbol): CaseDef = {

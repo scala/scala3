@@ -117,7 +117,7 @@ object Checking {
         if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
-            tree.srcPos)
+            tree.srcPos, from = `3.0`)
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
@@ -189,7 +189,8 @@ object Checking {
   def checkRealizable(tp: Type, pos: SrcPos, what: String = "path")(using Context): Unit = {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
-      report.errorOrMigrationWarning(em"$tp is not a legal $what\nsince it${rstatus.msg}", pos)
+      report.errorOrMigrationWarning(
+        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, from = `3.0`)
   }
 
   /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
@@ -537,6 +538,7 @@ object Checking {
     checkCombination(Private, Protected)
     checkCombination(Abstract, Override)
     checkCombination(Private, Override)
+    if sym.isType && !sym.isClass then checkCombination(Private, Opaque)
     checkCombination(Lazy, Inline)
     // The issue with `erased inline` is that the erased semantics get lost
     // as the code is inlined and the reference is removed before the erased usage check.
@@ -640,7 +642,7 @@ object Checking {
     }
     val notPrivate = new NotPrivate
     val info = notPrivate(sym.info)
-    notPrivate.errors.foreach(error => report.errorOrMigrationWarning(error(), sym.srcPos))
+    notPrivate.errors.foreach(error => report.errorOrMigrationWarning(error(), sym.srcPos, from = `3.0`))
     info
   }
 
@@ -711,7 +713,7 @@ object Checking {
 
   def checkValue(tree: Tree)(using Context): Unit =
     val sym = tree.tpe.termSymbol
-    if sym.is(Flags.Package) || sym.isAllOf(Flags.JavaModule) && !ctx.isJava then
+    if sym.isNoValue && !ctx.isJava then
       report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 
   def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
@@ -1195,7 +1197,7 @@ trait Checking {
     case _: TypeTree =>
     case _ =>
       if tree.tpe.typeParams.nonEmpty then
-        val what = if tree.symbol.exists then tree.symbol else i"type $tree"
+        val what = if tree.symbol.exists then tree.symbol.show else i"type $tree"
         report.error(em"$what takes type parameters", tree.srcPos)
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
@@ -1349,12 +1351,13 @@ trait Checking {
   def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean =
     !ctx.reporter.reportsErrorsFor {
       val annotCls = Annotations.annotClass(annot)
+      val concreteAnnot = Annotations.ConcreteAnnotation(annot)
       val pos = annot.srcPos
-      if (annotCls == defn.MainAnnot) {
+      if (annotCls == defn.MainAnnot || concreteAnnot.matches(defn.MainAnnotationClass)) {
         if (!sym.isRealMethod)
-          report.error(em"@main annotation cannot be applied to $sym", pos)
+          report.error(em"main annotation cannot be applied to $sym", pos)
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
-          report.error(em"$sym cannot be a @main method since it cannot be accessed statically", pos)
+          report.error(em"$sym cannot be a main method since it cannot be accessed statically", pos)
       }
       // TODO: Add more checks here
     }
@@ -1408,6 +1411,7 @@ trait ReChecking extends Checking {
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
   override def checkCanThrow(tp: Type, span: Span)(using Context): Unit = ()
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
+  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {
@@ -1430,5 +1434,4 @@ trait NoChecking extends ReChecking {
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
   override def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit = ()
   override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = ()
-  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }

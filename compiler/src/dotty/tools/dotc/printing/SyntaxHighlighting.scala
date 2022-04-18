@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package printing
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames._
@@ -107,9 +109,11 @@ object SyntaxHighlighting {
             case tree: ValOrDefDef =>
               highlightAnnotations(tree)
               highlightPosition(tree.nameSpan, ValDefColor)
+              highlightPosition(tree.endSpan, ValDefColor)
             case tree: MemberDef /* ModuleDef | TypeDef */ =>
               highlightAnnotations(tree)
               highlightPosition(tree.nameSpan, TypeColor)
+              highlightPosition(tree.endSpan, TypeColor)
             case tree: Ident if tree.isType =>
               highlightPosition(tree.span, TypeColor)
             case _: TypeTree =>

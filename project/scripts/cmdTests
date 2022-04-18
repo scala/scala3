@@ -51,12 +51,12 @@ fi
 echo "testing that missing source file does not crash message rendering"
 clear_out "$OUT"
 clear_out "$OUT1"
-cp tests/neg/i6371/A_1.scala $OUT/A.scala
-cp tests/neg/i6371/B_2.scala $OUT/B.scala
+cp tests/neg-macros/i6371/A_1.scala $OUT/A.scala
+cp tests/neg-macros/i6371/B_2.scala $OUT/B.scala
 "$SBT" "scalac $OUT/A.scala -d $OUT1"
 rm $OUT/A.scala
 "$SBT" "scalac -classpath $OUT1 -d $OUT1 $OUT/B.scala" > "$tmp" 2>&1 || echo "ok"
-cat "$tmp" # for debugging
+# cat "$tmp" # for debugging
 grep -qe "B.scala:2:7" "$tmp"
 grep -qe "This location contains code that was inlined from A.scala:3" "$tmp"
 

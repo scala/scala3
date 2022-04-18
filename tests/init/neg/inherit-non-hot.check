@@ -3,14 +3,22 @@
   |                                  ^^^^^^^^^^^
   |                        Cannot prove that the value is fully initialized. May only assign fully initialized value.
   |                         Calling trace:
-  |                         -> val c = new C	[ inherit-non-hot.scala:19 ]
-  |                            -> class C extends A {	[ inherit-non-hot.scala:15 ]
-  |                             -> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
+  |                        -> val c = new C	[ inherit-non-hot.scala:19 ]
+  |                                   ^^^^^
+  |                        -> class C extends A {	[ inherit-non-hot.scala:15 ]
+  |                           ^
+  |                        -> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
+  |                                        ^^^
   |
   |                        The unsafe promotion may cause the following problem:
   |                        Call method Foo.B.this.aCopy.toB on a value with an unknown initialization. Calling trace:
-  |                         -> val c = new C	[ inherit-non-hot.scala:19 ]
-  |                            -> class C extends A {	[ inherit-non-hot.scala:15 ]
-  |                             -> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
-  |                              -> if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
-  |                               -> def getBAgain: B = aCopy.toB	[ inherit-non-hot.scala:12 ]
+  |                        -> val c = new C	[ inherit-non-hot.scala:19 ]
+  |                                   ^^^^^
+  |                        -> class C extends A {	[ inherit-non-hot.scala:15 ]
+  |                           ^
+  |                        -> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
+  |                                        ^^^
+  |                        -> if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
+  |                                                 ^^^^^^^^^^^
+  |                        -> def getBAgain: B = aCopy.toB	[ inherit-non-hot.scala:12 ]
+  |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

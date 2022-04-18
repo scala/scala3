@@ -1,14 +1,13 @@
 package dotty.tools.backend.sjs
 
-import scala.annotation.switch
+import scala.language.unsafeNulls
 
+import scala.annotation.switch
 import scala.collection.mutable
 
 import dotty.tools.FatalError
-
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
-
 import dotty.tools.dotc.core._
 import Contexts._
 import Decorators._
@@ -1703,11 +1702,6 @@ class JSCodeGen()(using genCtx: Context) {
     tree match {
       /** Local val or var declaration */
       case tree @ ValDef(name, _, _) =>
-        /* Must have been eliminated by the tail call transform performed
-         * by genMethodBody(). */
-        assert(name != nme.THIS,
-            s"ValDef(_, nme.THIS, _, _) found at ${tree.span}")
-
         val sym = tree.symbol
         val rhs = tree.rhs
         val rhsTree = genExpr(rhs)
@@ -4564,7 +4558,14 @@ class JSCodeGen()(using genCtx: Context) {
         val module = annot.argumentConstantString(0).getOrElse {
           unexpected("could not read the module argument as a string literal")
         }
-        val path = annot.argumentConstantString(1).fold[List[String]](Nil)(parsePath)
+        val path = annot.argumentConstantString(1).fold {
+          if (annot.arguments.sizeIs < 2)
+            parsePath(sym.defaultJSName)
+          else
+            Nil
+        } { pathName =>
+          parsePath(pathName)
+        }
         val importSpec = Import(module, path)
         annot.argumentConstantString(2).fold[js.JSNativeLoadSpec] {
           importSpec

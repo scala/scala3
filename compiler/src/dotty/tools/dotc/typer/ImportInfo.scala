@@ -64,9 +64,9 @@ class ImportInfo(symf: Context ?=> Symbol,
       mySym = symf
       assert(mySym != null)
     }
-    mySym
+    mySym.uncheckedNN
   }
-  private var mySym: Symbol = _
+  private var mySym: Symbol | Null = _
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(using Context): Type = importSym.info match {
@@ -75,13 +75,13 @@ class ImportInfo(symf: Context ?=> Symbol,
   }
 
   /** The names that are excluded from any wildcard import */
-  def excluded: Set[TermName] = { ensureInitialized(); myExcluded }
+  def excluded: Set[TermName] = { ensureInitialized(); myExcluded.nn }
 
   /** A mapping from original to renamed names */
-  def forwardMapping: SimpleIdentityMap[TermName, TermName] = { ensureInitialized(); myForwardMapping }
+  def forwardMapping: SimpleIdentityMap[TermName, TermName] = { ensureInitialized(); myForwardMapping.nn }
 
   /** A mapping from renamed to original names */
-  def reverseMapping: SimpleIdentityMap[TermName, TermName] = { ensureInitialized(); myReverseMapping }
+  def reverseMapping: SimpleIdentityMap[TermName, TermName] = { ensureInitialized(); myReverseMapping.nn }
 
   /** Does the import clause contain wildcard selectors (both `_` and `given` count)? */
   def isWildcardImport: Boolean = { ensureInitialized(); myWildcardImport }
@@ -89,9 +89,9 @@ class ImportInfo(symf: Context ?=> Symbol,
   /** Does the import clause have at least one `given` selector? */
   def isGivenImport: Boolean = { ensureInitialized(); myGivenImport }
 
-  private var myExcluded: Set[TermName] = null
-  private var myForwardMapping: SimpleIdentityMap[TermName, TermName] = null
-  private var myReverseMapping: SimpleIdentityMap[TermName, TermName] = null
+  private var myExcluded: Set[TermName] | Null = null
+  private var myForwardMapping: SimpleIdentityMap[TermName, TermName] | Null = null
+  private var myReverseMapping: SimpleIdentityMap[TermName, TermName] | Null = null
   private var myWildcardImport: Boolean = false
   private var myGivenImport: Boolean = false
   private var myWildcardBound: Type = NoType
@@ -108,10 +108,10 @@ class ImportInfo(symf: Context ?=> Symbol,
         if sel.isGiven then myGivenImport = true
       else
         if sel.rename != sel.name then
-          myExcluded += sel.name
+          myExcluded = myExcluded.nn + sel.name
         if sel.rename != nme.WILDCARD then
-          myForwardMapping = myForwardMapping.updated(sel.name, sel.rename)
-          myReverseMapping = myReverseMapping.updated(sel.rename, sel.name)
+          myForwardMapping = myForwardMapping.uncheckedNN.updated(sel.name, sel.rename)
+          myReverseMapping = myReverseMapping.uncheckedNN.updated(sel.rename, sel.name)
 
   /** The upper bound for `given` wildcards, or `Nothing` if there are none */
   def givenBound(using Context) =
@@ -148,9 +148,9 @@ class ImportInfo(symf: Context ?=> Symbol,
     else
       for
         renamed <- reverseMapping.keys
-        denot <- pre.member(reverseMapping(renamed)).altsWith(_.isOneOf(GivenOrImplicitVal))
+        denot <- pre.member(reverseMapping(renamed).nn).altsWith(_.isOneOf(GivenOrImplicitVal))
       yield
-        val original = reverseMapping(renamed)
+        val original = reverseMapping(renamed).nn
         val ref = TermRef(pre, original, denot)
         if renamed == original then ref
         else RenamedImplicitRef(ref, renamed)
@@ -176,11 +176,11 @@ class ImportInfo(symf: Context ?=> Symbol,
         if maybeShadowsRoot && defn.rootImportTypes.exists(_.symbol == sym) then sym
         else NoSymbol
       assert(myUnimported != null)
-    myUnimported
+    myUnimported.uncheckedNN
 
   private val isLanguageImport: Boolean = untpd.languageImport(qualifier).isDefined
 
-  private var myUnimported: Symbol = _
+  private var myUnimported: Symbol | Null = _
 
   private var featureCache: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.empty
 
@@ -218,10 +218,11 @@ class ImportInfo(symf: Context ?=> Symbol,
           case Some(bv) => bv
           case None =>
             var c = ctx.outer
-            while c.importInfo eq ctx.importInfo do c = c.outer
-            (c.importInfo != null) && c.importInfo.featureImported(feature)(using c)
+            while c.importInfo eqn ctx.importInfo do c = c.outer
+            val cinfo = c.importInfo
+            (cinfo != null) && cinfo.featureImported(feature)(using c)
       )
-    featureCache(feature)
+    featureCache(feature).nn
 
   def toText(printer: Printer): Text = printer.toText(this)
 }

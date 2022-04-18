@@ -418,12 +418,16 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
     }
 
-    if (tree.source != ctx.source && tree.source.exists)
-      transformTree(tree, start)(using ctx.withSource(tree.source))
-    else if (tree.isInstanceOf[NameTree])
-      transformNamed(tree, start, ctx)
-    else
-      transformUnnamed(tree, start, ctx)
+    // try
+      if (tree.source != ctx.source && tree.source.exists)
+        transformTree(tree, start)(using ctx.withSource(tree.source))
+      else if (tree.isInstanceOf[NameTree])
+        transformNamed(tree, start, ctx)
+      else
+        transformUnnamed(tree, start, ctx)
+    // catch case ex: AssertionError =>
+    //  println(i"error while transforming $tree")
+    //  throw ex
   }
 
   def transformSpecificTree[T <: Tree](tree: T, start: Int)(using Context): T =
@@ -464,7 +468,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   // Initialization code
 
   /** Class#getDeclaredMethods is slow, so we cache its output */
-  private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Array[java.lang.reflect.Method]]
+  private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Array[java.lang.reflect.Method | Null]]
 
   /** Does `phase` contain a redefinition of method `name`?
    *  (which is a method of MiniPhase)
@@ -474,21 +478,21 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       if (cls.eq(classOf[MiniPhase])) false
       else {
         var clsMethods = clsMethodsCache.get(cls)
-        if (clsMethods eq null) {
+        if (clsMethods == null) {
           clsMethods = cls.getDeclaredMethods
           clsMethodsCache.put(cls, clsMethods)
         }
-        clsMethods.exists(_.getName == name) ||
-        hasRedefinedMethod(cls.getSuperclass)
+        clsMethods.nn.exists(_.nn.getName == name) ||
+        hasRedefinedMethod(cls.getSuperclass.nn)
       }
     hasRedefinedMethod(phase.getClass)
   }
 
-  private def newNxArray = new Array[MiniPhase](miniPhases.length + 1)
+  private def newNxArray = new Array[MiniPhase | Null](miniPhases.length + 1)
   private val emptyNxArray = newNxArray
 
-  private def init(methName: String): Array[MiniPhase] = {
-    var nx: Array[MiniPhase] = emptyNxArray
+  private def init(methName: String): Array[MiniPhase | Null] = {
+    var nx: Array[MiniPhase | Null] = emptyNxArray
     for (idx <- miniPhases.length - 1 to 0 by -1) {
       val subPhase = miniPhases(idx)
       if (defines(subPhase, methName)) {

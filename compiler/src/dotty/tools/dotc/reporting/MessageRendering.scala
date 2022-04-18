@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.language.unsafeNulls
+
 import java.lang.System.{lineSeparator => EOL}
 
 import core.Contexts._
@@ -170,13 +172,13 @@ trait MessageRendering {
       val realPos = pos.nonInlined
       val fileAndPos = posFileStr(realPos)
       val errId =
-        if (message.errorId ne ErrorMessageID.NoExplanationID) {
+        if (message.errorId ne ErrorMessageID.NoExplanationID) then
           val errorNumber = message.errorId.errorNumber
           s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
-        } else ""
+        else ""
       val kind =
-        if (message.kind == "") diagnosticString
-        else s"${message.kind} $diagnosticString"
+        if (message.kind == MessageKind.NoKind) diagnosticString
+        else s"${message.kind.message} $diagnosticString"
       val title =
         if fileAndPos.isEmpty then s"$errId$kind:" // this happens in dotty.tools.repl.ScriptedTests // TODO add name of source or remove `:` (and update test files)
         else s"$errId$kind: $fileAndPos"

@@ -191,7 +191,12 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
           s"=> ${normal(utpe)}"
         case RepeatedType(utpe) =>
           s"${normal(utpe)}*"
-        case _ =>
+        case MatchType(scrutinee, cases) =>
+          val casesStr = cases.map { caseType =>
+            s"${pprint(caseType.key)} => ${pprint(caseType.body)}"
+          }.mkString(", ")
+          s"${pprint(scrutinee)} match { ${casesStr} }"
+        case x =>
           "<?>"
 
       def normal(tpe: Type): String = tpe match

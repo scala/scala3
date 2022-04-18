@@ -43,7 +43,7 @@ def maximum[T](xs: List[T])(using Ord[T]): T =
   xs.reduceLeft(max)
 ```
 
-`maximum` takes a context parameter of type `Ord` only to pass it on as an
+`maximum` takes a context parameter of type `Ord[T]` only to pass it on as an
 inferred argument to `max`. The name of the parameter is left out.
 
 Generally, context parameters may be defined either as a full parameter list `(p_1: T_1, ..., p_n: T_n)` or just as a sequence of types `T_1, ..., T_n`. Vararg parameters are not supported in `using` clauses.
@@ -144,10 +144,10 @@ def summon[T](using x: T): x.type = x
 
 Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](../syntax.md). `using` is a soft keyword, recognized only at the start of a parameter or argument list. It can be used as a normal identifier everywhere else.
 
-```
-ClsParamClause      ::=  ... | UsingClsParamClause
-DefParamClauses     ::=  ... | UsingParamClause
-UsingClsParamClause ::=  ‘(’ ‘using’ (ClsParams | Types) ‘)’
-UsingParamClause    ::=  ‘(’ ‘using’ (DefParams | Types) ‘)’
-ParArgumentExprs    ::=  ... | ‘(’ ‘using’ ExprsInParens ‘)’
+```ebnf
+ClsParamClause      ::=  ... | UsingClsParamClause ;
+DefParamClauses     ::=  ... | UsingParamClause ;
+UsingClsParamClause ::=  ‘(’ ‘using’ (ClsParams | Types) ‘)’ ;
+UsingParamClause    ::=  ‘(’ ‘using’ (DefParams | Types) ‘)’ ;
+ParArgumentExprs    ::=  ... | ‘(’ ‘using’ ExprsInParens ‘)’ ;
 ```

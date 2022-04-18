@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package sbt
 
+import scala.language.unsafeNulls
+
 import ExtractDependencies.internalError
 import ast.{Positioned, Trees, tpd}
 import core._
@@ -774,7 +776,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
           case n: Name =>
             h = nameHash(n, h)
           case elem =>
-            cannotHash(what = i"`$elem` of unknown class ${elem.getClass}", elem, tree)
+            cannotHash(what = i"`${elem.tryToShow}` of unknown class ${elem.getClass}", elem, tree)
       h
     end iteratorHash
 

@@ -20,6 +20,22 @@ window.addEventListener("DOMContentLoaded", () => {
     $(this).parent().toggleClass("expanded")
   });
 
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const id = entry.target.getAttribute('id');
+      if (entry.intersectionRatio > 0) {
+        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.add('active');
+      } else {
+        document.querySelector(`#toc li a[href="#${id}"]`).parentElement.classList.remove('active');
+      }
+    });
+  });
+
+
+  document.querySelectorAll('#content section[id]').forEach((section) => {
+    observer.observe(section);
+  });
+
   document.querySelectorAll("#sideMenu2 a").forEach(elem => elem.addEventListener('click', e => e.stopPropagation()))
 
   $('.names .tab').on('click', function() {
@@ -73,7 +89,30 @@ window.addEventListener("DOMContentLoaded", () => {
 
   hljs.registerLanguage("scala", highlightDotty);
   hljs.registerAliases(["dotty", "scala3"], "scala");
-  hljs.initHighlighting();
+
+  var aliases = ['language-scala', 'language-dotty', 'language-scala3']
+
+  var highlightDeep = function(el) {
+    el.childNodes.forEach(node => {
+      if(node.nodeType == Node.TEXT_NODE) {
+        let newNode = document.createElement('span');
+        newNode.innerHTML = hljs.highlight(node.textContent, {language: 'scala'}).value;
+        el.insertBefore(newNode, node);
+        el.removeChild(node);
+      } else if(node.nodeType == Node.ELEMENT_NODE) {
+        highlightDeep(node);
+      }
+    })
+  }
+
+  document.querySelectorAll('pre code').forEach( el => {
+    if (aliases.some(alias => el.classList.contains(alias))) {
+      highlightDeep(el);
+    } else {
+      hljs.highlightElement(el);
+    }
+  });
+
 
   /* listen for the `F` key to be pressed, to focus on the member filter input (if it's present) */
   document.body.addEventListener('keydown', e => {

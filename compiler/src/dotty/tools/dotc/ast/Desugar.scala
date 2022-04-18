@@ -6,9 +6,9 @@ import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._, ContextOps._
 import Decorators._, transform.SymUtils._
-import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
+import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
-import util.{Property, SourceFile, SourcePosition}
+import util.{Property, SourceFile, SourcePosition, Chars}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
 import collection.mutable.ListBuffer
@@ -38,6 +38,10 @@ object desugar {
    *  Used for explaining potential errors.
    */
   val MultiLineInfix: Property.Key[Unit] = Property.StickyKey()
+
+  /** An attachment key to indicate that a ValDef originated from parameter untupling.
+   */
+  val UntupledParam: Property.Key[Unit] = Property.StickyKey()
 
   /** What static check should be applied to a Match? */
   enum MatchCheck {
@@ -521,9 +525,9 @@ object desugar {
         val enumCompanionRef = TermRefTree()
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(
-            enumCase => 
+            enumCase =>
               ImportSelector(enumCase.withSpan(enumCase.span.startPos))
-            ) 
+            )
           )
         (enumImport :: enumStats, enumCases, enumCompanionRef)
       }
@@ -834,7 +838,8 @@ object desugar {
     val impl = mdef.impl
     val mods = mdef.mods
     val moduleName = normalizeName(mdef, impl).asTermName
-    if (mods.is(Package))
+    if mods.is(Package) then
+      checkPackageName(mdef)
       PackageDef(Ident(moduleName),
         cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
     else
@@ -949,6 +954,26 @@ object desugar {
       tree
     else tree
   }
+
+  def checkPackageName(mdef: ModuleDef | PackageDef)(using Context): Unit =
+
+    def check(name: Name, errSpan: Span): Unit = name match
+      case name: SimpleName if !errSpan.isSynthetic && name.exists(Chars.willBeEncoded) =>
+        report.warning(em"The package name `$name` will be encoded on the classpath, and can lead to undefined behaviour.", mdef.source.atSpan(errSpan))
+      case _ =>
+
+    def loop(part: RefTree): Unit = part match
+      case part @ Ident(name) => check(name, part.span)
+      case part @ Select(qual: RefTree, name) =>
+        check(name, part.nameSpan)
+        loop(qual)
+      case _ =>
+
+    mdef match
+      case pdef: PackageDef => loop(pdef.pid)
+      case mdef: ModuleDef if mdef.mods.is(Package) => check(mdef.name, mdef.nameSpan)
+      case _ =>
+  end checkPackageName
 
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
@@ -1084,8 +1109,12 @@ object desugar {
    *  ValDef or DefDef.
    */
   def makePatDef(original: Tree, mods: Modifiers, pat: Tree, rhs: Tree)(using Context): Tree = pat match {
-    case IdPattern(named, tpt) =>
-      derivedValDef(original, named, tpt, rhs, mods)
+    case IdPattern(id, tpt) =>
+      val id1 =
+        if id.name == nme.WILDCARD
+        then cpy.Ident(id)(WildcardParamName.fresh())
+        else id
+      derivedValDef(original, id1, tpt, rhs, mods)
     case _ =>
 
       def filterWildcardGivenBinding(givenPat: Bind): Boolean =
@@ -1134,7 +1163,7 @@ object desugar {
       val matchExpr =
         if (tupleOptimizable) rhs
         else
-          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids)) 
+          val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
           Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
       vars match {
         case Nil if !mods.is(Lazy) =>
@@ -1155,11 +1184,11 @@ object desugar {
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
-              if mods.is(Lazy) then 
+              if mods.is(Lazy) then
                 DefDef(named.name.asTermName, Nil, tpt, selector(n))
                   .withMods(mods &~ Lazy)
                   .withSpan(named.span)
-              else 
+              else
                 valDef(
                   ValDef(named.name.asTermName, tpt, selector(n))
                     .withMods(mods)
@@ -1286,7 +1315,7 @@ object desugar {
     val ts = tree.trees
     val arity = ts.length
     assert(arity <= Definitions.MaxTupleArity)
-    def tupleTypeRef = defn.TupleType(arity)
+    def tupleTypeRef = defn.TupleType(arity).nn
     if (arity == 0)
       if (ctx.mode is Mode.Type) TypeTree(defn.UnitType) else unitLiteral
     else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
@@ -1321,6 +1350,7 @@ object desugar {
    *     (i.e. objects having the same name as a wrapped type)
    */
   def packageDef(pdef: PackageDef)(using Context): PackageDef = {
+    checkPackageName(pdef)
     val wrappedTypeNames = pdef.stats.collect {
       case stat: TypeDef if isTopLevelDef(stat) => stat.name
     }
@@ -1349,7 +1379,7 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean, span: Span)(using Context): Block =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree | Null = null, isContextual: Boolean, span: Span)(using Context): Block =
     Block(
       DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
         .withSpan(span)
@@ -1404,10 +1434,27 @@ object desugar {
     val vdefs =
       params.zipWithIndex.map {
         case (param, idx) =>
-          DefDef(param.name, Nil, param.tpt, selector(idx)).withSpan(param.span)
+          ValDef(param.name, param.tpt, selector(idx))
+            .withSpan(param.span)
+            .withAttachment(UntupledParam, ())
+            .withFlags(Synthetic)
       }
     Function(param :: Nil, Block(vdefs, body))
   }
+
+  /** Convert a tuple pattern with given `elems` to a sequence of `ValDefs`,
+   *  skipping elements that are not convertible.
+   */
+  def patternsToParams(elems: List[Tree])(using Context): List[ValDef] =
+    def toParam(elem: Tree, tpt: Tree): Tree =
+      elem match
+        case Annotated(elem1, _) => toParam(elem1, tpt)
+        case Typed(elem1, tpt1) => toParam(elem1, tpt1)
+        case Ident(id: TermName) => ValDef(id, tpt, EmptyTree).withFlags(Param)
+        case _ => EmptyTree
+    elems.map(param => toParam(param, TypeTree()).withSpan(param.span)).collect {
+      case vd: ValDef => vd
+    }
 
   def makeContextualFunction(formals: List[Tree], body: Tree, isErased: Boolean)(using Context): Function = {
     val mods = if (isErased) Given | Erased else Given
@@ -1647,7 +1694,7 @@ object desugar {
             case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
           }
           RefinedTypeTree(polyFunctionTpt, List(
-            DefDef(nme.apply, applyTParams :: applyVParams :: Nil, res, EmptyTree)
+            DefDef(nme.apply, applyTParams :: applyVParams :: Nil, res, EmptyTree).withFlags(Synthetic)
           ))
         }
         else {
@@ -1700,28 +1747,16 @@ object desugar {
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
         Apply(Select(Apply(scalaDot(nme.StringContext), strs), id).withSpan(tree.span), elems)
       case PostfixOp(t, op) =>
-        if ((ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR) {
+        if (ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR then
           if ctx.isJava then
             AppliedTypeTree(ref(defn.RepeatedParamType), t)
           else
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
-        }
-        else {
+        else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
-          if (!enabled(nme.postfixOps)) {
-            report.error(
-              s"""postfix operator `${op.name}` needs to be enabled
-                 |by making the implicit value scala.language.postfixOps visible.
-                 |----
-                 |This can be achieved by adding the import clause 'import scala.language.postfixOps'
-                 |or by setting the compiler option -language:postfixOps.
-                 |See the Scaladoc for value scala.language.postfixOps for a discussion
-                 |why the feature needs to be explicitly enabled.""".stripMargin, t.srcPos)
-          }
           Select(t, op.name)
-        }
       case PrefixOp(op, t) =>
         val nspace = if (ctx.mode.is(Mode.Type)) tpnme else nme
         Select(t, nspace.UNARY_PREFIX ++ op.name)
@@ -1845,7 +1880,7 @@ object desugar {
         elems foreach collect
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree, shouldAddGiven))
-          report.error(IllegalVariableInPatternAlternative(), vble.srcPos)
+          report.error(IllegalVariableInPatternAlternative(vble.symbol.name), vble.srcPos)
       case Annotated(arg, _) =>
         collect(arg)
       case InterpolatedString(_, segments) =>

@@ -14,6 +14,7 @@ class Structural/*<-advanced::Structural#*/ {
   def s2/*<-advanced::Structural#s2().*/: { val x/*<-local1*/: Int/*->scala::Int#*/ } = new { val x/*<-local2*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
   def s3/*<-advanced::Structural#s3().*/: { def m/*<-local6*/(x/*<-local5*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ } = new { def m/*<-local8*/(x/*<-local7*/: Int/*->scala::Int#*/): Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/ }
   def s4/*<-advanced::Structural#s4().*/(a/*<-advanced::Structural#s4().(a)*/: Int/*->scala::Int#*/): { val x/*<-local11*/: Int/*->scala::Int#*/ } = ???/*->scala::Predef.`???`().*/
+  trait T/*<-advanced::Structural#T#*/[A/*<-advanced::Structural#T#[A]*/] { val foo/*<-advanced::Structural#T#foo.*/: { type B/*<-local12*/ = A/*->advanced::Structural#T#[A]*/ } = ???/*->scala::Predef.`???`().*/; def bar/*<-advanced::Structural#T#bar().*/(b/*<-advanced::Structural#T#bar().(b)*/: foo/*->advanced::Structural#T#foo.*/.B/*->local12*/) = () } // from tests/pos/t8177e.scala
 }
 
 class Wildcards/*<-advanced::Wildcards#*/ {
@@ -36,11 +37,15 @@ object Test/*<-advanced::Test.*/ {
 
   {
     (???/*->scala::Predef.`???`().*/ : Any/*->scala::Any#*/) match {
-      case e3/*<-local12*/: List/*->scala::package.List#*/[_] =>
-        val e3x/*<-local14*/ = e3/*->local12*/.head/*->scala::collection::IterableOps#head().*/
+      case e3/*<-local13*/: List/*->scala::package.List#*/[_] =>
+        val e3x/*<-local15*/ = e3/*->local13*/.head/*->scala::collection::IterableOps#head().*/
         ()
     }
   }
+
+  // see: https://github.com/lampepfl/dotty/pull/14608#discussion_r835642563
+  lazy val foo/*<-advanced::Test.foo.*/: (reflect.Selectable/*->scala::reflect::Selectable#*/ { type A/*<-local16*/ = Int/*->scala::Int#*/ }) &/*->scala::`&`#*/ (reflect.Selectable/*->scala::reflect::Selectable#*/ { type A/*<-local17*/ = Int/*->scala::Int#*/; val a/*<-local18*/: A/*->local17*/ }) = ???/*->scala::Predef.`???`().*/
+  def bar/*<-advanced::Test.bar().*/: foo/*->advanced::Test.foo.*/.A/*->local17*/ = foo/*->advanced::Test.foo.*/.a
 }
 
 

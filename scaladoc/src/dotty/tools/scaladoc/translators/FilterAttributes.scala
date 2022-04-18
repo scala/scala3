@@ -14,7 +14,7 @@ object FilterAttributes:
     Map("visibility" -> m.visibility.name)
 
   private def inheritedFrom(m: Member): Map[String, String] = m.inheritedFrom match
-    case Some(InheritedFrom(name, _)) => Map("inherited" -> name)
+    case Some(InheritedFrom(name, _, _)) => Map("inherited" -> name)
     case _ => Map.empty
 
   private def origin(m: Member): Map[String, String] = m.origin match

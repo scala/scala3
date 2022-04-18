@@ -1,7 +1,8 @@
 ---
 layout: doc-page
-title: "Overview"
+title: "Reference"
 movedTo: https://docs.scala-lang.org/scala3/reference/overview.html
+redirectFrom: overview.html
 ---
 
 Scala 3 implements many language changes and improvements over Scala 2.
