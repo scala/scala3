@@ -2174,10 +2174,12 @@ import transform.SymUtils._
         else
           "Name clash between inherited members"
 
-      em"""$clashDescription:
-          |${previousDecl.showDcl} ${symLocation(previousDecl)} and
-          |${decl.showDcl} ${symLocation(decl)}
-          |""" + details
+      atPhase(typerPhase) {
+        em"""$clashDescription:
+            |${previousDecl.showDcl} ${symLocation(previousDecl)} and
+            |${decl.showDcl} ${symLocation(decl)}
+            |"""
+      } + details
     }
     def explain = ""
   }

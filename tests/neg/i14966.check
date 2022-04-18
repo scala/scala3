@@ -1,0 +1,10 @@
+-- [E120] Naming Error: tests/neg/i14966.scala:2:11 --------------------------------------------------------------------
+2 |  export s.* // error
+  |           ^
+  |           Double definition:
+  |           final def concat[B >: T](suffix: IterableOnce[B]): Set[B] in class B at line 2 and
+  |           final def concat(that: IterableOnce[T]): Set[T] in class B at line 2
+  |           have the same type after erasure.
+  |
+  |           Consider adding a @targetName annotation to one of the conflicting definitions
+  |           for disambiguation.
