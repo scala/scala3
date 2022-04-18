@@ -1070,16 +1070,26 @@ class Namer { typer: Typer =>
 
     def init(): Context = index(params)
 
-    /** The forwarders defined by export `exp` */
-    private def exportForwarders(exp: Export)(using Context): List[tpd.MemberDef] =
+    /** The forwarders defined by export `exp`
+     *  @param  pathMethod  If it exists, the symbol referenced by the path of an export
+     *                      in an extension clause. That symbol is always a companion
+     *                      extension method.
+     */
+    private def exportForwarders(exp: Export, pathMethod: Symbol)(using Context): List[tpd.MemberDef] =
       val buf = new mutable.ListBuffer[tpd.MemberDef]
       val Export(expr, selectors) = exp
       if expr.isEmpty then
         report.error(em"Export selector must have prefix and `.`", exp.srcPos)
         return Nil
 
-      val path = typedAheadExpr(expr, AnySelectionProto)
-      checkLegalExportPath(path, selectors)
+      val (path, pathType) =
+        if pathMethod.exists then
+          val path = typedAhead(expr, _.withType(pathMethod.termRef))
+          (path, pathMethod.info.finalResultType)
+        else
+          val path = typedAheadExpr(expr, AnySelectionProto)
+          checkLegalExportPath(path, selectors)
+          (path, path.tpe)
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
 
@@ -1087,7 +1097,7 @@ class Namer { typer: Typer =>
       def canForward(mbr: SingleDenotation, alias: TermName): CanForward = {
         import CanForward.*
         val sym = mbr.symbol
-        if !sym.isAccessibleFrom(path.tpe) then
+        if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
         else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) then
           Skip
@@ -1103,7 +1113,10 @@ class Namer { typer: Typer =>
               case None => Yes
         else if sym.isAllOf(JavaModule) then
           Skip
-        else Yes
+        else if pathMethod.exists && mbr.isType then
+          No("cannot be exported as extension method")
+        else
+          Yes
       }
 
       def foreachDefaultGetterOf(sym: TermSymbol, op: TermSymbol => Unit): Unit =
@@ -1112,7 +1125,7 @@ class Namer { typer: Typer =>
           if param.isTerm then
             if param.is(HasDefault) then
               val getterName = DefaultGetterName(sym.name, n)
-              val getter = path.tpe.member(DefaultGetterName(sym.name, n)).symbol
+              val getter = pathType.member(DefaultGetterName(sym.name, n)).symbol
               assert(getter.exists, i"$path does not have a default getter named $getterName")
               op(getter.asTerm)
             n += 1
@@ -1143,7 +1156,7 @@ class Namer { typer: Typer =>
           val forwarder =
             if mbr.isType then
               val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
-              var target = path.tpe.select(sym)
+              var target = pathType.select(sym)
               if target.typeParams.nonEmpty then
                 target = target.EtaExpand(target.typeParams)
               newSymbol(
@@ -1160,14 +1173,28 @@ class Namer { typer: Typer =>
                 case tp: TermRef => tp.termSymbol.is(Private) || refersToPrivate(tp.prefix)
                 case _ => false
               val (maybeStable, mbrInfo) =
-                if sym.isStableMember && sym.isPublic && !refersToPrivate(path.tpe) then
-                  (StableRealizable, ExprType(path.tpe.select(sym)))
+                if sym.isStableMember
+                    && sym.isPublic
+                    && pathType.isStable
+                    && !refersToPrivate(pathType)
+                then
+                  (StableRealizable, ExprType(pathType.select(sym)))
                 else
-                  (EmptyFlags, mbr.info.ensureMethodic)
+                  def addPathMethodParams(pt: Type, info: Type): Type = pt match
+                    case pt: MethodOrPoly =>
+                      pt.derivedLambdaType(resType = addPathMethodParams(pt.resType, info))
+                    case _ =>
+                      info
+                  val mbrInfo =
+                    if pathMethod.exists
+                    then addPathMethodParams(pathMethod.info, mbr.info.widenExpr)
+                    else mbr.info.ensureMethodic
+                  (EmptyFlags, mbrInfo)
               var flagMask = RetainedExportFlags
               if sym.isTerm then flagMask |= HasDefaultParams | NoDefaultParams
               var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & flagMask
-              if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
+              if sym.is(ExtensionMethod) || pathMethod.exists then
+                mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
 
@@ -1178,9 +1205,14 @@ class Namer { typer: Typer =>
             buf += tpd.TypeDef(forwarder.asType).withSpan(span)
           else
             import tpd._
-            val ref = path.select(sym.asTerm)
-            val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
-                ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss)))
+            def extensionParamsCount(pt: Type): Int = pt match
+              case pt: MethodOrPoly => 1 + extensionParamsCount(pt.resType)
+              case _ => 0
+            val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
+              val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
+              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
+              ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
+            })
             if forwarder.isInlineMethod then
               PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
             buf += ddef.withSpan(span)
@@ -1192,7 +1224,7 @@ class Namer { typer: Typer =>
 
       def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
         val size = buf.size
-        val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
+        val mbrs = List(name, name.toTypeName).flatMap(pathType.member(_).alternatives)
         mbrs.foreach(addForwarder(alias, _, span))
         targets += alias
         if buf.size == size then
@@ -1203,15 +1235,15 @@ class Namer { typer: Typer =>
 
       def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
         List(name, name.toTypeName)
-          .flatMap(path.tpe.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
+          .flatMap(pathType.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
         val nonContextual = mutable.HashSet(seen: _*)
-        val fromCaseClass = path.tpe.widen.classSymbols.exists(_.is(Case))
+        val fromCaseClass = pathType.widen.classSymbols.exists(_.is(Case))
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)
-        for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
+        for mbr <- pathType.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
           if !mbr.symbol.isSuperAccessor
               // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
               // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
@@ -1304,20 +1336,48 @@ class Namer { typer: Typer =>
     /** Add forwarders as required by the export statements in this class */
     private def processExports(using Context): Unit =
 
+      def processExport(exp: Export, pathSym: Symbol)(using Context): Unit =
+        for forwarder <- exportForwarders(exp, pathSym) do
+          forwarder.symbol.entered
+
+      def exportPathSym(path: Tree, ext: ExtMethods)(using Context): Symbol =
+        def fail(msg: String): Symbol =
+          report.error(em"export qualifier $msg", path.srcPos)
+          NoSymbol
+        path match
+          case Ident(name) =>
+            def matches(cand: Tree) = cand match
+              case meth: DefDef => meth.name == name && meth.paramss.hasSameLengthAs(ext.paramss)
+              case _ => false
+            expanded(ext).toList.filter(matches) match
+              case cand :: Nil => symbolOfTree(cand)
+              case Nil => fail(i"$name is not a parameterless companion extension method")
+              case _ => fail(i"$name cannot be overloaded")
+          case _ =>
+            fail("must be a simple reference to a companion extension method")
+
       def process(stats: List[Tree])(using Context): Unit = stats match
         case (stat: Export) :: stats1 =>
-          for forwarder <- exportForwarders(stat) do
-            forwarder.symbol.entered
+          processExport(stat, NoSymbol)
           process(stats1)
         case (stat: Import) :: stats1 =>
           process(stats1)(using ctx.importContext(stat, symbolOfTree(stat)))
+        case (stat: ExtMethods) :: stats1 =>
+          for case exp: Export <- stat.methods do
+            processExport(exp, exportPathSym(exp.expr, stat))
+          process(stats1)
         case stat :: stats1 =>
           process(stats1)
         case Nil =>
 
+      def hasExport(stats: List[Tree]): Boolean = stats.exists {
+        case _: Export => true
+        case ExtMethods(_, stats1) => hasExport(stats1)
+        case _ => false
+      }
       // Do a quick scan whether we need to process at all. This avoids creating
       // import contexts for nothing.
-      if rest.exists(_.isInstanceOf[Export]) then
+      if hasExport(rest) then
         process(rest)
     end processExports
 

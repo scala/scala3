@@ -2617,8 +2617,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.Import(imp)(expr1, selectors1), sym)
 
   def typedExport(exp: untpd.Export)(using Context): Export =
-    val expr1 = typedExpr(exp.expr, AnySelectionProto)
-    // already called `checkLegalExportPath` in Namer
+    val expr1 = exp.expr.removeAttachment(TypedAhead).getOrElse(EmptyTree)
     val selectors1 = typedSelectors(exp.selectors)
     assignType(cpy.Export(exp)(expr1, selectors1))
 

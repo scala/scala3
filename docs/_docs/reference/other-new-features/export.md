@@ -75,9 +75,23 @@ A member is _eligible_ if all of the following holds:
  - it is not a constructor, nor the (synthetic) class part of an object,
  - it is a given instance (declared with `given`) if and only if the export is from a _given selector_.
 
+It is a compile-time error if a simple or renaming selector does not identify
+any eligible members.
+
 It is a compile-time error if a simple or renaming selector does not identify any eligible members.
 
-Type members are aliased by type definitions, and term members are aliased by method definitions. Export aliases copy the type and value parameters of the members they refer to.
+Type members are aliased by type definitions, and term members are aliased by method definitions. For instance:
+```scala
+object O:
+  class C(val x: Int)
+  def m(c: C): Int = c.x + 1
+export O.*
+  // generates
+  //   type C = O.C
+  //   def m(c: O.C): Int = O.m(c)
+```
+
+Export aliases copy the type and value parameters of the members they refer to.
 Export aliases are always `final`. Aliases of given instances are again defined as givens (and aliases of old-style implicits are `implicit`). Aliases of extensions are again defined as extensions. Aliases of inline methods or values are again defined `inline`. There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
 
  - Export aliases cannot be overridden, since they are final.
@@ -132,12 +146,42 @@ Export clauses also fill a gap opened by the shift from package objects to top-l
 of internal compositions available to users of a package. Top-level definitions are not wrapped in a user-defined object, so they can't inherit anything. However, top-level definitions can be export clauses, which supports the facade design pattern in a safer and
 more flexible way.
 
+## Export Clauses in Extensions
+
+An export clause may also appear in an extension.
+
+Example:
+```scala
+class StringOps(x: String):
+  def *(n: Int): String = ...
+  def capitalize: String = ...
+
+extension (x: String)
+  def take(n: Int): String = x.substring(0, n)
+  def drop(n: Int): String = x.substring(n)
+  private def moreOps = new StringOps(x)
+  export moreOps.*
+```
+In this case the qualifier expression must be an identifier that refers to a unique parameterless extension method in the same extension clause. The export will create
+extension methods for all accessible term members
+in the result of the qualifier path. For instance, the extension above would be expanded to
+```scala
+extension (x: String)
+  def take(n: Int): String = x.substring(0, n)
+  def drop(n: Int): String = x.substring(n)
+  private def moreOps = StringOps(x)
+  def *(n: Int): String = moreOps.*(n)
+  def capitalize: String = moreOps.capitalize
+```
+
 ## Syntax changes:
 
 ```
 TemplateStat      ::=  ...
                     |  Export
 TopStat           ::=  ...
+                    |  Export
+ExtMethod         ::=  ...
                     |  Export
 Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
