@@ -6,11 +6,11 @@ movedTo: https://docs.scala-lang.org/scala3/reference/contextual/context-functio
 
 ## Syntax
 
-```ebnf
+```
 Type              ::=  ...
-                    |  FunArgTypes ‘?=>’ Type ;
+                    |  FunArgTypes ‘?=>’ Type
 Expr              ::=  ...
-                    |  FunParams ‘?=>’ Expr ;
+                    |  FunParams ‘?=>’ Expr
 ```
 
 Context function types associate to the right, e.g.

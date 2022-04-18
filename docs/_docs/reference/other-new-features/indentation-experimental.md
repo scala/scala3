@@ -62,13 +62,13 @@ Braces can be omitted if the lambda starts with a parameter list and `=>` or `=>
 
 ## Syntax Changes
 
-```ebnf
+```
 SimpleExpr       ::=  ...
                    |  SimpleExpr `:` IndentedArgument
-                   |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedArgument ;
+                   |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedArgument
 InfixExpr        ::=  ...
-                   |  InfixExpr id `:` IndentedArgument ;
-IndentedArgument ::=  indent (CaseClauses | Block) outdent ;
+                   |  InfixExpr id `:` IndentedArgument
+IndentedArgument ::=  indent (CaseClauses | Block) outdent
 ```
 
 Note that a lambda argument must have the `=>` at the end of a line for braces

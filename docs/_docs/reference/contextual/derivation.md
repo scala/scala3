@@ -354,12 +354,12 @@ hand side of this definition in the same way as an instance defined in ADT compa
 
 ### Syntax
 
-```ebnf
-Template          ::=  InheritClauses [TemplateBody] ;
-EnumDef           ::=  id ClassConstr InheritClauses EnumBody ;
-InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}] ;
+```
+Template          ::=  InheritClauses [TemplateBody]
+EnumDef           ::=  id ClassConstr InheritClauses EnumBody
+InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
-                    |  ConstrApp {‘,’ ConstrApp} ;
+                    |  ConstrApp {‘,’ ConstrApp}
 ```
 
 **Note:** To align `extends` clauses and `derives` clauses, Scala 3 also allows multiple

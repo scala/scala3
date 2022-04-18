@@ -6,11 +6,11 @@ movedTo: https://docs.scala-lang.org/scala3/reference/new-types/type-lambdas-spe
 
 ## Syntax
 
-```ebnf
-Type            ::=  ... |  TypeParamClause ‘=>>’ Type ;
-TypeParamClause ::=  ‘[’ TypeParam {‘,’ TypeParam} ‘]’ ;
-TypeParam       ::=  {Annotation} (id [HkTypeParamClause] | ‘_’) TypeBounds ;
-TypeBounds      ::=  [‘>:’ Type] [‘<:’ Type] ;
+```
+Type            ::=  ... |  TypeParamClause ‘=>>’ Type
+TypeParamClause ::=  ‘[’ TypeParam {‘,’ TypeParam} ‘]’
+TypeParam       ::=  {Annotation} (id [HkTypeParamClause] | ‘_’) TypeBounds
+TypeBounds      ::=  [‘>:’ Type] [‘<:’ Type]
 ```
 
 ### Type Checking
