@@ -167,23 +167,35 @@ trait MessageRendering {
     *
     * @return separator containing error location and kind
     */
-  private def posStr(pos: SourcePosition, message: Message, diagnosticString: String)(using Context, Level, Offset): String =
-    if (pos.source != NoSourcePosition.source) hl({
-      val realPos = pos.nonInlined
-      val fileAndPos = posFileStr(realPos)
-      val errId =
-        if (message.errorId ne ErrorMessageID.NoExplanationID) then
-          val errorNumber = message.errorId.errorNumber
-          s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
-        else ""
-      val kind =
-        if (message.kind == MessageKind.NoKind) diagnosticString
-        else s"${message.kind.message} $diagnosticString"
-      val title =
-        if fileAndPos.isEmpty then s"$errId$kind:" // this happens in dotty.tools.repl.ScriptedTests // TODO add name of source or remove `:` (and update test files)
-        else s"$errId$kind: $fileAndPos"
-      boxTitle(title)
-    }) else ""
+  private def posStr(
+    pos: SourcePosition,
+    message: Message,
+    diagnosticString: String
+  )(using Context, Level, Offset): String =
+    assert(
+      message.errorId.isActive,
+      """|Attempting to use an ErrorMessageID that is marked as inactive.
+         |The ID either needs to be marked as active or you need to use another.""".stripMargin
+    )
+    if (pos.source != NoSourcePosition.source) then
+      hl({
+        val realPos = pos.nonInlined
+        val fileAndPos = posFileStr(realPos)
+        val errId =
+          if (message.errorId != ErrorMessageID.NoExplanationID) then
+            val errorNumber = message.errorId.errorNumber
+            s"[E${"0" * (3 - errorNumber.toString.length) + errorNumber}] "
+          else ""
+        val kind =
+          if (message.kind == MessageKind.NoKind) then diagnosticString
+          else s"${message.kind.message} $diagnosticString"
+        val title =
+          if fileAndPos.isEmpty then s"$errId$kind:" // this happens in dotty.tools.repl.ScriptedTests // TODO add name of source or remove `:` (and update test files)
+          else s"$errId$kind: $fileAndPos"
+        boxTitle(title)
+      })
+    else ""
+  end posStr
 
   /** Explanation rendered under "Explanation" header */
   def explanation(m: Message)(using Context): String = {
