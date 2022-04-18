@@ -143,8 +143,7 @@ class SemanticdbInputStream private (buffer: Array[Byte], input: InputStream) {
       throw new IllegalStateException(
         s"refillBuffer() called when $n bytes were already available in buffer")
     }
-    if (totalBytesRetired + bufferPos + n > currentLimit) false
-    else if (input != null) {
+    if totalBytesRetired + bufferPos + n <= currentLimit && input != null then
       val pos: Int = bufferPos
       if (pos > 0) {
         if (bufferSize > pos) {
@@ -166,7 +165,6 @@ class SemanticdbInputStream private (buffer: Array[Byte], input: InputStream) {
         recomputeBufferSizeAfterLimit()
         return ((bufferSize >= n) || tryRefillBuffer(n))
       }
-    }
     false
   }
 
