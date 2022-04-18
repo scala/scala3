@@ -1060,7 +1060,16 @@ class TreeUnpickler(reader: TastyReader,
         Nil
 
     def readIndexedStats(exprOwner: Symbol, end: Addr)(using Context): List[Tree] =
-      until(end)(readIndexedStat(exprOwner))
+      val buf = new mutable.ListBuffer[Tree]
+      var curCtx = ctx
+      while currentAddr.index < end.index do
+        val stat = readIndexedStat(exprOwner)(using curCtx)
+        buf += stat
+        stat match
+          case stat: Import => curCtx = ctx.importContext(stat, stat.symbol)
+          case _ =>
+      assert(currentAddr.index == end.index)
+      buf.toList
 
     def readStats(exprOwner: Symbol, end: Addr)(using Context): List[Tree] = {
       fork.indexStats(end)
