@@ -1099,10 +1099,14 @@ class Namer { typer: Typer =>
         val sym = mbr.symbol
         if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
-        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) then
+        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) || sym.isAllOf(JavaModule) then
           Skip
         else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
           No(i"is already a member of $cls")
+        else if pathMethod.exists && mbr.isType then
+          No("is a type, so it cannot be exported as extension method")
+        else if pathMethod.exists && sym.is(ExtensionMethod) then
+          No("is already an extension method, cannot be exported into another one")
         else if targets.contains(alias) then
           No(i"clashes with another export in the same export clause")
         else if sym.is(Override) then
@@ -1111,12 +1115,6 @@ class Namer { typer: Typer =>
           ) match
               case Some(other) => No(i"overrides ${other.showLocated}, which is already a member of $cls")
               case None => Yes
-        else if sym.isAllOf(JavaModule) then
-          Skip
-        else if pathMethod.exists && mbr.isType then
-          No("is a type, so it cannot be exported as extension method")
-        else if pathMethod.exists && sym.is(ExtensionMethod) then
-          No("is already an extension method, cannot be exported into another one")
         else
           Yes
       }
@@ -1245,12 +1243,13 @@ class Namer { typer: Typer =>
         val size = buf.size
         val mbrs = List(name, name.toTypeName).flatMap(pathType.member(_).alternatives)
         mbrs.foreach(addForwarder(alias, _, span))
-        targets += alias
         if buf.size == size then
           val reason = mbrs.map(canForward(_, alias)).collect {
             case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
           }.headOption.getOrElse("")
           report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
+        else
+          targets += alias
 
       def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
         List(name, name.toTypeName)
