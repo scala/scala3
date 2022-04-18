@@ -486,13 +486,13 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     appendOffsetDefs.get(claz) match
       case Some(info) =>
         offsetSymbol = newSymbol(claz, offsetName(info.defs.size), Synthetic, defn.LongType).enteredAfter(this)
-        offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-        val offsetTree = ValDef(offsetSymbol, staticOrFieldOff)
+        offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot))
+        val offsetTree = ValDef(offsetSymbol.nn, staticOrFieldOff)
         info.defs = offsetTree :: info.defs
       case None =>
         offsetSymbol = newSymbol(claz, offsetName(0), Synthetic, defn.LongType).enteredAfter(this)
-        offsetSymbol.addAnnotation(Annotation(defn.ScalaStaticAnnot))
-        val offsetTree = ValDef(offsetSymbol, staticOrFieldOff)
+        offsetSymbol.nn.addAnnotation(Annotation(defn.ScalaStaticAnnot))
+        val offsetTree = ValDef(offsetSymbol.nn, staticOrFieldOff)
         appendOffsetDefs += (claz -> new OffsetInfo(List(offsetTree)))
 
     val waiting = requiredClass(s"$runtimeModule.${lazyNme.RLazyVals.waiting}")
@@ -500,7 +500,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val nullValued = Select(ref(helperModule), lazyNme.RLazyVals.nullValued)
     val objCas = Select(ref(helperModule), lazyNme.RLazyVals.objCas)
     
-    val offset = ref(offsetSymbol)
+    val offset = ref(offsetSymbol.nn)
 
     val swapOver =
       if stat then
