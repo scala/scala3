@@ -50,7 +50,7 @@ object PickledQuotes {
   /** `typeHole`/`types` argument of `QuoteUnpickler.{unpickleExpr,unpickleExprV2,unpickleType,unpickleTypeV2}` */
   enum TypeHole:
     /** `termHole` argument of `QuoteUnpickler.{unpickleExpr, unpickleType}`.
-     *  From code compiled with Scala 3.0.x and 3.1.x or with -scala-output-version 3.0 and 3.1
+     *  From code compiled with Scala 3.0.x and 3.1.x.
      *  Note: For `unpickleType` it will always be `null`.
      */
     case V1(evalHole: Null | ((Int, Seq[scala.quoted.Type[?]]) => scala.quoted.Type[?]))
@@ -65,7 +65,7 @@ object PickledQuotes {
 
   enum ExprHole:
     /** `termHole` argument of `QuoteUnpickler.{unpickleExpr, unpickleType}`.
-     *  From code compiled with Scala 3.0.x and 3.1.x or with -scala-output-version 3.0 and 3.1
+     *  From code compiled with Scala 3.0.x and 3.1.x.
      *  Note: For `unpickleType` it will always be `null`.
      */
     case V1(evalHole: Null | ((Int, Seq[ExprHole.ArgV1], scala.quoted.Quotes) => scala.quoted.Expr[?]))

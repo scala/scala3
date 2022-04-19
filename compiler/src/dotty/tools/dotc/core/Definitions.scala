@@ -827,9 +827,7 @@ class Definitions {
 
 
   @tu lazy val QuoteUnpicklerClass: ClassSymbol = requiredClass("scala.quoted.runtime.QuoteUnpickler")
-    @tu lazy val QuoteUnpickler_unpickleExpr: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleExpr")
     @tu lazy val QuoteUnpickler_unpickleExprV2: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleExprV2")
-    @tu lazy val QuoteUnpickler_unpickleType: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleType")
     @tu lazy val QuoteUnpickler_unpickleTypeV2: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleTypeV2")
 
   @tu lazy val QuoteMatchingClass: ClassSymbol = requiredClass("scala.quoted.runtime.QuoteMatching")

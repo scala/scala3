@@ -291,9 +291,6 @@ object PickleQuotes {
       *  this closure is always applied directly to the actual context and the BetaReduce phase removes it.
       */
     def pickleAsTasty() = {
-
-      val unpickleV1 = ctx.scalaRelease <= Release3_1
-
       val pickleQuote = PickledQuotes.pickleQuote(body)
       val pickledQuoteStrings = pickleQuote match
         case x :: Nil => Literal(Constant(x))
@@ -306,26 +303,8 @@ object PickleQuotes {
 
       // This and all closures in typeSplices are removed by the BetaReduce phase
       val types =
-        if unpickleV1 then
-          if typeSplices.isEmpty then Literal(Constant(null)) // keep pickled quote without contents as small as possible
-          else
-            Lambda(
-              MethodType(
-                List(nme.idx, nme.contents).map(name => UniqueName.fresh(name).toTermName),
-                List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType)),
-                defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)),
-              args => {
-                val cases = typeSplices.map { case (splice, idx) =>
-                  CaseDef(Literal(Constant(idx)), EmptyTree, splice)
-                }
-                cases match
-                  case CaseDef(_, _, rhs) :: Nil => rhs
-                  case _ => Match(args(0).annotated(New(ref(defn.UncheckedAnnot.typeRef))), cases)
-              }
-            )
-          else // if unpickleV2 then
-            if typeSplices.isEmpty then Literal(Constant(null)) // keep pickled quote without contents as small as possible
-            else SeqLiteral(typeSplices.map(_._1), TypeTree(defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)))
+        if typeSplices.isEmpty then Literal(Constant(null)) // keep pickled quote without contents as small as possible
+        else SeqLiteral(typeSplices.map(_._1), TypeTree(defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)))
 
       // This and all closures in termSplices are removed by the BetaReduce phase
       val termHoles =
@@ -341,12 +320,7 @@ object PickleQuotes {
                 val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _, _), _, _) = splice.tpe
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
-                    val argi = args(1).select(nme.apply).appliedTo(Literal(Constant(i)))
-                    if unpickleV1 && argType.derivesFrom(defn.QuotedExprClass) then
-                      val argType1 = defn.FunctionType(1).appliedTo(defn.QuotesClass.typeRef, argType)
-                      argi.asInstance(argType1).select(nme.apply).appliedTo(args(2))
-                    else
-                      argi.asInstance(argType)
+                    args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)
                   }
                   val Block(List(ddef: DefDef), _) = splice
                   // TODO: beta reduce inner closure? Or wait until BetaReduce phase?
@@ -363,14 +337,10 @@ object PickleQuotes {
       val quotedType = quoteClass.typeRef.appliedTo(originalTp)
       val lambdaTpe = MethodType(defn.QuotesClass.typeRef :: Nil, quotedType)
       val unpickleMeth =
-        if unpickleV1 then
-          if isType then defn.QuoteUnpickler_unpickleType
-          else defn.QuoteUnpickler_unpickleExpr
-        else // if unpickleV2 then
-          if isType then defn.QuoteUnpickler_unpickleTypeV2
-          else defn.QuoteUnpickler_unpickleExprV2
+        if isType then defn.QuoteUnpickler_unpickleTypeV2
+        else defn.QuoteUnpickler_unpickleExprV2
       val unpickleArgs =
-        if isType && !unpickleV1 then List(pickledQuoteStrings, types)
+        if isType then List(pickledQuoteStrings, types)
         else List(pickledQuoteStrings, types, termHoles)
       quotes
         .asInstance(defn.QuoteUnpicklerClass.typeRef)
