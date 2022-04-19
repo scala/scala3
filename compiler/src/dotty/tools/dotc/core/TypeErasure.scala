@@ -365,10 +365,18 @@ object TypeErasure {
   def erasedLub(tp1: Type, tp2: Type)(using Context): Type = {
     // After erasure, C | {Null, Nothing} is just C, if C is a reference type.
     // We need to short-circuit this case here because the regular lub logic below
-    // relies on the class hierarchy, which doesn't properly capture `Null`s subtyping
+    // relies on the class hierarchy, which doesn't properly capture `Null`/`Nothing`s subtyping
     // behaviour.
     if (tp1.isBottomTypeAfterErasure && tp2.derivesFrom(defn.ObjectClass)) return tp2
     if (tp2.isBottomTypeAfterErasure && tp1.derivesFrom(defn.ObjectClass)) return tp1
+
+    // After erasure, A | Nothing is just A, if A is a value type.
+    // We need to short-circuit this case here because the regular lub logic below
+    // relies on the class hierarchy, which doesn't properly capture `Nothing`s subtyping
+    // behaviour.
+    if (tp1.isExactlyNothing && tp2.derivesFrom(defn.AnyValClass)) return valueErasure(tp2)
+    if (tp2.isExactlyNothing && tp1.derivesFrom(defn.AnyValClass)) return valueErasure(tp1)
+
     tp1 match {
       case JavaArrayType(elem1) =>
         import dotty.tools.dotc.transform.TypeUtils._

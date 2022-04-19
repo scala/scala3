@@ -13,7 +13,7 @@ import scala.tools.asm.Opcodes
 import scala.jdk.CollectionConverters._
 import Opcodes._
 
-class TestBCode extends DottyBytecodeTest {
+class DottyBytecodeTests extends DottyBytecodeTest {
   import ASMConverters._
   @Test def nullChecks = {
     val source = """
@@ -1232,6 +1232,27 @@ class TestBCode extends DottyBytecodeTest {
         Jump(GOTO, Label(9)),
         Label(6), Op(ICONST_0),
         Label(9), Op(IRETURN)))
+    }
+  }
+
+  /** Check that erasure if `Int | Nothing` is `int` */
+  @Test def i14970 = {
+    val source =
+      s"""class Foo {
+         |  def foo: Int | Nothing = 1
+         |  def bar: Nothing | Int = 1
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      def testSig(methodName: String, expectedSignature: String) = {
+        val signature = clsNode.methods.asScala.filter(_.name == methodName).map(_.signature)
+        assertEquals(List(expectedSignature), signature)
+      }
+      testSig("foo", "()I")
+      testSig("bar", "()I")
     }
   }
 }
