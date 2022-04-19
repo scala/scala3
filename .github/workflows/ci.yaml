@@ -551,10 +551,6 @@ jobs:
         run: |
           ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
 
-      - name: Trigger unmanaged community build
-        continue-on-error: true
-        run: .github/workflows/scripts/triggerUnmanagedCommunityBuild.sh "${{ secrets.BUILD_TOKEN }}" "$THISBUILD_VERSION"
-
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
@@ -604,6 +600,41 @@ jobs:
           external_repository: lampepfl/dotty-website
           publish_branch: gh-pages
 
+  nightly_unmanaged_community_build:
+    # Self-hosted runner is used only for getting current build version
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    needs: [publish_nightly]
+    steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Get version string for this build
+        run: |
+          ver=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "This build version: $ver"
+          echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
+      # Steps above are copy-pasted from publish_nightly, needed only to resolve THISBUILD_VERSION
+      - name: Trigger unmanaged community build
+        run: .github/workflows/scripts/triggerUnmanagedCommunityBuild.sh "${{ secrets.BUILD_TOKEN }}" "$THISBUILD_VERSION"
 
   publish_release:
     runs-on: [self-hosted, Linux]
