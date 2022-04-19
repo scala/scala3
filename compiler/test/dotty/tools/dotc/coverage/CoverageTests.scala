@@ -41,13 +41,15 @@ class CoverageTests:
         lines
     end fixWindowsPaths
 
-    Files.walk(dir).filter(scalaFile.matches).forEach(p => {
-      val path = p
+    def runOnFile(p: Path): Boolean =
+      scalaFile.matches(p) &&
+      (Properties.testsFilter.isEmpty || Properties.testsFilter.exists(p.toString.contains))
+    
+    Files.walk(dir).filter(runOnFile).forEach(path => {
       val fileName = path.getFileName.toString.stripSuffix(".scala")
       val targetDir = computeCoverageInTmp(path, dir, run)
       val targetFile = targetDir.resolve(s"scoverage.coverage")
-      val expectFile = p.resolveSibling(s"$fileName.scoverage.check")
-
+      val expectFile = path.resolveSibling(s"$fileName.scoverage.check")
       if updateCheckFiles then
         Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
       else
