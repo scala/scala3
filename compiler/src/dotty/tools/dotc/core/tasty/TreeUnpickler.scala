@@ -1059,13 +1059,24 @@ class TreeUnpickler(reader: TastyReader,
       else
         Nil
 
-    def readIndexedStats(exprOwner: Symbol, end: Addr)(using Context): List[Tree] =
-      until(end)(readIndexedStat(exprOwner))
+    def readIndexedStats[T](exprOwner: Symbol, end: Addr, k: (List[Tree], Context) => T = sameTrees)(using Context): T =
+      val buf = new mutable.ListBuffer[Tree]
+      var curCtx = ctx
+      while currentAddr.index < end.index do
+        val stat = readIndexedStat(exprOwner)(using curCtx)
+        buf += stat
+        stat match
+          case stat: Import => curCtx = ctx.importContext(stat, stat.symbol)
+          case _ =>
+      assert(currentAddr.index == end.index)
+      k(buf.toList, curCtx)
 
-    def readStats(exprOwner: Symbol, end: Addr)(using Context): List[Tree] = {
+    def readStats[T](exprOwner: Symbol, end: Addr, k: (List[Tree], Context) => T = sameTrees)(using Context): T = {
       fork.indexStats(end)
-      readIndexedStats(exprOwner, end)
+      readIndexedStats(exprOwner, end, k)
     }
+
+    private def sameTrees(xs: List[Tree], ctx: Context) = xs
 
     def readIndexedParams[T <: MemberDef](tag: Int)(using Context): List[T] =
       collectWhile(nextByte == tag) { readIndexedDef().asInstanceOf[T] }
@@ -1174,9 +1185,8 @@ class TreeUnpickler(reader: TastyReader,
             case BLOCK =>
               val exprReader = fork
               skipTree()
-              val stats = readStats(ctx.owner, end)
-              val expr = exprReader.readTerm()
-              Block(stats, expr)
+              readStats(ctx.owner, end,
+                (stats, ctx) => Block(stats, exprReader.readTerm()(using ctx)))
             case INLINED =>
               val exprReader = fork
               skipTree()
