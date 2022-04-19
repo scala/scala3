@@ -41,24 +41,24 @@ class CoverageTests:
         lines
     end fixWindowsPaths
 
-    Files.walk(dir).filter(scalaFile.matches).forEach(p => {
-      val path = p
-      val fileName = path.getFileName.toString.stripSuffix(".scala")
-      val targetDir = computeCoverageInTmp(path, dir, run)
-      val targetFile = targetDir.resolve(s"scoverage.coverage")
-      val expectFile = p.resolveSibling(s"$fileName.scoverage.check")
+    Files.walk(dir).filter(scalaFile.matches).forEach(path => {
+      if Properties.testsFilter.isEmpty || Properties.testsFilter.exists(path.toString.contains) then
+        val fileName = path.getFileName.toString.stripSuffix(".scala")
+        val targetDir = computeCoverageInTmp(path, dir, run)
+        val targetFile = targetDir.resolve(s"scoverage.coverage")
+        val expectFile = path.resolveSibling(s"$fileName.scoverage.check")
 
-      if updateCheckFiles then
-        Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
-      else
-        val expected = fixWindowsPaths(Files.readAllLines(expectFile).asScala)
-        val obtained = fixWindowsPaths(Files.readAllLines(targetFile).asScala)
-        if expected != obtained then
-          for ((exp, actual),i) <- expected.zip(obtained).filter(_ != _).zipWithIndex do
-            Console.err.println(s"wrong line ${i+1}:")
-            Console.err.println(s"  expected: $exp")
-            Console.err.println(s"  actual  : $actual")
-          fail(s"$targetFile differs from expected $expectFile")
+        if updateCheckFiles then
+          Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
+        else
+          val expected = fixWindowsPaths(Files.readAllLines(expectFile).asScala)
+          val obtained = fixWindowsPaths(Files.readAllLines(targetFile).asScala)
+          if expected != obtained then
+            for ((exp, actual),i) <- expected.zip(obtained).filter(_ != _).zipWithIndex do
+              Console.err.println(s"wrong line ${i+1}:")
+              Console.err.println(s"  expected: $exp")
+              Console.err.println(s"  actual  : $actual")
+            fail(s"$targetFile differs from expected $expectFile")
 
     })
 
