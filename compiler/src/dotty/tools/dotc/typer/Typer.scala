@@ -1128,15 +1128,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if tree.isInline then checkInInlineContext("inline if", tree.srcPos)
     val cond1 = typed(tree.cond, defn.BooleanType)
 
+    def isIncomplete(tree: untpd.If): Boolean = tree.elsep match
+      case EmptyTree => true
+      case elsep: untpd.If => isIncomplete(elsep)
+      case _ => false
+
+    val branchPt = if isIncomplete(tree) then defn.UnitType else pt.dropIfProto
+
     val result =
       if tree.elsep.isEmpty then
-        val thenp1 = typed(tree.thenp, defn.UnitType)(using cond1.nullableContextIf(true))
+        val thenp1 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
         val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
       else
         val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
-          val thenp0 = typed(tree.thenp, pt.dropIfProto)(using cond1.nullableContextIf(true))
-          val elsep0 = typed(tree.elsep, pt.dropIfProto)(using cond1.nullableContextIf(false))
+          val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
+          val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
           thenp0 :: elsep0 :: Nil
         }
         assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
