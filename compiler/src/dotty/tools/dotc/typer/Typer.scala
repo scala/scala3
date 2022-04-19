@@ -1603,14 +1603,32 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             typedMatchFinish(tree, sel1, selType, tree.cases, pt)
         }
 
+        /** Are some form of brackets necessary to annotate the tree `sel` as `@unchecked`?
+         *  If so, return a Some(opening bracket, closing bracket), otherwise None.
+         */
+        def uncheckedBrackets(sel: untpd.Tree): Option[(String, String)] = sel match
+          case _: untpd.If
+             | _: untpd.Match
+             | _: untpd.ForYield
+             | _: untpd.ParsedTry
+             | _: untpd.Try => Some("(", ")")
+          case _: untpd.Block => Some("{", "}")
+          case _ => None
+
         result match {
           case result @ Match(sel, CaseDef(pat, _, _) :: _) =>
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
               case Some(checkMode) if !sel.tpe.hasAnnotation(defn.UncheckedAnnot) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
-                if (!checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `future-migration`)
-                  if (isPatDef) patch(Span(tree.selector.span.end), ": @unchecked")
-                  else patch(Span(pat.span.start), "case ")
+                if !checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `future-migration` then
+                  if isPatDef then uncheckedBrackets(tree.selector) match
+                    case None =>
+                      patch(Span(tree.selector.span.end), ": @unchecked")
+                    case Some(bl, br) =>
+                      patch(Span(tree.selector.span.start), s"$bl")
+                      patch(Span(tree.selector.span.end), s"$br: @unchecked")
+                  else
+                    patch(Span(tree.span.start), "case ")
 
                 // skip exhaustivity check in later phase
                 // TODO: move the check above to patternMatcher phase
