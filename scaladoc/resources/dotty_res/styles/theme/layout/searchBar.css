@@ -36,7 +36,6 @@
   -webkit-appearance: none;
   height: 1em;
   width: 1em;
-  border-radius: 50em;
   background: url("../../../images/icon-buttons/close/light/default.svg")
     no-repeat 50% 50%;
   background-size: contain;
@@ -62,4 +61,88 @@
   background-color: var(--background-default);
   border-radius: 4px;
   margin-top: calc(1.5 * var(--base-spacing));
+}
+
+.searchbar-hints {
+  color: var(--text-primary);
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(108.5 * var(--base-spacing));
+}
+
+.searchbar-hints h1 {
+  margin: 0;
+}
+
+.searchbar-hints .link {
+  color: var(--text-secondary);
+  margin-top: calc(4.5 * var(--base-spacing));
+  position: relative;
+}
+
+.searchbar-hints .link a {
+  color: var(--text-secondary);
+}
+
+.searchbar-hints .link::marker {
+  color: transparent;
+}
+
+.searchbar-hints .link::before {
+  content: url("../../../images/info/light/default.svg");
+  position: absolute;
+  left: calc(-4 * var(--base-spacing));
+}
+
+.text-dark .searchbar-hints .link::before {
+  content: url("../../../images/info/dark/default.svg");
+}
+
+.searchbar-hints .lightbulb {
+  margin-bottom: calc(2 * var(--base-spacing));
+}
+
+.searchbar-hints .lightbulb:after {
+  content: url("../../../images/bulb/light/default.svg");
+}
+
+.theme-dark .searchbar-hints .lightbulb:after {
+  content: url("../../../images/bulb/dark/default.svg");
+}
+
+.theme-dark .searchbar-hints .lightbulb:after {
+  content: url("../../../images/bulb/dark/default.svg");
+}
+
+.searchbar-hints-list {
+  margin-top: calc(5.5 * var(--base-spacing));
+  width: calc(61 * var(--base-spacing));
+}
+
+.searchbar-hints-list li b {
+  color: var(--text-secondary);
+}
+
+.searchbar-hints-list li {
+  margin-left: calc(4.6 * var(--base-spacing));
+}
+
+.searchbar-hints-list li::marker {
+  color: var(--text-secondary);
+}
+
+.searchbar-hints-list .h100 {
+  margin-bottom: calc(3 * var(--base-spacing));
+  margin-left: calc(2 * var(--base-spacing));
+}
+
+.searchbar-hints-list .divider {
+  margin-bottom: calc(1.5 * var(--base-spacing));
+  margin-top: calc(1.5 * var(--base-spacing));
+}
+
+.searchbar-hints-list .h100:last-of-type {
+  margin-top: calc(6 * var(--base-spacing));
 }

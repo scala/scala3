@@ -310,21 +310,20 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   private def showHints() = {
     def clearResults() = while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val hintsDiv = div(cls := "searchbar-hints")(
-      span(cls := "fas fa-lightbulb fa-5x"),
-      h1("A bunch of hints to make your life easier"),
+      span(cls := "lightbulb"),
+      h1(cls := "body-medium")("A bunch of search hints to make your life easier"),
       ul(cls := "searchbar-hints-list")(
-        li("Type a phrase to search members ", b("by name")," and static sites ", b("by title"),""),
-        li("Type abbreviations", b("cC, caCa, camCa")," to search for ", b("camelCase")),
-        li(
-          "Type a function signature to search for members ", b("by signature")," using Inkuire",
-          ul(
-            li("Type ", b("String => Int")," to find ", b("String.size"),", ", b("String.toInt"),""),
-            li("Type ", b("String => String => String")," to find ", b("String.mkString"),", ", b("String.stripPrefix"),""),
-            li("Inkuire also finds field accessors. Type ", b("Some[A] => A")," to find ", b("Some.value"),""),
-            li("For more information about Inkuire see ", a(href := "https://docs.scala-lang.org/scala3/guides/scaladoc/search-engine.html")("the documentation")),
-            li("The availability of this function depends on configuration used to generate Scaladoc")
-          )
-        )
+        h1(cls := "h100")("Members or Static sites by any phrase"),
+        li(cls := "mono-small-inline")("Any phrase to find", b(" Name")," or ", b("Title"),""),
+        div(cls := "divider"),
+        li(cls := "mono-small-inline")("cC, caCa, camCa" , b(" to find")," camelCase"),
+        h1(cls := "h100")("Members by signature"),
+        li(cls := "mono-small-inline")("String => Int", b(" to find"), " String.size, String.toInt"),
+        div(cls := "divider"),
+        li(cls := "mono-small-inline")("String => String => String", b(" to find "), "String.mkString, String.stripPrefix"),
+        div(cls := "divider"),
+        li(cls := "mono-small-inline")("Some[A] => A", b(" to find"), " Some.value"),
+        li(cls := "link body-small")("Availability of searching by inkuire depends on the configuration of Scaladoc. For more info, ", a(href := "https://docs.scala-lang.org/scala3/guides/scaladoc/search-engine.html")("the documentation")),
       )
     )
     clearResults()

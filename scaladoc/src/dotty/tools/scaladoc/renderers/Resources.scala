@@ -115,6 +115,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/components/button/icon-button.css",
       "styles/theme/components/button/text-button.css",
       "styles/theme/components/dropdown-menu.css",
+      "styles/theme/components/divider.css",
 
       "styles/nord-light.css",
       "styles/dotty-icons.css",
@@ -335,6 +336,10 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/icon-buttons/arrow-right/light/default.svg"),
       dottyRes("images/icon-buttons/close/light/default.svg"),
       dottyRes("images/icon-buttons/close/dark/default.svg"),
+      dottyRes("images/bulb/dark/default.svg"),
+      dottyRes("images/bulb/light/default.svg"),
+      dottyRes("images/info/light/default.svg"),
+      dottyRes("images/info/dark/default.svg"),
       searchData(pages),
       scastieConfiguration(),
     )
