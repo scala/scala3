@@ -1185,7 +1185,8 @@ class Namer { typer: Typer =>
             buf += ddef.withSpan(span)
             if hasDefaults then
               foreachDefaultGetterOf(sym.asTerm,
-                getter => addForwarder(getter.name.asTermName, getter, span))
+                getter => addForwarder(
+                  getter.name.asTermName, getter.asSeenFrom(path.tpe), span))
       end addForwarder
 
       def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
