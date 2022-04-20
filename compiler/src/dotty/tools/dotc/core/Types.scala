@@ -1548,8 +1548,8 @@ object Types {
       @tailrec def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           pre.refinedInfo match {
-            case TypeBounds(lo, hi) if lo eq hi =>
-              if (pre.refinedName ne name) loop(pre.parent) else lo
+            case tp: AliasingBounds =>
+              if (pre.refinedName ne name) loop(pre.parent) else tp.alias
             case _ =>
               loop(pre.parent)
           }
