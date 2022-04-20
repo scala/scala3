@@ -439,6 +439,8 @@ object Build {
       case CompatMode.BinaryCompatible          => "backward"
       case CompatMode.SourceAndBinaryCompatible => "both"
     }),
+
+    mimaExcludeAnnotations += "scala.annotation.experimental",
   )
 
   /** Projects -------------------------------------------------------------- */
