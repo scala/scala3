@@ -17,5 +17,12 @@ enum SourceVersion:
 
 object SourceVersion extends Property.Key[SourceVersion]:
 
-  val allSourceVersionNames = values.toList.map(_.toString.toTermName)
+  /** language versions that may appear in a language import, are deprecated, but not removed from the standard library. */
+  val illegalSourceVersionNames = List("3.1-migration").map(_.toTermName)
+
+  /** language versions that the compiler recognises. */
+  val validSourceVersionNames = values.toList.map(_.toString.toTermName)
+
+  /** All source versions that can be recognised from a language import. e.g. `import language.3.1` */
+  val allSourceVersionNames = validSourceVersionNames ::: illegalSourceVersionNames
 end SourceVersion
