@@ -3,8 +3,6 @@ import com.typesafe.tools.mima.core._
 
 object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
-    ProblemFilters.exclude[Problem]("scala.runtime.*"), // KEEP: scala.runtime isn't public API
-
     // APIs that must be added in 3.2.0
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.runtime.QuoteUnpickler.unpickleExprV2"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.QuoteUnpickler.unpickleExprV2"),
