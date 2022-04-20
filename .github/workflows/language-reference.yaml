@@ -78,6 +78,8 @@ jobs:
           cd dotty
           git fetch origin main:main
           git checkout main
+          git config user.name gh-actions
+          git config user.email actions@github.com
           git merge language-reference-stable
           cd ..
 
