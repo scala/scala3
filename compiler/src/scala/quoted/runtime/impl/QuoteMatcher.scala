@@ -244,9 +244,12 @@ object QuoteMatcher {
                 case Select(qual2, _) if symbolMatch(scrutinee, pattern) =>
                   ref match
                     case Select(qual1, _) => qual1 =?= qual2
-                    case ref: Ident if qual2.symbol == defn.QuotedRuntimePatterns_patternHole =>
-                      tpd.desugarIdentPrefix(ref) =?= qual2
-                    case ref: Ident => matched
+                    case ref: Ident =>
+                      if qual2.existsSubTree(_.symbol == defn.QuotedRuntimePatterns_patternHole) then
+                        // Prefix has a hole, so we need to match the prefix to extract the value of the hole
+                        tpd.desugarIdentPrefix(ref) =?= qual2
+                      else
+                        matched
 
                 /* Match reference */
                 case _: Ident if symbolMatch(scrutinee, pattern) => matched
