@@ -1545,9 +1545,10 @@ object Types {
       @tailrec def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           pre.refinedInfo match {
-            case TypeAlias(alias) =>
-              if (pre.refinedName ne name) loop(pre.parent) else alias
-            case _ => loop(pre.parent)
+            case tp: AliasingBounds =>
+              if (pre.refinedName ne name) loop(pre.parent) else tp.alias
+            case _ =>
+              loop(pre.parent)
           }
         case pre: RecType =>
           val candidate = pre.parent.lookupRefined(name)
@@ -4637,7 +4638,7 @@ object Types {
       myRepr.nn
     }
 
-    override def toString: String = s"Skolem($hashCode)"
+    override def toString: String = s"SkolemType($hashCode)"
   }
 
   /** A skolem type used to wrap the type of the qualifier of a selection.
