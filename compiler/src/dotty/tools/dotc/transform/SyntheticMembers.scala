@@ -592,7 +592,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     }
 
     if (clazz.is(Module)) {
-      if (clazz.is(Case)) makeSingletonMirror()
+      if (clazz.is(Case) && !clazz.requiresSingletonProxyMirror) makeSingletonMirror()
       else if (linked.isGenericProduct) makeProductMirror(linked)
       else if (linked.isGenericSum(clazz)) makeSumMirror(linked)
       else if (linked.is(Sealed))

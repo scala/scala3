@@ -282,7 +282,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         if mirroredType.termSymbol.is(CaseVal) then
           val module = mirroredType.termSymbol
           val modulePath = pathFor(mirroredType).withSpan(span)
-          if module.info.classSymbol.is(Scala2x) then
+          val requiresProxy =
+            val mClass = module.info.classSymbol
+            mClass.is(Module) && mClass.requiresSingletonProxyMirror
+          if requiresProxy then
             val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, module.name, formal)
             val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, modulePath :: Nil)
             mirrorRef.cast(mirrorType)
