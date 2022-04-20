@@ -22,6 +22,7 @@ jobs:
         with:
           path: 'dotty'
           ref: 'language-reference-stable'
+          fetch-depth: 0
           ssh-key: ${{ secrets.DOCS_KEY }}
 
       - name: Cache Coursier
@@ -43,8 +44,10 @@ jobs:
 
       - name: Generate reference documentation and test links
         run: |
-          ./dotty/project/scripts/sbt scaladoc/generateReferenceDocumentation --no-regenerate-expected-links
-          ./dotty/project/scripts/docsLinksStability ./dotty/scaladoc/output/reference ./dotty/project/scripts/expected-links/reference-expected-links.txt
+          cd dotty
+          ./project/scripts/sbt scaladoc/generateReferenceDocumentation --no-regenerate-expected-links
+          ./project/scripts/docsLinksStability ./scaladoc/output/reference ./project/scripts/expected-links/reference-expected-links.txt
+          cd ..
 
       - name: Push changes to scala3-reference-docs
         if: github.event_name == 'push'
@@ -63,8 +66,10 @@ jobs:
           git config user.name gh-actions
           git config user.email actions@github.com
           git add .
-          git commit -m "UPDATE ${{ steps.date.outputs.date }}"
-          git push
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "UPDATE ${{ steps.date.outputs.date }}"
+            git push
+          fi
           cd ..
 
       - name: Merge changes to main
@@ -73,10 +78,12 @@ jobs:
           cd dotty
           git fetch origin main:main
           git checkout main
+          git config user.name gh-actions
+          git config user.email actions@github.com
           git merge language-reference-stable
           cd ..
 
-      - name: Create pull reuqest with backport to main
+      - name: Create pull request with backport to main
         if: github.event_name == 'push'
         uses: peter-evans/create-pull-request@v4
         with:
