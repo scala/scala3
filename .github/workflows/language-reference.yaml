@@ -66,8 +66,10 @@ jobs:
           git config user.name gh-actions
           git config user.email actions@github.com
           git add .
-          git commit -m "UPDATE ${{ steps.date.outputs.date }}"
-          git push
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "UPDATE ${{ steps.date.outputs.date }}"
+            git push
+          fi
           cd ..
 
       - name: Merge changes to main
@@ -79,7 +81,7 @@ jobs:
           git merge language-reference-stable
           cd ..
 
-      - name: Create pull reuqest with backport to main
+      - name: Create pull request with backport to main
         if: github.event_name == 'push'
         uses: peter-evans/create-pull-request@v4
         with:
