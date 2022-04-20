@@ -611,6 +611,9 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_nightly]
+    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
+    env:
+      NIGHTLYBUILD: yes
     steps:
       - name: Reset existing repo
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
