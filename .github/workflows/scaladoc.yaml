@@ -4,7 +4,6 @@ on:
   push:
     branches-ignore:
       - 'language-reference-stable'
-      - 'language-reference-backport'
   pull_request:
     branches-ignore:
       - 'language-reference-stable'
