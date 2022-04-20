@@ -90,4 +90,8 @@ jobs:
           path: dotty
           branch: language-reference-backport
           labels: area:documentation
+          title: Backport changes from stable documentation branch
+          body: This pull request is created automatically after push to stable documentation branch and backports the changes
+          reviewers: pikinier20,julienrf
+          assignees: pikinier20
 
