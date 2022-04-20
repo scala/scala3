@@ -503,6 +503,11 @@ object Trees {
     def forwardTo: Tree[T] = fun
   }
 
+  object GenericApply:
+    def unapply[T >: Untyped](tree: Tree[T]): Option[(Tree[T], List[Tree[T]])] = tree match
+      case tree: GenericApply[T] => Some((tree.fun, tree.args))
+      case _ => None
+
   /** The kind of application */
   enum ApplyKind:
     case Regular      // r.f(x)
@@ -524,8 +529,6 @@ object Trees {
     def applyKind: ApplyKind =
       attachmentOrElse(untpd.KindOfApply, ApplyKind.Regular)
   }
-
-
 
   /** fun[args] */
   case class TypeApply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
@@ -972,10 +975,16 @@ object Trees {
   def genericEmptyValDef[T >: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
-  /** Tree that replaces a splice in pickled quotes.
-   *  It is only used when picking quotes (Will never be in a TASTy file).
+  /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
+   *  It is only used when picking quotes (will never be in a TASTy file).
+   *
+   *  @param isTermHole If this hole is a term, otherwise it is a type hole.
+   *  @param idx The index of the hole in it's enclosing level 0 quote.
+   *  @param args The arguments of the splice to compute its content
+   *  @param content Lambda that computes the content of the hole. This tree is empty when in a quote pickle.
+   *  @param tpt Type of the hole
    */
-  case class Hole[-T >: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
+  case class Hole[-T >: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]], content: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
     type ThisTree[-T >: Untyped] <: Hole[T]
     override def isTerm: Boolean = isTermHole
     override def isType: Boolean = !isTermHole
@@ -1331,6 +1340,10 @@ object Trees {
         case tree: Thicket if (trees eq tree.trees) => tree
         case _ => finalize(tree, untpd.Thicket(trees)(sourceFile(tree)))
       }
+      def Hole(tree: Tree)(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole = tree match {
+        case tree: Hole if isTerm == tree.isTerm && idx == tree.idx && args.eq(tree.args) && content.eq(tree.content) && content.eq(tree.content) => tree
+        case _ => finalize(tree, untpd.Hole(isTerm, idx, args, content, tpt)(sourceFile(tree)))
+      }
 
       // Copier methods with default arguments; these demand that the original tree
       // is of the same class as the copy. We only include trees with more than 2 elements here.
@@ -1352,6 +1365,9 @@ object Trees {
         TypeDef(tree: Tree)(name, rhs)
       def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody)(using Context): Template =
         Template(tree: Tree)(constr, parents, derived, self, body)
+      def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
+        Hole(tree: Tree)(isTerm, idx, args, content, tpt)
+
     }
 
     /** Hook to indicate that a transform of some subtree should be skipped */
@@ -1481,6 +1497,8 @@ object Trees {
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
+            case tree @ Hole(_, _, args, content, tpt) =>
+              cpy.Hole(tree)(args = transform(args), content = transform(content), tpt = transform(tpt))
             case _ =>
               transformMoreCases(tree)
           }
@@ -1620,8 +1638,8 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
-            case Hole(_, _, args) =>
-              this(x, args)
+            case Hole(_, _, args, content, tpt) =>
+              this(this(this(x, args), content), tpt)
             case _ =>
               foldMoreCases(x, tree)
           }

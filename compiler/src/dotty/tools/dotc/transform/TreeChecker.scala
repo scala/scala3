@@ -573,6 +573,37 @@ class TreeChecker extends Phase with SymTransformer {
       else
         super.typedPackageDef(tree)
 
+    override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
+      val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt)
+
+      // Check result type of the hole
+      if isTermHole then assert(tpt.typeOpt <:< pt)
+      else assert(tpt.typeOpt =:= pt)
+
+      // Check that the types of the args conform to the types of the contents of the hole
+      val argQuotedTypes = args.map { arg =>
+        if arg.isTerm then
+          val tpe = arg.typeOpt.widenTermRefExpr match
+            case _: MethodicType =>
+              // Special erasure for captured function references
+              // See `SpliceTransformer.transformCapturedApplication`
+              defn.AnyType
+            case tpe => tpe
+          defn.QuotedExprClass.typeRef.appliedTo(tpe)
+        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt)
+      }
+      val expectedResultType =
+        if isTermHole then defn.QuotedExprClass.typeRef.appliedTo(tpt.typeOpt)
+        else defn.QuotedTypeClass.typeRef.appliedTo(tpt.typeOpt)
+      val contextualResult =
+        defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
+      val expectedContentType =
+        defn.FunctionOf(argQuotedTypes, contextualResult)
+      assert(content.typeOpt =:= expectedContentType)
+
+      tree1
+    }
+
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
       tree
 

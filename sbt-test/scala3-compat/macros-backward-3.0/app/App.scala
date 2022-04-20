@@ -1,4 +1,6 @@
-import Macros.*
+package app
+
+import lib.*
 
 def powerTest(x: Double): Unit =
   power(x, 0)

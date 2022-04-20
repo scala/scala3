@@ -411,6 +411,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Export(expr: Tree, selectors: List[ImportSelector])(implicit src: SourceFile): Export = new Export(expr, selectors)
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit src: SourceFile): PackageDef = new PackageDef(pid, stats)
   def Annotated(arg: Tree, annot: Tree)(implicit src: SourceFile): Annotated = new Annotated(arg, annot)
+  def Hole(isTermHole: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(implicit src: SourceFile): Hole = new Hole(isTermHole, idx, args, content, tpt)
 
   // ------ Additional creation methods for untyped only -----------------
 
