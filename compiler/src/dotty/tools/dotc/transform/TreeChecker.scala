@@ -648,7 +648,11 @@ object TreeChecker {
     }
   }.apply(tp0)
 
-  /** Check that the tree only contains legal children trees */
+  /** Run some additional checks on the nodes of the trees.  Specifically:
+   *
+   *    - TypeTree can only appear in TypeApply args, New, Typed tpt, Closure
+   *      tpt, SeqLiteral elemtpt, ValDef tpt, DefDef tpt, and TypeDef rhs.
+   */
   object TreeNodeChecker extends untpd.TreeTraverser:
     import untpd._
     def traverse(tree: Tree)(using Context) = tree match
