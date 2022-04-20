@@ -24,6 +24,7 @@ import Inferencing._
 import transform.ValueClasses._
 import transform.TypeUtils._
 import transform.SymUtils._
+import TypeErasure.erasure
 import reporting._
 import config.Feature.sourceVersion
 import config.SourceVersion._
@@ -1237,8 +1238,64 @@ class Namer { typer: Typer =>
             addForwarders(sels1, sel.name :: seen)
         case _ =>
 
+      /** Avoid a clash of export forwarder `forwarder` with other forwarders in `forwarders`.
+       *  @return If `forwarder` clashes, a new leading forwarder and trailing forwarders list
+       *          that avoids the clash according to the scheme described in `avoidClashes`.
+       *          If there's no clash, the inputs as they are in a pair.
+       */
+      def avoidClashWith(forwarder: tpd.DefDef, forwarders: List[tpd.MemberDef]): (tpd.DefDef, List[tpd.MemberDef]) =
+        def clashes(fwd1: Symbol, fwd2: Symbol) =
+          fwd1.targetName == fwd2.targetName
+          && erasure(fwd1.info).signature == erasure(fwd2.info).signature
+
+        forwarders match
+          case forwarders @ ((forwarder1: tpd.DefDef) :: forwarders1)
+          if forwarder.name == forwarder1.name =>
+            if clashes(forwarder.symbol, forwarder1.symbol) then
+              val alt1 = tpd.methPart(forwarder.rhs).tpe
+              val alt2 = tpd.methPart(forwarder1.rhs).tpe
+              val cmp = alt1 match
+                case alt1: TermRef => alt2 match
+                  case alt2: TermRef => compare(alt1, alt2)
+                  case _ => 0
+                case _ => 0
+              if cmp == 0 then
+                report.error(
+                  ex"""Clashing exports: The exported
+                      |     ${forwarder.rhs.symbol}: ${alt1.widen}
+                      |and  ${forwarder1.rhs.symbol}: ${alt2.widen}
+                      |have the same signature after erasure and overloading resolution could not disambiguate.""",
+                  exp.srcPos)
+              avoidClashWith(if cmp < 0 then forwarder else forwarder1, forwarders1)
+            else
+              val (forwarder2, forwarders2) = avoidClashWith(forwarder, forwarders1)
+              (forwarder2, forwarders.derivedCons(forwarder1, forwarders2))
+          case _ =>
+            (forwarder, forwarders)
+      end avoidClashWith
+
+      /** Avoid clashes of any two export forwarders in `forwarders`.
+       *  A clash is if two forwarders f1 and f2 have the same name and signatures after erasure.
+       *  We try to avoid a clash by dropping one of f1 and f2, keeping the one whose right hand
+       *  side reference would be preferred by overloading resolution.
+       *  If neither of f1 or f2 is preferred over the other, report an error.
+       *
+       *  The idea is that this simulates the hypothetical case where export forwarders
+       *  are not generated and we treat an export instead more like an import where we
+       *  expand the use site reference. Test cases in {neg,pos}/i14699.scala.
+       *
+       *  @pre Forwarders with the same name are consecutive in `forwarders`.
+       */
+      def avoidClashes(forwarders: List[tpd.MemberDef]): List[tpd.MemberDef] = forwarders match
+        case forwarders @ (forwarder :: forwarders1) =>
+          val (forwarder2, forwarders2) = forwarder match
+            case forwarder: tpd.DefDef => avoidClashWith(forwarder, forwarders1)
+            case _ => (forwarder, forwarders1)
+          forwarders.derivedCons(forwarder2, avoidClashes(forwarders2))
+        case Nil => forwarders
+
       addForwarders(selectors, Nil)
-      val forwarders = buf.toList
+      val forwarders = avoidClashes(buf.toList)
       exp.pushAttachment(ExportForwarders, forwarders)
       forwarders
     end exportForwarders

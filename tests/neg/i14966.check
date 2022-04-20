@@ -1,10 +1,10 @@
--- [E120] Naming Error: tests/neg/i14966.scala:2:11 --------------------------------------------------------------------
-2 |  export s.* // error
-  |           ^
-  |           Double definition:
-  |           final def ++[B >: T](suffix: IterableOnce[B]): Set[B] in class B at line 2 and
-  |           final def ++(that: IterableOnce[T]): Set[T] in class B at line 2
-  |           have the same type after erasure.
-  |
-  |           Consider adding a @targetName annotation to one of the conflicting definitions
-  |           for disambiguation.
+-- Error: tests/neg/i14966.scala:10:9 ----------------------------------------------------------------------------------
+10 |  export s.*  // error
+   |  ^^^^^^^^^^
+   |  Clashing exports: The exported
+   |       method f: (x: List[Int]): Int
+   |  and  method f²: (x: List[String]): Int
+   |  have the same signature after erasure and overloading resolution could not disambiguate.
+   |
+   |  where:    f  is a method in trait S
+   |            f² is a method in trait I
