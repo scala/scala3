@@ -581,7 +581,7 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
         report.error(msg)
       case e: ClassTooLargeException =>
         val msg = 
-          s"Class '${e.getClassName.replaceAll("/", ".")}' is too large. Constant pool size: ${e.getConstantPoolCount}. Limit is 64KB"
+          s"Class '${e.getClassName.replaceAll("/", ".")}' is too large. Constant pool size: ${e.getConstantPoolCount}. Limit is 64K entries"
         report.error(msg)
 
   }
