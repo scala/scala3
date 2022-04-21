@@ -2060,8 +2060,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** The greatest lower bound of two types */
   def glb(tp1: Type, tp2: Type): Type = /*>|>*/ trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists) tp2
-    else if (!tp2.exists) tp1
+    else if !tp1.exists || (tp1 eq WildcardType) then tp2
+    else if !tp2.exists || (tp2 eq WildcardType) then tp1
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp2
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp1
     else tp2 match
@@ -2110,8 +2110,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   def lub(tp1: Type, tp2: Type, canConstrain: Boolean = false, isSoft: Boolean = true): Type = /*>|>*/ trace(s"lub(${tp1.show}, ${tp2.show}, canConstrain=$canConstrain, isSoft=$isSoft)", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists) tp1
-    else if (!tp2.exists) tp2
+    else if !tp1.exists || (tp2 eq WildcardType) then tp1
+    else if !tp2.exists || (tp1 eq WildcardType) then tp2
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp1
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp2
     else
