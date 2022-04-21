@@ -146,22 +146,6 @@ final case class SbtCommunityProject(
       s"--addPluginSbtFile=$sbtPluginFilePath"
     )
 
-<<<<<<< HEAD
-  def forwardCompat: SbtCommunityProject =
-    this.copy(
-      project = project + "-forward-compat",
-      dependencies = () => dependencies().map(forwardCompatMapping),
-      testOnlyDependencies = () => testOnlyDependencies().map(forwardCompatMapping),
-      isForwardCompatProject = true
-    )
-
-  def withScalaRelease(release: String): SbtCommunityProject =
-    this.copy(
-      scalacOptions = scalacOptions ++ Seq("-scala-output-version", release)
-    )
-
-=======
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
 object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
@@ -431,12 +415,8 @@ object projects:
     project = "zio",
     sbtTestCommand = "testJVMDotty",
     sbtDocCommand = forceDoc("coreJVM"),
-<<<<<<< HEAD
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
-    dependencies = () => List(izumiReflect)
-=======
-    dependencies = List(izumiReflect)
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
+    dependencies =List(izumiReflect)
   )
 
   lazy val munit = SbtCommunityProject(
@@ -460,12 +440,8 @@ object projects:
     sbtTestCommand   = "unitTests/test",
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
-<<<<<<< HEAD
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
-    dependencies = () => List(munit, scodecBits),
-=======
     dependencies = List(munit, scodecBits),
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
@@ -515,11 +491,6 @@ object projects:
     dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
   )
 
-<<<<<<< HEAD
-  lazy val catsEffect3ForwardCompat = catsEffect3.forwardCompat.copy(compilerVersion = "3.0.2")
-
-=======
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
   lazy val scalaParallelCollections = SbtCommunityProject(
     project        = "scala-parallel-collections",
     sbtTestCommand = "test",
@@ -552,12 +523,8 @@ object projects:
     project = "discipline",
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
-<<<<<<< HEAD
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
-    dependencies = () => List(scalacheck)
-=======
     dependencies = List(scalacheck)
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
   )
 
   lazy val disciplineMunit = SbtCommunityProject(
@@ -597,11 +564,6 @@ object projects:
     dependencies = List(cats, disciplineMunit)
   )
 
-<<<<<<< HEAD
-  lazy val catsMtlForwardCompat = catsMtl.forwardCompat.copy(compilerVersion = "3.0.2")
-
-=======
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
   lazy val coop = SbtCommunityProject(
     project = "coop",
     sbtTestCommand = "test",
@@ -677,13 +639,8 @@ object projects:
     project           = "Lucre",
     sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
     extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
-<<<<<<< HEAD
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
-    dependencies      = () => List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
-=======
-    sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;expr0JVM/publishLocal;expr1JVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
     dependencies      = List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
   )
 
   lazy val izumiReflect = SbtCommunityProject(
@@ -703,8 +660,7 @@ object projects:
 
   lazy val akka = SbtCommunityProject(
     project = "akka",
-<<<<<<< HEAD
-    extraSbtArgs = List(s"-Dakka.build.scalaVersion=$testedCompilerVersion"),
+    extraSbtArgs = List(s"-Dakka.build.scalaVersion=$compilerVersion"),
     sbtTestCommand = List(
       "set every targetSystemJdk := true",
       // selectively disable -Xfatal-warnings due to deprecations
@@ -714,12 +670,7 @@ object projects:
       "akka-actor-tests/Test/compile",
     ).mkString("; "),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
-    dependencies = () => List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
-=======
-    extraSbtArgs = List(s"-Dakka.build.scalaVersion=$compilerVersion"),
-    sbtTestCommand = "set every targetSystemJdk := true; akka-actor-tests/Test/compile",
     dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
   )
 
   lazy val monocle = SbtCommunityProject(
@@ -733,11 +684,7 @@ object projects:
     extraSbtArgs  = List("-Dcommunity=true", "-DcommunityRemote=true", "-Dquill.macro.stdout=true"),
     sbtTestCommand = "runCommunityBuild",
     sbtPublishCommand = "publishLocal",
-<<<<<<< HEAD
-    dependencies = () => List(scalatest),
-=======
-    dependencies = List(), // TODO add scalatest and pprint (see protoquill/build.sbt)
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
+    dependencies = List(scalatest),
     scalacOptions = List("-language:implicitConversions"), // disabled -Ysafe-init, due to bug in macro
   )
 
@@ -773,12 +720,8 @@ object projects:
     project = "fs2",
     sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
     sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
-<<<<<<< HEAD
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
-    dependencies = () => List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
-=======
     dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
   )
 
   lazy val libretto = SbtCommunityProject(
@@ -806,12 +749,8 @@ object projects:
     project = "spire",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-<<<<<<< HEAD
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
-    dependencies = () => List(cats, disciplineMunit)
-=======
     dependencies = List(cats, disciplineMunit)
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
   )
 
   lazy val http4s = SbtCommunityProject(
@@ -819,7 +758,7 @@ object projects:
     sbtTestCommand = "tests/test; server/test; client/test; ember-core/test; ember-server/test; ember-client/test; circe/test",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"),
-    dependencies = () => List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
+    dependencies = List(cats, catsEffect3, fs2, disciplineMunit, scalacheckEffect)
   )
 
 end projects
@@ -900,13 +839,9 @@ def allProjects = List(
   projects.libretto,
   projects.jacksonModuleScala,
   projects.specs2,
-<<<<<<< HEAD
   projects.coop,
-  projects.coopForwardCompat,
   projects.spire,
   projects.http4s
-=======
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

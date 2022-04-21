@@ -28,20 +28,9 @@ object CommunityBuildPlugin extends AutoPlugin {
 
   override val buildSettings: Seq[Setting[_]] = Seq(
     dependencyOverrides ++= {
-<<<<<<< HEAD
-      if (scalaVersion.value.startsWith("3.")) {
-        val forwardCompatFilter: ModuleID => Boolean = if (isForwardCompatProject.value) (_.revision.contains("-forward-compat")) else (!_.revision.contains("-forward-compat"))
-        val stdlibOverrides = Seq(
-          scalaOrganization.value %% "scala3-library" % scalaVersion.value,
-          scalaOrganization.value %% "scala3-library_sjs1" % scalaVersion.value
-        )
-        CommunityBuildDependencies.allOverrides(sLog.value).filter(forwardCompatFilter) ++ stdlibOverrides
-      } else Nil
-=======
       if (scalaVersion.value.startsWith("3."))
         CommunityBuildDependencies.allOverrides(sLog.value)
       else Nil
->>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
     }
   )
 }
