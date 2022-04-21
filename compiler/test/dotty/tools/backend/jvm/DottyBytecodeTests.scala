@@ -1236,25 +1236,25 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   }
 
   /** Check that erasure if `Int | Nothing` is `int` */
-  @Test def i14970 = {
-    val source =
-      s"""class Foo {
-         |  def foo: Int | Nothing = 1
-         |  def bar: Nothing | Int = 1
-         |}
-         """.stripMargin
+  // @Test def i14970 = {
+  //   val source =
+  //     s"""class Foo {
+  //        |  def foo: Int | Nothing = 1
+  //        |  def bar: Nothing | Int = 1
+  //        |}
+  //        """.stripMargin
 
-    checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).input
-      val clsNode    = loadClassNode(clsIn)
-      def testSig(methodName: String, expectedSignature: String) = {
-        val signature = clsNode.methods.asScala.filter(_.name == methodName).map(_.signature)
-        assertEquals(List(expectedSignature), signature)
-      }
-      testSig("foo", "()I")
-      testSig("bar", "()I")
-    }
-  }
+  //   checkBCode(source) { dir =>
+  //     val clsIn      = dir.lookupName("Foo.class", directory = false).input
+  //     val clsNode    = loadClassNode(clsIn)
+  //     def testSig(methodName: String, expectedSignature: String) = {
+  //       val signature = clsNode.methods.asScala.filter(_.name == methodName).map(_.signature)
+  //       assertEquals(List(expectedSignature), signature)
+  //     }
+  //     testSig("foo", "()I")
+  //     testSig("bar", "()I")
+  //   }
+  // }
 }
 
 object invocationReceiversTestCode {

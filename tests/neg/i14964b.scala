@@ -1,3 +1,4 @@
+// nopos-error
 @main def Test: Unit =
   println(summon[reflect.ClassTag[Int]]) // classOf[Int]
   println(summon[reflect.ClassTag[Int | Int]]) // classOf[Int]

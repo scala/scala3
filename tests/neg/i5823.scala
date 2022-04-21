@@ -1,3 +1,7 @@
+// nopos-error
+// nopos-error
+// nopos-error
+// nopos-error
 // Test that `C|Null` is erased to `C` if `C` is
 // a reference type.
 // If `C` is a value type, then `C|Null = Object`.

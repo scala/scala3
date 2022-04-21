@@ -1,3 +1,5 @@
+// nopos-error
+// nopos-error
 @main def Test: Unit =
   val xs = (1, 2).toList
   val a1 = xs.toArray
