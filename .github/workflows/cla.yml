@@ -1,5 +1,9 @@
 name: Scala CLA
-on: [pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - 'language-reference-backport'
 jobs:
   check:
     runs-on: ubuntu-latest
