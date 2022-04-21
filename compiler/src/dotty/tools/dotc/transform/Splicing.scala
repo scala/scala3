@@ -135,7 +135,13 @@ class Splicing extends MacroTransform:
               val hole = tpd.Hole(false, holeIdx, Nil, ref(qual), TypeTree(tp))
               typeHoles.put(qual.symbol, hole)
               hole
-          cpy.TypeDef(tree)(rhs = hole)
+          val rhs =
+            if ctx.scalaRelease <= Release3_1 then
+              val secondHoleIdx = numHoles
+              numHoles += 1
+              TypeBoundsTree(hole, cpy.Hole(hole)(idx = secondHoleIdx))
+            else hole
+          cpy.TypeDef(tree)(rhs = rhs)
         case Apply(Select(Apply(TypeApply(fn,_), List(code)),nme.apply),List(quotes))
         if fn.symbol == defn.QuotedRuntime_exprQuote =>
           super.transform(tree)(using quoteContext)
