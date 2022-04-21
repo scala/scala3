@@ -117,23 +117,12 @@ object SymUtils:
       self.isOneOf(FinalOrInline, butNot = Mutable)
       && (!self.is(Method) || self.is(Accessor))
 
-    /** This module must use a `Mirror.SingletonProxy` for its mirror if:
-     *  - it is Scala 2 defined
-     *  - the companion class is a generic product or generic sum and would cache
-     *    its mirror in this module.
-     */
-    def requiresSingletonProxyMirror(using Context): Boolean =
-      self.is(Scala2x) || {
-        val cls = self.companionClass
-        cls.isGenericProduct
-        || cls.useCompanionAsSumMirror && cls.isGenericSum(self)
-      }
-
     def useCompanionAsSumMirror(using Context): Boolean =
       def companionExtendsSum(using Context): Boolean =
         self.linkedClass.isSubClass(defn.Mirror_SumClass)
-      self.linkedClass.exists
-        && !self.is(Scala2x)
+      !self.is(Scala2x)
+        && self.linkedClass.exists
+        && !self.linkedClass.is(Case)
         && (
           // If the sum type is compiled from source, and `self` is a "generic sum"
           // then its companion object will become a sum mirror in `posttyper`. (This method

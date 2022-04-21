@@ -1,19 +1,18 @@
 import scala.deriving.Mirror
 
-class Standalone
-case object Standalone
+case class Standalone(i: Int)
+object Standalone
 
 case class WithCompanionCaseClass(i: Int)
 case object WithCompanionCaseClass
 
 @main def Test: Unit =
 
-  val mStandalone = summon[Mirror.Of[Standalone.type]]
-  assert(mStandalone eq Standalone) // the object is its own mirror
-  assert(mStandalone.isInstanceOf[Mirror.Singleton]) // object extends Mirror.Singleton because its its own mirror.
+  val mStandalone = summon[Mirror.ProductOf[Standalone]]
+  assert(mStandalone eq Standalone) // the companion object is the mirror for the case class
 
-  val mWithCompanion = summon[Mirror.Of[WithCompanionCaseClass.type]]
-  assert(mWithCompanion ne WithCompanionCaseClass) // the object is not its own mirror
-  assert(mWithCompanion.isInstanceOf[Mirror.SingletonProxy]) // its companion is a case class, so the mirror is a proxy
-  assert(!mWithCompanion.isInstanceOf[Mirror.Singleton]) // it can not extend Mirror.Singleton because its companion is a case class.
-  assert(WithCompanionCaseClass.isInstanceOf[Mirror.Product]) // its companion is a case class, so the mirror is a product.
+  val mWithCompanion = summon[Mirror.ProductOf[WithCompanionCaseClass]]
+  assert(mWithCompanion ne WithCompanionCaseClass) // A case object can not be the mirror of a companion case class.
+
+  val mWithCompanionCaseObject = summon[Mirror.ProductOf[WithCompanionCaseClass.type]]
+  assert(mWithCompanionCaseObject eq WithCompanionCaseClass) // A case object is its own mirror.

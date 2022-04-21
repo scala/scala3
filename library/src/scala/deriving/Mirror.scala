@@ -37,9 +37,7 @@ object Mirror {
     def fromProduct(p: scala.Product): MirroredMonoType = this
   }
 
-  /** A proxy for Scala 2 singletons (which do not inherit `Singleton` directly),
-   *  or case objects with a case class companion
-   */
+  /** A proxy for Scala 2 singletons, which do not inherit `Singleton` directly */
   class SingletonProxy(val value: AnyRef) extends Product {
     type MirroredMonoType = value.type
     type MirroredType = value.type

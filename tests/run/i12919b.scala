@@ -9,9 +9,9 @@ case object WithCompanionSealedTrait:
 
   val mWithCompanionSum = summon[Mirror.SumOf[WithCompanionSealedTrait]]
   assert(mWithCompanionSum.ordinal(WithCompanionSealedTrait.FirstChild(1)) == 0)
-  assert(mWithCompanionSum eq WithCompanionSealedTrait) // case object caches sum mirror of its companion
+  assert(mWithCompanionSum ne WithCompanionSealedTrait) // A case object can not be the mirror of a companion case class.
 
   val mWithCompanionSingleton = summon[Mirror.ProductOf[WithCompanionSealedTrait.type]]
   assert(mWithCompanionSingleton.fromProduct(EmptyTuple) == WithCompanionSealedTrait)
-  assert(mWithCompanionSingleton.isInstanceOf[Mirror.SingletonProxy])
-  assert(mWithCompanionSingleton ne WithCompanionSealedTrait) // proxy mirror is never the object itself
+  assert(mWithCompanionSingleton.isInstanceOf[Mirror.Singleton]) // case object is its own mirror.
+  assert(mWithCompanionSingleton eq WithCompanionSealedTrait) // case object is its own mirror.
