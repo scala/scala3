@@ -1,5 +1,9 @@
 name: Scala CLA
-on: [pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - 'language-reference-backport'
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -8,3 +12,4 @@ jobs:
     - run: ./project/scripts/check-cla.sh
       env:
         AUTHOR: ${{ github.event.pull_request.user.login }}
+        PUSH_AUTHOR: ${{ github.event.push.sender.login }}
