@@ -12,3 +12,4 @@ jobs:
     - run: ./project/scripts/check-cla.sh
       env:
         AUTHOR: ${{ github.event.pull_request.user.login }}
+        PUSH_AUTHOR: ${{ github.event.push.sender.login }}
