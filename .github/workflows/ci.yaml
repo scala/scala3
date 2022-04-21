@@ -363,6 +363,7 @@ jobs:
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"
 
+<<<<<<< HEAD
       - name: Show dependency tracking file
         if: ${{ always() }}
         run: cat community-build/dotty-community-build-deps || true
@@ -410,6 +411,8 @@ jobs:
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestForwardCompat"
 
+=======
+>>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
@@ -509,7 +512,11 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
+<<<<<<< HEAD
     needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, community_build_forward_compat, test_sbt, test_java8]
+=======
+    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
+>>>>>>> parent of e39b618f9a (-Yscala-release support: extend community build with basic forward-compat tests (compiling selected projects with "-Yscala-release 3.0"))
     if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
