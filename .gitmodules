@@ -216,37 +216,6 @@
 [submodule "community-build/community-projects/spire"]
 	path = community-build/community-projects/spire
 	url = https://github.com/dotty-staging/spire.git
-[submodule "community-build/community-projects/munit-forward-compat"]
-	path = community-build/community-projects/munit-forward-compat
-	url = https://github.com/dotty-staging/munit.git
-[submodule "community-build/community-projects/discipline-forward-compat"]
-	path = community-build/community-projects/discipline-forward-compat
-	url = https://github.com/dotty-staging/discipline.git
-[submodule "community-build/community-projects/discipline-munit-forward-compat"]
-	path = community-build/community-projects/discipline-munit-forward-compat
-	url = https://github.com/dotty-staging/discipline-munit.git
-[submodule "community-build/community-projects/discipline-specs2-forward-compat"]
-	path = community-build/community-projects/discipline-specs2-forward-compat
-	url = https://github.com/dotty-staging/discipline-specs2.git
-[submodule "community-build/community-projects/simulacrum-scalafix-forward-compat"]
-	path = community-build/community-projects/simulacrum-scalafix-forward-compat
-	url = https://github.com/dotty-staging/simulacrum-scalafix.git
-[submodule "community-build/community-projects/cats-forward-compat"]
-	path = community-build/community-projects/cats-forward-compat
-	url = https://github.com/dotty-staging/cats.git
-[submodule "community-build/community-projects/cats-mtl-forward-compat"]
-	path = community-build/community-projects/cats-mtl-forward-compat
-	url = https://github.com/dotty-staging/cats-mtl.git
-[submodule "community-build/community-projects/coop-forward-compat"]
-	path = community-build/community-projects/coop-forward-compat
-	url = https://github.com/dotty-staging/coop.git
-[submodule "community-build/community-projects/cats-effect-3-forward-compat"]
-	path = community-build/community-projects/cats-effect-3-forward-compat
-	url = https://github.com/dotty-staging/cats-effect.git
-	branch = series/3.x
-[submodule "community-build/community-projects/scalacheck-forward-compat"]
-	path = community-build/community-projects/scalacheck-forward-compat
-	url = https://github.com/dotty-staging/scalacheck
 [submodule "community-build/community-projects/http4s"]
 	path = community-build/community-projects/http4s
 	url = https://github.com/dotty-staging/http4s.git
