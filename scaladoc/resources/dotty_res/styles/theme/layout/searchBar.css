@@ -11,6 +11,8 @@
 #scaladoc-searchbar {
   z-index: 5;
   width: calc(125 * var(--base-spacing));
+  position: relative;
+  top: calc(3 * var(--base-spacing));
 }
 
 #scaladoc-searchbar-input {
@@ -61,6 +63,9 @@
   background-color: var(--background-default);
   border-radius: 4px;
   margin-top: calc(1.5 * var(--base-spacing));
+  border: 1px solid var(--border-default);
+  max-height: calc(100% - calc(24 * var(--base-spacing)));
+  overflow: scroll;
 }
 
 .searchbar-hints {
@@ -145,4 +150,51 @@
 
 .searchbar-hints-list .h100:last-of-type {
   margin-top: calc(6 * var(--base-spacing));
+}
+
+.scaladoc-searchbar-row {
+  display: flex;
+  color: var(--text-secondary);
+  padding: calc(2 * var(--base-spacing)) calc(2 * var(--base-spacing));
+}
+
+.scaladoc-searchbar-row[divider] {
+  border-top: solid 1px var(--border-default);
+}
+
+.scaladoc-searchbar-row a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+/* searchbar footer */
+#searchbar-footer {
+  position: absolute;
+  bottom: 0px;
+  background-color: var(--background-default);
+  color: var(--text-secondary);
+  height: calc(6 * var(--base-spacing));
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+#searchbar-footer b {
+  color: var(--text-primary);
+}
+
+.searchbar-footer-right-container span {
+  margin-right: calc(2 * var(--base-spacing));
+}
+
+.searchbar-footer-left-container span {
+  margin-right: calc(2 * var(--base-spacing));
+}
+
+.searchbar-footer-left-container span:first-of-type {
+  margin-left: calc(2 * var(--base-spacing));
+}
+
+.searchbar-footer-right-container {
+  margin-left: auto;
 }

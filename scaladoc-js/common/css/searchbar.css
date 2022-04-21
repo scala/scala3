@@ -213,21 +213,21 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   overflow: auto;
 } */
 
-.scaladoc-searchbar-row {
+/* .scaladoc-searchbar-row {
   display: flex;
   background-color: var(--leftbar-bg);
   color: var(--leftbar-fg);
   line-height: 24px;
   padding: 4px 10px 4px 10px;
-}
+} */
 
 .scaladoc-searchbar-row.hidden {
   display: none;
 }
 
-.scaladoc-searchbar-row[divider] {
+/* .scaladoc-searchbar-row[divider] {
   border-top: solid 1px var(--leftbar-border);
-}
+} */
 
 .scaladoc-searchbar-row .micon {
   height: 16px;
@@ -235,10 +235,10 @@ div[selected] > .scaladoc-searchbar-inkuire-package {
   margin: 4px 8px 0px 0px;
 }
 
-.scaladoc-searchbar-row[selected] {
+/* .scaladoc-searchbar-row[selected] {
   background-color: var(--leftbar-hover-bg);
   color: var(--leftbar-hover-fg);
-}
+} */
 
 .scaladoc-searchbar-row[result] {
   flex-direction: column;

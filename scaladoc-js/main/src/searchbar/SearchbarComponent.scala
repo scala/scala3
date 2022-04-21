@@ -172,7 +172,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     icon
 
   private val inputElem: html.Input =
-    input(id := "scaladoc-searchbar-input", `type` := "search").tap { element =>
+    input(id := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything").tap { element =>
       element.addEventListener("input", { e =>
         val inputValue = e.target.asInstanceOf[html.Input].value
         if inputValue.isEmpty then showHints()
@@ -203,8 +203,22 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       })
     }
 
+    val searchbarFooter = div(id := "searchbar-footer", cls := "body-small")(
+      span(cls := "searchbar-footer-left-container")(
+        span("Smart search:"),
+        span(b("CC "), "to find CamcelCase phrases"),
+        span(b("A=>B "), "to find CamcelCase signatures"),
+      ),
+      span(cls := "searchbar-footer-right-container")(
+        span(b("Esc "), "to close"),
+        span(b("Arrows "), "to navigate"),
+        span(b("Enter "), "to select"),
+      ),
+    )
+
     val rootParent = div(id := "searchbar-container")(
-      element
+      element,
+      searchbarFooter
     ).tap { rootElem =>
       rootElem.addEventListener("mousedown", (e: Event) => handleEscape())
     }
