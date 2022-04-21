@@ -1266,7 +1266,7 @@ class Namer { typer: Typer =>
                       |and  ${forwarder1.rhs.symbol}: ${alt2.widen}
                       |have the same signature after erasure and overloading resolution could not disambiguate.""",
                   exp.srcPos)
-              avoidClashWith(if cmp < 0 then forwarder else forwarder1, forwarders1)
+              avoidClashWith(if cmp < 0 then forwarder1 else forwarder, forwarders1)
             else
               val (forwarder2, forwarders2) = avoidClashWith(forwarder, forwarders1)
               (forwarder2, forwarders.derivedCons(forwarder1, forwarders2))
