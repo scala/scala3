@@ -18,14 +18,23 @@ object NamerOps:
       case TypeSymbols(tparams) :: _ => ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef))
       case _ => ctor.owner.typeRef
 
-  /** if isConstructor, make sure it has one leading non-implicit parameter list */
+  /** If isConstructor, make sure it has at least one non-implicit parameter list
+   *  This is done by adding a () in front of a leading old style implicit parameter,
+   *  or by adding a () as last -- or only -- parameter list if the constructor has
+   *  only using clauses as parameters.
+   */
   def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean)(using Context): List[List[Symbol]] =
     if !isConstructor then paramss
     else paramss match
-      case Nil :: _ => paramss
-      case TermSymbols(vparam :: _) :: _ if !vparam.isOneOf(GivenOrImplicit) => paramss
       case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor)
-      case _ => Nil :: paramss
+      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) => Nil :: paramss
+      case _ =>
+        if paramss.forall {
+          case TermSymbols(vparams) => vparams.nonEmpty && vparams.head.is(Given)
+          case _ => true
+        }
+        then paramss :+ Nil
+        else paramss
 
   /** The method type corresponding to given parameters and result type */
   def methodType(paramss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =

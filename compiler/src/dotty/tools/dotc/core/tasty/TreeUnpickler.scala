@@ -27,7 +27,7 @@ import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import typer.Nullables._
 import util.Spans._
-import util.SourceFile
+import util.{SourceFile, Property}
 import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
@@ -1163,6 +1163,36 @@ class TreeUnpickler(reader: TastyReader,
           readPathTerm()
       }
 
+      /** Adapt constructor calls where class has only using clauses from old to new scheme.
+       *  or class has mixed using clauses and other clauses.
+       *  Old: leading (), new: nothing, or trailing () if all clauses are using clauses.
+       *  This is neccessary so that we can read pre-3.2 Tasty correctly. There,
+       *  constructor calls use the old scheme, but constructor definitions already
+       *  use the new scheme, since they are reconstituted with normalizeIfConstructor.
+       */
+      def constructorApply(fn: Tree, args: List[Tree]): Tree =
+        if fn.tpe.widen.isContextualMethod && args.isEmpty then
+          fn.withAttachment(SuppressedApplyToNone, ())
+        else
+          val fn1 = fn match
+            case Apply(fn1, Nil) if fn.removeAttachment(InsertedApplyToNone).isDefined =>
+              // We thought we inserted a final `()` but hit a user-written `()` instead.
+              // Remove the inserted `()`.
+              fn1
+            case _ =>
+              fn
+          val res = tpd.Apply(fn1, args)
+          if fn.removeAttachment(SuppressedApplyToNone).isEmpty then
+            res
+          else res.tpe.widen match
+            case mt @ MethodType(params) =>
+              if params.isEmpty then
+                // Assume it's the final synthesized `()` parameter
+                res.appliedToNone.withAttachment(InsertedApplyToNone, ())
+              else if mt.isContextualMethod then
+                res.withAttachment(SuppressedApplyToNone, ())
+              else res
+
       def readLengthTerm(): Tree = {
         val end = readEnd()
         val result =
@@ -1173,7 +1203,9 @@ class TreeUnpickler(reader: TastyReader,
               tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTerm()
-              tpd.Apply(fn, until(end)(readTerm()))
+              val args = until(end)(readTerm())
+              if fn.symbol.isConstructor then constructorApply(fn, args)
+              else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
             case TYPED =>
@@ -1560,4 +1592,14 @@ object TreeUnpickler {
   inline val AllDefs = 2          // add everything
 
   class TreeWithoutOwner extends Exception
+
+  /** An attachment key indicating that an old-style leading () in a constructor
+   *  call that is followed by a using clause was suppressed.
+   */
+  val SuppressedApplyToNone: Property.Key[Unit] = Property.Key()
+
+  /** An attachment key indicating that a trailing () in a constructor
+   *  call that has otherwise only using clauses was inserted.
+   */
+  val InsertedApplyToNone: Property.Key[Unit] = Property.Key()
 }

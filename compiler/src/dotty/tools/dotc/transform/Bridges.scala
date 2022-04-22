@@ -170,7 +170,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
    *  time deferred methods in `stats` that are replaced by a bridge with the same signature.
    */
   def add(stats: List[untpd.Tree]): List[untpd.Tree] =
-    val opc = new BridgesCursor()(using preErasureCtx)
+    val opc = inContext(preErasureCtx) { new BridgesCursor }
     while opc.hasNext do
       if !opc.overriding.is(Deferred) then
         addBridgeIfNeeded(opc.overriding, opc.overridden)
