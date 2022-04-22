@@ -1510,13 +1510,6 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class TopLevelCantBeImplicit(sym: Symbol)(
-    implicit ctx: Context)
-    extends SyntaxMsg(TopLevelCantBeImplicitID) {
-    def msg = em"""${hl("implicit")} modifier cannot be used for top-level definitions"""
-    def explain = ""
-  }
-
   class TypesAndTraitsCantBeImplicit()(using Context)
     extends SyntaxMsg(TypesAndTraitsCantBeImplicitID) {
     def msg = em"""${hl("implicit")} modifier cannot be used for types or traits"""
