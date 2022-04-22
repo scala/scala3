@@ -1,0 +1,5 @@
+> lib1/compile
+> lib2/compile
+-> app1fail/compile
+> app1ok/run
+-> app2fail/compile
