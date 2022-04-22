@@ -2121,6 +2121,7 @@ import transform.SymUtils._
   class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using Context) extends NamingMsg(DoubleDefinitionID) {
     def msg = {
       def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
+      def erasedType = if ctx.erasedTypes then i" ${decl.info}" else ""
       def details(using Context): String =
         if (decl.isRealMethod && previousDecl.isRealMethod) {
           import Signature.MatchDegree._
@@ -2148,7 +2149,7 @@ import transform.SymUtils._
                      |Consider adding a @targetName annotation to one of the conflicting definitions
                      |for disambiguation."""
                 else ""
-              i"have the same$nameAnd type after erasure.$hint"
+              i"have the same$nameAnd type$erasedType after erasure.$hint"
           }
         }
         else ""
@@ -2167,10 +2168,12 @@ import transform.SymUtils._
         else
           "Name clash between inherited members"
 
-      em"""$clashDescription:
-          |${previousDecl.showDcl} ${symLocation(previousDecl)} and
-          |${decl.showDcl} ${symLocation(decl)}
-          |""" + details
+      atPhase(typerPhase) {
+        em"""$clashDescription:
+            |${previousDecl.showDcl} ${symLocation(previousDecl)} and
+            |${decl.showDcl} ${symLocation(decl)}
+            |"""
+      } + details
     }
     def explain = ""
   }
