@@ -75,8 +75,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     def createLoadMoreElement =
       div(cls := "scaladoc-searchbar-row monospace", "loadmore" := "")(
         a(
-          a(cls := "i fas fa-arrow-down"),
-          span("Show more...")
+          span("Load more")
         )
       ).tap { loadMoreElement => loadMoreElement
         .addEventListener("mouseover", _ => handleHover(loadMoreElement))

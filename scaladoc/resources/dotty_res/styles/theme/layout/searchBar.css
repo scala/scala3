@@ -155,10 +155,20 @@
 .scaladoc-searchbar-row {
   display: flex;
   color: var(--text-secondary);
-  padding: calc(2 * var(--base-spacing)) calc(2 * var(--base-spacing));
+  padding: calc(1.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
+}
+
+.scaladoc-searchbar-row[result] {
+  padding: calc(1.25 * var(--base-spacing)) calc(2 * var(--base-spacing));
+}
+
+.scaladoc-searchbar-row[result]:hover,
+.scaladoc-searchbar-row[selected] {
+  background-color: var(--action-primary-background-selected);
 }
 
 .scaladoc-searchbar-row[divider] {
+  margin-top: calc(0.25 * var(--base-spacing));
   border-top: solid 1px var(--border-default);
 }
 
