@@ -38,8 +38,6 @@ trait QuotesAndSplices {
     tree.quoted match {
       case untpd.Splice(innerExpr) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
-      case untpd.TypSplice(innerType) if tree.isType =>
-        report.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.srcPos)
       case _ =>
     }
     val qctx = inferImplicitArg(defn.QuotesClass.typeRef, tree.span)
@@ -144,18 +142,6 @@ trait QuotesAndSplices {
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
       val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
       ref(defn.QuotedRuntimePatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
-  }
-
-  /** Emit error with migration hint */
-  def typedTypSplice(tree: untpd.TypSplice, pt: Type)(using Context): Tree = {
-    val msg = "Type splicing with `$` in quotes not supported anymore"
-    val hint =
-      if ctx.mode.is(Mode.QuotedPattern) && level == 1 then
-        "Use lower cased variable name without the `$` instead"
-      else
-        "Use a given Type[T] in a quote just write T directly"
-    report.error(s"$msg\n\nHint: $hint", tree.srcPos)
-    ref(defn.NothingType)
   }
 
   /** Type a pattern variable name `t` in quote pattern as `${given t$giveni: Type[t @ _]}`.
