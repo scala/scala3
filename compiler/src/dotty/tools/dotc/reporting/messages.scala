@@ -2447,15 +2447,6 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class TypeSpliceInValPattern(expr:  untpd.Tree)(using Context)
-    extends SyntaxMsg(TypeSpliceInValPatternID) {
-    def msg = "Type splices cannot be used in val patterns. Consider using `match` instead."
-    def explain =
-      em"""|Type splice: `$$${expr.show}` cannot be used in a `val` pattern. Consider rewriting the `val` pattern
-           |as a `match` with a corresponding `case` to replace the `val`.
-           |""".stripMargin
-  }
-
   class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
     extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
     def msg = em"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
