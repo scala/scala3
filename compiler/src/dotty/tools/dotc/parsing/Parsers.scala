@@ -1572,13 +1572,17 @@ object Parsers {
     /** The block in a quote or splice */
     def stagedBlock() = inBraces(block(simplify = true))
 
-    /** SimpleExpr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
-     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
+    /** ExprSplice  ::=  ‘$’ spliceId            if inside quoted block
+     *                |  ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
+     *                |  ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
      *
-     *  SimpleExpr  ::=  spliceId | ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
-     *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
+     *  // Deprecated syntax
+     *  TypeSplice  ::=  ‘$’ spliceId            if inside quoted type
+     *                |  ‘$’ ‘{’ Block ‘}’)  unless inside quoted pattern
+     *                |  ‘$’ ‘{’ Pattern ‘}’)  when inside quoted pattern
      */
     def splice(isType: Boolean): Tree =
+      val start = in.offset
       atSpan(in.offset) {
         val expr =
           if (in.name.length == 1) {
@@ -1591,7 +1595,16 @@ object Parsers {
             in.nextToken()
             id
           }
-        if (isType) TypSplice(expr) else Splice(expr)
+        if isType then
+          val msg = "Type splicing with `$` in quotes not supported anymore"
+          val inPattern = (staged & StageKind.QuotedPattern) != 0
+          val hint =
+            if inPattern then "Use lower cased variable name without the `$` instead"
+            else "Use a given Type[T] in a quote just write T directly"
+          syntaxError(s"$msg\n\nHint: $hint", Span(start, in.lastOffset))
+          Ident(nme.ERROR.toTypeName)
+        else
+          Splice(expr)
       }
 
     /**  SimpleType      ::=  SimpleLiteral
@@ -1635,7 +1648,7 @@ object Parsers {
      *                     |  Singleton `.' type
      *                     |  ‘(’ ArgTypes ‘)’
      *                     |  Refinement
-     *                     |  ‘$’ ‘{’ Block ‘}’
+     *                     |  TypeSplice
      *                     |  SimpleType1 TypeArgs
      *                     |  SimpleType1 `#' id
      */
@@ -2237,7 +2250,7 @@ object Parsers {
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                 |  ‘new’ TemplateBody
      *                 |  BlockExpr
-     *                 |  ‘$’ ‘{’ Block ‘}’
+     *                 |  ExprSplice
      *                 |  Quoted
      *                 |  quoteId
      *                 |  SimpleExpr1 [`_`]
