@@ -278,6 +278,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     /** do all parts match the class symbol? */
     def acceptable(tp: Type, cls: Symbol): Boolean = tp match
+      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] => false
       case tp: TypeProxy    => acceptable(tp.underlying, cls)
       case OrType(tp1, tp2) => acceptable(tp1, cls) && acceptable(tp2, cls)
       case _                => tp.classSymbol eq cls
@@ -330,6 +331,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     def acceptable(tp: Type): Boolean = tp match
       case tp: TermRef => false
+      case tp: HKTypeLambda if tp.resultType.isInstanceOf[HKTypeLambda] => false
       case tp: TypeProxy => acceptable(tp.underlying)
       case OrType(tp1, tp2) => acceptable(tp1) && acceptable(tp2)
       case _            => tp.classSymbol eq cls
