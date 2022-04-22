@@ -452,8 +452,6 @@ object Parsers {
         makeParameter(nme.ERROR, tree, mods)
       case Typed(id @ Ident(name), tpt) =>
         makeParameter(name.asTermName, tpt, mods, isBackquoted = isBackquoted(id)).withSpan(tree.span)
-      case Typed(Splice(Ident(name)), tpt) =>
-        makeParameter(("$" + name).toTermName, tpt, mods).withSpan(tree.span)
       case _ =>
         syntaxError(s"not a legal $expected", tree.span)
         makeParameter(nme.ERROR, tree, mods)
