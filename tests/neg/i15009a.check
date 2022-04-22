@@ -1,15 +1,9 @@
--- Error: tests/neg/i15009a.scala:3:2 ----------------------------------------------------------------------------------
-3 |  '[Int] // error
-  |  ^^^^^^
-  |  Quoted types `'[..]` can only be used in patterns.
-  |
-  |  Hint: To get a scala.quoted.Type[T] use scala.quoted.Type.of[T] instead.
--- Error: tests/neg/i15009a.scala:4:2 ----------------------------------------------------------------------------------
+-- Error: tests/neg/i15009a.scala:4:9 ----------------------------------------------------------------------------------
 4 |  '[List[${Type.of[Int]}]] // error
-  |  ^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Quoted types `'[..]` can only be used in patterns.
+  |         ^^^^^^^^^^^^^^^
+  |         Type splicing with `$` in quotes not supported anymore
   |
-  |  Hint: To get a scala.quoted.Type[T] use scala.quoted.Type.of[T] instead.
+  |         Hint: To use a given Type[T] in a quote just write T directly
 -- Error: tests/neg/i15009a.scala:7:16 ---------------------------------------------------------------------------------
 7 |    case '[List[$a]] => // error
   |                ^^
@@ -21,13 +15,19 @@
    |                ^^^^
    |                Type splicing with `$` in quotes not supported anymore
    |
-   |                Hint: Use a given Type[T] in a quote just write T directly
+   |                Hint: To use a given Type[T] in a quote just write T directly
 -- Error: tests/neg/i15009a.scala:11:9 ---------------------------------------------------------------------------------
 11 |  val t: ${int} = ??? // error
    |         ^^^^^^
    |         Type splicing with `$` in quotes not supported anymore
    |
-   |         Hint: Use a given Type[T] in a quote just write T directly
+   |         Hint: To use a given Type[T] in a quote just write T directly
+-- Error: tests/neg/i15009a.scala:3:2 ----------------------------------------------------------------------------------
+3 |  '[Int] // error
+  |  ^^^^^^
+  |  Quoted types `'[..]` can only be used in patterns.
+  |
+  |  Hint: To get a scala.quoted.Type[T] use scala.quoted.Type.of[T] instead.
 -- [E006] Not Found Error: tests/neg/i15009a.scala:12:2 ----------------------------------------------------------------
 12 |  $int // error: Not found: $int
    |  ^^^^

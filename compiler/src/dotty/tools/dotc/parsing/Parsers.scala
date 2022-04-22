@@ -1598,7 +1598,7 @@ object Parsers {
           val inPattern = (staged & StageKind.QuotedPattern) != 0
           val hint =
             if inPattern then "Use lower cased variable name without the `$` instead"
-            else "Use a given Type[T] in a quote just write T directly"
+            else "To use a given Type[T] in a quote just write T directly"
           syntaxError(s"$msg\n\nHint: $hint", Span(start, in.lastOffset))
           Ident(nme.ERROR.toTypeName)
         else
