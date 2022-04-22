@@ -10,7 +10,7 @@ val experimentalDefinitionInLibrary = Set(
 
 
   //// New feature: Safe Exceptions
-  // Can be stabilized when safe exeptions language feature is stabilized.
+  // Can be stabilized when safe exceptions language feature is stabilized.
   "scala.CanThrow",
   "scala.unsafeExceptions", "scala.unsafeExceptions$",
   "scala.runtime.$throws$package$.$throws",
@@ -102,7 +102,7 @@ val experimentalDefinitionInLibrary = Set(
          |Found @experimental definition in library not listed:
          |${missingFromList.toSeq.sorted.mkString("\n")}
          |
-         |If added new experimental defintions to the library, add them to the list in tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala
+         |If added new experimental definitions to the library, add them to the list in tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala
          |
          |Test only: sbt "scala3-bootstrapped/testCompilation tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala"
          |""".stripMargin
