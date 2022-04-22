@@ -240,11 +240,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
    *     <parent> {
    *       MirroredMonoType = <monoType>
    *       MirroredType = <mirroredType>
-   *       MirroredLabel = <label> }
+   *       MirroredLabel = <label>
    *     }
    */
-  private def mirrorCore(parentClass: ClassSymbol, monoType: Type, mirroredType: Type, label: Name, formal: Type)(using Context) =
-    formal & parentClass.typeRef
+  private def mirrorCore(parentClass: ClassSymbol, monoType: Type, mirroredType: Type, label: Name)(using Context) =
+    parentClass.typeRef
       .refinedWith(tpnme.MirroredMonoType, TypeAlias(monoType))
       .refinedWith(tpnme.MirroredType, TypeAlias(mirroredType))
       .refinedWith(tpnme.MirroredLabel, TypeAlias(ConstantType(Constant(label.toString))))
@@ -268,6 +268,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     if actual.exists && !(expected =:= actual)
     then report.error(
       em"$name mismatch, expected: $expected, found: $actual.", ctx.source.atSpan(span))
+
+  extension (formal: Type)
+    /** `tp := op; tp <:< formal; formal & tp` */
+    private def constrained_&(op: Context ?=> Type)(using Context): Type =
+      val tp = op
+      tp <:< formal
+      formal & tp
 
   private def mkMirroredMonoType(mirroredType: HKTypeLambda)(using Context): Type =
     val monoMap = new TypeMap:
@@ -366,10 +373,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       val elemsLabels = TypeOps.nestedPairs(elemLabels)
       checkRefinement(formal, tpnme.MirroredElemTypes, elemsType, span)
       checkRefinement(formal, tpnme.MirroredElemLabels, elemsLabels, span)
-      val mirrorType =
-        mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name, formal)
+      val mirrorType = formal.constrained_& {
+        mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name)
           .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
+      }
       val mirrorRef =
         if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsProductMirror, span)
@@ -382,12 +390,15 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           val singleton = tref.termSymbol // prefer alias name over the orignal name
           val singletonPath = pathFor(tref).withSpan(span)
           if tref.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
-            val mirrorType =
-              mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name, formal)
+            val mirrorType = formal.constrained_& {
+              mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name)
+            }
             val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
             withNoErrors(mirrorRef.cast(mirrorType))
           else
-            val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name, formal)
+            val mirrorType = formal.constrained_& {
+              mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name)
+            }
             withNoErrors(singletonPath.cast(mirrorType))
         case MirrorSource.ClassSymbol(cls) =>
           if cls.isGenericProduct then makeProductMirror(cls)
@@ -452,9 +463,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           (mirroredType, elems)
 
       val mirrorType =
-        mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, formal)
+        val labels = TypeOps.nestedPairs(elemLabels)
+        formal.constrained_& {
+          mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name)
             .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-            .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+            .refinedWith(tpnme.MirroredElemLabels, TypeAlias(labels))
+        }
       val mirrorRef =
         if cls.useCompanionAsSumMirror then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsSumMirror, span)
@@ -463,7 +477,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       withErrors(i"type `$mirroredType` is not a generic sum because $acceptableMsg")
     else if !clsIsGenericSum then
       withErrors(i"$cls is not a generic sum because ${cls.whyNotGenericSum}")
-    else
+      else
       EmptyTreeNoError
   end sumMirror
 
