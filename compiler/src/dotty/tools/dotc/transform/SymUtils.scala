@@ -146,6 +146,7 @@ object SymUtils:
         s"it is not a sealed ${self.kindString}"
       else if (!self.isOneOf(AbstractOrTrait))
         s"it is not an abstract class"
+      else if self.is(CaseClass) then "it is a sealed abstract case class"
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror
@@ -169,8 +170,7 @@ object SymUtils:
             } else i"its child $child is not a generic product because $s"
           }
         }
-        if (children.isEmpty) "it does not have subclasses"
-        else children.map(problem).find(!_.isEmpty).getOrElse("")
+        children.map(problem).find(!_.isEmpty).getOrElse("")
       }
 
     def isGenericSum(declScope: Symbol)(using Context): Boolean = whyNotGenericSum(declScope).isEmpty

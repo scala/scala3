@@ -1,0 +1,12 @@
+-- Error: tests/neg/i11764.scala:20:38 ---------------------------------------------------------------------------------
+20 |  val mFoo = summon[Mirror.SumOf[Foo]] // error
+   |                                      ^
+   |no given instance of type deriving.Mirror.SumOf[Foo] was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11764.scala:22:38 ---------------------------------------------------------------------------------
+22 |  val mBar = summon[Mirror.SumOf[Bar]] // error
+   |                                      ^
+   |no given instance of type deriving.Mirror.SumOf[Bar] was found for parameter x of method summon in object Predef
+-- Error: tests/neg/i11764.scala:23:42 ---------------------------------------------------------------------------------
+23 |  val mBaz = summon[Mirror.ProductOf[Bar]] // error
+   |                                          ^
+   |no given instance of type deriving.Mirror.ProductOf[Bar] was found for parameter x of method summon in object Predef

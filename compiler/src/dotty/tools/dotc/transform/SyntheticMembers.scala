@@ -529,13 +529,17 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   def ordinalBody(cls: Symbol, param: Tree)(using Context): Tree =
     if (cls.is(Enum)) param.select(nme.ordinal).ensureApplied
     else {
-      val cases =
-        for ((child, idx) <- cls.children.zipWithIndex) yield {
-          val patType = if (child.isTerm) child.reachableTermRef else child.reachableRawTypeRef
-          val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
-          CaseDef(pat, EmptyTree, Literal(Constant(idx)))
-        }
-      Match(param.annotated(New(defn.UncheckedAnnot.typeRef, Nil)), cases)
+      val children = cls.children
+      if children.isEmpty then
+        Throw(New(defn.MatchErrorClass.typeRef, param :: Nil))
+      else
+        val cases =
+          for (child, idx) <- children.zipWithIndex yield
+            val patType = if child.isTerm then child.reachableTermRef else child.reachableRawTypeRef
+            val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
+            CaseDef(pat, EmptyTree, Literal(Constant(idx)))
+          end for
+        Match(param.annotated(New(defn.UncheckedAnnot.typeRef, Nil)), cases)
     }
 
   /** - If `impl` is the companion of a generic sum, add `deriving.Mirror.Sum` parent
