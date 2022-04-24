@@ -1410,7 +1410,7 @@ object Build {
             val outputDir = languageReferenceConfig.value.get[OutputDir].get.value
             val expectedLinksFile = (file("project") / "scripts" / "expected-links" / "reference-expected-links.txt").toString
             import _root_.scala.sys.process._
-            s"$script $outputDir $expectedLinksFile" !
+            s"$script $outputDir $expectedLinksFile".!
           }
         }
 
