@@ -170,11 +170,11 @@ In each case, the `:` at the end of line can be replaced without change of meani
 
 The syntax changes allowing this are as follows:
 
-```ebnf
-Template    ::=  InheritClauses [colonEol] [TemplateBody] ;
-EnumDef     ::=  id ClassConstr InheritClauses [colonEol] EnumBody ;
-Packaging   ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’ ;
-SimpleExpr  ::=  ‘new’ ConstrApp {‘with’ ConstrApp} [[colonEol] TemplateBody] ;
+```
+Template    ::=  InheritClauses [colonEol] [TemplateBody]
+EnumDef     ::=  id ClassConstr InheritClauses [colonEol] EnumBody
+Packaging   ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’
+SimpleExpr  ::=  ‘new’ ConstrApp {‘with’ ConstrApp} [[colonEol] TemplateBody]
 ```
 
 Here, `colonEol` stands for ": at end of line", as described above.
@@ -372,13 +372,13 @@ If none of these criteria apply, it's often better to not use an end marker sinc
 
 #### Syntax
 
-```ebnf
-EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL ;
+```
+EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
 EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | ‘try’
-                    |  ‘new’ | ‘this’ | ‘given’ | ‘extension’ | ‘val’ ;
-BlockStat         ::=  ... | EndMarker ;
-TemplateStat      ::=  ... | EndMarker ;
-TopStat           ::=  ... | EndMarker ;
+                    |  ‘new’ | ‘this’ | ‘given’ | ‘extension’ | ‘val’
+BlockStat         ::=  ... | EndMarker
+TemplateStat      ::=  ... | EndMarker
+TopStat           ::=  ... | EndMarker
 ```
 
 ### Example

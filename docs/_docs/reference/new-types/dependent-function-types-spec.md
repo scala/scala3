@@ -8,11 +8,11 @@ Initial implementation in [PR #3464](https://github.com/lampepfl/dotty/pull/3464
 
 ## Syntax
 
-```ebnf
+```
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {',' FunArgType } ] ‘)’
-                    |  ‘(’ TypedFunParam {',' TypedFunParam } ‘)’ ;
-TypedFunParam     ::=  id ‘:’ Type ;
+                    |  ‘(’ TypedFunParam {',' TypedFunParam } ‘)’
+TypedFunParam     ::=  id ‘:’ Type
 ```
 
 Dependent function types associate to the right, e.g.
