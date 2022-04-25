@@ -153,18 +153,11 @@ object SymOps:
     def splitExtensionParamList: (List[reflect.ParamClause], List[reflect.ParamClause]) =
       import reflect.*
 
-      def getPositionStartOption(pos: Option[Position]): Option[Int] = pos.flatMap {
-        case dotty.tools.dotc.util.NoSourcePosition => None
-        case pos: Position => Some(pos.start)
-      }
-
       def comparePositionStarts(posA: Option[Position], posB: Option[Position]): Option[Boolean] =
         for {
-          startA <- getPositionStartOption(posA)
-          startB <- getPositionStartOption(posB)
-        } yield {
-          startA < startB
-        }
+          a <- posA
+          b <- posB
+        } yield a.start < b.start
 
       sym.tree match
         case tree: DefDef =>
