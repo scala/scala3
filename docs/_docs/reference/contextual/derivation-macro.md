@@ -49,7 +49,7 @@ given derived[T: Type](using Quotes): Expr[Eq[T]] =
   ev match
     case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
       val elemInstances = summonAll[elementTypes]
-      val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) =>
+      def eqProductBody(Expr[T], Expr[T])(using Quotes): Expr[Boolean] = (x, y) =>
         elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
           case (acc, (elem, index)) =>
             val e1 = '{$x.asInstanceOf[Product].productElement(${Expr(index)})}
