@@ -1570,12 +1570,12 @@ object Parsers {
     /** The block in a quote or splice */
     def stagedBlock() = inBraces(block(simplify = true))
 
-    /** Splice  ::=  ‘$’ id                  if inside quoted block
-     *            |  ‘$’ ‘{’ Block ‘}’   unless inside quoted pattern
-     *            |  ‘$’ ‘{’ Pattern ‘}’   when inside quoted pattern
-     *            |  ‘$’ id                  if inside quoted type // Deprecated syntax
-     *            |  ‘$’ ‘{’ Block ‘}’   unless inside quoted type pattern // Deprecated syntax
-     *            |  ‘$’ ‘{’ Pattern ‘}’   when inside quoted type pattern // Deprecated syntax
+    /** ExprSplice  ::=  ‘$’ spliceId          --     if inside quoted block
+     *                |  ‘$’ ‘{’ Block ‘}’     -- unless inside quoted pattern
+     *                |  ‘$’ ‘{’ Pattern ‘}’   --   when inside quoted pattern
+     *  TypeSplice  ::=  ‘$’ spliceId          --    if inside quoted type
+     *                |  ‘$’ ‘{’ Block ‘}’     -- unless inside quoted type pattern
+     *                |  ‘$’ ‘{’ Pattern ‘}’   --   when inside quoted type pattern
      */
     def splice(isType: Boolean): Tree =
       val start = in.offset
@@ -1644,7 +1644,7 @@ object Parsers {
      *                     |  Singleton `.' type
      *                     |  ‘(’ ArgTypes ‘)’
      *                     |  Refinement
-     *                     |  Splice
+     *                     |  TypeSplice                -- deprecated syntax (since 3.0.0)
      *                     |  SimpleType1 TypeArgs
      *                     |  SimpleType1 `#' id
      */
@@ -2246,7 +2246,7 @@ object Parsers {
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                 |  ‘new’ TemplateBody
      *                 |  BlockExpr
-     *                 |  Splice
+     *                 |  ExprSplice
      *                 |  Quoted
      *                 |  quoteId
      *                 |  SimpleExpr1 [`_`]
