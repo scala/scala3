@@ -2684,6 +2684,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** The applied type arguments (empty if there is no such arguments) */
         def typeArgs: List[TypeRepr]
+
+        /** This type seen as if it were the type of a member of prefix type `pre`
+         *  declared in class `cls`.
+         */
+        @experimental
+        def asSeenFrom(pre: TypeRepr, cls: Symbol): TypeRepr
+
       end extension
     }
 

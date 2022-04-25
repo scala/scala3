@@ -1774,6 +1774,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def typeArgs: List[TypeRepr] = self match
           case AppliedType(_, args) => args
           case _ => List.empty
+        def asSeenFrom(pre: TypeRepr, cls: Symbol): TypeRepr =
+          self.asSeenFrom(pre, cls)
       end extension
     end TypeReprMethods
 
