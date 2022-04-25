@@ -3772,6 +3772,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The full name of this symbol up to the root package */
         def fullName: String
 
+        /** Type of the definition */
+        @experimental
+        def info: TypeRepr
+
         /** The position of this symbol */
         def pos: Option[Position]
 
