@@ -1127,7 +1127,16 @@ class ClassfileParser(
       val outerName = entry.strippedOuter
       val innerName = entry.originalName
       val owner = classNameToSymbol(outerName)
-      val result = atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
+      val result = owner.denot.infoOrCompleter match
+        case _: StubInfo if hasAnnotation(entry.jflags) =>
+          requiredClass(innerName.toTypeName)
+            // It's okay for the classfiles of Java annotations to be missing
+            // from the classpath. If an annotation is defined as an inner class
+            // we need to avoid forcing the outer class symbol here, and instead
+            // return a new stub symbol for the inner class. This is tested by
+            // `surviveMissingInnerClassAnnot` in AnnotationsTests.scala
+        case _ =>
+          atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
       assert(result ne NoSymbol,
         i"""failure to resolve inner class:
            |externalName = ${entry.externalName},
