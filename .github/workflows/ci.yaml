@@ -2,7 +2,11 @@ name: Dotty
 
 on:
   push:
+    branches-ignore:
+      - 'language-reference-stable'
   pull_request:
+    branches-ignore:
+      - 'language-reference-stable'
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
