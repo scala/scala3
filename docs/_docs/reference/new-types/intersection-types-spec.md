@@ -12,9 +12,9 @@ with the usual precedence and subject to usual resolving rules.
 Unless shadowed by another definition, it resolves to the type `scala.&`,
 which acts as a type alias to an internal representation of intersection types.
 
-```ebnf
-Type              ::=  ...| InfixType ;
-InfixType         ::=  RefinedType {id [nl] RefinedType} ;
+```
+Type              ::=  ...| InfixType
+InfixType         ::=  RefinedType {id [nl] RefinedType}
 ```
 
 ## Subtyping Rules

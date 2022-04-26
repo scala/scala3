@@ -245,11 +245,12 @@ object QuoteMatcher {
                   ref match
                     case Select(qual1, _) => qual1 =?= qual2
                     case ref: Ident =>
-                      ref.tpe match
-                        case TermRef(qual: TermRef, _) => tpd.ref(qual) =?= qual2
-                        case TermRef(qual: ThisType, _) if qual.classSymbol.is(Module, butNot = Package) =>
-                          tpd.ref(qual.classSymbol.companionModule) =?= qual2
-                        case _ => matched
+                      if qual2.existsSubTree(_.symbol == defn.QuotedRuntimePatterns_patternHole) then
+                        // Prefix has a hole, so we need to match the prefix to extract the value of the hole
+                        tpd.desugarIdentPrefix(ref) =?= qual2
+                      else
+                        matched
+
                 /* Match reference */
                 case _: Ident if symbolMatch(scrutinee, pattern) => matched
                 /* Match type */

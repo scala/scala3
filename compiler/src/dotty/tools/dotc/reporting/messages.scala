@@ -1510,13 +1510,6 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class TopLevelCantBeImplicit(sym: Symbol)(
-    implicit ctx: Context)
-    extends SyntaxMsg(TopLevelCantBeImplicitID) {
-    def msg = em"""${hl("implicit")} modifier cannot be used for top-level definitions"""
-    def explain = ""
-  }
-
   class TypesAndTraitsCantBeImplicit()(using Context)
     extends SyntaxMsg(TypesAndTraitsCantBeImplicitID) {
     def msg = em"""${hl("implicit")} modifier cannot be used for types or traits"""
@@ -1759,7 +1752,9 @@ import transform.SymUtils._
 
   class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(using Context)
     extends NamingMsg(ClassAndCompanionNameClashID) {
-    def msg = em"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
+    def msg =
+      val name = cls.name.stripModuleClassSuffix
+      em"Name clash: both ${cls.owner} and its companion object defines $name"
     def explain =
       em"""|A ${cls.kindString} and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
            |  - ${cls.owner} defines ${cls}
@@ -2126,6 +2121,7 @@ import transform.SymUtils._
   class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using Context) extends NamingMsg(DoubleDefinitionID) {
     def msg = {
       def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
+      def erasedType = if ctx.erasedTypes then i" ${decl.info}" else ""
       def details(using Context): String =
         if (decl.isRealMethod && previousDecl.isRealMethod) {
           import Signature.MatchDegree._
@@ -2153,7 +2149,7 @@ import transform.SymUtils._
                      |Consider adding a @targetName annotation to one of the conflicting definitions
                      |for disambiguation."""
                 else ""
-              i"have the same$nameAnd type after erasure.$hint"
+              i"have the same$nameAnd type$erasedType after erasure.$hint"
           }
         }
         else ""
@@ -2172,10 +2168,12 @@ import transform.SymUtils._
         else
           "Name clash between inherited members"
 
-      em"""$clashDescription:
-          |${previousDecl.showDcl} ${symLocation(previousDecl)} and
-          |${decl.showDcl} ${symLocation(decl)}
-          |""" + details
+      atPhase(typerPhase) {
+        em"""$clashDescription:
+            |${previousDecl.showDcl} ${symLocation(previousDecl)} and
+            |${decl.showDcl} ${symLocation(decl)}
+            |"""
+      } + details
     }
     def explain = ""
   }

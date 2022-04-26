@@ -1629,12 +1629,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         case res =>
           specializeEq(inlineIfNeeded(res))
       }
-      if res.symbol == defn.QuotedRuntime_exprQuote then
-        ctx.compilationUnit.needsQuotePickling = true
       res
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
-      inlineIfNeeded(constToLiteral(betaReduce(super.typedTypeApply(tree, pt))))
+      val tree1 = inlineIfNeeded(constToLiteral(betaReduce(super.typedTypeApply(tree, pt))))
+      if tree1.symbol.isQuote then
+        ctx.compilationUnit.needsStaging = true
+      tree1
 
     override def typedMatch(tree: untpd.Match, pt: Type)(using Context): Tree =
       val tree1 =

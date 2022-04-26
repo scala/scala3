@@ -9,6 +9,7 @@ def inspect2[A: Type](using Quotes): Expr[String] = {
   val ps =
     TypeRepr.of[A].typeSymbol.primaryConstructor.tree match
       case DefDef(_, List(Nil, ps: TermParamClause), _, _) => ps
+      case DefDef(_, List(ps: TermParamClause, Nil), _, _) => ps
       case DefDef(_, List(ps: TermParamClause), _, _) => ps
 
   val names = ps.params.map(p => s"${p.name}: ${p.tpt.show}").mkString("(", ", ", ")")

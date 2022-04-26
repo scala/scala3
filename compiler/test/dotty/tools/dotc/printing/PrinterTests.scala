@@ -1,9 +1,11 @@
-package dotty.tools.dotc.printing
+package dotty.tools
+package dotc
+package printing
 
-import dotty.tools.DottyTest
-import dotty.tools.dotc.ast.{Trees,tpd}
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.Symbols._
+import ast.{ Trees, tpd }
+import core.Names._
+import core.Symbols._
+import core.Decorators._
 import dotty.tools.dotc.core.Contexts.Context
 
 import org.junit.Assert.assertEquals
@@ -49,4 +51,26 @@ class PrinterTests extends DottyTest {
       assertEquals("Int & (Boolean | String)", bar.tpt.show)
     }
   }
+
+  @Test def string: Unit = assertEquals("foo", i"${"foo"}")
+
+  import core.Flags._
+  @Test def flagsSingle: Unit      = assertEquals("final", i"$Final")
+  @Test def flagsSeq: Unit         = assertEquals("<static>, final", i"${Seq(JavaStatic, Final)}%, %")
+  @Test def flagsTuple: Unit       = assertEquals("(<static>,final)", i"${(JavaStatic, Final)}")
+  @Test def flagsSeqOfTuple: Unit  = assertEquals("(final,given), (private,lazy)", i"${Seq((Final, Given), (Private, Lazy))}%, %")
+
+  class StorePrinter extends config.Printers.Printer:
+    var string: String = "<never set>"
+    override def println(msg: => String) = string = msg
+
+  @Test def testShowing: Unit =
+    val store = StorePrinter()
+    (JavaStatic | Final).showing(i"flags=$result", store)
+    assertEquals("flags=final <static>", store.string)
+
+  @Test def TestShowingWithOriginalType: Unit =
+    val store = StorePrinter()
+    (JavaStatic | Final).showing(i"flags=${if result.is(Private) then result &~ Private else result | Private}", store)
+    assertEquals("flags=private final <static>", store.string)
 }

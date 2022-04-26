@@ -361,5 +361,14 @@ object NameOps {
       case raw.BANG  => UNARY_!
       case _ => name
     }
+
+    /** If this is a super accessor name, its underlying name, which is the name
+     *  of the method that the super accessor forwards to.
+     */
+    def originalOfSuperAccessorName: TermName = name match
+      case SuperAccessorName(name1)   => name1.originalOfSuperAccessorName
+      case ExpandedName(_, name1)     => name1.originalOfSuperAccessorName
+      case ExpandPrefixName(_, name1) => name1.originalOfSuperAccessorName
+      case _ => name
   }
 }

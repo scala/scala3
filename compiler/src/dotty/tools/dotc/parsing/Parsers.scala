@@ -172,7 +172,7 @@ object Parsers {
   class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source)
-    //in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
+    // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
      *  Overridden by ScriptParser
@@ -606,7 +606,7 @@ object Parsers {
               if startIndentWidth <= nextIndentWidth then
                 i"""Line is indented too far to the right, or a `{` is missing before:
                    |
-                   |$t"""
+                   |${t.tryToShow}"""
               else
                 in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth),
               in.next.offset
@@ -2873,7 +2873,7 @@ object Parsers {
           val isAccessMod = accessModifierTokens contains in.token
           val mods1 = addModifier(mods)
           loop(if (isAccessMod) accessQualifierOpt(mods1) else mods1)
-        else if (in.token == NEWLINE && (mods.hasFlags || mods.hasAnnotations)) {
+        else if (in.isNewLine && (mods.hasFlags || mods.hasAnnotations)) {
           in.nextToken()
           loop(mods)
         }
@@ -3150,6 +3150,15 @@ object Parsers {
               syntaxError(i"source version import is only allowed at the toplevel", id.span)
             else if ctx.compilationUnit.sourceVersion.isDefined then
               syntaxError(i"duplicate source version import", id.span)
+            else if illegalSourceVersionNames.contains(imported) then
+              val candidate =
+                val nonMigration = imported.toString.replace("-migration", "")
+                validSourceVersionNames.find(_.show == nonMigration)
+              val baseMsg = i"`$imported` is not a valid source version"
+              val msg = candidate match
+                case Some(member) => i"$baseMsg, did you mean language.`$member`?"
+                case _ => baseMsg
+              syntaxError(msg, id.span)
             else
               ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
         case None =>

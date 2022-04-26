@@ -1,0 +1,25 @@
+val xs: List[Any] = ???
+
+val hd :: tl = (xs match
+  case Nil => null :: xs
+  case _   => xs): @unchecked
+
+val h :: t = xs: @unchecked
+
+val a :: b =
+  (if xs.isEmpty then null :: xs
+  else xs): @unchecked
+
+val c :: d =
+  (try xs.head :: xs
+  catch case _: NoSuchElementException => null :: xs): @unchecked
+
+val e :: f =
+  {val zero = null :: Nil
+  if xs.isEmpty then zero
+  else xs}: @unchecked
+
+val j :: k =
+  (for
+    case (x: String) <- xs
+  yield x): @unchecked

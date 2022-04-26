@@ -278,7 +278,8 @@ object ExplicitOuter {
           )
       case _ => false
     }
-    def hasOuterPrefix(tp: Type) = tp match {
+    def hasOuterPrefix(tp: Type): Boolean = tp.stripped match {
+      case AppliedType(tycon, _) => hasOuterPrefix(tycon)
       case TypeRef(prefix, _) => isOuterRef(prefix)
       case _ => false
     }

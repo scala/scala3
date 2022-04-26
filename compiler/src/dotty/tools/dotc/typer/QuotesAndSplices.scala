@@ -187,6 +187,10 @@ trait QuotesAndSplices {
         using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
     pat.select(tpnme.Underlying)
 
+  def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
+    val tpt = typedType(tree.tpt)
+    assignType(tree, tpt)
+
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
     if (level == 0 && !ctx.owner.ownersIterator.exists(_.is(Inline)))
       report.error("Splice ${...} outside quotes '{...} or inline method", tree.srcPos)

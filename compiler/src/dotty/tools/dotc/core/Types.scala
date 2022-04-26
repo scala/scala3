@@ -1548,9 +1548,10 @@ object Types {
       @tailrec def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           pre.refinedInfo match {
-            case TypeAlias(alias) =>
-              if (pre.refinedName ne name) loop(pre.parent) else alias
-            case _ => loop(pre.parent)
+            case tp: AliasingBounds =>
+              if (pre.refinedName ne name) loop(pre.parent) else tp.alias
+            case _ =>
+              loop(pre.parent)
           }
         case pre: RecType =>
           val candidate = pre.parent.lookupRefined(name)
@@ -4209,7 +4210,7 @@ object Types {
      *  This is the case if tycon is higher-kinded. This means
      *  it is a subtype of a hk-lambda, but not a match alias.
      *  (normal parameterized aliases are removed in `appliedTo`).
-     *  Applications of hgher-kinded type constructors to wildcard arguments
+     *  Applications of higher-kinded type constructors to wildcard arguments
      *  are equivalent to existential types, which are not supported.
      */
     def isUnreducibleWild(using Context): Boolean =
@@ -4640,7 +4641,7 @@ object Types {
       myRepr.nn
     }
 
-    override def toString: String = s"Skolem($hashCode)"
+    override def toString: String = s"SkolemType($hashCode)"
   }
 
   /** A skolem type used to wrap the type of the qualifier of a selection.

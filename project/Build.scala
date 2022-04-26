@@ -57,9 +57,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.1.2"
+  val referenceVersion = "3.1.3-RC2"
 
-  val baseVersion = "3.1.3-RC1"
+  val baseVersion = "3.2.0-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -439,6 +439,8 @@ object Build {
       case CompatMode.BinaryCompatible          => "backward"
       case CompatMode.SourceAndBinaryCompatible => "both"
     }),
+
+    mimaExcludeAnnotations += "scala.annotation.experimental",
   )
 
   /** Projects -------------------------------------------------------------- */
@@ -519,7 +521,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.2.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.3.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
@@ -572,8 +574,8 @@ object Build {
         )
       },
 
-      javaOptions += (
-        s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}"
+      javaOptions ++= Seq(
+        s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
       ),
 
       testCompilation := Def.inputTaskDyn {
@@ -583,7 +585,8 @@ object Build {
             s"""
                |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [<filter>]
                |
-               |By default runs tests in dotty.tools.dotc.*CompilationTests excluding tests tagged with dotty.SlowTests.
+               |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
+               |excluding tests tagged with dotty.SlowTests.
                |
                |  --help                show this message
                |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
@@ -598,7 +601,7 @@ object Build {
           val updateCheckfile = args.contains("--update-checkfiles")
           val fromTasty = args.contains("--from-tasty")
           val args1 = if (updateCheckfile | fromTasty) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty") else args
-          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests"
+          val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests dotty.tools.dotc.coverage.*"
           val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
             (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
             (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
@@ -1394,6 +1397,7 @@ object Build {
             .add(OutputDir("scaladoc/output/reference"))
             .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
             .add(ProjectName("Scala 3 Reference"))
+            .add(ProjectVersion("3.1.2")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
               dottySrcLink(referenceVersion, temp.getAbsolutePath + "=")
@@ -1407,7 +1411,7 @@ object Build {
             val outputDir = languageReferenceConfig.value.get[OutputDir].get.value
             val expectedLinksFile = (file("project") / "scripts" / "expected-links" / "reference-expected-links.txt").toString
             import _root_.scala.sys.process._
-            s"$script $outputDir $expectedLinksFile" !
+            s"$script $outputDir $expectedLinksFile".!
           }
         }
 

@@ -13,6 +13,7 @@ import typer.ImportInfo.RootRef
 import Comments.CommentsContext
 import Comments.Comment
 import util.Spans.NoSpan
+import Symbols.requiredModuleRef
 
 import scala.annotation.tailrec
 
@@ -460,6 +461,9 @@ class Definitions {
   }
   def NullType: TypeRef = NullClass.typeRef
 
+  @tu lazy val InvokerModule = requiredModule("scala.runtime.coverage.Invoker")
+  @tu lazy val InvokedMethodRef = InvokerModule.requiredMethodRef("invoked")
+
   @tu lazy val ImplicitScrutineeTypeSym =
     newPermanentSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
   def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
@@ -524,6 +528,8 @@ class Definitions {
     @tu lazy val Seq_lengthCompare: Symbol = SeqClass.requiredMethod(nme.lengthCompare, List(IntType))
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
+  @tu lazy val SeqModule: Symbol = requiredModule("scala.collection.immutable.Seq")
+
 
   @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
     @tu lazy val StringOps_format: Symbol  = StringOps.requiredMethod(nme.format)
@@ -785,10 +791,44 @@ class Definitions {
   @tu lazy val QuotedExprClass: ClassSymbol = requiredClass("scala.quoted.Expr")
 
   @tu lazy val QuotesClass: ClassSymbol = requiredClass("scala.quoted.Quotes")
+    @tu lazy val Quotes_reflect: Symbol = QuotesClass.requiredValue("reflect")
+      @tu lazy val Quotes_reflect_asTerm: Symbol = Quotes_reflect.requiredMethod("asTerm")
+      @tu lazy val Quotes_reflect_Apply: Symbol = Quotes_reflect.requiredValue("Apply")
+        @tu lazy val Quotes_reflect_Apply_apply: Symbol = Quotes_reflect_Apply.requiredMethod(nme.apply)
+      @tu lazy val Quotes_reflect_TypeApply: Symbol = Quotes_reflect.requiredValue("TypeApply")
+        @tu lazy val Quotes_reflect_TypeApply_apply: Symbol = Quotes_reflect_TypeApply.requiredMethod(nme.apply)
+      @tu lazy val Quotes_reflect_Assign: Symbol = Quotes_reflect.requiredValue("Assign")
+        @tu lazy val Quotes_reflect_Assign_apply: Symbol = Quotes_reflect_Assign.requiredMethod(nme.apply)
+      @tu lazy val Quotes_reflect_Inferred: Symbol = Quotes_reflect.requiredValue("Inferred")
+        @tu lazy val Quotes_reflect_Inferred_apply: Symbol = Quotes_reflect_Inferred.requiredMethod(nme.apply)
+      @tu lazy val Quotes_reflect_Literal: Symbol = Quotes_reflect.requiredValue("Literal")
+      @tu lazy val Quotes_reflect_Literal_apply: Symbol = Quotes_reflect_Literal.requiredMethod(nme.apply)
+      @tu lazy val Quotes_reflect_TreeMethods: Symbol = Quotes_reflect.requiredMethod("TreeMethods")
+        @tu lazy val Quotes_reflect_TreeMethods_asExpr: Symbol = Quotes_reflect_TreeMethods.requiredMethod("asExpr")
+      @tu lazy val Quotes_reflect_TypeRepr: Symbol = Quotes_reflect.requiredValue("TypeRepr")
+        @tu lazy val Quotes_reflect_TypeRepr_of: Symbol = Quotes_reflect_TypeRepr.requiredMethod("of")
+        @tu lazy val Quotes_reflect_TypeRepr_typeConstructorOf: Symbol = Quotes_reflect_TypeRepr.requiredMethod("typeConstructorOf")
+      @tu lazy val Quotes_reflect_TypeReprMethods: Symbol = Quotes_reflect.requiredValue("TypeReprMethods")
+        @tu lazy val Quotes_reflect_TypeReprMethods_asType: Symbol = Quotes_reflect_TypeReprMethods.requiredMethod("asType")
+      @tu lazy val Quotes_reflect_TypeTreeType: Symbol = Quotes_reflect.requiredType("TypeTree")
+      @tu lazy val Quotes_reflect_TermType: Symbol = Quotes_reflect.requiredType("Term")
+      @tu lazy val Quotes_reflect_BooleanConstant: Symbol = Quotes_reflect.requiredValue("BooleanConstant")
+      @tu lazy val Quotes_reflect_ByteConstant: Symbol = Quotes_reflect.requiredValue("ByteConstant")
+      @tu lazy val Quotes_reflect_ShortConstant: Symbol = Quotes_reflect.requiredValue("ShortConstant")
+      @tu lazy val Quotes_reflect_IntConstant: Symbol = Quotes_reflect.requiredValue("IntConstant")
+      @tu lazy val Quotes_reflect_LongConstant: Symbol = Quotes_reflect.requiredValue("LongConstant")
+      @tu lazy val Quotes_reflect_FloatConstant: Symbol = Quotes_reflect.requiredValue("FloatConstant")
+      @tu lazy val Quotes_reflect_DoubleConstant: Symbol = Quotes_reflect.requiredValue("DoubleConstant")
+      @tu lazy val Quotes_reflect_CharConstant: Symbol = Quotes_reflect.requiredValue("CharConstant")
+      @tu lazy val Quotes_reflect_StringConstant: Symbol = Quotes_reflect.requiredValue("StringConstant")
+      @tu lazy val Quotes_reflect_UnitConstant: Symbol = Quotes_reflect.requiredValue("UnitConstant")
+      @tu lazy val Quotes_reflect_NullConstant: Symbol = Quotes_reflect.requiredValue("NullConstant")
+      @tu lazy val Quotes_reflect_ClassOfConstant: Symbol = Quotes_reflect.requiredValue("ClassOfConstant")
+
 
   @tu lazy val QuoteUnpicklerClass: ClassSymbol = requiredClass("scala.quoted.runtime.QuoteUnpickler")
-    @tu lazy val QuoteUnpickler_unpickleExpr: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleExpr")
-    @tu lazy val QuoteUnpickler_unpickleType: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleType")
+    @tu lazy val QuoteUnpickler_unpickleExprV2: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleExprV2")
+    @tu lazy val QuoteUnpickler_unpickleTypeV2: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleTypeV2")
 
   @tu lazy val QuoteMatchingClass: ClassSymbol = requiredClass("scala.quoted.runtime.QuoteMatching")
     @tu lazy val QuoteMatching_ExprMatch: Symbol = QuoteMatchingClass.requiredMethod("ExprMatch")
@@ -848,6 +888,12 @@ class Definitions {
   @tu lazy val FromDigits_FloatingClass: ClassSymbol  = requiredClass("scala.util.FromDigits.Floating")
 
   @tu lazy val XMLTopScopeModule: Symbol = requiredModule("scala.xml.TopScope")
+
+  @tu lazy val MainAnnotationClass: ClassSymbol = requiredClass("scala.annotation.MainAnnotation")
+  @tu lazy val MainAnnotationInfo: ClassSymbol = requiredClass("scala.annotation.MainAnnotation.Info")
+  @tu lazy val MainAnnotationParameter: ClassSymbol = requiredClass("scala.annotation.MainAnnotation.Parameter")
+  @tu lazy val MainAnnotationParameterAnnotation: ClassSymbol = requiredClass("scala.annotation.MainAnnotation.ParameterAnnotation")
+  @tu lazy val MainAnnotationCommand: ClassSymbol = requiredClass("scala.annotation.MainAnnotation.Command")
 
   @tu lazy val CommandLineParserModule: Symbol = requiredModule("scala.util.CommandLineParser")
     @tu lazy val CLP_ParseError: ClassSymbol = CommandLineParserModule.requiredClass("ParseError").typeRef.symbol.asClass
@@ -1991,7 +2037,7 @@ class Definitions {
     add(MatchableClass,
     """/** The base trait of types that can be safely pattern matched against.
       | *
-      | *   See [[https://dotty.epfl.ch/docs/reference/other-new-features/matchable.html]].
+      | *   See [[https://docs.scala-lang.org/scala3/reference/other-new-features/matchable.html]].
       | */
     """.stripMargin)
 
@@ -2100,21 +2146,21 @@ class Definitions {
     add(AnyKindClass,
     """/** The super-type of all types.
       | *
-      | *   See [[https://dotty.epfl.ch/docs/reference/other-new-features/kind-polymorphism.html]].
+      | *   See [[https://docs.scala-lang.org/scala3/reference/other-new-features/kind-polymorphism.html]].
       | */
     """.stripMargin)
 
     add(andType,
     """/** The intersection of two types.
       | *
-      | *   See [[https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html]].
+      | *   See [[https://docs.scala-lang.org/scala3/reference/new-types/intersection-types.html]].
       | */
     """.stripMargin)
 
     add(orType,
     """/** The union of two types.
       | *
-      | *   See [[https://dotty.epfl.ch/docs/reference/new-types/union-types.html]].
+      | *   See [[https://docs.scala-lang.org/scala3/reference/new-types/union-types.html]].
       | */
     """.stripMargin)
 

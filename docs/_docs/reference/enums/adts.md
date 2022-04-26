@@ -154,18 +154,18 @@ The changes are specified below as deltas with respect to the Scala syntax given
 
  1. Enum definitions are defined as follows:
 
-    ```ebnf
-    TmplDef   ::=  `enum' EnumDef ;
-    EnumDef   ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody ;
-    EnumBody  ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’ ;
+    ```
+    TmplDef   ::=  `enum' EnumDef
+    EnumDef   ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody
+    EnumBody  ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
     EnumStat  ::=  TemplateStat
-                |  {Annotation [nl]} {Modifier} EnumCase ;
+                |  {Annotation [nl]} {Modifier} EnumCase
     ```
 
  2. Cases of enums are defined as follows:
 
-    ```ebnf
-    EnumCase  ::=  `case' (id ClassConstr [`extends' ConstrApps]] | ids) ;
+    ```
+    EnumCase  ::=  `case' (id ClassConstr [`extends' ConstrApps]] | ids)
     ```
 
 ### Reference

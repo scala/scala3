@@ -2730,15 +2730,16 @@ object TypeComparer {
      */
     val Fresh: Repr = 4
 
-    extension (approx: Repr)
-      def low: Boolean = (approx & LoApprox) != 0
-      def high: Boolean = (approx & HiApprox) != 0
-      def addLow: Repr = approx | LoApprox
-      def addHigh: Repr = approx | HiApprox
-      def show: String =
-        val lo = if low then " (left is approximated)" else ""
-        val hi = if high then " (right is approximated)" else ""
-        lo ++ hi
+    object Repr:
+      extension (approx: Repr)
+        def low: Boolean = (approx & LoApprox) != 0
+        def high: Boolean = (approx & HiApprox) != 0
+        def addLow: Repr = approx | LoApprox
+        def addHigh: Repr = approx | HiApprox
+        def show: String =
+          val lo = if low then " (left is approximated)" else ""
+          val hi = if high then " (right is approximated)" else ""
+          lo ++ hi
   end ApproxState
   type ApproxState = ApproxState.Repr
 

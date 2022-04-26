@@ -18,3 +18,13 @@ object Macros:
   private def letCode[T: Type, U: Type](x: Expr[T], body: Expr[T => U])(using Quotes): Expr[U] =
     // tests use of Type
     '{ val y: T = $x; $body(y): U }
+
+
+  inline def poly: Int = ${ polyCode }
+
+  private def polyCode(using Quotes): Expr[Int] =
+    def bar[T: Type](x: Expr[T])(using Quotes): Expr[T] = x
+    '{
+      def f[T](x: T): T = ${ bar('x) }
+      f[Int](1)
+    }
