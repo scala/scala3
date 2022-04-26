@@ -3669,7 +3669,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       def newMethod(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
 
-      /** Generates a new val/var/lazy val symbol with the given parent, name and type.
+      /** Generates a new method symbol that overrides another definition.
+       *  The signature will be the same as the overridden symbol.
+       *
+       *  @param parent The owner of the method
+       *  @param overridden The symbol being overridden
+       */
+      @experimental
+      def newMethodOverride(parent: Symbol, overridden: Symbol): Symbol
+
+      /** Generates a new `val`/`var`/`lazy val` symbol with the given parent, name and type.
       *
       *  This symbol starts without an accompanying definition.
       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
@@ -3686,6 +3695,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *        direct or indirect children of the reflection context's owner.
       */
       def newVal(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
+
+      /** Generates a new `val` or `lazy val` symbol that overrides another definition.
+       *  The signature will be the same as the overridden symbol.
+       *
+       *  @param parent The owner of the method
+       *  @param overridden The symbol being overridden
+       */
+      @experimental
+      def newValOverride(parent: Symbol, overridden: Symbol): Symbol
 
       /** Generates a pattern bind symbol with the given parent, name and type.
       *

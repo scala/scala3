@@ -2485,8 +2485,20 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         newMethod(owner, name, tpe, Flags.EmptyFlags, noSymbol)
       def newMethod(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin)
+
+      def newMethodOverride(owner: Symbol, overridden: Symbol): Symbol =
+        assert(isMethod(overridden), "not a method symbol: " + overridden) // TODO check that is is a member of a class
+        val flags = overridden.flags &~ dotc.core.Flags.Deferred | dotc.core.Flags.Override
+        dotc.core.Symbols.newSymbol(owner, overridden.name, flags, overridden.info, dotc.core.Symbols.NoSymbol)
+
       def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags, tpe, privateWithin)
+
+      def newValOverride(owner: Symbol, overridden: Symbol): Symbol =
+        assert(isField(overridden) || isMethod(overridden), "not a method or field symbol: " + overridden) // TODO check that is is a member of a class
+        val flags = overridden.flags &~ dotc.core.Flags.Deferred &~ dotc.core.Flags.Method | dotc.core.Flags.Override
+        dotc.core.Symbols.newSymbol(owner, overridden.name, flags, overridden.info, dotc.core.Symbols.NoSymbol)
+
       def newBind(owner: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | Case, tpe)
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
@@ -2663,12 +2675,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       private def appliedTypeRef(sym: Symbol): TypeRepr =
         sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef))
 
-      private def isMethod(sym: Symbol): Boolean =
-        sym.isTerm && sym.is(dotc.core.Flags.Method) && !sym.isConstructor
-
-      private def isField(sym: Symbol): Boolean =
-        sym.isTerm && !sym.is(dotc.core.Flags.Method)
     end SymbolMethods
+
+    private def isMethod(sym: Symbol): Boolean =
+      sym.isTerm && sym.is(dotc.core.Flags.Method) && !sym.isConstructor
+
+    private def isField(sym: Symbol): Boolean =
+      sym.isTerm && !sym.is(dotc.core.Flags.Method)
 
     type Signature = dotc.core.Signature
 
