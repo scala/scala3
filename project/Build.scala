@@ -1397,6 +1397,7 @@ object Build {
             .add(OutputDir("scaladoc/output/reference"))
             .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
             .add(ProjectName("Scala 3 Reference"))
+            .add(ProjectVersion("3.1.2")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
               dottySrcLink(referenceVersion, temp.getAbsolutePath + "=")
