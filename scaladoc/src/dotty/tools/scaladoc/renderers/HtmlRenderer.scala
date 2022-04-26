@@ -262,7 +262,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           a(href := "https://discord.com/invite/scala") (
             button(cls := "icon-button discord"),
           ),
-          a(href := "https://github.com/lampepfl/dotty") (
+          a(href := "https://gitter.im/scala/scala") (
             button(cls := "icon-button gitter"),
           ),
           div(cls := "text")(
