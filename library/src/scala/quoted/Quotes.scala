@@ -3878,10 +3878,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Get all non-private methods declared or inherited */
         def methodMembers: List[Symbol]
 
-        /** Get non-private named methods defined directly inside the class */
+        /** Get non-private named type defined directly inside the class */
         def declaredType(name: String): List[Symbol]
 
-        /** Get all non-private methods defined directly inside the class, excluding constructors */
+        /** Get all non-private types defined directly inside the class */
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
