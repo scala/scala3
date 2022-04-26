@@ -530,8 +530,11 @@ object SourceCode {
       case Closure(meth, _) =>
         printTree(meth)
 
-      case _:Unapply | _:Alternatives | _:Bind =>
+      case _:TypedOrTest | _:Unapply | _:Alternatives | _:Bind =>
         printPattern(tree)
+
+      case tree: CaseDef =>
+        printCaseDef(tree)
 
       case _ =>
         throw new MatchError(tree.show(using Printer.TreeStructure))
