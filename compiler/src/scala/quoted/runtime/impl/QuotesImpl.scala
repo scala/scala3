@@ -2619,13 +2619,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case sym if sym.isType => sym.asType
           }.toList
 
-        def memberType(name: String): Symbol = typeMember(name)
-        def typeMember(name: String): Symbol =
+        def memberType(name: String): Symbol =
           self.unforcedDecls.find(sym => sym.name == name.toTypeName)
+        def typeMember(name: String): Symbol =
+          lookupPrefix.member(name.toTypeName).symbol
 
-        def memberTypes: List[Symbol] = typeMembers
-        def typeMembers: List[Symbol] =
+        def memberTypes: List[Symbol] =
           self.unforcedDecls.filter(_.isType)
+        def typeMembers: List[Symbol] =
+          lookupPrefix.typeMembers.map(_.symbol).toList
 
         def declarations: List[Symbol] =
           self.typeRef.info.decls.toList

@@ -49,7 +49,7 @@ object SyntheticsSupport:
     c.symbol.typeRef.baseClasses.map(b => b -> c.symbol.typeRef.baseType(b)).tail
 
   def typeForClass(using Quotes)(c: reflect.ClassDef): reflect.TypeRepr =
-    c.symbol.typeRef.appliedTo(c.symbol.typeMembers.filter(_.isTypeParam).map(_.typeRef))
+    c.symbol.typeRef.appliedTo(c.symbol.declaredTypes.filter(_.isTypeParam).map(_.typeRef))
 
   /* We need there to filter out symbols with certain flagsets, because these symbols come from compiler and TASTY can't handle them well.
     They are valdefs that describe case companion objects and cases from enum.

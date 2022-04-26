@@ -3879,17 +3879,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
-        @deprecated("Use typeMember", "3.1.0")
+        @deprecated("Use declaredType or typeMember", "3.1.0")
         def memberType(name: String): Symbol
 
-        /** Type member with the given name directly declared in the class */
+        /** Type member with the given name declared or inherited in the class */
         def typeMember(name: String): Symbol
 
         /** Type member directly declared in the class */
-        @deprecated("Use typeMembers", "3.1.0")
+        @deprecated("Use declaredTypes or typeMembers", "3.1.0")
         def memberTypes: List[Symbol]
 
-        /** Type member directly declared in the class */
+        /** Type member directly declared or inherited in the class */
         def typeMembers: List[Symbol]
 
         /** All members directly declared in the class */
