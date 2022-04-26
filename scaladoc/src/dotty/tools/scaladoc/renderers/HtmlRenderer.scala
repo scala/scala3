@@ -241,6 +241,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
               "Community",
             ),
           button(id := "theme-toggle", cls := "icon-button"),
+          button(id := "mobile-menu-toggle", cls := "icon-button hamburger"),
         ),
       ),
       div(id := "leftColumn", cls := "body-small")(

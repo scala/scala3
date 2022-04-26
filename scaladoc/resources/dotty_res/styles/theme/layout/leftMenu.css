@@ -12,4 +12,24 @@
   border: 1px solid var(--border-default);
   border-top: none;
   border-left: none;
+  transition: width 0.5s;
+}
+
+@media (max-width: 1024px) {
+  #leftColumn {
+    width: 0px;
+  }
+
+  #leftColumn > .switcher-container {
+    display: none;
+  }
+
+  #leftColumn.show {
+    width: 0px;
+    width: calc(39 * var(--base-spacing));
+  }
+
+  #leftColumn.show .switcher-container {
+    display: flex;
+  }
 }

@@ -266,3 +266,53 @@
 .theme-dark .ar.icon-button.expanded.selected::after {
   content: url("../../../../images/icon-buttons/arrow-down/dark/selected.svg");
 }
+
+/* mobile menu toggler */
+
+#mobile-menu-toggle.icon-button.menu-shown::after {
+  content: url("../../../../images/icon-buttons/menu-animated/light/default.svg");
+}
+
+#mobile-menu-toggle.icon-button.menu-shown:hover::after {
+  content: url("../../../../images/icon-buttons/menu-animated/light/hover.svg");
+}
+
+#mobile-menu-toggle.icon-button.menu-shown:active::after {
+  content: url("../../../../images/icon-buttons/menu-animated/light/active.svg");
+}
+
+#mobile-menu-toggle.icon-button.menu-shown:disabled::after {
+  content: url("../../../../images/icon-buttons/menu-animated/light/disabled.svg");
+}
+
+#mobile-menu-toggle.icon-button.menu-shown:focus::after {
+  content: url("../../../../images/icon-buttons/menu-animated/light/focus.svg");
+}
+
+#mobile-menu-toggle.icon-button.menu-shown.selected::after {
+  content: url("../../../../images/icon-buttons/menu-animated/light/selected.svg");
+}
+
+.theme-dark #mobile-menu-toggle.icon-button.menu-shown::after {
+  content: url("../../../../images/icon-buttons/menu-animated/dark/default.svg");
+}
+
+.theme-dark #mobile-menu-toggle.icon-button.menu-shown:hover::after {
+  content: url("../../../../images/icon-buttons/menu-animated/dark/hover.svg");
+}
+
+.theme-dark #mobile-menu-toggle.icon-button.menu-shown:active::after {
+  content: url("../../../../images/icon-buttons/menu-animated/dark/active.svg");
+}
+
+.theme-dark #mobile-menu-toggle.icon-button.menu-shown:disabled::after {
+  content: url("../../../../images/icon-buttons/menu-animated/dark/disabled.svg");
+}
+
+.theme-dark #mobile-menu-toggle.icon-button.menu-shown:focus::after {
+  content: url("../../../../images/icon-buttons/menu-animated/dark/focus.svg");
+}
+
+.theme-dark #mobile-menu-toggle.icon-button.menu-shown.selected::after {
+  content: url("../../../../images/icon-buttons/menu-animated/dark/selected.svg");
+}

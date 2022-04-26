@@ -16,15 +16,15 @@
 }
 
 #dark-project-logo {
-  display:none;
+  display: none;
 }
 
 :root.theme-dark #dark-project-logo {
-  display:unset;
+  display: unset;
 }
 
 :root.theme-dark #project-logo {
-  display:none;
+  display: none;
 }
 
 .header-container-left {
@@ -47,4 +47,15 @@
 
 .header-container-right #theme-toggle {
   margin-left: calc(3 * var(--base-spacing));
+}
+
+#mobile-menu-toggle {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  #mobile-menu-toggle {
+    margin-left: calc(3 * var(--base-spacing));
+    display: block;
+  }
 }
