@@ -203,9 +203,15 @@ object Inliner {
     val targs = fun match
       case TypeApply(_, targs) => targs
       case _ => Nil
+
     val unapplyInfo = sym.info match
-      case info: PolyType => info.instantiate(targs.map(_.tpe))
-      case MethodTpe(_, _, rest) if sym.flags.is(ExtensionMethod) => rest
+      case info: PolyType => info.instantiate(targs.map(_.tpe)) match
+        case MethodTpe(_, _, rt: PolyType) => rt.instantiate(targs.map(_.tpe))
+        case MethodTpe(_, _, rt) if sym.flags.is(ExtensionMethod) => rt
+        case info => info
+
+      case MethodTpe(_, _, rt: PolyType) => rt.instantiate(targs.map(_.tpe))
+      case MethodTpe(_, _, rt) if sym.flags.is(ExtensionMethod) => rt
       case info => info
 
     val unappplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
