@@ -502,7 +502,7 @@ object Completion {
       val targets = convertedTrees.map(_.tpe.finalResultType)
 
       interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
-       targets
+      targets
     }
 
     /** Filter for names that should appear when looking for completions. */
