@@ -1846,6 +1846,8 @@ object ScaladocConfigs {
     val dottyManagesSources =
       (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
 
+    val tastyCoreSources = projectRoot.relativize((`tasty-core-bootstrapped`/Compile/scalaSource).value.toPath().normalize())
+
     val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
     DefaultGenerationConfig.value
       .add(ProjectName("Scala 3"))
@@ -1856,6 +1858,7 @@ object ScaladocConfigs {
       .add(CommentSyntax(List(
         s"${dottyLibRoot}=markdown",
         s"${stdLibRoot}=wiki",
+        s"${tastyCoreSources}=markdown",
         "wiki"
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))
