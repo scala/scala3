@@ -2300,7 +2300,7 @@ trait Applications extends Compatibility {
 
     try
       val appliedTree = inContext(newCtx) {
-        newCtx.typer.typed(untpd.Apply(conversionMethodTree, (receiver:: Nil)))
+        typed(untpd.Apply(conversionMethodTree, untpd.TypedSplice(receiver) :: Nil))
       }
 
       if appliedTree.tpe.exists && !appliedTree.tpe.isError then
@@ -2308,7 +2308,7 @@ trait Applications extends Compatibility {
       else
         None
     catch
-      case NonFatal(_) => None
+      case NonFatal(x) => None
 
   def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
     methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&

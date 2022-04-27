@@ -493,7 +493,7 @@ object Completion {
      * from T to S. It then applies conversion method for proper type parameter resolution.
      *
      * @param qual The argument to which the implicit conversion should be applied.
-     * @return Types after implicit conversion.
+     * @return The set of types after `qual` implicit conversion.
      */
     private def implicitConversionTargets(qual: Tree)(using Context): Set[Type] = {
       val typer = ctx.typer

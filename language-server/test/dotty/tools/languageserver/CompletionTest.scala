@@ -1200,8 +1200,8 @@ class CompletionTest {
           |}
           |implicit def fooToBoo[A](x: Foo[A]): Boo[A] = Boo(x.x)
           |case class Bar[F[_]](bar: F[Int])
-          |def foo(x: Bar[M]) = x.bar.m${m1}"""
-      .withSource.completion(m1, expected)
+          |def foo(x: Bar[M]) = x.bar.m${m1}""".withSource
+      .completion(m1, expected)
   }
 
   @Test def higherKindedTypeInferenceTest: Unit = {
@@ -1216,8 +1216,8 @@ class CompletionTest {
           |  val test = new Test[Int, String] {}
           |  test.foo${m1}
           |  (new Test[Int, String] {}).foo${m2}""".withSource
-            .completion(m1, expected)
-            .completion(m2, expected)
+      .completion(m1, expected)
+      .completion(m2, expected)
   }
 
   @Test def higherKindedImplicitConversionsCompletions: Unit = {
@@ -1231,12 +1231,14 @@ class CompletionTest {
           |}
           |case class Boo[C](x: C) {
           |  def mapBoo[B](f: C => B): Boo[B] = ???
-          }
+          |}
           |implicit def fooToBoo[D](x: Foo[D]): Boo[D] = Boo(x.x)
           |object Test:
           |  val x = Foo(1)
-          |  x.ma${m1}"""
-            .withSource.completion(m1, expected)
+          |  x.ma${m1}
+          |  Foo(1).ma${m2}""".withSource
+      .completion(m1, expected)
+      .completion(m2, expected)
   }
 
   @Test def higherKindedMatchTypeExtensionMethodCompletion: Unit = {
