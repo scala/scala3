@@ -42,8 +42,7 @@ def throwableToString(t: Throwable)(using CompilerContext): String =
 
 private def sourcePostionFor(f: File)(using CompilerContext) =
     val relPath = relativePath(f.toPath)
-    val virtualFile = new VirtualFile(relPath.toString, relPath.toString)
-    val sourceFile = new SourceFile(virtualFile, Codec.UTF8)
+    val sourceFile = SourceFile.virtual(relPath.toString, content = "")
     SourcePosition(sourceFile, Spans.NoSpan)
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling

@@ -13,9 +13,10 @@ import Chars._
 import scala.annotation.internal.sharable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.util.chaining.given
 
-import java.io.IOException
 import java.nio.charset.StandardCharsets
+import java.nio.file.{FileSystemException, NoSuchFileException}
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
@@ -70,15 +71,6 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   private var _maybeInComplete: Boolean = false
 
   def maybeIncomplete: Boolean = _maybeInComplete
-
-  def this(file: AbstractFile, codec: Codec) =
-    // It would be cleaner to check if the file exists instead of catching
-    // an exception, but it turns out that Files.exists is remarkably slow,
-    // at least on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
-    // this is significant enough to show up in our benchmarks.
-    this(file,
-      try new String(file.toByteArray, codec.charSet).toCharArray
-      catch case _: java.nio.file.NoSuchFileException => Array[Char]())
 
   /** Tab increment; can be overridden */
   def tabInc: Int = 8
@@ -226,9 +218,8 @@ object SourceFile {
   implicit def fromContext(using Context): SourceFile = ctx.source
 
   def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    val src = new SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), scala.io.Codec.UTF8)
-    src._maybeInComplete = maybeIncomplete
-    src
+    SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
+      .tap(_._maybeInComplete = maybeIncomplete)
 
   /** Returns the relative path of `source` within the `reference` path
    *
@@ -273,17 +264,20 @@ object SourceFile {
     ScriptSourceFile.hasScriptHeader(content)
 
   def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
-    // see note above re: Files.exists is remarkably slow
+    // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
+    // so cope with failure; also deal with path prefix "Not a directory".
     val chars =
-    try
-      new String(file.toByteArray, codec.charSet).toCharArray
-    catch
-      case _: java.nio.file.NoSuchFileException => Array[Char]()
+      try new String(file.toByteArray, codec.charSet).toCharArray
+      catch
+        case _: NoSuchFileException => Array.empty[Char]
+        case fse: FileSystemException if fse.getMessage.endsWith("Not a directory") => Array.empty[Char]
 
     if isScript(file, chars) then
       ScriptSourceFile(file, chars)
     else
-      new SourceFile(file, chars)
+      SourceFile(file, chars)
+
+  def apply(file: AbstractFile | Null, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
