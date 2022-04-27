@@ -37,7 +37,7 @@ trait BasicSupport:
     Annotation(dri, params)
 
   extension (using Quotes)(sym: reflect.Symbol)
-    def documentation = sym.docstring.map(parseComment(_, sym.tree))
+    def documentation = parseComment(sym.docstring.getOrElse(""), sym.tree)
 
     def getAnnotations(): List[Annotation] =
       sym.annotations.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
