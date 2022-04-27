@@ -2289,6 +2289,27 @@ trait Applications extends Compatibility {
     catch
       case NonFatal(_) => None
 
+  /** Tries applying conversion method reference to a provided receiver
+   *
+   *  returns converted tree in case of success.
+   *  None is returned if conversion method application fails.
+   */
+  def tryApplyingImplicitConversion(conversionMethodRef: TermRef, receiver: Tree)(using Context): Option[Tree] =
+    val conversionMethodTree = ref(conversionMethodRef, needLoad = false)
+    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
+
+    try
+      val appliedTree = inContext(newCtx) {
+        newCtx.typer.typed(untpd.Apply(conversionMethodTree, (receiver:: Nil)))
+      }
+
+      if appliedTree.tpe.exists && !appliedTree.tpe.isError then
+        Some(appliedTree)
+      else
+        None
+    catch
+      case NonFatal(_) => None
+
   def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
     methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&
       tryApplyingExtensionMethod(methodRef, nullLiteral.asInstance(receiverType)).nonEmpty

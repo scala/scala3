@@ -1001,7 +1001,7 @@ class CompletionTest {
     )
     code"""import scala.concurrent.Future
           |class Foo(x: Fut${m1})""".withSource
-      .completion(m1, expected) 
+      .completion(m1, expected)
   }
 
   @Test def completeTemplateParents: Unit = {
@@ -1011,7 +1011,7 @@ class CompletionTest {
     )
     code"""import scala.concurrent.Future
           |class Foo extends Futu${m1}""".withSource
-      .completion(m1, expected) 
+      .completion(m1, expected)
   }
 
   @Test def completeTemplateSelfType: Unit = {
@@ -1021,7 +1021,7 @@ class CompletionTest {
     )
     code"""import scala.concurrent.Future
           |class Foo[A]{ self: Futu${m1} => }""".withSource
-      .completion(m1, expected) 
+      .completion(m1, expected)
   }
 
   @Test def backticks: Unit = {
@@ -1061,7 +1061,7 @@ class CompletionTest {
            |  enum Bar:
            |    case `back-tick`
            |    case `match`
-           |  
+           |
            |  val x = Bar.${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1074,7 +1074,7 @@ class CompletionTest {
            |  enum Bar:
            |    case `back-tick`
            |    case `match`
-           |  
+           |
            |  val x = Bar.`back${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1086,7 +1086,7 @@ class CompletionTest {
     code"""object Foo:
            |  enum Bar:
            |    case `has space`
-           |  
+           |
            |  val x = Bar.`has s${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1102,7 +1102,7 @@ class CompletionTest {
            |    val foo = 1
            |    val `foo-bar` = 2
            |    val `bar` = 3
-           |  
+           |
            |  val x = Bar.fo${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1117,7 +1117,7 @@ class CompletionTest {
            |  object Bar:
            |    val foo = 1
            |    val `foo-bar` = 2
-           |  
+           |
            |  val x = Bar.`fo${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1146,7 +1146,7 @@ class CompletionTest {
            |  case x: Int => Foo(x)
            |  case x: Any => x
            |}
-           |object Test: 
+           |object Test:
            |  elem(1).foo${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1183,27 +1183,61 @@ class CompletionTest {
              .withSource.completion(m1, expected)
   }
 
-  // This test is not passing due to https://github.com/lampepfl/dotty/issues/14687
-  // @Test def higherKindedMatchTypeImplicitConversionCompletion: Unit = {
-  //   val expected = Set(
-  //     ("mapBoo", Method, "[B](op: Int => B): Boo[B]"),
-  //     ("mapFoo", Method, "[B](op: Int => B): Foo[B]"),
-  //   )
-  //   code"""import scala.language.implicitConversions
-  //          |case class Foo[A](x: A) {
-  //          |  def mapFoo[B](op: A => B): Foo[B] = ???
-  //          |}
-  //          |case class Boo[A](x: A) {
-  //          |  def mapBoo[B](op: A => B): Boo[B] = ???
-  //          |}
-  //          |type M[A] = A match {
-  //          |  case Int => Foo[Int]
-  //          |}
-  //          |implicit def fooToBoo[A](x: Foo[A]): Boo[A] = Boo(x.x)
-  //          |case class Bar[F[_]](bar: F[Int])
-  //          |def foo(x: Bar[M]) = x.bar.m${m1}"""
-  //            .withSource.completion(m1, expected)
-  // }
+  @Test def higherKindedMatchTypeImplicitConversionCompletion: Unit = {
+    val expected = Set(
+      ("mapBoo", Method, "[B](op: Int => B): Boo[B]"),
+      ("mapFoo", Method, "[B](op: Int => B): Foo[B]"),
+    )
+    code"""import scala.language.implicitConversions
+          |case class Foo[A](x: A) {
+          |  def mapFoo[B](op: A => B): Foo[B] = ???
+          |}
+          |case class Boo[A](x: A) {
+          |  def mapBoo[B](op: A => B): Boo[B] = ???
+          |}
+          |type M[A] = A match {
+          |  case Int => Foo[Int]
+          |}
+          |implicit def fooToBoo[A](x: Foo[A]): Boo[A] = Boo(x.x)
+          |case class Bar[F[_]](bar: F[Int])
+          |def foo(x: Bar[M]) = x.bar.m${m1}"""
+      .withSource.completion(m1, expected)
+  }
+
+  @Test def higherKindedTypeInferenceTest: Unit = {
+    val expected = Set(
+      ("fooTest", Method, "(x: Int): String"),
+      )
+    code"""class Test[A, B] {
+          |  def fooTest(x: A): B = ???
+          |}
+          |
+          |object M:
+          |  val test = new Test[Int, String] {}
+          |  test.foo${m1}
+          |  (new Test[Int, String] {}).foo${m2}""".withSource
+            .completion(m1, expected)
+            .completion(m2, expected)
+  }
+
+  @Test def higherKindedImplicitConversionsCompletions: Unit = {
+    val expected = Set(
+      ("mapBoo", Method, "[B](f: Int => B): Boo[B]"),
+      ("mapFoo", Method, "[B](f: Int => B): Foo[B]"),
+    )
+    code"""import scala.language.implicitConversions
+          |case class Foo[A](x: A) {
+          |  def mapFoo[B](f: A => B): Foo[B] = ???
+          |}
+          |case class Boo[C](x: C) {
+          |  def mapBoo[B](f: C => B): Boo[B] = ???
+          }
+          |implicit def fooToBoo[D](x: Foo[D]): Boo[D] = Boo(x.x)
+          |object Test:
+          |  val x = Foo(1)
+          |  x.ma${m1}"""
+            .withSource.completion(m1, expected)
+  }
 
   @Test def higherKindedMatchTypeExtensionMethodCompletion: Unit = {
     val expected = Set(

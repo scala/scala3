@@ -381,9 +381,10 @@ object Completion {
       if qual.tpe.widenDealias.isExactlyNothing || qual.tpe.isNullType then
         Map.empty
       else
-        val membersFromConversion =
-          implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState()).flatMap(accessibleMembers)
-        membersFromConversion.toSeq.groupByName
+        implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState())
+          .flatMap(accessibleMembers)
+          .toSeq
+          .groupByName
 
     /** Completions from extension methods */
     private def extensionCompletions(qual: Tree)(using Context): CompletionMap =
@@ -489,17 +490,19 @@ object Completion {
 
     /**
      * Given `qual` of type T, finds all the types S such that there exists an implicit conversion
-     * from T to S.
+     * from T to S. It then applies conversion method for proper type parameter resolution.
      *
      * @param qual The argument to which the implicit conversion should be applied.
-     * @return The set of types that `qual` can be converted to.
+     * @return Types after implicit conversion.
      */
     private def implicitConversionTargets(qual: Tree)(using Context): Set[Type] = {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
-      val targets = conversions.map(_.widen.finalResultType)
+      val convertedTrees = conversions.flatMap(typer.tryApplyingImplicitConversion(_, qual))
+      val targets = convertedTrees.map(_.tpe.finalResultType)
+
       interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
-      targets
+       targets
     }
 
     /** Filter for names that should appear when looking for completions. */
