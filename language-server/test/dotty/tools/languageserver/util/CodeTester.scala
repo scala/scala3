@@ -4,15 +4,12 @@ import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
-
 import dotty.tools.dotc.reporting.ErrorMessageID
 import dotty.tools.dotc.util.Signatures.Signature
 
 import org.eclipse.lsp4j.{ CompletionItem, CompletionItemKind, DocumentHighlightKind, Diagnostic, DiagnosticSeverity }
-
 import org.junit.Assert.assertEquals
 
-import org.junit.Assert.assertEquals
 
 /**
  * Simulates an LSP client for test in a project defined by `sources`.

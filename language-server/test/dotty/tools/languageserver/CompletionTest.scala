@@ -1001,7 +1001,7 @@ class CompletionTest {
     )
     code"""import scala.concurrent.Future
           |class Foo(x: Fut${m1})""".withSource
-      .completion(m1, expected) 
+      .completion(m1, expected)
   }
 
   @Test def completeTemplateParents: Unit = {
@@ -1011,7 +1011,7 @@ class CompletionTest {
     )
     code"""import scala.concurrent.Future
           |class Foo extends Futu${m1}""".withSource
-      .completion(m1, expected) 
+      .completion(m1, expected)
   }
 
   @Test def completeTemplateSelfType: Unit = {
@@ -1021,7 +1021,7 @@ class CompletionTest {
     )
     code"""import scala.concurrent.Future
           |class Foo[A]{ self: Futu${m1} => }""".withSource
-      .completion(m1, expected) 
+      .completion(m1, expected)
   }
 
   @Test def backticks: Unit = {
@@ -1061,7 +1061,7 @@ class CompletionTest {
            |  enum Bar:
            |    case `back-tick`
            |    case `match`
-           |  
+           |
            |  val x = Bar.${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1074,7 +1074,7 @@ class CompletionTest {
            |  enum Bar:
            |    case `back-tick`
            |    case `match`
-           |  
+           |
            |  val x = Bar.`back${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1086,7 +1086,7 @@ class CompletionTest {
     code"""object Foo:
            |  enum Bar:
            |    case `has space`
-           |  
+           |
            |  val x = Bar.`has s${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1102,7 +1102,7 @@ class CompletionTest {
            |    val foo = 1
            |    val `foo-bar` = 2
            |    val `bar` = 3
-           |  
+           |
            |  val x = Bar.fo${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1117,7 +1117,7 @@ class CompletionTest {
            |  object Bar:
            |    val foo = 1
            |    val `foo-bar` = 2
-           |  
+           |
            |  val x = Bar.`fo${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1146,7 +1146,7 @@ class CompletionTest {
            |  case x: Int => Foo(x)
            |  case x: Any => x
            |}
-           |object Test: 
+           |object Test:
            |  elem(1).foo${m1}"""
              .withSource.completion(m1, expected)
   }
@@ -1244,5 +1244,41 @@ class CompletionTest {
           |def main = exa${m1}"""
              .withSource.completion(m1, expected)
   }
+
+  @Test def typeAliasCompletions: Unit = {
+    val expected = Set(
+      ("fooTest", Method, "(x: Int): Unit"),
+      )
+
+    code"""class Test() {
+          |  def fooTest(x: Int): Unit = ???
+          |}
+          |type TestAlias = Test
+          |object M:
+          |  val test: TestAlias = new Test()
+          |  test.foo${m1}"""
+            .withSource.completion(m1, expected)
+
+  }
+
+  @Test def higherKindedTypeAliasesCompletions: Unit = {
+    val expected = Set(
+      ("fooTest", Method, "(x: Int): Option[Unit]"),
+      )
+    code"""trait Test[F[_]] {
+          |  def fooTest(x: Int): F[Unit] = ???
+          |}
+          |
+          |type TestAlias[M[_[_]]] = M[Option]
+          |object M:
+          |  val test: TestAlias[Test] = new Test[Option] {}
+          |  val test2: Test[Option] = new Test[Option] {}
+          |  test.foo${m1}
+          |  test2.foo${m2}""".withSource
+            .completion(m1, expected)
+            .completion(m2, expected)
+
+  }
+
 
 }

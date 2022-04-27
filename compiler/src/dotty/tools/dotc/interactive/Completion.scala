@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NoType, TermRef, Type}
+import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, TermRef, Type}
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
@@ -310,10 +310,9 @@ object Completion {
       resultMappings
     }
 
-    /** Replaces underlying type with reduced one, when it's MatchType */
-    def reduceUnderlyingMatchType(qual: Tree)(using Context): Tree=
-      qual.tpe.widen match
-        case ctx.typer.MatchTypeInDisguise(mt) => qual.withType(mt)
+    def widenDealiasAppliedTypes(qual: Tree)(using Context): Tree =
+      qual.tpe.widenDealias match
+        case appliedType: AppliedType => qual.withType(appliedType)
         case _ => qual
 
     /** Completions for selections from a term.
@@ -321,11 +320,11 @@ object Completion {
      *  and so do members from extensions over members from implicit conversions
      */
     def selectionCompletions(qual: Tree)(using Context): CompletionMap =
-      val reducedQual = reduceUnderlyingMatchType(qual)
+      val adjustedQual = widenDealiasAppliedTypes(qual)
 
-      implicitConversionMemberCompletions(reducedQual) ++
-        extensionCompletions(reducedQual) ++
-        directMemberCompletions(reducedQual)
+      implicitConversionMemberCompletions(adjustedQual) ++
+        extensionCompletions(adjustedQual) ++
+        directMemberCompletions(adjustedQual)
 
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
