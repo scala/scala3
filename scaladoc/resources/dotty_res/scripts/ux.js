@@ -107,7 +107,7 @@ window.addEventListener("DOMContentLoaded", () => {
   })
 
   // show/hide side menu on mobile view
-  const sideMenuToggler = document.getElementById("mobile-menu-toggle");
+  const sideMenuToggler = document.getElementById("mobile-sidebar-toggle");
   sideMenuToggler.addEventListener('click', _e => {
     document.getElementById("leftColumn").classList.toggle("show")
     sideMenuToggler.classList.toggle("menu-shown")

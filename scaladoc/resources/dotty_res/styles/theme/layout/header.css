@@ -53,9 +53,13 @@
   display: none;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   #mobile-menu-toggle {
     margin-left: calc(3 * var(--base-spacing));
     display: block;
+  }
+
+  .header-container-right .text-button {
+    display: none;
   }
 }

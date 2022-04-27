@@ -244,6 +244,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           button(id := "mobile-menu-toggle", cls := "icon-button hamburger"),
         ),
       ),
+      button(id := "mobile-sidebar-toggle", cls := "floating-button"),
       div(id := "leftColumn", cls := "body-small")(
         Seq(
           div(cls:= "switcher-container")(
