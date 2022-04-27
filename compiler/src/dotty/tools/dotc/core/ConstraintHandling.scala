@@ -627,11 +627,7 @@ trait ConstraintHandling {
           case x =>
             // Happens if param was already solved while processing earlier params of the same TypeLambda.
             // See #4720.
-
-            // Should propagate bounds even when param has been solved.
-            // See #11682.
-            lower.forall(addOneBound(_, x, isUpper = true)) &&
-              upper.forall(addOneBound(_, x, isUpper = false))
+            true
         }
       }
     }
@@ -677,6 +673,11 @@ trait ConstraintHandling {
             case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
               val bounds = tl.paramInfos(n)
               range(bounds.lo, bounds.hi)
+            case tl: TypeLambda =>
+              val saved = comparedTypeLambdas
+              comparedTypeLambdas -= tl
+              try mapOver(tl)
+              finally comparedTypeLambdas = saved
             case _ =>
               mapOver(t)
           }
