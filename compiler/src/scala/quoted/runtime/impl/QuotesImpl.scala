@@ -230,6 +230,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ClassDefTypeTest
 
     object ClassDef extends ClassDefModule:
+      def apply(cls: Symbol, parents: List[Tree], body: List[Statement]): ClassDef =
+        val untpdCtr = untpd.DefDef(nme.CONSTRUCTOR, Nil, tpd.TypeTree(dotc.core.Symbols.defn.UnitClass.typeRef), tpd.EmptyTree)
+        val ctr = ctx.typeAssigner.assignType(untpdCtr, cls.primaryConstructor)
+        tpd.ClassDefWithParents(cls.asClass, ctr, parents, body)
+
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original
         tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived = Nil, selfOpt.getOrElse(tpd.EmptyValDef), body))
@@ -262,6 +267,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef =
+        assert(symbol.isTerm, s"expected a term symbol but received $symbol")
         withDefaultPos(tpd.DefDef(symbol.asTerm, prefss =>
           xCheckMacroedOwners(xCheckMacroValidExpr(rhsFn(prefss)), symbol).getOrElse(tpd.EmptyTree)
         ))
@@ -1049,6 +1055,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeTree extends TypeTreeModule:
       def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeTree =
         tp.asInstanceOf[TypeImpl].typeTree
+      def ref(sym: Symbol): TypeTree =
+        assert(sym.isType, "Expected a type symbol, but got " + sym)
+        tpd.ref(sym)
     end TypeTree
 
     given TypeTreeMethods: TypeTreeMethods with
@@ -1806,7 +1815,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         (x.prefix, x.name.toString)
     end TermRef
 
-    type TypeRef = dotc.core.Types.NamedType
+    type TypeRef = dotc.core.Types.TypeRef
 
     object TypeRefTypeTest extends TypeTest[TypeRepr, TypeRef]:
       def unapply(x: TypeRepr): Option[TypeRef & x.type] = x match
@@ -1884,6 +1893,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end AppliedTypeTypeTest
 
     object AppliedType extends AppliedTypeModule:
+      def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType =
+        Types.AppliedType(tycon, args)
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr]) =
         (AppliedTypeMethods.tycon(x), AppliedTypeMethods.args(x))
     end AppliedType
@@ -2456,6 +2467,20 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def requiredModule(path: String): Symbol = dotc.core.Symbols.requiredModule(path)
       def requiredMethod(path: String): Symbol = dotc.core.Symbols.requiredMethod(path)
       def classSymbol(fullName: String): Symbol = dotc.core.Symbols.requiredClass(fullName)
+
+      def newClass(owner: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol =
+        assert(parents.nonEmpty && !parents.head.typeSymbol.is(dotc.core.Flags.Trait), "First parent must be a class")
+        val cls = dotc.core.Symbols.newNormalizedClassSymbol(
+          owner,
+          name.toTypeName,
+          dotc.core.Flags.EmptyFlags,
+          parents,
+          selfType.getOrElse(Types.NoType),
+          dotc.core.Symbols.NoSymbol)
+        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
+        for sym <- decls(cls) do cls.enter(sym)
+        cls
+
       def newMethod(owner: Symbol, name: String, tpe: TypeRepr): Symbol =
         newMethod(owner, name, tpe, Flags.EmptyFlags, noSymbol)
       def newMethod(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
@@ -2624,8 +2649,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def companionClass: Symbol = self.denot.companionClass
         def companionModule: Symbol = self.denot.companionModule
         def children: List[Symbol] = self.denot.children
+        def typeRef: TypeRef = self.denot.typeRef
+        def termRef: TermRef = self.denot.termRef
 
         def show(using printer: Printer[Symbol]): String = printer.show(self)
+
+        def asQuotes: Nested = new QuotesImpl(using ctx.withOwner(self))
 
       end extension
 
@@ -2789,8 +2818,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def startColumn: Int = self.startColumn
         def endColumn: Int = self.endColumn
         def sourceCode: Option[String] =
-          // TODO detect when we do not have a source and return None
-          Some(new String(self.source.content(), self.start, self.end - self.start))
+          val contents = self.source.content()
+          if contents.length < self.end then None
+          else Some(new String(contents, self.start, self.end - self.start))
       end extension
     end PositionMethods
 
@@ -2918,6 +2948,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                    |which has the AST representation
                    |${Printer.TreeStructure.show(tree)}
                    |
+                   |
+                   |
+                   |Tip: The owner of a tree can be changed using method `Tree.changeOwner`.
+                   |Tip: The default owner of definitions created in quotes can be changed using method `Symbol.asQuotes`.
                    |""".stripMargin)
             case _ => traverseChildren(t)
       }.traverse(tree)
@@ -3003,11 +3037,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
   end reflect
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
-    val tree = PickledQuotes.unpickleTerm(pickled, typeHole, termHole)
+    val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V1(typeHole), PickledQuotes.ExprHole.V1(termHole))
+    new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
+
+  def unpickleExprV2[T](pickled: String | List[String], types: Seq[Type[?]], termHole: Null | ((Int, Seq[Type[?] | Expr[Any]], Quotes) => Expr[?])): scala.quoted.Expr[T] =
+    val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V2(types), PickledQuotes.ExprHole.V2(termHole))
     new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
 
   def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Type[T] =
-    val tree = PickledQuotes.unpickleTypeTree(pickled, typeHole, termHole)
+    val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V1(typeHole))
+    new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
+
+  def unpickleTypeV2[T <: AnyKind](pickled: String | List[String], types: Seq[Type[?]]): scala.quoted.Type[T] =
+    val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V2(types))
     new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:

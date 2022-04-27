@@ -88,6 +88,10 @@ major authors were omitted by oversight.
     docs/js/. Please refer to the license header of the concerned files for
     details.
 
+  * dotty.tools.dotc.coverage: Coverage instrumentation utilities have been
+    adapted from the scoverage plugin for scala 2 [5], which is under the
+    Apache 2.0 license.
+
   * The Dotty codebase contains parts which are derived from
     the ScalaPB protobuf library [4], which is under the Apache 2.0 license.
 
@@ -96,3 +100,4 @@ major authors were omitted by oversight.
 [2] https://github.com/adriaanm/scala/tree/sbt-api-consolidate/src/compiler/scala/tools/sbt
 [3] https://github.com/sbt/sbt/tree/0.13/compile/interface/src/main/scala/xsbt
 [4] https://github.com/lampepfl/dotty/pull/5783/files
+[5] https://github.com/scoverage/scalac-scoverage-plugin

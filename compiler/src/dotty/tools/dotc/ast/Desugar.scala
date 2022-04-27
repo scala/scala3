@@ -6,7 +6,7 @@ import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._, ContextOps._
 import Decorators._, transform.SymUtils._
-import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
+import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
 import util.{Property, SourceFile, SourcePosition, Chars}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
@@ -38,6 +38,10 @@ object desugar {
    *  Used for explaining potential errors.
    */
   val MultiLineInfix: Property.Key[Unit] = Property.StickyKey()
+
+  /** An attachment key to indicate that a ValDef originated from parameter untupling.
+   */
+  val UntupledParam: Property.Key[Unit] = Property.StickyKey()
 
   /** What static check should be applied to a Match? */
   enum MatchCheck {
@@ -585,12 +589,16 @@ object desugar {
 
     // new C[Ts](paramss)
     lazy val creatorExpr = {
-      val vparamss = constrVparamss match {
-        case (vparam :: _) :: _ if vparam.mods.isOneOf(GivenOrImplicit) => // add a leading () to match class parameters
+      val vparamss = constrVparamss match
+        case (vparam :: _) :: _ if vparam.mods.is(Implicit) => // add a leading () to match class parameters
           Nil :: constrVparamss
         case _ =>
-          constrVparamss
-      }
+          if constrVparamss.nonEmpty && constrVparamss.forall {
+            case vparam :: _ => vparam.mods.is(Given)
+            case _ => false
+          }
+          then constrVparamss :+ Nil // add a trailing () to match class parameters
+          else constrVparamss
       val nu = vparamss.foldLeft(makeNew(classTypeRef)) { (nu, vparams) =>
         val app = Apply(nu, vparams.map(refOfDef))
         vparams match {
@@ -818,7 +826,7 @@ object desugar {
     }
 
     flatTree(cdef1 :: companions ::: implicitWrappers ::: enumScaffolding)
-  }.showing(i"desugared: $result", Printers.desugar)
+  }.showing(i"desugared: $cdef --> $result", Printers.desugar)
 
   /** Expand
    *
@@ -1105,8 +1113,12 @@ object desugar {
    *  ValDef or DefDef.
    */
   def makePatDef(original: Tree, mods: Modifiers, pat: Tree, rhs: Tree)(using Context): Tree = pat match {
-    case IdPattern(named, tpt) =>
-      derivedValDef(original, named, tpt, rhs, mods)
+    case IdPattern(id, tpt) =>
+      val id1 =
+        if id.name == nme.WILDCARD
+        then cpy.Ident(id)(WildcardParamName.fresh())
+        else id
+      derivedValDef(original, id1, tpt, rhs, mods)
     case _ =>
 
       def filterWildcardGivenBinding(givenPat: Bind): Boolean =
@@ -1426,7 +1438,10 @@ object desugar {
     val vdefs =
       params.zipWithIndex.map {
         case (param, idx) =>
-          DefDef(param.name, Nil, param.tpt, selector(idx)).withSpan(param.span)
+          ValDef(param.name, param.tpt, selector(idx))
+            .withSpan(param.span)
+            .withAttachment(UntupledParam, ())
+            .withFlags(Synthetic)
       }
     Function(param :: Nil, Block(vdefs, body))
   }
@@ -1683,7 +1698,7 @@ object desugar {
             case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
           }
           RefinedTypeTree(polyFunctionTpt, List(
-            DefDef(nme.apply, applyTParams :: applyVParams :: Nil, res, EmptyTree)
+            DefDef(nme.apply, applyTParams :: applyVParams :: Nil, res, EmptyTree).withFlags(Synthetic)
           ))
         }
         else {
@@ -1869,7 +1884,7 @@ object desugar {
         elems foreach collect
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree, shouldAddGiven))
-          report.error(IllegalVariableInPatternAlternative(), vble.srcPos)
+          report.error(IllegalVariableInPatternAlternative(vble.symbol.name), vble.srcPos)
       case Annotated(arg, _) =>
         collect(arg)
       case InterpolatedString(_, segments) =>

@@ -40,45 +40,45 @@ import transform.SymUtils._
   */
 
   abstract class SyntaxMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Syntax"
+    def kind = MessageKind.Syntax
 
   abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Type"
+    def kind = MessageKind.Type
 
   trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
     override def msgSuffix: String = matchReductionAddendum(tps*)
 
   abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
   extends Message(errorId), ShowMatchTrace(found, expected):
-    def kind = "Type Mismatch"
+    def kind = MessageKind.TypeMismatch
     def explain = err.whyNoMatchStr(found, expected)
     override def canExplain = true
 
   abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Naming"
+    def kind = MessageKind.Naming
 
   abstract class DeclarationMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Declaration"
+    def kind = MessageKind.Declaration
 
   /** A simple not found message (either for idents, or member selection.
    *  Messages of this class are sometimes dropped in favor of other, more
    *  specific messages.
    */
   abstract class NotFoundMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Not Found"
+    def kind = MessageKind.NotFound
     def name: Name
 
   abstract class PatternMatchMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Pattern Match"
+    def kind = MessageKind.PatternMatch
 
   abstract class CyclicMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Cyclic"
+    def kind = MessageKind.Cyclic
 
   abstract class ReferenceMsg(errorId: ErrorMessageID) extends Message(errorId):
-    def kind = "Reference"
+    def kind = MessageKind.Reference
 
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
-  extends SyntaxMsg(EmptyCatchOrFinallyBlockID) {
+  extends SyntaxMsg(errNo) {
     def explain = {
       val tryString = tryBody match {
         case Block(Nil, untpd.EmptyTree) => "{}"
@@ -245,12 +245,15 @@ import transform.SymUtils._
     extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
-    // the idea is that if the bounds are also not-subtypes of each other to report
+    // and the bounds are not f-bounds.
+    // The idea is that if the bounds are also not-subtypes of each other to report
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
-    // these are usually easier to analyze.
+    // these are usually easier to analyze. We exclude F-bounds since these would
+    // lead to a recursive infinite expansion.
     object reported extends TypeMap:
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
+      var fbounded = false
       def apply(tp: Type): Type = tp match
         case tp: TypeParamRef =>
           constraint.entry(tp) match
@@ -260,15 +263,21 @@ import transform.SymUtils._
               else tp
             case NoType => tp
             case instType => apply(instType)
-        case tp: TypeVar => apply(tp.stripTypeVar)
-        case _ => mapOver(tp)
+        case tp: TypeVar =>
+          apply(tp.stripTypeVar)
+        case tp: LazyRef =>
+          fbounded = true
+          tp
+        case _ =>
+          mapOver(tp)
 
     def msg =
       val found1 = reported(found)
       reported.setVariance(-1)
       val expected1 = reported(expected)
       val (found2, expected2) =
-        if (found1 frozen_<:< expected1) (found, expected) else (found1, expected1)
+        if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
+        else (found1, expected1)
       val postScript = addenda.find(!_.isEmpty) match
         case Some(p) => p
         case None =>
@@ -580,9 +589,8 @@ import transform.SymUtils._
     def explain =
       em"""|An abstract declaration must have a return type. For example:
            |
-           |trait Shape {hl(
-           |  def area: Double // abstract declaration returning a ${"Double"}
-           |)}"""
+           |trait Shape:
+           |  ${hl("def area: Double")} // abstract declaration returning a Double"""
   }
 
   class MissingReturnTypeWithReturnStatement(method: Symbol)(using Context)
@@ -629,7 +637,7 @@ import transform.SymUtils._
 
   class ProperDefinitionNotFound()(using Context)
   extends Message(ProperDefinitionNotFoundID) {
-    def kind: String = "Doc Comment"
+    def kind = MessageKind.DocComment
     def msg = em"""Proper definition was not found in ${hl("@usecase")}"""
 
     def explain = {
@@ -730,9 +738,9 @@ import transform.SymUtils._
     }
   }
 
-  class IllegalVariableInPatternAlternative()(using Context)
+  class IllegalVariableInPatternAlternative(name: Name)(using Context)
   extends SyntaxMsg(IllegalVariableInPatternAlternativeID) {
-    def msg = "Variables are not allowed in alternative patterns"
+    def msg = em"Illegal variable $name in pattern alternative"
     def explain = {
       val varInAlternative =
         """|def g(pair: (Int,Int)): Int = pair match {
@@ -809,14 +817,14 @@ import transform.SymUtils._
 
   class LossyWideningConstantConversion(sourceType: Type, targetType: Type)(using Context)
   extends Message(LossyWideningConstantConversionID):
-    def kind = "Lossy Conversion"
+    def kind = MessageKind.LossyConversion
     def msg = em"""|Widening conversion from $sourceType to $targetType loses precision.
                    |Write `.to$targetType` instead.""".stripMargin
     def explain = ""
 
   class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
   extends Message(PatternMatchExhaustivityID) {
-    def kind = "Pattern Match Exhaustivity"
+    def kind = MessageKind.PatternMatchExhaustivity
     lazy val uncovered = uncoveredFn
     def msg =
       val addendum = if hasMore then "(More unmatched cases are elided)" else ""
@@ -847,7 +855,7 @@ import transform.SymUtils._
 
   class MatchCaseUnreachable()(using Context)
   extends Message(MatchCaseUnreachableID) {
-    def kind = "Match case Unreachable"
+    def kind = MessageKind.MatchCaseUnreachable
     def msg = "Unreachable case"
     def explain = ""
   }
@@ -1502,13 +1510,6 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class TopLevelCantBeImplicit(sym: Symbol)(
-    implicit ctx: Context)
-    extends SyntaxMsg(TopLevelCantBeImplicitID) {
-    def msg = em"""${hl("implicit")} modifier cannot be used for top-level definitions"""
-    def explain = ""
-  }
-
   class TypesAndTraitsCantBeImplicit()(using Context)
     extends SyntaxMsg(TypesAndTraitsCantBeImplicitID) {
     def msg = em"""${hl("implicit")} modifier cannot be used for types or traits"""
@@ -1751,7 +1752,9 @@ import transform.SymUtils._
 
   class ClassAndCompanionNameClash(cls: Symbol, other: Symbol)(using Context)
     extends NamingMsg(ClassAndCompanionNameClashID) {
-    def msg = em"Name clash: both ${cls.owner} and its companion object defines ${cls.name.stripModuleClassSuffix}"
+    def msg =
+      val name = cls.name.stripModuleClassSuffix
+      em"Name clash: both ${cls.owner} and its companion object defines $name"
     def explain =
       em"""|A ${cls.kindString} and its companion object cannot both define a ${hl("class")}, ${hl("trait")} or ${hl("object")} with the same name:
            |  - ${cls.owner} defines ${cls}
@@ -1774,7 +1777,7 @@ import transform.SymUtils._
 
   class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using Context)
     extends Message(FailureToEliminateExistentialID) {
-    def kind: String = "Compatibility"
+    def kind = MessageKind.Compatibility
     def msg =
       val originalType = ctx.printer.dclsText(boundSyms, "; ").show
       em"""An existential type that came from a Scala-2 classfile for $classRoot
@@ -2118,6 +2121,7 @@ import transform.SymUtils._
   class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using Context) extends NamingMsg(DoubleDefinitionID) {
     def msg = {
       def nameAnd = if (decl.name != previousDecl.name) " name and" else ""
+      def erasedType = if ctx.erasedTypes then i" ${decl.info}" else ""
       def details(using Context): String =
         if (decl.isRealMethod && previousDecl.isRealMethod) {
           import Signature.MatchDegree._
@@ -2145,7 +2149,7 @@ import transform.SymUtils._
                      |Consider adding a @targetName annotation to one of the conflicting definitions
                      |for disambiguation."""
                 else ""
-              i"have the same$nameAnd type after erasure.$hint"
+              i"have the same$nameAnd type$erasedType after erasure.$hint"
           }
         }
         else ""
@@ -2164,10 +2168,12 @@ import transform.SymUtils._
         else
           "Name clash between inherited members"
 
-      em"""$clashDescription:
-          |${previousDecl.showDcl} ${symLocation(previousDecl)} and
-          |${decl.showDcl} ${symLocation(decl)}
-          |""" + details
+      atPhase(typerPhase) {
+        em"""$clashDescription:
+            |${previousDecl.showDcl} ${symLocation(previousDecl)} and
+            |${decl.showDcl} ${symLocation(decl)}
+            |"""
+      } + details
     }
     def explain = ""
   }
@@ -2177,13 +2183,9 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class TypeTestAlwaysSucceeds(scrutTp: Type, testTp: Type)(using Context) extends SyntaxMsg(TypeTestAlwaysSucceedsID) {
-    def msg = {
-      val addendum =
-        if (scrutTp != testTp) s" is a subtype of ${testTp.show}"
-        else " is the same as the tested type"
-      s"The highlighted type test will always succeed since the scrutinee type ${scrutTp.show}" + addendum
-    }
+  class TypeTestAlwaysDiverges(scrutTp: Type, testTp: Type)(using Context) extends SyntaxMsg(TypeTestAlwaysDivergesID) {
+    def msg =
+      s"This type test will never return a result since the scrutinee type ${scrutTp.show} does not contain any value."
     def explain = ""
   }
 
@@ -2223,7 +2225,7 @@ import transform.SymUtils._
 
   class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)(using Context)
     extends Message(PureExpressionInStatementPositionID) {
-    def kind = "Potential Issue"
+    def kind = MessageKind.PotentialIssue
     def msg = "A pure expression does nothing in statement position; you may be omitting necessary parentheses"
     def explain =
       em"""The pure expression $stat doesn't have any side effect and its result is not assigned elsewhere.
@@ -2511,7 +2513,7 @@ import transform.SymUtils._
     def defKind = if tree.symbol.is(Module) then "object" else "class"
     def msg = s"Case $defKind definitions are not allowed in inline methods or quoted code. Use a normal $defKind instead."
     def explain =
-      em"""Case class/object definitions generate a considerable fooprint in code size.
+      em"""Case class/object definitions generate a considerable footprint in code size.
           |Inlining such definition would multiply this footprint for each call site.
           |""".stripMargin
   }

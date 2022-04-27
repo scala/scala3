@@ -120,7 +120,7 @@ object TestReporter {
       /** Prints the message with the given position indication in a simplified manner */
       override def printMessageAndPos(dia: Diagnostic, extra: String)(using Context): Unit = {
         def report() = {
-          val msg = s"${dia.pos.line + 1}: " + dia.msg.kind + extra
+          val msg = s"${dia.pos.line + 1}: " + dia.msg.kind.message + extra
           val extraInfo = inlineInfo(dia.pos)
 
           writer.println(msg)

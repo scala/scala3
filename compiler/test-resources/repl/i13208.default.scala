@@ -1,6 +1,6 @@
 scala> try 1
 1 warning found
--- [E000] Syntax Warning: ------------------------------------------------------
+-- [E002] Syntax Warning: ------------------------------------------------------
 1 | try 1
   | ^^^^^
   | A try without catch or finally is equivalent to putting

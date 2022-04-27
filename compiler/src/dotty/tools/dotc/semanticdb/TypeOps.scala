@@ -15,6 +15,7 @@ import collection.mutable
 
 import dotty.tools.dotc.{semanticdb => s}
 import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbol, TermParamRefSymbol, RefinementSymbol}
+import dotty.tools.dotc.core.Names.Designator
 
 class TypeOps:
   import SymbolScopeOps._
@@ -33,7 +34,7 @@ class TypeOps:
     )(using Context): Option[Symbol] =
       symtab.get((binder, name))
 
-  extension [T <: LambdaType](symtab: mutable.Map[(T, Name), Symbol])
+  extension [T <: LambdaType | RefinedType](symtab: mutable.Map[(T, Name), Symbol])
     private def lookupOrErr(
       binder: T,
       name: Name,
@@ -53,6 +54,8 @@ class TypeOps:
 
   private def symbolNotFound(binder: Type, name: Name, parent: Symbol)(using ctx: Context): Unit =
     warn(s"Ignoring ${name} of symbol ${parent}, type ${binder}")
+  private def symbolNotFound(name: Name, parent: Symbol)(using ctx: Context): Unit =
+    warn(s"Ignoring ${name} of symbol ${parent}")
 
   private def warn(msg: String)(using ctx: Context): Unit =
     report.warning(
@@ -63,6 +66,23 @@ class TypeOps:
     fakeSymbols.add(sym)
 
   extension (tpe: Type)
+    def lookupSym(name: Name)(using Context): Option[Symbol] = {
+      def loop(ty: Type): Option[Symbol] = ty match
+        case rt: RefinedType =>
+          refinementSymtab.lookup(rt, name).orElse(
+            loop(rt.parent)
+          )
+        case rec: RecType =>
+          loop(rec.parent)
+        case AndType(tp1, tp2) =>
+          loop(tp1).orElse(loop(tp2))
+        case OrType(tp1, tp2) =>
+          loop(tp1).orElse(loop(tp2))
+        case _ =>
+          None
+      loop(tpe.dealias)
+    }
+
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
       def enterParamRef(tpe: Type): Unit =
         tpe match {
@@ -80,6 +100,10 @@ class TypeOps:
               paramRefSymtab((lam, sym.name)) = sym
             else
               enterParamRef(lam.resType)
+
+          // for CaseType `case Array[t] => t` which is represented as [t] =>> MatchCase[Array[t], t]
+          case m: MatchType =>
+            m.cases.foreach(enterParamRef)
 
           // for class constructor
           // class C[T] { ... }
@@ -137,6 +161,12 @@ class TypeOps:
             enterRefined(expr.resType)
           case m: LambdaType =>
             enterRefined(m.resType)
+          case AndType(t1, t2) =>
+            enterRefined(t1)
+            enterRefined(t2)
+          case OrType(t1, t2) =>
+            enterRefined(t1)
+            enterRefined(t2)
           case _ => ()
         }
       if sym.exists && sym.owner.exists then
@@ -223,15 +253,41 @@ class TypeOps:
           val stpe = loop(tpe)
           s.ByNameType(stpe)
 
-        case TypeRef(pre, sym: Symbol) =>
+        // sym of `TypeRef(_, sym)` may not be a Symbol but Name in some cases
+        // e.g. in MatchType,
+        // case x *: xs => x *: Concat[xs, Ys]
+        // x and xs should have a typebounds <: Any, >: Nothing
+        // but Any (and Nothing) are represented as TypeRef(<scala>, "Any" <- Name)
+        case tr @ TypeRef(pre, _) if tr.symbol != NoSymbol =>
           val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
-          val ssym = sym.symbolName
+          val ssym = tr.symbol.symbolName
           s.TypeRef(spre, ssym, Seq.empty)
 
-        case TermRef(pre, sym: Symbol) =>
+        // when TypeRef refers the refinement of RefinedType e.g.
+        // TypeRef for `foo.B` in `trait T[A] { val foo: { type B = A } = ???; def bar(b: foo.B) = () }` has NoSymbol
+        case TypeRef(pre, name: Name) =>
+          val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
+          val maybeSym = pre.widen.dealias.lookupSym(name)
+          maybeSym match
+            case Some(sym) =>
+              s.TypeRef(spre, sym.symbolName, Seq.empty)
+            case None => s.Type.Empty
+
+        case tr @ TermRef(pre, _) if tr.symbol != NoSymbol =>
           val spre = if(tpe.hasTrivialPrefix) s.Type.Empty else loop(pre)
-          val ssym = sym.symbolName
+          val ssym = tr.symbol.symbolName
           s.SingleType(spre, ssym)
+
+        case TermRef(pre, name: Name) =>
+          val spre = if tpe.hasTrivialPrefix then s.Type.Empty else loop(pre)
+          val maybeSym = pre.widen.dealias match
+            case rt: RefinedType =>
+              refinementSymtab.lookupOrErr(rt, name, rt.typeSymbol)
+            case _ => None
+          maybeSym match
+            case Some(sym) =>
+              s.SingleType(spre, sym.symbolName)
+            case None => s.Type.Empty
 
         case ThisType(TypeRef(_, sym: Symbol)) =>
           s.ThisType(sym.symbolName)
@@ -275,6 +331,31 @@ class TypeOps:
 
         case ConstantType(const) =>
           s.ConstantType(const.toSemanticConst)
+
+        case matchType: MatchType =>
+          val scases = matchType.cases.map { caseType => caseType match {
+            case lam: HKTypeLambda => // case Array[t] => t
+              val paramSyms = lam.paramNames.flatMap { paramName =>
+                val key = (lam, paramName)
+                paramRefSymtab.get(key)
+              }.sscope
+              lam.resType match {
+                case defn.MatchCase(key, body) =>
+                  s.MatchType.CaseType(
+                    loop(key),
+                    loop(body)
+                  )
+                case _ => s.MatchType.CaseType() // shouldn't happen
+              }
+            case defn.MatchCase(key, body) =>
+              val skey = loop(key)
+              val sbody = loop(body)
+              s.MatchType.CaseType(skey, sbody)
+            case _ => s.MatchType.CaseType() // shouldn't happen
+          }}
+          val sscrutinee = loop(matchType.scrutinee)
+          val sbound = loop(matchType.bound)
+          s.MatchType(sscrutinee, scases)
 
         case rt @ RefinedType(parent, name, info) =>
           // `X { def x: Int; def y: Int }`
@@ -405,8 +486,6 @@ class TypeOps:
         // Not yet supported
         case _: HKTypeLambda =>
           s.Type.Empty
-        case _: MatchType =>
-          s.Type.Empty
 
         case tvar: TypeVar =>
           loop(tvar.stripped)
@@ -423,8 +502,12 @@ class TypeOps:
       tpe match {
         case TypeRef(pre, sym: Symbol) =>
           checkTrivialPrefix(pre, sym)
+        case tr @ TypeRef(pre, _) if tr.symbol != NoSymbol =>
+          checkTrivialPrefix(pre, tr.symbol)
         case TermRef(pre, sym: Symbol) =>
           checkTrivialPrefix(pre, sym)
+        case tr @ TermRef(pre, _) if tr.symbol != NoSymbol =>
+          checkTrivialPrefix(pre, tr.symbol)
         case _ => false
       }
 

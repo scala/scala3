@@ -48,9 +48,9 @@ Schema => SemanticDB v4
 Uri => Advanced.scala
 Text => empty
 Language => Scala
-Symbols => 48 entries
-Occurrences => 105 entries
-Synthetics => 3 entries
+Symbols => 60 entries
+Occurrences => 132 entries
+Synthetics => 4 entries
 
 Symbols:
 advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
@@ -67,17 +67,25 @@ advanced/HKClass#foo(). => method foo [typeparam T , typeparam U ](param x: F[T,
 advanced/HKClass#foo().(x) => param x: F[T, U]
 advanced/HKClass#foo().[T] => typeparam T 
 advanced/HKClass#foo().[U] => typeparam U 
-advanced/Structural# => class Structural extends Object { self: Structural => +5 decls }
+advanced/Structural# => class Structural extends Object { self: Structural => +6 decls }
+advanced/Structural#T# => trait T [typeparam A ] extends Object { self: T[A] => +4 decls }
+advanced/Structural#T#[A] => typeparam A 
+advanced/Structural#T#`<init>`(). => primary ctor <init> [typeparam A ](): T[A]
+advanced/Structural#T#bar(). => method bar (param b: foo.B): Unit
+advanced/Structural#T#bar().(b) => param b: foo.B
+advanced/Structural#T#foo. => val method foo Object { type B  = A }
 advanced/Structural#`<init>`(). => primary ctor <init> (): Structural
 advanced/Structural#s1(). => method s1 => Object { abstract val method x Int }
 advanced/Structural#s2(). => method s2 => Object { abstract val method x Int }
 advanced/Structural#s3(). => method s3 => Object { abstract method m (param x: Int): Int }
 advanced/Structural#s4(). => method s4 (param a: Int): Object { abstract val method x Int }
 advanced/Structural#s4().(a) => param a: Int
-advanced/Test. => final object Test extends Object { self: Test.type => +11 decls }
+advanced/Test. => final object Test extends Object { self: Test.type => +13 decls }
+advanced/Test.bar(). => method bar => foo.A
 advanced/Test.e. => val method e Wildcards
 advanced/Test.e1. => val method e1 List[_] forSome { type _  }
 advanced/Test.e1x. => val method e1x Any
+advanced/Test.foo. => lazy val method foo Selectable { type A  = Int } & Selectable { abstract val method a A; type A  = Int }
 advanced/Test.s. => val method s Structural
 advanced/Test.s1. => val method s1 Object { abstract val method x Int }
 advanced/Test.s1x. => val method s1x Int
@@ -99,8 +107,12 @@ local7 => param x: Int
 local8 => method m (param x: Int): Int
 local9 => final class $anon extends Object { self: $anon => +2 decls }
 local11 => abstract val method x Int
-local12 => val local e3: List[local13]
-local14 => val local e3x: local13
+local12 => type B  = A
+local13 => val local e3: List[local14]
+local15 => val local e3x: local14
+local16 => type A  = Int
+local17 => type A  = Int
+local18 => abstract val method a A
 
 Occurrences:
 [0:8..0:16): advanced <- advanced/
@@ -146,73 +158,101 @@ Occurrences:
 [15:24..15:25): x <- local11
 [15:27..15:30): Int -> scala/Int#
 [15:35..15:38): ??? -> scala/Predef.`???`().
-[18:6..18:15): Wildcards <- advanced/Wildcards#
-[19:6..19:8): e1 <- advanced/Wildcards#e1().
-[19:10..19:14): List -> scala/package.List#
-[19:20..19:23): ??? -> scala/Predef.`???`().
-[20:6..20:8): e2 <- advanced/Wildcards#e2().
+[16:8..16:9): T <- advanced/Structural#T#
+[16:10..16:11): A <- advanced/Structural#T#[A]
+[16:19..16:22): foo <- advanced/Structural#T#foo.
+[16:31..16:32): B <- local12
+[16:35..16:36): A -> advanced/Structural#T#[A]
+[16:41..16:44): ??? -> scala/Predef.`???`().
+[16:50..16:53): bar <- advanced/Structural#T#bar().
+[16:54..16:55): b <- advanced/Structural#T#bar().(b)
+[16:57..16:60): foo -> advanced/Structural#T#foo.
+[16:61..16:62): B -> local12
+[19:6..19:15): Wildcards <- advanced/Wildcards#
+[20:6..20:8): e1 <- advanced/Wildcards#e1().
 [20:10..20:14): List -> scala/package.List#
-[20:20..20:23): Int -> scala/Int#
-[20:27..20:30): ??? -> scala/Predef.`???`().
-[23:7..23:11): Test <- advanced/Test.
-[24:6..24:7): s <- advanced/Test.s.
-[24:14..24:24): Structural -> advanced/Structural#
-[25:6..25:8): s1 <- advanced/Test.s1.
-[25:11..25:12): s -> advanced/Test.s.
-[25:13..25:15): s1 -> advanced/Structural#s1().
-[26:6..26:9): s1x <- advanced/Test.s1x.
-[26:12..26:13): s -> advanced/Test.s.
-[26:14..26:16): s1 -> advanced/Structural#s1().
-[27:6..27:8): s2 <- advanced/Test.s2.
-[27:11..27:12): s -> advanced/Test.s.
-[27:13..27:15): s2 -> advanced/Structural#s2().
-[28:6..28:9): s2x <- advanced/Test.s2x.
-[28:12..28:13): s -> advanced/Test.s.
-[28:14..28:16): s2 -> advanced/Structural#s2().
-[29:6..29:8): s3 <- advanced/Test.s3.
-[29:11..29:12): s -> advanced/Test.s.
-[29:13..29:15): s3 -> advanced/Structural#s3().
-[30:6..30:9): s3x <- advanced/Test.s3x.
-[30:12..30:13): s -> advanced/Test.s.
-[30:14..30:16): s3 -> advanced/Structural#s3().
-[30:19..30:22): ??? -> scala/Predef.`???`().
-[32:6..32:7): e <- advanced/Test.e.
-[32:14..32:23): Wildcards -> advanced/Wildcards#
-[33:6..33:8): e1 <- advanced/Test.e1.
-[33:11..33:12): e -> advanced/Test.e.
-[33:13..33:15): e1 -> advanced/Wildcards#e1().
-[34:6..34:9): e1x <- advanced/Test.e1x.
-[34:12..34:13): e -> advanced/Test.e.
-[34:14..34:16): e1 -> advanced/Wildcards#e1().
-[34:17..34:21): head -> scala/collection/IterableOps#head().
-[37:5..37:8): ??? -> scala/Predef.`???`().
-[37:11..37:14): Any -> scala/Any#
-[38:11..38:13): e3 <- local12
-[38:15..38:19): List -> scala/package.List#
-[39:12..39:15): e3x <- local14
-[39:18..39:20): e3 -> local12
-[39:21..39:25): head -> scala/collection/IterableOps#head().
-[47:6..47:13): HKClass <- advanced/HKClass#
-[47:14..47:15): F <- advanced/HKClass#[F]
-[47:20..47:21): T <- advanced/HKClass#`<init>`().[F][T]
-[47:28..47:29): U <- advanced/HKClass#`<init>`().[F][U]
-[47:36..47:37): U -> advanced/HKClass#`<init>`().[F][U]
-[47:39..47:40): T -> advanced/HKClass#`<init>`().[F][T]
-[48:6..48:9): foo <- advanced/HKClass#foo().
-[48:10..48:11): T <- advanced/HKClass#foo().[T]
-[48:12..48:13): U <- advanced/HKClass#foo().[U]
-[48:15..48:16): x <- advanced/HKClass#foo().(x)
-[48:18..48:19): F -> advanced/HKClass#[F]
-[48:20..48:21): T -> advanced/HKClass#foo().[T]
-[48:23..48:24): U -> advanced/HKClass#foo().[U]
-[48:28..48:34): String -> scala/Predef.String#
-[48:37..48:38): x -> advanced/HKClass#foo().(x)
-[48:39..48:47): toString -> scala/Tuple2#toString().
+[20:20..20:23): ??? -> scala/Predef.`???`().
+[21:6..21:8): e2 <- advanced/Wildcards#e2().
+[21:10..21:14): List -> scala/package.List#
+[21:20..21:23): Int -> scala/Int#
+[21:27..21:30): ??? -> scala/Predef.`???`().
+[24:7..24:11): Test <- advanced/Test.
+[25:6..25:7): s <- advanced/Test.s.
+[25:14..25:24): Structural -> advanced/Structural#
+[26:6..26:8): s1 <- advanced/Test.s1.
+[26:11..26:12): s -> advanced/Test.s.
+[26:13..26:15): s1 -> advanced/Structural#s1().
+[27:6..27:9): s1x <- advanced/Test.s1x.
+[27:12..27:13): s -> advanced/Test.s.
+[27:14..27:16): s1 -> advanced/Structural#s1().
+[28:6..28:8): s2 <- advanced/Test.s2.
+[28:11..28:12): s -> advanced/Test.s.
+[28:13..28:15): s2 -> advanced/Structural#s2().
+[29:6..29:9): s2x <- advanced/Test.s2x.
+[29:12..29:13): s -> advanced/Test.s.
+[29:14..29:16): s2 -> advanced/Structural#s2().
+[30:6..30:8): s3 <- advanced/Test.s3.
+[30:11..30:12): s -> advanced/Test.s.
+[30:13..30:15): s3 -> advanced/Structural#s3().
+[31:6..31:9): s3x <- advanced/Test.s3x.
+[31:12..31:13): s -> advanced/Test.s.
+[31:14..31:16): s3 -> advanced/Structural#s3().
+[31:19..31:22): ??? -> scala/Predef.`???`().
+[33:6..33:7): e <- advanced/Test.e.
+[33:14..33:23): Wildcards -> advanced/Wildcards#
+[34:6..34:8): e1 <- advanced/Test.e1.
+[34:11..34:12): e -> advanced/Test.e.
+[34:13..34:15): e1 -> advanced/Wildcards#e1().
+[35:6..35:9): e1x <- advanced/Test.e1x.
+[35:12..35:13): e -> advanced/Test.e.
+[35:14..35:16): e1 -> advanced/Wildcards#e1().
+[35:17..35:21): head -> scala/collection/IterableOps#head().
+[38:5..38:8): ??? -> scala/Predef.`???`().
+[38:11..38:14): Any -> scala/Any#
+[39:11..39:13): e3 <- local13
+[39:15..39:19): List -> scala/package.List#
+[40:12..40:15): e3x <- local15
+[40:18..40:20): e3 -> local13
+[40:21..40:25): head -> scala/collection/IterableOps#head().
+[46:11..46:14): foo <- advanced/Test.foo.
+[46:17..46:24): reflect -> scala/reflect/
+[46:25..46:35): Selectable -> scala/reflect/Selectable#
+[46:43..46:44): A <- local16
+[46:47..46:50): Int -> scala/Int#
+[46:54..46:55): & -> scala/`&`#
+[46:57..46:64): reflect -> scala/reflect/
+[46:65..46:75): Selectable -> scala/reflect/Selectable#
+[46:83..46:84): A <- local17
+[46:87..46:90): Int -> scala/Int#
+[46:96..46:97): a <- local18
+[46:99..46:100): A -> local17
+[46:106..46:109): ??? -> scala/Predef.`???`().
+[47:6..47:9): bar <- advanced/Test.bar().
+[47:11..47:14): foo -> advanced/Test.foo.
+[47:15..47:16): A -> local17
+[47:19..47:22): foo -> advanced/Test.foo.
+[52:6..52:13): HKClass <- advanced/HKClass#
+[52:14..52:15): F <- advanced/HKClass#[F]
+[52:20..52:21): T <- advanced/HKClass#`<init>`().[F][T]
+[52:28..52:29): U <- advanced/HKClass#`<init>`().[F][U]
+[52:36..52:37): U -> advanced/HKClass#`<init>`().[F][U]
+[52:39..52:40): T -> advanced/HKClass#`<init>`().[F][T]
+[53:6..53:9): foo <- advanced/HKClass#foo().
+[53:10..53:11): T <- advanced/HKClass#foo().[T]
+[53:12..53:13): U <- advanced/HKClass#foo().[U]
+[53:15..53:16): x <- advanced/HKClass#foo().(x)
+[53:18..53:19): F -> advanced/HKClass#[F]
+[53:20..53:21): T -> advanced/HKClass#foo().[T]
+[53:23..53:24): U -> advanced/HKClass#foo().[U]
+[53:28..53:34): String -> scala/Predef.String#
+[53:37..53:38): x -> advanced/HKClass#foo().(x)
+[53:39..53:47): toString -> scala/Tuple2#toString().
 
 Synthetics:
-[26:12..26:16):s.s1 => reflectiveSelectable(*)
-[28:12..28:16):s.s2 => reflectiveSelectable(*)
-[30:12..30:16):s.s3 => reflectiveSelectable(*)
+[27:12..27:16):s.s1 => reflectiveSelectable(*)
+[29:12..29:16):s.s2 => reflectiveSelectable(*)
+[31:12..31:16):s.s3 => reflectiveSelectable(*)
+[47:19..47:24):foo.a => *[foo.A]
 
 expect/Annotations.scala
 ------------------------
@@ -1808,7 +1848,7 @@ givens/InventedNames$package.given_String. => final implicit lazy val given meth
 givens/InventedNames$package.given_X. => final implicit given object given_X extends Object with X { self: given_X.type => +2 decls }
 givens/InventedNames$package.given_X.doX(). => method doX => Int <: givens/X#doX().
 givens/InventedNames$package.given_Y# => implicit given class given_Y extends Object with Y { self: given_Y => +3 decls }
-givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init> ()(implicit val given param x$1: X): given_Y
+givens/InventedNames$package.given_Y#`<init>`(). => primary ctor <init> (implicit val given param x$1: X)(): given_Y
 givens/InventedNames$package.given_Y#`<init>`().(x$1) => implicit val given param x$1: X
 givens/InventedNames$package.given_Y#doY(). => method doY => String <: givens/Y#doY().
 givens/InventedNames$package.given_Y#x$1. => protected implicit val given method x$1 X
@@ -2015,6 +2055,60 @@ Occurrences:
 
 Synthetics:
 [5:4..5:8):List => *.apply[Int]
+
+expect/MatchType.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => MatchType.scala
+Text => empty
+Language => Scala
+Symbols => 10 entries
+Occurrences => 29 entries
+
+Symbols:
+example/MatchType$package. => final package object example extends Object { self: example.type => +3 decls }
+example/MatchType$package.Concat# => type Concat [typeparam Xs  <: Tuple, covariant typeparam Ys  <: Tuple] = Xs match { EmptyTuple => Ys, *:[x, xs] => *:[x, Concat[xs, Ys]] }
+example/MatchType$package.Concat#[Xs] => typeparam Xs  <: Tuple
+example/MatchType$package.Concat#[Ys] => covariant typeparam Ys  <: Tuple
+example/MatchType$package.Elem# => type Elem [typeparam X ] = X match { String => Char, Array[t] => t, Iterable[t] => t }
+example/MatchType$package.Elem#[X] => typeparam X 
+local0 => type t 
+local1 => type t 
+local2 => type x 
+local3 => type xs  <: Tuple
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:5..2:9): Elem <- example/MatchType$package.Elem#
+[2:10..2:11): X <- example/MatchType$package.Elem#[X]
+[2:15..2:16): X -> example/MatchType$package.Elem#[X]
+[3:7..3:13): String -> scala/Predef.String#
+[3:17..3:21): Char -> scala/Char#
+[4:7..4:12): Array -> scala/Array#
+[4:13..4:14): t <- local0
+[4:19..4:20): t -> local0
+[5:7..5:15): Iterable -> scala/package.Iterable#
+[5:16..5:17): t <- local1
+[5:22..5:23): t -> local1
+[7:5..7:11): Concat <- example/MatchType$package.Concat#
+[7:12..7:14): Xs <- example/MatchType$package.Concat#[Xs]
+[7:18..7:23): Tuple -> scala/Tuple#
+[7:26..7:28): Ys <- example/MatchType$package.Concat#[Ys]
+[7:32..7:37): Tuple -> scala/Tuple#
+[7:42..7:47): Tuple -> scala/Tuple#
+[7:50..7:52): Xs -> example/MatchType$package.Concat#[Xs]
+[8:7..8:17): EmptyTuple -> scala/Tuple$package.EmptyTuple#
+[8:21..8:23): Ys -> example/MatchType$package.Concat#[Ys]
+[9:7..9:8): x <- local2
+[9:9..9:11): *: -> scala/`*:`#
+[9:12..9:14): xs <- local3
+[9:18..9:19): x -> local2
+[9:20..9:22): *: -> scala/`*:`#
+[9:23..9:29): Concat -> example/MatchType$package.Concat#
+[9:30..9:32): xs -> local3
+[9:34..9:36): Ys -> example/MatchType$package.Concat#[Ys]
 
 expect/MetacJava.scala
 ----------------------
@@ -3633,6 +3727,47 @@ Occurrences:
 [4:18..4:21): Int -> scala/Int#
 [4:26..4:30): Unit -> scala/Unit#
 
+expect/dep-match.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => dep-match.scala
+Text => empty
+Language => Scala
+Symbols => 8 entries
+Occurrences => 18 entries
+
+Symbols:
+_empty_/Test_depmatch. => final object Test_depmatch extends Object { self: Test_depmatch.type => +4 decls }
+_empty_/Test_depmatch.Bar# => type Bar [typeparam T ] = T match { Unit => Unit }
+_empty_/Test_depmatch.Bar#[T] => typeparam T 
+_empty_/Test_depmatch.Foo# => type Foo  = Int { type U  }
+_empty_/Test_depmatch.baz(). => inline macro baz (param foo: Foo): Unit
+_empty_/Test_depmatch.baz().(foo) => param foo: Foo
+local0 => type U 
+local1 => val local v: Bar[foo.U]
+
+Occurrences:
+[0:7..0:20): Test_depmatch <- _empty_/Test_depmatch.
+[1:7..1:10): Foo <- _empty_/Test_depmatch.Foo#
+[1:13..1:16): Int -> scala/Int#
+[1:24..1:25): U <- local0
+[2:7..2:10): Bar <- _empty_/Test_depmatch.Bar#
+[2:11..2:12): T <- _empty_/Test_depmatch.Bar#[T]
+[2:16..2:17): T -> _empty_/Test_depmatch.Bar#[T]
+[3:9..3:13): Unit -> scala/Unit#
+[3:17..3:21): Unit -> scala/Unit#
+[5:13..5:16): baz <- _empty_/Test_depmatch.baz().
+[5:17..5:20): foo <- _empty_/Test_depmatch.baz().(foo)
+[5:22..5:25): Foo -> _empty_/Test_depmatch.Foo#
+[5:28..5:32): Unit -> scala/Unit#
+[6:8..6:9): v <- local1
+[6:11..6:14): Bar -> _empty_/Test_depmatch.Bar#
+[6:15..6:18): foo -> _empty_/Test_depmatch.baz().(foo)
+[6:19..6:20): U -> local0
+[6:24..6:27): ??? -> scala/Predef.`???`().
+
 expect/exports-example-Codec.scala
 ----------------------------------
 
@@ -3744,6 +3879,43 @@ example/FilenameWithSpaces#`<init>`(). => primary ctor <init> (): FilenameWithSp
 Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:24): FilenameWithSpaces <- example/FilenameWithSpaces#
+
+expect/i5854.scala
+------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => i5854.scala
+Text => empty
+Language => Scala
+Symbols => 6 entries
+Occurrences => 16 entries
+
+Symbols:
+i5854/B# => class B extends Object { self: B => +4 decls }
+i5854/B#`<init>`(). => primary ctor <init> (): B
+i5854/B#a. => val method a String
+i5854/B#b. => val method b Object { type A  >: Any <: Nothing }
+i5854/B#loop(). => method loop (): Nothing
+local0 => type A  >: Any <: Nothing
+
+Occurrences:
+[0:8..0:13): i5854 <- i5854/
+[2:6..2:7): B <- i5854/B#
+[7:6..7:7): a <- i5854/B#a.
+[7:9..7:15): String -> scala/Predef.String#
+[7:24..7:27): Any -> scala/Any#
+[7:30..7:31): b -> i5854/B#b.
+[7:36..7:43): Nothing -> scala/Nothing#
+[7:46..7:52): String -> scala/Predef.String#
+[8:6..8:7): b <- i5854/B#b.
+[8:16..8:17): A <- local0
+[8:21..8:24): Any -> scala/Any#
+[8:28..8:35): Nothing -> scala/Nothing#
+[8:40..8:44): loop -> i5854/B#loop().
+[9:6..9:10): loop <- i5854/B#loop().
+[9:14..9:21): Nothing -> scala/Nothing#
+[9:24..9:28): loop -> i5854/B#loop().
 
 expect/i9727.scala
 ------------------
@@ -4033,9 +4205,9 @@ Occurrences => 46 entries
 Synthetics => 3 entries
 
 Symbols:
-local0 => case val method N$1  <: Nat
+local0 => type N$1  <: Nat
 local1 => val local p: N$1
-local2 => case val method N$2  <: Nat
+local2 => type N$2  <: Nat
 local3 => val local p: N$2
 local4 => val local Nat_this: Zero.type
 local5 => val local Nat_this: Succ[Zero.type]
@@ -4217,7 +4389,7 @@ flags/p/package.y(). => protected implicit var method y Int
 flags/p/package.z(). => method z (param pp: Int): Int
 flags/p/package.z().(pp) => param pp: Int
 local0 => val local xs2: Nothing
-local1 => case val method t 
+local1 => type t 
 
 Occurrences:
 [0:8..0:13): flags <- flags/

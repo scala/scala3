@@ -597,7 +597,7 @@ class TestBCode extends DottyBytecodeTest {
       val clsIn   = dir.lookupName("Test.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
-      assertEquals(94, instructionsFromMethod(method).size)
+      assertEquals(93, instructionsFromMethod(method).size)
     }
   }
 
@@ -943,6 +943,99 @@ class TestBCode extends DottyBytecodeTest {
       val x = convertMethod(t).localVars.find(_.name == "x").get
       assertEquals(x.start, labels(1))
       assertEquals(x.end, labels(5))
+    }
+  }
+
+  @Test def i14773TailRecReuseParamSlots(): Unit = {
+    val source =
+      s"""class Foo {
+         |  @scala.annotation.tailrec // explicit @tailrec here
+         |  final def fact(n: Int, acc: Int): Int =
+         |    if n == 0 then acc
+         |    else fact(n - 1, acc * n)
+         |}
+         |
+         |class IntList(head: Int, tail: IntList | Null) {
+         |  // implicit @tailrec
+         |  final def sum(acc: Int): Int =
+         |    val t = tail
+         |    if t == null then acc + head
+         |    else t.sum(acc + head)
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      // The mutable local vars for n and acc reuse the slots of the params n and acc
+
+      val fooClass = loadClassNode(dir.lookupName("Foo.class", directory = false).input)
+      val factMeth = getMethod(fooClass, "fact")
+
+      assertSameCode(factMeth, List(
+        Label(0),
+        VarOp(ILOAD, 1),
+        Op(ICONST_0),
+        Jump(IF_ICMPNE, Label(7)),
+        VarOp(ILOAD, 2),
+        Jump(GOTO, Label(22)),
+        Label(7),
+        VarOp(ILOAD, 1),
+        Op(ICONST_1),
+        Op(ISUB),
+        VarOp(ISTORE, 3),
+        VarOp(ILOAD, 2),
+        VarOp(ILOAD, 1),
+        Op(IMUL),
+        VarOp(ISTORE, 4),
+        VarOp(ILOAD, 3),
+        VarOp(ISTORE, 1),
+        VarOp(ILOAD, 4),
+        VarOp(ISTORE, 2),
+        Jump(GOTO, Label(0)),
+        Label(22),
+        Op(IRETURN),
+        Op(NOP),
+        Op(NOP),
+        Op(NOP),
+        Op(ATHROW),
+      ))
+
+      // The mutable local vars for this and acc reuse the slots of `this` and of the param acc
+
+      val intListClass = loadClassNode(dir.lookupName("IntList.class", directory = false).input)
+      val sumMeth = getMethod(intListClass, "sum")
+
+      assertSameCode(sumMeth, List(
+        Label(0),
+        VarOp(ALOAD, 0),
+        Field(GETFIELD, "IntList", "tail", "LIntList;"),
+        VarOp(ASTORE, 2),
+        VarOp(ALOAD, 2),
+        Jump(IFNONNULL, Label(12)),
+        VarOp(ILOAD, 1),
+        VarOp(ALOAD, 0),
+        Field(GETFIELD, "IntList", "head", "I"),
+        Op(IADD),
+        Jump(GOTO, Label(26)),
+        Label(12),
+        VarOp(ALOAD, 2),
+        VarOp(ASTORE, 3),
+        VarOp(ILOAD, 1),
+        VarOp(ALOAD, 0),
+        Field(GETFIELD, "IntList", "head", "I"),
+        Op(IADD),
+        VarOp(ISTORE, 4),
+        VarOp(ALOAD, 3),
+        VarOp(ASTORE, 0),
+        VarOp(ILOAD, 4),
+        VarOp(ISTORE, 1),
+        Jump(GOTO, Label(0)),
+        Label(26),
+        Op(IRETURN),
+        Op(NOP),
+        Op(NOP),
+        Op(ATHROW),
+        Op(ATHROW),
+      ))
     }
   }
 

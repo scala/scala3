@@ -40,6 +40,11 @@ object Inliner {
 
   private type DefBuffer = mutable.ListBuffer[ValOrDefDef]
 
+  /** An exception signalling that an inline info cannot be computed due to a
+   *  cyclic reference. i14772.scala shows a case where this happens.
+   */
+  private[typer] class MissingInlineInfo extends Exception
+
   /** `sym` is an inline method with a known body to inline.
    */
   def hasBodyToInline(sym: SymDenotation)(using Context): Boolean =
@@ -154,7 +159,10 @@ object Inliner {
       if bindings.nonEmpty then
         cpy.Block(tree)(bindings.toList, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
-        val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
+        val body =
+          try bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
+          catch case _: MissingInlineInfo =>
+            throw CyclicReference(ctx.owner)
         new Inliner(tree, body).inlined(tree.srcPos)
       else
         ctx.base.stopInlining = true
@@ -1628,12 +1636,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         case res =>
           specializeEq(inlineIfNeeded(res))
       }
-      if res.symbol == defn.QuotedRuntime_exprQuote then
-        ctx.compilationUnit.needsQuotePickling = true
       res
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
-      inlineIfNeeded(constToLiteral(betaReduce(super.typedTypeApply(tree, pt))))
+      val tree1 = inlineIfNeeded(constToLiteral(betaReduce(super.typedTypeApply(tree, pt))))
+      if tree1.symbol.isQuote then
+        ctx.compilationUnit.needsStaging = true
+      tree1
 
     override def typedMatch(tree: untpd.Match, pt: Type)(using Context): Tree =
       val tree1 =

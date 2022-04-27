@@ -147,7 +147,9 @@ subsection:
           - page: reference/experimental/named-typeargs-spec.md
           - page: reference/experimental/numeric-literals.md
           - page: reference/experimental/explicit-nulls.md
+          - page: reference/experimental/main-annotation.md
           - page: reference/experimental/cc.md
+          - page: reference/experimental/tupled-function.md
       - page: reference/syntax.md
       - title: Language Versions
         index: reference/language-versions/language-versions.md
@@ -191,5 +193,6 @@ subsection:
       - page: internals/type-system.md
       - page: internals/dotty-internals-1-notes.md
       - page: internals/debug-macros.md
+      - page: internals/gadts.md
   - page: release-notes-0.1.2.md
     hidden: true

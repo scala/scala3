@@ -705,7 +705,7 @@ trait Applications extends Compatibility {
     def fail(msg: Message): Unit =
       ok = false
     def appPos: SrcPos = NoSourcePosition
-    @threadUnsafe lazy val normalizedFun:   Tree = ref(methRef)
+    @threadUnsafe lazy val normalizedFun: Tree = ref(methRef, needLoad = false)
     init()
   }
 
@@ -1326,8 +1326,6 @@ trait Applications extends Compatibility {
         unapp
     }
 
-    def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
-
     unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramInfos.length == 1 =>
         val unapplyArgType = mt.paramInfos.head
@@ -1343,7 +1341,7 @@ trait Applications extends Compatibility {
             // Constraining only fails if the pattern cannot possibly match,
             // but useless pattern checks detect more such cases, so we simply rely on them instead.
             withMode(Mode.GadtConstraintInference)(TypeComparer.constrainPatternType(unapplyArgType, selType))
-            val patternBound = maximizeType(unapplyArgType, tree.span, fromScala2x)
+            val patternBound = maximizeType(unapplyArgType, tree.span)
             if (patternBound.nonEmpty) unapplyFn = addBinders(unapplyFn, patternBound)
             unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType
@@ -1380,7 +1378,7 @@ trait Applications extends Compatibility {
         val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
-        if ((ownType eq selType) || ownType.isError) result
+        if (ownType.stripped eq selType.stripped) || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
@@ -1939,12 +1937,12 @@ trait Applications extends Compatibility {
 
         record("resolveOverloaded.FunProto", alts.length)
         val alts1 = narrowBySize(alts)
-        //report.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
+        overload.println(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
         if isDetermined(alts1) then alts1
         else
           record("resolveOverloaded.narrowedBySize", alts1.length)
           val alts2 = narrowByShapes(alts1)
-          //report.log(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
+          overload.println(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
           if isDetermined(alts2) then alts2
           else
             record("resolveOverloaded.narrowedByShape", alts2.length)
@@ -1977,8 +1975,14 @@ trait Applications extends Compatibility {
            *   new java.io.ObjectOutputStream(f)
            */
           pt match {
-            case SAMType(mtp) => narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
-            case _ => compat
+            case SAMType(mtp) =>
+              narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+            case _ =>
+              // pick any alternatives that are not methods since these might be convertible
+              // to the expected type, or be used as extension method arguments.
+              val convertible = alts.filterNot(alt =>
+                  normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
+              if convertible.length == 1 then convertible else compat
           }
         else compat
     }
@@ -2264,7 +2268,7 @@ trait Applications extends Compatibility {
       case TypeApply(fun, args) => TypeApply(replaceCallee(fun, replacement), args)
       case _ => replacement
 
-    val methodRefTree = ref(methodRef)
+    val methodRefTree = ref(methodRef, needLoad = false)
     val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
     val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
     val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))

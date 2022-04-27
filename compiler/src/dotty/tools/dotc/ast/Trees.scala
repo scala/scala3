@@ -11,6 +11,7 @@ import printing.Printer
 import printing.Texts.Text
 import util.{Stats, Attachment, Property, SourceFile, NoSource, SrcPos, SourcePosition}
 import config.Config
+import config.Printers.overload
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
@@ -502,6 +503,11 @@ object Trees {
     def forwardTo: Tree[T] = fun
   }
 
+  object GenericApply:
+    def unapply[T >: Untyped](tree: Tree[T]): Option[(Tree[T], List[Tree[T]])] = tree match
+      case tree: GenericApply[T] => Some((tree.fun, tree.args))
+      case _ => None
+
   /** The kind of application */
   enum ApplyKind:
     case Regular      // r.f(x)
@@ -523,8 +529,6 @@ object Trees {
     def applyKind: ApplyKind =
       attachmentOrElse(untpd.KindOfApply, ApplyKind.Regular)
   }
-
-
 
   /** fun[args] */
   case class TypeApply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
@@ -609,7 +613,7 @@ object Trees {
     override def toString = s"InlineMatch($selector, $cases)"
   }
 
-  /** case pat if guard => body; only appears as child of a Match */
+  /** case pat if guard => body */
   case class CaseDef[-T >: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = CaseDef[T]
@@ -811,7 +815,7 @@ object Trees {
   case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T], ValOrTypeDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
-    assert(isEmpty || tpt != genericEmptyTree)
+    assert(isEmpty || (tpt ne genericEmptyTree))
     def unforced: LazyTree[T] = preRhs
     protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
   }
@@ -821,7 +825,7 @@ object Trees {
       paramss: List[ParamClause[T]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
-    assert(tpt != genericEmptyTree)
+    assert(tpt ne genericEmptyTree)
     def unforced: LazyTree[T] = preRhs
     protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
 
@@ -971,10 +975,16 @@ object Trees {
   def genericEmptyValDef[T >: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
-  /** Tree that replaces a splice in pickled quotes.
-   *  It is only used when picking quotes (Will never be in a TASTy file).
+  /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
+   *  It is only used when picking quotes (will never be in a TASTy file).
+   *
+   *  @param isTermHole If this hole is a term, otherwise it is a type hole.
+   *  @param idx The index of the hole in it's enclosing level 0 quote.
+   *  @param args The arguments of the splice to compute its content
+   *  @param content Lambda that computes the content of the hole. This tree is empty when in a quote pickle.
+   *  @param tpt Type of the hole
    */
-  case class Hole[-T >: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
+  case class Hole[-T >: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]], content: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
     type ThisTree[-T >: Untyped] <: Hole[T]
     override def isTerm: Boolean = isTermHole
     override def isType: Boolean = !isTermHole
@@ -1330,6 +1340,10 @@ object Trees {
         case tree: Thicket if (trees eq tree.trees) => tree
         case _ => finalize(tree, untpd.Thicket(trees)(sourceFile(tree)))
       }
+      def Hole(tree: Tree)(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole = tree match {
+        case tree: Hole if isTerm == tree.isTerm && idx == tree.idx && args.eq(tree.args) && content.eq(tree.content) && content.eq(tree.content) => tree
+        case _ => finalize(tree, untpd.Hole(isTerm, idx, args, content, tpt)(sourceFile(tree)))
+      }
 
       // Copier methods with default arguments; these demand that the original tree
       // is of the same class as the copy. We only include trees with more than 2 elements here.
@@ -1351,6 +1365,9 @@ object Trees {
         TypeDef(tree: Tree)(name, rhs)
       def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody)(using Context): Template =
         Template(tree: Tree)(constr, parents, derived, self, body)
+      def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
+        Hole(tree: Tree)(isTerm, idx, args, content, tpt)
+
     }
 
     /** Hook to indicate that a transform of some subtree should be skipped */
@@ -1366,13 +1383,26 @@ object Trees {
     /** The context to use when mapping or accumulating over a tree */
     def localCtx(tree: Tree)(using Context): Context
 
+    /** The context to use when transforming a tree.
+      * It ensures that the source is correct, and that the local context is used if
+      * that's necessary for transforming the whole tree.
+      * TODO: ensure transform is always called with the correct context as argument
+      * @see https://github.com/lampepfl/dotty/pull/13880#discussion_r836395977
+      */
+    def transformCtx(tree: Tree)(using Context): Context =
+      val sourced =
+        if tree.source.exists && tree.source != ctx.source
+        then ctx.withSource(tree.source)
+        else ctx
+      tree match
+        case t: (MemberDef | PackageDef | LambdaTypeTree | TermLambdaTypeTree) =>
+          localCtx(t)(using sourced)
+        case _ =>
+          sourced
+
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
       def transform(tree: Tree)(using Context): Tree = {
-        inContext(
-          if tree.source != ctx.source && tree.source.exists
-          then ctx.withSource(tree.source)
-          else ctx
-        ){
+        inContext(transformCtx(tree)) {
           Stats.record(s"TreeMap.transform/$getClass")
           if (skipTransform(tree)) tree
           else tree match {
@@ -1429,13 +1459,9 @@ object Trees {
             case AppliedTypeTree(tpt, args) =>
               cpy.AppliedTypeTree(tree)(transform(tpt), transform(args))
             case LambdaTypeTree(tparams, body) =>
-              inContext(localCtx(tree)) {
-                cpy.LambdaTypeTree(tree)(transformSub(tparams), transform(body))
-              }
+              cpy.LambdaTypeTree(tree)(transformSub(tparams), transform(body))
             case TermLambdaTypeTree(params, body) =>
-              inContext(localCtx(tree)) {
-                cpy.TermLambdaTypeTree(tree)(transformSub(params), transform(body))
-              }
+              cpy.TermLambdaTypeTree(tree)(transformSub(params), transform(body))
             case MatchTypeTree(bound, selector, cases) =>
               cpy.MatchTypeTree(tree)(transform(bound), transform(selector), transformSub(cases))
             case ByNameTypeTree(result) =>
@@ -1451,19 +1477,13 @@ object Trees {
             case EmptyValDef =>
               tree
             case tree @ ValDef(name, tpt, _) =>
-              inContext(localCtx(tree)) {
-                val tpt1 = transform(tpt)
-                val rhs1 = transform(tree.rhs)
-                cpy.ValDef(tree)(name, tpt1, rhs1)
-              }
+              val tpt1 = transform(tpt)
+              val rhs1 = transform(tree.rhs)
+              cpy.ValDef(tree)(name, tpt1, rhs1)
             case tree @ DefDef(name, paramss, tpt, _) =>
-              inContext(localCtx(tree)) {
-                cpy.DefDef(tree)(name, transformParamss(paramss), transform(tpt), transform(tree.rhs))
-              }
+              cpy.DefDef(tree)(name, transformParamss(paramss), transform(tpt), transform(tree.rhs))
             case tree @ TypeDef(name, rhs) =>
-              inContext(localCtx(tree)) {
-                cpy.TypeDef(tree)(name, transform(rhs))
-              }
+              cpy.TypeDef(tree)(name, transform(rhs))
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body, tree.symbol))
             case Import(expr, selectors) =>
@@ -1471,15 +1491,14 @@ object Trees {
             case Export(expr, selectors) =>
               cpy.Export(tree)(transform(expr), selectors)
             case PackageDef(pid, stats) =>
-              val pid1 = transformSub(pid)
-              inContext(localCtx(tree)) {
-                cpy.PackageDef(tree)(pid1, transformStats(stats, ctx.owner))
-              }
+              cpy.PackageDef(tree)(transformSub(pid), transformStats(stats, ctx.owner))
             case Annotated(arg, annot) =>
               cpy.Annotated(tree)(transform(arg), transform(annot))
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
+            case tree @ Hole(_, _, args, content, tpt) =>
+              cpy.Hole(tree)(args = transform(args), content = transform(content), tpt = transform(tpt))
             case _ =>
               transformMoreCases(tree)
           }
@@ -1619,8 +1638,8 @@ object Trees {
               this(this(x, arg), annot)
             case Thicket(ts) =>
               this(x, ts)
-            case Hole(_, _, args) =>
-              this(x, args)
+            case Hole(_, _, args, content, tpt) =>
+              this(this(this(x, args), content), tpt)
             case _ =>
               foldMoreCases(x, tree)
           }
@@ -1638,6 +1657,7 @@ object Trees {
 
     abstract class TreeTraverser extends TreeAccumulator[Unit] {
       def traverse(tree: Tree)(using Context): Unit
+      def traverse(trees: List[Tree])(using Context) = apply((), trees)
       def apply(x: Unit, tree: Tree)(using Context): Unit = traverse(tree)
       protected def traverseChildren(tree: Tree)(using Context): Unit = foldOver((), tree)
     }
@@ -1729,7 +1749,9 @@ object Trees {
       val typer = ctx.typer
       val proto = FunProto(args, expectedType)
       val denot = receiver.tpe.member(method)
-      assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
+      if !denot.exists then
+        overload.println(i"members = ${receiver.tpe.decls}")
+        report.error(i"no member $receiver . $method", receiver.srcPos)
       val selected =
         if (denot.isOverloaded) {
           def typeParamCount(tp: Type) = tp.widen match {

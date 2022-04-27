@@ -947,8 +947,11 @@ object Types {
     final def possibleSamMethods(using Context): Seq[SingleDenotation] = {
       record("possibleSamMethods")
       atPhaseNoLater(erasurePhase) {
-        abstractTermMembers.toList.filterConserve(m =>
-          !m.symbol.matchingMember(defn.ObjectType).exists && !m.symbol.isSuperAccessor)
+        abstractTermMembers.toList.filterConserve { m =>
+          !m.symbol.matchingMember(defn.ObjectType).exists
+          && !m.symbol.isSuperAccessor
+          && !m.symbol.isInlineMethod
+        }
       }.map(_.current)
     }
 
@@ -1071,21 +1074,25 @@ object Types {
 
     /** Is this type a legal type for member `sym1` that overrides another
      *  member `sym2` of type `that`? This is the same as `<:<`, except that
+     *  @param relaxedCheck   if true type `Null` becomes a subtype of non-primitive value types in TypeComparer.
      *  @param matchLoosely   if true the types `=> T` and `()T` are seen as overriding each other.
      *  @param checkClassInfo if true we check that ClassInfos are within bounds of abstract types
      */
-    final def overrides(that: Type, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(using Context): Boolean = {
+    final def overrides(that: Type, relaxedCheck: Boolean, matchLoosely: => Boolean, checkClassInfo: Boolean = true)(using Context): Boolean = {
       def widenNullary(tp: Type) = tp match {
         case tp @ MethodType(Nil) => tp.resultType
         case _ => tp
       }
-      !checkClassInfo && this.isInstanceOf[ClassInfo]
-      || (this.widenExpr frozen_<:< that.widenExpr)
-      || matchLoosely && {
-           val this1 = widenNullary(this)
-           val that1 = widenNullary(that)
-           ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, false, checkClassInfo)
-         }
+      val overrideCtx = if relaxedCheck then ctx.relaxedOverrideContext else ctx
+      inContext(overrideCtx) {
+        !checkClassInfo && this.isInstanceOf[ClassInfo]
+        || (this.widenExpr frozen_<:< that.widenExpr)
+        || matchLoosely && {
+            val this1 = widenNullary(this)
+            val that1 = widenNullary(that)
+            ((this1 `ne` this) || (that1 `ne` that)) && this1.overrides(that1, relaxedCheck, false, checkClassInfo)
+          }
+      }
     }
 
     /** Is this type close enough to that type so that members
@@ -1541,9 +1548,10 @@ object Types {
       @tailrec def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           pre.refinedInfo match {
-            case TypeAlias(alias) =>
-              if (pre.refinedName ne name) loop(pre.parent) else alias
-            case _ => loop(pre.parent)
+            case tp: AliasingBounds =>
+              if (pre.refinedName ne name) loop(pre.parent) else tp.alias
+            case _ =>
+              loop(pre.parent)
           }
         case pre: RecType =>
           val candidate = pre.parent.lookupRefined(name)
@@ -3635,6 +3643,9 @@ object Types {
             if ann.refersToParamOf(thisLambdaType) then TrueDeps
             else compute(status, parent, theAcc)
           case _: ThisType | _: BoundType | NoPrefix => status
+          case t: LazyRef =>
+            if t.completed then compute(status, t.ref, theAcc)
+            else Unknown
           case _ =>
             (if theAcc != null then theAcc else DepAcc()).foldOver(status, tp)
       compute(initial, tp, null)
@@ -4199,7 +4210,7 @@ object Types {
      *  This is the case if tycon is higher-kinded. This means
      *  it is a subtype of a hk-lambda, but not a match alias.
      *  (normal parameterized aliases are removed in `appliedTo`).
-     *  Applications of hgher-kinded type constructors to wildcard arguments
+     *  Applications of higher-kinded type constructors to wildcard arguments
      *  are equivalent to existential types, which are not supported.
      */
     def isUnreducibleWild(using Context): Boolean =
@@ -4611,11 +4622,12 @@ object Types {
    * Note that care is needed when creating them, since not all types need to be inhabited.
    * A skolem is equal to itself and no other type.
    */
-  case class SkolemType(info: Type) extends UncachedProxyType with ValueType with SingletonType {
+  case class SkolemType(info: Type) extends CachedProxyType with ValueType with SingletonType {
     override def underlying(using Context): Type = info
     def derivedSkolemType(info: Type)(using Context): SkolemType =
       if (info eq this.info) this else SkolemType(info)
-    override def hashCode: Int = System.identityHashCode(this)
+
+    override def computeHash(bs: Binders): Int = identityHash(bs)
     override def equals(that: Any): Boolean = this.eq(that.asInstanceOf[AnyRef])
 
     def withName(name: Name): this.type = { myRepr = name; this }
@@ -4630,7 +4642,7 @@ object Types {
       myRepr.nn
     }
 
-    override def toString: String = s"Skolem($hashCode)"
+    override def toString: String = s"SkolemType($hashCode)"
   }
 
   /** A skolem type used to wrap the type of the qualifier of a selection.
@@ -5346,6 +5358,7 @@ object Types {
    *
    *   - has a single abstract method with a method type (ExprType
    *     and PolyType not allowed!) whose result type is not an implicit function type
+   *     and which is not marked inline.
    *   - can be instantiated without arguments or with just () as argument.
    *
    *  The pattern `SAMType(sam)` matches a SAM type, where `sam` is the

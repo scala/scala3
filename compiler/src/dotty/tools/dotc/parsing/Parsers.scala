@@ -172,7 +172,7 @@ object Parsers {
   class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source)
-    //in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
+    // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
      *  Overridden by ScriptParser
@@ -225,7 +225,7 @@ object Parsers {
       || allowedMods.contains(in.token)
       || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
 
-    def isStatSep: Boolean = in.isNewLine || in.token == SEMI
+    def isStatSep: Boolean = in.isStatSep
 
     /** A '$' identifier is treated as a splice if followed by a `{`.
      *  A longer identifier starting with `$` is treated as a splice/id combination
@@ -252,13 +252,8 @@ object Parsers {
 
     /** Skip on error to next safe point.
      */
-    protected def skip(stopAtComma: Boolean): Unit =
-      val lastRegion = in.currentRegion
-      def atStop =
-        in.token == EOF
-        || ((stopAtComma && in.token == COMMA) || skipStopTokens.contains(in.token)) && (in.currentRegion eq lastRegion)
-      while !atStop do
-        in.nextToken()
+    def skip(): Unit =
+      in.skip()
       lastErrorOffset = in.offset
 
     def warning(msg: Message, sourcePos: SourcePosition): Unit =
@@ -272,35 +267,37 @@ object Parsers {
 
     /** Issue an error at current offset that input is incomplete */
     def incompleteInputError(msg: Message): Unit =
-      report.incompleteInputError(msg, source.atSpan(Span(in.offset)))
+      if in.offset != lastErrorOffset then
+        report.incompleteInputError(msg, source.atSpan(Span(in.offset)))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.
      */
     def syntaxErrorOrIncomplete(msg: Message, offset: Int = in.offset): Unit =
-      if (in.token == EOF) incompleteInputError(msg)
+      if in.token == EOF then
+        incompleteInputError(msg)
       else
         syntaxError(msg, offset)
-        skip(stopAtComma = true)
+        skip()
 
     def syntaxErrorOrIncomplete(msg: Message, span: Span): Unit =
-      if (in.token == EOF) incompleteInputError(msg)
+      if in.token == EOF then
+        incompleteInputError(msg)
       else
         syntaxError(msg, span)
-        skip(stopAtComma = true)
+        skip()
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
       *
       * @return The offset at the start of the token to accept
       */
-    def accept(token: Int): Int = {
+    def accept(token: Int): Int =
       val offset = in.offset
-      if (in.token != token)
+      if in.token != token then
         syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token))
-      if (in.token == token) in.nextToken()
+      if in.token == token then in.nextToken()
       offset
-    }
 
     def accept(name: Name): Int = {
       val offset = in.offset
@@ -355,7 +352,7 @@ object Parsers {
             false // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
-            skip(stopAtComma=false)
+            skip()
             true
 
       in.observeOutdented()
@@ -562,18 +559,24 @@ object Parsers {
     def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
       inBracesOrIndented(body, rewriteWithColon)
 
-    /** part { `separator` part }
-     */
-    def tokenSeparated[T](separator: Int, part: () => T): List[T] = {
-      val ts = new ListBuffer[T] += part()
-      while (in.token == separator) {
-        in.nextToken()
-        ts += part()
+    /** <part> {`,` <part>} */
+    def commaSeparated[T](part: () => T): List[T] =
+      in.currentRegion.withCommasExpected {
+        commaSeparatedRest(part(), part)
       }
-      ts.toList
-    }
 
-    def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
+    /** {`,` <part>}
+     *
+     *  currentRegion.commasExpected has to be set separately.
+     */
+    def commaSeparatedRest[T](leading: T, part: () => T): List[T] =
+      if in.token == COMMA then
+        val ts = new ListBuffer[T] += leading
+        while in.token == COMMA do
+          in.nextToken()
+          ts += part()
+        ts.toList
+      else leading :: Nil
 
     def inSepRegion[T](f: Region => Region)(op: => T): T =
       val cur = in.currentRegion
@@ -603,7 +606,7 @@ object Parsers {
               if startIndentWidth <= nextIndentWidth then
                 i"""Line is indented too far to the right, or a `{` is missing before:
                    |
-                   |$t"""
+                   |${t.tryToShow}"""
               else
                 in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth),
               in.next.offset
@@ -1391,14 +1394,7 @@ object Parsers {
           else
             Function(params, t)
         }
-      def funTypeArgsRest(first: Tree, following: () => Tree) = {
-        val buf = new ListBuffer[Tree] += first
-        while (in.token == COMMA) {
-          in.nextToken()
-          buf += following()
-        }
-        buf.toList
-      }
+
       var isValParamList = false
 
       val t =
@@ -1411,14 +1407,15 @@ object Parsers {
           else {
             if isErased then imods = addModifier(imods)
             val paramStart = in.offset
-            val ts = funArgType() match {
-              case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
-                isValParamList = true
-                funTypeArgsRest(
+            val ts = in.currentRegion.withCommasExpected {
+              funArgType() match
+                case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
+                  isValParamList = true
+                  commaSeparatedRest(
                     typedFunParam(paramStart, name.toTermName, imods),
                     () => typedFunParam(in.offset, ident(), imods))
-              case t =>
-                funTypeArgsRest(t, funArgType)
+                case t =>
+                  commaSeparatedRest(t, funArgType)
             }
             accept(RPAREN)
             if isValParamList || in.isArrow then
@@ -2620,7 +2617,14 @@ object Parsers {
         (pattern(), guard())
       }
       CaseDef(pat, grd, atSpan(accept(ARROW)) {
-        if exprOnly then expr() else block()
+        if exprOnly then
+          if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
+            warning(i"""Misleading indentation: this expression forms part of the preceding catch case.
+                       |If this is intended, it should be indented for clarity.
+                       |Otherwise, if the handler is intended to be empty, use a multi-line catch with
+                       |an indented case.""")
+          expr()
+        else block()
       })
     }
 
@@ -2869,7 +2873,7 @@ object Parsers {
           val isAccessMod = accessModifierTokens contains in.token
           val mods1 = addModifier(mods)
           loop(if (isAccessMod) accessQualifierOpt(mods1) else mods1)
-        else if (in.token == NEWLINE && (mods.hasFlags || mods.hasAnnotations)) {
+        else if (in.isNewLine && (mods.hasFlags || mods.hasAnnotations)) {
           in.nextToken()
           loop(mods)
         }
@@ -3146,6 +3150,15 @@ object Parsers {
               syntaxError(i"source version import is only allowed at the toplevel", id.span)
             else if ctx.compilationUnit.sourceVersion.isDefined then
               syntaxError(i"duplicate source version import", id.span)
+            else if illegalSourceVersionNames.contains(imported) then
+              val candidate =
+                val nonMigration = imported.toString.replace("-migration", "")
+                validSourceVersionNames.find(_.show == nonMigration)
+              val baseMsg = i"`$imported` is not a valid source version"
+              val msg = candidate match
+                case Some(member) => i"$baseMsg, did you mean language.`$member`?"
+                case _ => baseMsg
+              syntaxError(msg, id.span)
             else
               ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
         case None =>
@@ -3198,9 +3211,8 @@ object Parsers {
           }
         else ImportSelector(from)
 
-      def importSelectors(idOK: Boolean): List[ImportSelector] =
-        val isWildcard = in.token == USCORE || in.token == GIVEN || isIdent(nme.raw.STAR)
-        val selector = atSpan(in.offset) {
+      def importSelector(idOK: Boolean): ImportSelector =
+        atSpan(in.offset) {
           in.token match
             case USCORE => wildcardSelector()
             case GIVEN => givenSelector()
@@ -3210,13 +3222,14 @@ object Parsers {
                 if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
                 namedSelector(termIdent())
         }
-        val rest =
-          if in.token == COMMA then
-            in.nextToken()
-            importSelectors(idOK = idOK && !isWildcard)
-          else
-            Nil
-        selector :: rest
+
+      def importSelectors(): List[ImportSelector] =
+        var idOK = true
+        commaSeparated { () =>
+          val isWildcard = in.token == USCORE || in.token == GIVEN || isIdent(nme.raw.STAR)
+          try importSelector(idOK)
+          finally idOK &= !isWildcard
+        }
 
       def importSelection(qual: Tree): Tree =
         if in.isIdent(nme.as) && qual.isInstanceOf[RefTree] then
@@ -3234,7 +3247,7 @@ object Parsers {
             case GIVEN =>
               mkTree(qual, givenSelector() :: Nil)
             case LBRACE =>
-              mkTree(qual, inBraces(importSelectors(idOK = true)))
+              mkTree(qual, inBraces(importSelectors()))
             case _ =>
               if isIdent(nme.raw.STAR) then
                 mkTree(qual, wildcardSelector() :: Nil)
@@ -3766,7 +3779,7 @@ object Parsers {
       val derived =
         if (isIdent(nme.derives)) {
           in.nextToken()
-          tokenSeparated(COMMA, () => convertToTypeId(qualId()))
+          commaSeparated(() => convertToTypeId(qualId()))
         }
         else Nil
       possibleTemplateStart()

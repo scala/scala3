@@ -474,7 +474,7 @@ object RefChecks {
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
-      else if member.is(Override) && other.is(Accessor, butNot = Deferred) && other.accessedFieldOrGetter.is(Mutable, butNot = Lazy) then
+      else if member.is(Override) && other.is(Mutable) then
         overrideError("cannot override a mutable variable")
       else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
@@ -767,7 +767,7 @@ object RefChecks {
           for (mbrd <- self.member(name).alternatives) {
             val mbr = mbrd.symbol
             val mbrType = mbr.info.asSeenFrom(self, mbr.owner)
-            if (!mbrType.overrides(mbrd.info, matchLoosely = true))
+            if (!mbrType.overrides(mbrd.info, relaxedCheck = false, matchLoosely = true))
               report.errorOrMigrationWarning(
                 em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
                     |  its type             $mbrType

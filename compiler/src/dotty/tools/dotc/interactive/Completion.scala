@@ -85,9 +85,9 @@ object Completion {
    * @param content The source content that we'll check the positions for the prefix
    * @param start The start position we'll start to look for the prefix at
    * @param end The end position we'll look for the prefix at
-   * @return Either the full prefix including the ` or an empty string 
+   * @return Either the full prefix including the ` or an empty string
    */
-  private def checkBacktickPrefix(content: Array[Char], start: Int, end: Int): String = 
+  private def checkBacktickPrefix(content: Array[Char], start: Int, end: Int): String =
     content.lift(start) match
       case Some(char) if char == '`' =>
         content.slice(start, end).mkString
@@ -111,7 +111,7 @@ object Completion {
       // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
       case (select: untpd.Select) :: _ if select.name == nme.ERROR =>
         checkBacktickPrefix(select.source.content(), select.nameSpan.start, select.span.end)
-     
+
       // import scala.util.chaining.`s<TAB> will result in a Ident(<error>)
       case (ident: untpd.Ident) :: _ if ident.name == nme.ERROR =>
         checkBacktickPrefix(ident.source.content(), ident.span.start, ident.span.end)
@@ -161,7 +161,7 @@ object Completion {
                           |                prefix  = ${completer.prefix},
                           |                term    = ${completer.mode.is(Mode.Term)},
                           |                type    = ${completer.mode.is(Mode.Type)}
-                          |                results = $backtickCompletions%, %""")
+                          |                results = $backtickedCompletions%, %""")
     (offset, backtickedCompletions)
   }
 
@@ -177,14 +177,14 @@ object Completion {
   // https://github.com/com-lihaoyi/Ammonite/blob/73a874173cd337f953a3edc9fb8cb96556638fdd/amm/util/src/main/scala/ammonite/util/Model.scala
   private def needsBacktick(s: String) =
     val chunks = s.split("_", -1)
-    
+
     val validChunks = chunks.zipWithIndex.forall { case (chunk, index) =>
       chunk.forall(Chars.isIdentifierPart) ||
       (chunk.forall(Chars.isOperatorPart) &&
         index == chunks.length - 1 &&
         !(chunks.lift(index - 1).contains("") && index - 1 == 0))
     }
-    
+
     val validStart =
       Chars.isIdentifierStart(s(0)) || chunks(0).forall(Chars.isOperatorPart)
 
@@ -312,7 +312,7 @@ object Completion {
 
     /** Replaces underlying type with reduced one, when it's MatchType */
     def reduceUnderlyingMatchType(qual: Tree)(using Context): Tree=
-      qual.tpe.widen match 
+      qual.tpe.widen match
         case ctx.typer.MatchTypeInDisguise(mt) => qual.withType(mt)
         case _ => qual
 
@@ -416,7 +416,7 @@ object Completion {
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
       val termCompleter = new Completer(Mode.Term, prefix, pos)
       val extMethodsInScope = termCompleter.scopeCompletions.toList.flatMap {
-        case (name, denots) => denots.collect { case d: SymDenotation => (d.termRef, name.asTermName) }
+        case (name, denots) => denots.collect { case d: SymDenotation if d.isTerm => (d.termRef, name.asTermName) }
       }
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
@@ -467,8 +467,8 @@ object Completion {
       !sym.isPackageObject &&
       !sym.is(Artifact) &&
       (
-           (mode.is(Mode.Term) && sym.isTerm)
-        || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember))
+           (mode.is(Mode.Term) && (sym.isTerm || sym.is(ModuleClass))
+        || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
       )
 
     /** @param site The type to inspect.

@@ -158,6 +158,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private inline def inFrozenGadt[T](inline op: T): T =
     inFrozenGadtIf(true)(op)
 
+  /** A flag to prevent recursive joins when comparing AndTypes on the left */
+  private var joined = false
+
   private inline def inFrozenGadtIf[T](cond: Boolean)(inline op: T): T = {
     val savedFrozenGadt = frozenGadt
     frozenGadt ||= cond
@@ -477,11 +480,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         widenOK
         || joinOK
         || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
-        || containsAnd(tp1) && inFrozenGadt(recur(tp1.join, tp2))
+        || containsAnd(tp1)
+            && !joined
+            && {
+              joined = true
+              try inFrozenGadt(recur(tp1.join, tp2))
+              finally joined = false
+            }
             // An & on the left side loses information. We compensate by also trying the join.
             // This is less ad-hoc than it looks since we produce joins in type inference,
             // and then need to check that they are indeed supertypes of the original types
             // under -Ycheck. Test case is i7965.scala.
+            // On the other hand, we could get a combinatorial explosion by applying such joins
+            // recursively, so we do it only once. See i14870.scala as a test case, which would
+            // loop for a very long time without the recursion brake.
 
      case tp1: MatchType =>
         val reduced = tp1.reduced
@@ -744,8 +756,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     def tryBaseType(cls2: Symbol) = {
+      val allowBaseType = !caseLambda.exists || (tp1 match {
+        case tp: TypeRef if tp.symbol.isClass => true
+        case AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass => true
+        case _ => false
+      })
       val base = nonExprBaseType(tp1, cls2)
-      if (base.exists && (base `ne` tp1))
+      if (base.exists && base.ne(tp1) && allowBaseType)
         isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
         base.isInstanceOf[OrType] && fourthTry
           // if base is a disjunction, this might have come from a tp1 type that
@@ -764,7 +781,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
+            !caseLambda.exists && isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
             // `Mode.RelaxedOverriding` is only enabled when checking Java overriding
             // in explicit nulls, and `Null` becomes a bottom type, which allows
@@ -1764,11 +1781,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case _ => false
 
   /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of
-   *  the normalized type of the refinement `tp2`?
+   *  the normalized type of the refinement of `tp2`?
    *  Normalization is as follows: If `tp2` contains a skolem to its refinement type,
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
-  protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
+  def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
     trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) {
 
       def qualifies(m: SingleDenotation): Boolean =
@@ -1813,6 +1830,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           || symInfo.isInstanceOf[MethodType]
               && symInfo.signature.consistentParams(info2.signature)
 
+        def tp1IsSingleton: Boolean = tp1.isInstanceOf[SingletonType]
+
         // A relaxed version of isSubType, which compares method types
         // under the standard arrow rule which is contravarient in the parameter types,
         // but under the condition that signatures might have to match (see sigsOK)
@@ -1827,8 +1846,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   matchingMethodParams(info1, info2, precise = false)
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType)
                   && sigsOK(symInfo1, info2)
-                case _ => isSubType(info1, info2)
-            case _ => isSubType(info1, info2)
+                case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
+            case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
 
         val info1 = m.info.widenExpr
         isSubInfo(info1, tp2.refinedInfo.widenExpr, m.symbol.info.orElse(info1))
@@ -2533,8 +2552,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
       override def apply(x: Boolean, t: Type) =
         x && {
-          t match {
-            case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
+          t.dealias match {
+            case tp: TypeRef if !tp.symbol.isClass => false
             case _: SkolemType | _: TypeVar | _: TypeParamRef => false
             case _ => foldOver(x, t)
           }
@@ -2711,15 +2730,16 @@ object TypeComparer {
      */
     val Fresh: Repr = 4
 
-    extension (approx: Repr)
-      def low: Boolean = (approx & LoApprox) != 0
-      def high: Boolean = (approx & HiApprox) != 0
-      def addLow: Repr = approx | LoApprox
-      def addHigh: Repr = approx | HiApprox
-      def show: String =
-        val lo = if low then " (left is approximated)" else ""
-        val hi = if high then " (right is approximated)" else ""
-        lo ++ hi
+    object Repr:
+      extension (approx: Repr)
+        def low: Boolean = (approx & LoApprox) != 0
+        def high: Boolean = (approx & HiApprox) != 0
+        def addLow: Repr = approx | LoApprox
+        def addHigh: Repr = approx | HiApprox
+        def show: String =
+          val lo = if low then " (left is approximated)" else ""
+          val hi = if high then " (right is approximated)" else ""
+          lo ++ hi
   end ApproxState
   type ApproxState = ApproxState.Repr
 
@@ -2749,6 +2769,9 @@ object TypeComparer {
 
   def matchesType(tp1: Type, tp2: Type, relaxed: Boolean)(using Context): Boolean =
     comparing(_.matchesType(tp1, tp2, relaxed))
+
+  def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType)(using Context): Boolean =
+    comparing(_.hasMatchingMember(name, tp1, tp2))
 
   def matchingMethodParams(tp1: MethodType, tp2: MethodType)(using Context): Boolean =
     comparing(_.matchingMethodParams(tp1, tp2))

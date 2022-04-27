@@ -1,0 +1,378 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+lifting/test.scala
+<empty>
+Vals
+Class
+<empty>.Vals
+<init>
+22
+29
+1
+apply
+Apply
+false
+0
+false
+List(1)
+
+1
+lifting/test.scala
+<empty>
+Vals
+Class
+<empty>.Vals
+<init>
+46
+57
+2
+apply
+Apply
+false
+0
+false
+List(1,2,3)
+
+2
+lifting/test.scala
+<empty>
+Vals
+Class
+<empty>.Vals
+<init>
+41
+57
+2
+::
+Apply
+false
+0
+false
+l :: List(1,2,3)
+
+3
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+msg
+104
+116
+5
++
+Apply
+false
+0
+false
+"string" + a
+
+4
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+msg
+104
+122
+5
++
+Apply
+false
+0
+false
+"string" + a + "."
+
+5
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+msg
+104
+126
+5
++
+Apply
+false
+0
+false
+"string" + a + "." + b
+
+6
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+msg
+104
+132
+5
++
+Apply
+false
+0
+false
+"string" + a + "." + b + "."
+
+7
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+msg
+104
+136
+5
++
+Apply
+false
+0
+false
+"string" + a + "." + b + "." + c
+
+8
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+msg
+70
+77
+5
+msg
+DefDef
+false
+0
+false
+def msg
+
+9
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+integer
+139
+150
+6
+integer
+DefDef
+false
+0
+false
+def integer
+
+10
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+ex
+162
+168
+7
+ex
+DefDef
+false
+0
+false
+def ex
+
+11
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+221
+224
+11
+<init>
+Apply
+false
+0
+false
+A()
+
+12
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+f
+241
+246
+13
+f
+DefDef
+false
+0
+false
+def f
+
+13
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+264
+286
+14
+msg
+Apply
+false
+0
+false
+a.msg(i, 0, a.integer)
+
+14
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+289
+299
+15
+println
+Apply
+false
+0
+false
+println(x)
+
+15
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+306
+334
+16
+msg
+Apply
+false
+0
+false
+a.ex.msg(i, 0, a.ex.integer)
+
+16
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+337
+347
+17
+println
+Apply
+false
+0
+false
+println(x)
+
+17
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+360
+363
+18
+f
+Apply
+false
+0
+false
+f()
+
+18
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+354
+370
+18
+msg
+Apply
+false
+0
+false
+a.msg(f(), 0, i)
+
+19
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+373
+383
+19
+println
+Apply
+false
+0
+false
+println(x)
+
+20
+lifting/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+188
+202
+10
+Test
+DefDef
+false
+0
+false
+@main
+def Test
+

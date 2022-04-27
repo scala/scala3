@@ -113,13 +113,15 @@ object ResolveSuper {
         // Since the super class can be Java defined,
         // we use relaxed overriding check for explicit nulls if one of the symbols is Java defined.
         // This forces `Null` to be a subtype of non-primitive value types during override checking.
-        val overrideCtx = if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined))
-          then ctx.relaxedOverrideContext else ctx
-        if !otherTp.overrides(accTp, matchLoosely = true)(using overrideCtx) then
+        val relaxedOverriding = ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined))
+        if !otherTp.overrides(accTp, relaxedOverriding, matchLoosely = true) then
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
       bcs = bcs.tail
     }
-    assert(sym.exists, i"cannot rebind $acc, ${acc.targetName} $memberName")
-    sym
+    sym.orElse {
+      val originalName = acc.name.asTermName.originalOfSuperAccessorName
+      report.error(em"Member method ${originalName.debugString} of mixin ${acc.owner} is missing a concrete super implementation in $base.", base.srcPos)
+      acc
+    }
   }
 }

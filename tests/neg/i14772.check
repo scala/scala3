@@ -1,0 +1,6 @@
+-- [E044] Cyclic Error: tests/neg/i14772.scala:7:7 ---------------------------------------------------------------------
+7 |    foo(a)    // error
+  |       ^
+  |       Overloaded or recursive method impl needs return type
+  |
+  | longer explanation available when compiling with `-explain`

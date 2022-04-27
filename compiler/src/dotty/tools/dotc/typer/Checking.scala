@@ -473,8 +473,7 @@ object Checking {
     if sym.isInlineMethod && !sym.is(Deferred) && sym.allOverriddenSymbols.nonEmpty then
       checkInlineOverrideParameters(sym)
     if (sym.is(Implicit)) {
-      if (sym.owner.is(Package))
-        fail(TopLevelCantBeImplicit(sym))
+      assert(!sym.owner.is(Package), s"top-level implicit $sym should be wrapped by a package after typer")
       if sym.isType && (!sym.isClass || sym.is(Trait)) then
         fail(TypesAndTraitsCantBeImplicit())
     }
@@ -713,7 +712,7 @@ object Checking {
 
   def checkValue(tree: Tree)(using Context): Unit =
     val sym = tree.tpe.termSymbol
-    if sym.is(Flags.Package) || sym.isAllOf(Flags.JavaModule) && !ctx.isJava then
+    if sym.isNoValue && !ctx.isJava then
       report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 
   def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
@@ -1197,7 +1196,7 @@ trait Checking {
     case _: TypeTree =>
     case _ =>
       if tree.tpe.typeParams.nonEmpty then
-        val what = if tree.symbol.exists then tree.symbol else i"type $tree"
+        val what = if tree.symbol.exists then tree.symbol.show else i"type $tree"
         report.error(em"$what takes type parameters", tree.srcPos)
 
   /** Check that we are in an inline context (inside an inline method or in inline code) */
@@ -1351,12 +1350,13 @@ trait Checking {
   def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean =
     !ctx.reporter.reportsErrorsFor {
       val annotCls = Annotations.annotClass(annot)
+      val concreteAnnot = Annotations.ConcreteAnnotation(annot)
       val pos = annot.srcPos
-      if (annotCls == defn.MainAnnot) {
+      if (annotCls == defn.MainAnnot || concreteAnnot.matches(defn.MainAnnotationClass)) {
         if (!sym.isRealMethod)
-          report.error(em"@main annotation cannot be applied to $sym", pos)
+          report.error(em"main annotation cannot be applied to $sym", pos)
         if (!sym.owner.is(Module) || !sym.owner.isStatic)
-          report.error(em"$sym cannot be a @main method since it cannot be accessed statically", pos)
+          report.error(em"$sym cannot be a main method since it cannot be accessed statically", pos)
       }
       // TODO: Add more checks here
     }

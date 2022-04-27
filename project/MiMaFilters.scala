@@ -3,24 +3,16 @@ import com.typesafe.tools.mima.core._
 
 object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
-    // Experimental APIs that can be added in 3.2.0
-    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.append"),
-    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
-    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.substituteTypes"),
-    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.typeArgs"),
-    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#TypeReprMethods.typeArgs"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.double"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.double$"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.float"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.float$"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.long"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.compiletime.ops.long$"),
-    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#CompilationInfoModule.XmacroSettings"),
-    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#CompilationInfoModule.XmacroSettings"),
-    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.deriving.Mirror.fromProductTyped"),
-    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.deriving.Mirror.fromTuple"),
+    // APIs that must be added in 3.2.0
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.runtime.QuoteUnpickler.unpickleExprV2"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.QuoteUnpickler.unpickleExprV2"),
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.runtime.QuoteUnpickler.unpickleTypeV2"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.quoted.runtime.QuoteUnpickler.unpickleTypeV2"),
 
-    // Private to the compiler - needed for forward binary compatibility
-    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.since")
+    // Experimental `MainAnnotation` APIs. Can be added in 3.3.0 or later.
+    // MiMa bug: classes nested in an experimental object should be ignored
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$Info"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$Parameter"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.MainAnnotation$ParameterAnnotation"),
   )
 }

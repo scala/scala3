@@ -113,7 +113,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    def genThrow(expr: Tree): BType = {
+    def genThrow(expr: Tree): Unit = {
       val thrownKind = tpeTK(expr)
       // `throw null` is valid although scala.Null (as defined in src/libray-aux) isn't a subtype of Throwable.
       // Similarly for scala.Nothing (again, as defined in src/libray-aux).
@@ -121,8 +121,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       genLoad(expr, thrownKind)
       lineNumber(expr)
       emit(asm.Opcodes.ATHROW) // ICode enters here into enterIgnoreMode, we'll rely instead on DCE at ClassNode level.
-
-      RT_NOTHING // always returns the same, the invoker should know :)
     }
 
     /* Generate code for primitive arithmetic operations. */
@@ -293,9 +291,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
 
       tree match {
-        case ValDef(nme.THIS, _, _) =>
-          report.debuglog("skipping trivial assign to _$this: " + tree)
-
         case tree@ValDef(_, _, _) =>
           val sym = tree.symbol
           /* most of the time, !locals.contains(sym), unless the current activation of genLoad() is being called
@@ -322,13 +317,14 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           generatedType = expectedType
 
         case t @ WhileDo(_, _) =>
-          generatedType = genWhileDo(t)
+          generatedType = genWhileDo(t, expectedType)
 
         case t @ Try(_, _, _) =>
           generatedType = genLoadTry(t)
 
         case t: Apply if t.fun.symbol eq defn.throwMethod =>
-          generatedType = genThrow(t.args.head)
+          genThrow(t.args.head)
+          generatedType = expectedType
 
         case New(tpt) =>
           abort(s"Unexpected New(${tpt.tpe.showSummary()}/$tpt) reached GenBCode.\n" +
@@ -589,41 +585,47 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     } // end of genReturn()
 
-    def genWhileDo(tree: WhileDo): BType = tree match{
+    def genWhileDo(tree: WhileDo, expectedType: BType): BType = tree match{
       case WhileDo(cond, body) =>
 
       val isInfinite = cond == tpd.EmptyTree
 
-      val loop = new asm.Label
-      markProgramPoint(loop)
-
-      if (isInfinite) {
-        genLoad(body, UNIT)
-        bc goTo loop
-        RT_NOTHING
-      } else {
-        val hasBody = cond match {
-          case Literal(value) if value.tag == UnitTag => false
-          case _ => true
-        }
-
-        if (hasBody) {
-          val success = new asm.Label
-          val failure = new asm.Label
-          genCond(cond, success, failure, targetIfNoJump = success)
-          markProgramPoint(success)
-          genLoad(body, UNIT)
-          bc goTo loop
-          markProgramPoint(failure)
-        } else {
-          // this is the shape of do..while loops, so do something smart about them
-          val failure = new asm.Label
-          genCond(cond, loop, failure, targetIfNoJump = failure)
-          markProgramPoint(failure)
-        }
-
+      if isInfinite then
+        body match
+          case Labeled(bind, expr) if tpeTK(body) == UNIT =>
+            // this is the shape of tailrec methods
+            val loop = programPoint(bind.symbol)
+            markProgramPoint(loop)
+            genLoad(expr, UNIT)
+            bc goTo loop
+          case _ =>
+            val loop = new asm.Label
+            markProgramPoint(loop)
+            genLoad(body, UNIT)
+            bc goTo loop
+        end match
+        expectedType
+      else
+        body match
+          case Literal(value) if value.tag == UnitTag =>
+            // this is the shape of do..while loops
+            val loop = new asm.Label
+            markProgramPoint(loop)
+            val exitLoop = new asm.Label
+            genCond(cond, loop, exitLoop, targetIfNoJump = exitLoop)
+            markProgramPoint(exitLoop)
+          case _ =>
+            val loop = new asm.Label
+            val success = new asm.Label
+            val failure = new asm.Label
+            markProgramPoint(loop)
+            genCond(cond, success, failure, targetIfNoJump = success)
+            markProgramPoint(success)
+            genLoad(body, UNIT)
+            bc goTo loop
+            markProgramPoint(failure)
+        end match
         UNIT
-      }
     }
 
     def genTypeApply(t: TypeApply): BType = (t: @unchecked) match {

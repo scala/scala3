@@ -401,15 +401,25 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
     val ownType =
       if (body.isType) {
-        val params = new TreeAccumulator[mutable.ListBuffer[TypeSymbol]] {
+        val getParams = new TreeAccumulator[mutable.ListBuffer[TypeSymbol]] {
           def apply(ps: mutable.ListBuffer[TypeSymbol], t: Tree)(using Context) = t match {
             case t: Bind if t.symbol.isType => foldOver(ps += t.symbol.asType, t)
             case _ => foldOver(ps, t)
           }
         }
-        HKTypeLambda.fromParams(
-          params(new mutable.ListBuffer[TypeSymbol](), pat).toList,
-          defn.MatchCase(pat.tpe, body.tpe))
+        val params1 = getParams(new mutable.ListBuffer[TypeSymbol](), pat).toList
+        val params2 = pat.tpe match
+          case AppliedType(tycon, args) =>
+            val tparams = tycon.typeParamSymbols
+            params1.mapconserve { param =>
+              val info1 = param.info
+              val info2 = info1.subst(tparams, args)
+              if info2 eq info1 then param else param.copy(info = info2).asType
+            }
+          case _ => params1
+        val matchCase1 = defn.MatchCase(pat.tpe, body.tpe)
+        val matchCase2 = if params2 eq params1 then matchCase1 else matchCase1.substSym(params1, params2)
+        HKTypeLambda.fromParams(params2, matchCase2)
       }
       else body.tpe
     tree.withType(ownType)
@@ -470,7 +480,12 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.LambdaTypeTree, tparamDefs: List[TypeDef], body: Tree)(using Context): LambdaTypeTree =
-    tree.withType(HKTypeLambda.fromParams(tparamDefs.map(_.symbol.asType), body.tpe))
+    val validParams = tparamDefs.filterConserve { tdef =>
+      val ok = tdef.symbol.isType
+      if !ok then assert(ctx.reporter.errorsReported)
+      ok
+    }
+    tree.withType(HKTypeLambda.fromParams(validParams.map(_.symbol.asType), body.tpe))
 
   def assignType(tree: untpd.MatchTypeTree, bound: Tree, scrutinee: Tree, cases: List[CaseDef])(using Context): MatchTypeTree = {
     val boundType = if (bound.isEmpty) defn.AnyType else bound.tpe
@@ -521,6 +536,10 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(using Context): PackageDef =
     tree.withType(pid.symbol.termRef)
+
+  def assignType(tree: untpd.Hole, tpt: Tree)(using Context): Hole =
+    tree.withType(tpt.tpe)
+
 }
 
 

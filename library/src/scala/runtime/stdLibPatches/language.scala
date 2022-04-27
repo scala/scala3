@@ -150,9 +150,12 @@ object language:
 
   /** Set source version to 3.1-migration.
     *
+    * This is a no-op, and should not be used. A syntax error will be reported upon import.
+    *
     * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
   @compileTimeOnly("`3.1-migration` can only be used at compile time in import statements")
+  @deprecated("`3.1-migration` is not valid, use `3.1` instead", since = "3.2")
   object `3.1-migration`
 
   /** Set source version to 3.1

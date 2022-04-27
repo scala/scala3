@@ -1,6 +1,8 @@
 -- Error: tests/init/neg/unsound2.scala:5:26 ---------------------------------------------------------------------------
 5 |        def getN: Int = a.n // error
   |                        ^^^
-  | Access field B.this.a.n on a value with an unknown initialization status. Calling trace:
-  |  -> println(foo(x).getB)	[ unsound2.scala:8 ]
+  |   Access field B.this.a.n on a value with an unknown initialization status. Calling trace:
+  |   -> println(foo(x).getB)	[ unsound2.scala:8 ]
+  |              ^^^^^^
   |   -> def foo(y: Int): B = if (y > 10) then B(bar(y - 1), foo(y - 1).getN) else B(bar(y), 10)	[ unsound2.scala:2 ]
+  |                                                          ^^^^^^^^^^^^^^^

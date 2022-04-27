@@ -144,14 +144,13 @@ call :updateClasspath "flexmark-ext-tables"
 call :updateClasspath "flexmark-ext-ins"
 call :updateClasspath "flexmark-ext-superscript"
 call :updateClasspath "antlr4-runtime"
-call :updateClasspath "ST4"
 goto :eof
 
 @rem input parameter: %1=pattern for library file
 @rem output parameter: _CLASS_PATH
 :updateClasspath
 set "__PATTERN=%~1"
-for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*%__PATTERN%*"') do (
+for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*%__PATTERN%*" 2^>NUL') do (
     set "_CLASS_PATH=!_CLASS_PATH!%_LIB_DIR%\%%f%_PSEP%"
 )
 goto :eof

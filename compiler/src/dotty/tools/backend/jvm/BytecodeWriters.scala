@@ -117,7 +117,8 @@ trait BytecodeWriters {
       catch case ex: ClosedByInterruptException =>
         try
           outfile.delete() // don't leave an empty or half-written classfile around after an interrupt
-        catch case _: Throwable =>
+        catch
+          case _: Throwable =>
         throw ex
       finally outstream.close()
       report.informProgress("wrote '" + label + "' to " + outfile)

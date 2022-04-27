@@ -2,7 +2,11 @@ name: Dotty
 
 on:
   push:
+    branches-ignore:
+      - 'language-reference-stable'
   pull_request:
+    branches-ignore:
+      - 'language-reference-stable'
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
   workflow_dispatch:
@@ -115,10 +119,6 @@ jobs:
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
-      - name: MiMa
-        run: |
-          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues"
-
   test_windows_fast:
     runs-on: [self-hosted, Windows]
     if: "(
@@ -188,6 +188,47 @@ jobs:
       - name: Scala.js Test
         run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
+
+  mima:
+    name: MiMa
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || github.event_name == 'push'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip mima]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
+         )"
+    steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: MiMa
+        run: |
+          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues"
 
   community_build_a:
     runs-on: [self-hosted, Linux]
@@ -330,49 +371,6 @@ jobs:
         if: ${{ always() }}
         run: cat community-build/dotty-community-build-deps || true
 
-  community_build_forward_compat:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-        || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip community_build]')
-           && contains(github.event.pull_request.body, '[test_forward_compat]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
-         )"
-
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v2
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Test
-        run: |
-          git submodule sync
-          git submodule update --init --recursive --jobs 7
-          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestForwardCompat"
-
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
@@ -472,7 +470,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, community_build_forward_compat, test_sbt, test_java8]
+    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
     if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
@@ -563,6 +561,44 @@ jobs:
           external_repository: lampepfl/dotty-website
           publish_branch: gh-pages
 
+  nightly_unmanaged_community_build:
+    # Self-hosted runner is used only for getting current build version
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    needs: [publish_nightly]
+    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
+    env:
+      NIGHTLYBUILD: yes
+    steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Get version string for this build
+        run: |
+          ver=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "This build version: $ver"
+          echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
+      # Steps above are copy-pasted from publish_nightly, needed only to resolve THISBUILD_VERSION
+      - name: Trigger unmanaged community build
+        run: .github/workflows/scripts/triggerUnmanagedCommunityBuild.sh "${{ secrets.BUILD_TOKEN }}" "$THISBUILD_VERSION"
 
   publish_release:
     runs-on: [self-hosted, Linux]
@@ -573,7 +609,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
+    needs: [test_non_bootstrapped, test, mima, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
     if: "github.event_name == 'push'
          && startsWith(github.event.ref, 'refs/tags/')"
 
@@ -600,11 +636,10 @@ jobs:
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Publish Release
+      - name: Prepare Release
         run: |
           ./project/scripts/sbt dist/packArchive
           sha256sum dist/target/scala3-* > dist/target/sha256sum.txt
-          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
           echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
       - name: Create GitHub Release
@@ -615,9 +650,9 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: ${{ github.ref }}
-          body:
-          draft: false
-          prerelease: ${{ contains(env.RELEASE_TAG, 'M') }}
+          body_path: ./changelogs/${{ env.RELEASE_TAG }}.md
+          draft: true
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
 
       - name: Upload zip archive to GitHub Release
         uses: actions/upload-release-asset@v1
@@ -648,6 +683,10 @@ jobs:
           asset_path: ./dist/target/sha256sum.txt
           asset_name: sha256sum.txt
           asset_content_type: text/plain
+
+      - name: Publish Release
+        run: ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+
 
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]

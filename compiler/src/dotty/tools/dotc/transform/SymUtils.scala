@@ -64,6 +64,8 @@ object SymUtils:
 
     def isSuperAccessor(using Context): Boolean = self.name.is(SuperAccessorName)
 
+    def isNoValue(using Context): Boolean = self.is(Package) || self.isAllOf(JavaModule)
+
     /** Is this a type or term parameter or a term parameter accessor? */
     def isParamOrAccessor(using Context): Boolean =
       self.is(Param) || self.is(ParamAccessor)
@@ -109,6 +111,11 @@ object SymUtils:
         case res =>
           self.isCoDefinedGiven(res.typeSymbol)
       self.isAllOf(Given | Method) && isCodefined(self.info)
+
+    // TODO Scala 3.x: only check for inline vals (no final ones)
+    def isInlineVal(using Context) =
+      self.isOneOf(FinalOrInline, butNot = Mutable)
+      && (!self.is(Method) || self.is(Accessor))
 
     def useCompanionAsSumMirror(using Context): Boolean =
       def companionExtendsSum(using Context): Boolean =

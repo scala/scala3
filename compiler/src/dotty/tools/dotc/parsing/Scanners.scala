@@ -68,6 +68,7 @@ object Scanners {
     }
 
     def isNewLine = token == NEWLINE || token == NEWLINES
+    def isStatSep = isNewLine || token == SEMI
     def isIdent = token == IDENTIFIER || token == BACKQUOTED_IDENT
     def isIdent(name: Name) = token == IDENTIFIER && this.name == name
 
@@ -276,7 +277,40 @@ object Scanners {
     private val prev = newTokenData
 
     /** The current region. This is initially an Indented region with zero indentation width. */
-    var currentRegion: Region = Indented(IndentWidth.Zero, Set(), EMPTY, null)
+    var currentRegion: Region = Indented(IndentWidth.Zero, EMPTY, null)
+
+// Error recovery ------------------------------------------------------------
+
+    private def lastKnownIndentWidth: IndentWidth =
+      def recur(r: Region): IndentWidth =
+        if r.knownWidth == null then recur(r.enclosing) else r.knownWidth
+      recur(currentRegion)
+
+    private var skipping = false
+
+    /** Skip on error to next safe point.
+     */
+    def skip(): Unit =
+      val lastRegion = currentRegion
+      skipping = true
+      def atStop =
+        token == EOF
+        || (currentRegion eq lastRegion)
+            && (isStatSep
+                || closingParens.contains(token) && lastRegion.toList.exists(_.closedBy == token)
+                || token == COMMA && lastRegion.toList.exists(_.commasExpected)
+                || token == OUTDENT && indentWidth(offset) < lastKnownIndentWidth)
+          // stop at OUTDENT if the new indentwidth is smaller than the indent width of
+          // currentRegion. This corrects for the problem that sometimes we don't see an INDENT
+          // when skipping and therefore might erroneously end up syncing on a nested OUTDENT.
+      if debugTokenStream then
+        println(s"\nSTART SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
+      while !atStop do
+        nextToken()
+      if debugTokenStream then
+        println(s"\nSTOP SKIP AT ${sourcePos().line + 1}, $this in $currentRegion")
+      if token == OUTDENT then dropUntil(_.isInstanceOf[Indented])
+      skipping = false
 
 // Get next token ------------------------------------------------------------
 
@@ -307,27 +341,27 @@ object Scanners {
       nextToken()
       result
 
+    private inline def dropUntil(inline matches: Region => Boolean): Unit =
+      while !matches(currentRegion) && !currentRegion.isOutermost do
+        currentRegion = currentRegion.enclosing
+
     def adjustSepRegions(lastToken: Token): Unit = (lastToken: @switch) match {
       case LPAREN | LBRACKET =>
         currentRegion = InParens(lastToken, currentRegion)
       case LBRACE =>
         currentRegion = InBraces(currentRegion)
       case RBRACE =>
-        def dropBraces(): Unit = currentRegion match {
-          case r: InBraces =>
-            currentRegion = r.enclosing
-          case _ =>
-            if (!currentRegion.isOutermost) {
-              currentRegion = currentRegion.enclosing
-              dropBraces()
-            }
-        }
-        dropBraces()
+        dropUntil(_.isInstanceOf[InBraces])
+        if !currentRegion.isOutermost then currentRegion = currentRegion.enclosing
       case RPAREN | RBRACKET =>
         currentRegion match {
           case InParens(prefix, outer) if prefix + 1 == lastToken => currentRegion = outer
           case _ =>
         }
+      case OUTDENT =>
+        currentRegion match
+          case r: Indented => currentRegion = r.enclosing
+          case _ =>
       case STRINGLIT =>
         currentRegion match {
           case InString(_, outer) => currentRegion = outer
@@ -415,8 +449,8 @@ object Scanners {
             || {
               r.outer match
                 case null => true
-                case Indented(outerWidth, others, _, _) =>
-                  outerWidth < nextWidth && !others.contains(nextWidth)
+                case ro @ Indented(outerWidth, _, _) =>
+                  outerWidth < nextWidth && !ro.otherIndentWidths.contains(nextWidth)
                 case outer =>
                   outer.indentWidth < nextWidth
             }
@@ -434,12 +468,6 @@ object Scanners {
             sourcePos(), from = `3.0`)
         true
       }
-
-    def isContinuing(lastToken: Token) =
-      (openParensTokens.contains(token) || lastToken == RETURN)
-      && !pastBlankLine
-      && !migrateTo3
-      && !noindentSyntax
 
     /** The indentation width of the given offset. */
     def indentWidth(offset: Offset): IndentWidth =
@@ -522,6 +550,34 @@ object Scanners {
       var lastWidth = IndentWidth.Zero
       var indentPrefix = EMPTY
       val nextWidth = indentWidth(offset)
+
+      // If nextWidth is an indentation level not yet seen by enclosing indentation
+      // region, invoke `handler`.
+      def handleNewIndentWidth(r: Region, handler: Indented => Unit): Unit = r match
+        case r @ Indented(curWidth, prefix, outer)
+        if curWidth < nextWidth && !r.otherIndentWidths.contains(nextWidth) && nextWidth != lastWidth =>
+          handler(r)
+        case _ =>
+
+      /** Is this line seen as a continuation of last line? We assume that
+       *   - last line ended in a token that can end a statement
+       *   - current line starts with a token that can start a statement
+       *   - current line does not start with a leading infix operator
+       *  The answer is different for Scala-2 and Scala-3.
+       *   - In Scala 2: Only `{` is treated as continuing, irrespective of indentation.
+       *     But this is in fact handled by Parser.argumentStart which skips a NEWLINE,
+       *     so we always assume false here.
+       *   - In Scala 3: Only indented statements are treated as continuing, as long as
+       *     they start with `(`, `[` or `{`, or the last statement ends in a `return`.
+       *   The Scala 2 rules apply under source `3.0-migration` or under `-no-indent`.
+       */
+      def isContinuing =
+        lastWidth < nextWidth
+        && (openParensTokens.contains(token) || lastToken == RETURN)
+        && !pastBlankLine
+        && !migrateTo3
+        && !noindentSyntax
+
       currentRegion match
         case r: Indented =>
           indentIsSignificant = indentSyntax
@@ -539,7 +595,7 @@ object Scanners {
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
          && !isLeadingInfixOperator(nextWidth)
-         && !(lastWidth < nextWidth && isContinuing(lastToken))
+         && !isContinuing
       then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if indentIsSignificant then
@@ -550,32 +606,31 @@ object Scanners {
           else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) && lastToken != INDENT then
             currentRegion match
               case r: Indented =>
-                currentRegion = r.enclosing
                 insert(OUTDENT, offset)
-              case r: InBraces if !closingRegionTokens.contains(token) =>
-                report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
-              case _ =>
+                if next.token != COLON then
+                  handleNewIndentWidth(r.enclosing, ir =>
+                    errorButContinue(
+                      i"""The start of this line does not match any of the previous indentation widths.
+                          |Indentation width of current line : $nextWidth
+                          |This falls between previous widths: ${ir.width} and $lastWidth"""))
+              case r =>
+                if skipping then
+                  if r.enclosing.isClosedByUndentAt(nextWidth) then
+                    insert(OUTDENT, offset)
+                else if r.isInstanceOf[InBraces] && !closingRegionTokens.contains(token) then
+                  report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
 
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken) then
-            currentRegion = Indented(nextWidth, Set(), lastToken, currentRegion)
+            currentRegion = Indented(nextWidth, lastToken, currentRegion)
             insert(INDENT, offset)
           else if lastToken == SELFARROW then
             currentRegion.knownWidth = nextWidth
         else if (lastWidth != nextWidth)
           errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
-      currentRegion match
-        case Indented(curWidth, others, prefix, outer)
-        if curWidth < nextWidth && !others.contains(nextWidth) && nextWidth != lastWidth =>
-          if token == OUTDENT && next.token != COLON then
-            errorButContinue(
-              i"""The start of this line does not match any of the previous indentation widths.
-                  |Indentation width of current line : $nextWidth
-                  |This falls between previous widths: $curWidth and $lastWidth""")
-          else
-            currentRegion = Indented(curWidth, others + nextWidth, prefix, outer)
-        case _ =>
+      if token != OUTDENT || next.token == COLON then
+        handleNewIndentWidth(currentRegion, _.otherIndentWidths += nextWidth)
     end handleNewLine
 
     def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth) =
@@ -595,7 +650,7 @@ object Scanners {
         val nextWidth = indentWidth(next.offset)
         val lastWidth = currentRegion.indentWidth
         if lastWidth < nextWidth then
-          currentRegion = Indented(nextWidth, Set(), COLONEOL, currentRegion)
+          currentRegion = Indented(nextWidth, COLONEOL, currentRegion)
           offset = next.offset
           token = INDENT
     end observeIndented
@@ -610,7 +665,6 @@ object Scanners {
          && !(token == CASE && r.prefix == MATCH)
          && next.token == EMPTY  // can be violated for ill-formed programs, e.g. neg/i12605.sala
       =>
-        currentRegion = r.enclosing
         insert(OUTDENT, offset)
       case _ =>
 
@@ -625,9 +679,7 @@ object Scanners {
     }
 
     def closeIndented() = currentRegion match
-      case r: Indented if !r.isOutermost =>
-        insert(OUTDENT, offset)
-        currentRegion = r.outer
+      case r: Indented if !r.isOutermost => insert(OUTDENT, offset)
       case _ =>
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT
@@ -658,10 +710,10 @@ object Scanners {
           currentRegion match
             case r: Indented if isEnclosedInParens(r.outer) =>
               insert(OUTDENT, offset)
-              currentRegion = r.outer
             case _ =>
               lookAhead()
               if isAfterLineEnd
+                 && currentRegion.commasExpected
                  && (token == RPAREN || token == RBRACKET || token == RBRACE || token == OUTDENT)
               then
                 () /* skip the trailing comma */
@@ -1492,8 +1544,9 @@ object Scanners {
    *   InBraces    a pair of braces { ... }
    *   Indented    a pair of <indent> ... <outdent> tokens
    */
-  abstract class Region:
-    /** The region enclosing this one, or `null` for the outermost region */
+  abstract class Region(val closedBy: Token):
+
+   /** The region enclosing this one, or `null` for the outermost region */
     def outer: Region | Null
 
     /** Is this region the outermost region? */
@@ -1520,6 +1573,37 @@ object Scanners {
       if enclosing.knownWidth == null then enclosing.useOuterWidth()
       knownWidth = enclosing.knownWidth
 
+    /** Does `width` represent an undent of an enclosing indentation region?
+     *  This is the case if there is an indentation region that goes deeper than `width`
+     *  and that is enclosed in a region that contains `width` as an indentation width.
+     */
+    def isClosedByUndentAt(width: IndentWidth): Boolean = this match
+      case _: Indented =>
+        !isOutermost && width <= indentWidth && enclosing.coversIndent(width)
+      case _ =>
+        enclosing.isClosedByUndentAt(width)
+
+    /** A region "covers" an indentation with `width` if it has `width` as known
+     *  indentation width (either as primary, or in case of an Indent region as
+     *  alternate width).
+     */
+    protected def coversIndent(w: IndentWidth): Boolean =
+      knownWidth != null && w == indentWidth
+
+    private var myCommasExpected: Boolean = false
+
+    inline def withCommasExpected[T](inline op: => T): T =
+      val saved = myCommasExpected
+      myCommasExpected = true
+      val res = op
+      myCommasExpected = false
+      res
+
+    def commasExpected = myCommasExpected
+
+    def toList: List[Region] =
+      this :: (if outer == null then Nil else outer.toList)
+
     private def delimiter = this match
       case _: InString => "}(in string)"
       case InParens(LPAREN, _) => ")"
@@ -1530,27 +1614,31 @@ object Scanners {
 
     /** Show open regions as list of lines with decreasing indentations */
     def visualize: String =
-      indentWidth.toPrefix
-      + delimiter
-      + outer.match
-          case null => ""
-          case next: Region => "\n" + next.visualize
+      toList.map(r => s"${r.indentWidth.toPrefix}${r.delimiter}").mkString("\n")
+
+    override def toString: String =
+      toList.map(r => s"(${r.indentWidth}, ${r.delimiter})").mkString(" in ")
   end Region
 
-  case class InString(multiLine: Boolean, outer: Region) extends Region
-  case class InParens(prefix: Token, outer: Region) extends Region
-  case class InBraces(outer: Region) extends Region
-  case class InCase(outer: Region) extends Region
+  case class InString(multiLine: Boolean, outer: Region) extends Region(RBRACE)
+  case class InParens(prefix: Token, outer: Region) extends Region(prefix + 1)
+  case class InBraces(outer: Region) extends Region(RBRACE)
+  case class InCase(outer: Region) extends Region(OUTDENT)
 
   /** A class describing an indentation region.
    *  @param width   The principal indendation width
-   *  @param others  Other indendation widths > width of lines in the same region
    *  @param prefix  The token before the initial <indent> of the region
    */
-  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null) extends Region:
+  case class Indented(width: IndentWidth, prefix: Token, outer: Region | Null) extends Region(OUTDENT):
     knownWidth = width
 
-  def topLevelRegion(width: IndentWidth) = Indented(width, Set(), EMPTY, null)
+    /** Other indendation widths > width of lines in the same region */
+    var otherIndentWidths: Set[IndentWidth] = Set()
+
+    override def coversIndent(w: IndentWidth) = width == w || otherIndentWidths.contains(w)
+  end Indented
+
+  def topLevelRegion(width: IndentWidth) = Indented(width, EMPTY, null)
 
   enum IndentWidth {
     case Run(ch: Char, n: Int)

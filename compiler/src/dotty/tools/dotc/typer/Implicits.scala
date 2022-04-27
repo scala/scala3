@@ -1108,7 +1108,9 @@ trait Implicits:
         ctx.reporter.removeBufferedMessages
         adapted.tpe match {
           case _: SearchFailureType => SearchFailure(adapted)
-          case _ =>
+          case error: PreviousErrorType if !adapted.symbol.isAccessibleFrom(cand.ref.prefix) => 
+            SearchFailure(adapted.withType(new NestedFailure(error.msg, pt)))
+          case _ => 
             // Special case for `$conforms` and `<:<.refl`. Showing them to the users brings
             // no value, so we instead report a `NoMatchingImplicitsFailure`
             if (adapted.symbol == defn.Predef_conforms || adapted.symbol == defn.SubType_refl)
@@ -1135,7 +1137,7 @@ trait Implicits:
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
     val wildProto: Type =
       if argument.isEmpty then wildApprox(pt)
-      else ViewProto(wildApprox(argument.tpe.widen), wildApprox(pt))
+      else ViewProto(wildApprox(argument.tpe.widen.normalized), wildApprox(pt))
         // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
     val isNotGiven: Boolean = wildProto.classSymbol == defn.NotGivenClass

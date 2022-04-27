@@ -24,6 +24,7 @@ import Inferencing._
 import transform.ValueClasses._
 import transform.TypeUtils._
 import transform.SymUtils._
+import TypeErasure.erasure
 import reporting._
 import config.Feature.sourceVersion
 import config.SourceVersion._
@@ -102,6 +103,10 @@ class Namer { typer: Typer =>
           case _ => throw IllegalArgumentException(i"$xtree does not have a symbol")
     }
   }
+
+  def hasDefinedSymbol(tree: Tree)(using Context): Boolean =
+    val xtree = expanded(tree)
+    xtree.hasAttachment(TypedAhead) || xtree.hasAttachment(SymOfTree)
 
   /** The enclosing class with given name; error if none exists */
   def enclosingClassNamed(name: TypeName, span: Span)(using Context): Symbol =
@@ -837,6 +842,10 @@ class Namer { typer: Typer =>
     private def addInlineInfo(sym: Symbol) = original match {
       case original: untpd.DefDef if sym.isInlineMethod =>
         def rhsToInline(using Context): tpd.Tree =
+          if !original.symbol.exists && !hasDefinedSymbol(original) then
+            throw
+              if sym.isCompleted then Inliner.MissingInlineInfo()
+              else CyclicReference(sym)
           val mdef = typedAheadExpr(original).asInstanceOf[tpd.DefDef]
           PrepareInlineable.wrapRHS(original, mdef.tpt, mdef.rhs)
         PrepareInlineable.registerInlineInfo(sym, rhsToInline)(using localContext(sym))
@@ -1074,7 +1083,8 @@ class Namer { typer: Typer =>
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
 
-      def canForward(mbr: SingleDenotation): CanForward = {
+      val targets = mutable.Set[Name]()
+      def canForward(mbr: SingleDenotation, alias: TermName): CanForward = {
         import CanForward.*
         val sym = mbr.symbol
         if !sym.isAccessibleFrom(path.tpe) then
@@ -1083,6 +1093,8 @@ class Namer { typer: Typer =>
           Skip
         else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
           No(i"is already a member of $cls")
+        else if targets.contains(alias) then
+          No(i"clashes with another export in the same export clause")
         else if sym.is(Override) then
           sym.allOverriddenSymbols.find(
             other => cls.derivesFrom(other.owner) && !other.is(Deferred)
@@ -1125,7 +1137,7 @@ class Namer { typer: Typer =>
             case _ =>
               acc.reverse ::: prefss
 
-        if canForward(mbr) == CanForward.Yes then
+        if canForward(mbr, alias) == CanForward.Yes then
           val sym = mbr.symbol
           val hasDefaults = sym.hasDefaultParams // compute here to ensure HasDefaultParams and NoDefaultParams flags are set
           val forwarder =
@@ -1174,15 +1186,17 @@ class Namer { typer: Typer =>
             buf += ddef.withSpan(span)
             if hasDefaults then
               foreachDefaultGetterOf(sym.asTerm,
-                getter => addForwarder(getter.name.asTermName, getter, span))
+                getter => addForwarder(
+                  getter.name.asTermName, getter.asSeenFrom(path.tpe), span))
       end addForwarder
 
       def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
         val size = buf.size
         val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
         mbrs.foreach(addForwarder(alias, _, span))
+        targets += alias
         if buf.size == size then
-          val reason = mbrs.map(canForward).collect {
+          val reason = mbrs.map(canForward(_, alias)).collect {
             case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
           }.headOption.getOrElse("")
           report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
@@ -1225,8 +1239,64 @@ class Namer { typer: Typer =>
             addForwarders(sels1, sel.name :: seen)
         case _ =>
 
+      /** Avoid a clash of export forwarder `forwarder` with other forwarders in `forwarders`.
+       *  @return If `forwarder` clashes, a new leading forwarder and trailing forwarders list
+       *          that avoids the clash according to the scheme described in `avoidClashes`.
+       *          If there's no clash, the inputs as they are in a pair.
+       */
+      def avoidClashWith(forwarder: tpd.DefDef, forwarders: List[tpd.MemberDef]): (tpd.DefDef, List[tpd.MemberDef]) =
+        def clashes(fwd1: Symbol, fwd2: Symbol) =
+          fwd1.targetName == fwd2.targetName
+          && erasure(fwd1.info).signature == erasure(fwd2.info).signature
+
+        forwarders match
+          case forwarders @ ((forwarder1: tpd.DefDef) :: forwarders1)
+          if forwarder.name == forwarder1.name =>
+            if clashes(forwarder.symbol, forwarder1.symbol) then
+              val alt1 = tpd.methPart(forwarder.rhs).tpe
+              val alt2 = tpd.methPart(forwarder1.rhs).tpe
+              val cmp = alt1 match
+                case alt1: TermRef => alt2 match
+                  case alt2: TermRef => compare(alt1, alt2)
+                  case _ => 0
+                case _ => 0
+              if cmp == 0 then
+                report.error(
+                  ex"""Clashing exports: The exported
+                      |     ${forwarder.rhs.symbol}: ${alt1.widen}
+                      |and  ${forwarder1.rhs.symbol}: ${alt2.widen}
+                      |have the same signature after erasure and overloading resolution could not disambiguate.""",
+                  exp.srcPos)
+              avoidClashWith(if cmp < 0 then forwarder1 else forwarder, forwarders1)
+            else
+              val (forwarder2, forwarders2) = avoidClashWith(forwarder, forwarders1)
+              (forwarder2, forwarders.derivedCons(forwarder1, forwarders2))
+          case _ =>
+            (forwarder, forwarders)
+      end avoidClashWith
+
+      /** Avoid clashes of any two export forwarders in `forwarders`.
+       *  A clash is if two forwarders f1 and f2 have the same name and signatures after erasure.
+       *  We try to avoid a clash by dropping one of f1 and f2, keeping the one whose right hand
+       *  side reference would be preferred by overloading resolution.
+       *  If neither of f1 or f2 is preferred over the other, report an error.
+       *
+       *  The idea is that this simulates the hypothetical case where export forwarders
+       *  are not generated and we treat an export instead more like an import where we
+       *  expand the use site reference. Test cases in {neg,pos}/i14699.scala.
+       *
+       *  @pre Forwarders with the same name are consecutive in `forwarders`.
+       */
+      def avoidClashes(forwarders: List[tpd.MemberDef]): List[tpd.MemberDef] = forwarders match
+        case forwarders @ (forwarder :: forwarders1) =>
+          val (forwarder2, forwarders2) = forwarder match
+            case forwarder: tpd.DefDef => avoidClashWith(forwarder, forwarders1)
+            case _ => (forwarder, forwarders1)
+          forwarders.derivedCons(forwarder2, avoidClashes(forwarders2))
+        case Nil => forwarders
+
       addForwarders(selectors, Nil)
-      val forwarders = buf.toList
+      val forwarders = avoidClashes(buf.toList)
       exp.pushAttachment(ExportForwarders, forwarders)
       forwarders
     end exportForwarders
@@ -1686,11 +1756,6 @@ class Namer { typer: Typer =>
         case _ =>
           approxTp
 
-    // println(s"final inherited for $sym: ${inherited.toString}") !!!
-    // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-    // TODO Scala 3.1: only check for inline vals (no final ones)
-    def isInlineVal = sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
-
     var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
     if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
@@ -1724,7 +1789,7 @@ class Namer { typer: Typer =>
         // don't strip @uncheckedVariance annot for default getters
         TypeOps.simplify(tp.widenTermRefExpr,
             if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null) match
-          case ctp: ConstantType if isInlineVal => ctp
+          case ctp: ConstantType if sym.isInlineVal => ctp
           case tp => TypeComparer.widenInferred(tp, pt)
 
     // Replace aliases to Unit by Unit itself. If we leave the alias in
@@ -1735,7 +1800,7 @@ class Namer { typer: Typer =>
     def lhsType = fullyDefinedType(cookedRhsType, "right-hand side", mdef.span)
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
-      if (isInlineVal) lhsType else inherited
+      if sym.isInlineVal then lhsType else inherited
     else {
       if (sym.is(Implicit))
         mdef match {

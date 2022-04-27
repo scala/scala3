@@ -1,1 +1,1 @@
-def foo = (x: @) => ()  // error
+def foo = (x: @) => ()  // error // error

@@ -263,8 +263,6 @@ Standard Section: "Comments" Comment*
 ```none
   Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 ```
-
-* @syntax markdown
 **************************************************************************************/
 
 object TastyFormat {

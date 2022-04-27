@@ -1128,15 +1128,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if tree.isInline then checkInInlineContext("inline if", tree.srcPos)
     val cond1 = typed(tree.cond, defn.BooleanType)
 
+    def isIncomplete(tree: untpd.If): Boolean = tree.elsep match
+      case EmptyTree => true
+      case elsep: untpd.If => isIncomplete(elsep)
+      case _ => false
+
+    val branchPt = if isIncomplete(tree) then defn.UnitType else pt.dropIfProto
+
     val result =
       if tree.elsep.isEmpty then
-        val thenp1 = typed(tree.thenp, defn.UnitType)(using cond1.nullableContextIf(true))
+        val thenp1 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
         val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
       else
         val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
-          val thenp0 = typed(tree.thenp, pt.dropIfProto)(using cond1.nullableContextIf(true))
-          val elsep0 = typed(tree.elsep, pt.dropIfProto)(using cond1.nullableContextIf(false))
+          val thenp0 = typed(tree.thenp, branchPt)(using cond1.nullableContextIf(true))
+          val elsep0 = typed(tree.elsep, branchPt)(using cond1.nullableContextIf(false))
           thenp0 :: elsep0 :: Nil
         }
         assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
@@ -1596,14 +1603,32 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             typedMatchFinish(tree, sel1, selType, tree.cases, pt)
         }
 
+        /** Are some form of brackets necessary to annotate the tree `sel` as `@unchecked`?
+         *  If so, return a Some(opening bracket, closing bracket), otherwise None.
+         */
+        def uncheckedBrackets(sel: untpd.Tree): Option[(String, String)] = sel match
+          case _: untpd.If
+             | _: untpd.Match
+             | _: untpd.ForYield
+             | _: untpd.ParsedTry
+             | _: untpd.Try => Some("(", ")")
+          case _: untpd.Block => Some("{", "}")
+          case _ => None
+
         result match {
           case result @ Match(sel, CaseDef(pat, _, _) :: _) =>
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
-              case Some(checkMode) =>
+              case Some(checkMode) if !sel.tpe.hasAnnotation(defn.UncheckedAnnot) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
-                if (!checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `future-migration`)
-                  if (isPatDef) patch(Span(tree.selector.span.end), ": @unchecked")
-                  else patch(Span(pat.span.start), "case ")
+                if !checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `future-migration` then
+                  if isPatDef then uncheckedBrackets(tree.selector) match
+                    case None =>
+                      patch(Span(tree.selector.span.end), ": @unchecked")
+                    case Some(bl, br) =>
+                      patch(Span(tree.selector.span.start), s"$bl")
+                      patch(Span(tree.selector.span.end), s"$br: @unchecked")
+                  else
+                    patch(Span(tree.span.start), "case ")
 
                 // skip exhaustivity check in later phase
                 // TODO: move the check above to patternMatcher phase
@@ -2115,7 +2140,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val sym = newPatternBoundSymbol(name, symTp, tree.span)
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
-            report.error(i"Illegal variable ${sym.name} in pattern alternative", tree.srcPos)
+            report.error(IllegalVariableInPatternAlternative(sym.name), tree.srcPos)
           assignType(cpy.Bind(tree)(name, body1), sym)
         }
     }
@@ -2356,25 +2381,32 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     /** If `ref` is an implicitly parameterized trait, pass an implicit argument list.
      *  Otherwise, if `ref` is a parameterized trait, error.
-     *  Note: Traits and classes currently always have at least an empty parameter list ()
-     *        before the implicit parameters (this is inserted if not given in source).
-     *        We skip this parameter list when deciding whether a trait is parameterless or not.
+     *  Note: Traits and classes have sometimes a synthesized empty parameter list ()
+     *  in front or after the implicit parameter(s). See NamerOps.normalizeIfConstructor.
+     *  We synthesize a () argument at the correct place in this case.
      *  @param ref   The tree referring to the (parent) trait
      *  @param psym  Its type symbol
-     *  @param cinfo The info of its constructor
      */
-    def maybeCall(ref: Tree, psym: Symbol): Tree = psym.primaryConstructor.info.stripPoly match
-      case cinfo @ MethodType(Nil) if cinfo.resultType.isImplicitMethod =>
+    def maybeCall(ref: Tree, psym: Symbol): Tree =
+      def appliedRef =
         typedExpr(untpd.New(untpd.TypedSplice(ref)(using superCtx), Nil))(using superCtx)
-      case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
-        ref
-      case cinfo: MethodType =>
-        if !ctx.erasedTypes then // after constructors arguments are passed in super call.
-          typr.println(i"constr type: $cinfo")
-          report.error(ParameterizedTypeLacksArguments(psym), ref.srcPos)
-        ref
-      case _ =>
-        ref
+      def dropContextual(tp: Type): Type = tp.stripPoly match
+        case mt: MethodType if mt.isContextualMethod => dropContextual(mt.resType)
+        case _ => tp
+      psym.primaryConstructor.info.stripPoly match
+        case cinfo @ MethodType(Nil)
+        if cinfo.resultType.isImplicitMethod && !cinfo.resultType.isContextualMethod =>
+          appliedRef
+        case cinfo =>
+          val cinfo1 = dropContextual(cinfo)
+          cinfo1 match
+            case cinfo1 @ MethodType(Nil) if !cinfo1.resultType.isInstanceOf[MethodType] =>
+              if cinfo1 ne cinfo then appliedRef else ref
+            case cinfo1: MethodType if !ctx.erasedTypes =>
+              report.error(ParameterizedTypeLacksArguments(psym), ref.srcPos)
+              ref
+            case _ =>
+              ref
 
     val seenParents = mutable.Set[Symbol]()
 
@@ -2602,7 +2634,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           pkg.moduleClass.info.decls.lookup(topLevelClassName).ensureCompleted()
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
           if (!ctx.isAfterTyper)
-            stats1 = stats1 ++ typedBlockStats(MainProxies.mainProxies(stats1))._1
+            stats1 = stats1 ++ typedBlockStats(MainProxies.proxies(stats1))._1
           cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
         }
       case _ =>
@@ -2876,6 +2908,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.Splice => typedSplice(tree, pt)
           case tree: untpd.TypSplice => typedTypSplice(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
+          case tree: untpd.Hole => typedHole(tree, pt)
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
@@ -3245,6 +3278,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       rememberSearchFailure(qual,
         SearchFailure(qual.withType(NestedFailure(ex.toMessage, selectionProto))))
 
+    if qual.symbol.isNoValue then return EmptyTree
+
     // try an extension method in scope
     try
       val nestedCtx = ctx.fresh.setNewTyperState()
@@ -3270,7 +3305,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               if isExtension then return found
               else
                 checkImplicitConversionUseOK(found)
-                return typedSelect(tree, pt, found)
+                return withoutMode(Mode.ImplicitsEnabled)(typedSelect(tree, pt, found))
             case failure: SearchFailure =>
               if failure.isAmbiguous then
                 return
@@ -3401,7 +3436,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           def isContextBoundParams = wtp.stripPoly match
             case MethodType(EvidenceParamName(_) :: _) => true
             case _ => false
-          if sourceVersion == `future-migration` && isContextBoundParams
+          if sourceVersion == `future-migration` && isContextBoundParams && pt.args.nonEmpty
           then // Under future-migration, don't infer implicit arguments yet for parameters
                // coming from context bounds. Issue a warning instead and offer a patch.
             report.migrationWarning(
@@ -3539,14 +3574,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val namedArgs = wtp.paramNames.lazyZip(args).flatMap { (pname, arg) =>
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
-            tryEither {
-              val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
-              if (wtp.isContextualMethod) app.setApplyKind(ApplyKind.Using)
-              typr.println(i"try with default implicit args $app")
-              typed(app, pt, locked)
-            } { (_, _) =>
-              issueErrors()
-            }
+            val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
+            if (wtp.isContextualMethod) app.setApplyKind(ApplyKind.Using)
+            typr.println(i"try with default implicit args $app")
+            typed(app, pt, locked)
           else issueErrors()
         }
         else tree match {
@@ -3676,14 +3707,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 tree.symbol != defn.StringContext_f &&
                 tree.symbol != defn.StringContext_s)
           if (ctx.settings.XignoreScala2Macros.value) {
-            report.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.srcPos.startPos)
+            report.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html", tree.srcPos.startPos)
             Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
               .withType(tree.tpe)
               .withSpan(tree.span)
           }
           else {
             report.error(
-              """Scala 2 macro cannot be used in Dotty. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html
+              """Scala 2 macro cannot be used in Dotty. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html
                 |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""".stripMargin, tree.srcPos.startPos)
             tree
           }

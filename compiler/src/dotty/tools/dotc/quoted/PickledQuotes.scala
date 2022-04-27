@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter }
+import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter, TreePickler }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.report
@@ -47,34 +47,67 @@ object PickledQuotes {
     changeOwnerOfTree(tpe1.typeTree, ctx.owner)
   }
 
+  /** `typeHole`/`types` argument of `QuoteUnpickler.{unpickleExpr,unpickleExprV2,unpickleType,unpickleTypeV2}` */
+  enum TypeHole:
+    /** `termHole` argument of `QuoteUnpickler.{unpickleExpr, unpickleType}`.
+     *  From code compiled with Scala 3.0.x and 3.1.x.
+     *  Note: For `unpickleType` it will always be `null`.
+     */
+    case V1(evalHole: Null | ((Int, Seq[scala.quoted.Type[?]]) => scala.quoted.Type[?]))
+    /** `termHole` argument of `QuoteUnpickler.unpickleExprV2`
+     *  From code compiled with Scala 3.2.0+
+     */
+    case V2(types: Null | Seq[scala.quoted.Type[?]])
+
+    def isEmpty: Boolean = this match
+      case V1(evalHole) => evalHole == null
+      case V2(types) => types == null
+
+  enum ExprHole:
+    /** `termHole` argument of `QuoteUnpickler.{unpickleExpr, unpickleType}`.
+     *  From code compiled with Scala 3.0.x and 3.1.x.
+     *  Note: For `unpickleType` it will always be `null`.
+     */
+    case V1(evalHole: Null | ((Int, Seq[ExprHole.ArgV1], scala.quoted.Quotes) => scala.quoted.Expr[?]))
+    /** `termHole` argument of `QuoteUnpickler.unpickleExprV2`
+     *  From code compiled with Scala 3.2.0+
+     */
+    case V2(evalHole: Null | ((Int, Seq[ExprHole.ArgV2], scala.quoted.Quotes) => scala.quoted.Expr[?]))
+
+  object ExprHole:
+    type ArgV1 = scala.quoted.Type[?] | (Quotes ?=> scala.quoted.Expr[Any])
+    type ArgV2 = scala.quoted.Type[?] | scala.quoted.Expr[Any]
+
   /** Unpickle the tree contained in the TastyExpr */
-  def unpickleTerm(pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?])(using Context): Tree = {
+  def unpickleTerm(pickled: String | List[String], typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = false))
-    val Inlined(call, Nil, expnasion) = unpickled
+    val Inlined(call, Nil, expansion) = unpickled
     val inlineCtx = inlineContext(call)
-    val expansion1 = spliceTypes(expnasion, typeHole, termHole)(using inlineCtx)
+    val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
     val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
     cpy.Inlined(unpickled)(call, Nil, expansion2)
   }
 
+
   /** Unpickle the tree contained in the TastyType */
-  def unpickleTypeTree(pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?])(using Context): Tree = {
+  def unpickleTypeTree(pickled: String | List[String], typeHole: TypeHole)(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = true))
-    spliceTypes(unpickled, typeHole, termHole)
+    spliceTypes(unpickled, typeHole)
   }
 
   /** Replace all term holes with the spliced terms */
-  private def spliceTerms(tree: Tree, typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?])(using Context): Tree = {
-    val evaluateHoles = new TreeMap {
+  private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
+    def evaluateHoles = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
-        case Hole(isTerm, idx, args) =>
+        case Hole(isTermHole, idx, args, _, _) =>
           inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {
-            val reifiedArgs = args.map { arg =>
-              if (arg.isTerm) (q: Quotes) ?=> new ExprImpl(arg, SpliceScope.getCurrent)
-              else new TypeImpl(arg, SpliceScope.getCurrent)
-            }
-            if isTerm then
-              val quotedExpr = termHole(idx, reifiedArgs, QuotesImpl())
+            if isTermHole then
+              val quotedExpr = termHole match
+                case ExprHole.V1(evalHole) =>
+                  evalHole.nn.apply(idx, reifyExprHoleV1Args(args), QuotesImpl())
+                case ExprHole.V2(evalHole) =>
+                  evalHole.nn.apply(idx, reifyExprHoleV2Args(args), QuotesImpl())
+
               val filled = PickledQuotes.quotedExprToTree(quotedExpr)
 
               // We need to make sure a hole is created with the source file of the surrounding context, even if
@@ -82,9 +115,13 @@ object PickledQuotes {
               if filled.source == ctx.source then filled
               else filled.cloneIn(ctx.source).withSpan(tree.span)
             else
+              // For backwards compatibility with 3.0.x and 3.1.x
+              // In 3.2.0+ all these holes are handled by `spliceTypes` before we call `spliceTerms`.
+              //
               // Replaces type holes generated by PickleQuotes (non-spliced types).
               // These are types defined in a quote and used at the same level in a nested quote.
-              val quotedType = typeHole(idx, reifiedArgs)
+              val TypeHole.V1(evalHole) = typeHole
+              val quotedType = evalHole.nn.apply(idx, reifyTypeHoleArgs(args))
               PickledQuotes.quotedTypeToTree(quotedType)
           }
         case tree =>
@@ -109,24 +146,34 @@ object PickledQuotes {
         }
       }
     }
-    val tree1 = evaluateHoles.transform(tree)
+    val tree1 = termHole match
+      case ExprHole.V2(null) => tree
+      case _ => evaluateHoles.transform(tree)
     quotePickling.println(i"**** evaluated quote\n$tree1")
     tree1
   }
 
   /** Replace all type holes generated with the spliced types */
-  private def spliceTypes(tree: Tree, typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Int], scala.quoted.Quotes) => Any)(using Context): Tree = {
-    tree match
+  private def spliceTypes(tree: Tree, typeHole: TypeHole)(using Context): Tree = {
+    if typeHole.isEmpty then tree
+    else tree match
       case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
         val typeSpliceMap = (stat :: rest).iterator.map {
           case tdef: TypeDef =>
             assert(tdef.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot))
-            val tree = tdef.rhs match
-              case TypeBoundsTree(_, Hole(_, idx, args), _) =>
-                val quotedType = typeHole(idx, args)
-                PickledQuotes.quotedTypeToTree(quotedType)
-              case TypeBoundsTree(_, tpt, _) =>
-                tpt
+            val tree = typeHole match
+              case TypeHole.V1(evalHole) =>
+                tdef.rhs match
+                  case TypeBoundsTree(_, Hole(_, idx, args, _, _), _) =>
+                    // To keep for backwards compatibility. In some older version holes where created in the bounds.
+                    val quotedType = evalHole.nn.apply(idx, reifyTypeHoleArgs(args))
+                    PickledQuotes.quotedTypeToTree(quotedType)
+                  case TypeBoundsTree(_, tpt, _) =>
+                    // To keep for backwards compatibility. In some older version we missed the creation of some holes.
+                    tpt
+              case TypeHole.V2(types) =>
+                val Hole(_, idx, _, _, _) = tdef.rhs
+                PickledQuotes.quotedTypeToTree(types.nn.apply(idx))
             (tdef.symbol, tree.tpe)
         }.toMap
         class ReplaceSplicedTyped extends TypeMap() {
@@ -148,13 +195,28 @@ object PickledQuotes {
         tree
   }
 
+  def reifyTypeHoleArgs(args: List[Tree])(using Context): List[scala.quoted.Type[?]] =
+    args.map(arg => new TypeImpl(arg, SpliceScope.getCurrent))
+
+  def reifyExprHoleV1Args(args: List[Tree])(using Context): List[ExprHole.ArgV1] =
+    args.map { arg =>
+      if arg.isTerm then (q: Quotes) ?=> new ExprImpl(arg, SpliceScope.getCurrent)
+      else new TypeImpl(arg, SpliceScope.getCurrent)
+    }
+
+  def reifyExprHoleV2Args(args: List[Tree])(using Context): List[ExprHole.ArgV2] =
+    args.map { arg =>
+      if arg.isTerm then new ExprImpl(arg, SpliceScope.getCurrent)
+      else new TypeImpl(arg, SpliceScope.getCurrent)
+    }
+
   // TASTY picklingtests/pos/quoteTest.scala
 
   /** Pickle tree into it's TASTY bytes s*/
   private def pickle(tree: Tree)(using Context): Array[Byte] = {
     quotePickling.println(i"**** pickling quote of\n$tree")
     val pickler = new TastyPickler(defn.RootClass)
-    val treePkl = pickler.treePkl
+    val treePkl = new TreePickler(pickler)
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then

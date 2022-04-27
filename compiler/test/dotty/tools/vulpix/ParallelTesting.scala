@@ -666,7 +666,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         if (didFail) {
           reportFailed()
           failedTestSources.toSet.foreach(addFailedTest)
-          reproduceInstructions.iterator.foreach(addReproduceInstruction)
+          reproduceInstructions.foreach(addReproduceInstruction)
         }
         else reportPassed()
       }
@@ -980,7 +980,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       cleanup()
 
       if (!shouldFail && test.didFail) {
-        fail(s"Expected no errors when compiling, failed for the following reason(s):\n${ reasonsForFailure(test) }")
+        fail(s"Expected no errors when compiling, failed for the following reason(s):\n${reasonsForFailure(test)}\n")
       }
       else if (shouldFail && !test.didFail) {
         fail("Pos test should have failed, but didn't")
@@ -1064,7 +1064,13 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           target.copy(dir = copyToDir(outDir, dir))
       }
 
-      new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
+      val test = new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
+
+      cleanup()
+
+      if test.didFail then
+        fail("Rewrite test failed")
+
       this
     }
 
@@ -1077,14 +1083,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     /** Extract `Failure` set and render from `Test` */
     private def reasonsForFailure(test: Test): String = {
       val failureReport =
-        if (test.failureCount == 0) ""
-        else s"\n  - encountered ${test.failureCount} test failures(s)"
+        if test.failureCount == 0 then ""
+        else s"encountered ${test.failureCount} test failure(s):\n"
 
       failureReport + test.failureReasons.collect {
         case test.TimeoutFailure(title) =>
           s"  - test '$title' timed out"
         case test.JavaCompilationFailure(msg) =>
           s"  - java compilation failed with:\n${ msg.linesIterator.map("      " + _).mkString("\n") }"
+        case test.Generic =>
+           "  - generic failure (see test output)"
       }.mkString("\n")
     }
 

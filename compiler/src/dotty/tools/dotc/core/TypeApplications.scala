@@ -229,7 +229,11 @@ class TypeApplications(val self: Type) extends AnyVal {
       (alias ne self) && alias.hasSimpleKind
     }
 
-  /** The top type with the same kind as `self`. */
+  /** The top type with the same kind as `self`. This is largest type capturing
+   *  the parameter shape of a type without looking at precise bounds.
+   *    - The top-type of simple-kinded types is Any
+   *    - A kind like (* -> *) -> * is represented by the top type [X1 <: [X2] =>> Any] =>> Any
+   */
   def topType(using Context): Type =
     if self.hasSimpleKind then
       defn.AnyType
@@ -339,11 +343,15 @@ class TypeApplications(val self: Type) extends AnyVal {
               }
             }
             if ((dealiased eq stripped) || followAlias)
-              try {
+              try
                 val instantiated = dealiased.instantiate(args)
                 if (followAlias) instantiated.normalized else instantiated
-              }
-              catch { case ex: IndexOutOfBoundsException => AppliedType(self, args) }
+              catch
+                case ex: IndexOutOfBoundsException =>
+                  AppliedType(self, args)
+                case ex: Throwable =>
+                  handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
+
             else AppliedType(self, args)
           }
           else dealiased.resType match {

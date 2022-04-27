@@ -4,7 +4,7 @@ package scala.quoted
  *
  *  `Expr` has extension methods that are defined in `scala.quoted.Quotes`.
  */
-abstract class Expr[+T] private[scala]
+abstract class Expr[+T] private[scala] ()
 
 /** Constructors for expressions */
 object Expr {
@@ -47,7 +47,6 @@ object Expr {
    *  ```
    *
    *  To directly get the value of an expression `expr: Expr[T]` consider using `expr.value`/`expr.valueOrError` instead.
-   *  @syntax markdown
    */
   def unapply[T](x: Expr[T])(using FromExpr[T])(using Quotes): Option[T] =
     scala.Predef.summon[FromExpr[T]].unapply(x)

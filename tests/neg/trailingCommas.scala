@@ -56,3 +56,27 @@ object `package` {
   case class Foo(foo: Any)
   case class Bar(foo: Any)
 }
+
+// Unparenthesized lists
+trait Deriv1[T]
+object Deriv1 {
+  def derived[T]: Deriv1[T] = new Deriv1[T] {}
+}
+
+trait Deriv2[T]
+object Deriv2 {
+  def derived[T]: Deriv2[T] = new Deriv2[T] {}
+}
+
+class Derives1 derives Deriv1, Deriv2,
+object End // error: an identifier expected, but 'object' found
+
+class Derives2 derives Deriv1,
+     Deriv2,
+object End2 // error: an identifier expected, but 'object' found
+
+val a,
+    b,
+    c,
+    = (1, 2, 3) // error
+val x, y, z, = (1, 2, 3) // error
