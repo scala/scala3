@@ -2037,9 +2037,6 @@ Occurrences:
 [5:4..5:8): List -> scala/package.List.
 [5:9..5:10): x -> local0
 
-Synthetics:
-[5:4..5:8):List => *.apply[Int]
-
 expect/MatchType.scala
 ----------------------
 
