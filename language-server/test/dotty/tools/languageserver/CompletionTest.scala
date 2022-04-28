@@ -1212,7 +1212,7 @@ class CompletionTest {
           |  def fooTest(x: Int): Unit = ???
           |}
           |type TestAlias = Test
-          |object M:
+          |object O:
           |  val test: TestAlias = new Test()
           |  test.foo${m1}"""
       .completion(("fooTest", Method, "(x: Int): Unit"))
@@ -1225,13 +1225,19 @@ class CompletionTest {
           |}
           |
           |type TestAlias[M[_[_]]] = M[Option]
-          |object M:
+          |object O:
           |  val test: TestAlias[Test] = new Test[Option] {}
           |  val test2: Test[Option] = new Test[Option] {}
           |  test.foo${m1}
           |  test2.foo${m2}"""
       .completion(m1, expected)
       .completion(m2, expected)
+  }
+
+  @Test def `???`: Unit = {
+    code"""object O:
+          |  ???.${m1}"""
+      .noCompletions()
   }
 
 }

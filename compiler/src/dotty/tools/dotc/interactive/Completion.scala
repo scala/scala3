@@ -23,6 +23,7 @@ import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
+import dotty.tools.dotc.core.Types.TypeRef
 
 /**
  * One of the results of a completion query.
@@ -310,8 +311,11 @@ object Completion {
       resultMappings
     }
 
-    def widenDealiasAppliedTypes(qual: Tree)(using Context): Tree =
+    /** Widen only those types which are applied or are exactly nothing
+     */
+    def widenQualifier(qual: Tree)(using Context): Tree =
       qual.tpe.widenDealias match
+        case widenedType if widenedType.isExactlyNothing => qual.withType(widenedType)
         case appliedType: AppliedType => qual.withType(appliedType)
         case _ => qual
 
@@ -320,7 +324,7 @@ object Completion {
      *  and so do members from extensions over members from implicit conversions
      */
     def selectionCompletions(qual: Tree)(using Context): CompletionMap =
-      val adjustedQual = widenDealiasAppliedTypes(qual)
+      val adjustedQual = widenQualifier(qual)
 
       implicitConversionMemberCompletions(adjustedQual) ++
         extensionCompletions(adjustedQual) ++
@@ -377,7 +381,7 @@ object Completion {
 
     /** Completions from implicit conversions including old style extensions using implicit classes */
     private def implicitConversionMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.widenDealias.isExactlyNothing || qual.tpe.isNullType then
+      if qual.tpe.isExactlyNothing || qual.tpe.isNullType then
         Map.empty
       else
         val membersFromConversion =
