@@ -7,7 +7,7 @@ package dotty.tools.io
 
 import scala.language.unsafeNulls
 
-import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream }
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream, File }
 
 /** This class implements an in-memory file.
  *
@@ -106,5 +106,5 @@ class VirtualFile(val name: String, override val path: String) extends AbstractF
 }
 object VirtualFile:
   private def nameOf(path: String): String =
-    val i = path.lastIndexOf('/')
+    val i = path.lastIndexOf(File.separator)
     if i >= 0 && i < path.length - 1 then path.substring(i + 1) else path
