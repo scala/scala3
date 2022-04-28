@@ -33,8 +33,15 @@ object Formatting {
     object ShowAny extends Show[Any]:
       def show(x: Any): Shown = x
 
-    class ShowImplicits2:
+    class ShowImplicits3:
       given Show[Product] = ShowAny
+
+    class ShowImplicits2 extends ShowImplicits3:
+      given Show[ParamInfo] with
+        def show(x: ParamInfo) = x match
+          case x: Symbol      => Show[x.type].show(x)
+          case x: LambdaParam => Show[x.type].show(x)
+          case _              => ShowAny
 
     class ShowImplicits1 extends ShowImplicits2:
       given Show[ImplicitRef]      = ShowAny
