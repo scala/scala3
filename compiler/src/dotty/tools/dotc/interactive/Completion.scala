@@ -330,7 +330,7 @@ object Completion {
      *  These include inherited definitions but not members added by extensions or implicit conversions
      */
     def directMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.widenDealias.isExactlyNothing then
+      if qual.tpe.isExactlyNothing then
         Map.empty
       else
         accessibleMembers(qual.tpe).groupByName
