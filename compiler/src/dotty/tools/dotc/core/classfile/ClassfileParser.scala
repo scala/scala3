@@ -1017,7 +1017,10 @@ class ClassfileParser(
         else return unpickleTASTY(bytes)
       }
 
-      if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name))
+      if scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)
+        && !(classRoot.name.startsWith("Tuple") && classRoot.name.endsWith("$sp"))
+        && !(classRoot.name.startsWith("Product") && classRoot.name.endsWith("$sp"))
+      then
         // To understand the situation, it's helpful to know that:
         // - Scalac emits the `ScalaSig` attribute for classfiles with pickled information
         // and the `Scala` attribute for everything else.

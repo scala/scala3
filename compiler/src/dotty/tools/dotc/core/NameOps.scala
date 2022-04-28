@@ -278,6 +278,15 @@ object NameOps {
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
 
+    def specializedName(args: List[Type])(using Context): N =
+      val sb = new StringBuilder
+      sb.append(name.toString)
+      sb.append(nme.specializedTypeNames.prefix.toString)
+      sb.append(nme.specializedTypeNames.separator)
+      args.foreach { arg => sb.append(defn.typeTag(arg)) }
+      sb.append(nme.specializedTypeNames.suffix)
+      likeSpacedN(termName(sb.toString))
+
     /** Use for specializing function names ONLY and use it if you are **not**
      *  creating specialized name from type parameters. The order of names will
      *  be:
