@@ -11,6 +11,8 @@ import Constants._
 import Types._
 import Decorators._
 
+import scala.collection.mutable
+
 class RepeatableAnnotations extends MiniPhase:
 
   override def phaseName: String = RepeatableAnnotations.name
@@ -28,7 +30,7 @@ class RepeatableAnnotations extends MiniPhase:
     tree
 
   private def aggregateAnnotations(annotations: Seq[Annotation])(using Context): List[Annotation] =
-    val annsByType = annotations.groupBy(_.symbol)
+    val annsByType = stableGroupBy(annotations, _.symbol)
     annsByType.flatMap {
       case (_, a :: Nil) => a :: Nil
       case (sym, anns) if sym.derivesFrom(defn.ClassfileAnnotationClass) =>
@@ -49,6 +51,14 @@ class RepeatableAnnotations extends MiniPhase:
             Nil
       case (_, anns) => anns
     }.toList
+
+  private def stableGroupBy[A, K](ins: Seq[A], f: A => K): scala.collection.MapView[K, List[A]] =
+    val out = new mutable.LinkedHashMap[K, mutable.ListBuffer[A]]()
+    for (in <- ins) {
+      val buffer = out.getOrElseUpdate(f(in), new mutable.ListBuffer)
+      buffer += in
+    }
+    out.view.mapValues(_.toList)
 
 object RepeatableAnnotations:
   val name: String = "repeatableAnnotations"
