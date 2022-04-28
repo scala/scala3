@@ -3877,7 +3877,7 @@ object Parsers {
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else
           empty = true
-        statSepOrEnd(stats, empty, "toplevel definition")
+        statSepOrEnd(stats, noPrevStat = empty, "toplevel definition")
       do ()
       stats.toList
     }
@@ -3927,7 +3927,7 @@ object Parsers {
           stats += expr1()
         else
           empty = true
-        statSepOrEnd(stats, empty)
+        statSepOrEnd(stats, noPrevStat = empty)
       do ()
       (self, if stats.isEmpty then List(EmptyTree) else stats.toList)
     }
@@ -3966,7 +3966,7 @@ object Parsers {
           stats ++= checkLegal(defOrDcl(in.offset, Modifiers()))
         var what = "declaration"
         if inFunReturnType then what += " (possible cause: missing `=` in front of current method body)"
-        statSepOrEnd(stats, !dclFound, what)
+        statSepOrEnd(stats, noPrevStat = !dclFound, what)
       do ()
       stats.toList
     }
@@ -4005,7 +4005,7 @@ object Parsers {
           stats +++= localDef(in.offset)
         else
           empty = true
-        statSepOrEnd(stats, empty, altEnd = CASE)
+        statSepOrEnd(stats, noPrevStat = empty, altEnd = CASE)
       do ()
       stats.toList
     }
