@@ -410,7 +410,7 @@ object CaptureSet:
           mapRefs(newElems, tm, variance)
         else
           if variance <= 0 && !origin.isConst && (origin ne initial) then
-            report.warning(i"trying to add elems $newElems from unrecognized source $origin of mapped set $this$whereCreated")
+            report.warning(i"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
             return CompareResult.fail(this)
           Const(newElems)
       super.addNewElems(added.elems, origin)
@@ -441,7 +441,7 @@ object CaptureSet:
         super.addNewElems(newElems, origin)
           .andAlso {
             source.tryInclude(newElems.map(bimap.backward), this)
-              .showing(i"propagating new elems $newElems backward from $this to $source", capt)
+              .showing(i"propagating new elems ${CaptureSet(newElems)} backward from $this to $source", capt)
           }
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
