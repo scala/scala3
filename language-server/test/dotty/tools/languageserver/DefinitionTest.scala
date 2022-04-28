@@ -85,7 +85,7 @@ class DefinitionTest {
     code"""object Foo {
              def foo(${m1}x${m2}: Int) = ${m3}x${m4}
              foo(${m5}x${m6} = 2)
-           }""".withSource
+           }"""
       .definition(m1 to m2, List(m1 to m2))
       .definition(m3 to m4, List(m1 to m2))
       .definition(m5 to m6, List(m1 to m2))
@@ -114,7 +114,7 @@ class DefinitionTest {
                  case t: T   => t.${m17}foo${m18}("e")
                }
              }
-           }""".withSource
+           }"""
       .definition(m1 to m2, List(m1 to m2, m3 to m4, m5 to m6, m7 to m8))
       .definition(m3 to m4, List(m1 to m2, m3 to m4))
       .definition(m5 to m6, List(m1 to m2, m5 to m6, m7 to m8))
@@ -133,7 +133,7 @@ class DefinitionTest {
              def foo(${m5}x${m6}: Int): String = foo(${m7}x${m8} = ${m9}x${m10}.toString)
              foo(${m11}x${m12} = "a")
              foo(${m13}x${m14} = 2)
-           }""".withSource
+           }"""
       .definition(m1 to m2, List(m1 to m2))
       .definition(m3 to m4, List(m1 to m2))
       .definition(m5 to m6, List(m5 to m6))
@@ -223,7 +223,7 @@ class DefinitionTest {
     code"""trait ${m1}Foo${m2} { val x = 0 }
            class C {
              def foo = new ${m3}Foo${m4} {}
-           }""".withSource
+           }"""
       .definition(m1 to m2, List(m1 to m2))
       .definition(m3 to m4, List(m1 to m2))
   }
@@ -232,7 +232,7 @@ class DefinitionTest {
     code"""abstract class ${m1}Foo${m2} { val x = 0 }
            class C {
              def foo = new ${m3}Foo${m4} {}
-           }""".withSource
+           }"""
       .definition(m1 to m2, List(m1 to m2))
       .definition(m3 to m4, List(m1 to m2))
   }
@@ -242,7 +242,7 @@ class DefinitionTest {
            trait ${m3}Bar${m4}
            class C {
              def foo = new ${m5}Foo${m6} with ${m7}Bar${m8} {}
-           }""".withSource
+           }"""
       .definition(m1 to m2, List(m1 to m2))
       .definition(m3 to m4, List(m3 to m4))
       .definition(m5 to m6, List(m1 to m2))

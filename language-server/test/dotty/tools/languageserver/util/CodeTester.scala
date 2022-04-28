@@ -4,15 +4,12 @@ import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.actions._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.{TestFile, TestServer}
-
 import dotty.tools.dotc.reporting.ErrorMessageID
 import dotty.tools.dotc.util.Signatures.Signature
 
 import org.eclipse.lsp4j.{ CompletionItem, CompletionItemKind, DocumentHighlightKind, Diagnostic, DiagnosticSeverity }
-
 import org.junit.Assert.assertEquals
 
-import org.junit.Assert.assertEquals
 
 /**
  * Simulates an LSP client for test in a project defined by `sources`.
@@ -107,6 +104,17 @@ class CodeTester(projects: List[Project]) {
     doAction(new CodeReferences(range, expected, withDecl))
 
   /**
+   * Requests completions at position `marker` with default value of `m1`, verifies that the results are empty
+   * `expected`.
+   *
+   * @param marker   The position from which to ask for completions.
+   *
+   * @see dotty.tools.languageserver.util.actions.CodeCompletion
+   */
+  def noCompletions(marker: CodeMarker = m1): this.type =
+    completion(marker, Set.empty)
+
+  /**
    * Requests completion at the position defined by `marker`, verifies that the results match
    * `expected`.
    *
@@ -119,6 +127,17 @@ class CodeTester(projects: List[Project]) {
     completion(marker, results => assertEquals(expected, CodeCompletion.simplifyResults(results)))
 
   /**
+   * Requests completion at default position defined by `marker`, verifies that the results match `expected`.
+   *
+   * @param marker   The position from which to ask for completions.
+   * @param expected The expected completion results.
+   *
+   * @see dotty.tools.languageserver.util.actions.CodeCompletion
+   */
+  def completion(marker: CodeMarker, expected: (String, CompletionItemKind, String) *): this.type =
+    completion(marker, expected.toSet)
+
+  /**
    * Requests completion at the position defined by `marker`, and pass the results to
    * `checkResults`.
    *
@@ -129,6 +148,27 @@ class CodeTester(projects: List[Project]) {
    */
   def completion(marker: CodeMarker, checkResults: Set[CompletionItem] => Unit): this.type =
     doAction(new CodeCompletion(marker, checkResults))
+
+  /**
+   * Requests completion at default position defined by `m1`, verifies that the results match `expected`.
+   *
+   * @param expected The expected completion results.
+   *
+   * @see dotty.tools.languageserver.util.actions.CodeCompletion
+   */
+  def completion(expected: (String, CompletionItemKind, String) *): this.type =
+    completion(m1, expected.toSet)
+
+  /**
+   * Requests completion at default position defined by `m1`, and pass the results to
+   * `checkResults`.
+   *
+   * @param checkResults A function that verifies that the results of completion are correct.
+   *
+   * @see dotty.tools.languageserver.util.actions.CodeCompletion
+   */
+  def completion(checkResults: Set[CompletionItem] => Unit): this.type =
+    doAction(new CodeCompletion(m1, checkResults))
 
   /**
    * Performs a workspace-wide renaming of the symbol under `marker`, verifies that the positions to
