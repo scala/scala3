@@ -18,3 +18,18 @@
    |  ^^^^^^^^
    |  The expression's type {*} () -> Unit is not allowed to capture the root capability `*`.
    |  This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:27 ------------------------------------------------------
+47 |  val later = usingLogFile { f => () => f.write(0) } // error
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              The expression's type {*} () -> Unit is not allowed to capture the root capability `*`.
+   |              This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:25 ------------------------------------------------------
+62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                The expression's type {*} (x$0: Int) -> Unit is not allowed to capture the root capability `*`.
+   |                This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:71:48 ------------------------------------------------------
+71 |    val later = usingFile("logfile", usingLogger(_, l => () => l.log("test"))) // error
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                         The expression's type {*} () -> Unit is not allowed to capture the root capability `*`.
+   |                         This usually means that a capability persists longer than its allowed lifetime.
