@@ -11,7 +11,7 @@ import Denotations.Denotation
 import typer.Typer
 import typer.ImportInfo.withRootImports
 import Decorators._
-import io.{AbstractFile, VirtualFile}
+import io.AbstractFile
 import Phases.unfusedPhases
 
 import util._

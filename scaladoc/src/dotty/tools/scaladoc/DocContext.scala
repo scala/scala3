@@ -8,7 +8,6 @@ import java.nio.file.Paths
 import collection.JavaConverters._
 import dotty.tools.scaladoc.site.StaticSiteContext
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.io.VirtualFile
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
