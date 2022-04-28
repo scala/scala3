@@ -368,7 +368,7 @@ again on access, the capture information "pops out" again. For instance, even th
 () => p.fst : {ct} () -> {ct} Int -> String
 ```
 In other words, references to capabilities "tunnel through" in generic instantiations from creation to access; they do not affect the capture set of the enclosing generic data constructor applications.
-This principle may seem surprising at first, but it is the key to make capture checking concise and practical.
+This principle plays an important part in making capture checking concise and practical.
 
 ## Escape Checking
 
@@ -398,7 +398,7 @@ This error message was produced by the following logic:
 
  - The `f` parameter has type `{*} FileOutputStream`, which makes it a capability.
  - Therefore, the type of the expression `() => f.write(0)` is `{f} () -> Unit`.
- - This makes the whole type of the closure passed to `usingLogFile` the dependent function type
+ - This makes the type of the whole closure passed to `usingLogFile` the dependent function type
    `(f: {*} FileOutputStream) -> {f} () -> Unit`.
  - The expected type of the closure is a simple, parametric, impure function type `({*} FileOutputStream) => T`,
    for some instantiation of the type variable `T`.
