@@ -60,6 +60,13 @@ object language:
     @compileTimeOnly("`saferExceptions` can only be used at compile time in import statements")
     object saferExceptions
 
+    /** Experimental support for anonymous context bounds
+      *
+      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/wildcard-context-bounds]]
+      */
+    @compileTimeOnly("`wildcardContextBounds` can only be used at compile time in import statements")
+    object wildcardContextBounds
+
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

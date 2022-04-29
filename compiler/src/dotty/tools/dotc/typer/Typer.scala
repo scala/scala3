@@ -599,6 +599,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     then
       report.error(StableIdentPattern(tree, pt), tree.srcPos)
 
+  private def wildcardContextBoundError(tree: untpd.ContextBounds)(using Context): Unit =
+    report.error("Wildcard context bounds can only occur in a parameter list", tree.srcPos)
+
   def typedSelect(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
     val selName = tree0.name
     val tree = cpy.Select(tree0)(qual, selName)
@@ -1444,21 +1447,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     if desugared.isEmpty then
       val inferredParams: List[untpd.ValDef] =
-        for ((param, i) <- params.zipWithIndex) yield
-          if (!param.tpt.isEmpty) param
-          else
-            val formal = protoFormal(i)
-            val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
-            val paramType =
-              if knownFormal then formal
-              else inferredFromTarget(param, formal, calleeType, paramIndex)
-                .orElse(errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos))
-            val paramTpt = untpd.TypedSplice(
-                (if knownFormal then InferredTypeTree() else untpd.TypeTree())
-                  .withType(paramType.translateFromRepeated(toArray = false))
-                  .withSpan(param.span.endPos)
-              )
-            cpy.ValDef(param)(tpt = paramTpt)
+        for ((param, i) <- params.zipWithIndex) yield {
+          param.tpt match
+            case tree: untpd.ContextBounds =>
+              wildcardContextBoundError(tree)
+              cpy.ValDef(param)(param.name, param.tpt.asInstanceOf[untpd.ContextBounds].bounds, param.unforced)
+            case t if !t.isEmpty => param
+            case _ =>
+              val formal = protoFormal(i)
+              val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
+              val paramType =
+                if knownFormal then formal
+                else inferredFromTarget(param, formal, calleeType, paramIndex)
+                  .orElse(errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos))
+              val paramTpt = untpd.TypedSplice(
+                  (if knownFormal then InferredTypeTree() else untpd.TypeTree())
+                    .withType(paramType.translateFromRepeated(toArray = false))
+                    .withSpan(param.span.endPos)
+                )
+              cpy.ValDef(param)(tpt = paramTpt)
+        }
       desugared = desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual, tree.span)
 
     typed(desugared, pt)
@@ -2902,6 +2910,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.Splice => typedSplice(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
           case tree: untpd.Hole => typedHole(tree, pt)
+          case tree: untpd.ContextBounds => wildcardContextBoundError(tree); typedTypeBoundsTree(tree.bounds, pt)
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 

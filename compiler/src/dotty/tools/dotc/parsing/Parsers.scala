@@ -1692,7 +1692,8 @@ object Parsers {
         Ident(identName).withSpan(Span(start, in.lastOffset, start))
       else if isIdent(nme.?) then
         val start = in.skipToken()
-        typeBounds().withSpan(Span(start, in.lastOffset, start))
+        val tpt = if (in.featureEnabled(Feature.wildcardContextBounds)) typeParamBounds(tpnme.?) else typeBounds()
+        tpt.withSpan(Span(start, in.lastOffset, start))
       else
         def singletonArgs(t: Tree): Tree =
           if in.token == LPAREN && in.featureEnabled(Feature.dependent)

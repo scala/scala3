@@ -148,6 +148,7 @@ subsection:
       - page: reference/experimental/main-annotation.md
       - page: reference/experimental/cc.md
       - page: reference/experimental/tupled-function.md
+      - page: reference/experimental/wildcard-context-bounds.md
   - page: reference/syntax.md
   - title: Language Versions
     index: reference/language-versions/language-versions.md

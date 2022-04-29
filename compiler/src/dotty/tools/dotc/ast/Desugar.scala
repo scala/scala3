@@ -199,6 +199,14 @@ object desugar {
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | implicitFlag)
     }
 
+  def makeAnonymousTypeParameter(cxbounds: ContextBounds)(using Context): TypeDef =
+    // TODO why doesn't this work with just WildcardParamName.fresh().toTypeName??
+    val epname = Names.typeName(WildcardParamName.fresh().toString)
+    def replaceWildCard(tpt: Tree): Tree = tpt match
+      case Ident(StdNames.tpnme.?) => cpy.Ident(tpt)(epname)
+      case AppliedTypeTree(fun, args) => cpy.AppliedTypeTree(tpt)(fun, args = args.map(replaceWildCard))
+    cpy.TypeDef(cxbounds)(epname, cpy.ContextBounds(cxbounds)(cxbounds.bounds, cxbounds.cxBounds.map(replaceWildCard))).withMods(Modifiers(TypeParam | Synthetic))
+
   def mapParamss(paramss: List[ParamClause])
                 (mapTypeParam: TypeDef => TypeDef)
                 (mapTermParam: ValDef => ValDef)(using Context): List[ParamClause] =
@@ -208,13 +216,18 @@ object desugar {
       case _ => unreachable()
     }
 
-  /** 1. Expand context bounds to evidence params. E.g.,
+  /** 1. Expand context bounds on wildcard type params (if Feature.wildcardContextBounds enabled), E.g,
+   *
+   *      def f(params: ? : B)
+   *  ==>
+   *      def f[$_0 : B](params)*
+   *  2. Expand context bounds to evidence params. E.g.,
    *
    *      def f[T >: L <: H : B](params)
    *  ==>
    *      def f[T >: L <: H](params)(implicit evidence$0: B[T])
    *
-   *  2. Expand default arguments to default getters. E.g,
+   *  3. Expand default arguments to default getters. E.g,
    *
    *      def f[T: B](x: Int = 1)(y: String = x + "m") = ...
    *  ==>
@@ -227,6 +240,31 @@ object desugar {
 
   private def elimContextBounds(meth: DefDef, isPrimaryConstructor: Boolean)(using Context): DefDef =
     val DefDef(_, paramss, tpt, rhs) = meth
+    val evidenceTParamBuf = ListBuffer[TypeDef]()
+
+    /** For each {{{? : T}}} in tpt, generate a new anonymous type parameter with the context bound {{{: T}}} */
+    def desugarAnonContextBounds(tpt: Tree): Tree = new UntypedTreeMap {
+        override def transform(tree: Tree)(using Context) = tree match
+          case cxbounds: ContextBounds =>
+            val tparam = makeAnonymousTypeParameter(cxbounds)
+            evidenceTParamBuf += tparam
+            cpy.Ident(tree)(tparam.name)
+          case _ => super.transform(tree)
+      }.transform(tpt)
+
+    val paramssNoAnonContextBounds = mapParamss(paramss)(identity) {
+      param => cpy.ValDef(param)(tpt = desugarAnonContextBounds(param.tpt))
+    }
+
+    // Add anonymous type parameters generated in desugarAnonContextBounds to the end of the type argument list,
+    // (or a new one if there isn't one).
+    // def f(params: ? : B)  ==> def f[$_0 : B](params)
+    // def f[T](params: ? : B)  ==> def f[T, $_0 : B](params)
+    val paramssWithInstantiatedAnonContextBounds: List[ParamClause] =
+      if (evidenceTParamBuf.isEmpty) paramssNoAnonContextBounds else paramssNoAnonContextBounds match
+        case TypeDefs(tparams) :: rest => (tparams ++ evidenceTParamBuf) :: rest
+        case rest => evidenceTParamBuf.toList :: rest
+
     val evidenceParamBuf = ListBuffer[ValDef]()
 
     def desugarContextBounds(rhs: Tree): Tree = rhs match
@@ -241,7 +279,7 @@ object desugar {
         rhs
 
     val paramssNoContextBounds =
-      mapParamss(paramss) {
+      mapParamss(paramssWithInstantiatedAnonContextBounds) {
         tparam => cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
       }(identity)
 

@@ -15,6 +15,7 @@ They are enabled by importing the feature or using the `-language` compiler flag
 * [`genericNumberLiterals`](./numeric-literals.md): Enable support for generic number literals.
 * [`namedTypeArguments`](./named-typeargs.md): Enable support for named type arguments
 * [`saferExceptions`](./canthrow.md): Enable support for checked exceptions.
+* [`wildcardContextBounds`](./wildcard-context-bounds.md): Enable support for anonymous context bounds.
 
 ### Experimental language imports
 

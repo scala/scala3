@@ -204,6 +204,7 @@ class CompilationTests {
       compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
       compileFile("tests/run-custom-args/defaults-serizaliable-no-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
+      compileFile("tests/run-special/wildcard-context-bounds-multiple.scala", defaultOptions.and("-Ykind-projector:underscores","-language:experimental.wildcardContextBounds")),
       compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/run-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),
       compileDir("tests/run-custom-args/Xmacro-settings/simple", defaultOptions.and("-Xmacro-settings:one,two,three")),
