@@ -11,10 +11,11 @@ abstract class Alpha[T] {
 
 }
 
-@targetName("Bar") class | extends Alpha[String] {
+object Outer {
+  @targetName("Bar") class | extends Alpha[String] {
 
-  @targetName("bar") override def foo(x: String) = x ++ x
+    @targetName("bar") override def foo(x: String) = x ++ x
 
-  @targetName("append") override def ++ (xs: Alpha[String]) = this
-
+    @targetName("append") override def ++ (xs: Alpha[String]) = this
+  }
 }

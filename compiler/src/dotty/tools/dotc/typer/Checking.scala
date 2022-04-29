@@ -505,6 +505,8 @@ object Checking {
         fail(TailrecNotApplicable(sym))
       else if sym.is(Inline) then
         fail("Inline methods cannot be @tailrec")
+    if sym.hasAnnotation(defn.TargetNameAnnot) && sym.isClass && sym.isTopLevelClass then
+      fail(TargetNameOnTopLevelClass(sym))
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))

@@ -1,5 +1,7 @@
 package alpha
 
-@scala.annotation.targetName("A") object B {
-  def foo = 23
+object Outer {
+  @scala.annotation.targetName("A") object B {
+    def foo = 23
+  }
 }
