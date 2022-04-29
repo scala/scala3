@@ -244,6 +244,35 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           button(id := "mobile-menu-toggle", cls := "icon-button hamburger"),
         ),
       ),
+      div(id := "mobile-menu")(
+        div(cls := "mobile-menu-header")(
+          span(cls := "mobile-menu-logo"),
+          button(id := "mobile-menu-close", cls := "icon-button close"),
+        ),
+        div(cls := "mobile-menu-container body-medium")(
+          a(href := "https://www.scala-lang.org/download/", cls := "mobile-menu-item") (
+            "Download",
+          ),
+          a(href := "https://docs.scala-lang.org/", cls := "mobile-menu-item") (
+            "Documentation",
+          ),
+          a(href := "https://index.scala-lang.org", cls := "mobile-menu-item") (
+            "Libraries",
+          ),
+          a(href := "https://www.scala-lang.org/contribute/", cls := "mobile-menu-item") (
+            "Contribute",
+          ),
+          a(href := "https://www.scala-lang.org/contribute/", cls := "mobile-menu-item") (
+            "Blog",
+          ),
+          a(href := "https://www.scala-lang.org/blog/", cls := "mobile-menu-item") (
+            "Community",
+          ),
+          span(cls := "mobile-menu-item") (
+            "Light mode"
+          )
+        )
+      ),
       button(id := "mobile-sidebar-toggle", cls := "floating-button"),
       div(id := "leftColumn", cls := "body-small")(
         Seq(

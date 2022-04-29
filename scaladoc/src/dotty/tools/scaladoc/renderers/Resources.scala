@@ -109,6 +109,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       "styles/theme/layout/sideMenu.css",
       "styles/theme/layout/searchBar.css",
       "styles/theme/layout/floatingButton.css",
+      "styles/theme/layout/mobileMenu.css",
 
       // components
       "styles/theme/components/switcher.css",
@@ -353,6 +354,18 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
       dottyRes("images/icon-buttons/menu-animated/light/hover.svg"),
       dottyRes("images/icon-buttons/menu-animated/light/selected.svg"),
       dottyRes("images/icon-buttons/menu-animated/light/default.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/active.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/disabled.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/focus.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/hover.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/selected.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/dark/default.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/active.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/disabled.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/focus.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/hover.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/selected.svg"),
+      dottyRes("images/icon-buttons/menu-animated-open/light/default.svg"),
       searchData(pages),
       scastieConfiguration(),
     )

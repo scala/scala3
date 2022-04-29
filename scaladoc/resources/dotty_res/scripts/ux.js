@@ -112,6 +112,16 @@ window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("leftColumn").classList.toggle("show")
     sideMenuToggler.classList.toggle("menu-shown")
   })
+
+    // show/hide mobile menu on mobile view
+    const mobileMenuOpenIcon = document.getElementById("mobile-menu-toggle");
+    const mobileMenuCloseIcon = document.getElementById("mobile-menu-close");
+    mobileMenuOpenIcon.addEventListener('click', _e => {
+      document.getElementById("mobile-menu").classList.add("show")
+    })
+    mobileMenuCloseIcon.addEventListener('click', _e => {
+      document.getElementById("mobile-menu").classList.remove("show")
+    })
 });
 
 var zoom;

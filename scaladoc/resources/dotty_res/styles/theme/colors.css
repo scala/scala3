@@ -157,12 +157,12 @@
   --orange12: #451e11;
 
   /* shadow color */
-  --shadow1: rgba(0, 0, 0, 0.6);
-  --shadow2: rgba(0, 0, 0, 0.75);
+  --shadow1: rgba(14, 18, 22, 0.2);
+  --shadow2: rgba(14, 18, 22, 0.35);
 }
 
 /*
-    dakr theme
+    dark theme
 */
 :root.theme-dark {
   --grey1: #161618;
@@ -319,6 +319,6 @@
   --orange12: #feeadd;
 
   /* shadow color */
-  --shadow1: rgba(14, 18, 22, 0.2);
-  --shadow2: rgba(14, 18, 22, 0.35);
+  --shadow1: rgba(0, 0, 0, 0.6);
+  --shadow2: rgba(0, 0, 0, 0.75);
 }
