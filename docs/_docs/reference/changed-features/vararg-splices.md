@@ -24,12 +24,12 @@ The old syntax for splice arguments will be phased out.
 
 ## Syntax
 
-```ebnf
+```
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-                    |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’ ;
+                    |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’
 
 ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’
-                    |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’ ;
+                    |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’
 ```
 
 ## Compatibility considerations

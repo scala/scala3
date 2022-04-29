@@ -3,11 +3,11 @@ layout: doc-page
 title: "Backend Internals"
 ---
 
-The code for the backend is split up by functionality and assembled in the
-object `GenBCode`.
+The code for the JVM backend is split up by functionality and assembled in
+`GenBCode.scala`. This file defines class `GenBCode`, the compiler phase.
 
 ```
-object GenBCode    --- [defines] -->        PlainClassBuilder       GenBCode also defines class BCodePhase, the compiler phase
+class GenBCodePipeline -[defines]-->        PlainClassBuilder
      |                                              |
  [extends]                                      [extends]
      |                                              |
@@ -18,34 +18,37 @@ BCodeBodyBuilder   ---------------->        PlainBodyBuilder
 BCodeSkelBuilder   ---------------->        PlainSkelBuilder
      |                                       /      |       \
  BCodeHelpers      ---------------->  BCClassGen BCAnnotGen ...  (more components)
-     |      \       \
-     |       \       \------------->  helper methods
-     |        \       \------------>  JMirrorBuilder, JBeanInfoBuilder (uses some components, e.g. BCInnerClassGen)
-     |         \
+     |    |         \
+     |    |          \------------->  helper methods
+     |    |           \------------>  JMirrorBuilder, JBeanInfoBuilder (uses some components, e.g. BCInnerClassGen)
+     |    |
      |   BytecodeWriters  --------->        methods and classes to write byte code files
      |
- BCodeTypes        ---------------->        maps and fields for common BTypes, class Tracked, methods to collect information on classes, tests for BTypes (conforms), ...
-     |
 BCodeIdiomatic     ---------------->        utilities for code generation, e.g. genPrimitiveArithmetic
-     |
-  BCodeGlue        ---------------->        BType class, predefined BTypes
+                    \-------------->        `bTypes`: maps and fields for common BTypes
 ```
 
-### Data Flow ###
-Compiler creates a `BCodePhase`, calls `runOn(compilationUnits)`.
+The `BTypes.scala` class contains the `BType` class and predefined BTypes
 
-* initializes fields of `GenBCode` defined in `BCodeTypes` (BType maps,
-  common BTypes like `StringReference`)
-* initialize `primitives` map defined in `scalaPrimitives` (maps primitive
+### Data Flow ###
+Compiler creates a `GenBCode` `Phase`, calls `runOn(compilationUnits)`,
+which calls `run(context)`. This:
+
+* initializes `myPrimitives` defined in `DottyPrimitives` (maps primitive
   members, like `int.+`, to bytecode instructions)
-* creates `BytecodeWriter`, `JMirrorBuilder` and `JBeanInfoBuilder` instances
-  (on each compiler run)
+* creates a `GenBCodePipeline` and calls `run(tree)`
+
+`GenBCodePipeline` now:
+
+* initializes the `bTypes` field of `GenBCodePipeline` defined in `BCodeIdiomatic`
+  (BType maps, common BTypes like `StringRef`)
+* creates `BytecodeWriter` and `JMirrorBuilder` instances (on each compiler run)
 * `buildAndSendToDisk(units)`: uses work queues, see below.
-  - `BCodePhase.addToQ1` adds class trees to `q1`
-  - `Worker1.visit` creates ASM `ClassNodes`, adds to `q2`. It creates one
+  - `GenBCodePipeline.feedPipeline1` adds ClassDefs to `q1`
+  - `Worker1.run` creates ASM `ClassNodes`, adds to `q2`. It creates one
     `PlainClassBuilder` for each compilation unit.
-  - `Worker2.addToQ3` adds byte arrays (one for each class) to `q3`
-  - `BCodePhase.drainQ3` writes byte arrays to disk
+  - `Worker2.run` adds byte arrays (one for each class) to `q3`
+  - `GenBCodePipeline.drainQ3` writes byte arrays to disk
 
 
 ### Architecture ###
@@ -110,7 +113,7 @@ To understand how it's built, see:
 final def exemplar(csym0: Symbol): Tracked = { ... }
 ```
 
-Details in `BCodeTypes.scala`
+Details in `BTypes.scala`
 
 #### (e) More "high-level" utilities for bytecode emission ####
 In the spirit of `BCodeIdiomatic`, utilities are added in `BCodeHelpers` for

@@ -1397,6 +1397,7 @@ object Build {
             .add(OutputDir("scaladoc/output/reference"))
             .add(SiteRoot(s"${temp.getAbsolutePath}/docs"))
             .add(ProjectName("Scala 3 Reference"))
+            .add(ProjectVersion("3.1.2")) // TODO: Change that later to the current version tag. (This must happen on first forward this branch to stable release tag)
             .remove[VersionsDictionaryUrl]
             .add(SourceLinks(List(
               dottySrcLink(referenceVersion, temp.getAbsolutePath + "=")
@@ -1410,7 +1411,7 @@ object Build {
             val outputDir = languageReferenceConfig.value.get[OutputDir].get.value
             val expectedLinksFile = (file("project") / "scripts" / "expected-links" / "reference-expected-links.txt").toString
             import _root_.scala.sys.process._
-            s"$script $outputDir $expectedLinksFile" !
+            s"$script $outputDir $expectedLinksFile".!
           }
         }
 
@@ -1845,6 +1846,8 @@ object ScaladocConfigs {
     val dottyManagesSources =
       (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
 
+    val tastyCoreSources = projectRoot.relativize((`tasty-core-bootstrapped`/Compile/scalaSource).value.toPath().normalize())
+
     val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
     DefaultGenerationConfig.value
       .add(ProjectName("Scala 3"))
@@ -1855,6 +1858,7 @@ object ScaladocConfigs {
       .add(CommentSyntax(List(
         s"${dottyLibRoot}=markdown",
         s"${stdLibRoot}=wiki",
+        s"${tastyCoreSources}=markdown",
         "wiki"
       )))
       .add(VersionsDictionaryUrl("https://scala-lang.org/api/versions.json"))

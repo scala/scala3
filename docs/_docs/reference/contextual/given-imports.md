@@ -103,15 +103,15 @@ given instances once their user base has migrated.
 
 ### Syntax
 
-```ebnf
-Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr} ;
-Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr} ;
-ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec ;
+```
+Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
+Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
 ImportSpec        ::=  NamedSelector
                     |  WildcardSelector
-                    | ‘{’ ImportSelectors) ‘}’ ;
-NamedSelector     ::=  id [‘as’ (id | ‘_’)] ;
-WildCardSelector  ::=  ‘*' | ‘given’ [InfixType] ;
+                    | ‘{’ ImportSelectors) ‘}’
+NamedSelector     ::=  id [‘as’ (id | ‘_’)]
+WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
 ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector} ;
+                    |  WildCardSelector {‘,’ WildCardSelector}
 ```

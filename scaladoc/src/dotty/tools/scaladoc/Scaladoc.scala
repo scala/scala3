@@ -229,5 +229,6 @@ object Scaladoc:
     given docContext: DocContext = new DocContext(args, ctx)
     val module = ScalaModuleProvider.mkModule()
     new dotty.tools.scaladoc.renderers.HtmlRenderer(module.rootPackage, module.members).render()
+    docContext.reportPathCompatIssues()
     report.inform("generation completed successfully")
     docContext

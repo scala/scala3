@@ -16,13 +16,14 @@ import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NoType, TermRef, Type}
+import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, TermRef, Type}
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
+import dotty.tools.dotc.core.Types.TypeRef
 
 /**
  * One of the results of a completion query.
@@ -310,10 +311,12 @@ object Completion {
       resultMappings
     }
 
-    /** Replaces underlying type with reduced one, when it's MatchType */
-    def reduceUnderlyingMatchType(qual: Tree)(using Context): Tree=
-      qual.tpe.widen match
-        case ctx.typer.MatchTypeInDisguise(mt) => qual.withType(mt)
+    /** Widen only those types which are applied or are exactly nothing
+     */
+    def widenQualifier(qual: Tree)(using Context): Tree =
+      qual.tpe.widenDealias match
+        case widenedType if widenedType.isExactlyNothing => qual.withType(widenedType)
+        case appliedType: AppliedType => qual.withType(appliedType)
         case _ => qual
 
     /** Completions for selections from a term.
@@ -321,17 +324,17 @@ object Completion {
      *  and so do members from extensions over members from implicit conversions
      */
     def selectionCompletions(qual: Tree)(using Context): CompletionMap =
-      val reducedQual = reduceUnderlyingMatchType(qual)
+      val adjustedQual = widenQualifier(qual)
 
-      implicitConversionMemberCompletions(reducedQual) ++
-        extensionCompletions(reducedQual) ++
-        directMemberCompletions(reducedQual)
+      implicitConversionMemberCompletions(adjustedQual) ++
+        extensionCompletions(adjustedQual) ++
+        directMemberCompletions(adjustedQual)
 
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
      */
     def directMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.widenDealias.isExactlyNothing then
+      if qual.tpe.isExactlyNothing then
         Map.empty
       else
         accessibleMembers(qual.tpe).groupByName
@@ -378,7 +381,7 @@ object Completion {
 
     /** Completions from implicit conversions including old style extensions using implicit classes */
     private def implicitConversionMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.widenDealias.isExactlyNothing || qual.tpe.isNullType then
+      if qual.tpe.isExactlyNothing || qual.tpe.isNullType then
         Map.empty
       else
         implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState())

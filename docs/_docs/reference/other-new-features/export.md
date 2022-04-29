@@ -134,20 +134,20 @@ more flexible way.
 
 ## Syntax changes:
 
-```ebnf
+```
 TemplateStat      ::=  ...
-                    |  Export ;
+                    |  Export
 TopStat           ::=  ...
-                    |  Export ;
-Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr} ;
-ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec ;
+                    |  Export
+Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
 ImportSpec        ::=  NamedSelector
                     |  WildcardSelector
-                    | ‘{’ ImportSelectors) ‘}’ ;
-NamedSelector     ::=  id [‘as’ (id | ‘_’)] ;
-WildCardSelector  ::=  ‘*’ | ‘given’ [InfixType] ;
+                    | ‘{’ ImportSelectors) ‘}’
+NamedSelector     ::=  id [‘as’ (id | ‘_’)]
+WildCardSelector  ::=  ‘*’ | ‘given’ [InfixType]
 ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector} ;
+                    |  WildCardSelector {‘,’ WildCardSelector}
 ```
 
 ## Elaboration of Export Clauses

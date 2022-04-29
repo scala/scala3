@@ -3610,7 +3610,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  def decls(cls: Symbol): List[Symbol] =
        *    List(Symbol.newMethod(cls, "foo", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit])))
        *
-       *  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents = parents.map(_.tpe), decls, selfInfo = None)
+       *  val cls = Symbol.newClass(Symbol.spliceOwner, name, parents = parents.map(_.tpe), decls, selfType = None)
        *  val fooSym = cls.declaredMethod("foo").head
        *
        *  val fooDef = DefDef(fooSym, argss => Some('{println(s"Calling foo")}.asTerm))
@@ -3878,10 +3878,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Get all non-private methods declared or inherited */
         def methodMembers: List[Symbol]
 
-        /** Get non-private named methods defined directly inside the class */
+        /** Get non-private named type defined directly inside the class */
         def declaredType(name: String): List[Symbol]
 
-        /** Get all non-private methods defined directly inside the class, excluding constructors */
+        /** Get all non-private types defined directly inside the class */
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */

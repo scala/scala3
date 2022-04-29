@@ -98,3 +98,9 @@ class ContextFunctions extends SignatureTest("contextfunctions", SignatureTest.a
 class MarkdownCode extends SignatureTest("markdowncode", SignatureTest.all)
 
 class FunctionTypeSignatures extends SignatureTest("functionTypeSignatures", SignatureTest.all)
+
+class ImplicitMembers extends SignatureTest(
+  "implicitMembers",
+  Seq("def"),
+  filterFunc = _.toString.endsWith("OuterClass$ImplicitMemberTarget.html")
+)

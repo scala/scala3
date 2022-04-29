@@ -28,7 +28,7 @@ class ImplicitMembersExtensionTransformer(using DocContext) extends(Module => Mo
       def collectApplicableMembers(source: Member): Seq[Member] = source.members.flatMap {
         case m @ Member(_, _, _, Kind.Extension(ExtensionTarget(_, _, _, _, MyDri, _), _), Origin.RegularlyDefined) =>
           val kind = m.kind match
-            case d: Kind.Def => d
+            case Kind.Extension(_, d) => d
             case _ => Kind.Def(Nil, Nil)
 
           Seq(m.withOrigin(Origin.ExtensionFrom(source.name, source.dri)).withKind(kind))
@@ -44,12 +44,12 @@ class ImplicitMembersExtensionTransformer(using DocContext) extends(Module => Mo
               }
             case _ =>
               Nil
-        case _ =>
+        case other =>
           None
       }
 
       val newImplicitMembers = implictSources.flatMap(collectApplicableMembers).distinct
-      val expandedMembers = c.members.map(expandMember(newImplicitMembers ++ Seq(c)))
+      val expandedMembers = c.members.map(expandMember(outerMembers ++ Seq(c)))
       c.withMembers(newImplicitMembers ++ expandedMembers)
 
     original.updatePackages(_.map(expandMember(Nil)(_)))
