@@ -91,7 +91,7 @@ class TreeChecker extends Phase with SymTransformer {
     if (ctx.phaseId <= erasurePhase.id) {
       val initial = symd.initial
       assert(symd == initial || symd.signature == initial.signature,
-        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
+        i"""Signature of ${sym.showLocated} changed at phase ${ctx.phase.prevMega}
            |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
            |Current info: ${symd.info}
@@ -122,8 +122,7 @@ class TreeChecker extends Phase with SymTransformer {
   }
 
   def check(phasesToRun: Seq[Phase], ctx: Context): Tree = {
-    val prevPhase = ctx.phase.prev // can be a mini-phase
-    val fusedPhase = ctx.base.fusedContaining(prevPhase)
+    val fusedPhase = ctx.phase.prevMega(using ctx)
     report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
 
     inContext(ctx) {
@@ -145,7 +144,7 @@ class TreeChecker extends Phase with SymTransformer {
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
         inContext(checkingCtx) {
-          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prev} ***")
+          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prevMega(using ctx)} ***")
         }
         throw ex
     }

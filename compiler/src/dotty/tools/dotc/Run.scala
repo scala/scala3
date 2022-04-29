@@ -282,8 +282,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   private def printTree(last: PrintedTree)(using Context): PrintedTree = {
     val unit = ctx.compilationUnit
-    val prevPhase = ctx.phase.prev // can be a mini-phase
-    val fusedPhase = ctx.base.fusedContaining(prevPhase)
+    val fusedPhase = ctx.phase.prevMega
     val echoHeader = f"[[syntax trees at end of $fusedPhase%25s]] // ${unit.source}"
     val tree = if ctx.isAfterTyper then unit.tpdTree else unit.untpdTree
     val treeString = tree.show(using ctx.withProperty(XprintMode, Some(())))
