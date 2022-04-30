@@ -585,6 +585,7 @@ object Checking {
   def checkNoPrivateLeaks(sym: Symbol)(using Context): Type = {
     class NotPrivate extends TypeMap {
       var errors: List[() => String] = Nil
+      var inCaptureSet: Boolean = false
 
       def accessBoundary(sym: Symbol): Symbol =
         if (sym.is(Private) || !sym.owner.isClass) sym.owner
@@ -598,12 +599,16 @@ object Checking {
        *  @pre  The signature of `sym` refers to `other`
        */
       def isLeaked(other: Symbol) =
-        other.is(Private, butNot = TypeParam) && {
+        other.is(Private, butNot = TypeParam)
+        && {
           val otherBoundary = other.owner
           val otherLinkedBoundary = otherBoundary.linkedClass
           !(symBoundary.isContainedIn(otherBoundary) ||
             otherLinkedBoundary.exists && symBoundary.isContainedIn(otherLinkedBoundary))
         }
+        && !(inCaptureSet && other.isAllOf(LocalParamAccessor))
+            // class parameters in capture sets are not treated as leaked since in
+            // phase -Ycc these are treated as normal vals.
 
       def apply(tp: Type): Type = tp match {
         case tp: NamedType =>
@@ -638,6 +643,13 @@ object Checking {
             declaredParents =
               tp.declaredParents.map(p => transformedParent(apply(p)))
             )
+        case tp @ AnnotatedType(underlying, annot)
+        if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
+          val underlying1 = this(underlying)
+          inCaptureSet = true
+          val annot1 = annot.mapWith(this)
+          inCaptureSet = false
+          derivedAnnotatedType(tp, underlying1, annot1)
         case _ =>
           mapOver(tp)
       }
