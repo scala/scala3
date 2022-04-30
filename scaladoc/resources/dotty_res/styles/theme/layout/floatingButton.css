@@ -2,7 +2,7 @@
   display: none;
   position: fixed;
   right: calc(3 * var(--base-spacing));
-  bottom: calc(3 * var(--base-spacing));
+  bottom: calc(10 * var(--base-spacing));
   height: calc(5 * var(--base-spacing));
   width: calc(5 * var(--base-spacing));
   background-color: var(--action-primary-background-default-solid);

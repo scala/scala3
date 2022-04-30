@@ -53,10 +53,31 @@
   display: none;
 }
 
+.projectVersion {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 950px) {
+  .projectVersion {
+    width: calc(6 * var(--base-spacing));
+  }
+
+  .header-container-right .text-button {
+    margin-left: calc(2 * var(--base-spacing));
+  }
+}
+
 @media (max-width: 768px) {
   #mobile-menu-toggle {
     margin-left: calc(3 * var(--base-spacing));
     display: block;
+  }
+
+  .projectVersion {
+    width: auto;
   }
 
   .header-container-right .text-button {

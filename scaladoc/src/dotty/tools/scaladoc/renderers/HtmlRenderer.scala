@@ -259,7 +259,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           a(href := "https://index.scala-lang.org", cls := "mobile-menu-item") (
             "Libraries",
           ),
-          a(href := "https://www.scala-lang.org/contribute/", cls := "mobile-menu-item") (
+          a(href := "https://www.scala-lang.org/contribute/", cls := "mobile-menu-item contribute") (
             "Contribute",
           ),
           a(href := "https://www.scala-lang.org/contribute/", cls := "mobile-menu-item") (
@@ -268,9 +268,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           a(href := "https://www.scala-lang.org/blog/", cls := "mobile-menu-item") (
             "Community",
           ),
-          span(cls := "mobile-menu-item") (
-            "Light mode"
-          )
+          span(id := "mobile-theme-toggle", cls := "mobile-menu-item mode"),
         )
       ),
       button(id := "mobile-sidebar-toggle", cls := "floating-button"),

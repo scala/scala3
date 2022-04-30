@@ -317,6 +317,8 @@
 
 .theme-dark #mobile-menu-toggle.icon-button.menu-shown.selected::after {
   content: url("../../../../images/icon-buttons/menu-animated/dark/selected.svg");
+}
+
 /* gh button */
 
 .icon-button.gh::after {

@@ -33,6 +33,11 @@
   /* Wait for the DOM to be loaded before we try to attach event listeners to things in the DOM */
   window.addEventListener("DOMContentLoaded", () => {
     const themeToggler = document.querySelector('#theme-toggle');
+    const mobileThemeToggler = document.querySelector('#mobile-theme-toggle');
+    mobileThemeToggler.addEventListener("click", e => {
+      toggleDarkTheme(!currentlyDark);
+    });
+
     themeToggler.addEventListener("click", e => {
       toggleDarkTheme(!currentlyDark);
     });
