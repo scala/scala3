@@ -4,6 +4,8 @@
   cursor: pointer;
   outline: none !important;
   padding: 0;
+  height: 16px;
+  width: 16px;
 }
 
 .icon-button::after {
@@ -315,4 +317,202 @@
 
 .theme-dark #mobile-menu-toggle.icon-button.menu-shown.selected::after {
   content: url("../../../../images/icon-buttons/menu-animated/dark/selected.svg");
+/* gh button */
+
+.icon-button.gh::after {
+  content: url("../../../../images/icon-buttons/gh/light/default.svg");
+}
+
+.icon-button.gh:hover::after {
+  content: url("../../../../images/icon-buttons/gh/light/hover.svg");
+}
+
+.icon-button.gh:active::after {
+  content: url("../../../../images/icon-buttons/gh/light/active.svg");
+}
+
+.icon-button.gh:disabled::after {
+  content: url("../../../../images/icon-buttons/gh/light/disabled.svg");
+}
+
+.icon-button.gh:focus::after {
+  content: url("../../../../images/icon-buttons/gh/light/focus.svg");
+}
+
+.icon-button.gh.selected::after {
+  content: url("../../../../images/icon-buttons/gh/light/selected.svg");
+}
+
+.theme-dark .icon-button.gh::after {
+  content: url("../../../../images/icon-buttons/gh/dark/default.svg");
+}
+
+.theme-dark .icon-button.gh:hover::after {
+  content: url("../../../../images/icon-buttons/gh/dark/hover.svg");
+}
+
+.theme-dark .icon-button.gh:active::after {
+  content: url("../../../../images/icon-buttons/gh/dark/active.svg");
+}
+
+.theme-dark .icon-button.gh:disabled::after {
+  content: url("../../../../images/icon-buttons/gh/dark/disabled.svg");
+}
+
+.theme-dark .icon-button.gh:focus::after {
+  content: url("../../../../images/icon-buttons/gh/dark/focus.svg");
+}
+
+.theme-dark .icon-button.gh.selected::after {
+  content: url("../../../../images/icon-buttons/gh/dark/selected.svg");
+}
+
+/* twitter button */
+
+.icon-button.twitter::after {
+  content: url("../../../../images/icon-buttons/twitter/light/default.svg");
+}
+
+.icon-button.twitter:hover::after {
+  content: url("../../../../images/icon-buttons/twitter/light/hover.svg");
+}
+
+.icon-button.twitter:active::after {
+  content: url("../../../../images/icon-buttons/twitter/light/active.svg");
+}
+
+.icon-button.twitter:disabled::after {
+  content: url("../../../../images/icon-buttons/twitter/light/disabled.svg");
+}
+
+.icon-button.twitter:focus::after {
+  content: url("../../../../images/icon-buttons/twitter/light/focus.svg");
+}
+
+.icon-button.twitter.selected::after {
+  content: url("../../../../images/icon-buttons/twitter/light/selected.svg");
+}
+
+.theme-dark .icon-button.twitter::after {
+  content: url("../../../../images/icon-buttons/twitter/dark/default.svg");
+}
+
+.theme-dark .icon-button.twitter:hover::after {
+  content: url("../../../../images/icon-buttons/twitter/dark/hover.svg");
+}
+
+.theme-dark .icon-button.twitter:active::after {
+  content: url("../../../../images/icon-buttons/twitter/dark/active.svg");
+}
+
+.theme-dark .icon-button.twitter:disabled::after {
+  content: url("../../../../images/icon-buttons/twitter/dark/disabled.svg");
+}
+
+.theme-dark .icon-button.twitter:focus::after {
+  content: url("../../../../images/icon-buttons/twitter/dark/focus.svg");
+}
+
+.theme-dark .icon-button.twitter.selected::after {
+  content: url("../../../../images/icon-buttons/twitter/dark/selected.svg");
+}
+
+/* discord button */
+
+.icon-button.discord::after {
+  content: url("../../../../images/icon-buttons/discord/light/default.svg");
+}
+
+.icon-button.discord:hover::after {
+  content: url("../../../../images/icon-buttons/discord/light/hover.svg");
+}
+
+.icon-button.discord:active::after {
+  content: url("../../../../images/icon-buttons/discord/light/active.svg");
+}
+
+.icon-button.discord:disabled::after {
+  content: url("../../../../images/icon-buttons/discord/light/disabled.svg");
+}
+
+.icon-button.discord:focus::after {
+  content: url("../../../../images/icon-buttons/discord/light/focus.svg");
+}
+
+.icon-button.discord.selected::after {
+  content: url("../../../../images/icon-buttons/discord/light/selected.svg");
+}
+
+.theme-dark .icon-button.discord::after {
+  content: url("../../../../images/icon-buttons/discord/dark/default.svg");
+}
+
+.theme-dark .icon-button.discord:hover::after {
+  content: url("../../../../images/icon-buttons/discord/dark/hover.svg");
+}
+
+.theme-dark .icon-button.discord:active::after {
+  content: url("../../../../images/icon-buttons/discord/dark/active.svg");
+}
+
+.theme-dark .icon-button.discord:disabled::after {
+  content: url("../../../../images/icon-buttons/discord/dark/disabled.svg");
+}
+
+.theme-dark .icon-button.discord:focus::after {
+  content: url("../../../../images/icon-buttons/discord/dark/focus.svg");
+}
+
+.theme-dark .icon-button.discord.selected::after {
+  content: url("../../../../images/icon-buttons/discord/dark/selected.svg");
+}
+
+/* gitter button */
+
+.icon-button.gitter::after {
+  content: url("../../../../images/icon-buttons/gitter/light/default.svg");
+}
+
+.icon-button.gitter:hover::after {
+  content: url("../../../../images/icon-buttons/gitter/light/hover.svg");
+}
+
+.icon-button.gitter:active::after {
+  content: url("../../../../images/icon-buttons/gitter/light/active.svg");
+}
+
+.icon-button.gitter:disabled::after {
+  content: url("../../../../images/icon-buttons/gitter/light/disabled.svg");
+}
+
+.icon-button.gitter:focus::after {
+  content: url("../../../../images/icon-buttons/gitter/light/focus.svg");
+}
+
+.icon-button.gitter.selected::after {
+  content: url("../../../../images/icon-buttons/gitter/light/selected.svg");
+}
+
+.theme-dark .icon-button.gitter::after {
+  content: url("../../../../images/icon-buttons/gitter/dark/default.svg");
+}
+
+.theme-dark .icon-button.gitter:hover::after {
+  content: url("../../../../images/icon-buttons/gitter/dark/hover.svg");
+}
+
+.theme-dark .icon-button.gitter:active::after {
+  content: url("../../../../images/icon-buttons/gitter/dark/active.svg");
+}
+
+.theme-dark .icon-button.gitter:disabled::after {
+  content: url("../../../../images/icon-buttons/gitter/dark/disabled.svg");
+}
+
+.theme-dark .icon-button.gitter:focus::after {
+  content: url("../../../../images/icon-buttons/gitter/dark/focus.svg");
+}
+
+.theme-dark .icon-button.gitter.selected::after {
+  content: url("../../../../images/icon-buttons/gitter/dark/selected.svg");
 }
