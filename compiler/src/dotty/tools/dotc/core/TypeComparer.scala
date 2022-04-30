@@ -1198,6 +1198,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ => false
         } && { GADTused = true; true }
 
+      def tryGadtAnd1: Boolean =
+        ctx.mode.is(Mode.GadtConstraintInference) && {
+          tp1 match
+            case AndType(tp11, tp12) =>
+              either(recur(tp11, tp2), recur(tp12, tp2))
+            case _ => false
+        }
+
       tycon2 match {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
@@ -1213,6 +1221,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case info2: ClassInfo =>
                 tycon2.name.startsWith("Tuple") &&
                   defn.isTupleNType(tp2) && recur(tp1, tp2.toNestedPairs) ||
+                tryGadtAnd1 ||
                 tryBaseType(info2.cls)
               case _ =>
                 fourthTry
