@@ -772,8 +772,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
         compareTypeBounds
-      case CapturingType(parent2, _, _) =>
-        recur(tp1, parent2) || fourthTry
+      case CapturingType(parent2, refs2, _) =>
+        def compareCaptured =
+          val refs1 = tp1.captureSet
+          try
+            if refs1.isAlwaysEmpty then recur(tp1, parent2)
+            else subCaptures(refs1, refs2, frozenConstraint).isOK
+              && recur(tp1.widen.stripCapturing, parent2)
+          catch case ex: AssertionError =>
+            println(i"assertion failed while compare captured $tp1 <:< $tp2")
+            throw ex
+        compareCaptured || fourthTry
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
