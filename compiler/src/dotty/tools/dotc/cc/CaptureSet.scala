@@ -199,6 +199,7 @@ sealed abstract class CaptureSet extends Showable:
       if isConst then
         if mapped.isConst && mapped.elems == elems then this
         else mapped
+      else if tm.isInstanceOf[TypeOps.AvoidMap] then AvoidMapped(asVar, tm, tm.variance, mapped)
       else Mapped(asVar, tm, tm.variance, mapped)
 
   def substParams(tl: BindingType, to: List[Type])(using Context) =
@@ -404,16 +405,23 @@ object CaptureSet:
               |Stack trace of variable creation:"
               |${stack.mkString("\n")}"""
 
+    protected def handleContraVar(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+      if variance <= 0 && !origin.isConst && (origin ne initial) && (origin ne source) then
+        report.warning(i"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
+        CompareResult.fail(this)
+      else
+        CompareResult.OK
+
+    protected def propagateBack(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+      CompareResult.OK
+
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       val added =
-        if origin eq source then
-          mapRefs(newElems, tm, variance)
-        else
-          if variance <= 0 && !origin.isConst && (origin ne initial) then
-            report.warning(i"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
-            return CompareResult.fail(this)
-          Const(newElems)
-      super.addNewElems(added.elems, origin)
+        if origin eq source then mapRefs(newElems, tm, variance)
+        else Const(newElems)
+      handleContraVar(newElems, origin)
+        .andAlso(super.addNewElems(added.elems, origin))
+        .andAlso(propagateBack(newElems, origin))
         .andAlso {
           if added.isConst then CompareResult.OK
           else if added.asVar.recordDepsState() then { addSub(added); CompareResult.OK }
@@ -429,6 +437,16 @@ object CaptureSet:
 
     override def toString = s"Mapped$id($source, elems = $elems)"
   end Mapped
+
+  class AvoidMapped private[CaptureSet]
+    (source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
+  extends Mapped(source, tm, variance, initial):
+    override final def handleContraVar(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+      CompareResult.OK
+    override final def propagateBack(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+      if origin ne source then source.tryInclude(newElems, this)
+      else CompareResult.OK
+  end AvoidMapped
 
   class BiMapped private[CaptureSet]
     (val source: Var, bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
@@ -509,7 +527,7 @@ object CaptureSet:
     extension (result: Type)
       def isOK: Boolean = result eq OK
       def blocking: CaptureSet = result
-      def show: String = if result.isOK then "OK" else result.toString
+      def show(using Context): String = if result.isOK then "OK" else i"$result"
       def andAlso(op: Context ?=> Type)(using Context): Type = if result.isOK then op else result
 
   class VarState:
