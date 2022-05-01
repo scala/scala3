@@ -1,0 +1,10 @@
+scala> object opaques { opaque type IArr[+T] = Array[_ <: T]; given arrayOps: AnyRef with { extension [T](arr: IArr[T]) { def reverse: IArr[T] = genericArrayOps(arr).reverse ; def sorted(using math.Ordering[T]): IArr[T] = genericArrayOps(arr).sorted }}}; type IArr[+T] = opaques.IArr[T] ; object IArr { inline def apply(inline x: Int, inline xs: Int*): IArr[Int] = Array(x, xs: _*).asInstanceOf }
+// defined object opaques
+// defined alias type IArr[+T] = opaques.IArr[T]
+// defined object IArr
+
+scala> IArr(1,2,3).reverse.sorted
+val res0: opaques.IArr[Int] = Array(1, 2, 3)
+
+scala> IArr(1,2,3).reverse.sorted
+val res1: opaques.IArr[Int] = Array(1, 2, 3)

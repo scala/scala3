@@ -1,0 +1,12 @@
+scala> object Foo { opaque type Bar = Int ; object Bar { extension (b: Bar) def flip: Bar = -b ; def apply(x: Int): Bar = x } }
+// defined object Foo
+scala> val a = Foo.Bar(42)
+val a: Foo.Bar = 42
+scala> val b0 = a.flip
+val b0: Foo.Bar = -42
+scala> val b1 = a.flip
+val b1: Foo.Bar = -42
+scala> val c = b1.flip
+val c: Foo.Bar = 42
+scala> val d = c.flip
+val d: Foo.Bar = -42

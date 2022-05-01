@@ -1397,7 +1397,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def desugarIdent(tree: Ident)(using Context): RefTree = {
     val qual = desugarIdentPrefix(tree)
     if (qual.isEmpty) tree
-    else qual.select(tree.symbol)
+    else atPhase(Phases.typerPhase)(qual.select(tree.symbol))
   }
 
   /** Recover identifier prefix (e.g. this) if it exists */
