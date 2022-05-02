@@ -1008,7 +1008,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   otherArgs.take(d) ++ tl.paramRefs))
             else
               otherTycon
-          (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon.ensureLambdaSub)) &&
+          (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon)) &&
           directionalRecur(adaptedTycon.appliedTo(args), other)
         }
       }
