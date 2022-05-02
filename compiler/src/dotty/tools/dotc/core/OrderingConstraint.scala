@@ -361,6 +361,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     // constraints on `this` instead?
     if param1 == param2 || current.isLess(param1, param2) then current
     else
+      assert(!current.isLess(param2, param1),
+        i"Attempted to add `$param1 <: $param2` when we already have `$param2 <: $param1`, this should go through ConstraintHandling#unify\ncurrent = $current")
       assert(current.contains(param1), i"$param1")
       assert(current.contains(param2), i"$param2")
       val unifying = direction != NoUnification
