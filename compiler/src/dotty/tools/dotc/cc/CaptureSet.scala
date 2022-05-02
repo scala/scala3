@@ -183,9 +183,26 @@ sealed abstract class CaptureSet extends Showable:
       else Const(elems.filter(p))
     else Filtered(asVar, p)
 
-  /** capture set obtained by applying `f` to all elements of the current capture set
+  /** Capture set obtained by applying `tm` to all elements of the current capture set
    *  and joining the results. If the current capture set is a variable, the same
    *  transformation is applied to all future additions of new elements.
+   *
+   *  Note: We have a problem how we handle the situation where we have a mapped set
+   *
+   *    cs2 = tm(cs1)
+   *
+   *  and then the propagation solver adds a new element `x` to `cs2`. What do we
+   *  know in this case about `cs1`? We can answer this question in a sound way only
+   *  if `tm` is a bijection on capture references or it is idempotent on capture references.
+   *  (see definition in IdempotentCapRefMap).
+   *  If `tm` is a bijection we know that `tm^-1(x)` must be in `cs1`. If `tm` is idempotent
+   *  one possible is solution is that `x` is in `cs1`, which is what we assume in this case.
+   *  That strategy is sound but not complete.
+   *
+   *  If `tm` is some other map, we don't know how to handle this case. For now,
+   *  we simply refuse to handle other maps. If they do need to be handled,
+   *  `OtherMapped` provides some approximation to a solution, but it is neither
+   *  sound nor complete.
    */
   def map(tm: TypeMap)(using Context): CaptureSet = tm match
     case tm: BiTypeMap =>
@@ -194,13 +211,15 @@ sealed abstract class CaptureSet extends Showable:
         if mappedElems == elems then this
         else Const(mappedElems)
       else BiMapped(asVar, tm, mappedElems)
+    case tm: IdentityCaptRefMap => this
     case _ =>
       val mapped = mapRefs(elems, tm, tm.variance)
       if isConst then
         if mapped.isConst && mapped.elems == elems then this
         else mapped
-      else if tm.isInstanceOf[TypeOps.AvoidMap] then AvoidMapped(asVar, tm, tm.variance, mapped)
-      else Mapped(asVar, tm, tm.variance, mapped)
+      else tm match
+        case tm: IdempotentCaptRefMap => Mapped(asVar, tm, tm.variance, mapped)
+        case _ if false => OtherMapped(asVar, tm, tm.variance, mapped)
 
   def substParams(tl: BindingType, to: List[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
@@ -391,7 +410,7 @@ object CaptureSet:
   end DerivedVar
 
   /** A variable that changes when `source` changes, where all additional new elements are mapped
-   *  using   ∪ { f(x) | x <- elems }
+   *  using   ∪ { f(x) | x <- elems }.
    */
   class Mapped private[CaptureSet]
     (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
@@ -399,29 +418,16 @@ object CaptureSet:
     addSub(initial)
     val stack = if debugSets then (new Throwable).getStackTrace().nn.take(20) else null
 
-    private def whereCreated(using Context): String =
-      if stack == null then ""
-      else i"""
-              |Stack trace of variable creation:"
-              |${stack.mkString("\n")}"""
-
-    protected def handleContraVar(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      if variance <= 0 && !origin.isConst && (origin ne initial) && (origin ne source) then
-        report.warning(i"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
-        CompareResult.fail(this)
-      else
-        CompareResult.OK
-
-    protected def propagateBack(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      CompareResult.OK
-
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+      addNewElemsImpl(newElems: Refs, origin: CaptureSet)
+        .andAlso(if origin ne source then source.tryInclude(newElems, this) else CompareResult.OK)
+          // `tm` is assumed idempotent, propagate back elems from image set.
+
+    protected def addNewElemsImpl(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       val added =
         if origin eq source then mapRefs(newElems, tm, variance)
         else Const(newElems)
-      handleContraVar(newElems, origin)
-        .andAlso(super.addNewElems(added.elems, origin))
-        .andAlso(propagateBack(newElems, origin))
+      super.addNewElems(added.elems, origin)
         .andAlso {
           if added.isConst then CompareResult.OK
           else if added.asVar.recordDepsState() then { addSub(added); CompareResult.OK }
@@ -438,17 +444,34 @@ object CaptureSet:
     override def toString = s"Mapped$id($source, elems = $elems)"
   end Mapped
 
-  class AvoidMapped private[CaptureSet]
+
+  /** Should be avoided as much as possible:
+   *  A mapped set that uses neither a BiTypeMap nor an idempotent type map.
+   *  In that case there's no much we can do.
+   *  The patch does not propagate added elements back to source and rejects adding
+   *  elements from variable sources in contra- and non-variant positions. In essence,
+   *  we approximate types resulting from such maps by returning a possible super type
+   *  from the actual type.
+   */
+  final class OtherMapped private[CaptureSet]
     (source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
   extends Mapped(source, tm, variance, initial):
-    override final def handleContraVar(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      CompareResult.OK
-    override final def propagateBack(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      if origin ne source then source.tryInclude(newElems, this)
-      else CompareResult.OK
-  end AvoidMapped
 
-  class BiMapped private[CaptureSet]
+    private def whereCreated(using Context): String =
+      if stack == null then ""
+      else i"""
+              |Stack trace of variable creation:"
+              |${stack.mkString("\n")}"""
+
+    override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+      if variance <= 0 && !origin.isConst && (origin ne initial) && (origin ne source) then
+        report.warning(i"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
+        CompareResult.fail(this)
+      else
+        addNewElemsImpl(newElems, origin)
+  end OtherMapped
+
+  final class BiMapped private[CaptureSet]
     (val source: Var, bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends DerivedVar(initialElems):
 
@@ -517,6 +540,15 @@ object CaptureSet:
     case _ =>
       false
 
+  /** A TypeMap with the property that every capture reference in the image
+   *  of the map is mapped to itself. I.e. for all capture references r1, r2,
+   *  if M(r1) == r2 then M(r2) == r2.
+   */
+  trait IdempotentCaptRefMap extends TypeMap
+
+  /** A TypeMap that is the identity on capture references */
+  trait IdentityCaptRefMap extends TypeMap
+
   type CompareResult = CompareResult.Type
 
   /** None = ok, Some(cs) = failure since not a subset of cs */
@@ -528,7 +560,7 @@ object CaptureSet:
       def isOK: Boolean = result eq OK
       def blocking: CaptureSet = result
       def show(using Context): String = if result.isOK then "OK" else i"$result"
-      def andAlso(op: Context ?=> Type)(using Context): Type = if result.isOK then op else result
+      inline def andAlso(op: Context ?=> Type)(using Context): Type = if result.isOK then op else result
 
   class VarState:
     private val elemsMap: util.EqHashMap[Var, Refs] = new util.EqHashMap
