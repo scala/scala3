@@ -148,7 +148,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           }
 
     /** Is an `CanEqual[cls1, cls2]` instance assumed for predefined classes `cls1`, cls2`? */
-    def canComparePredefinedClasses(cls1: ClassSymbol, cls2: ClassSymbol): Boolean =
+    def canComparePredefinedClasses(cls1: ClassSymbol, cls2: ClassSymbol)(using Context): Boolean =
 
       def cmpWithBoxed(cls1: ClassSymbol, cls2: ClassSymbol) =
         cls2 == defn.NothingClass
@@ -173,7 +173,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         // val x: String = null.asInstanceOf[String]
         // if (x == null) {} // error: x is non-nullable
         // if (x.asInstanceOf[String|Null] == null) {} // ok
-        cls1 == defn.NullClass && cls1 == cls2
+        if cls1 == defn.NullClass then cls1 == cls2
+        else cls1 == defn.NothingClass || cls2 == defn.NothingClass
       else if cls1 == defn.NullClass then
         cls1 == cls2 || cls2.derivesFrom(defn.ObjectClass)
       else if cls2 == defn.NullClass then
@@ -187,9 +188,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       *  interpret.
       */
     def canComparePredefined(tp1: Type, tp2: Type) =
+      val checkCtx = if ctx.explicitNulls
+        && (tp1.hasAnnotation(defn.CanEqualNullAnnot) || tp2.hasAnnotation(defn.CanEqualNullAnnot))
+        then ctx.retractMode(Mode.SafeNulls) else ctx
       tp1.classSymbols.exists(cls1 =>
         tp2.classSymbols.exists(cls2 =>
-          canComparePredefinedClasses(cls1, cls2)))
+          canComparePredefinedClasses(cls1, cls2)(using checkCtx)))
 
     formal.argTypes match
       case args @ (arg1 :: arg2 :: Nil) =>

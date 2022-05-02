@@ -25,6 +25,7 @@ import reporting._
 import transform.TypeUtils._
 import transform.SymUtils._
 import Nullables._
+import NullOpsDecorator._
 import config.Feature
 
 import collection.mutable
@@ -908,7 +909,14 @@ trait Applications extends Compatibility {
       def simpleApply(fun1: Tree, proto: FunProto)(using Context): Tree =
         methPart(fun1).tpe match {
           case funRef: TermRef =>
-            val app = ApplyTo(tree, fun1, funRef, proto, pt)
+            var app = ApplyTo(tree, fun1, funRef, proto, pt)
+            if ctx.mode.is(Mode.UnsafeJavaReturn) then
+              val funSym = fun1.symbol
+              if funSym.is(JavaDefined) && !funSym.isConstructor then
+                val rtp1 = app.tpe
+                val rtp2 = rtp1.replaceOrNull
+                if rtp1 ne rtp2 then
+                  app = app.cast(rtp2)
             convertNewGenericArray(
               widenEnumCase(
                 postProcessByNameArgs(funRef, app).computeNullable(),

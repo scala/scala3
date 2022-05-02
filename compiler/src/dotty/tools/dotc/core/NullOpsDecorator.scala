@@ -1,7 +1,9 @@
 package dotty.tools.dotc
 package core
 
+import Annotations._
 import Contexts._
+import Symbols._
 import Types._
 
 /** Defines operations on nullable types and tree. */
@@ -41,6 +43,18 @@ object NullOpsDecorator:
 
       if ctx.explicitNulls then strip(self) else self
     }
+
+    def replaceOrNull(using Context): Type =
+      def recur(tp: Type): Type = tp match
+        case tp @ OrType(lhs, rhs) if rhs.isNullType =>
+          AnnotatedType(recur(lhs), Annotation(defn.CanEqualNullAnnot))
+        case tp: AndOrType =>
+          tp.derivedAndOrType(recur(tp.tp1), recur(tp.tp2))
+        case tp @ AppliedType(tycon, targs) =>
+          tp.derivedAppliedType(tycon, targs.map(recur))
+        case _ => tp
+      if ctx.explicitNulls then recur(self) else self
+
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
     def isNullableUnion(using Context): Boolean = {
