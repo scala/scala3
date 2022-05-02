@@ -9,6 +9,7 @@ import Types.*, StdNames.*
 import config.Printers.capt
 import ast.tpd
 import transform.Recheck.*
+import CaptureSet.IdentityCaptRefMap
 
 class Setup(
   preRecheckPhase: DenotTransformer,

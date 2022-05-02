@@ -37,7 +37,7 @@ import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
 import cc.{CapturingType, CaptureSet, derivedCapturingType, retainedElems, isBoxedCapturing, CapturingKind, EventuallyCapturingType}
-import CaptureSet.CompareResult
+import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -3713,7 +3713,7 @@ object Types {
 
     override def resultType(using Context): Type =
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
-        val dealiasMap = new TypeMap {
+        val dealiasMap = new TypeMap with IdentityCaptRefMap {
           def apply(tp: Type) = tp match {
             case tp @ TypeRef(pre, _) =>
               tp.info match {
@@ -3827,7 +3827,7 @@ object Types {
     /** The least supertype of `resultType` that does not contain parameter dependencies */
     def nonDependentResultApprox(using Context): Type =
       if isResultDependent then
-        val dropDependencies = new ApproximatingTypeMap {
+        val dropDependencies = new ApproximatingTypeMap with IdempotentCaptRefMap {
           def apply(tp: Type) = tp match {
             case tp @ TermParamRef(`thisLambdaType`, _) =>
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
