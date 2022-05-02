@@ -1052,15 +1052,21 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       varsInScope = Nil
       stats foreach genStat
       genLoadTo(expr, expectedType, dest)
-      val end = currProgramPoint()
+      emitLocalVarScopes()
+      varsInScope = savedScope
+    }
+
+    /** Add entries to the `LocalVariableTable` JVM attribute for all the vars in
+     *  `varsInScope`, ending at the current program point.
+     */
+    def emitLocalVarScopes(): Unit =
       if (emitVars) {
-        // add entries to LocalVariableTable JVM attribute
+        val end = currProgramPoint()
         for ((sym, start) <- varsInScope.reverse) {
           emitLocalVarScope(sym, start, end)
         }
       }
-      varsInScope = savedScope
-    }
+    end emitLocalVarScopes
 
     def adapt(from: BType, to: BType): Unit = {
       if (!from.conformsTo(to)) {
@@ -1552,6 +1558,26 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               } else
                 loadAndTestBoolean()
           }
+
+        case Block(stats, expr) =>
+          /* Push the decision further down the `expr`.
+           * This is particularly effective for the shape of do..while loops.
+           */
+          val savedScope = varsInScope
+          varsInScope = Nil
+          stats foreach genStat
+          genCond(expr, success, failure, targetIfNoJump)
+          emitLocalVarScopes()
+          varsInScope = savedScope
+
+        case If(condp, thenp, elsep) =>
+          val innerSuccess = new asm.Label
+          val innerFailure = new asm.Label
+          genCond(condp, innerSuccess, innerFailure, targetIfNoJump = innerSuccess)
+          markProgramPoint(innerSuccess)
+          genCond(thenp, success, failure, targetIfNoJump = innerFailure)
+          markProgramPoint(innerFailure)
+          genCond(elsep, success, failure, targetIfNoJump)
 
         case _ => loadAndTestBoolean()
       }

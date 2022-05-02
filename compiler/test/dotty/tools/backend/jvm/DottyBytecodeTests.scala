@@ -1355,13 +1355,7 @@ class TestBCode extends DottyBytecodeTest {
         Invoke(INVOKEVIRTUAL, "java/io/Writer", "write", "(I)V", false),
         VarOp(ILOAD, 2),
         Op(ICONST_0),
-        Jump(IF_ICMPEQ, Label(35)),
-        Op(ICONST_1),
-        Jump(GOTO, Label(38)),
-        Label(35),
-        Op(ICONST_0),
-        Label(38),
-        Jump(IFNE, Label(2)),
+        Jump(IF_ICMPNE, Label(2)),
         Op(RETURN),
       ))
     }
