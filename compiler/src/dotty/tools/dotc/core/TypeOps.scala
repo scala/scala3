@@ -19,7 +19,7 @@ import typer.Inferencing._
 import typer.IfBottom
 import reporting.TestingReporter
 import cc.{CapturingType, derivedCapturingType, CaptureSet}
-import CaptureSet.CompareResult
+import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -56,7 +56,7 @@ object TypeOps:
   }
 
   /** The TypeMap handling the asSeenFrom */
-  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap {
+  class AsSeenFromMap(pre: Type, cls: Symbol)(using Context) extends ApproximatingTypeMap, IdempotentCaptRefMap {
     /** Set to true when the result of `apply` was approximated to avoid an unstable prefix. */
     var approximated: Boolean = false
 
@@ -201,7 +201,7 @@ object TypeOps:
     }
   }
 
-  class SimplifyMap(using Context) extends TypeMap {
+  class SimplifyMap(using Context) extends IdentityCaptRefMap {
     def apply(tp: Type): Type = simplify(tp, this)
   }
 
@@ -435,7 +435,7 @@ object TypeOps:
   }
 
   /** An approximating map that drops NamedTypes matching `toAvoid` and wildcard types. */
-  abstract class AvoidMap(using Context) extends AvoidWildcardsMap:
+  abstract class AvoidMap(using Context) extends AvoidWildcardsMap, IdempotentCaptRefMap:
     @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
 
     def toAvoid(tp: NamedType): Boolean
