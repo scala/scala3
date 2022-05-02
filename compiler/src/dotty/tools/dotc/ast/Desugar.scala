@@ -393,6 +393,16 @@ object desugar {
     vparam.withMods(mods & (GivenOrImplicit | Erased | hasDefault) | Param)
   }
 
+  def mkApply(fn: Tree, paramss: List[ParamClause])(using Context): Tree =
+    paramss.foldLeft(fn) { (fn, params) => params match
+      case TypeDefs(params) =>
+        TypeApply(fn, params.map(refOfDef))
+      case (vparam: ValDef) :: _ if vparam.mods.is(Given) =>
+        Apply(fn, params.map(refOfDef)).setApplyKind(ApplyKind.Using)
+      case _ =>
+        Apply(fn, params.map(refOfDef))
+    }
+
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(using Context): Tree = {
     val impl @ Template(constr0, _, self, _) = cdef.rhs
@@ -588,7 +598,7 @@ object desugar {
       }
 
     // new C[Ts](paramss)
-    lazy val creatorExpr = {
+    lazy val creatorExpr =
       val vparamss = constrVparamss match
         case (vparam :: _) :: _ if vparam.mods.is(Implicit) => // add a leading () to match class parameters
           Nil :: constrVparamss
@@ -607,7 +617,6 @@ object desugar {
         }
       }
       ensureApplied(nu)
-    }
 
     val copiedAccessFlags = if migrateTo3 then EmptyFlags else AccessFlags
 
@@ -892,48 +901,50 @@ object desugar {
     }
   }
 
+  def extMethod(mdef: DefDef, extParamss: List[ParamClause])(using Context): DefDef =
+    cpy.DefDef(mdef)(
+      name = normalizeName(mdef, mdef.tpt).asTermName,
+      paramss =
+        if mdef.name.isRightAssocOperatorName then
+          val (typaramss, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
+
+          paramss match
+            case params :: paramss1 => // `params` must have a single parameter and without `given` flag
+
+              def badRightAssoc(problem: String) =
+                report.error(i"right-associative extension method $problem", mdef.srcPos)
+                extParamss ++ mdef.paramss
+
+              params match
+                case ValDefs(vparam :: Nil) =>
+                  if !vparam.mods.is(Given) then
+                    // we merge the extension parameters with the method parameters,
+                    // swapping the operator arguments:
+                    // e.g.
+                    //   extension [A](using B)(c: C)(using D)
+                    //     def %:[E](f: F)(g: G)(using H): Res = ???
+                    // will be encoded as
+                    //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
+                    val (leadingUsing, otherExtParamss) = extParamss.span(isUsingOrTypeParamClause)
+                    leadingUsing ::: typaramss ::: params :: otherExtParamss ::: paramss1
+                  else
+                    badRightAssoc("cannot start with using clause")
+                case _ =>
+                  badRightAssoc("must start with a single parameter")
+            case _ =>
+              // no value parameters, so not an infix operator.
+              extParamss ++ mdef.paramss
+        else
+          extParamss ++ mdef.paramss
+    ).withMods(mdef.mods | ExtensionMethod)
+
   /** Transform extension construct to list of extension methods */
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
-    for mdef <- ext.methods yield
-      defDef(
-        cpy.DefDef(mdef)(
-          name = normalizeName(mdef, ext).asTermName,
-          paramss =
-            if mdef.name.isRightAssocOperatorName then
-              val (typaramss, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
-
-              paramss match
-                case params :: paramss1 => // `params` must have a single parameter and without `given` flag
-
-                  def badRightAssoc(problem: String) =
-                    report.error(i"right-associative extension method $problem", mdef.srcPos)
-                    ext.paramss ++ mdef.paramss
-
-                  params match
-                    case ValDefs(vparam :: Nil) =>
-                      if !vparam.mods.is(Given) then
-                        // we merge the extension parameters with the method parameters,
-                        // swapping the operator arguments:
-                        // e.g.
-                        //   extension [A](using B)(c: C)(using D)
-                        //     def %:[E](f: F)(g: G)(using H): Res = ???
-                        // will be encoded as
-                        //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
-                        val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
-                        leadingUsing ::: typaramss ::: params :: otherExtParamss ::: paramss1
-                      else
-                        badRightAssoc("cannot start with using clause")
-                    case _ =>
-                      badRightAssoc("must start with a single parameter")
-                case _ =>
-                  // no value parameters, so not an infix operator.
-                  ext.paramss ++ mdef.paramss
-            else
-              ext.paramss ++ mdef.paramss
-        ).withMods(mdef.mods | ExtensionMethod)
-      )
+    ext.methods map {
+      case exp: Export => exp
+      case mdef: DefDef => defDef(extMethod(mdef, ext.paramss))
+    }
   }
-
   /** Transforms
    *
    *    <mods> type t >: Low <: Hi
