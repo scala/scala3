@@ -15,7 +15,7 @@ import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.withCaptureSetsExplained
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap}
 import StdNames.nme
 import reporting.trace
 
@@ -40,7 +40,7 @@ object CheckCaptures:
     def isOpen = !captured.isAlwaysEmpty && !isBoxed
 
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
-  extends ApproximatingTypeMap:
+  extends ApproximatingTypeMap, IdempotentCaptRefMap:
     def apply(tp: Type): Type = tp match
       case tp: ParamRef =>
         if tp.binder == from then to(tp.paramNum) else tp
