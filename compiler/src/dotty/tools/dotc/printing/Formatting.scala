@@ -99,6 +99,8 @@ object Formatting {
         val sep = StringContext.processEscapes(rawsep)
         if (rest.nonEmpty) (arg.map(showArg).mkString(sep), rest.tail)
         else (arg, suffix)
+      case arg: Seq[?] =>
+        (arg.map(showArg).mkString("[", ", ", "]"), suffix)
       case _ =>
         (showArg(arg), suffix)
     }
