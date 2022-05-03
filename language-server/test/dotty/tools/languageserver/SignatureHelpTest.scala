@@ -13,7 +13,7 @@ class SignatureHelpTest {
       S("codePointAt", Nil, List(List(P("x$0", "Int"))), Some("Int"))
     code"""object O {
              "hello".codePointAt($m1)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
@@ -26,7 +26,7 @@ class SignatureHelpTest {
     code"""object O {
              List($m1)
              List(1, 2, 3).map($m2)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(applySig), Some(0), 0)
       .signatureHelp(m2, List(mapSig), Some(0), 0)
   }
@@ -52,7 +52,7 @@ class SignatureHelpTest {
              foo2($m2)
              foo3($m3)
              foo4($m4)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(foo1Sig), Some(0), 0)
       .signatureHelp(m2, List(foo2Sig), Some(0), 0)
       .signatureHelp(m3, List(foo3Sig), Some(0), 0)
@@ -66,7 +66,7 @@ class SignatureHelpTest {
              def foo(param0: Int): Int = ???
              foo($m1)
              foo(0$m2)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 0)
   }
@@ -78,7 +78,7 @@ class SignatureHelpTest {
              foo($m1)
              foo(0, $m2)
              foo(0, "$m3")
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
       .signatureHelp(m3, List(signature), Some(0), 1)
@@ -94,7 +94,7 @@ class SignatureHelpTest {
              foo($m1)
              foo(0$m2)
              foo(""$m3)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(sig0, sig1), None, 0)
       .signatureHelp(m2, List(sig0, sig1), Some(0), 0)
       .signatureHelp(m3, List(sig0, sig1), Some(1), 0)
@@ -111,7 +111,7 @@ class SignatureHelpTest {
              foo(""$m3)
              foo(0, $m4)
              foo("", $m5)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(sig0, sig1), None, 0)
       .signatureHelp(m2, List(sig0, sig1), Some(0), 0)
       .signatureHelp(m3, List(sig0, sig1), Some(1), 0)
@@ -136,7 +136,7 @@ class SignatureHelpTest {
              foo(0, 0$m6)
              foo(0, ""$m7)
              foo("", 0$m8)
-           }""".withSource
+           }"""
       .signatureHelp(m1, sigs, None, 0)
       .signatureHelp(m2, sigs, None, 0)
       .signatureHelp(m3, sigs, Some(2), 0)
@@ -156,7 +156,7 @@ class SignatureHelpTest {
              foo($m1)
              foo(""$m2)
              foo("")($m3)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(sig0, sig1), None, 0)
       .signatureHelp(m2, List(sig0, sig1), None, 0)
       .signatureHelp(m3, List(sig0, sig1), Some(1), 1)
@@ -179,7 +179,7 @@ class SignatureHelpTest {
              foo(1, 2)($m3)
              foo(1, 2)(3)($m4)
              foo(1, 2)(3)(4, $m5)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
       .signatureHelp(m3, List(signature), Some(0), 2)
@@ -201,7 +201,7 @@ class SignatureHelpTest {
              foo($m1)
              foo(1, $m2)
              foo(1, 2)($m3)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
       .signatureHelp(m3, List(signature), Some(0), 2)
@@ -218,7 +218,7 @@ class SignatureHelpTest {
     code"""object O {
              def foo[M[X], T[Z] <: M[Z], U >: T](p0: M[Int], p1: T[Int], p2: U): Int = ???
              foo($m1)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(signature), Some(0), 0)
   }
 
@@ -236,7 +236,7 @@ class SignatureHelpTest {
              new Foo($m1)
              new Foo(0, $m2)
              new Foo(0, "hello")($m3)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
       .signatureHelp(m3, List(signature), Some(0), 2)
@@ -266,7 +266,7 @@ class SignatureHelpTest {
              new Foo(0, $m2)
              new Foo(0, "")($m3)
              new Foo(0, 0$m4)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(sig0, sig1), None, 0)
       .signatureHelp(m2, List(sig0, sig1), None, 1)
       .signatureHelp(m3, List(sig0, sig1), Some(0), 2)
@@ -302,7 +302,7 @@ class SignatureHelpTest {
              new Foo(0, ""$m5)
              new Foo(true, $m6)
              new Foo(true, ???$m7)
-           }""".withSource
+           }"""
       .signatureHelp(m1, signatures, None, 0)
       .signatureHelp(m2, signatures, Some(0), 0)
       .signatureHelp(m3, signatures, Some(1), 0)
@@ -327,7 +327,7 @@ class SignatureHelpTest {
              new Foo(???, $m2)
              new Foo(???, ???, $m3)
              new Foo(???, ???, ???)($m4)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(signature), Some(0), 0)
       .signatureHelp(m2, List(signature), Some(0), 1)
       .signatureHelp(m3, List(signature), Some(0), 2)
@@ -338,7 +338,7 @@ class SignatureHelpTest {
     code"""object O {
              /** Hello, world! */ def foo(param0: Int): Int = 0
              foo($m1)
-           }""".withSource
+           }"""
       .signatureHelp(m1, List(S("foo", Nil, List(List(P("param0", "Int"))), Some("Int"), Some("Hello, world!"))), None, 0)
   }
 
@@ -353,7 +353,7 @@ class SignatureHelpTest {
           |   */
           |  def buzz(fizz: Int, bar: Int): Int = ???
           |  buzz($m1)
-          |}""".withSource
+          |}"""
       .signatureHelp(m1, List(
         S("buzz", Nil, List(List(
           P("fizz", "Int", Some("The fizz to buzz")),
@@ -361,14 +361,14 @@ class SignatureHelpTest {
           )), Some("Int"), Some("Buzzes a fizz up to bar"))
         ), None, 0)
   }
-  
+
   @Test def unapplyMethod: Unit = {
     code"""|object Main {
            |  Option(1) match {
            |    case Some(${m1}) =>
            |  }
            |}"""
-      .withSource
+
       .signatureHelp(m1, List(
         S("unapply[A]", Nil, List(List(
           P("x$0", "Some[A]", None),
@@ -388,7 +388,7 @@ class SignatureHelpTest {
            |    case Opt(${m1}) =>
            |  }
            |}"""
-      .withSource
+
       .signatureHelp(m1, List(
         S("unapply[A]", Nil, List(
             List(
@@ -400,7 +400,7 @@ class SignatureHelpTest {
             List(
               P("x$3", "Int", None, isImplicit = true)
             )
-          ), 
+          ),
           Some("Option[A]"), None)
         ), None, 1)
   }
@@ -417,7 +417,7 @@ class SignatureHelpTest {
            |    case Opt(${m1}) =>
            |  }
            |}"""
-      .withSource
+
       .signatureHelp(m1, List(
         S("unapply[A]", Nil, List(
             List(
@@ -429,7 +429,7 @@ class SignatureHelpTest {
             List(
               P("a", "Option[A]", None),
             )
-          ), 
+          ),
           Some("Option[A]"), None)
         ), None, 2)
   }

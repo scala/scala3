@@ -1522,22 +1522,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.Closure(tree)(env1, meth1, target), meth1, target)
   }
 
-  /** Extractor for match types hidden behind an AppliedType/MatchAlias */
-  object MatchTypeInDisguise {
-    def unapply(tp: AppliedType)(using Context): Option[MatchType] = tp match {
-      case AppliedType(tycon: TypeRef, args) =>
-        tycon.info match {
-          case MatchAlias(alias) =>
-            alias.applyIfParameterized(args) match {
-              case mt: MatchType => Some(mt)
-              case _ => None
-            }
-          case _ => None
-        }
-      case _ => None
-    }
-  }
-
   def typedMatch(tree: untpd.Match, pt: Type)(using Context): Tree =
     tree.selector match {
       case EmptyTree =>
@@ -1565,6 +1549,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val selType = rawSelectorTpe match
           case c: ConstantType if tree.isInline => c
           case otherTpe => otherTpe.widen
+        /** Extractor for match types hidden behind an AppliedType/MatchAlias */
+        object MatchTypeInDisguise {
+          def unapply(tp: AppliedType)(using Context): Option[MatchType] = tp match {
+            case AppliedType(tycon: TypeRef, args) =>
+              tycon.info match {
+                case MatchAlias(alias) =>
+                  alias.applyIfParameterized(args) match {
+                    case mt: MatchType => Some(mt)
+                    case _ => None
+                  }
+                case _ => None
+              }
+            case _ => None
+          }
+        }
 
         /** Does `tree` has the same shape as the given match type?
          *  We only support typed patterns with empty guards, but
@@ -2616,11 +2615,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val selectors1 = typedSelectors(imp.selectors)
     assignType(cpy.Import(imp)(expr1, selectors1), sym)
 
-  def typedExport(exp: untpd.Export)(using Context): Export =
-    val expr1 = typedExpr(exp.expr, AnySelectionProto)
-    // already called `checkLegalExportPath` in Namer
-    val selectors1 = typedSelectors(exp.selectors)
-    assignType(cpy.Export(exp)(expr1, selectors1))
+  def typedExport(exp: untpd.Export)(using Context): Tree =
+    exp.expr.removeAttachment(TypedAhead) match
+      case Some(expr1) =>
+        val selectors1 = typedSelectors(exp.selectors)
+        assignType(cpy.Export(exp)(expr1, selectors1))
+      case _ =>
+        errorTree(exp, em"exports are only allowed from objects and classes, they can not belong to local blocks")
 
   def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
     val pid1 = withMode(Mode.InPackageClauseName)(typedExpr(tree.pid, AnySelectionProto))

@@ -15,6 +15,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.chaining.given
 
+import java.io.File.separator
 import java.nio.charset.StandardCharsets
 import java.nio.file.{FileSystemException, NoSuchFileException}
 import java.util.Optional
@@ -217,8 +218,11 @@ object SourceFile {
 
   implicit def fromContext(using Context): SourceFile = ctx.source
 
+  /** A source file with an underlying virtual file. The name is taken as a file system path
+   *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
+   */
   def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
+    SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
       .tap(_._maybeInComplete = maybeIncomplete)
 
   /** Returns the relative path of `source` within the `reference` path
