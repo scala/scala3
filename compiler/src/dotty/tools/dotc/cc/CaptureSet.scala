@@ -15,6 +15,7 @@ import printing.Texts.*
 import util.{SimpleIdentitySet, Property}
 import util.common.alwaysTrue
 import scala.collection.mutable
+import config.Config.ccAllowUnsoundMaps
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -196,7 +197,7 @@ sealed abstract class CaptureSet extends Showable:
    *  if `tm` is a bijection on capture references or it is idempotent on capture references.
    *  (see definition in IdempotentCapRefMap).
    *  If `tm` is a bijection we know that `tm^-1(x)` must be in `cs1`. If `tm` is idempotent
-   *  one possible is solution is that `x` is in `cs1`, which is what we assume in this case.
+   *  one possible solution is that `x` is in `cs1`, which is what we assume in this case.
    *  That strategy is sound but not complete.
    *
    *  If `tm` is some other map, we don't know how to handle this case. For now,
@@ -422,6 +423,9 @@ object CaptureSet:
       addNewElemsImpl(newElems: Refs, origin: CaptureSet)
         .andAlso(if origin ne source then source.tryInclude(newElems, this) else CompareResult.OK)
           // `tm` is assumed idempotent, propagate back elems from image set.
+          // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
+          // `r` is _one_ possible solition in `source` that would make an `r` appear in this set.
+          // It's not necessarily the only possible solultion, so the scheme is incomplete.
 
     protected def addNewElemsImpl(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       val added =
