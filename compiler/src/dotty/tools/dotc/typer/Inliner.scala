@@ -210,8 +210,8 @@ object Inliner {
 
     val targs = fun match
       case TypeApply(_, targs) => targs
-      // TODO: understand
-//      case Apply(TypeApply(_, targs), _) => targs
+      // TODO: separate issue
+      case Apply(TypeApply(_, targs), _) => targs
       // ===
       case _ => Nil
 
