@@ -254,14 +254,16 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val result =
             tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
               val variance = param.paramVarianceSign
-              if variance != 0 && !assumeInvariantRefinement then true
-              else {
+              if variance == 0 || assumeInvariantRefinement ||
+                // heal the type if it's a (pattern-bound) type variable, provided we didn't upcast the pattern type:
+                argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
+              then
                 val TypeBounds(loS, hiS) = argS.bounds
                 var res = true
                 if variance <  1 then res &&= isSubType(loS, argP)
                 if variance > -1 then res &&= isSubType(argP, hiS)
                 res
-              }
+              else true
             }
           if !result then
             constraint = saved
