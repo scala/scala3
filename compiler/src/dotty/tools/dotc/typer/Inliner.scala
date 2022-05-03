@@ -210,6 +210,9 @@ object Inliner {
 
     val targs = fun match
       case TypeApply(_, targs) => targs
+      // TODO: understand
+//      case Apply(TypeApply(_, targs), _) => targs
+      // ===
       case _ => Nil
 
     val unapplyInfo = sym.info match
@@ -217,7 +220,6 @@ object Inliner {
         case MethodTpe(_, _, rt: PolyType) => rt.instantiate(targs.map(_.tpe))
         case MethodTpe(_, _, rt) if sym.flags.is(ExtensionMethod) => rt
         case info => info
-
       case MethodTpe(_, _, rt: PolyType) => rt.instantiate(targs.map(_.tpe))
       case MethodTpe(_, _, rt) if sym.flags.is(ExtensionMethod) => rt
       case info => info
