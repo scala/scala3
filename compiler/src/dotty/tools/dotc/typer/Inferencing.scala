@@ -637,13 +637,15 @@ trait Inferencing { this: Typer =>
             else if v.intValue != 0 then
               typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
               toInstantiate += ((tvar, v.intValue == 1))
-            else if tvar.nestingLevel > ctx.nestingLevel then
-              // Invariant: a type variable of level N can only appear
-              // in the type of a tree whose enclosing scope is level <= N.
-              typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
-              comparing(_.atLevel(ctx.nestingLevel, tvar.origin))
-            else
-              typr.println(i"no interpolation for nonvariant $tvar in $state")
+            else comparing(cmp =>
+              if !cmp.levelOK(tvar.nestingLevel, ctx.nestingLevel) then
+                // Invariant: The type of a tree whose enclosing scope is level
+                // N only contains type variables of level <= N.
+                typr.println(i"instantiate nonvariant $tvar of level ${tvar.nestingLevel} to a type variable of level <= ${ctx.nestingLevel}, $constraint")
+                cmp.atLevel(ctx.nestingLevel, tvar.origin)
+              else
+                typr.println(i"no interpolation for nonvariant $tvar in $state")
+            )
 
         /** Instantiate all type variables in `buf` in the indicated directions.
          *  If a type variable A is instantiated from below, and there is another

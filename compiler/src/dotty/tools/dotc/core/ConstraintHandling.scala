@@ -81,16 +81,28 @@ trait ConstraintHandling {
     assert(homogenizeArgs == false)
     assert(comparedTypeLambdas == Set.empty)
 
-  def nestingLevel(param: TypeParamRef) = constraint.typeVarOfParam(param) match
+  def nestingLevel(param: TypeParamRef)(using Context) = constraint.typeVarOfParam(param) match
     case tv: TypeVar => tv.nestingLevel
-    case _ => Int.MaxValue
+    case _ =>
+      // This should only happen when reducing match types (in
+      // TrackingTypeComparer#matchCases) or in uncommitable TyperStates (as
+      // asserted in ProtoTypes.constrained) and is special-cased in `levelOK`
+      // below.
+      Int.MaxValue
+
+  /** Is `level` <= `maxLevel` or legal in the current context? */
+  def levelOK(level: Int, maxLevel: Int)(using Context): Boolean =
+    level <= maxLevel ||
+    ctx.isAfterTyper || !ctx.typerState.isCommittable || // Leaks in these cases shouldn't break soundness
+    level == Int.MaxValue // See `nestingLevel` above.
 
   /** If `param` is nested deeper than `maxLevel`, try to instantiate it to a
    *  fresh type variable of level `maxLevel` and return the new variable.
    *  If this isn't possible, throw a TypeError.
    */
   def atLevel(maxLevel: Int, param: TypeParamRef)(using Context): TypeParamRef =
-    if nestingLevel(param) <= maxLevel then return param
+    if levelOK(nestingLevel(param), maxLevel) then
+      return param
     LevelAvoidMap(0, maxLevel)(param) match
       case freshVar: TypeVar => freshVar.origin
       case _ => throw new TypeError(
@@ -129,18 +141,12 @@ trait ConstraintHandling {
 
   /** An approximating map that prevents types nested deeper than maxLevel as
    *  well as WildcardTypes from leaking into the constraint.
-   *  Note that level-checking is turned off after typer and in uncommitable
-   *  TyperState since these leaks should be safe.
    */
   class LevelAvoidMap(topLevelVariance: Int, maxLevel: Int)(using Context) extends TypeOps.AvoidMap:
     variance = topLevelVariance
 
-    /** Are we allowed to refer to types of the given `level`? */
-    private def levelOK(level: Int): Boolean =
-      level <= maxLevel || ctx.isAfterTyper || !ctx.typerState.isCommittable
-
     def toAvoid(tp: NamedType): Boolean =
-      tp.prefix == NoPrefix && !tp.symbol.isStatic && !levelOK(tp.symbol.nestingLevel)
+      tp.prefix == NoPrefix && !tp.symbol.isStatic && !levelOK(tp.symbol.nestingLevel, maxLevel)
 
     /** Return a (possibly fresh) type variable of a level no greater than `maxLevel` which is:
      *  - lower-bounded by `tp` if variance >= 0
@@ -185,7 +191,7 @@ trait ConstraintHandling {
     end legalVar
 
     override def apply(tp: Type): Type = tp match
-      case tp: TypeVar if !tp.isInstantiated && !levelOK(tp.nestingLevel) =>
+      case tp: TypeVar if !tp.isInstantiated && !levelOK(tp.nestingLevel, maxLevel) =>
         legalVar(tp)
       // TypeParamRef can occur in tl bounds
       case tp: TypeParamRef =>
@@ -431,7 +437,6 @@ trait ConstraintHandling {
   final def approximation(param: TypeParamRef, fromBelow: Boolean)(using Context): Type =
     constraint.entry(param) match
       case entry: TypeBounds =>
-        val maxLevel = nestingLevel(param)
         val useLowerBound = fromBelow || param.occursIn(entry.hi)
         val inst = if useLowerBound then fullLowerBound(param) else fullUpperBound(param)
         typr.println(s"approx ${param.show}, from below = $fromBelow, inst = ${inst.show}")
