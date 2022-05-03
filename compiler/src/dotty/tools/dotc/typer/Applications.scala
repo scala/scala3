@@ -912,7 +912,10 @@ trait Applications extends Compatibility {
             var app = ApplyTo(tree, fun1, funRef, proto, pt)
             if ctx.mode.is(Mode.UnsafeJavaReturn) then
               val funSym = fun1.symbol
-              if funSym.is(JavaDefined) && !funSym.isConstructor then
+              if funSym.is(JavaDefined)
+                && funSym.isTerm
+                && funSym.is(Method)
+                && !funSym.isConstructor then
                 val rtp1 = app.tpe
                 val rtp2 = rtp1.replaceOrNull
                 if rtp1 ne rtp2 then

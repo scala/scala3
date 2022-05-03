@@ -646,7 +646,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     def typeSelectOnTerm(using Context): Tree =
       val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
-      typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
+      var sel = typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
+      if ctx.mode.is(Mode.UnsafeJavaReturn) && pt != AssignProto then
+        val sym = sel.symbol
+        if sym.is(JavaDefined) && sym.isTerm && !sym.is(Method) then
+          val stp1 = sel.tpe.widen
+          val stp2 = stp1.replaceOrNull
+          if stp1 ne stp2 then
+            sel = sel.cast(stp2)
+      sel
 
     def javaSelectOnType(qual: Tree)(using Context) =
       // semantic name conversion for `O$` in java code
