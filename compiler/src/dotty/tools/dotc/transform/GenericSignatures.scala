@@ -9,7 +9,7 @@ import core.Definitions
 import core.Flags._
 import core.Names.Name
 import core.Symbols._
-import core.TypeApplications.TypeParamInfo
+import core.TypeApplications.{EtaExpansion, TypeParamInfo}
 import core.TypeErasure.{erasedGlb, erasure, isGenericArrayElement}
 import core.Types._
 import core.classfile.ClassfileConstants
@@ -166,6 +166,7 @@ object GenericSignatures {
     // a type parameter or similar) must go through here or the signature is
     // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
     def fullNameInSig(sym: Symbol): Unit = {
+      assert(sym.isClass)
       val name = atPhase(genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
       builder.append('L').nn.append(name)
     }
@@ -183,11 +184,10 @@ object GenericSignatures {
               boxedSig(bounds.lo)
             }
             else builder.append('*')
-          case PolyType(_, res) =>
-            builder.append('*') // scala/bug#7932
+          case EtaExpansion(tp) =>
+            argSig(tp)
           case _: HKTypeLambda =>
-            fullNameInSig(tp.typeSymbol)
-            builder.append(';')
+            builder.append('*')
           case _ =>
             boxedSig(tp)
         }
