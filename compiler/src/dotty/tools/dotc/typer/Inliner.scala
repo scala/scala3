@@ -196,7 +196,7 @@ object Inliner {
     // as its right hand side. The call to the wrapper unapply serves as the signpost for pattern matching.
     // After pattern matching, the anonymous class is removed in phase InlinePatterns with a beta reduction step.
     //
-    // An inline unapply `P.unapply` in a plattern `P(x1,x2,...)` is transformed into
+    // An inline unapply `P.unapply` in a pattern `P(x1,x2,...)` is transformed into
     // `{ class $anon { def unapply(t0: T0)(using t1: T1, t2: T2, ...): R = P.unapply(t0)(using t1, t2, ...) }; new $anon }.unapply`
     // and the call `P.unapply(x1, x2, ...)` is inlined.
     // This serves as a placeholder for the inlined body until the `patternMatcher` phase. After pattern matcher
@@ -211,24 +211,22 @@ object Inliner {
     val targs = fun match
       case TypeApply(_, targs) => targs
       case _ => Nil
-
     val unapplyInfo = sym.info match
       case info: PolyType => info.instantiate(targs.map(_.tpe)) match
         case MethodTpe(_, _, rt: PolyType) => rt.instantiate(targs.map(_.tpe))
         case MethodTpe(_, _, rt) if sym.flags.is(ExtensionMethod) => rt
         case info => info
-
       case MethodTpe(_, _, rt: PolyType) => rt.instantiate(targs.map(_.tpe))
       case MethodTpe(_, _, rt) if sym.flags.is(ExtensionMethod) => rt
       case info => info
 
-    val unappplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
-    val unapply = DefDef(unappplySym, argss =>
-      inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
+    val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
+    val unapply = DefDef(unapplySym, argss =>
+      inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unapplySym))
     )
     val cdef = ClassDef(cls, DefDef(constr), List(unapply))
     val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
-    val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
+    val newFun = newUnapply.select(unapplySym).withSpan(unapp.span)
     cpy.UnApply(unapp)(newFun, implicits, patterns)
   }
 
