@@ -61,7 +61,7 @@ class GenBCode extends Phase {
 
   private var myPrimitives: DottyPrimitives = null
 
-  def run(using Context): Unit =
+  override def run(using Context): Unit =
     if myPrimitives == null then myPrimitives = new DottyPrimitives(ctx)
     new GenBCodePipeline(
       DottyBackendInterface(outputDir, superCallsMap),

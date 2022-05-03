@@ -134,6 +134,13 @@ object Code {
 
   }
 
+  object SourceWithPositions {
+    import scala.language.implicitConversions
+
+    implicit def sourceWithPositionsToCodeTester(scalaSource: SourceWithPositions): CodeTester =
+      scalaSource.withSource
+  }
+
   /**
    * A virtual Scala source file where several markers have been set.
    *

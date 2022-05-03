@@ -3123,7 +3123,7 @@ object Parsers {
     /** Import  ::= `import' ImportExpr {‘,’ ImportExpr}
      *  Export  ::= `export' ImportExpr {‘,’ ImportExpr}
      */
-    def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
+    def importOrExportClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
       commaSeparated(importExpr(mkTree)) match {
         case t :: rest =>
@@ -3135,6 +3135,12 @@ object Parsers {
         case nil => nil
       }
     }
+
+    def exportClause() =
+      importOrExportClause(EXPORT, Export(_,_))
+
+    def importClause(outermost: Boolean = false) =
+      importOrExportClause(IMPORT, mkImport(outermost))
 
     /** Create an import node and handle source version imports */
     def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
@@ -3685,8 +3691,10 @@ object Parsers {
       if in.isColon() then
         syntaxError("no `:` expected here")
         in.nextToken()
-      val methods =
-        if isDefIntro(modifierTokens) then
+      val methods: List[Tree] =
+        if in.token == EXPORT then
+          exportClause()
+        else if isDefIntro(modifierTokens) then
           extMethod(nparams) :: Nil
         else
           in.observeIndented()
@@ -3696,12 +3704,13 @@ object Parsers {
       val result = atSpan(start)(ExtMethods(joinParams(tparams, leadParamss.toList), methods))
       val comment = in.getDocComment(start)
       if comment.isDefined then
-        for meth <- methods do
+        for case meth: DefDef <- methods do
           if !meth.rawComment.isDefined then meth.setComment(comment)
       result
     end extension
 
     /**  ExtMethod  ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
+     *                |  Export
      */
     def extMethod(numLeadParams: Int): DefDef =
       val start = in.offset
@@ -3711,16 +3720,18 @@ object Parsers {
 
     /** ExtMethods ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
      */
-    def extMethods(numLeadParams: Int): List[DefDef] = checkNoEscapingPlaceholders {
-      val meths = new ListBuffer[DefDef]
+    def extMethods(numLeadParams: Int): List[Tree] = checkNoEscapingPlaceholders {
+      val meths = new ListBuffer[Tree]
       while
         val start = in.offset
-        val mods = defAnnotsMods(modifierTokens)
-        in.token != EOF && {
-          accept(DEF)
-          meths += defDefOrDcl(start, mods, numLeadParams)
-          in.token != EOF && statSepOrEnd(meths, what = "extension method")
-        }
+        if in.token == EXPORT then
+          meths ++= exportClause()
+        else
+          val mods = defAnnotsMods(modifierTokens)
+          if in.token != EOF then
+            accept(DEF)
+            meths += defDefOrDcl(start, mods, numLeadParams)
+        in.token != EOF && statSepOrEnd(meths, what = "extension method")
       do ()
       if meths.isEmpty then syntaxErrorOrIncomplete("`def` expected")
       meths.toList
@@ -3868,9 +3879,9 @@ object Parsers {
           else stats += packaging(start)
         }
         else if (in.token == IMPORT)
-          stats ++= importClause(IMPORT, mkImport(outermost))
+          stats ++= importClause(outermost)
         else if (in.token == EXPORT)
-          stats ++= importClause(EXPORT, Export(_,_))
+          stats ++= exportClause()
         else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()
         else if isDefIntro(modifierTokens) then
@@ -3916,9 +3927,9 @@ object Parsers {
       while
         var empty = false
         if (in.token == IMPORT)
-          stats ++= importClause(IMPORT, mkImport())
+          stats ++= importClause()
         else if (in.token == EXPORT)
-          stats ++= importClause(EXPORT, Export(_,_))
+          stats ++= exportClause()
         else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()
         else if (isDefIntro(modifierTokensOrCase))
@@ -3994,7 +4005,7 @@ object Parsers {
       while
         var empty = false
         if (in.token == IMPORT)
-          stats ++= importClause(IMPORT, mkImport())
+          stats ++= importClause()
         else if (isExprIntro)
           stats += expr(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then
