@@ -15,7 +15,7 @@ import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.withCaptureSetsExplained
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap}
 import StdNames.nme
 import reporting.trace
 
@@ -40,7 +40,7 @@ object CheckCaptures:
     def isOpen = !captured.isAlwaysEmpty && !isBoxed
 
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
-  extends ApproximatingTypeMap:
+  extends ApproximatingTypeMap, IdempotentCaptRefMap:
     def apply(tp: Type): Type = tp match
       case tp: ParamRef =>
         if tp.binder == from then to(tp.paramNum) else tp
@@ -408,17 +408,18 @@ class CheckCaptures extends Recheck, SymTransformer:
           tree.symbol.info
         case _ =>
           NoType
-      if typeToCheck.exists then
-        typeToCheck.widenDealias match
-          case wtp @ CapturingType(parent, refs, _) =>
-            refs.disallowRootCapability { () =>
-              val kind = if tree.isInstanceOf[ValDef] then "mutable variable" else "expression"
-              report.error(
-                em"""The $kind's type $wtp is not allowed to capture the root capability `*`.
-                    |This usually means that a capability persists longer than its allowed lifetime.""",
-                tree.srcPos)
-            }
-          case _ =>
+      def checkNotUniversal(tp: Type): Unit = tp.widenDealias match
+        case wtp @ CapturingType(parent, refs, _) =>
+          refs.disallowRootCapability { () =>
+            val kind = if tree.isInstanceOf[ValDef] then "mutable variable" else "expression"
+            report.error(
+              em"""The $kind's type $wtp is not allowed to capture the root capability `*`.
+                  |This usually means that a capability persists longer than its allowed lifetime.""",
+              tree.srcPos)
+          }
+          checkNotUniversal(parent)
+        case _ =>
+      checkNotUniversal(typeToCheck)
       super.recheckFinish(tpe, tree, pt)
 
     /** This method implements the rule outlined in #14390:

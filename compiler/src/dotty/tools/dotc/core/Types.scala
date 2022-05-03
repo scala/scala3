@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import cc.{CapturingType, CaptureSet, derivedCapturingType, retainedElems, isBoxedCapturing, CapturingKind, EventuallyCapturingType}
-import CaptureSet.CompareResult
+import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -3686,7 +3686,7 @@ object Types {
 
     override def resultType(using Context): Type =
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
-        val dealiasMap = new TypeMap {
+        val dealiasMap = new TypeMap with IdentityCaptRefMap {
           def apply(tp: Type) = tp match {
             case tp @ TypeRef(pre, _) =>
               tp.info match {
@@ -3799,22 +3799,12 @@ object Types {
     /** The least supertype of `resultType` that does not contain parameter dependencies */
     def nonDependentResultApprox(using Context): Type =
       if isResultDependent then
-        val dropDependencies = new ApproximatingTypeMap {
+        val dropDependencies = new ApproximatingTypeMap with IdempotentCaptRefMap {
           def apply(tp: Type) = tp match {
             case tp @ TermParamRef(`thisLambdaType`, _) =>
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
             case CapturingType(parent, refs, boxed) =>
-              val parent1 = this(parent)
-              val elems1 = refs.elems.filter {
-                case tp @ TermParamRef(`thisLambdaType`, _) => false
-                case _ => true
-              }
-              if elems1.size == refs.elems.size then
-                derivedCapturingType(tp, parent1, refs)
-              else
-                range(
-                  CapturingType(parent1, CaptureSet(elems1), boxed),
-                  CapturingType(parent1, CaptureSet.universal, boxed))
+              mapOver(tp)
             case AnnotatedType(parent, ann) if ann.refersToParamOf(thisLambdaType) =>
               val parent1 = mapOver(parent)
               if ann.symbol == defn.RetainsAnnot || ann.symbol == defn.RetainsByNameAnnot then
