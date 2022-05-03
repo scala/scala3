@@ -877,7 +877,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         case _ =>
           false
       }
-      !tree.symbol.exists && tree.isTerm && hasRefinement(tree.qualifier.tpe)
+      !tree.symbol.exists
+      && !tree.qualifier.tpe.widen.derivesFrom(defn.PolyFunctionClass)
+      && tree.isTerm && hasRefinement(tree.qualifier.tpe)
     }
     def loop(tree: Tree): Boolean = tree match
       case TypeApply(fun, _) =>
