@@ -220,7 +220,7 @@ sealed abstract class CaptureSet extends Showable:
         else mapped
       else tm match
         case tm: IdempotentCaptRefMap => Mapped(asVar, tm, tm.variance, mapped)
-        case _ if false => OtherMapped(asVar, tm, tm.variance, mapped)
+        case _ if ccAllowUnsoundMaps => OtherMapped(asVar, tm, tm.variance, mapped)
 
   def substParams(tl: BindingType, to: List[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
@@ -424,7 +424,7 @@ object CaptureSet:
         .andAlso(if origin ne source then source.tryInclude(newElems, this) else CompareResult.OK)
           // `tm` is assumed idempotent, propagate back elems from image set.
           // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
-          // `r` is _one_ possible solition in `source` that would make an `r` appear in this set.
+          // `r` is _one_ possible solution in `source` that would make an `r` appear in this set.
           // It's not necessarily the only possible solultion, so the scheme is incomplete.
 
     protected def addNewElemsImpl(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
