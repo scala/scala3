@@ -62,7 +62,7 @@ object ScalaClassLoader {
   def setContext(cl: ClassLoader) = Thread.currentThread.setContextClassLoader(cl)
 
   def fromURLsParallelCapable(urls: Seq[URL], parent: ClassLoader | Null = null): URLClassLoader =
-    new URLClassLoader(urls.toArray, if parent == null then bootClassLoader else parent)
+    new URLClassLoader(urls.toArray, if parent == null then ClassLoader.getSystemClassLoader.getParent else parent)
 
   @sharable private[this] val bootClassLoader: ClassLoader =
     if scala.util.Properties.isJavaAtLeast("9") then
