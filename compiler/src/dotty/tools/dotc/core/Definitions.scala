@@ -1634,6 +1634,7 @@ class Definitions {
       case List(x)    => Tuple1SpecializedParamClasses().contains(x.typeSymbol)
       case List(x, y) => Tuple2SpecializedParamClasses().contains(x.typeSymbol) && Tuple2SpecializedParamClasses().contains(y.typeSymbol)
       case _          => false
+    && base.owner.denot.info.member(base.name.specializedName(args)).disambiguate(_.isClass).exists
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
     paramTypes.length <= 2
