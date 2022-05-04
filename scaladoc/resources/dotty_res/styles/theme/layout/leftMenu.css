@@ -15,9 +15,28 @@
   transition:left 0.2s linear;
 }
 
+@media (max-width: 480px) {
+  #leftColumn {
+    height: calc(100% - var(--header-height) - (15 * var(--base-spacing)));
+  }
+}
+
 @media (max-width: 1024px) {
   #leftColumn {
     left: calc(-39 * var(--base-spacing));
+  }
+
+  #leftColumn.show {
+    left: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  #leftColumn {
+    height: calc(100% - var(--header-height));
+    width: 100%;
+    left: -100%;
+    z-index: 1;
   }
 
   #leftColumn.show {

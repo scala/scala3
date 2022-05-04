@@ -84,3 +84,10 @@
     display: none;
   }
 }
+
+@media (max-width: 500px) {
+  .projectVersion {
+    width: calc(6 * var(--base-spacing));
+  }
+
+}

@@ -4,13 +4,21 @@
   background-color: var(--background-default);
   top: 0;
   left: 0;
-  height: calc(100% - calc(6 * var(--base-spacing)));
+  height: 100%;
   width: 100%;
-  z-index: 2;
+  z-index: 3;
 }
 
 #mobile-menu.show {
   display: block;
+}
+
+.mobile-menu-header {
+  align-items: center;
+}
+
+.mobile-menu-logo {
+  opacity: 0.5;
 }
 
 @media(min-width: 768px){
