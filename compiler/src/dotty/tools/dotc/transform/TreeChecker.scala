@@ -421,6 +421,13 @@ class TreeChecker extends Phase with SymTransformer {
       assert(tree.qual.typeOpt.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
 
+    override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = tree match
+      case Apply(Select(qual, nme.CONSTRUCTOR), _)
+          if !ctx.phase.erasedTypes
+            && defn.isSpecializedTuple(qual.typeOpt.typeSymbol) =>
+        promote(tree) // e.g. `new Tuple2$mcII$sp(7, 8)` should keep its `(7, 8)` type instead of `Tuple2$mcII$sp`
+      case _ => super.typedApply(tree, pt)
+
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
       val tpt1 = checkSimpleKinded(typedType(tree.tpt))
       val expr1 = tree.expr match

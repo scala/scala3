@@ -278,6 +278,16 @@ object NameOps {
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
 
+    def isSpecializedNameOf(base: N)(using Context): Boolean =
+      import Decorators.*
+      val sb = new StringBuilder
+      sb.append(base.toString)
+      sb.append(nme.specializedTypeNames.prefix.toString)
+      sb.append(nme.specializedTypeNames.separator)
+      val prefix = sb.toString()
+      val suffix = nme.specializedTypeNames.suffix.toString
+      name.startsWith(prefix) && name.endsWith(suffix)
+
     def specializedName(args: List[Type])(using Context): N =
       val sb = new StringBuilder
       sb.append(name.toString)
