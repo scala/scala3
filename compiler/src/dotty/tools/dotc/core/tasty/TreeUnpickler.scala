@@ -1236,13 +1236,12 @@ class TreeUnpickler(reader: TastyReader,
               val expansion = exprReader.readTerm() // need bindings in scope, so needs to be read before
               Inlined(call, bindings, expansion)
             case IF =>
-              simplifyLub(
-                if (nextByte == INLINE) {
-                  readByte()
-                  InlineIf(readTerm(), readTerm(), readTerm())
-                }
-                else
-                  If(readTerm(), readTerm(), readTerm()))
+              if (nextByte == INLINE) {
+                readByte()
+                InlineIf(readTerm(), readTerm(), readTerm())
+              }
+              else
+                If(readTerm(), readTerm(), readTerm())
             case LAMBDA =>
               val meth = readTerm()
               val tpt = ifBefore(end)(readTpt(), EmptyTree)
