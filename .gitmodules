@@ -221,4 +221,4 @@
 	url = https://github.com/dotty-staging/http4s.git
 [submodule "community-build/community-projects/parboiled2"]
 	path = community-build/community-projects/parboiled2
-	url = https://github.com/sirthias/parboiled2.git
+	url = https://github.com/dotty-staging/parboiled2.git
