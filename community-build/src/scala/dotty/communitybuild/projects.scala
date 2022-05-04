@@ -766,7 +766,7 @@ object projects:
     sbtTestCommand = "parboiledCoreJVM/test; parboiledJVM/test",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
-    dependencies = List(utest, scalatest)
+    dependencies = List(utest, scalacheck)
   )
 
 end projects
