@@ -11,8 +11,8 @@ object Amount:
   val aa: Amount = Amount(1)
   val ab: Amount = Amount(2)
   val ac: Amount = Amount(2)
-  val as1: Amount = aa + ab  // error
-  val as2: Amount = aa + ab + ac // error
+  val as1: Amount = aa + ab
+  val as2: Amount = aa + ab + ac
 
   println(s"aa + ab = ${as1}")
   println(s"aa + ab = ${as2}")

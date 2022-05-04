@@ -677,7 +677,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    *  map them to their opaque proxies.
    */
   def mapOpaquesInValueArg(arg: Tree)(using Context): Tree =
-    val argType = arg.tpe.widen
+    val argType = arg.tpe.widenDealias
     addOpaqueProxies(argType, arg.span, forThisProxy = false)
     if opaqueProxies.nonEmpty then
       val mappedType = mapOpaques.typeMap(argType)
