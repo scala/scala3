@@ -5,6 +5,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.{ Paths, Path }
 import scala.io._
+import scala.util.chaining._
 
 class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSiteContext, CompilerContext):
   val ctx: StaticSiteContext = summon[StaticSiteContext]
@@ -69,15 +70,16 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
           nested.map(child => loadChild(categoryPath)(child))
         ) { indexPath =>
           val indexPathDirectory = Paths.get(indexPath).getParent
-          val filesInDirectory = Option(root.toPath.resolve(indexPathDirectory).toFile.listFiles)
+          val filesInDirectory = Option(ctx.docsPath.resolve(indexPathDirectory).toFile.listFiles)
           filesInDirectory.fold(List.empty) { files =>
             val mappingFunc: File => File = file => {
-              val relativeFile = root.toPath.resolve(indexPathDirectory).relativize(file.toPath)
+              val relativeFile = ctx.docsPath.resolve(indexPathDirectory).relativize(file.toPath)
               categoryPath.resolve(relativeFile).toFile
             }
             files.toList
               .filter(_.toPath != indexPage.file.toPath)
               .flatMap(file => loadRecursively(file, mappingFunc))
+              .sorted
           }
         }
 
@@ -182,6 +184,7 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
 
       val children = currRoot.listFiles.toList
         .filter(_.toPath != indexPageOpt.getOrElse(null))
+        .sorted
       Some(LoadedTemplate(indexPage, children.flatMap(loadRecursively(_, destMappingFunc)).sortBy(_.templateFile.title.name), destMappingFunc(indexPage.file)))
     }
     else if (currRoot.exists && ctx.siteExtensions.exists(ext => currRoot.getName.endsWith(ext))) {
@@ -200,6 +203,11 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
     val path = Paths.get(link)
     if !path.isAbsolute then ctx.docsPath.resolve(link)
     else path
+
+  private given templatesOrdering: Ordering[LoadedTemplate] =
+    Ordering.by { (t: LoadedTemplate) =>
+      (t.children.size, t.templateFile.title.name)
+    }(using Ordering.Tuple2(Ordering.Int.reverse, Ordering.String))
 
   extension (p: Path)
     private def toHtml: Path = p.getParent.resolve(p.getFileName.toString match
