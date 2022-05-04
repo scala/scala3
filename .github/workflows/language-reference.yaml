@@ -45,7 +45,7 @@ jobs:
       - name: Generate reference documentation and test links
         run: |
           cd dotty
-          ./project/scripts/sbt scaladoc/generateReferenceDocumentation --no-regenerate-expected-links
+          ./project/scripts/sbt "scaladoc/generateReferenceDocumentation --no-regenerate-expected-links"
           ./project/scripts/docsLinksStability ./scaladoc/output/reference ./project/scripts/expected-links/reference-expected-links.txt
           cd ..
 
