@@ -113,6 +113,7 @@ class TreeUnpickler(reader: TastyReader,
   class Completer(reader: TastyReader)(using @constructorOnly _ctx: Context) extends LazyType {
     import reader._
     val owner = ctx.owner
+    val mode = ctx.mode
     val source = ctx.source
     def complete(denot: SymDenotation)(using Context): Unit =
       def fail(ex: Throwable) =
@@ -129,7 +130,7 @@ class TreeUnpickler(reader: TastyReader,
         try
           atPhaseBeforeTransforms {
             new TreeReader(reader).readIndexedDef()(
-              using ctx.withOwner(owner).withSource(source))
+              using ctx.withOwner(owner).withModeBits(mode).withSource(source))
           }
         catch
           case ex: AssertionError => fail(ex)
@@ -1193,6 +1194,10 @@ class TreeUnpickler(reader: TastyReader,
                 res.withAttachment(SuppressedApplyToNone, ())
               else res
 
+      def simplifyLub(tree: Tree): Tree =
+        tree.overwriteType(tree.tpe.simplified)
+        tree
+
       def readLengthTerm(): Tree = {
         val end = readEnd()
         val result =
@@ -1231,26 +1236,28 @@ class TreeUnpickler(reader: TastyReader,
               val expansion = exprReader.readTerm() // need bindings in scope, so needs to be read before
               Inlined(call, bindings, expansion)
             case IF =>
-              if (nextByte == INLINE) {
-                readByte()
-                InlineIf(readTerm(), readTerm(), readTerm())
-              }
-              else
-                If(readTerm(), readTerm(), readTerm())
+              simplifyLub(
+                if (nextByte == INLINE) {
+                  readByte()
+                  InlineIf(readTerm(), readTerm(), readTerm())
+                }
+                else
+                  If(readTerm(), readTerm(), readTerm()))
             case LAMBDA =>
               val meth = readTerm()
               val tpt = ifBefore(end)(readTpt(), EmptyTree)
               Closure(Nil, meth, tpt)
             case MATCH =>
-              if (nextByte == IMPLICIT) {
-                readByte()
-                InlineMatch(EmptyTree, readCases(end))
-              }
-              else if (nextByte == INLINE) {
-                readByte()
-                InlineMatch(readTerm(), readCases(end))
-              }
-              else Match(readTerm(), readCases(end))
+              simplifyLub(
+                if (nextByte == IMPLICIT) {
+                  readByte()
+                  InlineMatch(EmptyTree, readCases(end))
+                }
+                else if (nextByte == INLINE) {
+                  readByte()
+                  InlineMatch(readTerm(), readCases(end))
+                }
+                else Match(readTerm(), readCases(end)))
             case RETURN =>
               val from = readSymRef()
               val expr = ifBefore(end)(readTerm(), EmptyTree)
@@ -1258,7 +1265,8 @@ class TreeUnpickler(reader: TastyReader,
             case WHILE =>
               WhileDo(readTerm(), readTerm())
             case TRY =>
-              Try(readTerm(), readCases(end), ifBefore(end)(readTerm(), EmptyTree))
+              simplifyLub(
+                Try(readTerm(), readCases(end), ifBefore(end)(readTerm(), EmptyTree)))
             case SELECTouter =>
               val levels = readNat()
               readTerm().outerSelect(levels, SkolemType(readType()))
