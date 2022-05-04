@@ -1380,7 +1380,7 @@ object Build {
       }.value,
 
       generateReferenceDocumentation := Def.inputTaskDyn {
-        val shouldRegenerateExpectedLinks = literal("--no-regenerate-expected-links").?.parsed.isEmpty
+        val shouldRegenerateExpectedLinks = (Space ~> literal("--no-regenerate-expected-links")).?.parsed.isEmpty
 
         val temp = IO.createTemporaryDirectory
         IO.copyDirectory(file("docs"), temp / "docs")
