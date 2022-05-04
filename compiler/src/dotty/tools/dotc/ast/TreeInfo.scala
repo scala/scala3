@@ -864,8 +864,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  that is not a member of an underlying class or trait?
    */
   def isStructuralTermSelectOrApply(tree: Tree)(using Context): Boolean = {
-    def isStructuralTermSelect(tree: Select) = {
-      def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match {
+    def isStructuralTermSelect(tree: Select) =
+      def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
@@ -876,11 +876,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
         case _ =>
           false
-      }
       !tree.symbol.exists
-      && !tree.qualifier.tpe.widen.derivesFrom(defn.PolyFunctionClass)
-      && tree.isTerm && hasRefinement(tree.qualifier.tpe)
-    }
+      && tree.isTerm
+      && {
+        val qualType = tree.qualifier.tpe
+        hasRefinement(qualType) && !qualType.derivesFrom(defn.PolyFunctionClass)
+      }
     def loop(tree: Tree): Boolean = tree match
       case TypeApply(fun, _) =>
         loop(fun)
