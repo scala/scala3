@@ -2,6 +2,7 @@ package dotty.tools.scaladoc
 
 import utils.HTML._
 
+import scala.scalajs.js.Date
 import org.scalajs.dom._
 import org.scalajs.dom.ext._
 import org.scalajs.dom.html.Input
@@ -16,7 +17,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   val initialChunkSize = 5
   val resultsChunkSize = 20
   extension (p: PageEntry)
-    def toHTML =
+    def toHTML(boldChars: Set[Int]) =
       val location = if (p.isLocationExternal) {
         p.location
       } else {
@@ -25,7 +26,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
 
       div(cls := "scaladoc-searchbar-row monospace", "result" := "")(
         a(href := location)(
-          p.fullName,
+          p.fullName.zipWithIndex.map((c, i) => if boldChars.contains(i) then b(c.toString) else c.toString),
           span(cls := "pull-right scaladoc-searchbar-location")(p.description)
         ).tap { _.onclick = (event: Event) =>
           if (document.body.contains(rootDiv)) {
@@ -63,14 +64,29 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         })
       }
 
-  def createKindSeparator(kind: String) =
+  extension (rq: RecentQuery)
+    def toHTML =
+      div(cls := "scaladoc-searchbar-row monospace", "result" := "")(
+        a(
+          span(rq.query)
+        )
+      ).tap { _.addEventListener("click", _ => {
+          inputElem.value = rq.query
+          inputElem.dispatchEvent(new Event("input"))
+        })
+      }.tap { wrapper => wrapper.addEventListener("mouseover", {
+          case e: MouseEvent => handleHover(wrapper)
+        })
+      }
+
+  def createKindSeparator(kind: String, customClass: String = "") =
     div(cls := "scaladoc-searchbar-row monospace", "divider" := "")(
-      span(cls := s"micon ${kind.take(2)}"),
+      span(cls := s"micon ${kind.take(2)} $customClass"),
       span(kind)
     )
 
   def handleNewFluffQuery(matchers: List[Matchers]) =
-    val result = engine.query(matchers)
+    val result: List[(PageEntry, Set[Int])] = engine.query(matchers)
     val fragment = document.createDocumentFragment()
     def createLoadMoreElement =
       div(cls := "scaladoc-searchbar-row monospace", "loadmore" := "")(
@@ -81,10 +97,10 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         .addEventListener("mouseover", _ => handleHover(loadMoreElement))
       }
 
-    result.groupBy(_.kind).map {
+    result.groupBy(_._1.kind).map {
       case (kind, entries) =>
         val kindSeparator = createKindSeparator(kind)
-        val htmlEntries = entries.map(_.toHTML)
+        val htmlEntries = entries.map((p, set) => p.toHTML(set))
         val loadMoreElement = createLoadMoreElement
         def loadMoreResults(entries: List[raw.HTMLElement]): Unit = {
           loadMoreElement.onclick = (event: Event) => {
@@ -109,8 +125,25 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
     }
 
     resultsDiv.scrollTop = 0
-    while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     resultsDiv.appendChild(fragment)
+
+  def handleRecentQueries(query: String) = {
+    val recentQueries = RecentQueryStorage.getData
+    if query != "" then RecentQueryStorage.addEntry(RecentQuery(query, Date.now()))
+    val matching = recentQueries
+      .filterNot(rq => rq.query.equalsIgnoreCase(query)) // Don't show recent query that is equal to provided query
+      .filter { rq => // Fuzzy search
+        rq.query.foldLeft(query) { (pattern, nextChar) =>
+          if !pattern.isEmpty then {
+            if pattern.head.toString.equalsIgnoreCase(nextChar.toString) then pattern.tail else pattern
+          } else ""
+      }.isEmpty
+    }
+    if matching.nonEmpty then {
+      resultsDiv.appendChild(createKindSeparator("Recently searched", "fas fa-clock"))
+      matching.map(_.toHTML).foreach(resultsDiv.appendChild)
+    }
+  }
 
   def createLoadingAnimation: raw.HTMLElement =
     div(cls := "loading-wrapper")(
@@ -124,35 +157,33 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
 
   var timeoutHandle: SetTimeoutHandle = null
   def handleNewQuery(query: String) =
-    clearTimeout(timeoutHandle)
     resultsDiv.scrollTop = 0
     resultsDiv.onscroll = (event: Event) => { }
-    def clearResults() = while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
-    parser.parse(query) match {
-      case EngineMatchersQuery(matchers) =>
-        clearResults()
-        handleNewFluffQuery(matchers)
-      case BySignature(signature) =>
-        timeoutHandle = setTimeout(1.second) {
-          val loading = createLoadingAnimation
-          val kindSeparator = createKindSeparator("inkuire")
-          clearResults()
-          resultsDiv.appendChild(loading)
-          resultsDiv.appendChild(kindSeparator)
-          inkuireEngine.query(query) { (m: InkuireMatch) =>
-            val next = resultsDiv.children
-              .find(child => child.hasAttribute("mq") && Integer.parseInt(child.getAttribute("mq")) > m.mq)
-            next.fold {
-              resultsDiv.appendChild(m.toHTML)
-            } { next =>
-              resultsDiv.insertBefore(m.toHTML, next)
+    timeoutHandle = setTimeout(600.millisecond) {
+      clearResults()
+      handleRecentQueries(query)
+      parser.parse(query) match {
+        case EngineMatchersQuery(matchers) =>
+            handleNewFluffQuery(matchers)
+        case BySignature(signature) =>
+            val loading = createLoadingAnimation
+            val kindSeparator = createKindSeparator("inkuire")
+            resultsDiv.appendChild(loading)
+            resultsDiv.appendChild(kindSeparator)
+            inkuireEngine.query(query) { (m: InkuireMatch) =>
+              val next = resultsDiv.children
+                .find(child => child.hasAttribute("mq") && Integer.parseInt(child.getAttribute("mq")) > m.mq)
+              next.fold {
+                resultsDiv.appendChild(m.toHTML)
+              } { next =>
+                resultsDiv.insertBefore(m.toHTML, next)
+              }
+            } { (s: String) =>
+              resultsDiv.removeChild(loading)
+              resultsDiv.appendChild(s.toHTMLError)
             }
-          } { (s: String) =>
-            resultsDiv.removeChild(loading)
-            resultsDiv.appendChild(s.toHTMLError)
-          }
-        }
+      }
     }
 
   private val searchIcon: html.Button =
@@ -173,9 +204,12 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   private val inputElem: html.Input =
     input(id := "scaladoc-searchbar-input", `type` := "search", `placeholder`:= "Find anything").tap { element =>
       element.addEventListener("input", { e =>
+        clearTimeout(timeoutHandle)
         val inputValue = e.target.asInstanceOf[html.Input].value
-        if inputValue.isEmpty then showHints()
-        else handleNewQuery(inputValue)
+        if inputValue.isEmpty then {
+          clearResults()
+          if RecentQueryStorage.isEmpty then showHints() else handleRecentQueries("")
+        } else handleNewQuery(inputValue)
       })
 
       element.autocomplete = "off"
@@ -183,6 +217,8 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
 
   private val resultsDiv: html.Div =
     div(id := "scaladoc-searchbar-results")
+
+  def clearResults() = while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
 
   private val rootHiddenClasses = "hidden"
   private val rootShowClasses   = ""
@@ -291,7 +327,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   private def handleEscape() = {
     // clear the search input and close the search
     inputElem.value = ""
-    showHints()
+    inputElem.dispatchEvent(new Event("input"))
     document.body.removeChild(rootDiv)
   }
 
@@ -321,7 +357,6 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
   }
 
   private def showHints() = {
-    def clearResults() = while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val hintsDiv = div(cls := "searchbar-hints")(
       span(cls := "lightbulb"),
       h1(cls := "body-medium")("A bunch of search hints to make your life easier"),
@@ -339,8 +374,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
         li(cls := "link body-small")("Availability of searching by inkuire depends on the configuration of Scaladoc. For more info, ", a(href := "https://docs.scala-lang.org/scala3/guides/scaladoc/search-engine.html")("the documentation")),
       )
     )
-    clearResults()
     resultsDiv.appendChild(hintsDiv)
   }
 
-  showHints()
+  inputElem.dispatchEvent(new Event("input"))
