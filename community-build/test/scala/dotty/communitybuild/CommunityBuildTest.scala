@@ -74,6 +74,7 @@ class CommunityBuildTestC:
   @Test def onnxScala = projects.onnxScala.run()
   @Test def oslib = projects.oslib.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
+  @Test def parboiled2 = projects.parboiled2.run()
   @Test def playJson = projects.playJson.run()
   @Test def pprint = projects.pprint.run()
   @Test def protoquill = projects.protoquill.run()
