@@ -9,6 +9,8 @@ import Contexts._
 import Symbols._
 import Names.Name
 
+import dotty.tools.dotc.core.Decorators.*
+
 object TypeUtils {
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
@@ -84,11 +86,16 @@ object TypeUtils {
     /** The TermRef referring to the companion of the underlying class reference
      *  of this type, while keeping the same prefix.
      */
-    def companionRef(using Context): TermRef = self match {
+    def mirrorCompanionRef(using Context): TermRef = self match {
+      case OrType(tp1, tp2) =>
+        val r1 = tp1.mirrorCompanionRef
+        val r2 = tp2.mirrorCompanionRef
+        assert(r1.symbol == r2.symbol, em"mirrorCompanionRef mismatch for $self: $r1, $r2 did not have the same symbol")
+        r1
       case self @ TypeRef(prefix, _) if self.symbol.isClass =>
         prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
       case self: TypeProxy =>
-        self.underlying.companionRef
+        self.underlying.mirrorCompanionRef
     }
 
     /** Is this type a methodic type that takes implicit parameters (both old and new) at some point? */
