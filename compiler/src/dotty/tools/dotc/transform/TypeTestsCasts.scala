@@ -152,6 +152,20 @@ object TypeTestsCasts {
       case AnnotatedType(t, _)  => recur(X, t)
       case tp2: RefinedType     => recur(X, tp2.parent) && TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2)
       case tp2: RecType         => recur(X, tp2.parent)
+      case tp2
+      if tp2.typeSymbol.isLocal =>
+        val sym = tp2.typeSymbol
+        val methodSymbol = sym.owner
+        val tpSyms = typer.ErrorReporting.substitutableTypeSymbolsInScope(sym).toSet
+        def isAccessible(sym: Symbol): Boolean = sym == methodSymbol || sym.isType && isAccessible(sym.owner)
+        def hasPoison(tp: Type): Boolean =
+          tp.baseClasses.filter(isAccessible).exists { sym =>
+            sym.info.decls.exists { sym =>
+              sym.info.existsPart(tp => tpSyms.contains(tp.typeSymbol))
+                || isAccessible(sym.info.typeSymbol.maybeOwner) && hasPoison(sym.info)
+            }
+          }
+        !hasPoison(tp2)
       case _                    => true
     })
 
