@@ -100,7 +100,7 @@ object Implicits:
      */
     def companionRefs: TermRefSet = TermRefSet.empty
 
-    private var mySingletonClass: ClassSymbol | Null = null
+    private var mySingletonClass: ClassSymbol | Uninitialized = initiallyNull
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(using Context): Type = {
@@ -842,7 +842,7 @@ trait Implicits:
     }
   }
 
-  private var synthesizer: Synthesizer | Null = null
+  private var synthesizer: Synthesizer | Uninitialized = initiallyNull
 
   /** Find an implicit argument for parameter `formal`.
    *  Return a failure as a SearchFailureType in the type of the returned tree.

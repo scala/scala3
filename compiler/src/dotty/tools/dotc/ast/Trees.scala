@@ -294,7 +294,7 @@ object Trees {
   trait DefTree[-T >: Untyped] extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] <: DefTree[T]
 
-    private var myMods: untpd.Modifiers | Null = _
+    private var myMods: untpd.Modifiers | Uninitialized = _
 
     private[dotc] def rawMods: untpd.Modifiers =
       if (myMods == null) untpd.EmptyModifiers else myMods.uncheckedNN

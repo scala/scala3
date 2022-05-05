@@ -160,7 +160,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    */
   def checkPos(nonOverlapping: Boolean)(using Context): Unit = try {
     import untpd._
-    var lastPositioned: Positioned | Null = null
+    var lastPositioned: Positioned | Uninitialized = initiallyNull
     var lastSpan = NoSpan
     def check(p: Any): Unit = p match {
       case p: Positioned =>
@@ -234,7 +234,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
 
 object Positioned {
   @sharable private var debugId = Int.MinValue
-  @sharable private var ids: java.util.WeakHashMap[Positioned, Int] | Null = null
+  @sharable private var ids: java.util.WeakHashMap[Positioned, Int] | Uninitialized = initiallyNull
   @sharable private var nextId: Int = 0
 
   def init(using Context): Unit =

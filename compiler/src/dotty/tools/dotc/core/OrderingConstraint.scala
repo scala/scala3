@@ -565,7 +565,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         i += 1
     }
 
-  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = _
+  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Uninitialized = _
 
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar] = {

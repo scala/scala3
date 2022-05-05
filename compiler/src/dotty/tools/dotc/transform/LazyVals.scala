@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import java.util.IdentityHashMap
@@ -44,7 +45,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   val containerFlagsMask: FlagSet = Method | Lazy | Accessor | Module
 
   /** A map of lazy values to the fields they should null after initialization. */
-  private var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] | Null = _
+  private var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] | Uninitialized = _
   private def nullableFor(sym: Symbol)(using Context) = {
     // optimisation: value only used once, we can remove the value from the map
     val nullables = lazyValNullables.nn.remove(sym)
@@ -382,7 +383,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val thizClass = Literal(Constant(claz.info))
     val helperModule = requiredModule("scala.runtime.LazyVals")
     val getOffset = Select(ref(helperModule), lazyNme.RLazyVals.getOffset)
-    var offsetSymbol: TermSymbol | Null = null
+    var offsetSymbol: TermSymbol | Uninitialized = initiallyNull
     var flag: Tree = EmptyTree
     var ord = 0
 

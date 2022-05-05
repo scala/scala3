@@ -69,7 +69,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
    */
   def canExplain: Boolean = explain.nonEmpty
 
-  private var myMsg: String | Null = null
+  private var myMsg: String | Uninitialized = initiallyNull
   private var myIsNonSensical: Boolean = false
 
   private def dropNonSensical(msg: String): String =
